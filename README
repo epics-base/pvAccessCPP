@@ -1,0 +1,5 @@
+Define
+
+PVDATA_HOME
+
+env. variable that points to pvDataCPP installation directory (includes and libraries).
