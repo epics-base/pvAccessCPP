@@ -5,9 +5,10 @@
  *      Author: Miha Vitorovic
  */
 
+#include "hexDump.h"
+
 #include <iostream>
 #include <sstream>
-#include "hexDump.h"
 
 using namespace epics::pvData;
 

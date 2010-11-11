@@ -5,9 +5,9 @@
  *      Author: Miha Vitorovic
  */
 
-#include <iostream>
-
 #include "wildcharMatcher.h"
+
+#include <iostream>
 
 using std::cout;
 

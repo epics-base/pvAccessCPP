@@ -5,47 +5,39 @@
  *      Author: Miha Vitorovic
  */
 
+#include <sstream>
+
 #include "version.h"
+
+using std::stringstream;
+using epics::pvData::String;
 
 namespace epics {
     namespace pvAccess {
 
-        using epics::pvData::String;
 
         const String Version::getLongVersionString() const {
-            String ret;
-            ret += getProductName();
-            ret += " [";
-            ret += getImplementationLanguage();
-            ret += "] v";
-            ret += getMajorVersion();
-            ret += ".";
-            ret += getMinorVersion();
-            ret += ".";
+            stringstream ret;
+            ret<<getProductName()<<" ["<<getImplementationLanguage();
+            ret<<"] v"<<getMajorVersion()<<"."<<getMinorVersion()<<".";
             if(getDevelopmentVersion()>0) {
-                ret += "D";
-                ret += getDevelopmentVersion();
+                ret<<"D"<<getDevelopmentVersion();
             } else
-                ret += getMaintenanceVersion();
+                ret<<getMaintenanceVersion();
 
-            return ret;
+            return ret.str();
         }
 
         const String Version::getVersionString() const {
-            String ret;
-            ret += getProductName();
-            ret += " v";
-            ret += getMajorVersion();
-            ret += ".";
-            ret += getMinorVersion();
-            ret += ".";
+            stringstream ret;
+            ret<<getProductName()<<" v"<<getMajorVersion()<<".";
+            ret<<getMinorVersion()<<".";
             if(getDevelopmentVersion()>0) {
-                ret += "D";
-                ret += getDevelopmentVersion();
+                ret<<"D"<<getDevelopmentVersion();
             } else
-                ret += getMaintenanceVersion();
+                ret<<getMaintenanceVersion();
 
-            return ret;
+            return ret.str();
         }
 
     }

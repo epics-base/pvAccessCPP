@@ -5,10 +5,10 @@
  *      Author: Miha Vitorovic
  */
 
+#include "wildcharMatcher.h"
+
 #include <iostream>
 #include <epicsAssert.h>
-
-#include "wildcharMatcher.h"
 
 using namespace epics::pvAccess;
 using std::cout;
@@ -59,4 +59,5 @@ int main(int argc, char *argv[]) {
     cout<<"Testing for '*[p-z]tring*'.\n";
     assert(match("*[p-z]tring*", testString));
     cout<<"\nPASSED!\n";
+
 }

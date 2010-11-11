@@ -5,9 +5,9 @@
  *      Author: Miha Vitorovic
  */
 
-#include <iostream>
-
 #include "hexDump.h"
+
+#include <iostream>
 
 using namespace epics::pvAccess;
 using std::cout;

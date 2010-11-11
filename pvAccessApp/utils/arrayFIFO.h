@@ -8,6 +8,10 @@
 #ifndef ARRAYFIFO_H_
 #define ARRAYFIFO_H_
 
+#ifdef ARRAY_FIFO_DEBUG
+#include <iostream>
+#endif
+
 #include <lock.h>
 #include <epicsException.h>
 
@@ -18,7 +22,7 @@ using epics::pvData::BaseException;
 namespace epics {
     namespace pvAccess {
 
-        template <class T>
+        template<class T>
         class ArrayFIFO {
         public:
             /**
@@ -117,6 +121,17 @@ namespace epics {
              */
             bool remove(const T e);
 
+#ifdef ARRAY_FIFO_DEBUG
+            void debugState() {
+                size_t mask = _size-1;
+                std::cout<<"h:"<<_head<<",t:"<<_tail<<",c:"<<_size;
+                std::cout<<",s:"<<size()<<std::endl;
+                std::cout<<"Content:"<<std::endl;
+                for (int i = 0; i < _size; i++)
+                    std::cout<<"["<<i<<"]: "<<_elements[i]<<std::endl;
+            }
+#endif
+
         private:
             T* _elements; // array of pointers
             size_t _head, _tail, _size;
@@ -135,7 +150,8 @@ namespace epics {
              */
             void doubleCapacity();
 
-            void arraycopy(T* src, size_t srcPos, T* dest, size_t destPos, size_t length);
+            void arraycopy(T* src, size_t srcPos, T* dest, size_t destPos,
+                    size_t length);
 
             /**
              * Removes the element at the specified position in the elements array,
@@ -160,8 +176,12 @@ namespace epics {
         template<class T>
         void ArrayFIFO<T>::arraycopy(T* src, size_t srcPos, T* dest,
                 size_t destPos, size_t length) {
-            for(size_t i = 0; i<length; i++)
-                dest[destPos++] = src[srcPos++];
+            if(srcPos<destPos) // this takes care of same-buffer copy
+                for(int i = length-1; i>=0; i--)
+                    dest[destPos+i] = src[srcPos+i];
+            else
+                for(size_t i = 0; i<length; i++)
+                    dest[destPos++] = src[srcPos++];
         }
 
         template<class T>
@@ -237,10 +257,8 @@ namespace epics {
 
             if(isEmpty()) THROW_BASE_EXCEPTION("ArrayFIFO empty");
 
-            size_t h = _head;
-            T result = _elements[h]; // Element is null if deque empty
-            _elements[h] = NULL; // Must null out slot
-            _head = (h+1)&(_size-1);
+            T result = _elements[_head]; // Element is null if deque empty
+            _head = (_head+1)&(_size-1);
             return result;
         }
 
@@ -250,10 +268,8 @@ namespace epics {
 
             if(isEmpty()) THROW_BASE_EXCEPTION("ArrayFIFO empty");
 
-            int t = (_tail-1)&(_size-1);
-            T result = _elements[t];
-            _tail = t;
-            return result;
+            _tail = (_tail-1)&(_size-1);
+            return _elements[_tail];
         }
 
         template<class T>
@@ -312,11 +328,12 @@ namespace epics {
 
         template<class T>
         bool ArrayFIFO<T>::del(const size_t i) {
-            int mask = _size-1;
-            int h = _head;
-            int t = _tail;
-            int front = (i-h)&mask;
-            int back = (t-i)&mask;
+            // i is absolute index in the array
+            size_t mask = _size-1;
+            size_t h = _head;
+            size_t t = _tail;
+            size_t front = (i-h)&mask;
+            size_t back = (t-i)&mask;
 
             // Invariant: head <= i < tail mod circularity
             if(front>=((t-h)&mask)) THROW_BASE_EXCEPTION(
@@ -329,11 +346,11 @@ namespace epics {
                 }
                 else { // Wrap around
                     arraycopy(_elements, 0, _elements, 1, i);
-                    _elements[0] = _elements[mask];
+                    if(t>0) _elements[0] = _elements[mask];
                     arraycopy(_elements, h, _elements, h+1, mask-h);
                 }
-                _elements[h] = NULL;
                 _head = (h+1)&mask;
+
                 return false;
             }
             else {
@@ -357,10 +374,10 @@ namespace epics {
 
             if(isEmpty()) return false; // nothing to do
 
-            int mask = _size-1;
-            int i = _head;
+            size_t mask = _size-1;
+            size_t i = _head;
             while(i!=_tail) {
-                if(e == _elements[i]) {
+                if(e==_elements[i]) {
                     del(i);
                     return true;
                 }
@@ -368,7 +385,6 @@ namespace epics {
             }
             return false;
         }
-
 
     }
 }
