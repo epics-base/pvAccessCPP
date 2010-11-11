@@ -14,6 +14,9 @@ PROD_HOST += arrayFIFOTest
 arrayFIFOTest_SRCS += arrayFIFOTest.cpp
 arrayFIFOTest_LIBS += pvAccUtils Com
 
+PROD_HOST += growingCircularBufferTest
+growingCircularBufferTest_SRCS += growingCircularBufferTest.cpp
+growingCircularBufferTest_LIBS += pvAccUtils Com
 
 include $(TOP)/configure/RULES
 #----------------------------------------
