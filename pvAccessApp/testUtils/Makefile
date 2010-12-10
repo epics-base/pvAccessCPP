@@ -18,10 +18,14 @@ PROD_HOST += growingCircularBufferTest
 growingCircularBufferTest_SRCS += growingCircularBufferTest.cpp
 growingCircularBufferTest_LIBS += pvAccessUtils Com
 
-
 PROD_HOST += inetAddressUtilsTest
 inetAddressUtilsTest_SRCS += inetAddressUtilsTest.cpp
 inetAddressUtilsTest_LIBS += pvAccessUtils Com
+
+PROD_HOST += loggerTest
+loggerTest_SRCS += loggerTest.cpp
+loggerTest_LIBS += pvAccessUtils Com
+
 
 include $(TOP)/configure/RULES
 #----------------------------------------
