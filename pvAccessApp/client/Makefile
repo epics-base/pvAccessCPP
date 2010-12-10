@@ -8,8 +8,8 @@ LIBSRCS += ChannelAccessFactory.cpp
 
 LIBRARY=pvAccessClient
 
-pvAccessClient_LIBS += pvMisc
-pvMisc_DIR = $(PVDATA_HOME)/lib/$(EPICS_HOST_ARCH)
+pvAccessClient_LIBS += pvData
+pvData_DIR = $(PVDATA_HOME)/lib/$(EPICS_HOST_ARCH)
 
 include $(TOP)/configure/RULES
 #----------------------------------------
