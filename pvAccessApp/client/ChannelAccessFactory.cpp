@@ -8,6 +8,8 @@
 #include <map>
 #include <vector>
 
+using namespace epics::pvData;
+
 namespace epics { namespace pvAccess {
 
 static ChannelAccess* channelAccess = 0;

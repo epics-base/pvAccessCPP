@@ -4,8 +4,6 @@
 #include <pvData.h>
 #include <vector>
 
-using namespace epics::pvData;
-
 namespace epics { namespace pvAccess { 
 
         enum AccessRights {
@@ -50,7 +48,7 @@ namespace epics { namespace pvAccess {
          * Status interface.
          * @author mse
          */
-        class Status : public Serializable {
+        class Status : public epics::pvData::Serializable {
             public:
 
             /**
@@ -63,13 +61,13 @@ namespace epics { namespace pvAccess {
              * Get error message describing an error. Required if error status.
              * @return error message.
              */
-            virtual String getMessage() = 0;
+            virtual epics::pvData::String getMessage() = 0;
 
             /**
              * Get stack dump where error (exception) happened. Optional.
              * @return stack dump.
              */
-            virtual String getStackDump() = 0;
+            virtual epics::pvData::String getStackDump() = 0;
 
             /**
              * Convenient OK test. Same as <code>(getType() == StatusType.OK)</code>.
@@ -92,10 +90,22 @@ namespace epics { namespace pvAccess {
 
 
         /**
+         * Instance declaring destroy method.
+         * @author mse
+         */
+        class Destroyable  {
+            public:
+            /**
+             * Destroy this instance.
+             */
+            virtual void destroy() = 0;
+        };
+
+        /**
          * Base interface for all channel requests.
          * @author mse
          */
-        class ChannelRequest /* : public Destroyable */ {
+        class ChannelRequest : public Destroyable  {
         };
 
         /**
@@ -113,7 +123,7 @@ namespace epics { namespace pvAccess {
              * @param offset The offset in the remote array, i.e. the PVArray returned by ChannelArrayRequester.channelArrayConnect.
              * @param count The number of elements to put.
              */
-            virtual void putArray(bool lastRequest, int offset, int count);
+            virtual void putArray(bool lastRequest, int offset, int count) = 0;
 
             /**
              * get from the remote array.
@@ -121,7 +131,7 @@ namespace epics { namespace pvAccess {
              * @param offset The offset in the remote array, i.e. the PVArray returned by ChannelArrayRequester.channelArrayConnect.
              * @param count The number of elements to get.
              */
-            virtual void getArray(bool lastRequest, int offset, int count);
+            virtual void getArray(bool lastRequest, int offset, int count) = 0;
 
             /**
              * Set the length and/or the capacity.
@@ -129,15 +139,15 @@ namespace epics { namespace pvAccess {
              * @param length The new length. -1 means do not change.
              * @param capacity The new capacity. -1 means do not change.
              */
-            virtual void setLength(bool lastRequest, int length, int capacity);
+            virtual void setLength(bool lastRequest, int length, int capacity) = 0;
         };
 
         /**
-         * The requester for a ChannelArray.
+         * The epics::pvData::Requester for a ChannelArray.
          * @author mrk
          *
          */
-        class ChannelArrayRequester : public Requester {
+        class ChannelArrayRequester : public epics::pvData::Requester {
             public:
 
             /**
@@ -146,7 +156,7 @@ namespace epics { namespace pvAccess {
              * @param channelArray The channelArray interface or null if the request failed.
              * @param pvArray The PVArray that holds the data.
              */
-            virtual void channelArrayConnect(Status *status,ChannelArray *channelArray,PVArray *pvArray) = 0;
+            virtual void channelArrayConnect(Status *status,ChannelArray *channelArray,epics::pvData::PVArray *pvArray) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
@@ -211,11 +221,11 @@ namespace epics { namespace pvAccess {
 
 
         /**
-         * Requester for channelGet.
+         * epics::pvData::Requester for channelGet.
          * @author mrk
          *
          */
-        class ChannelGetRequester : public Requester {
+        class ChannelGetRequester : public epics::pvData::Requester {
             public:
 
             /**
@@ -225,7 +235,8 @@ namespace epics { namespace pvAccess {
              * @param pvStructure The PVStructure that holds the data.
              * @param bitSet The bitSet for that shows what data has changed.
              */
-            virtual void channelGetConnect(Status *status,ChannelGet *channelGet,PVStructure *pvStructure,BitSet *bitSet) = 0;
+            virtual void channelGetConnect(Status *status,ChannelGet *channelGet,
+                    epics::pvData::PVStructure *pvStructure,epics::pvData::BitSet *bitSet) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
@@ -254,11 +265,11 @@ namespace epics { namespace pvAccess {
 
 
         /**
-         * Requester for channelProcess.
+         * epics::pvData::Requester for channelProcess.
          * @author mrk
          *
          */
-        class ChannelProcessRequester : public Requester {
+        class ChannelProcessRequester : public epics::pvData::Requester {
             public:
 
             /**
@@ -301,11 +312,11 @@ namespace epics { namespace pvAccess {
 
 
         /**
-         * Requester for ChannelPut.
+         * epics::pvData::Requester for ChannelPut.
          * @author mrk
          *
          */
-        class ChannelPutRequester : public Requester {
+        class ChannelPutRequester : public epics::pvData::Requester {
             public:
 
             /**
@@ -315,7 +326,8 @@ namespace epics { namespace pvAccess {
              * @param pvStructure The PVStructure that holds the data.
              * @param bitSet The bitSet for that shows what data has changed.
              */
-            virtual void channelPutConnect(Status *status,ChannelPut *channelPut,PVStructure *pvStructure,BitSet *bitSet) = 0;
+            virtual void channelPutConnect(Status *status,ChannelPut *channelPut,
+                    epics::pvData::PVStructure *pvStructure,epics::pvData::BitSet *bitSet) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
@@ -361,11 +373,11 @@ namespace epics { namespace pvAccess {
 
 
         /**
-         * Requester for ChannelPutGet.
+         * epics::pvData::Requester for ChannelPutGet.
          * @author mrk
          *
          */
-        class ChannelPutGetRequester : public Requester
+        class ChannelPutGetRequester : public epics::pvData::Requester
         {
             public:
 
@@ -377,7 +389,7 @@ namespace epics { namespace pvAccess {
              * @param pvGetStructure The PVStructure that holds the getData.
              */
             virtual void channelPutGetConnect(Status *status,ChannelPutGet *channelPutGet,
-                                      PVStructure *pvPutStructure,PVStructure *pvGetStructure) = 0;
+                        epics::pvData::PVStructure *pvPutStructure,epics::pvData::PVStructure *pvGetStructure) = 0;
             /**
              * The putGet request is done. This is always called with no locks held.
              * @param status Completion status.
@@ -399,7 +411,7 @@ namespace epics { namespace pvAccess {
 
 
         /**
-         * Requester for channelGet.
+         * epics::pvData::Requester for channelGet.
          * @author mrk
          *
          */
@@ -416,11 +428,11 @@ namespace epics { namespace pvAccess {
 
 
         /**
-         * Requester for channelGet.
+         * epics::pvData::Requester for channelGet.
          * @author mrk
          *
          */
-        class ChannelRPCRequester : public Requester {
+        class ChannelRPCRequester : public epics::pvData::Requester {
             public:
 
             /**
@@ -430,23 +442,24 @@ namespace epics { namespace pvAccess {
              * @param pvArgument The argument structure for an RPC request.
              * @param bitSet The bitSet for argument changes.
              */
-            virtual void channelRPCConnect(Status *status,ChannelRPC *channelRPC,PVStructure *pvArgument,BitSet *bitSet) = 0;
+            virtual void channelRPCConnect(Status *status,ChannelRPC *channelRPC,
+                        epics::pvData::PVStructure *pvArgument,epics::pvData::BitSet *bitSet) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
              * @param status Completion status.
              * @param pvResponse The response data for the RPC request.
              */
-            virtual void requestDone(Status *status,PVStructure *pvResponse) = 0;
+            virtual void requestDone(Status *status,epics::pvData::PVStructure *pvResponse) = 0;
         };
 
 
         /**
-         * Requester for a getStructure request.
+         * epics::pvData::Requester for a getStructure request.
          * @author mrk
          *
          */
-        class GetFieldRequester : public Requester {
+        class GetFieldRequester : public epics::pvData::Requester {
             public:
 
             /**
@@ -454,7 +467,7 @@ namespace epics { namespace pvAccess {
              * @param status Completion status.
              * @param field The Structure for the request.
              */
-            virtual void getDone(Status *status,Field *field) = 0;
+            virtual void getDone(Status *status,epics::pvData::Field *field) = 0;
         };
 
 
@@ -463,7 +476,7 @@ namespace epics { namespace pvAccess {
          * @author mrk
          *
          */
-        class ChannelRequester : public Requester {
+        class ChannelRequester : public epics::pvData::Requester {
             public:
 
             /**
@@ -492,7 +505,7 @@ namespace epics { namespace pvAccess {
          * @author mrk
          * @author msekoranja
          */
-        class Channel : public Requester {
+        class Channel : public epics::pvData::Requester, Destroyable {
             public:
 
             /**
@@ -505,7 +518,7 @@ namespace epics { namespace pvAccess {
              * Returns the channel's remote address, e.g. "/192.168.1.101:5064" or "#C0 S1".
              * @return the channel's remote address.
              **/
-            virtual String getRemoteAddress() = 0;
+            virtual epics::pvData::String getRemoteAddress() = 0;
 
             /**
              * Returns the connection state of this channel.
@@ -514,19 +527,14 @@ namespace epics { namespace pvAccess {
             virtual ConnectionState getConnectionState() = 0;
 
             /**
-             * Destroy the channel. It will not honor any further requests.
-             */
-            virtual void destroy() = 0;
-
-            /**
              * Get the channel name.
              * @return The name.
              */
-            virtual String getChannelName() = 0;
+            virtual epics::pvData::String getChannelName() = 0;
 
             /**
-             * Get the channel requester.
-             * @return The requester.
+             * Get the channel epics::pvData::Requester.
+             * @return The epics::pvData::Requester.
              */
             virtual ChannelRequester* getChannelRequester() = 0;
 
@@ -540,11 +548,11 @@ namespace epics { namespace pvAccess {
              * Get a Field which describes the subField.
              * GetFieldRequester.getDone is called after both client and server have processed the getField request.
              * This is for clients that want to introspect a PVRecord via channel access.
-             * @param requester The requester.
+             * @param epics::pvData::Requester The epics::pvData::Requester.
              * @param subField The name of the subField.
-             * If this is null or an empty string the returned Field is for the entire record.
+             * If this is null or an empty epics::pvData::String the returned Field is for the entire record.
              */
-            virtual void getField(GetFieldRequester *requester,String subField) = 0;
+            virtual void getField(GetFieldRequester *requester,epics::pvData::String subField) = 0;
 
             /**
              * Get the access rights for a field of a PVStructure created via a call to createPVStructure.
@@ -552,7 +560,7 @@ namespace epics { namespace pvAccess {
              * @param pvField The field for which access rights is desired.
              * @return The access rights.
              */
-            virtual AccessRights getAccessRights(PVField *pvField) = 0;
+            virtual AccessRights getAccessRights(epics::pvData::PVField *pvField) = 0;
 
             /**
              * Create a ChannelProcess.
@@ -565,7 +573,7 @@ namespace epics { namespace pvAccess {
              */
             virtual ChannelProcess* createChannelProcess(
                     ChannelProcessRequester *channelProcessRequester,
-                    PVStructure *pvRequest) = 0;
+                    epics::pvData::PVStructure *pvRequest) = 0;
 
             /**
              * Create a ChannelGet.
@@ -579,7 +587,7 @@ namespace epics { namespace pvAccess {
              */
             virtual ChannelGet* createChannelGet(
                     ChannelGetRequester *channelGetRequester,
-                    PVStructure *pvRequest) = 0;
+                    epics::pvData::PVStructure *pvRequest) = 0;
 
             /**
              * Create a ChannelPut.
@@ -593,7 +601,7 @@ namespace epics { namespace pvAccess {
              */
             virtual ChannelPut* createChannelPut(
                     ChannelPutRequester *channelPutRequester,
-                    PVStructure *pvRequest) = 0;
+                    epics::pvData::PVStructure *pvRequest) = 0;
 
             /**
              * Create a ChannelPutGet.
@@ -607,26 +615,27 @@ namespace epics { namespace pvAccess {
              */
             virtual ChannelPutGet* createChannelPutGet(
                     ChannelPutGetRequester *channelPutGetRequester,
-                    PVStructure *pvRequest) = 0;
+                    epics::pvData::PVStructure *pvRequest) = 0;
 
             /**
              * Create a ChannelRPC (Remote Procedure Call).
-             * @param channelRPCRequester The requester.
+             * @param channelRPCRequester The epics::pvData::Requester.
              * @param pvRequest Request options.
              * @return <code>ChannelRPC</code> instance.
              */
-            virtual ChannelRPC* createChannelRPC(ChannelRPCRequester *channelRPCRequester,PVStructure *pvRequest) = 0;
+            virtual ChannelRPC* createChannelRPC(ChannelRPCRequester *channelRPCRequester,
+                    epics::pvData::PVStructure *pvRequest) = 0;
 
             /**
              * Create a Monitor.
-             * @param monitorRequester The requester.
+             * @param monitorRequester The epics::pvData::Requester.
              * @param pvRequest A structure describing the desired set of fields from the remote PVRecord.
              * This has the same form as a pvRequest to PVCopyFactory.create.
              * @return <code>Monitor</code> instance.
              */
             virtual Monitor* createMonitor(
                     MonitorRequester *monitorRequester,
-                    PVStructure *pvRequest) = 0;
+                    epics::pvData::PVStructure *pvRequest) = 0;
 
             /**
              * Create a ChannelArray.
@@ -636,7 +645,7 @@ namespace epics { namespace pvAccess {
              */
             virtual ChannelArray* createChannelArray(
                     ChannelArrayRequester *channelArrayRequester,
-                    PVStructure *pvRequest) = 0;
+                    epics::pvData::PVStructure *pvRequest) = 0;
         };
 
 
@@ -654,13 +663,13 @@ namespace epics { namespace pvAccess {
              * @param providerName The name of the provider.
              * @return The interface for the provider or null if the provider is not known.
              */
-            virtual ChannelProvider* getProvider(String providerName) = 0;
+            virtual ChannelProvider* getProvider(epics::pvData::String providerName) = 0;
 
             /**
              * Get a array of the names of all the known providers.
              * @return The names. Be sure to delete vector instance.
              */
-            virtual std::vector<String>* getProviderNames() = 0;
+            virtual std::vector<epics::pvData::String>* getProviderNames() = 0;
         };
 
         extern ChannelAccess * getChannelAccess();
@@ -698,34 +707,34 @@ namespace epics { namespace pvAccess {
              * Get the provider name.
              * @return The name.
              */
-            virtual String getProviderName() = 0;
+            virtual epics::pvData::String getProviderName() = 0;
 
             /**
              * Find a channel.
              * @param channelName The channel name.
-             * @param channelFindRequester The requester.
+             * @param channelFindRequester The epics::pvData::Requester.
              * @return An interface for the find.
              */
-            virtual ChannelFind* channelFind(String channelName,ChannelFindRequester *channelFindRequester) = 0;
+            virtual ChannelFind* channelFind(epics::pvData::String channelName,ChannelFindRequester *channelFindRequester) = 0;
 
             /**
              * Create a channel.
              * @param channelName The name of the channel.
-             * @param channelRequester The requester.
+             * @param channelRequester The epics::pvData::Requester.
              * @param priority channel priority, must be <code>PRIORITY_MIN</code> <= priority <= <code>PRIORITY_MAX</code>.
              * @return <code>Channel</code> instance. If channel does not exist <code>null</code> is returned and <code>channelRequester</code> notified.
              */
-            virtual Channel* createChannel(String channelName,ChannelRequester *channelRequester,short priority) = 0;
+            virtual Channel* createChannel(epics::pvData::String channelName,ChannelRequester *channelRequester,short priority) = 0;
 
             /**
              * Create a channel.
              * @param channelName The name of the channel.
-             * @param channelRequester The requester.
+             * @param channelRequester The epics::pvData::Requester.
              * @param priority channel priority, must be <code>PRIORITY_MIN</code> <= priority <= <code>PRIORITY_MAX</code>.
-             * @param address address (or list of addresses) where to look for a channel. Implementation independed string.
+             * @param address address (or list of addresses) where to look for a channel. Implementation independed epics::pvData::String.
              * @return <code>Channel</code> instance. If channel does not exist <code>null</code> is returned and <code>channelRequester</code> notified.
              */
-            virtual Channel* createChannel(String channelName,ChannelRequester *channelRequester,short priority,String address) = 0;
+            virtual Channel* createChannel(epics::pvData::String channelName,ChannelRequester *channelRequester,short priority,epics::pvData::String address) = 0;
         };
 
 
@@ -740,7 +749,7 @@ namespace epics { namespace pvAccess {
              * Get context implementation version.
              * @return version of the context implementation.
              */
-            virtual String getVersion() = 0;
+            virtual epics::pvData::String getVersion() = 0;
 
             /**
              * Initialize client context. This method is called immediately after instance construction (call of constructor).
@@ -762,7 +771,7 @@ namespace epics { namespace pvAccess {
              * Prints detailed information about the context to the specified output stream.
              * @param out the output stream.
              */
-            virtual void printInfo(StringBuilder out) = 0;
+            virtual void printInfo(epics::pvData::StringBuilder out) = 0;
 
             /**
              * Clear all resources attached to this Context

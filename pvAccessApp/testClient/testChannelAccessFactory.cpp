@@ -11,6 +11,7 @@
 
 #include <epicsAssert.h>
 
+using namespace epics::pvData;
 using namespace epics::pvAccess;
 
 class DummyChannelProvider : public ChannelProvider {
