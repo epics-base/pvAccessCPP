@@ -14,7 +14,7 @@ using namespace epics::pvAccess;
 using std::cout;
 using std::endl;
 
-const int CAPACITY = 10;
+const size_t CAPACITY = 10;
 
 int main(int argc, char *argv[]) {
     GrowingCircularBuffer<int> cb(CAPACITY);
@@ -31,15 +31,15 @@ int main(int argc, char *argv[]) {
     assert(first);
     assert(cb.size()==0);
 
-    for(int i = 0; i<2*CAPACITY; i++) {
+    for(size_t i = 0; i<2*CAPACITY; i++) {
         first = cb.insert(i);
         assert(cb.size()==i+1);
         assert((cb.size() == 1)==first);
     }
     assert(cb.size()==2*CAPACITY);
 
-    for(int i = 0; i<2*CAPACITY; i++) {
-        assert(cb.extract()==i);
+    for(size_t i = 0; i<2*CAPACITY; i++) {
+        assert(cb.extract()==(int)i);
         assert(cb.size()==2*CAPACITY-i-1);
     }
     assert(cb.size()==0);

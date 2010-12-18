@@ -20,7 +20,8 @@ growingCircularBufferTest_LIBS += pvAccessUtils Com
 
 PROD_HOST += inetAddressUtilsTest
 inetAddressUtilsTest_SRCS += inetAddressUtilsTest.cpp
-inetAddressUtilsTest_LIBS += pvAccessUtils Com
+inetAddressUtilsTest_LIBS += pvAccessUtils Com pvData
+pvData_DIR = $(PVDATA_HOME)/lib/$(EPICS_HOST_ARCH)
 
 PROD_HOST += loggerTest
 loggerTest_SRCS += loggerTest.cpp

@@ -123,11 +123,11 @@ namespace epics {
 
 #ifdef ARRAY_FIFO_DEBUG
             void debugState() {
-                size_t mask = _size-1;
+                //size_t mask = _size-1;
                 std::cout<<"h:"<<_head<<",t:"<<_tail<<",c:"<<_size;
                 std::cout<<",s:"<<size()<<std::endl;
                 std::cout<<"Content:"<<std::endl;
-                for (int i = 0; i < _size; i++)
+                for (size_t i = 0; i < _size; i++)
                     std::cout<<"["<<i<<"]: "<<_elements[i]<<std::endl;
             }
 #endif

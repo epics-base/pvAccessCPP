@@ -170,6 +170,7 @@ namespace epics {
 
                 switch(chp) {
                 case '[':
+		{
                     // Each set must be close with a ], otherwise it is invalid.
                     int end = pattern.find(']', ip);
 
@@ -211,12 +212,14 @@ namespace epics {
                     ip = end+1;
                     is++;
                     break;
+		}
                 case '?':
                     // Obvious
                     ip++;
                     is++;
                     break;
                 case '*':
+		{
                     // Trailing asterisk means that string matches till the end.
                     // Also, checks if this is last char in the string
                     if(ip+1==lp) return true;
@@ -242,6 +245,7 @@ namespace epics {
                         i++;
                     }
                     break;
+		}
                 default:
                     // Literal match
                     if(is==ls||pattern.at(ip)!=str.at(is)) return false;

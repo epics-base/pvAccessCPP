@@ -28,8 +28,8 @@ namespace epics {
              * Create a GrowingCircularBuffer with the given capacity.
              **/
             GrowingCircularBuffer(size_t capacity = 16) :
-                _takePointer(0), _putPointer(0), _count(0), _size(capacity),
-                        _elements(new T[capacity]) {
+                _elements(new T[capacity]), _takePointer(0), _putPointer(0), _count(0), _size(capacity)
+            {
             }
 
             ~GrowingCircularBuffer() {
