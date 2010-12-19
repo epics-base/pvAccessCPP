@@ -2,6 +2,9 @@
 #ifndef PVACCESS_H
 #define PVACCESS_H
 #include <pvData.h>
+#include <status.h>
+#include <destroyable.h>
+#include <monitor.h>
 #include <vector>
 
 namespace epics { namespace pvAccess { 
@@ -22,90 +25,22 @@ namespace epics { namespace pvAccess {
         };
 
     	
-	/**
-	 * Channel connection status.
-	 */
-	enum ConnectionState {
-            NEVER_CONNECTED, CONNECTED, DISCONNECTED, DESTROYED
-                };
+    	/**
+    	 * Channel connection status.
+    	 */
+    	enum ConnectionState {
+                NEVER_CONNECTED, CONNECTED, DISCONNECTED, DESTROYED
+                    };
     	
 
-	/**
-	 * Status type enum.
-	 */
-	enum StatusType { 
-            /** Operation completed successfully. */
-            OK,
-            /** Operation completed successfully, but there is a warning message. */
-            WARNING,
-            /** Operation failed due to an error. */
-            ERROR,
-            /** Operation failed due to an unexpected error. */
-            FATAL
-	};
-
-        /**
-         * Status interface.
-         * @author mse
-         */
-        class Status : public epics::pvData::Serializable {
-            public:
-
-            /**
-             * Get status type.
-             * @return status type, non-<code>null</code>.
-             */
-            virtual StatusType getType() = 0;
-
-            /**
-             * Get error message describing an error. Required if error status.
-             * @return error message.
-             */
-            virtual epics::pvData::String getMessage() = 0;
-
-            /**
-             * Get stack dump where error (exception) happened. Optional.
-             * @return stack dump.
-             */
-            virtual epics::pvData::String getStackDump() = 0;
-
-            /**
-             * Convenient OK test. Same as <code>(getType() == StatusType.OK)</code>.
-             * NOTE: this will return <code>false</code> on WARNING message although operation succeeded.
-             * To check if operation succeeded, use <code>isSuccess</code>.
-             * @return OK status.
-             * @see #isSuccess()
-             */
-            virtual bool isOK() = 0;
-
-            /**
-             * Check if operation succeeded.
-             * @return operation success status.
-             */
-            virtual bool isSuccess() = 0;
-        };
-    	
         class Channel;
         class ChannelProvider;
-
-
-        /**
-         * Instance declaring destroy method.
-         * @author mse
-         */
-        class Destroyable  {
-            public:
-            /**
-             * Destroy this instance.
-             */
-            virtual void destroy() = 0;
-        };
 
         /**
          * Base interface for all channel requests.
          * @author mse
          */
-        class ChannelRequest : public Destroyable  {
+        class ChannelRequest : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
         };
 
         /**
@@ -156,25 +91,25 @@ namespace epics { namespace pvAccess {
              * @param channelArray The channelArray interface or null if the request failed.
              * @param pvArray The PVArray that holds the data.
              */
-            virtual void channelArrayConnect(Status *status,ChannelArray *channelArray,epics::pvData::PVArray *pvArray) = 0;
+            virtual void channelArrayConnect(epics::pvData::Status *status,ChannelArray *channelArray,epics::pvData::PVArray *pvArray) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void putArrayDone(Status *status) = 0;
+            virtual void putArrayDone(epics::pvData::Status *status) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void getArrayDone(Status *status) = 0;
+            virtual void getArrayDone(epics::pvData::Status *status) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void setLengthDone(Status *status) = 0;
+            virtual void setLengthDone(epics::pvData::Status *status) = 0;
         };
 
 
@@ -198,7 +133,7 @@ namespace epics { namespace pvAccess {
             /**
              * @param status Completion status.
              */
-            virtual void channelFindResult(Status *status,ChannelFind *channelFind,bool wasFound) = 0;
+            virtual void channelFindResult(epics::pvData::Status *status,ChannelFind *channelFind,bool wasFound) = 0;
         };
 
 
@@ -235,14 +170,14 @@ namespace epics { namespace pvAccess {
              * @param pvStructure The PVStructure that holds the data.
              * @param bitSet The bitSet for that shows what data has changed.
              */
-            virtual void channelGetConnect(Status *status,ChannelGet *channelGet,
+            virtual void channelGetConnect(epics::pvData::Status *status,ChannelGet *channelGet,
                     epics::pvData::PVStructure *pvStructure,epics::pvData::BitSet *bitSet) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void getDone(Status *status) = 0;
+            virtual void getDone(epics::pvData::Status *status) = 0;
         };
 
 
@@ -278,13 +213,13 @@ namespace epics { namespace pvAccess {
              * @param channelProcess The channelProcess interface or null if the client could not become
              * the record processor.
              */
-            virtual void channelProcessConnect(Status *status,ChannelProcess *channelProcess) = 0;
+            virtual void channelProcessConnect(epics::pvData::Status *status,ChannelProcess *channelProcess) = 0;
 
             /**
              * The process request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void processDone(Status *status) = 0;
+            virtual void processDone(epics::pvData::Status *status) = 0;
         };
 
 
@@ -326,20 +261,20 @@ namespace epics { namespace pvAccess {
              * @param pvStructure The PVStructure that holds the data.
              * @param bitSet The bitSet for that shows what data has changed.
              */
-            virtual void channelPutConnect(Status *status,ChannelPut *channelPut,
+            virtual void channelPutConnect(epics::pvData::Status *status,ChannelPut *channelPut,
                     epics::pvData::PVStructure *pvStructure,epics::pvData::BitSet *bitSet) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void putDone(Status *status) = 0;
+            virtual void putDone(epics::pvData::Status *status) = 0;
 
             /**
              * The get request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void getDone(Status *status) = 0;
+            virtual void getDone(epics::pvData::Status *status) = 0;
         };
 
 
@@ -388,25 +323,25 @@ namespace epics { namespace pvAccess {
              * @param pvPutStructure The PVStructure that holds the putData.
              * @param pvGetStructure The PVStructure that holds the getData.
              */
-            virtual void channelPutGetConnect(Status *status,ChannelPutGet *channelPutGet,
+            virtual void channelPutGetConnect(epics::pvData::Status *status,ChannelPutGet *channelPutGet,
                         epics::pvData::PVStructure *pvPutStructure,epics::pvData::PVStructure *pvGetStructure) = 0;
             /**
              * The putGet request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void putGetDone(Status *status) = 0;
+            virtual void putGetDone(epics::pvData::Status *status) = 0;
 
             /**
              * The getPut request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void getPutDone(Status *status) = 0;
+            virtual void getPutDone(epics::pvData::Status *status) = 0;
 
             /**
              * The getGet request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void getGetDone(Status *status) = 0;
+            virtual void getGetDone(epics::pvData::Status *status) = 0;
         };
 
 
@@ -442,7 +377,7 @@ namespace epics { namespace pvAccess {
              * @param pvArgument The argument structure for an RPC request.
              * @param bitSet The bitSet for argument changes.
              */
-            virtual void channelRPCConnect(Status *status,ChannelRPC *channelRPC,
+            virtual void channelRPCConnect(epics::pvData::Status *status,ChannelRPC *channelRPC,
                         epics::pvData::PVStructure *pvArgument,epics::pvData::BitSet *bitSet) = 0;
 
             /**
@@ -450,7 +385,7 @@ namespace epics { namespace pvAccess {
              * @param status Completion status.
              * @param pvResponse The response data for the RPC request.
              */
-            virtual void requestDone(Status *status,epics::pvData::PVStructure *pvResponse) = 0;
+            virtual void requestDone(epics::pvData::Status *status,epics::pvData::PVStructure *pvResponse) = 0;
         };
 
 
@@ -467,7 +402,7 @@ namespace epics { namespace pvAccess {
              * @param status Completion status.
              * @param field The Structure for the request.
              */
-            virtual void getDone(Status *status,epics::pvData::Field *field) = 0;
+            virtual void getDone(epics::pvData::Status *status,epics::pvData::Field *field) = 0;
         };
 
 
@@ -484,7 +419,7 @@ namespace epics { namespace pvAccess {
              * @param status Completion status.
              * @param channel The channel.
              */
-            virtual void channelCreated(Status* status, Channel *channel) = 0;
+            virtual void channelCreated(epics::pvData::Status* status, Channel *channel) = 0;
 
             /**
              * A channel connection state change has occurred.
@@ -495,17 +430,16 @@ namespace epics { namespace pvAccess {
         };
 
 
-        // TODO
-        class Monitor;
-        class MonitorRequester;
-
         /**
          * Interface for accessing a channel.
          * A channel is created via a call to ChannelAccess.createChannel(String channelName).
          * @author mrk
          * @author msekoranja
          */
-        class Channel : public epics::pvData::Requester, Destroyable {
+        class Channel : 
+                public epics::pvData::Requester,
+                public epics::pvData::Destroyable,
+                private epics::pvData::NoDefaultMethods {
             public:
 
             /**
@@ -633,8 +567,8 @@ namespace epics { namespace pvAccess {
              * This has the same form as a pvRequest to PVCopyFactory.create.
              * @return <code>Monitor</code> instance.
              */
-            virtual Monitor* createMonitor(
-                    MonitorRequester *monitorRequester,
+            virtual epics::pvData::Monitor* createMonitor(
+                    epics::pvData::MonitorRequester *monitorRequester,
                     epics::pvData::PVStructure *pvRequest) = 0;
 
             /**
@@ -655,7 +589,7 @@ namespace epics { namespace pvAccess {
          * @author mrk
          *
          */
-        class ChannelAccess {
+        class ChannelAccess : private epics::pvData::NoDefaultMethods {
             public:
 
             /**
@@ -682,7 +616,7 @@ namespace epics { namespace pvAccess {
          * @author mrk
          *
          */
-        class ChannelProvider {
+        class ChannelProvider : private epics::pvData::NoDefaultMethods {
         public:
 
             /** Minimal priority. */
@@ -742,7 +676,7 @@ namespace epics { namespace pvAccess {
          * The class representing a CA Client Context.
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          */
-        class ClientContext {
+        class ClientContext : private epics::pvData::NoDefaultMethods {
             public:
 
             /**

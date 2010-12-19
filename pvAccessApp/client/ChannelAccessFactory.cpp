@@ -20,7 +20,7 @@ typedef std::map<String, ChannelProvider*> ChannelProviderMap;
 static ChannelProviderMap channelProviders;
 
 
-class ChannelAccessImpl : public ChannelAccess, public NoDefaultMethods {
+class ChannelAccessImpl : public ChannelAccess {
     public:
 
     ChannelProvider* getProvider(String providerName) {
