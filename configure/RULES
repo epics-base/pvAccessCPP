@@ -2,7 +2,5 @@
 
 include $(CONFIG)/RULES
 
-USR_INCLUDES += -I$(PVDATA_HOME)/include
-
 # Library should be rebuilt because LIBOBJS may have changed.
 $(LIBNAME): ../Makefile
