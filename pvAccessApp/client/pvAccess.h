@@ -5,6 +5,7 @@
 #include <status.h>
 #include <destroyable.h>
 #include <monitor.h>
+#include <version.h>
 #include <vector>
 
 namespace epics { namespace pvAccess { 
@@ -676,14 +677,14 @@ namespace epics { namespace pvAccess {
          * The class representing a CA Client Context.
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          */
-        class ClientContext : private epics::pvData::NoDefaultMethods {
+        class ClientContext : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
             public:
 
             /**
              * Get context implementation version.
              * @return version of the context implementation.
              */
-            virtual epics::pvData::String getVersion() = 0;
+            virtual const Version* getVersion() = 0;
 
             /**
              * Initialize client context. This method is called immediately after instance construction (call of constructor).
@@ -694,7 +695,7 @@ namespace epics { namespace pvAccess {
              * Get channel provider implementation.
              * @return the channel provider.
              */
-            virtual ChannelProvider* getProvider() = 0;
+            virtual const ChannelProvider* getProvider() = 0;
 
             /**
              * Prints detailed information about the context to the standard output stream.
@@ -706,12 +707,6 @@ namespace epics { namespace pvAccess {
              * @param out the output stream.
              */
             virtual void printInfo(epics::pvData::StringBuilder out) = 0;
-
-            /**
-             * Clear all resources attached to this Context
-             * @throws IllegalStateException if the context has been destroyed.
-             */
-            virtual void destroy() = 0;
 
             /**
              * Dispose (destroy) server context.
