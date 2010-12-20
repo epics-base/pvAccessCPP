@@ -6,13 +6,10 @@
 #include <iostream>
 #include <showConstructDestruct.h>
 #include <lock.h>
+#include <standardPVField.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
-
-
-
-
 
 static volatile int64 mockChannel_totalConstruct = 0;
 static volatile int64 mockChannel_totalDestruct = 0;
@@ -52,9 +49,13 @@ class MockChannel : public Channel {
         String m_name;
         String m_remoteAddress;
         
+        PVStructure* pvStructure;
+        
     private:
     ~MockChannel()
     {
+        delete pvStructure;
+        
         Lock xx(mockChannel_globalMutex);
         mockChannel_totalDestruct++;
     }
@@ -75,6 +76,16 @@ class MockChannel : public Channel {
 
         Lock xx(mockChannel_globalMutex);
         mockChannel_totalConstruct++;
+     
+     
+        ScalarType stype = pvDouble;
+        String allProperties("alarm,timeStamp,display,control,valueAlarm");
+
+        pvStructure = getStandardPVField()->scalar(
+            0,name,stype,allProperties);
+        PVDouble *pvField = pvStructure->getDoubleField(String("value"));
+        pvField->put(1.123e35);
+
         
         // already connected, report state
         m_requester->channelStateChange(this, CONNECTED);
@@ -132,7 +143,7 @@ class MockChannel : public Channel {
 
     virtual void getField(GetFieldRequester *requester,epics::pvData::String subField)
     {
-        // TODO 
+        requester->getDone(getStatusCreate()->getStatusOK(),pvStructure->getSubField(subField)->getField());
     }
 
     virtual ChannelProcess* createChannelProcess(
@@ -191,9 +202,44 @@ class MockChannel : public Channel {
     }
 };
 
+class MockChannelProvider;
+
+class MockChannelFind : public ChannelFind
+{
+    public:
+    MockChannelFind(ChannelProvider* provider) : m_provider(provider)
+    {
+    }
+
+    virtual void destroy()
+    {
+        // one instance for all, do not delete at all
+    }
+   
+    virtual ChannelProvider* getChannelProvider()
+    {
+        return m_provider;
+    };
+    
+    virtual void cancelChannelFind()
+    {
+        throw std::runtime_error("not supported");
+    }
+    
+    private:
+    
+    // only to be destroyed by it
+    friend class MockChannelProvider;
+    virtual ~MockChannelFind() {}
+    
+    ChannelProvider* m_provider;  
+};
 
 class MockChannelProvider : public ChannelProvider {
     public:
+
+    MockChannelProvider() : m_mockChannelFind(new MockChannelFind(this)) {
+    }
 
     virtual epics::pvData::String getProviderName()
     {
@@ -202,6 +248,7 @@ class MockChannelProvider : public ChannelProvider {
     
     virtual void destroy()
     {
+        delete m_mockChannelFind;
         delete this;
     }
     
@@ -209,9 +256,8 @@ class MockChannelProvider : public ChannelProvider {
         epics::pvData::String channelName,
         ChannelFindRequester *channelFindRequester)
     {
-        ChannelFind* channelFind = 0;   // TODO
-        channelFindRequester->channelFindResult(getStatusCreate()->getStatusOK(), channelFind, true);
-        return channelFind;
+        channelFindRequester->channelFindResult(getStatusCreate()->getStatusOK(), m_mockChannelFind, true);
+        return m_mockChannelFind;
     }
 
     virtual Channel* createChannel(
@@ -245,6 +291,8 @@ class MockChannelProvider : public ChannelProvider {
     
     private:
     ~MockChannelProvider() {};
+    
+    MockChannelFind* m_mockChannelFind;
     
 };
 
@@ -302,6 +350,17 @@ class MockClientContext : public ClientContext
 };
 
 
+class ChannelFindRequesterImpl : public ChannelFindRequester
+{
+    virtual void channelFindResult(epics::pvData::Status *status,ChannelFind *channelFind,bool wasFound)
+    {
+        std::cout << "[ChannelFindRequesterImpl] channelFindResult(";
+        String str;
+        status->toString(&str);
+        std::cout << str << ", ..., " << wasFound << ")" << std::endl; 
+    }
+};
+
 class ChannelRequesterImpl : public ChannelRequester
 {
     virtual String getRequesterName()
@@ -328,17 +387,54 @@ class ChannelRequesterImpl : public ChannelRequester
     }
 };
 
+class GetFieldRequesterImpl : public GetFieldRequester
+{
+    virtual String getRequesterName()
+    {
+        return "GetFieldRequesterImpl";
+    };
+    
+    virtual void message(String message,MessageType messageType) 
+    {
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
+    }
+
+    virtual void getDone(epics::pvData::Status *status,epics::pvData::FieldConstPtr field)
+    {
+        std::cout << "getDone(";
+        String str;
+        status->toString(&str);
+        std::cout << str << ", ";
+        if (field)
+        {
+            str.clear();
+            field->toString(&str);
+            std::cout << str;
+        }
+        else
+            std::cout << "(null)";
+        std::cout << ")" << std::endl;
+    }
+};
+
 int main(int argc,char *argv[])
 {
     MockClientContext* context = new MockClientContext();
     context->printInfo();
     
-    ChannelRequesterImpl requester;
     
-    /*Channel* noChannel =*/ context->getProvider()->createChannel("test", &requester, ChannelProvider::PRIORITY_DEFAULT, "over the rainbow");
+    ChannelFindRequesterImpl findRequester;
+    context->getProvider()->channelFind("something", &findRequester);
+    
+    ChannelRequesterImpl channelRequester;
+    /*Channel* noChannel =*/ context->getProvider()->createChannel("test", &channelRequester, ChannelProvider::PRIORITY_DEFAULT, "over the rainbow");
 
-    Channel* channel = context->getProvider()->createChannel("test", &requester);
+    Channel* channel = context->getProvider()->createChannel("test", &channelRequester);
     std::cout << channel->getChannelName() << std::endl;
+    
+    GetFieldRequesterImpl getFieldRequesterImpl;
+    channel->getField(&getFieldRequesterImpl, "timeStamp.secondsPastEpoch");
+    
     channel->destroy();
     
     

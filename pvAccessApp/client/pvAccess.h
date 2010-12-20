@@ -405,7 +405,7 @@ namespace epics { namespace pvAccess {
              * @param status Completion status.
              * @param field The Structure for the request.
              */
-            virtual void getDone(epics::pvData::Status *status,epics::pvData::Field *field) = 0;
+            virtual void getDone(epics::pvData::Status *status,epics::pvData::FieldConstPtr field) = 0;
         };
 
 
