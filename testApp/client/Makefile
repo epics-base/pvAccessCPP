@@ -4,7 +4,7 @@ include $(TOP)/configure/CONFIG
 
 PROD_HOST += testChannelAccessFactory
 testChannelAccessFactory_SRCS += testChannelAccessFactory.cpp
-testChannelAccessFactory_LIBS += pvAccess Com
+testChannelAccessFactory_LIBS += pvData pvAccess Com
 
 PROD_HOST += testMockClient
 testMockClient_SRCS = testMockClient.cpp MockClientImpl.cpp
