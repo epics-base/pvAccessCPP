@@ -32,6 +32,8 @@ namespace epics { namespace pvAccess {
     	enum ConnectionState {
                 NEVER_CONNECTED, CONNECTED, DISCONNECTED, DESTROYED
                     };
+                    
+        const char* ConnectionStateNames[] = { "NEVER_CONNECTED", "CONNECTED", "DISCONNECTED", "DESTROYED" };
     	
 
         class Channel;
@@ -118,7 +120,7 @@ namespace epics { namespace pvAccess {
          * @author mrk
          *
          */
-        class ChannelFind {
+        class ChannelFind : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
             public:
             virtual ChannelProvider* getChannelProvider() = 0;
             virtual void cancelChannelFind() = 0;
@@ -403,7 +405,7 @@ namespace epics { namespace pvAccess {
              * @param status Completion status.
              * @param field The Structure for the request.
              */
-            virtual void getDone(epics::pvData::Status *status,epics::pvData::Field *field) = 0;
+            virtual void getDone(epics::pvData::Status *status,epics::pvData::FieldConstPtr field) = 0;
         };
 
 
@@ -592,6 +594,7 @@ namespace epics { namespace pvAccess {
          */
         class ChannelAccess : private epics::pvData::NoDefaultMethods {
             public:
+            virtual ~ChannelAccess() {};
 
             /**
              * Get the provider with the specified name.
@@ -617,7 +620,7 @@ namespace epics { namespace pvAccess {
          * @author mrk
          *
          */
-        class ChannelProvider : private epics::pvData::NoDefaultMethods {
+        class ChannelProvider : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
         public:
 
             /** Minimal priority. */
@@ -632,11 +635,6 @@ namespace epics { namespace pvAccess {
             static const short PRIORITY_ARCHIVE = (PRIORITY_MAX + PRIORITY_MIN) / 2;
             /** OPI priority. */
             static const short PRIORITY_OPI = PRIORITY_MIN;
-
-            /**
-             * Terminate.
-             */
-            virtual void destroy() = 0;
 
             /**
              * Get the provider name.
@@ -659,7 +657,7 @@ namespace epics { namespace pvAccess {
              * @param priority channel priority, must be <code>PRIORITY_MIN</code> <= priority <= <code>PRIORITY_MAX</code>.
              * @return <code>Channel</code> instance. If channel does not exist <code>null</code> is returned and <code>channelRequester</code> notified.
              */
-            virtual Channel* createChannel(epics::pvData::String channelName,ChannelRequester *channelRequester,short priority) = 0;
+            virtual Channel* createChannel(epics::pvData::String channelName,ChannelRequester *channelRequester,short priority = PRIORITY_DEFAULT) = 0;
 
             /**
              * Create a channel.
@@ -684,7 +682,7 @@ namespace epics { namespace pvAccess {
              * Get context implementation version.
              * @return version of the context implementation.
              */
-            virtual const Version* getVersion() = 0;
+            virtual Version* getVersion() = 0;
 
             /**
              * Initialize client context. This method is called immediately after instance construction (call of constructor).
@@ -695,7 +693,7 @@ namespace epics { namespace pvAccess {
              * Get channel provider implementation.
              * @return the channel provider.
              */
-            virtual const ChannelProvider* getProvider() = 0;
+            virtual ChannelProvider* getProvider() = 0;
 
             /**
              * Prints detailed information about the context to the standard output stream.
