@@ -31,6 +31,9 @@ SRC_DIRS += $(PVACCESS)/factory
 LIBSRCS += ChannelAccessFactory.cpp
 
 
+SRC_DIRS += $(PVACCESS)/remote
+INC += blockingUDPTransport.h
+LIBSRCS += blockingUDPTransport.cpp
 
 
 LIBRARY = pvAccess
