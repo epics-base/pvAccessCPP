@@ -8,12 +8,16 @@
 #ifndef BLOCKINGUDPTRANSPORT_H_
 #define BLOCKINGUDPTRANSPORT_H_
 
+/* pvAccess */
 #include "remote.h"
 #include "caConstants.h"
+#include "inetAddressUtil.h"
 
+/* pvData */
 #include <noDefaultMethods.h>
 #include <byteBuffer.h>
 
+/* EPICSv3 */
 #include <osdSock.h>
 #include <osiSock.h>
 
@@ -25,7 +29,8 @@ namespace epics {
                 public TransportSendControl {
         public:
             BlockingUDPTransport(SOCKET channel, osiSockAddr* bindAddress,
-                    osiSockAddr* sendAddresses, short remoteTransportRevision);
+                    InetAddrVector* sendAddresses,
+                    short remoteTransportRevision);
 
             virtual ~BlockingUDPTransport();
 
@@ -125,6 +130,22 @@ namespace epics {
                 // noop
             }
 
+            /**
+             * Set ignore list.
+             * @param addresses list of ignored addresses.
+             */
+            void setIgnoredAddresses(InetAddrVector* addresses) {
+                ignoredAddresses = addresses;
+            }
+
+            /**
+             * Get list of ignored addresses.
+             * @return ignored addresses.
+             */
+            InetAddrVector* getIgnoredAddresses() const {
+                return ignoredAddresses;
+            }
+
         protected:
             bool closed;
 
@@ -154,12 +175,12 @@ namespace epics {
             /**
              * Send addresses.
              */
-            osiSockAddr* sendAddresses;
+            InetAddrVector* sendAddresses;
 
             /**
              * Ignore addresses.
              */
-            osiSockAddr* ignoredAddresses;
+            InetAddrVector* ignoredAddresses;
 
             const osiSockAddr* sendTo;
 
@@ -177,6 +198,11 @@ namespace epics {
              * Last message start position.
              */
             int lastMessageStartPosition;
+
+            /**
+             * Read buffer
+             */
+            char* readBuffer;
 
         };
 
