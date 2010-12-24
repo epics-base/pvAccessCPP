@@ -4,17 +4,23 @@
  *  Created on: Nov 12, 2010
  *      Author: Miha Vitorovic
  */
-
+/* pvAccess */
 #include "inetAddressUtil.h"
 
-#include <vector>
+/* pvData */
+#include <byteBuffer.h>
+
+/* EPICSv3 */
 #include <osiSock.h>
 #include <ellLib.h>
+#include <epicsAssert.h>
+#include <epicsException.h>
+
+/* standard */
+#include <vector>
 #include <cstring>
 #include <cstdlib>
-#include <epicsAssert.h>
-#include <byteBuffer.h>
-#include <epicsException.h>
+#include <sstream>
 
 using namespace std;
 using namespace epics::pvData;
@@ -202,6 +208,21 @@ namespace epics {
                     iav->push_back(appendList->at(i));
             }
             return iav;
+        }
+
+        const String inetAddressToString(const osiSockAddr *addr,
+                bool displayHex) {
+            stringstream saddr;
+
+            saddr<<(int)((addr->ia.sin_addr.s_addr)>>24)<<'.';
+            saddr<<((int)((addr->ia.sin_addr.s_addr)>>16)&0xFF)<<'.';
+            saddr<<((int)((addr->ia.sin_addr.s_addr)>>8)&0xFF)<<'.';
+            saddr<<((int)(addr->ia.sin_addr.s_addr)&0xFF);
+            if(addr->ia.sin_port>0) saddr<<":"<<addr->ia.sin_port;
+            if(displayHex) saddr<<" ("<<hex<<((uint32_t)(
+                    addr->ia.sin_addr.s_addr))<<")";
+
+            return saddr.str();
         }
 
     }
