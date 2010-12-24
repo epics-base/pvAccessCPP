@@ -8,14 +8,6 @@
 #   CONFIG_SITE.Common.$(T_A)
 #   CONFIG_SITE.$(EPICS_HOST_ARCH).$(T_A)
 
-# CHECK_RELEASE controls the consistency checking of the support
-#   applications pointed to by the RELEASE* files.
-# Normally CHECK_RELEASE should be set to YES.
-# Set CHECK_RELEASE to NO to disable checking completely.
-# Set CHECK_RELEASE to WARN to perform consistency checking but
-#   continue building anyway if conflicts are found.
-CHECK_RELEASE = YES
-
 # Set this when you only want to compile this application
 #   for a subset of the cross-compiled target architectures
 #   that Base is built for.
