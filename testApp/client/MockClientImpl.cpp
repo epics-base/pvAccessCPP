@@ -11,6 +11,189 @@
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
+
+
+
+
+
+
+
+static volatile int64 mockChannelProcess_totalConstruct = 0;
+static volatile int64 mockChannelProcess_totalDestruct = 0;
+static Mutex *mockChannelProcess_globalMutex = 0;
+
+static int64 mockChannelProcess_processTotalConstruct()
+{
+    Lock xx(mockChannelProcess_globalMutex);
+    return mockChannelProcess_totalConstruct;
+}
+
+static int64 mockChannelProcess_processTotalDestruct()
+{
+    Lock xx(mockChannelProcess_globalMutex);
+    return mockChannelProcess_totalDestruct;
+}
+
+static ConstructDestructCallback *mockChannelProcess_pConstructDestructCallback;
+
+static void mockChannelProcess_init()
+{
+     static Mutex mutex = Mutex();
+     Lock xx(&mutex);
+     if(mockChannelProcess_globalMutex==0) {
+        mockChannelProcess_globalMutex = new Mutex();
+        mockChannelProcess_pConstructDestructCallback = new ConstructDestructCallback(
+            String("mockChannelProcess"),
+            mockChannelProcess_processTotalConstruct,mockChannelProcess_processTotalDestruct,0);
+     }
+}
+
+class MockChannelProcess : public ChannelProcess
+{
+    private:
+		ChannelProcessRequester* m_channelProcessRequester;
+		PVStructure* m_pvStructure;
+		PVScalar* m_valueField;
+    
+    private:
+    ~MockChannelProcess()
+    {
+        Lock xx(mockChannelProcess_globalMutex);
+        mockChannelProcess_totalDestruct++;
+    }
+
+    public:
+    MockChannelProcess(ChannelProcessRequester* channelProcessRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
+        m_channelProcessRequester(channelProcessRequester), m_pvStructure(pvStructure)
+    {
+        mockChannelProcess_init();   
+
+        Lock xx(mockChannelProcess_globalMutex);
+        mockChannelProcess_totalConstruct++;
+
+
+        PVField* field = pvStructure->getSubField(String("value"));
+        if (field == 0)
+        {
+            Status* noValueFieldStatus = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "no 'value' field");
+        	m_channelProcessRequester->channelProcessConnect(noValueFieldStatus, this);
+        	delete noValueFieldStatus;
+        	
+        	// NOTE client must destroy this instance...
+        	// do not access any fields and return ASAP
+        	return;
+        }
+        
+        if (field->getField()->getType() != scalar)
+        {
+            Status* notAScalarStatus = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "'value' field not scalar type");
+        	m_channelProcessRequester->channelProcessConnect(notAScalarStatus, this);
+        	delete notAScalarStatus;
+        	
+        	// NOTE client must destroy this instance….
+        	// do not access any fields and return ASAP
+        	return;
+        }
+        
+        m_valueField = static_cast<PVScalar*>(field);
+        	
+        // TODO pvRequest 
+    	m_channelProcessRequester->channelProcessConnect(getStatusCreate()->getStatusOK(), this);
+    }
+    
+    virtual void process(bool lastRequest)
+    {
+        switch (m_valueField->getScalar()->getScalarType())
+        {
+            case pvBoolean:
+            {
+                // negate
+                PVBoolean *pvBoolean = static_cast<PVBoolean*>(m_valueField);
+                pvBoolean->put(!pvBoolean->get());
+                break;
+            }
+            case pvByte:
+            {
+                // increment by one
+                PVByte *pvByte = static_cast<PVByte*>(m_valueField);
+                pvByte->put(pvByte->get() + 1);
+                break;
+            }
+            case pvShort:
+            {
+                // increment by one
+                PVShort *pvShort = static_cast<PVShort*>(m_valueField);
+                pvShort->put(pvShort->get() + 1);
+                break;
+            }
+            case pvInt:
+            {
+                // increment by one
+                PVInt *pvInt = static_cast<PVInt*>(m_valueField);
+                pvInt->put(pvInt->get() + 1);
+                break;
+            }
+            case pvLong:
+            {
+                // increment by one
+                PVLong *pvLong = static_cast<PVLong*>(m_valueField);
+                pvLong->put(pvLong->get() + 1);
+                break;
+            }
+            case pvFloat:
+            {
+                // increment by one
+                PVFloat *pvFloat = static_cast<PVFloat*>(m_valueField);
+                pvFloat->put(pvFloat->get() + 1.0f);
+                break;
+            }
+            case pvDouble:
+            {
+                // increment by one
+                PVDouble *pvDouble = static_cast<PVDouble*>(m_valueField);
+                pvDouble->put(pvDouble->get() + 1.0);
+                break;
+            }
+            case pvString:
+            {
+                // increment by one
+                PVString *pvString = static_cast<PVString*>(m_valueField);
+                String val = pvString->get();
+                if (val.empty())
+                    pvString->put("gen0");
+                else
+                {
+                    char c = val[0];
+                    c++;
+                    pvString->put("gen" + c);
+                }
+                break;
+            }
+            default:
+                // noop
+                break;
+            
+        } 
+    	m_channelProcessRequester->processDone(getStatusCreate()->getStatusOK());
+    	
+    	if (lastRequest)
+    	   destroy();
+    }
+    
+    virtual void destroy()
+    {
+        delete this;
+    }
+    
+};
+
+
+
+
+
+
+
+
 static volatile int64 mockChannelGet_totalConstruct = 0;
 static volatile int64 mockChannelGet_totalDestruct = 0;
 static Mutex *mockChannelGet_globalMutex = 0;
@@ -401,7 +584,7 @@ class MockChannel : public Channel {
         m_pvStructure = getStandardPVField()->scalar(
             0,name,stype,allProperties);
         PVDouble *pvField = m_pvStructure->getDoubleField(String("value"));
-        pvField->put(1.123e35);
+        pvField->put(1.123);
 
         
         // already connected, report state
@@ -468,8 +651,7 @@ class MockChannel : public Channel {
             ChannelProcessRequester *channelProcessRequester,
             epics::pvData::PVStructure *pvRequest)
     {
-        // TODO
-        return 0;
+    	return new MockChannelProcess(channelProcessRequester, m_pvStructure, pvRequest);
     }
 
     virtual ChannelGet* createChannelGet(
@@ -857,6 +1039,36 @@ class MonitorRequesterImpl : public MonitorRequester
 }; 
 
 
+class ChannelProcessRequesterImpl : public ChannelProcessRequester
+{
+    ChannelProcess *m_channelProcess;
+                
+    virtual String getRequesterName()
+    {
+        return "ProcessRequesterImpl";
+    };
+    
+    virtual void message(String message,MessageType messageType) 
+    {
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
+    }
+
+    virtual void channelProcessConnect(epics::pvData::Status *status,ChannelProcess *channelProcess)
+    {
+        std::cout << "channelProcessConnect(" << status->toString() << ")" << std::endl;
+        
+        // TODO sync
+        m_channelProcess = channelProcess;
+    }
+
+    virtual void processDone(epics::pvData::Status *status)
+    {
+        std::cout << "processDone(" << status->toString() << ")" << std::endl;
+    }
+
+};
+
+
 int main(int argc,char *argv[])
 {
     MockClientContext* context = new MockClientContext();
@@ -894,9 +1106,17 @@ int main(int argc,char *argv[])
     std::cout << "monitor->start() = " << status->toString() << std::endl;
     delete status;
 
+
+    ChannelProcessRequesterImpl channelProcessRequester;
+    ChannelProcess* channelProcess = channel->createChannelProcess(&channelProcessRequester, 0);
+    channelProcess->process(false);
+    channelProcess->destroy();
+    
+
     status = monitor->stop();
     std::cout << "monitor->stop() = " << status->toString() << std::endl;
     delete status;
+    
     
     monitor->destroy();
 
