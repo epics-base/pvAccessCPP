@@ -33,7 +33,7 @@ namespace epics { namespace pvAccess {
                 NEVER_CONNECTED, CONNECTED, DISCONNECTED, DESTROYED
                     };
                     
-        const char* ConnectionStateNames[] = { "NEVER_CONNECTED", "CONNECTED", "DISCONNECTED", "DESTROYED" };
+        extern const char* ConnectionStateNames[];
     	
 
         class Channel;
@@ -713,6 +713,27 @@ namespace epics { namespace pvAccess {
             virtual void dispose() = 0;
         };
 
+
+        /**
+         * Interface for creating request structure.
+         * @author mse
+         *
+         */
+        class CreateRequest : private epics::pvData::NoDefaultMethods {
+            public:
+            virtual ~CreateRequest() {};
+
+            /**
+             * Create a request structure for the create calls in Channel.
+             * See the package overview documentation for details.
+             * @param request The field request. See the package overview documentation for details.
+             * @param requester The requester;
+             * @return The request structure if an invalid request was given. 
+             */
+        	virtual epics::pvData::PVStructure* createRequest(String request, epics::pvData::Requester* requester) = 0;
+        };
+
+        extern CreateRequest * getCreateRequest();
 
 
     }}

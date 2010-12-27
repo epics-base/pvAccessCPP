@@ -25,10 +25,12 @@ LIBSRCS += logger.cpp
 
 SRC_DIRS += $(PVACCESS)/client
 INC += pvAccess.h
+LIBSRCS += pvAccess.cpp
 
 
 SRC_DIRS += $(PVACCESS)/factory
 LIBSRCS += ChannelAccessFactory.cpp
+LIBSRCS += CreateRequestFactory.cpp
 
 
 
