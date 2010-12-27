@@ -33,6 +33,10 @@ LIBSRCS += ChannelAccessFactory.cpp
 LIBSRCS += CreateRequestFactory.cpp
 
 
+SRC_DIRS += $(PVACCESS)/remote
+INC += remote.h
+INC += blockingUDPTransport.h
+LIBSRCS += blockingUDPTransport.cpp
 
 
 LIBRARY = pvAccess

@@ -11,7 +11,6 @@
 #include <pvType.h>
 #include <epicsAssert.h>
 #include <iostream>
-#include <sstream>
 #include <cstring>
 
 using namespace epics::pvAccess;
@@ -19,19 +18,6 @@ using std::cout;
 using std::endl;
 using std::stringstream;
 using std::hex;
-
-String inetAddressToString(osiSockAddr *addr) {
-    stringstream saddr;
-
-    saddr<<(int)((addr->ia.sin_addr.s_addr)>>24)<<'.';
-    saddr<<((int)((addr->ia.sin_addr.s_addr)>>16)&0xFF)<<'.';
-    saddr<<((int)((addr->ia.sin_addr.s_addr)>>8)&0xFF)<<'.';
-    saddr<<((int)(addr->ia.sin_addr.s_addr)&0xFF);
-    if(addr->ia.sin_port>0) saddr<<":"<<addr->ia.sin_port;
-    saddr<<" ("<<hex<<((uint32_t)(addr->ia.sin_addr.s_addr))<<")";
-
-    return saddr.str();
-}
 
 int main(int argc, char *argv[]) {
 
@@ -48,19 +34,19 @@ int main(int argc, char *argv[]) {
     assert(addr->ia.sin_family==AF_INET);
     assert(addr->ia.sin_port==555);
     assert(addr->ia.sin_addr.s_addr==(uint32_t)0x7F000001);
-    cout<<'\t'<<inetAddressToString(addr)<<endl;
+    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     addr = vec->at(1);
     assert(addr->ia.sin_family==AF_INET);
     assert(addr->ia.sin_port==1234);
     assert(addr->ia.sin_addr.s_addr==(uint32_t)0x0A0A0C0B);
-    cout<<'\t'<<inetAddressToString(addr)<<endl;
+    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     addr = vec->at(2);
     assert(addr->ia.sin_family==AF_INET);
     assert(addr->ia.sin_port==555);
     assert(addr->ia.sin_addr.s_addr==(uint32_t)0xC0A80304);
-    cout<<'\t'<<inetAddressToString(addr)<<endl;
+    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     cout<<"\nPASSED!\n";
 
@@ -73,25 +59,25 @@ int main(int argc, char *argv[]) {
     assert(addr->ia.sin_family==AF_INET);
     assert(addr->ia.sin_port==6789);
     assert(addr->ia.sin_addr.s_addr==(uint32_t)0xAC1037A0);
-    cout<<'\t'<<inetAddressToString(addr)<<endl;
+    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     addr = vec1->at(1);
     assert(addr->ia.sin_family==AF_INET);
     assert(addr->ia.sin_port==555);
     assert(addr->ia.sin_addr.s_addr==(uint32_t)0x7F000001);
-    cout<<'\t'<<inetAddressToString(addr)<<endl;
+    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     addr = vec1->at(2);
     assert(addr->ia.sin_family==AF_INET);
     assert(addr->ia.sin_port==1234);
     assert(addr->ia.sin_addr.s_addr==(uint32_t)0x0A0A0C0B);
-    cout<<'\t'<<inetAddressToString(addr)<<endl;
+    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     addr = vec1->at(3);
     assert(addr->ia.sin_family==AF_INET);
     assert(addr->ia.sin_port==555);
     assert(addr->ia.sin_addr.s_addr==(uint32_t)0xC0A80304);
-    cout<<'\t'<<inetAddressToString(addr)<<endl;
+    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     cout<<"\nPASSED!\n";
 
@@ -107,12 +93,12 @@ int main(int argc, char *argv[]) {
     cout<<"Testing \"intToIPv4Address\""<<endl;
     addr = intToIPv4Address(0x7F000001);
     assert(addr->ia.sin_family==AF_INET);
-    cout<<'\t'<<inetAddressToString(addr)<<endl;
+    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
     delete addr;
 
     addr = intToIPv4Address(0x0A0A0C0B);
     assert(addr->ia.sin_family==AF_INET);
-    cout<<'\t'<<inetAddressToString(addr)<<endl;
+    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     cout<<"\nPASSED!\n";
 

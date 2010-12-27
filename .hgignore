@@ -1,1 +1,10 @@
 QtC-pvAccess.creator.user
+
+syntax: glob
+O.Common
+O.linux-x86
+
+syntax: regexp
+^bin
+^include
+

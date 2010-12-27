@@ -44,8 +44,7 @@ namespace epics {
          * @param address address to encode.
          */
         void
-                encodeAsIPv6Address(ByteBuffer* buffer,
-                        const osiSockAddr* address);
+        encodeAsIPv6Address(ByteBuffer* buffer, const osiSockAddr* address);
 
         /**
          * Convert an integer into an IPv4 INET address.
@@ -69,17 +68,10 @@ namespace epics {
          * @return  array of <code>InetSocketAddress</code>.
          */
         InetAddrVector* getSocketAddressList(String list, int defaultPort,
-                const InetAddrVector* appendList);
+                const InetAddrVector* appendList = NULL);
 
-        /**
-         * Parse space delimited addresss[:port] string and return array of <code>InetSocketAddress</code>.
-         * @param list  space delimited addresss[:port] string.
-         * @param defaultPort   port take if not specified.
-         * @return  array of <code>InetSocketAddress</code>.
-         */
-        InetAddrVector* getSocketAddressList(String list, int defaultPort) {
-            return getSocketAddressList(list, defaultPort, NULL);
-        }
+        const String inetAddressToString(const osiSockAddr *addr,
+                bool displayHex = false);
 
     }
 }

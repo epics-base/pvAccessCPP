@@ -8,10 +8,6 @@
 #ifndef CONSTANTS_H_
 #define CONSTANTS_H_
 
-#include <pvIntrospect.h>
-
-using namespace epics::pvData;
-
 namespace epics {
     namespace pvAccess {
 
@@ -71,7 +67,7 @@ namespace epics {
         const int32 UNREASONABLE_CHANNEL_NAME_LENGTH = 500;
 
         /** Invalid data type. */
-        const int16 INVALID_DATA_TYPE = (short)0xFFFF;
+        const int16 INVALID_DATA_TYPE = (int16)0xFFFF;
 
     }
 }
