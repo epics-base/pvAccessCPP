@@ -54,7 +54,7 @@ namespace epics {
              * NOTE: these limitations allows efficient implementation.
              */
             virtual void
-                    send(ByteBuffer* buffer, TransportSendControl* control) =0;
+            send(ByteBuffer* buffer, TransportSendControl* control) =0;
 
             virtual void lock() =0;
             virtual void unlock() =0;
@@ -180,6 +180,28 @@ namespace epics {
              */
             virtual void enqueueSendRequest(TransportSender* sender) =0;
 
+        };
+
+        /**
+         * Interface defining response handler.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: ResponseHandler.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class ResponseHandler {
+        public:
+            /**
+             * Handle response.
+             * @param[in] responseFrom  remote address of the responder, <code>null</code> if unknown.
+             * @param[in] transport response source transport.
+             * @param[in] version message version.
+             * @param[in] payloadSize size of this message data available in the <code>payloadBuffer</code>.
+             * @param[in] payloadBuffer message payload data.
+             *                      Note that this might not be the only message in the buffer.
+             *                      Code must not manilupate buffer.
+             */
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, ByteBuffer* payloadBuffer) =0;
         };
 
     }

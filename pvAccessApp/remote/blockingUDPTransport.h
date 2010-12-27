@@ -28,18 +28,19 @@ namespace epics {
                 public Transport,
                 public TransportSendControl {
         public:
-            BlockingUDPTransport(SOCKET channel, osiSockAddr* bindAddress,
+            BlockingUDPTransport(ResponseHandler* responseHandler,
+                    SOCKET channel, osiSockAddr* bindAddress,
                     InetAddrVector* sendAddresses,
                     short remoteTransportRevision);
 
             virtual ~BlockingUDPTransport();
 
             virtual bool isClosed() const {
-                return closed;
+                return _closed;
             }
 
             virtual const osiSockAddr* getRemoteAddress() const {
-                return socketAddress;
+                return _socketAddress;
             }
 
             virtual const String getType() const {
@@ -55,17 +56,10 @@ namespace epics {
             }
 
             virtual int getReceiveBufferSize() const {
-                return receiveBuffer->getSize();
+                return _receiveBuffer->getSize();
             }
 
-            virtual int getSocketReceiveBufferSize() const {
-                // Get value of the SO_RCVBUF option for this DatagramSocket,
-                // that is the buffer size used by the platform for input on
-                // this DatagramSocket.
-
-                // TODO: real implementation
-                return MAX_UDP_RECV;
-            }
+            virtual int getSocketReceiveBufferSize() const;
 
             virtual int16 getPriority() const {
                 return CA_DEFAULT_PRIORITY;
@@ -108,7 +102,7 @@ namespace epics {
             virtual void close(bool forced);
 
             virtual void ensureData(int size) {
-                // TODO: implement
+                // TODO Auto-generated method stub
             }
 
             virtual void startMessage(int8 command, int ensureCapacity);
@@ -119,7 +113,7 @@ namespace epics {
             }
 
             virtual void setRecipient(const osiSockAddr* sendTo) {
-                this->sendTo = sendTo;
+                _sendTo = sendTo;
             }
 
             virtual void flushSerializeBuffer() {
@@ -135,7 +129,7 @@ namespace epics {
              * @param addresses list of ignored addresses.
              */
             void setIgnoredAddresses(InetAddrVector* addresses) {
-                ignoredAddresses = addresses;
+                _ignoredAddresses = addresses;
             }
 
             /**
@@ -143,15 +137,47 @@ namespace epics {
              * @return ignored addresses.
              */
             InetAddrVector* getIgnoredAddresses() const {
-                return ignoredAddresses;
+                return _ignoredAddresses;
+            }
+
+            bool send(ByteBuffer* buffer, const osiSockAddr* address = NULL);
+
+            /**
+             * Get list of send addresses.
+             * @return send addresses.
+             */
+            InetAddrVector* getSendAddresses() {
+                return _sendAddresses;
+            }
+
+            /**
+             * Get bind address.
+             * @return bind address.
+             */
+            osiSockAddr* getBindAddress() {
+                return _bindAddress;
+            }
+
+            /**
+             * Set list of send addresses.
+             * @param addresses list of send addresses, non-<code>null</code>.
+             */
+            void setBroadcastAddresses(InetAddrVector* addresses) {
+                _sendAddresses = addresses;
             }
 
         protected:
-            bool closed;
+            bool _closed;
+
+            /**
+             * Response handler.
+             */
+            ResponseHandler* _responseHandler;
 
             virtual void processRead();
-
         private:
+            static void threadRunner(void* param);
+
             bool processBuffer(osiSockAddr* fromAddress,
                     ByteBuffer* receiveBuffer);
 
@@ -160,49 +186,49 @@ namespace epics {
             /**
              * Corresponding channel.
              */
-            SOCKET channel;
+            SOCKET _channel;
 
             /**
              * Cached socket address.
              */
-            osiSockAddr* socketAddress;
+            osiSockAddr* _socketAddress;
 
             /**
              * Bind address.
              */
-            osiSockAddr* bindAddress;
+            osiSockAddr* _bindAddress;
 
             /**
              * Send addresses.
              */
-            InetAddrVector* sendAddresses;
+            InetAddrVector* _sendAddresses;
 
             /**
              * Ignore addresses.
              */
-            InetAddrVector* ignoredAddresses;
+            InetAddrVector* _ignoredAddresses;
 
-            const osiSockAddr* sendTo;
+            const osiSockAddr* _sendTo;
 
             /**
              * Receive buffer.
              */
-            epics::pvData::ByteBuffer* receiveBuffer;
+            epics::pvData::ByteBuffer* _receiveBuffer;
 
             /**
              * Send buffer.
              */
-            epics::pvData::ByteBuffer* sendBuffer;
+            epics::pvData::ByteBuffer* _sendBuffer;
 
             /**
              * Last message start position.
              */
-            int lastMessageStartPosition;
+            int _lastMessageStartPosition;
 
             /**
              * Read buffer
              */
-            char* readBuffer;
+            char* _readBuffer;
 
         };
 
