@@ -26,6 +26,10 @@ PROD_HOST += loggerTest
 loggerTest_SRCS += loggerTest.cpp
 loggerTest_LIBS += pvAccess pvData Com
 
+PROD_HOST += introspectionRegisterTest
+introspectionRegisterTest_SRCS += introspectionRegistryTest.cpp
+introspectionRegisterTest_LIBS += pvAccess Com pvData
+
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE

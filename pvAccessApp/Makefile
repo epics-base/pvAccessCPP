@@ -17,18 +17,22 @@ INC += arrayFIFO.h
 INC += growingCircularBuffer.h
 INC += inetAddressUtil.h
 INC += logger.h
+INC += introspectionRegistry.h
 LIBSRCS += hexDump.cpp
 LIBSRCS += wildcharMatcher.cpp
 LIBSRCS += inetAddressUtil.cpp
 LIBSRCS += logger.cpp
+LIBSRCS += introspectionRegistry.cpp
 
 
 SRC_DIRS += $(PVACCESS)/client
 INC += pvAccess.h
+LIBSRCS += pvAccess.cpp
 
 
 SRC_DIRS += $(PVACCESS)/factory
 LIBSRCS += ChannelAccessFactory.cpp
+LIBSRCS += CreateRequestFactory.cpp
 
 
 SRC_DIRS += $(PVACCESS)/remote
