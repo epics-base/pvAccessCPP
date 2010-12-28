@@ -204,6 +204,60 @@ namespace epics {
                     int payloadSize, ByteBuffer* payloadBuffer) =0;
         };
 
+        /**
+         * Client (user) of the transport.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: TransportClient.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class TransportClient {
+        public:
+            /**
+             * Notification of unresponsive transport (e.g. no heartbeat detected) .
+             */
+            virtual void transportUnresponsive() =0;
+
+            /**
+             * Notification of responsive transport (e.g. heartbeat detected again),
+             * called to discard <code>transportUnresponsive</code> notification.
+             * @param transport responsive transport.
+             */
+            virtual void transportResponsive(Transport* transport) =0;
+
+            /**
+             * Notification of network change (server restarted).
+             */
+            virtual void transportChanged() =0;
+
+            /**
+             * Notification of forcefully closed transport.
+             */
+            virtual void transportClosed() =0;
+
+        };
+
+
+        /**
+         * Interface defining socket connector (Connector-Transport pattern).
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: Connector.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class Connector {
+        public:
+            /**
+             * Connect.
+             * @param[in] client    client requesting connection (transport).
+             * @param[in] address           address of the server.
+             * @param[in] responseHandler   reponse handler.
+             * @param[in] transportRevision transport revision to be used.
+             * @param[in] priority process priority.
+             * @return transport instance.
+             * @throws ConnectionException
+             */
+            virtual Transport* connect(TransportClient* client, ResponseHandler* responseHandler,
+                    osiSockAddr* address, short transportRevision, short priority) =0;
+
+        };
+
     }
 }
 

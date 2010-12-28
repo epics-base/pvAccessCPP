@@ -26,7 +26,6 @@
 								<option id="gnu.cpp.compiler.option.include.paths.1856220007" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="/opt/epics/base/include"/>
 									<listOptionValue builtIn="false" value="/opt/epics/base/include/os/Linux"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/pvDataCPP/include}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1316200261" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
@@ -45,7 +44,7 @@
 								</inputType>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.assembler.base.898309292" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.base">
-								<option id="gnu.both.asm.option.include.paths.288017456" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath"/>
+								<option id="gnu.both.asm.option.include.paths.288017456" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.342310237" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
@@ -308,7 +307,6 @@
 				<buildTargets>
 					<target name="all" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
 						<buildCommand>make</buildCommand>
-						<buildArguments/>
 						<buildTarget>all</buildTarget>
 						<stopOnError>true</stopOnError>
 						<useDefaultCommand>true</useDefaultCommand>
@@ -316,8 +314,15 @@
 					</target>
 					<target name="clean" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
 						<buildCommand>make</buildCommand>
-						<buildArguments/>
 						<buildTarget>clean</buildTarget>
+						<stopOnError>true</stopOnError>
+						<useDefaultCommand>true</useDefaultCommand>
+						<runAllBuilders>false</runAllBuilders>
+					</target>
+					<target name="uninstall" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+						<buildCommand>make</buildCommand>
+						<buildArguments/>
+						<buildTarget>uninstall</buildTarget>
 						<stopOnError>true</stopOnError>
 						<useDefaultCommand>true</useDefaultCommand>
 						<runAllBuilders>false</runAllBuilders>

@@ -5,8 +5,8 @@
  *      Author: Miha Vitorovic
  */
 
-#ifndef BLOCKINGUDPTRANSPORT_H_
-#define BLOCKINGUDPTRANSPORT_H_
+#ifndef BLOCKINGUDP_H_
+#define BLOCKINGUDP_H_
 
 /* pvAccess */
 #include "remote.h"
@@ -16,6 +16,7 @@
 /* pvData */
 #include <noDefaultMethods.h>
 #include <byteBuffer.h>
+#include <lock.h>
 
 /* EPICSv3 */
 #include <osdSock.h>
@@ -230,9 +231,53 @@ namespace epics {
              */
             char* _readBuffer;
 
+            /**
+             * Used for process sync.
+             */
+            Mutex* _mutex;
+
+        };
+
+        class BlockingUDPConnector : public Connector, NoDefaultMethods {
+        public:
+
+            BlockingUDPConnector(bool reuseSocket,
+                    InetAddrVector* sendAddresses, bool broadcast) :
+                _sendAddresses(sendAddresses), _reuseSocket(reuseSocket),
+                        _broadcast(broadcast) {
+            }
+
+            virtual ~BlockingUDPConnector() {
+                // TODO: delete _sendAddresses here?
+            }
+
+            /**
+             * NOTE: transport client is ignored for broadcast (UDP).
+             */
+            virtual Transport* connect(TransportClient* client,
+                    ResponseHandler* responseHandler, osiSockAddr* bindAddress,
+                    short transportRevision, short priority);
+
+        private:
+
+            /**
+             * Send address.
+             */
+            InetAddrVector* _sendAddresses;
+
+            /**
+             * Reuse socket flag.
+             */
+            bool _reuseSocket;
+
+            /**
+             * Broadcast flag.
+             */
+            bool _broadcast;
+
         };
 
     }
 }
 
-#endif /* BLOCKINGUDPTRANSPORT_H_ */
+#endif /* BLOCKINGUDP_H_ */

@@ -5,13 +5,14 @@
  */
 
 /* pvAccess */
-#include "blockingUDPTransport.h"
+#include "blockingUDP.h"
 
 #include "caConstants.h"
 #include "inetAddressUtil.h"
 
 /* pvData */
 #include <byteBuffer.h>
+#include <lock.h>
 
 /* EPICSv3 */
 #include <osdSock.h>
@@ -21,7 +22,8 @@
 
 /* standard */
 #include <cstdio>
-#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <poll.h>
 #include <errno.h>
 
@@ -33,31 +35,22 @@ namespace epics {
         BlockingUDPTransport::BlockingUDPTransport(
                 ResponseHandler* responseHandler, SOCKET channel,
                 osiSockAddr* bindAddress, InetAddrVector* sendAddresses,
-                short remoteTransportRevision) {
-            _responseHandler = responseHandler;
-            _channel = channel;
-            _bindAddress = bindAddress;
-            _sendAddresses = sendAddresses;
-
-            _socketAddress = bindAddress;
-
-            // allocate receive buffer
-            _receiveBuffer = new ByteBuffer(MAX_UDP_RECV);
-
-            // allocate send buffer and non-reentrant lock
-            _sendBuffer = new ByteBuffer(MAX_UDP_SEND);
-
-            _ignoredAddresses = NULL;
-            _sendTo = NULL;
-            _closed = false;
-            _lastMessageStartPosition = 0;
-            _readBuffer = new char[MAX_UDP_RECV];
+                short remoteTransportRevision) :
+            _closed(false), _responseHandler(responseHandler),
+                    _channel(channel), _socketAddress(bindAddress),
+                    _bindAddress(bindAddress), _sendAddresses(sendAddresses),
+                    _ignoredAddresses(NULL), _sendTo(NULL), _receiveBuffer(
+                            new ByteBuffer(MAX_UDP_RECV)), _sendBuffer(
+                            new ByteBuffer(MAX_UDP_RECV)),
+                    _lastMessageStartPosition(0), _readBuffer(
+                            new char[MAX_UDP_RECV]), _mutex(new Mutex()) {
         }
 
         BlockingUDPTransport::~BlockingUDPTransport() {
             delete _receiveBuffer;
             delete _sendBuffer;
             delete _readBuffer;
+            delete _mutex;
         }
 
         void BlockingUDPTransport::start() {
@@ -87,7 +80,7 @@ namespace epics {
         }
 
         void BlockingUDPTransport::enqueueSendRequest(TransportSender* sender) {
-            // TODO: Java version uses synchronized. Why?
+            Lock lock(_mutex);
 
             _sendTo = NULL;
             _sendBuffer->clear();

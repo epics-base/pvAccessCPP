@@ -5,18 +5,20 @@
 #ifndef INTROSPECTIONREGISTRY_H
 #define INTROSPECTIONREGISTRY_H
 
-#include <map>
-#include <iostream>
+#include <lock.h>
+#include <pvIntrospect.h>
+#include <pvData.h>
+#include <byteBuffer.h>
+#include <serialize.h>
+#include <serializeHelper.h>
+#include <status.h>
+#include <standardField.h>
+
 #include <epicsMutex.h>
 
-#include "lock.h"
-#include "pvIntrospect.h"
-#include "pvData.h"
-#include "byteBuffer.h"
-#include "serialize.h"
-#include "serializeHelper.h"
-#include "status.h"
-#include "standardField.h"
+#include <map>
+#include <iostream>
+
 
 using namespace epics::pvData;
 using namespace std;
