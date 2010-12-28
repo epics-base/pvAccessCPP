@@ -83,7 +83,6 @@ short IntrospectionRegistry::registerIntrospectionInterface(FieldConstPtr field,
 		_registryIter = _registry.find(key);
 		if(_registryIter != _registry.end())
 		{
-			cout << "deleting 2" << endl;
 			_registryIter->second->decReferenceCount();
 		}
 
@@ -111,7 +110,7 @@ bool IntrospectionRegistry::registryContainsValue(FieldConstPtr field, short& ke
 {
 	for(_registryRIter = _registry.rbegin(); _registryRIter != _registry.rend(); _registryRIter++)
 	{
-		if(compareFields(field,_registryRIter->second))
+		if((*field) == (*_registryRIter->second))
 		{
 			key = _registryRIter->first;
 			return true;
@@ -373,8 +372,10 @@ StructureConstPtr IntrospectionRegistry::deserializeStructureField(ByteBuffer* b
 			fields[i] = deserialize(buffer, control, registry);
 		}
 	}
-	//TODO stucture constructor created new fields instead of taking this ones
-	return _fieldCreate->createStructure(structureFieldName, size, fields);
+
+	StructureConstPtr structure = _fieldCreate->createStructure(structureFieldName, size, fields);
+	delete [] fields;
+	return structure;
 }
 
 void IntrospectionRegistry::serializeStructure(ByteBuffer* buffer, SerializableControl* control, PVStructurePtr pvStructure)

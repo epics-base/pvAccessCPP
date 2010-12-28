@@ -60,6 +60,9 @@ typedef std::map<const short,const Field*> registryMap_t;
 		/**
 		 * Registers introspection interface and get it's ID. Always OUTGOING.
 		 * If it is already registered only preassigned ID is returned.
+		 *
+		 * TODO !!!!!!this can get very slow in larg maps. We need to change this !!!!!!
+		 *
 		 * @param field introspection interface to register
 		 *
 		 * @return id of given introspection interface
@@ -179,7 +182,7 @@ typedef std::map<const short,const Field*> registryMap_t;
 		/**
 		 * Deserialize PVRequest.
 		 * @param payloadBuffer data buffer.
-		 * @param control
+		 * @param control serialization control.
 		 *
 		 * @return deserialized PVRequest, can be <code>null</code>.
 		 */
@@ -187,24 +190,28 @@ typedef std::map<const short,const Field*> registryMap_t;
 
 		/**
 		 * Deserialize Structure and create PVStructure instance.
+		 *
 		 * @param payloadBuffer data buffer.
+		 * @param control serialization control.
+		 *
 		 * @return PVStructure instance, can be <code>null</code>.
 		 */
 		PVStructurePtr deserializeStructureAndCreatePVStructure(ByteBuffer* payloadBuffer, DeserializableControl* control);
 
 		/**
 		 * Serialize status.
-		 * TODO optimize duplicates
+		 *
 		 * @param buffer data buffer.
-		 * @param control serializaiton control instance.
+		 * @param control serialization control.
 		 * @param status status to serialize.
 		 */
 		void serializeStatus(ByteBuffer* buffer, SerializableControl* control, Status* status);
 
 		/**
-		 * Serialize status.
-		 * TODO optimize duplicates
+		 * Deserialize status.
+		 *
 		 * @param buffer data buffer.
+		 * @param control serialization control.
 		 */
 		Status* deserializeStatus(ByteBuffer* buffer, DeserializableControl* control);
 
