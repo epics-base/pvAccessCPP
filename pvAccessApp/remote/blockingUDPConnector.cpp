@@ -48,13 +48,13 @@ namespace epics {
 
             // set the socket options
 
-            int optval = 1;     // true
-
+            int optval = _reuseSocket ? 1 : 0;
             retval = ::setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &optval,
                     sizeof(optval));
             if(retval<0) errlogSevPrintf(errlogMajor,
                     "Error binding socket: %s", strerror(errno));
 
+            optval = _broadcast ? 1 : 0;
             retval = ::setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &optval,
                     sizeof(optval));
 
