@@ -21,6 +21,7 @@
 /* EPICSv3 */
 #include <osdSock.h>
 #include <osiSock.h>
+#include <epicsThread.h>
 
 namespace epics {
     namespace pvAccess {
@@ -235,6 +236,11 @@ namespace epics {
              * Used for process sync.
              */
             Mutex* _mutex;
+
+            /**
+             * Thread ID
+             */
+            epicsThreadId _threadId;
 
         };
 

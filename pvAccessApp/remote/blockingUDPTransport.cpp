@@ -43,10 +43,12 @@ namespace epics {
                             new ByteBuffer(MAX_UDP_RECV)), _sendBuffer(
                             new ByteBuffer(MAX_UDP_RECV)),
                     _lastMessageStartPosition(0), _readBuffer(
-                            new char[MAX_UDP_RECV]), _mutex(new Mutex()) {
+                            new char[MAX_UDP_RECV]), _mutex(new Mutex()),
+                    _threadId(NULL) {
         }
 
         BlockingUDPTransport::~BlockingUDPTransport() {
+            close(true); // close the socket and stop the thread.
             delete _receiveBuffer;
             delete _sendBuffer;
             delete _readBuffer;
@@ -60,8 +62,9 @@ namespace epics {
             errlogSevPrintf(errlogInfo, "Starting thread: %s",
                     threadName.c_str());
 
-            epicsThreadCreate(threadName.c_str(), epicsThreadPriorityMedium,
-                    epicsThreadGetStackSize(epicsThreadStackMedium),
+            _threadId = epicsThreadCreate(threadName.c_str(),
+                    epicsThreadPriorityMedium, epicsThreadGetStackSize(
+                            epicsThreadStackMedium),
                     BlockingUDPTransport::threadRunner, this);
         }
 
@@ -70,7 +73,7 @@ namespace epics {
             _closed = true;
 
             if(_bindAddress!=NULL) errlogSevPrintf(errlogInfo,
-                    "UDP connection to %s closed.", inetAddressToString(
+                    "UDP socket %s closed.", inetAddressToString(
                             _bindAddress).c_str());
 
             int retval = ::close(_channel);
@@ -135,6 +138,10 @@ namespace epics {
                      */
 
                     int retval = poll(&pfd, 1, 100);
+
+                    if(_closed) break; // if the dtor was called during wait
+                    // none of the object properties are no longer valid.
+
                     if(retval>0) {
                         // activity on SOCKET
                         if(pfd.revents&POLLIN) {
@@ -200,6 +207,10 @@ namespace epics {
                 // TODO: catch all exceptions, and act accordingly
                 close(true);
             }
+
+            char threadName[40];
+            epicsThreadGetName(_threadId, threadName, 40);
+            errlogSevPrintf(errlogInfo, "Thread '%s' exiting", threadName);
         }
 
         bool BlockingUDPTransport::processBuffer(osiSockAddr* fromAddress,
