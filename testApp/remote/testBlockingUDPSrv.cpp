@@ -40,12 +40,9 @@ private:
 void DummyResponseHandler::handleResponse(osiSockAddr* responseFrom,
         Transport* transport, int8 version, int8 command, int payloadSize,
         ByteBuffer* payloadBuffer) {
-
-    packets++;
-
     std::ostringstream os;
 
-    cout<<"Received new UDP datagram["<<packets<<"]..."<<endl;
+    cout<<"Received new UDP datagram["<<packets+1<<"]..."<<endl;
     cout<<"From: "<<inetAddressToString(responseFrom)<<endl;
     cout<<"Version: 0x"<<hex<<(int)version<<endl;
     cout<<"Command: 0x"<<hex<<(int)command<<endl;
@@ -62,6 +59,8 @@ void DummyResponseHandler::handleResponse(osiSockAddr* responseFrom,
     }
 
     cout<<endl<<endl;
+
+    packets++;
 }
 
 void testBlockingUDPConnector() {
@@ -85,6 +84,7 @@ void testBlockingUDPConnector() {
         sleep(1);
     }
 
+    delete transport;
 }
 
 int main(int argc, char *argv[]) {

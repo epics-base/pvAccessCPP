@@ -67,6 +67,9 @@ namespace epics {
          */
         class Transport : public DeserializableControl {
         public:
+            virtual ~Transport() {
+            }
+
             /**
              * Get remote address.
              * @return remote address.
