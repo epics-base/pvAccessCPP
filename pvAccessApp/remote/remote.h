@@ -197,7 +197,7 @@ namespace epics {
              * @param[in] payloadSize size of this message data available in the <code>payloadBuffer</code>.
              * @param[in] payloadBuffer message payload data.
              *                      Note that this might not be the only message in the buffer.
-             *                      Code must not manilupate buffer.
+             *                      Code must not manipulate buffer.
              */
             virtual void handleResponse(osiSockAddr* responseFrom,
                     Transport* transport, int8 version, int8 command,

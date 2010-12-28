@@ -73,8 +73,8 @@ namespace epics {
             _closed = true;
 
             if(_bindAddress!=NULL) errlogSevPrintf(errlogInfo,
-                    "UDP socket %s closed.", inetAddressToString(
-                            _bindAddress).c_str());
+                    "UDP socket %s closed.",
+                    inetAddressToString(_bindAddress).c_str());
 
             int retval = ::close(_channel);
 
@@ -92,7 +92,7 @@ namespace epics {
                 sender->send(_sendBuffer, this);
                 sender->unlock();
                 endMessage();
-                if(_sendTo!=NULL) send(_sendBuffer, _sendTo);
+                send(_sendBuffer, _sendTo);
             } catch(...) {
                 sender->unlock();
             }
@@ -108,10 +108,13 @@ namespace epics {
         }
 
         void BlockingUDPTransport::endMessage() {
-            int32 data = _lastMessageStartPosition+(16/8+2);
-            _sendBuffer->put((char*)&data, _sendBuffer->getPosition()
-                    -_lastMessageStartPosition-CA_MESSAGE_HEADER_SIZE,
-                    sizeof(int32));
+            int oldPosition = _sendBuffer->getPosition();
+            _sendBuffer->setPosition(_lastMessageStartPosition
+                    +(sizeof(int16)+2));
+            _sendBuffer->putInt(oldPosition-_lastMessageStartPosition
+                    -CA_MESSAGE_HEADER_SIZE);
+            _sendBuffer->setPosition(oldPosition);
+
         }
 
         void BlockingUDPTransport::processRead() {
@@ -157,7 +160,7 @@ namespace epics {
                             if(bytesRead>0) {
                                 // successfully got datagram
                                 bool ignore = false;
-                                if(_ignoredAddresses!=NULL) for(int i = 0; i
+                                if(_ignoredAddresses!=NULL) for(size_t i = 0; i
                                         <_ignoredAddresses->size(); i++)
                                     if(_ignoredAddresses->at(i)->ia.sin_addr.s_addr
                                             ==fromAddress.ia.sin_addr.s_addr) {
@@ -255,7 +258,7 @@ namespace epics {
 
         bool BlockingUDPTransport::send(ByteBuffer* buffer,
                 const osiSockAddr* address) {
-            if(address==NULL||_sendAddresses==NULL) return false;
+            if(address==NULL&&_sendAddresses==NULL) return false;
 
             if(address!=NULL) {
                 buffer->flip();
@@ -270,7 +273,7 @@ namespace epics {
                 }
             }
             else {
-                for(int i = 0; i<_sendAddresses->size(); i++) {
+                for(size_t i = 0; i<_sendAddresses->size(); i++) {
                     buffer->flip();
                     int retval = sendto(_channel, buffer->getArray(),
                             buffer->getLimit(), 0,

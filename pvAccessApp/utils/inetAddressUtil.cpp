@@ -214,11 +214,13 @@ namespace epics {
                 bool displayHex) {
             stringstream saddr;
 
-            saddr<<(int)((addr->ia.sin_addr.s_addr)>>24)<<'.';
-            saddr<<((int)((addr->ia.sin_addr.s_addr)>>16)&0xFF)<<'.';
-            saddr<<((int)((addr->ia.sin_addr.s_addr)>>8)&0xFF)<<'.';
-            saddr<<((int)(addr->ia.sin_addr.s_addr)&0xFF);
-            if(addr->ia.sin_port>0) saddr<<":"<<addr->ia.sin_port;
+            int ipa = ntohl(addr->ia.sin_addr.s_addr);
+
+            saddr<<((int)(ipa>>24)&0xFF)<<'.';
+            saddr<<((int)(ipa>>16)&0xFF)<<'.';
+            saddr<<((int)(ipa>>8)&0xFF)<<'.';
+            saddr<<((int)ipa&0xFF);
+            if(addr->ia.sin_port>0) saddr<<":"<<ntohs(addr->ia.sin_port);
             if(displayHex) saddr<<" ("<<hex<<((uint32_t)(
                     addr->ia.sin_addr.s_addr))<<")";
 
