@@ -18,11 +18,13 @@ INC += growingCircularBuffer.h
 INC += inetAddressUtil.h
 INC += logger.h
 INC += introspectionRegistry.h
+INC += transportRegistry.h
 LIBSRCS += hexDump.cpp
 LIBSRCS += wildcharMatcher.cpp
 LIBSRCS += inetAddressUtil.cpp
 LIBSRCS += logger.cpp
 LIBSRCS += introspectionRegistry.cpp
+LIBSRCS += transportRegistry.cpp
 
 
 SRC_DIRS += $(PVACCESS)/client
