@@ -83,7 +83,6 @@ short IntrospectionRegistry::registerIntrospectionInterface(FieldConstPtr field,
 		_registryIter = _registry.find(key);
 		if(_registryIter != _registry.end())
 		{
-			cout << "deleting 2" << endl;
 			_registryIter->second->decReferenceCount();
 		}
 
@@ -111,64 +110,13 @@ bool IntrospectionRegistry::registryContainsValue(FieldConstPtr field, short& ke
 {
 	for(_registryRIter = _registry.rbegin(); _registryRIter != _registry.rend(); _registryRIter++)
 	{
-		if(compareFields(field,_registryRIter->second))
+		if((*field) == (*_registryRIter->second))
 		{
 			key = _registryRIter->first;
 			return true;
 		}
 	}
 	return false;
-}
-
-bool IntrospectionRegistry::compareFields(FieldConstPtr field1, FieldConstPtr field2)
-{
-	if(field1->getFieldName() != field2->getFieldName())
-	{
-		return false;
-	}
-	else
-	{
-		Type typ1 = field1->getType();
-		Type typ2 = field2->getType();
-		if(typ1 != typ2)
-		{
-			return false;
-		}
-
-		switch (typ1)
-		{
-		case epics::pvData::scalar:
-		{
-			if(static_cast<ScalarConstPtr>(field1)->getScalarType() == static_cast<ScalarConstPtr>(field1)->getScalarType())
-			{
-				return true;
-			}
-			break;
-		}
-		case epics::pvData::scalarArray:
-		{
-			if(static_cast<ScalarArrayConstPtr>(field1)->getElementType() == static_cast<ScalarArrayConstPtr>(field1)->getElementType())
-			{
-				return true;
-			}
-			break;
-		}
-		case epics::pvData::structure:
-		{
-			return true;
-			break;
-		}
-		case epics::pvData::structureArray:
-		{
-			if(static_cast<StructureArrayConstPtr>(field1)->getStructure()->getFieldName() == static_cast<StructureArrayConstPtr>(field1)->getStructure()->getFieldName())
-			{
-				return true;
-			}
-			break;
-		}
-		}
-		return false;
-	}
 }
 
 void IntrospectionRegistry::serialize(FieldConstPtr field, ByteBuffer* buffer, SerializableControl* control)
@@ -373,8 +321,10 @@ StructureConstPtr IntrospectionRegistry::deserializeStructureField(ByteBuffer* b
 			fields[i] = deserialize(buffer, control, registry);
 		}
 	}
-	//TODO stucture constructor created new fields instead of taking this ones
-	return _fieldCreate->createStructure(structureFieldName, size, fields);
+
+	StructureConstPtr structure = _fieldCreate->createStructure(structureFieldName, size, fields);
+	delete [] fields;
+	return structure;
 }
 
 void IntrospectionRegistry::serializeStructure(ByteBuffer* buffer, SerializableControl* control, PVStructurePtr pvStructure)

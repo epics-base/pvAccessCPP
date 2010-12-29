@@ -30,6 +30,10 @@ PROD_HOST += introspectionRegisterTest
 introspectionRegisterTest_SRCS += introspectionRegistryTest.cpp
 introspectionRegisterTest_LIBS += pvAccess Com pvData
 
+PROD_HOST += transportRegisterTest
+transportRegisterTest_SRCS += transportRegistryTest.cpp
+transportRegisterTest_LIBS += pvAccess Com pvData
+
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE

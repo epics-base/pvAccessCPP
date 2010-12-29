@@ -91,18 +91,12 @@ StructureConstPtr getStructure(string name)
 	FieldConstPtr powerSupply[3];
 	powerSupply[0] = standardField->scalar(
 			String("voltage"),pvDouble,properties);
-	PVField *pvField = pvDataCreate->createPVField(0,powerSupply[0]);
-	pvFieldArray.push_back(pvField);
 	powerSupply[1] = standardField->scalar(
 			String("power"),pvDouble,properties);
-	pvField = pvDataCreate->createPVField(0,powerSupply[1]);
-	pvFieldArray.push_back(pvField);
 	powerSupply[2] = standardField->scalar(
 			String("current"),pvDouble,properties);
-	pvField = pvDataCreate->createPVField(0,powerSupply[2]);
-	pvFieldArray.push_back(pvField);
 	StructureConstPtr structure =  standardField->structure(name,3,powerSupply);
-	pvField = pvDataCreate->createPVField(0,structure);
+	PVField * pvField = pvDataCreate->createPVField(0,structure);
 	pvFieldArray.push_back(pvField);
 	return structure;
 }
@@ -113,19 +107,13 @@ StructureArrayConstPtr getStructureArray(string name1, string name2)
 	FieldConstPtr powerSupply[3];
 	powerSupply[0] = standardField->scalar(
 			String("voltage"),pvDouble,properties);
-	PVField *pvField = pvDataCreate->createPVField(0,powerSupply[0]);
-	pvFieldArray.push_back(pvField);
 	powerSupply[1] = standardField->scalar(
 			String("power"),pvDouble,properties);
-	pvField = pvDataCreate->createPVField(0,powerSupply[1]);
-	pvFieldArray.push_back(pvField);
 	powerSupply[2] = standardField->scalar(
 			String("current"),pvDouble,properties);
-	pvField = pvDataCreate->createPVField(0,powerSupply[2]);
-	pvFieldArray.push_back(pvField);
 	StructureConstPtr structure =  standardField->structure(name1,3,powerSupply);
 	StructureArrayConstPtr structureArray = standardField->structureArray(name2,structure);
-	pvField = pvDataCreate->createPVField(0,structureArray);
+	PVField *pvField = pvDataCreate->createPVField(0,structureArray);
 	pvFieldArray.push_back(pvField);
 	return structureArray;
 }
@@ -283,7 +271,7 @@ void testSerialize()
 	stringstream ss;
 	string name1,name2,name3,name4;
 
-	for(int i = 0, j = 0; i < 1 ; i++, j++)
+	for(int i = 0, j = 0; i < 10 ; i++, j++)
 	{
 		name1.clear();
 		name2.clear();
@@ -334,7 +322,7 @@ void testSerialize()
 		testSerializeCommon(static_cast<FieldConstPtr>(getStructureArray(name1,name2)),static_cast<FieldConstPtr>(getStructureArray(name3,name4)));
 	}
 
-	serverRegistry->printKeysAndValues("server");
+	//serverRegistry->printKeysAndValues("server");
 	//clientRegistry->printKeysAndValues("client");
 }
 
@@ -425,8 +413,6 @@ void testSerializeStatus()
 }
 
 int main(int argc, char *argv[]) {
-	//TODO something is wrong with freeing structure and structure array, should be checked.
-
 	pvDataCreate = getPVDataCreate();
 	statusCreate = getStatusCreate();
 	fieldCreate = getFieldCreate();
@@ -462,6 +448,8 @@ int main(int argc, char *argv[]) {
 	if(registry) delete registry;
 	if(clientRegistry) delete clientRegistry;
 	if(serverRegistry) delete serverRegistry;
+
+	getShowConstructDestruct()->constuctDestructTotals(stdout);
 	cout << "DONE" << endl;
 	return 0;
 }
