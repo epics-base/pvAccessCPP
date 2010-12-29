@@ -108,12 +108,9 @@ namespace epics {
         }
 
         void BlockingUDPTransport::endMessage() {
-            int oldPosition = _sendBuffer->getPosition();
-            _sendBuffer->setPosition(_lastMessageStartPosition
-                    +(sizeof(int16)+2));
-            _sendBuffer->putInt(oldPosition-_lastMessageStartPosition
-                    -CA_MESSAGE_HEADER_SIZE);
-            _sendBuffer->setPosition(oldPosition);
+            _sendBuffer->putInt(_lastMessageStartPosition+(sizeof(int16)+2),
+                    _sendBuffer->getPosition()-_lastMessageStartPosition
+                            -CA_MESSAGE_HEADER_SIZE);
 
         }
 
@@ -295,9 +292,7 @@ namespace epics {
             // this DatagramSocket.
 
             int sockBufSize;
-            socklen_t intLen;
-
-            intLen = sizeof(int);
+            socklen_t intLen = sizeof(int);
 
             int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF,
                     &sockBufSize, &intLen);

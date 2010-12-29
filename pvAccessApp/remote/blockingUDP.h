@@ -49,14 +49,6 @@ namespace epics {
                 return String("UDP");
             }
 
-            virtual int8 getMajorRevision() const {
-                return CA_MAJOR_PROTOCOL_REVISION;
-            }
-
-            virtual int8 getMinorRevision() const {
-                return CA_MINOR_PROTOCOL_REVISION;
-            }
-
             virtual int getReceiveBufferSize() const {
                 return _receiveBuffer->getSize();
             }
@@ -169,7 +161,7 @@ namespace epics {
             }
 
         protected:
-            bool _closed;
+            bool volatile _closed;
 
             /**
              * Response handler.

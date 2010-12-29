@@ -8,6 +8,8 @@
 #ifndef REMOTE_H_
 #define REMOTE_H_
 
+#include "caConstants.h"
+
 #include <serialize.h>
 #include <pvType.h>
 #include <byteBuffer.h>
@@ -92,13 +94,17 @@ namespace epics {
              * Transport protocol major revision.
              * @return protocol major revision.
              */
-            virtual int8 getMajorRevision() const =0;
+            virtual int8 getMajorRevision() const {
+                return CA_MAJOR_PROTOCOL_REVISION;
+            }
 
             /**
              * Transport protocol minor revision.
              * @return protocol minor revision.
              */
-            virtual int8 getMinorRevision() const =0;
+            virtual int8 getMinorRevision() const {
+                return CA_MINOR_PROTOCOL_REVISION;
+            }
 
             /**
              * Get receive buffer size.
@@ -238,7 +244,6 @@ namespace epics {
 
         };
 
-
         /**
          * Interface defining socket connector (Connector-Transport pattern).
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
@@ -256,8 +261,9 @@ namespace epics {
              * @return transport instance.
              * @throws ConnectionException
              */
-            virtual Transport* connect(TransportClient* client, ResponseHandler* responseHandler,
-                    osiSockAddr* address, short transportRevision, short priority) =0;
+            virtual Transport* connect(TransportClient* client,
+                    ResponseHandler* responseHandler, osiSockAddr* address,
+                    short transportRevision, short priority) =0;
 
         };
 
