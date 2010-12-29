@@ -54,7 +54,7 @@ namespace epics {
              * NOTE: these limitations allows efficient implementation.
              */
             virtual void
-                    send(ByteBuffer* buffer, TransportSendControl* control) =0;
+            send(ByteBuffer* buffer, TransportSendControl* control) =0;
 
             virtual void lock() =0;
             virtual void unlock() =0;
@@ -67,6 +67,9 @@ namespace epics {
          */
         class Transport : public DeserializableControl {
         public:
+            virtual ~Transport() {
+            }
+
             /**
              * Get remote address.
              * @return remote address.
@@ -179,6 +182,82 @@ namespace epics {
              * @param sender
              */
             virtual void enqueueSendRequest(TransportSender* sender) =0;
+
+        };
+
+        /**
+         * Interface defining response handler.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: ResponseHandler.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class ResponseHandler {
+        public:
+            /**
+             * Handle response.
+             * @param[in] responseFrom  remote address of the responder, <code>null</code> if unknown.
+             * @param[in] transport response source transport.
+             * @param[in] version message version.
+             * @param[in] payloadSize size of this message data available in the <code>payloadBuffer</code>.
+             * @param[in] payloadBuffer message payload data.
+             *                      Note that this might not be the only message in the buffer.
+             *                      Code must not manipulate buffer.
+             */
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, ByteBuffer* payloadBuffer) =0;
+        };
+
+        /**
+         * Client (user) of the transport.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: TransportClient.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class TransportClient {
+        public:
+            /**
+             * Notification of unresponsive transport (e.g. no heartbeat detected) .
+             */
+            virtual void transportUnresponsive() =0;
+
+            /**
+             * Notification of responsive transport (e.g. heartbeat detected again),
+             * called to discard <code>transportUnresponsive</code> notification.
+             * @param transport responsive transport.
+             */
+            virtual void transportResponsive(Transport* transport) =0;
+
+            /**
+             * Notification of network change (server restarted).
+             */
+            virtual void transportChanged() =0;
+
+            /**
+             * Notification of forcefully closed transport.
+             */
+            virtual void transportClosed() =0;
+
+        };
+
+
+        /**
+         * Interface defining socket connector (Connector-Transport pattern).
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: Connector.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class Connector {
+        public:
+            /**
+             * Connect.
+             * @param[in] client    client requesting connection (transport).
+             * @param[in] address           address of the server.
+             * @param[in] responseHandler   reponse handler.
+             * @param[in] transportRevision transport revision to be used.
+             * @param[in] priority process priority.
+             * @return transport instance.
+             * @throws ConnectionException
+             */
+            virtual Transport* connect(TransportClient* client, ResponseHandler* responseHandler,
+                    osiSockAddr* address, short transportRevision, short priority) =0;
 
         };
 

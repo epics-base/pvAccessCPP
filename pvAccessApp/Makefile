@@ -39,8 +39,9 @@ LIBSRCS += CreateRequestFactory.cpp
 
 SRC_DIRS += $(PVACCESS)/remote
 INC += remote.h
-INC += blockingUDPTransport.h
+INC += blockingUDP.h
 LIBSRCS += blockingUDPTransport.cpp
+LIBSRCS += blockingUDPConnector.cpp
 
 
 LIBRARY = pvAccess
