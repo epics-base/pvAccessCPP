@@ -11,11 +11,13 @@
 /* pvAccess */
 #include "caConstants.h"
 #include "remote.h"
+#include "growingCircularBuffer.h"
 
 /* pvData */
 #include <byteBuffer.h>
 #include <pvType.h>
 #include <lock.h>
+#include <epicsThread.h>
 
 /* EPICSv3 */
 #include <osdSock.h>
@@ -30,12 +32,18 @@ namespace epics {
             READ_FROM_SOCKET, PROCESS_HEADER, PROCESS_PAYLOAD, NONE
         };
 
+        enum SendQueueFlushStrategy {
+            IMMEDIATE, DELAYED, USER_CONTROLED
+        };
+
         class BlockingTCPTransport : public Transport,
                 public TransportSendControl {
         public:
             BlockingTCPTransport(SOCKET channel,
                     ResponseHandler* responseHandler, int receiveBufferSize,
                     short priority);
+
+            ~BlockingTCPTransport();
 
             bool isClosed() const {
                 return _closed;
@@ -81,6 +89,15 @@ namespace epics {
                 return _socketBuffer->getSize();
             }
 
+            /**
+             * Get remote transport receive buffer size (in bytes).
+             * @return remote transport receive buffer size
+             */
+            int getRemoteTransportReceiveBufferSize() {
+                return _remoteTransportReceiveBufferSize;
+            }
+
+
             virtual int getSocketReceiveBufferSize() const;
 
             virtual bool isVerified() const {
@@ -113,6 +130,30 @@ namespace epics {
             virtual void ensureBuffer(int size);
 
             virtual void ensureData(int size);
+
+            virtual void close(bool force);
+
+            SendQueueFlushStrategy getSendQueueFlushStrategy() {
+                return _flushStrategy;
+            }
+
+            void setSendQueueFlushStrategy(SendQueueFlushStrategy flushStrategy) {
+                _flushStrategy = flushStrategy;
+            }
+
+            void requestFlush();
+
+            /**
+             * Close and free connection resources.
+             */
+            void freeConnectionResorces();
+
+            /**
+             * Starts the receive and send threads
+             */
+            void start();
+
+            virtual void enqueueSendRequest(TransportSender* sender);
 
         protected:
             /**
@@ -186,8 +227,23 @@ namespace epics {
 
             int64 volatile _remoteBufferFreeSpace;
 
-            void processReadCached(bool nestedCall, ReceiveStage inStage,
-                    int requiredBytes, bool addToBuffer);
+            virtual void processReadCached(bool nestedCall,
+                    ReceiveStage inStage, int requiredBytes, bool addToBuffer);
+
+            /**
+             * Called to any resources just before closing transport
+             * @param[in] force   flag indicating if forced (e.g. forced
+             * disconnect) is required
+             */
+            virtual void internalClose(bool force);
+
+            /**
+             * Send a buffer through the transport.
+             * NOTE: TCP sent buffer/sending has to be synchronized (not done by this method).
+             * @param buffer[in]    buffer to be sent
+             * @return success indicator
+             */
+            virtual bool send(ByteBuffer* buffer);
 
         private:
             /**
@@ -196,6 +252,8 @@ namespace epics {
             static const int MARKER_PERIOD = 1024;
 
             static const int MAX_ENSURE_DATA_BUFFER_SIZE = 1024;
+
+            static const double delay = 0.01;
 
             /**
              * Send buffer size.
@@ -252,6 +310,16 @@ namespace epics {
 
             bool _flushRequested;
 
+            int _sendBufferSentPosition;
+
+            SendQueueFlushStrategy _flushStrategy;
+
+            GrowingCircularBuffer<TransportSender*>* _sendQueue;
+
+            epicsThreadId _rcvThreadId;
+
+            epicsThreadId _sendThreadId;
+
             /**
              * Internal method that clears and releases buffer.
              * sendLock and sendBufferLock must be hold while calling this method.
@@ -261,6 +329,18 @@ namespace epics {
             void endMessage(bool hasMoreSegments);
 
             bool flush();
+
+            void processSendQueue();
+
+            static void rcvThreadRunner(void* param);
+
+            static void sendThreadRunner(void* param);
+
+            /**
+             * Free all send buffers (return them to the cached buffer allocator).
+             */
+            void freeSendBuffers();
+
         };
 
     }

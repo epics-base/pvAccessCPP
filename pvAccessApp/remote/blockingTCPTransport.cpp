@@ -7,6 +7,7 @@
 
 #include "blockingTCP.h"
 #include "inetAddressUtil.h"
+#include "growingCircularBuffer.h"
 
 /* pvData */
 #include <lock.h>
@@ -52,7 +53,10 @@ namespace epics {
                     _lastSegmentedMessageCommand(0), _storedPayloadSize(0),
                     _storedPosition(0), _storedLimit(0), _magicAndVersion(0),
                     _packetType(0), _command(0), _payloadSize(0),
-                    _flushRequested(false) {
+                    _flushRequested(false), _sendBufferSentPosition(0),
+                    _flushStrategy(DELAYED), _sendQueue(
+                            new GrowingCircularBuffer<TransportSender*> (100)),
+                    _rcvThreadId(NULL), _sendThreadId(NULL) {
 
             _socketBuffer = new ByteBuffer(max(MAX_TCP_RECV
                     +MAX_ENSURE_DATA_BUFFER_SIZE, receiveBufferSize));
@@ -93,6 +97,45 @@ namespace epics {
 
         }
 
+        BlockingTCPTransport::~BlockingTCPTransport() {
+            close(true);
+
+            delete _sendQueue;
+            delete _socketBuffer;
+            delete _sendBuffer;
+
+            delete _mutex;
+            delete _sendQueueMutex;
+            delete _verifiedMutex;
+            delete _monitorMutex;
+        }
+
+        void BlockingTCPTransport::start() {
+            String threadName = "TCP-receive "+inetAddressToString(
+                    _socketAddress);
+
+            errlogSevPrintf(errlogInfo, "Starting thread: %s",
+                    threadName.c_str());
+
+            _rcvThreadId = epicsThreadCreate(threadName.c_str(),
+                    epicsThreadPriorityMedium, epicsThreadGetStackSize(
+                            epicsThreadStackMedium),
+                    BlockingTCPTransport::rcvThreadRunner, this);
+
+            threadName = "TCP-send "+inetAddressToString(
+                    _socketAddress);
+
+            errlogSevPrintf(errlogInfo, "Starting thread: %s",
+                    threadName.c_str());
+
+            _sendThreadId = epicsThreadCreate(threadName.c_str(),
+                    epicsThreadPriorityMedium, epicsThreadGetStackSize(
+                            epicsThreadStackMedium),
+                    BlockingTCPTransport::sendThreadRunner, this);
+
+
+        }
+
         void BlockingTCPTransport::clearAndReleaseBuffer() {
             // NOTE: take care that nextMarkerPosition is set right
             // fix position to be correct when buffer is cleared
@@ -113,6 +156,32 @@ namespace epics {
             _sendBuffer->putByte(1); // control data
             _sendBuffer->putByte(1); // marker ACK
             _sendBuffer->putInt(0);
+        }
+
+        void BlockingTCPTransport::close(bool force) {
+            Lock lock(_mutex);
+
+            // already closed check
+            if(_closed) return;
+
+            _closed = true;
+
+            // TODO remove from registry
+            //context.getTransportRegistry().remove(this);
+
+            // clean resources
+            internalClose(force);
+
+            // threads cannot "wait" Epics, no need to notify
+            // TODO check alternatives to "wait"
+            // notify send queue
+            //synchronized (sendQueue) {
+            //    sendQueue.notifyAll();
+            //}
+        }
+
+        void BlockingTCPTransport::internalClose(bool force) {
+            // noop
         }
 
         int BlockingTCPTransport::getSocketReceiveBufferSize() const {
@@ -360,7 +429,7 @@ namespace epics {
                                     _socketBuffer->getRemaining());
                             ssize_t bytesRead = recv(_channel, readBuffer,
                                     maxToRead, 0);
-                            _socketBuffer->put(readBuffer,0,maxToRead);
+                            _socketBuffer->put(readBuffer, 0, maxToRead);
 
                             if(bytesRead<0) {
                                 // error (disconnect, end-of-stream) detected
@@ -510,8 +579,236 @@ namespace epics {
         }
 
         bool BlockingTCPTransport::flush() {
-            // TODO implement!
+            // request issues, has not sent anything yet (per partes)
+            if(!_sendPending) {
+                _sendPending = true;
+
+                // start sending from the start
+                _sendBufferSentPosition = 0;
+
+                // if not set skip marker otherwise set it
+                int markerValue = _markerToSend;
+                _markerToSend = 0;
+                if(markerValue==0)
+                    _sendBufferSentPosition = CA_MESSAGE_HEADER_SIZE;
+                else
+                    _sendBuffer->putInt(4, markerValue);
+            }
+
+            bool success = false;
+            try {
+                // remember current position
+                int currentPos = _sendBuffer->getPosition();
+
+                // set to send position
+                _sendBuffer->setPosition(_sendBufferSentPosition);
+                _sendBuffer->setLimit(currentPos);
+
+                success = send(_sendBuffer);
+
+                // all sent?
+                if(success)
+                    clearAndReleaseBuffer();
+                else {
+                    // remember position
+                    _sendBufferSentPosition = _sendBuffer->getPosition();
+
+                    // .. reset to previous state
+                    _sendBuffer->setPosition(currentPos);
+                    _sendBuffer->setLimit(_sendBuffer->getSize());
+                }
+            } catch(BaseException* e) {
+                String trace;
+                e->toString(trace);
+                errlogSevPrintf(errlogMajor, trace.c_str());
+                // error, release lock
+                clearAndReleaseBuffer();
+            } catch(...) {
+                clearAndReleaseBuffer();
+            }
+            return success;
+        }
+
+        bool BlockingTCPTransport::send(ByteBuffer* buffer) {
+            try {
+                // TODO simply use value from marker???!!!
+                // On Windows, limiting the buffer size is important to prevent
+                // poor throughput performances when transferring large amount of
+                // data. See Microsoft KB article KB823764.
+                // We do it also for other systems just to be safe.
+                int maxBytesToSend = min(_socketSendBufferSize,
+                        _remoteTransportSocketReceiveBufferSize)/2;
+
+                int limit = buffer->getLimit();
+                int bytesToSend = limit-buffer->getPosition();
+
+                //errlogSevPrintf(errlogInfo,"Total bytes to send: %d", bytesToSend);
+
+                // limit sending
+                if(bytesToSend>maxBytesToSend) {
+                    bytesToSend = maxBytesToSend;
+                    buffer->setLimit(buffer->getPosition()+bytesToSend);
+                }
+
+                //errlogSevPrintf(errlogInfo,
+                //        "Sending %d of total %d bytes in the packet to %s.",
+                //        bytesToSend, limit,
+                //        inetAddressToString(_socketAddress).c_str());
+
+                while(buffer->getRemaining()>0) {
+                    ssize_t bytesSent = ::send(_channel,
+                            &buffer->getArray()[buffer->getPosition()],
+                            buffer->getRemaining(), 0);
+
+                    if(bytesSent<0) {
+                        // connection lost
+                        ostringstream temp;
+                        temp<<"error in sending TCP data: "<<strerror(errno);
+                        errlogSevPrintf(errlogMajor, temp.str().c_str());
+                        THROW_BASE_EXCEPTION(temp.str().c_str());
+                    }
+                    else if(bytesSent==0) {
+                        //errlogSevPrintf(errlogInfo,
+                        //        "Buffer full, position %d of total %d bytes.",
+                        //        buffer->getPosition(), limit);
+
+                        /* buffers full, reset the limit and indicate that there
+                         * is more data to be sent
+                         */
+                        if(bytesSent==maxBytesToSend) buffer->setLimit(limit);
+
+                        //errlogSevPrintf(errlogInfo,
+                        //        "Send buffer full for %s, waiting...",
+                        //        inetAddressToString(_socketAddress));
+                        return false;
+                    }
+
+                    buffer->setPosition(buffer->getPosition()+bytesSent);
+
+                    _totalBytesSent += bytesSent;
+
+                    // readjust limit
+                    if(bytesToSend==maxBytesToSend) {
+                        bytesToSend = limit-buffer->getPosition();
+                        if(bytesToSend>maxBytesToSend) bytesToSend
+                                = maxBytesToSend;
+                        buffer->setLimit(buffer->getPosition()+bytesToSend);
+                    }
+
+                    //errlogSevPrintf(errlogInfo,
+                    //        "Sent, position %d of total %d bytes.",
+                    //        buffer->getPosition(), limit);
+                } // while
+            } catch(...) {
+                close(true);
+                throw;
+            }
+
+            // all sent
             return true;
+        }
+
+        void BlockingTCPTransport::processSendQueue() {
+            while(!_closed) {
+                TransportSender* sender;
+
+                _sendQueueMutex->lock();
+
+                sender = _sendQueue->extract();
+                // wait for new message
+                while(sender==NULL&&!_flushRequested&&!_closed) {
+                    if(_flushStrategy==DELAYED) {
+                        if(delay>0) epicsThreadSleep(delay);
+                        if(_sendQueue->size()==0) {
+                            // if (hasMonitors || sendBuffer.position() > CAConstants.CA_MESSAGE_HEADER_SIZE)
+                            if(_sendBuffer->getPosition()
+                                    >CA_MESSAGE_HEADER_SIZE)
+                                _flushRequested = true;
+                            else
+                                epicsThreadSleep(delay);
+                        }
+                    }
+                    //else
+                    //    epicsThreadSleep(delay);
+                    sender = _sendQueue->extract();
+                }
+                _sendQueueMutex->unlock();
+
+                // always do flush from this thread
+                if(_flushRequested) {
+                    /*
+                     if (hasMonitors)
+                     {
+                     monitorSender.send(sendBuffer, this);
+                     }
+                     */
+
+                    flush();
+                }
+
+                if(sender!=NULL) {
+                    sender->lock();
+                    try {
+                        _lastMessageStartPosition = _sendBuffer->getPosition();
+                        sender->send(_sendBuffer, this);
+
+                        if(_flushStrategy==IMMEDIATE)
+                            flush(true);
+                        else
+                            endMessage(false);// automatic end (to set payload)
+
+                    } catch(BaseException* e) {
+                        String trace;
+                        e->toString(trace);
+                        errlogSevPrintf(errlogMajor, trace.c_str());
+                        _sendBuffer->setPosition(_lastMessageStartPosition);
+                    } catch(...) {
+                        _sendBuffer->setPosition(_lastMessageStartPosition);
+                    }
+                    sender->unlock();
+                } // if(sender!=NULL)
+            } // while(!_closed)
+        }
+
+        void BlockingTCPTransport::requestFlush() {
+            Lock lock(_sendQueueMutex);
+            if(_flushRequested) return;
+            _flushRequested = true;
+        }
+
+        void BlockingTCPTransport::freeSendBuffers() {
+            // TODO ?
+        }
+
+        void BlockingTCPTransport::freeConnectionResorces() {
+            freeSendBuffers();
+
+            errlogSevPrintf(errlogInfo, "Connection to %s closed.",
+                    inetAddressToString(_socketAddress).c_str());
+
+            int retval = ::shutdown(_channel, SHUT_RDWR);
+
+            if(retval<0&&errno!=ENOTCONN) errlogSevPrintf(errlogMajor,
+                    "Error closing socket to %s: %s", inetAddressToString(
+                            _socketAddress).c_str(), strerror(errno));
+        }
+
+        void BlockingTCPTransport::rcvThreadRunner(void* param) {
+            ((BlockingTCPTransport*)param)->processReadCached(false, NONE,
+                    CA_MESSAGE_HEADER_SIZE, false);
+        }
+
+        void BlockingTCPTransport::sendThreadRunner(void* param) {
+            BlockingTCPTransport* obj = (BlockingTCPTransport*)param;
+
+            obj->processSendQueue();
+
+            obj->freeConnectionResorces();
+        }
+
+        void BlockingTCPTransport::enqueueSendRequest(TransportSender* sender) {
+            Lock lock(_sendQueueMutex);
+            _sendQueue->insert(sender);
         }
 
     }
