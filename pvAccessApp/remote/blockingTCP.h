@@ -28,6 +28,8 @@ using namespace epics::pvData;
 namespace epics {
     namespace pvAccess {
 
+        class MonitorSender;
+
         enum ReceiveStage {
             READ_FROM_SOCKET, PROCESS_HEADER, PROCESS_PAYLOAD, NONE
         };
@@ -154,6 +156,8 @@ namespace epics {
             void start();
 
             virtual void enqueueSendRequest(TransportSender* sender);
+
+            void enqueueMonitorSendRequest(TransportSender* sender);
 
         protected:
             /**
@@ -319,6 +323,10 @@ namespace epics {
             epicsThreadId _rcvThreadId;
 
             epicsThreadId _sendThreadId;
+
+            GrowingCircularBuffer<TransportSender*>* _monitorSendQueue;
+
+            MonitorSender* _monitorSender;
 
             /**
              * Internal method that clears and releases buffer.

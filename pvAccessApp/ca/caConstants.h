@@ -73,6 +73,8 @@ namespace epics {
         /** Invalid data type. */
         const int16 INVALID_DATA_TYPE = (int16)0xFFFF;
 
+        /** Invalid IOID. */
+        const int32 CAJ_INVALID_IOID = 0;
     }
 }
 
