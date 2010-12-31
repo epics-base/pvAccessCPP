@@ -225,11 +225,11 @@ namespace epics {
             /**
              * Marker to send.
              */
-            int volatile _markerToSend;
+            volatile int _markerToSend;
 
-            bool _verified;
+            volatile bool _verified;
 
-            int64 volatile _remoteBufferFreeSpace;
+            volatile int64 _remoteBufferFreeSpace;
 
             virtual void processReadCached(bool nestedCall,
                     ReceiveStage inStage, int requiredBytes, bool addToBuffer);
@@ -312,7 +312,7 @@ namespace epics {
             int8 _command;
             int _payloadSize;
 
-            bool _flushRequested;
+            volatile bool _flushRequested;
 
             int _sendBufferSentPosition;
 
@@ -349,6 +349,7 @@ namespace epics {
              */
             void freeSendBuffers();
 
+            TransportSender* extractFromSendQueue();
         };
 
     }
