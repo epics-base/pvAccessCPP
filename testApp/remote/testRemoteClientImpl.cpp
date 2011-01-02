@@ -1,5 +1,5 @@
-/* MockClientImpl.cpp */
-/* Author:  Matej Sekoranja Date: 2010.12.18 */
+/* testRemoteClientImpl.cpp */
+/* Author:  Matej Sekoranja Date: 2011.1.1 */
 
 
 #include <pvAccess.h>
@@ -8,6 +8,10 @@
 #include <lock.h>
 #include <standardPVField.h>
 
+#include <caConstants.h>
+#include <timer.h>
+#include <blockingUDP.h>
+
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
@@ -15,7 +19,7 @@ using namespace epics::pvAccess;
 
 PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelProcess);
 
-class MockChannelProcess : public ChannelProcess
+class ChannelImplProcess : public ChannelProcess
 {
     private:
 		ChannelProcessRequester* m_channelProcessRequester;
@@ -23,13 +27,13 @@ class MockChannelProcess : public ChannelProcess
 		PVScalar* m_valueField;
     
     private:
-    ~MockChannelProcess()
+    ~ChannelImplProcess()
     {
         PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelProcess);
     }
 
     public:
-    MockChannelProcess(ChannelProcessRequester* channelProcessRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
+    ChannelImplProcess(ChannelProcessRequester* channelProcessRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
         m_channelProcessRequester(channelProcessRequester), m_pvStructure(pvStructure)
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelProcess);
@@ -156,7 +160,7 @@ class MockChannelProcess : public ChannelProcess
 
 PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelGet);
 
-class MockChannelGet : public ChannelGet
+class ChannelImplGet : public ChannelGet
 {
     private:
 		ChannelGetRequester* m_channelGetRequester;
@@ -165,13 +169,13 @@ class MockChannelGet : public ChannelGet
 		volatile bool m_first;
     
     private:
-    ~MockChannelGet()
+    ~ChannelImplGet()
     {
         PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelGet);
     }
 
     public:
-    MockChannelGet(ChannelGetRequester* channelGetRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
+    ChannelImplGet(ChannelGetRequester* channelGetRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
         m_channelGetRequester(channelGetRequester), m_pvStructure(pvStructure),
         m_bitSet(new BitSet(pvStructure->getNumberFields())), m_first(true)
     {
@@ -211,7 +215,7 @@ class MockChannelGet : public ChannelGet
 
 PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelPut);
 
-class MockChannelPut : public ChannelPut
+class ChannelImplPut : public ChannelPut
 {
     private:
 		ChannelPutRequester* m_channelPutRequester;
@@ -220,13 +224,13 @@ class MockChannelPut : public ChannelPut
 		volatile bool m_first;
     
     private:
-    ~MockChannelPut()
+    ~ChannelImplPut()
     {
         PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelPut);
     }
 
     public:
-    MockChannelPut(ChannelPutRequester* channelPutRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
+    ChannelImplPut(ChannelPutRequester* channelPutRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
         m_channelPutRequester(channelPutRequester), m_pvStructure(pvStructure),
         m_bitSet(new BitSet(pvStructure->getNumberFields())), m_first(true)
     {
@@ -371,7 +375,7 @@ class MockMonitor : public Monitor, public MonitorElement
 
 PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannel);
 
-class MockChannel : public Channel {
+class ChannelImpl : public Channel {
     private:
         ChannelProvider* m_provider;
         ChannelRequester* m_requester;
@@ -381,14 +385,14 @@ class MockChannel : public Channel {
         PVStructure* m_pvStructure;
         
     private:
-    ~MockChannel()
+    ~ChannelImpl()
     {
         PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannel);
     }
     
     public:
     
-    MockChannel(
+    ChannelImpl(
         ChannelProvider* provider,
         ChannelRequester* requester,
         String name,
@@ -474,21 +478,21 @@ class MockChannel : public Channel {
             ChannelProcessRequester *channelProcessRequester,
             epics::pvData::PVStructure *pvRequest)
     {
-    	return new MockChannelProcess(channelProcessRequester, m_pvStructure, pvRequest);
+    	return new ChannelImplProcess(channelProcessRequester, m_pvStructure, pvRequest);
     }
 
     virtual ChannelGet* createChannelGet(
             ChannelGetRequester *channelGetRequester,
             epics::pvData::PVStructure *pvRequest)
     {
-    	return new MockChannelGet(channelGetRequester, m_pvStructure, pvRequest);
+    	return new ChannelImplGet(channelGetRequester, m_pvStructure, pvRequest);
     }
 
     virtual ChannelPut* createChannelPut(
             ChannelPutRequester *channelPutRequester,
             epics::pvData::PVStructure *pvRequest)
     {
-    	return new MockChannelPut(channelPutRequester, m_pvStructure, pvRequest);
+    	return new ChannelImplPut(channelPutRequester, m_pvStructure, pvRequest);
     }
 
     virtual ChannelPutGet* createChannelPutGet(
@@ -522,12 +526,12 @@ class MockChannel : public Channel {
     }
 };
 
-class MockChannelProvider;
+class ChannelProviderImpl;
 
-class MockChannelFind : public ChannelFind
+class ChannelImplFind : public ChannelFind
 {
     public:
-    MockChannelFind(ChannelProvider* provider) : m_provider(provider)
+    ChannelImplFind(ChannelProvider* provider) : m_provider(provider)
     {
     }
 
@@ -549,21 +553,21 @@ class MockChannelFind : public ChannelFind
     private:
     
     // only to be destroyed by it
-    friend class MockChannelProvider;
-    virtual ~MockChannelFind() {}
+    friend class ChannelProviderImpl;
+    virtual ~ChannelImplFind() {}
     
     ChannelProvider* m_provider;  
 };
 
-class MockChannelProvider : public ChannelProvider {
+class ChannelProviderImpl : public ChannelProvider {
     public:
 
-    MockChannelProvider() : m_mockChannelFind(new MockChannelFind(this)) {
+    ChannelProviderImpl() : m_mockChannelFind(new ChannelImplFind(this)) {
     }
 
     virtual epics::pvData::String getProviderName()
     {
-        return "MockChannelProvider";
+        return "ChannelProviderImpl";
     }
     
     virtual void destroy()
@@ -596,7 +600,7 @@ class MockChannelProvider : public ChannelProvider {
     {
         if (address == "local")
         {
-            Channel* channel = new MockChannel(this, channelRequester, channelName, address);
+            Channel* channel = new ChannelImpl(this, channelRequester, channelName, address);
             channelRequester->channelCreated(getStatusCreate()->getStatusOK(), channel);
             return channel;
         }
@@ -610,20 +614,30 @@ class MockChannelProvider : public ChannelProvider {
     }
     
     private:
-    ~MockChannelProvider() {};
+    ~ChannelProviderImpl() {};
     
-    MockChannelFind* m_mockChannelFind;
+    ChannelImplFind* m_mockChannelFind;
     
 };
 
 
+class TransportRegistry;
+class ChannelSearchManager;
+class BlockingTCPConnector;
+class NamedLockPattern;
+class ResponseRequest;
+class BeaconHandlerImpl;
 
-
-class MockClientContext : public ClientContext
+class ClientContextImpl : public ClientContext
 {
     public:
     
-    MockClientContext() : m_version(new Version("Mock CA Client", "cpp", 1, 0, 0, 0))
+    ClientContextImpl() : 
+    	m_addressList(""), m_autoAddressList(true), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
+    	m_broadcastPort(CA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV), m_timer(0),
+    	m_broadcastTransport(0), m_searchTransport(0), m_connector(0), m_transportRegistry(0),
+    	m_namedLocker(0), m_lastCID(0), m_lastIOID(0), m_channelSearchManager(0),
+        m_version(new Version("CA Client", "cpp", 0, 0, 0, 1))
     {
         initialize();
     }
@@ -637,7 +651,7 @@ class MockClientContext : public ClientContext
     }
     
     virtual void initialize() {
-        m_provider = new MockChannelProvider();
+        m_provider = new ChannelProviderImpl();
     }
         
     virtual void printInfo() {
@@ -663,10 +677,125 @@ class MockClientContext : public ClientContext
     }    
            
     private:
-    ~MockClientContext() {};
-    
+    ~ClientContextImpl() {};
+
+	/**
+	 * A space-separated list of broadcast address for process variable name resolution.
+	 * Each address must be of the form: ip.number:port or host.name:port
+	 */
+	String m_addressList;
+	
+	/**
+	 * Define whether or not the network interfaces should be discovered at runtime. 
+	 */
+	bool m_autoAddressList;
+
+	/**
+	 * If the context doesn't see a beacon from a server that it is connected to for
+	 * connectionTimeout seconds then a state-of-health message is sent to the server over TCP/IP.
+	 * If this state-of-health message isn't promptly replied to then the context will assume that
+	 * the server is no longer present on the network and disconnect.
+	 */
+	float m_connectionTimeout;
+	
+	/**
+	 * Period in second between two beacon signals.
+	 */
+	float m_beaconPeriod;
+	
+	/**
+	 * Broadcast (beacon, search) port number to listen to.
+	 */
+	int m_broadcastPort;
+	
+	/**
+	 * Receive buffer size (max size of payload).
+	 */
+	int m_receiveBufferSize;
+	
+	/**
+	 * Timer.
+	 */
+	Timer* m_timer;
+
+	/**
+	 * Broadcast transport needed to listen for broadcasts.
+	 */
+	BlockingUDPTransport* m_broadcastTransport;
+	
+	/**
+	 * UDP transport needed for channel searches.
+	 */
+	BlockingUDPTransport* m_searchTransport;
+
+	/**
+	 * CA connector (creates CA virtual circuit).
+	 */
+	BlockingTCPConnector* m_connector;
+
+	/**
+	 * CA transport (virtual circuit) registry.
+	 * This registry contains all active transports - connections to CA servers. 
+	 */
+	TransportRegistry* m_transportRegistry;
+
+	/**
+	 * Context instance.
+	 */
+	NamedLockPattern* m_namedLocker;
+
+	/**
+	 * Context instance.
+	 */
+	static const int LOCK_TIMEOUT = 20 * 1000;	// 20s
+
+	/**
+	 * Map of channels (keys are CIDs).
+	 */
+	 // TODO consider std::unordered_map
+	typedef std::map<int, ChannelImpl*> IntChannelMap;
+	IntChannelMap m_channelsByCID;
+
+typedef int pvAccessID;
+	/**
+	 * Last CID cache. 
+	 */
+	pvAccessID m_lastCID;
+
+	/**
+	 * Map of pending response requests (keys are IOID).
+	 */
+	 // TODO consider std::unordered_map
+	typedef std::map<int, ResponseRequest*> IntResponseRequestMap;
+	IntResponseRequestMap m_pendingResponseRequests;
+
+	/**
+	 * Last IOID cache. 
+	 */
+	pvAccessID m_lastIOID;
+
+	/**
+	 * Channel search manager.
+	 * Manages UDP search requests.
+	 */
+	ChannelSearchManager* m_channelSearchManager;
+
+	/**
+	 * Beacon handler map.
+	 */
+	 // TODO consider std::unordered_map
+	typedef std::map<osiSockAddr, BeaconHandlerImpl*> AddressBeaconHandlerMap;
+	AddressBeaconHandlerMap m_beaconHandlers;
+	
+	/**
+	 * Version.
+	 */
     Version* m_version;
-    MockChannelProvider* m_provider;
+
+	/**
+	 * Provider implementation.
+	 */
+    ChannelProviderImpl* m_provider;
 };
 
 
@@ -893,7 +1022,7 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
 
 int main(int argc,char *argv[])
 {
-    MockClientContext* context = new MockClientContext();
+    ClientContextImpl* context = new ClientContextImpl();
     context->printInfo();
     
     
@@ -906,7 +1035,7 @@ int main(int argc,char *argv[])
 
     Channel* channel = context->getProvider()->createChannel("test", &channelRequester);
     std::cout << channel->getChannelName() << std::endl;
-    
+    /*
     GetFieldRequesterImpl getFieldRequesterImpl;
     channel->getField(&getFieldRequesterImpl, "timeStamp.secondsPastEpoch");
     
@@ -942,7 +1071,7 @@ int main(int argc,char *argv[])
     
     
     monitor->destroy();
-
+    */
     channel->destroy();
     
     context->destroy();

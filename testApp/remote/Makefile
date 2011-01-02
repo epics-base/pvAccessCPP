@@ -10,6 +10,9 @@ PROD_HOST += testBlockingUDPClnt
 testBlockingUDPClnt_SRCS += testBlockingUDPClnt.cpp
 testBlockingUDPClnt_LIBS += pvData pvAccess Com
 
+PROD_HOST += testRemoteClientImpl
+testRemoteClientImpl_SRCS += testRemoteClientImpl.cpp
+testRemoteClientImpl_LIBS += pvData pvAccess Com
 
 include $(TOP)/configure/RULES
 #----------------------------------------
