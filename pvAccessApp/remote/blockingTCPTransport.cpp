@@ -64,7 +64,7 @@ namespace epics {
 
         BlockingTCPTransport::BlockingTCPTransport(SOCKET channel,
                 ResponseHandler* responseHandler, int receiveBufferSize,
-                short priority) :
+                short priority, TransportRegistry* transportRegistry) :
             _closed(false), _channel(channel), _remoteTransportRevision(0),
                     _remoteTransportReceiveBufferSize(MAX_TCP_RECV),
                     _remoteTransportSocketReceiveBufferSize(MAX_TCP_RECV),
@@ -86,7 +86,8 @@ namespace epics {
                     _rcvThreadId(NULL), _sendThreadId(NULL), _monitorSendQueue(
                             new GrowingCircularBuffer<TransportSender*> (100)),
                     _monitorSender(new MonitorSender(_monitorMutex,
-                            _monitorSendQueue)) {
+                            _monitorSendQueue)), _transportRegistry(
+                            transportRegistry) {
 
             _socketBuffer = new ByteBuffer(max(MAX_TCP_RECV
                     +MAX_ENSURE_DATA_BUFFER_SIZE, receiveBufferSize));
@@ -122,8 +123,8 @@ namespace epics {
             // prepare buffer
             clearAndReleaseBuffer();
 
-            // TODO: add to registry
-            //context.getTransportRegistry().put(this);
+            // add to registry
+            _transportRegistry->put(this);
         }
 
         BlockingTCPTransport::~BlockingTCPTransport() {
@@ -193,8 +194,8 @@ namespace epics {
 
             _closed = true;
 
-            // TODO remove from registry
-            //context.getTransportRegistry().remove(this);
+            // remove from registry
+            _transportRegistry->remove(this);
 
             // clean resources
             internalClose(force);
@@ -832,11 +833,7 @@ namespace epics {
             errlogSevPrintf(errlogInfo, "Connection to %s closed.",
                     inetAddressToString(_socketAddress).c_str());
 
-            int retval = ::shutdown(_channel, SHUT_RDWR);
-
-            if(retval<0&&errno!=ENOTCONN) errlogSevPrintf(errlogMajor,
-                    "Error closing socket to %s: %s", inetAddressToString(
-                            _socketAddress).c_str(), strerror(errno));
+            epicsSocketDestroy(_channel);
         }
 
         void BlockingTCPTransport::rcvThreadRunner(void* param) {

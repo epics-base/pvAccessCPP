@@ -51,7 +51,7 @@ namespace epics {
             close(true); // close the socket and stop the thread.
             delete _receiveBuffer;
             delete _sendBuffer;
-            delete _readBuffer;
+            delete[] _readBuffer;
             delete _mutex;
         }
 
@@ -76,10 +76,7 @@ namespace epics {
                     "UDP socket %s closed.",
                     inetAddressToString(_bindAddress).c_str());
 
-            int retval = ::close(_channel);
-
-            if(retval<0) errlogSevPrintf(errlogMajor, "Socket close error: %s",
-                    strerror(errno));
+            epicsSocketDestroy(_channel);
         }
 
         void BlockingUDPTransport::enqueueSendRequest(TransportSender* sender) {

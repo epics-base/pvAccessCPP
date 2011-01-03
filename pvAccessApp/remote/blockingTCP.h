@@ -12,6 +12,7 @@
 #include "caConstants.h"
 #include "remote.h"
 #include "growingCircularBuffer.h"
+#include "transportRegistry.h"
 
 /* pvData */
 #include <byteBuffer.h>
@@ -22,8 +23,6 @@
 /* EPICSv3 */
 #include <osdSock.h>
 #include <osiSock.h>
-
-using namespace epics::pvData;
 
 namespace epics {
     namespace pvAccess {
@@ -43,7 +42,7 @@ namespace epics {
         public:
             BlockingTCPTransport(SOCKET channel,
                     ResponseHandler* responseHandler, int receiveBufferSize,
-                    short priority);
+                    short priority, TransportRegistry* transportRegistry);
 
             ~BlockingTCPTransport();
 
@@ -98,7 +97,6 @@ namespace epics {
             int getRemoteTransportReceiveBufferSize() {
                 return _remoteTransportReceiveBufferSize;
             }
-
 
             virtual int getSocketReceiveBufferSize() const;
 
@@ -178,7 +176,7 @@ namespace epics {
             /**
              * Send buffer.
              */
-            ByteBuffer* _sendBuffer;
+            epics::pvData::ByteBuffer* _sendBuffer;
 
             /**
              * Remote side transport revision (minor).
@@ -247,7 +245,7 @@ namespace epics {
              * @param buffer[in]    buffer to be sent
              * @return success indicator
              */
-            virtual bool send(ByteBuffer* buffer);
+            virtual bool send(epics::pvData::ByteBuffer* buffer);
 
         private:
             /**
@@ -289,14 +287,14 @@ namespace epics {
              */
             int _lastMessageStartPosition;
 
-            ByteBuffer* _socketBuffer;
+            epics::pvData::ByteBuffer* _socketBuffer;
 
             int _startPosition;
 
-            Mutex* _mutex;
-            Mutex* _sendQueueMutex;
-            Mutex* _verifiedMutex;
-            Mutex* _monitorMutex;
+            epics::pvData::Mutex* _mutex;
+            epics::pvData::Mutex* _sendQueueMutex;
+            epics::pvData::Mutex* _verifiedMutex;
+            epics::pvData::Mutex* _monitorMutex;
 
             ReceiveStage _stage;
 
@@ -327,6 +325,8 @@ namespace epics {
             GrowingCircularBuffer<TransportSender*>* _monitorSendQueue;
 
             MonitorSender* _monitorSender;
+
+            TransportRegistry* _transportRegistry;
 
             /**
              * Internal method that clears and releases buffer.

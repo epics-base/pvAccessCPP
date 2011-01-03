@@ -33,7 +33,7 @@ namespace epics {
             }
 
             ~GrowingCircularBuffer() {
-                delete _elements;
+                delete[] _elements;
             }
 
             /**
@@ -126,7 +126,7 @@ namespace epics {
                 _takePointer = 0;
                 _putPointer = _size;
                 _size *= 2;
-                delete _elements;
+                delete[] _elements;
                 _elements = newElements;
             }
             _count++;
