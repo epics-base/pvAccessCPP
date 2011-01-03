@@ -118,6 +118,16 @@ int main(int argc, char *argv[])
 	}
 	assert(registry->numberOfActiveTransports() == 0);
 
+	for(int32 i = 0; i < address_max; i++)
+	{
+		for(int16 j = 0; j < priority_max; j++)
+		{
+			registry->put(static_cast<Transport*>(transportArrayIn[i * priority_max + j]));;
+		}
+	}
+	assert(registry->numberOfActiveTransports() == (priority_max * address_max));
+	registry->clear();
+	assert(registry->numberOfActiveTransports() == 0);
 
 	for(int32 i = 0; i < address_max; i++)
 	{

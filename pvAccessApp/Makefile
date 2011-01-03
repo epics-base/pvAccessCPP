@@ -40,11 +40,14 @@ LIBSRCS += CreateRequestFactory.cpp
 SRC_DIRS += $(PVACCESS)/remote
 INC += remote.h
 INC += blockingUDP.h
-INC += blockingTCP.h
+INC += beaconEmitter.h
+INC += beaconServerStatusProvider.h
+INC += beaconHandler.h
 LIBSRCS += blockingUDPTransport.cpp
 LIBSRCS += blockingUDPConnector.cpp
-LIBSRCS += blockingTCPTransport.cpp
-
+LIBSRCS += beaconEmitter.cpp
+LIBSRCS += beaconServerStatusProvider.cpp
+LIBSRCS += beaconHandler.cpp
 
 LIBRARY = pvAccess
 pvAccess_LIBS += Com

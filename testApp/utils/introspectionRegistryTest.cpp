@@ -412,7 +412,8 @@ void testSerializeStatus()
 	//TODO why are in and out on the same address?
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 	pvDataCreate = getPVDataCreate();
 	statusCreate = getStatusCreate();
 	fieldCreate = getFieldCreate();
