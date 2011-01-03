@@ -20,8 +20,6 @@
 namespace epics {
     namespace pvAccess {
 
-        using namespace epics::pvData;
-
         enum ProtocolType {
             TCP, UDP, SSL
         };
@@ -30,7 +28,7 @@ namespace epics {
          * Interface defining transport send control.
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          */
-        class TransportSendControl : public SerializableControl {
+        class TransportSendControl : public epics::pvData::SerializableControl {
         public:
             virtual void startMessage(int8 command, int ensureCapacity) =0;
             virtual void endMessage() =0;
@@ -56,7 +54,7 @@ namespace epics {
              * NOTE: these limitations allows efficient implementation.
              */
             virtual void
-            send(ByteBuffer* buffer, TransportSendControl* control) =0;
+            send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) =0;
 
             virtual void lock() =0;
             virtual void unlock() =0;
@@ -67,7 +65,7 @@ namespace epics {
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          * @version $Id: Transport.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
          */
-        class Transport : public DeserializableControl {
+        class Transport : public epics::pvData::DeserializableControl {
         public:
             virtual ~Transport() {
             }
@@ -210,7 +208,7 @@ namespace epics {
              */
             virtual void handleResponse(osiSockAddr* responseFrom,
                     Transport* transport, int8 version, int8 command,
-                    int payloadSize, ByteBuffer* payloadBuffer) =0;
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer) =0;
         };
 
         /**

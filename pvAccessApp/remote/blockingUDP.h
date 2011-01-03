@@ -173,7 +173,7 @@ namespace epics {
             static void threadRunner(void* param);
 
             bool processBuffer(osiSockAddr* fromAddress,
-                    ByteBuffer* receiveBuffer);
+                    epics::pvData::ByteBuffer* receiveBuffer);
 
             // Context only used for logging in this class
 
@@ -236,7 +236,8 @@ namespace epics {
 
         };
 
-        class BlockingUDPConnector : public Connector, NoDefaultMethods {
+        class BlockingUDPConnector : public Connector,
+                epics::pvData::NoDefaultMethods {
         public:
 
             BlockingUDPConnector(bool reuseSocket,

@@ -8,8 +8,9 @@
 #include "remote.h"
 #include "blockingUDP.h"
 #include "logger.h"
-#include "inetAddressUtil.h"
 #include "hexDump.h"
+
+#include <osiSock.h>
 
 #include <iostream>
 #include <sstream>
@@ -43,7 +44,12 @@ void DummyResponseHandler::handleResponse(osiSockAddr* responseFrom,
     std::ostringstream os;
 
     cout<<"Received new UDP datagram["<<packets+1<<"]..."<<endl;
-    cout<<"From: "<<inetAddressToString(responseFrom)<<endl;
+
+    char ipAddressStr[24];
+
+    ipAddrToDottedIP(&responseFrom->ia, ipAddressStr, sizeof(ipAddressStr));
+
+    cout<<"From: "<<ipAddressStr<<endl;
     cout<<"Version: 0x"<<hex<<(int)version<<endl;
     cout<<"Command: 0x"<<hex<<(int)command<<endl;
     cout<<"Payload size: "<<dec<<payloadSize<<endl;

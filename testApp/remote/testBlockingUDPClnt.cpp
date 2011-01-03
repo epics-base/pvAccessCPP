@@ -44,10 +44,11 @@ public:
         // set recipient
         sendTo.ia.sin_family = AF_INET;
         sendTo.ia.sin_port = htons(65000);
-        if(inet_aton("192.168.71.129",&sendTo.ia.sin_addr)==0) {
-            cout<<"error in inet_aton()"<<endl;
+        if(aToIPAddr("192.168.71.129", 65000, &sendTo.ia)<0) {
+            cout<<"error in aToIPAddr(...)"<<endl;
             return;
         }
+
         control->setRecipient(&sendTo);
 
         // send the packet

@@ -27,19 +27,13 @@ namespace epics {
         public:
             /**
              * Constructs an empty array deque with an initial capacity
-             * sufficient to hold 16 elements. Array FIFO is designed to hold
-             * objects allocated on the heap.
-             */
-            ArrayFIFO();
-
-            /**
-             * Constructs an empty array deque with an initial capacity
              * sufficient to hold the specified number of elements. Array FIFO
              * is designed to hold objects allocated on the heap.
              *
-             * @param[in] numElements  lower bound on initial capacity of the deque
+             * @param[in] numElements  lower bound on initial capacity of the
+             * deque. Default value is 16 elements.
              */
-            ArrayFIFO(size_t numElements);
+            ArrayFIFO(size_t numElements = 16);
             ~ArrayFIFO();
 
             /**
@@ -210,18 +204,12 @@ namespace epics {
             T* a = new T[newCapacity];
             arraycopy(_elements, p, a, 0, r);
             arraycopy(_elements, 0, a, r, p);
-            delete _elements;
+            delete[] _elements;
             _elements = a;
             _size = newCapacity;
             _head = 0;
             _tail = n;
 
-        }
-
-        template<class T>
-        ArrayFIFO<T>::ArrayFIFO() :
-            _head(0), _tail(0), _size(16), _mutex() {
-            _elements = new T[16];
         }
 
         template<class T>
@@ -232,7 +220,7 @@ namespace epics {
 
         template<class T>
         ArrayFIFO<T>::~ArrayFIFO() {
-            delete _elements;
+            delete[] _elements;
         }
 
         template<class T>

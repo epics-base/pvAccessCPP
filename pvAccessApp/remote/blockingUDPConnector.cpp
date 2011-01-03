@@ -14,6 +14,7 @@
 
 /* EPICSv3 */
 #include <errlog.h>
+#include <osiSock.h>
 
 /* standard */
 #include <sys/types.h>
@@ -28,7 +29,13 @@ namespace epics {
             errlogSevPrintf(errlogInfo, "Creating datagram socket to: %s",
                     inetAddressToString(bindAddress).c_str());
 
-            SOCKET socket = ::socket(PF_INET, SOCK_DGRAM, 0);
+            SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+            if(socket==INVALID_SOCKET) {
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                errlogSevPrintf(errlogMajor, "Error creating socket: %s",
+                        errStr);
+            }
 
             /* from MSDN:
              * Note:  If the setsockopt function is called before the bind
