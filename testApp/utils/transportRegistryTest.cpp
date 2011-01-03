@@ -68,6 +68,8 @@ int main(int argc, char *argv[])
 		osiSockAddr* addr = new osiSockAddr;
 		addrArray[i] = addr;
 		addr->ia.sin_addr.s_addr = i;
+		addr->ia.sin_port = i;
+		addr->ia.sin_family = AF_INET;
 
 		//priority
 		for(int16 j = 0; j < priority_max; j++)

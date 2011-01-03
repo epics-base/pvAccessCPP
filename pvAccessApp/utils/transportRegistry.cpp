@@ -28,15 +28,13 @@ void TransportRegistry::put(Transport* transport)
 	//const string type = transport.getType();
 	const int16 priority = transport->getPriority();
 	const osiSockAddr* address = transport->getRemoteAddress();
-	const int32 intAddress = ipv4AddressToInt(*address);
 
-
-	_transportsIter = _transports.find(intAddress);
+	_transportsIter = _transports.find(address);
 	prioritiesMap_t* priorities;
 	if(_transportsIter == _transports.end())
 	{
 		priorities = new prioritiesMap_t();
-		_transports[intAddress] = priorities;
+		_transports[address] = priorities;
 	}
 	else
 	{
@@ -55,8 +53,7 @@ Transport* TransportRegistry::get(const string type, const osiSockAddr* address,
 	}
 
 	Lock guard(&_mutex);
-	const int32 intAddress = ipv4AddressToInt(*address);
-	_transportsIter = _transports.find(intAddress);
+	_transportsIter = _transports.find(address);
 	if(_transportsIter != _transports.end())
 	{
 		prioritiesMap_t* priorities = _transportsIter->second;
@@ -78,8 +75,7 @@ Transport** TransportRegistry::get(const string type, const osiSockAddr* address
 	}
 
 	Lock guard(&_mutex);
-	const int32 intAddress = ipv4AddressToInt(*address);
-	_transportsIter = _transports.find(intAddress);
+	_transportsIter = _transports.find(address);
 	if(_transportsIter != _transports.end())
 	{
 		prioritiesMap_t* priorities = _transportsIter->second;
@@ -106,9 +102,8 @@ Transport* TransportRegistry::remove(Transport* transport)
 	Lock guard(&_mutex);
 	const int16 priority = transport->getPriority();
 	const osiSockAddr* address = transport->getRemoteAddress();
-	const int32 intAddress = ipv4AddressToInt(*address);
 	Transport* retTransport = NULL;
-	_transportsIter = _transports.find(intAddress);
+	_transportsIter = _transports.find(address);
 	if(_transportsIter != _transports.end())
 	{
 		prioritiesMap_t* priorities = _transportsIter->second;
