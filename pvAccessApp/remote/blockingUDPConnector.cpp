@@ -25,7 +25,7 @@ namespace epics {
 
         Transport* BlockingUDPConnector::connect(TransportClient* client,
                 ResponseHandler* responseHandler, osiSockAddr* bindAddress,
-                short transportRevision, short priority) {
+                short transportRevision, int16 priority) {
             errlogSevPrintf(errlogInfo, "Creating datagram socket to: %s",
                     inetAddressToString(bindAddress).c_str());
 
@@ -59,11 +59,13 @@ namespace epics {
             retval = ::setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &optval,
                     sizeof(optval));
             if(retval<0) errlogSevPrintf(errlogMajor,
-                    "Error binding socket: %s", strerror(errno));
+                    "Error setting SO_REUSEADDR: %s", strerror(errno));
 
             optval = _broadcast ? 1 : 0;
             retval = ::setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &optval,
                     sizeof(optval));
+            if(retval<0) errlogSevPrintf(errlogMajor,
+                    "Error setting SO_BROADCAST: %s", strerror(errno));
 
             // sockets are blocking by default
 

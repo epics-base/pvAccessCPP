@@ -13,16 +13,22 @@
 #include "remote.h"
 #include "growingCircularBuffer.h"
 #include "transportRegistry.h"
+#include "introspectionRegistry.h"
 
 /* pvData */
 #include <byteBuffer.h>
 #include <pvType.h>
 #include <lock.h>
 #include <epicsThread.h>
+#include <timer.h>
 
 /* EPICSv3 */
 #include <osdSock.h>
 #include <osiSock.h>
+#include <epicsTime.h>
+
+/* standard */
+#include <set>
 
 namespace epics {
     namespace pvAccess {
@@ -40,27 +46,27 @@ namespace epics {
         class BlockingTCPTransport : public Transport,
                 public TransportSendControl {
         public:
-            BlockingTCPTransport(SOCKET channel,
+            BlockingTCPTransport(Context* context, SOCKET channel,
                     ResponseHandler* responseHandler, int receiveBufferSize,
-                    short priority, TransportRegistry* transportRegistry);
+                    int16 priority);
 
-            ~BlockingTCPTransport();
+            virtual ~BlockingTCPTransport();
 
-            bool isClosed() const {
+            virtual bool isClosed() const {
                 return _closed;
             }
 
-            void setRemoteMinorRevision(int minorRevision) {
+            virtual void setRemoteMinorRevision(int8 minorRevision) {
                 _remoteTransportRevision = minorRevision;
             }
 
-            void setRemoteTransportReceiveBufferSize(
+            virtual void setRemoteTransportReceiveBufferSize(
                     int remoteTransportReceiveBufferSize) {
                 _remoteTransportReceiveBufferSize
                         = remoteTransportReceiveBufferSize;
             }
 
-            void setRemoteTransportSocketReceiveBufferSize(
+            virtual void setRemoteTransportSocketReceiveBufferSize(
                     int socketReceiveBufferSize) {
                 _remoteTransportSocketReceiveBufferSize
                         = socketReceiveBufferSize;
@@ -195,9 +201,10 @@ namespace epics {
 
             /**
              * Priority.
-             * NOTE: Priority cannot just be changed, since it is registered in transport registry with given priority.
+             * NOTE: Priority cannot just be changed, since it is registered
+             * in transport registry with given priority.
              */
-            short _priority;
+            int16 _priority;
             // TODO to be implemeneted
 
             /**
@@ -326,7 +333,7 @@ namespace epics {
 
             MonitorSender* _monitorSender;
 
-            TransportRegistry* _transportRegistry;
+            Context* _context;
 
             /**
              * Internal method that clears and releases buffer.
@@ -350,6 +357,171 @@ namespace epics {
             void freeSendBuffers();
 
             TransportSender* extractFromSendQueue();
+        };
+
+        class BlockingClientTCPTransport : public BlockingTCPTransport,
+                public TransportSender,
+                public epics::pvData::TimerCallback,
+                public ReferenceCountingTransport {
+
+        public:
+            BlockingClientTCPTransport(Context* context, SOCKET channel,
+                    ResponseHandler* responseHandler, int receiveBufferSize,
+                    TransportClient* client, short remoteTransportRevision,
+                    float beaconInterval, int16 priority);
+
+            virtual ~BlockingClientTCPTransport();
+
+            virtual void timerStopped() {
+                // noop
+            }
+
+            virtual void callback();
+
+            /**
+             * Acquires transport.
+             * @param client client (channel) acquiring the transport
+             * @return <code>true</code> if transport was granted, <code>false</code> otherwise.
+             */
+            virtual bool acquire(TransportClient* client);
+
+            virtual IntrospectionRegistry* getIntrospectionRegistry() {
+                return _introspectionRegistry;
+            }
+
+            /**
+             * Releases transport.
+             * @param client client (channel) releasing the transport
+             */
+            virtual void release(TransportClient* client);
+
+            /**
+             * Alive notification.
+             * This method needs to be called (by newly received data or beacon)
+             * at least once in this period, if not echo will be issued
+             * and if there is not response to it, transport will be considered as unresponsive.
+             */
+            virtual void aliveNotification();
+
+            /**
+             * Changed transport (server restared) notify.
+             */
+            virtual void changedTransport();
+
+            virtual void lock() {
+                // noop
+            }
+
+            virtual void unlock() {
+                // noop
+            }
+
+            virtual void send(epics::pvData::ByteBuffer* buffer,
+                    TransportSendControl* control);
+
+        protected:
+            /**
+             * Introspection registry.
+             */
+            IntrospectionRegistry* _introspectionRegistry;
+
+            virtual void internalClose(bool force);
+
+        private:
+
+            /**
+             * Owners (users) of the transport.
+             */
+            std::set<TransportClient*>* _owners;
+
+            /**
+             * Connection timeout (no-traffic) flag.
+             */
+            double _connectionTimeout;
+
+            /**
+             * Unresponsive transport flag.
+             */
+            volatile bool _unresponsiveTransport;
+
+            /**
+             * Timer task node.
+             */
+            TimerNode* _timerNode;
+
+            /**
+             * Timestamp of last "live" event on this transport.
+             */
+            volatile epicsTimeStamp _aliveTimestamp;
+
+            epics::pvData::Mutex* _mutex;
+            epics::pvData::Mutex* _ownersMutex;
+
+            bool _verifyOrEcho;
+
+            void unresponsiveTransport();
+
+            /**
+             * Notifies clients about disconnect.
+             */
+            void closedNotifyClients();
+
+            /**
+             * Responsive transport notify.
+             */
+            void responsiveTransport();
+        };
+
+        /**
+         * Channel Access TCP connector.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: BlockingTCPConnector.java,v 1.1 2010/05/03 14:45:47 mrkraimer Exp $
+         */
+        class BlockingTCPConnector : public Connector {
+        public:
+            BlockingTCPConnector(Context* context, int receiveBufferSize,
+                    float beaconInterval);
+
+            virtual ~BlockingTCPConnector();
+
+            virtual Transport* connect(TransportClient* client,
+                        ResponseHandler* responseHandler, osiSockAddr* address,
+                        short transportRevision, int16 priority);
+        private:
+            /**
+             * Lock timeout
+             */
+            static const int LOCK_TIMEOUT = 20*1000; // 20s
+
+            /**
+             * Context instance.
+             */
+            Context* _context;
+
+            /**
+             * Context instance.
+             */
+            //NamedLockPattern* _namedLocker;
+
+            /**
+             * Receive buffer size.
+             */
+            int _receiveBufferSize;
+
+            /**
+             * Beacon interval.
+             */
+            float _beaconInterval;
+
+            /**
+             * Tries to connect to the given address.
+             * @param[in] address
+             * @param[in] tries
+             * @return the SOCKET
+             * @throws IOException
+             */
+            SOCKET tryConnect(osiSockAddr* address, int tries);
+
         };
 
     }

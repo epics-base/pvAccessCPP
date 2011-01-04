@@ -1,7 +1,7 @@
 /* testRemoteClientImpl.cpp */
 /* Author:  Matej Sekoranja Date: 2011.1.1 */
 
-
+#include <transportRegistry.h>
 #include <pvAccess.h>
 #include <iostream>
 #include <showConstructDestruct.h>
@@ -25,7 +25,7 @@ class ChannelImplProcess : public ChannelProcess
 		ChannelProcessRequester* m_channelProcessRequester;
 		PVStructure* m_pvStructure;
 		PVScalar* m_valueField;
-    
+
     private:
     ~ChannelImplProcess()
     {
@@ -44,29 +44,29 @@ class ChannelImplProcess : public ChannelProcess
             Status* noValueFieldStatus = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "no 'value' field");
         	m_channelProcessRequester->channelProcessConnect(noValueFieldStatus, this);
         	delete noValueFieldStatus;
-        	
+
         	// NOTE client must destroy this instance...
         	// do not access any fields and return ASAP
         	return;
         }
-        
+
         if (field->getField()->getType() != scalar)
         {
             Status* notAScalarStatus = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "'value' field not scalar type");
         	m_channelProcessRequester->channelProcessConnect(notAScalarStatus, this);
         	delete notAScalarStatus;
-        	
+
         	// NOTE client must destroy this instance….
         	// do not access any fields and return ASAP
         	return;
         }
-        
+
         m_valueField = static_cast<PVScalar*>(field);
-        	
-        // TODO pvRequest 
+
+        // TODO pvRequest
     	m_channelProcessRequester->channelProcessConnect(getStatusCreate()->getStatusOK(), this);
     }
-    
+
     virtual void process(bool lastRequest)
     {
         switch (m_valueField->getScalar()->getScalarType())
@@ -138,19 +138,19 @@ class ChannelImplProcess : public ChannelProcess
             default:
                 // noop
                 break;
-            
-        } 
+
+        }
     	m_channelProcessRequester->processDone(getStatusCreate()->getStatusOK());
-    	
+
     	if (lastRequest)
     	   destroy();
     }
-    
+
     virtual void destroy()
     {
         delete this;
     }
-    
+
 };
 
 
@@ -167,7 +167,7 @@ class ChannelImplGet : public ChannelGet
 		PVStructure* m_pvStructure;
 		BitSet* m_bitSet;
 		volatile bool m_first;
-    
+
     private:
     ~ChannelImplGet()
     {
@@ -181,10 +181,10 @@ class ChannelImplGet : public ChannelGet
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelGet);
 
-        // TODO pvRequest 
+        // TODO pvRequest
     	m_channelGetRequester->channelGetConnect(getStatusCreate()->getStatusOK(), this, m_pvStructure, m_bitSet);
     }
-    
+
     virtual void get(bool lastRequest)
     {
     	m_channelGetRequester->getDone(getStatusCreate()->getStatusOK());
@@ -193,17 +193,17 @@ class ChannelImplGet : public ChannelGet
     		m_first = false;
     		m_bitSet->set(0);  // TODO
     	}
-    	
+
     	if (lastRequest)
     	   destroy();
     }
-    
+
     virtual void destroy()
     {
         delete m_bitSet;
         delete this;
     }
-    
+
 };
 
 
@@ -222,7 +222,7 @@ class ChannelImplPut : public ChannelPut
 		PVStructure* m_pvStructure;
 		BitSet* m_bitSet;
 		volatile bool m_first;
-    
+
     private:
     ~ChannelImplPut()
     {
@@ -236,17 +236,17 @@ class ChannelImplPut : public ChannelPut
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelPut);
 
-        // TODO pvRequest 
+        // TODO pvRequest
     	m_channelPutRequester->channelPutConnect(getStatusCreate()->getStatusOK(), this, m_pvStructure, m_bitSet);
     }
-    
+
     virtual void put(bool lastRequest)
     {
     	m_channelPutRequester->putDone(getStatusCreate()->getStatusOK());
     	if (lastRequest)
     	   destroy();
     }
-    
+
     virtual void get()
     {
     	m_channelPutRequester->getDone(getStatusCreate()->getStatusOK());
@@ -257,7 +257,7 @@ class ChannelImplPut : public ChannelPut
         delete m_bitSet;
         delete this;
     }
-    
+
 };
 
 
@@ -278,7 +278,7 @@ class MockMonitor : public Monitor, public MonitorElement
 		volatile bool m_first;
 		Mutex* m_lock;
 		volatile int m_count;
-    
+
     private:
     ~MockMonitor()
     {
@@ -297,16 +297,16 @@ class MockMonitor : public Monitor, public MonitorElement
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockMonitor);
 
         m_changedBitSet->set(0);
-        
-        // TODO pvRequest 
+
+        // TODO pvRequest
     	m_monitorRequester->monitorConnect(getStatusCreate()->getStatusOK(), this, const_cast<Structure*>(m_pvStructure->getStructure()));
     }
-    
+
     virtual Status* start()
     {
         // fist monitor
         m_monitorRequester->monitorEvent(this);
-        
+
         // client needs to delete status, so passing shared OK instance is not right thing to do
         return getStatusCreate()->createStatus(STATUSTYPE_OK, "Monitor started.");
     }
@@ -337,24 +337,24 @@ class MockMonitor : public Monitor, public MonitorElement
         if (m_count)
             m_count--;
     }
-    
+
     virtual void destroy()
     {
         delete stop();
-        
+
         delete m_lock;
         delete m_overrunBitSet;
         delete m_changedBitSet;
         delete this;
     }
-    
+
     // ============ MonitorElement ============
-    
+
     virtual PVStructure* getPVStructure()
     {
         return m_pvStructure;
     }
-    
+
     virtual BitSet* getChangedBitSet()
     {
         return m_changedBitSet;
@@ -364,8 +364,8 @@ class MockMonitor : public Monitor, public MonitorElement
     {
         return m_overrunBitSet;
     }
-    
-    
+
+
 };
 
 
@@ -381,17 +381,17 @@ class ChannelImpl : public Channel {
         ChannelRequester* m_requester;
         String m_name;
         String m_remoteAddress;
-        
+
         PVStructure* m_pvStructure;
-        
+
     private:
     ~ChannelImpl()
     {
         PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannel);
     }
-    
+
     public:
-    
+
     ChannelImpl(
         ChannelProvider* provider,
         ChannelRequester* requester,
@@ -403,8 +403,8 @@ class ChannelImpl : public Channel {
         m_remoteAddress(remoteAddress)
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannel);
-     
-     
+
+
         ScalarType stype = pvDouble;
         String allProperties("alarm,timeStamp,display,control,valueAlarm");
 
@@ -413,11 +413,11 @@ class ChannelImpl : public Channel {
         PVDouble *pvField = m_pvStructure->getDoubleField(String("value"));
         pvField->put(1.123);
 
-        
+
         // already connected, report state
         m_requester->channelStateChange(this, CONNECTED);
     }
-    
+
     virtual void destroy()
     {
         delete m_pvStructure;
@@ -428,13 +428,13 @@ class ChannelImpl : public Channel {
     {
         return getChannelName();
     };
-    
-    virtual void message(String message,MessageType messageType) 
+
+    virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual ChannelProvider* getProvider() 
+    virtual ChannelProvider* getProvider()
     {
         return m_provider;
     }
@@ -502,7 +502,7 @@ class ChannelImpl : public Channel {
         // TODO
         return 0;
     }
-    
+
     virtual ChannelRPC* createChannelRPC(ChannelRPCRequester *channelRPCRequester,
             epics::pvData::PVStructure *pvRequest)
     {
@@ -539,24 +539,24 @@ class ChannelImplFind : public ChannelFind
     {
         // one instance for all, do not delete at all
     }
-   
+
     virtual ChannelProvider* getChannelProvider()
     {
         return m_provider;
     };
-    
+
     virtual void cancelChannelFind()
     {
         throw std::runtime_error("not supported");
     }
-    
+
     private:
-    
+
     // only to be destroyed by it
     friend class ChannelProviderImpl;
     virtual ~ChannelImplFind() {}
-    
-    ChannelProvider* m_provider;  
+
+    ChannelProvider* m_provider;
 };
 
 class ChannelProviderImpl : public ChannelProvider {
@@ -569,13 +569,13 @@ class ChannelProviderImpl : public ChannelProvider {
     {
         return "ChannelProviderImpl";
     }
-    
+
     virtual void destroy()
     {
         delete m_mockChannelFind;
         delete this;
     }
-    
+
     virtual ChannelFind* channelFind(
         epics::pvData::String channelName,
         ChannelFindRequester *channelFindRequester)
@@ -605,23 +605,22 @@ class ChannelProviderImpl : public ChannelProvider {
             return channel;
         }
         else
-        {   
+        {
             Status* errorStatus = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "only local supported", 0);
             channelRequester->channelCreated(errorStatus, 0);
             delete errorStatus; // TODO guard from CB
             return 0;
         }
     }
-    
+
     private:
     ~ChannelProviderImpl() {};
-    
+
     ChannelImplFind* m_mockChannelFind;
-    
+
 };
 
 
-class TransportRegistry;
 class ChannelSearchManager;
 class BlockingTCPConnector;
 class NamedLockPattern;
@@ -631,8 +630,8 @@ class BeaconHandlerImpl;
 class ClientContextImpl : public ClientContext
 {
     public:
-    
-    ClientContextImpl() : 
+
+    ClientContextImpl() :
     	m_addressList(""), m_autoAddressList(true), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
     	m_broadcastPort(CA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV), m_timer(0),
     	m_broadcastTransport(0), m_searchTransport(0), m_connector(0), m_transportRegistry(0),
@@ -641,7 +640,7 @@ class ClientContextImpl : public ClientContext
     {
         initialize();
     }
-    
+
     virtual Version* getVersion() {
         return m_version;
     }
@@ -649,33 +648,33 @@ class ClientContextImpl : public ClientContext
     virtual ChannelProvider* getProvider() {
         return m_provider;
     }
-    
+
     virtual void initialize() {
         m_provider = new ChannelProviderImpl();
     }
-        
+
     virtual void printInfo() {
         String info;
         printInfo(&info);
         std::cout << info.c_str() << std::endl;
     }
-    
+
     virtual void printInfo(epics::pvData::StringBuilder out) {
         out->append(m_version->getVersionString());
     }
-    
+
     virtual void destroy()
     {
         m_provider->destroy();
         delete m_version;
         delete this;
     }
-    
+
     virtual void dispose()
     {
         destroy();
-    }    
-           
+    }
+
     private:
     ~ClientContextImpl() {};
 
@@ -684,9 +683,9 @@ class ClientContextImpl : public ClientContext
 	 * Each address must be of the form: ip.number:port or host.name:port
 	 */
 	String m_addressList;
-	
+
 	/**
-	 * Define whether or not the network interfaces should be discovered at runtime. 
+	 * Define whether or not the network interfaces should be discovered at runtime.
 	 */
 	bool m_autoAddressList;
 
@@ -697,22 +696,22 @@ class ClientContextImpl : public ClientContext
 	 * the server is no longer present on the network and disconnect.
 	 */
 	float m_connectionTimeout;
-	
+
 	/**
 	 * Period in second between two beacon signals.
 	 */
 	float m_beaconPeriod;
-	
+
 	/**
 	 * Broadcast (beacon, search) port number to listen to.
 	 */
 	int m_broadcastPort;
-	
+
 	/**
 	 * Receive buffer size (max size of payload).
 	 */
 	int m_receiveBufferSize;
-	
+
 	/**
 	 * Timer.
 	 */
@@ -722,7 +721,7 @@ class ClientContextImpl : public ClientContext
 	 * Broadcast transport needed to listen for broadcasts.
 	 */
 	BlockingUDPTransport* m_broadcastTransport;
-	
+
 	/**
 	 * UDP transport needed for channel searches.
 	 */
@@ -735,7 +734,7 @@ class ClientContextImpl : public ClientContext
 
 	/**
 	 * CA transport (virtual circuit) registry.
-	 * This registry contains all active transports - connections to CA servers. 
+	 * This registry contains all active transports - connections to CA servers.
 	 */
 	TransportRegistry* m_transportRegistry;
 
@@ -758,7 +757,7 @@ class ClientContextImpl : public ClientContext
 
 typedef int pvAccessID;
 	/**
-	 * Last CID cache. 
+	 * Last CID cache.
 	 */
 	pvAccessID m_lastCID;
 
@@ -770,7 +769,7 @@ typedef int pvAccessID;
 	IntResponseRequestMap m_pendingResponseRequests;
 
 	/**
-	 * Last IOID cache. 
+	 * Last IOID cache.
 	 */
 	pvAccessID m_lastIOID;
 
@@ -786,7 +785,7 @@ typedef int pvAccessID;
 	 // TODO consider std::unordered_map
 	typedef std::map<osiSockAddr, BeaconHandlerImpl*> AddressBeaconHandlerMap;
 	AddressBeaconHandlerMap m_beaconHandlers;
-	
+
 	/**
 	 * Version.
 	 */
@@ -804,7 +803,7 @@ class ChannelFindRequesterImpl : public ChannelFindRequester
     virtual void channelFindResult(epics::pvData::Status *status,ChannelFind *channelFind,bool wasFound)
     {
         std::cout << "[ChannelFindRequesterImpl] channelFindResult("
-                  << status->toString() << ", ..., " << wasFound << ")" << std::endl; 
+                  << status->toString() << ", ..., " << wasFound << ")" << std::endl;
     }
 };
 
@@ -814,10 +813,10 @@ class ChannelRequesterImpl : public ChannelRequester
     {
         return "ChannelRequesterImpl";
     };
-    
-    virtual void message(String message,MessageType messageType) 
+
+    virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
     virtual void channelCreated(epics::pvData::Status* status, Channel *channel)
@@ -825,7 +824,7 @@ class ChannelRequesterImpl : public ChannelRequester
         std::cout << "channelCreated(" << status->toString() << ", "
                   << (channel ? channel->getChannelName() : "(null)") << ")" << std::endl;
     }
-    
+
     virtual void channelStateChange(Channel *c, ConnectionState connectionState)
     {
         std::cout << "channelStateChange(" << c->getChannelName() << ", " << ConnectionStateNames[connectionState] << ")" << std::endl;
@@ -838,10 +837,10 @@ class GetFieldRequesterImpl : public GetFieldRequester
     {
         return "GetFieldRequesterImpl";
     };
-    
-    virtual void message(String message,MessageType messageType) 
+
+    virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
     virtual void getDone(epics::pvData::Status *status,epics::pvData::FieldConstPtr field)
@@ -864,22 +863,22 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
     ChannelGet *m_channelGet;
     epics::pvData::PVStructure *m_pvStructure;
     epics::pvData::BitSet *m_bitSet;
-                
+
     virtual String getRequesterName()
     {
         return "ChannelGetRequesterImpl";
     };
-    
-    virtual void message(String message,MessageType messageType) 
+
+    virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
     virtual void channelGetConnect(epics::pvData::Status *status,ChannelGet *channelGet,
             epics::pvData::PVStructure *pvStructure,epics::pvData::BitSet *bitSet)
     {
         std::cout << "channelGetConnect(" << status->toString() << ")" << std::endl;
-        
+
         // TODO sync
         m_channelGet = channelGet;
         m_pvStructure = pvStructure;
@@ -901,22 +900,22 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     ChannelPut *m_channelPut;
     epics::pvData::PVStructure *m_pvStructure;
     epics::pvData::BitSet *m_bitSet;
-                
+
     virtual String getRequesterName()
     {
         return "ChannelPutRequesterImpl";
     };
-    
-    virtual void message(String message,MessageType messageType) 
+
+    virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
     virtual void channelPutConnect(epics::pvData::Status *status,ChannelPut *channelPut,
             epics::pvData::PVStructure *pvStructure,epics::pvData::BitSet *bitSet)
     {
         std::cout << "channelPutConnect(" << status->toString() << ")" << std::endl;
-        
+
         // TODO sync
         m_channelPut = channelPut;
         m_pvStructure = pvStructure;
@@ -942,20 +941,20 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     }
 
 };
- 
- 
+
+
 class MonitorRequesterImpl : public MonitorRequester
 {
     virtual String getRequesterName()
     {
         return "MonitorRequesterImpl";
     };
-    
-    virtual void message(String message,MessageType messageType) 
+
+    virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
-    
+
     virtual void monitorConnect(Status* status, Monitor* monitor, Structure* structure)
     {
         std::cout << "monitorConnect(" << status->toString() << ")" << std::endl;
@@ -966,13 +965,13 @@ class MonitorRequesterImpl : public MonitorRequester
             std::cout << str << std::endl;
         }
     }
-    
+
     virtual void monitorEvent(Monitor* monitor)
     {
         std::cout << "monitorEvent" << std::endl;
 
         MonitorElement* element = monitor->poll();
-        
+
         String str("changed/overrun ");
         element->getChangedBitSet()->toString(&str);
         str += '/';
@@ -980,35 +979,35 @@ class MonitorRequesterImpl : public MonitorRequester
         str += '\n';
         element->getPVStructure()->toString(&str);
         std::cout << str << std::endl;
-        
+
         monitor->release(element);
     }
-    
+
     virtual void unlisten(Monitor* monitor)
     {
         std::cout << "unlisten" << std::endl;
     }
-}; 
+};
 
 
 class ChannelProcessRequesterImpl : public ChannelProcessRequester
 {
     ChannelProcess *m_channelProcess;
-                
+
     virtual String getRequesterName()
     {
         return "ProcessRequesterImpl";
     };
-    
-    virtual void message(String message,MessageType messageType) 
+
+    virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
     virtual void channelProcessConnect(epics::pvData::Status *status,ChannelProcess *channelProcess)
     {
         std::cout << "channelProcessConnect(" << status->toString() << ")" << std::endl;
-        
+
         // TODO sync
         m_channelProcess = channelProcess;
     }
@@ -1024,13 +1023,13 @@ int main(int argc,char *argv[])
 {
     ClientContextImpl* context = new ClientContextImpl();
     context->printInfo();
-    
-    
+
+
     ChannelFindRequesterImpl findRequester;
     context->getProvider()->channelFind("something", &findRequester);
-    
+
     ChannelRequesterImpl channelRequester;
-    //Channel* noChannel 
+    //Channel* noChannel
     context->getProvider()->createChannel("test", &channelRequester, ChannelProvider::PRIORITY_DEFAULT, "over the rainbow");
 
     Channel* channel = context->getProvider()->createChannel("test", &channelRequester);
@@ -1038,19 +1037,19 @@ int main(int argc,char *argv[])
     /*
     GetFieldRequesterImpl getFieldRequesterImpl;
     channel->getField(&getFieldRequesterImpl, "timeStamp.secondsPastEpoch");
-    
+
     ChannelGetRequesterImpl channelGetRequesterImpl;
     ChannelGet* channelGet = channel->createChannelGet(&channelGetRequesterImpl, 0);
     channelGet->get(false);
     channelGet->destroy();
-    
+
     ChannelPutRequesterImpl channelPutRequesterImpl;
     ChannelPut* channelPut = channel->createChannelPut(&channelPutRequesterImpl, 0);
     channelPut->get();
     channelPut->put(false);
     channelPut->destroy();
-    
-    
+
+
     MonitorRequesterImpl monitorRequesterImpl;
     Monitor* monitor = channel->createMonitor(&monitorRequesterImpl, 0);
 
@@ -1063,19 +1062,19 @@ int main(int argc,char *argv[])
     ChannelProcess* channelProcess = channel->createChannelProcess(&channelProcessRequester, 0);
     channelProcess->process(false);
     channelProcess->destroy();
-    
+
 
     status = monitor->stop();
     std::cout << "monitor->stop() = " << status->toString() << std::endl;
     delete status;
-    
-    
+
+
     monitor->destroy();
     */
     channel->destroy();
-    
+
     context->destroy();
-    
+
     std::cout << "-----------------------------------------------------------------------" << std::endl;
     getShowConstructDestruct()->constuctDestructTotals(stdout);
     return(0);

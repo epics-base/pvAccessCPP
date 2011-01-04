@@ -24,6 +24,7 @@ using namespace std;
 
 namespace epics { namespace pvAccess {
 
+class Transport;
 
 typedef std::map<const int16,Transport*> prioritiesMap_t;
 typedef std::map<const int32,prioritiesMap_t*> transportsMap_t;
