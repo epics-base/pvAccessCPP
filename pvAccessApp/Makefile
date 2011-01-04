@@ -52,6 +52,7 @@ LIBSRCS += beaconHandler.cpp
 LIBSRCS += blockingTCPTransport.cpp
 LIBSRCS += blockingClientTCPTransport.cpp
 LIBSRCS += blockingTCPConnector.cpp
+LIBSRCS += blockingServerTCPTransport.cpp
 
 LIBRARY = pvAccess
 pvAccess_LIBS += Com

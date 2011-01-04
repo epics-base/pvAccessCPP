@@ -19,16 +19,17 @@
 #include <byteBuffer.h>
 #include <pvType.h>
 #include <lock.h>
-#include <epicsThread.h>
 #include <timer.h>
 
 /* EPICSv3 */
 #include <osdSock.h>
 #include <osiSock.h>
 #include <epicsTime.h>
+#include <epicsThread.h>
 
 /* standard */
 #include <set>
+#include <map>
 
 namespace epics {
     namespace pvAccess {
@@ -485,8 +486,8 @@ namespace epics {
             virtual ~BlockingTCPConnector();
 
             virtual Transport* connect(TransportClient* client,
-                        ResponseHandler* responseHandler, osiSockAddr* address,
-                        short transportRevision, int16 priority);
+                    ResponseHandler* responseHandler, osiSockAddr* address,
+                    short transportRevision, int16 priority);
         private:
             /**
              * Lock timeout
@@ -521,6 +522,130 @@ namespace epics {
              * @throws IOException
              */
             SOCKET tryConnect(osiSockAddr* address, int tries);
+
+        };
+
+        class BlockingServerTCPTransport : public BlockingTCPTransport,
+                public ChannelHostingTransport,
+                public TransportSender {
+
+            BlockingServerTCPTransport(Context* context, SOCKET channel,
+                    ResponseHandler* responseHandler, int receiveBufferSize);
+
+            virtual ~BlockingServerTCPTransport();
+
+            virtual IntrospectionRegistry* getIntrospectionRegistry() {
+                return _introspectionRegistry;
+            }
+
+            /**
+             * Preallocate new channel SID.
+             * @return new channel server id (SID).
+             */
+            virtual int preallocateChannelSID();
+
+            /**
+             * De-preallocate new channel SID.
+             * @param sid preallocated channel SID.
+             */
+            virtual void depreallocateChannelSID(int sid) {
+                // noop
+            }
+
+            /**
+             * Register a new channel.
+             * @param sid preallocated channel SID.
+             * @param channel channel to register.
+             */
+            virtual void registerChannel(int sid, ServerChannel* channel);
+
+            /**
+             * Unregister a new channel (and deallocates its handle).
+             * @param sid SID
+             */
+            virtual void unregisterChannel(int sid);
+
+            /**
+             * Get channel by its SID.
+             * @param sid channel SID
+             * @return channel with given SID, <code>NULL</code> otherwise
+             */
+            virtual ServerChannel* getChannel(int sid);
+
+            /**
+             * Get channel count.
+             * @return channel count.
+             */
+            virtual int getChannelCount();
+
+            virtual epics::pvData::PVField* getSecurityToken() {
+                return NULL;
+            }
+
+            virtual void lock() {
+                // noop
+            }
+
+            virtual void unlock() {
+                // noop
+            }
+
+            /**
+             * Verify transport. Server side is self-verified.
+             */
+            void verify() {
+                enqueueSendRequest(this);
+                verified();
+            }
+
+            /**
+             * CA connection validation request.
+             * A server sends a validate connection message when it receives a new connection.
+             * The message indicates that the server is ready to receive requests; the client must
+             * not send any messages on the connection until it has received the validate connection message
+             * from the server. No reply to the message is expected by the server.
+             * The purpose of the validate connection message is two-fold:
+             * It informs the client of the protocol version supported by the server.
+             * It prevents the client from writing a request message to its local transport
+             * buffers until after the server has acknowledged that it can actually process the
+             * request. This avoids a race condition caused by the server's TCP/IP stack
+             * accepting connections in its backlog while the server is in the process of shutting down:
+             * if the client were to send a request in this situation, the request
+             * would be lost but the client could not safely re-issue the request because that
+             * might violate at-most-once semantics.
+             * The validate connection message guarantees that a server is not in the middle
+             * of shutting down when the server's TCP/IP stack accepts an incoming connection
+             * and so avoids the race condition.
+             * @see org.epics.ca.impl.remote.TransportSender#send(java.nio.ByteBuffer, org.epics.ca.impl.remote.TransportSendControl)
+             */
+            virtual void send(epics::pvData::ByteBuffer* buffer,
+                    TransportSendControl* control);
+
+        protected:
+            /**
+             * Introspection registry.
+             */
+            IntrospectionRegistry* _introspectionRegistry;
+
+            virtual void internalClose(bool force);
+
+        private:
+            /**
+             * Last SID cache.
+             */
+            volatile int _lastChannelSID;
+
+            /**
+             * Channel table (SID -> channel mapping).
+             */
+            std::map<int, ServerChannel*>* _channels;
+
+            Mutex* _channelsMutex;
+
+            /**
+             * Destroy all channels.
+             */
+            void destroyAllChannels();
 
         };
 

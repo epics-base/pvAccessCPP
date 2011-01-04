@@ -16,6 +16,7 @@
 #include <pvType.h>
 #include <byteBuffer.h>
 #include <timer.h>
+#include <pvData.h>
 
 #include <osiSock.h>
 #include <osdSock.h>
@@ -306,6 +307,73 @@ namespace epics {
              * @param client client (channel) releasing the transport
              */
             virtual void release(TransportClient* client) =0;
+        };
+
+        class ServerChannel {
+        public:
+            /**
+             * Get channel SID.
+             * @return channel SID.
+             */
+            virtual int getSID() =0;
+
+            /**
+             * Destroy server channel.
+             * This method MUST BE called if overriden.
+             */
+            virtual void destroy() =0;
+        };
+
+        /**
+         * Interface defining a transport that hosts channels.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: ChannelHostingTransport.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class ChannelHostingTransport {
+        public:
+            /**
+             * Get security token.
+             * @return security token, can be <code>null</code>.
+             */
+            virtual epics::pvData::PVField* getSecurityToken() =0;
+
+            /**
+             * Preallocate new channel SID.
+             * @return new channel server id (SID).
+             */
+            virtual int preallocateChannelSID() =0;
+
+            /**
+             * De-preallocate new channel SID.
+             * @param sid preallocated channel SID.
+             */
+            virtual void depreallocateChannelSID(int sid) =0;
+
+            /**
+             * Register a new channel.
+             * @param sid preallocated channel SID.
+             * @param channel channel to register.
+             */
+            virtual void registerChannel(int sid, ServerChannel* channel) =0;
+
+            /**
+             * Unregister a new channel (and deallocates its handle).
+             * @param sid SID
+             */
+            virtual void unregisterChannel(int sid) =0;
+
+            /**
+             * Get channel by its SID.
+             * @param sid channel SID
+             * @return channel with given SID, <code>null</code> otherwise
+             */
+            virtual ServerChannel* getChannel(int sid) =0;
+
+            /**
+             * Get channel count.
+             * @return channel count.
+             */
+            virtual int getChannelCount() =0;
         };
 
     }
