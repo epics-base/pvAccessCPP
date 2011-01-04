@@ -17,6 +17,7 @@
 #include <noDefaultMethods.h>
 #include <byteBuffer.h>
 #include <lock.h>
+#include <epicsException.h>
 
 /* EPICSv3 */
 #include <osdSock.h>
@@ -160,6 +161,10 @@ namespace epics {
                 _sendAddresses = addresses;
             }
 
+            virtual IntrospectionRegistry* getIntrospectionRegistry() {
+                THROW_BASE_EXCEPTION("not supported by UDP transport");
+            }
+
         protected:
             bool volatile _closed;
 
@@ -237,7 +242,7 @@ namespace epics {
         };
 
         class BlockingUDPConnector : public Connector,
-                epics::pvData::NoDefaultMethods {
+                public epics::pvData::NoDefaultMethods {
         public:
 
             BlockingUDPConnector(bool reuseSocket,
@@ -255,7 +260,7 @@ namespace epics {
              */
             virtual Transport* connect(TransportClient* client,
                     ResponseHandler* responseHandler, osiSockAddr* bindAddress,
-                    short transportRevision, short priority);
+                    short transportRevision, int16 priority);
 
         private:
 

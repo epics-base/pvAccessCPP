@@ -370,8 +370,6 @@ class MockMonitor : public Monitor, public MonitorElement
     
 };
 
-
-class TransportRegistry;
 class ChannelSearchManager;
 class BlockingTCPConnector;
 class NamedLockPattern;

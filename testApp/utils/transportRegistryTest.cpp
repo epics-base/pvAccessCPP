@@ -4,6 +4,7 @@
  */
 
 #include "transportRegistry.h"
+#include "introspectionRegistry.h"
 #include "showConstructDestruct.h"
 
 #include <epicsAssert.h>
@@ -39,6 +40,7 @@ namespace epics {
         virtual void verified(){};
         virtual void enqueueSendRequest(TransportSender* sender){};
         virtual void ensureData(int) {};
+        virtual IntrospectionRegistry* getIntrospectionRegistry() {return NULL;};
 	private:
 		string _type;
 		int16 _priority;
