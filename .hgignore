@@ -1,10 +1,10 @@
 QtC-pvAccess.creator.user
 
 syntax: glob
-O.Common
-O.linux-x86
+O.*
+.DS_Store
 
 syntax: regexp
 ^bin
 ^include
-
+^lib

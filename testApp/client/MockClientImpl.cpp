@@ -520,6 +520,26 @@ class MockChannel : public Channel {
         // TODO
         return 0;
     }
+
+    virtual void printInfo() {
+        String info;
+        printInfo(&info);
+        std::cout << info.c_str() << std::endl;
+    }
+    
+    virtual void printInfo(epics::pvData::StringBuilder out) {
+        //std::ostringstream ostr;
+        //static String emptyString;
+        
+		out->append(  "CHANNEL  : "); out->append(m_name);
+		out->append("\nSTATE    : "); out->append(ConnectionStateNames[getConnectionState()]);
+		if (isConnected())
+		{
+       		out->append("\nADDRESS  : "); out->append(getRemoteAddress());
+			//out->append("\nRIGHTS   : "); out->append(getAccessRights());
+		}
+		out->append("\n");
+    }
 };
 
 class MockChannelProvider;
@@ -905,7 +925,7 @@ int main(int argc,char *argv[])
     context->getProvider()->createChannel("test", &channelRequester, ChannelProvider::PRIORITY_DEFAULT, "over the rainbow");
 
     Channel* channel = context->getProvider()->createChannel("test", &channelRequester);
-    std::cout << channel->getChannelName() << std::endl;
+    channel->printInfo();
     
     GetFieldRequesterImpl getFieldRequesterImpl;
     channel->getField(&getFieldRequesterImpl, "timeStamp.secondsPastEpoch");

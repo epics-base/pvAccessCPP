@@ -62,9 +62,9 @@ namespace epics {
             GrowingCircularBuffer<TransportSender*>* _monitorSendQueue;
         };
 
-        BlockingTCPTransport::BlockingTCPTransport(SOCKET channel,
-                ResponseHandler* responseHandler, int receiveBufferSize,
-                short priority, TransportRegistry* transportRegistry) :
+        BlockingTCPTransport::BlockingTCPTransport(Context* context,
+                SOCKET channel, ResponseHandler* responseHandler,
+                int receiveBufferSize, int16 priority) :
             _closed(false), _channel(channel), _remoteTransportRevision(0),
                     _remoteTransportReceiveBufferSize(MAX_TCP_RECV),
                     _remoteTransportSocketReceiveBufferSize(MAX_TCP_RECV),
@@ -86,8 +86,7 @@ namespace epics {
                     _rcvThreadId(NULL), _sendThreadId(NULL), _monitorSendQueue(
                             new GrowingCircularBuffer<TransportSender*> (100)),
                     _monitorSender(new MonitorSender(_monitorMutex,
-                            _monitorSendQueue)), _transportRegistry(
-                            transportRegistry) {
+                            _monitorSendQueue)), _context(context) {
 
             _socketBuffer = new ByteBuffer(max(MAX_TCP_RECV
                     +MAX_ENSURE_DATA_BUFFER_SIZE, receiveBufferSize));
@@ -124,7 +123,7 @@ namespace epics {
             clearAndReleaseBuffer();
 
             // add to registry
-            _transportRegistry->put(this);
+            _context->getTransportRegistry()->put(this);
         }
 
         BlockingTCPTransport::~BlockingTCPTransport() {
@@ -195,7 +194,7 @@ namespace epics {
             _closed = true;
 
             // remove from registry
-            _transportRegistry->remove(this);
+            _context->getTransportRegistry()->remove(this);
 
             // clean resources
             internalClose(force);

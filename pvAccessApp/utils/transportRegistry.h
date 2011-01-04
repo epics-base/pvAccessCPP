@@ -23,6 +23,7 @@ using namespace std;
 
 namespace epics { namespace pvAccess {
 
+class Transport;
 //TODO if unordered map is used instead of map we can use sockAddrAreIdentical routine from osiSock.h
 struct comp_osiSockAddr
 {

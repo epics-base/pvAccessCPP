@@ -47,11 +47,15 @@ INC += blockingUDP.h
 INC += beaconEmitter.h
 INC += beaconServerStatusProvider.h
 INC += beaconHandler.h
+INC += blockingTCP.h
 LIBSRCS += blockingUDPTransport.cpp
 LIBSRCS += blockingUDPConnector.cpp
 LIBSRCS += beaconEmitter.cpp
 LIBSRCS += beaconServerStatusProvider.cpp
 LIBSRCS += beaconHandler.cpp
+LIBSRCS += blockingTCPTransport.cpp
+LIBSRCS += blockingClientTCPTransport.cpp
+LIBSRCS += blockingTCPConnector.cpp
 
 LIBRARY = pvAccess
 pvAccess_LIBS += Com

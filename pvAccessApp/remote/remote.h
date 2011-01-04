@@ -9,16 +9,21 @@
 #define REMOTE_H_
 
 #include "caConstants.h"
+#include "transportRegistry.h"
+#include "introspectionRegistry.h"
 
 #include <serialize.h>
 #include <pvType.h>
 #include <byteBuffer.h>
+#include <timer.h>
 
 #include <osiSock.h>
 #include <osdSock.h>
 
 namespace epics {
     namespace pvAccess {
+
+        class TransportRegistry;
 
         enum ProtocolType {
             TCP, UDP, SSL
@@ -54,7 +59,8 @@ namespace epics {
              * NOTE: these limitations allows efficient implementation.
              */
             virtual void
-            send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) =0;
+            send(epics::pvData::ByteBuffer* buffer,
+                    TransportSendControl* control) =0;
 
             virtual void lock() =0;
             virtual void unlock() =0;
@@ -156,7 +162,7 @@ namespace epics {
              * Get introspection registry for transport.
              * @return <code>IntrospectionRegistry</code> instance.
              */
-            //virtual IntrospectionRegistry getIntrospectionRegistry() =0;
+            virtual IntrospectionRegistry* getIntrospectionRegistry() =0;
 
             /**
              * Close transport.
@@ -206,9 +212,10 @@ namespace epics {
              *                      Note that this might not be the only message in the buffer.
              *                      Code must not manipulate buffer.
              */
-            virtual void handleResponse(osiSockAddr* responseFrom,
-                    Transport* transport, int8 version, int8 command,
-                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer) =0;
+            virtual void
+            handleResponse(osiSockAddr* responseFrom, Transport* transport,
+                    int8 version, int8 command, int payloadSize,
+                    epics::pvData::ByteBuffer* payloadBuffer) =0;
         };
 
         /**
@@ -261,8 +268,44 @@ namespace epics {
              */
             virtual Transport* connect(TransportClient* client,
                     ResponseHandler* responseHandler, osiSockAddr* address,
-                    short transportRevision, short priority) =0;
+                    short transportRevision, int16 priority) =0;
 
+        };
+
+        class Context {
+        public:
+            /**
+             * Get timer.
+             * @return timer.
+             */
+            virtual Timer* getTimer() =0;
+
+            /**
+             * Get transport (virtual circuit) registry.
+             * @return transport (virtual circuit) registry.
+             */
+            virtual TransportRegistry* getTransportRegistry() =0;
+        };
+
+        /**
+         * Interface defining reference counting transport IF.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: ReferenceCountingTransport.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class ReferenceCountingTransport {
+        public:
+            /**
+             * Acquires transport.
+             * @param client client (channel) acquiring the transport
+             * @return <code>true</code> if transport was granted, <code>false</code> otherwise.
+             */
+            virtual bool acquire(TransportClient* client) =0;
+
+            /**
+             * Releases transport.
+             * @param client client (channel) releasing the transport
+             */
+            virtual void release(TransportClient* client) =0;
         };
 
     }
