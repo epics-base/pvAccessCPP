@@ -115,13 +115,13 @@ namespace epics {
                     // enable TCP_NODELAY (disable Nagle's algorithm)
                     int optval = 1; // true
                     int retval = ::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY,
-                            &optval, sizeof(optval));
+                            &optval, sizeof(int));
                     if(retval<0) errlogSevPrintf(errlogMajor,
                             "Error setting TCP_NODELAY: %s", strerror(errno));
 
                     // enable TCP_KEEPALIVE
                     retval = ::setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE,
-                            &optval, sizeof(optval));
+                            &optval, sizeof(int));
                     if(retval<0) errlogSevPrintf(errlogMinor,
                             "Error setting SO_KEEPALIVE: %s", strerror(errno));
 
@@ -130,9 +130,10 @@ namespace epics {
                     //socket.socket().setSendBufferSize();
 
                     // create transport
-                    transport = new BlockingClientTCPTransport(_context, socket,
-                            responseHandler, _receiveBufferSize, client,
-                            transportRevision, _beaconInterval, priority);
+                    transport = new BlockingClientTCPTransport(_context,
+                            socket, responseHandler, _receiveBufferSize,
+                            client, transportRevision, _beaconInterval,
+                            priority);
 
                     // verify
                     if(!transport->waitUntilVerified(3.0)) {

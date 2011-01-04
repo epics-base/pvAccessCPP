@@ -31,6 +31,9 @@ SRC_DIRS += $(PVACCESS)/client
 INC += pvAccess.h
 LIBSRCS += pvAccess.cpp
 
+SRC_DIRS += $(PVACCESS)/server
+INC += serverContext.h
+
 
 SRC_DIRS += $(PVACCESS)/factory
 LIBSRCS += ChannelAccessFactory.cpp
@@ -53,6 +56,8 @@ LIBSRCS += blockingTCPTransport.cpp
 LIBSRCS += blockingClientTCPTransport.cpp
 LIBSRCS += blockingTCPConnector.cpp
 LIBSRCS += blockingServerTCPTransport.cpp
+LIBSRCS += blockingTCPAcceptor.cpp
+LIBSRCS += responseHandlers.cpp
 
 LIBRARY = pvAccess
 pvAccess_LIBS += Com

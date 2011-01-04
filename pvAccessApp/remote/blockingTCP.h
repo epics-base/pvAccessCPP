@@ -528,7 +528,7 @@ namespace epics {
         class BlockingServerTCPTransport : public BlockingTCPTransport,
                 public ChannelHostingTransport,
                 public TransportSender {
-
+        public:
             BlockingServerTCPTransport(Context* context, SOCKET channel,
                     ResponseHandler* responseHandler, int receiveBufferSize);
 
@@ -646,7 +646,84 @@ namespace epics {
              * Destroy all channels.
              */
             void destroyAllChannels();
+        };
 
+        /**
+         * Channel Access Server TCP acceptor.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: BlockingTCPAcceptor.java,v 1.1 2010/05/03 14:45:42 mrkraimer Exp $
+         */
+        class BlockingTCPAcceptor {
+        public:
+
+            /**
+             * @param context
+             * @param port
+             * @param receiveBufferSize
+             * @throws CAException
+             */
+            BlockingTCPAcceptor(Context* context, int port,
+                    int receiveBufferSize);
+
+            ~BlockingTCPAcceptor();
+
+            void handleEvents();
+
+            /**
+             * Bind socket address.
+             * @return bind socket address, <code>null</code> if not binded.
+             */
+            osiSockAddr* getBindAddress() {
+                return _bindAddress;
+            }
+
+            /**
+             * Destroy acceptor (stop listening).
+             */
+            void destroy();
+
+        private:
+            /**
+             * Context instance.
+             */
+            Context* _context;
+
+            /**
+             * Bind server socket address.
+             */
+            osiSockAddr* _bindAddress;
+
+            /**
+             * Server socket channel.
+             */
+            SOCKET _serverSocketChannel;
+
+            /**
+             * Receive buffer size.
+             */
+            int _receiveBufferSize;
+
+            /**
+             * Destroyed flag.
+             */
+            volatile bool _destroyed;
+
+            epicsThreadId _threadId;
+
+            /**
+             * Initialize connection acception.
+             * @return port where server is listening
+             */
+            int initialize(in_port_t port);
+
+            /**
+             * Validate connection by sending a validation message request.
+             * @return <code>true</code> on success.
+             */
+            bool validateConnection(BlockingServerTCPTransport* transport,
+                    const char* address);
+
+            static void handleEventsRunner(void* param);
         };
 
     }
