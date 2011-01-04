@@ -68,7 +68,7 @@ namespace epics {
         const int16 CA_DEFAULT_PRIORITY = 0;
 
         /** Unreasonable channel name length. */
-        const int32 UNREASONABLE_CHANNEL_NAME_LENGTH = 500;
+        const uint32 UNREASONABLE_CHANNEL_NAME_LENGTH = 500;
 
         /** Invalid data type. */
         const int16 INVALID_DATA_TYPE = (int16)0xFFFF;

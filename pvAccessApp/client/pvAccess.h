@@ -583,6 +583,17 @@ namespace epics { namespace pvAccess {
             virtual ChannelArray* createChannelArray(
                     ChannelArrayRequester *channelArrayRequester,
                     epics::pvData::PVStructure *pvRequest) = 0;
+
+            /**
+             * Prints detailed information about the context to the standard output stream.
+             */
+            virtual void printInfo() = 0;
+
+            /**
+             * Prints detailed information about the context to the specified output stream.
+             * @param out the output stream.
+             */
+            virtual void printInfo(epics::pvData::StringBuilder out) = 0;
         };
 
 
