@@ -34,6 +34,10 @@ PROD_HOST += transportRegisterTest
 transportRegisterTest_SRCS += transportRegistryTest.cpp
 transportRegisterTest_LIBS += pvAccess Com pvData
 
+PROD_HOST += namedLockPatternTest
+namedLockPatternTest_SRCS += namedLockPatternTest.cpp
+namedLockPatternTest_LIBS += pvAccess Com pvData
+
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE

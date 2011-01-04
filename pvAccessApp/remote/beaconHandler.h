@@ -67,7 +67,6 @@ namespace epics { namespace pvAccess {
 		 * Mutex
 		 */
 		Mutex _mutex;
-
 		/**
 		 * Update beacon.
 		 * @param remoteTransportRevision encoded (major, minor) revision.
