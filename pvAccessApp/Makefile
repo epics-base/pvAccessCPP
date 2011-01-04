@@ -19,12 +19,16 @@ INC += inetAddressUtil.h
 INC += logger.h
 INC += introspectionRegistry.h
 INC += transportRegistry.h
+INC += namedLockPattern.h
+INC += referenceCountingLock.h
 LIBSRCS += hexDump.cpp
 LIBSRCS += wildcharMatcher.cpp
 LIBSRCS += inetAddressUtil.cpp
 LIBSRCS += logger.cpp
 LIBSRCS += introspectionRegistry.cpp
 LIBSRCS += transportRegistry.cpp
+LIBSRCS += namedLockPattern.cpp
+LIBSRCS += referenceCountingLock.cpp
 
 
 SRC_DIRS += $(PVACCESS)/client

@@ -69,7 +69,7 @@ bool BeaconHandler::updateBeacon(int8 remoteTransportRevision, int64 timestamp,
 
 void BeaconHandler::beaconArrivalNotify()
 {
-	int32 size;
+	int32 size = 0;
 	//TODO TCP name must be get from somewhere not hardcoded
 	//TODO
 	Transport** transports  = NULL;//_context->getTransportRegistry().get("TCP", _responseFrom, size);
@@ -83,12 +83,12 @@ void BeaconHandler::beaconArrivalNotify()
 	{
 		transports[i]->aliveNotification();
 	}
-	delete transports;
+	delete[] transports;
 }
 
 void BeaconHandler::changedTransport()
 {
-	int32 size;
+	int32 size = 0;
 	//TODO TCP name must be get from somewhere not hardcoded
 	//TODO
 	Transport** transports = NULL;//_context->getTransportRegistry().get("TCP", _responseFrom, size);
@@ -102,7 +102,7 @@ void BeaconHandler::changedTransport()
 	{
 		transports[i]->changedTransport();
 	}
-	delete transports;
+	delete[] transports;
 }
 
 }}

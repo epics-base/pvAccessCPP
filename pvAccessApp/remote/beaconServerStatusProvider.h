@@ -24,7 +24,7 @@ namespace epics { namespace pvAccess {
 		 */
 		BeaconServerStatusProvider(ServerContext* context);
 		/**
-		 * Test Constructor (ohne context)
+		 * Test Constructor (without context)
 		 */
 		BeaconServerStatusProvider();
 		/**
