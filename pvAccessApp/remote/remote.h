@@ -64,7 +64,8 @@ namespace epics {
          */
         class TransportSender {
         public:
-            virtual ~TransportSender() {}
+            virtual ~TransportSender() {
+            }
 
             /**
              * Called by transport.
@@ -217,7 +218,8 @@ namespace epics {
          */
         class ResponseHandler {
         public:
-            virtual ~ResponseHandler() {}
+            virtual ~ResponseHandler() {
+            }
 
             /**
              * Handle response.
@@ -230,10 +232,9 @@ namespace epics {
              *                      Code must not manipulate buffer.
              */
             virtual void
-                    handleResponse(osiSockAddr* responseFrom,
-                            Transport* transport, int8 version, int8 command,
-                            int payloadSize,
-                            epics::pvData::ByteBuffer* payloadBuffer) =0;
+            handleResponse(osiSockAddr* responseFrom, Transport* transport,
+                    int8 version, int8 command, int payloadSize,
+                    epics::pvData::ByteBuffer* payloadBuffer) =0;
         };
 
         /**
@@ -277,7 +278,8 @@ namespace epics {
          */
         class TransportClient {
         public:
-            virtual ~TransportClient();
+            virtual ~TransportClient() {
+            }
 
             /**
              * Notification of unresponsive transport (e.g. no heartbeat detected) .
@@ -353,7 +355,8 @@ namespace epics {
          */
         class ReferenceCountingTransport {
         public:
-            virtual ~ReferenceCountingTransport() {}
+            virtual ~ReferenceCountingTransport() {
+            }
 
             /**
              * Acquires transport.
