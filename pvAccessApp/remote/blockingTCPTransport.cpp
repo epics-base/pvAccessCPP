@@ -208,7 +208,8 @@ namespace epics {
         }
 
         void BlockingTCPTransport::internalClose(bool force) {
-            // noop
+            // close the socket
+            epicsSocketDestroy(_channel);
         }
 
         int BlockingTCPTransport::getSocketReceiveBufferSize() const {

@@ -33,7 +33,7 @@ namespace epics {
                     _introspectionRegistry(new IntrospectionRegistry(true)),
                     _lastChannelSID(0), _channels(
                             new map<int, ServerChannel*> ()), _channelsMutex(
-                            new Mutex()) {
+                            new Mutex()), _notifyOnClose(NULL) {
             // NOTE: priority not yet known, default priority is used to register/unregister
             // TODO implement priorities in Reactor... not that user will
             // change it.. still getPriority() must return "registered" priority!
@@ -68,6 +68,7 @@ namespace epics {
 
         void BlockingServerTCPTransport::internalClose(bool force) {
             BlockingTCPTransport::internalClose(force);
+            if(_notifyOnClose!=NULL) _notifyOnClose->transportClosed(this);
             destroyAllChannels();
         }
 

@@ -24,6 +24,7 @@
 #include <poll.h>
 
 using std::ostringstream;
+using std::set;
 
 namespace epics {
     namespace pvAccess {
@@ -32,12 +33,30 @@ namespace epics {
                 int receiveBufferSize) :
             _context(context), _bindAddress(NULL), _serverSocketChannel(
                     INVALID_SOCKET), _receiveBufferSize(receiveBufferSize),
-                    _destroyed(false), _threadId(NULL) {
+                    _destroyed(false), _threadId(NULL), _connectedClients(
+                            new set<BlockingServerTCPTransport*> ()),
+                    _connectedClientsMutex(new Mutex()) {
             initialize(port);
         }
 
         BlockingTCPAcceptor::~BlockingTCPAcceptor() {
             if(_bindAddress!=NULL) delete _bindAddress;
+
+            _connectedClientsMutex->lock();
+            // go through all the connected clients, close them, and destroy
+            set<BlockingServerTCPTransport*>::iterator it =
+                    _connectedClients->begin();
+            while(it!=_connectedClients->end()) {
+                BlockingServerTCPTransport* client = *it;
+                it++;
+                client->close(true);
+                delete client;
+            }
+            _connectedClients->clear();
+            delete _connectedClients;
+            _connectedClientsMutex->unlock();
+
+            delete _connectedClientsMutex;
         }
 
         int BlockingTCPAcceptor::initialize(in_port_t port) {
@@ -213,8 +232,10 @@ namespace epics {
                             //socket.socket().setReceiveBufferSize();
                             //socket.socket().setSendBufferSize();
 
-                            // create transport
-                            // each transport should have its own response handler since it is not "shareable"
+                            /* create transport
+                             * each transport should have its own response
+                             * handler since it is not "shareable"
+                             */
                             BlockingServerTCPTransport
                                     * transport =
                                             new BlockingServerTCPTransport(
@@ -231,8 +252,15 @@ namespace epics {
                                         errlogInfo,
                                         "Connection to CA client %s failed to be validated, closing it.",
                                         ipAddrStr);
+                                delete transport;
                                 return;
                             }
+
+                            // store the new connected client
+                            _connectedClientsMutex->lock();
+                            _connectedClients->insert(transport);
+                            transport->addCloseNotification(this);
+                            _connectedClientsMutex->unlock();
 
                             errlogSevPrintf(errlogInfo,
                                     "Serving to CA client: %s", ipAddrStr);
@@ -275,6 +303,17 @@ namespace epics {
 
                 epicsSocketDestroy(_serverSocketChannel);
             }
+        }
+
+        void BlockingTCPAcceptor::transportClosed(
+                BlockingServerTCPTransport* transport) {
+            Lock lock(_connectedClientsMutex);
+
+            // remove the closed client from the list of connected clients
+            _connectedClients->erase(transport);
+
+            // release the memory
+            delete transport;
         }
 
     }
