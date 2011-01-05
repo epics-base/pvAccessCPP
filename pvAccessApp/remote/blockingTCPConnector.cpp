@@ -7,6 +7,7 @@
 
 #include "blockingTCP.h"
 #include "remote.h"
+#include "namedLockPattern.h"
 
 #include <epicsThread.h>
 #include <osiSock.h>
@@ -21,14 +22,14 @@ namespace epics {
 
         BlockingTCPConnector::BlockingTCPConnector(Context* context,
                 int receiveBufferSize, float beaconInterval) :
-            _context(context), _receiveBufferSize(receiveBufferSize),
-                    _beaconInterval(beaconInterval)
-        //TODO , _namedLocker(new NamedLockPattern())
-        {
+            _context(context), _namedLocker(new NamedLockPattern<
+                    const osiSockAddr*, comp_osiSockAddrPtr> ()),
+                    _receiveBufferSize(receiveBufferSize), _beaconInterval(
+                            beaconInterval) {
         }
 
         BlockingTCPConnector::~BlockingTCPConnector() {
-            // TODO delete _namedLocker;
+            delete _namedLocker;
         }
 
         SOCKET BlockingTCPConnector::tryConnect(osiSockAddr* address, int tries) {
@@ -86,10 +87,8 @@ namespace epics {
                 if(transport->acquire(client)) return transport;
             }
 
-            bool lockAcquired = true;
-            // TODO comment out
-            //bool lockAcquired = _namedLocker->acquireSynchronizationObject(
-            //        address, LOCK_TIMEOUT);
+            bool lockAcquired = _namedLocker->acquireSynchronizationObject(
+                    address, LOCK_TIMEOUT);
             if(lockAcquired) {
                 try {
                     // ... transport created during waiting in lock
@@ -157,11 +156,10 @@ namespace epics {
                 } catch(...) {
                     // close socket, if open
                     if(socket!=INVALID_SOCKET) epicsSocketDestroy(socket);
-
-                    // TODO namedLocker.releaseSynchronizationObject(address);
-
+                    _namedLocker->releaseSynchronizationObject(address);
                     throw;
                 }
+                _namedLocker->releaseSynchronizationObject(address);
             }
             else {
                 ostringstream temp;

@@ -66,15 +66,19 @@ void ReferenceCountingLock::release()
 int ReferenceCountingLock::increment()
 {
 	//TODO does it really has to be atomic?
-	//return ++_references;
-	return __sync_add_and_fetch(&_references,1);
+	return ++_references;
+	// commented because linking depends on specific version of glibc library
+	// on i386 target
+	//return __sync_add_and_fetch(&_references,1);
 }
 
 int ReferenceCountingLock::decrement()
 {
 	//TODO does it really has to be atomic?
-	//return --_references;
-	return __sync_sub_and_fetch(&_references,1);
+	return --_references;
+    // commented because linking depends on specific version of glibc library
+    // on i386 target
+	//return __sync_sub_and_fetch(&_references,1);
 }
 
 }}

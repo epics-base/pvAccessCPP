@@ -46,6 +46,9 @@ namespace epics {
          */
         class TransportSendControl : public epics::pvData::SerializableControl {
         public:
+            virtual ~TransportSendControl() {
+            }
+
             virtual void startMessage(int8 command, int ensureCapacity) =0;
             virtual void endMessage() =0;
 
@@ -61,6 +64,8 @@ namespace epics {
          */
         class TransportSender {
         public:
+            virtual ~TransportSender() {}
+
             /**
              * Called by transport.
              * By this call transport gives callee ownership over the buffer.
@@ -69,8 +74,7 @@ namespace epics {
              * of this method.
              * NOTE: these limitations allows efficient implementation.
              */
-            virtual void
-            send(epics::pvData::ByteBuffer* buffer,
+            virtual void send(epics::pvData::ByteBuffer* buffer,
                     TransportSendControl* control) =0;
 
             virtual void lock() =0;
@@ -213,6 +217,8 @@ namespace epics {
          */
         class ResponseHandler {
         public:
+            virtual ~ResponseHandler() {}
+
             /**
              * Handle response.
              * @param[in] responseFrom  remote address of the responder, <code>null</code> if unknown.
@@ -224,9 +230,10 @@ namespace epics {
              *                      Code must not manipulate buffer.
              */
             virtual void
-            handleResponse(osiSockAddr* responseFrom, Transport* transport,
-                    int8 version, int8 command, int payloadSize,
-                    epics::pvData::ByteBuffer* payloadBuffer) =0;
+                    handleResponse(osiSockAddr* responseFrom,
+                            Transport* transport, int8 version, int8 command,
+                            int payloadSize,
+                            epics::pvData::ByteBuffer* payloadBuffer) =0;
         };
 
         /**
@@ -341,6 +348,8 @@ namespace epics {
          */
         class TransportClient {
         public:
+            virtual ~TransportClient();
+
             /**
              * Notification of unresponsive transport (e.g. no heartbeat detected) .
              */
@@ -372,6 +381,9 @@ namespace epics {
          */
         class Connector {
         public:
+            virtual ~Connector() {
+            }
+
             /**
              * Connect.
              * @param[in] client    client requesting connection (transport).
@@ -390,6 +402,8 @@ namespace epics {
 
         class Context {
         public:
+            virtual ~Context() {
+            }
             /**
              * Get timer.
              * @return timer.
@@ -410,6 +424,8 @@ namespace epics {
          */
         class ReferenceCountingTransport {
         public:
+            virtual ~ReferenceCountingTransport() {}
+
             /**
              * Acquires transport.
              * @param client client (channel) acquiring the transport
@@ -426,6 +442,8 @@ namespace epics {
 
         class ServerChannel {
         public:
+            virtual ~ServerChannel() {
+            }
             /**
              * Get channel SID.
              * @return channel SID.
@@ -446,6 +464,9 @@ namespace epics {
          */
         class ChannelHostingTransport {
         public:
+            virtual ~ChannelHostingTransport() {
+            }
+
             /**
              * Get security token.
              * @return security token, can be <code>null</code>.

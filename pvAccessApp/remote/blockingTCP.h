@@ -14,6 +14,7 @@
 #include "growingCircularBuffer.h"
 #include "transportRegistry.h"
 #include "introspectionRegistry.h"
+#include "namedLockPattern.h"
 
 /* pvData */
 #include <byteBuffer.h>
@@ -474,6 +475,20 @@ namespace epics {
         };
 
         /**
+         * comparator for osiSockAddr*
+         */
+        struct comp_osiSockAddrPtr
+        {
+            bool operator()(osiSockAddr const *a, osiSockAddr const *b)
+            {
+                if (a->sa.sa_family < b->sa.sa_family) return true;
+                if ((a->sa.sa_family == b->sa.sa_family) && (a->ia.sin_addr.s_addr < b->ia.sin_addr.s_addr )) return true;
+                if ((a->sa.sa_family == b->sa.sa_family) && (a->ia.sin_addr.s_addr == b->ia.sin_addr.s_addr ) && ( a->ia.sin_port < b->ia.sin_port )) return true;
+                return false;
+            }
+        };
+
+        /**
          * Channel Access TCP connector.
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          * @version $Id: BlockingTCPConnector.java,v 1.1 2010/05/03 14:45:47 mrkraimer Exp $
@@ -500,9 +515,9 @@ namespace epics {
             Context* _context;
 
             /**
-             * Context instance.
+             * named lock
              */
-            //NamedLockPattern* _namedLocker;
+            NamedLockPattern<const osiSockAddr*, comp_osiSockAddrPtr>* _namedLocker;
 
             /**
              * Receive buffer size.
