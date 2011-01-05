@@ -41,6 +41,10 @@ ReferenceCountingLock::~ReferenceCountingLock()
 
 bool ReferenceCountingLock::acquire(int64 msecs)
 {
+#ifdef darwin
+    // timedlock not supported by Darwin OS
+ 	return (pthread_mutex_lock(&_mutex) == 0);
+#else
 	struct timespec deltatime;
 	deltatime.tv_sec = msecs / 1000;
 	deltatime.tv_nsec = (msecs % 1000) * 1000;
@@ -51,6 +55,7 @@ bool ReferenceCountingLock::acquire(int64 msecs)
 		return true;
 	}
 	return false;
+#endif
 }
 
 void ReferenceCountingLock::release()
