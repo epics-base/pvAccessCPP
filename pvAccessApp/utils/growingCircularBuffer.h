@@ -134,7 +134,6 @@ namespace epics {
             _elements[_putPointer] = x;
             if (++_putPointer >= _size) _putPointer = 0;
             return _count == 1;
-
         }
 
         template<class T>

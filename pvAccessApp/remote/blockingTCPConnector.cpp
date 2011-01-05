@@ -7,6 +7,7 @@
 
 #include "blockingTCP.h"
 #include "remote.h"
+#include "namedLockPattern.h"
 
 #include <epicsThread.h>
 #include <osiSock.h>
@@ -21,14 +22,14 @@ namespace epics {
 
         BlockingTCPConnector::BlockingTCPConnector(Context* context,
                 int receiveBufferSize, float beaconInterval) :
-            _context(context), _receiveBufferSize(receiveBufferSize),
-                    _beaconInterval(beaconInterval)
-        //TODO , _namedLocker(new NamedLockPattern())
-        {
+            _context(context), _namedLocker(new NamedLockPattern<
+                    const osiSockAddr*, comp_osiSockAddrPtr> ()),
+                    _receiveBufferSize(receiveBufferSize), _beaconInterval(
+                            beaconInterval) {
         }
 
         BlockingTCPConnector::~BlockingTCPConnector() {
-            // TODO delete _namedLocker;
+            delete _namedLocker;
         }
 
         SOCKET BlockingTCPConnector::tryConnect(osiSockAddr* address, int tries) {
@@ -86,10 +87,8 @@ namespace epics {
                 if(transport->acquire(client)) return transport;
             }
 
-            bool lockAcquired = true;
-            // TODO comment out
-            //bool lockAcquired = _namedLocker->acquireSynchronizationObject(
-            //        address, LOCK_TIMEOUT);
+            bool lockAcquired = _namedLocker->acquireSynchronizationObject(
+                    address, LOCK_TIMEOUT);
             if(lockAcquired) {
                 try {
                     // ... transport created during waiting in lock
@@ -115,13 +114,13 @@ namespace epics {
                     // enable TCP_NODELAY (disable Nagle's algorithm)
                     int optval = 1; // true
                     int retval = ::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY,
-                            &optval, sizeof(optval));
+                            &optval, sizeof(int));
                     if(retval<0) errlogSevPrintf(errlogMajor,
                             "Error setting TCP_NODELAY: %s", strerror(errno));
 
                     // enable TCP_KEEPALIVE
                     retval = ::setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE,
-                            &optval, sizeof(optval));
+                            &optval, sizeof(int));
                     if(retval<0) errlogSevPrintf(errlogMinor,
                             "Error setting SO_KEEPALIVE: %s", strerror(errno));
 
@@ -130,9 +129,10 @@ namespace epics {
                     //socket.socket().setSendBufferSize();
 
                     // create transport
-                    transport = new BlockingClientTCPTransport(_context, socket,
-                            responseHandler, _receiveBufferSize, client,
-                            transportRevision, _beaconInterval, priority);
+                    transport = new BlockingClientTCPTransport(_context,
+                            socket, responseHandler, _receiveBufferSize,
+                            client, transportRevision, _beaconInterval,
+                            priority);
 
                     // verify
                     if(!transport->waitUntilVerified(3.0)) {
@@ -156,11 +156,10 @@ namespace epics {
                 } catch(...) {
                     // close socket, if open
                     if(socket!=INVALID_SOCKET) epicsSocketDestroy(socket);
-
-                    // TODO namedLocker.releaseSynchronizationObject(address);
-
+                    _namedLocker->releaseSynchronizationObject(address);
                     throw;
                 }
+                _namedLocker->releaseSynchronizationObject(address);
             }
             else {
                 ostringstream temp;

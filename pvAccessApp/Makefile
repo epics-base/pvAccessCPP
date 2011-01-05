@@ -19,17 +19,24 @@ INC += inetAddressUtil.h
 INC += logger.h
 INC += introspectionRegistry.h
 INC += transportRegistry.h
+INC += namedLockPattern.h
+INC += referenceCountingLock.h
 LIBSRCS += hexDump.cpp
 LIBSRCS += wildcharMatcher.cpp
 LIBSRCS += inetAddressUtil.cpp
 LIBSRCS += logger.cpp
 LIBSRCS += introspectionRegistry.cpp
 LIBSRCS += transportRegistry.cpp
+LIBSRCS += namedLockPattern.cpp
+LIBSRCS += referenceCountingLock.cpp
 
 
 SRC_DIRS += $(PVACCESS)/client
 INC += pvAccess.h
 LIBSRCS += pvAccess.cpp
+
+SRC_DIRS += $(PVACCESS)/server
+INC += serverContext.h
 
 
 SRC_DIRS += $(PVACCESS)/factory
@@ -52,6 +59,9 @@ LIBSRCS += beaconHandler.cpp
 LIBSRCS += blockingTCPTransport.cpp
 LIBSRCS += blockingClientTCPTransport.cpp
 LIBSRCS += blockingTCPConnector.cpp
+LIBSRCS += blockingServerTCPTransport.cpp
+LIBSRCS += blockingTCPAcceptor.cpp
+LIBSRCS += responseHandlers.cpp
 
 LIBRARY = pvAccess
 pvAccess_LIBS += Com

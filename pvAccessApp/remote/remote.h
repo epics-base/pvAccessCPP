@@ -11,11 +11,13 @@
 #include "caConstants.h"
 #include "transportRegistry.h"
 #include "introspectionRegistry.h"
+#include "serverContext.h"
 
 #include <serialize.h>
 #include <pvType.h>
 #include <byteBuffer.h>
 #include <timer.h>
+#include <pvData.h>
 
 #include <osiSock.h>
 #include <osdSock.h>
@@ -29,12 +31,24 @@ namespace epics {
             TCP, UDP, SSL
         };
 
+        enum MessageCommands {
+            CMD_BEACON = 0, CMD_CONNECTION_VALIDATION = 1, CMD_ECHO = 2,
+            CMD_SEARCH = 3, CMD_INTROSPECTION_SEARCH = 5,
+            CMD_CREATE_CHANNEL = 7, CMD_DESTROY_CHANNEL = 8, CMD_GET = 10,
+            CMD_PUT = 11, CMD_PUT_GET = 12, CMD_MONITOR = 13, CMD_ARRAY = 14,
+            CMD_CANCEL_REQUEST = 15, CMD_PROCESS = 16, CMD_GET_FIELD = 17,
+            CMD_RPC = 20,
+        };
+
         /**
          * Interface defining transport send control.
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          */
         class TransportSendControl : public epics::pvData::SerializableControl {
         public:
+            virtual ~TransportSendControl() {
+            }
+
             virtual void startMessage(int8 command, int ensureCapacity) =0;
             virtual void endMessage() =0;
 
@@ -50,6 +64,8 @@ namespace epics {
          */
         class TransportSender {
         public:
+            virtual ~TransportSender() {}
+
             /**
              * Called by transport.
              * By this call transport gives callee ownership over the buffer.
@@ -58,8 +74,7 @@ namespace epics {
              * of this method.
              * NOTE: these limitations allows efficient implementation.
              */
-            virtual void
-            send(epics::pvData::ByteBuffer* buffer,
+            virtual void send(epics::pvData::ByteBuffer* buffer,
                     TransportSendControl* control) =0;
 
             virtual void lock() =0;
@@ -202,6 +217,8 @@ namespace epics {
          */
         class ResponseHandler {
         public:
+            virtual ~ResponseHandler() {}
+
             /**
              * Handle response.
              * @param[in] responseFrom  remote address of the responder, <code>null</code> if unknown.
@@ -213,9 +230,115 @@ namespace epics {
              *                      Code must not manipulate buffer.
              */
             virtual void
-            handleResponse(osiSockAddr* responseFrom, Transport* transport,
-                    int8 version, int8 command, int payloadSize,
-                    epics::pvData::ByteBuffer* payloadBuffer) =0;
+                    handleResponse(osiSockAddr* responseFrom,
+                            Transport* transport, int8 version, int8 command,
+                            int payloadSize,
+                            epics::pvData::ByteBuffer* payloadBuffer) =0;
+        };
+
+        /**
+         * Base (abstract) channel access response handler.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: AbstractResponseHandler.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class AbstractResponseHandler : public ResponseHandler {
+        public:
+            /**
+             * @param description
+             */
+            AbstractResponseHandler(String description) :
+                _description(description), _debug(true) {
+                //debug = System.getProperties().containsKey(CAConstants.CAJ_DEBUG);
+            }
+
+            virtual ~AbstractResponseHandler() {
+            }
+
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+
+        protected:
+            /**
+             * Response hanlder description.
+             */
+            String _description;
+
+            /**
+             * Debug flag.
+             */
+            bool _debug;
+        };
+
+        /**
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: AbstractServerResponseHandler.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class AbstractServerResponseHandler : public AbstractResponseHandler {
+        public:
+            /**
+             * @param context
+             * @param description
+             */
+            AbstractServerResponseHandler(ServerContextImpl* context,
+                    String description) :
+                AbstractResponseHandler(description), _context(context) {
+            }
+
+            virtual ~AbstractServerResponseHandler() {
+            }
+        protected:
+            ServerContextImpl* _context;
+        };
+
+        /**
+         * Bad request handler.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: BadResponse.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class BadResponse : public AbstractServerResponseHandler {
+        public:
+            /**
+             * @param context
+             */
+            BadResponse(ServerContextImpl* context) :
+                AbstractServerResponseHandler(context, "Bad request") {
+            }
+
+            virtual ~BadResponse() {
+            }
+
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        };
+
+        /**
+         * CAS request handler - main handler which dispatches requests to appropriate handlers.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: ServerResponseHandler.java,v 1.1 2010/05/03 14:45:48 mrkraimer Exp $
+         */
+        class ServerResponseHandler : public ResponseHandler {
+        public:
+            ServerResponseHandler(ServerContextImpl* context);
+
+            virtual ~ServerResponseHandler();
+
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        private:
+            static const int HANDLER_TABLE_LENGTH = 28;
+            /**
+             * Table of response handlers for each command ID.
+             */
+            ResponseHandler** _handlerTable;
+
+            /**
+             * Context instance.
+             */
+            ServerContextImpl* _context;
+
         };
 
         /**
@@ -225,6 +348,8 @@ namespace epics {
          */
         class TransportClient {
         public:
+            virtual ~TransportClient();
+
             /**
              * Notification of unresponsive transport (e.g. no heartbeat detected) .
              */
@@ -256,6 +381,9 @@ namespace epics {
          */
         class Connector {
         public:
+            virtual ~Connector() {
+            }
+
             /**
              * Connect.
              * @param[in] client    client requesting connection (transport).
@@ -274,6 +402,8 @@ namespace epics {
 
         class Context {
         public:
+            virtual ~Context() {
+            }
             /**
              * Get timer.
              * @return timer.
@@ -294,6 +424,8 @@ namespace epics {
          */
         class ReferenceCountingTransport {
         public:
+            virtual ~ReferenceCountingTransport() {}
+
             /**
              * Acquires transport.
              * @param client client (channel) acquiring the transport
@@ -306,6 +438,78 @@ namespace epics {
              * @param client client (channel) releasing the transport
              */
             virtual void release(TransportClient* client) =0;
+        };
+
+        class ServerChannel {
+        public:
+            virtual ~ServerChannel() {
+            }
+            /**
+             * Get channel SID.
+             * @return channel SID.
+             */
+            virtual int getSID() =0;
+
+            /**
+             * Destroy server channel.
+             * This method MUST BE called if overriden.
+             */
+            virtual void destroy() =0;
+        };
+
+        /**
+         * Interface defining a transport that hosts channels.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: ChannelHostingTransport.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class ChannelHostingTransport {
+        public:
+            virtual ~ChannelHostingTransport() {
+            }
+
+            /**
+             * Get security token.
+             * @return security token, can be <code>null</code>.
+             */
+            virtual epics::pvData::PVField* getSecurityToken() =0;
+
+            /**
+             * Preallocate new channel SID.
+             * @return new channel server id (SID).
+             */
+            virtual int preallocateChannelSID() =0;
+
+            /**
+             * De-preallocate new channel SID.
+             * @param sid preallocated channel SID.
+             */
+            virtual void depreallocateChannelSID(int sid) =0;
+
+            /**
+             * Register a new channel.
+             * @param sid preallocated channel SID.
+             * @param channel channel to register.
+             */
+            virtual void registerChannel(int sid, ServerChannel* channel) =0;
+
+            /**
+             * Unregister a new channel (and deallocates its handle).
+             * @param sid SID
+             */
+            virtual void unregisterChannel(int sid) =0;
+
+            /**
+             * Get channel by its SID.
+             * @param sid channel SID
+             * @return channel with given SID, <code>null</code> otherwise
+             */
+            virtual ServerChannel* getChannel(int sid) =0;
+
+            /**
+             * Get channel count.
+             * @return channel count.
+             */
+            virtual int getChannelCount() =0;
         };
 
     }

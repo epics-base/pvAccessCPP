@@ -42,9 +42,9 @@ void testBeaconEmitter()
     osiSockAddr* addr = new osiSockAddr;
     addr->ia.sin_family = AF_INET;
     addr->ia.sin_port = htons(5067);
-    if(inet_aton("92.50.75.255",&addr->ia.sin_addr)==0) {
-    	cout<<"error in inet_aton()"<<endl;
-    	return;
+    if(inet_aton("255.255.255.255",&addr->ia.sin_addr)==0)
+    {
+    	assert(false);
     }
     broadcastAddresses->push_back(addr);
     BlockingUDPConnector connector(true, broadcastAddresses, true);
