@@ -5,6 +5,7 @@
  *      Author: Miha Vitorovic
  */
 
+#include "responseHandlers.h"
 #include "remote.h"
 #include "hexDump.h"
 
@@ -61,10 +62,39 @@ namespace epics {
             BadResponse* badResponse = new BadResponse(context);
 
             _handlerTable = new ResponseHandler*[HANDLER_TABLE_LENGTH];
+            // TODO add real handlers, as they are developed
             _handlerTable[0] = badResponse;
+            _handlerTable[1] = badResponse;
+            _handlerTable[2] = badResponse;
+            _handlerTable[3] = badResponse;
+            _handlerTable[4] = badResponse;
+            _handlerTable[5] = badResponse;
+            _handlerTable[6] = badResponse;
+            _handlerTable[7] = badResponse;
+            _handlerTable[8] = badResponse;
+            _handlerTable[9] = badResponse;
+            _handlerTable[10] = badResponse;
+            _handlerTable[11] = badResponse;
+            _handlerTable[12] = badResponse;
+            _handlerTable[13] = badResponse;
+            _handlerTable[14] = badResponse;
+            _handlerTable[15] = badResponse;
+            _handlerTable[16] = badResponse;
+            _handlerTable[17] = badResponse;
+            _handlerTable[18] = badResponse;
+            _handlerTable[19] = badResponse;
+            _handlerTable[20] = badResponse;
+            _handlerTable[21] = badResponse;
+            _handlerTable[22] = badResponse;
+            _handlerTable[23] = badResponse;
+            _handlerTable[24] = badResponse;
+            _handlerTable[25] = badResponse;
+            _handlerTable[26] = badResponse;
+            _handlerTable[27] = badResponse;
         }
 
         ServerResponseHandler::~ServerResponseHandler() {
+            delete _handlerTable[0];
             delete[] _handlerTable;
         }
 

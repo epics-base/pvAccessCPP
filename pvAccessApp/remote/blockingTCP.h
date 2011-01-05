@@ -15,6 +15,7 @@
 #include "transportRegistry.h"
 #include "introspectionRegistry.h"
 #include "namedLockPattern.h"
+#include "inetAddressUtil.h"
 
 /* pvData */
 #include <byteBuffer.h>
@@ -472,20 +473,6 @@ namespace epics {
              * Responsive transport notify.
              */
             void responsiveTransport();
-        };
-
-        /**
-         * comparator for osiSockAddr*
-         */
-        struct comp_osiSockAddrPtr
-        {
-            bool operator()(osiSockAddr const *a, osiSockAddr const *b)
-            {
-                if (a->sa.sa_family < b->sa.sa_family) return true;
-                if ((a->sa.sa_family == b->sa.sa_family) && (a->ia.sin_addr.s_addr < b->ia.sin_addr.s_addr )) return true;
-                if ((a->sa.sa_family == b->sa.sa_family) && (a->ia.sin_addr.s_addr == b->ia.sin_addr.s_addr ) && ( a->ia.sin_port < b->ia.sin_port )) return true;
-                return false;
-            }
         };
 
         /**

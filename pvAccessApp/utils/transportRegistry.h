@@ -25,16 +25,6 @@ namespace epics { namespace pvAccess {
 
 class Transport;
 //TODO if unordered map is used instead of map we can use sockAddrAreIdentical routine from osiSock.h
-struct comp_osiSockAddr
-{
-	bool operator()(osiSockAddr const *a, osiSockAddr const *b)
-	{
-		if (a->sa.sa_family < b->sa.sa_family) return true;
-		if ((a->sa.sa_family == b->sa.sa_family) && (a->ia.sin_addr.s_addr < b->ia.sin_addr.s_addr )) return true;
-		if ((a->sa.sa_family == b->sa.sa_family) && (a->ia.sin_addr.s_addr == b->ia.sin_addr.s_addr ) && ( a->ia.sin_port < b->ia.sin_port )) return true;
-		return false;
-	}
-};
 
 typedef std::map<const int16,Transport*> prioritiesMap_t;
 typedef std::map<const osiSockAddr*,prioritiesMap_t*,comp_osiSockAddr> transportsMap_t;

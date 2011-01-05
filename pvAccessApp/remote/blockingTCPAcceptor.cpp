@@ -9,6 +9,7 @@
 #include "blockingTCP.h"
 #include "remote.h"
 #include "serverContext.h"
+#include "responseHandlers.h"
 
 /* pvData */
 #include <epicsException.h>
