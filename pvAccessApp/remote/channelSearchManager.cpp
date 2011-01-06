@@ -440,6 +440,8 @@ ChannelSearchManager::ChannelSearchManager(ClientContextImpl* context):
 		_timers[i] = new SearchTimer(this, i, i > _beaconAnomalyTimerIndex, i != (numberOfTimers-1));
 	}
 	_numberOfTimers = numberOfTimers;
+
+	_mockTransportSendControl = new MockTransportSendControl();
 }
 
 ChannelSearchManager::~ChannelSearchManager()
@@ -450,6 +452,7 @@ ChannelSearchManager::~ChannelSearchManager()
 	}
 	if(_timers) delete[] _timers;
 	if(_sendBuffer) delete _sendBuffer;
+	if(_mockTransportSendControl) delete _mockTransportSendControl;
 }
 
 void ChannelSearchManager::cancel()
@@ -511,7 +514,7 @@ void ChannelSearchManager::searchResponse(int32 cid, int32 seqNo, int8 minorRevi
 	else
 	{
 		// minor hack to enable duplicate reports
-		si = static_cast<SearchInstance*>(_context->getChannel(cid));
+		si = reinterpret_cast<SearchInstance*>(_context->getChannel(cid));
 		if(si != NULL)
 		{
 			si->searchResponse(minorRevision, serverAddress);
@@ -556,8 +559,7 @@ void ChannelSearchManager::initializeSendBuffer()
 	sendBuffer.put(REQUIRE_REPLY ? (byte)QoS.REPLY_REQUIRED.getMaskValue() : (byte)QoS.DEFAULT.getMaskValue());
 	*/
 
-	//TODO implement Qos
-	//_sendBuffer->put((int8)QoS.DEFAULT.getMaskValue());
+	_sendBuffer->putByte((int8)DEFAULT);
 	_sendBuffer->putShort((int16)0);	// count
 }
 
@@ -567,8 +569,7 @@ void ChannelSearchManager::flushSendBuffer()
 	TimeStamp now;
 	now.getCurrent();
 	_timeAtLastSend = now.getMilliseconds();
-	//TODO
-	//_context->getSearchTransport()->send(sendBuffer);
+	_context->getSearchTransport()->send(_sendBuffer);
 	initializeSendBuffer();
 }
 

@@ -13,7 +13,7 @@ ReferenceCountingLock::ReferenceCountingLock(): _references(1)
 	if(retval != 0)
 	{
 		//string errMsg = "Error: pthread_mutexattr_init failed: " + string(strerror(retval));
-		assert(true);
+		assert(false);
 	}
 	retval = pthread_mutexattr_settype(&mutexAttribute, PTHREAD_MUTEX_RECURSIVE);
 	if(retval == 0)
@@ -22,13 +22,13 @@ ReferenceCountingLock::ReferenceCountingLock(): _references(1)
 		if(retval != 0)
 		{
 			//string errMsg = "Error: pthread_mutex_init failed: " + string(strerror(retval));
-			assert(true);
+			assert(false);
 		}
 	}
 	else
 	{
 		//string errMsg = "Error: pthread_mutexattr_settype failed: " + string(strerror(retval));
-		assert(true);
+		assert(false);
 	}
 
 	pthread_mutexattr_destroy(&mutexAttribute);
@@ -58,7 +58,7 @@ void ReferenceCountingLock::release()
 	int retval = pthread_mutex_unlock(&_mutex);
 	if(retval != 0)
 	{
-		string errMsg = "Error: pthread_mutex_unlock failed: "  + string(strerror(retval));
+		//string errMsg = "Error: pthread_mutex_unlock failed: "  + string(strerror(retval));
 		//TODO do something?
 	}
 }

@@ -22,6 +22,10 @@ PROD_HOST += testBeaconHandler
 testBeaconHandler_SRCS += testBeaconHandler.cpp
 testBeaconHandler_LIBS += pvData pvAccess Com
 
+PROD_HOST += testChannelSearchManager
+testChannelSearchManager_SRCS += testChannelSearchManager.cpp
+testChannelSearchManager_LIBS += pvData pvAccess Com
+
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE
