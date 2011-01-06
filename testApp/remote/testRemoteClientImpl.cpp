@@ -8,6 +8,7 @@
 #include <showConstructDestruct.h>
 #include <lock.h>
 #include <standardPVField.h>
+#include <memory>
 
 #include <caConstants.h>
 #include <timer.h>
