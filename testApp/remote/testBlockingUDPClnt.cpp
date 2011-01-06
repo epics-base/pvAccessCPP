@@ -89,6 +89,8 @@ void testBlockingUDPSender() {
         sleep(1);
     }
 
+    delete transport;
+
 }
 
 int main(int argc, char *argv[]) {

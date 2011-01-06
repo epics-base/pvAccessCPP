@@ -23,3 +23,5 @@
 # You must rebuild in the iocBoot directory for this to
 #   take effect.
 #IOCS_APPL_TOP = </IOC/path/to/application/top>
+
+USR_LDFLAGS += -lpthread

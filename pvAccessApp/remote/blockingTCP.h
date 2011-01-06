@@ -37,6 +37,7 @@ namespace epics {
     namespace pvAccess {
 
         class MonitorSender;
+        class BlockingServerTCPTransport;
 
         enum ReceiveStage {
             READ_FROM_SOCKET, PROCESS_HEADER, PROCESS_PAYLOAD, NONE
@@ -44,6 +45,19 @@ namespace epics {
 
         enum SendQueueFlushStrategy {
             IMMEDIATE, DELAYED, USER_CONTROLED
+        };
+
+        class TransportCloseNotification {
+        public:
+            virtual ~TransportCloseNotification() {
+            }
+
+            /**
+             * When transport closes, the owner will be notified through this
+             * callback
+             */
+            virtual void
+            transportClosed(BlockingServerTCPTransport* transport) =0;
         };
 
         class BlockingTCPTransport : public Transport,
@@ -504,7 +518,8 @@ namespace epics {
             /**
              * named lock
              */
-            NamedLockPattern<const osiSockAddr*, comp_osiSockAddrPtr>* _namedLocker;
+            NamedLockPattern<const osiSockAddr*, comp_osiSockAddrPtr>
+                    * _namedLocker;
 
             /**
              * Receive buffer size.
@@ -623,6 +638,10 @@ namespace epics {
             virtual void send(epics::pvData::ByteBuffer* buffer,
                     TransportSendControl* control);
 
+            void addCloseNotification(TransportCloseNotification* notifyTarget) {
+                _notifyOnClose = notifyTarget;
+            }
+
         protected:
             /**
              * Introspection registry.
@@ -644,6 +663,8 @@ namespace epics {
 
             Mutex* _channelsMutex;
 
+            TransportCloseNotification* _notifyOnClose;
+
             /**
              * Destroy all channels.
              */
@@ -655,7 +676,7 @@ namespace epics {
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          * @version $Id: BlockingTCPAcceptor.java,v 1.1 2010/05/03 14:45:42 mrkraimer Exp $
          */
-        class BlockingTCPAcceptor {
+        class BlockingTCPAcceptor : public TransportCloseNotification {
         public:
 
             /**
@@ -684,6 +705,8 @@ namespace epics {
              */
             void destroy();
 
+            virtual void transportClosed(BlockingServerTCPTransport* transport);
+
         private:
             /**
              * Context instance.
@@ -711,6 +734,10 @@ namespace epics {
             volatile bool _destroyed;
 
             epicsThreadId _threadId;
+
+            std::set<BlockingServerTCPTransport*>* _connectedClients;
+
+            Mutex* _connectedClientsMutex;
 
             /**
              * Initialize connection acception.

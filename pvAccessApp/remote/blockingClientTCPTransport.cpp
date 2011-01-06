@@ -125,12 +125,12 @@ namespace epics {
             // check if still acquired
             int refs = _owners->size();
             if(refs>0) {
-                ostringstream temp;
                 char ipAddrStr[48];
                 ipAddrToA(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
-                temp<<"Transport to "<<ipAddrStr<<" still has "<<refs;
-                temp<<" client(s) active and closing...";
-                errlogSevPrintf(errlogInfo, temp.str().c_str());
+                errlogSevPrintf(
+                        errlogInfo,
+                        "Transport to %s still has %d client(s) active and closing...",
+                        ipAddrStr, refs);
 
                 set<TransportClient*>::iterator it = _owners->begin();
                 for(; it!=_owners->end(); it++)

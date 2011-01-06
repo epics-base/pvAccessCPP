@@ -84,10 +84,26 @@ namespace epics {
 
         };
 
+        /**
+         * Connection validation message handler.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: ConnectionValidationHandler.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class ConnectionValidationHandler : public AbstractServerResponseHandler {
+        public:
+            /**
+             * @param context
+             */
+            ConnectionValidationHandler(ServerContextImpl* context) :
+                AbstractServerResponseHandler(context, "Connection validation") {
+            }
 
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        };
 
     }
 }
-
 
 #endif /* RESPONSEHANDLERS_H_ */

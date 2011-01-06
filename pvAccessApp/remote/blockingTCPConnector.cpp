@@ -139,7 +139,7 @@ namespace epics {
                         transport->close(true);
                         errlogSevPrintf(
                                 errlogInfo,
-                                "Connection to CA client %s failed to be validated, closing it.",
+                                "Connection to CA server %s failed to be validated, closing it.",
                                 ipAddrStr);
                         ostringstream temp;
                         temp<<"Failed to verify TCP connection to '"<<ipAddrStr
