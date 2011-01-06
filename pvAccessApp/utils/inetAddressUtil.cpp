@@ -21,6 +21,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <sstream>
+#include <sys/socket.h>
 
 using namespace std;
 using namespace epics::pvData;
@@ -124,14 +125,14 @@ namespace epics {
         osiSockAddr* intToIPv4Address(int32 addr) {
             osiSockAddr* ret = new osiSockAddr;
             ret->ia.sin_family = AF_INET;
-            ret->ia.sin_addr.s_addr = (in_addr_t)addr;
+            ret->ia.sin_addr.s_addr = htonl(addr);
             ret->ia.sin_port = 0;
 
             return ret;
         }
 
         int32 ipv4AddressToInt(const osiSockAddr& addr) {
-            return (int32)(addr.ia.sin_addr.s_addr);
+            return (int32)ntohl(addr.ia.sin_addr.s_addr);
         }
 
         int32 parseInetAddress(const String addr) {
@@ -168,24 +169,6 @@ namespace epics {
             return retAddr;
         }
 
-        osiSockAddr* processAddressForList(String address, int defaultPort) {
-            // check port
-            int port = defaultPort;
-            size_t pos = address.find(':');
-            if(pos!=String::npos) {
-                port = atoi(address.substr(pos+1).c_str());
-                address = address.substr(0, pos);
-            }
-
-            // add parsed address
-            osiSockAddr* addr = new osiSockAddr;
-            addr->ia.sin_family = AF_INET;
-            addr->ia.sin_port = port;
-            addr->ia.sin_addr.s_addr = parseInetAddress(address);
-
-            return addr;
-        }
-
         InetAddrVector* getSocketAddressList(String list, int defaultPort,
                 const InetAddrVector* appendList) {
             InetAddrVector* iav = new InetAddrVector();
@@ -195,13 +178,17 @@ namespace epics {
             size_t subEnd;
             while((subEnd = list.find(' ', subStart))!=String::npos) {
                 String address = list.substr(subStart, (subEnd-subStart));
-
-                iav->push_back(processAddressForList(address, defaultPort));
+                osiSockAddr* addr = new osiSockAddr;
+                aToIPAddr(address.c_str(), defaultPort, &addr->ia);
+                iav->push_back(addr);
                 subStart = list.find_first_not_of(" \t\r\n\v", subEnd);
             }
 
-            if(subStart!=String::npos&&list.length()>0) iav->push_back(
-                    processAddressForList(list.substr(subStart), defaultPort));
+            if(subStart!=String::npos&&list.length()>0) {
+                osiSockAddr* addr = new osiSockAddr;
+                aToIPAddr(list.substr(subStart).c_str(), defaultPort, &addr->ia);
+                iav->push_back(addr);
+            }
 
             if(appendList!=NULL) {
                 for(size_t i = 0; i<appendList->size(); i++)
@@ -221,8 +208,8 @@ namespace epics {
             saddr<<((int)(ipa>>8)&0xFF)<<'.';
             saddr<<((int)ipa&0xFF);
             if(addr->ia.sin_port>0) saddr<<":"<<ntohs(addr->ia.sin_port);
-            if(displayHex) saddr<<" ("<<hex<<((uint32_t)(
-                    addr->ia.sin_addr.s_addr))<<")";
+            if(displayHex) saddr<<" ("<<hex
+                    <<ntohl(addr->ia.sin_addr.s_addr)<<")";
 
             return saddr.str();
         }

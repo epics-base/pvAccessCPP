@@ -65,7 +65,8 @@ namespace epics {
         BlockingTCPTransport::BlockingTCPTransport(Context* context,
                 SOCKET channel, ResponseHandler* responseHandler,
                 int receiveBufferSize, int16 priority) :
-            _closed(false), _channel(channel), _remoteTransportRevision(0),
+            _closed(false), _channel(channel), _socketAddress(new osiSockAddr),
+                    _remoteTransportRevision(0),
                     _remoteTransportReceiveBufferSize(MAX_TCP_RECV),
                     _remoteTransportSocketReceiveBufferSize(MAX_TCP_RECV),
                     _priority(priority), _responseHandler(responseHandler),
@@ -99,7 +100,6 @@ namespace epics {
 
             // get send buffer size
 
-
             socklen_t intLen = sizeof(int);
 
             int retval = getsockopt(_channel, SOL_SOCKET, SO_SNDBUF,
@@ -129,6 +129,7 @@ namespace epics {
         BlockingTCPTransport::~BlockingTCPTransport() {
             close(true);
 
+            delete _socketAddress;
             delete _sendQueue;
             delete _socketBuffer;
             delete _sendBuffer;
@@ -236,7 +237,7 @@ namespace epics {
             internalVerified = _verified;
             _verifiedMutex->unlock();
 
-            while(!internalVerified&&internalTimeout<=0) {
+            while(!internalVerified&&internalTimeout>0) {
                 epicsThreadSleep(min(0.1, internalTimeout));
                 internalTimeout -= 0.1;
 
@@ -459,7 +460,7 @@ namespace epics {
                                     _socketBuffer->getRemaining());
                             ssize_t bytesRead = recv(_channel, readBuffer,
                                     maxToRead, 0);
-                            _socketBuffer->put(readBuffer, 0, maxToRead);
+                            _socketBuffer->put(readBuffer, 0, bytesRead);
 
                             if(bytesRead<0) {
                                 // error (disconnect, end-of-stream) detected

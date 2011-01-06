@@ -111,7 +111,7 @@ namespace epics {
             //
             // send verification message
             //
-            control->startMessage(1, 2*sizeof(int32));
+            control->startMessage(CMD_CONNECTION_VALIDATION, 2*sizeof(int32));
 
             // receive buffer size
             buffer->putInt(getReceiveBufferSize());

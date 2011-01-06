@@ -32,20 +32,23 @@ int main(int argc, char *argv[]) {
     osiSockAddr* addr;
     addr = vec->at(0);
     assert(addr->ia.sin_family==AF_INET);
-    assert(addr->ia.sin_port==555);
-    assert(addr->ia.sin_addr.s_addr==(uint32_t)0x7F000001);
+    assert(addr->ia.sin_port==htons(555));
+    assert(addr->ia.sin_addr.s_addr==htonl(0x7F000001));
+    assert(inetAddressToString(addr)=="127.0.0.1:555");
     cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     addr = vec->at(1);
     assert(addr->ia.sin_family==AF_INET);
-    assert(addr->ia.sin_port==1234);
-    assert(addr->ia.sin_addr.s_addr==(uint32_t)0x0A0A0C0B);
+    assert(addr->ia.sin_port==htons(1234));
+    assert(addr->ia.sin_addr.s_addr==htonl(0x0A0A0C0B));
+    assert(inetAddressToString(addr)=="10.10.12.11:1234");
     cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     addr = vec->at(2);
     assert(addr->ia.sin_family==AF_INET);
-    assert(addr->ia.sin_port==555);
-    assert(addr->ia.sin_addr.s_addr==(uint32_t)0xC0A80304);
+    assert(addr->ia.sin_port==htons(555));
+    assert(addr->ia.sin_addr.s_addr==htonl(0xC0A80304));
+    assert(inetAddressToString(addr)=="192.168.3.4:555");
     cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     cout<<"\nPASSED!\n";
@@ -57,26 +60,30 @@ int main(int argc, char *argv[]) {
 
     addr = vec1->at(0);
     assert(addr->ia.sin_family==AF_INET);
-    assert(addr->ia.sin_port==6789);
-    assert(addr->ia.sin_addr.s_addr==(uint32_t)0xAC1037A0);
-    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
+    assert(addr->ia.sin_port==htons(6789));
+    assert(addr->ia.sin_addr.s_addr==htonl(0xAC1037A0));
+    assert(inetAddressToString(addr)=="172.16.55.160:6789");
+cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     addr = vec1->at(1);
     assert(addr->ia.sin_family==AF_INET);
-    assert(addr->ia.sin_port==555);
-    assert(addr->ia.sin_addr.s_addr==(uint32_t)0x7F000001);
+    assert(addr->ia.sin_port==htons(555));
+    assert(addr->ia.sin_addr.s_addr==htonl(0x7F000001));
+    assert(inetAddressToString(addr)=="127.0.0.1:555");
     cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     addr = vec1->at(2);
     assert(addr->ia.sin_family==AF_INET);
-    assert(addr->ia.sin_port==1234);
-    assert(addr->ia.sin_addr.s_addr==(uint32_t)0x0A0A0C0B);
+    assert(addr->ia.sin_port==htons(1234));
+    assert(addr->ia.sin_addr.s_addr==htonl(0x0A0A0C0B));
+    assert(inetAddressToString(addr)=="10.10.12.11:1234");
     cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     addr = vec1->at(3);
     assert(addr->ia.sin_family==AF_INET);
-    assert(addr->ia.sin_port==555);
-    assert(addr->ia.sin_addr.s_addr==(uint32_t)0xC0A80304);
+    assert(addr->ia.sin_port==htons(555));
+    assert(addr->ia.sin_addr.s_addr==htonl(0xC0A80304));
+    assert(inetAddressToString(addr)=="192.168.3.4:555");
     cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     cout<<"\nPASSED!\n";
@@ -93,11 +100,13 @@ int main(int argc, char *argv[]) {
     cout<<"Testing \"intToIPv4Address\""<<endl;
     addr = intToIPv4Address(0x7F000001);
     assert(addr->ia.sin_family==AF_INET);
+    assert(inetAddressToString(addr)=="127.0.0.1");
     cout<<'\t'<<inetAddressToString(addr, true)<<endl;
     delete addr;
 
     addr = intToIPv4Address(0x0A0A0C0B);
     assert(addr->ia.sin_family==AF_INET);
+    assert(inetAddressToString(addr)=="10.10.12.11");
     cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     cout<<"\nPASSED!\n";
@@ -110,9 +119,8 @@ int main(int argc, char *argv[]) {
             (char)0, (char)0, (char)0, (char)0, (char)0xFF, (char)0xFF,
             (char)0x0A, (char)0x0A, (char)0x0C, (char)0x0B };
 
-
     encodeAsIPv6Address(buff, addr);
-    assert(strncmp(buff->getArray(),src,16)==0);
+    assert(strncmp(buff->getArray(), src, 16)==0);
     cout<<"\nPASSED!\n";
 
     // TODO add test for 'getBroadcastAddresses'

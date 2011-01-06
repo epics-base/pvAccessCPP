@@ -64,7 +64,7 @@ namespace epics {
             _handlerTable = new ResponseHandler*[HANDLER_TABLE_LENGTH];
             // TODO add real handlers, as they are developed
             _handlerTable[0] = badResponse;
-            _handlerTable[1] = badResponse;
+            _handlerTable[1] = new ConnectionValidationHandler(_context);
             _handlerTable[2] = badResponse;
             _handlerTable[3] = badResponse;
             _handlerTable[4] = badResponse;
@@ -95,6 +95,7 @@ namespace epics {
 
         ServerResponseHandler::~ServerResponseHandler() {
             delete _handlerTable[0];
+            delete _handlerTable[1];
             delete[] _handlerTable;
         }
 
@@ -117,6 +118,23 @@ namespace epics {
             // delegate
             _handlerTable[command]->handleResponse(responseFrom, transport,
                     version, command, payloadSize, payloadBuffer);
+        }
+
+        void ConnectionValidationHandler::handleResponse(
+                osiSockAddr* responseFrom, Transport* transport, int8 version,
+                int8 command, int payloadSize,
+                epics::pvData::ByteBuffer* payloadBuffer) {
+            AbstractServerResponseHandler::handleResponse(responseFrom,
+                    transport, version, command, payloadSize, payloadBuffer);
+
+            transport->ensureData(2*sizeof(int32)+sizeof(int16));
+            transport->setRemoteTransportReceiveBufferSize(
+                    payloadBuffer->getInt());
+            transport->setRemoteTransportSocketReceiveBufferSize(
+                    payloadBuffer->getInt());
+            transport->setRemoteMinorRevision(version);
+            // TODO support priority  !!!
+            //transport.setPriority(payloadBuffer.getShort());
         }
 
     }

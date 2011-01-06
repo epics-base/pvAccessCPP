@@ -40,6 +40,8 @@ namespace epics {
         }
 
         BlockingTCPAcceptor::~BlockingTCPAcceptor() {
+            destroy();
+
             if(_bindAddress!=NULL) delete _bindAddress;
 
             _connectedClientsMutex->lock();
@@ -190,7 +192,7 @@ namespace epics {
                 }
                 else if(retval>0) {
                     // some event on a socket
-                    if(sockets[0].revents&POLLIN!=0) {
+                    if((sockets[0].revents&POLLIN)!=0) {
                         // connection waiting
 
                         osiSockAddr address;
@@ -267,7 +269,7 @@ namespace epics {
 
                         }// accept succeeded
                     } // connection waiting
-                    if(sockets[0].revents&(POLLERR|POLLHUP|POLLNVAL)!=0) {
+                    if((sockets[0].revents&(POLLERR|POLLHUP|POLLNVAL))!=0) {
                         errlogSevPrintf(errlogMajor,
                                 "error on a socket: POLLERR|POLLHUP|POLLNVAL");
                         socketOpen = false;
