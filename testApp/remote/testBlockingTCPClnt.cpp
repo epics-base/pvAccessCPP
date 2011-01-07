@@ -29,14 +29,19 @@ using std::sscanf;
 class ContextImpl : public Context {
 public:
     ContextImpl() :
-        _tr(new TransportRegistry()),
-        _timer(new Timer("client thread", lowPriority)) {}
+        _tr(new TransportRegistry()), _timer(new Timer("client thread",
+                lowPriority)) {
+    }
     virtual ~ContextImpl() {
         delete _tr;
         delete _timer;
     }
-    virtual Timer* getTimer() { return _timer; }
-    virtual TransportRegistry* getTransportRegistry() { return _tr; }
+    virtual Timer* getTimer() {
+        return _timer;
+    }
+    virtual TransportRegistry* getTransportRegistry() {
+        return _tr;
+    }
 private:
     TransportRegistry* _tr;
     Timer* _timer;
@@ -47,6 +52,8 @@ public:
     virtual void handleResponse(osiSockAddr* responseFrom,
             Transport* transport, int8 version, int8 command, int payloadSize,
             ByteBuffer* payloadBuffer) {
+
+        if(command==CMD_CONNECTION_VALIDATION) transport->verified();
     }
 };
 

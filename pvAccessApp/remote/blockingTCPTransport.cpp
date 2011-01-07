@@ -417,11 +417,6 @@ namespace epics {
 
         void BlockingTCPTransport::processReadCached(bool nestedCall,
                 ReceiveStage inStage, int requiredBytes, bool addToBuffer) {
-            // TODO remove debug
-            errlogSevPrintf(errlogInfo,
-                    "processReadCached(%d, %d, %d, %d), _stage: %d",
-                    nestedCall, inStage, requiredBytes, addToBuffer, _stage);
-
             try {
                 while(!_closed) {
                     if(_stage==READ_FROM_SOCKET||inStage!=NONE) {
@@ -458,11 +453,6 @@ namespace epics {
 
                         int requiredPosition = (currentStartPosition
                                 +requiredBytes);
-
-                        // TODO remove debug
-                        errlogSevPrintf(errlogInfo,
-                                "requredPos:%d, buffer->pos:%d",
-                                requiredPosition, _socketBuffer->getPosition());
                         while(_socketBuffer->getPosition()<requiredPosition) {
                             // read
                             char readBuffer[MAX_TCP_RECV];
@@ -471,12 +461,6 @@ namespace epics {
                             ssize_t bytesRead = recv(_channel, readBuffer,
                                     maxToRead, 0);
                             _socketBuffer->put(readBuffer, 0, bytesRead);
-
-                            // TODO remove debug
-                            if(bytesRead>0) errlogSevPrintf(
-                                    errlogInfo,
-                                    "***!!! got %d bytes of %d (reqPos=%d)!!!***",
-                                    bytesRead, requiredBytes, requiredPosition);
 
                             if(bytesRead<0) {
                                 // error (disconnect, end-of-stream) detected
