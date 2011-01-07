@@ -53,7 +53,7 @@ void testBeaconEmitter()
     bindAddr.ia.sin_family = AF_INET;
     bindAddr.ia.sin_port = htons(5066);
     bindAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-    Transport* transport = connector.connect(NULL, &drh, &bindAddr, 1, 50);
+    Transport* transport = connector.connect(NULL, &drh, bindAddr, 1, 50);
 
     cout<<"Sending beacons"<<endl;
     BeaconEmitter beaconEmitter(transport, transport->getRemoteAddress());

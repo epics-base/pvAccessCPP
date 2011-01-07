@@ -32,13 +32,13 @@ namespace epics {
             delete _namedLocker;
         }
 
-        SOCKET BlockingTCPConnector::tryConnect(osiSockAddr* address, int tries) {
+        SOCKET BlockingTCPConnector::tryConnect(osiSockAddr& address, int tries) {
             for(int tryCount = 0; tryCount<tries; tryCount++) {
                 // sleep for a while
                 if(tryCount>0) epicsThreadSleep(0.1);
 
                 char strBuffer[64];
-                ipAddrToA(&address->ia, strBuffer, sizeof(strBuffer));
+                ipAddrToA(&address.ia, strBuffer, sizeof(strBuffer));
 
                 errlogSevPrintf(errlogInfo,
                         "Opening socket to CA server %s, attempt %d.",
@@ -53,7 +53,7 @@ namespace epics {
                             strBuffer);
                 }
                 else {
-                    if(::connect(socket, &address->sa, sizeof(sockaddr))==0)
+                    if(::connect(socket, &address.sa, sizeof(sockaddr))==0)
                         return socket;
                     else {
                         epicsSocketConvertErrnoToString(strBuffer,
@@ -67,19 +67,19 @@ namespace epics {
         }
 
         Transport* BlockingTCPConnector::connect(TransportClient* client,
-                ResponseHandler* responseHandler, osiSockAddr* address,
+                ResponseHandler* responseHandler, osiSockAddr& address,
                 short transportRevision, int16 priority) {
 
             SOCKET socket = INVALID_SOCKET;
 
             char ipAddrStr[64];
-            ipAddrToA(&address->ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToA(&address.ia, ipAddrStr, sizeof(ipAddrStr));
 
             // first try to check cache w/o named lock...
             BlockingClientTCPTransport
                     * transport =
                             (BlockingClientTCPTransport*)(_context->getTransportRegistry()->get(
-                                    "TCP", address, priority));
+                                    "TCP", &address, priority));
             if(transport!=NULL) {
                 errlogSevPrintf(errlogInfo,
                         "Reusing existing connection to CA server: %s",
@@ -88,13 +88,13 @@ namespace epics {
             }
 
             bool lockAcquired = _namedLocker->acquireSynchronizationObject(
-                    address, LOCK_TIMEOUT);
+                    &address, LOCK_TIMEOUT);
             if(lockAcquired) {
                 try {
                     // ... transport created during waiting in lock
                     transport
                             = (BlockingClientTCPTransport*)(_context->getTransportRegistry()->get(
-                                    "TCP", address, priority));
+                                    "TCP", &address, priority));
                     if(transport!=NULL) {
                         errlogSevPrintf(errlogInfo,
                                 "Reusing existing connection to CA server: %s",
@@ -156,10 +156,10 @@ namespace epics {
                 } catch(...) {
                     // close socket, if open
                     if(socket!=INVALID_SOCKET) epicsSocketDestroy(socket);
-                    _namedLocker->releaseSynchronizationObject(address);
+                    _namedLocker->releaseSynchronizationObject(&address);
                     throw;
                 }
-                _namedLocker->releaseSynchronizationObject(address);
+                _namedLocker->releaseSynchronizationObject(&address);
             }
             else {
                 ostringstream temp;

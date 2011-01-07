@@ -80,7 +80,7 @@ void testBlockingUDPConnector() {
     bindAddr.ia.sin_port = htons(65000);
     bindAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    Transport* transport = connector.connect(NULL, &drh, &bindAddr, 1, 50);
+    Transport* transport = connector.connect(NULL, &drh, bindAddr, 1, 50);
 
     ((BlockingUDPTransport*)transport)->start();
 

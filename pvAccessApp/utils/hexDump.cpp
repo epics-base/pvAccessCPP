@@ -11,6 +11,9 @@
 #include <sstream>
 
 using namespace epics::pvData;
+using std::stringstream;
+using std::endl;
+using std::cout;
 
 namespace epics {
     namespace pvAccess {
@@ -29,9 +32,9 @@ namespace epics {
         void hexDump(const String prologue, const String name, const int8 *bs,
                 int start, int len) {
 
-            std::stringstream header;
+            stringstream header;
 
-            header<<prologue<<std::endl<<"Hexdump ["<<name<<"] size = "<<len;
+            header<<prologue<<endl<<"Hexdump ["<<name<<"] size = "<<len;
 
             String out(header.str());
 
@@ -70,7 +73,7 @@ namespace epics {
             }
 
             out += chars;
-            std::cout<<out;
+            cout<<out<<endl;
         }
 
         /**

@@ -32,8 +32,8 @@ namespace epics {
                 ipAddrToA(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
 
                 ostringstream prologue;
-                prologue<<"Message ["<<command<<", v"<<hex<<version;
-                prologue<<"] received from "<<ipAddrStr;
+                prologue<<"Message [0x"<<hex<<(int)command<<", v0x"<<hex;
+                prologue<<(int)version<<"] received from "<<ipAddrStr;
 
                 hexDump(prologue.str(), _description,
                         (const int8*)payloadBuffer->getArray(),
@@ -63,9 +63,9 @@ namespace epics {
 
             _handlerTable = new ResponseHandler*[HANDLER_TABLE_LENGTH];
             // TODO add real handlers, as they are developed
-            _handlerTable[0] = badResponse;
+            _handlerTable[0] = new NoopResponse(_context, "Beacon");
             _handlerTable[1] = new ConnectionValidationHandler(_context);
-            _handlerTable[2] = badResponse;
+            _handlerTable[2] = new EchoHandler(_context);
             _handlerTable[3] = badResponse;
             _handlerTable[4] = badResponse;
             _handlerTable[5] = badResponse;
@@ -96,6 +96,8 @@ namespace epics {
         ServerResponseHandler::~ServerResponseHandler() {
             delete _handlerTable[0];
             delete _handlerTable[1];
+            delete _handlerTable[2];
+            delete _handlerTable[27];
             delete[] _handlerTable;
         }
 
@@ -135,6 +137,43 @@ namespace epics {
             transport->setRemoteMinorRevision(version);
             // TODO support priority  !!!
             //transport.setPriority(payloadBuffer.getShort());
+        }
+
+        class EchoTransportSender : public TransportSender {
+        public:
+            EchoTransportSender(osiSockAddr* echoFrom) {
+                memcpy(&_echoFrom, echoFrom, sizeof(osiSockAddr));
+            }
+
+            virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+                control->startMessage(CMD_ECHO, 0);
+                control->setRecipient(_echoFrom);
+            }
+
+            virtual void lock() {
+            }
+
+            virtual void unlock() {
+                delete this;
+            }
+        private:
+            osiSockAddr _echoFrom;
+
+            virtual ~EchoTransportSender() {
+            }
+        };
+
+        void EchoHandler::handleResponse(osiSockAddr* responseFrom,
+                Transport* transport, int8 version, int8 command,
+                int payloadSize, epics::pvData::ByteBuffer* payloadBuffer) {
+            AbstractServerResponseHandler::handleResponse(responseFrom,
+                    transport, version, command, payloadSize, payloadBuffer);
+
+            EchoTransportSender* echoReply = new EchoTransportSender(
+                    responseFrom);
+
+            // send back
+            transport->enqueueSendRequest(echoReply);
         }
 
     }

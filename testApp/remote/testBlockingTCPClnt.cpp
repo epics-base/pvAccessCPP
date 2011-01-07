@@ -29,14 +29,19 @@ using std::sscanf;
 class ContextImpl : public Context {
 public:
     ContextImpl() :
-        _tr(new TransportRegistry()),
-        _timer(new Timer("client thread", lowPriority)) {}
+        _tr(new TransportRegistry()), _timer(new Timer("client thread",
+                lowPriority)) {
+    }
     virtual ~ContextImpl() {
         delete _tr;
         delete _timer;
     }
-    virtual Timer* getTimer() { return _timer; }
-    virtual TransportRegistry* getTransportRegistry() { return _tr; }
+    virtual Timer* getTimer() {
+        return _timer;
+    }
+    virtual TransportRegistry* getTransportRegistry() {
+        return _tr;
+    }
 private:
     TransportRegistry* _tr;
     Timer* _timer;
@@ -47,6 +52,8 @@ public:
     virtual void handleResponse(osiSockAddr* responseFrom,
             Transport* transport, int8 version, int8 command, int payloadSize,
             ByteBuffer* payloadBuffer) {
+
+        if(command==CMD_CONNECTION_VALIDATION) transport->verified();
     }
 };
 
@@ -105,21 +112,23 @@ void testBlockingTCPSender() {
 
     osiSockAddr srvAddr;
 
-    srvAddr.ia.sin_family = AF_INET;
-    //srvAddr.ia.sin_port = htons(CA_SERVER_PORT);
+    //srvAddr.ia.sin_family = AF_INET;
     if(aToIPAddr("192.168.71.132", CA_SERVER_PORT, &srvAddr.ia)<0) {
         cout<<"error in aToIPAddr(...)"<<endl;
         return;
     }
 
-    Transport* transport = connector.connect(&dtc, &drh, &srvAddr,
+    Transport* transport = connector.connect(&dtc, &drh, srvAddr,
             CA_MAGIC_AND_VERSION, CA_DEFAULT_PRIORITY);
 
     cout<<"Sending 10 messages..."<<endl;
 
     for(int i = 0; i<10; i++) {
         cout<<"   Message: "<<i+1<<endl;
-        transport->enqueueSendRequest(&dts);
+        if(!transport->isClosed())
+            transport->enqueueSendRequest(&dts);
+        else
+            break;
         sleep(1);
     }
 

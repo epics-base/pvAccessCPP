@@ -24,10 +24,10 @@ namespace epics {
     namespace pvAccess {
 
         Transport* BlockingUDPConnector::connect(TransportClient* client,
-                ResponseHandler* responseHandler, osiSockAddr* bindAddress,
+                ResponseHandler* responseHandler, osiSockAddr& bindAddress,
                 short transportRevision, int16 priority) {
             errlogSevPrintf(errlogInfo, "Creating datagram socket to: %s",
-                    inetAddressToString(bindAddress).c_str());
+                    inetAddressToString(&bindAddress).c_str());
 
             SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
             if(socket==INVALID_SOCKET) {
@@ -45,7 +45,7 @@ namespace epics {
              * because of an early setsockopt call failing.
              */
 
-            int retval = ::bind(socket, (sockaddr*)&(bindAddress->sa),
+            int retval = ::bind(socket, (sockaddr*)&(bindAddress.sa),
                     sizeof(sockaddr));
             if(retval<0) {
                 errlogSevPrintf(errlogMajor, "Error binding socket: %s",

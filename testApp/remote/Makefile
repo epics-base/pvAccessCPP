@@ -26,6 +26,15 @@ PROD_HOST += testChannelSearchManager
 testChannelSearchManager_SRCS += testChannelSearchManager.cpp
 testChannelSearchManager_LIBS += pvData pvAccess Com
 
+PROD_HOST += testBlockingTCPSrv
+testBlockingTCPSrv_SRCS += testBlockingTCPSrv.cpp
+testBlockingTCPSrv_LIBS += pvData pvAccess Com
+
+PROD_HOST += testBlockingTCPClnt
+testBlockingTCPClnt_SRCS += testBlockingTCPClnt.cpp
+testBlockingTCPClnt_LIBS += pvData pvAccess Com
+
+
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE
