@@ -32,7 +32,7 @@ namespace epics {
                 public TransportSendControl {
         public:
             BlockingUDPTransport(ResponseHandler* responseHandler,
-                    SOCKET channel, osiSockAddr* bindAddress,
+                    SOCKET channel, osiSockAddr& bindAddress,
                     InetAddrVector* sendAddresses,
                     short remoteTransportRevision);
 
@@ -107,8 +107,10 @@ namespace epics {
                 // noop since all UDP requests are sent immediately
             }
 
-            virtual void setRecipient(const osiSockAddr* sendTo) {
-                _sendTo = sendTo;
+            virtual void setRecipient(const osiSockAddr& sendTo) {
+                if(_sendTo!=NULL) delete _sendTo;
+                _sendTo = new osiSockAddr;
+                memcpy(_sendTo, &sendTo, sizeof(osiSockAddr));
             }
 
             virtual void flushSerializeBuffer() {
@@ -135,7 +137,9 @@ namespace epics {
                 return _ignoredAddresses;
             }
 
-            bool send(ByteBuffer* buffer, const osiSockAddr* address = NULL);
+            bool send(ByteBuffer* buffer, const osiSockAddr& address);
+
+            bool send(ByteBuffer* buffer);
 
             /**
              * Get list of send addresses.
@@ -149,7 +153,7 @@ namespace epics {
              * Get bind address.
              * @return bind address.
              */
-            osiSockAddr* getBindAddress() {
+            const osiSockAddr* getBindAddress() const {
                 return _bindAddress;
             }
 
@@ -177,7 +181,7 @@ namespace epics {
         private:
             static void threadRunner(void* param);
 
-            bool processBuffer(osiSockAddr* fromAddress,
+            bool processBuffer(osiSockAddr& fromAddress,
                     epics::pvData::ByteBuffer* receiveBuffer);
 
             // Context only used for logging in this class
@@ -207,7 +211,7 @@ namespace epics {
              */
             InetAddrVector* _ignoredAddresses;
 
-            const osiSockAddr* _sendTo;
+            osiSockAddr* _sendTo;
 
             /**
              * Receive buffer.
@@ -259,7 +263,7 @@ namespace epics {
              * NOTE: transport client is ignored for broadcast (UDP).
              */
             virtual Transport* connect(TransportClient* client,
-                    ResponseHandler* responseHandler, osiSockAddr* bindAddress,
+                    ResponseHandler* responseHandler, osiSockAddr& bindAddress,
                     short transportRevision, int16 priority);
 
         private:

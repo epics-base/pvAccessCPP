@@ -15,6 +15,8 @@
 #include <iostream>
 #include <cstdio>
 
+#define SRV_IP "192.168.71.132"
+
 using namespace epics::pvAccess;
 using namespace epics::pvData;
 
@@ -41,15 +43,13 @@ public:
     }
 
     virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
-        // set recipient
-        sendTo.ia.sin_family = AF_INET;
-        sendTo.ia.sin_port = htons(65000);
-        if(aToIPAddr("192.168.71.129", 65000, &sendTo.ia)<0) {
+        // SRV_IP defined at the top of the this file
+        if(aToIPAddr(SRV_IP, 65000, &sendTo.ia)<0) {
             cout<<"error in aToIPAddr(...)"<<endl;
             return;
         }
 
-        control->setRecipient(&sendTo);
+        control->setRecipient(sendTo);
 
         // send the packet
         count++;
@@ -79,7 +79,7 @@ void testBlockingUDPSender() {
     bindAddr.ia.sin_port = htons(65001);
     bindAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    Transport* transport = connector.connect(NULL, &drh, &bindAddr, 1, 50);
+    Transport* transport = connector.connect(NULL, &drh, bindAddr, 1, 50);
 
     cout<<"Sending 10 packets..."<<endl;
 

@@ -118,7 +118,7 @@ void testBlockingTCPSender() {
         return;
     }
 
-    Transport* transport = connector.connect(&dtc, &drh, &srvAddr,
+    Transport* transport = connector.connect(&dtc, &drh, srvAddr,
             CA_MAGIC_AND_VERSION, CA_DEFAULT_PRIORITY);
 
     cout<<"Sending 10 messages..."<<endl;

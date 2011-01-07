@@ -117,7 +117,7 @@ namespace epics {
                 _verified = true;
             }
 
-            virtual void setRecipient(const osiSockAddr* sendTo) {
+            virtual void setRecipient(const osiSockAddr& sendTo) {
                 // noop
             }
 
@@ -492,7 +492,7 @@ namespace epics {
             virtual ~BlockingTCPConnector();
 
             virtual Transport* connect(TransportClient* client,
-                    ResponseHandler* responseHandler, osiSockAddr* address,
+                    ResponseHandler* responseHandler, osiSockAddr& address,
                     short transportRevision, int16 priority);
         private:
             /**
@@ -528,7 +528,7 @@ namespace epics {
              * @return the SOCKET
              * @throws IOException
              */
-            SOCKET tryConnect(osiSockAddr* address, int tries);
+            SOCKET tryConnect(osiSockAddr& address, int tries);
 
         };
 

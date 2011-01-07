@@ -112,7 +112,7 @@ void testBeaconHandler()
     bindAddr.ia.sin_family = AF_INET;
     bindAddr.ia.sin_port = htons(5067);
     bindAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-    Transport* transport = connector.connect(NULL, &brh, &bindAddr, 1, 50);
+    Transport* transport = connector.connect(NULL, &brh, bindAddr, 1, 50);
     (static_cast<BlockingUDPTransport*>(transport))->start();
 
     while(1) sleep(1);

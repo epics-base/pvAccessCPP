@@ -54,7 +54,7 @@ namespace epics {
 
             virtual void flush(bool lastMessageCompleted) =0;
 
-            virtual void setRecipient(const osiSockAddr* sendTo) =0;
+            virtual void setRecipient(const osiSockAddr& sendTo) =0;
         };
 
         /**
@@ -326,7 +326,7 @@ namespace epics {
              * @throws ConnectionException
              */
             virtual Transport* connect(TransportClient* client,
-                    ResponseHandler* responseHandler, osiSockAddr* address,
+                    ResponseHandler* responseHandler, osiSockAddr& address,
                     short transportRevision, int16 priority) =0;
 
         };

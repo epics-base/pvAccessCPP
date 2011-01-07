@@ -418,7 +418,7 @@ class MockTransportSendControl: public TransportSendControl
 public:
 	void endMessage() {}
 	void flush(bool lastMessageCompleted) {}
-	void setRecipient(const osiSockAddr* sendTo) {}
+	void setRecipient(const osiSockAddr& sendTo) {}
 	void startMessage(int8 command, int32 ensureCapacity) {}
 	void ensureBuffer(int32 size) {}
 	void flushSerializeBuffer() {}
