@@ -103,6 +103,41 @@ namespace epics {
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
+        /**
+         * NOOP response.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: NoopResponse.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class NoopResponse : public AbstractServerResponseHandler {
+        public:
+            /**
+             * @param context
+             * @param description
+             */
+            NoopResponse(ServerContextImpl* context, String description) :
+                AbstractServerResponseHandler(context, description) {
+            }
+        };
+
+        /**
+         * Echo request handler.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: EchoHandler.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class EchoHandler : public AbstractServerResponseHandler {
+        public:
+            /**
+             * @param context
+             */
+            EchoHandler(ServerContextImpl* context) :
+                AbstractServerResponseHandler(context, "Echo request") {
+            }
+
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        };
+
     }
 }
 

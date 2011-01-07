@@ -188,7 +188,7 @@ namespace epics {
                  * send verification response message
                  */
 
-                control->startMessage(1, 2*sizeof(int32)+sizeof(int16));
+                control->startMessage(CMD_CONNECTION_VALIDATION, 2*sizeof(int32)+sizeof(int16));
 
                 // receive buffer size
                 buffer->putInt(getReceiveBufferSize());
@@ -205,7 +205,7 @@ namespace epics {
                 _verifyOrEcho = false;
             }
             else {
-                control->startMessage(2, 0);
+                control->startMessage(CMD_ECHO, 0);
                 // send immediately
                 control->flush(true);
             }
