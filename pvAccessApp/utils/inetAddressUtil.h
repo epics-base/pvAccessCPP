@@ -71,7 +71,7 @@ namespace epics {
                 const InetAddrVector* appendList = NULL);
 
         const String inetAddressToString(const osiSockAddr *addr,
-                bool displayHex = false);
+                bool displayPort = true, bool displayHex = false);
 
         /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 

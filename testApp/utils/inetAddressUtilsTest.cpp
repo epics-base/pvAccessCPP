@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
     assert(addr->ia.sin_port==htons(6789));
     assert(addr->ia.sin_addr.s_addr==htonl(0xAC1037A0));
     assert(inetAddressToString(addr)=="172.16.55.160:6789");
-cout<<'\t'<<inetAddressToString(addr, true)<<endl;
+    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     addr = vec1->at(1);
     assert(addr->ia.sin_family==AF_INET);
@@ -100,13 +100,13 @@ cout<<'\t'<<inetAddressToString(addr, true)<<endl;
     cout<<"Testing \"intToIPv4Address\""<<endl;
     addr = intToIPv4Address(0x7F000001);
     assert(addr->ia.sin_family==AF_INET);
-    assert(inetAddressToString(addr)=="127.0.0.1");
+    assert(inetAddressToString(addr)=="127.0.0.1:0");
     cout<<'\t'<<inetAddressToString(addr, true)<<endl;
     delete addr;
 
     addr = intToIPv4Address(0x0A0A0C0B);
     assert(addr->ia.sin_family==AF_INET);
-    assert(inetAddressToString(addr)=="10.10.12.11");
+    assert(inetAddressToString(addr)=="10.10.12.11:0");
     cout<<'\t'<<inetAddressToString(addr, true)<<endl;
 
     cout<<"\nPASSED!\n";

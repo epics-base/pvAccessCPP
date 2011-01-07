@@ -115,7 +115,7 @@ namespace epics {
             // next 16-bits are 1
             buffer->putShort(0xFFFF);
             // following IPv4 address in big-endian (network) byte order
-            in_addr_t ipv4Addr = address->ia.sin_addr.s_addr;
+            in_addr_t ipv4Addr = ntohl(address->ia.sin_addr.s_addr);
             buffer->putByte((int8)((ipv4Addr>>24)&0xFF));
             buffer->putByte((int8)((ipv4Addr>>16)&0xFF));
             buffer->putByte((int8)((ipv4Addr>>8)&0xFF));
@@ -166,7 +166,7 @@ namespace epics {
             retAddr <<= 8;
             retAddr |= byte;
 
-            return retAddr;
+            return htonl(retAddr);
         }
 
         InetAddrVector* getSocketAddressList(String list, int defaultPort,
@@ -198,7 +198,7 @@ namespace epics {
         }
 
         const String inetAddressToString(const osiSockAddr *addr,
-                bool displayHex) {
+                bool displayPort, bool displayHex) {
             stringstream saddr;
 
             int ipa = ntohl(addr->ia.sin_addr.s_addr);
@@ -207,9 +207,9 @@ namespace epics {
             saddr<<((int)(ipa>>16)&0xFF)<<'.';
             saddr<<((int)(ipa>>8)&0xFF)<<'.';
             saddr<<((int)ipa&0xFF);
-            if(addr->ia.sin_port>0) saddr<<":"<<ntohs(addr->ia.sin_port);
-            if(displayHex) saddr<<" ("<<hex
-                    <<ntohl(addr->ia.sin_addr.s_addr)<<")";
+            if(displayPort) saddr<<":"<<ntohs(addr->ia.sin_port);
+            if(displayHex) saddr<<" ("<<hex<<ntohl(addr->ia.sin_addr.s_addr)
+                    <<")";
 
             return saddr.str();
         }
