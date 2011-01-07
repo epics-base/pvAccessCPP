@@ -32,8 +32,8 @@ namespace epics {
                 ipAddrToA(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
 
                 ostringstream prologue;
-                prologue<<"Message ["<<command<<", v"<<hex<<version;
-                prologue<<"] received from "<<ipAddrStr;
+                prologue<<endl<<"Message [0x"<<hex<<(int)command<<", v0x"<<hex;
+                prologue<<(int)version<<"] received from "<<ipAddrStr;
 
                 hexDump(prologue.str(), _description,
                         (const int8*)payloadBuffer->getArray(),
