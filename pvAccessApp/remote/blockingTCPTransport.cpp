@@ -72,17 +72,18 @@ namespace epics {
                     _priority(priority), _responseHandler(responseHandler),
                     _totalBytesReceived(0), _totalBytesSent(0),
                     _markerToSend(0), _verified(false), _remoteBufferFreeSpace(
-                            LONG_LONG_MAX), _markerPeriodBytes(MARKER_PERIOD),
-                    _nextMarkerPosition(_markerPeriodBytes),
-                    _sendPending(false), _lastMessageStartPosition(0), _mutex(
-                            new Mutex()), _sendQueueMutex(new Mutex()),
-                    _verifiedMutex(new Mutex()), _monitorMutex(new Mutex()),
-                    _stage(READ_FROM_SOCKET), _lastSegmentedMessageType(0),
-                    _lastSegmentedMessageCommand(0), _storedPayloadSize(0),
-                    _storedPosition(0), _storedLimit(0), _magicAndVersion(0),
-                    _packetType(0), _command(0), _payloadSize(0),
-                    _flushRequested(false), _sendBufferSentPosition(0),
-                    _flushStrategy(DELAYED), _sendQueue(
+                            LONG_LONG_MAX), _autoDelete(true),
+                    _markerPeriodBytes(MARKER_PERIOD), _nextMarkerPosition(
+                            _markerPeriodBytes), _sendPending(false),
+                    _lastMessageStartPosition(0), _mutex(new Mutex()),
+                    _sendQueueMutex(new Mutex()), _verifiedMutex(new Mutex()),
+                    _monitorMutex(new Mutex()), _stage(READ_FROM_SOCKET),
+                    _lastSegmentedMessageType(0), _lastSegmentedMessageCommand(
+                            0), _storedPayloadSize(0), _storedPosition(0),
+                    _storedLimit(0), _magicAndVersion(0), _packetType(0),
+                    _command(0), _payloadSize(0), _flushRequested(false),
+                    _sendBufferSentPosition(0), _flushStrategy(DELAYED),
+                    _sendQueue(
                             new GrowingCircularBuffer<TransportSender*> (100)),
                     _rcvThreadId(NULL), _sendThreadId(NULL), _monitorSendQueue(
                             new GrowingCircularBuffer<TransportSender*> (100)),
@@ -850,10 +851,12 @@ namespace epics {
 
             obj->processReadCached(false, NONE, CA_MESSAGE_HEADER_SIZE, false);
 
-            while(obj->_sendThreadRunning)
-                epicsThreadSleep(0.1);
+            if(obj->_autoDelete) {
+                while(obj->_sendThreadRunning)
+                    epicsThreadSleep(0.1);
 
-            delete obj;
+                delete obj;
+            }
         }
 
         void BlockingTCPTransport::sendThreadRunner(void* param) {
@@ -867,12 +870,14 @@ namespace epics {
         }
 
         void BlockingTCPTransport::enqueueSendRequest(TransportSender* sender) {
+            if(_closed) return;
             Lock lock(_sendQueueMutex);
             _sendQueue->insert(sender);
         }
 
         void BlockingTCPTransport::enqueueMonitorSendRequest(
                 TransportSender* sender) {
+            if(_closed) return;
             Lock lock(_monitorMutex);
             _monitorSendQueue->insert(sender);
             if(_monitorSendQueue->size()==1) enqueueSendRequest(_monitorSender);

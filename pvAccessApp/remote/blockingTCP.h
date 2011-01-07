@@ -237,6 +237,8 @@ namespace epics {
 
             volatile int64 _remoteBufferFreeSpace;
 
+            volatile bool _autoDelete;
+
             virtual void processReadCached(bool nestedCall,
                     ReceiveStage inStage, int requiredBytes, bool addToBuffer);
 

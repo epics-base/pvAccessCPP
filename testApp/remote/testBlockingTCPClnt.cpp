@@ -112,8 +112,7 @@ void testBlockingTCPSender() {
 
     osiSockAddr srvAddr;
 
-    srvAddr.ia.sin_family = AF_INET;
-    //srvAddr.ia.sin_port = htons(CA_SERVER_PORT);
+    //srvAddr.ia.sin_family = AF_INET;
     if(aToIPAddr("192.168.71.132", CA_SERVER_PORT, &srvAddr.ia)<0) {
         cout<<"error in aToIPAddr(...)"<<endl;
         return;
@@ -126,7 +125,10 @@ void testBlockingTCPSender() {
 
     for(int i = 0; i<10; i++) {
         cout<<"   Message: "<<i+1<<endl;
-        transport->enqueueSendRequest(&dts);
+        if(!transport->isClosed())
+            transport->enqueueSendRequest(&dts);
+        else
+            break;
         sleep(1);
     }
 

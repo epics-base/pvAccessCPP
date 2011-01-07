@@ -39,6 +39,7 @@ namespace epics {
                     *1000), _unresponsiveTransport(false), _timerNode(
                     new TimerNode(this)), _mutex(new Mutex()), _ownersMutex(
                     new Mutex()), _verifyOrEcho(true) {
+            _autoDelete = false;
 
             // initialize owners list, send queue
             acquire(client);
