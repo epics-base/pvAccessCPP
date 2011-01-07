@@ -37,7 +37,6 @@ namespace epics {
     namespace pvAccess {
 
         class MonitorSender;
-        class BlockingServerTCPTransport;
 
         enum ReceiveStage {
             READ_FROM_SOCKET, PROCESS_HEADER, PROCESS_PAYLOAD, NONE
@@ -47,27 +46,12 @@ namespace epics {
             IMMEDIATE, DELAYED, USER_CONTROLED
         };
 
-        class TransportCloseNotification {
-        public:
-            virtual ~TransportCloseNotification() {
-            }
-
-            /**
-             * When transport closes, the owner will be notified through this
-             * callback
-             */
-            virtual void
-            transportClosed(BlockingServerTCPTransport* transport) =0;
-        };
-
         class BlockingTCPTransport : public Transport,
                 public TransportSendControl {
         public:
             BlockingTCPTransport(Context* context, SOCKET channel,
                     ResponseHandler* responseHandler, int receiveBufferSize,
                     int16 priority);
-
-            virtual ~BlockingTCPTransport();
 
             virtual bool isClosed() const {
                 return _closed;
@@ -271,6 +255,8 @@ namespace epics {
              */
             virtual bool send(epics::pvData::ByteBuffer* buffer);
 
+            virtual ~BlockingTCPTransport();
+
         private:
             /**
              * Default marker period.
@@ -352,6 +338,8 @@ namespace epics {
 
             Context* _context;
 
+            volatile bool _sendThreadRunning;
+
             /**
              * Internal method that clears and releases buffer.
              * sendLock and sendBufferLock must be hold while calling this method.
@@ -386,8 +374,6 @@ namespace epics {
                     ResponseHandler* responseHandler, int receiveBufferSize,
                     TransportClient* client, short remoteTransportRevision,
                     float beaconInterval, int16 priority);
-
-            virtual ~BlockingClientTCPTransport();
 
             virtual void timerStopped() {
                 // noop
@@ -443,6 +429,8 @@ namespace epics {
             IntrospectionRegistry* _introspectionRegistry;
 
             virtual void internalClose(bool force);
+
+            virtual ~BlockingClientTCPTransport();
 
         private:
 
@@ -549,8 +537,6 @@ namespace epics {
             BlockingServerTCPTransport(Context* context, SOCKET channel,
                     ResponseHandler* responseHandler, int receiveBufferSize);
 
-            virtual ~BlockingServerTCPTransport();
-
             virtual IntrospectionRegistry* getIntrospectionRegistry() {
                 return _introspectionRegistry;
             }
@@ -638,10 +624,6 @@ namespace epics {
             virtual void send(epics::pvData::ByteBuffer* buffer,
                     TransportSendControl* control);
 
-            void addCloseNotification(TransportCloseNotification* notifyTarget) {
-                _notifyOnClose = notifyTarget;
-            }
-
         protected:
             /**
              * Introspection registry.
@@ -649,6 +631,8 @@ namespace epics {
             IntrospectionRegistry* _introspectionRegistry;
 
             virtual void internalClose(bool force);
+
+            virtual ~BlockingServerTCPTransport();
 
         private:
             /**
@@ -663,8 +647,6 @@ namespace epics {
 
             Mutex* _channelsMutex;
 
-            TransportCloseNotification* _notifyOnClose;
-
             /**
              * Destroy all channels.
              */
@@ -676,7 +658,7 @@ namespace epics {
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          * @version $Id: BlockingTCPAcceptor.java,v 1.1 2010/05/03 14:45:42 mrkraimer Exp $
          */
-        class BlockingTCPAcceptor : public TransportCloseNotification {
+        class BlockingTCPAcceptor {
         public:
 
             /**
@@ -705,8 +687,6 @@ namespace epics {
              */
             void destroy();
 
-            virtual void transportClosed(BlockingServerTCPTransport* transport);
-
         private:
             /**
              * Context instance.
@@ -734,10 +714,6 @@ namespace epics {
             volatile bool _destroyed;
 
             epicsThreadId _threadId;
-
-            std::set<BlockingServerTCPTransport*>* _connectedClients;
-
-            Mutex* _connectedClientsMutex;
 
             /**
              * Initialize connection acception.

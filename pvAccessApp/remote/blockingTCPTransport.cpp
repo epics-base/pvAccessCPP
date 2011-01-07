@@ -87,7 +87,8 @@ namespace epics {
                     _rcvThreadId(NULL), _sendThreadId(NULL), _monitorSendQueue(
                             new GrowingCircularBuffer<TransportSender*> (100)),
                     _monitorSender(new MonitorSender(_monitorMutex,
-                            _monitorSendQueue)), _context(context) {
+                            _monitorSendQueue)), _context(context),
+                    _sendThreadRunning(false) {
 
             _socketBuffer = new ByteBuffer(max(MAX_TCP_RECV
                     +MAX_ENSURE_DATA_BUFFER_SIZE, receiveBufferSize));
@@ -141,6 +142,7 @@ namespace epics {
         }
 
         void BlockingTCPTransport::start() {
+            _sendThreadRunning = true;
             String threadName = "TCP-receive "+inetAddressToString(
                     _socketAddress);
 
@@ -210,7 +212,10 @@ namespace epics {
 
         void BlockingTCPTransport::internalClose(bool force) {
             // close the socket
-            epicsSocketDestroy(_channel);
+            if(_channel!=INVALID_SOCKET) {
+                epicsSocketDestroy(_channel);
+                _channel = INVALID_SOCKET;
+            }
         }
 
         int BlockingTCPTransport::getSocketReceiveBufferSize() const {
@@ -462,11 +467,11 @@ namespace epics {
                                     maxToRead, 0);
                             _socketBuffer->put(readBuffer, 0, bytesRead);
 
-                            if(bytesRead<0) {
+                            if(bytesRead<=0) {
                                 // error (disconnect, end-of-stream) detected
                                 close(true);
 
-                                if(nestedCall) THROW_BASE_EXCEPTION(
+                                if(bytesRead<0&&nestedCall) THROW_BASE_EXCEPTION(
                                         "bytesRead < 0");
 
                                 return;
@@ -834,12 +839,21 @@ namespace epics {
             errlogSevPrintf(errlogInfo, "Connection to %s closed.",
                     inetAddressToString(_socketAddress).c_str());
 
-            epicsSocketDestroy(_channel);
+            if(_channel!=INVALID_SOCKET) {
+                epicsSocketDestroy(_channel);
+                _channel = INVALID_SOCKET;
+            }
         }
 
         void BlockingTCPTransport::rcvThreadRunner(void* param) {
-            ((BlockingTCPTransport*)param)->processReadCached(false, NONE,
-                    CA_MESSAGE_HEADER_SIZE, false);
+            BlockingTCPTransport* obj = (BlockingTCPTransport*)param;
+
+            obj->processReadCached(false, NONE, CA_MESSAGE_HEADER_SIZE, false);
+
+            while(obj->_sendThreadRunning)
+                epicsThreadSleep(0.1);
+
+            delete obj;
         }
 
         void BlockingTCPTransport::sendThreadRunner(void* param) {
@@ -848,6 +862,8 @@ namespace epics {
             obj->processSendQueue();
 
             obj->freeConnectionResorces();
+
+            obj->_sendThreadRunning = false;
         }
 
         void BlockingTCPTransport::enqueueSendRequest(TransportSender* sender) {
