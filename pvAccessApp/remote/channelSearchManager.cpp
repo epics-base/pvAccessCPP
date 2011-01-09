@@ -435,7 +435,7 @@ ChannelSearchManager::ChannelSearchManager(ClientContextImpl* context):
 
 	// create timers
 	_timers = new SearchTimer*[numberOfTimers];
-	for(int i = 0; i < numberOfTimers; i++)
+	for(int32 i = 0; i < numberOfTimers; i++)
 	{
 		_timers[i] = new SearchTimer(this, i, i > _beaconAnomalyTimerIndex, i != (numberOfTimers-1));
 	}
@@ -446,7 +446,7 @@ ChannelSearchManager::ChannelSearchManager(ClientContextImpl* context):
 
 ChannelSearchManager::~ChannelSearchManager()
 {
-	for(int i = 0; i < _numberOfTimers; i++)
+	for(int32 i = 0; i < _numberOfTimers; i++)
 	{
 		if(_timers[i]) delete _timers[i];
 	}
