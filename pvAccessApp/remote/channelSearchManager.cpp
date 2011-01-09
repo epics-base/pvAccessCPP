@@ -98,13 +98,14 @@ SearchTimer::SearchTimer(ChannelSearchManager* _chanSearchManager, int32 timerIn
 		_requestPendingChannelsMutex(Mutex()),
 		_mutex(Mutex())
 {
-
+	_timerNode = new TimerNode(this);
 }
 
 SearchTimer::~SearchTimer()
 {
 	if(_requestPendingChannels) delete _requestPendingChannels;
 	if(_responsePendingChannels) delete _responsePendingChannels;
+	if(_timerNode) delete _timerNode;
 }
 
 void SearchTimer::shutdown()
