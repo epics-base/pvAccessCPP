@@ -33,9 +33,7 @@ namespace epics {
         /**
          * returns a vector containing all the IPv4 broadcast addresses
          * on this machine. IPv6 doesn't have a local broadcast address.
-         *
-         * TODO Check implementation/rewrite this
-         */
+          */
         InetAddrVector* getBroadcastAddresses(SOCKET sock);
 
         /**

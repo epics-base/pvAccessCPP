@@ -33,11 +33,12 @@ namespace epics {
 
         enum MessageCommands {
             CMD_BEACON = 0, CMD_CONNECTION_VALIDATION = 1, CMD_ECHO = 2,
-            CMD_SEARCH = 3, CMD_INTROSPECTION_SEARCH = 5,
-            CMD_CREATE_CHANNEL = 7, CMD_DESTROY_CHANNEL = 8, CMD_GET = 10,
-            CMD_PUT = 11, CMD_PUT_GET = 12, CMD_MONITOR = 13, CMD_ARRAY = 14,
+            CMD_SEARCH = 3, CMD_SEARCH_RESPONSE = 4,
+            CMD_INTROSPECTION_SEARCH = 5, CMD_CREATE_CHANNEL = 7,
+            CMD_DESTROY_CHANNEL = 8, CMD_GET = 10, CMD_PUT = 11,
+            CMD_PUT_GET = 12, CMD_MONITOR = 13, CMD_ARRAY = 14,
             CMD_CANCEL_REQUEST = 15, CMD_PROCESS = 16, CMD_GET_FIELD = 17,
-            CMD_RPC = 20,
+            CMD_MESSAGE = 18, CMD_MULTIPLE_DATA = 19, CMD_RPC = 20,
         };
 
         /**
