@@ -415,7 +415,7 @@ ChannelSearchManager::ChannelSearchManager(ClientContextImpl* context):
 						_sequenceNumber(0)
 {
 	// create and initialize send buffer
-	_sendBuffer = new ByteBuffer(MAX_UDP_SEND);
+	_sendBuffer = new ByteBuffer(MAX_UDP_SEND, EPICS_ENDIAN_BIG);
 	initializeSendBuffer();
 
 	// TODO should be configurable
@@ -435,7 +435,7 @@ ChannelSearchManager::ChannelSearchManager(ClientContextImpl* context):
 
 	// create timers
 	_timers = new SearchTimer*[numberOfTimers];
-	for(int i = 0; i < numberOfTimers; i++)
+	for(int32 i = 0; i < numberOfTimers; i++)
 	{
 		_timers[i] = new SearchTimer(this, i, i > _beaconAnomalyTimerIndex, i != (numberOfTimers-1));
 	}
@@ -446,7 +446,7 @@ ChannelSearchManager::ChannelSearchManager(ClientContextImpl* context):
 
 ChannelSearchManager::~ChannelSearchManager()
 {
-	for(int i = 0; i < _numberOfTimers; i++)
+	for(int32 i = 0; i < _numberOfTimers; i++)
 	{
 		if(_timers[i]) delete _timers[i];
 	}
@@ -550,7 +550,7 @@ void ChannelSearchManager::initializeSendBuffer()
 	_sendBuffer->clear();
 	_sendBuffer->putShort(CA_MAGIC_AND_VERSION);
 	_sendBuffer->putByte((int8)0);	// data
-	_sendBuffer->putByte((int8)3);	// beacon
+	_sendBuffer->putByte((int8)3);	// search
 	_sendBuffer->putInt(sizeof(int32)/sizeof(int8) + 1);		// "zero" payload
 	_sendBuffer->putInt(_sequenceNumber);
 

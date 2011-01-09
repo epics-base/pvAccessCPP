@@ -39,8 +39,8 @@ namespace epics {
             _closed(false), _responseHandler(responseHandler),
                     _channel(channel), _sendAddresses(sendAddresses),
                     _ignoredAddresses(NULL), _sendTo(NULL), _receiveBuffer(
-                            new ByteBuffer(MAX_UDP_RECV)), _sendBuffer(
-                            new ByteBuffer(MAX_UDP_RECV)),
+                            new ByteBuffer(MAX_UDP_RECV, EPICS_ENDIAN_BIG)), _sendBuffer(
+                            new ByteBuffer(MAX_UDP_RECV, EPICS_ENDIAN_BIG)),
                     _lastMessageStartPosition(0), _readBuffer(
                             new char[MAX_UDP_RECV]), _mutex(new Mutex()),
                     _threadId(NULL) {
