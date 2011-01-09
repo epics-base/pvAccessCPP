@@ -92,12 +92,12 @@ namespace epics {
                     _sendThreadRunning(false) {
 
             _socketBuffer = new ByteBuffer(max(MAX_TCP_RECV
-                    +MAX_ENSURE_DATA_BUFFER_SIZE, receiveBufferSize));
+                    +MAX_ENSURE_DATA_BUFFER_SIZE, receiveBufferSize), EPICS_ENDIAN_BIG);
             _socketBuffer->setPosition(_socketBuffer->getLimit());
             _startPosition = _socketBuffer->getPosition();
 
             // allocate buffer
-            _sendBuffer = new ByteBuffer(_socketBuffer->getSize());
+            _sendBuffer = new ByteBuffer(_socketBuffer->getSize(), EPICS_ENDIAN_BIG);
             _maxPayloadSize = _sendBuffer->getSize()-2*CA_MESSAGE_HEADER_SIZE; // one for header, one for flow control
 
             // get send buffer size

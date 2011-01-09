@@ -415,7 +415,7 @@ ChannelSearchManager::ChannelSearchManager(ClientContextImpl* context):
 						_sequenceNumber(0)
 {
 	// create and initialize send buffer
-	_sendBuffer = new ByteBuffer(MAX_UDP_SEND);
+	_sendBuffer = new ByteBuffer(MAX_UDP_SEND, EPICS_ENDIAN_BIG);
 	initializeSendBuffer();
 
 	// TODO should be configurable
@@ -550,7 +550,7 @@ void ChannelSearchManager::initializeSendBuffer()
 	_sendBuffer->clear();
 	_sendBuffer->putShort(CA_MAGIC_AND_VERSION);
 	_sendBuffer->putByte((int8)0);	// data
-	_sendBuffer->putByte((int8)3);	// beacon
+	_sendBuffer->putByte((int8)3);	// search
 	_sendBuffer->putInt(sizeof(int32)/sizeof(int8) + 1);		// "zero" payload
 	_sendBuffer->putInt(_sequenceNumber);
 
