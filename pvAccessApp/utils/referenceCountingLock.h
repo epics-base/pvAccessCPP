@@ -11,6 +11,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include <lock.h>
 #include <pvType.h>
 #include <epicsAssert.h>
 
@@ -42,9 +43,15 @@ public:
 	/**
 	 * Attempt to acquire lock.
 	 *
+	 * NOTE: Argument msecs is currently not supported due to
+	 * Darwin OS not supporting pthread_mutex_timedlock. May be changed in the future.
+	 *
 	 * @param	msecs	the number of milleseconds to wait.
 	 * 					An argument less than or equal to zero means not to wait at all.
+	 *
 	 * @return	<code>true</code> if acquired, <code>false</code> otherwise.
+	 * 			NOTE: currently this routine always returns true. Look above for explanation.
+	 *
 	 */
 	bool acquire(int64 msecs);
 	/**
@@ -65,7 +72,9 @@ public:
 	int decrement();
 private:
 	int _references;
-	pthread_mutex_t _mutex;
+	Mutex _mutex;
+	Mutex _countMutex;
+	//pthread_mutex_t _mutex;
 
 };
 

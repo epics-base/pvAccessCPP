@@ -9,7 +9,10 @@
 
 #include <byteBuffer.h>
 #include <pvType.h>
+
 #include <epicsAssert.h>
+#include <osiSock.h>
+
 #include <iostream>
 #include <cstring>
 
@@ -123,8 +126,15 @@ int main(int argc, char *argv[]) {
     assert(strncmp(buff->getArray(), src, 16)==0);
     cout<<"\nPASSED!\n";
 
-    // TODO add test for 'getBroadcastAddresses'
+    SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    InetAddrVector* broadcasts = getBroadcastAddresses(socket);
+    cout<<"Broadcast addresses: "<<broadcasts->size()<<endl;
+    for(size_t i = 0; i<broadcasts->size(); i++) {
+        cout<<"Broadcast address: ";
+        cout<<inetAddressToString(broadcasts->at(i), false)<<endl;
+    }
 
+    delete broadcasts;
     delete addr;
 
     return 0;

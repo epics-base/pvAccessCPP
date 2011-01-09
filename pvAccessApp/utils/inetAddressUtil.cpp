@@ -15,6 +15,7 @@
 #include <ellLib.h>
 #include <epicsAssert.h>
 #include <epicsException.h>
+#include <errlog.h>
 
 /* standard */
 #include <vector>
@@ -22,6 +23,8 @@
 #include <cstdlib>
 #include <sstream>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 
 using namespace std;
 using namespace epics::pvData;
@@ -29,80 +32,127 @@ using namespace epics::pvData;
 namespace epics {
     namespace pvAccess {
 
-        /* copied from EPICS v3 ca/iocinf.cpp
-         * removeDuplicateAddresses ()
+        /* port of osiSockDiscoverBroadcastAddresses() in
+         * epics/base/src/libCom/osi/os/default/osdNetIntf.c
          */
-        void removeDuplicateAddresses(ELLLIST *pDestList, ELLLIST *pSrcList,
-                int silent) {
-            ELLNODE *pRawNode;
-
-            while((pRawNode = ellGet(pSrcList))) {
-                STATIC_ASSERT(offsetof(osiSockAddrNode, node)==0);
-                osiSockAddrNode *pNode =
-                        reinterpret_cast<osiSockAddrNode *> (pRawNode);
-                osiSockAddrNode *pTmpNode;
-
-                if(pNode->addr.sa.sa_family==AF_INET) {
-
-                    pTmpNode = (osiSockAddrNode *)ellFirst (pDestList); // X aCC 749
-                    while(pTmpNode) {
-                        if(pTmpNode->addr.sa.sa_family==AF_INET) {
-                            if(pNode->addr.ia.sin_addr.s_addr
-                                    ==pTmpNode->addr.ia.sin_addr.s_addr
-                                    &&pNode->addr.ia.sin_port
-                                            ==pTmpNode->addr.ia.sin_port) {
-                                if(!silent) {
-                                    char buf[64];
-                                    ipAddrToDottedIP(&pNode->addr.ia, buf,
-                                            sizeof(buf));
-                                    fprintf(
-                                            stderr,
-                                            "Warning: Duplicate EPICS CA Address list entry \"%s\" discarded\n",
-                                            buf);
-                                }
-                                free(pNode);
-                                pNode = NULL;
-                                break;
-                            }
-                        }
-                        pTmpNode = (osiSockAddrNode *)ellNext (&pTmpNode->node); // X aCC 749
-                    }
-                    if(pNode) {
-                        ellAdd(pDestList, &pNode->node);
-                    }
-                }
-                else {
-                    ellAdd(pDestList, &pNode->node);
-                }
-            }
-        }
-
         InetAddrVector* getBroadcastAddresses(SOCKET sock) {
-            ELLLIST bcastList;
-            ELLLIST tmpList;
-            osiSockAddr addr;
+            static const unsigned nelem = 100;
+            int status;
+            struct ifconf ifconf;
+            struct ifreq* pIfreqList;
+            osiSockAddr* pNewNode;
 
-            ellInit ( &bcastList ); // X aCC 392
-            ellInit ( &tmpList ); // X aCC 392
+            InetAddrVector* retVector = new InetAddrVector();
 
-            addr.ia.sin_family = AF_UNSPEC;
-            osiSockDiscoverBroadcastAddresses(&bcastList, sock, &addr);
-            removeDuplicateAddresses(&tmpList, &bcastList, 1);
-            // forcePort ( &bcastList, port );  // if needed copy from ca/iocinf.cpp
-
-            int size = ellCount(&bcastList );
-            InetAddrVector* retVector = new InetAddrVector(size);
-
-            ELLNODE *pRawNode;
-
-            while((pRawNode = ellGet(&tmpList))) {
-                osiSockAddrNode *pNode =
-                        reinterpret_cast<osiSockAddrNode *> (pRawNode);
-                osiSockAddr* posa = new osiSockAddr;
-                memcpy(posa, &(pNode->addr), sizeof(osiSockAddr));
-                retVector->push_back(posa);
-                free(pNode); // using free because it is allocated by calloc
+            /*
+             * use pool so that we avoid using too much stack space
+             *
+             * nelem is set to the maximum interfaces
+             * on one machine here
+             */
+            pIfreqList = new ifreq[nelem];
+            if(!pIfreqList) {
+                errlogSevPrintf(errlogMajor,
+                        "getBroadcastAddresses(): no memory to complete request");
+                return retVector;
             }
+
+            // get number of interfaces
+            ifconf.ifc_len = nelem*sizeof(ifreq);
+            ifconf.ifc_req = pIfreqList;
+            status = ioctl(sock, SIOCGIFCONF, &ifconf);
+            if(status<0||ifconf.ifc_len==0) {
+                errlogSevPrintf(
+                        errlogMinor,
+                        "getBroadcastAddresses(): unable to fetch network interface configuration");
+                delete[] pIfreqList;
+                return retVector;
+            }
+
+            errlogPrintf("Found %d interfaces\n", ifconf.ifc_len);
+
+            for(int i = 0; i<=ifconf.ifc_len; i++) {
+                /*
+                 * If its not an internet interface then dont use it
+                 */
+                if(pIfreqList[i].ifr_addr.sa_family!=AF_INET) continue;
+
+                status = ioctl(sock, SIOCGIFFLAGS, &pIfreqList[i]);
+                if(status) {
+                    errlogSevPrintf(
+                            errlogMinor,
+                            "getBroadcastAddresses(): net intf flags fetch for \"%s\" failed",
+                            pIfreqList[i].ifr_name);
+                    continue;
+                }
+
+                /*
+                 * dont bother with interfaces that have been disabled
+                 */
+                if(!(pIfreqList[i].ifr_flags&IFF_UP)) continue;
+
+                /*
+                 * dont use the loop back interface
+                 */
+                if(pIfreqList[i].ifr_flags&IFF_LOOPBACK) continue;
+
+                pNewNode = new osiSockAddr;
+                if(pNewNode==NULL) {
+                    errlogSevPrintf(errlogMajor,
+                            "getBroadcastAddresses(): no memory available for configuration");
+                    delete[] pIfreqList;
+                    return retVector;
+                }
+
+                /*
+                 * If this is an interface that supports
+                 * broadcast fetch the broadcast address.
+                 *
+                 * Otherwise if this is a point to point
+                 * interface then use the destination address.
+                 *
+                 * Otherwise CA will not query through the
+                 * interface.
+                 */
+                if(pIfreqList[i].ifr_flags&IFF_BROADCAST) {
+                    status = ioctl(sock, SIOCGIFBRDADDR, &pIfreqList[i]);
+                    if(status) {
+                        errlogSevPrintf(
+                                errlogMinor,
+                                "getBroadcastAddresses(): net intf \"%s\": bcast addr fetch fail",
+                                pIfreqList->ifr_name);
+                        delete pNewNode;
+                        continue;
+                    }
+                    pNewNode->sa = pIfreqList[i].ifr_broadaddr;
+                }
+#ifdef IFF_POINTOPOINT
+                else if(pIfreqList->ifr_flags&IFF_POINTOPOINT) {
+                    status = ioctl(sock, SIOCGIFDSTADDR, &pIfreqList[i]);
+                    if(status) {
+                        errlogSevPrintf(
+                                errlogMinor,
+                                "getBroadcastAddresses(): net intf \"%s\": pt to pt addr fetch fail",
+                                pIfreqList[i].ifr_name);
+                        delete pNewNode;
+                        continue;
+                    }
+                    pNewNode->sa = pIfreqList[i].ifr_dstaddr;
+                }
+#endif
+                else {
+                    errlogSevPrintf(
+                            errlogMinor,
+                            "getBroadcastAddresses(): net intf \"%s\": not point to point or bcast?",
+                            pIfreqList[i].ifr_name);
+                    delete pNewNode;
+                    continue;
+                }
+
+                retVector->push_back(pNewNode);
+            }
+
+            delete[] pIfreqList;
 
             return retVector;
         }

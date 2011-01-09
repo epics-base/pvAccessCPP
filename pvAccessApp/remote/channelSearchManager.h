@@ -29,16 +29,53 @@ namespace epics { namespace pvAccess {
 /**
  * SearchInstance.
  */
-//TODO document
 class SearchInstance {
 public:
+	/**
+	 * Destructor
+	 */
 	virtual ~SearchInstance() {};
+	/**
+	 * Return channel ID.
+	 *
+	 * @return channel ID.
+	 */
 	virtual pvAccessID getChannelID() = 0;
+	/**
+	 * Return channel name.
+	 *
+	 * @return channel channel name.
+	 */
 	virtual String getChannelName() = 0;
+	/**
+	 * Removes the owner of this search instance.
+	 */
 	virtual void unsetListOwnership() = 0;
+	/**
+	 * Adds this search instance into the provided list and sets it as the owner of this search instance.
+	 *
+	 * @param newOwner a list to which this search instance is added.
+	 * @param ownerMutex mutex belonging to the newOwner list. The mutex will be locked beofe any modification
+	 * to the list will be done.
+	 * @param index index of the owner (which is search timer index).
+	 *
+	 * @throws BaseException if the ownerMutex is NULL.
+	 */
 	virtual void addAndSetListOwnership(ArrayFIFO<SearchInstance*>* newOwner, Mutex* ownerMutex, int32 index) = 0;
+	/**
+	 * Removes this search instance from the owner list and also removes the list as the owner of this
+	 * search instance.
+	 *
+	 * @throws BaseException if the ownerMutex is NULL.
+	 */
 	virtual void removeAndUnsetListOwnership() = 0;
+	/**
+	 * Returns the index of the owner.
+	 */
 	virtual int32 getOwnerIndex() = 0;
+	/**
+	 * Generates request message.
+	 */
 	virtual bool generateSearchRequestMessage(ByteBuffer* requestMessage, TransportSendControl* control) = 0;
 
 	/**
