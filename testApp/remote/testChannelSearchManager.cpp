@@ -5,14 +5,12 @@
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-
-
 int main(int argc,char *argv[])
 {
-    ClientContextImpl* context = new ClientContextImpl();
+    Context* context = 0;   // TODO will crash...
     ChannelSearchManager* manager = new ChannelSearchManager(context);
 
-    context->destroy();
+   // context->destroy();
     getShowConstructDestruct()->constuctDestructTotals(stdout);
     return(0);
 }

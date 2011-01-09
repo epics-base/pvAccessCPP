@@ -59,7 +59,7 @@ namespace epics {
                     "Transport to %s still has %d channel(s) active and closing...",
                     ipAddrStr, _channels->size());
 
-            map<int, ServerChannel*>::iterator it = _channels->begin();
+            map<pvAccessID, ServerChannel*>::iterator it = _channels->begin();
             for(; it!=_channels->end(); it++)
                 it->second->destroy();
 
@@ -71,30 +71,30 @@ namespace epics {
             destroyAllChannels();
         }
 
-        int BlockingServerTCPTransport::preallocateChannelSID() {
+        pvAccessID BlockingServerTCPTransport::preallocateChannelSID() {
             Lock lock(_channelsMutex);
             // search first free (theoretically possible loop of death)
-            int sid = ++_lastChannelSID;
+            pvAccessID sid = ++_lastChannelSID;
             while(_channels->find(sid)!=_channels->end())
                 sid = ++_lastChannelSID;
             return sid;
         }
 
-        void BlockingServerTCPTransport::registerChannel(int sid,
+        void BlockingServerTCPTransport::registerChannel(pvAccessID sid,
                 ServerChannel* channel) {
             Lock lock(_channelsMutex);
             (*_channels)[sid] = channel;
         }
 
-        void BlockingServerTCPTransport::unregisterChannel(int sid) {
+        void BlockingServerTCPTransport::unregisterChannel(pvAccessID sid) {
             Lock lock(_channelsMutex);
             _channels->erase(sid);
         }
 
-        ServerChannel* BlockingServerTCPTransport::getChannel(int sid) {
+        ServerChannel* BlockingServerTCPTransport::getChannel(pvAccessID sid) {
             Lock lock(_channelsMutex);
 
-            map<int, ServerChannel*>::iterator it = _channels->find(sid);
+            map<pvAccessID, ServerChannel*>::iterator it = _channels->find(sid);
             if(it!=_channels->end()) return it->second;
 
             return NULL;

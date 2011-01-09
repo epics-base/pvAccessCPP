@@ -408,7 +408,7 @@ const int64 ChannelSearchManager::MAX_SEARCH_PERIOD_LOWER_LIMIT = 60000;
 const int64 ChannelSearchManager::BEACON_ANOMALY_SEARCH_PERIOD = 5000;
 const int32 ChannelSearchManager::MAX_TIMERS = 18;
 
-ChannelSearchManager::ChannelSearchManager(ClientContextImpl* context):
+ChannelSearchManager::ChannelSearchManager(Context* context):
 						_context(context),
 						_canceled(false),
 						_rttmean(MIN_RTT),
@@ -435,7 +435,7 @@ ChannelSearchManager::ChannelSearchManager(ClientContextImpl* context):
 
 	// create timers
 	_timers = new SearchTimer*[numberOfTimers];
-	for(int32 i = 0; i < numberOfTimers; i++)
+	for(int i = 0; i < numberOfTimers; i++)
 	{
 		_timers[i] = new SearchTimer(this, i, i > _beaconAnomalyTimerIndex, i != (numberOfTimers-1));
 	}
@@ -446,7 +446,7 @@ ChannelSearchManager::ChannelSearchManager(ClientContextImpl* context):
 
 ChannelSearchManager::~ChannelSearchManager()
 {
-	for(int32 i = 0; i < _numberOfTimers; i++)
+	for(int i = 0; i < _numberOfTimers; i++)
 	{
 		if(_timers[i]) delete _timers[i];
 	}
@@ -569,7 +569,7 @@ void ChannelSearchManager::flushSendBuffer()
 	TimeStamp now;
 	now.getCurrent();
 	_timeAtLastSend = now.getMilliseconds();
-	_context->getSearchTransport()->send(_sendBuffer);
+	((BlockingUDPTransport*)_context->getSearchTransport())->send(_sendBuffer);
 	initializeSendBuffer();
 }
 
