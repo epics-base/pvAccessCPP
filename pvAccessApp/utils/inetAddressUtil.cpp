@@ -23,6 +23,8 @@
 #include <cstdlib>
 #include <sstream>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 
 using namespace std;
 using namespace epics::pvData;
@@ -30,17 +32,14 @@ using namespace epics::pvData;
 namespace epics {
     namespace pvAccess {
 
-        /*
-         * osiSockDiscoverBroadcastAddresses () je v
-         *  /opt/epics/base/src/libCom/osi/os/default/osdNetIntf.c
+        /* port of osiSockDiscoverBroadcastAddresses() in
+         * epics/base/src/libCom/osi/os/default/osdNetIntf.c
          */
-
         InetAddrVector* getBroadcastAddresses(SOCKET sock) {
             static const unsigned nelem = 100;
             int status;
             struct ifconf ifconf;
             struct ifreq* pIfreqList;
-            struct ifreq *pifreq;
             osiSockAddr* pNewNode;
 
             InetAddrVector* retVector = new InetAddrVector();
@@ -53,54 +52,54 @@ namespace epics {
              */
             pIfreqList = new ifreq[nelem];
             if(!pIfreqList) {
-                errlogSevPrintf( errlogMajor,
-                        "osiSockDiscoverBroadcastAddresses(): no memory to complete request\n");
+                errlogSevPrintf(errlogMajor,
+                        "getBroadcastAddresses(): no memory to complete request");
                 return retVector;
             }
 
             // get number of interfaces
             ifconf.ifc_len = nelem*sizeof(ifreq);
             ifconf.ifc_req = pIfreqList;
-            status = socket_ioctl (sock, SIOCGIFCONF, &ifconf);
+            status = ioctl(sock, SIOCGIFCONF, &ifconf);
             if(status<0||ifconf.ifc_len==0) {
                 errlogSevPrintf(
                         errlogMinor,
-                        "osiSockDiscoverBroadcastAddresses(): unable to fetch network interface configuration");
+                        "getBroadcastAddresses(): unable to fetch network interface configuration");
                 delete[] pIfreqList;
                 return retVector;
             }
 
-            for(int i = 0; i<=ifconf.ifc_len; i++) {
-                pifreq = &pIfreqList[i];
+            errlogPrintf("Found %d interfaces\n", ifconf.ifc_len);
 
+            for(int i = 0; i<=ifconf.ifc_len; i++) {
                 /*
                  * If its not an internet interface then dont use it
                  */
-                if(pifreq->ifr_addr.sa_family!=AF_INET) continue;
+                if(pIfreqList[i].ifr_addr.sa_family!=AF_INET) continue;
 
-                status = socket_ioctl ( sock, SIOCGIFFLAGS, pifreq );
+                status = ioctl(sock, SIOCGIFFLAGS, &pIfreqList[i]);
                 if(status) {
                     errlogSevPrintf(
                             errlogMinor,
-                            "osiSockDiscoverBroadcastAddresses(): net intf flags fetch for \"%s\" failed\n",
-                            pifreq->ifr_name);
+                            "getBroadcastAddresses(): net intf flags fetch for \"%s\" failed",
+                            pIfreqList[i].ifr_name);
                     continue;
                 }
 
                 /*
                  * dont bother with interfaces that have been disabled
                  */
-                if(!(pifreq->ifr_flags&IFF_UP)) continue;
+                if(!(pIfreqList[i].ifr_flags&IFF_UP)) continue;
 
                 /*
                  * dont use the loop back interface
                  */
-                if(pifreq->ifr_flags&IFF_LOOPBACK) continue;
+                if(pIfreqList[i].ifr_flags&IFF_LOOPBACK) continue;
 
                 pNewNode = new osiSockAddr;
                 if(pNewNode==NULL) {
                     errlogSevPrintf(errlogMajor,
-                            "osiSockDiscoverBroadcastAddresses(): no memory available for configuration\n");
+                            "getBroadcastAddresses(): no memory available for configuration");
                     delete[] pIfreqList;
                     return retVector;
                 }
@@ -115,44 +114,41 @@ namespace epics {
                  * Otherwise CA will not query through the
                  * interface.
                  */
-                if(pifreq->ifr_flags&IFF_BROADCAST) {
-                    status = socket_ioctl (sock, SIOCGIFBRDADDR, pifreq);
+                if(pIfreqList[i].ifr_flags&IFF_BROADCAST) {
+                    status = ioctl(sock, SIOCGIFBRDADDR, &pIfreqList[i]);
                     if(status) {
                         errlogSevPrintf(
                                 errlogMinor,
-                                "osiSockDiscoverBroadcastAddresses(): net intf \"%s\": bcast addr fetch fail\n",
+                                "getBroadcastAddresses(): net intf \"%s\": bcast addr fetch fail",
                                 pIfreqList->ifr_name);
                         delete pNewNode;
                         continue;
                     }
-                    pNewNode->sa = pifreq->ifr_broadaddr;
+                    pNewNode->sa = pIfreqList[i].ifr_broadaddr;
                 }
 #ifdef IFF_POINTOPOINT
                 else if(pIfreqList->ifr_flags&IFF_POINTOPOINT) {
-                    status = socket_ioctl ( sock, SIOCGIFDSTADDR, pifreq);
+                    status = ioctl(sock, SIOCGIFDSTADDR, &pIfreqList[i]);
                     if(status) {
                         errlogSevPrintf(
                                 errlogMinor,
-                                "osiSockDiscoverBroadcastAddresses(): net intf \"%s\": pt to pt addr fetch fail\n",
-                                pifreq->ifr_name);
+                                "getBroadcastAddresses(): net intf \"%s\": pt to pt addr fetch fail",
+                                pIfreqList[i].ifr_name);
                         delete pNewNode;
                         continue;
                     }
-                    pNewNode->sa = pifreq->ifr_dstaddr;
+                    pNewNode->sa = pIfreqList[i].ifr_dstaddr;
                 }
 #endif
                 else {
                     errlogSevPrintf(
                             errlogMinor,
-                            "osiSockDiscoverBroadcastAddresses(): net intf \"%s\": not point to point or bcast?\n",
-                            pifreq->ifr_name);
+                            "getBroadcastAddresses(): net intf \"%s\": not point to point or bcast?",
+                            pIfreqList[i].ifr_name);
                     delete pNewNode;
                     continue;
                 }
 
-                /*
-                 * LOCK applied externally
-                 */
                 retVector->push_back(pNewNode);
             }
 
