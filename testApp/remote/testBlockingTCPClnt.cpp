@@ -50,7 +50,7 @@ private:
 
 class DummyResponseHandler : public ResponseHandler {
 public:
-    DummyResponseHandler(Context* ctx) : ResponseHandler(ctx) {
+    DummyResponseHandler(Context* ctx) : ResponseHandler() {
     }
 
     virtual void handleResponse(osiSockAddr* responseFrom,

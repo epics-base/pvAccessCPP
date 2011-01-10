@@ -391,13 +391,33 @@ typedef std::map<pvAccessID, ResponseRequest*> IOIDResponseRequestMap;
 
 
 
-        class DebugResponse :  public ResponseHandler, private epics::pvData::NoDefaultMethods {
+        /**
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: AbstractServerResponseHandler.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class AbstractClientResponseHandler : public AbstractResponseHandler {
+        protected:
+            ClientContextImpl* _context;
+        public:
+            /**
+             * @param context
+             * @param description
+             */
+            AbstractClientResponseHandler(ClientContextImpl* context, String description) : 
+                AbstractResponseHandler(context, description), _context(context) {
+            }
+
+            virtual ~AbstractClientResponseHandler() {
+            }
+        };
+
+        class DebugResponse :  public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
             /**
              * @param context
              */
-            DebugResponse(Context* ctx) :
-                ResponseHandler(ctx)
+            DebugResponse(ClientContextImpl* context) :
+                AbstractClientResponseHandler(context, "not implemented")
             {
             }
 
@@ -414,7 +434,6 @@ typedef std::map<pvAccessID, ResponseRequest*> IOIDResponseRequestMap;
                 ostringstream prologue;
                 prologue<<"Message [0x"<<hex<<(int)command<<", v0x"<<hex;
                 prologue<<(int)version<<"] received from "<< ipAddrStr;
-                       std::cout << "ole / " << prologue.str() << std::endl;
 
                 hexDump(prologue.str(), "received",
                         (const int8*)payloadBuffer->getArray(),
@@ -423,11 +442,10 @@ typedef std::map<pvAccessID, ResponseRequest*> IOIDResponseRequestMap;
                     }
         };
 
-        class SearchResponseHandler :  public ResponseHandler, private epics::pvData::NoDefaultMethods {
-            private:
-            ClientContextImpl* m_context;
+        class SearchResponseHandler :  public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
-            SearchResponseHandler(ClientContextImpl* context) : ResponseHandler(context), m_context(context)
+            SearchResponseHandler(ClientContextImpl* context) :
+                AbstractClientResponseHandler(context, "Search response")
             {
             }
 
@@ -438,7 +456,7 @@ typedef std::map<pvAccessID, ResponseRequest*> IOIDResponseRequestMap;
                     Transport* transport, int8 version, int8 command,
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
                     {
-		// TODO super.handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
+		AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
 		transport->ensureData(5);
 		int32 searchSequenceId = payloadBuffer->getInt();
@@ -472,7 +490,7 @@ typedef std::map<pvAccessID, ResponseRequest*> IOIDResponseRequestMap;
         serverAddress.ia.sin_port = htons(payloadBuffer->getShort());
 
 		// reads CIDs
-		ChannelSearchManager* csm = m_context->getChannelSearchManager();
+		ChannelSearchManager* csm = _context->getChannelSearchManager();
 		int16 count = payloadBuffer->getShort();
 		for (int i = 0; i < count; i++)
 		{
@@ -484,6 +502,75 @@ typedef std::map<pvAccessID, ResponseRequest*> IOIDResponseRequestMap;
                         
        }
         };
+
+
+        class ConnectionValidationHandler :  public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+        public:
+            ConnectionValidationHandler(ClientContextImpl* context) :
+                AbstractClientResponseHandler(context, "Connection validation")
+            {
+            }
+
+            virtual ~ConnectionValidationHandler() {
+            }
+
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                    {
+		AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
+		     
+				transport->ensureData(8);
+		transport->setRemoteTransportReceiveBufferSize(payloadBuffer->getInt());
+		transport->setRemoteTransportSocketReceiveBufferSize(payloadBuffer->getInt());
+
+		transport->setRemoteMinorRevision(version);
+		
+		transport->enqueueSendRequest((TransportSender*)transport);
+		transport->verified();
+
+		              }
+        };
+
+        class CreateChannelHandler :  public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+        public:
+            CreateChannelHandler(ClientContextImpl* context) :
+                AbstractClientResponseHandler(context, "Create channel")
+            {
+            }
+
+            virtual ~CreateChannelHandler() {
+            }
+
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                    {
+		AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
+		     
+		transport->ensureData(8);
+		pvAccessID cid = payloadBuffer->getInt();
+		pvAccessID sid = payloadBuffer->getInt();
+		// TODO... do not destroy OK
+		Status* status = transport->getIntrospectionRegistry()->deserializeStatus(payloadBuffer, transport);
+		
+		ChannelImpl* channel = static_cast<ChannelImpl*>(_context->getChannel(cid));
+		if (channel)
+		{
+			// failed check
+			if (!status->isSuccess()) {
+				channel->createChannelFailed();
+				return;
+			}	
+			
+			//int16 acl = payloadBuffer->getShort();
+
+			channel->connectionCompleted(sid);
+		}
+
+		              }
+        };
+
 
 
 /**
@@ -513,20 +600,20 @@ class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoD
 	/**
 	 * @param context
 	 */
-	ClientResponseHandler(ClientContextImpl* context) : ResponseHandler((Context*)context) {
-		static ResponseHandler* badResponse = new DebugResponse((Context*)context);
+	ClientResponseHandler(ClientContextImpl* context) {
+		static ResponseHandler* badResponse = new DebugResponse(context);
 		static ResponseHandler* dataResponse = 0; //new DataResponseHandler(context);
 
 		#define HANDLER_COUNT 28
 		m_handlerTable = new ResponseHandler*[HANDLER_COUNT];
 		m_handlerTable[ 0] = badResponse; // TODO new BeaconHandler(context), /*  0 */
-		m_handlerTable[ 1] = badResponse; // TODO new ConnectionValidationHandler(context), /*  1 */
+		m_handlerTable[ 1] = new ConnectionValidationHandler(context), /*  1 */
 		m_handlerTable[ 2] = badResponse; // TODO new NoopResponse(context, "Echo"), /*  2 */
 		m_handlerTable[ 3] = badResponse; // TODO new NoopResponse(context, "Search"), /*  3 */
 		m_handlerTable[ 4] = new SearchResponseHandler(context), /*  4 */
 		m_handlerTable[ 5] = badResponse; // TODO new NoopResponse(context, "Introspection search"), /*  5 */
 		m_handlerTable[ 6] = dataResponse; /*  6 - introspection search */
-		m_handlerTable[ 7] = badResponse; // TODO new CreateChannelHandler(context), /*  7 */
+		m_handlerTable[ 7] = new CreateChannelHandler(context), /*  7 */
 		m_handlerTable[ 8] = badResponse; // TODO new NoopResponse(context, "Destroy channel"), /*  8 */ // TODO it might be useful to implement this...
 		m_handlerTable[ 9] = badResponse; /*  9 */
 		m_handlerTable[10] = dataResponse; /* 10 - get response */
@@ -912,7 +999,7 @@ class TestChannelImpl : public ChannelImpl {
 	 * <code>sid</code> might not be valid, this depends on protocol revision.
 	 * @param sid
 	 */
-	void connectionCompleted(pvAccessID sid/*,  rights*/)
+	virtual void connectionCompleted(pvAccessID sid/*,  rights*/)
 	{
 	   Lock guard(&m_channelMutex);
 

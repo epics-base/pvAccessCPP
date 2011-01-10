@@ -37,7 +37,7 @@ void decodeFromIPv6Address(ByteBuffer* buffer, osiSockAddr* address)
 class BeaconResponseHandler : public ResponseHandler
 {
 public:
-	BeaconResponseHandler(Context* ctx) : ResponseHandler(ctx)
+	BeaconResponseHandler(Context* ctx) : ResponseHandler()
 	{
 		_pvDataCreate = getPVDataCreate();
 	}

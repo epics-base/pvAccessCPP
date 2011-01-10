@@ -39,8 +39,7 @@ namespace epics {
 
         }
 
-        ServerResponseHandler::ServerResponseHandler(ServerContextImpl* context) :
-            ResponseHandler(context) {
+        ServerResponseHandler::ServerResponseHandler(ServerContextImpl* context) {
 
             BadResponse* badResponse = new BadResponse(context);
 

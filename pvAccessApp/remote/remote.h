@@ -289,16 +289,9 @@ namespace epics {
          */
         class ResponseHandler {
         public:
-            ResponseHandler(Context* context) :
-                _context(context) {
-            }
-
-            virtual ~ResponseHandler() {
-            }
-
             /**
              * Handle response.
-             * @param[in] responseFrom  remote address of the responder, <code>null</code> if unknown.
+             * @param[in] responseFrom  remote address of the responder, <code>0</code> if unknown.
              * @param[in] transport response source transport.
              * @param[in] version message version.
              * @param[in] payloadSize size of this message data available in the <code>payloadBuffer</code>.
@@ -310,9 +303,6 @@ namespace epics {
             handleResponse(osiSockAddr* responseFrom, Transport* transport,
                     int8 version, int8 command, int payloadSize,
                     epics::pvData::ByteBuffer* payloadBuffer) =0;
-
-        protected:
-            Context* _context;
         };
 
         /**
@@ -326,9 +316,8 @@ namespace epics {
              * @param description
              */
             AbstractResponseHandler(Context* context, String description) :
-                ResponseHandler(context), _description(description), _debug(
-                        _context->getConfiguration()->getPropertyAsBoolean(
-                                "PVACCESS_DEBUG", false)) {
+                _description(description), 
+                _debug(context->getConfiguration()->getPropertyAsBoolean("PVACCESS_DEBUG", false)) {
             }
 
             virtual ~AbstractResponseHandler() {

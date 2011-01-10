@@ -18,7 +18,7 @@ using namespace epics::pvData;
 class DummyResponseHandler : public ResponseHandler
 {
 public:
-    DummyResponseHandler(Context* ctx) : ResponseHandler(ctx) {}
+    DummyResponseHandler(Context* ctx) : ResponseHandler() {}
 
     virtual void handleResponse(osiSockAddr* responseFrom,
             Transport* transport, int8 version, int8 command, int payloadSize,

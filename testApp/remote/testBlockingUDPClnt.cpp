@@ -60,9 +60,8 @@ private:
 
 class DummyResponseHandler : public ResponseHandler {
 public:
-    DummyResponseHandler(Context* ctx) :
-        ResponseHandler(ctx) {
-    }
+    DummyResponseHandler(Context* ctx)
+    { }
 
     virtual void handleResponse(osiSockAddr* responseFrom,
             Transport* transport, int8 version, int8 command, int payloadSize,

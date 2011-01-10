@@ -55,8 +55,8 @@ private:
 
 class DummyResponseHandler : public ResponseHandler {
 public:
-    DummyResponseHandler(Context* context) :
-        ResponseHandler(context), packets(0) {
+    DummyResponseHandler(Context* context) 
+       : packets(0) {
     }
 
     int getPackets() {
