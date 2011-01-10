@@ -11,7 +11,7 @@
 #include "caConstants.h"
 #include "transportRegistry.h"
 #include "introspectionRegistry.h"
-#include "serverContext.h"
+#include "configuration.h"
 
 #include <serialize.h>
 #include <pvType.h>
@@ -32,42 +32,42 @@ namespace epics {
         };
 
         enum QoS {
-        	/**
-        	 * Default behavior.
-        	 */
-        	DEFAULT = 0x00,
-        	/**
-        	 * Require reply (acknowledgment for reliable operation).
-        	 */
-        	REPLY_REQUIRED = 0x01,
-        	/**
-        	 * Best-effort option (no reply).
-        	 */
-        	BESY_EFFORT = 0x02,
-        	/**
-        	 * Process option.
-        	 */
-        	PROCESS = 0x04,
-        	/**
-        	* Initialize option.
-        	 */
-        	INIT = 0x08,
-        	/**
-        	 * Destroy option.
-        	 */
-        	DESTROY = 0x10,
-        	/**
-        	 * Share data option.
-        	 */
-        	SHARE = 0x20,
-        	/**
-        	 * Get.
-        	 */
-        	GET = 0x40,
-        	/**
-        	 * Get-put.
-        	 */
-        	GET_PUT =0x80
+            /**
+             * Default behavior.
+             */
+            DEFAULT = 0x00,
+            /**
+             * Require reply (acknowledgment for reliable operation).
+             */
+            REPLY_REQUIRED = 0x01,
+            /**
+             * Best-effort option (no reply).
+             */
+            BESY_EFFORT = 0x02,
+            /**
+             * Process option.
+             */
+            PROCESS = 0x04,
+            /**
+             * Initialize option.
+             */
+            INIT = 0x08,
+            /**
+             * Destroy option.
+             */
+            DESTROY = 0x10,
+            /**
+             * Share data option.
+             */
+            SHARE = 0x20,
+            /**
+             * Get.
+             */
+            GET = 0x40,
+            /**
+             * Get-put.
+             */
+            GET_PUT = 0x80
         };
 
         typedef int32 pvAccessID;
@@ -253,6 +253,35 @@ namespace epics {
 
         };
 
+        class Channel;
+
+        /**
+         * Not public IF, used by Transports, etc.
+         */
+        class Context {
+        public:
+            virtual ~Context() {
+            }
+            /**
+             * Get timer.
+             * @return timer.
+             */
+            virtual Timer* getTimer() = 0;
+
+            /**
+             * Get transport (virtual circuit) registry.
+             * @return transport (virtual circuit) registry.
+             */
+            virtual TransportRegistry* getTransportRegistry() = 0;
+
+            virtual Channel* getChannel(pvAccessID id) = 0;
+
+            virtual Transport* getSearchTransport() = 0;
+
+            virtual Configuration* getConfiguration() = 0;
+
+        };
+
         /**
          * Interface defining response handler.
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
@@ -260,6 +289,10 @@ namespace epics {
          */
         class ResponseHandler {
         public:
+            ResponseHandler(Context* context) :
+                _context(context) {
+            }
+
             virtual ~ResponseHandler() {
             }
 
@@ -277,6 +310,9 @@ namespace epics {
             handleResponse(osiSockAddr* responseFrom, Transport* transport,
                     int8 version, int8 command, int payloadSize,
                     epics::pvData::ByteBuffer* payloadBuffer) =0;
+
+        protected:
+            Context* _context;
         };
 
         /**
@@ -289,9 +325,10 @@ namespace epics {
             /**
              * @param description
              */
-            AbstractResponseHandler(String description) :
-                _description(description), _debug(true) {
-                //debug = System.getProperties().containsKey(CAConstants.CAJ_DEBUG);
+            AbstractResponseHandler(Context* context, String description) :
+                ResponseHandler(context), _description(description), _debug(
+                        _context->getConfiguration()->getPropertyAsBoolean(
+                                "PVACCESS_DEBUG", false)) {
             }
 
             virtual ~AbstractResponseHandler() {
@@ -373,33 +410,6 @@ namespace epics {
 
         };
 
-        class Channel;
-
-        /**
-         * Not public IF, used by Transports, etc.
-         */
-        class Context {
-        public:
-            virtual ~Context() {
-            }
-            /**
-             * Get timer.
-             * @return timer.
-             */
-            virtual Timer* getTimer() =0;
-
-            /**
-             * Get transport (virtual circuit) registry.
-             * @return transport (virtual circuit) registry.
-             */
-            virtual TransportRegistry* getTransportRegistry() =0;
-            
-            virtual Channel* getChannel(pvAccessID id) = 0;
-
-            virtual Transport* getSearchTransport() = 0;
-            
-        };
-
         /**
          * Interface defining reference counting transport IF.
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
@@ -474,7 +484,8 @@ namespace epics {
              * @param sid preallocated channel SID.
              * @param channel channel to register.
              */
-            virtual void registerChannel(pvAccessID sid, ServerChannel* channel) =0;
+            virtual void
+            registerChannel(pvAccessID sid, ServerChannel* channel) =0;
 
             /**
              * Unregister a new channel (and deallocates its handle).
@@ -495,44 +506,44 @@ namespace epics {
              */
             virtual int getChannelCount() =0;
         };
-        
+
         /**
          * A request that expects an response.
-         * Responses identified by its I/O ID. 
+         * Responses identified by its I/O ID.
          * This interface needs to be extended (to provide method called on response).
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          */
         class ResponseRequest {
-        	public:
-        	
-        	/**
-        	 * Get I/O ID.
-        	 * @return ioid
-        	 */
-        	virtual pvAccessID getIOID() = 0;
-        
-        	/**
-        	 * Timeout notification.
-        	 */
-        	virtual void timeout() = 0;
-        
-        	/**
-        	 * Cancel response request (always to be called to complete/destroy).
-        	 */
-        	virtual void cancel() = 0;
-        	
-        	/**
-        	 * Report status to clients (e.g. disconnected).
-        	 * @param status to report.
-        	 */
-        	virtual void reportStatus(epics::pvData::Status* status) = 0;
-        	
-        	/**
-        	 * Get request requester.
-        	 * @return request requester.
-        	 */
-             virtual epics::pvData::Requester* getRequester() = 0;
-        };        
+        public:
+
+            /**
+             * Get I/O ID.
+             * @return ioid
+             */
+            virtual pvAccessID getIOID() = 0;
+
+            /**
+             * Timeout notification.
+             */
+            virtual void timeout() = 0;
+
+            /**
+             * Cancel response request (always to be called to complete/destroy).
+             */
+            virtual void cancel() = 0;
+
+            /**
+             * Report status to clients (e.g. disconnected).
+             * @param status to report.
+             */
+            virtual void reportStatus(epics::pvData::Status* status) = 0;
+
+            /**
+             * Get request requester.
+             * @return request requester.
+             */
+            virtual epics::pvData::Requester* getRequester() = 0;
+        };
 
     }
 }

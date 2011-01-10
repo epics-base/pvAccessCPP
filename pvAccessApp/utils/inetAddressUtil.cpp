@@ -32,14 +32,25 @@ using namespace epics::pvData;
 namespace epics {
     namespace pvAccess {
 
+        void addDefaultBroadcastAddress(InetAddrVector* v, in_port_t p) {
+            osiSockAddr* pNewNode = new osiSockAddr;
+            pNewNode->ia.sin_family = AF_INET;
+            pNewNode->ia.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+            pNewNode->ia.sin_port = htons(p);
+            v->push_back(pNewNode);
+        }
+
         /* port of osiSockDiscoverBroadcastAddresses() in
          * epics/base/src/libCom/osi/os/default/osdNetIntf.c
          */
-        InetAddrVector* getBroadcastAddresses(SOCKET sock) {
+        InetAddrVector* getBroadcastAddresses(SOCKET sock,
+                in_port_t defaultPort) {
             static const unsigned nelem = 100;
             int status;
             struct ifconf ifconf;
             struct ifreq* pIfreqList;
+            struct ifreq* pifreq;
+            struct ifreq ifrBuff;
             osiSockAddr* pNewNode;
 
             InetAddrVector* retVector = new InetAddrVector();
@@ -54,68 +65,72 @@ namespace epics {
             if(!pIfreqList) {
                 errlogSevPrintf(errlogMajor,
                         "getBroadcastAddresses(): no memory to complete request");
+                addDefaultBroadcastAddress(retVector, defaultPort);
                 return retVector;
             }
 
             // get number of interfaces
             ifconf.ifc_len = nelem*sizeof(ifreq);
             ifconf.ifc_req = pIfreqList;
-            memset(ifconf.ifc_req,0,ifconf.ifc_len);
+            memset(ifconf.ifc_req, 0, ifconf.ifc_len);
             status = ioctl(sock, SIOCGIFCONF, &ifconf);
             if(status<0||ifconf.ifc_len==0) {
-                errlogSevPrintf(
-                        errlogMinor,
+                errlogSevPrintf(errlogMinor,
                         "getBroadcastAddresses(): unable to fetch network interface configuration");
                 delete[] pIfreqList;
+                addDefaultBroadcastAddress(retVector, defaultPort);
                 return retVector;
             }
 
-            struct ifreq* p = pIfreqList;
             int maxNodes = ifconf.ifc_len/sizeof(ifreq);
-            for(int i = 0; i<maxNodes; i++) {
-                if (!(*p->ifr_name)) break;
-            //printf("[%i] plen %d name %s\n", i,p->ifr_addr.sa_len, p->ifr_name);
-            
-            
-             size_t n = p->ifr_addr.sa_len + sizeof(p->ifr_name);
-                if (n < sizeof(*p))
-                        p++;
-                else
-                        p = (struct ifreq *)((char *)p + n);
+            //errlogPrintf("Found %d interfaces\n", maxNodes);
 
+            pifreq = pIfreqList;
+
+            for(int i = 0; i<maxNodes; i++) {
+                if(!(*pifreq->ifr_name)) break;
+
+                if(i>0) {
+                    size_t n = pifreq->ifr_addr.sa_len+sizeof(pifreq->ifr_name);
+                    if(n<sizeof(ifreq))
+                        pifreq++;
+                    else
+                        pifreq = (struct ifreq *)((char *)pifreq+n);
+                }
 
                 /*
                  * If its not an internet interface then dont use it
                  */
-                if(p->ifr_addr.sa_family!=AF_INET) continue;
+                if(pifreq->ifr_addr.sa_family!=AF_INET) continue;
 
-                    struct ifreq ifrflags;
-                    strncpy(ifrflags.ifr_name, p->ifr_name,
-                    sizeof(ifrflags.ifr_name));
-                status = ioctl(sock, SIOCGIFFLAGS, (char*)&ifrflags);
+                strncpy(ifrBuff.ifr_name, pifreq->ifr_name,
+                        sizeof(ifrBuff.ifr_name));
+                status = ioctl(sock, SIOCGIFFLAGS, &ifrBuff);
                 if(status) {
                     errlogSevPrintf(
                             errlogMinor,
                             "getBroadcastAddresses(): net intf flags fetch for \"%s\" failed",
-                            p->ifr_name);
+                            pifreq->ifr_name);
                     continue;
                 }
 
                 /*
                  * dont bother with interfaces that have been disabled
                  */
-                if(!(ifrflags.ifr_flags&IFF_UP)) continue;
+                if(!(ifrBuff.ifr_flags&IFF_UP)) continue;
 
                 /*
                  * dont use the loop back interface
                  */
-                if(ifrflags.ifr_flags&IFF_LOOPBACK) continue;
+                if(ifrBuff.ifr_flags&IFF_LOOPBACK) continue;
 
                 pNewNode = new osiSockAddr;
                 if(pNewNode==NULL) {
                     errlogSevPrintf(errlogMajor,
                             "getBroadcastAddresses(): no memory available for configuration");
                     delete[] pIfreqList;
+                    if(retVector->size()==0) addDefaultBroadcastAddress(
+                            retVector, defaultPort);
                     return retVector;
                 }
 
@@ -129,46 +144,45 @@ namespace epics {
                  * Otherwise CA will not query through the
                  * interface.
                  */
-                if(ifrflags.ifr_flags&IFF_BROADCAST) {
-                    struct ifreq ifrflags;
-                    strncpy(ifrflags.ifr_name, p->ifr_name,
-                    sizeof(ifrflags.ifr_name));
-                    status = ioctl(sock, SIOCGIFBRDADDR, (char*)&ifrflags);
+                if(ifrBuff.ifr_flags&IFF_BROADCAST) {
+                    strncpy(ifrBuff.ifr_name, pifreq->ifr_name,
+                            sizeof(ifrBuff.ifr_name));
+                    status = ioctl(sock, SIOCGIFBRDADDR, &ifrBuff);
                     if(status) {
                         errlogSevPrintf(
                                 errlogMinor,
                                 "getBroadcastAddresses(): net intf \"%s\": bcast addr fetch fail",
-                                p->ifr_name);
+                                pifreq->ifr_name);
                         delete pNewNode;
                         continue;
                     }
-                    pNewNode->sa = ifrflags.ifr_broadaddr;
+                    pNewNode->sa = ifrBuff.ifr_broadaddr;
                 }
 #ifdef IFF_POINTOPOINT
-                else if(ifrflags.ifr_flags&IFF_POINTOPOINT) {
-                    struct ifreq ifrflags;
-                    strncpy(ifrflags.ifr_name, p->ifr_name,
-                    sizeof(ifrflags.ifr_name));
-                    status = ioctl(sock, SIOCGIFDSTADDR, (char*)&ifrflags);
+                else if(ifrBuff.ifr_flags&IFF_POINTOPOINT) {
+                    strncpy(ifrBuff.ifr_name, pifreq->ifr_name,
+                            sizeof(ifrBuff.ifr_name));
+                    status = ioctl(sock, SIOCGIFDSTADDR, &ifrBuff);
                     if(status) {
                         errlogSevPrintf(
                                 errlogMinor,
                                 "getBroadcastAddresses(): net intf \"%s\": pt to pt addr fetch fail",
-                                p->ifr_name);
+                                pifreq->ifr_name);
                         delete pNewNode;
                         continue;
                     }
-                    pNewNode->sa = ifrflags.ifr_dstaddr;
+                    pNewNode->sa = ifrBuff.ifr_dstaddr;
                 }
 #endif
                 else {
                     errlogSevPrintf(
                             errlogMinor,
                             "getBroadcastAddresses(): net intf \"%s\": not point to point or bcast?",
-                            p->ifr_name);
+                            pifreq->ifr_name);
                     delete pNewNode;
                     continue;
                 }
+                pNewNode->ia.sin_port = htons(defaultPort);
 
                 retVector->push_back(pNewNode);
             }
@@ -185,16 +199,12 @@ namespace epics {
             buffer->putShort(0);
             // next 16-bits are 1
             buffer->putShort(0xFFFF);
-            buffer->putInt(ntohl(address->ia.sin_addr.s_addr));
-            
-            /*
             // following IPv4 address in big-endian (network) byte order
             in_addr_t ipv4Addr = ntohl(address->ia.sin_addr.s_addr);
             buffer->putByte((int8)((ipv4Addr>>24)&0xFF));
             buffer->putByte((int8)((ipv4Addr>>16)&0xFF));
             buffer->putByte((int8)((ipv4Addr>>8)&0xFF));
             buffer->putByte((int8)(ipv4Addr&0xFF));
-            */
         }
 
         osiSockAddr* intToIPv4Address(int32 addr) {

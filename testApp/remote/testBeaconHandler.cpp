@@ -37,7 +37,7 @@ void decodeFromIPv6Address(ByteBuffer* buffer, osiSockAddr* address)
 class BeaconResponseHandler : public ResponseHandler
 {
 public:
-	BeaconResponseHandler()
+	BeaconResponseHandler(Context* ctx) : ResponseHandler(ctx)
 	{
 		_pvDataCreate = getPVDataCreate();
 	}
@@ -103,9 +103,33 @@ private:
 };
 
 
+class ContextImpl : public Context {
+public:
+    ContextImpl() :
+        _tr(new TransportRegistry()), _timer(new Timer("server thread",
+                lowPriority)), _conf(new SystemConfigurationImpl()) {
+    }
+    virtual ~ContextImpl() {
+        delete _tr;
+        delete _timer;
+    }
+    virtual Timer* getTimer() { return _timer; }
+    virtual TransportRegistry* getTransportRegistry() { return _tr; }
+    virtual Channel* getChannel(epics::pvAccess::pvAccessID) { return 0; }
+    virtual Transport* getSearchTransport() { return 0; }
+    virtual Configuration* getConfiguration() { return _conf; }
+
+private:
+    TransportRegistry* _tr;
+    Timer* _timer;
+    Configuration* _conf;
+};
+
+
 void testBeaconHandler()
 {
-	BeaconResponseHandler brh;
+    ContextImpl ctx;
+	BeaconResponseHandler brh(&ctx);
     BlockingUDPConnector connector(false, NULL, true);
 
     osiSockAddr bindAddr;

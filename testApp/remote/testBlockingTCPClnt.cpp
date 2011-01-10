@@ -29,28 +29,30 @@ using std::sscanf;
 class ContextImpl : public Context {
 public:
     ContextImpl() :
-        _tr(new TransportRegistry()), _timer(new Timer("client thread",
-                lowPriority)) {
+        _tr(new TransportRegistry()), _timer(new Timer("server thread",
+                lowPriority)), _conf(new SystemConfigurationImpl()) {
     }
     virtual ~ContextImpl() {
         delete _tr;
         delete _timer;
     }
-    virtual Timer* getTimer() {
-        return _timer;
-    }
-    virtual TransportRegistry* getTransportRegistry() {
-        return _tr;
-    }
-	virtual Channel* getChannel(epics::pvAccess::pvAccessID) { return 0; }
-	virtual Transport* getSearchTransport() { return 0; }
+    virtual Timer* getTimer() { return _timer; }
+    virtual TransportRegistry* getTransportRegistry() { return _tr; }
+    virtual Channel* getChannel(epics::pvAccess::pvAccessID) { return 0; }
+    virtual Transport* getSearchTransport() { return 0; }
+    virtual Configuration* getConfiguration() { return _conf; }
+
 private:
     TransportRegistry* _tr;
     Timer* _timer;
+    Configuration* _conf;
 };
 
 class DummyResponseHandler : public ResponseHandler {
 public:
+    DummyResponseHandler(Context* ctx) : ResponseHandler(ctx) {
+    }
+
     virtual void handleResponse(osiSockAddr* responseFrom,
             Transport* transport, int8 version, int8 command, int payloadSize,
             ByteBuffer* payloadBuffer) {
@@ -110,7 +112,7 @@ void testBlockingTCPSender() {
 
     DummyTransportClient dtc;
     DummyTransportSender dts;
-    DummyResponseHandler drh;
+    DummyResponseHandler drh(&ctx);
 
     osiSockAddr srvAddr;
 

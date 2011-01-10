@@ -24,4 +24,11 @@
 #   take effect.
 #IOCS_APPL_TOP = </IOC/path/to/application/top>
 
-USR_LDFLAGS += -lpthread
+ifeq ($(DEBUG),1)
+    DEBUG_CFLAGS=-O0 -g -ggdb
+endif
+
+ifeq ($(EPICS_HOST_ARCH),linux-x86)
+    USR_LDFLAGS += -lpthread
+endif
+

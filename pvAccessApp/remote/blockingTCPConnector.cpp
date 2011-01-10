@@ -106,8 +106,17 @@ namespace epics {
                             ipAddrStr);
 
                     socket = tryConnect(address, 3);
-                    if (socket == INVALID_SOCKET)
-                        return 0;
+                    // verify
+                    if(socket==INVALID_SOCKET) {
+                        errlogSevPrintf(
+                                errlogMajor,
+                                "Connection to CA server %s failed.",
+                                ipAddrStr);
+                        ostringstream temp;
+                        temp<<"Failed to verify TCP connection to '"<<ipAddrStr
+                                <<"'.";
+                        THROW_BASE_EXCEPTION(temp.str().c_str());
+                    }
 
                     // use blocking channel
                     // socket is blocking bya default
@@ -140,7 +149,7 @@ namespace epics {
                     if(!transport->waitUntilVerified(3.0)) {
                         transport->close(true);
                         errlogSevPrintf(
-                                errlogInfo,
+                                errlogMinor,
                                 "Connection to CA server %s failed to be validated, closing it.",
                                 ipAddrStr);
                         ostringstream temp;
