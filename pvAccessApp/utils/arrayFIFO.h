@@ -12,12 +12,9 @@
 #include <iostream>
 #endif
 
+#include <cstring>
 #include <lock.h>
-#include <epicsException.h>
-
-using epics::pvData::Mutex;
-using epics::pvData::Lock;
-using epics::pvData::BaseException;
+#include <epicsAssert.h>
 
 namespace epics {
     namespace pvAccess {
@@ -129,7 +126,7 @@ namespace epics {
         private:
             T* _elements; // array of pointers
             size_t _head, _tail, _size;
-            Mutex _mutex;
+            epics::pvData::Mutex _mutex;
             static int MIN_INITIAL_CAPACITY;
 
             /**
@@ -225,7 +222,7 @@ namespace epics {
 
         template<class T>
         void ArrayFIFO<T>::addFirst(const T e) {
-            Lock lock(&_mutex);
+            epics::pvData::Lock lock(&_mutex);
 
             _elements[_head = (_head-1)&(_size-1)] = e;
             if(_head==_tail) doubleCapacity();
@@ -233,7 +230,7 @@ namespace epics {
 
         template<class T>
         void ArrayFIFO<T>::addLast(const T e) {
-            Lock lock(&_mutex);
+            epics::pvData::Lock lock(&_mutex);
 
             _elements[_tail] = e;
             if((_tail = (_tail+1)&(_size-1))==_head) doubleCapacity();
@@ -241,7 +238,7 @@ namespace epics {
 
         template<class T>
         T ArrayFIFO<T>::pollFirst() {
-            Lock lock(&_mutex);
+            epics::pvData::Lock lock(&_mutex);
 
             if(isEmpty()) return 0;
 
@@ -252,7 +249,7 @@ namespace epics {
 
         template<class T>
         T ArrayFIFO<T>::pollLast() {
-            Lock lock(&_mutex);
+            epics::pvData::Lock lock(&_mutex);
 
             if(isEmpty()) return 0;
 
@@ -262,7 +259,7 @@ namespace epics {
 
         template<class T>
         T ArrayFIFO<T>::peekFirst() {
-            Lock lock(&_mutex);
+            epics::pvData::Lock lock(&_mutex);
 
             if(isEmpty()) return 0;
 
@@ -271,7 +268,7 @@ namespace epics {
 
         template<class T>
         T ArrayFIFO<T>::peekLast() {
-            Lock lock(&_mutex);
+            epics::pvData::Lock lock(&_mutex);
 
             if(isEmpty()) return 0;
 
@@ -295,21 +292,21 @@ namespace epics {
 
         template<class T>
         size_t ArrayFIFO<T>::size() {
-            Lock lock(&_mutex);
+            epics::pvData::Lock lock(&_mutex);
 
             return (_tail-_head)&(_size-1);
         }
 
         template<class T>
         bool ArrayFIFO<T>::isEmpty() {
-            Lock lock(&_mutex);
+            epics::pvData::Lock lock(&_mutex);
 
             return _head==_tail;
         }
 
         template<class T>
         void ArrayFIFO<T>::clear() {
-            Lock lock(&_mutex);
+            epics::pvData::Lock lock(&_mutex);
 
             _head = _tail = 0;
         }
@@ -324,8 +321,7 @@ namespace epics {
             size_t back = (t-i)&mask;
 
             // Invariant: head <= i < tail mod circularity
-            if(front>=((t-h)&mask)) THROW_BASE_EXCEPTION(
-                    "Illegal State Exception"); // concurrency problem!!!
+            assert(front<((t-h)&mask)); // concurrency problem detected
 
             // Optimize for least element motion
             if(front<back) {
@@ -358,7 +354,7 @@ namespace epics {
 
         template<class T>
         bool ArrayFIFO<T>::remove(const T e) {
-            Lock lock(&_mutex);
+            epics::pvData::Lock lock(&_mutex);
 
             if(isEmpty()) return false; // nothing to do
 

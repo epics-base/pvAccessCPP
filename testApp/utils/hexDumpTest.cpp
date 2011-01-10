@@ -5,10 +5,11 @@
  *      Author: Miha Vitorovic
  */
 
-#include "hexDump.h"
+#include <hexDump.h>
 
 #include <iostream>
 
+using namespace epics::pvData;
 using namespace epics::pvAccess;
 using std::cout;
 using std::endl;

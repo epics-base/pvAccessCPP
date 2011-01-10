@@ -5,11 +5,12 @@
  *      Author: Miha Vitorovic
  */
 
-#include "wildcharMatcher.h"
+#include <wildcharMatcher.h>
 
 #include <iostream>
 #include <epicsAssert.h>
 
+using namespace epics::pvData;
 using namespace epics::pvAccess;
 using std::cout;
 

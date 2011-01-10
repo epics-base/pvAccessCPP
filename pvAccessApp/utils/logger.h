@@ -10,8 +10,6 @@
 
 #include <pvType.h>
 
-using epics::pvData::String;
-
 namespace epics {
     namespace pvAccess {
 
@@ -23,7 +21,7 @@ namespace epics {
          * @param[in] fname The file to write to. If the file exists, it
          * is opened for append.
          */
-        void createFileLogger( String fname );
+        void createFileLogger( epics::pvData::String fname );
 
     }
 }

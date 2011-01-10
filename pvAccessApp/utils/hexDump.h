@@ -10,8 +10,6 @@
 
 #include <pvType.h>
 
-using namespace epics::pvData;
-
 namespace epics {
     namespace pvAccess {
 
@@ -21,7 +19,7 @@ namespace epics {
          * @param bs    buffer to dump
          * @param len   first bytes (length) to dump.
          */
-        void hexDump(const String name, const int8 *bs, int len);
+        void hexDump(const epics::pvData::String name, const epics::pvData::int8 *bs, int len);
 
         /**
          * Output a buffer in hex format.
@@ -30,7 +28,7 @@ namespace epics {
          * @param[in] start dump message using given offset.
          * @param[in] len   first bytes (length) to dump.
          */
-        void hexDump(const String name, const int8 *bs, int start, int len);
+        void hexDump(const epics::pvData::String name, const epics::pvData::int8 *bs, int start, int len);
 
         /**
          * Output a buffer in hex format.
@@ -40,7 +38,7 @@ namespace epics {
          * @param[in] start dump message using given offset.
          * @param[in] len   first bytes (length) to dump.
          */
-        void hexDump(const String prologue, const String name, const int8 *bs,
+        void hexDump(const epics::pvData::String prologue, const epics::pvData::String name, const epics::pvData::int8 *bs,
                 int start, int len);
 
     }

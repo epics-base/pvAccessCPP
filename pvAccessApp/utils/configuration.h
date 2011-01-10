@@ -5,12 +5,11 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#include "pvType.h"
-#include "noDefaultMethods.h"
-#include "lock.h"
-#include "epicsException.h"
+#include <pvType.h>
+#include <noDefaultMethods.h>
+#include <lock.h>
 
-#include "envDefs.h"
+#include <envDefs.h>
 
 
 #include <iostream>
@@ -19,9 +18,6 @@
 #include <string.h>
 #include <map>
 
-
-using namespace epics::pvData;
-using namespace std;
 
 namespace epics { namespace pvAccess {
 
@@ -42,27 +38,27 @@ class Properties
 {
 public:
 	Properties();
-	Properties(const string fileName);
+	Properties(const std::string fileName);
 	virtual ~Properties();
 
-	void setProperty(const string key,const  string value);
-	string getProperty(const string key);
-	string getProperty(const string key, const string defaultValue);
+	void setProperty(const std::string key,const  std::string value);
+	std::string getProperty(const std::string key);
+	std::string getProperty(const std::string key, const std::string defaultValue);
 
 	void store();
-	void store(const string fileName);
+	void store(const std::string fileName);
 	void load();
-	void load(const string fileName);
+	void load(const std::string fileName);
 	void list();
 
 private:
-	map<const char*,const char* , conf_cmp_str> _properties;
-	map<const char*,const char* , conf_cmp_str>::iterator _propertiesIterator;
-	ifstream* _infile;
-	ofstream* _outfile;
-	string _fileName;
+	std::map<const char*,const char* , conf_cmp_str> _properties;
+	std::map<const char*,const char* , conf_cmp_str>::iterator _propertiesIterator;
+	std::ifstream* _infile;
+	std::ofstream* _outfile;
+	std::string _fileName;
 
-	inline void	truncate(string& str)
+	inline void	truncate(std::string& str)
 	{
 		while(str.length() != 0 && (str.at(0) == ' ' || str.at(0) == '\t'))
 		{
@@ -80,7 +76,7 @@ private:
 /**
  * Configuration
  */
-class Configuration : private NoDefaultMethods
+class Configuration : private epics::pvData::NoDefaultMethods
 {
 public:
 	/*
@@ -92,7 +88,7 @@ public:
 	 *
 	 * @return environment variable value as bool or default value if it does not exist.
 	 */
-	virtual bool getPropertyAsBoolean(const string name, const bool defaultValue) = 0;
+	virtual bool getPropertyAsBoolean(const std::string name, const bool defaultValue) = 0;
 	/*
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
@@ -102,7 +98,7 @@ public:
 	 *
 	 * @return environment variable value as int32 or default value if it does not exist.
 	 */
-	virtual int32 getPropertyAsInteger(const string name, const int32 defaultValue) = 0;
+	virtual epics::pvData::int32 getPropertyAsInteger(const std::string name, const epics::pvData::int32 defaultValue) = 0;
 	/*
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
@@ -112,7 +108,7 @@ public:
 	 *
 	 * @return environment variable value as float or default value if it does not exist.
 	 */
-	virtual float getPropertyAsFloat(const string name, const float defaultValue) = 0;
+	virtual float getPropertyAsFloat(const std::string name, const float defaultValue) = 0;
 	/*
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
@@ -122,7 +118,7 @@ public:
 	 *
 	 * @return environment variable value as double or default value if it does not exist.
 	 */
-	virtual float getPropertyAsDouble(const string name, const double defaultValue) = 0;
+	virtual float getPropertyAsDouble(const std::string name, const double defaultValue) = 0;
 	/*
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
@@ -130,9 +126,9 @@ public:
 	 * @param name name of the environment variable to return.
 	 * @param defualtValue default value to return if environment variable does not exists.
 	 *
-	 * @return environment variable value as string or default value if it does not exist.
+	 * @return environment variable value as std::string or default value if it does not exist.
 	 */
-	virtual string getPropertyAsString(const string name, const string defaultValue) = 0;
+	virtual std::string getPropertyAsString(const std::string name, const std::string defaultValue) = 0;
 };
 
 class SystemConfigurationImpl: public Configuration
@@ -140,23 +136,23 @@ class SystemConfigurationImpl: public Configuration
 public:
 	SystemConfigurationImpl();
 	virtual ~SystemConfigurationImpl();
-	bool getPropertyAsBoolean(const string name, const bool defaultValue);
-	int32 getPropertyAsInteger(const string name, const int32 defaultValue);
-	float getPropertyAsFloat(const string name, const float defaultValue);
-	float getPropertyAsDouble(const string name, const double defaultValue);
-	string getPropertyAsString(const string name, string defaultValue);
+	bool getPropertyAsBoolean(const std::string name, const bool defaultValue);
+	epics::pvData::int32 getPropertyAsInteger(const std::string name, const epics::pvData::int32 defaultValue);
+	float getPropertyAsFloat(const std::string name, const float defaultValue);
+	float getPropertyAsDouble(const std::string name, const double defaultValue);
+	std::string getPropertyAsString(const std::string name, std::string defaultValue);
 	Properties* _properties;
 private:
 	ENV_PARAM _envParam;
-	istringstream _ibuffer;
-	ostringstream _obuffer;
+	std::istringstream _ibuffer;
+	std::ostringstream _obuffer;
 
 };
 
 /**
  * Configuration provider.
  */
-class ConfigurationProvider : private NoDefaultMethods
+class ConfigurationProvider : private epics::pvData::NoDefaultMethods
 {
 public:
 	/*
@@ -166,14 +162,14 @@ public:
 	 *
 	 * @return configuration specified by name or NULL if it does not exists.
 	 */
-	virtual Configuration* getConfiguration(const string name) = 0;
+	virtual Configuration* getConfiguration(const std::string name) = 0;
 	/*
 	 * Register configuration.
 	 *
 	 * @param name name of the configuration to register.
 	 * @param configuration configuration to register.
 	 */
-	virtual void registerConfiguration(const string name, const Configuration* configuration) = 0;
+	virtual void registerConfiguration(const std::string name, const Configuration* configuration) = 0;
 };
 
 class ConfigurationProviderImpl: public ConfigurationProvider
@@ -181,18 +177,18 @@ class ConfigurationProviderImpl: public ConfigurationProvider
 public:
 	ConfigurationProviderImpl();
 	virtual ~ConfigurationProviderImpl();
-	Configuration* getConfiguration(const string name);
-	void registerConfiguration(const string name, const Configuration* configuration);
+	Configuration* getConfiguration(const std::string name);
+	void registerConfiguration(const std::string name, const Configuration* configuration);
 private:
-	Mutex _mutex;
-	map<const char*,const Configuration*, conf_cmp_str> _configs;
-	map<const char*,const Configuration*, conf_cmp_str>::iterator _configsIter;
+	epics::pvData::Mutex _mutex;
+	std::map<const char*,const Configuration*, conf_cmp_str> _configs;
+	std::map<const char*,const Configuration*, conf_cmp_str>::iterator _configsIter;
 };
 
 /**
  * Configuration factory.
  */
-class ConfigurationFactory : private NoDefaultMethods
+class ConfigurationFactory : private epics::pvData::NoDefaultMethods
 {
 public:
 	/*
@@ -208,7 +204,7 @@ public:
 private:
 	ConfigurationFactory() {};
 	static ConfigurationProviderImpl* _configurationProvider;
-	static Mutex _conf_factory_mutex;
+	static epics::pvData::Mutex _conf_factory_mutex;
 };
 
 }}

@@ -12,6 +12,7 @@
 #include <stdlib.h>
 
 using namespace epics::pvAccess;
+using namespace epics::pvData;
 using namespace std;
 
 int main(int argc, char *argv[])

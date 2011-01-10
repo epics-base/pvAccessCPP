@@ -10,6 +10,7 @@
 #include <iostream>
 
 using std::cout;
+using namespace epics::pvData;
 
 namespace epics {
     namespace pvAccess {

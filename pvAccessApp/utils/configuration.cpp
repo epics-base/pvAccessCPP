@@ -3,8 +3,12 @@
  */
 
 #include "configuration.h"
+#include <epicsException.h>
 
 namespace epics { namespace pvAccess {
+
+using namespace epics::pvData;
+using namespace std;
 
 Properties::Properties()
 {

@@ -8,6 +8,8 @@
 #ifndef GROWINGCIRCULARBUFFER_H_
 #define GROWINGCIRCULARBUFFER_H_
 
+// TODO remove exception throwing !!!
+
 #include <epicsException.h>
 
 using epics::pvData::BaseException;

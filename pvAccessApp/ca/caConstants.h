@@ -1,5 +1,5 @@
 /*
- * constants.hpp
+ * constants.h
  *
  *  Created on: Oct 8, 2010
  *      Author: Miha Vitorovic

@@ -10,8 +10,6 @@
 
 #include <pvType.h>
 
-using epics::pvData::String;
-
 namespace epics {
     namespace pvAccess {
 
@@ -32,7 +30,7 @@ namespace epics {
          *
          * @return DOCUMENT ME!
          */
-        bool testSet(const String pattern, int offset, const char ch);
+        bool testSet(const epics::pvData::String pattern, int offset, const char ch);
 
         /**
          * Recursive method for parsing the string. To avoid copying the strings,
@@ -45,7 +43,7 @@ namespace epics {
          *
          * @return boolean Do the strings match
          */
-        bool parse(const String pattern, const int ofp, const String str,
+        bool parse(const epics::pvData::String pattern, const int ofp, const epics::pvData::String str,
                 const int ofs);
 
         /**
@@ -56,7 +54,7 @@ namespace epics {
          *
          * @return DOCUMENT ME!
          */
-        bool match(const String pattern, const String str);
+        bool match(const epics::pvData::String pattern, const epics::pvData::String str);
 
     }
 }
