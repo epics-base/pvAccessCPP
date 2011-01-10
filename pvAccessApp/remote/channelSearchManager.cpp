@@ -60,7 +60,7 @@ bool BaseSearchInstance::generateSearchRequestMessage(ByteBuffer* requestMessage
 		return false;
 	}
 
-	const string name = getChannelName();
+	const String name = getSearchInstanceName();
 	// not nice...
 	const int addedPayloadSize = sizeof(int32)/sizeof(int8) + (1 + sizeof(int32)/sizeof(int8) + name.length());
 
@@ -69,7 +69,7 @@ bool BaseSearchInstance::generateSearchRequestMessage(ByteBuffer* requestMessage
 		return false;
 	}
 
-	requestMessage->putInt(getChannelID());
+	requestMessage->putInt(getSearchInstanceID());
 	SerializeHelper::serializeString(name, requestMessage, control);
 
 	requestMessage->putInt(PAYLOAD_POSITION, requestMessage->getPosition() - CA_MESSAGE_HEADER_SIZE);
@@ -421,7 +421,7 @@ const int64 ChannelSearchManager::MAX_SEARCH_PERIOD_LOWER_LIMIT = 60000;
 const int64 ChannelSearchManager::BEACON_ANOMALY_SEARCH_PERIOD = 5000;
 const int32 ChannelSearchManager::MAX_TIMERS = 18;
 
-ChannelSearchManager::ChannelSearchManager(ClientContextImpl* context):
+ChannelSearchManager::ChannelSearchManager(Context* context):
 						_context(context),
 						_canceled(false),
 						_rttmean(MIN_RTT),
@@ -503,17 +503,17 @@ void ChannelSearchManager::registerChannel(SearchInstance* channel)
 
 	Lock guard(&_channelMutex);
 	//overrides if already registered
-	_channels[channel->getChannelID()] =  channel;
+	_channels[channel->getSearchInstanceID()] =  channel;
 	_timers[0]->installChannel(channel);
 }
 
 void ChannelSearchManager::unregisterChannel(SearchInstance* channel)
 {
 	Lock guard(&_channelMutex);
-	_channelsIter = _channels.find(channel->getChannelID());
+	_channelsIter = _channels.find(channel->getSearchInstanceID());
 	if(_channelsIter != _channels.end())
 	{
-		_channels.erase(channel->getChannelID());
+		_channels.erase(channel->getSearchInstanceID());
 	}
 
 	channel->removeAndUnsetListOwnership();
@@ -590,7 +590,7 @@ void ChannelSearchManager::flushSendBuffer()
 	TimeStamp now;
 	now.getCurrent();
 	_timeAtLastSend = now.getMilliseconds();
-	_context->getSearchTransport()->send(_sendBuffer);
+	((BlockingUDPTransport*)_context->getSearchTransport())->send(_sendBuffer);
 	initializeSendBuffer();
 }
 

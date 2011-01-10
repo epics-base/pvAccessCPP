@@ -24,7 +24,7 @@ using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
 
-//TODO check the const of paramerers
+//TODO check the const of parameters
 
 /**
  * SearchInstance.
