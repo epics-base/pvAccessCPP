@@ -19,7 +19,8 @@
 #include <map>
 #include <iostream>
 
-
+// TODO check for memory leaks
+// TODO to be removed out of header
 using namespace epics::pvData;
 using namespace std;
 

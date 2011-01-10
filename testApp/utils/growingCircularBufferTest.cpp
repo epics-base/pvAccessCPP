@@ -5,7 +5,7 @@
  *      Author: Miha Vitorovic
  */
 
-#include "growingCircularBuffer.h"
+#include <growingCircularBuffer.h>
 
 #include <iostream>
 #include <epicsAssert.h>

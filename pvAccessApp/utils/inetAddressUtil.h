@@ -8,13 +8,15 @@
 #ifndef INETADDRESSUTIL_H_
 #define INETADDRESSUTIL_H_
 
+// review this header, is it needed, use pure libCom calls?
+
 /* uporabim lahko:
  * EPICSv3 osiSock.h  kjer je definiran osiSockDiscoverBroadcastAddresses
  *
  * Kako se ga uporablja je v
  * epics/base/src/ca/iocinf.cpp   funkcija configureChannelAccessAddressList
  *
- * razišči kako se to priredi za IPv6
+ * razisci kako se to priredi za IPv6
  *
  */
 
@@ -22,8 +24,6 @@
 #include <byteBuffer.h>
 #include <osiSock.h>
 #include <vector>
-
-using namespace epics::pvData;
 
 namespace epics {
     namespace pvAccess {
@@ -46,21 +46,21 @@ namespace epics {
          * @param address address to encode.
          */
         void
-        encodeAsIPv6Address(ByteBuffer* buffer, const osiSockAddr* address);
+        encodeAsIPv6Address(epics::pvData::ByteBuffer* buffer, const osiSockAddr* address);
 
         /**
          * Convert an integer into an IPv4 INET address.
          * @param addr integer representation of a given address.
          * @return IPv4 INET address.
          */
-        osiSockAddr* intToIPv4Address(int32 addr);
+        osiSockAddr* intToIPv4Address(epics::pvData::int32 addr);
 
         /**
          * Convert an IPv4 INET address to an integer.
          * @param addr  IPv4 INET address.
          * @return integer representation of a given address.
          */
-        int32 ipv4AddressToInt(const osiSockAddr& addr);
+        epics::pvData::int32 ipv4AddressToInt(const osiSockAddr& addr);
 
         /**
          * Parse space delimited addresss[:port] string and return array of <code>InetSocketAddress</code>.
@@ -69,10 +69,10 @@ namespace epics {
          * @param appendList    list to be appended.
          * @return  array of <code>InetSocketAddress</code>.
          */
-        InetAddrVector* getSocketAddressList(String list, int defaultPort,
+        InetAddrVector* getSocketAddressList(epics::pvData::String list, int defaultPort,
                 const InetAddrVector* appendList = NULL);
 
-        const String inetAddressToString(const osiSockAddr *addr,
+        const epics::pvData::String inetAddressToString(const osiSockAddr *addr,
                 bool displayPort = true, bool displayHex = false);
 
         /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */

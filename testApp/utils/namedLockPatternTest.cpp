@@ -11,6 +11,7 @@
 
 #include <osiSock.h>
 
+using namespace epics::pvData;
 using namespace epics::pvAccess;
 using namespace std;
 

@@ -5,18 +5,8 @@
 #ifndef REFERENCECOUNTINGLOCK_H
 #define REFERENCECOUNTINGLOCK_H
 
-#include <map>
-#include <iostream>
-#include <pthread.h>
-#include <string.h>
-#include <errno.h>
-
 #include <lock.h>
 #include <pvType.h>
-#include <epicsAssert.h>
-
-using namespace std;
-using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
 
@@ -53,7 +43,7 @@ public:
 	 * 			NOTE: currently this routine always returns true. Look above for explanation.
 	 *
 	 */
-	bool acquire(int64 msecs);
+	bool acquire(epics::pvData::int64 msecs);
 	/**
 	 * Release previously acquired lock.
 	 */
@@ -72,10 +62,8 @@ public:
 	int decrement();
 private:
 	int _references;
-	Mutex _mutex;
-	Mutex _countMutex;
-	//pthread_mutex_t _mutex;
-
+	epics::pvData::Mutex _mutex;
+	epics::pvData::Mutex _countMutex;
 };
 
 }}

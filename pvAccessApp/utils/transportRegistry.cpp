@@ -4,6 +4,9 @@
 
 #include "transportRegistry.h"
 
+using namespace epics::pvData;
+using namespace std;
+
 namespace epics { namespace pvAccess {
 
 TransportRegistry::TransportRegistry(): _mutex(Mutex())
@@ -18,14 +21,8 @@ TransportRegistry::~TransportRegistry()
 
 void TransportRegistry::put(Transport* transport)
 {
-	// TODO support type
-	if(transport == NULL)
-	{
-		throw EpicsException("null transport provided");
-	}
-
 	Lock guard(&_mutex);
-	//const string type = transport.getType();
+	//const String type = transport.getType();
 	const int16 priority = transport->getPriority();
 	const osiSockAddr* address = transport->getRemoteAddress();
 
@@ -44,14 +41,8 @@ void TransportRegistry::put(Transport* transport)
 	_allTransports.push_back(transport);
 }
 
-Transport* TransportRegistry::get(const string type, const osiSockAddr* address, const int16 priority)
+Transport* TransportRegistry::get(const String type, const osiSockAddr* address, const int16 priority)
 {
-	// TODO support type
-	if(address == NULL)
-	{
-		throw EpicsException("null address provided");
-	}
-
 	Lock guard(&_mutex);
 	_transportsIter = _transports.find(address);
 	if(_transportsIter != _transports.end())
@@ -66,14 +57,8 @@ Transport* TransportRegistry::get(const string type, const osiSockAddr* address,
 	return NULL;
 }
 
-Transport** TransportRegistry::get(const string type, const osiSockAddr* address, int32& size)
+Transport** TransportRegistry::get(const String type, const osiSockAddr* address, int32& size)
 {
-	// TODO support type
-	if(address == NULL)
-	{
-		throw EpicsException("null address provided");
-	}
-
 	Lock guard(&_mutex);
 	_transportsIter = _transports.find(address);
 	if(_transportsIter != _transports.end())
@@ -93,12 +78,6 @@ Transport** TransportRegistry::get(const string type, const osiSockAddr* address
 
 Transport* TransportRegistry::remove(Transport* transport)
 {
-	// TODO support type
-	if(transport == NULL)
-	{
-		throw EpicsException("null transport provided");
-	}
-
 	Lock guard(&_mutex);
 	const int16 priority = transport->getPriority();
 	const osiSockAddr* address = transport->getRemoteAddress();
@@ -148,7 +127,7 @@ int TransportRegistry::numberOfActiveTransports()
 	return (int32)_allTransports.size();
 }
 
-Transport** TransportRegistry::toArray(const string type, int32& size)
+Transport** TransportRegistry::toArray(const String type, int32& size)
 {
 	// TODO support type
 	Lock guard(&_mutex);

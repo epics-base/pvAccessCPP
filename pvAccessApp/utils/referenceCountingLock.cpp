@@ -6,6 +6,8 @@
 
 namespace epics { namespace pvAccess {
 
+using namespace epics::pvData;
+
 ReferenceCountingLock::ReferenceCountingLock(): _references(1)
 {
 /*	pthread_mutexattr_t mutexAttribute;

@@ -5,8 +5,8 @@
  *      Author: user
  */
 
-#include "inetAddressUtil.h"
-#include "logger.h"
+#include <inetAddressUtil.h>
+#include <logger.h>
 
 #include <byteBuffer.h>
 #include <pvType.h>
@@ -17,11 +17,9 @@
 #include <iostream>
 #include <cstring>
 
+using namespace epics::pvData;
 using namespace epics::pvAccess;
-using std::cout;
-using std::endl;
-using std::stringstream;
-using std::hex;
+using namespace std;
 
 int main(int argc, char *argv[]) {
     createFileLogger("inetAddresUtils.log");
