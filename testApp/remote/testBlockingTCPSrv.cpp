@@ -8,6 +8,7 @@
 #include "blockingTCP.h"
 #include "remote.h"
 #include "logger.h"
+#include "configuration.h"
 
 #include <iostream>
 
@@ -21,7 +22,8 @@ class ContextImpl : public Context {
 public:
     ContextImpl() :
         _tr(new TransportRegistry()),
-        _timer(new Timer("server thread", lowPriority)) {}
+        _timer(new Timer("server thread", lowPriority)),
+        _conf(new SystemConfigurationImpl()) {}
     virtual ~ContextImpl() {
         delete _tr;
         delete _timer;
@@ -30,10 +32,12 @@ public:
     virtual TransportRegistry* getTransportRegistry() { return _tr; }
 	virtual Channel* getChannel(epics::pvAccess::pvAccessID) { return 0; }
 	virtual Transport* getSearchTransport() { return 0; }
-    
+	virtual Configuration* getConfiguration() { return _conf; }
+
 private:
     TransportRegistry* _tr;
     Timer* _timer;
+    Configuration* _conf;
 };
 
 void testServerConnections() {
@@ -43,7 +47,7 @@ void testServerConnections() {
             1024);
 
     cout<<"Press any key to stop the server...";
-    char c = cin.peek();
+    cin.peek();
 
     delete srv;
 }

@@ -8,6 +8,7 @@
 #ifndef RESPONSEHANDLERS_H_
 #define RESPONSEHANDLERS_H_
 
+#include "serverContext.h"
 #include "remote.h"
 
 namespace epics {
@@ -25,13 +26,11 @@ namespace epics {
              */
             AbstractServerResponseHandler(ServerContextImpl* context,
                     String description) :
-                AbstractResponseHandler(description), _context(context) {
+                AbstractResponseHandler(context, description) {
             }
 
             virtual ~AbstractServerResponseHandler() {
             }
-        protected:
-            ServerContextImpl* _context;
         };
 
         /**
@@ -76,11 +75,6 @@ namespace epics {
              * Table of response handlers for each command ID.
              */
             ResponseHandler** _handlerTable;
-
-            /**
-             * Context instance.
-             */
-            ServerContextImpl* _context;
 
         };
 

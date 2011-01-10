@@ -67,6 +67,7 @@ LIBSRCS += blockingTCPConnector.cpp
 LIBSRCS += blockingServerTCPTransport.cpp
 LIBSRCS += blockingTCPAcceptor.cpp
 LIBSRCS += channelSearchManager.cpp
+LIBSRCS += abstractResponseHandler.cpp
 
 LIBRARY = pvAccess
 pvAccess_LIBS += Com

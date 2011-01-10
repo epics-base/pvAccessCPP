@@ -8,11 +8,12 @@
 #ifndef SERVERCONTEXT_H_
 #define SERVERCONTEXT_H_
 
+#include "remote.h"
+
 namespace epics {
     namespace pvAccess {
 
-
-        class ServerContextImpl {
+        class ServerContextImpl : public Context {
 
         };
 

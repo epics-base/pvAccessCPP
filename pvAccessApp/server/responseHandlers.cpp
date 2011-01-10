@@ -24,23 +24,6 @@ using namespace epics::pvData;
 namespace epics {
     namespace pvAccess {
 
-        void AbstractResponseHandler::handleResponse(osiSockAddr* responseFrom,
-                Transport* transport, int8 version, int8 command,
-                int payloadSize, ByteBuffer* payloadBuffer) {
-            if(_debug) {
-                char ipAddrStr[48];
-                ipAddrToA(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
-
-                ostringstream prologue;
-                prologue<<"Message [0x"<<hex<<(int)command<<", v0x"<<hex;
-                prologue<<(int)version<<"] received from "<<ipAddrStr;
-
-                hexDump(prologue.str(), _description,
-                        (const int8*)payloadBuffer->getArray(),
-                        payloadBuffer->getPosition(), payloadSize);
-            }
-        }
-
         void BadResponse::handleResponse(osiSockAddr* responseFrom,
                 Transport* transport, int8 version, int8 command,
                 int payloadSize, ByteBuffer* payloadBuffer) {
@@ -57,15 +40,15 @@ namespace epics {
         }
 
         ServerResponseHandler::ServerResponseHandler(ServerContextImpl* context) :
-            _context(context) {
+            ResponseHandler(context) {
 
             BadResponse* badResponse = new BadResponse(context);
 
             _handlerTable = new ResponseHandler*[HANDLER_TABLE_LENGTH];
             // TODO add real handlers, as they are developed
-            _handlerTable[0] = new NoopResponse(_context, "Beacon");
-            _handlerTable[1] = new ConnectionValidationHandler(_context);
-            _handlerTable[2] = new EchoHandler(_context);
+            _handlerTable[0] = new NoopResponse(context, "Beacon");
+            _handlerTable[1] = new ConnectionValidationHandler(context);
+            _handlerTable[2] = new EchoHandler(context);
             _handlerTable[3] = badResponse;
             _handlerTable[4] = badResponse;
             _handlerTable[5] = badResponse;
