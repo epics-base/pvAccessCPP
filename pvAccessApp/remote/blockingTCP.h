@@ -547,13 +547,13 @@ namespace epics {
              * Preallocate new channel SID.
              * @return new channel server id (SID).
              */
-            virtual int preallocateChannelSID();
+            virtual pvAccessID preallocateChannelSID();
 
             /**
              * De-preallocate new channel SID.
              * @param sid preallocated channel SID.
              */
-            virtual void depreallocateChannelSID(int sid) {
+            virtual void depreallocateChannelSID(pvAccessID sid) {
                 // noop
             }
 
@@ -562,20 +562,20 @@ namespace epics {
              * @param sid preallocated channel SID.
              * @param channel channel to register.
              */
-            virtual void registerChannel(int sid, ServerChannel* channel);
+            virtual void registerChannel(pvAccessID sid, ServerChannel* channel);
 
             /**
              * Unregister a new channel (and deallocates its handle).
              * @param sid SID
              */
-            virtual void unregisterChannel(int sid);
+            virtual void unregisterChannel(pvAccessID sid);
 
             /**
              * Get channel by its SID.
              * @param sid channel SID
              * @return channel with given SID, <code>NULL</code> otherwise
              */
-            virtual ServerChannel* getChannel(int sid);
+            virtual ServerChannel* getChannel(pvAccessID sid);
 
             /**
              * Get channel count.
@@ -640,12 +640,12 @@ namespace epics {
             /**
              * Last SID cache.
              */
-            volatile int _lastChannelSID;
+            volatile pvAccessID _lastChannelSID;
 
             /**
              * Channel table (SID -> channel mapping).
              */
-            std::map<int, ServerChannel*>* _channels;
+            std::map<pvAccessID, ServerChannel*>* _channels;
 
             Mutex* _channelsMutex;
 

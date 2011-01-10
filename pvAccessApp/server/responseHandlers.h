@@ -8,6 +8,7 @@
 #ifndef RESPONSEHANDLERS_H_
 #define RESPONSEHANDLERS_H_
 
+#include "serverContext.h"
 #include "remote.h"
 
 namespace epics {
@@ -18,20 +19,19 @@ namespace epics {
          * @version $Id: AbstractServerResponseHandler.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
          */
         class AbstractServerResponseHandler : public AbstractResponseHandler {
+        protected:
+            ServerContextImpl* _context;
         public:
             /**
              * @param context
              * @param description
              */
-            AbstractServerResponseHandler(ServerContextImpl* context,
-                    String description) :
-                AbstractResponseHandler(description), _context(context) {
+            AbstractServerResponseHandler(ServerContextImpl* context, String description) : 
+                AbstractResponseHandler(context, description), _context(context) {
             }
 
             virtual ~AbstractServerResponseHandler() {
             }
-        protected:
-            ServerContextImpl* _context;
         };
 
         /**
@@ -76,11 +76,6 @@ namespace epics {
              * Table of response handlers for each command ID.
              */
             ResponseHandler** _handlerTable;
-
-            /**
-             * Context instance.
-             */
-            ServerContextImpl* _context;
 
         };
 

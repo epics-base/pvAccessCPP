@@ -26,8 +26,43 @@ using std::sscanf;
 
 static osiSockAddr sendTo;
 
+class ContextImpl : public Context {
+public:
+    ContextImpl() :
+        _tr(new TransportRegistry()), _timer(new Timer("server thread",
+                lowPriority)), _conf(new SystemConfigurationImpl()) {
+    }
+    virtual ~ContextImpl() {
+        delete _tr;
+        delete _timer;
+    }
+    virtual Timer* getTimer() {
+        return _timer;
+    }
+    virtual TransportRegistry* getTransportRegistry() {
+        return _tr;
+    }
+    virtual Channel* getChannel(epics::pvAccess::pvAccessID) {
+        return 0;
+    }
+    virtual Transport* getSearchTransport() {
+        return 0;
+    }
+    virtual Configuration* getConfiguration() {
+        return _conf;
+    }
+
+private:
+    TransportRegistry* _tr;
+    Timer* _timer;
+    Configuration* _conf;
+};
+
 class DummyResponseHandler : public ResponseHandler {
 public:
+    DummyResponseHandler(Context* ctx)
+    { }
+
     virtual void handleResponse(osiSockAddr* responseFrom,
             Transport* transport, int8 version, int8 command, int payloadSize,
             ByteBuffer* payloadBuffer) {
@@ -69,9 +104,10 @@ private:
 
 void testBlockingUDPSender() {
     BlockingUDPConnector connector(false, NULL, true);
+    ContextImpl ctx;
 
     DummyTransportSender dts;
-    DummyResponseHandler drh;
+    DummyResponseHandler drh(&ctx);
 
     osiSockAddr bindAddr;
 

@@ -24,216 +24,6 @@ using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
 
-typedef int32 pvAccessID;
-
-enum QoS {
-	/**
-	 * Default behavior.
-	 */
-	DEFAULT = 0x00,
-	/**
-	 * Require reply (acknowledgment for reliable operation).
-	 */
-	REPLY_REQUIRED = 0x01,
-	/**
-	 * Best-effort option (no reply).
-	 */
-	BESY_EFFORT = 0x02,
-	/**
-	 * Process option.
-	 */
-	PROCESS = 0x04,
-	/**
-	* Initialize option.
-	 */
-	INIT = 0x08,
-	/**
-	 * Destroy option.
-	 */
-	DESTROY = 0x10,
-	/**
-	 * Share data option.
-	 */
-	SHARE = 0x20,
-	/**
-	 * Get.
-	 */
-	GET = 0x40,
-	/**
-	 * Get-put.
-	 */
-	GET_PUT =0x80
-};
-
-
-//TODO this will be deleted
-class ChannelImpl;
-class ChannelSearchManager;
-class ClientContextImpl : public ClientContext
-{
-private:
-	Timer* _timer;
-    public:
-
-    ClientContextImpl()
-    {
-    	_timer = new Timer("krneki",lowPriority);
-    }
-
-    virtual Version* getVersion() {
-        return NULL;
-    }
-
-    virtual ChannelProvider* getProvider() {
-        return NULL;
-    }
-
-    Timer* getTimer()
-	{
-    	return _timer;
-	}
-
-    virtual void initialize() {
-
-    }
-
-    virtual void printInfo() {
-
-    }
-
-    virtual void printInfo(epics::pvData::StringBuilder out) {
-
-    }
-
-    virtual void destroy()
-    {
-
-    }
-
-    virtual void dispose()
-    {
-
-    }
-
-    BlockingUDPTransport* getSearchTransport()
-		{
-    	return NULL;
-		}
-
-	/**
-	 * Searches for a channel with given channel ID.
-	 * @param channelID CID.
-	 * @return channel with given CID, <code>0</code> if non-existent.
-	 */
-	ChannelImpl* getChannel(pvAccessID channelID)
-	{
-		return NULL;
-	}
-
-	 ~ClientContextImpl() { delete _timer;};
-    private:
-
-
-    void loadConfiguration() {
-
-    }
-
-    void internalInitialize() {
-
-
-    }
-
-    void initializeUDPTransport() {
-
-    }
-
-    void internalDestroy() {
-
-    }
-
-    void destroyAllChannels() {
-
-    }
-
-	/**
-	 * Check channel name.
-	 */
-	void checkChannelName(String& name) {
-
-	}
-
-	/**
-	 * Check context state and tries to establish necessary state.
-	 */
-	void checkState() {
-
-	}
-
-
-
-	/**
-	 * Generate Client channel ID (CID).
-	 * @return Client channel ID (CID).
-	 */
-	pvAccessID generateCID()
-	{
-		return 0;
-	}
-
-	/**
-	 * Free generated channel ID (CID).
-	 */
-	void freeCID(int cid)
-	{
-
-	}
-
-
-	/**
-	 * Get, or create if necessary, transport of given server address.
-	 * @param serverAddress	required transport address
-	 * @param priority process priority.
-	 * @return transport for given address
-	 */
-	Transport* getTransport(TransportClient* client, osiSockAddr* serverAddress, int16 minorRevision, int16 priority)
-	{
-
-		return NULL;
-	}
-
-		/**
-	 * Internal create channel.
-	 */
-	// TODO no minor version with the addresses
-	// TODO what if there is an channel with the same name, but on different host!
-	Channel* createChannelInternal(String name, ChannelRequester* requester, short priority,
-			InetAddrVector* addresses) {
-		return NULL;
-	}
-
-	/**
-	 * Destroy channel.
-	 * @param channel
-	 * @param force
-	 * @throws CAException
-	 * @throws IllegalStateException
-	 */
-	void destroyChannel(ChannelImpl* channel, bool force) {
-
-
-	}
-
-	/**
-	 * Get channel search manager.
-	 * @return channel search manager.
-	 */
-	ChannelSearchManager* getChannelSearchManager() {
-		return NULL;
-	}
-};
-
-
-
 //TODO check the const of paramerers
 
 /**
@@ -250,13 +40,13 @@ public:
 	 *
 	 * @return channel ID.
 	 */
-	virtual pvAccessID getChannelID() = 0;
+	virtual pvAccessID getSearchInstanceID() = 0;
 	/**
-	 * Return channel name.
+	 * Return search instance, e.g. channel, name.
 	 *
 	 * @return channel channel name.
 	 */
-	virtual String getChannelName() = 0;
+	virtual String getSearchInstanceName() = 0;
 	/**
 	 * Removes the owner of this search instance.
 	 */
@@ -303,8 +93,8 @@ class BaseSearchInstance : public SearchInstance
 {
 public:
 	virtual ~BaseSearchInstance() {};
-	virtual pvAccessID getChannelID() = 0;
-	virtual string getChannelName() = 0;
+	virtual pvAccessID getSearchInstanceID() = 0;
+	virtual String getSearchInstanceName() = 0;
 	virtual void unsetListOwnership();
 	virtual void addAndSetListOwnership(ArrayFIFO<SearchInstance*>* newOwner, Mutex* ownerMutex, int32 index);
 	virtual void removeAndUnsetListOwnership();
@@ -479,7 +269,7 @@ public:
 	 * Constructor.
 	 * @param context
 	 */
-	ChannelSearchManager(ClientContextImpl* context);
+	ChannelSearchManager(Context* context);
     /**
 	 * Constructor.
 	 * @param context
@@ -533,7 +323,7 @@ private:
 	/**
 	 * Context.
 	 */
-	ClientContextImpl* _context;
+	Context* _context;
 	/**
 	 * Canceled flag.
 	 */

@@ -6,6 +6,7 @@
  */
 
 #include "inetAddressUtil.h"
+#include "logger.h"
 
 #include <byteBuffer.h>
 #include <pvType.h>
@@ -23,6 +24,7 @@ using std::stringstream;
 using std::hex;
 
 int main(int argc, char *argv[]) {
+    createFileLogger("inetAddresUtils.log");
 
     InetAddrVector *vec;
     InetAddrVector *vec1;
@@ -127,11 +129,11 @@ int main(int argc, char *argv[]) {
     cout<<"\nPASSED!\n";
 
     SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    InetAddrVector* broadcasts = getBroadcastAddresses(socket);
+    InetAddrVector* broadcasts = getBroadcastAddresses(socket,6678);
     cout<<"Broadcast addresses: "<<broadcasts->size()<<endl;
     for(size_t i = 0; i<broadcasts->size(); i++) {
         cout<<"Broadcast address: ";
-        cout<<inetAddressToString(broadcasts->at(i), false)<<endl;
+        cout<<inetAddressToString(broadcasts->at(i))<<endl;
     }
 
     delete broadcasts;
