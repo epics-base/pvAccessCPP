@@ -92,13 +92,11 @@ SearchTimer::SearchTimer(ChannelSearchManager* _chanSearchManager, int32 timerIn
 		_allowSlowdown(allowSlowdown),
 		_requestPendingChannels(new ArrayFIFO<SearchInstance*>),
 		_responsePendingChannels(new ArrayFIFO<SearchInstance*>),
-		_timerNode(NULL),
+		_timerNode(new TimerNode(this)),
 		_canceled(false),
-		_timeAtResponseCheck(0),
-		_requestPendingChannelsMutex(Mutex()),
-		_mutex(Mutex())
+		_timeAtResponseCheck(0)
 {
-	_timerNode = new TimerNode(this);
+
 }
 
 SearchTimer::~SearchTimer()
@@ -111,8 +109,12 @@ SearchTimer::~SearchTimer()
 void SearchTimer::shutdown()
 {
 	Lock guard(&_mutex); //the whole method is locked
-	if(_canceled) return;
-	_canceled = true;
+
+	{
+		Lock guard(&_volMutex);
+		if(_canceled) return;
+		_canceled = true;
+	}
 
 	{
 		Lock guard(&_requestPendingChannelsMutex);
@@ -127,7 +129,6 @@ void SearchTimer::installChannel(SearchInstance* channel)
 {
 	Lock guard(&_mutex); //the whole method is locked
 	if(_canceled) return;
-
 
 	Lock pendingChannelGuard(&_requestPendingChannelsMutex);
 	bool startImmediately = _requestPendingChannels->isEmpty();
@@ -156,7 +157,7 @@ void SearchTimer::moveChannels(SearchTimer* destination)
 	while((channel = _responsePendingChannels->pop()) != NULL)
 	{
 		{
-			Lock guard(&_mutex);
+			Lock guard(&_volMutex);
 			if(_searchAttempts > 0)
 			{
 				_searchAttempts--;
@@ -181,7 +182,7 @@ void SearchTimer::timerStopped()
 void SearchTimer::callback()
 {
 	{
-		Lock guard(&_mutex);
+		Lock guard(&_volMutex);
 		if(_canceled) return;
 	}
 
@@ -189,7 +190,7 @@ void SearchTimer::callback()
 	// boost search period (if necessary) for channels not recently searched
 	int32 searchRespones;
 	{
-		Lock guard(&_mutex);
+		Lock guard(&_volMutex);
 		searchRespones = _searchRespones;
 	}
 	if(_allowBoost && searchRespones > 0)
@@ -236,7 +237,7 @@ void SearchTimer::callback()
 
 		int32 searchRespones,searchAttempts;
 		{
-			Lock guard(&_mutex);
+			Lock guard(&_volMutex);
 			searchAttempts = _searchAttempts;
 			searchRespones = _searchRespones;
 		}
@@ -272,7 +273,7 @@ void SearchTimer::callback()
 
 
 	{
-		Lock guard(&_mutex);
+		Lock guard(&_volMutex);
 		_startSequenceNumber = _chanSearchManager->getSequenceNumber() + 1;
 		_searchAttempts = 0;
 		_searchRespones = 0;
@@ -284,55 +285,65 @@ void SearchTimer::callback()
 	// reschedule
 	bool canceled;
 	{
-		Lock guard(&_mutex);
+		Lock guard(&_volMutex);
 		canceled = _canceled;
 	}
 
+
 	{
 		Lock guard(&_requestPendingChannelsMutex);
-		while (!canceled && (channel = _requestPendingChannels->pop()) != NULL)
-		{
-			channel->unsetListOwnership();
+		channel = _requestPendingChannels->pop();
+	}
+	while (!canceled && channel != NULL)
+	{
+		channel->unsetListOwnership();
 
-			bool requestSent = true;
-			bool allowNewFrame = (framesSent+1) < _framesPerTry;
-			bool frameWasSent = _chanSearchManager->generateSearchRequestMessage(channel, allowNewFrame);
-			if(frameWasSent)
+		bool requestSent = true;
+		bool allowNewFrame = (framesSent+1) < _framesPerTry;
+		bool frameWasSent = _chanSearchManager->generateSearchRequestMessage(channel, allowNewFrame);
+		if(frameWasSent)
+		{
+			framesSent++;
+			triesInFrame = 0;
+			if(!allowNewFrame)
 			{
-				framesSent++;
-				triesInFrame = 0;
-				if(!allowNewFrame)
-				{
-					channel->addAndSetListOwnership(_requestPendingChannels, &_requestPendingChannelsMutex, _timerIndex);
-					requestSent = false;
-				}
-				else
-				{
-					triesInFrame++;
-				}
+				channel->addAndSetListOwnership(_requestPendingChannels, &_requestPendingChannelsMutex, _timerIndex);
+				requestSent = false;
 			}
 			else
 			{
 				triesInFrame++;
 			}
+		}
+		else
+		{
+			triesInFrame++;
+		}
 
-			if(requestSent)
+		if(requestSent)
+		{
+			channel->addAndSetListOwnership(_responsePendingChannels, &_responsePendingChannelsMutex, _timerIndex);
+			Lock guard(&_volMutex);
+			if(_searchAttempts < INT_MAX)
 			{
-				channel->addAndSetListOwnership(_responsePendingChannels, &_requestPendingChannelsMutex, _timerIndex);
-				Lock guard(&_mutex);
-				if(_searchAttempts < INT_MAX)
-				{
-					_searchAttempts++;
-				}
+				_searchAttempts++;
 			}
+		}
 
-			// limit
-			if(triesInFrame == 0 && !allowNewFrame) break;
+		// limit
+		if(triesInFrame == 0 && !allowNewFrame) break;
 
-			Lock guard(&_mutex);
+		{
+			Lock guard(&_volMutex);
 			canceled = _canceled;
 		}
+
+		{
+			Lock guard(&_requestPendingChannelsMutex);
+			channel = _requestPendingChannels->pop();
+		}
 	}
+
 
     // flush out the search request buffer
 	if(triesInFrame > 0)
@@ -341,11 +352,12 @@ void SearchTimer::callback()
 		framesSent++;
 	}
 
-	_endSequenceNumber = _chanSearchManager->getSequenceNumber();
 
-	// reschedule
 	{
-		Lock guard(&_mutex);
+		Lock guard(&_volMutex);
+		_endSequenceNumber = _chanSearchManager->getSequenceNumber();
+
+		// reschedule
 		canceled = _canceled;
 	}
 	Lock guard(&_requestPendingChannelsMutex);
@@ -363,12 +375,12 @@ void SearchTimer::searchResponse(int32 responseSequenceNumber, bool isSequenceNu
 {
 	bool validResponse = true;
 	{
-		Lock guard(&_mutex);
+		Lock guard(&_volMutex);
 		if(_canceled) return;
 
 		if(isSequenceNumberValid)
 		{
-			validResponse = _startSequenceNumber <= _chanSearchManager->_sequenceNumber && _chanSearchManager->_sequenceNumber <= _endSequenceNumber;
+			validResponse = _startSequenceNumber <= _chanSearchManager->getSequenceNumber() && _chanSearchManager->getSequenceNumber() <= _endSequenceNumber;
 		}
 	}
 
@@ -378,7 +390,7 @@ void SearchTimer::searchResponse(int32 responseSequenceNumber, bool isSequenceNu
 	{
 		const int64 dt = responseTime - _chanSearchManager->getTimeAtLastSend();
 		_chanSearchManager->updateRTTE(dt);
-		Lock guard(&_mutex);
+		Lock guard(&_volMutex);
 		if(_searchRespones < INT_MAX)
 		{
 			_searchRespones++;
@@ -436,7 +448,7 @@ ChannelSearchManager::ChannelSearchManager(Context* context):
 
 	// create timers
 	_timers = new SearchTimer*[numberOfTimers];
-	for(int i = 0; i < numberOfTimers; i++)
+	for(int32 i = 0; i < numberOfTimers; i++)
 	{
 		_timers[i] = new SearchTimer(this, i, i > _beaconAnomalyTimerIndex, i != (numberOfTimers-1));
 	}
@@ -447,7 +459,7 @@ ChannelSearchManager::ChannelSearchManager(Context* context):
 
 ChannelSearchManager::~ChannelSearchManager()
 {
-	for(int i = 0; i < _numberOfTimers; i++)
+	for(int32 i = 0; i < _numberOfTimers; i++)
 	{
 		if(_timers[i]) delete _timers[i];
 	}
@@ -459,9 +471,13 @@ ChannelSearchManager::~ChannelSearchManager()
 void ChannelSearchManager::cancel()
 {
 	Lock guard(&_mutex);
-	if(_canceled) return;
 
-	_canceled = true;
+	{
+		Lock guard(&_volMutex);
+		if(_canceled) return;
+
+		_canceled = true;
+	}
 
 	if(_timers != NULL)
 	{
@@ -474,15 +490,18 @@ void ChannelSearchManager::cancel()
 
 int32 ChannelSearchManager::registeredChannelCount()
 {
-	Lock guard(&_mutex);
+	Lock guard(&_channelMutex);
 	return _channels.size();
 }
 
 void ChannelSearchManager::registerChannel(SearchInstance* channel)
 {
-	Lock guard(&_mutex);
-	if(_canceled) return;
+	{
+		Lock guard(&_volMutex);
+		if(_canceled) return;
+	}
 
+	Lock guard(&_channelMutex);
 	//overrides if already registered
 	_channels[channel->getSearchInstanceID()] =  channel;
 	_timers[0]->installChannel(channel);
@@ -490,7 +509,7 @@ void ChannelSearchManager::registerChannel(SearchInstance* channel)
 
 void ChannelSearchManager::unregisterChannel(SearchInstance* channel)
 {
-	Lock guard(&_mutex);
+	Lock guard(&_channelMutex);
 	_channelsIter = _channels.find(channel->getSearchInstanceID());
 	if(_channelsIter != _channels.end())
 	{
@@ -502,7 +521,7 @@ void ChannelSearchManager::unregisterChannel(SearchInstance* channel)
 
 void ChannelSearchManager::searchResponse(int32 cid, int32 seqNo, int8 minorRevision, osiSockAddr* serverAddress)
 {
-	Lock guard(&_mutex);
+	Lock guard(&_channelMutex);
 	// first remove
 	SearchInstance* si = NULL;
 	_channelsIter = _channels.find(cid);
@@ -543,7 +562,7 @@ void ChannelSearchManager::beaconAnomalyNotify()
 
 void ChannelSearchManager::initializeSendBuffer()
 {
-	Lock guard(&_mutex);
+	Lock guard(&_volMutex);
 	_sequenceNumber++;
 
 
@@ -567,6 +586,7 @@ void ChannelSearchManager::initializeSendBuffer()
 void ChannelSearchManager::flushSendBuffer()
 {
 	Lock guard(&_mutex);
+	Lock volGuard(&_volMutex);
 	TimeStamp now;
 	now.getCurrent();
 	_timeAtLastSend = now.getMilliseconds();
@@ -604,28 +624,28 @@ void ChannelSearchManager::boostSearching(SearchInstance* channel, int32 timerIn
 
 inline void ChannelSearchManager::updateRTTE(long rtt)
 {
-	Lock guard(&_mutex);
+	Lock guard(&_volMutex);
 	const double error = rtt - _rttmean;
 	_rttmean += error / 4.0;
 }
 
 inline double ChannelSearchManager::getRTTE()
 {
-	Lock guard(&_mutex);
+	Lock guard(&_volMutex);
 	double rtte =  min(max((double)_rttmean, (double)MIN_RTT), (double)MAX_RTT);
 	return rtte;
 }
 
 inline int32 ChannelSearchManager::getSequenceNumber()
 {
-	Lock guard(&_mutex);
+	Lock guard(&_volMutex);
 	int32 retval = _sequenceNumber;
 	return retval;
 }
 
 inline int64 ChannelSearchManager::getTimeAtLastSend()
 {
-	Lock guard(&_mutex);
+	Lock guard(&_volMutex);
 	int64 retval = _timeAtLastSend;
 	return retval;
 }

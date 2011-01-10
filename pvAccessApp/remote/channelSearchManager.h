@@ -24,7 +24,7 @@ using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
 
-//TODO check the const of paramerers
+//TODO check the const of parameters
 
 /**
  * SearchInstance.
@@ -52,7 +52,7 @@ public:
 	 */
 	virtual void unsetListOwnership() = 0;
 	/**
-	 * Adds this search instance into the provided list and sets it as the owner of this search instance.
+	 * Adds this search instance into the provided list and set it as the owner of this search instance.
 	 *
 	 * @param newOwner a list to which this search instance is added.
 	 * @param ownerMutex mutex belonging to the newOwner list. The mutex will be locked beofe any modification
@@ -233,9 +233,17 @@ private:
      */
     Mutex _requestPendingChannelsMutex;
     /**
+     * Mutex for request pending channel list.
+     */
+    Mutex _responsePendingChannelsMutex;
+    /**
      * General mutex.
      */
     Mutex _mutex;
+    /**
+     * Volatile varialbe mutex.
+     */
+    Mutex _volMutex;
 	/**
 	 * Max search tries per frame.
 	 */
@@ -377,6 +385,14 @@ private:
      * General mutex.
      */
     Mutex _mutex;
+    /**
+     * Channel mutex.
+     */
+    Mutex _channelMutex;
+    /**
+     * Volatile variable mutex.
+     */
+    Mutex _volMutex;
     /**
      * Mock transport send control
      */
