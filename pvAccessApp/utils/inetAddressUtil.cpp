@@ -32,10 +32,19 @@ using namespace epics::pvData;
 namespace epics {
     namespace pvAccess {
 
+        void addDefaultBroadcastAddress(InetAddrVector* v, in_port_t p) {
+            osiSockAddr* pNewNode = new osiSockAddr;
+            pNewNode->ia.sin_family = AF_INET;
+            pNewNode->ia.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+            pNewNode->ia.sin_port = htons(p);
+            v->push_back(pNewNode);
+        }
+
         /* port of osiSockDiscoverBroadcastAddresses() in
          * epics/base/src/libCom/osi/os/default/osdNetIntf.c
          */
-        InetAddrVector* getBroadcastAddresses(SOCKET sock) {
+        InetAddrVector* getBroadcastAddresses(SOCKET sock,
+                in_port_t defaultPort) {
             static const unsigned nelem = 100;
             int status;
             struct ifconf ifconf;
@@ -56,6 +65,7 @@ namespace epics {
             if(!pIfreqList) {
                 errlogSevPrintf(errlogMajor,
                         "getBroadcastAddresses(): no memory to complete request");
+                addDefaultBroadcastAddress(retVector, defaultPort);
                 return retVector;
             }
 
@@ -67,6 +77,7 @@ namespace epics {
                 errlogSevPrintf(errlogMinor,
                         "getBroadcastAddresses(): unable to fetch network interface configuration");
                 delete[] pIfreqList;
+                addDefaultBroadcastAddress(retVector, defaultPort);
                 return retVector;
             }
 
@@ -117,6 +128,8 @@ namespace epics {
                     errlogSevPrintf(errlogMajor,
                             "getBroadcastAddresses(): no memory available for configuration");
                     delete[] pIfreqList;
+                    if(retVector->size()==0) addDefaultBroadcastAddress(
+                            retVector, defaultPort);
                     return retVector;
                 }
 
@@ -168,6 +181,7 @@ namespace epics {
                     delete pNewNode;
                     continue;
                 }
+                pNewNode->ia.sin_port = htons(defaultPort);
 
                 retVector->push_back(pNewNode);
             }

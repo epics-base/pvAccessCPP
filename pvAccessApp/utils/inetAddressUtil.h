@@ -33,8 +33,12 @@ namespace epics {
         /**
          * returns a vector containing all the IPv4 broadcast addresses
          * on this machine. IPv6 doesn't have a local broadcast address.
-          */
-        InetAddrVector* getBroadcastAddresses(SOCKET sock);
+         * Conversion of the defaultPort to network byte order performed by
+         * the function.
+         * TODO: Windows implementation of the function.
+         */
+        InetAddrVector* getBroadcastAddresses(SOCKET sock,
+                in_port_t defaultPort);
 
         /**
          * Encode IPv4 address as IPv6 address.
