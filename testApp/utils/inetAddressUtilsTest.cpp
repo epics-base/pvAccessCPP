@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
     assert(strncmp(buff->getArray(), src, 16)==0);
     cout<<"\nPASSED!\n";
 
-    SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, 0);
     InetAddrVector* broadcasts = getBroadcastAddresses(socket);
     cout<<"Broadcast addresses: "<<broadcasts->size()<<endl;
     for(size_t i = 0; i<broadcasts->size(); i++) {

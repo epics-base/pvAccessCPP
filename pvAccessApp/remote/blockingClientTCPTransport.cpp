@@ -97,7 +97,7 @@ namespace epics {
             if(_closed) return false;
 
             char ipAddrStr[48];
-            ipAddrToA(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToDottedIP(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
             errlogSevPrintf(errlogInfo, "Acquiring transport to %s.", ipAddrStr);
 
             _ownersMutex->lock();
@@ -127,7 +127,7 @@ namespace epics {
             int refs = _owners->size();
             if(refs>0) {
                 char ipAddrStr[48];
-                ipAddrToA(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+                ipAddrToDottedIP(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
                 errlogSevPrintf(
                         errlogInfo,
                         "Transport to %s still has %d client(s) active and closing...",
@@ -145,7 +145,7 @@ namespace epics {
             if(_closed) return;
 
             char ipAddrStr[48];
-            ipAddrToA(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToDottedIP(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
 
             errlogSevPrintf(errlogInfo, "Releasing transport to %s.", ipAddrStr);
 

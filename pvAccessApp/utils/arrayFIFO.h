@@ -243,7 +243,7 @@ namespace epics {
         T ArrayFIFO<T>::pollFirst() {
             Lock lock(&_mutex);
 
-            if(isEmpty()) THROW_BASE_EXCEPTION("ArrayFIFO empty");
+            if(isEmpty()) return 0;
 
             T result = _elements[_head]; // Element is null if deque empty
             _head = (_head+1)&(_size-1);
@@ -254,7 +254,7 @@ namespace epics {
         T ArrayFIFO<T>::pollLast() {
             Lock lock(&_mutex);
 
-            if(isEmpty()) THROW_BASE_EXCEPTION("ArrayFIFO empty");
+            if(isEmpty()) return 0;
 
             _tail = (_tail-1)&(_size-1);
             return _elements[_tail];
@@ -264,7 +264,7 @@ namespace epics {
         T ArrayFIFO<T>::peekFirst() {
             Lock lock(&_mutex);
 
-            if(isEmpty()) THROW_BASE_EXCEPTION("ArrayFIFO empty");
+            if(isEmpty()) return 0;
 
             return _elements[_head];
         }
@@ -273,7 +273,7 @@ namespace epics {
         T ArrayFIFO<T>::peekLast() {
             Lock lock(&_mutex);
 
-            if(isEmpty()) THROW_BASE_EXCEPTION("ArrayFIFO empty");
+            if(isEmpty()) return 0;
 
             return _elements[(_tail-1)&(_size-1)];
         }

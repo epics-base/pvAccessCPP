@@ -20,6 +20,7 @@
 #include <hexDump.h>
 #include <remote.h>
 #include <channelSearchManager.h>
+#include <clientContextImpl.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
@@ -388,7 +389,6 @@ typedef std::map<pvAccessID, ResponseRequest*> IOIDResponseRequestMap;
 #define CALLBACK_GUARD(code) try { code } catch(...) { }
 
 
-class ClientContextImpl;
 
         class DebugResponse :  public ResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
@@ -406,14 +406,13 @@ class ClientContextImpl;
                     Transport* transport, int8 version, int8 command,
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
                     {
+                        
                  char ipAddrStr[48];
-                        std::cout << "ole" << std::endl;
-                ipAddrToA(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
-                       std::cout << "ole2" << std::endl;
-
+               ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
+ 
                 ostringstream prologue;
                 prologue<<"Message [0x"<<hex<<(int)command<<", v0x"<<hex;
-                prologue<<(int)version<<"] received from "<<ipAddrStr;
+                prologue<<(int)version<<"] received from "<< ipAddrStr;
                        std::cout << "ole / " << prologue.str() << std::endl;
 
                 hexDump(prologue.str(), "received",
@@ -422,6 +421,69 @@ class ClientContextImpl;
                        
                     }
         };
+
+        class SearchResponseHandler :  public ResponseHandler, private epics::pvData::NoDefaultMethods {
+            private:
+            ClientContextImpl* m_context;
+        public:
+            SearchResponseHandler(ClientContextImpl* context) : m_context(context)
+            {
+            }
+
+            virtual ~SearchResponseHandler() {
+            }
+
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                    {
+		// TODO super.handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
+
+		transport->ensureData(5);
+		int32 searchSequenceId = payloadBuffer->getInt();
+		bool found = payloadBuffer->getByte() != 0;
+		if (!found)
+			return;
+
+		transport->ensureData((128+2*16)/8);
+
+        osiSockAddr serverAddress;
+        serverAddress.ia.sin_family = AF_INET;
+
+		// 128-bit IPv6 address
+		/*
+		int8* byteAddress = new int8[16];
+		for (int i = 0; i < 16; i++) 
+		  byteAddress[i] = payloadBuffer->getByte(); };
+		*/
+		
+        // IPv4 compatible IPv6 address expected
+        // first 80-bit are 0
+        if (payloadBuffer->getLong() != 0) return;
+        if (payloadBuffer->getShort() != 0) return;
+        if (payloadBuffer->getShort() != (int16)0xFFFF) return;
+   
+		// accept given address if explicitly specified by sender
+        serverAddress.ia.sin_addr.s_addr = htonl(payloadBuffer->getInt());
+        if (serverAddress.ia.sin_addr.s_addr == INADDR_ANY)
+            serverAddress.ia.sin_addr = responseFrom->ia.sin_addr; 
+
+        serverAddress.ia.sin_port = htons(payloadBuffer->getShort());
+
+		// reads CIDs
+		ChannelSearchManager* csm = m_context->getChannelSearchManager();
+		int16 count = payloadBuffer->getShort();
+		for (int i = 0; i < count; i++)
+		{
+			transport->ensureData(4);
+			pvAccessID cid = payloadBuffer->getInt();
+			csm->searchResponse(cid, searchSequenceId, version & 0x0F, &serverAddress);
+		}
+
+                        
+       }
+        };
+
 
 /**
  * CA response handler - main handler which dispatches responses to appripriate handlers.
@@ -460,7 +522,7 @@ class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoD
 		m_handlerTable[ 1] = badResponse; // TODO new ConnectionValidationHandler(context), /*  1 */
 		m_handlerTable[ 2] = badResponse; // TODO new NoopResponse(context, "Echo"), /*  2 */
 		m_handlerTable[ 3] = badResponse; // TODO new NoopResponse(context, "Search"), /*  3 */
-		m_handlerTable[ 4] = badResponse; // TODO new SearchResponseHandler(context), /*  4 */
+		m_handlerTable[ 4] = new SearchResponseHandler(context), /*  4 */
 		m_handlerTable[ 5] = badResponse; // TODO new NoopResponse(context, "Introspection search"), /*  5 */
 		m_handlerTable[ 6] = dataResponse; /*  6 - introspection search */
 		m_handlerTable[ 7] = badResponse; // TODO new CreateChannelHandler(context), /*  7 */
@@ -528,7 +590,6 @@ class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoD
         
 
 
-class BeaconHandlerImpl;
 
 
 
@@ -558,8 +619,7 @@ enum ContextState {
 };
     
 
-class ClientContextImpl : public ClientContext,
-public Context /* TODO */ 
+class TestClientContextImpl : public ClientContextImpl
 {
 
 
@@ -571,11 +631,7 @@ public Context /* TODO */
  * Implementation of CAJ JCA <code>Channel</code>.
  * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
  */
-class ChannelImpl :
-            public Channel ,
-            public TransportClient,
-            public TransportSender,
-            public BaseSearchInstance {
+class TestChannelImpl : public ChannelImpl {
     private:
         
     	/**
@@ -658,7 +714,7 @@ class ChannelImpl :
         PVStructure* m_pvStructure;
         
     private:
-    ~ChannelImpl() 
+    ~TestChannelImpl() 
     {
         PVDATA_REFCOUNT_MONITOR_DESTRUCT(channel);
     }
@@ -672,7 +728,7 @@ class ChannelImpl :
 	 * @param listener
 	 * @throws CAException
 	 */
-    ChannelImpl(
+    TestChannelImpl(
             ClientContextImpl* context,
             pvAccessID channelID,
             String name,
@@ -700,25 +756,6 @@ class ChannelImpl :
 		// connect
 		connect();
 
-
-
-        //
-        // mock
-        //     
-        ScalarType stype = pvDouble;
-        String allProperties("alarm,timeStamp,display,control,valueAlarm");
-
-        m_pvStructure = getStandardPVField()->scalar(
-            0,name,stype,allProperties);
-        PVDouble *pvField = m_pvStructure->getDoubleField(String("value"));
-        pvField->put(1.123);
-
-        
-        // already connected, report state
-        m_requester->channelStateChange(this, CONNECTED);
-        
-        
-        
     }
     
     virtual void destroy()
@@ -791,6 +828,14 @@ class ChannelImpl :
 		return m_channelID;
 	}
 	
+	virtual pvAccessID getSearchInstanceID() {
+		return m_channelID;
+	}
+
+	virtual String getSearchInstanceName() {
+	   return m_name;
+	}
+
 	void connect() {
 	   Lock guard(&m_channelMutex);
 		// if not destroyed...
@@ -1027,8 +1072,7 @@ class ChannelImpl :
 		if (transport)
 		{
 			// multiple defined PV or reconnect request (same server address)
-			// TOD !!!! if (!(*(transport->getRemoteAddress()) == *serverAddress))
-			if (false)
+			if (sockAddrAreIdentical(transport->getRemoteAddress(), serverAddress))
 			{
 				m_requester->message("More than one channel with name '" + m_name +
 				  			   "' detected, additional response from: " + inetAddressToString(serverAddress), warningMessage);
@@ -1346,7 +1390,7 @@ class ChannelImpl :
 
     public:
     
-    ClientContextImpl() : 
+    TestClientContextImpl() : 
     	m_addressList(""), m_autoAddressList(true), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
     	m_broadcastPort(CA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV), m_timer(0),
     	m_broadcastTransport(0), m_searchTransport(0), m_connector(0), m_transportRegistry(0),
@@ -1457,7 +1501,7 @@ class ChannelImpl :
     }    
            
     private:
-    ~ClientContextImpl() {};
+    ~TestClientContextImpl() {};
     
     void loadConfiguration() {
         // TODO
@@ -1499,8 +1543,15 @@ class ChannelImpl :
             listenLocalAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
         
 			// where to send address
-            InetAddrVector* broadcastAddresses = getSocketAddressList("192.168.1.255", m_broadcastPort);
-            // TODO getBroadcastAddresses(broadcastPort)
+            SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, 0);
+            InetAddrVector* broadcastAddresses = getBroadcastAddresses(socket);
+    cout<<"Broadcast addresses: "<<broadcastAddresses->size()<<endl;
+    for(size_t i = 0; i<broadcastAddresses->size(); i++) {
+        broadcastAddresses->at(i)->ia.sin_port = htons(m_broadcastPort);
+        cout<<"Broadcast address: ";
+        cout<<inetAddressToString(broadcastAddresses->at(i))<<endl;
+    }
+           //InetAddrVector* broadcastAddresses = getSocketAddressList("255.255.255.255", m_broadcastPort);
 
 /// TOD !!!! addresses !!!!! by pointer and not copied
 
@@ -1674,19 +1725,16 @@ class ChannelImpl :
 	 */
 	Transport* getTransport(TransportClient* client, osiSockAddr* serverAddress, int16 minorRevision, int16 priority)
 	{
-	   // TODO !!!
-	   /*
 		try
 		{
-			return connector->connect(client, new ClientResponseHandler(this), serverAddress, minorRevision, priority);
+			return m_connector->connect(client, new ClientResponseHandler(this), *serverAddress, minorRevision, priority);
 		}
-		catch (ConnectionException cex)
+		catch (...)
 		{
-			logger.log(Level.SEVERE, "Failed to create transport for: " + serverAddress, cex);
+		  // TODO log
+		  printf("failed to get transport\n");
+		  return 0;
 		}
-		*/	
-		return 0;
-		
 	}
 	
 		/**
@@ -1694,7 +1742,7 @@ class ChannelImpl :
 	 */
 	// TODO no minor version with the addresses
 	// TODO what if there is an channel with the same name, but on different host!
-	Channel* createChannelInternal(String name, ChannelRequester* requester, short priority,
+	ChannelImpl* createChannelInternal(String name, ChannelRequester* requester, short priority,
 			InetAddrVector* addresses) { // TODO addresses
 
 		checkState();
@@ -1712,7 +1760,7 @@ class ChannelImpl :
 			try
 			{
 		  	    pvAccessID cid = generateCID();
-				return new ChannelImpl(this, cid, name, requester, priority, addresses);
+				return new TestChannelImpl(this, cid, name, requester, priority, addresses);
 			}
 			catch(...) {
 			 // TODO
@@ -1873,8 +1921,8 @@ class ChannelImpl :
 	 * Beacon handler map.
 	 */
 	 // TODO consider std::unordered_map
-	typedef std::map<osiSockAddr, BeaconHandlerImpl*> AddressBeaconHandlerMap;
-	AddressBeaconHandlerMap m_beaconHandlers;
+//	typedef std::map<osiSockAddr, BeaconHandlerImpl*> AddressBeaconHandlerMap;
+//	AddressBeaconHandlerMap m_beaconHandlers;
 	
 	/**
 	 * Version.
@@ -2123,7 +2171,7 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
 
 int main(int argc,char *argv[])
 {
-    ClientContextImpl* context = new ClientContextImpl();
+    TestClientContextImpl* context = new TestClientContextImpl();
     context->printInfo();
 
     context->initialize();    
@@ -2174,7 +2222,7 @@ int main(int argc,char *argv[])
     
     monitor->destroy();
     */
-    epicsThreadSleep ( 10.0 );
+    epicsThreadSleep ( 100.0 );
     channel->destroy();
     
     context->destroy();

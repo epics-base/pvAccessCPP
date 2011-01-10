@@ -9,8 +9,8 @@ class TestSearcInstance : public BaseSearchInstance
 {
 public:
 	TestSearcInstance(string channelName, pvAccessID channelID): _channelID(channelID), _channelName(channelName) {}
-	pvAccessID getChannelID() { return _channelID;};
-	string getChannelName() {return _channelName;};
+	pvAccessID getSearchInstanceID() { return _channelID;};
+	string getSearchInstanceName() {return _channelName;};
 	void searchResponse(int8 minorRevision, osiSockAddr* serverAddress) {};
 private:
 	pvAccessID _channelID;

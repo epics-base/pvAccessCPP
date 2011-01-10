@@ -40,13 +40,13 @@ public:
 	 *
 	 * @return channel ID.
 	 */
-	virtual pvAccessID getChannelID() = 0;
+	virtual pvAccessID getSearchInstanceID() = 0;
 	/**
-	 * Return channel name.
+	 * Return search instance, e.g. channel, name.
 	 *
 	 * @return channel channel name.
 	 */
-	virtual String getChannelName() = 0;
+	virtual String getSearchInstanceName() = 0;
 	/**
 	 * Removes the owner of this search instance.
 	 */
@@ -93,8 +93,8 @@ class BaseSearchInstance : public SearchInstance
 {
 public:
 	virtual ~BaseSearchInstance() {};
-	virtual pvAccessID getChannelID() = 0;
-	virtual string getChannelName() = 0;
+	virtual pvAccessID getSearchInstanceID() = 0;
+	virtual String getSearchInstanceName() = 0;
 	virtual void unsetListOwnership();
 	virtual void addAndSetListOwnership(ArrayFIFO<SearchInstance*>* newOwner, Mutex* ownerMutex, int32 index);
 	virtual void removeAndUnsetListOwnership();

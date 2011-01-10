@@ -60,6 +60,7 @@ namespace epics {
             // get number of interfaces
             ifconf.ifc_len = nelem*sizeof(ifreq);
             ifconf.ifc_req = pIfreqList;
+            memset(ifconf.ifc_req,0,ifconf.ifc_len);
             status = ioctl(sock, SIOCGIFCONF, &ifconf);
             if(status<0||ifconf.ifc_len==0) {
                 errlogSevPrintf(
@@ -69,32 +70,46 @@ namespace epics {
                 return retVector;
             }
 
-            errlogPrintf("Found %d interfaces\n", ifconf.ifc_len);
+            struct ifreq* p = pIfreqList;
+            int maxNodes = ifconf.ifc_len/sizeof(ifreq);
+            for(int i = 0; i<maxNodes; i++) {
+                if (!(*p->ifr_name)) break;
+            //printf("[%i] plen %d name %s\n", i,p->ifr_addr.sa_len, p->ifr_name);
+            
+            
+             size_t n = p->ifr_addr.sa_len + sizeof(p->ifr_name);
+                if (n < sizeof(*p))
+                        p++;
+                else
+                        p = (struct ifreq *)((char *)p + n);
 
-            for(int i = 0; i<=ifconf.ifc_len; i++) {
+
                 /*
                  * If its not an internet interface then dont use it
                  */
-                if(pIfreqList[i].ifr_addr.sa_family!=AF_INET) continue;
+                if(p->ifr_addr.sa_family!=AF_INET) continue;
 
-                status = ioctl(sock, SIOCGIFFLAGS, &pIfreqList[i]);
+                    struct ifreq ifrflags;
+                    strncpy(ifrflags.ifr_name, p->ifr_name,
+                    sizeof(ifrflags.ifr_name));
+                status = ioctl(sock, SIOCGIFFLAGS, (char*)&ifrflags);
                 if(status) {
                     errlogSevPrintf(
                             errlogMinor,
                             "getBroadcastAddresses(): net intf flags fetch for \"%s\" failed",
-                            pIfreqList[i].ifr_name);
+                            p->ifr_name);
                     continue;
                 }
 
                 /*
                  * dont bother with interfaces that have been disabled
                  */
-                if(!(pIfreqList[i].ifr_flags&IFF_UP)) continue;
+                if(!(ifrflags.ifr_flags&IFF_UP)) continue;
 
                 /*
                  * dont use the loop back interface
                  */
-                if(pIfreqList[i].ifr_flags&IFF_LOOPBACK) continue;
+                if(ifrflags.ifr_flags&IFF_LOOPBACK) continue;
 
                 pNewNode = new osiSockAddr;
                 if(pNewNode==NULL) {
@@ -114,37 +129,43 @@ namespace epics {
                  * Otherwise CA will not query through the
                  * interface.
                  */
-                if(pIfreqList[i].ifr_flags&IFF_BROADCAST) {
-                    status = ioctl(sock, SIOCGIFBRDADDR, &pIfreqList[i]);
+                if(ifrflags.ifr_flags&IFF_BROADCAST) {
+                    struct ifreq ifrflags;
+                    strncpy(ifrflags.ifr_name, p->ifr_name,
+                    sizeof(ifrflags.ifr_name));
+                    status = ioctl(sock, SIOCGIFBRDADDR, (char*)&ifrflags);
                     if(status) {
                         errlogSevPrintf(
                                 errlogMinor,
                                 "getBroadcastAddresses(): net intf \"%s\": bcast addr fetch fail",
-                                pIfreqList->ifr_name);
+                                p->ifr_name);
                         delete pNewNode;
                         continue;
                     }
-                    pNewNode->sa = pIfreqList[i].ifr_broadaddr;
+                    pNewNode->sa = ifrflags.ifr_broadaddr;
                 }
 #ifdef IFF_POINTOPOINT
-                else if(pIfreqList->ifr_flags&IFF_POINTOPOINT) {
-                    status = ioctl(sock, SIOCGIFDSTADDR, &pIfreqList[i]);
+                else if(ifrflags.ifr_flags&IFF_POINTOPOINT) {
+                    struct ifreq ifrflags;
+                    strncpy(ifrflags.ifr_name, p->ifr_name,
+                    sizeof(ifrflags.ifr_name));
+                    status = ioctl(sock, SIOCGIFDSTADDR, (char*)&ifrflags);
                     if(status) {
                         errlogSevPrintf(
                                 errlogMinor,
                                 "getBroadcastAddresses(): net intf \"%s\": pt to pt addr fetch fail",
-                                pIfreqList[i].ifr_name);
+                                p->ifr_name);
                         delete pNewNode;
                         continue;
                     }
-                    pNewNode->sa = pIfreqList[i].ifr_dstaddr;
+                    pNewNode->sa = ifrflags.ifr_dstaddr;
                 }
 #endif
                 else {
                     errlogSevPrintf(
                             errlogMinor,
                             "getBroadcastAddresses(): net intf \"%s\": not point to point or bcast?",
-                            pIfreqList[i].ifr_name);
+                            p->ifr_name);
                     delete pNewNode;
                     continue;
                 }
@@ -164,12 +185,16 @@ namespace epics {
             buffer->putShort(0);
             // next 16-bits are 1
             buffer->putShort(0xFFFF);
+            buffer->putInt(ntohl(address->ia.sin_addr.s_addr));
+            
+            /*
             // following IPv4 address in big-endian (network) byte order
             in_addr_t ipv4Addr = ntohl(address->ia.sin_addr.s_addr);
             buffer->putByte((int8)((ipv4Addr>>24)&0xFF));
             buffer->putByte((int8)((ipv4Addr>>16)&0xFF));
             buffer->putByte((int8)((ipv4Addr>>8)&0xFF));
             buffer->putByte((int8)(ipv4Addr&0xFF));
+            */
         }
 
         osiSockAddr* intToIPv4Address(int32 addr) {
