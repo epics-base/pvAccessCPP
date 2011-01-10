@@ -24,229 +24,58 @@ using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
 
-typedef int32 pvAccessID;
-
-enum QoS {
-	/**
-	 * Default behavior.
-	 */
-	DEFAULT = 0x00,
-	/**
-	 * Require reply (acknowledgment for reliable operation).
-	 */
-	REPLY_REQUIRED = 0x01,
-	/**
-	 * Best-effort option (no reply).
-	 */
-	BESY_EFFORT = 0x02,
-	/**
-	 * Process option.
-	 */
-	PROCESS = 0x04,
-	/**
-	* Initialize option.
-	 */
-	INIT = 0x08,
-	/**
-	 * Destroy option.
-	 */
-	DESTROY = 0x10,
-	/**
-	 * Share data option.
-	 */
-	SHARE = 0x20,
-	/**
-	 * Get.
-	 */
-	GET = 0x40,
-	/**
-	 * Get-put.
-	 */
-	GET_PUT =0x80
-};
-
-
-//TODO this will be deleted
-class ChannelImpl;
-class ChannelSearchManager;
-class ClientContextImpl : public ClientContext
-{
-    public:
-
-    ClientContextImpl()
-    {
-
-    }
-
-    virtual Version* getVersion() {
-        return NULL;
-    }
-
-    virtual ChannelProvider* getProvider() {
-        return NULL;
-    }
-
-    Timer* getTimer()
-	{
-    	return NULL;
-	}
-
-    virtual void initialize() {
-
-    }
-
-    virtual void printInfo() {
-
-    }
-
-    virtual void printInfo(epics::pvData::StringBuilder out) {
-
-    }
-
-    virtual void destroy()
-    {
-
-    }
-
-    virtual void dispose()
-    {
-
-    }
-
-    BlockingUDPTransport* getSearchTransport()
-		{
-    	return NULL;
-		}
-
-	/**
-	 * Searches for a channel with given channel ID.
-	 * @param channelID CID.
-	 * @return channel with given CID, <code>0</code> if non-existent.
-	 */
-	ChannelImpl* getChannel(pvAccessID channelID)
-	{
-		return NULL;
-	}
-
-
-    private:
-    ~ClientContextImpl() {};
-
-    void loadConfiguration() {
-
-    }
-
-    void internalInitialize() {
-
-
-    }
-
-    void initializeUDPTransport() {
-
-    }
-
-    void internalDestroy() {
-
-    }
-
-    void destroyAllChannels() {
-
-    }
-
-	/**
-	 * Check channel name.
-	 */
-	void checkChannelName(String& name) {
-
-	}
-
-	/**
-	 * Check context state and tries to establish necessary state.
-	 */
-	void checkState() {
-
-	}
-
-
-
-	/**
-	 * Generate Client channel ID (CID).
-	 * @return Client channel ID (CID).
-	 */
-	pvAccessID generateCID()
-	{
-		return 0;
-	}
-
-	/**
-	 * Free generated channel ID (CID).
-	 */
-	void freeCID(int cid)
-	{
-
-	}
-
-
-	/**
-	 * Get, or create if necessary, transport of given server address.
-	 * @param serverAddress	required transport address
-	 * @param priority process priority.
-	 * @return transport for given address
-	 */
-	Transport* getTransport(TransportClient* client, osiSockAddr* serverAddress, int16 minorRevision, int16 priority)
-	{
-
-		return NULL;
-	}
-
-		/**
-	 * Internal create channel.
-	 */
-	// TODO no minor version with the addresses
-	// TODO what if there is an channel with the same name, but on different host!
-	Channel* createChannelInternal(String name, ChannelRequester* requester, short priority,
-			InetAddrVector* addresses) {
-		return NULL;
-	}
-
-	/**
-	 * Destroy channel.
-	 * @param channel
-	 * @param force
-	 * @throws CAException
-	 * @throws IllegalStateException
-	 */
-	void destroyChannel(ChannelImpl* channel, bool force) {
-
-
-	}
-
-	/**
-	 * Get channel search manager.
-	 * @return channel search manager.
-	 */
-	ChannelSearchManager* getChannelSearchManager() {
-		return NULL;
-	}
-};
-
-
-
 //TODO check the const of paramerers
 
 /**
  * SearchInstance.
  */
-//TODO document
 class SearchInstance {
 public:
+	/**
+	 * Destructor
+	 */
 	virtual ~SearchInstance() {};
+	/**
+	 * Return channel ID.
+	 *
+	 * @return channel ID.
+	 */
 	virtual pvAccessID getChannelID() = 0;
+	/**
+	 * Return channel name.
+	 *
+	 * @return channel channel name.
+	 */
 	virtual String getChannelName() = 0;
+	/**
+	 * Removes the owner of this search instance.
+	 */
 	virtual void unsetListOwnership() = 0;
+	/**
+	 * Adds this search instance into the provided list and sets it as the owner of this search instance.
+	 *
+	 * @param newOwner a list to which this search instance is added.
+	 * @param ownerMutex mutex belonging to the newOwner list. The mutex will be locked beofe any modification
+	 * to the list will be done.
+	 * @param index index of the owner (which is search timer index).
+	 *
+	 * @throws BaseException if the ownerMutex is NULL.
+	 */
 	virtual void addAndSetListOwnership(ArrayFIFO<SearchInstance*>* newOwner, Mutex* ownerMutex, int32 index) = 0;
+	/**
+	 * Removes this search instance from the owner list and also removes the list as the owner of this
+	 * search instance.
+	 *
+	 * @throws BaseException if the ownerMutex is NULL.
+	 */
 	virtual void removeAndUnsetListOwnership() = 0;
+	/**
+	 * Returns the index of the owner.
+	 */
 	virtual int32 getOwnerIndex() = 0;
+	/**
+	 * Generates request message.
+	 */
 	virtual bool generateSearchRequestMessage(ByteBuffer* requestMessage, TransportSendControl* control) = 0;
 
 	/**
@@ -432,7 +261,7 @@ public:
 	 * Constructor.
 	 * @param context
 	 */
-	ChannelSearchManager(ClientContextImpl* context);
+	ChannelSearchManager(Context* context);
     /**
 	 * Constructor.
 	 * @param context
@@ -486,7 +315,7 @@ private:
 	/**
 	 * Context.
 	 */
-	ClientContextImpl* _context;
+	Context* _context;
 	/**
 	 * Canceled flag.
 	 */

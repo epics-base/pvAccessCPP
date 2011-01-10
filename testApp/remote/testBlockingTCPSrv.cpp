@@ -28,6 +28,9 @@ public:
     }
     virtual Timer* getTimer() { return _timer; }
     virtual TransportRegistry* getTransportRegistry() { return _tr; }
+	virtual Channel* getChannel(epics::pvAccess::pvAccessID) { return 0; }
+	virtual Transport* getSearchTransport() { return 0; }
+    
 private:
     TransportRegistry* _tr;
     Timer* _timer;

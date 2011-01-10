@@ -156,7 +156,7 @@ void* testWorker2(void* p)
 		assert(namedGuard.acquireSynchronizationObject(addr,timeout));
 		usleep(1);
 	}
-#ifndef darwin
+
 	//this thread sleeps a while and gets timeout on lock
 	{
 		sleep(1);
@@ -165,9 +165,11 @@ void* testWorker2(void* p)
 		addr.ia.sin_port = 1;
 		addr.ia.sin_family = AF_INET;
 		NamedLock<osiSockAddr,comp_osiSockAddr> namedGuard(namedLockPattern);
-		assert(!namedGuard.acquireSynchronizationObject(addr,timeout));
+		//TODO swap next two lines this if timed lock used
+		//assert(!namedGuard.acquireSynchronizationObject(addr,timeout));
+		assert(namedGuard.acquireSynchronizationObject(addr,timeout));
 	}
-#endif
+
 	return NULL;
 }
 

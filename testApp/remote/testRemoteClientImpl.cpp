@@ -19,6 +19,7 @@
 #include <inetAddressUtil.h>
 #include <hexDump.h>
 #include <remote.h>
+#include <channelSearchManager.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
@@ -378,48 +379,6 @@ class MockMonitor : public Monitor, public MonitorElement
 
 
 
-typedef int pvAccessID;
-
-
-/**
- * A request that expects an response.
- * Responses identified by its I/O ID. 
- * This interface needs to be extended (to provide method called on response).
- * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
- */
-class ResponseRequest {
-	public:
-	
-	/**
-	 * Get I/O ID.
-	 * @return ioid
-	 */
-	virtual pvAccessID getIOID() = 0;
-
-	/**
-	 * Timeout notification.
-	 */
-	virtual void timeout() = 0;
-
-	/**
-	 * Cancel response request (always to be called to complete/destroy).
-	 */
-	virtual void cancel() = 0;
-	
-	/**
-	 * Report status to clients (e.g. disconnected).
-	 * @param status to report.
-	 */
-	virtual void reportStatus(Status* status) = 0;
-	
-	/**
-	 * Get request requester.
-	 * @return request requester.
-	 */
-     virtual Requester* getRequester() = 0;
-};
-
-
  // TODO consider std::unordered_map
 typedef std::map<pvAccessID, ResponseRequest*> IOIDResponseRequestMap;
 
@@ -568,68 +527,6 @@ class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoD
 
         
 
-#include <arrayFIFO.h>
-
-class SearchInstance {
-    public:
-    
-	virtual pvAccessID getChannelID() = 0;
-	virtual String getChannelName() = 0;
-	virtual void unsetListOwnership() = 0;
-	virtual void addAndSetListOwnership(ArrayFIFO<SearchInstance>* newOwner, int index) = 0;
-	virtual void removeAndUnsetListOwnership() = 0;
-	virtual int getOwnerIndex() = 0;
-	virtual bool generateSearchRequestMessage(ByteBuffer* buffer, TransportSendControl* control) = 0;
-
-	/**
-	 * Search response from server (channel found).
-	 * @param minorRevision	server minor CA revision.
-	 * @param serverAddress	server address.
-	 */
-	 virtual void searchResponse(int8 minorRevision, osiSockAddr* serverAddress) = 0;
-};
-
-// TODO (only to make to make it compile)
-class BaseSearchInstance : public SearchInstance 
-{
-    public:
-	virtual pvAccessID getChannelID() { return 0; }
-	virtual String getChannelName() { return ""; }
-	virtual void unsetListOwnership() {}
-	virtual void addAndSetListOwnership(ArrayFIFO<SearchInstance>* newOwner, int index) {}
-	virtual void removeAndUnsetListOwnership() {}
-	virtual int getOwnerIndex() { return 0; }
-	
-	virtual bool generateSearchRequestMessage(ByteBuffer* requestMessage, TransportSendControl* control) 
-	{ 
-const int DATA_COUNT_POSITION = CA_MESSAGE_HEADER_SIZE + sizeof(int32)/sizeof(int8) + 1;
-const int PAYLOAD_POSITION = sizeof(int16)/sizeof(int8) + 2;
-
-    	int16 dataCount = requestMessage->getShort(DATA_COUNT_POSITION);
-    
-    	dataCount++;
-    	if(dataCount >= MAX_SEARCH_BATCH_COUNT)
-    	{
-    		return false;
-    	}
-    
-    	const string name = getChannelName();
-    	// not nice...
-    	const int addedPayloadSize = sizeof(int32)/sizeof(int8) + (1 + sizeof(int32)/sizeof(int8) + name.length());
-    
-    	if(requestMessage->getRemaining() < addedPayloadSize)
-    	{
-    		return false;
-    	}
-    
-    	requestMessage->putInt(getChannelID());
-    	SerializeHelper::serializeString(name, requestMessage, control);
-    
-    	requestMessage->putInt(PAYLOAD_POSITION, requestMessage->getPosition() - CA_MESSAGE_HEADER_SIZE);
-    	requestMessage->putShort(DATA_COUNT_POSITION, dataCount);
-    	return true;
-	};
-};
 
 class BeaconHandlerImpl;
 
@@ -667,43 +564,6 @@ public Context /* TODO */
 
 
 
-
-
-
-
-class ChannelSearchManager { // tODO no default, etc.
-ClientContextImpl* _context;
-    public:
-ChannelSearchManager(ClientContextImpl* context):
-						_context(context) {
-}
-
-
-	virtual void registerChannel(SearchInstance* channel) {
-
-	       ByteBuffer sendBuffer(100, EPICS_ENDIAN_BIG);
-		// new buffer
-		sendBuffer.clear();
-		sendBuffer.putShort(CA_MAGIC_AND_VERSION);
-		sendBuffer.putByte((int8)0);	// data
-		sendBuffer.putByte((int8)3);	// search
-		sendBuffer.putInt(5);		// "zero" payload
-		
-		sendBuffer.putInt(0);
-
-		
-		sendBuffer.putByte((int8)0);
-		sendBuffer.putShort((int16)0);	// count
-		
-		TCI tci;
-		
-	       channel->generateSearchRequestMessage(&sendBuffer, &tci);
-	   std::cout << "sending..." << sendBuffer.getPosition() << " bytes." << std::endl;
-	       _context->getSearchTransport()->send(&sendBuffer);
-	       
-	   };
-	virtual void unregisterChannel(SearchInstance* channel) {};
-};
 
 
 
@@ -927,7 +787,7 @@ class ChannelImpl :
 	 * Get client channel ID.
 	 * @return client channel ID.
 	 */
-	pvAccessID getChannelID() const {
+	pvAccessID getChannelID() {
 		return m_channelID;
 	}
 	

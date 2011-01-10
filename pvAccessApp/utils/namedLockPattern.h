@@ -34,10 +34,15 @@ public:
 	virtual ~NamedLockPattern() {};
 	/**
 	 * Acquire synchronization lock for named object.
+	 *
+	 * NOTE: Argument msecs is currently not supported due to
+	 * Darwin OS not supporting pthread_mutex_timedlock. May be changed in the future.
+	 *
 	 * @param	name	name of the object whose lock to acquire.
 	 * @param	msec	the number of milleseconds to wait.
 	 * 					An argument less than or equal to zero means not to wait at all.
 	 * @return	<code>true</code> if acquired, <code>false</code> othwerwise.
+	 * 			NOTE: currently this routine always returns true. Look above for explanation.
 	 */
 	bool acquireSynchronizationObject(const Key name, const int64 msec);
 	/**
