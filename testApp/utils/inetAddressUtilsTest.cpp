@@ -6,6 +6,7 @@
  */
 
 #include "inetAddressUtil.h"
+#include "logger.h"
 
 #include <byteBuffer.h>
 #include <pvType.h>
@@ -23,6 +24,7 @@ using std::stringstream;
 using std::hex;
 
 int main(int argc, char *argv[]) {
+    createFileLogger("inetAddresUtils.log");
 
     InetAddrVector *vec;
     InetAddrVector *vec1;
