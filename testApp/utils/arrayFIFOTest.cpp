@@ -140,7 +140,7 @@ void testSimpleType() {
 void testPointerType() {
     cout<<"\nTests for pointer type template."<<endl;
 
-    int buffer[] = {0,1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18,19,20};
+    int testVals[] = {0,1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18,19,20};
 
     ArrayFIFO<int*> fifoInt;
 
@@ -148,110 +148,110 @@ void testPointerType() {
     assert(fifoInt.isEmpty());
 
     cout<<"Testing clear."<<endl;
-    fifoInt.push(&buffer[3]);
+    fifoInt.push(&testVals[3]);
     assert(fifoInt.size()==1);
 
     fifoInt.clear();
     assert(fifoInt.isEmpty());
 
     cout<<"Testing push/pop."<<endl;
-    fifoInt.push(&buffer[5]);
-    fifoInt.push(&buffer[6]);
-    fifoInt.push(&buffer[7]);
+    fifoInt.push(&testVals[5]);
+    fifoInt.push(&testVals[6]);
+    fifoInt.push(&testVals[7]);
     assert(fifoInt.size()==3);
 
-    assert(fifoInt.pop()==&buffer[7]);
+    assert(fifoInt.pop()==&testVals[7]);
     assert(fifoInt.size()==2);
 
-    assert(fifoInt.pop()==&buffer[6]);
+    assert(fifoInt.pop()==&testVals[6]);
     assert(fifoInt.size()==1);
 
-    assert(fifoInt.pop()==&buffer[5]);
+    assert(fifoInt.pop()==&testVals[5]);
     assert(fifoInt.size()==0);
 
     cout<<"Testing FIFO ops (first/last)."<<endl;
-    fifoInt.addFirst(&buffer[1]);
-    fifoInt.addFirst(&buffer[2]);
-    fifoInt.addFirst(&buffer[3]);
-    fifoInt.addFirst(&buffer[4]);
-    fifoInt.addFirst(&buffer[5]);
+    fifoInt.addFirst(&testVals[1]);
+    fifoInt.addFirst(&testVals[2]);
+    fifoInt.addFirst(&testVals[3]);
+    fifoInt.addFirst(&testVals[4]);
+    fifoInt.addFirst(&testVals[5]);
 
     assert(fifoInt.size()==5);
-    assert(fifoInt.pollLast()==&buffer[1]);
-    assert(fifoInt.pollLast()==&buffer[2]);
-    assert(fifoInt.pollLast()==&buffer[3]);
-    assert(fifoInt.pollLast()==&buffer[4]);
-    assert(fifoInt.pollLast()==&buffer[5]);
+    assert(fifoInt.pollLast()==&testVals[1]);
+    assert(fifoInt.pollLast()==&testVals[2]);
+    assert(fifoInt.pollLast()==&testVals[3]);
+    assert(fifoInt.pollLast()==&testVals[4]);
+    assert(fifoInt.pollLast()==&testVals[5]);
     assert(fifoInt.isEmpty());
 
     cout<<"Testing FIFO ops (last/first)."<<endl;
-    fifoInt.addLast(&buffer[7]);
-    fifoInt.addLast(&buffer[8]);
-    fifoInt.addLast(&buffer[9]);
-    fifoInt.addLast(&buffer[10]);
-    fifoInt.addLast(&buffer[11]);
+    fifoInt.addLast(&testVals[7]);
+    fifoInt.addLast(&testVals[8]);
+    fifoInt.addLast(&testVals[9]);
+    fifoInt.addLast(&testVals[10]);
+    fifoInt.addLast(&testVals[11]);
     assert(fifoInt.size()==5);
 
-    assert(fifoInt.pollFirst()==&buffer[7]);
-    assert(fifoInt.pollFirst()==&buffer[8]);
-    assert(fifoInt.pollFirst()==&buffer[9]);
-    assert(fifoInt.pollFirst()==&buffer[10]);
-    assert(fifoInt.pollFirst()==&buffer[11]);
+    assert(fifoInt.pollFirst()==&testVals[7]);
+    assert(fifoInt.pollFirst()==&testVals[8]);
+    assert(fifoInt.pollFirst()==&testVals[9]);
+    assert(fifoInt.pollFirst()==&testVals[10]);
+    assert(fifoInt.pollFirst()==&testVals[11]);
     assert(fifoInt.isEmpty());
 
     cout<<"Testing remove, peek."<<endl;
-    fifoInt.addFirst(&buffer[1]);
-    fifoInt.addFirst(&buffer[2]);
-    fifoInt.addFirst(&buffer[3]);
-    fifoInt.addFirst(&buffer[4]);
-    fifoInt.addFirst(&buffer[5]);
-    fifoInt.addFirst(&buffer[6]);
-    fifoInt.addFirst(&buffer[7]);
+    fifoInt.addFirst(&testVals[1]);
+    fifoInt.addFirst(&testVals[2]);
+    fifoInt.addFirst(&testVals[3]);
+    fifoInt.addFirst(&testVals[4]);
+    fifoInt.addFirst(&testVals[5]);
+    fifoInt.addFirst(&testVals[6]);
+    fifoInt.addFirst(&testVals[7]);
     // - - - - - - - - - - - -
-    fifoInt.addFirst(&buffer[8]);
-    fifoInt.addFirst(&buffer[9]);
-    fifoInt.addFirst(&buffer[10]);
+    fifoInt.addFirst(&testVals[8]);
+    fifoInt.addFirst(&testVals[9]);
+    fifoInt.addFirst(&testVals[10]);
 
-    assert(fifoInt.peekFirst()==&buffer[10]);
-    assert(fifoInt.peekLast()==&buffer[1]);
+    assert(fifoInt.peekFirst()==&testVals[10]);
+    assert(fifoInt.peekLast()==&testVals[1]);
 
     assert(fifoInt.size()==10);
-    assert(fifoInt.remove(&buffer[9]));
+    assert(fifoInt.remove(&testVals[9]));
     assert(fifoInt.size()==9);
-    assert(!fifoInt.remove(&buffer[15]));
+    assert(!fifoInt.remove(&testVals[15]));
     assert(fifoInt.size()==9);
 
-    assert(fifoInt.pollLast()==&buffer[1]);
-    assert(fifoInt.pollLast()==&buffer[2]);
-    assert(fifoInt.pollLast()==&buffer[3]);
-    assert(fifoInt.pollLast()==&buffer[4]);
-    assert(fifoInt.pollLast()==&buffer[5]);
-    assert(fifoInt.pollLast()==&buffer[6]);
-    assert(fifoInt.pollLast()==&buffer[7]);
-    assert(fifoInt.pollLast()==&buffer[8]);
+    assert(fifoInt.pollLast()==&testVals[1]);
+    assert(fifoInt.pollLast()==&testVals[2]);
+    assert(fifoInt.pollLast()==&testVals[3]);
+    assert(fifoInt.pollLast()==&testVals[4]);
+    assert(fifoInt.pollLast()==&testVals[5]);
+    assert(fifoInt.pollLast()==&testVals[6]);
+    assert(fifoInt.pollLast()==&testVals[7]);
+    assert(fifoInt.pollLast()==&testVals[8]);
     // - - - - - - - - - - - -
-    assert(fifoInt.pollLast()==&buffer[10]);
+    assert(fifoInt.pollLast()==&testVals[10]);
     assert(fifoInt.isEmpty());
 
     cout<<"Testing increase buffer."<<endl;
-    fifoInt.addLast(&buffer[2]);
-    fifoInt.addLast(&buffer[3]);
-    fifoInt.addLast(&buffer[4]);
-    fifoInt.addLast(&buffer[5]);
-    fifoInt.addLast(&buffer[6]);
-    fifoInt.addLast(&buffer[7]);
-    fifoInt.addLast(&buffer[8]);
-    fifoInt.addLast(&buffer[9]);
-    fifoInt.addLast(&buffer[10]);
-    fifoInt.addLast(&buffer[11]);
-    fifoInt.addLast(&buffer[12]);
-    fifoInt.addLast(&buffer[13]);
-    fifoInt.addLast(&buffer[14]);
-    fifoInt.addLast(&buffer[15]);
-    fifoInt.addLast(&buffer[16]);
-    fifoInt.addLast(&buffer[17]);
-    fifoInt.addLast(&buffer[18]);
-    fifoInt.addLast(&buffer[19]);
+    fifoInt.addLast(&testVals[2]);
+    fifoInt.addLast(&testVals[3]);
+    fifoInt.addLast(&testVals[4]);
+    fifoInt.addLast(&testVals[5]);
+    fifoInt.addLast(&testVals[6]);
+    fifoInt.addLast(&testVals[7]);
+    fifoInt.addLast(&testVals[8]);
+    fifoInt.addLast(&testVals[9]);
+    fifoInt.addLast(&testVals[10]);
+    fifoInt.addLast(&testVals[11]);
+    fifoInt.addLast(&testVals[12]);
+    fifoInt.addLast(&testVals[13]);
+    fifoInt.addLast(&testVals[14]);
+    fifoInt.addLast(&testVals[15]);
+    fifoInt.addLast(&testVals[16]);
+    fifoInt.addLast(&testVals[17]);
+    fifoInt.addLast(&testVals[18]);
+    fifoInt.addLast(&testVals[19]);
 
     assert(fifoInt.size()==18);
     fifoInt.debugState();
