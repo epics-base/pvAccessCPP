@@ -38,7 +38,7 @@ namespace epics {
                 if(tryCount>0) epicsThreadSleep(0.1);
 
                 char strBuffer[64];
-                ipAddrToA(&address.ia, strBuffer, sizeof(strBuffer));
+                ipAddrToDottedIP(&address.ia, strBuffer, sizeof(strBuffer));
 
                 errlogSevPrintf(errlogInfo,
                         "Opening socket to CA server %s, attempt %d.",
@@ -73,7 +73,7 @@ namespace epics {
             SOCKET socket = INVALID_SOCKET;
 
             char ipAddrStr[64];
-            ipAddrToA(&address.ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToDottedIP(&address.ia, ipAddrStr, sizeof(ipAddrStr));
 
             // first try to check cache w/o named lock...
             BlockingClientTCPTransport
@@ -106,6 +106,17 @@ namespace epics {
                             ipAddrStr);
 
                     socket = tryConnect(address, 3);
+                    // verify
+                    if(socket==INVALID_SOCKET) {
+                        errlogSevPrintf(
+                                errlogMajor,
+                                "Connection to CA server %s failed.",
+                                ipAddrStr);
+                        ostringstream temp;
+                        temp<<"Failed to verify TCP connection to '"<<ipAddrStr
+                                <<"'.";
+                        THROW_BASE_EXCEPTION(temp.str().c_str());
+                    }
 
                     // use blocking channel
                     // socket is blocking bya default
@@ -138,7 +149,7 @@ namespace epics {
                     if(!transport->waitUntilVerified(3.0)) {
                         transport->close(true);
                         errlogSevPrintf(
-                                errlogInfo,
+                                errlogMinor,
                                 "Connection to CA server %s failed to be validated, closing it.",
                                 ipAddrStr);
                         ostringstream temp;

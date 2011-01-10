@@ -51,7 +51,7 @@ namespace epics {
 
             char strBuffer[64];
             char ipAddrStr[48];
-            ipAddrToA(&_bindAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToDottedIP(&_bindAddress->ia, ipAddrStr, sizeof(ipAddrStr));
 
             int tryCount = 0;
             while(tryCount<2) {
@@ -150,7 +150,7 @@ namespace epics {
         void BlockingTCPAcceptor::handleEvents() {
             // rise level if port is assigned dynamically
             char ipAddrStr[48];
-            ipAddrToA(&_bindAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToDottedIP(&_bindAddress->ia, ipAddrStr, sizeof(ipAddrStr));
             errlogSevPrintf(errlogInfo, "Accepting connections at %s.",
                     ipAddrStr);
 
@@ -183,7 +183,8 @@ namespace epics {
                                 _serverSocketChannel, &address.sa, &len);
                         if(newClient!=INVALID_SOCKET) {
                             // accept succeeded
-                            ipAddrToA(&address.ia, ipAddrStr, sizeof(ipAddrStr));
+                            ipAddrToDottedIP(&address.ia, ipAddrStr,
+                                    sizeof(ipAddrStr));
                             errlogSevPrintf(errlogInfo,
                                     "Accepted connection from CA client: %s",
                                     ipAddrStr);
@@ -273,7 +274,8 @@ namespace epics {
 
             if(_serverSocketChannel!=INVALID_SOCKET) {
                 char ipAddrStr[48];
-                ipAddrToA(&_bindAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+                ipAddrToDottedIP(&_bindAddress->ia, ipAddrStr,
+                        sizeof(ipAddrStr));
                 errlogSevPrintf(errlogInfo,
                         "Stopped accepting connections at %s.", ipAddrStr);
 

@@ -410,7 +410,8 @@ class ClientContextImpl;
                     {
                  char ipAddrStr[48];
                         std::cout << "ole" << std::endl;
-                ipAddrToA(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
+                        ipAddrToDottedIP(&responseFrom->ia, ipAddrStr,
+                                sizeof(ipAddrStr));
                        std::cout << "ole2" << std::endl;
 
                 ostringstream prologue;

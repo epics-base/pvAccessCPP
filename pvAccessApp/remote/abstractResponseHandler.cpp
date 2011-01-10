@@ -27,7 +27,7 @@ namespace epics {
                 int payloadSize, ByteBuffer* payloadBuffer) {
             if(_debug) {
                 char ipAddrStr[48];
-                ipAddrToA(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
+                ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
 
                 ostringstream prologue;
                 prologue<<"Message [0x"<<hex<<(int)command<<", v0x"<<hex;

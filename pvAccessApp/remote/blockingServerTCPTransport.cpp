@@ -52,7 +52,7 @@ namespace epics {
             if(_channels->size()==0) return;
 
             char ipAddrStr[64];
-            ipAddrToA(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToDottedIP(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
 
             errlogSevPrintf(
                     errlogInfo,
