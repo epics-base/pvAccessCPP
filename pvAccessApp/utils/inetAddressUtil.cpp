@@ -26,6 +26,34 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 
+/*
+ * In newer BSD systems, the socket address is variable-length, and
+ * there's an "sa_len" field giving the length of the structure;
+ * this allows socket addresses to be longer than 2 bytes of family
+ * and 14 bytes of data.
+ *
+ * Some commercial UNIXes use the old BSD scheme, some use the RFC 2553
+ * variant of the old BSD scheme (with "struct sockaddr_storage" rather
+ * than "struct sockaddr"), and some use the new BSD scheme.
+ *
+ * Some versions of GNU libc use neither scheme, but has an "SA_LEN()"
+ * macro that determines the size based on the address family.  Other
+ * versions don't have "SA_LEN()" (as it was in drafts of RFC 2553
+ * but not in the final version).
+ *
+ * We assume that a UNIX that doesn't have "getifaddrs()" and doesn't have
+ * SIOCGLIFCONF, but has SIOCGIFCONF, uses "struct sockaddr" for the
+ * address in an entry returned by SIOCGIFCONF.
+ */
+#ifndef SA_LEN
+#ifdef HAVE_SOCKADDR_SA_LEN
+#define SA_LEN(addr)    ((addr)->sa_len)
+#else /* HAVE_SOCKADDR_SA_LEN */
+#define SA_LEN(addr)    (sizeof (struct sockaddr))
+#endif /* HAVE_SOCKADDR_SA_LEN */
+#endif /* SA_LEN */
+
+
 using namespace std;
 using namespace epics::pvData;
 
@@ -91,7 +119,7 @@ namespace epics {
                 if(!(*pifreq->ifr_name)) break;
 
                 if(i>0) {
-                    size_t n = sizeof(sockaddr)+sizeof(pifreq->ifr_name);
+                    size_t n = SA_LEN(pifreq)+sizeof(pifreq->ifr_name);
                     if(n<sizeof(ifreq))
                         pifreq++;
                     else
