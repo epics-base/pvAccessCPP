@@ -526,7 +526,9 @@ typedef std::map<pvAccessID, ResponseRequest*> IOIDResponseRequestMap;
 
 		transport->setRemoteMinorRevision(version);
 		
-		transport->enqueueSendRequest((TransportSender*)transport);
+		TransportSender* sender = dynamic_cast<TransportSender*>(transport);
+		if (sender)
+		  transport->enqueueSendRequest(sender);
 		transport->verified();
 
 		              }
