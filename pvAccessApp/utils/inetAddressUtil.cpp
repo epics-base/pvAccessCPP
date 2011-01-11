@@ -26,6 +26,11 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 
+// since we do not have autoconf
+#ifdef darwin
+#define HAVE_SOCKADDR_SA_LEN
+#endif
+
 /*
  * In newer BSD systems, the socket address is variable-length, and
  * there's an "sa_len" field giving the length of the structure;
@@ -47,7 +52,7 @@
  */
 #ifndef SA_LEN
 #ifdef HAVE_SOCKADDR_SA_LEN
-#define SA_LEN(addr)    ((addr)->sa_len)
+#define SA_LEN(addr)    ((addr).sa_len)
 #else /* HAVE_SOCKADDR_SA_LEN */
 #define SA_LEN(addr)    (sizeof (struct sockaddr))
 #endif /* HAVE_SOCKADDR_SA_LEN */
@@ -119,7 +124,7 @@ namespace epics {
                 if(!(*pifreq->ifr_name)) break;
 
                 if(i>0) {
-                    size_t n = SA_LEN(pifreq)+sizeof(pifreq->ifr_name);
+                    size_t n = SA_LEN(pifreq->ifr_addr)+sizeof(pifreq->ifr_name);
                     if(n<sizeof(ifreq))
                         pifreq++;
                     else
