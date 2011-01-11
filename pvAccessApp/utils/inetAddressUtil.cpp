@@ -91,7 +91,7 @@ namespace epics {
                 if(!(*pifreq->ifr_name)) break;
 
                 if(i>0) {
-                    size_t n = pifreq->ifr_addr.sa_len+sizeof(pifreq->ifr_name);
+                    size_t n = sizeof(sockaddr)+sizeof(pifreq->ifr_name);
                     if(n<sizeof(ifreq))
                         pifreq++;
                     else
