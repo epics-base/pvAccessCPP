@@ -42,6 +42,11 @@ namespace epics {
             virtual void destroyChannel(ChannelImpl* channel, bool force) = 0;
 	        virtual ChannelImpl* createChannelInternal(String name, ChannelRequester* requester, short priority, InetAddrVector* addresses) = 0;
 	        
+        	virtual ResponseRequest* getResponseRequest(pvAccessID ioid) = 0;
+        	virtual pvAccessID registerResponseRequest(ResponseRequest* request) = 0;
+        	virtual ResponseRequest* unregisterResponseRequest(ResponseRequest* request) = 0;
+	        
+	        
 	        virtual Transport* getTransport(TransportClient* client, osiSockAddr* serverAddress, int16 minorRevision, int16 priority) = 0;
 
 

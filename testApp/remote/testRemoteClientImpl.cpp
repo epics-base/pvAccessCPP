@@ -23,6 +23,8 @@
 #include <clientContextImpl.h>
 #include <configuration.h>
 
+#include <errlog.h>
+
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
@@ -411,36 +413,74 @@ typedef std::map<pvAccessID, ResponseRequest*> IOIDResponseRequestMap;
             }
         };
 
-        class DebugResponse :  public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+        class NoopResponse :  public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
             /**
              * @param context
              */
-            DebugResponse(ClientContextImpl* context) :
-                AbstractClientResponseHandler(context, "not implemented")
+            NoopResponse(ClientContextImpl* context, String description) :
+                AbstractClientResponseHandler(context, description)
             {
             }
 
-            virtual ~DebugResponse() {
+            virtual ~NoopResponse() {
+            }
+        };
+
+
+        class BadResponse :  public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+        public:
+            /**
+             * @param context
+             */
+            BadResponse(ClientContextImpl* context) :
+                AbstractClientResponseHandler(context, "Bad response")
+            {
+            }
+
+            virtual ~BadResponse() {
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,
                     Transport* transport, int8 version, int8 command,
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
                     {
-                        
-                 char ipAddrStr[48];
-               ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
-                ostringstream prologue;
-                prologue<<"Message [0x"<<hex<<(int)command<<", v0x"<<hex;
-                prologue<<(int)version<<"] received from "<< ipAddrStr;
+            char ipAddrStr[48];
+            ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
 
-                hexDump(prologue.str(), "received",
-                        (const int8*)payloadBuffer->getArray(),
-                        payloadBuffer->getPosition(), payloadSize);
-
+            errlogSevPrintf(errlogInfo,
+                    "Undecipherable message (bad response type %d) from %s.",
+                    command, ipAddrStr);
                     }
         };
+
+
+        class DataResponseHandler :  public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+        public:
+            /**
+             * @param context
+             */
+            DataResponseHandler(ClientContextImpl* context) :
+                AbstractClientResponseHandler(context, "Data response")
+            {
+            }
+
+            virtual ~DataResponseHandler() {
+            }
+
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                    {
+		AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
+		
+		transport->ensureData(4);
+		DataResponse* nrr = dynamic_cast<DataResponse*>(_context->getResponseRequest(payloadBuffer->getInt()));
+		if (nrr)
+    		nrr->response(transport, version, payloadBuffer);		
+                    }
+        };
+
 
         class SearchResponseHandler :  public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
@@ -603,20 +643,20 @@ class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoD
 	 * @param context
 	 */
 	ClientResponseHandler(ClientContextImpl* context) {
-		static ResponseHandler* badResponse = new DebugResponse(context);
-		static ResponseHandler* dataResponse = 0; //new DataResponseHandler(context);
+		ResponseHandler* badResponse = new BadResponse(context);
+		ResponseHandler* dataResponse = new DataResponseHandler(context);
 
 		#define HANDLER_COUNT 28
 		m_handlerTable = new ResponseHandler*[HANDLER_COUNT];
 		m_handlerTable[ 0] = badResponse; // TODO new BeaconHandler(context), /*  0 */
 		m_handlerTable[ 1] = new ConnectionValidationHandler(context), /*  1 */
-		m_handlerTable[ 2] = badResponse; // TODO new NoopResponse(context, "Echo"), /*  2 */
-		m_handlerTable[ 3] = badResponse; // TODO new NoopResponse(context, "Search"), /*  3 */
+		m_handlerTable[ 2] = new NoopResponse(context, "Echo"), /*  2 */
+		m_handlerTable[ 3] = new NoopResponse(context, "Search"), /*  3 */
 		m_handlerTable[ 4] = new SearchResponseHandler(context), /*  4 */
-		m_handlerTable[ 5] = badResponse; // TODO new NoopResponse(context, "Introspection search"), /*  5 */
+		m_handlerTable[ 5] = new NoopResponse(context, "Introspection search"), /*  5 */
 		m_handlerTable[ 6] = dataResponse; /*  6 - introspection search */
 		m_handlerTable[ 7] = new CreateChannelHandler(context), /*  7 */
-		m_handlerTable[ 8] = badResponse; // TODO new NoopResponse(context, "Destroy channel"), /*  8 */ // TODO it might be useful to implement this...
+		m_handlerTable[ 8] = new NoopResponse(context, "Destroy channel"), /*  8 */ // TODO it might be useful to implement this...
 		m_handlerTable[ 9] = badResponse; /*  9 */
 		m_handlerTable[10] = dataResponse; /* 10 - get response */
 		m_handlerTable[11] = dataResponse; /* 11 - put response */
@@ -642,8 +682,6 @@ class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoD
                         Transport* transport, int8 version, int8 command,
                         int payloadSize, ByteBuffer* payloadBuffer)
     {
-        int c = command+0;
-			std::cout << "received  " << c << std::endl;
 		if (command < 0 || command >= HANDLER_COUNT)
 		{
 			// TODO context.getLogger().fine("Invalid (or unsupported) command: " + command + ".");
@@ -656,7 +694,7 @@ class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoD
 		}
 
 		// delegate
-		m_handlerTable[c]->handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
+		m_handlerTable[command]->handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 	}
 };
 
@@ -1808,6 +1846,75 @@ class TestChannelImpl : public ChannelImpl {
         m_channelsByCID.erase(cid);
 	}
 
+
+	/**
+	 * Searches for a response request with given channel IOID.
+	 * @param ioid	I/O ID.
+	 * @return request response with given I/O ID.
+	 */
+	ResponseRequest* getResponseRequest(pvAccessID ioid)
+	{
+	   /*
+		synchronized (pendingResponseRequests)
+		{
+			return (ResponseRequest)pendingResponseRequests.get(ioid);
+		}
+		*/
+		return 0;
+	}
+
+	/**
+	 * Register response request.
+	 * @param request request to register.
+	 * @return request ID (IOID).
+	 */
+	pvAccessID registerResponseRequest(ResponseRequest* request)
+	{
+	   /*
+		synchronized (pendingResponseRequests)
+		{
+			int ioid = generateIOID();
+			pendingResponseRequests.put(ioid, request);
+			return ioid;
+		}
+		*/
+		return 0;
+	}
+
+	/**
+	 * Unregister response request.
+	 * @param request
+	 * @return removed object, can be <code>null</code>
+	 */
+	ResponseRequest* unregisterResponseRequest(ResponseRequest* request)
+	{
+	   /*
+		synchronized (pendingResponseRequests)
+		{
+			return (ResponseRequest)pendingResponseRequests.remove(request.getIOID());
+		}
+		*/
+		return 0;
+	}
+
+	/**
+	 * Generate IOID.
+	 * @return IOID. 
+	 */
+	pvAccessID generateIOID()
+	{
+	   /*
+		synchronized (pendingResponseRequests)
+		{
+			// search first free (theoretically possible loop of death)
+			while (pendingResponseRequests.get(++lastIOID) != null || lastIOID == CAConstants.CAJ_INVALID_IOID);
+			// reserve IOID
+			pendingResponseRequests.put(lastIOID, null);
+			return lastIOID;
+		}
+		*/
+		return 0;
+	}
 
 	/**
 	 * Get, or create if necessary, transport of given server address.

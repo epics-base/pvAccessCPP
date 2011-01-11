@@ -533,6 +533,22 @@ namespace epics {
              */
             virtual epics::pvData::Requester* getRequester() = 0;
         };
+        
+        /**
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: DataResponse.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class DataResponse : public ResponseRequest {
+        public:
+        	/**
+        	 * Notification response.
+        	 * @param transport
+        	 * @param version
+        	 * @param payloadBuffer
+        	 */
+        	virtual void response(Transport* transport, int8 version, ByteBuffer* payloadBuffer) = 0;
+        
+        };        
 
     }
 }
