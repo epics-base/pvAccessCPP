@@ -155,6 +155,7 @@ void testBlockingTCPSender() {
         String info;
         e->toString(info);
         cout<<info<<endl;
+        delete e;
     }
 
     delete transport;
