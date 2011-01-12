@@ -56,7 +56,7 @@ namespace epics {
 
             errlogSevPrintf(
                     errlogInfo,
-                    "Transport to %s still has %d channel(s) active and closing...",
+                    "Transport to %s still has %u channel(s) active and closing...",
                     ipAddrStr, _channels->size());
 
             map<pvAccessID, ServerChannel*>::iterator it = _channels->begin();
