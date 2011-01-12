@@ -642,6 +642,36 @@ typedef std::map<pvAccessID, ResponseRequest*> IOIDResponseRequestMap;
 		              }
         };
 
+        class MessageHandler :  public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+        public:
+            MessageHandler(ClientContextImpl* context) :
+                AbstractClientResponseHandler(context, "Message")
+            {
+            }
+
+            virtual ~MessageHandler() {
+            }
+
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                    {
+		AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
+		     
+		transport->ensureData(5);
+
+		DataResponse* nrr = dynamic_cast<DataResponse*>(_context->getResponseRequest(payloadBuffer->getInt()));
+		Requester* requester;
+		if (nrr && (requester = nrr->getRequester()))
+		{
+			 MessageType type = (MessageType)payloadBuffer->getByte();
+			 String message = SerializeHelper::deserializeString(payloadBuffer, transport);
+			requester->message(message, type); // TODO do we need to guard from exceptions
+		}
+
+		            }
+        };
+
         class CreateChannelHandler :  public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
             CreateChannelHandler(ClientContextImpl* context) :
@@ -714,9 +744,10 @@ class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoD
 		ResponseHandler* badResponse = new BadResponse(context);
 		ResponseHandler* dataResponse = new DataResponseHandler(context);
 
+        // TODO free!!!
 		#define HANDLER_COUNT 28
 		m_handlerTable = new ResponseHandler*[HANDLER_COUNT];
-		m_handlerTable[ 0] = badResponse; // TODO new BeaconHandler(context), /*  0 */
+		m_handlerTable[ 0] = new BeaconResponseHandler(context), /*  0 */
 		m_handlerTable[ 1] = new ConnectionValidationHandler(context), /*  1 */
 		m_handlerTable[ 2] = new NoopResponse(context, "Echo"), /*  2 */
 		m_handlerTable[ 3] = new NoopResponse(context, "Search"), /*  3 */
@@ -734,7 +765,7 @@ class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoD
 		m_handlerTable[15] = badResponse; /* 15 - cancel request */
 		m_handlerTable[16] = dataResponse; /* 16 - process response */
 		m_handlerTable[17] = dataResponse; /* 17 - get field response */
-		m_handlerTable[18] = badResponse; // TODO new MessageHandler(context), /* 18 - message to Requester */
+		m_handlerTable[18] = new MessageHandler(context), /* 18 - message to Requester */
 		m_handlerTable[19] = badResponse; // TODO new MultipleDataResponseHandler(context), /* 19 - grouped monitors */
 		m_handlerTable[20] = dataResponse; /* 20 - RPC response */
 		m_handlerTable[21] = badResponse; /* 21 */
@@ -1989,18 +2020,18 @@ class TestChannelImpl : public ChannelImpl {
 	 */
 	BeaconHandler* getBeaconHandler(osiSockAddr* responseFrom)
 	{
-	   /*
-		synchronized (beaconHandlers) {
-			BeaconHandlerImpl handler = beaconHandlers.get(responseFrom);
-			if (handler == null)
-			{
-				handler = new BeaconHandlerImpl(this, responseFrom);
-				beaconHandlers.put(responseFrom, handler);
-			}
-			return handler;
-		}
-		*/
-		return 0;
+	   // TODO delete handlers
+	   Lock guard(&m_beaconMapMutex);
+	   AddressBeaconHandlerMap::iterator it = m_beaconHandlers.find(*responseFrom);
+	   BeaconHandler* handler;
+	   if (it == m_beaconHandlers.end())
+	   {
+	       handler = new BeaconHandler(this, responseFrom);
+	       m_beaconHandlers[*responseFrom] = handler;
+	   }
+	   else
+	       handler = it->second;
+	   return handler;
 	}
 
 	/**
@@ -2212,8 +2243,13 @@ class TestChannelImpl : public ChannelImpl {
 	 * Beacon handler map.
 	 */
 	 // TODO consider std::unordered_map
-//	typedef std::map<osiSockAddr, BeaconHandlerImpl*> AddressBeaconHandlerMap;
-//	AddressBeaconHandlerMap m_beaconHandlers;
+	typedef std::map<osiSockAddr, BeaconHandler*, comp_osiSock_lt> AddressBeaconHandlerMap;
+	AddressBeaconHandlerMap m_beaconHandlers;
+
+    /**
+     *  IOIDResponseRequestMap mutex.
+     */
+    Mutex m_beaconMapMutex;
 
 	/**
 	 * Version.
