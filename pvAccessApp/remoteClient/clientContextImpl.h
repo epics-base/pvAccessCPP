@@ -14,7 +14,9 @@
 
 namespace epics {
     namespace pvAccess {
-
+        
+        class BeaconHandler;
+        
         class ChannelImpl :
                     public Channel ,
                     public TransportClient,
@@ -48,7 +50,10 @@ namespace epics {
 	        
 	        
 	        virtual Transport* getTransport(TransportClient* client, osiSockAddr* serverAddress, int16 minorRevision, int16 priority) = 0;
-
+	        
+	        virtual void beaconAnomalyNotify() = 0;
+	        
+	        virtual BeaconHandler* getBeaconHandler(osiSockAddr* responseFrom) = 0;
 
         };
  

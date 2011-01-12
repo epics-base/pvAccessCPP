@@ -6,20 +6,14 @@
 #define BEACONHANDLER_H
 
 #include "remote.h"
-#include "inetAddressUtil.h"
-#include "pvAccess.h"
+#include <pvAccess.h>
+#include "clientContextImpl.h"
 
 #include <timeStamp.h>
 #include <osiSock.h>
 #include <lock.h>
 
-#include <iostream>
-
-using namespace epics::pvData;
-
 namespace epics { namespace pvAccess {
-
-	class ClientContextImpl;
 
 	/**
 	 * BeaconHandler
@@ -32,7 +26,7 @@ namespace epics { namespace pvAccess {
 		 * @param transport	transport to be used to send beacons.
 		 * @param context CA context.
 		 */
-		BeaconHandler(const ClientContextImpl* context, const osiSockAddr* responseFrom);
+		BeaconHandler(ClientContextImpl* context, const osiSockAddr* responseFrom);
 		/**
 		 * Test Constructor (for testing)
 		 * @param transport	transport to be used to send beacons.
@@ -48,26 +42,29 @@ namespace epics { namespace pvAccess {
 		 * @param sequentalID sequential ID.
 		 * @param data server status data, can be <code>NULL</code>.
 		 */
-		void beaconNotify(osiSockAddr* from, int8 remoteTransportRevision,
-							 int64 timestamp, TimeStamp* startupTime, int32 sequentalID,
-							 PVFieldPtr data);
+		void beaconNotify(osiSockAddr* from,
+		                     epics::pvData::int8 remoteTransportRevision,
+							 epics::pvData::TimeStamp* timestamp,
+							 epics::pvData::TimeStamp* startupTime,
+							 epics::pvData::int16 sequentalID,
+							 epics::pvData::PVFieldPtr data);
 	private:
 		/**
 		 * Context instance.
 		 */
-		const ClientContextImpl* _context;
+		ClientContextImpl* _context;
 		/**
 		 * Remote address.
 		 */
-		const osiSockAddr* _responseFrom;
-		/**
-		 * Server startup timestamp.
-		 */
-		TimeStamp* _serverStartupTime;
+		const osiSockAddr _responseFrom;
 		/**
 		 * Mutex
 		 */
-		Mutex _mutex;
+		epics::pvData::Mutex _mutex;
+		/**
+		 * Server startup timestamp.
+		 */
+		epics::pvData::TimeStamp _serverStartupTime;
 		/**
 		 * Update beacon.
 		 * @param remoteTransportRevision encoded (major, minor) revision.
@@ -75,8 +72,10 @@ namespace epics { namespace pvAccess {
 		 * @param sequentalID sequential ID.
 		 * @return network change (server restarted) detected.
 		 */
-		bool updateBeacon(int8 remoteTransportRevision, int64 timestamp,
-												  TimeStamp* startupTime, int32 sequentalID);
+		bool updateBeacon(epics::pvData::int8 remoteTransportRevision,
+		                  epics::pvData::TimeStamp* timestamp,
+					      epics::pvData::TimeStamp* startupTime,
+					      epics::pvData::int16 sequentalID);
 		/**
 		 * Notify transport about beacon arrival.
 		 */
