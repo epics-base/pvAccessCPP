@@ -108,10 +108,8 @@ namespace epics {
                     socket = tryConnect(address, 3);
                     // verify
                     if(socket==INVALID_SOCKET) {
-                        errlogSevPrintf(
-                                errlogMajor,
-                                "Connection to CA server %s failed.",
-                                ipAddrStr);
+                        errlogSevPrintf(errlogMajor,
+                                "Connection to CA server %s failed.", ipAddrStr);
                         ostringstream temp;
                         temp<<"Failed to verify TCP connection to '"<<ipAddrStr
                                 <<"'.";
@@ -148,6 +146,7 @@ namespace epics {
                     // verify
                     if(!transport->waitUntilVerified(3.0)) {
                         transport->close(true);
+                        socket = INVALID_SOCKET;
                         errlogSevPrintf(
                                 errlogMinor,
                                 "Connection to CA server %s failed to be validated, closing it.",

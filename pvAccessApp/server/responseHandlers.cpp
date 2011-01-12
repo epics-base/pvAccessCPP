@@ -88,11 +88,11 @@ namespace epics {
                 int payloadSize, ByteBuffer* payloadBuffer) {
             if(command<0||command>=HANDLER_TABLE_LENGTH) {
                 errlogSevPrintf(errlogMinor,
-                        "Invalid (or unsupported) command: %d.", command);
+                        "Invalid (or unsupported) command: %x.", (0xFF&command));
                 // TODO remove debug output
                 ostringstream name;
-                name<<"Invalid CA header "<<command;
-                name<<" + , its payload buffer";
+                name<<"Invalid CA header "<<hex<<(int)(0xFF&command);
+                name<<", its payload buffer";
 
                 hexDump(name.str(), (const int8*)payloadBuffer->getArray(),
                         payloadBuffer->getPosition(), payloadSize);

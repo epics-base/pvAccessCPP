@@ -78,12 +78,6 @@ public:
     }
 
     virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
-        // SRV_IP defined at the top of the this file
-        if(aToIPAddr(SRV_IP, 65000, &sendTo.ia)<0) {
-            cout<<"error in aToIPAddr(...)"<<endl;
-            return;
-        }
-
         control->setRecipient(sendTo);
 
         // send the packet
@@ -116,6 +110,12 @@ void testBlockingUDPSender() {
     bindAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
     Transport* transport = connector.connect(NULL, &drh, bindAddr, 1, 50);
+
+    // SRV_IP defined at the top of the this file
+    if(aToIPAddr(SRV_IP, 65000, &sendTo.ia)<0) {
+        cout<<"error in aToIPAddr(...)"<<endl;
+        return;
+    }
 
     cout<<"Sending 10 packets..."<<endl;
 

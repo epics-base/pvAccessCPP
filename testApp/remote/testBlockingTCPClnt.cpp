@@ -92,7 +92,8 @@ public:
     virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
         // send the packet
         count++;
-        control->startMessage(0, count);
+        // using invalid command to force msg dump
+        control->startMessage(0xC0, count);
         buffer->put(data, 0, count);
         //control->endMessage();
     }
