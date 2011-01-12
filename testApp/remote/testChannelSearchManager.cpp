@@ -2,6 +2,7 @@
 
 #include <channelSearchManager.h>
 #include <sstream>
+#include <showConstructDestruct.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;

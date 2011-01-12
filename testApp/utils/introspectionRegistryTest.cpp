@@ -12,6 +12,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <showConstructDestruct.h>
 
 namespace epics {
     namespace pvAccess {
@@ -450,7 +451,7 @@ int main(int argc, char *argv[])
 	if(clientRegistry) delete clientRegistry;
 	if(serverRegistry) delete serverRegistry;
 
-	getShowConstructDestruct()->constuctDestructTotals(stdout);
+    getShowConstructDestruct()->showDeleteStaticExit(stdout);
 	cout << "DONE" << endl;
 	return 0;
 }
