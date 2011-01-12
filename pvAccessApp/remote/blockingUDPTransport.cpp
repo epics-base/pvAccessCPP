@@ -24,7 +24,6 @@
 #include <cstdio>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <poll.h>
 #include <errno.h>
 
 namespace epics {
@@ -36,11 +35,15 @@ namespace epics {
                 ResponseHandler* responseHandler, SOCKET channel,
                 osiSockAddr& bindAddress, InetAddrVector* sendAddresses,
                 short remoteTransportRevision) :
-            _closed(false), _responseHandler(responseHandler),
-                    _channel(channel), _sendAddresses(sendAddresses),
-                    _ignoredAddresses(NULL), _sendTo(NULL), _receiveBuffer(
-                            new ByteBuffer(MAX_UDP_RECV, EPICS_ENDIAN_BIG)), _sendBuffer(
-                            new ByteBuffer(MAX_UDP_RECV, EPICS_ENDIAN_BIG)),
+                    _closed(false),
+                    _responseHandler(responseHandler),
+                    _channel(channel),
+                    _sendAddresses(sendAddresses),
+                    _ignoredAddresses(NULL),
+                    _sendTo(NULL),
+                    _receiveBuffer(new ByteBuffer(MAX_UDP_RECV,
+                            EPICS_ENDIAN_BIG)),
+                    _sendBuffer(new ByteBuffer(MAX_UDP_RECV, EPICS_ENDIAN_BIG)),
                     _lastMessageStartPosition(0), _readBuffer(
                             new char[MAX_UDP_RECV]), _mutex(new Mutex()),
                     _threadId(NULL) {
@@ -125,10 +128,6 @@ namespace epics {
             // This function is always called from only one thread - this
             // object's own thread.
 
-            pollfd pfd;
-            pfd.fd = _channel;
-            pfd.events = POLLIN;
-
             osiSockAddr fromAddress;
 
             try {
@@ -136,79 +135,44 @@ namespace epics {
                 while(!_closed) {
                     // we poll to prevent blocking indefinitely
 
-                    /* From 'accept' man page:
-                     * In order to be notified of incoming connections on
-                     * a socket, you can use select(2) or poll(2). A readable
-                     * event will be delivered when a new connection is
-                     * attempted and you may then call accept() to get a
-                     * socket for that connection.
-                     */
+                    // data ready to be read
+                    _receiveBuffer->clear();
 
-                    int retval = poll(&pfd, 1, 100);
+                    socklen_t addrStructSize = sizeof(sockaddr);
 
-                    if(_closed) break; // if the dtor was called during wait
-                    // none of the object properties are no longer valid.
+                    int bytesRead = recvfrom(_channel, _readBuffer,
+                            MAX_UDP_RECV, 0, (sockaddr*)&fromAddress,
+                            &addrStructSize);
 
-                    if(retval>0) {
-                        // activity on SOCKET
-                        if(pfd.revents&POLLIN) {
-                            // data ready to be read
-                            _receiveBuffer->clear();
-
-                            socklen_t addrStructSize = sizeof(sockaddr);
-
-                            int bytesRead = recvfrom(_channel, _readBuffer,
-                                    MAX_UDP_RECV, 0, (sockaddr*)&fromAddress,
-                                    &addrStructSize);
-
-                            if(bytesRead>0) {
-                                // successfully got datagram
-                                bool ignore = false;
-                                if(_ignoredAddresses!=NULL) for(size_t i = 0; i
-                                        <_ignoredAddresses->size(); i++)
-                                    if(_ignoredAddresses->at(i)->ia.sin_addr.s_addr
-                                            ==fromAddress.ia.sin_addr.s_addr) {
-                                        ignore = true;
-                                        break;
-                                    }
-
-                                if(!ignore) {
-                                    _receiveBuffer->put(
-                                            _readBuffer,
-                                            0,
-                                            bytesRead
-                                                    <_receiveBuffer->getRemaining() ? bytesRead
-                                                    : _receiveBuffer->getRemaining());
-
-                                    _receiveBuffer->flip();
-
-                                    processBuffer(fromAddress, _receiveBuffer);
-                                }
+                    if(bytesRead>0) {
+                        // successfully got datagram
+                        bool ignore = false;
+                        if(_ignoredAddresses!=NULL) for(size_t i = 0; i
+                                <_ignoredAddresses->size(); i++)
+                            if(_ignoredAddresses->at(i)->ia.sin_addr.s_addr
+                                    ==fromAddress.ia.sin_addr.s_addr) {
+                                ignore = true;
+                                break;
                             }
-                            else {
-                                // log a 'recvfrom' error
-                                if(bytesRead==-1) errlogSevPrintf(errlogMajor,
-                                        "Socket recv error: %s",
-                                        strerror(errno));
-                            }
-                        }
-                        else {
-                            // error (POLLERR, POLLHUP, or POLLNVAL)
-                            if(pfd.revents&POLLERR) errlogSevPrintf(
-                                    errlogMajor, "Socket poll error (POLLERR)");
-                            if(pfd.revents&POLLHUP) errlogSevPrintf(
-                                    errlogMinor, "Socket poll error (POLLHUP)");
-                            if(pfd.revents&POLLNVAL) errlogSevPrintf(
-                                    errlogMajor,
-                                    "Socket poll error: server socket no longer bound.");
+
+                        if(!ignore) {
+                            _receiveBuffer->put(_readBuffer, 0, bytesRead
+                                    <_receiveBuffer->getRemaining() ? bytesRead
+                                    : _receiveBuffer->getRemaining());
+
+                            _receiveBuffer->flip();
+
+                            processBuffer(fromAddress, _receiveBuffer);
                         }
                     }
+                    else {
+                        // 0 == socket close
 
-                    // retval == 0 : timeout
+                        // log a 'recvfrom' error
+                        if(bytesRead==-1) errlogSevPrintf(errlogMajor,
+                                "Socket recv error: %s", strerror(errno));
+                    }
 
-                    // retval < 0 : error
-                    if(retval<0) errlogSevPrintf(errlogMajor,
-                            "Socket poll error: %s", strerror(errno));
                 }
             } catch(...) {
                 // TODO: catch all exceptions, and act accordingly

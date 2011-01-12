@@ -12,6 +12,8 @@
 #include "caConstants.h"
 
 #include <timer.h>
+#include <epicsException.h>
+#include <pvType.h>
 
 #include <osiSock.h>
 #include <errlog.h>
@@ -36,11 +38,21 @@ public:
         delete _tr;
         delete _timer;
     }
-    virtual Timer* getTimer() { return _timer; }
-    virtual TransportRegistry* getTransportRegistry() { return _tr; }
-    virtual Channel* getChannel(epics::pvAccess::pvAccessID) { return 0; }
-    virtual Transport* getSearchTransport() { return 0; }
-    virtual Configuration* getConfiguration() { return _conf; }
+    virtual Timer* getTimer() {
+        return _timer;
+    }
+    virtual TransportRegistry* getTransportRegistry() {
+        return _tr;
+    }
+    virtual Channel* getChannel(epics::pvAccess::pvAccessID) {
+        return 0;
+    }
+    virtual Transport* getSearchTransport() {
+        return 0;
+    }
+    virtual Configuration* getConfiguration() {
+        return _conf;
+    }
 
 private:
     TransportRegistry* _tr;
@@ -50,7 +62,8 @@ private:
 
 class DummyResponseHandler : public ResponseHandler {
 public:
-    DummyResponseHandler(Context* ctx) : ResponseHandler() {
+    DummyResponseHandler(Context* ctx) :
+        ResponseHandler() {
     }
 
     virtual void handleResponse(osiSockAddr* responseFrom,
@@ -92,7 +105,8 @@ public:
     virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
         // send the packet
         count++;
-        control->startMessage(0, count);
+        // using invalid command to force msg dump
+        control->startMessage(0xC0, count);
         buffer->put(data, 0, count);
         //control->endMessage();
     }
@@ -122,18 +136,25 @@ void testBlockingTCPSender() {
         return;
     }
 
-    Transport* transport = connector.connect(&dtc, &drh, srvAddr,
-            CA_MAGIC_AND_VERSION, CA_DEFAULT_PRIORITY);
+    Transport* transport=NULL;
+    try {
+        transport = connector.connect(&dtc, &drh, srvAddr,
+                CA_MAGIC_AND_VERSION, CA_DEFAULT_PRIORITY);
 
-    cout<<"Sending 10 messages..."<<endl;
+        cout<<"Sending 10 messages..."<<endl;
 
-    for(int i = 0; i<10; i++) {
-        cout<<"   Message: "<<i+1<<endl;
-        if(!transport->isClosed())
-            transport->enqueueSendRequest(&dts);
-        else
-            break;
-        sleep(1);
+        for(int i = 0; i<10; i++) {
+            cout<<"   Message: "<<i+1<<endl;
+            if(!transport->isClosed())
+                transport->enqueueSendRequest(&dts);
+            else
+                break;
+            sleep(1);
+        }
+    } catch(BaseException* e) {
+        String info;
+        e->toString(info);
+        cout<<info<<endl;
     }
 
     delete transport;

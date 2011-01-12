@@ -9,6 +9,7 @@
 #include "remote.h"
 #include "logger.h"
 #include "configuration.h"
+#include "serverContext.h"
 
 #include <iostream>
 
@@ -18,7 +19,7 @@ using namespace epics::pvAccess;
 using std::cin;
 using std::cout;
 
-class ContextImpl : public Context {
+class ContextImpl : public ServerContextImpl {
 public:
     ContextImpl() :
         _tr(new TransportRegistry()),

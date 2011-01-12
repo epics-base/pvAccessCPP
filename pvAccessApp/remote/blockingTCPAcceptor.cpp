@@ -21,7 +21,6 @@
 
 /* standard */
 #include <sstream>
-#include <poll.h>
 
 using std::ostringstream;
 
@@ -116,7 +115,7 @@ namespace epics {
                             }
                         }
 
-                        retval = ::listen(_serverSocketChannel, 5);
+                        retval = ::listen(_serverSocketChannel, 1024);
                         if(retval<0) {
                             epicsSocketConvertErrnoToString(strBuffer,
                                     sizeof(strBuffer));
@@ -157,99 +156,72 @@ namespace epics {
             bool socketOpen = true;
             char strBuffer[64];
 
-            pollfd sockets[1];
-            sockets[0].fd = _serverSocketChannel;
-            sockets[0].events = POLLIN;
-
             while(!_destroyed&&socketOpen) {
-                int retval = ::poll(sockets, 1, 50);
-                if(retval<0) {
-                    // error in poll
-                    epicsSocketConvertErrnoToString(strBuffer,
-                            sizeof(strBuffer));
-                    errlogSevPrintf(errlogMajor, "socket poll error: %s",
-                            strBuffer);
-                    socketOpen = false;
-                }
-                else if(retval>0) {
-                    // some event on a socket
-                    if((sockets[0].revents&POLLIN)!=0) {
-                        // connection waiting
+                osiSockAddr address;
+                osiSocklen_t len = sizeof(sockaddr);
 
-                        osiSockAddr address;
-                        osiSocklen_t len = sizeof(sockaddr);
+                SOCKET newClient = epicsSocketAccept(_serverSocketChannel,
+                        &address.sa, &len);
+                if(newClient!=INVALID_SOCKET) {
+                    // accept succeeded
+                    ipAddrToDottedIP(&address.ia, ipAddrStr, sizeof(ipAddrStr));
+                    errlogSevPrintf(errlogInfo,
+                            "Accepted connection from CA client: %s", ipAddrStr);
 
-                        SOCKET newClient = epicsSocketAccept(
-                                _serverSocketChannel, &address.sa, &len);
-                        if(newClient!=INVALID_SOCKET) {
-                            // accept succeeded
-                            ipAddrToDottedIP(&address.ia, ipAddrStr,
-                                    sizeof(ipAddrStr));
-                            errlogSevPrintf(errlogInfo,
-                                    "Accepted connection from CA client: %s",
-                                    ipAddrStr);
-
-                            // enable TCP_NODELAY (disable Nagle's algorithm)
-                            int optval = 1; // true
-                            retval = ::setsockopt(newClient, IPPROTO_TCP,
-                                    TCP_NODELAY, &optval, sizeof(int));
-                            if(retval<0) {
-                                epicsSocketConvertErrnoToString(strBuffer,
-                                        sizeof(strBuffer));
-                                errlogSevPrintf(errlogMinor,
-                                        "Error setting TCP_NODELAY: %s",
-                                        strBuffer);
-                            }
-
-                            // enable TCP_KEEPALIVE
-                            retval = ::setsockopt(newClient, SOL_SOCKET,
-                                    SO_KEEPALIVE, &optval, sizeof(int));
-                            if(retval<0) {
-                                epicsSocketConvertErrnoToString(strBuffer,
-                                        sizeof(strBuffer));
-                                errlogSevPrintf(errlogMinor,
-                                        "Error setting SO_KEEPALIVE: %s",
-                                        strBuffer);
-                            }
-
-                            // TODO tune buffer sizes?!
-                            //socket.socket().setReceiveBufferSize();
-                            //socket.socket().setSendBufferSize();
-
-                            /* create transport
-                             * each transport should have its own response
-                             * handler since it is not "shareable"
-                             */
-                            BlockingServerTCPTransport
-                                    * transport =
-                                            new BlockingServerTCPTransport(
-                                                    _context,
-                                                    newClient,
-                                                    new ServerResponseHandler(
-                                                            (ServerContextImpl*)_context),
-                                                    _receiveBufferSize);
-
-                            // validate connection
-                            if(!validateConnection(transport, ipAddrStr)) {
-                                transport->close(true);
-                                errlogSevPrintf(
-                                        errlogInfo,
-                                        "Connection to CA client %s failed to be validated, closing it.",
-                                        ipAddrStr);
-                                return;
-                            }
-
-                            errlogSevPrintf(errlogInfo,
-                                    "Serving to CA client: %s", ipAddrStr);
-
-                        }// accept succeeded
-                    } // connection waiting
-                    if((sockets[0].revents&(POLLERR|POLLHUP|POLLNVAL))!=0) {
-                        errlogSevPrintf(errlogMajor,
-                                "error on a socket: POLLERR|POLLHUP|POLLNVAL");
-                        socketOpen = false;
+                    // enable TCP_NODELAY (disable Nagle's algorithm)
+                    int optval = 1; // true
+                    int retval = ::setsockopt(newClient, IPPROTO_TCP,
+                            TCP_NODELAY, &optval, sizeof(int));
+                    if(retval<0) {
+                        epicsSocketConvertErrnoToString(strBuffer,
+                                sizeof(strBuffer));
+                        errlogSevPrintf(errlogMinor,
+                                "Error setting TCP_NODELAY: %s", strBuffer);
                     }
-                } // some event on a socket
+
+                    // enable TCP_KEEPALIVE
+                    retval = ::setsockopt(newClient, SOL_SOCKET, SO_KEEPALIVE,
+                            &optval, sizeof(int));
+                    if(retval<0) {
+                        epicsSocketConvertErrnoToString(strBuffer,
+                                sizeof(strBuffer));
+                        errlogSevPrintf(errlogMinor,
+                                "Error setting SO_KEEPALIVE: %s", strBuffer);
+                    }
+
+                    // TODO tune buffer sizes?!
+                    //socket.socket().setReceiveBufferSize();
+                    //socket.socket().setSendBufferSize();
+
+                    /* create transport
+                     * each transport should have its own response
+                     * handler since it is not "shareable"
+                     */
+                    BlockingServerTCPTransport
+                            * transport =
+                                    new BlockingServerTCPTransport(
+                                            _context,
+                                            newClient,
+                                            new ServerResponseHandler(
+                                                    dynamic_cast<ServerContextImpl*> (_context)),
+                                            _receiveBufferSize);
+
+                    // validate connection
+                    if(!validateConnection(transport, ipAddrStr)) {
+                        transport->close(true);
+                        errlogSevPrintf(
+                                errlogInfo,
+                                "Connection to CA client %s failed to be validated, closing it.",
+                                ipAddrStr);
+                        return;
+                    }
+
+                    errlogSevPrintf(errlogInfo, "Serving to CA client: %s",
+                            ipAddrStr);
+
+                }// accept succeeded
+                else
+                    socketOpen = false;
             } // while
         }
 

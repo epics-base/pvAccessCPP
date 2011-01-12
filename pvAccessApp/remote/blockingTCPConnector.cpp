@@ -108,10 +108,8 @@ namespace epics {
                     socket = tryConnect(address, 3);
                     // verify
                     if(socket==INVALID_SOCKET) {
-                        errlogSevPrintf(
-                                errlogMajor,
-                                "Connection to CA server %s failed.",
-                                ipAddrStr);
+                        errlogSevPrintf(errlogMajor,
+                                "Connection to CA server %s failed.", ipAddrStr);
                         ostringstream temp;
                         temp<<"Failed to verify TCP connection to '"<<ipAddrStr
                                 <<"'.";
@@ -147,7 +145,6 @@ namespace epics {
 
                     // verify
                     if(!transport->waitUntilVerified(3.0)) {
-                        transport->close(true);
                         errlogSevPrintf(
                                 errlogMinor,
                                 "Connection to CA server %s failed to be validated, closing it.",
@@ -165,8 +162,9 @@ namespace epics {
 
                     return transport;
                 } catch(...) {
-                    // close socket, if open
-                    if(socket!=INVALID_SOCKET) epicsSocketDestroy(socket);
+                    if(transport!=NULL)
+                        transport->close(true);
+                    else if(socket!=INVALID_SOCKET) epicsSocketDestroy(socket);
                     _namedLocker->releaseSynchronizationObject(&address);
                     throw;
                 }
