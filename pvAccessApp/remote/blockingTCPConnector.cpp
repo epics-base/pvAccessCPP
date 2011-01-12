@@ -145,8 +145,6 @@ namespace epics {
 
                     // verify
                     if(!transport->waitUntilVerified(3.0)) {
-                        transport->close(true);
-                        socket = INVALID_SOCKET;
                         errlogSevPrintf(
                                 errlogMinor,
                                 "Connection to CA server %s failed to be validated, closing it.",
@@ -164,8 +162,9 @@ namespace epics {
 
                     return transport;
                 } catch(...) {
-                    // close socket, if open
-                    if(socket!=INVALID_SOCKET) epicsSocketDestroy(socket);
+                    if(transport!=NULL)
+                        transport->close(true);
+                    else if(socket!=INVALID_SOCKET) epicsSocketDestroy(socket);
                     _namedLocker->releaseSynchronizationObject(&address);
                     throw;
                 }
