@@ -35,6 +35,7 @@ namespace epics {
                         	virtual void registerResponseRequest(ResponseRequest* responseRequest) = 0;
                         	virtual void unregisterResponseRequest(ResponseRequest* responseRequest) = 0;
                             virtual Transport* checkAndGetTransport() = 0;
+                            virtual Transport* getTransport() = 0;
 
                             static Status* channelDestroyed;
                             static Status* channelDisconnected;

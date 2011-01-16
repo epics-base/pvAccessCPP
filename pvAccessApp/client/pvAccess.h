@@ -7,6 +7,7 @@
 #include <monitor.h>
 #include <version.h>
 #include <vector>
+#include <bitSet.h>
 
 namespace epics { namespace pvAccess { 
 
