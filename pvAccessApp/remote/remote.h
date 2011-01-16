@@ -35,39 +35,39 @@ namespace epics {
             /**
              * Default behavior.
              */
-            DEFAULT = 0x00,
+            QOS_DEFAULT = 0x00,
             /**
              * Require reply (acknowledgment for reliable operation).
              */
-            REPLY_REQUIRED = 0x01,
+            QOS_REPLY_REQUIRED = 0x01,
             /**
              * Best-effort option (no reply).
              */
-            BESY_EFFORT = 0x02,
+            QOS_BESY_EFFORT = 0x02,
             /**
              * Process option.
              */
-            PROCESS = 0x04,
+            QOS_PROCESS = 0x04,
             /**
              * Initialize option.
              */
-            INIT = 0x08,
+            QOS_INIT = 0x08,
             /**
              * Destroy option.
              */
-            DESTROY = 0x10,
+            QOS_DESTROY = 0x10,
             /**
              * Share data option.
              */
-            SHARE = 0x20,
+            QOS_SHARE = 0x20,
             /**
              * Get.
              */
-            GET = 0x40,
+            QOS_GET = 0x40,
             /**
              * Get-put.
              */
-            GET_PUT = 0x80
+            QOS_GET_PUT = 0x80
         };
 
         typedef int32 pvAccessID;
@@ -548,7 +548,29 @@ namespace epics {
         	 */
         	virtual void response(Transport* transport, int8 version, ByteBuffer* payloadBuffer) = 0;
         
-        };        
+        }; 
+
+        /**
+         * A request that expects an response multiple responses.
+         * Responses identified by its I/O ID. 
+         * This interface needs to be extended (to provide method called on response).
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         * @version $Id: SubscriptionRequest.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+         */
+        class SubscriptionRequest /*: public ResponseRequest*/ {
+        public:
+        	/**
+        	 * Update (e.g. after some time of unresponsiveness) - report current value.
+        	 */
+        	virtual void updateSubscription() = 0;
+        	
+        	/**
+        	 * Rescubscribe (e.g. when server was restarted)
+        	 * @param transport new transport to be used.
+        	 */
+        	virtual void resubscribeSubscription(Transport* transport) = 0;
+        };
+
 
     }
 }

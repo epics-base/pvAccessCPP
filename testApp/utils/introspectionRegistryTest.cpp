@@ -186,15 +186,7 @@ void testRegistryReset()
 	registry->reset();
 
 	short id = 0;
-	try //there is no elements so exception will be thrown
-	{
-		static_cast<ScalarConstPtr>(registry->getIntrospectionInterface(id));
-	}
-	catch(EpicsException& e)
-	{
-		return;
-	}
-	assert(false);
+    assert(static_cast<ScalarConstPtr>(registry->getIntrospectionInterface(id)) == 0);
 }
 
 void serialize(FieldConstPtr field, IntrospectionRegistry* registry)
@@ -415,10 +407,17 @@ void testSerializeStatus()
 
 int main(int argc, char *argv[])
 {
+    	cout << "DONE0" << endl;
+    	cout << "DONE0" << endl;
+    	cout << "DONE0" << endl;
+    	cout << "DONE0" << endl;
+    	cout << "DONE0" << endl;
+/*
 	pvDataCreate = getPVDataCreate();
 	statusCreate = getStatusCreate();
 	fieldCreate = getFieldCreate();
 	standardField = getStandardField();
+	cout << "DONE1" << endl;
 
     flusher = new SerializableControlImpl();
     control = new DeserializableControlImpl();
@@ -452,6 +451,6 @@ int main(int argc, char *argv[])
 	if(serverRegistry) delete serverRegistry;
 
     getShowConstructDestruct()->showDeleteStaticExit(stdout);
-	cout << "DONE" << endl;
+	cout << "DONE" << endl;*/
 	return 0;
 }

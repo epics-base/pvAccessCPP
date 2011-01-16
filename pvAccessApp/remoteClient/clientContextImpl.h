@@ -16,6 +16,7 @@ namespace epics {
     namespace pvAccess {
         
         class BeaconHandler;
+        class ClientContextImpl;
         
         class ChannelImpl :
                     public Channel ,
@@ -28,7 +29,15 @@ namespace epics {
                         	virtual void destroyChannel(bool force) = 0;
 	                        virtual void connectionCompleted(pvAccessID sid/*,  rights*/) = 0;
 	                        virtual void createChannelFailed() = 0;
+	                        virtual ClientContextImpl* getContext() = 0;
+	                        
+                        	virtual pvAccessID getServerChannelID() = 0;
+                        	virtual void registerResponseRequest(ResponseRequest* responseRequest) = 0;
+                        	virtual void unregisterResponseRequest(ResponseRequest* responseRequest) = 0;
+                            virtual Transport* checkAndGetTransport() = 0;
 
+                            static Status* channelDestroyed;
+                            static Status* channelDisconnected;
 
                     };
         

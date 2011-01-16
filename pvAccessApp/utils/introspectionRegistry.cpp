@@ -41,9 +41,7 @@ FieldConstPtr IntrospectionRegistry::getIntrospectionInterface(const short id)
 	Lock guard(&_mutex);
 	_registryIter = _registry.find(id);
 	if(_registryIter == _registry.end())
-	{
-		throw EpicsException("missing interface with given id");
-	}
+	   return NULL;
 	return _registryIter->second;
 }
 
@@ -121,32 +119,27 @@ bool IntrospectionRegistry::registryContainsValue(FieldConstPtr field, short& ke
 
 void IntrospectionRegistry::serialize(FieldConstPtr field, ByteBuffer* buffer, SerializableControl* control)
 {
-	checkBufferAndSerializeControl(buffer, control);
 	serialize(field, NULL, buffer, control, this);
 }
 
 FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, DeserializableControl* control)
 {
-	checkBufferAndDeserializeControl(buffer, control);
 	return deserialize(buffer, control, this);
 }
 
 void IntrospectionRegistry::serializeFull(FieldConstPtr field, ByteBuffer* buffer, SerializableControl* control)
 {
-	checkBufferAndSerializeControl(buffer, control);
 	serialize(field, NULL, buffer, control, NULL);
 }
 
 FieldConstPtr IntrospectionRegistry::deserializeFull(ByteBuffer* buffer, DeserializableControl* control)
 {
-	checkBufferAndDeserializeControl(buffer, control);
 	return deserialize(buffer, control, NULL);
 }
 
 void IntrospectionRegistry::serialize(FieldConstPtr field, StructureConstPtr parent, ByteBuffer* buffer,
 							  SerializableControl* control, IntrospectionRegistry* registry)
 {
-	checkBufferAndSerializeControl(buffer, control);
 	if (field == NULL)
 	{
 		control->ensureBuffer(1);
@@ -225,11 +218,6 @@ void IntrospectionRegistry::serialize(FieldConstPtr field, StructureConstPtr par
 void IntrospectionRegistry::serializeStructureField(ByteBuffer* buffer, SerializableControl* control,
 		IntrospectionRegistry* registry, StructureConstPtr structure)
 {
-	checkBufferAndSerializeControl(buffer, control);
-	if(structure == NULL)
-	{
-		throw EpicsException("null structure provided");
-	}
 	SerializeHelper::serializeString(structure->getFieldName(), buffer, control);
 	FieldConstPtrArray fields = structure->getFields();
 	SerializeHelper::writeSize(structure->getNumberFields(), buffer, control);
@@ -241,7 +229,6 @@ void IntrospectionRegistry::serializeStructureField(ByteBuffer* buffer, Serializ
 
 FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, DeserializableControl* control, IntrospectionRegistry* registry)
 {
-	checkBufferAndDeserializeControl(buffer, control);
 	control->ensureData(1);
 	const int8 typeCode = buffer->getByte();
 	if(typeCode == IntrospectionRegistry::NULL_TYPE_CODE)
@@ -250,10 +237,6 @@ FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, Deserializa
 	}
 	else if(typeCode == IntrospectionRegistry::ONLY_ID_TYPE_CODE)
 	{
-		if (registry == NULL)
-		{
-			throw EpicsException("deserialization provided chached ID, but no registry provided");
-		}
 		control->ensureData(sizeof(int16)/sizeof(int8));
 		return registry->getIntrospectionInterface(buffer->getShort());
 	}
@@ -261,10 +244,6 @@ FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, Deserializa
 	// could also be a mask
 	if(typeCode == IntrospectionRegistry::FULL_WITH_ID_TYPE_CODE)
 	{
-		if(registry == NULL)
-		{
-			throw EpicsException("deserialization provided chached ID, but no registry provided");
-		}
 		control->ensureData(sizeof(int16)/sizeof(int8));
 		const short key = buffer->getShort();
 		FieldConstPtr field = deserialize(buffer, control, registry);
@@ -301,15 +280,14 @@ FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, Deserializa
 	}
 	default:
 	{
-		std::string msg = "unsupported type: " + type;
-		throw EpicsException(msg);
+	   // TODO log
+	   return NULL;
 	}
 	}
 }
 
 StructureConstPtr IntrospectionRegistry::deserializeStructureField(ByteBuffer* buffer, DeserializableControl* control, IntrospectionRegistry* registry)
 {
-	checkBufferAndDeserializeControl(buffer, control);
 	const String structureFieldName = SerializeHelper::deserializeString(buffer, control);
 	const int32 size = SerializeHelper::readSize(buffer, control);
 	FieldConstPtrArray fields = NULL;
@@ -329,7 +307,6 @@ StructureConstPtr IntrospectionRegistry::deserializeStructureField(ByteBuffer* b
 
 void IntrospectionRegistry::serializeStructure(ByteBuffer* buffer, SerializableControl* control, PVStructurePtr pvStructure)
 {
-	checkBufferAndSerializeControl(buffer, control);
 	if (pvStructure == NULL)
 	{
 		serialize(NULL, buffer, control);
@@ -343,7 +320,6 @@ void IntrospectionRegistry::serializeStructure(ByteBuffer* buffer, SerializableC
 
 PVStructurePtr IntrospectionRegistry::deserializeStructure(ByteBuffer* buffer, DeserializableControl* control)
 {
-	checkBufferAndDeserializeControl(buffer, control);
 	PVStructurePtr pvStructure = NULL;
 	FieldConstPtr structureField = deserialize(buffer, control);
 	if (structureField != NULL)
@@ -356,21 +332,18 @@ PVStructurePtr IntrospectionRegistry::deserializeStructure(ByteBuffer* buffer, D
 
 void IntrospectionRegistry::serializePVRequest(ByteBuffer* buffer, SerializableControl* control, PVStructurePtr pvRequest)
 {
-	checkBufferAndSerializeControl(buffer, control);
 	// for now ordinary structure, later can be changed
 	serializeStructure(buffer, control, pvRequest);
 }
 
 PVStructurePtr IntrospectionRegistry::deserializePVRequest(ByteBuffer* buffer, DeserializableControl* control)
 {
-	checkBufferAndDeserializeControl(buffer, control);
 	// for now ordinary structure, later can be changed
 	return deserializeStructure(buffer, control);
 }
 
 PVStructurePtr IntrospectionRegistry::deserializeStructureAndCreatePVStructure(ByteBuffer* buffer, DeserializableControl* control)
 {
-	checkBufferAndDeserializeControl(buffer, control);
 	FieldConstPtr field = deserialize(buffer, control);
 	if (field == NULL)
 	{
@@ -381,46 +354,14 @@ PVStructurePtr IntrospectionRegistry::deserializeStructureAndCreatePVStructure(B
 
 void IntrospectionRegistry::serializeStatus(ByteBuffer* buffer, SerializableControl* control, Status* status)
 {
-	checkBufferAndSerializeControl(buffer, control);
-	if(status != NULL)
-	{
-		status->serialize(buffer, control);
-	}
-	else
-	{
-		throw EpicsException("null status provided");
-	}
+    status->serialize(buffer, control);
 }
 
 Status* IntrospectionRegistry::deserializeStatus(ByteBuffer* buffer, DeserializableControl* control)
 {
-	checkBufferAndDeserializeControl(buffer, control);
 	return _statusCreate->deserializeStatus(buffer, control);
 }
 
-void IntrospectionRegistry::checkBufferAndSerializeControl(ByteBuffer* buffer, SerializableControl* control)
-{
-	if(buffer == NULL)
-	{
-		throw EpicsException("null buffer provided");
-	}
-	if(control == NULL)
-	{
-		throw EpicsException("null control provided");
-	}
-}
-
-void IntrospectionRegistry::checkBufferAndDeserializeControl(ByteBuffer* buffer, DeserializableControl* control)
-{
-	if(buffer == NULL)
-	{
-		throw EpicsException("null buffer provided");
-	}
-	if(control == NULL)
-	{
-		throw EpicsException("null control provided");
-	}
-}
 
 }}
 

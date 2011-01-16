@@ -579,7 +579,7 @@ void ChannelSearchManager::initializeSendBuffer()
 	sendBuffer.put(REQUIRE_REPLY ? (byte)QoS.REPLY_REQUIRED.getMaskValue() : (byte)QoS.DEFAULT.getMaskValue());
 	*/
 
-	_sendBuffer->putByte((int8)DEFAULT);
+	_sendBuffer->putByte((int8)QOS_DEFAULT);
 	_sendBuffer->putShort((int16)0);	// count
 }
 

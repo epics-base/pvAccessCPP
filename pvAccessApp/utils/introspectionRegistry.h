@@ -242,8 +242,6 @@ typedef std::map<const short,const Field*> registryMap_t;
 		static FieldCreate* _fieldCreate;
 
 		bool registryContainsValue(FieldConstPtr field, short& key);
-		static void checkBufferAndSerializeControl(ByteBuffer* buffer, SerializableControl* control);
-		static void checkBufferAndDeserializeControl(ByteBuffer* buffer, DeserializableControl* control);
 	};
 
 }}
