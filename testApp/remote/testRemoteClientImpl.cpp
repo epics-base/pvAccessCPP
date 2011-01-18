@@ -124,7 +124,6 @@ public:
 			transport->ensureData(1);
 			int8 qos = payloadBuffer->getByte();
 			Status* status = statusCreate->deserializeStatus(payloadBuffer, transport);
-
 			if (qos & QOS_INIT)
 			{
 				initResponse(transport, version, payloadBuffer, qos, status);
@@ -439,7 +438,7 @@ class ChannelImplGet : public BaseRequestImpl, public ChannelGet
 			m_channelGetRequester->channelGetConnect(status, this, 0, 0);
 			return true;
 		}
-		
+
 		// create data and its bitSet
 		m_data = transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport);
 		m_bitSet = new BitSet(m_data->getNumberFields());
@@ -2682,7 +2681,13 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             epics::pvData::PVStructure *pvStructure,epics::pvData::BitSet *bitSet)
     {
         std::cout << "channelGetConnect(" << status->toString() << ")" << std::endl;
-
+        if (pvStructure)
+        {
+        	String st;
+        	pvStructure->toString(&st);
+            std::cout << st << std::endl;
+        }
+        
         // TODO sync
         m_channelGet = channelGet;
         m_pvStructure = pvStructure;
@@ -2823,6 +2828,7 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
 
 };
 
+
 int main(int argc,char *argv[])
 {
     TestClientContextImpl* context = new TestClientContextImpl();
@@ -2846,11 +2852,13 @@ int main(int argc,char *argv[])
     epicsThreadSleep ( 3.0 );
 
     ChannelGetRequesterImpl channelGetRequesterImpl;
-    ChannelGet* channelGet = channel->createChannelGet(&channelGetRequesterImpl, 0);
+    PVStructure* pvRequest = getCreateRequest()->createRequest("field(timeStamp,value)",&channelGetRequesterImpl);
+    ChannelGet* channelGet = channel->createChannelGet(&channelGetRequesterImpl, pvRequest);
     epicsThreadSleep ( 3.0 );
     channelGet->get(false);
     epicsThreadSleep ( 3.0 );
     channelGet->destroy();
+    // TODO delete pvRequest
 /*
     ChannelPutRequesterImpl channelPutRequesterImpl;
     ChannelPut* channelPut = channel->createChannelPut(&channelPutRequesterImpl, 0);
