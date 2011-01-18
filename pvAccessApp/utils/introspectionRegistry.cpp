@@ -9,12 +9,16 @@ namespace epics { namespace pvAccess {
 const int8 IntrospectionRegistry::NULL_TYPE_CODE = (int8)-1;
 const int8 IntrospectionRegistry::ONLY_ID_TYPE_CODE = (int8)-2;
 const int8 IntrospectionRegistry::FULL_WITH_ID_TYPE_CODE = (int8)-3;
-PVDataCreate* IntrospectionRegistry::_pvDataCreate = getPVDataCreate();
-StatusCreate* IntrospectionRegistry::_statusCreate = getStatusCreate();
-FieldCreate* IntrospectionRegistry::_fieldCreate = getFieldCreate();
+PVDataCreate* IntrospectionRegistry::_pvDataCreate = 0;
+StatusCreate* IntrospectionRegistry::_statusCreate = 0;
+FieldCreate* IntrospectionRegistry::_fieldCreate = 0;
 
 IntrospectionRegistry::IntrospectionRegistry(bool serverSide) : _mutex(Mutex())
 {
+    // TODO not optimal
+	_pvDataCreate = getPVDataCreate();
+	_statusCreate = getStatusCreate();
+	_fieldCreate = getFieldCreate();
 
 	_direction = serverSide ? 1 : -1;
 	reset();
@@ -301,7 +305,7 @@ StructureConstPtr IntrospectionRegistry::deserializeStructureField(ByteBuffer* b
 	}
 
 	StructureConstPtr structure = _fieldCreate->createStructure(structureFieldName, size, fields);
-	delete [] fields;
+	//???????delete [] fields;
 	return structure;
 }
 
