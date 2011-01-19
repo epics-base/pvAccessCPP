@@ -407,12 +407,6 @@ void testSerializeStatus()
 
 int main(int argc, char *argv[])
 {
-    	cout << "DONE0" << endl;
-    	cout << "DONE0" << endl;
-    	cout << "DONE0" << endl;
-    	cout << "DONE0" << endl;
-    	cout << "DONE0" << endl;
-/*
 	pvDataCreate = getPVDataCreate();
 	statusCreate = getStatusCreate();
 	fieldCreate = getFieldCreate();
@@ -451,6 +445,6 @@ int main(int argc, char *argv[])
 	if(serverRegistry) delete serverRegistry;
 
     getShowConstructDestruct()->showDeleteStaticExit(stdout);
-	cout << "DONE" << endl;*/
+	cout << "DONE" << endl;
 	return 0;
 }
