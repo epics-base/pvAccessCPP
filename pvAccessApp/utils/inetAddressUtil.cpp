@@ -66,10 +66,10 @@ namespace epics {
     namespace pvAccess {
 
         void addDefaultBroadcastAddress(InetAddrVector* v, in_port_t p) {
-            osiSockAddr* pNewNode = new osiSockAddr;
-            pNewNode->ia.sin_family = AF_INET;
-            pNewNode->ia.sin_addr.s_addr = htonl(INADDR_BROADCAST);
-            pNewNode->ia.sin_port = htons(p);
+            osiSockAddr pNewNode;
+            pNewNode.ia.sin_family = AF_INET;
+            pNewNode.ia.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+            pNewNode.ia.sin_port = htons(p);
             v->push_back(pNewNode);
         }
 
@@ -84,7 +84,7 @@ namespace epics {
             struct ifreq* pIfreqList;
             struct ifreq* pifreq;
             struct ifreq ifrBuff;
-            osiSockAddr* pNewNode;
+            osiSockAddr pNewNode;
 
             InetAddrVector* retVector = new InetAddrVector();
 
@@ -157,16 +157,6 @@ namespace epics {
                  */
                 if(ifrBuff.ifr_flags&IFF_LOOPBACK) continue;
 
-                pNewNode = new osiSockAddr;
-                if(pNewNode==NULL) {
-                    errlogSevPrintf(errlogMajor,
-                            "getBroadcastAddresses(): no memory available for configuration");
-                    delete[] pIfreqList;
-                    if(retVector->size()==0) addDefaultBroadcastAddress(
-                            retVector, defaultPort);
-                    return retVector;
-                }
-
                 /*
                  * If this is an interface that supports
                  * broadcast fetch the broadcast address.
@@ -186,10 +176,9 @@ namespace epics {
                                 errlogMinor,
                                 "getBroadcastAddresses(): net intf \"%s\": bcast addr fetch fail",
                                 pifreq->ifr_name);
-                        delete pNewNode;
                         continue;
                     }
-                    pNewNode->sa = ifrBuff.ifr_broadaddr;
+                    pNewNode.sa = ifrBuff.ifr_broadaddr;
                 }
 #ifdef IFF_POINTOPOINT
                 else if(ifrBuff.ifr_flags&IFF_POINTOPOINT) {
@@ -201,10 +190,9 @@ namespace epics {
                                 errlogMinor,
                                 "getBroadcastAddresses(): net intf \"%s\": pt to pt addr fetch fail",
                                 pifreq->ifr_name);
-                        delete pNewNode;
                         continue;
                     }
-                    pNewNode->sa = ifrBuff.ifr_dstaddr;
+                    pNewNode.sa = ifrBuff.ifr_dstaddr;
                 }
 #endif
                 else {
@@ -212,10 +200,9 @@ namespace epics {
                             errlogMinor,
                             "getBroadcastAddresses(): net intf \"%s\": not point to point or bcast?",
                             pifreq->ifr_name);
-                    delete pNewNode;
                     continue;
                 }
-                pNewNode->ia.sin_port = htons(defaultPort);
+                pNewNode.ia.sin_port = htons(defaultPort);
 
                 retVector->push_back(pNewNode);
             }
@@ -296,15 +283,15 @@ namespace epics {
             size_t subEnd;
             while((subEnd = list.find(' ', subStart))!=String::npos) {
                 String address = list.substr(subStart, (subEnd-subStart));
-                osiSockAddr* addr = new osiSockAddr;
-                aToIPAddr(address.c_str(), defaultPort, &addr->ia);
+                osiSockAddr addr;
+                aToIPAddr(address.c_str(), defaultPort, &addr.ia);
                 iav->push_back(addr);
                 subStart = list.find_first_not_of(" \t\r\n\v", subEnd);
             }
 
             if(subStart!=String::npos&&list.length()>0) {
-                osiSockAddr* addr = new osiSockAddr;
-                aToIPAddr(list.substr(subStart).c_str(), defaultPort, &addr->ia);
+                osiSockAddr addr;
+                aToIPAddr(list.substr(subStart).c_str(), defaultPort, &addr.ia);
                 iav->push_back(addr);
             }
 
@@ -315,18 +302,18 @@ namespace epics {
             return iav;
         }
 
-        const String inetAddressToString(const osiSockAddr *addr,
+        const String inetAddressToString(const osiSockAddr &addr,
                 bool displayPort, bool displayHex) {
             stringstream saddr;
 
-            int ipa = ntohl(addr->ia.sin_addr.s_addr);
+            int ipa = ntohl(addr.ia.sin_addr.s_addr);
 
             saddr<<((int)(ipa>>24)&0xFF)<<'.';
             saddr<<((int)(ipa>>16)&0xFF)<<'.';
             saddr<<((int)(ipa>>8)&0xFF)<<'.';
             saddr<<((int)ipa&0xFF);
-            if(displayPort) saddr<<":"<<ntohs(addr->ia.sin_port);
-            if(displayHex) saddr<<" ("<<hex<<ntohl(addr->ia.sin_addr.s_addr)
+            if(displayPort) saddr<<":"<<ntohs(addr.ia.sin_port);
+            if(displayHex) saddr<<" ("<<hex<<ntohl(addr.ia.sin_addr.s_addr)
                     <<")";
 
             return saddr.str();

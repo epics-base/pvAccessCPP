@@ -49,6 +49,8 @@ public:
     DummyResponseHandler(Context* context) 
        : packets(0) {
     }
+    
+    virtual ~DummyResponseHandler() {}
 
     int getPackets() {
         return packets;

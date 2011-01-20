@@ -289,6 +289,8 @@ namespace epics {
          */
         class ResponseHandler {
         public:
+            virtual ~ResponseHandler() {}
+            
             /**
              * Handle response.
              * @param[in] responseFrom  remote address of the responder, <code>0</code> if unknown.
@@ -504,6 +506,7 @@ namespace epics {
          */
         class ResponseRequest {
         public:
+            virtual ~ResponseRequest() {}
 
             /**
              * Get I/O ID.
@@ -540,6 +543,8 @@ namespace epics {
          */
         class DataResponse : public ResponseRequest {
         public:
+            virtual ~DataResponse() {}
+
         	/**
         	 * Notification response.
         	 * @param transport
@@ -559,6 +564,8 @@ namespace epics {
          */
         class SubscriptionRequest /*: public ResponseRequest*/ {
         public:
+            virtual ~SubscriptionRequest() {}
+            
         	/**
         	 * Update (e.g. after some time of unresponsiveness) - report current value.
         	 */

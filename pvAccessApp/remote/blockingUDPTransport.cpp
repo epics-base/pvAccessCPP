@@ -57,10 +57,11 @@ namespace epics {
 
             delete _receiveBuffer;
             delete _sendBuffer;
+            delete _responseHandler;
         }
 
         void BlockingUDPTransport::start() {
-            String threadName = "UDP-receive "+inetAddressToString(&_bindAddress);
+            String threadName = "UDP-receive "+inetAddressToString(_bindAddress);
 
             errlogSevPrintf(errlogInfo, "Starting thread: %s",threadName.c_str());
 
@@ -82,7 +83,7 @@ namespace epics {
     
                 errlogSevPrintf(errlogInfo,
                     "UDP socket %s closed.",
-                    inetAddressToString(&_bindAddress).c_str());
+                    inetAddressToString(_bindAddress).c_str());
     
                 epicsSocketDestroy(_channel);
             }
@@ -160,7 +161,7 @@ namespace epics {
                         if(_ignoredAddresses!=0)
                         {
                             for(size_t i = 0; i <_ignoredAddresses->size(); i++)
-                            if(_ignoredAddresses->at(i)->ia.sin_addr.s_addr
+                            if(_ignoredAddresses->at(i).ia.sin_addr.s_addr
                                     ==fromAddress.ia.sin_addr.s_addr) {
                                 ignore = true;
                                 break;
@@ -264,7 +265,7 @@ namespace epics {
             for(size_t i = 0; i<_sendAddresses->size(); i++) {
                 buffer->flip();
                 int retval = sendto(_channel, buffer->getArray(),
-                        buffer->getLimit(), 0, &(_sendAddresses->at(i)->sa),
+                        buffer->getLimit(), 0, &(_sendAddresses->at(i).sa),
                         sizeof(sockaddr));
                 {
                     if(retval<0) errlogSevPrintf(errlogMajor,

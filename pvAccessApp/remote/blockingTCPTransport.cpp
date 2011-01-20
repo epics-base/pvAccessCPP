@@ -140,12 +140,14 @@ namespace epics {
             delete _sendQueueMutex;
             delete _verifiedMutex;
             delete _monitorMutex;
+            
+            delete _responseHandler;
         }
 
         void BlockingTCPTransport::start() {
             _sendThreadRunning = true;
             String threadName = "TCP-receive "+inetAddressToString(
-                    _socketAddress);
+                   * _socketAddress);
 
             errlogSevPrintf(errlogInfo, "Starting thread: %s",
                     threadName.c_str());
@@ -155,7 +157,7 @@ namespace epics {
                             epicsThreadStackMedium),
                     BlockingTCPTransport::rcvThreadRunner, this);
 
-            threadName = "TCP-send "+inetAddressToString(_socketAddress);
+            threadName = "TCP-send "+inetAddressToString(*_socketAddress);
 
             errlogSevPrintf(errlogInfo, "Starting thread: %s",
                     threadName.c_str());
@@ -506,7 +508,7 @@ namespace epics {
                             errlogSevPrintf(
                                     errlogMinor,
                                     "Invalid header received from client %s, disconnecting...",
-                                    inetAddressToString(_socketAddress).c_str());
+                                    inetAddressToString(*_socketAddress).c_str());
                             close(true);
                             return;
                         }
@@ -552,7 +554,7 @@ namespace epics {
                                     errlogMajor,
                                     "Unknown packet type %d, received from client %s, disconnecting...",
                                     type,
-                                    inetAddressToString(_socketAddress).c_str());
+                                    inetAddressToString(*_socketAddress).c_str());
                             close(true);
                             return;
                         }
@@ -690,7 +692,7 @@ namespace epics {
                 //errlogSevPrintf(errlogInfo,
                 //        "Sending %d of total %d bytes in the packet to %s.",
                 //        bytesToSend, limit,
-                //        inetAddressToString(_socketAddress).c_str());
+                //        inetAddressToString(*_socketAddress).c_str());
 
                 while(buffer->getRemaining()>0) {
                     ssize_t bytesSent = ::send(_channel,
@@ -716,7 +718,7 @@ namespace epics {
 
                         //errlogSevPrintf(errlogInfo,
                         //        "Send buffer full for %s, waiting...",
-                        //        inetAddressToString(_socketAddress));
+                        //        inetAddressToString(*_socketAddress));
                         return false;
                     }
 
@@ -838,7 +840,7 @@ namespace epics {
             freeSendBuffers();
 
             errlogSevPrintf(errlogInfo, "Connection to %s closed.",
-                    inetAddressToString(_socketAddress).c_str());
+                    inetAddressToString(*_socketAddress).c_str());
 
             if(_channel!=INVALID_SOCKET) {
                 epicsSocketDestroy(_channel);

@@ -57,6 +57,8 @@ public:
     DummyResponseHandler(Context* ctx)
     { }
 
+    virtual ~DummyResponseHandler() {}
+
     virtual void handleResponse(osiSockAddr* responseFrom,
             Transport* transport, int8 version, int8 command, int payloadSize,
             ByteBuffer* payloadBuffer) {

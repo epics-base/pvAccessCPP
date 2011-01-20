@@ -655,6 +655,7 @@ class ChannelPutImpl : public BaseRequestImpl, public ChannelPut
 
 PVDATA_REFCOUNT_MONITOR_DEFINE(channelGetField);
 
+// NOTE: this instance is not returned as Request, so it must self-destruct
 class ChannelGetFieldRequestImpl : public DataResponse, public TransportSender
 {
     private:
@@ -775,6 +776,8 @@ class ChannelGetFieldRequestImpl : public DataResponse, public TransportSender
 			// always cancel request
 //			cancel();
 //		}
+        
+        cancel();
 
 	}
 
@@ -1251,7 +1254,19 @@ class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoD
 
 	public:
 
-	~ClientResponseHandler() {
+	virtual ~ClientResponseHandler() {
+	   delete m_handlerTable[ 0];
+	   delete m_handlerTable[ 1];
+	   delete m_handlerTable[ 2];
+	   delete m_handlerTable[ 3];
+	   delete m_handlerTable[ 4];
+	   delete m_handlerTable[ 5];
+	   delete m_handlerTable[ 6];
+	   delete m_handlerTable[ 7];
+	   delete m_handlerTable[ 8];
+	   delete m_handlerTable[ 9];
+	   delete m_handlerTable[18];
+	   
 	   delete[] m_handlerTable;
 	}
 
@@ -1314,27 +1329,6 @@ class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoD
 		m_handlerTable[command]->handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 	}
 };
-
-        class TCI : public TransportSendControl {
-        public:
-            virtual void flushSerializeBuffer() {
-            }
-
-            virtual void ensureBuffer(int size) {
-            }
-
-            virtual void startMessage(int8 command, int ensureCapacity){}
-            virtual void endMessage() {}
-
-            virtual void flush(bool lastMessageCompleted) {}
-
-            virtual void setRecipient(const osiSockAddr& sendTo) {}
-        };
-
-
-
-
-
 
 
 
@@ -1534,7 +1528,7 @@ class TestChannelImpl : public ChannelImpl {
 		}
 		else
 		{
-		  return inetAddressToString(m_transport->getRemoteAddress());
+		  return inetAddressToString(*m_transport->getRemoteAddress());
 		}
 	}
 
@@ -1840,7 +1834,7 @@ class TestChannelImpl : public ChannelImpl {
 			if (sockAddrAreIdentical(transport->getRemoteAddress(), serverAddress))
 			{
 				m_requester->message("More than one channel with name '" + m_name +
-				  			   "' detected, additional response from: " + inetAddressToString(serverAddress), warningMessage);
+				  			   "' detected, additional response from: " + inetAddressToString(*serverAddress), warningMessage);
 				return;
 			}
 		}
@@ -2184,6 +2178,14 @@ class TestChannelImpl : public ChannelImpl {
     }
 
     virtual Configuration* getConfiguration() {
+/*
+TODO
+		final ConfigurationProvider configurationProvider = ConfigurationFactory.getProvider();
+		Configuration config = configurationProvider.getConfiguration("pvAccess-client");
+		if (config == null)
+			config = configurationProvider.getConfiguration("system");
+		return config;
+*/
         return m_configuration;
     }
 
@@ -2289,15 +2291,12 @@ class TestChannelImpl : public ChannelImpl {
     ~TestClientContextImpl() {};
 
     void loadConfiguration() {
-        // TODO
-        /*
-		m_addressList = config->getPropertyAsString("EPICS4_CA_ADDR_LIST", m_addressList);
-		m_autoAddressList = config->getPropertyAsBoolean("EPICS4_CA_AUTO_ADDR_LIST", m_autoAddressList);
-		m_connectionTimeout = config->getPropertyAsFloat("EPICS4_CA_CONN_TMO", m_connectionTimeout);
-		m_beaconPeriod = config->getPropertyAsFloat("EPICS4_CA_BEACON_PERIOD", m_beaconPeriod);
-		m_broadcastPort = config->getPropertyAsInteger("EPICS4_CA_BROADCAST_PORT", m_broadcastPort);
-		m_receiveBufferSize = config->getPropertyAsInteger("EPICS4_CA_MAX_ARRAY_BYTES", m_receiveBufferSize);
-        */
+		m_addressList = m_configuration->getPropertyAsString("EPICS4_CA_ADDR_LIST", m_addressList);
+		m_autoAddressList = m_configuration->getPropertyAsBoolean("EPICS4_CA_AUTO_ADDR_LIST", m_autoAddressList);
+		m_connectionTimeout = m_configuration->getPropertyAsFloat("EPICS4_CA_CONN_TMO", m_connectionTimeout);
+		m_beaconPeriod = m_configuration->getPropertyAsFloat("EPICS4_CA_BEACON_PERIOD", m_beaconPeriod);
+		m_broadcastPort = m_configuration->getPropertyAsInteger("EPICS4_CA_BROADCAST_PORT", m_broadcastPort);
+		m_receiveBufferSize = m_configuration->getPropertyAsInteger("EPICS4_CA_MAX_ARRAY_BYTES", m_receiveBufferSize);
     }
 
     void internalInitialize() {
@@ -2322,6 +2321,7 @@ class TestChannelImpl : public ChannelImpl {
 
 		// quary broadcast addresses of all IFs
         SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, 0);
+        if (socket == INVALID_SOCKET) return false;
         auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(socket, m_broadcastPort));
         epicsSocketDestroy (socket);
 
@@ -2346,7 +2346,7 @@ class TestChannelImpl : public ChannelImpl {
         listenLocalAddress.ia.sin_port = htons(m_broadcastPort);
         listenLocalAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
-		BlockingUDPConnector* broadcastConnector = new BlockingUDPConnector(true, true);
+		auto_ptr<BlockingUDPConnector> broadcastConnector(new BlockingUDPConnector(true, true));
 		m_broadcastTransport = (BlockingUDPTransport*)broadcastConnector->connect(
 					0, new ClientResponseHandler(this),
 					listenLocalAddress, CA_MINOR_PROTOCOL_REVISION,
@@ -2361,7 +2361,7 @@ class TestChannelImpl : public ChannelImpl {
         undefinedAddress.ia.sin_port = htons(0);
         undefinedAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
-		BlockingUDPConnector* searchConnector = new BlockingUDPConnector(false, true);
+		auto_ptr<BlockingUDPConnector> searchConnector(new BlockingUDPConnector(false, true));
 		m_searchTransport = (BlockingUDPTransport*)searchConnector->connect(
 									0, new ClientResponseHandler(this),
 									undefinedAddress, CA_MINOR_PROTOCOL_REVISION,
@@ -3072,11 +3072,11 @@ int main(int argc,char *argv[])
     epicsThreadSleep ( 1.0 );
 
     channel->printInfo();
-/*
+
     GetFieldRequesterImpl getFieldRequesterImpl;
     channel->getField(&getFieldRequesterImpl, "");
     epicsThreadSleep ( 1.0 );
-
+/*
     ChannelProcessRequesterImpl channelProcessRequester;
     ChannelProcess* channelProcess = channel->createChannelProcess(&channelProcessRequester, 0);
     epicsThreadSleep ( 1.0 );

@@ -25,7 +25,7 @@ namespace epics {
                 short transportRevision, int16 priority) {
                     
             errlogSevPrintf(errlogInfo, "Creating datagram socket to: %s",
-                    inetAddressToString(&bindAddress).c_str());
+                    inetAddressToString(bindAddress).c_str());
 
             SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
             if(socket==INVALID_SOCKET) {
