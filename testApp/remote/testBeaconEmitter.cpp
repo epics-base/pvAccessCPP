@@ -56,36 +56,26 @@ void testBeaconEmitter()
 {
     ContextImpl ctx;
     DummyResponseHandler drh(&ctx);
-/*    SOCKET mysocket;
-    if ((mysocket = socket (AF_INET, SOCK_DGRAM, 0)) == -1)
-    {
-    	assert(false);
-    }
-    InetAddrVector* broadcastAddresses = getBroadcastAddresses(mysocket);*/
 
+    SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, 0);
+    auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(socket, 5067));
+    epicsSocketDestroy (socket);
 
-    InetAddrVector* broadcastAddresses = new InetAddrVector;
-    osiSockAddr* addr = new osiSockAddr;
-    addr->ia.sin_family = AF_INET;
-    addr->ia.sin_port = htons(5067);
-    if(inet_aton("255.255.255.255",&addr->ia.sin_addr)==0)
-    {
-    	assert(false);
-    }
-    broadcastAddresses->push_back(addr);
-    BlockingUDPConnector connector(true, broadcastAddresses, true);
+    BlockingUDPConnector connector(true, true);
 
     osiSockAddr bindAddr;
     bindAddr.ia.sin_family = AF_INET;
     bindAddr.ia.sin_port = htons(5066);
     bindAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-    Transport* transport = connector.connect(NULL, &drh, bindAddr, 1, 50);
+    
+    BlockingUDPTransport* transport = (BlockingUDPTransport*)connector.connect(NULL, &drh, bindAddr, 1, 50);
+    transport->setBroadcastAddresses(broadcastAddresses.get());
 
     cout<<"Sending beacons"<<endl;
     BeaconEmitter beaconEmitter(transport, transport->getRemoteAddress());
     beaconEmitter.start();
 
-    while(1) sleep(1);
+    epicsThreadSleep (60.0);
 
     delete transport;
 }

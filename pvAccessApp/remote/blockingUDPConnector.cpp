@@ -9,9 +9,6 @@
 #include "blockingUDP.h"
 #include "remote.h"
 
-/* pvData */
-#include <epicsException.h>
-
 /* EPICSv3 */
 #include <errlog.h>
 #include <osiSock.h>
@@ -26,6 +23,7 @@ namespace epics {
         Transport* BlockingUDPConnector::connect(TransportClient* client,
                 ResponseHandler* responseHandler, osiSockAddr& bindAddress,
                 short transportRevision, int16 priority) {
+                    
             errlogSevPrintf(errlogInfo, "Creating datagram socket to: %s",
                     inetAddressToString(&bindAddress).c_str());
 
@@ -33,40 +31,32 @@ namespace epics {
             if(socket==INVALID_SOCKET) {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                errlogSevPrintf(errlogMajor, "Error creating socket: %s",
-                        errStr);
+                errlogSevPrintf(errlogMajor, "Error creating socket: %s", errStr);
+                return 0;
             }
 
             int optval = _broadcast ? 1 : 0;
-            int retval = ::setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &optval,
-                    sizeof(optval));
-            if(retval<0) errlogSevPrintf(errlogMajor,
-                    "Error setting SO_BROADCAST: %s", strerror(errno));
-
-            // set the socket options
+            int retval = ::setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &optval, sizeof(optval));
+            if(retval<0)
+            {
+                errlogSevPrintf(errlogMajor, "Error setting SO_BROADCAST: %s", strerror(errno));
+                epicsSocketDestroy (socket);
+                return 0;
+            }
+            
+            // set SO_REUSEADDR or SO_REUSEPORT, OS dependant
             if (_reuseSocket)
                 epicsSocketEnableAddressUseForDatagramFanout(socket);
-/*
-            optval = _reuseSocket ? 1 : 0;
-            // or SO_REUSEADDR, OS dependant
-            retval = ::setsockopt(socket, SOL_SOCKET, SO_REUSEPORT, &optval, 
-                    sizeof(optval));
-            if(retval<0) errlogSevPrintf(errlogMajor,
-                    "Error setting SO_REUSEADDR: %s", strerror(errno));
-*/
 
-            retval = ::bind(socket, (sockaddr*)&(bindAddress.sa),
-                    sizeof(sockaddr));
+            retval = ::bind(socket, (sockaddr*)&(bindAddress.sa), sizeof(sockaddr));
             if(retval<0) {
-                errlogSevPrintf(errlogMajor, "Error binding socket: %s",
-                        strerror(errno));
-                THROW_BASE_EXCEPTION(strerror(errno));
+                errlogSevPrintf(errlogMajor, "Error binding socket: %s", strerror(errno));
+                epicsSocketDestroy (socket);
+                return 0;
             }
 
             // sockets are blocking by default
-
-            return new BlockingUDPTransport(responseHandler, socket,
-                    bindAddress, _sendAddresses, transportRevision);
+            return new BlockingUDPTransport(responseHandler, socket, bindAddress, transportRevision);
         }
 
     }

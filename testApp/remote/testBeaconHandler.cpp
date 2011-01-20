@@ -57,15 +57,15 @@ public:
 
     	transport->ensureData((2*sizeof(int16)+2*sizeof(int32)+128)/sizeof(int8));
 
-    	const int32 sequentalID = payloadBuffer->getShort() & 0x0000FFFF;
-    	const TimeStamp startupTimestamp(payloadBuffer->getInt() & 0x00000000FFFFFFFFL,(int32)(payloadBuffer->getInt() & 0x00000000FFFFFFFFL));
+    	/*const int32 sequentalID = */ payloadBuffer->getShort();
+    	const TimeStamp startupTimestamp(payloadBuffer->getInt(),payloadBuffer->getInt());
 
     	// 128-bit IPv6 address
     	osiSockAddr address;
       	decodeFromIPv6Address(payloadBuffer, &address);
 
       	// get port
-      	const int32 port = payloadBuffer->getShort() & 0xFFFF;
+      	const int32 port = payloadBuffer->getShort();
     	address.ia.sin_port = ntohs(port);
 
     	// accept given address if explicitly specified by sender
@@ -130,7 +130,7 @@ void testBeaconHandler()
 {
     ContextImpl ctx;
 	BeaconResponseHandler brh(&ctx);
-    BlockingUDPConnector connector(false, NULL, true);
+    BlockingUDPConnector connector(false, true);
 
     osiSockAddr bindAddr;
     bindAddr.ia.sin_family = AF_INET;
@@ -139,7 +139,7 @@ void testBeaconHandler()
     Transport* transport = connector.connect(NULL, &brh, bindAddr, 1, 50);
     (static_cast<BlockingUDPTransport*>(transport))->start();
 
-    while(1) sleep(1);
+    epicsThreadSleep (60.0);
 
     delete transport;
 }

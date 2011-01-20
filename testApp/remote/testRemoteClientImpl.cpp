@@ -7,7 +7,7 @@
 #include <iostream>
 #include <sstream>
 #include <showConstructDestruct.h>
-#include <lock.h>
+#include <lock.h>ƒ
 #include <standardPVField.h>
 #include <memory>
 
@@ -2309,6 +2309,7 @@ class TestChannelImpl : public ChannelImpl {
 
 		// setup UDP transport
 		initializeUDPTransport();
+		// TODO what if initialization failed!!!
 
 		// setup search manager
 		m_channelSearchManager = new ChannelSearchManager(this);
@@ -2317,73 +2318,63 @@ class TestChannelImpl : public ChannelImpl {
 	/**
 	 * Initialized UDP transport (broadcast socket and repeater connection).
 	 */
-	void initializeUDPTransport() {
-		// setup UDP transport
-		try
+	bool initializeUDPTransport() {
+
+		// quary broadcast addresses of all IFs
+        SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, 0);
+        auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(socket, m_broadcastPort));
+        epicsSocketDestroy (socket);
+
+		// set broadcast address list
+		if (!m_addressList.empty())
 		{
-			// where to bind (listen) address
-            osiSockAddr listenLocalAddress;
-            listenLocalAddress.ia.sin_family = AF_INET;
-            listenLocalAddress.ia.sin_port = htons(m_broadcastPort);
-            listenLocalAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+			// if auto is true, add it to specified list
+			InetAddrVector* appendList = 0;
+			if (m_autoAddressList)
+				appendList = broadcastAddresses.get();
 
-			// where to send address
-            SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, 0);
-            InetAddrVector* broadcastAddresses = getBroadcastAddresses(socket, m_broadcastPort);
-    cout<<"Broadcast addresses: "<<broadcastAddresses->size()<<endl;
-    for(size_t i = 0; i<broadcastAddresses->size(); i++) {
-        cout<<"Broadcast address: ";
-        cout<<inetAddressToString(broadcastAddresses->at(i))<<endl;
-    }
-           //InetAddrVector* broadcastAddresses = getSocketAddressList("255.255.255.255", m_broadcastPort);
-
-/// TOD !!!! addresses !!!!! by pointer and not copied
-
-			BlockingUDPConnector* broadcastConnector = new BlockingUDPConnector(true, broadcastAddresses, true);
-
-			m_broadcastTransport = (BlockingUDPTransport*)broadcastConnector->connect(
-						0, new ClientResponseHandler(this),
-						listenLocalAddress, CA_MINOR_PROTOCOL_REVISION,
-						CA_DEFAULT_PRIORITY);
-
-
-			BlockingUDPConnector* searchConnector = new BlockingUDPConnector(false, broadcastAddresses, true);
-
-			// undefined address
-            osiSockAddr undefinedAddress;
-            undefinedAddress.ia.sin_family = AF_INET;
-            undefinedAddress.ia.sin_port = htons(0);
-            undefinedAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-
-			m_searchTransport = (BlockingUDPTransport*)searchConnector->connect(
-										0, new ClientResponseHandler(this),
-										undefinedAddress, CA_MINOR_PROTOCOL_REVISION,
-										CA_DEFAULT_PRIORITY);
-
-			// set broadcast address list
-			if (!m_addressList.empty())
-			{
-				// if auto is true, add it to specified list
-				InetAddrVector* appendList = 0;
-				if (m_autoAddressList)
-					appendList = m_broadcastTransport->getSendAddresses();
-
-				InetAddrVector* list = getSocketAddressList(m_addressList, m_broadcastPort, appendList);
-				// TODO delete !!!!
-				if (list && list->size()) {
-					m_broadcastTransport->setBroadcastAddresses(list);
-					m_searchTransport->setBroadcastAddresses(list);
-				}
+			auto_ptr<InetAddrVector> list(getSocketAddressList(m_addressList, m_broadcastPort, appendList));
+			if (list.get() && list->size()) {
+			    // delete old list and take ownership of a new one
+			    broadcastAddresses = list;
 			}
-
-			m_broadcastTransport->start();
-			m_searchTransport->start();
-
 		}
-		catch (...)
-		{
-		  // TODO
-		}
+
+		// where to bind (listen) address
+        osiSockAddr listenLocalAddress;
+        listenLocalAddress.ia.sin_family = AF_INET;
+        listenLocalAddress.ia.sin_port = htons(m_broadcastPort);
+        listenLocalAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+
+		BlockingUDPConnector* broadcastConnector = new BlockingUDPConnector(true, true);
+		m_broadcastTransport = (BlockingUDPTransport*)broadcastConnector->connect(
+					0, new ClientResponseHandler(this),
+					listenLocalAddress, CA_MINOR_PROTOCOL_REVISION,
+					CA_DEFAULT_PRIORITY);
+		if (!m_broadcastTransport)
+		     return false;
+		m_broadcastTransport->setBroadcastAddresses(broadcastAddresses.get());
+
+		// undefined address
+        osiSockAddr undefinedAddress;
+        undefinedAddress.ia.sin_family = AF_INET;
+        undefinedAddress.ia.sin_port = htons(0);
+        undefinedAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+
+		BlockingUDPConnector* searchConnector = new BlockingUDPConnector(false, true);
+		m_searchTransport = (BlockingUDPTransport*)searchConnector->connect(
+									0, new ClientResponseHandler(this),
+									undefinedAddress, CA_MINOR_PROTOCOL_REVISION,
+									CA_DEFAULT_PRIORITY);
+		if (!m_searchTransport)
+		     return false;
+		m_searchTransport->setBroadcastAddresses(broadcastAddresses.get());
+		
+        // become active
+		m_broadcastTransport->start();
+		m_searchTransport->start();
+
+        return true;
 	}
 
     void internalDestroy() {
@@ -3077,10 +3068,11 @@ int main(int argc,char *argv[])
 
     ChannelRequesterImpl channelRequester;
     Channel* channel = context->getProvider()->createChannel("structureArrayTest", &channelRequester);
+
+    epicsThreadSleep ( 1.0 );
+
     channel->printInfo();
-
-    epicsThreadSleep ( 3.0 );
-
+/*
     GetFieldRequesterImpl getFieldRequesterImpl;
     channel->getField(&getFieldRequesterImpl, "");
     epicsThreadSleep ( 1.0 );
@@ -3112,7 +3104,7 @@ int main(int argc,char *argv[])
     //TODOchannelPut->destroy();
 
     // TODO delete pvRequest
-
+*/
 /*
     MonitorRequesterImpl monitorRequesterImpl;
     Monitor* monitor = channel->createMonitor(&monitorRequesterImpl, 0);
@@ -3130,7 +3122,7 @@ int main(int argc,char *argv[])
 
     monitor->destroy();
     */
-    epicsThreadSleep ( 20.0 );
+    epicsThreadSleep ( 3.0 );
     channel->destroy();
 
     context->destroy();

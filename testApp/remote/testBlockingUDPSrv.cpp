@@ -23,19 +23,15 @@ using std::dec;
 
 class ContextImpl : public Context {
 public:
-    ContextImpl() :
-        _tr(new TransportRegistry()), _timer(new Timer("server thread",
-                lowPriority)), _conf(new SystemConfigurationImpl()) {
-    }
+    ContextImpl() {}
+
     virtual ~ContextImpl() {
-        delete _tr;
-        delete _timer;
     }
     virtual Timer* getTimer() {
-        return _timer;
+        return 0;
     }
     virtual TransportRegistry* getTransportRegistry() {
-        return _tr;
+        return 0;
     }
     virtual Channel* getChannel(epics::pvAccess::pvAccessID) {
         return 0;
@@ -44,13 +40,8 @@ public:
         return 0;
     }
     virtual Configuration* getConfiguration() {
-        return _conf;
+        return 0;
     }
-
-private:
-    TransportRegistry* _tr;
-    Timer* _timer;
-    Configuration* _conf;
 };
 
 class DummyResponseHandler : public ResponseHandler {
@@ -102,7 +93,7 @@ void DummyResponseHandler::handleResponse(osiSockAddr* responseFrom,
 }
 
 void testBlockingUDPConnector() {
-    BlockingUDPConnector connector(false, NULL, true);
+    BlockingUDPConnector connector(false, true);
     ContextImpl ctx;
 
     DummyResponseHandler drh(&ctx);
@@ -127,7 +118,7 @@ void testBlockingUDPConnector() {
 }
 
 int main(int argc, char *argv[]) {
-    createFileLogger("testBlockingUDPSrv.log");
+//    createFileLogger("testBlockingUDPSrv.log");
 
     testBlockingUDPConnector();
     return (0);
