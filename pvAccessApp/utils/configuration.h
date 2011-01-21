@@ -12,10 +12,10 @@
 #include <envDefs.h>
 
 
+#include <string.h>
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include <string.h>
 #include <map>
 
 
@@ -23,13 +23,6 @@ namespace epics { namespace pvAccess {
 
 #define MAX_NAME_LENGHT 300
 
-struct conf_cmp_str
-{
-	bool operator()(char const *a, char const *b)
-	{
-		return strcmp(a, b) < 0;
-	}
-};
 
 /**
  * Properties
@@ -52,8 +45,8 @@ public:
 	void list();
 
 private:
-	std::map<const char*,const char* , conf_cmp_str> _properties;
-	std::map<const char*,const char* , conf_cmp_str>::iterator _propertiesIterator;
+	std::map<std::string,std::string> _properties;
+	std::map<std::string,std::string>::iterator _propertiesIterator;
 	std::ifstream* _infile;
 	std::ofstream* _outfile;
 	std::string _fileName;
@@ -181,8 +174,8 @@ public:
 	void registerConfiguration(const std::string name, const Configuration* configuration);
 private:
 	epics::pvData::Mutex _mutex;
-	std::map<const char*,const Configuration*, conf_cmp_str> _configs;
-	std::map<const char*,const Configuration*, conf_cmp_str>::iterator _configsIter;
+	std::map<std::string,const Configuration*> _configs;
+	std::map<std::string,const Configuration*>::iterator _configsIter;
 };
 
 /**

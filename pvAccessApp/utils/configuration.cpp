@@ -33,38 +33,24 @@ Properties::~Properties()
 	delete _infile;
 	delete _outfile;
 	//clear map
-	for(_propertiesIterator = _properties.begin() ;
-			_propertiesIterator != _properties.end();
-			_propertiesIterator++ )
-	{
-		delete [] _propertiesIterator->first;
-		delete [] _propertiesIterator->second;
-	}
 	_properties.clear();
 }
 
 void Properties::setProperty(const string key,const  string value)
 {
 	string oldValue;
-	_propertiesIterator = _properties.find(key.c_str());
+	_propertiesIterator = _properties.find(key);
 
 	if(_propertiesIterator != _properties.end()) //found in map
 	{
-		delete[] _propertiesIterator->first;
-		delete[] _propertiesIterator->second;
 		_properties.erase(_propertiesIterator);
 	}
-
-	char* chKey = new char[key.length() + 1];
-	strncpy(chKey,key.c_str(),key.length()+ 1);
-	char* chValue = new char[value.length() + 1];
-	strncpy(chValue,value.c_str(),value.length() + 1);
-	_properties[chKey] = chValue;
+	_properties[key] = value;
 }
 
 string Properties::getProperty(const string key)
 {
-	_propertiesIterator = _properties.find(key.c_str());
+	_propertiesIterator = _properties.find(key);
 	if(_propertiesIterator != _properties.end()) //found in map
 	{
 		return string(_propertiesIterator->second);
@@ -78,29 +64,18 @@ string Properties::getProperty(const string key)
 
 string Properties::getProperty(const string key, const string defaultValue)
 {
-	_propertiesIterator = _properties.find(key.c_str());
+	_propertiesIterator = _properties.find(key);
 	if(_propertiesIterator != _properties.end()) //found in map
 	{
 		return string(_propertiesIterator->second);
 	}
 
-	char* chKey = new char[key.length() + 1];
-	strncpy(chKey,key.c_str(),key.length()+ 1);
-	char* chValue = new char[defaultValue.length() + 1];
-	strncpy(chValue,defaultValue.c_str(),defaultValue.length() + 1);
-	_properties[chKey] = chValue;
+	_properties[key] = defaultValue;
 	return defaultValue;
 }
 
 void Properties::load()
 {
-	for (_propertiesIterator = _properties.begin() ;
-			_propertiesIterator != _properties.end();
-			_propertiesIterator++ )
-	{
-		delete [] _propertiesIterator->first;
-		delete [] _propertiesIterator->second;
-	}
 	_properties.clear();
 
 	try
@@ -148,12 +123,7 @@ void Properties::load()
 			truncate(key);
 			property = line.substr(pos + 1,line.length());
 			truncate(property);
-
-			char* chKey = new char[key.length() + 1];
-			strncpy(chKey,key.c_str(),key.length()+ 1);
-			char* chProperty = new char[property.length() +1];
-			strncpy(chProperty,property.c_str(),property.length() + 1);
-			_properties[chKey] = chProperty;
+			_properties[key] = property;
 		}
 	}
 	catch (ifstream::failure& e)
@@ -302,32 +272,24 @@ ConfigurationProviderImpl::ConfigurationProviderImpl()
 
 ConfigurationProviderImpl::~ConfigurationProviderImpl()
 {
-	for(_configsIter = _configs.begin() ;
-			_configsIter != _configs.end();
-			_configsIter++ )
-	{
-		delete [] _configsIter->first;
-	}
 	_configs.clear();
 }
 
 void ConfigurationProviderImpl::registerConfiguration(const string name, const Configuration* configuration)
 {
 	Lock guard(&_mutex);
-	_configsIter = _configs.find(name.c_str());
+	_configsIter = _configs.find(name);
 	if(_configsIter != _configs.end())
 	{
 		string msg = "configuration with name " + name + " already registered";
 		throw BaseException(msg.c_str(), __FILE__, __LINE__);
 	}
-	char* chKey = new char[name.length() + 1];
-	strncpy(chKey,name.c_str(),name.length()+ 1);
-	_configs[chKey] = configuration;
+	_configs[name] = configuration;
 }
 
 Configuration* ConfigurationProviderImpl::getConfiguration(const string name)
 {
-	_configsIter = _configs.find(name.c_str());
+	_configsIter = _configs.find(name);
 	if(_configsIter != _configs.end())
 	{
 		return const_cast<Configuration*>(_configsIter->second);
