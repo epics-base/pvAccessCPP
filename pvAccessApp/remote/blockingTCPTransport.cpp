@@ -130,6 +130,8 @@ namespace epics {
 
         BlockingTCPTransport::~BlockingTCPTransport() {
             close(true);
+            // TODO remove
+            epicsThreadSleep(3.0);
 
             delete _socketAddress;
             delete _sendQueue;
@@ -659,7 +661,7 @@ namespace epics {
             } catch(BaseException* e) {
                 String trace;
                 e->toString(trace);
-                errlogSevPrintf(errlogMajor, trace.c_str());
+                errlogSevPrintf(errlogMajor, "%s", trace.c_str());
                 // error, release lock
                 clearAndReleaseBuffer();
             } catch(...) {
@@ -703,7 +705,7 @@ namespace epics {
                         // connection lost
                         ostringstream temp;
                         temp<<"error in sending TCP data: "<<strerror(errno);
-                        errlogSevPrintf(errlogMajor, temp.str().c_str());
+                        errlogSevPrintf(errlogMajor, "%s", temp.str().c_str());
                         THROW_BASE_EXCEPTION(temp.str().c_str());
                     }
                     else if(bytesSent==0) {
@@ -815,7 +817,7 @@ namespace epics {
                     } catch(BaseException* e) {
                         String trace;
                         e->toString(trace);
-                        errlogSevPrintf(errlogMajor, trace.c_str());
+                        errlogSevPrintf(errlogMajor, "%s", trace.c_str());
                         _sendBuffer->setPosition(_lastMessageStartPosition);
                     } catch(...) {
                         _sendBuffer->setPosition(_lastMessageStartPosition);

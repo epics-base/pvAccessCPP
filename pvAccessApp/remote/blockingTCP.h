@@ -52,7 +52,7 @@ namespace epics {
             BlockingTCPTransport(Context* context, SOCKET channel,
                     ResponseHandler* responseHandler, int receiveBufferSize,
                     int16 priority);
-
+                    
             virtual bool isClosed() const {
                 return _closed;
             }
@@ -439,7 +439,7 @@ namespace epics {
             /**
              * Owners (users) of the transport.
              */
-            std::set<TransportClient*>* _owners;
+            std::set<TransportClient*> _owners;
 
             /**
              * Connection timeout (no-traffic) flag.
@@ -461,8 +461,8 @@ namespace epics {
              */
             volatile epicsTimeStamp _aliveTimestamp;
 
-            epics::pvData::Mutex* _mutex;
-            epics::pvData::Mutex* _ownersMutex;
+            epics::pvData::Mutex _mutex;
+            epics::pvData::Mutex _ownersMutex;
 
             bool _verifyOrEcho;
 
@@ -645,9 +645,9 @@ namespace epics {
             /**
              * Channel table (SID -> channel mapping).
              */
-            std::map<pvAccessID, ServerChannel*>* _channels;
+            std::map<pvAccessID, ServerChannel*> _channels;
 
-            Mutex* _channelsMutex;
+            Mutex _channelsMutex;
 
             /**
              * Destroy all channels.
@@ -672,7 +672,7 @@ namespace epics {
             BlockingTCPAcceptor(Context* context, int port,
                     int receiveBufferSize);
 
-            ~BlockingTCPAcceptor();
+            virtual ~BlockingTCPAcceptor();
 
             void handleEvents();
 

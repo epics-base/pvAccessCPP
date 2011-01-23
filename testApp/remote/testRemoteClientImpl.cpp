@@ -761,6 +761,7 @@ class ChannelGetFieldRequestImpl : public DataResponse, public TransportSender
 				// deserialize Field...
 				const Field* field = transport->getIntrospectionRegistry()->deserialize(payloadBuffer, transport);
 				m_callback->getDone(status, field);
+				field->decReferenceCount();
 			}
 			else
 			{
@@ -1499,6 +1500,7 @@ class TestChannelImpl : public ChannelImpl {
 
     virtual void destroy()
     {
+        destroy(false); //TODO guard
         if (m_addresses) delete m_addresses;
         delete this;
     };
@@ -3072,11 +3074,11 @@ int main(int argc,char *argv[])
     epicsThreadSleep ( 1.0 );
 
     channel->printInfo();
-
+/*
     GetFieldRequesterImpl getFieldRequesterImpl;
     channel->getField(&getFieldRequesterImpl, "");
     epicsThreadSleep ( 1.0 );
-/*
+
     ChannelProcessRequesterImpl channelProcessRequester;
     ChannelProcess* channelProcess = channel->createChannelProcess(&channelProcessRequester, 0);
     epicsThreadSleep ( 1.0 );
@@ -3084,16 +3086,16 @@ int main(int argc,char *argv[])
     epicsThreadSleep ( 1.0 );
     channelProcess->destroy();
     epicsThreadSleep ( 1.0 );
-
+*/
     ChannelGetRequesterImpl channelGetRequesterImpl;
-    PVStructure* pvRequest = getCreateRequest()->createRequest("field(timeStamp,value)",&channelGetRequesterImpl);
+    PVStructure* pvRequest = getCreateRequest()->createRequest("field(value)",&channelGetRequesterImpl);
     ChannelGet* channelGet = channel->createChannelGet(&channelGetRequesterImpl, pvRequest);
     epicsThreadSleep ( 3.0 );
     channelGet->get(false);
     epicsThreadSleep ( 3.0 );
-    //TODOchannelGet->destroy();
+    channelGet->destroy();
     epicsThreadSleep ( 1.0 );
-
+/*
     ChannelPutRequesterImpl channelPutRequesterImpl;
     ChannelPut* channelPut = channel->createChannelPut(&channelPutRequesterImpl, pvRequest);
     epicsThreadSleep ( 1.0 );
@@ -3101,10 +3103,9 @@ int main(int argc,char *argv[])
     epicsThreadSleep ( 1.0 );
     channelPut->put(false);
     epicsThreadSleep ( 1.0 );
-    //TODOchannelPut->destroy();
+    channelPut->destroy();
 
-    // TODO delete pvRequest
-*/
+
 /*
     MonitorRequesterImpl monitorRequesterImpl;
     Monitor* monitor = channel->createMonitor(&monitorRequesterImpl, 0);
@@ -3122,6 +3123,10 @@ int main(int argc,char *argv[])
 
     monitor->destroy();
     */
+    
+    // TODO share it?
+    delete pvRequest;
+    
     epicsThreadSleep ( 3.0 );
     channel->destroy();
 

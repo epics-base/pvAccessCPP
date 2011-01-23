@@ -26,6 +26,7 @@ IntrospectionRegistry::IntrospectionRegistry(bool serverSide) : _mutex(Mutex())
 
 IntrospectionRegistry::~IntrospectionRegistry()
 {
+    reset();
 }
 
 void IntrospectionRegistry::reset()
@@ -242,7 +243,9 @@ FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, Deserializa
 	else if(typeCode == IntrospectionRegistry::ONLY_ID_TYPE_CODE)
 	{
 		control->ensureData(sizeof(int16)/sizeof(int8));
-		return registry->getIntrospectionInterface(buffer->getShort());
+		FieldConstPtr field = registry->getIntrospectionInterface(buffer->getShort());
+		field->incReferenceCount();   // we inc, so that deserialize always returns a field with +1 ref. count (as when created)
+        return field;
 	}
 
 	// could also be a mask
@@ -305,7 +308,6 @@ StructureConstPtr IntrospectionRegistry::deserializeStructureField(ByteBuffer* b
 	}
 
 	StructureConstPtr structure = _fieldCreate->createStructure(structureFieldName, size, fields);
-	//???????delete [] fields;
 	return structure;
 }
 
@@ -353,7 +355,8 @@ PVStructurePtr IntrospectionRegistry::deserializeStructureAndCreatePVStructure(B
 	{
 		return NULL;
 	}
-	return _pvDataCreate->createPVStructure(NULL,static_cast<StructureConstPtr>(field));
+	PVStructurePtr retVal = _pvDataCreate->createPVStructure(NULL,static_cast<StructureConstPtr>(field));
+	return retVal;
 }
 
 void IntrospectionRegistry::serializeStatus(ByteBuffer* buffer, SerializableControl* control, Status* status)
