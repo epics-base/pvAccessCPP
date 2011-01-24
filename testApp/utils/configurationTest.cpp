@@ -68,6 +68,7 @@ int main(int argc, char *argv[])
 	assert(doubleProperty == 42);
 
 	if(configuration) delete configuration;
+	if(configProvider) delete configProvider;
 	getShowConstructDestruct()->constuctDestructTotals(stdout);
 	return 0;
 }
