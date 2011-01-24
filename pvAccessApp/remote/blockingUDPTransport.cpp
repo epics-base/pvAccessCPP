@@ -33,83 +33,86 @@ namespace epics {
 
         BlockingUDPTransport::BlockingUDPTransport(
                 ResponseHandler* responseHandler, SOCKET channel,
-                osiSockAddr& bindAddress, InetAddrVector* sendAddresses,
+                osiSockAddr& bindAddress,
                 short remoteTransportRevision) :
                     _closed(false),
                     _responseHandler(responseHandler),
                     _channel(channel),
-                    _sendAddresses(sendAddresses),
-                    _ignoredAddresses(NULL),
-                    _sendTo(NULL),
-                    _receiveBuffer(new ByteBuffer(MAX_UDP_RECV,
-                            EPICS_ENDIAN_BIG)),
+                    _bindAddress(bindAddress),
+                    _sendAddresses(0),
+                    _ignoredAddresses(0),
+                    _sendToEnabled(false),
+                    _receiveBuffer(new ByteBuffer(MAX_UDP_RECV, EPICS_ENDIAN_BIG)),
                     _sendBuffer(new ByteBuffer(MAX_UDP_RECV, EPICS_ENDIAN_BIG)),
-                    _lastMessageStartPosition(0), _readBuffer(
-                            new char[MAX_UDP_RECV]), _mutex(new Mutex()),
-                    _threadId(NULL) {
-            _socketAddress = new osiSockAddr;
-            memcpy(_socketAddress, &bindAddress, sizeof(osiSockAddr));
-            _bindAddress = _socketAddress;
-
+                    _lastMessageStartPosition(0),
+                    _threadId(0)
+        {
         }
 
         BlockingUDPTransport::~BlockingUDPTransport() {
             close(true); // close the socket and stop the thread.
-            if(_sendTo!=NULL) delete _sendTo;
-            delete _socketAddress;
-            // _bindAddress equals _socketAddress
+            
+            if (_sendAddresses) delete _sendAddresses;
+            if (_ignoredAddresses) delete _ignoredAddresses;
 
             delete _receiveBuffer;
             delete _sendBuffer;
-            delete[] _readBuffer;
-            delete _mutex;
+            delete _responseHandler;
         }
 
         void BlockingUDPTransport::start() {
-            String threadName = "UDP-receive "+inetAddressToString(
-                    _socketAddress);
+            String threadName = "UDP-receive "+inetAddressToString(_bindAddress);
 
-            errlogSevPrintf(errlogInfo, "Starting thread: %s",
-                    threadName.c_str());
+            errlogSevPrintf(errlogInfo, "Starting thread: %s",threadName.c_str());
 
             _threadId = epicsThreadCreate(threadName.c_str(),
-                    epicsThreadPriorityMedium, epicsThreadGetStackSize(
-                            epicsThreadStackMedium),
+                    epicsThreadPriorityMedium,
+                    epicsThreadGetStackSize(epicsThreadStackMedium),
                     BlockingUDPTransport::threadRunner, this);
         }
 
         void BlockingUDPTransport::close(bool forced) {
-            if(_closed) return;
-            _closed = true;
+            close(forced, true);
+        }
 
-            if(_bindAddress!=NULL) errlogSevPrintf(errlogInfo,
+        void BlockingUDPTransport::close(bool forced, bool waitForThreadToComplete) {
+            {
+                Lock guard(&_mutex);
+                if(_closed) return;
+                _closed = true;
+    
+                errlogSevPrintf(errlogInfo,
                     "UDP socket %s closed.",
                     inetAddressToString(_bindAddress).c_str());
-
-            epicsSocketDestroy(_channel);
+    
+                epicsSocketDestroy(_channel);
+            }
+            
+            // wait for send thread to exit cleanly            
+            if (waitForThreadToComplete)
+                _shutdownEvent.wait(3.0);
         }
 
         void BlockingUDPTransport::enqueueSendRequest(TransportSender* sender) {
-            Lock lock(_mutex);
+            Lock lock(&_sendMutex);
 
-            _sendTo = NULL;
+            _sendToEnabled = false;
             _sendBuffer->clear();
             sender->lock();
             try {
                 sender->send(_sendBuffer, this);
                 sender->unlock();
                 endMessage();
-                if(_sendTo==NULL)
+                if(!_sendToEnabled)
                     send(_sendBuffer);
                 else
-                    send(_sendBuffer, *_sendTo);
+                    send(_sendBuffer, _sendTo);
             } catch(...) {
                 sender->unlock();
             }
         }
 
-        void BlockingUDPTransport::startMessage(int8 command,
-                int ensureCapacity) {
+        void BlockingUDPTransport::startMessage(int8 command, int ensureCapacity) {
             _lastMessageStartPosition = _sendBuffer->getPosition();
             _sendBuffer->putShort(CA_MAGIC_AND_VERSION);
             _sendBuffer->putByte(0); // data
@@ -118,21 +121,29 @@ namespace epics {
         }
 
         void BlockingUDPTransport::endMessage() {
-            _sendBuffer->putInt(_lastMessageStartPosition+(sizeof(int16)+2),
-                    _sendBuffer->getPosition()-_lastMessageStartPosition
-                            -CA_MESSAGE_HEADER_SIZE);
-
+            _sendBuffer->putInt(
+                    _lastMessageStartPosition+(sizeof(int16)+2),
+                    _sendBuffer->getPosition()-_lastMessageStartPosition-CA_MESSAGE_HEADER_SIZE);
         }
 
         void BlockingUDPTransport::processRead() {
             // This function is always called from only one thread - this
             // object's own thread.
 
+            char _readBuffer[MAX_UDP_RECV];
             osiSockAddr fromAddress;
 
             try {
 
+                bool closed;
                 while(!_closed) {
+                    
+                    _mutex.lock();
+                    closed = _closed;
+                    _mutex.unlock();
+                    if (closed)
+                        break;
+                        
                     // we poll to prevent blocking indefinitely
 
                     // data ready to be read
@@ -147,18 +158,23 @@ namespace epics {
                     if(bytesRead>0) {
                         // successfully got datagram
                         bool ignore = false;
-                        if(_ignoredAddresses!=NULL) for(size_t i = 0; i
-                                <_ignoredAddresses->size(); i++)
-                            if(_ignoredAddresses->at(i)->ia.sin_addr.s_addr
+                        if(_ignoredAddresses!=0)
+                        {
+                            for(size_t i = 0; i <_ignoredAddresses->size(); i++)
+                            if(_ignoredAddresses->at(i).ia.sin_addr.s_addr
                                     ==fromAddress.ia.sin_addr.s_addr) {
                                 ignore = true;
                                 break;
                             }
-
+                        }
+                        
                         if(!ignore) {
-                            _receiveBuffer->put(_readBuffer, 0, bytesRead
-                                    <_receiveBuffer->getRemaining() ? bytesRead
-                                    : _receiveBuffer->getRemaining());
+                            // TODO do not copy.... wrap the buffer!!!
+                            _receiveBuffer->put(_readBuffer, 0, 
+                                    bytesRead <_receiveBuffer->getRemaining() ?
+                                        bytesRead :
+                                        _receiveBuffer->getRemaining()
+                                    );
 
                             _receiveBuffer->flip();
 
@@ -166,22 +182,26 @@ namespace epics {
                         }
                     }
                     else {
-                        // 0 == socket close
-
+                        // 0 == socket remotely closed
                         // log a 'recvfrom' error
-                        if(bytesRead==-1) errlogSevPrintf(errlogMajor,
+                        if(!_closed && bytesRead==-1) errlogSevPrintf(errlogMajor,
                                 "Socket recv error: %s", strerror(errno));
+                                
+                        close(true, false);
+                        break;
                     }
 
                 }
             } catch(...) {
                 // TODO: catch all exceptions, and act accordingly
-                close(true);
+                close(true, false);
             }
 
             char threadName[40];
             epicsThreadGetName(_threadId, threadName, 40);
             errlogSevPrintf(errlogInfo, "Thread '%s' exiting", threadName);
+            
+            _shutdownEvent.signal();
         }
 
         bool BlockingUDPTransport::processBuffer(osiSockAddr& fromAddress,
@@ -240,12 +260,12 @@ namespace epics {
         }
 
         bool BlockingUDPTransport::send(ByteBuffer* buffer) {
-            if(_sendAddresses==NULL) return false;
+            if(!_sendAddresses) return false;
 
             for(size_t i = 0; i<_sendAddresses->size(); i++) {
                 buffer->flip();
                 int retval = sendto(_channel, buffer->getArray(),
-                        buffer->getLimit(), 0, &(_sendAddresses->at(i)->sa),
+                        buffer->getLimit(), 0, &(_sendAddresses->at(i).sa),
                         sizeof(sockaddr));
                 {
                     if(retval<0) errlogSevPrintf(errlogMajor,
@@ -262,7 +282,7 @@ namespace epics {
             // that is the buffer size used by the platform for input on
             // this DatagramSocket.
 
-            int sockBufSize;
+            int sockBufSize = -1;
             socklen_t intLen = sizeof(int);
 
             int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF,

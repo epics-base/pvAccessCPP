@@ -31,9 +31,7 @@ namespace epics {
             BlockingTCPTransport(context, channel, responseHandler,
                     receiveBufferSize, CA_DEFAULT_PRIORITY),
                     _introspectionRegistry(new IntrospectionRegistry(true)),
-                    _lastChannelSID(0), _channels(
-                            new map<int, ServerChannel*> ()), _channelsMutex(
-                            new Mutex()) {
+                    _lastChannelSID(0) {
             // NOTE: priority not yet known, default priority is used to register/unregister
             // TODO implement priorities in Reactor... not that user will
             // change it.. still getPriority() must return "registered" priority!
@@ -43,27 +41,25 @@ namespace epics {
 
         BlockingServerTCPTransport::~BlockingServerTCPTransport() {
             delete _introspectionRegistry;
-            delete _channels;
-            delete _channelsMutex;
         }
 
         void BlockingServerTCPTransport::destroyAllChannels() {
-            Lock lock(_channelsMutex);
-            if(_channels->size()==0) return;
+            Lock lock(&_channelsMutex);
+            if(_channels.size()==0) return;
 
             char ipAddrStr[64];
-            ipAddrToDottedIP(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
 
             errlogSevPrintf(
                     errlogInfo,
                     "Transport to %s still has %u channel(s) active and closing...",
-                    ipAddrStr, _channels->size());
+                    ipAddrStr, _channels.size());
 
-            map<pvAccessID, ServerChannel*>::iterator it = _channels->begin();
-            for(; it!=_channels->end(); it++)
+            map<pvAccessID, ServerChannel*>::iterator it = _channels.begin();
+            for(; it!=_channels.end(); it++)
                 it->second->destroy();
 
-            _channels->clear();
+            _channels.clear();
         }
 
         void BlockingServerTCPTransport::internalClose(bool force) {
@@ -72,37 +68,37 @@ namespace epics {
         }
 
         pvAccessID BlockingServerTCPTransport::preallocateChannelSID() {
-            Lock lock(_channelsMutex);
+            Lock lock(&_channelsMutex);
             // search first free (theoretically possible loop of death)
             pvAccessID sid = ++_lastChannelSID;
-            while(_channels->find(sid)!=_channels->end())
+            while(_channels.find(sid)!=_channels.end())
                 sid = ++_lastChannelSID;
             return sid;
         }
 
         void BlockingServerTCPTransport::registerChannel(pvAccessID sid,
                 ServerChannel* channel) {
-            Lock lock(_channelsMutex);
-            (*_channels)[sid] = channel;
+            Lock lock(&_channelsMutex);
+            _channels[sid] = channel;
         }
 
         void BlockingServerTCPTransport::unregisterChannel(pvAccessID sid) {
-            Lock lock(_channelsMutex);
-            _channels->erase(sid);
+            Lock lock(&_channelsMutex);
+            _channels.erase(sid);
         }
 
         ServerChannel* BlockingServerTCPTransport::getChannel(pvAccessID sid) {
-            Lock lock(_channelsMutex);
+            Lock lock(&_channelsMutex);
 
-            map<pvAccessID, ServerChannel*>::iterator it = _channels->find(sid);
-            if(it!=_channels->end()) return it->second;
+            map<pvAccessID, ServerChannel*>::iterator it = _channels.find(sid);
+            if(it!=_channels.end()) return it->second;
 
             return NULL;
         }
 
         int BlockingServerTCPTransport::getChannelCount() {
-            Lock lock(_channelsMutex);
-            return _channels->size();
+            Lock lock(&_channelsMutex);
+            return _channels.size();
         }
 
         void BlockingServerTCPTransport::send(ByteBuffer* buffer,

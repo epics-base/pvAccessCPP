@@ -22,6 +22,7 @@
 #include <pvType.h>
 #include <lock.h>
 #include <timer.h>
+#include <event.h>
 
 /* EPICSv3 */
 #include <osdSock.h>
@@ -52,7 +53,7 @@ namespace epics {
             BlockingTCPTransport(Context* context, SOCKET channel,
                     ResponseHandler* responseHandler, int receiveBufferSize,
                     int16 priority);
-
+                    
             virtual bool isClosed() const {
                 return _closed;
             }
@@ -86,7 +87,7 @@ namespace epics {
             }
 
             virtual const osiSockAddr* getRemoteAddress() const {
-                return _socketAddress;
+                return &_socketAddress;
             }
 
             virtual int16 getPriority() const {
@@ -108,12 +109,12 @@ namespace epics {
             virtual int getSocketReceiveBufferSize() const;
 
             virtual bool isVerified() const {
-                Lock lock(_verifiedMutex);
+                Lock lock(const_cast<epics::pvData::Mutex*>(&_verifiedMutex));
                 return _verified;
             }
 
             virtual void verified() {
-                Lock lock(_verifiedMutex);
+                Lock lock(&_verifiedMutex);
                 _verified = true;
             }
 
@@ -148,7 +149,7 @@ namespace epics {
                 _flushStrategy = flushStrategy;
             }
 
-            void requestFlush();
+            //void requestFlush();
 
             /**
              * Close and free connection resources.
@@ -165,80 +166,7 @@ namespace epics {
             void enqueueMonitorSendRequest(TransportSender* sender);
 
         protected:
-            /**
-             * Connection status
-             */
-            bool volatile _closed;
-
-            /**
-             * Corresponding channel.
-             */
-            SOCKET _channel;
-
-            /**
-             * Cached socket address.
-             */
-            osiSockAddr* _socketAddress;
-
-            /**
-             * Send buffer.
-             */
-            epics::pvData::ByteBuffer* _sendBuffer;
-
-            /**
-             * Remote side transport revision (minor).
-             */
-            int8 _remoteTransportRevision;
-
-            /**
-             * Remote side transport receive buffer size.
-             */
-            int _remoteTransportReceiveBufferSize;
-
-            /**
-             * Remote side transport socket receive buffer size.
-             */
-            int _remoteTransportSocketReceiveBufferSize;
-
-            /**
-             * Priority.
-             * NOTE: Priority cannot just be changed, since it is registered
-             * in transport registry with given priority.
-             */
-            int16 _priority;
-            // TODO to be implemeneted
-
-            /**
-             * CAS response handler.
-             */
-            ResponseHandler* _responseHandler;
-
-            /**
-             * Read sync. object monitor.
-             */
-            //Object _readMonitor = new Object();
-
-            /**
-             * Total bytes received.
-             */
-            int64 volatile _totalBytesReceived;
-
-            /**
-             * Total bytes sent.
-             */
-            int64 volatile _totalBytesSent;
-
-            /**
-             * Marker to send.
-             */
-            volatile int _markerToSend;
-
-            volatile bool _verified;
-
-            volatile int64 _remoteBufferFreeSpace;
-
-            volatile bool _autoDelete;
-
+        
             virtual void processReadCached(bool nestedCall,
                     ReceiveStage inStage, int requiredBytes, bool addToBuffer);
 
@@ -259,7 +187,8 @@ namespace epics {
 
             virtual ~BlockingTCPTransport();
 
-        private:
+
+
             /**
              * Default marker period.
              */
@@ -267,7 +196,32 @@ namespace epics {
 
             static const int MAX_ENSURE_DATA_BUFFER_SIZE = 1024;
 
-            static const double delay = 0.01;
+            static const double _delay = 0.01;
+
+            /****** finally initialized at construction time and after start (called by the same thread) ********/
+            
+            /**
+             * Corresponding channel.
+             */
+            SOCKET _channel;
+
+            /**
+             * Cached socket address.
+             */
+            osiSockAddr _socketAddress;
+
+            /**
+             * Priority.
+             * NOTE: Priority cannot just be changed, since it is registered
+             * in transport registry with given priority.
+             */
+            int16 _priority;
+            // TODO to be implemeneted
+
+            /**
+             * CAS response handler.
+             */
+            ResponseHandler* _responseHandler;
 
             /**
              * Send buffer size.
@@ -284,6 +238,58 @@ namespace epics {
              */
             int64 _markerPeriodBytes;
 
+
+            SendQueueFlushStrategy _flushStrategy;
+
+
+            epicsThreadId _rcvThreadId;
+
+            epicsThreadId _sendThreadId;
+
+            MonitorSender* _monitorSender;
+
+            Context* _context;
+
+            bool _autoDelete;
+
+
+
+            /**** after verification ****/
+            
+            /**
+             * Remote side transport revision (minor).
+             */
+            int8 _remoteTransportRevision;
+
+            /**
+             * Remote side transport receive buffer size.
+             */
+            int _remoteTransportReceiveBufferSize;
+
+            /**
+             * Remote side transport socket receive buffer size.
+             */
+            int _remoteTransportSocketReceiveBufferSize;
+
+
+
+            /*** send thread only - no need to sync ***/
+            // NOTE: now all send-related external calls are TransportSender IF
+            // and its reference is only valid when called from send thread
+            
+            // initialized at construction time
+            GrowingCircularBuffer<TransportSender*>* _sendQueue;
+            epics::pvData::Mutex _sendQueueMutex;
+
+            // initialized at construction time
+            GrowingCircularBuffer<TransportSender*>* _monitorSendQueue;
+            epics::pvData::Mutex _monitorMutex;
+
+            /**
+             * Send buffer.
+             */
+            epics::pvData::ByteBuffer* _sendBuffer;
+
             /**
              * Next planned marker position.
              */
@@ -299,19 +305,27 @@ namespace epics {
              */
             int _lastMessageStartPosition;
 
+            int8 _lastSegmentedMessageType;
+            int8 _lastSegmentedMessageCommand;
+
+            bool _flushRequested;
+
+            int _sendBufferSentPosition;
+
+
+
+
+
+
+
+
+            
+            /*** receive thread only - no need to sync ***/
+
+            // initialized at construction time
             epics::pvData::ByteBuffer* _socketBuffer;
 
             int _startPosition;
-
-            epics::pvData::Mutex* _mutex;
-            epics::pvData::Mutex* _sendQueueMutex;
-            epics::pvData::Mutex* _verifiedMutex;
-            epics::pvData::Mutex* _monitorMutex;
-
-            ReceiveStage _stage;
-
-            int8 _lastSegmentedMessageType;
-            int8 _lastSegmentedMessageCommand;
 
             int _storedPayloadSize;
             int _storedPosition;
@@ -322,26 +336,68 @@ namespace epics {
             int8 _command;
             int _payloadSize;
 
-            volatile bool _flushRequested;
+            ReceiveStage _stage;
 
-            int _sendBufferSentPosition;
+            /**
+             * Total bytes received.
+             */
+            int64 _totalBytesReceived;
 
-            SendQueueFlushStrategy _flushStrategy;
 
-            GrowingCircularBuffer<TransportSender*>* _sendQueue;
 
-            epicsThreadId _rcvThreadId;
 
-            epicsThreadId _sendThreadId;
 
-            GrowingCircularBuffer<TransportSender*>* _monitorSendQueue;
 
-            MonitorSender* _monitorSender;
+            /*** send/receive thread shared ***/
 
-            Context* _context;
+            /**
+             * Connection status
+             * NOTE: synced by _mutex
+             */
+            bool volatile _closed;
 
-            volatile bool _sendThreadRunning;
+            // NOTE: synced by _mutex
+            bool _sendThreadExited;
 
+            epics::pvData::Mutex _mutex;
+
+
+            bool _verified;
+            epics::pvData::Mutex _verifiedMutex;
+
+
+
+            
+            Event _sendQueueEvent;
+
+
+
+
+
+
+            /**
+             * Marker to send.
+             * NOTE: synced by _flowControlMutex
+             */
+            int _markerToSend;
+
+            /**
+             * Total bytes sent.
+             * NOTE: synced by _flowControlMutex
+             */
+            int64 _totalBytesSent;
+
+            /**
+             * Calculated remote free buffer size.
+             * NOTE: synced by _flowControlMutex
+             */
+            int64 _remoteBufferFreeSpace;
+            
+            epics::pvData::Mutex _flowControlMutex;
+            
+
+        private:
+        
             /**
              * Internal method that clears and releases buffer.
              * sendLock and sendBufferLock must be hold while calling this method.
@@ -439,7 +495,7 @@ namespace epics {
             /**
              * Owners (users) of the transport.
              */
-            std::set<TransportClient*>* _owners;
+            std::set<TransportClient*> _owners;
 
             /**
              * Connection timeout (no-traffic) flag.
@@ -461,8 +517,8 @@ namespace epics {
              */
             volatile epicsTimeStamp _aliveTimestamp;
 
-            epics::pvData::Mutex* _mutex;
-            epics::pvData::Mutex* _ownersMutex;
+            epics::pvData::Mutex _mutex;
+            epics::pvData::Mutex _ownersMutex;
 
             bool _verifyOrEcho;
 
@@ -645,9 +701,9 @@ namespace epics {
             /**
              * Channel table (SID -> channel mapping).
              */
-            std::map<pvAccessID, ServerChannel*>* _channels;
+            std::map<pvAccessID, ServerChannel*> _channels;
 
-            Mutex* _channelsMutex;
+            Mutex _channelsMutex;
 
             /**
              * Destroy all channels.
@@ -672,7 +728,7 @@ namespace epics {
             BlockingTCPAcceptor(Context* context, int port,
                     int receiveBufferSize);
 
-            ~BlockingTCPAcceptor();
+            virtual ~BlockingTCPAcceptor();
 
             void handleEvents();
 

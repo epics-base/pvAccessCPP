@@ -142,10 +142,13 @@ class CreateRequestImpl : public CreateRequest {
         			requester->message("illegal option", errorMessage);
         			return false;
                 }
-        		
-        		PVString* pvStringField = static_cast<PVString*>(getPVDataCreate()->createPVScalar(pvParent, token.substr(0, equalsPos), pvString));
-        		pvStringField->put(token.substr(equalsPos+1));
-        		pvParent->appendPVField(pvStringField);
+                
+                if (equalsPos != std::string::npos)
+                {
+            		PVString* pvStringField = static_cast<PVString*>(getPVDataCreate()->createPVScalar(pvParent, token.substr(0, equalsPos), pvString));
+            		pvStringField->put(token.substr(equalsPos+1));
+            		pvParent->appendPVField(pvStringField);
+                }
             }
         	return true;
         }
@@ -160,13 +163,14 @@ class CreateRequestImpl : public CreateRequest {
         	{
         	   return getPVDataCreate()->createPVStructure(0, emptyString, 0);
         	}
-        	
+
     		size_t offsetRecord = request.find("record[");
     		size_t offsetField = request.find("field(");
     		size_t offsetPutField = request.find("putField(");
     		size_t offsetGetField = request.find("getField(");
 
             PVStructure* pvStructure = getPVDataCreate()->createPVStructure(0, emptyString, 0);
+
     		if (offsetRecord != std::string::npos) {
     			size_t offsetBegin = request.find('[', offsetRecord);
     			size_t offsetEnd = request.find(']', offsetBegin);
@@ -199,7 +203,7 @@ class CreateRequestImpl : public CreateRequest {
     			     delete pvStructure;
     			     return 0;
     			}
-    			pvStructure->appendPVField(pvStruct);
+     			pvStructure->appendPVField(pvStruct);
     		}
     		if (offsetPutField != std::string::npos) {
     			size_t offsetBegin = request.find('(', offsetPutField);

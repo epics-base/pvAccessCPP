@@ -7,7 +7,7 @@
 #include <iostream>
 #include <sstream>
 #include <showConstructDestruct.h>
-#include <lock.h>
+#include <lock.h>ƒ
 #include <standardPVField.h>
 #include <memory>
 
@@ -165,8 +165,8 @@ public:
 		// destroy remote instance
 		if (!m_remotelyDestroyed)
 		{
-			startRequest(PURE_DESTROY_REQUEST);
-			m_channel->checkAndGetTransport()->enqueueSendRequest(this);
+// TODO !!!			startRequest(PURE_DESTROY_REQUEST);
+/// TODO 	!!! causes crash		m_channel->checkAndGetTransport()->enqueueSendRequest(this);
 		}
 		
 	}
@@ -221,137 +221,106 @@ public:
 
 
 
-PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelProcess);
+PVDATA_REFCOUNT_MONITOR_DEFINE(channelProcess);
 
-class ChannelImplProcess : public ChannelProcess
+class ChannelProcessRequestImpl : public BaseRequestImpl, public ChannelProcess
 {
     private:
-		ChannelProcessRequester* m_channelProcessRequester;
-		PVStructure* m_pvStructure;
-		PVScalar* m_valueField;
+		ChannelProcessRequester* m_callback;
+		PVStructure* m_pvRequest;
 
     private:
-    ~ChannelImplProcess()
+    ~ChannelProcessRequestImpl()
     {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelProcess);
+        PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelProcess);
     }
 
     public:
-    ChannelImplProcess(ChannelProcessRequester* channelProcessRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
-        m_channelProcessRequester(channelProcessRequester), m_pvStructure(pvStructure)
+    ChannelProcessRequestImpl(ChannelImpl* channel, ChannelProcessRequester* callback, PVStructure *pvRequest) :
+        BaseRequestImpl(channel, callback),
+        m_callback(callback), m_pvRequest(pvRequest)
     {
-        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelProcess);
+        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelProcess);
 
-        PVField* field = pvStructure->getSubField(String("value"));
-        if (field == 0)
-        {
-            Status* noValueFieldStatus = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "no 'value' field");
-        	m_channelProcessRequester->channelProcessConnect(noValueFieldStatus, this);
-        	delete noValueFieldStatus;
+        // TODO check for nulls!!!!
 
-        	// NOTE client must destroy this instance...
-        	// do not access any fields and return ASAP
-        	return;
-        }
+		// TODO best-effort support
 
-        if (field->getField()->getType() != scalar)
-        {
-            Status* notAScalarStatus = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "'value' field not scalar type");
-        	m_channelProcessRequester->channelProcessConnect(notAScalarStatus, this);
-        	delete notAScalarStatus;
-
-        	// NOTE client must destroy this instance….
-        	// do not access any fields and return ASAP
-        	return;
-        }
-
-        m_valueField = static_cast<PVScalar*>(field);
-
-        // TODO pvRequest
-    	m_channelProcessRequester->channelProcessConnect(g_statusOK, this);
+		// subscribe
+//		try {
+			resubscribeSubscription(channel->checkAndGetTransport());
+/*		} catch (IllegalStateException ise) {
+			callback.channelProcessConnect(channelNotConnected, null);
+		} catch (CAException e) {
+			callback.channelProcessConnect(statusCreate.createStatus(StatusType.ERROR, "failed to sent message over network", e), null);
+		}*/
     }
+
+	virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+		int32 pendingRequest = getPendingRequest();
+		if (pendingRequest < 0)
+		{
+			BaseRequestImpl::send(buffer, control);
+			return;
+		}
+		
+		control->startMessage((int8)16, 9);
+		buffer->putInt(m_channel->getServerChannelID());
+		buffer->putInt(m_ioid);
+		buffer->putByte((int8)m_pendingRequest);
+
+		if (pendingRequest & QOS_INIT)
+		{
+			// pvRequest
+			m_channel->getTransport()->getIntrospectionRegistry()->serializePVRequest(buffer, control, m_pvRequest);
+		}
+		
+		stopRequest();
+	}
+
+	virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+		m_callback->processDone(status);
+		return true;
+	}
+
+	virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+		m_callback->channelProcessConnect(status, this);
+		return true;
+	}
+
+	virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+		m_callback->processDone(status);
+		return true;
+	}
 
     virtual void process(bool lastRequest)
     {
-        switch (m_valueField->getScalar()->getScalarType())
-        {
-            case pvBoolean:
-            {
-                // negate
-                PVBoolean *pvBoolean = static_cast<PVBoolean*>(m_valueField);
-                pvBoolean->put(!pvBoolean->get());
-                break;
-            }
-            case pvByte:
-            {
-                // increment by one
-                PVByte *pvByte = static_cast<PVByte*>(m_valueField);
-                pvByte->put(pvByte->get() + 1);
-                break;
-            }
-            case pvShort:
-            {
-                // increment by one
-                PVShort *pvShort = static_cast<PVShort*>(m_valueField);
-                pvShort->put(pvShort->get() + 1);
-                break;
-            }
-            case pvInt:
-            {
-                // increment by one
-                PVInt *pvInt = static_cast<PVInt*>(m_valueField);
-                pvInt->put(pvInt->get() + 1);
-                break;
-            }
-            case pvLong:
-            {
-                // increment by one
-                PVLong *pvLong = static_cast<PVLong*>(m_valueField);
-                pvLong->put(pvLong->get() + 1);
-                break;
-            }
-            case pvFloat:
-            {
-                // increment by one
-                PVFloat *pvFloat = static_cast<PVFloat*>(m_valueField);
-                pvFloat->put(pvFloat->get() + 1.0f);
-                break;
-            }
-            case pvDouble:
-            {
-                // increment by one
-                PVDouble *pvDouble = static_cast<PVDouble*>(m_valueField);
-                pvDouble->put(pvDouble->get() + 1.0);
-                break;
-            }
-            case pvString:
-            {
-                // increment by one
-                PVString *pvString = static_cast<PVString*>(m_valueField);
-                String val = pvString->get();
-                if (val.empty())
-                    pvString->put("gen0");
-                else
-                {
-                    char c = val[0];
-                    c++;
-                    pvString->put("gen" + c);
-                }
-                break;
-            }
-            default:
-                // noop
-                break;
-
-        }
-    	m_channelProcessRequester->processDone(g_statusOK);
-
-    	if (lastRequest)
-    	   destroy();
+        // TODO sync
+		if (m_destroyed) {
+			m_callback->processDone(destroyedStatus);
+			return;
+		}
+		
+		if (!startRequest(lastRequest ? QOS_DESTROY : QOS_DEFAULT)) {
+			m_callback->processDone(otherRequestPendingStatus);
+			return;
+		}
+		
+		//try {
+			m_channel->checkAndGetTransport()->enqueueSendRequest(this);
+		//} catch (IllegalStateException ise) {
+		//	m_callback->processDone(channelNotConnected);
+		//}
     }
+
+	virtual void resubscribeSubscription(Transport* transport) {
+		startRequest(QOS_INIT);
+		transport->enqueueSendRequest(this);
+	}
 
     virtual void destroy()
     {
+        BaseRequestImpl::destroy();
         delete this;
     }
 
@@ -362,12 +331,12 @@ class ChannelImplProcess : public ChannelProcess
 
 
 
+
 PVDATA_REFCOUNT_MONITOR_DEFINE(channelGet);
 
-class ChannelImplGet : public BaseRequestImpl, public ChannelGet
+class ChannelGetImpl : public BaseRequestImpl, public ChannelGet
 {
     private:
-        ChannelImpl* m_channel;
 		ChannelGetRequester* m_channelGetRequester;
 		
 	    PVStructure* m_pvRequest;
@@ -376,15 +345,15 @@ class ChannelImplGet : public BaseRequestImpl, public ChannelGet
 		BitSet* m_bitSet;
 
     private:
-    ~ChannelImplGet()
+    ~ChannelGetImpl()
     {
         PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelGet);
     }
 
     public:
-    ChannelImplGet(ChannelImpl* channel, ChannelGetRequester* channelGetRequester, PVStructure *pvRequest) :
+    ChannelGetImpl(ChannelImpl* channel, ChannelGetRequester* channelGetRequester, PVStructure *pvRequest) :
         BaseRequestImpl(channel, channelGetRequester),
-        m_channel(channel), m_channelGetRequester(channelGetRequester), m_pvRequest(pvRequest), // TODO pvRequest
+        m_channelGetRequester(channelGetRequester), m_pvRequest(pvRequest), // TODO pvRequest
         m_data(0), m_bitSet(0)
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelGet);
@@ -491,7 +460,10 @@ class ChannelImplGet : public BaseRequestImpl, public ChannelGet
 
     virtual void destroy()
     {
-//        delete m_bitSet;
+        BaseRequestImpl::destroy();
+        // TODO sync
+        if (m_data) delete m_data;
+        if (m_bitSet) delete m_bitSet;
         delete this;
     }
 
@@ -504,52 +476,323 @@ class ChannelImplGet : public BaseRequestImpl, public ChannelGet
 
 
 
-PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelPut);
 
-class ChannelImplPut : public ChannelPut
+
+
+PVDATA_REFCOUNT_MONITOR_DEFINE(channelPut);
+
+class ChannelPutImpl : public BaseRequestImpl, public ChannelPut
 {
     private:
 		ChannelPutRequester* m_channelPutRequester;
-		PVStructure* m_pvStructure;
+		
+	    PVStructure* m_pvRequest;
+		
+		PVStructure* m_data;
 		BitSet* m_bitSet;
-		volatile bool m_first;
 
     private:
-    ~ChannelImplPut()
+    ~ChannelPutImpl()
     {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelPut);
+        PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelPut);
     }
 
     public:
-    ChannelImplPut(ChannelPutRequester* channelPutRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
-        m_channelPutRequester(channelPutRequester), m_pvStructure(pvStructure),
-        m_bitSet(new BitSet(pvStructure->getNumberFields())), m_first(true)
+    ChannelPutImpl(ChannelImpl* channel, ChannelPutRequester* channelPutRequester, PVStructure *pvRequest) :
+        BaseRequestImpl(channel, channelPutRequester),
+        m_channelPutRequester(channelPutRequester), m_pvRequest(pvRequest), // TODO pvRequest
+        m_data(0), m_bitSet(0)
     {
-        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelPut);
+        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelPut);
 
-        // TODO pvRequest
-    	m_channelPutRequester->channelPutConnect(g_statusOK, this, m_pvStructure, m_bitSet);
+		// TODO low-overhead put
+		// TODO best-effort put
+
+		// subscribe
+//		try {
+			resubscribeSubscription(m_channel->checkAndGetTransport());
+//		} catch (IllegalStateException ise) {
+// TODO			m_channelPutRequester->channelPutConnect(channelNotConnected, null, null, null);
+//		} catch (CAException caex) {
+// TODO			m_channelPutRequester->channelPutConnect(statusCreate.createStatus(StatusType.ERROR, "failed to sent message over network", caex), null, null, null);
+//		}
+
     }
 
-    virtual void put(bool lastRequest)
-    {
-    	m_channelPutRequester->putDone(g_statusOK);
-    	if (lastRequest)
-    	   destroy();
-    }
+	virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+		int32 pendingRequest = getPendingRequest();
+		if (pendingRequest < 0)
+		{
+			BaseRequestImpl::send(buffer, control);
+			return;
+		}
+		
+		control->startMessage((int8)11, 9);
+		buffer->putInt(m_channel->getServerChannelID());
+		buffer->putInt(m_ioid);
+		buffer->putByte((int8)m_pendingRequest);
+		
+		if (pendingRequest & QOS_INIT)
+		{
+			// pvRequest
+			m_channel->getTransport()->getIntrospectionRegistry()->serializePVRequest(buffer, control, m_pvRequest);
+		}
+		else if (!(pendingRequest & QOS_GET))
+		{
+			// put
+			// serialize only what has been changed
+			m_bitSet->serialize(buffer, control);
+			m_data->serialize(buffer, control, m_bitSet);
+		}
+		
+		stopRequest();
+	}
 
-    virtual void get()
-    {
-    	m_channelPutRequester->getDone(g_statusOK);
-    }
+	virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+		m_channelPutRequester->putDone(status);
+		return true;
+	}
+
+	virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+		if (!status->isSuccess())
+		{
+			m_channelPutRequester->channelPutConnect(status, this, 0, 0);
+			return true;
+		}
+
+		// create data and its bitSet
+		m_data = transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport);
+		m_bitSet = new BitSet(m_data->getNumberFields());
+
+		// notify
+		m_channelPutRequester->channelPutConnect(okStatus, this, m_data, m_bitSet);
+		return true;
+	}
+
+	virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+		if (qos & QOS_GET)
+		{
+			if (!status->isSuccess())
+			{
+				m_channelPutRequester->getDone(status);
+				return true;
+			}
+			
+			m_data->deserialize(payloadBuffer, transport);
+			m_channelPutRequester->getDone(status);
+    		return true;
+		}
+		else
+		{
+		    m_channelPutRequester->putDone(okStatus);
+    		return true;
+		}
+	}
+
+    virtual void get() {
+        // TODO sync?
+        
+		if (m_destroyed) {
+			m_channelPutRequester->getDone(destroyedStatus);
+			return;
+		}
+
+		if (!startRequest(QOS_GET)) {
+			m_channelPutRequester->getDone(otherRequestPendingStatus);
+			return;
+		}
+		
+
+//		try {
+			m_channel->checkAndGetTransport()->enqueueSendRequest(this);
+//		} catch (IllegalStateException ise) {
+//			m_channelPutRequester->getDone(channelNotConnected);
+//		}
+	}
+
+    virtual void put(bool lastRequest) {
+        // TODO sync?
+        
+		if (m_destroyed) {
+			m_channelPutRequester->putDone(destroyedStatus);
+			return;
+		}
+
+		if (!startRequest(lastRequest ? QOS_DESTROY : QOS_DEFAULT)) {
+			m_channelPutRequester->putDone(otherRequestPendingStatus);
+			return;
+		}
+		
+		//try {
+			m_channel->checkAndGetTransport()->enqueueSendRequest(this);
+		//} catch (IllegalStateException ise) {
+	//TODO	//	m_channelPutRequester->putDone(channelNotConnected);
+		//}
+	}
+	
+	virtual void resubscribeSubscription(Transport* transport) {
+		startRequest(QOS_INIT);
+		transport->enqueueSendRequest(this);
+	}
+
 
     virtual void destroy()
     {
-        delete m_bitSet;
+        BaseRequestImpl::destroy();
+        // TODO sync
+        if (m_data) delete m_data;
+        if (m_bitSet) delete m_bitSet;
         delete this;
     }
 
 };
+
+
+
+
+
+
+
+
+
+
+PVDATA_REFCOUNT_MONITOR_DEFINE(channelGetField);
+
+// NOTE: this instance is not returned as Request, so it must self-destruct
+class ChannelGetFieldRequestImpl : public DataResponse, public TransportSender
+{
+    private:
+        ChannelImpl* m_channel;
+	    ClientContextImpl* m_context;
+	    pvAccessID m_ioid;
+		GetFieldRequester* m_callback;
+	    String m_subField;
+	    Mutex m_mutex;
+	    bool m_destroyed;
+		
+    private:
+    ~ChannelGetFieldRequestImpl()
+    {
+        PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelGetField);
+    }
+
+
+	public:
+	ChannelGetFieldRequestImpl(ChannelImpl* channel, GetFieldRequester* callback, String subField) :
+	   m_channel(channel), m_context(channel->getContext()),
+	   m_callback(callback), m_subField(subField),
+	   m_destroyed(false)
+	{
+        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelGetField);
+
+		// register response request
+		m_ioid = m_context->registerResponseRequest(this);
+		channel->registerResponseRequest(this);
+
+        // TODO
+		// enqueue send request
+		//try {
+			m_channel->checkAndGetTransport()->enqueueSendRequest(this);
+		//} catch (IllegalStateException ise) {
+		//	callback.getDone(BaseRequestImpl.channelNotConnected, null);
+		//}
+	}
+
+	Requester* getRequester() {
+		return m_callback;
+	}
+
+	pvAccessID getIOID() {
+		return m_ioid;
+	}
+
+	virtual void lock() {
+		// noop
+	}
+	
+	virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+		control->startMessage((int8)17, 8);
+		buffer->putInt(m_channel->getServerChannelID());
+		buffer->putInt(m_ioid);
+		SerializeHelper::serializeString(m_subField, buffer, control);
+	}
+
+
+	virtual void cancel() {
+		destroy();
+		// TODO notify?
+	}
+
+	virtual void timeout() {
+		cancel();
+	}
+
+	void reportStatus(Status* status) {
+		// destroy, since channel (parent) was destroyed
+		if (status == ChannelImpl::channelDestroyed)
+			destroy();
+		// TODO notify?
+	}
+
+	virtual void unlock() {
+		// noop
+	}
+
+    virtual void destroy()
+    {
+		{
+    	   Lock guard(&m_mutex);
+			if (m_destroyed)
+				return;
+			m_destroyed = true;
+		}
+
+		// unregister response request
+		m_context->unregisterResponseRequest(this);
+		m_channel->unregisterResponseRequest(this);
+		
+		delete this;
+    }
+
+	virtual void response(Transport* transport, int8 version, ByteBuffer* payloadBuffer) {
+// TODO?
+//		try
+//		{	
+			Status* status = statusCreate->deserializeStatus(payloadBuffer, transport);
+			if (status->isSuccess())
+			{
+				// deserialize Field...
+				const Field* field = transport->getIntrospectionRegistry()->deserialize(payloadBuffer, transport);
+				m_callback->getDone(status, field);
+				field->decReferenceCount();
+			}
+			else
+			{
+				m_callback->getDone(status, 0);
+			}
+			
+			// TODO
+			if (status != okStatus)
+			 delete status;
+//        } // TODO guard callback
+//		finally
+//		{
+			// always cancel request
+//			cancel();
+//		}
+        
+        cancel();
+
+	}
+
+
+};
+
+
+
+
+
+
 
 
 
@@ -753,10 +996,14 @@ typedef std::map<pvAccessID, ResponseRequest*> IOIDResponseRequestMap;
 		AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 		
 		transport->ensureData(4);
-		DataResponse* nrr = dynamic_cast<DataResponse*>(_context->getResponseRequest(payloadBuffer->getInt()));
-		if (nrr)
-    		nrr->response(transport, version, payloadBuffer);		
-                    }
+		ResponseRequest* rr = _context->getResponseRequest(payloadBuffer->getInt());
+		if (rr)
+		{
+    		DataResponse* nrr = dynamic_cast<DataResponse*>(rr);
+    		if (nrr)
+        		nrr->response(transport, version, payloadBuffer);		
+        }
+        }
         };
 
 
@@ -1015,7 +1262,19 @@ class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoD
 
 	public:
 
-	~ClientResponseHandler() {
+	virtual ~ClientResponseHandler() {
+	   delete m_handlerTable[ 0];
+	   delete m_handlerTable[ 1];
+	   delete m_handlerTable[ 2];
+	   delete m_handlerTable[ 3];
+	   delete m_handlerTable[ 4];
+	   delete m_handlerTable[ 5];
+	   delete m_handlerTable[ 6];
+	   delete m_handlerTable[ 7];
+	   delete m_handlerTable[ 8];
+	   delete m_handlerTable[ 9];
+	   delete m_handlerTable[18];
+	   
 	   delete[] m_handlerTable;
 	}
 
@@ -1078,27 +1337,6 @@ class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoD
 		m_handlerTable[command]->handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 	}
 };
-
-        class TCI : public TransportSendControl {
-        public:
-            virtual void flushSerializeBuffer() {
-            }
-
-            virtual void ensureBuffer(int size) {
-            }
-
-            virtual void startMessage(int8 command, int ensureCapacity){}
-            virtual void endMessage() {}
-
-            virtual void flush(bool lastMessageCompleted) {}
-
-            virtual void setRecipient(const osiSockAddr& sendTo) {}
-        };
-
-
-
-
-
 
 
 
@@ -1223,9 +1461,6 @@ class TestChannelImpl : public ChannelImpl {
          */
 	   bool m_issueCreateMessage;
 
-        // TODO mock
-        PVStructure* m_pvStructure;
-
     private:
     ~TestChannelImpl() 
     {
@@ -1272,8 +1507,8 @@ class TestChannelImpl : public ChannelImpl {
 
     virtual void destroy()
     {
+        destroy(false); //TODO guard
         if (m_addresses) delete m_addresses;
-        delete m_pvStructure;
         delete this;
     };
 
@@ -1302,7 +1537,7 @@ class TestChannelImpl : public ChannelImpl {
 		}
 		else
 		{
-		  return inetAddressToString(m_transport->getRemoteAddress());
+		  return inetAddressToString(*m_transport->getRemoteAddress());
 		}
 	}
 
@@ -1566,7 +1801,8 @@ class TestChannelImpl : public ChannelImpl {
 		{
 			if (remoteDestroy) {
 				m_issueCreateMessage = false;
-				m_transport->enqueueSendRequest(this);
+				// TODO !!! this causes problems.. since qnqueueSendRequest is added and this instance deleted
+				//m_transport->enqueueSendRequest(this);
 			}
 
 			ReferenceCountingTransport* rct = dynamic_cast<ReferenceCountingTransport*>(m_transport);
@@ -1608,7 +1844,7 @@ class TestChannelImpl : public ChannelImpl {
 			if (sockAddrAreIdentical(transport->getRemoteAddress(), serverAddress))
 			{
 				m_requester->message("More than one channel with name '" + m_name +
-				  			   "' detected, additional response from: " + inetAddressToString(serverAddress), warningMessage);
+				  			   "' detected, additional response from: " + inetAddressToString(*serverAddress), warningMessage);
 				return;
 			}
 		}
@@ -1765,28 +2001,28 @@ class TestChannelImpl : public ChannelImpl {
 
 	virtual void getField(GetFieldRequester *requester,epics::pvData::String subField)
     {
-        requester->getDone(g_statusOK,m_pvStructure->getSubField(subField)->getField());
+		new ChannelGetFieldRequestImpl(this, requester, subField);
     }
 
     virtual ChannelProcess* createChannelProcess(
             ChannelProcessRequester *channelProcessRequester,
             epics::pvData::PVStructure *pvRequest)
     {
-    	return new ChannelImplProcess(channelProcessRequester, m_pvStructure, pvRequest);
+		return new ChannelProcessRequestImpl(this, channelProcessRequester, pvRequest);
     }
 
     virtual ChannelGet* createChannelGet(
             ChannelGetRequester *channelGetRequester,
             epics::pvData::PVStructure *pvRequest)
     {
-    	return new ChannelImplGet(this, channelGetRequester, pvRequest);
+    	return new ChannelGetImpl(this, channelGetRequester, pvRequest);
     }
 
     virtual ChannelPut* createChannelPut(
             ChannelPutRequester *channelPutRequester,
             epics::pvData::PVStructure *pvRequest)
     {
-    	return new ChannelImplPut(channelPutRequester, m_pvStructure, pvRequest);
+    	return new ChannelPutImpl(this, channelPutRequester, pvRequest);
     }
 
     virtual ChannelPutGet* createChannelPutGet(
@@ -1808,7 +2044,7 @@ class TestChannelImpl : public ChannelImpl {
             epics::pvData::MonitorRequester *monitorRequester,
             epics::pvData::PVStructure *pvRequest)
     {
-    	return new MockMonitor(monitorRequester, m_pvStructure, pvRequest);
+    	return new MockMonitor(monitorRequester, 0, pvRequest);
     }
 
     virtual ChannelArray* createChannelArray(
@@ -1952,6 +2188,14 @@ class TestChannelImpl : public ChannelImpl {
     }
 
     virtual Configuration* getConfiguration() {
+/*
+TODO
+		final ConfigurationProvider configurationProvider = ConfigurationFactory.getProvider();
+		Configuration config = configurationProvider.getConfiguration("pvAccess-client");
+		if (config == null)
+			config = configurationProvider.getConfiguration("system");
+		return config;
+*/
         return m_configuration;
     }
 
@@ -2057,15 +2301,12 @@ class TestChannelImpl : public ChannelImpl {
     ~TestClientContextImpl() {};
 
     void loadConfiguration() {
-        // TODO
-        /*
-		m_addressList = config->getPropertyAsString("EPICS4_CA_ADDR_LIST", m_addressList);
-		m_autoAddressList = config->getPropertyAsBoolean("EPICS4_CA_AUTO_ADDR_LIST", m_autoAddressList);
-		m_connectionTimeout = config->getPropertyAsFloat("EPICS4_CA_CONN_TMO", m_connectionTimeout);
-		m_beaconPeriod = config->getPropertyAsFloat("EPICS4_CA_BEACON_PERIOD", m_beaconPeriod);
-		m_broadcastPort = config->getPropertyAsInteger("EPICS4_CA_BROADCAST_PORT", m_broadcastPort);
-		m_receiveBufferSize = config->getPropertyAsInteger("EPICS4_CA_MAX_ARRAY_BYTES", m_receiveBufferSize);
-        */
+		m_addressList = m_configuration->getPropertyAsString("EPICS4_CA_ADDR_LIST", m_addressList);
+		m_autoAddressList = m_configuration->getPropertyAsBoolean("EPICS4_CA_AUTO_ADDR_LIST", m_autoAddressList);
+		m_connectionTimeout = m_configuration->getPropertyAsFloat("EPICS4_CA_CONN_TMO", m_connectionTimeout);
+		m_beaconPeriod = m_configuration->getPropertyAsFloat("EPICS4_CA_BEACON_PERIOD", m_beaconPeriod);
+		m_broadcastPort = m_configuration->getPropertyAsInteger("EPICS4_CA_BROADCAST_PORT", m_broadcastPort);
+		m_receiveBufferSize = m_configuration->getPropertyAsInteger("EPICS4_CA_MAX_ARRAY_BYTES", m_receiveBufferSize);
     }
 
     void internalInitialize() {
@@ -2077,6 +2318,7 @@ class TestChannelImpl : public ChannelImpl {
 
 		// setup UDP transport
 		initializeUDPTransport();
+		// TODO what if initialization failed!!!
 
 		// setup search manager
 		m_channelSearchManager = new ChannelSearchManager(this);
@@ -2085,72 +2327,64 @@ class TestChannelImpl : public ChannelImpl {
 	/**
 	 * Initialized UDP transport (broadcast socket and repeater connection).
 	 */
-	void initializeUDPTransport() {
-		// setup UDP transport
-		try
+	bool initializeUDPTransport() {
+
+		// quary broadcast addresses of all IFs
+        SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, 0);
+        if (socket == INVALID_SOCKET) return false;
+        auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(socket, m_broadcastPort));
+        epicsSocketDestroy (socket);
+
+		// set broadcast address list
+		if (!m_addressList.empty())
 		{
-			// where to bind (listen) address
-            osiSockAddr listenLocalAddress;
-            listenLocalAddress.ia.sin_family = AF_INET;
-            listenLocalAddress.ia.sin_port = htons(m_broadcastPort);
-            listenLocalAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+			// if auto is true, add it to specified list
+			InetAddrVector* appendList = 0;
+			if (m_autoAddressList)
+				appendList = broadcastAddresses.get();
 
-			// where to send address
-            SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, 0);
-            InetAddrVector* broadcastAddresses = getBroadcastAddresses(socket, m_broadcastPort);
-    cout<<"Broadcast addresses: "<<broadcastAddresses->size()<<endl;
-    for(size_t i = 0; i<broadcastAddresses->size(); i++) {
-        cout<<"Broadcast address: ";
-        cout<<inetAddressToString(broadcastAddresses->at(i))<<endl;
-    }
-           //InetAddrVector* broadcastAddresses = getSocketAddressList("255.255.255.255", m_broadcastPort);
-
-/// TOD !!!! addresses !!!!! by pointer and not copied
-
-			BlockingUDPConnector* broadcastConnector = new BlockingUDPConnector(true, broadcastAddresses, true);
-
-			m_broadcastTransport = (BlockingUDPTransport*)broadcastConnector->connect(
-						0, new ClientResponseHandler(this),
-						listenLocalAddress, CA_MINOR_PROTOCOL_REVISION,
-						CA_DEFAULT_PRIORITY);
-
-			BlockingUDPConnector* searchConnector = new BlockingUDPConnector(false, broadcastAddresses, true);
-
-			// undefined address
-            osiSockAddr undefinedAddress;
-            undefinedAddress.ia.sin_family = AF_INET;
-            undefinedAddress.ia.sin_port = htons(0);
-            undefinedAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-
-			m_searchTransport = (BlockingUDPTransport*)searchConnector->connect(
-										0, new ClientResponseHandler(this),
-										undefinedAddress, CA_MINOR_PROTOCOL_REVISION,
-										CA_DEFAULT_PRIORITY);
-
-			// set broadcast address list
-			if (!m_addressList.empty())
-			{
-				// if auto is true, add it to specified list
-				InetAddrVector* appendList = 0;
-				if (m_autoAddressList)
-					appendList = m_broadcastTransport->getSendAddresses();
-
-				InetAddrVector* list = getSocketAddressList(m_addressList, m_broadcastPort, appendList);
-				// TODO delete !!!!
-				if (list && list->size()) {
-					m_broadcastTransport->setBroadcastAddresses(list);
-					m_searchTransport->setBroadcastAddresses(list);
-				}
+			auto_ptr<InetAddrVector> list(getSocketAddressList(m_addressList, m_broadcastPort, appendList));
+			if (list.get() && list->size()) {
+			    // delete old list and take ownership of a new one
+			    broadcastAddresses = list;
 			}
-
-			m_broadcastTransport->start();
-			m_searchTransport->start();
-
 		}
-		catch (...)
-		{
-		  // TODO
-		}
+
+		// where to bind (listen) address
+        osiSockAddr listenLocalAddress;
+        listenLocalAddress.ia.sin_family = AF_INET;
+        listenLocalAddress.ia.sin_port = htons(m_broadcastPort);
+        listenLocalAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+
+		auto_ptr<BlockingUDPConnector> broadcastConnector(new BlockingUDPConnector(true, true));
+		m_broadcastTransport = (BlockingUDPTransport*)broadcastConnector->connect(
+					0, new ClientResponseHandler(this),
+					listenLocalAddress, CA_MINOR_PROTOCOL_REVISION,
+					CA_DEFAULT_PRIORITY);
+		if (!m_broadcastTransport)
+		     return false;
+		m_broadcastTransport->setBroadcastAddresses(broadcastAddresses.get());
+
+		// undefined address
+        osiSockAddr undefinedAddress;
+        undefinedAddress.ia.sin_family = AF_INET;
+        undefinedAddress.ia.sin_port = htons(0);
+        undefinedAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+
+		auto_ptr<BlockingUDPConnector> searchConnector(new BlockingUDPConnector(false, true));
+		m_searchTransport = (BlockingUDPTransport*)searchConnector->connect(
+									0, new ClientResponseHandler(this),
+									undefinedAddress, CA_MINOR_PROTOCOL_REVISION,
+									CA_DEFAULT_PRIORITY);
+		if (!m_searchTransport)
+		     return false;
+		m_searchTransport->setBroadcastAddresses(broadcastAddresses.get());
+		
+        // become active
+		m_broadcastTransport->start();
+		m_searchTransport->start();
+
+        return true;
 	}
 
     void internalDestroy() {
@@ -2279,6 +2513,7 @@ class TestChannelImpl : public ChannelImpl {
 	{
 	   Lock guard(&m_ioidMapMutex);
 	   IOIDResponseRequestMap::iterator it = m_pendingResponseRequests.find(ioid);
+	   printf("getResponseRequest %d = %d\n", ioid, (it == m_pendingResponseRequests.end() ? 0 : it->second));
 	   return (it == m_pendingResponseRequests.end() ? 0 : it->second);
 	}
 
@@ -2291,6 +2526,7 @@ class TestChannelImpl : public ChannelImpl {
 	{
 	   Lock guard(&m_ioidMapMutex);
 	   pvAccessID ioid = generateIOID();
+	   printf("registerResponseRequest %d = %d\n", ioid, request);
 	   m_pendingResponseRequests[ioid] = request;
 	   return ioid;
 	}
@@ -2304,10 +2540,12 @@ class TestChannelImpl : public ChannelImpl {
 	{
 	   Lock guard(&m_ioidMapMutex);
 	   IOIDResponseRequestMap::iterator it = m_pendingResponseRequests.find(request->getIOID());
+	   printf("unregisterResponseRequest %d = %d\n", request->getIOID(), request);
 	   if (it == m_pendingResponseRequests.end())
 	       return 0;
 
        ResponseRequest* retVal = it->second;
+	   printf("unregisterResponseRequest %d = %d==%d\n", request->getIOID(), request, retVal);
 	   m_pendingResponseRequests.erase(it);
 	   return retVal;
 	}
@@ -2697,10 +2935,13 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
     virtual void getDone(epics::pvData::Status *status)
     {
         std::cout << "getDone(" << status->toString() << ")" << std::endl;
-        String str;
-        m_pvStructure->toString(&str);
-        std::cout << str;
-        std::cout << std::endl;
+        if (m_pvStructure)
+        {
+            String str;
+            m_pvStructure->toString(&str);
+            std::cout << str;
+            std::cout << std::endl;
+        }
     }
 };
 
@@ -2734,19 +2975,25 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     virtual void getDone(epics::pvData::Status *status)
     {
         std::cout << "getDone(" << status->toString() << ")" << std::endl;
-        String str;
-        m_pvStructure->toString(&str);
-        std::cout << str;
-        std::cout << std::endl;
+        if (m_pvStructure)
+        {
+            String str;
+            m_pvStructure->toString(&str);
+            std::cout << str;
+            std::cout << std::endl;
+        }
     }
 
     virtual void putDone(epics::pvData::Status *status)
     {
         std::cout << "putDone(" << status->toString() << ")" << std::endl;
-        String str;
-        m_pvStructure->toString(&str);
-        std::cout << str;
-        std::cout << std::endl;
+        if (m_pvStructure)
+        {
+            String str;
+            m_pvStructure->toString(&str);
+            std::cout << str;
+            std::cout << std::endl;
+        }
     }
 
 };
@@ -2844,29 +3091,44 @@ int main(int argc,char *argv[])
 
     ChannelRequesterImpl channelRequester;
     Channel* channel = context->getProvider()->createChannel("structureArrayTest", &channelRequester);
-    channel->printInfo();
-    
-    //GetFieldRequesterImpl getFieldRequesterImpl;
-    //channel->getField(&getFieldRequesterImpl, "timeStamp.secondsPastEpoch");
 
-    epicsThreadSleep ( 3.0 );
+    epicsThreadSleep ( 1.0 );
+
+    channel->printInfo();
+
+    GetFieldRequesterImpl getFieldRequesterImpl;
+    channel->getField(&getFieldRequesterImpl, "");
+    epicsThreadSleep ( 1.0 );
+
+    ChannelProcessRequesterImpl channelProcessRequester;
+    ChannelProcess* channelProcess = channel->createChannelProcess(&channelProcessRequester, 0);
+    epicsThreadSleep ( 1.0 );
+    channelProcess->process(false);
+    epicsThreadSleep ( 1.0 );
+    channelProcess->destroy();
+    epicsThreadSleep ( 1.0 );
 
     ChannelGetRequesterImpl channelGetRequesterImpl;
-    PVStructure* pvRequest = getCreateRequest()->createRequest("field(timeStamp,value)",&channelGetRequesterImpl);
+    PVStructure* pvRequest = getCreateRequest()->createRequest("field(value, timeStamp)",&channelGetRequesterImpl);
     ChannelGet* channelGet = channel->createChannelGet(&channelGetRequesterImpl, pvRequest);
     epicsThreadSleep ( 3.0 );
     channelGet->get(false);
     epicsThreadSleep ( 3.0 );
     channelGet->destroy();
-    // TODO delete pvRequest
-/*
+    epicsThreadSleep ( 1.0 );
+
+
     ChannelPutRequesterImpl channelPutRequesterImpl;
-    ChannelPut* channelPut = channel->createChannelPut(&channelPutRequesterImpl, 0);
+    ChannelPut* channelPut = channel->createChannelPut(&channelPutRequesterImpl, pvRequest);
+    epicsThreadSleep ( 1.0 );
     channelPut->get();
+    epicsThreadSleep ( 1.0 );
     channelPut->put(false);
+    epicsThreadSleep ( 1.0 );
     channelPut->destroy();
 
 
+/*
     MonitorRequesterImpl monitorRequesterImpl;
     Monitor* monitor = channel->createMonitor(&monitorRequesterImpl, 0);
 
@@ -2874,11 +3136,6 @@ int main(int argc,char *argv[])
     std::cout << "monitor->start() = " << status->toString() << std::endl;
     delete status;
 
-
-    ChannelProcessRequesterImpl channelProcessRequester;
-    ChannelProcess* channelProcess = channel->createChannelProcess(&channelProcessRequester, 0);
-    channelProcess->process(false);
-    channelProcess->destroy();
 
 
     status = monitor->stop();
@@ -2888,10 +3145,20 @@ int main(int argc,char *argv[])
 
     monitor->destroy();
     */
-    epicsThreadSleep ( 20.0 );
+    
+    // TODO share it?
+    delete pvRequest;
+    
+    epicsThreadSleep ( 3.0 );
+    printf("Destroying channel... \n");
     channel->destroy();
+    printf("done.\n");
 
+    epicsThreadSleep ( 3.0 );
+
+    printf("Destroying context... \n");
     context->destroy();
+    printf("done.\n");
 
     std::cout << "-----------------------------------------------------------------------" << std::endl;
     getShowConstructDestruct()->constuctDestructTotals(stdout);

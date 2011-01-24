@@ -28,7 +28,7 @@
 namespace epics {
     namespace pvAccess {
 
-        typedef std::vector<osiSockAddr*> InetAddrVector;
+        typedef std::vector<osiSockAddr> InetAddrVector;
 
         /**
          * returns a vector containing all the IPv4 broadcast addresses
@@ -72,7 +72,7 @@ namespace epics {
         InetAddrVector* getSocketAddressList(epics::pvData::String list, int defaultPort,
                 const InetAddrVector* appendList = NULL);
 
-        const epics::pvData::String inetAddressToString(const osiSockAddr *addr,
+        const epics::pvData::String inetAddressToString(const osiSockAddr &addr,
                 bool displayPort = true, bool displayHex = false);
 
         /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */

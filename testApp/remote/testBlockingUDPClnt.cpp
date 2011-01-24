@@ -5,17 +5,19 @@
  *      Author: Miha Vitorovic
  */
 
-#include "remote.h"
-#include "blockingUDP.h"
-#include "logger.h"
-#include "inetAddressUtil.h"
+#include <remote.h>
+#include <blockingUDP.h>
+#include <logger.h>
+#include <inetAddressUtil.h>
+
+//#include <showConstructDestruct.h>
 
 #include <osiSock.h>
 
 #include <iostream>
 #include <cstdio>
 
-#define SRV_IP "192.168.71.132"
+#define SRV_IP "127.0.0.1"
 
 using namespace epics::pvAccess;
 using namespace epics::pvData;
@@ -28,19 +30,16 @@ static osiSockAddr sendTo;
 
 class ContextImpl : public Context {
 public:
-    ContextImpl() :
-        _tr(new TransportRegistry()), _timer(new Timer("server thread",
-                lowPriority)), _conf(new SystemConfigurationImpl()) {
-    }
+    ContextImpl() 
+    {}
+
     virtual ~ContextImpl() {
-        delete _tr;
-        delete _timer;
     }
     virtual Timer* getTimer() {
-        return _timer;
+        return 0;
     }
     virtual TransportRegistry* getTransportRegistry() {
-        return _tr;
+        return 0;
     }
     virtual Channel* getChannel(epics::pvAccess::pvAccessID) {
         return 0;
@@ -49,19 +48,16 @@ public:
         return 0;
     }
     virtual Configuration* getConfiguration() {
-        return _conf;
+        return 0;
     }
-
-private:
-    TransportRegistry* _tr;
-    Timer* _timer;
-    Configuration* _conf;
 };
 
 class DummyResponseHandler : public ResponseHandler {
 public:
     DummyResponseHandler(Context* ctx)
     { }
+
+    virtual ~DummyResponseHandler() {}
 
     virtual void handleResponse(osiSockAddr* responseFrom,
             Transport* transport, int8 version, int8 command, int payloadSize,
@@ -97,7 +93,7 @@ private:
 };
 
 void testBlockingUDPSender() {
-    BlockingUDPConnector connector(false, NULL, true);
+    BlockingUDPConnector connector(false, true);
     ContextImpl ctx;
 
     DummyTransportSender dts;
@@ -130,8 +126,11 @@ void testBlockingUDPSender() {
 }
 
 int main(int argc, char *argv[]) {
-    createFileLogger("testBlockingUDPClnt.log");
+//    createFileLogger("testBlockingUDPClnt.log");
 
     testBlockingUDPSender();
+
+//    std::cout << "-----------------------------------------------------------------------" << std::endl;
+//    getShowConstructDestruct()->constuctDestructTotals(stdout);
     return (0);
 }

@@ -17,7 +17,7 @@
 #include <noDefaultMethods.h>
 #include <byteBuffer.h>
 #include <lock.h>
-#include <epicsException.h>
+#include <event.h>
 
 /* EPICSv3 */
 #include <osdSock.h>
@@ -33,7 +33,6 @@ namespace epics {
         public:
             BlockingUDPTransport(ResponseHandler* responseHandler,
                     SOCKET channel, osiSockAddr& bindAddress,
-                    InetAddrVector* sendAddresses,
                     short remoteTransportRevision);
 
             virtual ~BlockingUDPTransport();
@@ -43,7 +42,7 @@ namespace epics {
             }
 
             virtual const osiSockAddr* getRemoteAddress() const {
-                return _socketAddress;
+                return &_bindAddress;
             }
 
             virtual const String getType() const {
@@ -97,7 +96,7 @@ namespace epics {
             virtual void close(bool forced);
 
             virtual void ensureData(int size) {
-                // TODO Auto-generated method stub
+                // noop
             }
 
             virtual void startMessage(int8 command, int ensureCapacity);
@@ -108,13 +107,12 @@ namespace epics {
             }
 
             virtual void setRecipient(const osiSockAddr& sendTo) {
-                if(_sendTo!=NULL) delete _sendTo;
-                _sendTo = new osiSockAddr;
-                memcpy(_sendTo, &sendTo, sizeof(osiSockAddr));
+                _sendToEnabled = true;
+                _sendTo = sendTo;
             }
 
             virtual void flushSerializeBuffer() {
-                // TODO Auto-generated method stub
+                // noop
             }
 
             virtual void ensureBuffer(int size) {
@@ -126,7 +124,15 @@ namespace epics {
              * @param addresses list of ignored addresses.
              */
             void setIgnoredAddresses(InetAddrVector* addresses) {
-                _ignoredAddresses = addresses;
+                if (addresses)
+                {
+                    if (!_ignoredAddresses) _ignoredAddresses = new InetAddrVector;
+                    *_ignoredAddresses = *addresses;
+                }
+                else
+                {
+                    if (_ignoredAddresses) { delete _ignoredAddresses; _ignoredAddresses = 0; }
+                }
             }
 
             /**
@@ -154,7 +160,7 @@ namespace epics {
              * @return bind address.
              */
             const osiSockAddr* getBindAddress() const {
-                return _bindAddress;
+                return &_bindAddress;
             }
 
             /**
@@ -162,11 +168,19 @@ namespace epics {
              * @param addresses list of send addresses, non-<code>null</code>.
              */
             void setBroadcastAddresses(InetAddrVector* addresses) {
-                _sendAddresses = addresses;
+                if (addresses)
+                {
+                    if (!_sendAddresses) _sendAddresses = new InetAddrVector;
+                    *_sendAddresses = *addresses;
+                }
+                else
+                {
+                    if (_sendAddresses) { delete _sendAddresses; _sendAddresses = 0; }
+                }
             }
 
             virtual IntrospectionRegistry* getIntrospectionRegistry() {
-                THROW_BASE_EXCEPTION("not supported by UDP transport");
+                return 0;
             }
 
         protected:
@@ -184,6 +198,8 @@ namespace epics {
             bool processBuffer(osiSockAddr& fromAddress,
                     epics::pvData::ByteBuffer* receiveBuffer);
 
+            void close(bool forced, bool waitForThreadToComplete);
+
             // Context only used for logging in this class
 
             /**
@@ -192,14 +208,9 @@ namespace epics {
             SOCKET _channel;
 
             /**
-             * Cached socket address.
-             */
-            osiSockAddr* _socketAddress;
-
-            /**
              * Bind address.
              */
-            osiSockAddr* _bindAddress;
+            osiSockAddr _bindAddress;
 
             /**
              * Send addresses.
@@ -211,8 +222,12 @@ namespace epics {
              */
             InetAddrVector* _ignoredAddresses;
 
-            osiSockAddr* _sendTo;
-
+            /**
+             * Send address.
+             */
+            osiSockAddr _sendTo;
+            bool _sendToEnabled;
+            
             /**
              * Receive buffer.
              */
@@ -229,14 +244,11 @@ namespace epics {
             int _lastMessageStartPosition;
 
             /**
-             * Read buffer
-             */
-            char* _readBuffer;
-
-            /**
              * Used for process sync.
              */
-            Mutex* _mutex;
+            Mutex _mutex;
+            Mutex _sendMutex;
+            Event _shutdownEvent;
 
             /**
              * Thread ID
@@ -245,18 +257,19 @@ namespace epics {
 
         };
 
-        class BlockingUDPConnector : public Connector,
-                public epics::pvData::NoDefaultMethods {
+        class BlockingUDPConnector :
+                public Connector,
+                private epics::pvData::NoDefaultMethods {
         public:
 
-            BlockingUDPConnector(bool reuseSocket,
-                    InetAddrVector* sendAddresses, bool broadcast) :
-                _sendAddresses(sendAddresses), _reuseSocket(reuseSocket),
-                        _broadcast(broadcast) {
+            BlockingUDPConnector(
+                    bool reuseSocket,
+                    bool broadcast) :
+                _reuseSocket(reuseSocket),
+                _broadcast(broadcast) {
             }
 
             virtual ~BlockingUDPConnector() {
-                // TODO: delete _sendAddresses here?
             }
 
             /**
@@ -267,11 +280,6 @@ namespace epics {
                     short transportRevision, int16 priority);
 
         private:
-
-            /**
-             * Send address.
-             */
-            InetAddrVector* _sendAddresses;
 
             /**
              * Reuse socket flag.

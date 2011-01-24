@@ -65,7 +65,7 @@ namespace epics {
         BlockingTCPTransport::BlockingTCPTransport(Context* context,
                 SOCKET channel, ResponseHandler* responseHandler,
                 int receiveBufferSize, int16 priority) :
-            _closed(false), _channel(channel), _socketAddress(new osiSockAddr),
+                    _closed(false), _channel(channel),
                     _remoteTransportRevision(0),
                     _remoteTransportReceiveBufferSize(MAX_TCP_RECV),
                     _remoteTransportSocketReceiveBufferSize(MAX_TCP_RECV),
@@ -75,9 +75,7 @@ namespace epics {
                             LONG_LONG_MAX), _autoDelete(true),
                     _markerPeriodBytes(MARKER_PERIOD), _nextMarkerPosition(
                             _markerPeriodBytes), _sendPending(false),
-                    _lastMessageStartPosition(0), _mutex(new Mutex()),
-                    _sendQueueMutex(new Mutex()), _verifiedMutex(new Mutex()),
-                    _monitorMutex(new Mutex()), _stage(READ_FROM_SOCKET),
+                    _lastMessageStartPosition(0), _stage(READ_FROM_SOCKET),
                     _lastSegmentedMessageType(0), _lastSegmentedMessageCommand(
                             0), _storedPayloadSize(0), _storedPosition(0),
                     _storedLimit(0), _magicAndVersion(0), _packetType(0),
@@ -87,9 +85,9 @@ namespace epics {
                             new GrowingCircularBuffer<TransportSender*> (100)),
                     _rcvThreadId(NULL), _sendThreadId(NULL), _monitorSendQueue(
                             new GrowingCircularBuffer<TransportSender*> (100)),
-                    _monitorSender(new MonitorSender(_monitorMutex,
+                    _monitorSender(new MonitorSender(&_monitorMutex,
                             _monitorSendQueue)), _context(context),
-                    _sendThreadRunning(false) {
+                    _sendThreadExited(false) {
 
             _socketBuffer = new ByteBuffer(max(MAX_TCP_RECV
                     +MAX_ENSURE_DATA_BUFFER_SIZE, receiveBufferSize), EPICS_ENDIAN_BIG);
@@ -114,7 +112,7 @@ namespace epics {
             }
 
             socklen_t saSize = sizeof(sockaddr);
-            retval = getpeername(_channel, &(_socketAddress->sa), &saSize);
+            retval = getpeername(_channel, &(_socketAddress.sa), &saSize);
             if(retval<0) {
                 errlogSevPrintf(errlogMajor,
                         "Error fetching socket remote address: %s", strerror(
@@ -131,21 +129,19 @@ namespace epics {
         BlockingTCPTransport::~BlockingTCPTransport() {
             close(true);
 
-            delete _socketAddress;
             delete _sendQueue;
             delete _socketBuffer;
             delete _sendBuffer;
 
-            delete _mutex;
-            delete _sendQueueMutex;
-            delete _verifiedMutex;
-            delete _monitorMutex;
+            delete _responseHandler;
         }
 
         void BlockingTCPTransport::start() {
-            _sendThreadRunning = true;
+            
+            // TODO consuder epics::pvData::Thread
+            
             String threadName = "TCP-receive "+inetAddressToString(
-                    _socketAddress);
+                   _socketAddress);
 
             errlogSevPrintf(errlogInfo, "Starting thread: %s",
                     threadName.c_str());
@@ -174,9 +170,9 @@ namespace epics {
             _nextMarkerPosition -= _sendBuffer->getPosition()
                     -CA_MESSAGE_HEADER_SIZE;
 
-            _sendQueueMutex->lock();
+            _sendQueueMutex.lock();
             _flushRequested = false;
-            _sendQueueMutex->unlock();
+            _sendQueueMutex.unlock();
 
             _sendBuffer->clear();
 
@@ -190,12 +186,13 @@ namespace epics {
         }
 
         void BlockingTCPTransport::close(bool force) {
-            Lock lock(_mutex);
+            Lock lock(&_mutex);
 
             // already closed check
             if(_closed) return;
 
             _closed = true;
+            printf("closing.\n");
 
             // remove from registry
             _context->getTransportRegistry()->remove(this);
@@ -203,12 +200,8 @@ namespace epics {
             // clean resources
             internalClose(force);
 
-            // threads cannot "wait" Epics, no need to notify
-            // TODO check alternatives to "wait"
             // notify send queue
-            //synchronized (sendQueue) {
-            //    sendQueue.notifyAll();
-            //}
+            _sendQueueEvent.signal();
         }
 
         void BlockingTCPTransport::internalClose(bool force) {
@@ -235,21 +228,22 @@ namespace epics {
             return sockBufSize;
         }
 
+        // TODO reimplement using Event
         bool BlockingTCPTransport::waitUntilVerified(double timeout) {
             double internalTimeout = timeout;
             bool internalVerified = false;
 
-            _verifiedMutex->lock();
+            _verifiedMutex.lock();
             internalVerified = _verified;
-            _verifiedMutex->unlock();
+            _verifiedMutex.unlock();
 
             while(!internalVerified&&internalTimeout>0) {
                 epicsThreadSleep(min(0.1, internalTimeout));
                 internalTimeout -= 0.1;
 
-                _verifiedMutex->lock();
+                _verifiedMutex.lock();
                 internalVerified = _verified;
-                _verifiedMutex->unlock();
+                _verifiedMutex.unlock();
             }
             return internalVerified;
         }
@@ -527,11 +521,14 @@ namespace epics {
                         }
                         else if(type==1) {
                             if(_command==0) {
-                                if(_markerToSend==0) _markerToSend
-                                        = _payloadSize; // TODO send back response
+                                _flowControlMutex.lock();
+                                if(_markerToSend==0)
+                                    _markerToSend = _payloadSize; // TODO send back response
+                                _flowControlMutex.unlock();
                             }
                             else //if (command == 1)
                             {
+                                _flowControlMutex.lock();
                                 int difference = (int)_totalBytesSent
                                         -_payloadSize+CA_MESSAGE_HEADER_SIZE;
                                 // overrun check
@@ -541,6 +538,7 @@ namespace epics {
                                                 +_remoteTransportSocketReceiveBufferSize
                                                 -difference;
                                 // TODO if this is calculated wrong, this can be critical !!!
+                                _flowControlMutex.unlock();
                             }
 
                             // no payload
@@ -576,7 +574,7 @@ namespace epics {
                                 +_storedPayloadSize, _storedLimit));
                         try {
                             // handle response
-                            _responseHandler->handleResponse(_socketAddress,
+                            _responseHandler->handleResponse(&_socketAddress,
                                     this, version, _command, _payloadSize,
                                     _socketBuffer);
                         } catch(...) {
@@ -624,8 +622,10 @@ namespace epics {
                 _sendBufferSentPosition = 0;
 
                 // if not set skip marker otherwise set it
+                _flowControlMutex.lock();
                 int markerValue = _markerToSend;
                 _markerToSend = 0;
+                _flowControlMutex.unlock();
                 if(markerValue==0)
                     _sendBufferSentPosition = CA_MESSAGE_HEADER_SIZE;
                 else
@@ -657,7 +657,7 @@ namespace epics {
             } catch(BaseException* e) {
                 String trace;
                 e->toString(trace);
-                errlogSevPrintf(errlogMajor, trace.c_str());
+                errlogSevPrintf(errlogMajor, "%s", trace.c_str());
                 // error, release lock
                 clearAndReleaseBuffer();
             } catch(...) {
@@ -701,7 +701,7 @@ namespace epics {
                         // connection lost
                         ostringstream temp;
                         temp<<"error in sending TCP data: "<<strerror(errno);
-                        errlogSevPrintf(errlogMajor, temp.str().c_str());
+                        errlogSevPrintf(errlogMajor, "%s", temp.str().c_str());
                         THROW_BASE_EXCEPTION(temp.str().c_str());
                     }
                     else if(bytesSent==0) {
@@ -722,7 +722,9 @@ namespace epics {
 
                     buffer->setPosition(buffer->getPosition()+bytesSent);
 
+                    _flowControlMutex.lock();
                     _totalBytesSent += bytesSent;
+                    _flowControlMutex.unlock();
 
                     // readjust limit
                     if(bytesToSend==maxBytesToSend) {
@@ -748,18 +750,9 @@ namespace epics {
         TransportSender* BlockingTCPTransport::extractFromSendQueue() {
             TransportSender* retval;
 
-            _sendQueueMutex->lock();
-            try {
-                if(_sendQueue->size()>0)
-                    retval = _sendQueue->extract();
-                else
-                    retval = NULL;
-            } catch(...) {
-                // not expecting the exception here, but just to be safe
-                retval = NULL;
-            }
-
-            _sendQueueMutex->unlock();
+            _sendQueueMutex.lock();
+            retval = _sendQueue->extract();
+            _sendQueueMutex.unlock();
 
             return retval;
         }
@@ -768,23 +761,35 @@ namespace epics {
             while(!_closed) {
                 TransportSender* sender;
 
+// TODO race!
                 sender = extractFromSendQueue();
+                printf("extraced %d\n", sender);
                 // wait for new message
-                while(sender==NULL&&!_flushRequested&&!_closed) {
+                while(sender==NULL&&!_flushRequested/*&&!_closed*/) {
+                    
+                    
+                    bool c;
+                    _mutex.lock();
+                    c = _closed;
+                    printf("closed %d\n", c);
+                    _mutex.unlock();
+                    if (c)
+                        break;
+                        
                     if(_flushStrategy==DELAYED) {
-                        if(delay>0) epicsThreadSleep(delay);
+                        if(_delay>0) epicsThreadSleep(_delay);
                         if(_sendQueue->size()==0) {
                             // if (hasMonitors || sendBuffer.position() > CAConstants.CA_MESSAGE_HEADER_SIZE)
-                            if(_sendBuffer->getPosition()
-                                    >CA_MESSAGE_HEADER_SIZE)
+                            if(_sendBuffer->getPosition()>CA_MESSAGE_HEADER_SIZE)
                                 _flushRequested = true;
                             else
-                                epicsThreadSleep(0);
+                                _sendQueueEvent.wait();
                         }
                     }
                     else
-                        epicsThreadSleep(0);
+                        _sendQueueEvent.wait();
                     sender = extractFromSendQueue();
+                    printf("extraced2 %d\n", sender);
                 }
 
                 // always do flush from this thread
@@ -813,7 +818,7 @@ namespace epics {
                     } catch(BaseException* e) {
                         String trace;
                         e->toString(trace);
-                        errlogSevPrintf(errlogMajor, trace.c_str());
+                        errlogSevPrintf(errlogMajor, "%s", trace.c_str());
                         _sendBuffer->setPosition(_lastMessageStartPosition);
                     } catch(...) {
                         _sendBuffer->setPosition(_lastMessageStartPosition);
@@ -821,13 +826,6 @@ namespace epics {
                     sender->unlock();
                 } // if(sender!=NULL)
             } // while(!_closed)
-        }
-
-        void BlockingTCPTransport::requestFlush() {
-            // needless lock, manipulating a single byte
-            //Lock lock(_sendQueueMutex);
-            if(_flushRequested) return;
-            _flushRequested = true;
         }
 
         void BlockingTCPTransport::freeSendBuffers() {
@@ -849,53 +847,68 @@ namespace epics {
         void BlockingTCPTransport::rcvThreadRunner(void* param) {
             BlockingTCPTransport* obj = (BlockingTCPTransport*)param;
 
+try{
             obj->processReadCached(false, NONE, CA_MESSAGE_HEADER_SIZE, false);
-
+} catch (...) {
+printf("rcvThreadRunnner exception\n");
+}
+                    printf("rcvThreadRunner done, autodelete %d-\n", obj->_autoDelete);
             if(obj->_autoDelete) {
-                while(obj->_sendThreadRunning)
+                while(true)
+                {
+                    printf("waiting send thread to exit.\n");
+                    bool exited;
+                    obj->_mutex.lock();
+                    exited = obj->_sendThreadExited;
+                    obj->_mutex.unlock();
+                    if (exited)
+                        break;
                     epicsThreadSleep(0.1);
-
+                }
+                printf("deleting.\n");
                 delete obj;
             }
         }
 
         void BlockingTCPTransport::sendThreadRunner(void* param) {
             BlockingTCPTransport* obj = (BlockingTCPTransport*)param;
-
+try {
             obj->processSendQueue();
+} catch (...) {
+printf("sendThreadRunnner exception\n");
+}
 
             obj->freeConnectionResorces();
+                printf("exited.\n");
 
-            obj->_sendThreadRunning = false;
+            // TODO possible crash on unlock
+            obj->_mutex.lock();
+            obj->_sendThreadExited = true;
+            obj->_mutex.unlock();
         }
 
         void BlockingTCPTransport::enqueueSendRequest(TransportSender* sender) {
+            Lock lock(&_sendQueueMutex);
             if(_closed) return;
-            Lock lock(_sendQueueMutex);
             _sendQueue->insert(sender);
+            _sendQueueEvent.signal();
         }
 
-        void BlockingTCPTransport::enqueueMonitorSendRequest(
-                TransportSender* sender) {
+        void BlockingTCPTransport::enqueueMonitorSendRequest(TransportSender* sender) {
+            Lock lock(&_monitorMutex);
             if(_closed) return;
-            Lock lock(_monitorMutex);
             _monitorSendQueue->insert(sender);
             if(_monitorSendQueue->size()==1) enqueueSendRequest(_monitorSender);
         }
 
-        void MonitorSender::send(ByteBuffer* buffer,
-                TransportSendControl* control) {
+        void MonitorSender::send(ByteBuffer* buffer, TransportSendControl* control) {
             control->startMessage(19, 0);
 
             while(true) {
                 TransportSender* sender;
                 _monitorMutex->lock();
                 if(_monitorSendQueue->size()>0)
-                    try {
-                        sender = _monitorSendQueue->extract();
-                    } catch(...) {
-                        sender = NULL;
-                    }
+                    sender = _monitorSendQueue->extract();
                 else
                     sender = NULL;
                 _monitorMutex->unlock();

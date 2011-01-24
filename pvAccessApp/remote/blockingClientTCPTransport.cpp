@@ -34,12 +34,10 @@ namespace epics {
                 float beaconInterval, int16 priority) :
             BlockingTCPTransport(context, channel, responseHandler,
                     receiveBufferSize, priority), _introspectionRegistry(
-                    new IntrospectionRegistry(false)), _owners(new set<
-                    TransportClient*> ()), _connectionTimeout(beaconInterval
+                    new IntrospectionRegistry(false)), _connectionTimeout(beaconInterval
                     *1000), _unresponsiveTransport(false), _timerNode(
-                    new TimerNode(this)), _mutex(new Mutex()), _ownersMutex(
-                    new Mutex()), _verifyOrEcho(true) {
-            _autoDelete = false;
+                    new TimerNode(this)), _verifyOrEcho(true) {
+//            _autoDelete = false;
 
             // initialize owners list, send queue
             acquire(client);
@@ -58,11 +56,9 @@ namespace epics {
         }
 
         BlockingClientTCPTransport::~BlockingClientTCPTransport() {
+            printf("========== ~BlockingClientTCPTransport\n");
             delete _introspectionRegistry;
-            delete _owners;
             delete _timerNode;
-            delete _mutex;
-            delete _ownersMutex;
         }
 
         void BlockingClientTCPTransport::callback() {
@@ -84,27 +80,25 @@ namespace epics {
             if(!_unresponsiveTransport) {
                 _unresponsiveTransport = true;
 
-                Lock lock(_ownersMutex);
-                set<TransportClient*>::iterator it = _owners->begin();
-                for(; it!=_owners->end(); it++)
+                Lock lock(&_ownersMutex);
+                set<TransportClient*>::iterator it = _owners.begin();
+                for(; it!=_owners.end(); it++)
                     (*it)->transportUnresponsive();
             }
         }
 
         bool BlockingClientTCPTransport::acquire(TransportClient* client) {
-            Lock lock(_mutex);
+            Lock lock(&_mutex);
 
             if(_closed) return false;
 
             char ipAddrStr[48];
-            ipAddrToDottedIP(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
             errlogSevPrintf(errlogInfo, "Acquiring transport to %s.", ipAddrStr);
 
-            _ownersMutex->lock();
-            if(_closed) return false;
-
-            _owners->insert(client);
-            _ownersMutex->unlock();
+            Lock lock2(&_ownersMutex);
+// TODO double check?            if(_closed) return false;
+            _owners.insert(client);
 
             return true;
         }
@@ -121,40 +115,40 @@ namespace epics {
          * Notifies clients about disconnect.
          */
         void BlockingClientTCPTransport::closedNotifyClients() {
-            Lock lock(_ownersMutex);
+            Lock lock(&_ownersMutex);
 
             // check if still acquired
-            int refs = _owners->size();
+            int refs = _owners.size();
             if(refs>0) {
                 char ipAddrStr[48];
-                ipAddrToDottedIP(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+                ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
                 errlogSevPrintf(
                         errlogInfo,
                         "Transport to %s still has %d client(s) active and closing...",
                         ipAddrStr, refs);
 
-                set<TransportClient*>::iterator it = _owners->begin();
-                for(; it!=_owners->end(); it++)
+                set<TransportClient*>::iterator it = _owners.begin();
+                for(; it!=_owners.end(); it++)
                     (*it)->transportClosed();
             }
 
-            _owners->clear();
+            _owners.clear();
         }
 
         void BlockingClientTCPTransport::release(TransportClient* client) {
             if(_closed) return;
 
             char ipAddrStr[48];
-            ipAddrToDottedIP(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
 
             errlogSevPrintf(errlogInfo, "Releasing transport to %s.", ipAddrStr);
 
-            Lock lock(_ownersMutex);
-            _owners->erase(client);
+            Lock lock(&_ownersMutex);
+            _owners.erase(client);
 
             // not used anymore
             // TODO consider delayed destruction (can improve performance!!!)
-            if(_owners->size()==0) close(false);
+            if(_owners.size()==0) close(false);
         }
 
         void BlockingClientTCPTransport::aliveNotification() {
@@ -165,20 +159,20 @@ namespace epics {
         void BlockingClientTCPTransport::responsiveTransport() {
             if(_unresponsiveTransport) {
                 _unresponsiveTransport = false;
-                Lock lock(_ownersMutex);
+                Lock lock(&_ownersMutex);
 
-                set<TransportClient*>::iterator it = _owners->begin();
-                for(; it!=_owners->end(); it++)
+                set<TransportClient*>::iterator it = _owners.begin();
+                for(; it!=_owners.end(); it++)
                     (*it)->transportResponsive(this);
             }
         }
 
         void BlockingClientTCPTransport::changedTransport() {
             _introspectionRegistry->reset();
-            Lock lock(_ownersMutex);
+            Lock lock(&_ownersMutex);
 
-            set<TransportClient*>::iterator it = _owners->begin();
-            for(; it!=_owners->end(); it++)
+            set<TransportClient*>::iterator it = _owners.begin();
+            for(; it!=_owners.end(); it++)
                 (*it)->transportChanged();
         }
 
