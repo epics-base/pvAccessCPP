@@ -45,7 +45,9 @@ FieldConstPtr IntrospectionRegistry::getIntrospectionInterface(const short id)
 	Lock guard(&_mutex);
 	_registryIter = _registry.find(id);
 	if(_registryIter == _registry.end())
+	{
 	   return NULL;
+	}
 	return _registryIter->second;
 }
 
@@ -103,6 +105,9 @@ void IntrospectionRegistry::printKeysAndValues(string name)
 		buffer.clear();
 		cout << "\t" << "Key: "<< _registryIter->first << endl;
 		cout << "\t" << "Value: " << _registryIter->second << endl;
+		_registryIter->second->dumpReferenceCount(&buffer,0);
+		cout << "\t" << "References: " << buffer.c_str() << endl;
+		buffer.clear();
 		_registryIter->second->toString(&buffer);
 		cout << "\t" << "Value toString: " << buffer.c_str() << endl;
 	}
@@ -157,11 +162,6 @@ void IntrospectionRegistry::serialize(FieldConstPtr field, StructureConstPtr par
 		{
 			bool existing;
 			const short key = registry->registerIntrospectionInterface(field, existing);
-			/*cout << "@@@@@@@@@" << endl;
-			cout << field->getFieldName() << endl;
-			cout << "address: " << field << endl;
-			cout << "existing: " << existing << endl;
-			cout << "key: " << key << endl;*/
 			if(existing)
 			{
 				control->ensureBuffer(1+sizeof(int16)/sizeof(int8));
@@ -242,7 +242,9 @@ FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, Deserializa
 	else if(typeCode == IntrospectionRegistry::ONLY_ID_TYPE_CODE)
 	{
 		control->ensureData(sizeof(int16)/sizeof(int8));
-		return registry->getIntrospectionInterface(buffer->getShort());
+		FieldConstPtr field = registry->getIntrospectionInterface(buffer->getShort());
+	    field->incReferenceCount();   // we inc, so that deserialize always returns a field with +1 ref. count (as when created)
+	    return field;
 	}
 
 	// could also be a mask
@@ -305,7 +307,6 @@ StructureConstPtr IntrospectionRegistry::deserializeStructureField(ByteBuffer* b
 	}
 
 	StructureConstPtr structure = _fieldCreate->createStructure(structureFieldName, size, fields);
-	//???????delete [] fields;
 	return structure;
 }
 
@@ -353,7 +354,8 @@ PVStructurePtr IntrospectionRegistry::deserializeStructureAndCreatePVStructure(B
 	{
 		return NULL;
 	}
-	return _pvDataCreate->createPVStructure(NULL,static_cast<StructureConstPtr>(field));
+	PVStructurePtr retVal = _pvDataCreate->createPVStructure(NULL,static_cast<StructureConstPtr>(field));
+	return retVal;
 }
 
 void IntrospectionRegistry::serializeStatus(ByteBuffer* buffer, SerializableControl* control, Status* status)

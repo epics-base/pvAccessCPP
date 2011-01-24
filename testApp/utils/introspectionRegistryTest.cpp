@@ -89,7 +89,7 @@ ScalarArrayConstPtr getScalarArray(string name)
 StructureConstPtr getStructure(string name)
 {
 	String properties("alarm");
-	FieldConstPtr powerSupply[3];
+	FieldConstPtrArray powerSupply = new FieldConstPtr[3];
 	powerSupply[0] = standardField->scalar(
 			String("voltage"),pvDouble,properties);
 	powerSupply[1] = standardField->scalar(
@@ -97,7 +97,7 @@ StructureConstPtr getStructure(string name)
 	powerSupply[2] = standardField->scalar(
 			String("current"),pvDouble,properties);
 	StructureConstPtr structure =  standardField->structure(name,3,powerSupply);
-	PVField * pvField = pvDataCreate->createPVField(0,structure);
+	PVField *pvField = pvDataCreate->createPVField(0,structure);
 	pvFieldArray.push_back(pvField);
 	return structure;
 }
@@ -105,7 +105,7 @@ StructureConstPtr getStructure(string name)
 StructureArrayConstPtr getStructureArray(string name1, string name2)
 {
 	String properties("alarm");
-	FieldConstPtr powerSupply[3];
+	FieldConstPtrArray powerSupply = new FieldConstPtr[3];
 	powerSupply[0] = standardField->scalar(
 			String("voltage"),pvDouble,properties);
 	powerSupply[1] = standardField->scalar(
@@ -407,17 +407,11 @@ void testSerializeStatus()
 
 int main(int argc, char *argv[])
 {
-    	cout << "DONE0" << endl;
-    	cout << "DONE0" << endl;
-    	cout << "DONE0" << endl;
-    	cout << "DONE0" << endl;
-    	cout << "DONE0" << endl;
-/*
 	pvDataCreate = getPVDataCreate();
 	statusCreate = getStatusCreate();
 	fieldCreate = getFieldCreate();
 	standardField = getStandardField();
-	cout << "DONE1" << endl;
+
 
     flusher = new SerializableControlImpl();
     control = new DeserializableControlImpl();
@@ -425,7 +419,6 @@ int main(int argc, char *argv[])
 	registry = new IntrospectionRegistry(true);
 	clientRegistry = new IntrospectionRegistry(false);
 	serverRegistry = new IntrospectionRegistry(true);
-
 
 	testRegistryPutGet();
 	testRegistryReset();
@@ -450,7 +443,7 @@ int main(int argc, char *argv[])
 	if(clientRegistry) delete clientRegistry;
 	if(serverRegistry) delete serverRegistry;
 
-    getShowConstructDestruct()->showDeleteStaticExit(stdout);
-	cout << "DONE" << endl;*/
+	getShowConstructDestruct()->showDeleteStaticExit(stdout);
+	cout << "DONE" << endl;
 	return 0;
 }
