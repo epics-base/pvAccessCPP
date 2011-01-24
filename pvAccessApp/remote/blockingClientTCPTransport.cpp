@@ -56,7 +56,6 @@ namespace epics {
         }
 
         BlockingClientTCPTransport::~BlockingClientTCPTransport() {
-            printf("========== ~BlockingClientTCPTransport\n");
             delete _introspectionRegistry;
             delete _timerNode;
         }

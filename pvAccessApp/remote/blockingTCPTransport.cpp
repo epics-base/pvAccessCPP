@@ -761,21 +761,9 @@ namespace epics {
             while(!_closed) {
                 TransportSender* sender;
 
-// TODO race!
                 sender = extractFromSendQueue();
-                printf("extraced %d\n", sender);
                 // wait for new message
-                while(sender==NULL&&!_flushRequested/*&&!_closed*/) {
-                    
-                    
-                    bool c;
-                    _mutex.lock();
-                    c = _closed;
-                    printf("closed %d\n", c);
-                    _mutex.unlock();
-                    if (c)
-                        break;
-                        
+                while(sender==NULL&&!_flushRequested&&!_closed) {
                     if(_flushStrategy==DELAYED) {
                         if(_delay>0) epicsThreadSleep(_delay);
                         if(_sendQueue->size()==0) {
@@ -789,7 +777,6 @@ namespace epics {
                     else
                         _sendQueueEvent.wait();
                     sender = extractFromSendQueue();
-                    printf("extraced2 %d\n", sender);
                 }
 
                 // always do flush from this thread
@@ -852,11 +839,10 @@ try{
 } catch (...) {
 printf("rcvThreadRunnner exception\n");
 }
-                    printf("rcvThreadRunner done, autodelete %d-\n", obj->_autoDelete);
+
             if(obj->_autoDelete) {
                 while(true)
                 {
-                    printf("waiting send thread to exit.\n");
                     bool exited;
                     obj->_mutex.lock();
                     exited = obj->_sendThreadExited;
@@ -865,7 +851,6 @@ printf("rcvThreadRunnner exception\n");
                         break;
                     epicsThreadSleep(0.1);
                 }
-                printf("deleting.\n");
                 delete obj;
             }
         }
@@ -879,7 +864,6 @@ printf("sendThreadRunnner exception\n");
 }
 
             obj->freeConnectionResorces();
-                printf("exited.\n");
 
             // TODO possible crash on unlock
             obj->_mutex.lock();
