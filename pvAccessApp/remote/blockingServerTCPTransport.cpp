@@ -48,7 +48,7 @@ namespace epics {
             if(_channels.size()==0) return;
 
             char ipAddrStr[64];
-            ipAddrToDottedIP(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
 
             errlogSevPrintf(
                     errlogInfo,

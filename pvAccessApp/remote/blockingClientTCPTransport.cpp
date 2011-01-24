@@ -37,7 +37,7 @@ namespace epics {
                     new IntrospectionRegistry(false)), _connectionTimeout(beaconInterval
                     *1000), _unresponsiveTransport(false), _timerNode(
                     new TimerNode(this)), _verifyOrEcho(true) {
-            _autoDelete = false;
+//            _autoDelete = false;
 
             // initialize owners list, send queue
             acquire(client);
@@ -93,7 +93,7 @@ namespace epics {
             if(_closed) return false;
 
             char ipAddrStr[48];
-            ipAddrToDottedIP(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
             errlogSevPrintf(errlogInfo, "Acquiring transport to %s.", ipAddrStr);
 
             Lock lock2(&_ownersMutex);
@@ -121,7 +121,7 @@ namespace epics {
             int refs = _owners.size();
             if(refs>0) {
                 char ipAddrStr[48];
-                ipAddrToDottedIP(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+                ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
                 errlogSevPrintf(
                         errlogInfo,
                         "Transport to %s still has %d client(s) active and closing...",
@@ -139,7 +139,7 @@ namespace epics {
             if(_closed) return;
 
             char ipAddrStr[48];
-            ipAddrToDottedIP(&_socketAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
 
             errlogSevPrintf(errlogInfo, "Releasing transport to %s.", ipAddrStr);
 

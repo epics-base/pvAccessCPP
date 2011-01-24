@@ -165,8 +165,8 @@ public:
 		// destroy remote instance
 		if (!m_remotelyDestroyed)
 		{
-			startRequest(PURE_DESTROY_REQUEST);
-			m_channel->checkAndGetTransport()->enqueueSendRequest(this);
+// TODO !!!			startRequest(PURE_DESTROY_REQUEST);
+/// TODO 	!!! causes crash		m_channel->checkAndGetTransport()->enqueueSendRequest(this);
 		}
 		
 	}
@@ -320,6 +320,7 @@ class ChannelProcessRequestImpl : public BaseRequestImpl, public ChannelProcess
 
     virtual void destroy()
     {
+        BaseRequestImpl::destroy();
         delete this;
     }
 
@@ -459,6 +460,7 @@ class ChannelGetImpl : public BaseRequestImpl, public ChannelGet
 
     virtual void destroy()
     {
+        BaseRequestImpl::destroy();
         // TODO sync
         if (m_data) delete m_data;
         if (m_bitSet) delete m_bitSet;
@@ -636,6 +638,7 @@ class ChannelPutImpl : public BaseRequestImpl, public ChannelPut
 
     virtual void destroy()
     {
+        BaseRequestImpl::destroy();
         // TODO sync
         if (m_data) delete m_data;
         if (m_bitSet) delete m_bitSet;
@@ -993,10 +996,14 @@ typedef std::map<pvAccessID, ResponseRequest*> IOIDResponseRequestMap;
 		AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 		
 		transport->ensureData(4);
-		DataResponse* nrr = dynamic_cast<DataResponse*>(_context->getResponseRequest(payloadBuffer->getInt()));
-		if (nrr)
-    		nrr->response(transport, version, payloadBuffer);		
-                    }
+		ResponseRequest* rr = _context->getResponseRequest(payloadBuffer->getInt());
+		if (rr)
+		{
+    		DataResponse* nrr = dynamic_cast<DataResponse*>(rr);
+    		if (nrr)
+        		nrr->response(transport, version, payloadBuffer);		
+        }
+        }
         };
 
 
@@ -1794,7 +1801,8 @@ class TestChannelImpl : public ChannelImpl {
 		{
 			if (remoteDestroy) {
 				m_issueCreateMessage = false;
-				m_transport->enqueueSendRequest(this);
+				// TODO !!! this causes problems.. since qnqueueSendRequest is added and this instance deleted
+				//m_transport->enqueueSendRequest(this);
 			}
 
 			ReferenceCountingTransport* rct = dynamic_cast<ReferenceCountingTransport*>(m_transport);
@@ -2505,6 +2513,7 @@ TODO
 	{
 	   Lock guard(&m_ioidMapMutex);
 	   IOIDResponseRequestMap::iterator it = m_pendingResponseRequests.find(ioid);
+	   printf("getResponseRequest %d = %d\n", ioid, (it == m_pendingResponseRequests.end() ? 0 : it->second));
 	   return (it == m_pendingResponseRequests.end() ? 0 : it->second);
 	}
 
@@ -2517,6 +2526,7 @@ TODO
 	{
 	   Lock guard(&m_ioidMapMutex);
 	   pvAccessID ioid = generateIOID();
+	   printf("registerResponseRequest %d = %d\n", ioid, request);
 	   m_pendingResponseRequests[ioid] = request;
 	   return ioid;
 	}
@@ -2530,10 +2540,12 @@ TODO
 	{
 	   Lock guard(&m_ioidMapMutex);
 	   IOIDResponseRequestMap::iterator it = m_pendingResponseRequests.find(request->getIOID());
+	   printf("unregisterResponseRequest %d = %d\n", request->getIOID(), request);
 	   if (it == m_pendingResponseRequests.end())
 	       return 0;
 
        ResponseRequest* retVal = it->second;
+	   printf("unregisterResponseRequest %d = %d==%d\n", request->getIOID(), request, retVal);
 	   m_pendingResponseRequests.erase(it);
 	   return retVal;
 	}
@@ -2923,10 +2935,13 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
     virtual void getDone(epics::pvData::Status *status)
     {
         std::cout << "getDone(" << status->toString() << ")" << std::endl;
-        String str;
-        m_pvStructure->toString(&str);
-        std::cout << str;
-        std::cout << std::endl;
+        if (m_pvStructure)
+        {
+            String str;
+            m_pvStructure->toString(&str);
+            std::cout << str;
+            std::cout << std::endl;
+        }
     }
 };
 
@@ -2960,19 +2975,25 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     virtual void getDone(epics::pvData::Status *status)
     {
         std::cout << "getDone(" << status->toString() << ")" << std::endl;
-        String str;
-        m_pvStructure->toString(&str);
-        std::cout << str;
-        std::cout << std::endl;
+        if (m_pvStructure)
+        {
+            String str;
+            m_pvStructure->toString(&str);
+            std::cout << str;
+            std::cout << std::endl;
+        }
     }
 
     virtual void putDone(epics::pvData::Status *status)
     {
         std::cout << "putDone(" << status->toString() << ")" << std::endl;
-        String str;
-        m_pvStructure->toString(&str);
-        std::cout << str;
-        std::cout << std::endl;
+        if (m_pvStructure)
+        {
+            String str;
+            m_pvStructure->toString(&str);
+            std::cout << str;
+            std::cout << std::endl;
+        }
     }
 
 };
@@ -3074,7 +3095,7 @@ int main(int argc,char *argv[])
     epicsThreadSleep ( 1.0 );
 
     channel->printInfo();
-/*
+
     GetFieldRequesterImpl getFieldRequesterImpl;
     channel->getField(&getFieldRequesterImpl, "");
     epicsThreadSleep ( 1.0 );
@@ -3086,16 +3107,17 @@ int main(int argc,char *argv[])
     epicsThreadSleep ( 1.0 );
     channelProcess->destroy();
     epicsThreadSleep ( 1.0 );
-*/
+
     ChannelGetRequesterImpl channelGetRequesterImpl;
-    PVStructure* pvRequest = getCreateRequest()->createRequest("field(value)",&channelGetRequesterImpl);
+    PVStructure* pvRequest = getCreateRequest()->createRequest("field(value, timeStamp)",&channelGetRequesterImpl);
     ChannelGet* channelGet = channel->createChannelGet(&channelGetRequesterImpl, pvRequest);
     epicsThreadSleep ( 3.0 );
     channelGet->get(false);
     epicsThreadSleep ( 3.0 );
     channelGet->destroy();
     epicsThreadSleep ( 1.0 );
-/*
+
+
     ChannelPutRequesterImpl channelPutRequesterImpl;
     ChannelPut* channelPut = channel->createChannelPut(&channelPutRequesterImpl, pvRequest);
     epicsThreadSleep ( 1.0 );
@@ -3128,9 +3150,15 @@ int main(int argc,char *argv[])
     delete pvRequest;
     
     epicsThreadSleep ( 3.0 );
+    printf("Destroying channel... \n");
     channel->destroy();
+    printf("done.\n");
 
+    epicsThreadSleep ( 3.0 );
+
+    printf("Destroying context... \n");
     context->destroy();
+    printf("done.\n");
 
     std::cout << "-----------------------------------------------------------------------" << std::endl;
     getShowConstructDestruct()->constuctDestructTotals(stdout);
