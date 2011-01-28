@@ -151,11 +151,8 @@ void testBlockingTCPSender() {
                 break;
             sleep(1);
         }
-    } catch(BaseException* e) {
-        String info;
-        e->toString(info);
-        cout<<info<<endl;
-        delete e;
+    } catch(std::exception& e) {
+        cout<<e.what()<<endl;
     }
 
     delete transport;

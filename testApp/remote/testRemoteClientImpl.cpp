@@ -4064,7 +4064,6 @@ int main(int argc,char *argv[])
     channelGet->destroy();
     epicsThreadSleep ( 1.0 );
 
-
     ChannelPutRequesterImpl channelPutRequesterImpl;
     pvRequest = getCreateRequest()->createRequest("field(value,timeStamp)",&channelPutRequesterImpl);
     ChannelPut* channelPut = channel->createChannelPut(&channelPutRequesterImpl, pvRequest);
@@ -4131,7 +4130,7 @@ int main(int argc,char *argv[])
 
 
     monitor->destroy();
-    
+   
     epicsThreadSleep ( 3.0 );
     printf("Destroying channel... \n");
     channel->destroy();

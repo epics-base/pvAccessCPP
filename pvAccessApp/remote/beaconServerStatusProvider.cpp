@@ -10,7 +10,7 @@ BeaconServerStatusProvider::BeaconServerStatusProvider( ServerContext* context):
 {
 	if(context == NULL)
 	{
-		throw EpicsException("null context");
+		THROW_BASE_EXCEPTION("null context");
 	}
 	initialize();
 }

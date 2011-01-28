@@ -12,8 +12,6 @@
 
 #include <epicsException.h>
 
-using epics::pvData::BaseException;
-
 namespace epics {
     namespace pvAccess {
 

@@ -654,10 +654,8 @@ namespace epics {
                     _sendBuffer->setPosition(currentPos);
                     _sendBuffer->setLimit(_sendBuffer->getSize());
                 }
-            } catch(BaseException* e) {
-                String trace;
-                e->toString(trace);
-                errlogSevPrintf(errlogMajor, "%s", trace.c_str());
+            } catch(std::exception& e) {
+                errlogSevPrintf(errlogMajor, "%s", e.what());
                 // error, release lock
                 clearAndReleaseBuffer();
             } catch(...) {
@@ -802,10 +800,8 @@ namespace epics {
                         else
                             endMessage(false);// automatic end (to set payload)
 
-                    } catch(BaseException* e) {
-                        String trace;
-                        e->toString(trace);
-                        errlogSevPrintf(errlogMajor, "%s", trace.c_str());
+                    } catch(std::exception &e) {
+                        errlogSevPrintf(errlogMajor, "%s", e.what());
                         _sendBuffer->setPosition(_lastMessageStartPosition);
                     } catch(...) {
                         _sendBuffer->setPosition(_lastMessageStartPosition);

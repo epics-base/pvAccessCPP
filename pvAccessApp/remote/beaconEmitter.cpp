@@ -15,7 +15,7 @@ BeaconEmitter::BeaconEmitter(Transport* transport, ServerContext* context): _tra
 {
 	if(transport == NULL || context == NULL)
 	{
-		throw EpicsException("null transport or context");
+		THROW_BASE_EXCEPTION("null transport or context");
 	}
 
 /*	_timer = context->getTimer();
@@ -35,7 +35,7 @@ BeaconEmitter::BeaconEmitter(Transport* transport,const osiSockAddr* serverAddre
 {
 	if(transport == NULL)
 	{
-		throw EpicsException("null transport");
+		THROW_BASE_EXCEPTION("null transport");
 	}
 
 	_timer = new Timer("pvAccess-server timer", lowPriority);
