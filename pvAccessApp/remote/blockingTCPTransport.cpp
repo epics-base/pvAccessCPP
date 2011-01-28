@@ -192,7 +192,6 @@ namespace epics {
             if(_closed) return;
 
             _closed = true;
-            printf("closing.\n");
 
             // remove from registry
             _context->getTransportRegistry()->remove(this);

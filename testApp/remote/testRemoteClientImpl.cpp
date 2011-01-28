@@ -2197,6 +2197,8 @@ class TestChannelImpl : public ChannelImpl {
          */
         Mutex m_responseRequestsMutex;
          
+        bool m_needSubscriptionUpdate;
+        
     	/**
     	 * Allow reconnection flag.
     	 */
@@ -2261,6 +2263,7 @@ class TestChannelImpl : public ChannelImpl {
         m_priority(priority),
         m_addresses(addresses),
         m_connectionState(NEVER_CONNECTED),
+        m_needSubscriptionUpdate(false),
         m_allowCreation(true),
         m_references(1),
         m_transport(0),
@@ -2749,7 +2752,20 @@ class TestChannelImpl : public ChannelImpl {
 	 */
 	void disconnectPendingIO(bool destroy)
 	{
-// TODO
+		// TODO destroy????!!
+		Status* status = destroy ? channelDestroyed : channelDisconnected;
+
+	    Lock guard(&m_responseRequestsMutex);
+	    
+		m_needSubscriptionUpdate = true;
+
+        for (IOIDResponseRequestMap::iterator iter = m_responseRequests.begin();
+                iter != m_responseRequests.end();
+                iter++)
+        {
+            // TODO GUARD
+            iter->second->reportStatus(status);
+        }
 	}
 
 	/**
@@ -2758,7 +2774,19 @@ class TestChannelImpl : public ChannelImpl {
 	// TODO to be called from non-transport thread !!!!!!
 	void resubscribeSubscriptions()
 	{
-// TODO
+	    Lock guard(&m_responseRequestsMutex);
+	    
+	    Transport* transport = getTransport();
+
+        for (IOIDResponseRequestMap::iterator iter = m_responseRequests.begin();
+                iter != m_responseRequests.end();
+                iter++)
+        {
+            // TODO GUARD
+            SubscriptionRequest* rrs = dynamic_cast<SubscriptionRequest*>(iter->second);
+            if (rrs)
+                rrs->resubscribeSubscription(transport);
+        }
 	}
 
 	/**
@@ -2767,7 +2795,22 @@ class TestChannelImpl : public ChannelImpl {
 	// TODO to be called from non-transport thread !!!!!!
 	void updateSubscriptions()
 	{
-// TODO
+	    Lock guard(&m_responseRequestsMutex);
+	    
+		if (m_needSubscriptionUpdate)
+			m_needSubscriptionUpdate = false;
+		else
+			return;	// noop
+
+        for (IOIDResponseRequestMap::iterator iter = m_responseRequests.begin();
+                iter != m_responseRequests.end();
+                iter++)
+        {
+            // TODO GUARD
+            SubscriptionRequest* rrs = dynamic_cast<SubscriptionRequest*>(iter->second);
+            if (rrs)
+                rrs->updateSubscription();
+        }
 	}
 
 	virtual void getField(GetFieldRequester *requester,epics::pvData::String subField)
@@ -4060,7 +4103,8 @@ int main(int argc,char *argv[])
     ChannelGet* channelGet = channel->createChannelGet(&channelGetRequesterImpl, pvRequest);
     epicsThreadSleep ( 3.0 );
     channelGet->get(false);
-    epicsThreadSleep ( 3.0 );
+    epicsThreadSleep ( 300.0 );
+ /*   
     channelGet->destroy();
     epicsThreadSleep ( 1.0 );
 
@@ -4130,7 +4174,7 @@ int main(int argc,char *argv[])
 
 
     monitor->destroy();
-   
+   */
     epicsThreadSleep ( 3.0 );
     printf("Destroying channel... \n");
     channel->destroy();
