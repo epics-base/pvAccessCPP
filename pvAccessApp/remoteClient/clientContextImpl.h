@@ -19,7 +19,7 @@ namespace epics {
         class ClientContextImpl;
         
         class ChannelImpl :
-                public Channel ,
+                public Channel,
                 public TransportClient,
                 public TransportSender,
                 public BaseSearchInstance
