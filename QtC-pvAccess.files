@@ -70,3 +70,4 @@ pvAccessApp/utils/namedLockPattern.h
 pvAccessApp/utils/referenceCountingLock.h
 pvAccessApp/utils/transportRegistry.h
 pvAccessApp/utils/wildcharMatcher.h
+pvAccessApp/remoteClient/clientContextImpl.cpp

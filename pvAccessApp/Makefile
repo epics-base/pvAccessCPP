@@ -72,6 +72,7 @@ LIBSRCS += abstractResponseHandler.cpp
 
 SRC_DIRS += $(PVACCESS)/remoteClient
 INC += clientContextImpl.h
+LIBSRCS += clientContextImpl.cpp
 
 
 LIBRARY = pvAccess
