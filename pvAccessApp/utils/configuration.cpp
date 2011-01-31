@@ -58,7 +58,7 @@ string Properties::getProperty(const string key)
 	else
 	{
 		string errMsg = "Property not found in the map: " + key;
-		throw BaseException(errMsg.c_str(), __FILE__, __LINE__);
+		THROW_BASE_EXCEPTION(errMsg.c_str());
 	}
 }
 
@@ -84,7 +84,7 @@ void Properties::load()
 	}
 	catch (ifstream::failure& e) {
 		string errMsg = "Error opening file: " + string(_fileName.c_str());
-		throw BaseException(errMsg.c_str(), __FILE__, __LINE__);
+		THROW_BASE_EXCEPTION(errMsg.c_str());
 	}
 
 	string line;
@@ -116,7 +116,7 @@ void Properties::load()
 			if(pos == string::npos) //bad value (= not found)
 			{
 				string errMsg = "Bad property line found: " + line;
-				throw BaseException(errMsg.c_str(), __FILE__, __LINE__);
+				THROW_BASE_EXCEPTION(errMsg.c_str());
 			}
 
 			key = line.substr(0,pos);
@@ -134,7 +134,7 @@ void Properties::load()
 			return; //end of file
 		}
 		string errMsg = "Error reading file: " + _fileName;
-		throw BaseException(errMsg.c_str(), __FILE__, __LINE__);
+		THROW_BASE_EXCEPTION(errMsg.c_str());
 	}
 	_infile->close();
 }
@@ -153,7 +153,7 @@ void Properties::store()
 	}
 	catch (ofstream::failure& e) {
 		string errMsg = "Error opening file: " + string(_fileName.c_str());
-		throw BaseException(errMsg.c_str(), __FILE__, __LINE__);
+		THROW_BASE_EXCEPTION(errMsg.c_str());
 	}
 
 
@@ -169,7 +169,7 @@ void Properties::store()
 		catch (ofstream::failure& e) {
 			_outfile->close();
 			string errMsg = "Error writing to file: " + string(_fileName.c_str());
-			throw BaseException(errMsg.c_str(), __FILE__, __LINE__);
+			THROW_BASE_EXCEPTION(errMsg.c_str());
 		}
 	}
 	_outfile->close();
@@ -272,6 +272,10 @@ ConfigurationProviderImpl::ConfigurationProviderImpl()
 
 ConfigurationProviderImpl::~ConfigurationProviderImpl()
 {
+	for(_configsIter = _configs.begin(); _configsIter != _configs.end(); _configsIter++)
+	{
+		delete _configsIter->second;
+	}
 	_configs.clear();
 }
 
@@ -282,7 +286,7 @@ void ConfigurationProviderImpl::registerConfiguration(const string name, const C
 	if(_configsIter != _configs.end())
 	{
 		string msg = "configuration with name " + name + " already registered";
-		throw BaseException(msg.c_str(), __FILE__, __LINE__);
+		THROW_BASE_EXCEPTION(msg.c_str());
 	}
 	_configs[name] = configuration;
 }
@@ -306,6 +310,8 @@ ConfigurationProviderImpl* ConfigurationFactory::getProvider()
 	if(_configurationProvider == NULL)
 	{
 		_configurationProvider = new ConfigurationProviderImpl();
+		// default
+		_configurationProvider->registerConfiguration("system", new SystemConfigurationImpl());
 	}
 	return _configurationProvider;
 }

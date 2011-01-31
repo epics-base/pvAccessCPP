@@ -73,6 +73,10 @@ class Configuration : private epics::pvData::NoDefaultMethods
 {
 public:
 	/*
+	 * Destructor.
+	 */
+	virtual ~Configuration() {};
+	/*
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
 	 *
@@ -128,7 +132,7 @@ class SystemConfigurationImpl: public Configuration
 {
 public:
 	SystemConfigurationImpl();
-	virtual ~SystemConfigurationImpl();
+	~SystemConfigurationImpl();
 	bool getPropertyAsBoolean(const std::string name, const bool defaultValue);
 	epics::pvData::int32 getPropertyAsInteger(const std::string name, const epics::pvData::int32 defaultValue);
 	float getPropertyAsFloat(const std::string name, const float defaultValue);
@@ -148,6 +152,10 @@ private:
 class ConfigurationProvider : private epics::pvData::NoDefaultMethods
 {
 public:
+	/*
+	 * Destructor.
+	 */
+	virtual ~ConfigurationProvider() {};
 	/*
 	 * Return configuration specified by name.
 	 *
@@ -169,7 +177,10 @@ class ConfigurationProviderImpl: public ConfigurationProvider
 {
 public:
 	ConfigurationProviderImpl();
-	virtual ~ConfigurationProviderImpl();
+	/*
+	 * Destructor. Note: Registered configurations will be deleted!!
+	 */
+	~ConfigurationProviderImpl();
 	Configuration* getConfiguration(const std::string name);
 	void registerConfiguration(const std::string name, const Configuration* configuration);
 private:
