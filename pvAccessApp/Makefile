@@ -41,6 +41,7 @@ SRC_DIRS += $(PVACCESS)/server
 INC += serverContext.h
 INC += responseHandlers.h
 LIBSRCS += responseHandlers.cpp
+LIBSRCS += serverContext.cpp
 
 
 SRC_DIRS += $(PVACCESS)/factory
