@@ -50,7 +50,8 @@ namespace epics {
         class BaseRequestImpl :
                 public DataResponse,
                 public SubscriptionRequest,
-                public TransportSender {
+                public TransportSender,
+                public Destroyable {
                 protected:
 
             ChannelImpl* m_channel;
@@ -70,6 +71,10 @@ namespace epics {
             int32 m_pendingRequest;
 
             Mutex m_mutex;
+            
+            int m_refCount;
+            
+            virtual ~BaseRequestImpl() {};
 
             public:
             
@@ -84,7 +89,7 @@ namespace epics {
             BaseRequestImpl(ChannelImpl* channel, Requester* requester) :
                     m_channel(channel), m_context(channel->getContext()),
                     m_requester(requester), m_destroyed(false), m_remotelyDestroyed(false),
-                    m_pendingRequest(NULL_REQUEST)
+                    m_pendingRequest(NULL_REQUEST), m_refCount(1)
             {
                 // register response request
                 m_ioid = m_context->registerResponseRequest(this);
@@ -182,10 +187,11 @@ namespace epics {
                 // destroy remote instance
                 if (!m_remotelyDestroyed)
                 {
-                    // TODO !!!            startRequest(PURE_DESTROY_REQUEST);
-                    /// TODO     !!! causes crash        m_channel->checkAndGetTransport()->enqueueSendRequest(this);
+                    startRequest(PURE_DESTROY_REQUEST);
+                    m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                 }
-
+                
+                release();
             }
 
             virtual void timeout() {
@@ -227,6 +233,20 @@ namespace epics {
                 // noop
             }
 
+            virtual void acquire() {
+                Lock guard(&m_mutex);
+                m_refCount++;
+            }
+
+            virtual void release() {
+                m_mutex.lock();
+                m_refCount--;
+                m_mutex.unlock();
+                if (m_refCount == 0)
+                    delete this;
+            }
+
+
         };
 
 
@@ -257,6 +277,7 @@ namespace epics {
             ~ChannelProcessRequestImpl()
             {
                 PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelProcess);
+                if (m_pvRequest) delete m_pvRequest;
             }
 
         public:
@@ -343,14 +364,11 @@ namespace epics {
                 startRequest(QOS_INIT);
                 transport->enqueueSendRequest(this);
             }
-
+            
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
-                if (m_pvRequest) delete m_pvRequest;
-                delete this;
             }
-
         };
 
 
@@ -375,6 +393,10 @@ namespace epics {
             ~ChannelGetImpl()
             {
                 PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelGet);
+                // synced by code calling this
+                if (m_data) delete m_data;
+                if (m_bitSet) delete m_bitSet;
+                if (m_pvRequest) delete m_pvRequest;
             }
 
         public:
@@ -484,17 +506,10 @@ namespace epics {
                 transport->enqueueSendRequest(this);
             }
 
-
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
-                // synced by code above
-                if (m_data) delete m_data;
-                if (m_bitSet) delete m_bitSet;
-                if (m_pvRequest) delete m_pvRequest;
-                delete this;
             }
-
         };
 
 
@@ -523,6 +538,10 @@ namespace epics {
             ~ChannelPutImpl()
             {
                 PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelPut);
+                // synced by code calling this
+                if (m_data) delete m_data;
+                if (m_bitSet) delete m_bitSet;
+                if (m_pvRequest) delete m_pvRequest;
             }
 
         public:
@@ -662,17 +681,10 @@ namespace epics {
                 transport->enqueueSendRequest(this);
             }
 
-
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
-                // TODO sync
-                if (m_data) delete m_data;
-                if (m_bitSet) delete m_bitSet;
-                if (m_pvRequest) delete m_pvRequest;
-                delete this;
             }
-
         };
 
 
@@ -698,6 +710,10 @@ namespace epics {
             ~ChannelPutGetImpl()
             {
                 PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelPutGet);
+                // synced by code calling this
+                if (m_putData) delete m_putData;
+                if (m_getData) delete m_getData;
+                if (m_pvRequest) delete m_pvRequest;
             }
 
         public:
@@ -878,17 +894,10 @@ namespace epics {
                 transport->enqueueSendRequest(this);
             }
 
-
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
-                // TODO sync
-                if (m_putData) delete m_putData;
-                if (m_getData) delete m_getData;
-                if (m_pvRequest) delete m_pvRequest;
-                delete this;
             }
-
         };
 
 
@@ -916,6 +925,10 @@ namespace epics {
             ~ChannelRPCImpl()
             {
                 PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelRPC);
+                // synced by code calling this
+                if (m_data) delete m_data;
+                if (m_bitSet) delete m_bitSet;
+                if (m_pvRequest) delete m_pvRequest;
             }
 
         public:
@@ -1026,17 +1039,10 @@ namespace epics {
                 transport->enqueueSendRequest(this);
             }
 
-
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
-                // TODO sync
-                if (m_data) delete m_data;
-                if (m_bitSet) delete m_bitSet;
-                if (m_pvRequest) delete m_pvRequest;
-                delete this;
             }
-
         };
 
 
@@ -1068,6 +1074,9 @@ namespace epics {
             ~ChannelArrayImpl()
             {
                 PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelArray);
+                // synced by code calling this
+                if (m_data) delete m_data;
+                if (m_pvRequest) delete m_pvRequest;
             }
 
         public:
@@ -1247,16 +1256,10 @@ namespace epics {
                 transport->enqueueSendRequest(this);
             }
 
-
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
-                // TODO sync
-                if (m_data) delete m_data;
-                if (m_pvRequest) delete m_pvRequest;
-                delete this;
             }
-
         };
 
 
@@ -1280,7 +1283,8 @@ namespace epics {
             String m_subField;
             Mutex m_mutex;
             bool m_destroyed;
-
+            int m_refCount;
+            
         private:
             ~ChannelGetFieldRequestImpl()
             {
@@ -1292,7 +1296,7 @@ namespace epics {
             ChannelGetFieldRequestImpl(ChannelImpl* channel, GetFieldRequester* callback, String subField) :
                     m_channel(channel), m_context(channel->getContext()),
                     m_callback(callback), m_subField(subField),
-                    m_destroyed(false)
+                    m_destroyed(false), m_refCount(1)
             {
                 PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelGetField);
 
@@ -1361,7 +1365,20 @@ namespace epics {
                 m_context->unregisterResponseRequest(this);
                 m_channel->unregisterResponseRequest(this);
 
-                delete this;
+                release();
+            }
+
+            virtual void acquire() {
+                Lock guard(&m_mutex);
+                m_refCount++;
+            }
+
+            virtual void release() {
+                m_mutex.lock();
+                m_refCount--;
+                m_mutex.unlock();
+                if (m_refCount == 0)
+                    delete this;
             }
 
             virtual void response(Transport* transport, int8 version, ByteBuffer* payloadBuffer) {
@@ -1436,6 +1453,19 @@ namespace epics {
             ~ChannelMonitorImpl()
             {
                 PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelMonitor);
+
+                // synced by code calling this
+                if (m_pvRequest) delete m_pvRequest;
+                // uncomment when m_pvStructure not destroyed       if (m_structure) m_structure->decReferenceCount();
+
+                // TODO temp
+                if (m_pvStructure)
+                {
+                    delete m_pvStructure;
+                    delete m_overrunBitSet;
+                    delete m_changedBitSet;
+                }
+
             }
 
         public:
@@ -1535,27 +1565,6 @@ namespace epics {
                 transport->enqueueSendRequest(this);
             }
 
-
-            virtual void destroy()
-            {
-                BaseRequestImpl::destroy();
-                // TODO sync
-                if (m_pvRequest) delete m_pvRequest;
-                // uncomment when m_pvStructure not destroyed       if (m_structure) m_structure->decReferenceCount();
-
-                // TODO temp
-                if (m_pvStructure)
-                {
-                    delete m_pvStructure;
-                    delete m_overrunBitSet;
-                    delete m_changedBitSet;
-                }
-
-                delete this;
-            }
-
-
-
             // override, since we optimize status
             virtual void response(Transport* transport, int8 version, ByteBuffer* payloadBuffer) {
                 // TODO?
@@ -1643,6 +1652,11 @@ namespace epics {
                 }
             }
 
+
+            virtual void destroy()
+            {
+                BaseRequestImpl::destroy();
+            }
 
             // ============ temp ============
 
@@ -2508,6 +2522,15 @@ namespace epics {
                     Lock guard(&m_channelMutex);
                     m_references++;
                 }
+                
+                virtual void release() {
+                    m_channelMutex.lock();
+                    m_references--;
+                    m_channelMutex.unlock();
+                   // if (m_references == 0)
+                   //     delete this;
+                }
+// TTTOOOOOOODOOOOOO !!!
 
                 /**
              * Actual destroy method, to be called <code>CAJContext</code>.

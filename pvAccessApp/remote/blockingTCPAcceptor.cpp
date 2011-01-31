@@ -65,7 +65,7 @@ namespace epics {
                             sizeof(strBuffer));
                     ostringstream temp;
                     temp<<"Socket create error: "<<strBuffer;
-                    errlogSevPrintf(errlogMajor, temp.str().c_str());
+                    errlogSevPrintf(errlogMajor, "%s", temp.str().c_str());
                     THROW_BASE_EXCEPTION(temp.str().c_str());
                 }
                 else {
@@ -121,7 +121,7 @@ namespace epics {
                                     sizeof(strBuffer));
                             ostringstream temp;
                             temp<<"Socket listen error: "<<strBuffer;
-                            errlogSevPrintf(errlogMajor, temp.str().c_str());
+                            errlogSevPrintf(errlogMajor, "%s", temp.str().c_str());
                             THROW_BASE_EXCEPTION(temp.str().c_str());
                         }
 

@@ -136,8 +136,15 @@ namespace epics {
             }
 
             virtual void unlock() {
+            }
+            
+            virtual void acquire() {
+            }
+            
+            virtual void release() {
                 delete this;
             }
+            
         private:
             osiSockAddr _echoFrom;
 

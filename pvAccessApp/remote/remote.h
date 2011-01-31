@@ -123,8 +123,8 @@ namespace epics {
             virtual void lock() =0;
             virtual void unlock() =0;
 
-            //virtual void acquire() =0;
-            //virtual void release() =0;
+            virtual void acquire() =0;
+            virtual void release() =0;
         };
 
         /**

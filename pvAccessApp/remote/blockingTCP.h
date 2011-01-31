@@ -477,6 +477,14 @@ namespace epics {
                 // noop
             }
 
+            virtual void acquire() {
+                // noop, since does not make sence on itself
+            }
+
+            virtual void release() {
+                // noop, since does not make sence on itself
+            }
+
             virtual void send(epics::pvData::ByteBuffer* buffer,
                     TransportSendControl* control);
 
@@ -649,6 +657,14 @@ namespace epics {
 
             virtual void unlock() {
                 // noop
+            }
+
+            virtual void acquire() {
+                // noop, since does not make sence on itself
+            }
+
+            virtual void release() {
+                // noop, since does not make sence on itself
             }
 
             /**

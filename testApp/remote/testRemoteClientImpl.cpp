@@ -451,7 +451,7 @@ int main(int argc,char *argv[])
     channel->printInfo();
     
     PVStructure* pvRequest;
-/*
+
     GetFieldRequesterImpl getFieldRequesterImpl;
     channel->getField(&getFieldRequesterImpl, "");
     epicsThreadSleep ( 1.0 );
@@ -521,7 +521,7 @@ int main(int argc,char *argv[])
     channelArray->setLength(false,3,4);
     epicsThreadSleep ( 1.0 );
     channelArray->destroy();
-*/
+
     MonitorRequesterImpl monitorRequesterImpl;
     pvRequest = getCreateRequest()->createRequest("field()",&monitorRequesterImpl);
     Monitor* monitor = channel->createMonitor(&monitorRequesterImpl, pvRequest);
@@ -532,7 +532,7 @@ int main(int argc,char *argv[])
     std::cout << "monitor->start() = " << status->toString() << std::endl;
     delete status;
 
-    epicsThreadSleep( 30.0 );
+    epicsThreadSleep( 3.0 );
 
     status = monitor->stop();
     std::cout << "monitor->stop() = " << status->toString() << std::endl;

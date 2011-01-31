@@ -53,6 +53,9 @@ namespace epics { namespace pvAccess {
 		 * @see TransportSender#unlock()
 		 */
 		void unlock();
+		
+		void acquire();
+		void release();
 
 		void send(ByteBuffer* buffer, TransportSendControl* control);
 		/**

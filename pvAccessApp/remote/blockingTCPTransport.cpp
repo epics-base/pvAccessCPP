@@ -54,6 +54,12 @@ namespace epics {
             virtual void unlock() {
             }
 
+            virtual void acquire() {
+            }
+
+            virtual void release() {
+            }
+
             virtual void
             send(ByteBuffer* buffer, TransportSendControl* control);
 
@@ -129,7 +135,18 @@ namespace epics {
         BlockingTCPTransport::~BlockingTCPTransport() {
             close(true);
 
+            TransportSender* sender;
+            while (sender = _monitorSendQueue->extract())
+                sender->release();
+            delete _monitorSendQueue;
+
+            while (sender = _sendQueue->extract())
+                sender->release();
             delete _sendQueue;
+            
+            delete _monitorSender;
+
+            
             delete _socketBuffer;
             delete _sendBuffer;
 
@@ -244,6 +261,7 @@ namespace epics {
                 internalVerified = _verified;
                 _verifiedMutex.unlock();
             }
+            
             return internalVerified;
         }
 
@@ -806,6 +824,7 @@ namespace epics {
                         _sendBuffer->setPosition(_lastMessageStartPosition);
                     }
                     sender->unlock();
+                    sender->release();
                 } // if(sender!=NULL)
             } // while(!_closed)
         }
@@ -869,6 +888,7 @@ printf("sendThreadRunnner exception\n");
         void BlockingTCPTransport::enqueueSendRequest(TransportSender* sender) {
             Lock lock(&_sendQueueMutex);
             if(_closed) return;
+            sender->acquire();
             _sendQueue->insert(sender);
             _sendQueueEvent.signal();
         }
@@ -876,6 +896,7 @@ printf("sendThreadRunnner exception\n");
         void BlockingTCPTransport::enqueueMonitorSendRequest(TransportSender* sender) {
             Lock lock(&_monitorMutex);
             if(_closed) return;
+            sender->acquire();
             _monitorSendQueue->insert(sender);
             if(_monitorSendQueue->size()==1) enqueueSendRequest(_monitorSender);
         }
@@ -898,6 +919,7 @@ printf("sendThreadRunnner exception\n");
                     break;
                 }
                 sender->send(buffer, control);
+                sender->release();
             }
         }
 

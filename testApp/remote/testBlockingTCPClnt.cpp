@@ -115,6 +115,10 @@ public:
     }
     virtual void unlock() {
     }
+    virtual void acquire() {
+    }
+    virtual void release() {
+    }
 private:
     char data[20];
     int count;
