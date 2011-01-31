@@ -39,9 +39,9 @@ class ChannelRequesterImpl : public ChannelRequester
                   << (channel ? channel->getChannelName() : "(0)") << ")" << std::endl;
     }
 
-    virtual void channelStateChange(Channel *c, ConnectionState connectionState)
+    virtual void channelStateChange(Channel *c, Channel::ConnectionState connectionState)
     {
-        std::cout << "channelStateChange(" << c->getChannelName() << ", " << ConnectionStateNames[connectionState] << ")" << std::endl;
+        std::cout << "channelStateChange(" << c->getChannelName() << ", " << Channel::ConnectionStateNames[connectionState] << ")" << std::endl;
     }
 };
 
@@ -451,7 +451,7 @@ int main(int argc,char *argv[])
     channel->printInfo();
     
     PVStructure* pvRequest;
-
+/*
     GetFieldRequesterImpl getFieldRequesterImpl;
     channel->getField(&getFieldRequesterImpl, "");
     epicsThreadSleep ( 1.0 );
@@ -470,7 +470,7 @@ int main(int argc,char *argv[])
     epicsThreadSleep ( 3.0 );
     channelGet->get(false);
     epicsThreadSleep ( 3.0 );
- /*   
+    
     channelGet->destroy();
     epicsThreadSleep ( 1.0 );
 
@@ -521,9 +521,9 @@ int main(int argc,char *argv[])
     channelArray->setLength(false,3,4);
     epicsThreadSleep ( 1.0 );
     channelArray->destroy();
-
+*/
     MonitorRequesterImpl monitorRequesterImpl;
-    pvRequest = getCreateRequest()->createRequest("field(value,timeStamp)",&monitorRequesterImpl);
+    pvRequest = getCreateRequest()->createRequest("field()",&monitorRequesterImpl);
     Monitor* monitor = channel->createMonitor(&monitorRequesterImpl, pvRequest);
 
     epicsThreadSleep( 1.0 );
@@ -532,7 +532,7 @@ int main(int argc,char *argv[])
     std::cout << "monitor->start() = " << status->toString() << std::endl;
     delete status;
 
-    epicsThreadSleep( 3.0 );
+    epicsThreadSleep( 30.0 );
 
     status = monitor->stop();
     std::cout << "monitor->stop() = " << status->toString() << std::endl;
@@ -540,7 +540,7 @@ int main(int argc,char *argv[])
 
 
     monitor->destroy();
-   */
+   
     epicsThreadSleep ( 3.0 );
     printf("Destroying channel... \n");
     channel->destroy();

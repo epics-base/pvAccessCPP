@@ -27,16 +27,6 @@ namespace epics { namespace pvAccess {
         };
 
     	
-    	/**
-    	 * Channel connection status.
-    	 */
-    	enum ConnectionState {
-                NEVER_CONNECTED, CONNECTED, DISCONNECTED, DESTROYED
-                    };
-                    
-        extern const char* ConnectionStateNames[];
-    	
-
         class Channel;
         class ChannelProvider;
 
@@ -410,30 +400,8 @@ namespace epics { namespace pvAccess {
         };
 
 
-        /**
-         * Listener for connect state changes.
-         * @author mrk
-         *
-         */
-        class ChannelRequester : public epics::pvData::Requester {
-            public:
-
-            /**
-             * A channel has been created. This may be called multiple times if there are multiple providers.
-             * @param status Completion status.
-             * @param channel The channel.
-             */
-            virtual void channelCreated(epics::pvData::Status* status, Channel *channel) = 0;
-
-            /**
-             * A channel connection state change has occurred.
-             * @param c The channel.
-             * @param connectionState The new connection state.
-             */
-            virtual void channelStateChange(Channel *c, ConnectionState connectionState) = 0;
-        };
-
-
+        class ChannelRequester;
+        
         /**
          * Interface for accessing a channel.
          * A channel is created via a call to ChannelAccess.createChannel(String channelName).
@@ -446,6 +414,15 @@ namespace epics { namespace pvAccess {
                 private epics::pvData::NoDefaultMethods {
             public:
 
+        	/**
+        	 * Channel connection status.
+        	 */
+        	enum ConnectionState {
+                    NEVER_CONNECTED, CONNECTED, DISCONNECTED, DESTROYED
+                        };
+                        
+            static const char* ConnectionStateNames[];
+            
             /**
              * Get the the channel provider of this channel.
              * @return The channel provider.
@@ -598,6 +575,28 @@ namespace epics { namespace pvAccess {
         };
 
 
+        /**
+         * Listener for connect state changes.
+         * @author mrk
+         *
+         */
+        class ChannelRequester : public epics::pvData::Requester {
+            public:
+
+            /**
+             * A channel has been created. This may be called multiple times if there are multiple providers.
+             * @param status Completion status.
+             * @param channel The channel.
+             */
+            virtual void channelCreated(epics::pvData::Status* status, Channel *channel) = 0;
+
+            /**
+             * A channel connection state change has occurred.
+             * @param c The channel.
+             * @param connectionState The new connection state.
+             */
+            virtual void channelStateChange(Channel *c, Channel::ConnectionState connectionState) = 0;
+        };
 
         /**
          * Interface for locating channel providers.

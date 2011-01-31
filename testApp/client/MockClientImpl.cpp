@@ -717,9 +717,9 @@ class ChannelRequesterImpl : public ChannelRequester
                   << (channel ? channel->getChannelName() : "(null)") << ")" << std::endl;
     }
     
-    virtual void channelStateChange(Channel *c, ConnectionState connectionState)
+    virtual void channelStateChange(Channel *c, Channel::ConnectionState connectionState)
     {
-        std::cout << "channelStateChange(" << c->getChannelName() << ", " << ConnectionStateNames[connectionState] << ")" << std::endl;
+        std::cout << "channelStateChange(" << c->getChannelName() << ", " << Channel::ConnectionStateNames[connectionState] << ")" << std::endl;
     }
 };
 

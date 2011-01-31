@@ -31,18 +31,8 @@ using namespace epics::pvData;
 namespace epics {
     namespace pvAccess {
 
-        static Status* g_statusOK = getStatusCreate()->getStatusOK();
-
-        static StatusCreate* statusCreate = getStatusCreate();
-        static Status* okStatus = g_statusOK;
-        static Status* destroyedStatus = statusCreate->createStatus(STATUSTYPE_ERROR, "request destroyed");
-        static Status* channelNotConnected = statusCreate->createStatus(STATUSTYPE_ERROR, "channel not connected");
-        static Status* otherRequestPendingStatus = statusCreate->createStatus(STATUSTYPE_ERROR, "other request pending");
-        static PVDataCreate* pvDataCreate = getPVDataCreate();
-
-
-        Status* ChannelImpl::channelDestroyed = statusCreate->createStatus(STATUSTYPE_WARNING, "channel destroyed");
-        Status* ChannelImpl::channelDisconnected = statusCreate->createStatus(STATUSTYPE_WARNING, "channel disconnected");;
+        Status* ChannelImpl::channelDestroyed = getStatusCreate()->createStatus(STATUSTYPE_WARNING, "channel destroyed");
+        Status* ChannelImpl::channelDisconnected = getStatusCreate()->createStatus(STATUSTYPE_WARNING, "channel disconnected");
 
 
         // TODO consider std::unordered_map
@@ -54,10 +44,9 @@ namespace epics {
                 catch (...) { errlogSevPrintf(errlogMajor, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
 
         /**
- * Base channel request.
- * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
- * @version $Id: BaseRequestImpl.java,v 1.1 2010/05/03 14:45:40 mrkraimer Exp $
- */
+         * Base channel request.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         */
         class BaseRequestImpl :
                 public DataResponse,
                 public SubscriptionRequest,
@@ -71,9 +60,8 @@ namespace epics {
 
             Requester* m_requester;
 
-            // TODO sync
-            volatile bool m_destroyed;
-            volatile bool m_remotelyDestroyed;
+            bool m_destroyed;
+            bool m_remotelyDestroyed;
 
             /* negative... */
             static const int NULL_REQUEST = -1;
@@ -83,7 +71,16 @@ namespace epics {
 
             Mutex m_mutex;
 
-                public:
+            public:
+            
+            static StatusCreate* statusCreate;
+            static PVDataCreate* pvDataCreate;
+    
+            static Status* okStatus;
+            static Status* destroyedStatus;
+            static Status* channelNotConnected;
+            static Status* otherRequestPendingStatus;
+                
             BaseRequestImpl(ChannelImpl* channel, Requester* requester) :
                     m_channel(channel), m_context(channel->getContext()),
                     m_requester(requester), m_destroyed(false), m_remotelyDestroyed(false),
@@ -128,31 +125,41 @@ namespace epics {
             virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) = 0;
 
             virtual void response(Transport* transport, int8 version, ByteBuffer* payloadBuffer) {
-                // TODO?
-                //        try
-                //        {
                 transport->ensureData(1);
                 int8 qos = payloadBuffer->getByte();
                 Status* status = statusCreate->deserializeStatus(payloadBuffer, transport);
-                if (qos & QOS_INIT)
+                
+                try
                 {
-                    initResponse(transport, version, payloadBuffer, qos, status);
+                    if (qos & QOS_INIT)
+                    {
+                        initResponse(transport, version, payloadBuffer, qos, status);
+                    }
+                    else if (qos & QOS_DESTROY)
+                    {
+                        m_mutex.lock();
+                        m_remotelyDestroyed = true;
+                        m_mutex.unlock();
+    
+                        if (!destroyResponse(transport, version, payloadBuffer, qos, status))
+                            cancel();
+                    }
+                    else
+                    {
+                        normalResponse(transport, version, payloadBuffer, qos, status);
+                    }
                 }
-                else if (qos & QOS_DESTROY)
-                {
-                    m_remotelyDestroyed = true;
-
-                    if (!destroyResponse(transport, version, payloadBuffer, qos, status))
-                        cancel();
+                catch (std::exception &e) {
+                    errlogSevPrintf(errlogMajor, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what());
+                    // TODO
+                    if (status != okStatus)
+                        delete status;
                 }
-                else
-                {
-                    normalResponse(transport, version, payloadBuffer, qos, status);
+                catch (...) { errlogSevPrintf(errlogMajor, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__);
+                    // TODO
+                    if (status != okStatus)
+                        delete status;
                 }
-
-                // TODO
-                if (status != okStatus)
-                    delete status;
             }
 
             virtual void cancel() {
@@ -224,6 +231,13 @@ namespace epics {
 
 
 
+            StatusCreate* BaseRequestImpl::statusCreate = getStatusCreate();
+            PVDataCreate* BaseRequestImpl::pvDataCreate = getPVDataCreate();
+    
+            Status* BaseRequestImpl::okStatus = getStatusCreate()->getStatusOK();;
+            Status* BaseRequestImpl::destroyedStatus = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "request destroyed");
+            Status* BaseRequestImpl::channelNotConnected = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "channel not connected");
+            Status* BaseRequestImpl::otherRequestPendingStatus = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "other request pending");
 
 
 
@@ -304,12 +318,15 @@ namespace epics {
 
             virtual void process(bool lastRequest)
             {
-                // TODO sync
-                if (m_destroyed) {
-                    EXCEPTION_GUARD(m_callback->processDone(destroyedStatus));
-                    return;
+                // TODO optimize
+                {
+                    Lock guard(&m_mutex);
+                    if (m_destroyed) {
+                        EXCEPTION_GUARD(m_callback->processDone(destroyedStatus));
+                        return;
+                    }
                 }
-
+                
                 if (!startRequest(lastRequest ? QOS_DESTROY : QOS_DEFAULT)) {
                     EXCEPTION_GUARD(m_callback->processDone(otherRequestPendingStatus));
                     return;
@@ -441,11 +458,13 @@ namespace epics {
             }
 
             virtual void get(bool lastRequest) {
-                // TODO sync?
-
-                if (m_destroyed) {
-                    EXCEPTION_GUARD(m_channelGetRequester->getDone(destroyedStatus));
-                    return;
+                // TODO optimize
+                {
+                    Lock guard(&m_mutex);
+                    if (m_destroyed) {
+                        EXCEPTION_GUARD(m_channelGetRequester->getDone(destroyedStatus));
+                        return;
+                    }
                 }
 
                 if (!startRequest(lastRequest ? QOS_DESTROY | QOS_GET : QOS_DEFAULT)) {
@@ -469,7 +488,7 @@ namespace epics {
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
-                // TODO sync
+                // synced by code above
                 if (m_data) delete m_data;
                 if (m_bitSet) delete m_bitSet;
                 if (m_pvRequest) delete m_pvRequest;
@@ -1285,7 +1304,7 @@ namespace epics {
                 try {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                 } catch (std::runtime_error &rte) {
-                    EXCEPTION_GUARD(callback->getDone(channelNotConnected, 0));
+                    EXCEPTION_GUARD(callback->getDone(BaseRequestImpl::channelNotConnected, 0));
                 }
             }
 
@@ -1349,7 +1368,7 @@ namespace epics {
                 // TODO?
                 //        try
                 //        {
-                Status* status = statusCreate->deserializeStatus(payloadBuffer, transport);
+                Status* status = BaseRequestImpl::statusCreate->deserializeStatus(payloadBuffer, transport);
                 if (status->isSuccess())
                 {
                     // deserialize Field...
@@ -1363,7 +1382,7 @@ namespace epics {
                 }
 
                 // TODO
-                if (status != okStatus)
+                if (status != BaseRequestImpl::okStatus)
                     delete status;
                 //        } // TODO guard callback
                 //        finally
@@ -1580,22 +1599,21 @@ namespace epics {
 
                 // TODO monitorStrategy.start();
 
-                //try {
                 // start == process + get
                 if (!startRequest(QOS_PROCESS | QOS_GET))
                 {
                     return getStatusCreate()->createStatus(STATUSTYPE_ERROR, "Other request pending.");
                 }
-                m_channel->checkAndGetTransport()->enqueueSendRequest(this);
-                m_started = true;
-                // client needs to delete status, so passing shared OK instance is not right thing to do
-                return getStatusCreate()->createStatus(STATUSTYPE_OK, "Monitor started.");
-                //} catch (std::runtime_error &rte) {
-                //    return channelNotConnected; // TODO clone
-                //}
-
-
-
+                
+                try
+                {
+                    m_channel->checkAndGetTransport()->enqueueSendRequest(this);
+                    m_started = true;
+                    // client needs to delete status, so passing shared OK instance is not right thing to do
+                    return getStatusCreate()->createStatus(STATUSTYPE_OK, "Monitor started.");
+                } catch (std::runtime_error &rte) {
+                    return getStatusCreate()->createStatus(STATUSTYPE_ERROR, "channel not connected.");
+                }
             }
 
             virtual Status* stop()
@@ -1608,20 +1626,21 @@ namespace epics {
 
                 //monitorStrategy.stop();
 
-                //try {
                 // stop == process + no get
                 if (!startRequest(QOS_PROCESS))
                 {
                     return getStatusCreate()->createStatus(STATUSTYPE_ERROR, "Other request pending.");
                 }
-                m_channel->checkAndGetTransport()->enqueueSendRequest(this);
-                m_started = false;
-                // client needs to delete status, so passing shared OK instance is not right thing to do
-                return getStatusCreate()->createStatus(STATUSTYPE_OK, "Monitor stopped.");
-                //} catch (std::runtime_error &rte) {
-                //    return channelNotConnected; // TODO clone
-                //}
-
+    
+                try
+                {
+                    m_channel->checkAndGetTransport()->enqueueSendRequest(this);
+                    m_started = false;
+                    // client needs to delete status, so passing shared OK instance is not right thing to do
+                    return getStatusCreate()->createStatus(STATUSTYPE_OK, "Monitor stopped.");
+                } catch (std::runtime_error &rte) {
+                    return getStatusCreate()->createStatus(STATUSTYPE_ERROR, "channel not connected.");
+                }
             }
 
 
@@ -1671,17 +1690,17 @@ namespace epics {
 
 
         /**
-         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
-         * @version $Id: AbstractServerResponseHandler.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
-         */
+                 * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+                 * @version $Id: AbstractServerResponseHandler.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
+                 */
         class AbstractClientResponseHandler : public AbstractResponseHandler {
         protected:
             ClientContextImpl* _context;
         public:
             /**
-             * @param context
-             * @param description
-             */
+                     * @param context
+                     * @param description
+                     */
             AbstractClientResponseHandler(ClientContextImpl* context, String description) : 
                     AbstractResponseHandler(context, description), _context(context) {
             }
@@ -1693,8 +1712,8 @@ namespace epics {
         class NoopResponse :  public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
             /**
-             * @param context
-             */
+                     * @param context
+                     */
             NoopResponse(ClientContextImpl* context, String description) :
                     AbstractClientResponseHandler(context, description)
             {
@@ -1708,8 +1727,8 @@ namespace epics {
         class BadResponse :  public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
             /**
-             * @param context
-             */
+                     * @param context
+                     */
             BadResponse(ClientContextImpl* context) :
                     AbstractClientResponseHandler(context, "Bad response")
             {
@@ -1735,8 +1754,8 @@ namespace epics {
         class DataResponseHandler :  public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
             /**
-             * @param context
-             */
+                     * @param context
+                     */
             DataResponseHandler(ClientContextImpl* context) :
                     AbstractClientResponseHandler(context, "Data response")
             {
@@ -1795,7 +1814,7 @@ namespace epics {
         int8* byteAddress = new int8[16];
         for (int i = 0; i < 16; i++) 
           byteAddress[i] = payloadBuffer->getByte(); };
-        */
+                */
 
                 // IPv4 compatible IPv6 address expected
                 // first 80-bit are 0
@@ -1858,7 +1877,7 @@ namespace epics {
         int8* byteAddress = new int8[16];
         for (int i = 0; i < 16; i++) 
           byteAddress[i] = payloadBuffer->getByte(); };
-        */
+                */
 
                 // IPv4 compatible IPv6 address expected
                 // first 80-bit are 0
@@ -1989,7 +2008,7 @@ namespace epics {
                 }
 
                 // TODO not nice
-                if (status != g_statusOK)
+                if (status != BaseRequestImpl::okStatus)
                     delete status;
 
             }
@@ -1998,21 +2017,20 @@ namespace epics {
 
 
         /**
- * CA response handler - main handler which dispatches responses to appripriate handlers.
- * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
- * @version $Id: ClientResponseHandler.java,v 1.1 2010/05/03 14:45:40 mrkraimer Exp $
- */
+         * CA response handler - main handler which dispatches responses to appripriate handlers.
+         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+         */
         class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoDefaultMethods {
         private:
 
             /**
-     * Table of response handlers for each command ID.
-     */
+             * Table of response handlers for each command ID.
+             */
             ResponseHandler** m_handlerTable;
 
             /*
-     * Context instance is part of the response handler now
-     */
+             * Context instance is part of the response handler now
+             */
             //ClientContextImpl* m_context;
 
         public:
@@ -2034,8 +2052,8 @@ namespace epics {
             }
 
             /**
-     * @param context
-     */
+             * @param context
+             */
             ClientResponseHandler(ClientContextImpl* context) {
                 ResponseHandler* badResponse = new BadResponse(context);
                 ResponseHandler* dataResponse = new DataResponseHandler(context);
@@ -2100,22 +2118,22 @@ namespace epics {
 
 
         /**
- * Context state enum.
- */
+         * Context state enum.
+         */
         enum ContextState {
             /**
-     * State value of non-initialized context.
-     */
+             * State value of non-initialized context.
+             */
             CONTEXT_NOT_INITIALIZED,
 
             /**
-     * State value of initialized context.
-     */
+             * State value of initialized context.
+             */
             CONTEXT_INITIALIZED,
 
             /**
-     * State value of destroyed context.
-     */
+             * State value of destroyed context.
+             */
             CONTEXT_DESTROYED
         };
 
@@ -2129,68 +2147,67 @@ namespace epics {
 
 
             /**
- * Implementation of CAJ JCA <code>Channel</code>.
- * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
- */
+             * Implementation of CAJ JCA <code>Channel</code>.
+             */
             class InternalChannelImpl : public ChannelImpl {
             private:
 
                 /**
-         * Context.
-         */
+                 * Context.
+                 */
                 ClientContextImpl* m_context;
 
                 /**
-         * Client channel ID.
-         */
+                 * Client channel ID.
+                 */
                 pvAccessID m_channelID;
 
                 /**
-         * Channel name.
-         */
+                 * Channel name.
+                 */
                 String m_name;
 
                 /**
-         * Channel requester.
-         */
+                 * Channel requester.
+                 */
                 ChannelRequester* m_requester;
 
                 /**
-         * Process priority.
-         */
+                 * Process priority.
+                 */
                 short m_priority;
 
                 /**
-         * List of fixed addresses, if <code<0</code> name resolution will be used.
-         */
+                 * List of fixed addresses, if <code<0</code> name resolution will be used.
+                 */
                 InetAddrVector* m_addresses;
 
                 /**
-         * Connection status.
-         */
+                 * Connection status.
+                 */
                 ConnectionState m_connectionState;
 
                 /**
-         * List of all channel's pending requests (keys are subscription IDs).
-         */
+                 * List of all channel's pending requests (keys are subscription IDs).
+                 */
                 IOIDResponseRequestMap m_responseRequests;
 
                 /**
-         * Mutex for response requests.
-         */
+                 * Mutex for response requests.
+                 */
                 Mutex m_responseRequestsMutex;
 
                 bool m_needSubscriptionUpdate;
 
                 /**
-         * Allow reconnection flag.
-         */
+                 * Allow reconnection flag.
+                 */
                 bool m_allowCreation;
 
                 /**
-         * Reference counting.
-         * NOTE: synced on <code>m_channelMutex</code>.
-         */
+                 * Reference counting.
+                 * NOTE: synced on <code>m_channelMutex</code>.
+                 */
                 int m_references;
 
                 /* ****************** */
@@ -2198,23 +2215,23 @@ namespace epics {
                 /* ****************** */
 
                 /**
-         * Server transport.
-         */
+                 * Server transport.
+                 */
                 Transport* m_transport;
 
                 /**
-         * Server channel ID.
-         */
+                 * Server channel ID.
+                 */
                 pvAccessID m_serverChannelID;
 
                 /**
-         * Context sync. mutex.
-         */
+                 * Context sync. mutex.
+                 */
                 Mutex m_channelMutex;
 
                 /**
-         * Flag indicting what message to send.
-         */
+                 * Flag indicting what message to send.
+                 */
                 bool m_issueCreateMessage;
 
             private:
@@ -2226,12 +2243,12 @@ namespace epics {
             public:
 
                 /**
-     * Constructor.
-     * @param context
-     * @param name
-     * @param listener
-     * @throws CAException
-     */
+             * Constructor.
+             * @param context
+             * @param name
+             * @param listener
+             * @throws CAException
+             */
                 InternalChannelImpl(
                         ClientContextImpl* context,
                         pvAccessID channelID,
@@ -2325,9 +2342,9 @@ namespace epics {
                 }
 
                 /**
-     * Get client channel ID.
-     * @return client channel ID.
-     */
+             * Get client channel ID.
+             * @return client channel ID.
+             */
                 pvAccessID getChannelID() {
                     return m_channelID;
                 }
@@ -2380,10 +2397,10 @@ namespace epics {
                 }
 
                 /**
-     * Create a channel, i.e. submit create channel request to the server.
-     * This method is called after search is complete.
-     * @param transport
-     */
+             * Create a channel, i.e. submit create channel request to the server.
+             * This method is called after search is complete.
+             * @param transport
+             */
                 void createChannel(Transport* transport)
                 {
                     Lock guard(&m_channelMutex);
@@ -2421,8 +2438,8 @@ namespace epics {
                 }
 
                 /**
-     * Create channel failed.
-     */
+             * Create channel failed.
+             */
                 virtual void createChannelFailed()
                 {
                     Lock guard(&m_channelMutex);
@@ -2433,10 +2450,10 @@ namespace epics {
                 }
 
                 /**
-     * Called when channel created succeeded on the server.
-     * <code>sid</code> might not be valid, this depends on protocol revision.
-     * @param sid
-     */
+             * Called when channel created succeeded on the server.
+             * <code>sid</code> might not be valid, this depends on protocol revision.
+             * @param sid
+             */
                 virtual void connectionCompleted(pvAccessID sid/*,  rights*/)
                 {
                     Lock guard(&m_channelMutex);
@@ -2472,8 +2489,8 @@ namespace epics {
                 }
 
                 /**
-     * @param force force destruction regardless of reference count
-     */
+             * @param force force destruction regardless of reference count
+             */
                 void destroy(bool force) {
                     Lock guard(&m_channelMutex);
                     if (m_connectionState == DESTROYED)
@@ -2485,20 +2502,20 @@ namespace epics {
                 }
 
                 /**
-     * Increment reference.
-     */
+             * Increment reference.
+             */
                 void acquire() {
                     Lock guard(&m_channelMutex);
                     m_references++;
                 }
 
                 /**
-     * Actual destroy method, to be called <code>CAJContext</code>.
-     * @param force force destruction regardless of reference count
-     * @throws CAException
-     * @throws std::runtime_error
-     * @throws IOException
-     */
+             * Actual destroy method, to be called <code>CAJContext</code>.
+             * @param force force destruction regardless of reference count
+             * @throws CAException
+             * @throws std::runtime_error
+             * @throws IOException
+             */
                 void destroyChannel(bool force) {
                     Lock guard(&m_channelMutex);
 
@@ -2534,10 +2551,10 @@ namespace epics {
                 }
 
                 /**
-     * Disconnected notification.
-     * @param initiateSearch    flag to indicate if searching (connect) procedure should be initiated
-     * @param remoteDestroy        issue channel destroy request.
-     */
+             * Disconnected notification.
+             * @param initiateSearch    flag to indicate if searching (connect) procedure should be initiated
+             * @param remoteDestroy        issue channel destroy request.
+             */
                 void disconnect(bool initiateSearch, bool remoteDestroy) {
                     Lock guard(&m_channelMutex);
 
@@ -2573,8 +2590,8 @@ namespace epics {
                 }
 
                 /**
-     * Initiate search (connect) procedure.
-     */
+             * Initiate search (connect) procedure.
+             */
                 void initiateSearch()
                 {
                     Lock guard(&m_channelMutex);
@@ -2589,7 +2606,7 @@ namespace epics {
             // TODO minor version
             // TODO what to do if there is no channel, do not search in a loop!!! do this in other thread...!
             searchResponse(CAConstants.CA_MINOR_PROTOCOL_REVISION, addresses[0]);
-            */
+                    */
                 }
 
                 virtual void searchResponse(int8 minorRevision, osiSockAddr* serverAddress) {
@@ -2665,9 +2682,9 @@ namespace epics {
                 }
 
                 /**
-     * Set connection state and if changed, notifies listeners.
-     * @param newState    state to set.
-     */
+             * Set connection state and if changed, notifies listeners.
+             * @param newState    state to set.
+             */
                 void setConnectionState(ConnectionState connectionState)
                 {
                     Lock guard(&m_channelMutex);
@@ -2730,9 +2747,9 @@ namespace epics {
 
 
                 /**
-     * Disconnects (destroys) all channels pending IO.
-     * @param destroy    <code>true</code> if channel is being destroyed.
-     */
+             * Disconnects (destroys) all channels pending IO.
+             * @param destroy    <code>true</code> if channel is being destroyed.
+             */
                 void disconnectPendingIO(bool destroy)
                 {
                     // TODO destroy????!!
@@ -2751,8 +2768,8 @@ namespace epics {
                 }
 
                 /**
-     * Resubscribe subscriptions.
-     */
+             * Resubscribe subscriptions.
+             */
                 // TODO to be called from non-transport thread !!!!!!
                 void resubscribeSubscriptions()
                 {
@@ -2771,8 +2788,8 @@ namespace epics {
                 }
 
                 /**
-     * Update subscriptions.
-     */
+             * Update subscriptions.
+             */
                 // TODO to be called from non-transport thread !!!!!!
                 void updateSubscriptions()
                 {
@@ -2952,7 +2969,7 @@ namespace epics {
                     // TODO support addressList
                     Channel* channel = m_context->createChannelInternal(channelName, channelRequester, priority, 0);
                     if (channel)
-                        channelRequester->channelCreated(g_statusOK, channel);
+                        channelRequester->channelCreated(getStatusCreate()->getStatusOK(), channel);
                     return channel;
 
                     // NOTE it's up to internal code to respond w/ error to requester and return 0 in case of errors
@@ -3116,8 +3133,8 @@ TODO
             }
 
             /**
-     * Initialized UDP transport (broadcast socket and repeater connection).
-     */
+             * Initialized UDP transport (broadcast socket and repeater connection).
+             */
             bool initializeUDPTransport() {
 
                 // quary broadcast addresses of all IFs
@@ -3217,8 +3234,8 @@ TODO
             }
 
             /**
-     * Check channel name.
-     */
+             * Check channel name.
+             */
             void checkChannelName(String& name) {
                 if (name.empty())
                     throw std::runtime_error("0 or empty channel name");
@@ -3227,8 +3244,8 @@ TODO
             }
 
             /**
-     * Check context state and tries to establish necessary state.
-     */
+             * Check context state and tries to establish necessary state.
+             */
             void checkState() {
                 Lock lock(&m_contextMutex); // TODO check double-lock?!!!
 
@@ -3239,9 +3256,9 @@ TODO
             }
 
             /**
-     * Register channel.
-     * @param channel
-     */
+             * Register channel.
+             * @param channel
+             */
             void registerChannel(ChannelImpl* channel)
             {
                 Lock guard(&m_cidMapMutex);
@@ -3249,9 +3266,9 @@ TODO
             }
 
             /**
-     * Unregister channel.
-     * @param channel
-     */
+             * Unregister channel.
+             * @param channel
+             */
             void unregisterChannel(ChannelImpl* channel)
             {
                 Lock guard(&m_cidMapMutex);
@@ -3259,10 +3276,10 @@ TODO
             }
 
             /**
-     * Searches for a channel with given channel ID.
-     * @param channelID CID.
-     * @return channel with given CID, <code>0</code> if non-existent.
-     */
+             * Searches for a channel with given channel ID.
+             * @param channelID CID.
+             * @return channel with given CID, <code>0</code> if non-existent.
+             */
             ChannelImpl* getChannel(pvAccessID channelID)
             {
                 Lock guard(&m_cidMapMutex);
@@ -3271,9 +3288,9 @@ TODO
             }
 
             /**
-     * Generate Client channel ID (CID).
-     * @return Client channel ID (CID).
-     */
+             * Generate Client channel ID (CID).
+             * @return Client channel ID (CID).
+             */
             pvAccessID generateCID()
             {
                 Lock guard(&m_cidMapMutex);
@@ -3286,8 +3303,8 @@ TODO
             }
 
             /**
-     * Free generated channel ID (CID).
-     */
+             * Free generated channel ID (CID).
+             */
             void freeCID(int cid)
             {
                 Lock guard(&m_cidMapMutex);
@@ -3296,10 +3313,10 @@ TODO
 
 
             /**
-     * Searches for a response request with given channel IOID.
-     * @param ioid    I/O ID.
-     * @return request response with given I/O ID.
-     */
+             * Searches for a response request with given channel IOID.
+             * @param ioid    I/O ID.
+             * @return request response with given I/O ID.
+             */
             ResponseRequest* getResponseRequest(pvAccessID ioid)
             {
                 Lock guard(&m_ioidMapMutex);
@@ -3308,10 +3325,10 @@ TODO
             }
 
             /**
-     * Register response request.
-     * @param request request to register.
-     * @return request ID (IOID).
-     */
+             * Register response request.
+             * @param request request to register.
+             * @return request ID (IOID).
+             */
             pvAccessID registerResponseRequest(ResponseRequest* request)
             {
                 Lock guard(&m_ioidMapMutex);
@@ -3321,10 +3338,10 @@ TODO
             }
 
             /**
-     * Unregister response request.
-     * @param request
-     * @return removed object, can be <code>0</code>
-     */
+             * Unregister response request.
+             * @param request
+             * @return removed object, can be <code>0</code>
+             */
             ResponseRequest* unregisterResponseRequest(ResponseRequest* request)
             {
                 Lock guard(&m_ioidMapMutex);
@@ -3338,9 +3355,9 @@ TODO
             }
 
             /**
-     * Generate IOID.
-     * @return IOID. 
-     */
+             * Generate IOID.
+             * @return IOID. 
+             */
             pvAccessID generateIOID()
             {
                 Lock guard(&m_ioidMapMutex);
@@ -3354,8 +3371,8 @@ TODO
             }
 
             /**
-     * Called each time beacon anomaly is detected. 
-     */
+             * Called each time beacon anomaly is detected. 
+             */
             void beaconAnomalyNotify()
             {
                 if (m_channelSearchManager)
@@ -3363,10 +3380,10 @@ TODO
             }
 
             /**
-     * Get (and if necessary create) beacon handler.
-     * @param responseFrom remote source address of received beacon.    
-     * @return beacon handler for particular server.
-     */
+             * Get (and if necessary create) beacon handler.
+             * @param responseFrom remote source address of received beacon.    
+             * @return beacon handler for particular server.
+             */
             BeaconHandler* getBeaconHandler(osiSockAddr* responseFrom)
             {
                 // TODO delete handlers
@@ -3384,11 +3401,11 @@ TODO
             }
 
             /**
-     * Get, or create if necessary, transport of given server address.
-     * @param serverAddress    required transport address
-     * @param priority process priority.
-     * @return transport for given address
-     */
+             * Get, or create if necessary, transport of given server address.
+             * @param serverAddress    required transport address
+             * @param priority process priority.
+             * @return transport for given address
+             */
             Transport* getTransport(TransportClient* client, osiSockAddr* serverAddress, int16 minorRevision, int16 priority)
             {
                 try
@@ -3404,8 +3421,8 @@ TODO
             }
 
             /**
-     * Internal create channel.
-     */
+             * Internal create channel.
+             */
             // TODO no minor version with the addresses
             // TODO what if there is an channel with the same name, but on different host!
             ChannelImpl* createChannelInternal(String name, ChannelRequester* requester, short priority,
@@ -3442,12 +3459,12 @@ TODO
             }
 
             /**
-     * Destroy channel.
-     * @param channel
-     * @param force
-     * @throws CAException
-     * @throws std::runtime_error
-     */
+             * Destroy channel.
+             * @param channel
+             * @param force
+             * @throws CAException
+             * @throws std::runtime_error
+             */
             void destroyChannel(ChannelImpl* channel, bool force) {
 
                 String name = channel->getChannelName();
@@ -3471,153 +3488,153 @@ TODO
             }
 
             /**
-     * Get channel search manager.
-     * @return channel search manager.
-     */
+             * Get channel search manager.
+             * @return channel search manager.
+             */
             ChannelSearchManager* getChannelSearchManager() {
                 return m_channelSearchManager;
             }
 
             /**
-     * A space-separated list of broadcast address for process variable name resolution.
-     * Each address must be of the form: ip.number:port or host.name:port
-     */
+             * A space-separated list of broadcast address for process variable name resolution.
+             * Each address must be of the form: ip.number:port or host.name:port
+             */
             String m_addressList;
 
             /**
-     * Define whether or not the network interfaces should be discovered at runtime.
-     */
+             * Define whether or not the network interfaces should be discovered at runtime.
+             */
             bool m_autoAddressList;
 
             /**
-     * If the context doesn't see a beacon from a server that it is connected to for
-     * connectionTimeout seconds then a state-of-health message is sent to the server over TCP/IP.
-     * If this state-of-health message isn't promptly replied to then the context will assume that
-     * the server is no longer present on the network and disconnect.
-     */
+             * If the context doesn't see a beacon from a server that it is connected to for
+             * connectionTimeout seconds then a state-of-health message is sent to the server over TCP/IP.
+             * If this state-of-health message isn't promptly replied to then the context will assume that
+             * the server is no longer present on the network and disconnect.
+             */
             float m_connectionTimeout;
 
             /**
-     * Period in second between two beacon signals.
-     */
+             * Period in second between two beacon signals.
+             */
             float m_beaconPeriod;
 
             /**
-     * Broadcast (beacon, search) port number to listen to.
-     */
+             * Broadcast (beacon, search) port number to listen to.
+             */
             int m_broadcastPort;
 
             /**
-     * Receive buffer size (max size of payload).
-     */
+             * Receive buffer size (max size of payload).
+             */
             int m_receiveBufferSize;
 
             /**
-     * Timer.
-     */
+             * Timer.
+             */
             Timer* m_timer;
 
             /**
-     * Broadcast transport needed to listen for broadcasts.
-     */
+             * Broadcast transport needed to listen for broadcasts.
+             */
             BlockingUDPTransport* m_broadcastTransport;
 
             /**
-     * UDP transport needed for channel searches.
-     */
+             * UDP transport needed for channel searches.
+             */
             BlockingUDPTransport* m_searchTransport;
 
             /**
-     * CA connector (creates CA virtual circuit).
-     */
+             * CA connector (creates CA virtual circuit).
+             */
             BlockingTCPConnector* m_connector;
 
             /**
-     * CA transport (virtual circuit) registry.
-     * This registry contains all active transports - connections to CA servers.
-     */
+             * CA transport (virtual circuit) registry.
+             * This registry contains all active transports - connections to CA servers.
+             */
             TransportRegistry* m_transportRegistry;
 
             /**
-     * Context instance.
-     */
+             * Context instance.
+             */
             NamedLockPattern<String>* m_namedLocker;
 
             /**
-     * Context instance.
-     */
+             * Context instance.
+             */
             static const int LOCK_TIMEOUT = 20 * 1000;    // 20s
 
             /**
-     * Map of channels (keys are CIDs).
-     */
+             * Map of channels (keys are CIDs).
+             */
             // TODO consider std::unordered_map
             typedef std::map<pvAccessID, ChannelImpl*> CIDChannelMap;
             CIDChannelMap m_channelsByCID;
 
             /**
-     *  CIDChannelMap mutex.
-     */
+             *  CIDChannelMap mutex.
+             */
             Mutex m_cidMapMutex;
 
             /**
-     * Last CID cache.
-     */
+             * Last CID cache.
+             */
             pvAccessID m_lastCID;
 
             /**
-     * Map of pending response requests (keys are IOID).
-     */
+             * Map of pending response requests (keys are IOID).
+             */
             // TODO consider std::unordered_map
             typedef std::map<pvAccessID, ResponseRequest*> IOIDResponseRequestMap;
             IOIDResponseRequestMap m_pendingResponseRequests;
 
             /**
-     *  IOIDResponseRequestMap mutex.
-     */
+             *  IOIDResponseRequestMap mutex.
+             */
             Mutex m_ioidMapMutex;
 
             /**
-     * Last IOID cache.
-     */
+             * Last IOID cache.
+             */
             pvAccessID m_lastIOID;
 
             /**
-     * Channel search manager.
-     * Manages UDP search requests.
-     */
+             * Channel search manager.
+             * Manages UDP search requests.
+             */
             ChannelSearchManager* m_channelSearchManager;
 
             /**
-     * Beacon handler map.
-     */
+             * Beacon handler map.
+             */
             // TODO consider std::unordered_map
             typedef std::map<osiSockAddr, BeaconHandler*, comp_osiSock_lt> AddressBeaconHandlerMap;
             AddressBeaconHandlerMap m_beaconHandlers;
 
             /**
-     *  IOIDResponseRequestMap mutex.
-     */
+             *  IOIDResponseRequestMap mutex.
+             */
             Mutex m_beaconMapMutex;
 
             /**
-     * Version.
-     */
+             * Version.
+             */
             Version* m_version;
 
             /**
-     * Provider implementation.
-     */
+             * Provider implementation.
+             */
             ChannelProviderImpl* m_provider;
 
             /**
-     * Context state.
-     */
+             * Context state.
+             */
             ContextState m_contextState;
 
             /**
-     * Context sync. mutex.
-     */
+             * Context sync. mutex.
+             */
             Mutex m_contextMutex;
 
             friend class ChannelProviderImpl;
