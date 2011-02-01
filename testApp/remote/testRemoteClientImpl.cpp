@@ -5,7 +5,8 @@
 
 #include <iostream>
 #include <sstream>
-#include <showConstructDestruct.h>
+#include <CDRMonitor.h>
+#include <epicsExit.h>
 #include <clientContextImpl.h>
 
 using namespace epics::pvData;
@@ -560,6 +561,7 @@ int main(int argc,char *argv[])
     printf("done.\n");
 
     std::cout << "-----------------------------------------------------------------------" << std::endl;
-    getShowConstructDestruct()->constuctDestructTotals(stdout);
+    epicsExitCallAtExits();
+    CDRMonitor::get().show(stdout);
     return(0);
 }

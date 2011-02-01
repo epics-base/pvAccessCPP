@@ -4,9 +4,10 @@
  */
 
 #include "configuration.h"
-#include "showConstructDestruct.h"
+#include "CDRMonitor.h"
 
 #include <epicsAssert.h>
+#include <epicsExit.h>
 #include <iostream>
 #include <string>
 #include <stdlib.h>
@@ -68,7 +69,8 @@ int main(int argc, char *argv[])
 	assert(doubleProperty == 42);
 
 	if(configProvider) delete configProvider;
-	getShowConstructDestruct()->constuctDestructTotals(stdout);
+        epicsExitCallAtExits();
+        CDRMonitor::get().show(stdout);
 	return 0;
 }
 

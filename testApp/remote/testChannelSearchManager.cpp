@@ -1,8 +1,9 @@
 /* testChannelSearcManager.cpp */
 
+#include <epicsExit.h>
 #include <channelSearchManager.h>
 #include <sstream>
-#include <showConstructDestruct.h>
+#include <CDRMonitor.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
@@ -429,7 +430,8 @@ int main(int argc,char *argv[])
     manager->cancel();
 
     context->destroy();
-    getShowConstructDestruct()->constuctDestructTotals(stdout);
+    epicsExitCallAtExits();
+    CDRMonitor::get().show(stdout);
 
     for(int i = 0; i < max_channels; i++)
     {

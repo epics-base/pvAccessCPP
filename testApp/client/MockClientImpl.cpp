@@ -2,9 +2,10 @@
 /* Author:  Matej Sekoranja Date: 2010.12.18 */
 
 
+#include <epicsExit.h>
 #include <pvAccess.h>
 #include <iostream>
-#include <showConstructDestruct.h>
+#include <CDRMonitor.h>
 #include <lock.h>
 #include <standardPVField.h>
 
@@ -968,6 +969,7 @@ int main(int argc,char *argv[])
     context->destroy();
     
     std::cout << "-----------------------------------------------------------------------" << std::endl;
-    getShowConstructDestruct()->constuctDestructTotals(stdout);
+    epicsExitCallAtExits();
+    CDRMonitor::get().show(stdout);
     return(0);
 }

@@ -4,9 +4,10 @@
  */
 
 #include "namedLockPattern.h"
-#include "showConstructDestruct.h"
+#include "CDRMonitor.h"
 
 #include <epicsAssert.h>
+#include <epicsExit.h>
 #include <iostream>
 
 #include <osiSock.h>
@@ -212,7 +213,8 @@ int main(int argc, char *argv[])
 		assert(true);
 	}
 
-	getShowConstructDestruct()->constuctDestructTotals(stdout);
+        epicsExitCallAtExits();
+        CDRMonitor::get().show(stdout);
 	return 0;
 }
 

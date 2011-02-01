@@ -7,10 +7,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <pvAccess.h>
-#include <showConstructDestruct.h>
+#include <CDRMonitor.h>
 #include <iostream>
 
 #include <epicsAssert.h>
+#include <epicsExit.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
@@ -151,7 +152,8 @@ int main(int argc,char *argv[])
     testCreateRequest();
 
     std::cout << "-----------------------------------------------------------------------" << std::endl;
-    getShowConstructDestruct()->constuctDestructTotals(stdout);
+    epicsExitCallAtExits();
+    CDRMonitor::get().show(stdout);
     return 0;
 }
 
