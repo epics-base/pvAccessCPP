@@ -6,7 +6,7 @@
 #include <pvAccess.h>
 #include <iostream>
 #include <sstream>
-#include <showConstructDestruct.h>
+#include <CDRMonitor.h>
 #include <lock.h>
 #include <standardPVField.h>
 #include <memory>
