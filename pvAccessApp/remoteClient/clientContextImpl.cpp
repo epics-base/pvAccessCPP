@@ -62,7 +62,7 @@ namespace epics {
             Requester* m_requester;
 
             bool m_destroyed;
-            bool m_remotelyDestroyed;
+            bool m_remotelyDestroy;
 
             /* negative... */
             static const int NULL_REQUEST = -1;
@@ -88,7 +88,7 @@ namespace epics {
                 
             BaseRequestImpl(ChannelImpl* channel, Requester* requester) :
                     m_channel(channel), m_context(channel->getContext()),
-                    m_requester(requester), m_destroyed(false), m_remotelyDestroyed(false),
+                    m_requester(requester), m_destroyed(false), m_remotelyDestroy(false),
                     m_pendingRequest(NULL_REQUEST), m_refCount(1)
             {
                 // register response request
@@ -138,12 +138,20 @@ namespace epics {
                 {
                     if (qos & QOS_INIT)
                     {
+                        if (status->isSuccess())
+                        {
+                            // once created set destroy flag
+                            m_mutex.lock();
+                            m_remotelyDestroy = true;
+                            m_mutex.unlock();
+                        }
+                        
                         initResponse(transport, version, payloadBuffer, qos, status);
                     }
                     else if (qos & QOS_DESTROY)
                     {
                         m_mutex.lock();
-                        m_remotelyDestroyed = true;
+                        m_remotelyDestroy = false;
                         m_mutex.unlock();
     
                         if (!destroyResponse(transport, version, payloadBuffer, qos, status))
@@ -185,10 +193,16 @@ namespace epics {
                 m_channel->unregisterResponseRequest(this);
 
                 // destroy remote instance
-                if (!m_remotelyDestroyed)
+                if (m_remotelyDestroy)
                 {
-                    startRequest(PURE_DESTROY_REQUEST);
-                    m_channel->checkAndGetTransport()->enqueueSendRequest(this);
+                    try
+                    {
+                        startRequest(PURE_DESTROY_REQUEST);
+                        m_channel->checkAndGetTransport()->enqueueSendRequest(this);
+                    } catch (...) {
+                        // noop (do not complain if fails)
+                    }
+
                 }
                 
                 release();
@@ -1583,7 +1597,7 @@ namespace epics {
                 else if (qos & QOS_DESTROY)
                 {
                     Status* status = statusCreate->deserializeStatus(payloadBuffer, transport);
-                    m_remotelyDestroyed = true;
+                    m_remotelyDestroy = true;
 
                     if (!destroyResponse(transport, version, payloadBuffer, qos, status))
                         cancel();

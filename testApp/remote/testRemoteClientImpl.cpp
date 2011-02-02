@@ -74,10 +74,15 @@ class GetFieldRequesterImpl : public GetFieldRequester
 
 class ChannelGetRequesterImpl : public ChannelGetRequester
 {
+    Mutex m_mutex;
     ChannelGet *m_channelGet;
     epics::pvData::PVStructure *m_pvStructure;
     epics::pvData::BitSet *m_bitSet;
 
+    public:
+    
+    ChannelGetRequesterImpl() : m_channelGet(0), m_pvStructure(0), m_bitSet(0) {}
+    
     virtual String getRequesterName()
     {
         return "ChannelGetRequesterImpl";
@@ -99,15 +104,17 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             std::cout << st << std::endl;
         }
         
-        // TODO sync
+        m_mutex.lock();
         m_channelGet = channelGet;
         m_pvStructure = pvStructure;
         m_bitSet = bitSet;
+        m_mutex.unlock();
     }
 
     virtual void getDone(epics::pvData::Status *status)
     {
         std::cout << "getDone(" << status->toString() << ")" << std::endl;
+        Lock guard(&m_mutex);
         if (m_pvStructure)
         {
             String str;
@@ -465,7 +472,7 @@ int main(int argc,char *argv[])
     epicsThreadSleep ( 1.0 );
 */
     ChannelGetRequesterImpl channelGetRequesterImpl;
-    pvRequest = getCreateRequest()->createRequest("field(value,timeStamp)",&channelGetRequesterImpl);
+    pvRequest = 0;//getCreateRequest()->createRequest("field(kiki)",&channelGetRequesterImpl);
     ChannelGet* channelGet = channel->createChannelGet(&channelGetRequesterImpl, pvRequest);
     epicsThreadSleep ( 3.0 );
     channelGet->get(false);

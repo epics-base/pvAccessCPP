@@ -440,51 +440,41 @@ namespace epics {
                         int currentStartPosition;
                         if(addToBuffer) {
                             currentStartPosition = _socketBuffer->getPosition();
-                            _socketBuffer->setPosition(
-                                    _socketBuffer->getLimit());
+                            _socketBuffer->setPosition(_socketBuffer->getLimit());
                             _socketBuffer->setLimit(_socketBuffer->getSize());
                         }
                         else {
                             // add to bytes read
-                            _totalBytesReceived
-                                    += (_socketBuffer->getPosition()
-                                            -_startPosition);
+                            _totalBytesReceived += (_socketBuffer->getPosition() -_startPosition);
 
                             // copy remaining bytes, if any
                             int remainingBytes = _socketBuffer->getRemaining();
-                            int endPosition = MAX_ENSURE_DATA_BUFFER_SIZE
-                                    +remainingBytes;
-                            for(int i = MAX_ENSURE_DATA_BUFFER_SIZE; i
-                                    <endPosition; i++)
-                                _socketBuffer->putByte(i,
-                                        _socketBuffer->getByte());
+                            int endPosition = MAX_ENSURE_DATA_BUFFER_SIZE+remainingBytes;
+                            for(int i = MAX_ENSURE_DATA_BUFFER_SIZE; i<endPosition; i++)
+                                _socketBuffer->putByte(i, _socketBuffer->getByte());
 
-                            currentStartPosition = _startPosition
-                                    = MAX_ENSURE_DATA_BUFFER_SIZE;
-                            _socketBuffer->setPosition(
-                                    MAX_ENSURE_DATA_BUFFER_SIZE+remainingBytes);
+                            currentStartPosition = _startPosition = MAX_ENSURE_DATA_BUFFER_SIZE;
+                            _socketBuffer->setPosition(MAX_ENSURE_DATA_BUFFER_SIZE+remainingBytes);
                             _socketBuffer->setLimit(_socketBuffer->getSize());
                         }
 
                         // read at least requiredBytes bytes
 
-                        int requiredPosition = (currentStartPosition
-                                +requiredBytes);
+                        int requiredPosition = (currentStartPosition+requiredBytes);
                         while(_socketBuffer->getPosition()<requiredPosition) {
                             // read
+                            // TODO wrap and do not copy !!!
                             char readBuffer[MAX_TCP_RECV];
-                            size_t maxToRead = min(MAX_TCP_RECV,
-                                    _socketBuffer->getRemaining());
-                            ssize_t bytesRead = recv(_channel, readBuffer,
-                                    maxToRead, 0);
+                            size_t maxToRead = min(MAX_TCP_RECV,_socketBuffer->getRemaining());
+                            ssize_t bytesRead = recv(_channel, readBuffer, maxToRead, 0);
                             _socketBuffer->put(readBuffer, 0, bytesRead);
 
                             if(bytesRead<=0) {
                                 // error (disconnect, end-of-stream) detected
                                 close(true);
 
-                                if(bytesRead<0&&nestedCall) THROW_BASE_EXCEPTION(
-                                        "bytesRead < 0");
+                                if(nestedCall)
+                                    THROW_BASE_EXCEPTION("bytesRead < 0");
 
                                 return;
                             }
@@ -503,16 +493,14 @@ namespace epics {
 
                     if(_stage==PROCESS_HEADER) {
                         // ensure CAConstants.CA_MESSAGE_HEADER_SIZE bytes of data
-                        if(_socketBuffer->getRemaining()<CA_MESSAGE_HEADER_SIZE) processReadCached(
-                                true, PROCESS_HEADER, CA_MESSAGE_HEADER_SIZE,
-                                false);
+                        if(_socketBuffer->getRemaining()<CA_MESSAGE_HEADER_SIZE)
+                            processReadCached(true, PROCESS_HEADER, CA_MESSAGE_HEADER_SIZE, false);
 
                         // first byte is CA_MAGIC
                         // second byte version - major/minor nibble
                         // check magic and version at once
                         _magicAndVersion = _socketBuffer->getShort();
-                        if((short)(_magicAndVersion&0xFFF0)
-                                !=CA_MAGIC_AND_MAJOR_VERSION) {
+                        if((short)(_magicAndVersion&0xFFF0)!=CA_MAGIC_AND_MAJOR_VERSION) {
                             // error... disconnect
                             errlogSevPrintf(
                                     errlogMinor,
@@ -540,14 +528,14 @@ namespace epics {
                             if(_command==0) {
                                 _flowControlMutex.lock();
                                 if(_markerToSend==0)
-                                    _markerToSend = _payloadSize; // TODO send back response
+                                    _markerToSend = _payloadSize;
+                                 // TODO send back response
                                 _flowControlMutex.unlock();
                             }
                             else //if (command == 1)
                             {
                                 _flowControlMutex.lock();
-                                int difference = (int)_totalBytesSent
-                                        -_payloadSize+CA_MESSAGE_HEADER_SIZE;
+                                int difference = (int)_totalBytesSent-_payloadSize+CA_MESSAGE_HEADER_SIZE;
                                 // overrun check
                                 if(difference<0) difference += INT_MAX;
                                 _remoteBufferFreeSpace
@@ -587,8 +575,7 @@ namespace epics {
                         // NOTE: nested data (w/ payload) messages between segmented messages are not supported
                         _storedPosition = _socketBuffer->getPosition();
                         _storedLimit = _socketBuffer->getLimit();
-                        _socketBuffer->setLimit(min(_storedPosition
-                                +_storedPayloadSize, _storedLimit));
+                        _socketBuffer->setLimit(min(_storedPosition+_storedPayloadSize, _storedLimit));
                         try {
                             // handle response
                             _responseHandler->handleResponse(&_socketAddress,
@@ -606,8 +593,7 @@ namespace epics {
                         if(newPosition>_storedLimit) {
                             newPosition -= _storedLimit;
                             _socketBuffer->setPosition(_storedLimit);
-                            processReadCached(true, PROCESS_PAYLOAD,
-                                    newPosition, false);
+                            processReadCached(true, PROCESS_PAYLOAD,newPosition, false);
                             newPosition += _startPosition;
                         }
                         _socketBuffer->setPosition(newPosition);
