@@ -8,6 +8,7 @@
 #include <CDRMonitor.h>
 #include <epicsExit.h>
 #include <clientContextImpl.h>
+#include <clientFactory.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
@@ -438,6 +439,7 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
 
 int main(int argc,char *argv[])
 {
+    /*
     ClientContextImpl* context = createClientContextImpl();
     context->printInfo();
 
@@ -445,14 +447,21 @@ int main(int argc,char *argv[])
     context->printInfo();
 
     epicsThreadSleep ( 1.0 );
+    
+    ChannelProvider* provider = context->getProvider();
+    */
+    
+    ClientFactory::start();
+    ChannelProvider* provider = getChannelAccess()->getProvider("pvAccess");
+
 /*
     ChannelFindRequesterImpl findRequester;
-    ChannelFind* channelFind = context->getProvider()->channelFind("something", &findRequester);
+    ChannelFind* channelFind = provider->channelFind("something", &findRequester);
     epicsThreadSleep ( 1.0 );
     channelFind->destroy();
 */
     ChannelRequesterImpl channelRequester;
-    Channel* channel = context->getProvider()->createChannel("structureArrayTest", &channelRequester);
+    Channel* channel = provider->createChannel("structureArrayTest", &channelRequester);
 
     epicsThreadSleep ( 1.0 );
 
@@ -473,7 +482,7 @@ int main(int argc,char *argv[])
     epicsThreadSleep ( 1.0 );
 */
     ChannelGetRequesterImpl channelGetRequesterImpl;
-    pvRequest = 0;//getCreateRequest()->createRequest("field(kiki)",&channelGetRequesterImpl);
+    pvRequest = getCreateRequest()->createRequest("field()",&channelGetRequesterImpl);
     ChannelGet* channelGet = channel->createChannelGet(&channelGetRequesterImpl, pvRequest);
     epicsThreadSleep ( 3.0 );
     channelGet->get(false);
@@ -556,10 +565,13 @@ int main(int argc,char *argv[])
 
     epicsThreadSleep ( 3.0 );
 
+    ClientFactory::start();
+    /*
     printf("Destroying context... \n");
     context->destroy();
     printf("done.\n");
-
+    */
+    
     std::cout << "-----------------------------------------------------------------------" << std::endl;
     epicsExitCallAtExits();
     CDRMonitor::get().show(stdout);

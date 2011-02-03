@@ -7,7 +7,9 @@ PVACCESS = $(TOP)/pvAccessApp/
 SRC_DIRS += $(PVACCESS)/ca
 INC += caConstants.h
 INC += version.h
+INC += clientFactory.h
 LIBSRCS += version.cpp
+LIBSRCS += clientFactory.cpp
 
 
 SRC_DIRS += $(PVACCESS)/utils

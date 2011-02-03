@@ -2967,7 +2967,7 @@ namespace epics {
 
                 virtual epics::pvData::String getProviderName()
                 {
-                    return "ChannelProviderImpl";
+                    return "pvAccess";
                 }
 
                 virtual void destroy()
@@ -3139,6 +3139,7 @@ TODO
 
             virtual void dispose()
             {
+                // TODO try catch
                 destroy();
             }
 
