@@ -23,7 +23,7 @@ class Transport;
 //TODO if unordered map is used instead of map we can use sockAddrAreIdentical routine from osiSock.h
 
 typedef std::map<const epics::pvData::int16,Transport*> prioritiesMap_t;
-typedef std::map<const osiSockAddr*,prioritiesMap_t*,comp_osiSockAddr> transportsMap_t;
+typedef std::map<const osiSockAddr*,prioritiesMap_t*,comp_osiSockAddrPtr> transportsMap_t;
 typedef std::vector<Transport*> allTransports_t;
 
 	class TransportRegistry {

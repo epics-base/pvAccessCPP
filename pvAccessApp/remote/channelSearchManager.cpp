@@ -19,7 +19,7 @@ void BaseSearchInstance::unsetListOwnership()
 
 void BaseSearchInstance::addAndSetListOwnership(ArrayFIFO<SearchInstance*>* newOwner, Mutex* ownerMutex, int32 index)
 {
-	if(ownerMutex == NULL) throw BaseException("Null owner mutex", __FILE__,__LINE__);
+	if(ownerMutex == NULL) THROW_BASE_EXCEPTION("Null owner mutex");
 
 	_ownerMutex = ownerMutex;
 	Lock ownerGuard(_ownerMutex);
@@ -33,7 +33,7 @@ void BaseSearchInstance::removeAndUnsetListOwnership()
 {
 	if(_owner == NULL) return;
 
-	if(_ownerMutex == NULL) throw BaseException("Null owner mutex", __FILE__,__LINE__);
+	if(_ownerMutex == NULL) THROW_BASE_EXCEPTION("Null owner mutex");
 	Lock ownerGuard(_ownerMutex);
 	Lock guard(&_mutex);
 	if(_owner != NULL)

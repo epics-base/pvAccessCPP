@@ -4,13 +4,17 @@
  */
 
 #include "namedLockPattern.h"
+#include "inetAddressUtil.h"
+#include "status.h"
 #include "CDRMonitor.h"
+
 
 #include <epicsAssert.h>
 #include <epicsExit.h>
-#include <iostream>
-
 #include <osiSock.h>
+
+#include <iostream>
+#include <string.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
@@ -66,17 +70,6 @@ void testCharPtrLockPattern()
 	namedLockPattern.releaseSynchronizationObject(name2.c_str());
 }
 
-struct comp_osiSockAddrPtr
-{
-	bool operator()(osiSockAddr const *a, osiSockAddr const *b)
-	{
-		if (a->sa.sa_family < b->sa.sa_family) return true;
-		if ((a->sa.sa_family == b->sa.sa_family) && (a->ia.sin_addr.s_addr < b->ia.sin_addr.s_addr )) return true;
-		if ((a->sa.sa_family == b->sa.sa_family) && (a->ia.sin_addr.s_addr == b->ia.sin_addr.s_addr ) && ( a->ia.sin_port < b->ia.sin_port )) return true;
-		return false;
-	}
-};
-
 void testOsiSockAddrLockPattern()
 {
 	int64 timeout = 10000;
@@ -88,27 +81,43 @@ void testOsiSockAddrLockPattern()
 
 	assert(namedLockPattern.acquireSynchronizationObject(&name1,timeout));
 	assert(namedLockPattern.acquireSynchronizationObject(&name1,timeout));
-	namedLockPattern.releaseSynchronizationObject(&name1);
-	namedLockPattern.releaseSynchronizationObject(&name1);
+
 
 	osiSockAddr name2;
 	name2.ia.sin_addr.s_addr = 1;
 	name2.ia.sin_port = 1;
 	name2.ia.sin_family = AF_INET;
+	assert(namedLockPattern.acquireSynchronizationObject(&name2,timeout));
+	assert(namedLockPattern.acquireSynchronizationObject(&name2,timeout));
+
+
+	namedLockPattern.releaseSynchronizationObject(&name1);
+	namedLockPattern.releaseSynchronizationObject(&name1);
+	namedLockPattern.releaseSynchronizationObject(&name2);
+	namedLockPattern.releaseSynchronizationObject(&name2);
+
+	osiSockAddr name3;
+	name3.ia.sin_addr.s_addr = 1;
+	name3.ia.sin_port = 1;
+	name3.ia.sin_family = AF_INET;
 	NamedLock<const osiSockAddr*,comp_osiSockAddrPtr> namedGuard(&namedLockPattern);
-	assert(namedGuard.acquireSynchronizationObject(&name1,timeout));
+	assert(namedGuard.acquireSynchronizationObject(&name3,timeout));
 }
 
-struct comp_osiSockAddr
+void testOsiSockAddrWithPtrKeyLockPattern()
 {
-	bool operator()(osiSockAddr const a, osiSockAddr const b)
-	{
-		if (a.sa.sa_family < b.sa.sa_family) return true;
-		if ((a.sa.sa_family == b.sa.sa_family) && (a.ia.sin_addr.s_addr < b.ia.sin_addr.s_addr )) return true;
-		if ((a.sa.sa_family == b.sa.sa_family) && (a.ia.sin_addr.s_addr == b.ia.sin_addr.s_addr ) && ( a.ia.sin_port < b.ia.sin_port )) return true;
-		return false;
-	}
-};
+	int64 timeout = 10000;
+	NamedLockPattern<const osiSockAddr*,comp_osiSockAddrPtr> namedLockPattern;
+	osiSockAddr* name1 = new osiSockAddr;
+	name1->ia.sin_addr.s_addr = 1;
+	name1->ia.sin_port = 1;
+	name1->ia.sin_family = AF_INET;
+	assert(namedLockPattern.acquireSynchronizationObject(name1,timeout));
+	assert(namedLockPattern.acquireSynchronizationObject(name1,timeout));
+	namedLockPattern.releaseSynchronizationObject(name1);
+	namedLockPattern.releaseSynchronizationObject(name1);
+	delete name1;
+}
 
 void* testWorker1(void* p)
 {
@@ -167,7 +176,7 @@ void* testWorker2(void* p)
 		addr.ia.sin_port = 1;
 		addr.ia.sin_family = AF_INET;
 		NamedLock<osiSockAddr,comp_osiSockAddr> namedGuard(namedLockPattern);
-		//TODO swap next two lines this if timed lock used
+		//TODO swap next two lines if timed lock used
 		//assert(!namedGuard.acquireSynchronizationObject(addr,timeout));
 		assert(namedGuard.acquireSynchronizationObject(addr,timeout));
 	}
@@ -181,7 +190,7 @@ int main(int argc, char *argv[])
 	testIntPtrLockPattern();
 	testCharPtrLockPattern();
 	testOsiSockAddrLockPattern();
-
+	testOsiSockAddrWithPtrKeyLockPattern();
 	pthread_t _worker1Id;
 	pthread_t _worker2Id;
 
@@ -213,8 +222,9 @@ int main(int argc, char *argv[])
 		assert(true);
 	}
 
-        epicsExitCallAtExits();
-        CDRMonitor::get().show(stdout);
+	epicsExitCallAtExits();
+	CDRMonitor::get().show(stdout);
+
 	return 0;
 }
 
