@@ -82,7 +82,8 @@ class CreateRequestImpl : public CreateRequest {
         			return false;
     			}
     			if(!createLeafFieldRequest(pvParent,request.substr(0, closeBracket+1),requester)) return false;
-    			if(request.rfind(',')>closeBracket) {
+                        size_t commaLoc = request.rfind(',');
+                        if(commaLoc!=std::string::npos && commaLoc>closeBracket) {
     				int nextComma = request.find(',', closeBracket);
     				if(!createFieldRequest(pvParent,request.substr(nextComma+1),false,requester)) return false;
     			} 
