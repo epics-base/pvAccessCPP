@@ -145,6 +145,12 @@ Transport** TransportRegistry::toArray(int32& size)
 {
 	Lock guard(&_mutex);
 	size = _allTransports.size();
+
+	if(size == 0)
+	{
+		return NULL;
+	}
+
 	Transport** transportArray = new Transport*[size];
 	int i = 0;
 	for(_allTransportsIter = _allTransports.begin(); _allTransportsIter != _allTransports.end(); _allTransportsIter++, i++)
