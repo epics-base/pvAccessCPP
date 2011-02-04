@@ -12,7 +12,7 @@ const int32 ServerContextImpl::VERSION_MAJOR = 2;
 const int32 ServerContextImpl::VERSION_MINOR = 0;
 const int32 ServerContextImpl::VERSION_MAINTENANCE = 0;
 const int32 ServerContextImpl::VERSION_DEVELOPMENT = 0;
-const Version* ServerContextImpl::VERSION = new Version("Channel Access Server in C++", "C++",
+const Version ServerContextImpl::VERSION("Channel Access Server in C++", "C++",
 		ServerContextImpl::VERSION_MAJOR,
 		ServerContextImpl::VERSION_MINOR,
 		ServerContextImpl::VERSION_MAINTENANCE,
@@ -30,6 +30,7 @@ ServerContextImpl::ServerContextImpl():
 				_receiveBufferSize(MAX_TCP_RECV),
 				_timer(NULL),
 				_broadcastTransport(NULL),
+				_broadcastConnector(NULL),
 				_beaconEmitter(NULL),
 				_acceptor(NULL),
 				_transportRegistry(NULL),
@@ -47,9 +48,15 @@ ServerContextImpl::ServerContextImpl():
 
 ServerContextImpl::~ServerContextImpl()
 {
+	if(_beaconEmitter) delete _beaconEmitter;
+	if(_broadcastTransport) delete _broadcastTransport;
+	if(_broadcastConnector) delete _broadcastConnector;
+	if(_acceptor) delete _acceptor;
+	if(_transportRegistry) delete _transportRegistry;
+	if(_timer) delete _timer;
 }
 
-const Version* ServerContextImpl::getVersion()
+const Version& ServerContextImpl::getVersion()
 {
     return ServerContextImpl::VERSION;
 }
@@ -101,7 +108,7 @@ void ServerContextImpl::loadConfiguration()
 
 void ServerContextImpl::initialize(ChannelAccess* channelAccess)
 {
-	//TODO
+	//TODO uncomment
 	/*Lock guard(&_mutex);
 	if (channelAccess == NULL)
 	{
@@ -163,14 +170,15 @@ void ServerContextImpl::initializeBroadcastTransport()
 	    epicsSocketDestroy(socket);
 
 
-	    BlockingUDPConnector*  broadcastConnector = new BlockingUDPConnector(true, true);
+	    _broadcastConnector = new BlockingUDPConnector(true, true);
 
-		_broadcastTransport = static_cast<BlockingUDPTransport*>(broadcastConnector->connect(
+		_broadcastTransport = static_cast<BlockingUDPTransport*>(_broadcastConnector->connect(
 									NULL, new ServerResponseHandler(this),
 									listenLocalAddress, CA_MINOR_PROTOCOL_REVISION,
 									CA_DEFAULT_PRIORITY));
 
 		_broadcastTransport->setBroadcastAddresses(broadcasts);
+		if(broadcasts) delete broadcasts;
 
 		// set ignore address list
 		if (_ignoreAddressList.length() > 0)
@@ -181,6 +189,8 @@ void ServerContextImpl::initializeBroadcastTransport()
 			{
 				_broadcastTransport->setIgnoredAddresses(list);
 			}
+			if(list) delete list;
+
 		}
 		// set broadcast address list
 		if (_beaconAddressList.length() > 0)
@@ -197,6 +207,7 @@ void ServerContextImpl::initializeBroadcastTransport()
 			{
 				_broadcastTransport->setBroadcastAddresses(list);
 			}
+			if(list) delete list;
 		}
 
 		_broadcastTransport->start();
@@ -240,7 +251,6 @@ void ServerContextImpl::run(int32 seconds)
 	// run...
 	_beaconEmitter->start();
 
-	//TODO review how is with guards
 	if(seconds == 0)
 	{
 		_runEvent.wait();
@@ -367,7 +377,7 @@ void ServerContextImpl::printInfo()
 void ServerContextImpl::printInfo(ostream& str)
 {
 	Lock guard(&_mutex);
-	str << "VERSION : " << getVersion()->getVersionString() << endl \
+	str << "VERSION : " << getVersion().getVersionString() << endl \
 		<< "CHANNEL PROVIDER : " << _channelProviderName << endl \
 		<< "BEACON_ADDR_LIST : " << _beaconAddressList << endl \
 	    << "AUTO_BEACON_ADDR_LIST : " << _autoBeaconAddressList << endl \

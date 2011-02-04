@@ -11,19 +11,21 @@ using namespace std;
 void testServerContext()
 {
 
-    ServerContextImpl ctx;
+	ServerContextImpl ctx;
 
-    ctx.initialize(NULL);
+	ctx.initialize(NULL);
 
-    ctx.printInfo();
+	ctx.printInfo();
 
-    ctx.run(1);
+	ctx.run(1);
 
-    ctx.destroy();
+	ctx.destroy();
 }
 
 int main(int argc, char *argv[])
 {
 	testServerContext();
+
+	cout << "Done" << endl;
     return (0);
 }

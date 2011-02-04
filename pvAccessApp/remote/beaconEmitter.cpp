@@ -11,52 +11,52 @@ namespace epics { namespace pvAccess {
 const float BeaconEmitter::EPICS_CA_MIN_BEACON_PERIOD = 1.0;
 const float BeaconEmitter::EPICS_CA_MIN_BEACON_COUNT_LIMIT = 3.0;
 
-BeaconEmitter::BeaconEmitter(Transport* transport, ServerContext* context): _transport(transport)
+BeaconEmitter::BeaconEmitter(Transport* transport, ServerContextImpl* context): _transport(transport)
 {
 	if(transport == NULL || context == NULL)
 	{
 		THROW_BASE_EXCEPTION("null transport or context");
 	}
 
-/*	_timer = context->getTimer();
-	_logger = context->getLogger();
+	_timer = context->getTimer();
 	_beaconSequenceID = 0;
-	_serverAddress = context->getServerInetAddres();
+	_serverAddress = context->getServerInetAddress();
 	_serverPort = context->getServerPort();
 	_serverStatusProvider = context->getBeaconServerStatusProvider();
 	_fastBeaconPeriod = std::max(context->getBeaconPeriod(), EPICS_CA_MIN_BEACON_PERIOD);
 	_slowBeaconPeriod = std::max(180.0, _fastBeaconPeriod);	// TODO configurable
-	_beaconCountLimit = (int16)std::max(10, EPICS_CA_MIN_BEACON_COUNT_LIMIT);	// TODO configurable
-	_startupTime = TimeStampFactory.create(System.currentTimeMillis());
-	_timerNode = TimerFactory.createNode(this);*/
+	_beaconCountLimit = (int16)std::max(10.0f, EPICS_CA_MIN_BEACON_COUNT_LIMIT);	// TODO configurable
+	_startupTime = new TimeStamp();
+	_startupTime->getCurrent();
+	_timerNode = new TimerNode(this);
 }
 
 BeaconEmitter::BeaconEmitter(Transport* transport,const osiSockAddr* serverAddress): _transport(transport)
 {
 	if(transport == NULL)
-	{
-		THROW_BASE_EXCEPTION("null transport");
-	}
+ 	{
+ 		THROW_BASE_EXCEPTION("null transport");
+ 	}
 
 	_timer = new Timer("pvAccess-server timer", lowPriority);
-	//_logger = new Loger();
-	_beaconSequenceID = 0;
-	_serverAddress = serverAddress;
-	_serverPort = serverAddress->ia.sin_port;
-	_serverStatusProvider = NULL;//new BeaconServerStatusProvider();
-	_fastBeaconPeriod = EPICS_CA_MIN_BEACON_PERIOD;
-	_slowBeaconPeriod = 180.0;
-	_beaconCountLimit = 10;
-	_startupTime = new TimeStamp();
-	_timerNode = new TimerNode(this);
+
+ 	_beaconSequenceID = 0;
+ 	_serverAddress = serverAddress;
+ 	_serverPort = serverAddress->ia.sin_port;
+ 	_serverStatusProvider = NULL;//new BeaconServerStatusProvider();
+ 	_fastBeaconPeriod = EPICS_CA_MIN_BEACON_PERIOD;
+ 	_slowBeaconPeriod = 180.0;
+ 	_beaconCountLimit = 10;
+ 	_startupTime = new TimeStamp();
+ 	_startupTime->getCurrent();
+ 	_timerNode = new TimerNode(this);
 }
 
 BeaconEmitter::~BeaconEmitter()
 {
-	if(_timer) delete _timer;
 	if(_serverStatusProvider) delete _serverStatusProvider;
-	if(_startupTime) delete _startupTime;
 	if(_timerNode) delete _timerNode;
+	if(_startupTime) delete _startupTime;
 }
 
 void BeaconEmitter::lock()
@@ -91,7 +91,7 @@ void BeaconEmitter::send(ByteBuffer* buffer, TransportSendControl* control)
 		}
 		catch (...) {
 			// we have to proctect internal code from external implementation...
-			//logger->log(Level.WARNING, "BeaconServerStatusProvider implementation thrown an exception.", th);
+			errlogSevPrintf(errlogMinor, "BeaconServerStatusProvider implementation thrown an exception.");
 		}
 	}
 

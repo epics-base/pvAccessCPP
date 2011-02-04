@@ -10,9 +10,12 @@
 #include "beaconServerStatusProvider.h"
 #include "inetAddressUtil.h"
 #include "introspectionRegistry.h"
+#include "serverContext.h"
+
 
 #include <timeStamp.h>
 #include <osiSock.h>
+#include <errlog.h>
 
 #include <algorithm>
 #include <iostream>
@@ -21,8 +24,7 @@ using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
 
-	class ServerContext;
-	class Logger;
+	class ServerContextImpl;
 
 	/**
 	 * BeaconEmitter
@@ -37,7 +39,7 @@ namespace epics { namespace pvAccess {
 		 * @param transport	transport to be used to send beacons.
 		 * @param context CA context.
 		 */
-		BeaconEmitter(Transport* transport, ServerContext* context);
+		BeaconEmitter(Transport* transport, ServerContextImpl* context);
 		/**
 		 * Test Constructor (ohne context)
 		 * @param transport	transport to be used to send beacons.
@@ -94,11 +96,6 @@ namespace epics { namespace pvAccess {
 		 * Timer.
 		 */
 		Timer* _timer;
-
-		/**
-		 * Logger.
-		 */
-		Logger* _logger;
 
 		/**
 		 * Transport.

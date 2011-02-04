@@ -35,7 +35,7 @@ public:
 	 * Get context implementation version.
 	 * @return version of the context implementation.
 	 */
-	virtual const Version* getVersion() = 0;
+	virtual const Version& getVersion() = 0;
 
 	/**
 	 * Set <code>ChannelAccess</code> implementation and initialize server.
@@ -106,7 +106,7 @@ public:
 	virtual ~ServerContextImpl();
 
 	//**************** derived from ServerContext ****************//
-	const Version* getVersion();
+	const Version& getVersion();
 	void initialize(ChannelAccess* channelAccess);
 	void run(int32 seconds);
 	void shutdown();
@@ -116,24 +116,16 @@ public:
 	void dispose();
 	void setBeaconServerStatusProvider(BeaconServerStatusProvider* beaconServerStatusProvider);
 	//**************** derived from Context ****************//
-	/**
-	 * Get timer.
-	 * @return timer.
-	 */
 	Timer* getTimer();
 	Channel* getChannel(pvAccessID id);
 	Transport* getSearchTransport();
 	Configuration* getConfiguration();
-	/**
-	 * Get CA transport (virtual circuit) registry.
-	 * @return CA transport (virtual circuit) registry.
-	 */
 	TransportRegistry* getTransportRegistry();
 
     /**
      * Version.
      */
-    static const Version* VERSION;
+    static const Version VERSION;
 
 
     /**
@@ -267,7 +259,6 @@ public:
 	ChannelProvider* getChannelProvider();
 
 private:
-    //TODO check protected members in java
     /**
      * Major version.
      */
@@ -291,7 +282,7 @@ private:
 	/**
 	 * Initialization status.
 	 */
-	volatile State _state;
+	State _state;
 
 	/**
 	 * A space-separated list of broadcast address which to send beacons.
@@ -351,6 +342,11 @@ private:
 	BlockingUDPTransport* _broadcastTransport;
 
 	/**
+	 * Broadcast connector
+	 */
+	BlockingUDPConnector*  _broadcastConnector;
+
+	/**
 	 * Beacon emitter.
 	 */
 	BeaconEmitter* _beaconEmitter;
@@ -405,18 +401,6 @@ private:
 	 * Load configuration.
 	 */
 	void loadConfiguration();
-
-	/**
-	 * Check context state.
-	 * @throws BaseExeption if state is <code>DESTROYED</code>
-	 */
-	inline void checkState()
-	{
-		if (_state == DESTROYED)
-		{
-			THROW_BASE_EXCEPTION("Context destroyed.");
-		}
-	}
 
 	/**
 	 * Internal initialization.
