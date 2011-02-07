@@ -3,6 +3,8 @@
  */
 
 #include "serverContext.h"
+#include <CDRMonitor.h>
+#include <epicsExit.h>
 
 using namespace epics::pvAccess;
 using namespace epics::pvData;
@@ -27,5 +29,8 @@ int main(int argc, char *argv[])
 	testServerContext();
 
 	cout << "Done" << endl;
+
+	epicsExitCallAtExits();
+    CDRMonitor::get().show(stdout);
     return (0);
 }
