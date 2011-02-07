@@ -136,11 +136,11 @@ namespace epics {
             close(true);
 
             TransportSender* sender;
-            while (sender = _monitorSendQueue->extract())
+            while ((sender = _monitorSendQueue->extract()))
                 sender->release();
             delete _monitorSendQueue;
 
-            while (sender = _sendQueue->extract())
+            while ((sender = _sendQueue->extract()))
                 sender->release();
             delete _sendQueue;
             
@@ -314,11 +314,13 @@ namespace epics {
                 temp<<_maxPayloadSize<<" available.";
                 THROW_BASE_EXCEPTION(temp.str().c_str());
             }
+            
+            // TODO sync _closed
 
             while(_sendBuffer->getRemaining()<size&&!_closed)
                 flush(false);
 
-            if(!_closed) THROW_BASE_EXCEPTION("transport closed");
+            if(_closed) THROW_BASE_EXCEPTION("transport closed");
         }
 
         void BlockingTCPTransport::endMessage(bool hasMoreSegments) {
@@ -424,9 +426,11 @@ namespace epics {
                 _socketBuffer->setLimit(min(_storedPosition+_storedPayloadSize,
                         _storedLimit));
 
+                // TODO sync _closed
+                
                 // add if missing...
-                if(!_closed&&_socketBuffer->getRemaining()<size) ensureData(
-                        size);
+                if(!_closed&&_socketBuffer->getRemaining()<size)
+                    ensureData(size);
             }
 
             if(_closed) THROW_BASE_EXCEPTION("transport closed");
@@ -435,6 +439,7 @@ namespace epics {
         void BlockingTCPTransport::processReadCached(bool nestedCall,
                 ReceiveStage inStage, int requiredBytes, bool addToBuffer) {
             try {
+                // TODO sync _closed
                 while(!_closed) {
                     if(_stage==READ_FROM_SOCKET||inStage!=NONE) {
                         int currentStartPosition;
@@ -759,6 +764,7 @@ namespace epics {
         }
 
         void BlockingTCPTransport::processSendQueue() {
+            // TODO sync _closed
             while(!_closed) {
                 TransportSender* sender;
 

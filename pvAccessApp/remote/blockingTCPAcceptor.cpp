@@ -29,7 +29,7 @@ namespace epics {
 
         BlockingTCPAcceptor::BlockingTCPAcceptor(Context* context, int port,
                 int receiveBufferSize) :
-            _context(context), _bindAddress(NULL), _serverSocketChannel(
+            _context(context), _bindAddress(), _serverSocketChannel(
                     INVALID_SOCKET), _receiveBufferSize(receiveBufferSize),
                     _destroyed(false), _threadId(NULL) {
             initialize(port);
@@ -37,20 +37,17 @@ namespace epics {
 
         BlockingTCPAcceptor::~BlockingTCPAcceptor() {
             destroy();
-
-            if(_bindAddress!=NULL) delete _bindAddress;
         }
 
         int BlockingTCPAcceptor::initialize(in_port_t port) {
             // specified bind address
-            _bindAddress = new osiSockAddr;
-            _bindAddress->ia.sin_family = AF_INET;
-            _bindAddress->ia.sin_port = htons(port);
-            _bindAddress->ia.sin_addr.s_addr = htonl(INADDR_ANY);
+            _bindAddress.ia.sin_family = AF_INET;
+            _bindAddress.ia.sin_port = htons(port);
+            _bindAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
             char strBuffer[64];
             char ipAddrStr[48];
-            ipAddrToDottedIP(&_bindAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToDottedIP(&_bindAddress.ia, ipAddrStr, sizeof(ipAddrStr));
 
             int tryCount = 0;
             while(tryCount<2) {
@@ -71,20 +68,20 @@ namespace epics {
                 else {
                     // try to bind
                     int retval = ::bind(_serverSocketChannel,
-                            &_bindAddress->sa, sizeof(sockaddr));
+                            &_bindAddress.sa, sizeof(sockaddr));
                     if(retval<0) {
                         epicsSocketConvertErrnoToString(strBuffer,
                                 sizeof(strBuffer));
                         errlogSevPrintf(errlogMinor, "Socket bind error: %s",
                                 strBuffer);
-                        if(_bindAddress->ia.sin_port!=0) {
+                        if(_bindAddress.ia.sin_port!=0) {
                             // failed to bind to specified bind address,
                             // try to get port dynamically, but only once
                             errlogSevPrintf(
                                     errlogMinor,
                                     "Configured TCP port %d is unavailable, trying to assign it dynamically.",
                                     port);
-                            _bindAddress->ia.sin_port = htons(0);
+                            _bindAddress.ia.sin_port = htons(0);
                         }
                         else {
                             ::close(_serverSocketChannel);
@@ -95,11 +92,11 @@ namespace epics {
                         // bind succeeded
 
                         // update bind address, if dynamically port selection was used
-                        if(ntohs(_bindAddress->ia.sin_port)==0) {
+                        if(ntohs(_bindAddress.ia.sin_port)==0) {
                             socklen_t sockLen = sizeof(sockaddr);
                             // read the actual socket info
                             retval = ::getsockname(_serverSocketChannel,
-                                    &_bindAddress->sa, &sockLen);
+                                    &_bindAddress.sa, &sockLen);
                             if(retval<0) {
                                 // error obtaining port number
                                 epicsSocketConvertErrnoToString(strBuffer,
@@ -111,7 +108,7 @@ namespace epics {
                                 errlogSevPrintf(
                                         errlogInfo,
                                         "Using dynamically assigned TCP port %d.",
-                                        ntohs(_bindAddress->ia.sin_port));
+                                        ntohs(_bindAddress.ia.sin_port));
                             }
                         }
 
@@ -135,7 +132,7 @@ namespace epics {
                                         this);
 
                         // all OK, return
-                        return ntohs(_bindAddress->ia.sin_port);
+                        return ntohs(_bindAddress.ia.sin_port);
                     } // successful bind
                 } // successfully obtained socket
                 tryCount++;
@@ -149,14 +146,21 @@ namespace epics {
         void BlockingTCPAcceptor::handleEvents() {
             // rise level if port is assigned dynamically
             char ipAddrStr[48];
-            ipAddrToDottedIP(&_bindAddress->ia, ipAddrStr, sizeof(ipAddrStr));
+            ipAddrToDottedIP(&_bindAddress.ia, ipAddrStr, sizeof(ipAddrStr));
             errlogSevPrintf(errlogInfo, "Accepting connections at %s.",
                     ipAddrStr);
 
             bool socketOpen = true;
             char strBuffer[64];
 
-            while(!_destroyed&&socketOpen) {
+            while(socketOpen) {
+                
+                {
+                    Lock guard(&_mutex);
+                    if (_destroyed)
+                        break;
+                }
+                
                 osiSockAddr address;
                 osiSocklen_t len = sizeof(sockaddr);
 
@@ -241,12 +245,13 @@ namespace epics {
         }
 
         void BlockingTCPAcceptor::destroy() {
+            Lock guard(&_mutex);
             if(_destroyed) return;
             _destroyed = true;
 
             if(_serverSocketChannel!=INVALID_SOCKET) {
                 char ipAddrStr[48];
-                ipAddrToDottedIP(&_bindAddress->ia, ipAddrStr,
+                ipAddrToDottedIP(&_bindAddress.ia, ipAddrStr,
                         sizeof(ipAddrStr));
                 errlogSevPrintf(errlogInfo,
                         "Stopped accepting connections at %s.", ipAddrStr);

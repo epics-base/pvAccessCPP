@@ -54,7 +54,8 @@ namespace epics {
                     ResponseHandler* responseHandler, int receiveBufferSize,
                     int16 priority);
                     
-            virtual bool isClosed() const {
+            virtual bool isClosed() {
+                Lock guard(&_mutex);
                 return _closed;
             }
 
@@ -108,8 +109,8 @@ namespace epics {
 
             virtual int getSocketReceiveBufferSize() const;
 
-            virtual bool isVerified() const {
-                Lock lock(const_cast<epics::pvData::Mutex*>(&_verifiedMutex));
+            virtual bool isVerified() {
+                Lock lock(&_verifiedMutex);
                 return _verified;
             }
 
@@ -354,7 +355,7 @@ namespace epics {
              * Connection status
              * NOTE: synced by _mutex
              */
-            bool volatile _closed;
+            bool _closed;
 
             // NOTE: synced by _mutex
             bool _sendThreadExited;
@@ -513,7 +514,7 @@ namespace epics {
             /**
              * Unresponsive transport flag.
              */
-            volatile bool _unresponsiveTransport;
+            bool _unresponsiveTransport;
 
             /**
              * Timer task node.
@@ -523,7 +524,7 @@ namespace epics {
             /**
              * Timestamp of last "live" event on this transport.
              */
-            volatile epicsTimeStamp _aliveTimestamp;
+            epicsTimeStamp _aliveTimestamp;
 
             epics::pvData::Mutex _mutex;
             epics::pvData::Mutex _ownersMutex;
@@ -712,7 +713,7 @@ namespace epics {
             /**
              * Last SID cache.
              */
-            volatile pvAccessID _lastChannelSID;
+            pvAccessID _lastChannelSID;
 
             /**
              * Channel table (SID -> channel mapping).
@@ -753,7 +754,7 @@ namespace epics {
              * @return bind socket address, <code>null</code> if not binded.
              */
             osiSockAddr* getBindAddress() {
-                return _bindAddress;
+                return &_bindAddress;
             }
 
             /**
@@ -770,7 +771,7 @@ namespace epics {
             /**
              * Bind server socket address.
              */
-            osiSockAddr* _bindAddress;
+            osiSockAddr _bindAddress;
 
             /**
              * Server socket channel.
@@ -785,7 +786,9 @@ namespace epics {
             /**
              * Destroyed flag.
              */
-            volatile bool _destroyed;
+            bool _destroyed;
+            
+            Mutex _mutex;
 
             epicsThreadId _threadId;
 

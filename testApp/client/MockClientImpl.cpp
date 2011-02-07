@@ -163,7 +163,7 @@ class MockChannelGet : public ChannelGet
 		ChannelGetRequester* m_channelGetRequester;
 		PVStructure* m_pvStructure;
 		BitSet* m_bitSet;
-		volatile bool m_first;
+		bool m_first;
     
     private:
     ~MockChannelGet()
@@ -218,7 +218,7 @@ class MockChannelPut : public ChannelPut
 		ChannelPutRequester* m_channelPutRequester;
 		PVStructure* m_pvStructure;
 		BitSet* m_bitSet;
-		volatile bool m_first;
+		bool m_first;
     
     private:
     ~MockChannelPut()
@@ -272,9 +272,9 @@ class MockMonitor : public Monitor, public MonitorElement
 		PVStructure* m_pvStructure;
 		BitSet* m_changedBitSet;
 		BitSet* m_overrunBitSet;
-		volatile bool m_first;
+		bool m_first;
 		Mutex* m_lock;
-		volatile int m_count;
+		int m_count;
     
     private:
     ~MockMonitor()

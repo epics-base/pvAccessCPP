@@ -36,8 +36,8 @@ namespace epics {
         virtual void aliveNotification(){};
         virtual void changedTransport(){};
         virtual void close(bool force){};
-        virtual bool isClosed() const{return false;};
-        virtual bool isVerified() const{return false;};
+        virtual bool isClosed() {return false;};
+        virtual bool isVerified() {return false;};
         virtual void verified(){};
         virtual void enqueueSendRequest(TransportSender* sender){};
         virtual void ensureData(int) {};

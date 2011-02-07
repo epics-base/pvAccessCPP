@@ -46,7 +46,7 @@ namespace epics {
             setSendQueueFlushStrategy(IMMEDIATE);
 
             // setup connection timeout timer (watchdog)
-            epicsTimeGetCurrent(const_cast<epicsTimeStamp*> (&_aliveTimestamp));
+            epicsTimeGetCurrent(&_aliveTimestamp);
 
             context->getTimer()->schedulePeriodic(_timerNode, beaconInterval,
                     beaconInterval);
@@ -64,8 +64,11 @@ namespace epics {
             epicsTimeStamp currentTime;
             epicsTimeGetCurrent(&currentTime);
 
-            double diff = epicsTimeDiffInSeconds(&currentTime,
-                    const_cast<epicsTimeStamp*> (&_aliveTimestamp));
+            _ownersMutex.lock();
+            // no exception expected here
+            double diff = epicsTimeDiffInSeconds(&currentTime, &_aliveTimestamp);
+            _ownersMutex.unlock();
+            
             if(diff>2*_connectionTimeout) {
                 unresponsiveTransport();
             }
@@ -76,10 +79,10 @@ namespace epics {
         }
 
         void BlockingClientTCPTransport::unresponsiveTransport() {
+            Lock lock(&_ownersMutex);
             if(!_unresponsiveTransport) {
                 _unresponsiveTransport = true;
 
-                Lock lock(&_ownersMutex);
                 set<TransportClient*>::iterator it = _owners.begin();
                 for(; it!=_owners.end(); it++)
                     (*it)->transportUnresponsive();
@@ -88,9 +91,8 @@ namespace epics {
 
         bool BlockingClientTCPTransport::acquire(TransportClient* client) {
             Lock lock(&_mutex);
-
             if(_closed) return false;
-
+            
             char ipAddrStr[48];
             ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
             errlogSevPrintf(errlogInfo, "Acquiring transport to %s.", ipAddrStr);
@@ -135,14 +137,15 @@ namespace epics {
         }
 
         void BlockingClientTCPTransport::release(TransportClient* client) {
+            Lock lock(&_mutex);
             if(_closed) return;
-
+            
             char ipAddrStr[48];
             ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
 
             errlogSevPrintf(errlogInfo, "Releasing transport to %s.", ipAddrStr);
 
-            Lock lock(&_ownersMutex);
+            Lock lock2(&_ownersMutex);
             _owners.erase(client);
 
             // not used anymore
@@ -151,14 +154,15 @@ namespace epics {
         }
 
         void BlockingClientTCPTransport::aliveNotification() {
-            epicsTimeGetCurrent(const_cast<epicsTimeStamp*> (&_aliveTimestamp));
+            Lock guard(&_ownersMutex);
+            epicsTimeGetCurrent(&_aliveTimestamp);
             if(_unresponsiveTransport) responsiveTransport();
         }
 
         void BlockingClientTCPTransport::responsiveTransport() {
+            Lock lock(&_ownersMutex);
             if(_unresponsiveTransport) {
                 _unresponsiveTransport = false;
-                Lock lock(&_ownersMutex);
 
                 set<TransportClient*>::iterator it = _owners.begin();
                 for(; it!=_owners.end(); it++)
@@ -168,8 +172,8 @@ namespace epics {
 
         void BlockingClientTCPTransport::changedTransport() {
             _introspectionRegistry->reset();
-            Lock lock(&_ownersMutex);
 
+            Lock lock(&_ownersMutex);
             set<TransportClient*>::iterator it = _owners.begin();
             for(; it!=_owners.end(); it++)
                 (*it)->transportChanged();

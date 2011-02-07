@@ -37,7 +37,8 @@ namespace epics {
 
             virtual ~BlockingUDPTransport();
 
-            virtual bool isClosed() const {
+            virtual bool isClosed() {
+                Lock guard(&_mutex);
                 return _closed;
             }
 
@@ -81,7 +82,7 @@ namespace epics {
                 // noop
             }
 
-            virtual bool isVerified() const {
+            virtual bool isVerified() {
                 return false;
             }
 
@@ -184,7 +185,7 @@ namespace epics {
             }
 
         protected:
-            bool volatile _closed;
+            bool _closed;
 
             /**
              * Response handler.

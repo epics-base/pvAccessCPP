@@ -235,13 +235,13 @@ namespace epics {
              * Check connection status.
              * @return <code>true</code> if connected.
              */
-            virtual bool isClosed() const =0;
+            virtual bool isClosed() =0;
 
             /**
              * Get transport verification status.
              * @return verification flag.
              */
-            virtual bool isVerified() const =0;
+            virtual bool isVerified() =0;
 
             /**
              * Notify transport that it is has been verified.

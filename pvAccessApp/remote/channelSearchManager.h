@@ -174,11 +174,11 @@ private:
 	/**
 	 * Number of search attempts in one frame.
 	 */
-	volatile int32 _searchAttempts;
+	int32 _searchAttempts;
 	/**
 	 * Number of search responses in one frame.
 	 */
-	volatile int32 _searchRespones;
+	int32 _searchRespones;
 	/**
 	 * Number of frames per search try.
 	 */
@@ -190,11 +190,11 @@ private:
     /**
      * Start sequence number (first frame number within a search try).
      */
-    volatile int32 _startSequenceNumber;
+    int32 _startSequenceNumber;
     /**
      * End sequence number (last frame number within a search try).
      */
-    volatile int32 _endSequenceNumber;
+    int32 _endSequenceNumber;
     /**
      * This timer index.
      */
@@ -223,7 +223,7 @@ private:
 	/**
 	 * Cancel this instance.
 	 */
-	volatile bool _canceled;
+	bool _canceled;
     /**
      * Time of last response check.
      */
@@ -327,11 +327,11 @@ private:
 	/**
 	 * Canceled flag.
 	 */
-	volatile bool _canceled;
+	bool _canceled;
 	/**
 	 * Round-trip time (RTT) mean.
 	 */
-	volatile double _rttmean;
+	double _rttmean;
 	/**
 	 * Search timers array.
 	 * Each timer with a greater index has longer (doubled) search period.
@@ -348,7 +348,7 @@ private:
 	/**
 	 * Search (datagram) sequence number.
 	 */
-	volatile int32 _sequenceNumber;
+	int32 _sequenceNumber;
 	/**
 	 * Max search period (in ms).
 	 */
@@ -372,7 +372,7 @@ private:
     /**
      * Time of last frame send.
      */
-    volatile int64 _timeAtLastSend;
+    int64 _timeAtLastSend;
     /**
      * Set of registered channels.
      */
