@@ -80,5 +80,6 @@ LIBSRCS += clientContextImpl.cpp
 
 LIBRARY = pvAccess
 pvAccess_LIBS += Com
+pvAccess_LIBS += pvData
 
 include $(TOP)/configure/RULES
