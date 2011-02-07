@@ -35,9 +35,7 @@ ServerContextImpl::ServerContextImpl():
 				_acceptor(NULL),
 				_transportRegistry(NULL),
 				_channelAccess(NULL),
-				//TODO CAJ_DEFAULT_PROVIDER is not defined
-				_channelProviderName("local"),
-				//_channelProviderName(CAJ_DEFAULT_PROVIDER),
+				_channelProviderName(CAJ_DEFAULT_PROVIDER),
 				_channelProvider(NULL),
 				_beaconServerStatusProvider(NULL)
 
@@ -50,7 +48,6 @@ ServerContextImpl::~ServerContextImpl()
 {
 	if(_beaconEmitter) delete _beaconEmitter;
 	if(_broadcastTransport) delete _broadcastTransport;
-	if(_broadcastConnector) delete _broadcastConnector;
 	if(_acceptor) delete _acceptor;
 	if(_transportRegistry) delete _transportRegistry;
 	if(_timer) delete _timer;
@@ -166,34 +163,32 @@ void ServerContextImpl::initializeBroadcastTransport()
 
 		// where to send address
 	    SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	    InetAddrVector* broadcasts = getBroadcastAddresses(socket,_broadcastPort);
+	    if (socket == INVALID_SOCKET)
+	    {
+	    	THROW_BASE_EXCEPTION("Failed to initialize broadcast UDP transport");
+	    }
+	    auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(socket,_broadcastPort));
 	    epicsSocketDestroy(socket);
 
-
-	    _broadcastConnector = new BlockingUDPConnector(true, true);
-
-		_broadcastTransport = static_cast<BlockingUDPTransport*>(_broadcastConnector->connect(
+	    auto_ptr<BlockingUDPConnector> broadcastConnector(new BlockingUDPConnector(true, true));
+		_broadcastTransport = static_cast<BlockingUDPTransport*>(broadcastConnector->connect(
 									NULL, new ServerResponseHandler(this),
 									listenLocalAddress, CA_MINOR_PROTOCOL_REVISION,
 									CA_DEFAULT_PRIORITY));
-
-		_broadcastTransport->setBroadcastAddresses(broadcasts);
-		if(broadcasts) delete broadcasts;
+		_broadcastTransport->setBroadcastAddresses(broadcastAddresses.get());
 
 		// set ignore address list
-		if (_ignoreAddressList.length() > 0)
+		if (!_ignoreAddressList.empty())
 		{
 			// we do not care about the port
-			InetAddrVector* list = getSocketAddressList(_ignoreAddressList, 0, NULL);
-			if (list != NULL && list->size() > 0)
+			auto_ptr<InetAddrVector> list(getSocketAddressList(_ignoreAddressList, 0, NULL));
+			if (list.get() != NULL && list->size() > 0)
 			{
-				_broadcastTransport->setIgnoredAddresses(list);
+				_broadcastTransport->setIgnoredAddresses(list.get());
 			}
-			if(list) delete list;
-
 		}
 		// set broadcast address list
-		if (_beaconAddressList.length() > 0)
+		if (!_beaconAddressList.empty())
 		{
 			// if auto is true, add it to specified list
 			InetAddrVector* appendList = NULL;
@@ -202,15 +197,18 @@ void ServerContextImpl::initializeBroadcastTransport()
 				appendList = _broadcastTransport->getSendAddresses();
 			}
 
-			InetAddrVector* list = getSocketAddressList(_beaconAddressList, _broadcastPort, appendList);
-			if (list != NULL  && list->size() > 0)
+			auto_ptr<InetAddrVector> list(getSocketAddressList(_beaconAddressList, _broadcastPort, appendList));
+			if (list.get() != NULL  && list->size() > 0)
 			{
-				_broadcastTransport->setBroadcastAddresses(list);
+				_broadcastTransport->setBroadcastAddresses(list.get());
 			}
-			if(list) delete list;
 		}
 
 		_broadcastTransport->start();
+	}
+	catch (std::exception& e)
+	{
+		THROW_BASE_EXCEPTION_CAUSE("Failed to initialize broadcast UDP transport", e);
 	}
 	catch (...)
 	{
@@ -251,6 +249,7 @@ void ServerContextImpl::run(int32 seconds)
 	// run...
 	_beaconEmitter->start();
 
+	//TODO review this
 	if(seconds == 0)
 	{
 		_runEvent.wait();
@@ -273,7 +272,6 @@ void ServerContextImpl::shutdown()
 	{
 		THROW_BASE_EXCEPTION("Context already destroyed.");
 	}
-
 
 	// notify to stop running...
 	_runEvent.signal();
@@ -317,13 +315,6 @@ void ServerContextImpl::internalDestroy()
 		_beaconEmitter->destroy();
 	}
 
-	// stop timer
-	if (_timer != NULL)
-	{
-		//TODO there is no stop in Timer
-	//	_timer->stop();
-	}
-
 	// this will also destroy all channels
 	destroyAllTransports();
 }
@@ -338,18 +329,18 @@ void ServerContextImpl::destroyAllTransports()
 	}
 
 	int32 size;
-	Transport** transports = _transportRegistry->toArray(size);
+	auto_ptr<Transport*> transports(_transportRegistry->toArray(size));
 
 	if (size == 0)
 	{
 		return;
 	}
 
-	errlogSevPrintf(errlogMajor, "Server context still has %d transport(s) active and closing...", size);
+	errlogSevPrintf(errlogInfo, "Server context still has %d transport(s) active and closing...", size);
 
 	for (int i = 0; i < size; i++)
 	{
-		Transport* transport = transports[i];
+		Transport* transport = transports.get()[i];
 		try
 		{
 			transport->close(true);
@@ -365,8 +356,6 @@ void ServerContextImpl::destroyAllTransports()
 			 errlogSevPrintf(errlogMajor, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__);
 		}
 	}
-
-	delete[] transports;
 }
 
 void ServerContextImpl::printInfo()
@@ -502,19 +491,17 @@ TransportRegistry* ServerContextImpl::getTransportRegistry()
 	return _transportRegistry;
 }
 
-//TODO what with this?
 Channel* ServerContextImpl::getChannel(pvAccessID id)
 {
+	//TODO
 	return NULL;
 }
 
-//TODO what with this?
 Transport* ServerContextImpl::getSearchTransport()
 {
+	//TODO
 	return NULL;
 }
-
-
 
 }
 }

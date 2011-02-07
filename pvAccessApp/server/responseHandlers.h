@@ -133,6 +133,130 @@ namespace epics {
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
+
+        /**
+         * Introspection search request handler.
+         */
+        class IntrospectionSearchHandler : public AbstractServerResponseHandler
+        {
+        public:
+        	/**
+        	 * @param context
+        	 */
+        	IntrospectionSearchHandler(ServerContextImpl* context) :
+        		AbstractServerResponseHandler(context, "Search request") {
+        	}
+
+        	virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        };
+
+        /**
+         * Introspection search request handler.
+         */
+        class ChannelFindRequesterImplObjectPool;
+        class SearchHandler : public AbstractServerResponseHandler
+        {
+        public:
+        	/**
+        	 * @param context
+        	 */
+        	SearchHandler(ServerContextImpl* context);
+        	~SearchHandler();
+
+        	virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+
+        private:
+        	ChannelProvider* _provider;
+        	ChannelFindRequesterImplObjectPool* _objectPool;
+        };
+
+
+        class ChannelFindRequesterImpl: public ChannelFindRequester, public TransportSender
+        {
+        public:
+        	ChannelFindRequesterImpl(ServerContextImpl* context, ChannelFindRequesterImplObjectPool* objectPool);
+        	void clear();
+        	ChannelFindRequesterImpl* set(int32 searchSequenceId, int32 cid, osiSockAddr* sendTo, boolean responseRequired);
+        	void channelFindResult(epics::pvData::Status* status, ChannelFind* channelFind, boolean wasFound);
+        	void lock();
+        	void unlock();
+            void acquire();
+            void release();
+        	void send(ByteBuffer* buffer, TransportSendControl* control);
+        private:
+        	int32 _searchSequenceId;
+        	int32 _cid;
+        	osiSockAddr* _sendTo;
+        	boolean _responseRequired;
+        	boolean _wasFound;
+        	epics::pvData::Mutex _mutex;
+        	ServerContextImpl* _context;
+        	ChannelFindRequesterImplObjectPool* _objectPool;
+        };
+
+        class ChannelFindRequesterImplObjectPool
+        {
+        public:
+        	ChannelFindRequesterImplObjectPool(ServerContextImpl* context);
+        	ChannelFindRequesterImpl* get();
+        	void put(ChannelFindRequesterImpl* element);
+
+        private:
+        	std::vector<ChannelFindRequesterImpl*> _elements;
+        	epics::pvData::Mutex _mutex;
+        	ServerContextImpl* _context;
+        };
+
+        /**
+         * Create channel request handler.
+         */
+        class CreateChannelHandler : public AbstractServerResponseHandler
+        {
+        public:
+        	/**
+        	 * @param context
+        	 */
+        	CreateChannelHandler(ServerContextImpl* context) :
+        		AbstractServerResponseHandler(context, "Create channel request") {
+        	}
+
+        	virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+
+        private:
+        	void disconnect(Transport* transport);
+        };
+
+        class ServerChannelImpl;
+        class ChannelRequesterImpl : public ChannelRequester, public TransportSender
+        {
+        public:
+        	 ChannelRequesterImpl(Transport* transport, const String channelName, const int32 cid);
+        	 void channelCreated(Status* const status, Channel* const channel);
+        	 void channelStateChange(Channel* const c, const Channel::ConnectionState isConnected);
+        	 String getRequesterName();
+        	 void message(const String message, const epics::pvData::MessageType messageType);
+        	 void lock();
+        	 void unlock();
+        	 void send(ByteBuffer* buffer, TransportSendControl* control);
+
+        private:
+        	 Transport* _transport;
+        	 const String _channelName;
+        	 const int32 _cid;
+        	 Status* _status;
+        	 Channel* _channel;
+        	 epics::pvData::Mutex _mutex;
+        	 void createChannelFailedResponse(ByteBuffer* buffer, TransportSendControl* control, Status* const status);
+        };
+
+
+
     }
 }
 

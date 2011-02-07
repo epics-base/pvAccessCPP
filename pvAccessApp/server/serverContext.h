@@ -327,16 +327,6 @@ private:
 	Timer* _timer;
 
 	/**
-	 * Reactor.
-	 */
-	//Reactor _reactor;
-
-	/**
-	 * Leader/followers thread pool.
-	 */
-	//LeaderFollowersThreadPool _leaderFollowersThreadPool;
-
-	/**
 	 * Broadcast transport needed for channel searches.
 	 */
 	BlockingUDPTransport* _broadcastTransport;
