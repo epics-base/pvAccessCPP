@@ -565,7 +565,7 @@ int main(int argc,char *argv[])
 
     epicsThreadSleep ( 3.0 );
 
-    ClientFactory::start();
+    ClientFactory::stop();
     /*
     printf("Destroying context... \n");
     context->destroy();
