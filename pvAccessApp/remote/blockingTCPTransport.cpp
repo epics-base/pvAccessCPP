@@ -587,7 +587,7 @@ namespace epics {
                                     this, version, _command, _payloadSize,
                                     _socketBuffer);
                         } catch(...) {
-                            //noop
+                            //noop      // TODO print?
                         }
 
                         /*

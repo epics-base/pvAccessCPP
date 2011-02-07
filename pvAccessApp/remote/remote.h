@@ -98,13 +98,22 @@ namespace epics {
 
             virtual void setRecipient(const osiSockAddr& sendTo) =0;
         };
+        
+        /**
+         * Reference counting instance.
+         */
+        class ReferenceCountingInstance {
+        public:
+            virtual void acquire() =0;
+            virtual void release() =0;
+        };
 
         /**
          * Interface defining transport sender (instance sending data over transport).
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          * @version $Id: TransportSender.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
          */
-        class TransportSender {
+        class TransportSender : public ReferenceCountingInstance {
         public:
             virtual ~TransportSender() {
             }
@@ -122,9 +131,6 @@ namespace epics {
 
             virtual void lock() =0;
             virtual void unlock() =0;
-
-            virtual void acquire() =0;
-            virtual void release() =0;
         };
 
         /**
@@ -507,7 +513,7 @@ namespace epics {
          * This interface needs to be extended (to provide method called on response).
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          */
-        class ResponseRequest {
+        class ResponseRequest : public ReferenceCountingInstance {
         public:
             virtual ~ResponseRequest() {}
 
