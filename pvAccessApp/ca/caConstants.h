@@ -75,6 +75,9 @@ namespace epics {
 
         /** Invalid IOID. */
         const int32 CAJ_INVALID_IOID = 0;
+
+        /** Default CA provider name. */
+        const String CAJ_DEFAULT_PROVIDER = "local";
     }
 }
 
