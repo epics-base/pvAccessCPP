@@ -1472,7 +1472,7 @@ namespace epics {
             BitSet* m_overrunBitSet;
 
 
-            int m_count;
+            bool m_gotMonitor;
             Mutex m_lock;
 
         private:
@@ -1500,7 +1500,7 @@ namespace epics {
                     m_monitorRequester(monitorRequester), m_structure(0),
                     m_started(false), m_pvRequest(pvRequest),
                     //(dynamic_cast<PVStructure*>(getPVDataCreate()->createPVField(0, "", pvRequest))),
-                    m_pvStructure(0), m_count(0)
+                    m_pvStructure(0), m_gotMonitor(false)
             {
                 PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelMonitor);
 
@@ -1580,6 +1580,10 @@ namespace epics {
                     m_changedBitSet->deserialize(payloadBuffer, transport);
                     m_pvStructure->deserialize(payloadBuffer, transport, m_changedBitSet);
                     m_overrunBitSet->deserialize(payloadBuffer, transport);
+                    
+                    m_lock.lock();
+                    m_gotMonitor = true;
+                    m_lock.unlock();
 
                     EXCEPTION_GUARD(m_monitorRequester->monitorEvent(this));
                 }
@@ -1689,22 +1693,14 @@ namespace epics {
             virtual MonitorElement* poll()
             {
                 Lock xx(&m_lock);
-                if (m_count)
-                {
-                    return 0;
-                }
-                else
-                {
-                    m_count++;
-                    return this;
-                }
+                if (!m_gotMonitor) return 0;
+                return this;
             }
 
             virtual void release(MonitorElement* monitorElement)
             {
                 Lock xx(&m_lock);
-                if (m_count)
-                    m_count--;
+                m_gotMonitor = false;
             }
 
             // ============ MonitorElement ============
