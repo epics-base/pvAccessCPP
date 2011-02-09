@@ -262,13 +262,11 @@ namespace epics {
             virtual void acquire() {
                 Lock guard(&m_mutex);
                 m_refCount++;
-                printf("acquire %d\n", m_refCount);
             }
 
             virtual void release() {
                 m_mutex.lock();
                 m_refCount--;
-                printf("release %d\n", m_refCount);
                 m_mutex.unlock();
                 if (m_refCount == 0)
                     delete this;
