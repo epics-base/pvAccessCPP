@@ -489,7 +489,7 @@ int main(int argc,char *argv[])
     epicsThreadSleep ( 3.0 );
     
     channelGet->destroy();
-    epicsThreadSleep ( 1.0 );
+    delete pvRequest;
 
     ChannelPutRequesterImpl channelPutRequesterImpl;
     pvRequest = getCreateRequest()->createRequest("field(value,timeStamp)",&channelPutRequesterImpl);
@@ -500,6 +500,7 @@ int main(int argc,char *argv[])
     channelPut->put(false);
     epicsThreadSleep ( 1.0 );
     channelPut->destroy();
+    delete pvRequest;
 
     ChannelPutGetRequesterImpl channelPutGetRequesterImpl;
     pvRequest = getCreateRequest()->createRequest("putField(value,timeStamp)getField(timeStamp)",&channelPutGetRequesterImpl);
@@ -512,6 +513,7 @@ int main(int argc,char *argv[])
     channelPutGet->putGet(false);
     epicsThreadSleep ( 1.0 );
     channelPutGet->destroy();
+    delete pvRequest;
 
 
     ChannelRPCRequesterImpl channelRPCRequesterImpl;
@@ -521,6 +523,7 @@ int main(int argc,char *argv[])
     channelRPC->request(false);
     epicsThreadSleep ( 1.0 );
     channelRPC->destroy();
+    delete pvRequest;
 
     ChannelArrayRequesterImpl channelArrayRequesterImpl;
     //pvRequest = getCreateRequest()->createRequest("value",&channelArrayRequesterImpl);
@@ -538,6 +541,7 @@ int main(int argc,char *argv[])
     channelArray->setLength(false,3,4);
     epicsThreadSleep ( 1.0 );
     channelArray->destroy();
+    delete pvRequest;
 
     MonitorRequesterImpl monitorRequesterImpl;
     pvRequest = getCreateRequest()->createRequest("field()",&monitorRequesterImpl);
@@ -557,6 +561,7 @@ int main(int argc,char *argv[])
 
 
     monitor->destroy();
+    delete pvRequest;
    
     epicsThreadSleep ( 3.0 );
     printf("Destroying channel... \n");

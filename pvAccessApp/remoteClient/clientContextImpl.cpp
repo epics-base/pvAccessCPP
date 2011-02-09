@@ -262,11 +262,13 @@ namespace epics {
             virtual void acquire() {
                 Lock guard(&m_mutex);
                 m_refCount++;
+                printf("acquire %d\n", m_refCount);
             }
 
             virtual void release() {
                 m_mutex.lock();
                 m_refCount--;
+                printf("release %d\n", m_refCount);
                 m_mutex.unlock();
                 if (m_refCount == 0)
                     delete this;
@@ -303,7 +305,7 @@ namespace epics {
             ~ChannelProcessRequestImpl()
             {
                 PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelProcess);
-                if (m_pvRequest) delete m_pvRequest;
+                //if (m_pvRequest) delete m_pvRequest;
             }
 
         public:
@@ -422,7 +424,7 @@ namespace epics {
                 // synced by code calling this
                 if (m_data) delete m_data;
                 if (m_bitSet) delete m_bitSet;
-                if (m_pvRequest) delete m_pvRequest;
+                //if (m_pvRequest) delete m_pvRequest;
             }
 
         public:
@@ -567,7 +569,7 @@ namespace epics {
                 // synced by code calling this
                 if (m_data) delete m_data;
                 if (m_bitSet) delete m_bitSet;
-                if (m_pvRequest) delete m_pvRequest;
+                //if (m_pvRequest) delete m_pvRequest;
             }
 
         public:
@@ -739,7 +741,7 @@ namespace epics {
                 // synced by code calling this
                 if (m_putData) delete m_putData;
                 if (m_getData) delete m_getData;
-                if (m_pvRequest) delete m_pvRequest;
+                //if (m_pvRequest) delete m_pvRequest;
             }
 
         public:
@@ -954,7 +956,7 @@ namespace epics {
                 // synced by code calling this
                 if (m_data) delete m_data;
                 if (m_bitSet) delete m_bitSet;
-                if (m_pvRequest) delete m_pvRequest;
+                //if (m_pvRequest) delete m_pvRequest;
             }
 
         public:
@@ -1102,7 +1104,7 @@ namespace epics {
                 PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelArray);
                 // synced by code calling this
                 if (m_data) delete m_data;
-                if (m_pvRequest) delete m_pvRequest;
+                //if (m_pvRequest) delete m_pvRequest;
             }
 
         public:
@@ -1481,7 +1483,7 @@ namespace epics {
                 PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelMonitor);
 
                 // synced by code calling this
-                if (m_pvRequest) delete m_pvRequest;
+                //if (m_pvRequest) delete m_pvRequest;
                 // uncomment when m_pvStructure not destroyed       if (m_structure) m_structure->decReferenceCount();
 
                 // TODO temp
