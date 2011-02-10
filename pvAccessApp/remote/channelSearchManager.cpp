@@ -11,9 +11,17 @@ namespace epics { namespace pvAccess {
 const int BaseSearchInstance::DATA_COUNT_POSITION = CA_MESSAGE_HEADER_SIZE + sizeof(int32)/sizeof(int8) + 1;
 const int BaseSearchInstance::PAYLOAD_POSITION = sizeof(int16)/sizeof(int8) + 2;
 
+void BaseSearchInstance::initializeSearchInstance()
+{
+    _owner = NULL;
+    _ownerMutex = NULL;
+    _ownerIndex = -1;
+ }
+
 void BaseSearchInstance::unsetListOwnership()
 {
 	Lock guard(&_mutex);
+	if (_owner != NULL) this->release();
 	_owner = NULL;
 }
 
@@ -25,6 +33,7 @@ void BaseSearchInstance::addAndSetListOwnership(ArrayFIFO<SearchInstance*>* newO
 	Lock ownerGuard(_ownerMutex);
 	Lock guard(&_mutex);
 	newOwner->push(this);
+	if (_owner == NULL) this->acquire(); // new owner
 	_owner = newOwner;
 	_ownerIndex = index;
 }
@@ -38,6 +47,7 @@ void BaseSearchInstance::removeAndUnsetListOwnership()
 	Lock guard(&_mutex);
 	if(_owner != NULL)
 	{
+	    this->release();
 		_owner->remove(this);
 		_owner = NULL;
 	}
@@ -205,8 +215,10 @@ void SearchTimer::callback()
 			if(channel->getOwnerIndex() > boostIndex)
 			{
 				_requestPendingChannels->pop();
+				channel->acquire();
 				channel->unsetListOwnership();
 				_chanSearchManager->boostSearching(channel, boostIndex);
+				channel->release();
 			}
 		}
 	}
@@ -226,8 +238,10 @@ void SearchTimer::callback()
 		{
 			if(_allowSlowdown)
 			{
+			    channel->acquire();
 				channel->unsetListOwnership();
 				_chanSearchManager->searchResponseTimeout(channel, _timerIndex);
+				channel->release();
 			}
 			else
 			{
@@ -296,6 +310,7 @@ void SearchTimer::callback()
 	}
 	while (!canceled && channel != NULL)
 	{
+	    channel->acquire();
 		channel->unsetListOwnership();
 
 		bool requestSent = true;
@@ -329,6 +344,8 @@ void SearchTimer::callback()
 				_searchAttempts++;
 			}
 		}
+		
+		channel->release();
 
 		// limit
 		if(triesInFrame == 0 && !allowNewFrame) break;
@@ -503,7 +520,7 @@ void ChannelSearchManager::registerChannel(SearchInstance* channel)
 
 	Lock guard(&_channelMutex);
 	//overrides if already registered
-	_channels[channel->getSearchInstanceID()] =  channel;
+	_channels[channel->getSearchInstanceID()] = channel;
 	_timers[0]->installChannel(channel);
 }
 
@@ -529,7 +546,18 @@ void ChannelSearchManager::searchResponse(int32 cid, int32 seqNo, int8 minorRevi
 	{
 		si = _channelsIter->second;
 		_channels.erase(_channelsIter);
+		si->acquire();
 		si->removeAndUnsetListOwnership();
+
+    	// report success
+    	const int timerIndex = si->getOwnerIndex();
+    	TimeStamp now;
+    	now.getCurrent();
+    	_timers[timerIndex]->searchResponse(seqNo, seqNo != 0, now.getMilliseconds());
+    
+    	// then notify SearchInstance
+    	si->searchResponse(minorRevision, serverAddress);
+    	si->release();
 	}
 	else
 	{
@@ -537,19 +565,12 @@ void ChannelSearchManager::searchResponse(int32 cid, int32 seqNo, int8 minorRevi
 		si = reinterpret_cast<SearchInstance*>(_context->getChannel(cid));
 		if(si != NULL)
 		{
+		    si->acquire();    // TODO not thread/destruction safe
 			si->searchResponse(minorRevision, serverAddress);
+			si->release();
 		}
 		return;
 	}
-
-	// report success
-	const int timerIndex = si->getOwnerIndex();
-	TimeStamp now;
-	now.getCurrent();
-	_timers[timerIndex]->searchResponse(seqNo, seqNo != 0, now.getMilliseconds());
-
-	// then notify SearchInstance
-	si->searchResponse(minorRevision, serverAddress);
 }
 
 void ChannelSearchManager::beaconAnomalyNotify()

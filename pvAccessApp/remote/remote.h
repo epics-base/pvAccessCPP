@@ -267,7 +267,7 @@ namespace epics {
         /**
          * Not public IF, used by Transports, etc.
          */
-        class Context {
+        class Context : public ReferenceCountingInstance {
         public:
             virtual ~Context() {
             }
@@ -355,7 +355,7 @@ namespace epics {
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          * @version $Id: TransportClient.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
          */
-        class TransportClient {
+        class TransportClient : public ReferenceCountingInstance {
         public:
             virtual ~TransportClient() {
             }

@@ -502,6 +502,9 @@ Transport* ServerContextImpl::getSearchTransport()
 	//TODO
 	return NULL;
 }
+// TODO
+void ServerContextImpl::acquire() {}
+void ServerContextImpl::release() {}
 
 }
 }

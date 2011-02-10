@@ -29,7 +29,7 @@ namespace epics { namespace pvAccess {
 /**
  * SearchInstance.
  */
-class SearchInstance {
+class SearchInstance : public ReferenceCountingInstance {
 public:
 	/**
 	 * Destructor
@@ -93,6 +93,7 @@ class BaseSearchInstance : public SearchInstance
 {
 public:
 	virtual ~BaseSearchInstance() {};
+	void initializeSearchInstance();
 	virtual pvAccessID getSearchInstanceID() = 0;
 	virtual String getSearchInstanceName() = 0;
 	virtual void unsetListOwnership();

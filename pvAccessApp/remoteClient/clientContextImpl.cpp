@@ -2178,13 +2178,12 @@ namespace epics {
         };
 
 
+
+
+        PVDATA_REFCOUNT_MONITOR_DEFINE(remoteClientContext);
+
         class InternalClientContextImpl : public ClientContextImpl
         {
-
-
-
-
-
 
             /**
              * Implementation of CAJ JCA <code>Channel</code>.
@@ -2279,6 +2278,7 @@ namespace epics {
                 {
                     PVDATA_REFCOUNT_MONITOR_DESTRUCT(channel);
                     if (m_addresses) delete m_addresses;
+                    m_context->release();
                 }
 
             public:
@@ -2313,7 +2313,10 @@ namespace epics {
                 {
                     PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channel);
 
+                    initializeSearchInstance();
+
                     // register before issuing search request
+                    m_context->acquire();
                     m_context->registerChannel(this);
 
                     // connect
@@ -2528,13 +2531,14 @@ namespace epics {
                 }
 
                 /**
-             * @param force force destruction regardless of reference count
+             * @param force force destruction regardless of reference count (not used now)
              */
                 void destroy(bool force) {
                     {
                     Lock guard(&m_channelMutex);
                     if (m_connectionState == DESTROYED)
-                        throw std::runtime_error("Channel already destroyed.");
+                        return;
+                        //throw std::runtime_error("Channel already destroyed.");
                     }
                     
                     // do destruction via context
@@ -3065,8 +3069,10 @@ namespace epics {
                     m_namedLocker(0), m_lastCID(0), m_lastIOID(0), m_channelSearchManager(0),
                     m_version(new Version("CA Client", "cpp", 0, 0, 0, 1)),
                     m_provider(new ChannelProviderImpl(this)),
-                    m_contextState(CONTEXT_NOT_INITIALIZED), m_configuration(new SystemConfigurationImpl())
+                    m_contextState(CONTEXT_NOT_INITIALIZED), m_configuration(new SystemConfigurationImpl()),
+                    m_refCount(1)
             {
+                PVDATA_REFCOUNT_MONITOR_CONSTRUCT(remoteClientContext);
                 loadConfiguration();
             }
 
@@ -3161,17 +3167,19 @@ TODO
 
             virtual void destroy()
             {
-                m_contextMutex.lock();
-
-                if (m_contextState == CONTEXT_DESTROYED)
                 {
-                    m_contextMutex.unlock();
-                    throw std::runtime_error("Context already destroyed.");
+                    Lock guard(&m_contextMutex);
+    
+                    if (m_contextState == CONTEXT_DESTROYED)
+                    {
+                        m_contextMutex.unlock();
+                        throw std::runtime_error("Context already destroyed.");
+                    }
+    
+                    // go into destroyed state ASAP
+                    m_contextState = CONTEXT_DESTROYED;
                 }
-
-                // go into destroyed state ASAP
-                m_contextState =  CONTEXT_DESTROYED;
-
+                
                 internalDestroy();
             }
 
@@ -3181,8 +3189,46 @@ TODO
                 destroy();
             }
 
+            virtual void acquire() {
+                Lock guard(&m_contextMutex);
+                m_refCount++;
+            }
+
+            virtual void release() {
+                m_contextMutex.lock();
+                m_refCount--;
+                m_contextMutex.unlock();
+                if (m_refCount == 0)
+                    delete this;
+            }
+
         private:
-            ~InternalClientContextImpl() {};
+            ~InternalClientContextImpl()
+            {
+                PVDATA_REFCOUNT_MONITOR_DESTRUCT(remoteClientContext);
+
+                // stop searching
+                if (m_channelSearchManager)
+                    delete m_channelSearchManager; //->destroy();
+
+                // stop timer
+                if (m_timer)
+                    delete m_timer;
+
+                // TODO destroy !!!
+                if (m_broadcastTransport)
+                    delete m_broadcastTransport; //->destroy(true);
+                if (m_searchTransport)
+                    delete m_searchTransport; //->destroy(true);
+
+                if (m_namedLocker) delete m_namedLocker;
+                if (m_transportRegistry) delete m_transportRegistry;
+                if (m_connector) delete m_connector;
+                if (m_configuration) delete m_configuration;
+
+                m_provider->destroy();
+                delete m_version;
+            };
 
             void loadConfiguration() {
                 m_addressList = m_configuration->getPropertyAsString("EPICS4_CA_ADDR_LIST", m_addressList);
@@ -3273,41 +3319,33 @@ TODO
 
             void internalDestroy() {
 
-                // stop searching
-                if (m_channelSearchManager)
-                    delete m_channelSearchManager; //->destroy();
-
-                // stop timer
-                if (m_timer)
-                    delete m_timer;
-
                 //
                 // cleanup
                 //
 
                 // this will also close all CA transports
                 destroyAllChannels();
-
-                // TODO destroy !!!
-                if (m_broadcastTransport)
-                    delete m_broadcastTransport; //->destroy(true);
-                if (m_searchTransport)
-                    delete m_searchTransport; //->destroy(true);
-
-                if (m_namedLocker) delete m_namedLocker;
-                if (m_transportRegistry) delete m_transportRegistry;
-                if (m_connector) delete m_connector;
-                if (m_configuration) delete m_configuration;
-
-                m_provider->destroy();
-                delete m_version;
-                m_contextMutex.unlock();
-                delete this;
+                
+                release();
             }
 
             void destroyAllChannels() {
-                // TODO
-            }
+                Lock guard(&m_cidMapMutex);
+
+                int count = 0;
+                ChannelImpl* channels[m_channelsByCID.size()];
+                for (CIDChannelMap::iterator iter = m_channelsByCID.begin();
+                iter != m_channelsByCID.end();
+                iter++)
+                {
+                    channels[count++] = iter->second;
+                }   
+                
+                for (int i = 0; i< count; i++)
+                {
+                    EXCEPTION_GUARD(channels[i]->destroy());
+                }
+           }
 
             /**
              * Check channel name.
@@ -3719,6 +3757,8 @@ TODO
             friend class ChannelProviderImpl;
 
             Configuration* m_configuration;
+            
+            int m_refCount;
         };
 
         ClientContextImpl* createClientContextImpl()

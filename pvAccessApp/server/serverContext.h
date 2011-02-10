@@ -258,6 +258,9 @@ public:
 	 */
 	ChannelProvider* getChannelProvider();
 
+	void release();
+	void acquire();
+
 private:
     /**
      * Major version.

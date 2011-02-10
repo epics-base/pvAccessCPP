@@ -53,6 +53,8 @@ public:
     virtual Configuration* getConfiguration() {
         return _conf;
     }
+    virtual void acquire() {}
+    virtual void release() {}
 
 private:
     TransportRegistry* _tr;
@@ -92,6 +94,8 @@ public:
     virtual void transportClosed() {
         errlogSevPrintf(errlogInfo, "closed");
     }
+    virtual void acquire() {};
+    virtual void release() {};
 };
 
 class DummyTransportSender : public TransportSender {

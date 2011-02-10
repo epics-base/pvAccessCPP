@@ -129,6 +129,7 @@ namespace epics {
             clearAndReleaseBuffer();
 
             // add to registry
+            _context->acquire();
             _context->getTransportRegistry()->put(this);
         }
 
@@ -151,6 +152,8 @@ namespace epics {
             delete _sendBuffer;
 
             delete _responseHandler;
+
+            _context->release();
         }
 
         void BlockingTCPTransport::start() {

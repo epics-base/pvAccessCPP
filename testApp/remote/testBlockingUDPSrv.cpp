@@ -42,6 +42,8 @@ public:
     virtual Configuration* getConfiguration() {
         return 0;
     }
+    virtual void acquire() {}
+    virtual void release() {}
 };
 
 class DummyResponseHandler : public ResponseHandler {

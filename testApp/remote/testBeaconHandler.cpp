@@ -118,6 +118,8 @@ public:
     virtual Channel* getChannel(epics::pvAccess::pvAccessID) { return 0; }
     virtual Transport* getSearchTransport() { return 0; }
     virtual Configuration* getConfiguration() { return _conf; }
+    virtual void acquire() {}
+    virtual void release() {}
 
 private:
     TransportRegistry* _tr;

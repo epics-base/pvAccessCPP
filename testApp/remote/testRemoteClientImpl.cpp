@@ -577,6 +577,7 @@ int main(int argc,char *argv[])
     printf("done.\n");
     */
     
+    epicsThreadSleep ( 1.0 );
     std::cout << "-----------------------------------------------------------------------" << std::endl;
     epicsExitCallAtExits();
     CDRMonitor::get().show(stdout);

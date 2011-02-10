@@ -335,6 +335,9 @@ using namespace epics::pvAccess;
 
     	}
 
+    virtual void acquire() {}
+    virtual void release() {}
+
     };
 
 class TestSearcInstance : public BaseSearchInstance
@@ -344,6 +347,8 @@ public:
 	pvAccessID getSearchInstanceID() { return _channelID;};
     string getSearchInstanceName() {return _channelName;};
 	void searchResponse(int8 minorRevision, osiSockAddr* serverAddress) {};
+    void acquire() {};
+    void release() {};
 private:
 	pvAccessID _channelID;
 	string _channelName;

@@ -27,7 +27,11 @@ using namespace epics::pvData;
 namespace epics {
     namespace pvAccess {
 
-        BlockingClientTCPTransport::BlockingClientTCPTransport(
+#define EXCEPTION_GUARD(code) try { code; } \
+        catch (std::exception &e) { errlogSevPrintf(errlogMajor, "Unhandled exception caught from code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
+                catch (...) { errlogSevPrintf(errlogMajor, "Unhandled exception caught from code at %s:%d.", __FILE__, __LINE__); }
+                
+                        BlockingClientTCPTransport::BlockingClientTCPTransport(
                 Context* context, SOCKET channel,
                 ResponseHandler* responseHandler, int receiveBufferSize,
                 TransportClient* client, short remoteTransportRevision,
@@ -84,8 +88,12 @@ namespace epics {
                 _unresponsiveTransport = true;
 
                 set<TransportClient*>::iterator it = _owners.begin();
-                for(; it!=_owners.end(); it++)
-                    (*it)->transportUnresponsive();
+                for(; it!=_owners.end(); it++) {
+                    TransportClient* client = *it;
+                    client->acquire();
+                    EXCEPTION_GUARD(client->transportUnresponsive());
+                    client->release();
+                }
             }
         }
 
@@ -129,8 +137,13 @@ namespace epics {
                         ipAddrStr, refs);
 
                 set<TransportClient*>::iterator it = _owners.begin();
-                for(; it!=_owners.end(); it++)
-                    (*it)->transportClosed();
+                for(; it!=_owners.end(); it++) {
+                    TransportClient* client = *it;
+                    client->acquire();
+                    EXCEPTION_GUARD(client->transportClosed());
+                    client->release();
+                }
+                
             }
 
             _owners.clear();
@@ -165,8 +178,12 @@ namespace epics {
                 _unresponsiveTransport = false;
 
                 set<TransportClient*>::iterator it = _owners.begin();
-                for(; it!=_owners.end(); it++)
-                    (*it)->transportResponsive(this);
+                for(; it!=_owners.end(); it++) {
+                    TransportClient* client = *it;
+                    client->acquire();
+                    EXCEPTION_GUARD(client->transportResponsive(this));
+                    client->release();
+                }
             }
         }
 
@@ -175,8 +192,12 @@ namespace epics {
 
             Lock lock(&_ownersMutex);
             set<TransportClient*>::iterator it = _owners.begin();
-            for(; it!=_owners.end(); it++)
-                (*it)->transportChanged();
+            for(; it!=_owners.end(); it++) {
+                TransportClient* client = *it;
+                client->acquire();
+                EXCEPTION_GUARD(client->transportChanged());
+                client->release();
+            }
         }
 
         void BlockingClientTCPTransport::send(ByteBuffer* buffer,
