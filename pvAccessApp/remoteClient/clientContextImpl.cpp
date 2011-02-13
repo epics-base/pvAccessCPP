@@ -486,7 +486,7 @@ namespace epics {
                 m_bitSet = new BitSet(m_data->getNumberFields());
 
                 // notify
-                EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(okStatus, this, m_data, m_bitSet));
+                EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(status, this, m_data, m_bitSet));
                 return true;
             }
 
@@ -501,7 +501,7 @@ namespace epics {
                 m_bitSet->deserialize(payloadBuffer, transport);
                 m_data->deserialize(payloadBuffer, transport, m_bitSet);
 
-                EXCEPTION_GUARD(m_channelGetRequester->getDone(okStatus));
+                EXCEPTION_GUARD(m_channelGetRequester->getDone(status));
                 return true;
             }
 
@@ -636,7 +636,7 @@ namespace epics {
                 m_bitSet = new BitSet(m_data->getNumberFields());
 
                 // notify
-                EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(okStatus, this, m_data, m_bitSet));
+                EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(status, this, m_data, m_bitSet));
                 return true;
             }
 
@@ -656,7 +656,7 @@ namespace epics {
                 }
                 else
                 {
-                    EXCEPTION_GUARD(m_channelPutRequester->putDone(okStatus));
+                    EXCEPTION_GUARD(m_channelPutRequester->putDone(status));
                     return true;
                 }
             }
@@ -810,7 +810,7 @@ namespace epics {
                 m_getData = registry->deserializeStructureAndCreatePVStructure(payloadBuffer, transport);
 
                 // notify
-                EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(okStatus, this, m_putData, m_getData));
+                EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(status, this, m_putData, m_getData));
                 return true;
             }
 
@@ -1022,7 +1022,7 @@ namespace epics {
                 m_bitSet = new BitSet(m_data->getNumberFields());
 
                 // notify
-                EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(okStatus, this, m_data, m_bitSet));
+                EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(status, this, m_data, m_bitSet));
                 return true;
             }
 
@@ -1035,7 +1035,7 @@ namespace epics {
 
 
                 PVStructure* response = transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport);
-                EXCEPTION_GUARD(m_channelRPCRequester->requestDone(okStatus, response));
+                EXCEPTION_GUARD(m_channelRPCRequester->requestDone(status, response));
                 delete response;
                 return true;
             }
@@ -1179,7 +1179,7 @@ namespace epics {
                 m_data = dynamic_cast<PVArray*>(getPVDataCreate()->createPVField(0, field));
 
                 // notify
-                EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(okStatus, this, m_data));
+                EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(status, this, m_data));
                 return true;
             }
 
@@ -1194,7 +1194,7 @@ namespace epics {
 
                     m_data->deserialize(payloadBuffer, transport);
 
-                    EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(okStatus));
+                    EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(status));
                     return true;
                 }
                 else if (qos & QOS_GET_PUT)
@@ -1561,7 +1561,7 @@ namespace epics {
                 
 
                 // notify
-                EXCEPTION_GUARD(m_monitorRequester->monitorConnect(okStatus, this, m_structure));
+                EXCEPTION_GUARD(m_monitorRequester->monitorConnect(status, this, m_structure));
                 
                 if (m_started)
                     delete start();
@@ -2685,7 +2685,7 @@ namespace epics {
                     if (transport)
                     {
                         // multiple defined PV or reconnect request (same server address)
-                        if (sockAddrAreIdentical(transport->getRemoteAddress(), serverAddress))
+                        if (!sockAddrAreIdentical(transport->getRemoteAddress(), serverAddress))
                         {
                             EXCEPTION_GUARD(m_requester->message("More than one channel with name '" + m_name +
                                                                  "' detected, additional response from: " + inetAddressToString(*serverAddress), warningMessage));
