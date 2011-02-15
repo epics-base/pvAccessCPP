@@ -95,6 +95,7 @@ namespace epics {
             static Status* destroyedStatus;
             static Status* channelNotConnected;
             static Status* otherRequestPendingStatus;
+            static Status* pvRequestNull;
                 
             BaseRequestImpl(ChannelImpl* channel, Requester* requester) :
                     m_channel(channel), m_context(channel->getContext()),
@@ -284,6 +285,7 @@ namespace epics {
             Status* BaseRequestImpl::destroyedStatus = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "request destroyed");
             Status* BaseRequestImpl::channelNotConnected = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "channel not connected");
             Status* BaseRequestImpl::otherRequestPendingStatus = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "other request pending");
+            Status* BaseRequestImpl::pvRequestNull = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "pvRequest == 0");
 
 
 
@@ -314,7 +316,7 @@ namespace epics {
             {
                 PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelProcess);
 
-                // TODO check for 0s!!!!
+                // pvRequest can be null
 
                 // TODO best-effort support
 
@@ -433,6 +435,12 @@ namespace epics {
                     m_data(0), m_bitSet(0)
             {
                 PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelGet);
+                
+                if (pvRequest == 0)
+                {
+                    EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(pvRequestNull, 0, 0, 0));
+                    return;
+                }
 
                 // TODO immediate get, i.e. get data with init message
                 // TODO one-time get, i.e. immediate get + lastRequest
@@ -578,6 +586,12 @@ namespace epics {
                     m_data(0), m_bitSet(0)
             {
                 PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelPut);
+
+                if (pvRequest == 0)
+                {
+                    EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(pvRequestNull, 0, 0, 0));
+                    return;
+                }
 
                 // TODO low-overhead put
                 // TODO best-effort put
@@ -750,6 +764,12 @@ namespace epics {
                     m_putData(0), m_getData(0)
             {
                 PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelPutGet);
+
+                if (pvRequest == 0)
+                {
+                    EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(pvRequestNull, 0, 0, 0));
+                    return;
+                }
 
                 // subscribe
                 try {
@@ -966,6 +986,12 @@ namespace epics {
             {
                 PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelRPC);
 
+                if (pvRequest == 0)
+                {
+                    EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(pvRequestNull, 0, 0, 0));
+                    return;
+                }
+
                 // subscribe
                 try {
                     resubscribeSubscription(m_channel->checkAndGetTransport());
@@ -1113,6 +1139,12 @@ namespace epics {
                     m_data(0), m_offset(0), m_count(0), m_length(-1), m_capacity(-1)
             {
                 PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelArray);
+
+                if (pvRequest == 0)
+                {
+                    EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(pvRequestNull, 0, 0));
+                    return;
+                }
 
                 // subscribe
                 try {
@@ -1503,6 +1535,12 @@ namespace epics {
                     m_pvStructure(0), m_gotMonitor(false)
             {
                 PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelMonitor);
+
+                if (pvRequest == 0)
+                {
+                    EXCEPTION_GUARD(m_monitorRequester->monitorConnect(pvRequestNull, 0, 0));
+                    return;
+                }
 
                 // TODO quques
 
