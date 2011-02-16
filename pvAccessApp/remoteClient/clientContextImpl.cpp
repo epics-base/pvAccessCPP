@@ -1800,7 +1800,6 @@ namespace epics {
         {
         private:
             MonitorRequester* m_monitorRequester;
-            Structure* m_structure;
             bool m_started;
 
             PVStructure* m_pvRequest;
@@ -1821,7 +1820,7 @@ namespace epics {
         public:
             ChannelMonitorImpl(ChannelImpl* channel, MonitorRequester* monitorRequester, PVStructure *pvRequest) :
                     BaseRequestImpl(channel, monitorRequester),
-                    m_monitorRequester(monitorRequester), m_structure(0),
+                    m_monitorRequester(monitorRequester),
                     m_started(false), m_pvRequest(pvRequest),
                     //(dynamic_cast<PVStructure*>(getPVDataCreate()->createPVField(0, "", pvRequest))),
                     m_monitorStrategy(0)
@@ -1912,10 +1911,10 @@ namespace epics {
 
                 Structure* structure = const_cast<Structure*>(dynamic_cast<const Structure*>(transport->getIntrospectionRegistry()->deserialize(payloadBuffer, transport)));
                 m_monitorStrategy->init(structure);
-                structure->decReferenceCount();
                 
                 // notify
-                EXCEPTION_GUARD(m_monitorRequester->monitorConnect(status, this, m_structure));
+                EXCEPTION_GUARD(m_monitorRequester->monitorConnect(status, this, structure));
+                structure->decReferenceCount();
                 
                 if (m_started)
                     delete start();
