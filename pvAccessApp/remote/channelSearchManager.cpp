@@ -562,7 +562,7 @@ void ChannelSearchManager::searchResponse(int32 cid, int32 seqNo, int8 minorRevi
 	else
 	{
 		// minor hack to enable duplicate reports
-		si = reinterpret_cast<SearchInstance*>(_context->getChannel(cid));
+		si = dynamic_cast<SearchInstance*>(_context->getChannel(cid));
 		if(si != NULL)
 		{
 		    si->acquire();    // TODO not thread/destruction safe
