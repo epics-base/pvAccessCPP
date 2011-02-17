@@ -37,8 +37,8 @@ namespace epics {
             virtual Transport* checkAndGetTransport() = 0;
             virtual Transport* getTransport() = 0;
 
-            static Status* channelDestroyed;
-            static Status* channelDisconnected;
+            static Status channelDestroyed;
+            static Status channelDisconnected;
 
         };
         

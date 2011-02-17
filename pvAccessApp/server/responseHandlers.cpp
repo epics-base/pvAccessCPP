@@ -234,7 +234,7 @@ namespace epics {
         	return this;
 		}
 
-        void ChannelFindRequesterImpl::channelFindResult(epics::pvData::Status* status, ChannelFind* channelFind, boolean wasFound)
+        void ChannelFindRequesterImpl::channelFindResult(const epics::pvData::Status& status, ChannelFind* channelFind, boolean wasFound)
         {
         	// TODO status
         	Lock guard(_mutex);
@@ -318,13 +318,13 @@ namespace epics {
     		   _transport(transport),
     		   _channelName(channelName),
     		   _cid(cid),
-    		   _status(NULL),
+    		   _status(),
     		   _channel(NULL)
        {
 
        }
 
-       void ChannelRequesterImpl::channelCreated(Status* const status, Channel* const channel)
+       void ChannelRequesterImpl::channelCreated(const Status& status, Channel* const channel)
        {
     	   Lock guard(_mutex);
     	   _status = status;

@@ -181,7 +181,7 @@ namespace epics {
         	ChannelFindRequesterImpl(ServerContextImpl* context, ChannelFindRequesterImplObjectPool* objectPool);
         	void clear();
         	ChannelFindRequesterImpl* set(int32 searchSequenceId, int32 cid, osiSockAddr* sendTo, boolean responseRequired);
-        	void channelFindResult(epics::pvData::Status* status, ChannelFind* channelFind, boolean wasFound);
+        	void channelFindResult(const epics::pvData::Status& status, ChannelFind* channelFind, boolean wasFound);
         	void lock();
         	void unlock();
             void acquire();
@@ -237,7 +237,7 @@ namespace epics {
         {
         public:
         	 ChannelRequesterImpl(Transport* transport, const String channelName, const int32 cid);
-        	 void channelCreated(Status* const status, Channel* const channel);
+        	 void channelCreated(const Status& status, Channel* const channel);
         	 void channelStateChange(Channel* const c, const Channel::ConnectionState isConnected);
         	 String getRequesterName();
         	 void message(const String message, const epics::pvData::MessageType messageType);
@@ -249,7 +249,7 @@ namespace epics {
         	 Transport* _transport;
         	 const String _channelName;
         	 const int32 _cid;
-        	 Status* _status;
+        	 Status _status;
         	 Channel* _channel;
         	 epics::pvData::Mutex _mutex;
         	 void createChannelFailedResponse(ByteBuffer* buffer, TransportSendControl* control, Status* const status);

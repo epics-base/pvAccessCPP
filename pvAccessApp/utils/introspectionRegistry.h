@@ -208,7 +208,7 @@ typedef std::map<const short,const Field*> registryMap_t;
 		 * @param control serialization control.
 		 * @param status status to serialize.
 		 */
-		void serializeStatus(ByteBuffer* buffer, SerializableControl* control, Status* status);
+		void serializeStatus(ByteBuffer* buffer, SerializableControl* control, const Status &status);
 
 		/**
 		 * Deserialize status.
@@ -216,7 +216,7 @@ typedef std::map<const short,const Field*> registryMap_t;
 		 * @param buffer data buffer.
 		 * @param control serialization control.
 		 */
-		Status* deserializeStatus(ByteBuffer* buffer, DeserializableControl* control);
+		void deserializeStatus(Status &status, ByteBuffer* buffer, DeserializableControl* control);
 
 	private:
 		registryMap_t _registry;
@@ -230,11 +230,6 @@ typedef std::map<const short,const Field*> registryMap_t;
 		 * PVField factory.
 		 */
 		static PVDataCreate* _pvDataCreate;
-
-		/**
-		 * Status factory.
-		 */
-		static StatusCreate* _statusCreate;
 
 		/**
 		 * Field factory.

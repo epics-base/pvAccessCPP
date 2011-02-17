@@ -58,7 +58,6 @@ static DeserializableControl* control;
 static ByteBuffer* buffer;
 
 static PVDataCreate* pvDataCreate;
-static StatusCreate* statusCreate;
 static FieldCreate* fieldCreate;
 static StandardField *standardField;
 
@@ -396,20 +395,20 @@ void testSerializeStatus()
 {
 	buffer->clear();
 	registry->reset();
-	Status* statusIn = statusCreate->getStatusOK();
+	Status statusIn(Status::STATUSTYPE_WARNING, "msg", "dumpy");
 	registry->serializeStatus(buffer,flusher,statusIn);
 
 	buffer->flip();
-	Status* statusOut= registry->deserializeStatus(buffer,control);
-	assert(statusIn->getType() == statusOut->getType());
-	delete statusOut;
-	//TODO why are in and out on the same address?
+	Status statusOut;
+	registry->deserializeStatus(statusOut, buffer,control);
+	assert(statusIn.getType() == statusOut.getType());
+	assert(statusIn.getMessage() == statusOut.getMessage());
+	assert(statusIn.getStackDump() == statusOut.getStackDump());
 }
 
 int main(int argc, char *argv[])
 {
 	pvDataCreate = getPVDataCreate();
-	statusCreate = getStatusCreate();
 	fieldCreate = getFieldCreate();
 	standardField = getStandardField();
 

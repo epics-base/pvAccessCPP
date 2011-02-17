@@ -537,7 +537,7 @@ namespace epics {
              * Report status to clients (e.g. disconnected).
              * @param status to report.
              */
-            virtual void reportStatus(epics::pvData::Status* status) = 0;
+            virtual void reportStatus(const epics::pvData::Status& status) = 0;
 
             /**
              * Get request requester.

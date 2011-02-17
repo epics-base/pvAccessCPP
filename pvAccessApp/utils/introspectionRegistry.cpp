@@ -10,14 +10,12 @@ const int8 IntrospectionRegistry::NULL_TYPE_CODE = (int8)-1;
 const int8 IntrospectionRegistry::ONLY_ID_TYPE_CODE = (int8)-2;
 const int8 IntrospectionRegistry::FULL_WITH_ID_TYPE_CODE = (int8)-3;
 PVDataCreate* IntrospectionRegistry::_pvDataCreate = 0;
-StatusCreate* IntrospectionRegistry::_statusCreate = 0;
 FieldCreate* IntrospectionRegistry::_fieldCreate = 0;
 
 IntrospectionRegistry::IntrospectionRegistry(bool serverSide) : _mutex(Mutex())
 {
     // TODO not optimal
 	_pvDataCreate = getPVDataCreate();
-	_statusCreate = getStatusCreate();
 	_fieldCreate = getFieldCreate();
 
 	_direction = serverSide ? 1 : -1;
@@ -359,14 +357,14 @@ PVStructurePtr IntrospectionRegistry::deserializeStructureAndCreatePVStructure(B
 	return retVal;
 }
 
-void IntrospectionRegistry::serializeStatus(ByteBuffer* buffer, SerializableControl* control, Status* status)
+void IntrospectionRegistry::serializeStatus(ByteBuffer* buffer, SerializableControl* control, const Status& status)
 {
-    status->serialize(buffer, control);
+    status.serialize(buffer, control);
 }
 
-Status* IntrospectionRegistry::deserializeStatus(ByteBuffer* buffer, DeserializableControl* control)
+void IntrospectionRegistry::deserializeStatus(Status &status, ByteBuffer* buffer, DeserializableControl* control)
 {
-	return _statusCreate->deserializeStatus(buffer, control);
+	status.deserialize(buffer, control);
 }
 
 

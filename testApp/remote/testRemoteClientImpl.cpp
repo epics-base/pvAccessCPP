@@ -16,10 +16,10 @@ using namespace epics::pvAccess;
 
 class ChannelFindRequesterImpl : public ChannelFindRequester
 {
-    virtual void channelFindResult(epics::pvData::Status *status,ChannelFind *channelFind,bool wasFound)
+    virtual void channelFindResult(const epics::pvData::Status& status,ChannelFind *channelFind,bool wasFound)
     {
         std::cout << "[ChannelFindRequesterImpl] channelFindResult("
-                  << status->toString() << ", ..., " << wasFound << ")" << std::endl;
+                  << status.toString() << ", ..., " << wasFound << ")" << std::endl;
     }
 };
 
@@ -35,9 +35,9 @@ class ChannelRequesterImpl : public ChannelRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void channelCreated(epics::pvData::Status* status, Channel *channel)
+    virtual void channelCreated(const epics::pvData::Status& status, Channel *channel)
     {
-        std::cout << "channelCreated(" << status->toString() << ", "
+        std::cout << "channelCreated(" << status.toString() << ", "
                   << (channel ? channel->getChannelName() : "(0)") << ")" << std::endl;
     }
 
@@ -59,9 +59,9 @@ class GetFieldRequesterImpl : public GetFieldRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void getDone(epics::pvData::Status *status,epics::pvData::FieldConstPtr field)
+    virtual void getDone(const epics::pvData::Status& status,epics::pvData::FieldConstPtr field)
     {
-        std::cout << "getDone(" << status->toString() << ", ";
+        std::cout << "getDone(" << status.toString() << ", ";
         if (field)
         {
             String str;
@@ -95,10 +95,10 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void channelGetConnect(epics::pvData::Status *status,ChannelGet *channelGet,
+    virtual void channelGetConnect(const epics::pvData::Status& status,ChannelGet *channelGet,
             epics::pvData::PVStructure *pvStructure,epics::pvData::BitSet *bitSet)
     {
-        std::cout << "channelGetConnect(" << status->toString() << ")" << std::endl;
+        std::cout << "channelGetConnect(" << status.toString() << ")" << std::endl;
         if (pvStructure)
         {
         	String st;
@@ -113,9 +113,9 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         m_mutex.unlock();
     }
 
-    virtual void getDone(epics::pvData::Status *status)
+    virtual void getDone(const epics::pvData::Status& status)
     {
-        std::cout << "getDone(" << status->toString() << ")" << std::endl;
+        std::cout << "getDone(" << status.toString() << ")" << std::endl;
         Lock guard(&m_mutex);
         if (m_pvStructure)
         {
@@ -143,10 +143,10 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void channelPutConnect(epics::pvData::Status *status,ChannelPut *channelPut,
+    virtual void channelPutConnect(const epics::pvData::Status& status,ChannelPut *channelPut,
             epics::pvData::PVStructure *pvStructure,epics::pvData::BitSet *bitSet)
     {
-        std::cout << "channelPutConnect(" << status->toString() << ")" << std::endl;
+        std::cout << "channelPutConnect(" << status.toString() << ")" << std::endl;
 
         // TODO sync
         m_channelPut = channelPut;
@@ -154,9 +154,9 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         m_bitSet = bitSet;
     }
 
-    virtual void getDone(epics::pvData::Status *status)
+    virtual void getDone(const epics::pvData::Status& status)
     {
-        std::cout << "getDone(" << status->toString() << ")" << std::endl;
+        std::cout << "getDone(" << status.toString() << ")" << std::endl;
         if (m_pvStructure)
         {
             String str;
@@ -166,9 +166,9 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         }
     }
 
-    virtual void putDone(epics::pvData::Status *status)
+    virtual void putDone(const epics::pvData::Status& status)
     {
-        std::cout << "putDone(" << status->toString() << ")" << std::endl;
+        std::cout << "putDone(" << status.toString() << ")" << std::endl;
         if (m_pvStructure)
         {
             String str;
@@ -196,10 +196,10 @@ class ChannelPutGetRequesterImpl : public ChannelPutGetRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void channelPutGetConnect(epics::pvData::Status *status,ChannelPutGet *channelPutGet,
+    virtual void channelPutGetConnect(const epics::pvData::Status& status,ChannelPutGet *channelPutGet,
             epics::pvData::PVStructure *putData,epics::pvData::PVStructure *getData)
     {
-        std::cout << "channelGetPutConnect(" << status->toString() << ")" << std::endl;
+        std::cout << "channelGetPutConnect(" << status.toString() << ")" << std::endl;
         // TODO sync
         m_channelPutGet = channelPutGet;
         m_putData = putData;
@@ -221,9 +221,9 @@ class ChannelPutGetRequesterImpl : public ChannelPutGetRequester
         }
     }
 
-    virtual void getGetDone(epics::pvData::Status *status)
+    virtual void getGetDone(const epics::pvData::Status& status)
     {
-        std::cout << "getGetDone(" << status->toString() << ")" << std::endl;
+        std::cout << "getGetDone(" << status.toString() << ")" << std::endl;
         if (m_getData)
         {
             String str;
@@ -233,9 +233,9 @@ class ChannelPutGetRequesterImpl : public ChannelPutGetRequester
         }
     }
 
-    virtual void getPutDone(epics::pvData::Status *status)
+    virtual void getPutDone(const epics::pvData::Status& status)
     {
-        std::cout << "getPutDone(" << status->toString() << ")" << std::endl;
+        std::cout << "getPutDone(" << status.toString() << ")" << std::endl;
         if (m_putData)
         {
             String str;
@@ -245,9 +245,9 @@ class ChannelPutGetRequesterImpl : public ChannelPutGetRequester
         }
     }
 
-    virtual void putGetDone(epics::pvData::Status *status)
+    virtual void putGetDone(const epics::pvData::Status& status)
     {
-        std::cout << "putGetDone(" << status->toString() << ")" << std::endl;
+        std::cout << "putGetDone(" << status.toString() << ")" << std::endl;
         if (m_putData)
         {
             String str;
@@ -276,10 +276,10 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void channelRPCConnect(epics::pvData::Status *status,ChannelRPC *channelRPC,
+    virtual void channelRPCConnect(const epics::pvData::Status& status,ChannelRPC *channelRPC,
             epics::pvData::PVStructure *pvStructure,epics::pvData::BitSet *bitSet)
     {
-        std::cout << "channelRPCConnect(" << status->toString() << ")" << std::endl;
+        std::cout << "channelRPCConnect(" << status.toString() << ")" << std::endl;
         if (pvStructure)
         {
         	String st;
@@ -293,9 +293,9 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
         m_bitSet = bitSet;
     }
 
-    virtual void requestDone(epics::pvData::Status *status,epics::pvData::PVStructure *pvResponse)
+    virtual void requestDone(const epics::pvData::Status& status,epics::pvData::PVStructure *pvResponse)
     {
-        std::cout << "requestDone(" << status->toString() << ")" << std::endl;
+        std::cout << "requestDone(" << status.toString() << ")" << std::endl;
         if (pvResponse)
         {
             String str;
@@ -321,10 +321,10 @@ class ChannelArrayRequesterImpl : public ChannelArrayRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void channelArrayConnect(epics::pvData::Status *status,ChannelArray *channelArray,
+    virtual void channelArrayConnect(const epics::pvData::Status& status,ChannelArray *channelArray,
             epics::pvData::PVArray *pvArray)
     {
-        std::cout << "channelArrayConnect(" << status->toString() << ")" << std::endl;
+        std::cout << "channelArrayConnect(" << status.toString() << ")" << std::endl;
         if (pvArray)
         {
         	String st;
@@ -337,9 +337,9 @@ class ChannelArrayRequesterImpl : public ChannelArrayRequester
         m_pvArray = pvArray;
     }
 
-    virtual void getArrayDone(epics::pvData::Status *status)
+    virtual void getArrayDone(const epics::pvData::Status& status)
     {
-        std::cout << "getArrayDone(" << status->toString() << ")" << std::endl;
+        std::cout << "getArrayDone(" << status.toString() << ")" << std::endl;
         if (m_pvArray)
         {
             String str;
@@ -349,14 +349,14 @@ class ChannelArrayRequesterImpl : public ChannelArrayRequester
         }
     }
 
-    virtual void putArrayDone(epics::pvData::Status *status)
+    virtual void putArrayDone(const epics::pvData::Status& status)
     {
-        std::cout << "putArrayDone(" << status->toString() << ")" << std::endl;
+        std::cout << "putArrayDone(" << status.toString() << ")" << std::endl;
     }
 
-    virtual void setLengthDone(epics::pvData::Status *status)
+    virtual void setLengthDone(const epics::pvData::Status& status)
     {
-        std::cout << "setLengthDone(" << status->toString() << ")" << std::endl;
+        std::cout << "setLengthDone(" << status.toString() << ")" << std::endl;
     }
 };
 
@@ -372,9 +372,9 @@ class MonitorRequesterImpl : public MonitorRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void monitorConnect(Status* status, Monitor* monitor, Structure* structure)
+    virtual void monitorConnect(const epics::pvData::Status& status, Monitor* monitor, Structure* structure)
     {
-        std::cout << "monitorConnect(" << status->toString() << ")" << std::endl;
+        std::cout << "monitorConnect(" << status.toString() << ")" << std::endl;
         if (structure)
         {
             String str;
@@ -421,17 +421,17 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void channelProcessConnect(epics::pvData::Status *status,ChannelProcess *channelProcess)
+    virtual void channelProcessConnect(const epics::pvData::Status& status,ChannelProcess *channelProcess)
     {
-        std::cout << "channelProcessConnect(" << status->toString() << ")" << std::endl;
+        std::cout << "channelProcessConnect(" << status.toString() << ")" << std::endl;
 
         // TODO sync
         m_channelProcess = channelProcess;
     }
 
-    virtual void processDone(epics::pvData::Status *status)
+    virtual void processDone(const epics::pvData::Status& status)
     {
-        std::cout << "processDone(" << status->toString() << ")" << std::endl;
+        std::cout << "processDone(" << status.toString() << ")" << std::endl;
     }
 
 };
@@ -549,15 +549,13 @@ int main(int argc,char *argv[])
 
     epicsThreadSleep( 1.0 );
 
-    Status* status = monitor->start();
-    std::cout << "monitor->start() = " << status->toString() << std::endl;
-    delete status;
+    Status status = monitor->start();
+    std::cout << "monitor->start() = " << status.toString() << std::endl;
 
     epicsThreadSleep( 3.0 );
 
     status = monitor->stop();
-    std::cout << "monitor->stop() = " << status->toString() << std::endl;
-    delete status;
+    std::cout << "monitor->stop() = " << status.toString() << std::endl;
 
 
     monitor->destroy();

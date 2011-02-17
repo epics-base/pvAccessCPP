@@ -85,25 +85,25 @@ namespace epics { namespace pvAccess {
              * @param channelArray The channelArray interface or null if the request failed.
              * @param pvArray The PVArray that holds the data.
              */
-            virtual void channelArrayConnect(epics::pvData::Status *status,ChannelArray *channelArray,epics::pvData::PVArray *pvArray) = 0;
+            virtual void channelArrayConnect(const epics::pvData::Status &status,ChannelArray *channelArray,epics::pvData::PVArray *pvArray) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void putArrayDone(epics::pvData::Status *status) = 0;
+            virtual void putArrayDone(const epics::pvData::Status &status) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void getArrayDone(epics::pvData::Status *status) = 0;
+            virtual void getArrayDone(const epics::pvData::Status &status) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void setLengthDone(epics::pvData::Status *status) = 0;
+            virtual void setLengthDone(const epics::pvData::Status &status) = 0;
         };
 
 
@@ -127,7 +127,7 @@ namespace epics { namespace pvAccess {
             /**
              * @param status Completion status.
              */
-            virtual void channelFindResult(epics::pvData::Status *status,ChannelFind *channelFind,bool wasFound) = 0;
+            virtual void channelFindResult(const epics::pvData::Status &status,ChannelFind *channelFind,bool wasFound) = 0;
         };
 
 
@@ -164,14 +164,14 @@ namespace epics { namespace pvAccess {
              * @param pvStructure The PVStructure that holds the data.
              * @param bitSet The bitSet for that shows what data has changed.
              */
-            virtual void channelGetConnect(epics::pvData::Status *status,ChannelGet *channelGet,
+            virtual void channelGetConnect(const epics::pvData::Status &status,ChannelGet *channelGet,
                     epics::pvData::PVStructure *pvStructure,epics::pvData::BitSet *bitSet) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void getDone(epics::pvData::Status *status) = 0;
+            virtual void getDone(const epics::pvData::Status &status) = 0;
         };
 
 
@@ -207,13 +207,13 @@ namespace epics { namespace pvAccess {
              * @param channelProcess The channelProcess interface or null if the client could not become
              * the record processor.
              */
-            virtual void channelProcessConnect(epics::pvData::Status *status,ChannelProcess *channelProcess) = 0;
+            virtual void channelProcessConnect(const epics::pvData::Status &status,ChannelProcess *channelProcess) = 0;
 
             /**
              * The process request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void processDone(epics::pvData::Status *status) = 0;
+            virtual void processDone(const epics::pvData::Status &status) = 0;
         };
 
 
@@ -255,20 +255,20 @@ namespace epics { namespace pvAccess {
              * @param pvStructure The PVStructure that holds the data.
              * @param bitSet The bitSet for that shows what data has changed.
              */
-            virtual void channelPutConnect(epics::pvData::Status *status,ChannelPut *channelPut,
+            virtual void channelPutConnect(const epics::pvData::Status &status,ChannelPut *channelPut,
                     epics::pvData::PVStructure *pvStructure,epics::pvData::BitSet *bitSet) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void putDone(epics::pvData::Status *status) = 0;
+            virtual void putDone(const epics::pvData::Status &status) = 0;
 
             /**
              * The get request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void getDone(epics::pvData::Status *status) = 0;
+            virtual void getDone(const epics::pvData::Status &status) = 0;
         };
 
 
@@ -317,25 +317,25 @@ namespace epics { namespace pvAccess {
              * @param pvPutStructure The PVStructure that holds the putData.
              * @param pvGetStructure The PVStructure that holds the getData.
              */
-            virtual void channelPutGetConnect(epics::pvData::Status *status,ChannelPutGet *channelPutGet,
+            virtual void channelPutGetConnect(const epics::pvData::Status &status,ChannelPutGet *channelPutGet,
                         epics::pvData::PVStructure *pvPutStructure,epics::pvData::PVStructure *pvGetStructure) = 0;
             /**
              * The putGet request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void putGetDone(epics::pvData::Status *status) = 0;
+            virtual void putGetDone(const epics::pvData::Status &status) = 0;
 
             /**
              * The getPut request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void getPutDone(epics::pvData::Status *status) = 0;
+            virtual void getPutDone(const epics::pvData::Status &status) = 0;
 
             /**
              * The getGet request is done. This is always called with no locks held.
              * @param status Completion status.
              */
-            virtual void getGetDone(epics::pvData::Status *status) = 0;
+            virtual void getGetDone(const epics::pvData::Status &status) = 0;
         };
 
 
@@ -371,7 +371,7 @@ namespace epics { namespace pvAccess {
              * @param pvArgument The argument structure for an RPC request.
              * @param bitSet The bitSet for argument changes.
              */
-            virtual void channelRPCConnect(epics::pvData::Status *status,ChannelRPC *channelRPC,
+            virtual void channelRPCConnect(const epics::pvData::Status &status,ChannelRPC *channelRPC,
                         epics::pvData::PVStructure *pvArgument,epics::pvData::BitSet *bitSet) = 0;
 
             /**
@@ -379,7 +379,7 @@ namespace epics { namespace pvAccess {
              * @param status Completion status.
              * @param pvResponse The response data for the RPC request.
              */
-            virtual void requestDone(epics::pvData::Status *status,epics::pvData::PVStructure *pvResponse) = 0;
+            virtual void requestDone(const epics::pvData::Status &status,epics::pvData::PVStructure *pvResponse) = 0;
         };
 
 
@@ -396,7 +396,7 @@ namespace epics { namespace pvAccess {
              * @param status Completion status.
              * @param field The Structure for the request.
              */
-            virtual void getDone(epics::pvData::Status *status,epics::pvData::FieldConstPtr field) = 0;
+            virtual void getDone(const epics::pvData::Status &status,epics::pvData::FieldConstPtr field) = 0;
         };
 
 
@@ -588,7 +588,7 @@ namespace epics { namespace pvAccess {
              * @param status Completion status.
              * @param channel The channel.
              */
-            virtual void channelCreated(epics::pvData::Status* status, Channel *channel) = 0;
+            virtual void channelCreated(const epics::pvData::Status &status, Channel *channel) = 0;
 
             /**
              * A channel connection state change has occurred.

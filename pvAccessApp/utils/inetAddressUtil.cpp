@@ -73,9 +73,7 @@ namespace epics {
             v->push_back(pNewNode);
         }
 
-        /* port of osiSockDiscoverBroadcastAddresses() in
-         * epics/base/src/libCom/osi/os/default/osdNetIntf.c
-         */
+        // TODO use osiSockDiscoverBroadcastAddresses() from epics/base/src/libCom/osi/os/default/osdNetIntf.c
         InetAddrVector* getBroadcastAddresses(SOCKET sock,
                 in_port_t defaultPort) {
             static const unsigned nelem = 100;

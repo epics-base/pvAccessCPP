@@ -33,8 +33,8 @@ using namespace epics::pvData;
 namespace epics {
     namespace pvAccess {
 
-        Status* ChannelImpl::channelDestroyed = getStatusCreate()->createStatus(STATUSTYPE_WARNING, "channel destroyed");
-        Status* ChannelImpl::channelDisconnected = getStatusCreate()->createStatus(STATUSTYPE_WARNING, "channel disconnected");
+        Status ChannelImpl::channelDestroyed = Status(Status::STATUSTYPE_WARNING, "channel destroyed");
+        Status ChannelImpl::channelDisconnected = Status(Status::STATUSTYPE_WARNING, "channel disconnected");
 
 
         // TODO consider std::unordered_map
@@ -86,23 +86,23 @@ namespace epics {
             
             int m_refCount;
             
+            Status m_status;
+            
             virtual ~BaseRequestImpl() {};
 
             public:
             
-            static StatusCreate* statusCreate;
             static PVDataCreate* pvDataCreate;
     
-            static Status* okStatus;
-            static Status* destroyedStatus;
-            static Status* channelNotConnected;
-            static Status* otherRequestPendingStatus;
-            static Status* pvRequestNull;
+            static Status destroyedStatus;
+            static Status channelNotConnected;
+            static Status otherRequestPendingStatus;
+            static Status pvRequestNull;
                 
             BaseRequestImpl(ChannelImpl* channel, Requester* requester) :
                     m_channel(channel), m_context(channel->getContext()),
                     m_requester(requester), m_destroyed(false), m_remotelyDestroy(false),
-                    m_pendingRequest(NULL_REQUEST), m_refCount(1)
+                    m_pendingRequest(NULL_REQUEST), m_refCount(1), m_status()
             {
                 // register response request
                 m_ioid = m_context->registerResponseRequest(this);
@@ -138,20 +138,20 @@ namespace epics {
                 return m_ioid;
             }
 
-            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) = 0;
-            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) = 0;
-            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) = 0;
+            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) = 0;
+            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) = 0;
+            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) = 0;
 
             virtual void response(Transport* transport, int8 version, ByteBuffer* payloadBuffer) {
                 transport->ensureData(1);
                 int8 qos = payloadBuffer->getByte();
-                Status* status = statusCreate->deserializeStatus(payloadBuffer, transport);
+                transport->getIntrospectionRegistry()->deserializeStatus(m_status, payloadBuffer, transport);
                 
                 try
                 {
                     if (qos & QOS_INIT)
                     {
-                        if (status->isSuccess())
+                        if (m_status.isSuccess())
                         {
                             // once created set destroy flag
                             m_mutex.lock();
@@ -159,7 +159,7 @@ namespace epics {
                             m_mutex.unlock();
                         }
                         
-                        initResponse(transport, version, payloadBuffer, qos, status);
+                        initResponse(transport, version, payloadBuffer, qos, m_status);
                     }
                     else if (qos & QOS_DESTROY)
                     {
@@ -167,24 +167,18 @@ namespace epics {
                         m_remotelyDestroy = false;
                         m_mutex.unlock();
     
-                        if (!destroyResponse(transport, version, payloadBuffer, qos, status))
+                        if (!destroyResponse(transport, version, payloadBuffer, qos, m_status))
                             cancel();
                     }
                     else
                     {
-                        normalResponse(transport, version, payloadBuffer, qos, status);
+                        normalResponse(transport, version, payloadBuffer, qos, m_status);
                     }
                 }
                 catch (std::exception &e) {
                     errlogSevPrintf(errlogMajor, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what());
-                    // TODO
-                    if (status != okStatus)
-                        delete status;
                 }
                 catch (...) { errlogSevPrintf(errlogMajor, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__);
-                    // TODO
-                    if (status != okStatus)
-                        delete status;
                 }
             }
 
@@ -226,11 +220,11 @@ namespace epics {
                 // TODO notify?
             }
 
-            void reportStatus(Status* status) {
+            void reportStatus(const Status& status) {
                 // destroy, since channel (parent) was destroyed
-                if (status == ChannelImpl::channelDestroyed)
+                if (&status == &ChannelImpl::channelDestroyed)
                     destroy();
-                else if (status == ChannelImpl::channelDisconnected)
+                else if (&status == &ChannelImpl::channelDisconnected)
                     stopRequest();
                 // TODO notify?
             }
@@ -280,14 +274,12 @@ namespace epics {
 
 
 
-            StatusCreate* BaseRequestImpl::statusCreate = getStatusCreate();
             PVDataCreate* BaseRequestImpl::pvDataCreate = getPVDataCreate();
     
-            Status* BaseRequestImpl::okStatus = getStatusCreate()->getStatusOK();;
-            Status* BaseRequestImpl::destroyedStatus = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "request destroyed");
-            Status* BaseRequestImpl::channelNotConnected = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "channel not connected");
-            Status* BaseRequestImpl::otherRequestPendingStatus = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "other request pending");
-            Status* BaseRequestImpl::pvRequestNull = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "pvRequest == 0");
+            Status BaseRequestImpl::destroyedStatus = Status(Status::STATUSTYPE_ERROR, "request destroyed");
+            Status BaseRequestImpl::channelNotConnected = Status(Status::STATUSTYPE_ERROR, "channel not connected");
+            Status BaseRequestImpl::otherRequestPendingStatus = Status(Status::STATUSTYPE_ERROR, "other request pending");
+            Status BaseRequestImpl::pvRequestNull = Status(Status::STATUSTYPE_ERROR, "pvRequest == 0");
 
 
 
@@ -352,17 +344,17 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 EXCEPTION_GUARD(m_callback->processDone(status));
                 return true;
             }
 
-            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 EXCEPTION_GUARD(m_callback->channelProcessConnect(status, this));
                 return true;
             }
 
-            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 EXCEPTION_GUARD(m_callback->processDone(status));
                 return true;
             }
@@ -386,6 +378,7 @@ namespace epics {
                 try {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                 } catch (std::runtime_error &rte) {
+                    stopRequest();
                     EXCEPTION_GUARD(m_callback->processDone(channelNotConnected));
                 }
             }
@@ -477,15 +470,15 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 // data available
                 if (qos & QOS_GET)
                     return normalResponse(transport, version, payloadBuffer, qos, status);
                 return true;
             }
 
-            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
-                if (!status->isSuccess())
+            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+                if (!status.isSuccess())
                 {
                     EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(status, this, 0, 0));
                     return true;
@@ -500,8 +493,8 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
-                if (!status->isSuccess())
+            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+                if (!status.isSuccess())
                 {
                     EXCEPTION_GUARD(m_channelGetRequester->getDone(status));
                     return true;
@@ -533,6 +526,7 @@ namespace epics {
                 try {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                 } catch (std::runtime_error &rte) {
+                    stopRequest();
                     EXCEPTION_GUARD(m_channelGetRequester->getDone(channelNotConnected));
                 }
             }
@@ -635,13 +629,13 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 EXCEPTION_GUARD(m_channelPutRequester->putDone(status));
                 return true;
             }
 
-            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
-                if (!status->isSuccess())
+            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+                if (!status.isSuccess())
                 {
                     EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(status, this, 0, 0));
                     return true;
@@ -656,10 +650,10 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (qos & QOS_GET)
                 {
-                    if (!status->isSuccess())
+                    if (!status.isSuccess())
                     {
                         EXCEPTION_GUARD(m_channelPutRequester->getDone(status));
                         return true;
@@ -694,6 +688,7 @@ namespace epics {
                 try {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                 } catch (std::runtime_error &rte) {
+                    stopRequest();
                     EXCEPTION_GUARD(m_channelPutRequester->getDone(channelNotConnected));
                 }
             }
@@ -714,6 +709,7 @@ namespace epics {
                 try {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                 } catch (std::runtime_error &rte) {
+                    stopRequest();
                     EXCEPTION_GUARD(m_channelPutRequester->putDone(channelNotConnected));
                 }
             }
@@ -814,14 +810,14 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 // data available
                 // TODO we need a flag here...
                 return normalResponse(transport, version, payloadBuffer, qos, status);
             }
 
-            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
-                if (!status->isSuccess())
+            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+                if (!status.isSuccess())
                 {
                     EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(status, this, 0, 0));
                     return true;
@@ -837,10 +833,10 @@ namespace epics {
             }
 
 
-            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (qos & QOS_GET)
                 {
-                    if (!status->isSuccess())
+                    if (!status.isSuccess())
                     {
                         EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(status));
                         return true;
@@ -854,7 +850,7 @@ namespace epics {
                 }
                 else if (qos & QOS_GET_PUT)
                 {
-                    if (!status->isSuccess())
+                    if (!status.isSuccess())
                     {
                         EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(status));
                         return true;
@@ -868,7 +864,7 @@ namespace epics {
                 }
                 else
                 {
-                    if (!status->isSuccess())
+                    if (!status.isSuccess())
                     {
                         EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(status));
                         return true;
@@ -897,6 +893,7 @@ namespace epics {
                 try {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                 } catch (std::runtime_error &rte) {
+                    stopRequest();
                     EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(channelNotConnected));
                 }
             }
@@ -915,6 +912,7 @@ namespace epics {
                 try {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                 } catch (std::runtime_error &rte) {
+                    stopRequest();
                     EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(channelNotConnected));
                 }
             }
@@ -933,6 +931,7 @@ namespace epics {
                 try {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                 } catch (std::runtime_error &rte) {
+                    stopRequest();
                     EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(channelNotConnected));
                 }
             }
@@ -1032,14 +1031,14 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 // data available
                 // TODO we need a flag here...
                 return normalResponse(transport, version, payloadBuffer, qos, status);
             }
 
-            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
-                if (!status->isSuccess())
+            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+                if (!status.isSuccess())
                 {
                     EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(status, this, 0, 0));
                     return true;
@@ -1054,8 +1053,8 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
-                if (!status->isSuccess())
+            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+                if (!status.isSuccess())
                 {
                     EXCEPTION_GUARD(m_channelRPCRequester->requestDone(status, 0));
                     return true;
@@ -1084,6 +1083,7 @@ namespace epics {
                 try {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                 } catch (std::runtime_error &rte) {
+                    stopRequest();
                     EXCEPTION_GUARD(m_channelRPCRequester->requestDone(channelNotConnected, 0));
                 }
             }
@@ -1194,15 +1194,15 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 // data available (get with destroy)
                 if (qos & QOS_GET)
                     return normalResponse(transport, version, payloadBuffer, qos, status);
                 return true;
             }
 
-            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
-                if (!status->isSuccess())
+            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+                if (!status.isSuccess())
                 {
                     EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(status, this, 0));
                     return true;
@@ -1217,10 +1217,10 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (qos & QOS_GET)
                 {
-                    if (!status->isSuccess())
+                    if (!status.isSuccess())
                     {
                         m_channelArrayRequester->getArrayDone(status);
                         return true;
@@ -1262,6 +1262,7 @@ namespace epics {
                     m_count = count;
                     m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                 } catch (std::runtime_error &rte) {
+                    stopRequest();
                     EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(channelNotConnected));
                 }
             }
@@ -1284,6 +1285,7 @@ namespace epics {
                     m_count = count;
                     m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                 } catch (std::runtime_error &rte) {
+                    stopRequest();
                     EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(channelNotConnected));
                 }
             }
@@ -1306,6 +1308,7 @@ namespace epics {
                     m_capacity = capacity;
                     m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                 } catch (std::runtime_error &rte) {
+                    stopRequest();
                     EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(channelNotConnected));
                 }
             }
@@ -1401,9 +1404,9 @@ namespace epics {
                 cancel();
             }
 
-            void reportStatus(Status* status) {
+            void reportStatus(const Status& status) {
                 // destroy, since channel (parent) was destroyed
-                if (status == ChannelImpl::channelDestroyed)
+                if (&status == &ChannelImpl::channelDestroyed)
                     destroy();
                 // TODO notify?
             }
@@ -1442,11 +1445,10 @@ namespace epics {
             }
 
             virtual void response(Transport* transport, int8 version, ByteBuffer* payloadBuffer) {
-                // TODO?
-                //        try
-                //        {
-                Status* status = BaseRequestImpl::statusCreate->deserializeStatus(payloadBuffer, transport);
-                if (status->isSuccess())
+
+                Status status;    
+                transport->getIntrospectionRegistry()->deserializeStatus(status, payloadBuffer, transport);
+                if (status.isSuccess())
                 {
                     // deserialize Field...
                     const Field* field = transport->getIntrospectionRegistry()->deserialize(payloadBuffer, transport);
@@ -1457,16 +1459,6 @@ namespace epics {
                 {
                     EXCEPTION_GUARD(m_callback->getDone(status, 0));
                 }
-
-                // TODO
-                if (status != BaseRequestImpl::okStatus)
-                    delete status;
-                //        } // TODO guard callback
-                //        finally
-                //        {
-                // always cancel request
-                //            cancel();
-                //        }
 
                 cancel();
 
@@ -1531,12 +1523,12 @@ namespace epics {
     			m_gotMonitor = false;
     		}
     
-    		Status* start() {
-    			return 0;
+    		Status start() {
+    			return Status::OK;
     		}
     
-    		Status* stop() {
-    			return 0;
+    		Status stop() {
+    			return Status::OK;
     		}
     
     		void destroy() {
@@ -1620,14 +1612,14 @@ namespace epics {
     			m_gotMonitor = false;
     		}
     
-    		Status* start() {
+    		Status start() {
     		    Lock guard(&m_mutex);
     			m_gotMonitor = false;
-    			return 0;
+    			return Status::OK;
     		}
     
-    		Status* stop() {
-    			return 0;
+    		Status stop() {
+    			return Status::OK;
     		}
     
     		void destroy() {
@@ -1757,16 +1749,18 @@ namespace epics {
     			m_gotMonitor = false;
     		}
     
-    		Status* start() {
+    		Status start() {
     		    Lock guard(&m_mutex);
+    		    if (!m_monitorElementChangeBitSet)
+    		      return Status(Status::STATUSTYPE_ERROR, "Monitor not connected.");
     			m_gotMonitor = false;
  	    		m_monitorElementChangeBitSet->clear();
 	    		m_monitorElementOverrunBitSet->clear();
-   			    return 0;
+   			    return Status::OK;
     		}
     
-    		Status* stop() {
-    			return 0;
+    		Status stop() {
+    			return Status::OK;
     		}
     
     		void destroy() {
@@ -1847,9 +1841,8 @@ namespace epics {
 
                         if ((buffer >> queueSize).fail())
                         {
-            				Status* failedToConvert = getStatusCreate()->createStatus(STATUSTYPE_ERROR, "queueSize type is not a valid integer");
+            				Status failedToConvert(Status::STATUSTYPE_ERROR, "queueSize type is not a valid integer");
                             EXCEPTION_GUARD(m_monitorRequester->monitorConnect(failedToConvert, 0, 0));
-                            delete failedToConvert;
             				return;
             			}
         			}
@@ -1896,14 +1889,14 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+            virtual bool destroyResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 // data available
                 // TODO if (qos & QOS_GET)
                 return normalResponse(transport, version, payloadBuffer, qos, status);
             }
 
-            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
-                if (!status->isSuccess())
+            virtual bool initResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+                if (!status.isSuccess())
                 {
                     EXCEPTION_GUARD(m_monitorRequester->monitorConnect(status, this, 0));
                     return true;
@@ -1917,12 +1910,12 @@ namespace epics {
                 structure->decReferenceCount();
                 
                 if (m_started)
-                    delete start();
+                    start();
 
                 return true;
             }
 
-            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, Status* status) {
+            virtual bool normalResponse(Transport* transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (qos & QOS_GET)
                 {
                     // TODO not supported by IF yet...
@@ -1941,86 +1934,76 @@ namespace epics {
 
             // override, since we optimize status
             virtual void response(Transport* transport, int8 version, ByteBuffer* payloadBuffer) {
-                // TODO?
-                //        try
-                //        {
+
                 transport->ensureData(1);
                 int8 qos = payloadBuffer->getByte();
                 if (qos & QOS_INIT)
                 {
-                    Status* status = statusCreate->deserializeStatus(payloadBuffer, transport);
+                    Status status;
+                    transport->getIntrospectionRegistry()->deserializeStatus(status, payloadBuffer, transport);
                     initResponse(transport, version, payloadBuffer, qos, status);
-                    // TODO
-                    if (status != okStatus)
-                        delete status;
                 }
                 else if (qos & QOS_DESTROY)
                 {
-                    Status* status = statusCreate->deserializeStatus(payloadBuffer, transport);
+                    Status status;
+                    transport->getIntrospectionRegistry()->deserializeStatus(status, payloadBuffer, transport);
                     m_remotelyDestroy = true;
 
                     if (!destroyResponse(transport, version, payloadBuffer, qos, status))
                         cancel();
-                    // TODO
-                    if (status != okStatus)
-                        delete status;
                 }
                 else
                 {
-                    normalResponse(transport, version, payloadBuffer, qos, okStatus);
+                    normalResponse(transport, version, payloadBuffer, qos, Status::OK);
                 }
 
             }
 
-            virtual Status* start()
+            virtual Status start()
             {
                 Lock guard(&m_mutex);
                 
                 if (m_destroyed)
-                    return getStatusCreate()->createStatus(STATUSTYPE_ERROR, "Monitor destroyed.");;
-
+                    return BaseRequestImpl::destroyedStatus;
+                    
                 m_monitorStrategy->start();
 
                 // start == process + get
                 if (!startRequest(QOS_PROCESS | QOS_GET))
-                {
-                    return getStatusCreate()->createStatus(STATUSTYPE_ERROR, "Other request pending.");
-                }
+                    return BaseRequestImpl::otherRequestPendingStatus;
                 
                 try
                 {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                     m_started = true;
-                    // client needs to delete status, so passing shared OK instance is not right thing to do
-                    return getStatusCreate()->createStatus(STATUSTYPE_OK, "Monitor started.");
+                    return Status::OK;
                 } catch (std::runtime_error &rte) {
-                    return getStatusCreate()->createStatus(STATUSTYPE_ERROR, "channel not connected.");
+                    stopRequest();
+                    return BaseRequestImpl::channelNotConnected;
                 }
             }
 
-            virtual Status* stop()
+            virtual Status stop()
             {
                 Lock guard(&m_mutex);
                 
                 if (m_destroyed)
-                    return getStatusCreate()->createStatus(STATUSTYPE_ERROR, "Monitor destroyed.");;
+                    return BaseRequestImpl::destroyedStatus;
 
                 m_monitorStrategy->stop();
 
                 // stop == process + no get
                 if (!startRequest(QOS_PROCESS))
-                {
-                    return getStatusCreate()->createStatus(STATUSTYPE_ERROR, "Other request pending.");
-                }
+                    return BaseRequestImpl::otherRequestPendingStatus;
     
                 try
                 {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(this);
                     m_started = false;
-                    // client needs to delete status, so passing shared OK instance is not right thing to do
-                    return getStatusCreate()->createStatus(STATUSTYPE_OK, "Monitor stopped.");
+                    return Status::OK;
                 } catch (std::runtime_error &rte) {
-                    return getStatusCreate()->createStatus(STATUSTYPE_ERROR, "channel not connected.");
+                    stopRequest();
+                    return BaseRequestImpl::channelNotConnected;
                 }
             }
 
@@ -2349,14 +2332,15 @@ namespace epics {
                 transport->ensureData(8);
                 pvAccessID cid = payloadBuffer->getInt();
                 pvAccessID sid = payloadBuffer->getInt();
-                // TODO... do not destroy OK
-                Status* status = transport->getIntrospectionRegistry()->deserializeStatus(payloadBuffer, transport);
+
+                Status status;
+                transport->getIntrospectionRegistry()->deserializeStatus(status, payloadBuffer, transport);
 
                 ChannelImpl* channel = static_cast<ChannelImpl*>(_context->getChannel(cid));
                 if (channel)
                 {
                     // failed check
-                    if (!status->isSuccess()) {
+                    if (!status.isSuccess()) {
                         channel->createChannelFailed();
                         return;
                     }
@@ -2365,11 +2349,6 @@ namespace epics {
 
                     channel->connectionCompleted(sid);
                 }
-
-                // TODO not nice
-                if (status != BaseRequestImpl::okStatus)
-                    delete status;
-
             }
         };
 
@@ -3141,8 +3120,7 @@ namespace epics {
              */
                 void disconnectPendingIO(bool destroy)
                 {
-                    // TODO destroy????!!
-                    Status* status = destroy ? channelDestroyed : channelDisconnected;
+                    Status* status = destroy ? &channelDestroyed : &channelDisconnected;
 
                     Lock guard(&m_responseRequestsMutex);
 
@@ -3159,7 +3137,7 @@ namespace epics {
                     
                     for (int i = 0; i< count; i++)
                     {
-                        EXCEPTION_GUARD(rrs[i]->reportStatus(status));
+                        EXCEPTION_GUARD(rrs[i]->reportStatus(*status));
                     }
                 }
 
@@ -3345,8 +3323,8 @@ namespace epics {
                     if (!channelFindRequester)
                         throw std::runtime_error("0 requester");
 
-                    std::auto_ptr<Status> errorStatus(getStatusCreate()->createStatus(STATUSTYPE_ERROR, "not implemented", 0));
-                    channelFindRequester->channelFindResult(errorStatus.get(), 0, false);
+                    Status errorStatus(Status::STATUSTYPE_ERROR, "not implemented", 0);
+                    channelFindRequester->channelFindResult(errorStatus, 0, false);
                     return 0;
                 }
 
@@ -3367,7 +3345,7 @@ namespace epics {
                     // TODO support addressList
                     Channel* channel = m_context->createChannelInternal(channelName, channelRequester, priority, 0);
                     if (channel)
-                        channelRequester->channelCreated(getStatusCreate()->getStatusOK(), channel);
+                        channelRequester->channelCreated(Status::OK, channel);
                     return channel;
 
                     // NOTE it's up to internal code to respond w/ error to requester and return 0 in case of errors
