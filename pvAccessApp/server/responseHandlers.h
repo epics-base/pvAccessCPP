@@ -10,6 +10,7 @@
 
 #include "serverContext.h"
 #include "remote.h"
+#include "serverChannelImpl.h"
 
 namespace epics {
     namespace pvAccess {
@@ -152,6 +153,7 @@ namespace epics {
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
+        /****************************************************************************************/
         /**
          * Introspection search request handler.
          */
@@ -210,7 +212,7 @@ namespace epics {
         	epics::pvData::Mutex _mutex;
         	ServerContextImpl* _context;
         };
-
+        /****************************************************************************************/
         /**
          * Create channel request handler.
          */
@@ -232,7 +234,6 @@ namespace epics {
         	void disconnect(Transport* transport);
         };
 
-        class ServerChannelImpl;
         class ChannelRequesterImpl : public ChannelRequester, public TransportSender
         {
         public:
@@ -248,14 +249,66 @@ namespace epics {
         private:
         	 Transport* _transport;
         	 const String _channelName;
-        	 const int32 _cid;
+        	 const pvAccessID _cid;
         	 Status _status;
         	 Channel* _channel;
         	 epics::pvData::Mutex _mutex;
-        	 void createChannelFailedResponse(ByteBuffer* buffer, TransportSendControl* control, Status* const status);
+        	 void createChannelFailedResponse(ByteBuffer* buffer, TransportSendControl* control, const Status& status);
+        };
+
+        /****************************************************************************************/
+        /**
+         * Destroy channel request handler.
+         */
+        class DestroyChannelHandler : public AbstractServerResponseHandler
+        {
+        public:
+        	/**
+        	 * @param context
+        	 */
+        	DestroyChannelHandler(ServerContextImpl* context) :
+        		AbstractServerResponseHandler(context, "Destroy channel request") {
+        	}
+
+        	virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport* transport, int8 version, int8 command,
+                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
 
+        class DestroyChannelHandlerTransportSender : public TransportSender
+        {
+        public:
+        	DestroyChannelHandlerTransportSender(pvAccessID cid, pvAccessID sid): _cid(cid), _sid(sid) {
+
+        	}
+
+        	void send(ByteBuffer* buffer, TransportSendControl* control) {
+        		control->startMessage((int8)8, 2*sizeof(int32)/sizeof(int8));
+        		buffer->putInt(_sid);
+        		buffer->putInt(_cid);
+        	}
+
+        	void lock() {
+        		// noop
+        	}
+
+        	void unlock() {
+        		// noop
+        	}
+
+        	void release() {
+        			delete this;
+        	}
+
+        	void acquire() {
+        		// noop
+        	}
+
+        private:
+        	pvAccessID _cid;
+        	pvAccessID _sid;
+        };
 
     }
 }
