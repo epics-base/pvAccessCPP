@@ -7,8 +7,8 @@
 
 namespace epics { namespace pvAccess {
 
-ServerChannelImpl::ServerChannelImpl(Channel* channel, int32 cid,
-			int32 sid, epics::pvData::PVField* securityToken):
+ServerChannelImpl::ServerChannelImpl(Channel* channel, pvAccessID cid,
+			pvAccessID sid, epics::pvData::PVField* securityToken):
 			_channel(channel),
 			_cid(cid),
 			_sid(cid)
@@ -24,12 +24,12 @@ Channel* ServerChannelImpl::getChannel()
 	return _channel;
 }
 
-int32 ServerChannelImpl::getCID()
+pvAccessID ServerChannelImpl::getCID()
 {
 	return _cid;
 }
 
-int32 ServerChannelImpl::getSID()
+pvAccessID ServerChannelImpl::getSID()
 {
 	return _sid;
 }
@@ -40,7 +40,7 @@ int16 ServerChannelImpl::getAccessRights()
 	return 0;
 }
 
-void ServerChannelImpl::registerRequest(const int32 id, Destroyable* const request)
+void ServerChannelImpl::registerRequest(const pvAccessID id, Destroyable* const request)
 {
 	if (request == NULL)
 	{
@@ -51,22 +51,22 @@ void ServerChannelImpl::registerRequest(const int32 id, Destroyable* const reque
 	_requests[id] = request;
 }
 
-void ServerChannelImpl::unregisterRequest(const int32 id)
+void ServerChannelImpl::unregisterRequest(const pvAccessID id)
 {
 	Lock guard(_mutex);
-	std::map<int32, epics::pvData::Destroyable*>::iterator iter = _requests.find(id);
-	if(iter != _requests.end())
+	_iter = _requests.find(id);
+	if(_iter != _requests.end())
 	{
-		_requests.erase(iter);
+		_requests.erase(_iter);
 	}
 }
 
-Destroyable* ServerChannelImpl::getRequest(const int32 id)
+Destroyable* ServerChannelImpl::getRequest(const pvAccessID id)
 {
-	std::map<int32, epics::pvData::Destroyable*>::iterator iter = _requests.find(id);
-	if(iter != _requests.end())
+	_iter = _requests.find(id);
+	if(_iter != _requests.end())
 	{
-		return iter->second;
+		return _iter->second;
 	}
 	return NULL;
 }
@@ -105,10 +105,9 @@ void ServerChannelImpl::destroyAllRequests()
 	if (_requests.size() == 0)
 		return;
 
-	std::map<int32, epics::pvData::Destroyable*>::iterator iter = _requests.begin();
-	for(; iter != _requests.end(); iter++)
+	for(_iter = _requests.begin(); _iter != _requests.end(); _iter++)
 	{
-		iter->second->destroy();
+		_iter->second->destroy();
 	}
 	_requests.clear();
 }

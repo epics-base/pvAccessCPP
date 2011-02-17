@@ -23,7 +23,7 @@ public:
 	 * @param sid channel SID.
 	 * @param securityToken security token.
 	 */
-	ServerChannelImpl(Channel* channel, int32 cid, int32 sid, epics::pvData::PVField* securityToken);
+	ServerChannelImpl(Channel* channel, pvAccessID cid, pvAccessID sid, epics::pvData::PVField* securityToken);
 	/*
 	 * Destructor.
 	 */
@@ -39,13 +39,13 @@ public:
 	 * Get channel CID.
 	 * @return channel CID.
 	 */
-	int32 getCID();
+	pvAccessID getCID();
 
 	/**
 	 * Get channel SID.
 	 * @return channel SID.
 	 */
-	int32 getSID();
+	pvAccessID getSID();
 
 	/**
 	 * Get access rights (bit-mask encoded).
@@ -59,20 +59,20 @@ public:
 	 * @param id request ID.
 	 * @param request request to be registered.
 	 */
-	void registerRequest(int32 id, Destroyable* const request);
+	void registerRequest(pvAccessID id, Destroyable* const request);
 
 	/**
 	 * Unregister request.
 	 * @param id request ID.
 	 */
-	void unregisterRequest(int32 id);
+	void unregisterRequest(pvAccessID id);
 
     /**
      * Get request by its ID.
      * @param id request ID.
      * @return request with given ID, <code>null</code> if there is no request with such ID.
      */
-    Destroyable* getRequest(int32 id);
+    Destroyable* getRequest(pvAccessID id);
 
     /**
      * Destroy server channel.
@@ -99,17 +99,22 @@ private:
 	/**
 	 * Channel CID.
 	 */
-	int32 _cid;
+	pvAccessID _cid;
 
 	/**
 	 * Channel SID.
 	 */
-	int32 _sid;
+	pvAccessID _sid;
 
 	/**
 	 * Requests.
 	 */
-	std::map<int32, epics::pvData::Destroyable*> _requests;
+	std::map<pvAccessID, epics::pvData::Destroyable*> _requests;
+
+	/**
+	 * Requests iterator.
+	 */
+	std::map<pvAccessID, epics::pvData::Destroyable*>::iterator _iter;
 
 	/**
 	 * Destroy state.
