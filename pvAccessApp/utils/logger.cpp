@@ -62,8 +62,8 @@ namespace epics {
         }
 
         void createFileLogger(String fname) {
-            static Mutex mutex = Mutex();
-            Lock xx(&mutex);
+            static Mutex mutex;
+            Lock xx(mutex);
 
             if(fileLogger==NULL) {
                 fileLogger = new FileLogger(fname);

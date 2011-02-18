@@ -110,7 +110,7 @@ namespace epics {
             }
 
             bool startRequest(int32 qos) {
-                Lock guard(&m_mutex);
+                Lock guard(m_mutex);
 
                 // we allow pure destroy...
                 if (m_pendingRequest != NULL_REQUEST && qos != PURE_DESTROY_REQUEST)
@@ -121,12 +121,12 @@ namespace epics {
             }
 
             void stopRequest() {
-                Lock guard(&m_mutex);
+                Lock guard(m_mutex);
                 m_pendingRequest = NULL_REQUEST;
             }
 
             int32 getPendingRequest() {
-                Lock guard(&m_mutex);
+                Lock guard(m_mutex);
                 return m_pendingRequest;
             }
 
@@ -189,7 +189,7 @@ namespace epics {
             virtual void destroy() {
 
                 {
-                    Lock guard(&m_mutex);
+                    Lock guard(m_mutex);
                     if (m_destroyed)
                         return;
                     m_destroyed = true;
@@ -257,7 +257,7 @@ namespace epics {
             }
 
             virtual void acquire() {
-                Lock guard(&m_mutex);
+                Lock guard(m_mutex);
                 m_refCount++;
             }
 
@@ -363,7 +363,7 @@ namespace epics {
             {
                 // TODO optimize
                 {
-                    Lock guard(&m_mutex);
+                    Lock guard(m_mutex);
                     if (m_destroyed) {
                         EXCEPTION_GUARD(m_callback->processDone(destroyedStatus));
                         return;
@@ -511,7 +511,7 @@ namespace epics {
             virtual void get(bool lastRequest) {
                 // TODO optimize
                 {
-                    Lock guard(&m_mutex);
+                    Lock guard(m_mutex);
                     if (m_destroyed) {
                         EXCEPTION_GUARD(m_channelGetRequester->getDone(destroyedStatus));
                         return;
@@ -1418,7 +1418,7 @@ namespace epics {
             virtual void destroy()
             {
                 {
-                    Lock guard(&m_mutex);
+                    Lock guard(m_mutex);
                     if (m_destroyed)
                         return;
                     m_destroyed = true;
@@ -1432,7 +1432,7 @@ namespace epics {
             }
 
             virtual void acquire() {
-                Lock guard(&m_mutex);
+                Lock guard(m_mutex);
                 m_refCount++;
             }
 
@@ -1507,19 +1507,19 @@ namespace epics {
     		}
     
     		virtual void response(Transport* transport, ByteBuffer* payloadBuffer) {
-    		    Lock guard(&m_mutex);
+    		    Lock guard(m_mutex);
     			m_gotMonitor = true;
     			// no data, only notify
             	m_callback->monitorEvent(this);
     		}
     
     		virtual MonitorElement* poll() {
-    		    Lock guard(&m_mutex);
+    		    Lock guard(m_mutex);
     			return m_gotMonitor ? this : 0;
     		}
     
     		virtual void release(MonitorElement* monitorElement) {
-    		    Lock guard(&m_mutex);
+    		    Lock guard(m_mutex);
     			m_gotMonitor = false;
     		}
     
@@ -1583,7 +1583,7 @@ namespace epics {
     	    }
     	    
     		virtual void init(Structure* structure) {
-    		    Lock guard(&m_mutex);
+    		    Lock guard(m_mutex);
 
                 structure->incReferenceCount();
 	            m_monitorElementStructure = getPVDataCreate()->createPVStructure(0, structure);
@@ -1593,7 +1593,7 @@ namespace epics {
     		}
     
     		virtual void response(Transport* transport, ByteBuffer* payloadBuffer) {
-    		    Lock guard(&m_mutex);
+    		    Lock guard(m_mutex);
     			// simply deserialize and notify
 				m_monitorElementChangeBitSet->deserialize(payloadBuffer, transport);
 	        	m_monitorElementStructure->deserialize(payloadBuffer, transport, m_monitorElementChangeBitSet);
@@ -1603,17 +1603,17 @@ namespace epics {
     		}
     
     		virtual MonitorElement* poll() {
-    		    Lock guard(&m_mutex);
+    		    Lock guard(m_mutex);
     			return m_gotMonitor ? this : 0;
     		}
     
     		virtual void release(MonitorElement* monitorElement) {
-    		    Lock guard(&m_mutex);
+    		    Lock guard(m_mutex);
     			m_gotMonitor = false;
     		}
     
     		Status start() {
-    		    Lock guard(&m_mutex);
+    		    Lock guard(m_mutex);
     			m_gotMonitor = false;
     			return Status::OK;
     		}
@@ -1685,7 +1685,7 @@ namespace epics {
     	    }
     	    
     		virtual void init(Structure* structure) {
-    		    Lock guard(&m_mutex);
+    		    Lock guard(m_mutex);
 
                 structure->incReferenceCount();
 	            m_monitorElementStructure = getPVDataCreate()->createPVStructure(0, structure);
@@ -1699,7 +1699,7 @@ namespace epics {
     		}
     
     		virtual void response(Transport* transport, ByteBuffer* payloadBuffer) {
-    		    Lock guard(&m_mutex);
+    		    Lock guard(m_mutex);
     		    
     		    if (!m_gotMonitor)
     		    {
@@ -1730,7 +1730,7 @@ namespace epics {
     		}
     
     		virtual MonitorElement* poll() {
-    		    Lock guard(&m_mutex);
+    		    Lock guard(m_mutex);
     			if (!m_gotMonitor) return 0;
     			
             	// compress if needed
@@ -1745,12 +1745,12 @@ namespace epics {
     		}
     
     		virtual void release(MonitorElement* monitorElement) {
-    		    Lock guard(&m_mutex);
+    		    Lock guard(m_mutex);
     			m_gotMonitor = false;
     		}
     
     		Status start() {
-    		    Lock guard(&m_mutex);
+    		    Lock guard(m_mutex);
     		    if (!m_monitorElementChangeBitSet)
     		      return Status(Status::STATUSTYPE_ERROR, "Monitor not connected.");
     			m_gotMonitor = false;
@@ -1961,7 +1961,7 @@ namespace epics {
 
             virtual Status start()
             {
-                Lock guard(&m_mutex);
+                Lock guard(m_mutex);
                 
                 if (m_destroyed)
                     return BaseRequestImpl::destroyedStatus;
@@ -1985,7 +1985,7 @@ namespace epics {
 
             virtual Status stop()
             {
-                Lock guard(&m_mutex);
+                Lock guard(m_mutex);
                 
                 if (m_destroyed)
                     return BaseRequestImpl::destroyedStatus;
@@ -2644,7 +2644,7 @@ namespace epics {
                 // NOTE: synchronization guarantees that <code>transport</code> is non-<code>0</code> and <code>state == CONNECTED</code>.
                 virtual epics::pvData::String getRemoteAddress()
                 {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
                     if (m_connectionState != CONNECTED) {
                         static String emptyString;
                         return emptyString;
@@ -2667,7 +2667,7 @@ namespace epics {
 
                 virtual ConnectionState getConnectionState()
                 {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
                     return m_connectionState;
                 }
 
@@ -2702,24 +2702,24 @@ namespace epics {
                 }
 
                 virtual pvAccessID getServerChannelID() {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
                     return m_serverChannelID;
                 }
 
                 virtual void registerResponseRequest(ResponseRequest* responseRequest)
                 {
-                    Lock guard(&m_responseRequestsMutex);
+                    Lock guard(m_responseRequestsMutex);
                     m_responseRequests[responseRequest->getIOID()] = responseRequest;
                 }
 
                 virtual void unregisterResponseRequest(ResponseRequest* responseRequest)
                 {
-                    Lock guard(&m_responseRequestsMutex);
+                    Lock guard(m_responseRequestsMutex);
                     m_responseRequests.erase(responseRequest->getIOID());
                 }
 
                 void connect() {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
                     // if not destroyed...
                     if (m_connectionState == DESTROYED)
                         throw std::runtime_error("Channel destroyed.");
@@ -2728,7 +2728,7 @@ namespace epics {
                 }
 
                 void disconnect() {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
                     // if not destroyed...
                     if (m_connectionState == DESTROYED)
                         throw std::runtime_error("Channel destroyed.");
@@ -2743,7 +2743,7 @@ namespace epics {
              */
                 void createChannel(Transport* transport)
                 {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
 
                     // do not allow duplicate creation to the same transport
                     if (!m_allowCreation)
@@ -2782,7 +2782,7 @@ namespace epics {
              */
                 virtual void createChannelFailed()
                 {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
 
                     cancel();
                     // ... and search again
@@ -2796,7 +2796,7 @@ namespace epics {
              */
                 virtual void connectionCompleted(pvAccessID sid/*,  rights*/)
                 {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
 
                     bool allOK = false;
                     try
@@ -2833,7 +2833,7 @@ namespace epics {
              */
                 void destroy(bool force) {
                     {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
                     if (m_connectionState == DESTROYED)
                         return;
                         //throw std::runtime_error("Channel already destroyed.");
@@ -2849,7 +2849,7 @@ namespace epics {
                 // it is not related to channel destroy; not a mechanism to
                 // allow channel sharing
                 void acquire() {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
                     m_references++;
                 }
                 
@@ -2880,7 +2880,7 @@ namespace epics {
              */
                 void destroyChannel(bool force) {
                     {
-                        Lock guard(&m_channelMutex);
+                        Lock guard(m_channelMutex);
     
                         if (m_connectionState == DESTROYED)
                             throw std::runtime_error("Channel already destroyed.");
@@ -2920,7 +2920,7 @@ namespace epics {
              * @param remoteDestroy        issue channel destroy request.
              */
                 void disconnect(bool initiateSearch, bool remoteDestroy) {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
 
                     if (m_connectionState != CONNECTED && !m_transport)
                         return;
@@ -2962,7 +2962,7 @@ namespace epics {
              */
                 void initiateSearch()
                 {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
 
                     m_allowCreation = true;
 
@@ -2978,7 +2978,7 @@ namespace epics {
                 }
 
                 virtual void searchResponse(int8 minorRevision, osiSockAddr* serverAddress) {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
                     Transport* transport = m_transport;
                     if (transport)
                     {
@@ -3012,7 +3012,7 @@ namespace epics {
 
                 virtual Transport* checkAndGetTransport()
                 {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
                     // TODO C-fy
                     if (m_connectionState == DESTROYED)
                         throw std::runtime_error("Channel destroyed.");
@@ -3023,12 +3023,12 @@ namespace epics {
 
                 virtual Transport* getTransport()
                 {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
                     return m_transport;
                 }
 
                 virtual void transportResponsive(Transport* transport) {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
                     if (m_connectionState == DISCONNECTED)
                     {
                         updateSubscriptions();
@@ -3039,7 +3039,7 @@ namespace epics {
                 }
 
                 void transportUnresponsive() {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
                     if (m_connectionState == CONNECTED)
                     {
                         // NOTE: 2 types of disconnected state - distinguish them
@@ -3055,7 +3055,7 @@ namespace epics {
              */
                 void setConnectionState(ConnectionState connectionState)
                 {
-                    Lock guard(&m_channelMutex);
+                    Lock guard(m_channelMutex);
                     if (m_connectionState != connectionState)
                     {
                         m_connectionState = connectionState;
@@ -3122,7 +3122,7 @@ namespace epics {
                 {
                     Status* status = destroy ? &channelDestroyed : &channelDisconnected;
 
-                    Lock guard(&m_responseRequestsMutex);
+                    Lock guard(m_responseRequestsMutex);
 
                     m_needSubscriptionUpdate = true;
 
@@ -3147,7 +3147,7 @@ namespace epics {
                 // TODO to be called from non-transport thread !!!!!!
                 void resubscribeSubscriptions()
                 {
-                    Lock guard(&m_responseRequestsMutex);
+                    Lock guard(m_responseRequestsMutex);
 
                     Transport* transport = getTransport();
 
@@ -3168,7 +3168,7 @@ namespace epics {
                 // TODO to be called from non-transport thread !!!!!!
                 void updateSubscriptions()
                 {
-                    Lock guard(&m_responseRequestsMutex);
+                    Lock guard(m_responseRequestsMutex);
 
                     if (m_needSubscriptionUpdate)
                         m_needSubscriptionUpdate = false;
@@ -3248,7 +3248,7 @@ namespace epics {
                 }
 
                 virtual void printInfo(epics::pvData::StringBuilder out) {
-                    //Lock lock(&m_channelMutex);
+                    //Lock lock(m_channelMutex);
                     //std::ostringstream ostr;
                     //static String emptyString;
 
@@ -3390,30 +3390,30 @@ TODO
             }
 
             virtual ChannelProvider* getProvider() {
-                Lock lock(&m_contextMutex);
+                Lock lock(m_contextMutex);
                 return m_provider;
             }
 
             virtual Timer* getTimer()
             {
-                Lock lock(&m_contextMutex);
+                Lock lock(m_contextMutex);
                 return m_timer;
             }
 
             virtual TransportRegistry* getTransportRegistry()
             {
-                Lock lock(&m_contextMutex);
+                Lock lock(m_contextMutex);
                 return m_transportRegistry;
             }
 
             virtual BlockingUDPTransport* getSearchTransport()
             {
-                Lock lock(&m_contextMutex);
+                Lock lock(m_contextMutex);
                 return m_searchTransport;
             }
 
             virtual void initialize() {
-                Lock lock(&m_contextMutex);
+                Lock lock(m_contextMutex);
 
                 if (m_contextState == CONTEXT_DESTROYED)
                     throw std::runtime_error("Context destroyed.");
@@ -3432,7 +3432,7 @@ TODO
             }
 
             virtual void printInfo(epics::pvData::StringBuilder out) {
-                Lock lock(&m_contextMutex);
+                Lock lock(m_contextMutex);
                 std::ostringstream ostr;
                 static String emptyString;
 
@@ -3465,7 +3465,7 @@ TODO
             virtual void destroy()
             {
                 {
-                    Lock guard(&m_contextMutex);
+                    Lock guard(m_contextMutex);
     
                     if (m_contextState == CONTEXT_DESTROYED)
                     {
@@ -3487,7 +3487,7 @@ TODO
             }
 
             virtual void acquire() {
-                Lock guard(&m_contextMutex);
+                Lock guard(m_contextMutex);
                 m_refCount++;
             }
 
@@ -3627,7 +3627,7 @@ TODO
             }
 
             void destroyAllChannels() {
-                Lock guard(&m_cidMapMutex);
+                Lock guard(m_cidMapMutex);
 
                 int count = 0;
                 ChannelImpl* channels[m_channelsByCID.size()];
@@ -3658,7 +3658,7 @@ TODO
              * Check context state and tries to establish necessary state.
              */
             void checkState() {
-                Lock lock(&m_contextMutex); // TODO check double-lock?!!!
+                Lock lock(m_contextMutex); // TODO check double-lock?!!!
 
                 if (m_contextState == CONTEXT_DESTROYED)
                     throw std::runtime_error("Context destroyed.");
@@ -3672,7 +3672,7 @@ TODO
              */
             void registerChannel(ChannelImpl* channel)
             {
-                Lock guard(&m_cidMapMutex);
+                Lock guard(m_cidMapMutex);
                 m_channelsByCID[channel->getChannelID()] = channel;
             }
 
@@ -3682,7 +3682,7 @@ TODO
              */
             void unregisterChannel(ChannelImpl* channel)
             {
-                Lock guard(&m_cidMapMutex);
+                Lock guard(m_cidMapMutex);
                 m_channelsByCID.erase(channel->getChannelID());
             }
 
@@ -3693,7 +3693,7 @@ TODO
              */
             ChannelImpl* getChannel(pvAccessID channelID)
             {
-                Lock guard(&m_cidMapMutex);
+                Lock guard(m_cidMapMutex);
                 CIDChannelMap::iterator it = m_channelsByCID.find(channelID);
                 return (it == m_channelsByCID.end() ? 0 : it->second);
             }
@@ -3704,7 +3704,7 @@ TODO
              */
             pvAccessID generateCID()
             {
-                Lock guard(&m_cidMapMutex);
+                Lock guard(m_cidMapMutex);
 
                 // search first free (theoretically possible loop of death)
                 while (m_channelsByCID.find(++m_lastCID) != m_channelsByCID.end());
@@ -3718,7 +3718,7 @@ TODO
              */
             void freeCID(int cid)
             {
-                Lock guard(&m_cidMapMutex);
+                Lock guard(m_cidMapMutex);
                 m_channelsByCID.erase(cid);
             }
 
@@ -3730,7 +3730,7 @@ TODO
              */
             ResponseRequest* getResponseRequest(pvAccessID ioid)
             {
-                Lock guard(&m_ioidMapMutex);
+                Lock guard(m_ioidMapMutex);
                 IOIDResponseRequestMap::iterator it = m_pendingResponseRequests.find(ioid);
                 if (it == m_pendingResponseRequests.end()) return 0;
                 ResponseRequest* rr = it->second;
@@ -3745,7 +3745,7 @@ TODO
              */
             pvAccessID registerResponseRequest(ResponseRequest* request)
             {
-                Lock guard(&m_ioidMapMutex);
+                Lock guard(m_ioidMapMutex);
                 pvAccessID ioid = generateIOID();
                 m_pendingResponseRequests[ioid] = request;
                 return ioid;
@@ -3758,7 +3758,7 @@ TODO
              */
             ResponseRequest* unregisterResponseRequest(ResponseRequest* request)
             {
-                Lock guard(&m_ioidMapMutex);
+                Lock guard(m_ioidMapMutex);
                 IOIDResponseRequestMap::iterator it = m_pendingResponseRequests.find(request->getIOID());
                 if (it == m_pendingResponseRequests.end())
                     return 0;
@@ -3774,7 +3774,7 @@ TODO
              */
             pvAccessID generateIOID()
             {
-                Lock guard(&m_ioidMapMutex);
+                Lock guard(m_ioidMapMutex);
 
 
                 // search first free (theoretically possible loop of death)
@@ -3801,7 +3801,7 @@ TODO
             BeaconHandler* getBeaconHandler(osiSockAddr* responseFrom)
             {
                 // TODO delete handlers
-                Lock guard(&m_beaconMapMutex);
+                Lock guard(m_beaconMapMutex);
                 AddressBeaconHandlerMap::iterator it = m_beaconHandlers.find(*responseFrom);
                 BeaconHandler* handler;
                 if (it == m_beaconHandlers.end())

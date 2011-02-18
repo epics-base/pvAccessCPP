@@ -55,7 +55,7 @@ namespace epics {
                     int16 priority);
                     
             virtual bool isClosed() {
-                Lock guard(&_mutex);
+                Lock guard(_mutex);
                 return _closed;
             }
 
@@ -110,12 +110,12 @@ namespace epics {
             virtual int getSocketReceiveBufferSize() const;
 
             virtual bool isVerified() {
-                Lock lock(&_verifiedMutex);
+                Lock lock(_verifiedMutex);
                 return _verified;
             }
 
             virtual void verified() {
-                Lock lock(&_verifiedMutex);
+                Lock lock(_verifiedMutex);
                 _verified = true;
             }
 

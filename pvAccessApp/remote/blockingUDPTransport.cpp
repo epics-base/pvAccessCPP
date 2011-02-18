@@ -77,7 +77,7 @@ namespace epics {
 
         void BlockingUDPTransport::close(bool forced, bool waitForThreadToComplete) {
             {
-                Lock guard(&_mutex);
+                Lock guard(_mutex);
                 if(_closed) return;
                 _closed = true;
     
@@ -94,7 +94,7 @@ namespace epics {
         }
 
         void BlockingUDPTransport::enqueueSendRequest(TransportSender* sender) {
-            Lock lock(&_sendMutex);
+            Lock lock(_sendMutex);
 
             _sendToEnabled = false;
             _sendBuffer->clear();

@@ -206,7 +206,7 @@ namespace epics {
         }
 
         void BlockingTCPTransport::close(bool force) {
-            Lock lock(&_mutex);
+            Lock lock(_mutex);
 
             // already closed check
             if(_closed) return;
@@ -881,7 +881,7 @@ printf("sendThreadRunnner exception\n");
         }
 
         void BlockingTCPTransport::enqueueSendRequest(TransportSender* sender) {
-            Lock lock(&_sendQueueMutex);
+            Lock lock(_sendQueueMutex);
             if(_closed) return;
             sender->acquire();
             _sendQueue->insert(sender);
@@ -889,7 +889,7 @@ printf("sendThreadRunnner exception\n");
         }
 
         void BlockingTCPTransport::enqueueMonitorSendRequest(TransportSender* sender) {
-            Lock lock(&_monitorMutex);
+            Lock lock(_monitorMutex);
             if(_closed) return;
             sender->acquire();
             _monitorSendQueue->insert(sender);

@@ -28,7 +28,7 @@ BeaconEmitter::BeaconEmitter(Transport* transport, ServerContextImpl* context): 
 	_beaconCountLimit = (int16)std::max(10.0f, EPICS_CA_MIN_BEACON_COUNT_LIMIT);	// TODO configurable
 	_startupTime = new TimeStamp();
 	_startupTime->getCurrent();
-	_timerNode = new TimerNode(this);
+	_timerNode = new TimerNode(*this);
 }
 
 BeaconEmitter::BeaconEmitter(Transport* transport,const osiSockAddr* serverAddress): _transport(transport)
@@ -49,7 +49,7 @@ BeaconEmitter::BeaconEmitter(Transport* transport,const osiSockAddr* serverAddre
  	_beaconCountLimit = 10;
  	_startupTime = new TimeStamp();
  	_startupTime->getCurrent();
- 	_timerNode = new TimerNode(this);
+ 	_timerNode = new TimerNode(*this);
 }
 
 BeaconEmitter::~BeaconEmitter()
@@ -136,7 +136,7 @@ void BeaconEmitter::destroy()
 
 void BeaconEmitter::start()
 {
-	_timer->scheduleAfterDelay(_timerNode, 0.0);
+	_timer->scheduleAfterDelay(*_timerNode, 0.0);
 }
 
 void BeaconEmitter::reschedule()
@@ -144,7 +144,7 @@ void BeaconEmitter::reschedule()
 	const double period = (_beaconSequenceID >= _beaconCountLimit) ? _slowBeaconPeriod : _fastBeaconPeriod;
 	if (period > 0)
 	{
-		_timer->scheduleAfterDelay(_timerNode, period);
+		_timer->scheduleAfterDelay(*_timerNode, period);
 	}
 }
 

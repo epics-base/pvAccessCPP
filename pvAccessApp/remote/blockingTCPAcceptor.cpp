@@ -156,7 +156,7 @@ namespace epics {
             while(socketOpen) {
                 
                 {
-                    Lock guard(&_mutex);
+                    Lock guard(_mutex);
                     if (_destroyed)
                         break;
                 }
@@ -245,7 +245,7 @@ namespace epics {
         }
 
         void BlockingTCPAcceptor::destroy() {
-            Lock guard(&_mutex);
+            Lock guard(_mutex);
             if(_destroyed) return;
             _destroyed = true;
 

@@ -256,7 +256,7 @@ static CreateRequest* createRequest = 0;
 
 CreateRequest * getCreateRequest() {
     static Mutex mutex = Mutex();
-    Lock guard(&mutex);
+    Lock guard(mutex);
 
     if(createRequest==0){
         createRequest = new CreateRequestImpl();

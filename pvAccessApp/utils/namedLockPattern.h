@@ -66,7 +66,7 @@ bool NamedLockPattern<Key,Compare>::acquireSynchronizationObject(const Key name,
 {
 	ReferenceCountingLock* lock;
 	{	//due to guard
-		epics::pvData::Lock guard(&_mutex);
+		epics::pvData::Lock guard(_mutex);
 
 		_namedLocksIter = _namedLocks.find(name);
 		// get synchronization object
@@ -104,7 +104,7 @@ void NamedLockPattern<Key,Compare>::releaseSynchronizationObject(const Key name)
 template <class Key, class Compare>
 void NamedLockPattern<Key,Compare>::releaseSynchronizationObject(const Key name,const bool release)
 {
-	epics::pvData::Lock guard(&_mutex);
+	epics::pvData::Lock guard(_mutex);
 	ReferenceCountingLock* lock;
 	_namedLocksIter = _namedLocks.find(name);
 

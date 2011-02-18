@@ -20,7 +20,7 @@ ReferenceCountingLock::ReferenceCountingLock(): _references(1)
 	retval = pthread_mutexattr_settype(&mutexAttribute, PTHREAD_MUTEX_RECURSIVE);
 	if(retval == 0)
 	{
-		retval = pthread_mutex_init(&_mutex, &mutexAttribute);
+		retval = pthread_mutex_init(_mutex, &mutexAttribute);
 		if(retval != 0)
 		{
 			//string errMsg = "Error: pthread_mutex_init failed: " + string(strerror(retval));
@@ -38,7 +38,7 @@ ReferenceCountingLock::ReferenceCountingLock(): _references(1)
 
 ReferenceCountingLock::~ReferenceCountingLock()
 {
-//	pthread_mutex_destroy(&_mutex);
+//	pthread_mutex_destroy(_mutex);
 }
 
 bool ReferenceCountingLock::acquire(int64 msecs)
@@ -57,7 +57,7 @@ bool ReferenceCountingLock::acquire(int64 msecs)
 		deltatime.tv_nsec = 0;
 	}
 
-	int32 retval = pthread_mutex_timedlock(&_mutex, &deltatime);
+	int32 retval = pthread_mutex_timedlock(_mutex, &deltatime);
 	if(retval == 0)
 	{
 		return true;
@@ -69,7 +69,7 @@ bool ReferenceCountingLock::acquire(int64 msecs)
 void ReferenceCountingLock::release()
 {
 	_mutex.unlock();
-/*	int retval = pthread_mutex_unlock(&_mutex);
+/*	int retval = pthread_mutex_unlock(_mutex);
 	if(retval != 0)
 	{
 		//string errMsg = "Error: pthread_mutex_unlock failed: "  + string(strerror(retval));
@@ -79,14 +79,14 @@ void ReferenceCountingLock::release()
 
 int ReferenceCountingLock::increment()
 {
-	Lock guard(&_countMutex);
+	Lock guard(_countMutex);
 	++_references;
 	return _references;
 }
 
 int ReferenceCountingLock::decrement()
 {
-	Lock guard(&_countMutex);
+	Lock guard(_countMutex);
 	--_references;
 	return _references;
 }

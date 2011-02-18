@@ -26,9 +26,11 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 
 # EPICS_BASE usually appears last so other apps can override stuff:
 
-PVDATA=/opt/epics/pvDataCPP
+#PVDATA=/opt/epics/pvDataCPP
+#EPICS_BASE=/opt/epics/base
 
-EPICS_BASE=/opt/epics/base
+PVDATA=/home/mrk/hg/pvDataCPP
+EPICS_BASE=/home/install/epics/base
 
 # Set RULES here if you want to take build rules from somewhere
 # other than EPICS_BASE:

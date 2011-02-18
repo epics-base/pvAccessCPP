@@ -271,7 +271,7 @@ class MockMonitor : public Monitor, public MonitorElement
 		BitSet* m_changedBitSet;
 		BitSet* m_overrunBitSet;
 		bool m_first;
-		Mutex* m_lock;
+		Mutex m_lock;
 		int m_count;
     
     private:
@@ -286,7 +286,7 @@ class MockMonitor : public Monitor, public MonitorElement
         m_changedBitSet(new BitSet(pvStructure->getNumberFields())),
         m_overrunBitSet(new BitSet(pvStructure->getNumberFields())),
         m_first(true),
-        m_lock(new Mutex()),
+        m_lock(),
         m_count(0)
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockMonitor);
@@ -335,7 +335,6 @@ class MockMonitor : public Monitor, public MonitorElement
     {
         stop();
         
-        delete m_lock;
         delete m_overrunBitSet;
         delete m_changedBitSet;
         delete this;

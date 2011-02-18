@@ -116,7 +116,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
     virtual void getDone(const epics::pvData::Status& status)
     {
         std::cout << "getDone(" << status.toString() << ")" << std::endl;
-        Lock guard(&m_mutex);
+        Lock guard(m_mutex);
         if (m_pvStructure)
         {
             String str;

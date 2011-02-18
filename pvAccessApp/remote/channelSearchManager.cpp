@@ -20,7 +20,7 @@ void BaseSearchInstance::initializeSearchInstance()
 
 void BaseSearchInstance::unsetListOwnership()
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	if (_owner != NULL) this->release();
 	_owner = NULL;
 }
@@ -30,8 +30,8 @@ void BaseSearchInstance::addAndSetListOwnership(ArrayFIFO<SearchInstance*>* newO
 	if(ownerMutex == NULL) THROW_BASE_EXCEPTION("Null owner mutex");
 
 	_ownerMutex = ownerMutex;
-	Lock ownerGuard(_ownerMutex);
-	Lock guard(&_mutex);
+	Lock ownerGuard(*_ownerMutex);
+	Lock guard(_mutex);
 	newOwner->push(this);
 	if (_owner == NULL) this->acquire(); // new owner
 	_owner = newOwner;
@@ -43,8 +43,8 @@ void BaseSearchInstance::removeAndUnsetListOwnership()
 	if(_owner == NULL) return;
 
 	if(_ownerMutex == NULL) THROW_BASE_EXCEPTION("Null owner mutex");
-	Lock ownerGuard(_ownerMutex);
-	Lock guard(&_mutex);
+	Lock ownerGuard(*_ownerMutex);
+	Lock guard(_mutex);
 	if(_owner != NULL)
 	{
 	    this->release();
@@ -55,7 +55,7 @@ void BaseSearchInstance::removeAndUnsetListOwnership()
 
 int32 BaseSearchInstance::getOwnerIndex()
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	int32 retval = _ownerIndex;
 	return retval;
 }
@@ -102,7 +102,7 @@ SearchTimer::SearchTimer(ChannelSearchManager* _chanSearchManager, int32 timerIn
 		_allowSlowdown(allowSlowdown),
 		_requestPendingChannels(new ArrayFIFO<SearchInstance*>),
 		_responsePendingChannels(new ArrayFIFO<SearchInstance*>),
-		_timerNode(new TimerNode(this)),
+		_timerNode(new TimerNode(*this)),
 		_canceled(false),
 		_timeAtResponseCheck(0)
 {
@@ -118,16 +118,16 @@ SearchTimer::~SearchTimer()
 
 void SearchTimer::shutdown()
 {
-	Lock guard(&_mutex); //the whole method is locked
+	Lock guard(_mutex); //the whole method is locked
 
 	{
-		Lock guard(&_volMutex);
+		Lock guard(_volMutex);
 		if(_canceled) return;
 		_canceled = true;
 	}
 
 	{
-		Lock guard(&_requestPendingChannelsMutex);
+		Lock guard(_requestPendingChannelsMutex);
 		_timerNode->cancel();
 
 		_requestPendingChannels->clear();
@@ -137,10 +137,10 @@ void SearchTimer::shutdown()
 
 void SearchTimer::installChannel(SearchInstance* channel)
 {
-	Lock guard(&_mutex); //the whole method is locked
+	Lock guard(_mutex); //the whole method is locked
 	if(_canceled) return;
 
-	Lock pendingChannelGuard(&_requestPendingChannelsMutex);
+	Lock pendingChannelGuard(_requestPendingChannelsMutex);
 	bool startImmediately = _requestPendingChannels->isEmpty();
 	channel->addAndSetListOwnership(_requestPendingChannels, &_requestPendingChannelsMutex, _timerIndex);
 
@@ -156,7 +156,7 @@ void SearchTimer::installChannel(SearchInstance* channel)
 		}
 
 		// start with some initial delay (to collect all installed requests)
-		_chanSearchManager->_context->getTimer()->scheduleAfterDelay(_timerNode, 0.01);
+		_chanSearchManager->_context->getTimer()->scheduleAfterDelay(*_timerNode, 0.01);
 	}
 }
 
@@ -167,7 +167,7 @@ void SearchTimer::moveChannels(SearchTimer* destination)
 	while((channel = _responsePendingChannels->pop()) != NULL)
 	{
 		{
-			Lock guard(&_volMutex);
+			Lock guard(_volMutex);
 			if(_searchAttempts > 0)
 			{
 				_searchAttempts--;
@@ -177,7 +177,7 @@ void SearchTimer::moveChannels(SearchTimer* destination)
 	}
 
 	// bulk move
-	Lock guard(&_requestPendingChannelsMutex);
+	Lock guard(_requestPendingChannelsMutex);
 	while (!_requestPendingChannels->isEmpty())
 	{
 		destination->installChannel(_requestPendingChannels->pop());
@@ -192,7 +192,7 @@ void SearchTimer::timerStopped()
 void SearchTimer::callback()
 {
 	{
-		Lock guard(&_volMutex);
+		Lock guard(_volMutex);
 		if(_canceled) return;
 	}
 
@@ -200,12 +200,12 @@ void SearchTimer::callback()
 	// boost search period (if necessary) for channels not recently searched
 	int32 searchRespones;
 	{
-		Lock guard(&_volMutex);
+		Lock guard(_volMutex);
 		searchRespones = _searchRespones;
 	}
 	if(_allowBoost && searchRespones > 0)
 	{
-		Lock guard(&_requestPendingChannelsMutex);
+		Lock guard(_requestPendingChannelsMutex);
 		while(!_requestPendingChannels->isEmpty())
 		{
 			SearchInstance* channel = _requestPendingChannels->peek();
@@ -251,7 +251,7 @@ void SearchTimer::callback()
 
 		int32 searchRespones,searchAttempts;
 		{
-			Lock guard(&_volMutex);
+			Lock guard(_volMutex);
 			searchAttempts = _searchAttempts;
 			searchRespones = _searchRespones;
 		}
@@ -287,7 +287,7 @@ void SearchTimer::callback()
 
 
 	{
-		Lock guard(&_volMutex);
+		Lock guard(_volMutex);
 		_startSequenceNumber = _chanSearchManager->getSequenceNumber() + 1;
 		_searchAttempts = 0;
 		_searchRespones = 0;
@@ -299,13 +299,13 @@ void SearchTimer::callback()
 	// reschedule
 	bool canceled;
 	{
-		Lock guard(&_volMutex);
+		Lock guard(_volMutex);
 		canceled = _canceled;
 	}
 
 
 	{
-		Lock guard(&_requestPendingChannelsMutex);
+		Lock guard(_requestPendingChannelsMutex);
 		channel = _requestPendingChannels->pop();
 	}
 	while (!canceled && channel != NULL)
@@ -338,7 +338,7 @@ void SearchTimer::callback()
 		if(requestSent)
 		{
 			channel->addAndSetListOwnership(_responsePendingChannels, &_responsePendingChannelsMutex, _timerIndex);
-			Lock guard(&_volMutex);
+			Lock guard(_volMutex);
 			if(_searchAttempts < INT_MAX)
 			{
 				_searchAttempts++;
@@ -351,12 +351,12 @@ void SearchTimer::callback()
 		if(triesInFrame == 0 && !allowNewFrame) break;
 
 		{
-			Lock guard(&_volMutex);
+			Lock guard(_volMutex);
 			canceled = _canceled;
 		}
 
 		{
-			Lock guard(&_requestPendingChannelsMutex);
+			Lock guard(_requestPendingChannelsMutex);
 			channel = _requestPendingChannels->pop();
 		}
 	}
@@ -371,19 +371,19 @@ void SearchTimer::callback()
 
 
 	{
-		Lock guard(&_volMutex);
+		Lock guard(_volMutex);
 		_endSequenceNumber = _chanSearchManager->getSequenceNumber();
 
 		// reschedule
 		canceled = _canceled;
 	}
-	Lock guard(&_requestPendingChannelsMutex);
+	Lock guard(_requestPendingChannelsMutex);
 	if(!canceled && !_timerNode->isScheduled())
 	{
 		bool someWorkToDo = (!_requestPendingChannels->isEmpty() || !_responsePendingChannels->isEmpty());
 		if(someWorkToDo)
 		{
-			_chanSearchManager->_context->getTimer()->scheduleAfterDelay(_timerNode, period()/1000.0);
+			_chanSearchManager->_context->getTimer()->scheduleAfterDelay(*_timerNode, period()/1000.0);
 		}
 	}
 }
@@ -392,7 +392,7 @@ void SearchTimer::searchResponse(int32 responseSequenceNumber, bool isSequenceNu
 {
 	bool validResponse = true;
 	{
-		Lock guard(&_volMutex);
+		Lock guard(_volMutex);
 		if(_canceled) return;
 
 		if(isSequenceNumberValid)
@@ -407,7 +407,7 @@ void SearchTimer::searchResponse(int32 responseSequenceNumber, bool isSequenceNu
 	{
 		const int64 dt = responseTime - _chanSearchManager->getTimeAtLastSend();
 		_chanSearchManager->updateRTTE(dt);
-		Lock guard(&_volMutex);
+		Lock guard(_volMutex);
 		if(_searchRespones < INT_MAX)
 		{
 			_searchRespones++;
@@ -418,7 +418,7 @@ void SearchTimer::searchResponse(int32 responseSequenceNumber, bool isSequenceNu
 				if(_requestPendingChannels->size() > 0)
 				{
 					_timerNode->cancel();
-					_chanSearchManager->_context->getTimer()->scheduleAfterDelay(_timerNode, 0.0);
+					_chanSearchManager->_context->getTimer()->scheduleAfterDelay(*_timerNode, 0.0);
 				}
 			}
 		}
@@ -487,10 +487,10 @@ ChannelSearchManager::~ChannelSearchManager()
 
 void ChannelSearchManager::cancel()
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 
 	{
-		Lock guard(&_volMutex);
+		Lock guard(_volMutex);
 		if(_canceled) return;
 
 		_canceled = true;
@@ -507,18 +507,18 @@ void ChannelSearchManager::cancel()
 
 int32 ChannelSearchManager::registeredChannelCount()
 {
-	Lock guard(&_channelMutex);
+	Lock guard(_channelMutex);
 	return _channels.size();
 }
 
 void ChannelSearchManager::registerChannel(SearchInstance* channel)
 {
 	{
-		Lock guard(&_volMutex);
+		Lock guard(_volMutex);
 		if(_canceled) return;
 	}
 
-	Lock guard(&_channelMutex);
+	Lock guard(_channelMutex);
 	//overrides if already registered
 	_channels[channel->getSearchInstanceID()] = channel;
 	_timers[0]->installChannel(channel);
@@ -526,7 +526,7 @@ void ChannelSearchManager::registerChannel(SearchInstance* channel)
 
 void ChannelSearchManager::unregisterChannel(SearchInstance* channel)
 {
-	Lock guard(&_channelMutex);
+	Lock guard(_channelMutex);
 	_channelsIter = _channels.find(channel->getSearchInstanceID());
 	if(_channelsIter != _channels.end())
 	{
@@ -538,7 +538,7 @@ void ChannelSearchManager::unregisterChannel(SearchInstance* channel)
 
 void ChannelSearchManager::searchResponse(int32 cid, int32 seqNo, int8 minorRevision, osiSockAddr* serverAddress)
 {
-	Lock guard(&_channelMutex);
+	Lock guard(_channelMutex);
 	// first remove
 	SearchInstance* si = NULL;
 	_channelsIter = _channels.find(cid);
@@ -583,7 +583,7 @@ void ChannelSearchManager::beaconAnomalyNotify()
 
 void ChannelSearchManager::initializeSendBuffer()
 {
-	Lock guard(&_volMutex);
+	Lock guard(_volMutex);
 	_sequenceNumber++;
 
 
@@ -606,8 +606,8 @@ void ChannelSearchManager::initializeSendBuffer()
 
 void ChannelSearchManager::flushSendBuffer()
 {
-	Lock guard(&_mutex);
-	Lock volGuard(&_volMutex);
+	Lock guard(_mutex);
+	Lock volGuard(_volMutex);
 	TimeStamp now;
 	now.getCurrent();
 	_timeAtLastSend = now.getMilliseconds();
@@ -617,7 +617,7 @@ void ChannelSearchManager::flushSendBuffer()
 
 bool ChannelSearchManager::generateSearchRequestMessage(SearchInstance* channel, bool allowNewFrame)
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	bool success = channel->generateSearchRequestMessage(_sendBuffer, _mockTransportSendControl);
 	// buffer full, flush
 	if(!success)
@@ -645,28 +645,28 @@ void ChannelSearchManager::boostSearching(SearchInstance* channel, int32 timerIn
 
 inline void ChannelSearchManager::updateRTTE(long rtt)
 {
-	Lock guard(&_volMutex);
+	Lock guard(_volMutex);
 	const double error = rtt - _rttmean;
 	_rttmean += error / 4.0;
 }
 
 inline double ChannelSearchManager::getRTTE()
 {
-	Lock guard(&_volMutex);
+	Lock guard(_volMutex);
 	double rtte =  min(max((double)_rttmean, (double)MIN_RTT), (double)MAX_RTT);
 	return rtte;
 }
 
 inline int32 ChannelSearchManager::getSequenceNumber()
 {
-	Lock guard(&_volMutex);
+	Lock guard(_volMutex);
 	int32 retval = _sequenceNumber;
 	return retval;
 }
 
 inline int64 ChannelSearchManager::getTimeAtLastSend()
 {
-	Lock guard(&_volMutex);
+	Lock guard(_volMutex);
 	int64 retval = _timeAtLastSend;
 	return retval;
 }

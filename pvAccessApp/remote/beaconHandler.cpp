@@ -40,7 +40,7 @@ void BeaconHandler::beaconNotify(osiSockAddr* from, int8 remoteTransportRevision
 bool BeaconHandler::updateBeacon(int8 remoteTransportRevision, TimeStamp* timestamp,
 			                     TimeStamp* startupTime, int16 sequentalID)
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	// first beacon notification check
 	if (_serverStartupTime.getSecondsPastEpoch() == 0)
 	{

@@ -106,7 +106,7 @@ void ServerContextImpl::loadConfiguration()
 void ServerContextImpl::initialize(ChannelAccess* channelAccess)
 {
 	//TODO uncomment
-	/*Lock guard(&_mutex);
+	/*Lock guard(_mutex);
 	if (channelAccess == NULL)
 	{
 		THROW_BASE_EXCEPTION("non null channelAccess expected");
@@ -224,7 +224,7 @@ void ServerContextImpl::run(int32 seconds)
 	}
 
 	{
-		Lock guard(&_mutex);
+		Lock guard(_mutex);
 
 		if (_state == NOT_INITIALIZED)
 		{
@@ -260,14 +260,14 @@ void ServerContextImpl::run(int32 seconds)
 	}
 
 	{
-		Lock guard(&_mutex);
+		Lock guard(_mutex);
 		_state = SHUTDOWN;
 	}
 }
 
 void ServerContextImpl::shutdown()
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	if(_state == DESTROYED)
 	{
 		THROW_BASE_EXCEPTION("Context already destroyed.");
@@ -279,7 +279,7 @@ void ServerContextImpl::shutdown()
 
 void ServerContextImpl::destroy()
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	if (_state == DESTROYED)
 	{
 		THROW_BASE_EXCEPTION("Context already destroyed.");
@@ -365,7 +365,7 @@ void ServerContextImpl::printInfo()
 
 void ServerContextImpl::printInfo(ostream& str)
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	str << "VERSION : " << getVersion().getVersionString() << endl \
 		<< "CHANNEL PROVIDER : " << _channelProviderName << endl \
 		<< "BEACON_ADDR_LIST : " << _beaconAddressList << endl \
@@ -397,13 +397,13 @@ void ServerContextImpl::setBeaconServerStatusProvider(BeaconServerStatusProvider
 
 bool ServerContextImpl::isInitialized()
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	return _state == INITIALIZED || _state == RUNNING || _state == SHUTDOWN;
 }
 
 bool ServerContextImpl::isDestroyed()
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	return _state == DESTROYED;
 }
 
