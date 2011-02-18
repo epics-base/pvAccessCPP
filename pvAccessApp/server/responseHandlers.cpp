@@ -515,7 +515,7 @@ namespace epics {
            if (init)
            {
         	   // pvRequest
-        	   PVStructurePtr pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
+        	   //PVStructurePtr pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
 
         	   // create...
         	  // new ChannelGetRequesterImpl(_context, channel, ioid, transport, pvRequest);
@@ -535,18 +535,9 @@ namespace epics {
         		   return;
         	   }
 
-        	   /*
-       			// check read access rights
-       			if (!AccessRights.READ.isSet(channel.getAccessRights()))
-       			{
-       				getFailureResponse(transport, ioid, qosCode, BaseChannelRequester.noReadACLStatus);
-       				if (lastRequest)
-       					request.destroy();
-       				return;
-       			}
-        	    */
-      //  	   request.getChannelGet().get(lastRequest);
-        //   }
+        	   request.getChannelGet().get(lastRequest);
+        	      }
+  */
 
        }
 
@@ -564,7 +555,7 @@ namespace epics {
     		   epics::pvData::BitSet* bitSet)
        {
     	   {
-    		   Lock guard(&_mutex);
+    		   Lock guard(_mutex);
     		   _bitSet = bitSet;
     		   _pvStructure = pvStructure;
     		   _status = status;
@@ -582,7 +573,7 @@ namespace epics {
        void ChannelGetRequesterImpl::getDone(const epics::pvData::Status& status)
        {
     	   {
-    		   Lock guard(&_mutex);
+    		   Lock guard(_mutex);
     		   _status = status;
     	   }
 			_transport->enqueueSendRequest(this);
@@ -621,7 +612,7 @@ namespace epics {
    			buffer->put((int8)request);
    			IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
    			{
-   				Lock guard(&_mutex);
+   				Lock guard(_mutex);
    				introspectionRegistry->serializeStatus(buffer, control, _status);
    			}
 
@@ -629,7 +620,7 @@ namespace epics {
    			{
    				if (request & QOS_INIT)
    				{
-   					Lock guard(&_mutex);
+   					Lock guard(_mutex);
    					introspectionRegistry->serialize(_pvStructure != NULL ? _pvStructure->getField() : NULL, buffer, control);
 
    				}
