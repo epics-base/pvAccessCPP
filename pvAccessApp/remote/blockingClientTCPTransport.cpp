@@ -40,7 +40,7 @@ namespace epics {
                     receiveBufferSize, priority), _introspectionRegistry(
                     new IntrospectionRegistry(false)), _connectionTimeout(beaconInterval
                     *1000), _unresponsiveTransport(false), _timerNode(
-                    new TimerNode(this)), _verifyOrEcho(true) {
+                    new TimerNode(*this)), _verifyOrEcho(true) {
 //            _autoDelete = false;
 
             // initialize owners list, send queue
@@ -52,7 +52,7 @@ namespace epics {
             // setup connection timeout timer (watchdog)
             epicsTimeGetCurrent(&_aliveTimestamp);
 
-            context->getTimer()->schedulePeriodic(_timerNode, beaconInterval,
+            context->getTimer()->schedulePeriodic(*_timerNode, beaconInterval,
                     beaconInterval);
 
             start();
@@ -83,7 +83,7 @@ namespace epics {
         }
 
         void BlockingClientTCPTransport::unresponsiveTransport() {
-            Lock lock(&_ownersMutex);
+            Lock lock(_ownersMutex);
             if(!_unresponsiveTransport) {
                 _unresponsiveTransport = true;
 
@@ -98,14 +98,14 @@ namespace epics {
         }
 
         bool BlockingClientTCPTransport::acquire(TransportClient* client) {
-            Lock lock(&_mutex);
+            Lock lock(_mutex);
             if(_closed) return false;
             
             char ipAddrStr[48];
             ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
             errlogSevPrintf(errlogInfo, "Acquiring transport to %s.", ipAddrStr);
 
-            Lock lock2(&_ownersMutex);
+            Lock lock2(_ownersMutex);
 // TODO double check?            if(_closed) return false;
             _owners.insert(client);
 
@@ -124,7 +124,7 @@ namespace epics {
          * Notifies clients about disconnect.
          */
         void BlockingClientTCPTransport::closedNotifyClients() {
-            Lock lock(&_ownersMutex);
+            Lock lock(_ownersMutex);
 
             // check if still acquired
             int refs = _owners.size();
@@ -150,7 +150,7 @@ namespace epics {
         }
 
         void BlockingClientTCPTransport::release(TransportClient* client) {
-            Lock lock(&_mutex);
+            Lock lock(_mutex);
             if(_closed) return;
             
             char ipAddrStr[48];
@@ -158,7 +158,7 @@ namespace epics {
 
             errlogSevPrintf(errlogInfo, "Releasing transport to %s.", ipAddrStr);
 
-            Lock lock2(&_ownersMutex);
+            Lock lock2(_ownersMutex);
             _owners.erase(client);
 
             // not used anymore
@@ -167,13 +167,13 @@ namespace epics {
         }
 
         void BlockingClientTCPTransport::aliveNotification() {
-            Lock guard(&_ownersMutex);
+            Lock guard(_ownersMutex);
             epicsTimeGetCurrent(&_aliveTimestamp);
             if(_unresponsiveTransport) responsiveTransport();
         }
 
         void BlockingClientTCPTransport::responsiveTransport() {
-            Lock lock(&_ownersMutex);
+            Lock lock(_ownersMutex);
             if(_unresponsiveTransport) {
                 _unresponsiveTransport = false;
 
@@ -190,7 +190,7 @@ namespace epics {
         void BlockingClientTCPTransport::changedTransport() {
             _introspectionRegistry->reset();
 
-            Lock lock(&_ownersMutex);
+            Lock lock(_ownersMutex);
             set<TransportClient*>::iterator it = _owners.begin();
             for(; it!=_owners.end(); it++) {
                 TransportClient* client = *it;

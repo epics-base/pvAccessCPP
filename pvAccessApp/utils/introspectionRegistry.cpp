@@ -29,7 +29,7 @@ IntrospectionRegistry::~IntrospectionRegistry()
 
 void IntrospectionRegistry::reset()
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	_outgoingIdPointer = _direction;
 	//decrement references
 	for(_registryRIter = _registry.rbegin(); _registryRIter != _registry.rend(); _registryRIter++)
@@ -41,7 +41,7 @@ void IntrospectionRegistry::reset()
 
 FieldConstPtr IntrospectionRegistry::getIntrospectionInterface(const short id)
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	_registryIter = _registry.find(id);
 	if(_registryIter == _registry.end())
 	{
@@ -52,7 +52,7 @@ FieldConstPtr IntrospectionRegistry::getIntrospectionInterface(const short id)
 
 void IntrospectionRegistry::registerIntrospectionInterface(const short id,FieldConstPtr field)
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	//first decrement reference on old value
 	_registryIter = _registry.find(id);
 	if(_registryIter != _registry.end())
@@ -65,7 +65,7 @@ void IntrospectionRegistry::registerIntrospectionInterface(const short id,FieldC
 
 short IntrospectionRegistry::registerIntrospectionInterface(FieldConstPtr field, bool& existing)
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	short key;
 	if(registryContainsValue(field, key))
 	{

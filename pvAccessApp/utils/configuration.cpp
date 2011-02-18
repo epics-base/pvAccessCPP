@@ -281,7 +281,7 @@ ConfigurationProviderImpl::~ConfigurationProviderImpl()
 
 void ConfigurationProviderImpl::registerConfiguration(const string name, const Configuration* configuration)
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	_configsIter = _configs.find(name);
 	if(_configsIter != _configs.end())
 	{
@@ -306,7 +306,7 @@ Mutex ConfigurationFactory::_conf_factory_mutex = Mutex();
 
 ConfigurationProviderImpl* ConfigurationFactory::getProvider()
 {
-	Lock guard(&_conf_factory_mutex);
+	Lock guard(_conf_factory_mutex);
 	if(_configurationProvider == NULL)
 	{
 		_configurationProvider = new ConfigurationProviderImpl();

@@ -21,7 +21,7 @@ TransportRegistry::~TransportRegistry()
 
 void TransportRegistry::put(Transport* transport)
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	//const String type = transport.getType();
 	const int16 priority = transport->getPriority();
 	const osiSockAddr* address = transport->getRemoteAddress();
@@ -43,7 +43,7 @@ void TransportRegistry::put(Transport* transport)
 
 Transport* TransportRegistry::get(const String type, const osiSockAddr* address, const int16 priority)
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	_transportsIter = _transports.find(address);
 	if(_transportsIter != _transports.end())
 	{
@@ -59,7 +59,7 @@ Transport* TransportRegistry::get(const String type, const osiSockAddr* address,
 
 Transport** TransportRegistry::get(const String type, const osiSockAddr* address, int32& size)
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	_transportsIter = _transports.find(address);
 	if(_transportsIter != _transports.end())
 	{
@@ -78,7 +78,7 @@ Transport** TransportRegistry::get(const String type, const osiSockAddr* address
 
 Transport* TransportRegistry::remove(Transport* transport)
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	const int16 priority = transport->getPriority();
 	const osiSockAddr* address = transport->getRemoteAddress();
 	Transport* retTransport = NULL;
@@ -111,7 +111,7 @@ Transport* TransportRegistry::remove(Transport* transport)
 
 void TransportRegistry::clear()
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	for(_transportsIter = _transports.begin(); _transportsIter != _transports.end(); _transportsIter++)
 	{
 		delete _transportsIter->second;
@@ -123,14 +123,14 @@ void TransportRegistry::clear()
 
 int TransportRegistry::numberOfActiveTransports()
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	return (int32)_allTransports.size();
 }
 
 Transport** TransportRegistry::toArray(const String type, int32& size)
 {
 	// TODO support type
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	size = _allTransports.size();
 	Transport** transportArray = new Transport*[size];
 	int i = 0;
@@ -143,7 +143,7 @@ Transport** TransportRegistry::toArray(const String type, int32& size)
 
 Transport** TransportRegistry::toArray(int32& size)
 {
-	Lock guard(&_mutex);
+	Lock guard(_mutex);
 	size = _allTransports.size();
 
 	if(size == 0)

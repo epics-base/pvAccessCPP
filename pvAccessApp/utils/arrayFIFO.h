@@ -222,7 +222,7 @@ namespace epics {
 
         template<class T>
         void ArrayFIFO<T>::addFirst(const T e) {
-            epics::pvData::Lock lock(&_mutex);
+            epics::pvData::Lock lock(_mutex);
 
             _elements[_head = (_head-1)&(_size-1)] = e;
             if(_head==_tail) doubleCapacity();
@@ -230,7 +230,7 @@ namespace epics {
 
         template<class T>
         void ArrayFIFO<T>::addLast(const T e) {
-            epics::pvData::Lock lock(&_mutex);
+            epics::pvData::Lock lock(_mutex);
 
             _elements[_tail] = e;
             if((_tail = (_tail+1)&(_size-1))==_head) doubleCapacity();
@@ -238,7 +238,7 @@ namespace epics {
 
         template<class T>
         T ArrayFIFO<T>::pollFirst() {
-            epics::pvData::Lock lock(&_mutex);
+            epics::pvData::Lock lock(_mutex);
 
             if(isEmpty()) return 0;
 
@@ -249,7 +249,7 @@ namespace epics {
 
         template<class T>
         T ArrayFIFO<T>::pollLast() {
-            epics::pvData::Lock lock(&_mutex);
+            epics::pvData::Lock lock(_mutex);
 
             if(isEmpty()) return 0;
 
@@ -259,7 +259,7 @@ namespace epics {
 
         template<class T>
         T ArrayFIFO<T>::peekFirst() {
-            epics::pvData::Lock lock(&_mutex);
+            epics::pvData::Lock lock(_mutex);
 
             if(isEmpty()) return 0;
 
@@ -268,7 +268,7 @@ namespace epics {
 
         template<class T>
         T ArrayFIFO<T>::peekLast() {
-            epics::pvData::Lock lock(&_mutex);
+            epics::pvData::Lock lock(_mutex);
 
             if(isEmpty()) return 0;
 
@@ -292,21 +292,21 @@ namespace epics {
 
         template<class T>
         size_t ArrayFIFO<T>::size() {
-            epics::pvData::Lock lock(&_mutex);
+            epics::pvData::Lock lock(_mutex);
 
             return (_tail-_head)&(_size-1);
         }
 
         template<class T>
         bool ArrayFIFO<T>::isEmpty() {
-            epics::pvData::Lock lock(&_mutex);
+            epics::pvData::Lock lock(_mutex);
 
             return _head==_tail;
         }
 
         template<class T>
         void ArrayFIFO<T>::clear() {
-            epics::pvData::Lock lock(&_mutex);
+            epics::pvData::Lock lock(_mutex);
 
             _head = _tail = 0;
         }
@@ -354,7 +354,7 @@ namespace epics {
 
         template<class T>
         bool ArrayFIFO<T>::remove(const T e) {
-            epics::pvData::Lock lock(&_mutex);
+            epics::pvData::Lock lock(_mutex);
 
             if(isEmpty()) return false; // nothing to do
 

@@ -44,7 +44,7 @@ namespace epics {
         }
 
         void BlockingServerTCPTransport::destroyAllChannels() {
-            Lock lock(&_channelsMutex);
+            Lock lock(_channelsMutex);
             if(_channels.size()==0) return;
 
             char ipAddrStr[64];
@@ -68,7 +68,7 @@ namespace epics {
         }
 
         pvAccessID BlockingServerTCPTransport::preallocateChannelSID() {
-            Lock lock(&_channelsMutex);
+            Lock lock(_channelsMutex);
             // search first free (theoretically possible loop of death)
             pvAccessID sid = ++_lastChannelSID;
             while(_channels.find(sid)!=_channels.end())
@@ -78,17 +78,17 @@ namespace epics {
 
         void BlockingServerTCPTransport::registerChannel(pvAccessID sid,
                 ServerChannel* channel) {
-            Lock lock(&_channelsMutex);
+            Lock lock(_channelsMutex);
             _channels[sid] = channel;
         }
 
         void BlockingServerTCPTransport::unregisterChannel(pvAccessID sid) {
-            Lock lock(&_channelsMutex);
+            Lock lock(_channelsMutex);
             _channels.erase(sid);
         }
 
         ServerChannel* BlockingServerTCPTransport::getChannel(pvAccessID sid) {
-            Lock lock(&_channelsMutex);
+            Lock lock(_channelsMutex);
 
             map<pvAccessID, ServerChannel*>::iterator it = _channels.find(sid);
             if(it!=_channels.end()) return it->second;
@@ -97,7 +97,7 @@ namespace epics {
         }
 
         int BlockingServerTCPTransport::getChannelCount() {
-            Lock lock(&_channelsMutex);
+            Lock lock(_channelsMutex);
             return _channels.size();
         }
 

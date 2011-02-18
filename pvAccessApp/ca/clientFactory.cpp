@@ -12,7 +12,7 @@ ClientContextImpl* ClientFactory::m_context = 0;
 
 void ClientFactory::start()
 {
-    Lock guard(&m_mutex);
+    Lock guard(m_mutex);
     
     if (m_context) return;
     
@@ -29,7 +29,7 @@ void ClientFactory::start()
 
 void ClientFactory::stop()
 {
-    Lock guard(&m_mutex);
+    Lock guard(m_mutex);
     
     unregisterChannelProvider(m_context->getProvider());
     m_context->dispose(); 

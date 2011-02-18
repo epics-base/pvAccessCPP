@@ -38,7 +38,7 @@ namespace epics {
             virtual ~BlockingUDPTransport();
 
             virtual bool isClosed() {
-                Lock guard(&_mutex);
+                Lock guard(_mutex);
                 return _closed;
             }
 
