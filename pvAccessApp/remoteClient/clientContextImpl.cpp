@@ -74,7 +74,7 @@ namespace epics {
             Requester* m_requester;
 
             bool m_destroyed;
-            bool m_remotelyDestroy;
+            bool m_initialized;
 
             /* negative... */
             static const int NULL_REQUEST = -1;
@@ -94,6 +94,7 @@ namespace epics {
             
             static PVDataCreate* pvDataCreate;
     
+            static Status notInitializedStatus;
             static Status destroyedStatus;
             static Status channelNotConnected;
             static Status otherRequestPendingStatus;
@@ -101,7 +102,7 @@ namespace epics {
                 
             BaseRequestImpl(ChannelImpl* channel, Requester* requester) :
                     m_channel(channel), m_context(channel->getContext()),
-                    m_requester(requester), m_destroyed(false), m_remotelyDestroy(false),
+                    m_requester(requester), m_destroyed(false), m_initialized(false),
                     m_pendingRequest(NULL_REQUEST), m_refCount(1), m_status()
             {
                 // register response request
@@ -155,7 +156,7 @@ namespace epics {
                         {
                             // once created set destroy flag
                             m_mutex.lock();
-                            m_remotelyDestroy = true;
+                            m_initialized = true;
                             m_mutex.unlock();
                         }
                         
@@ -164,7 +165,7 @@ namespace epics {
                     else if (qos & QOS_DESTROY)
                     {
                         m_mutex.lock();
-                        m_remotelyDestroy = false;
+                        m_initialized = false;
                         m_mutex.unlock();
     
                         if (!destroyResponse(transport, version, payloadBuffer, qos, m_status))
@@ -200,7 +201,7 @@ namespace epics {
                 m_channel->unregisterResponseRequest(this);
 
                 // destroy remote instance
-                if (m_remotelyDestroy)
+                if (m_initialized)
                 {
                     try
                     {
@@ -276,6 +277,7 @@ namespace epics {
 
             PVDataCreate* BaseRequestImpl::pvDataCreate = getPVDataCreate();
     
+            Status BaseRequestImpl::notInitializedStatus = Status(Status::STATUSTYPE_ERROR, "request not initialized");
             Status BaseRequestImpl::destroyedStatus = Status(Status::STATUSTYPE_ERROR, "request destroyed");
             Status BaseRequestImpl::channelNotConnected = Status(Status::STATUSTYPE_ERROR, "channel not connected");
             Status BaseRequestImpl::otherRequestPendingStatus = Status(Status::STATUSTYPE_ERROR, "other request pending");
@@ -361,11 +363,14 @@ namespace epics {
 
             virtual void process(bool lastRequest)
             {
-                // TODO optimize
                 {
                     Lock guard(m_mutex);
                     if (m_destroyed) {
                         EXCEPTION_GUARD(m_callback->processDone(destroyedStatus));
+                        return;
+                    }
+                    if (!m_initialized) {
+                        EXCEPTION_GUARD(m_callback->processDone(notInitializedStatus));
                         return;
                     }
                 }
@@ -509,11 +514,15 @@ namespace epics {
             }
 
             virtual void get(bool lastRequest) {
-                // TODO optimize
+
                 {
                     Lock guard(m_mutex);
                     if (m_destroyed) {
                         EXCEPTION_GUARD(m_channelGetRequester->getDone(destroyedStatus));
+                        return;
+                    }
+                    if (!m_initialized) {
+                        EXCEPTION_GUARD(m_channelGetRequester->getDone(notInitializedStatus));
                         return;
                     }
                 }
@@ -672,13 +681,19 @@ namespace epics {
             }
 
             virtual void get() {
-                // TODO sync?
 
-                if (m_destroyed) {
-                    EXCEPTION_GUARD(m_channelPutRequester->getDone(destroyedStatus));
-                    return;
+                {
+                    Lock guard(m_mutex);
+                    if (m_destroyed) {
+                        EXCEPTION_GUARD(m_channelPutRequester->getDone(destroyedStatus));
+                        return;
+                    }
+                    if (!m_initialized) {
+                        EXCEPTION_GUARD(m_channelPutRequester->getDone(notInitializedStatus));
+                        return;
+                    }
                 }
-
+                
                 if (!startRequest(QOS_GET)) {
                     EXCEPTION_GUARD(m_channelPutRequester->getDone(otherRequestPendingStatus));
                     return;
@@ -694,13 +709,19 @@ namespace epics {
             }
 
             virtual void put(bool lastRequest) {
-                // TODO sync?
 
-                if (m_destroyed) {
-                    m_channelPutRequester->putDone(destroyedStatus);
-                    return;
+                {
+                    Lock guard(m_mutex);
+                    if (m_destroyed) {
+                        m_channelPutRequester->putDone(destroyedStatus);
+                        return;
+                    }
+                    if (!m_initialized) {
+                        EXCEPTION_GUARD(m_channelPutRequester->putDone(notInitializedStatus));
+                        return;
+                    }
                 }
-
+                
                 if (!startRequest(lastRequest ? QOS_DESTROY : QOS_DEFAULT)) {
                     m_channelPutRequester->putDone(otherRequestPendingStatus);
                     return;
@@ -880,11 +901,18 @@ namespace epics {
 
 
             virtual void putGet(bool lastRequest) {
-                if (m_destroyed) {
-                    EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(destroyedStatus));
-                    return;
+                {
+                    Lock guard(m_mutex);
+                    if (m_destroyed) {
+                        EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(destroyedStatus));
+                        return;
+                    }
+                    if (!m_initialized) {
+                        EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(notInitializedStatus));
+                        return;
+                    }
                 }
-
+                
                 if (!startRequest(lastRequest ? QOS_DESTROY : QOS_DEFAULT)) {
                     EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(otherRequestPendingStatus));
                     return;
@@ -899,11 +927,18 @@ namespace epics {
             }
 
             virtual void getGet() {
-                if (m_destroyed) {
-                    EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(destroyedStatus));
-                    return;
+                {
+                    Lock guard(m_mutex);
+                    if (m_destroyed) {
+                        EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(destroyedStatus));
+                        return;
+                    }
+                    if (!m_initialized) {
+                        EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(notInitializedStatus));
+                        return;
+                    }
                 }
-
+                
                 if (!startRequest(QOS_GET)) {
                     EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(otherRequestPendingStatus));
                     return;
@@ -918,11 +953,18 @@ namespace epics {
             }
 
             virtual void getPut() {
-                if (m_destroyed) {
-                    m_channelPutGetRequester->getPutDone(destroyedStatus);
-                    return;
+                {
+                    Lock guard(m_mutex);
+                    if (m_destroyed) {
+                        m_channelPutGetRequester->getPutDone(destroyedStatus);
+                        return;
+                    }
+                    if (!m_initialized) {
+                        EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(notInitializedStatus));
+                        return;
+                    }
                 }
-
+                
                 if (!startRequest(QOS_GET_PUT)) {
                     m_channelPutGetRequester->getPutDone(otherRequestPendingStatus);
                     return;
@@ -1068,13 +1110,19 @@ namespace epics {
             }
 
             virtual void request(bool lastRequest) {
-                // TODO sync?
 
-                if (m_destroyed) {
-                    EXCEPTION_GUARD(m_channelRPCRequester->requestDone(destroyedStatus, 0));
-                    return;
+                {
+                    Lock guard(m_mutex);
+                    if (m_destroyed) {
+                        EXCEPTION_GUARD(m_channelRPCRequester->requestDone(destroyedStatus, 0));
+                        return;
+                    }
+                    if (!m_initialized) {
+                        EXCEPTION_GUARD(m_channelRPCRequester->requestDone(notInitializedStatus, 0));
+                        return;
+                    }
                 }
-
+                
                 if (!startRequest(lastRequest ? QOS_DESTROY : QOS_DEFAULT)) {
                     EXCEPTION_GUARD(m_channelRPCRequester->requestDone(otherRequestPendingStatus, 0));
                     return;
@@ -1245,13 +1293,19 @@ namespace epics {
 
 
             virtual void getArray(bool lastRequest, int offset, int count) {
-                // TODO sync?
 
-                if (m_destroyed) {
-                    EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(destroyedStatus));
-                    return;
+                {
+                    Lock guard(m_mutex);
+                    if (m_destroyed) {
+                        EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(destroyedStatus));
+                        return;
+                    }
+                    if (!m_initialized) {
+                        EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(notInitializedStatus));
+                        return;
+                    }
                 }
-
+                
                 if (!startRequest(lastRequest ? QOS_DESTROY | QOS_GET : QOS_GET)) {
                     EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(otherRequestPendingStatus));
                     return;
@@ -1268,13 +1322,19 @@ namespace epics {
             }
 
             virtual void putArray(bool lastRequest, int offset, int count) {
-                // TODO sync?
 
-                if (m_destroyed) {
-                    EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(destroyedStatus));
-                    return;
+                {
+                    Lock guard(m_mutex);
+                    if (m_destroyed) {
+                        EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(destroyedStatus));
+                        return;
+                    }
+                    if (!m_initialized) {
+                        EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(notInitializedStatus));
+                        return;
+                    }
                 }
-
+                
                 if (!startRequest(lastRequest ? QOS_DESTROY : QOS_DEFAULT)) {
                     EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(otherRequestPendingStatus));
                     return;
@@ -1291,13 +1351,19 @@ namespace epics {
             }
 
             virtual void setLength(bool lastRequest, int length, int capacity) {
-                // TODO sync?
 
-                if (m_destroyed) {
-                    EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(destroyedStatus));
-                    return;
-                }
-
+                 {
+                    Lock guard(m_mutex);
+                   if (m_destroyed) {
+                        EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(destroyedStatus));
+                        return;
+                    }
+                    if (!m_initialized) {
+                        EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(notInitializedStatus));
+                        return;
+                    }
+                 }
+                 
                 if (!startRequest(lastRequest ? QOS_DESTROY | QOS_GET_PUT : QOS_GET_PUT)) {
                     EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(otherRequestPendingStatus));
                     return;
@@ -1941,13 +2007,22 @@ namespace epics {
                 {
                     Status status;
                     transport->getIntrospectionRegistry()->deserializeStatus(status, payloadBuffer, transport);
+                    if (status.isSuccess())
+                    {
+                        m_mutex.lock();
+                        m_initialized = true;
+                        m_mutex.unlock();
+                    }
                     initResponse(transport, version, payloadBuffer, qos, status);
                 }
                 else if (qos & QOS_DESTROY)
                 {
                     Status status;
                     transport->getIntrospectionRegistry()->deserializeStatus(status, payloadBuffer, transport);
-                    m_remotelyDestroy = true;
+
+                    m_mutex.lock();
+                    m_initialized = false;
+                    m_mutex.unlock();
 
                     if (!destroyResponse(transport, version, payloadBuffer, qos, status))
                         cancel();
@@ -1965,6 +2040,8 @@ namespace epics {
                 
                 if (m_destroyed)
                     return BaseRequestImpl::destroyedStatus;
+                if (!m_initialized)
+                    return BaseRequestImpl::notInitializedStatus;
                     
                 m_monitorStrategy->start();
 
@@ -1989,6 +2066,8 @@ namespace epics {
                 
                 if (m_destroyed)
                     return BaseRequestImpl::destroyedStatus;
+                if (!m_initialized)
+                    return BaseRequestImpl::notInitializedStatus;
 
                 m_monitorStrategy->stop();
 
