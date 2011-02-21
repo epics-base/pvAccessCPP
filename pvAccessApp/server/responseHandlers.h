@@ -11,6 +11,7 @@
 #include "serverContext.h"
 #include "remote.h"
 #include "serverChannelImpl.h"
+#include "baseChannelRequester.h"
 
 namespace epics {
     namespace pvAccess {
@@ -73,6 +74,10 @@ namespace epics {
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         private:
             static const int HANDLER_TABLE_LENGTH = 28;
+            /**
+             * Bad response handlers.
+             */
+            BadResponse *_badResponse;
             /**
              * Table of response handlers for each command ID.
              */
@@ -226,6 +231,7 @@ namespace epics {
         		AbstractServerResponseHandler(context, "Create channel request") {
         	}
 
+        	//TODO where is implementation???
         	virtual void handleResponse(osiSockAddr* responseFrom,
                     Transport* transport, int8 version, int8 command,
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
@@ -237,9 +243,9 @@ namespace epics {
         class ChannelRequesterImpl : public ChannelRequester, public TransportSender
         {
         public:
-        	 ChannelRequesterImpl(Transport* transport, const String channelName, const int32 cid);
-        	 void channelCreated(const Status& status, Channel* const channel);
-        	 void channelStateChange(Channel* const c, const Channel::ConnectionState isConnected);
+        	 ChannelRequesterImpl(Transport* transport, const String channelName, const pvAccessID cid);
+        	 void channelCreated(const Status& status, Channel* channel);
+        	 void channelStateChange(Channel* c, const Channel::ConnectionState isConnected);
         	 String getRequesterName();
         	 void message(const String message, const epics::pvData::MessageType messageType);
         	 void lock();
@@ -310,6 +316,48 @@ namespace epics {
         	pvAccessID _sid;
         };
 
+        /****************************************************************************************/
+        /**
+         * Get request handler.
+         */
+        class GetHandler : public AbstractServerResponseHandler
+        {
+        public:
+        	/**
+        	 * @param context
+        	 */
+        	GetHandler(ServerContextImpl* context) :
+        		AbstractServerResponseHandler(context, "Get request") {
+        	}
+
+        	virtual void handleResponse(osiSockAddr* responseFrom,
+        			Transport* transport, int8 version, int8 command,
+        			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        };
+
+        class ChannelGetRequesterImpl : private BaseChannelRequester, public ChannelGetRequester, public TransportSender
+        {
+        public:
+        	ChannelGetRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel, const pvAccessID ioid, Transport* transport,
+   				 epics::pvData::PVStructurePtr pvRequest);
+        	void channelGetConnect(const epics::pvData::Status& status, ChannelGet* channelGet, epics::pvData::PVStructurePtr pvStructure,
+        			epics::pvData::BitSet* bitSet);
+        	void getDone(const epics::pvData::Status& status);
+        	void destroy();
+    		/**
+    		 * @return the channelGet
+    		 */
+        	ChannelGet* getChannelGet();
+        	void lock();
+        	void unlock();
+			void send(ByteBuffer* buffer, TransportSendControl* control);
+        private:
+			ChannelGet* _channelGet;
+			epics::pvData::BitSet* _bitSet;
+			epics::pvData::PVStructurePtr _pvStructure;
+			epics::pvData::Status _status;
+			epics::pvData::Mutex _mutex;
+        };
     }
 }
 

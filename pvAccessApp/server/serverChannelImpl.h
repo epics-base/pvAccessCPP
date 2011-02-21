@@ -59,7 +59,7 @@ public:
 	 * @param id request ID.
 	 * @param request request to be registered.
 	 */
-	void registerRequest(pvAccessID id, Destroyable* const request);
+	void registerRequest(pvAccessID id, Destroyable* request);
 
 	/**
 	 * Unregister request.

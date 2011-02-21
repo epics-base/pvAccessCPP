@@ -40,7 +40,7 @@ int16 ServerChannelImpl::getAccessRights()
 	return 0;
 }
 
-void ServerChannelImpl::registerRequest(const pvAccessID id, Destroyable* const request)
+void ServerChannelImpl::registerRequest(const pvAccessID id, Destroyable* request)
 {
 	if (request == NULL)
 	{

@@ -41,7 +41,7 @@ namespace epics {
 
         ServerResponseHandler::ServerResponseHandler(ServerContextImpl* context) {
 
-            BadResponse* badResponse = new BadResponse(context);
+            _badResponse = new BadResponse(context);
 
             _handlerTable = new ResponseHandler*[HANDLER_TABLE_LENGTH];
             // TODO add real handlers, as they are developed
@@ -49,33 +49,34 @@ namespace epics {
             _handlerTable[1] = new ConnectionValidationHandler(context);
             _handlerTable[2] = new EchoHandler(context);
             _handlerTable[3] = new SearchHandler(context);
-            _handlerTable[4] = badResponse;
+            _handlerTable[4] = _badResponse;
             _handlerTable[5] = new IntrospectionSearchHandler(context);
-            _handlerTable[6] = badResponse;
+            _handlerTable[6] = _badResponse;
             _handlerTable[7] = new CreateChannelHandler(context);
             _handlerTable[8] = new DestroyChannelHandler(context);
-            _handlerTable[9] = badResponse;
-            _handlerTable[10] = badResponse;
-            _handlerTable[11] = badResponse;
-            _handlerTable[12] = badResponse;
-            _handlerTable[13] = badResponse;
-            _handlerTable[14] = badResponse;
-            _handlerTable[15] = badResponse;
-            _handlerTable[16] = badResponse;
-            _handlerTable[17] = badResponse;
-            _handlerTable[18] = badResponse;
-            _handlerTable[19] = badResponse;
-            _handlerTable[20] = badResponse;
-            _handlerTable[21] = badResponse;
-            _handlerTable[22] = badResponse;
-            _handlerTable[23] = badResponse;
-            _handlerTable[24] = badResponse;
-            _handlerTable[25] = badResponse;
-            _handlerTable[26] = badResponse;
-            _handlerTable[27] = badResponse;
+            _handlerTable[9] = _badResponse;
+            //_handlerTable[10] = new GetHandler(context);
+            _handlerTable[11] = _badResponse;
+            _handlerTable[12] = _badResponse;
+            _handlerTable[13] = _badResponse;
+            _handlerTable[14] = _badResponse;
+            _handlerTable[15] = _badResponse;
+            _handlerTable[16] = _badResponse;
+            _handlerTable[17] = _badResponse;
+            _handlerTable[18] = _badResponse;
+            _handlerTable[19] = _badResponse;
+            _handlerTable[20] = _badResponse;
+            _handlerTable[21] = _badResponse;
+            _handlerTable[22] = _badResponse;
+            _handlerTable[23] = _badResponse;
+            _handlerTable[24] = _badResponse;
+            _handlerTable[25] = _badResponse;
+            _handlerTable[26] = _badResponse;
+            _handlerTable[27] = _badResponse;
         }
 
         ServerResponseHandler::~ServerResponseHandler() {
+        	delete _badResponse;
             delete _handlerTable[0];
             delete _handlerTable[1];
             delete _handlerTable[2];
@@ -83,6 +84,7 @@ namespace epics {
             delete _handlerTable[5];
             delete _handlerTable[7];
             delete _handlerTable[8];
+            delete _handlerTable[10];
             delete _handlerTable[27];
             delete[] _handlerTable;
         }
@@ -329,7 +331,7 @@ namespace epics {
 
        }
 
-       void ChannelRequesterImpl::channelCreated(const Status& status, Channel* const channel)
+       void ChannelRequesterImpl::channelCreated(const Status& status, Channel* channel)
        {
     	   Lock guard(_mutex);
     	   _status = status;
@@ -337,7 +339,7 @@ namespace epics {
     	   _transport->enqueueSendRequest(this);
        }
 
-       void ChannelRequesterImpl::channelStateChange(Channel*  constc, const Channel::ConnectionState isConnected)
+       void ChannelRequesterImpl::channelStateChange(Channel* c, const Channel::ConnectionState isConnected)
        {
     	   //noop
        }
@@ -481,7 +483,161 @@ namespace epics {
            casTransport->unregisterChannel(sid);
 
            // send response back
-           transport->enqueueSendRequest( new DestroyChannelHandlerTransportSender(cid, sid));
+           transport->enqueueSendRequest(new DestroyChannelHandlerTransportSender(cid, sid));
+       }
+
+       /****************************************************************************************/
+
+       void GetHandler::handleResponse(osiSockAddr* responseFrom,
+               Transport* transport, int8 version, int8 command,
+               int payloadSize, epics::pvData::ByteBuffer* payloadBuffer) {
+    	   AbstractServerResponseHandler::handleResponse(responseFrom,
+    			   transport, version, command, payloadSize, payloadBuffer);
+
+    	   // NOTE: we do not explicitly check if transport is OK
+    	   ChannelHostingTransport* casTransport = dynamic_cast<ChannelHostingTransport*>(transport);
+
+    	   transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
+           const pvAccessID sid = payloadBuffer->getInt();
+           const pvAccessID ioid = payloadBuffer->getInt();
+
+           // mode
+           const int8 qosCode = payloadBuffer->getByte();
+
+           ServerChannelImpl* channel = static_cast<ServerChannelImpl*>(casTransport->getChannel(sid));
+           if (channel == NULL)
+           {
+        	   BaseChannelRequester::sendFailureMessage((int8)10, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
+        	   return;
+           }
+
+           const boolean init = (QOS_INIT & qosCode) != 0;
+           if (init)
+           {
+        	   // pvRequest
+        	   //PVStructurePtr pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
+
+        	   // create...
+        	  // new ChannelGetRequesterImpl(_context, channel, ioid, transport, pvRequest);
+           }
+    /*       else
+           {
+        	   final boolean lastRequest = QoS.DESTROY.isSet(qosCode);
+
+        	   ChannelGetRequesterImpl request = (ChannelGetRequesterImpl)channel.getRequest(ioid);
+        	   if (request == null) {
+        		   BaseChannelRequester.sendFailureMessage((byte)10, transport, ioid, qosCode, BaseChannelRequester.badIOIDStatus);
+        		   return;
+        	   }
+
+        	   if (!request.startRequest(qosCode)) {
+        		   BaseChannelRequester.sendFailureMessage((byte)10, transport, ioid, qosCode, BaseChannelRequester.otherRequestPendingStatus);
+        		   return;
+        	   }
+
+        	   request.getChannelGet().get(lastRequest);
+        	      }
+  */
+
+       }
+
+       ChannelGetRequesterImpl::ChannelGetRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel, const pvAccessID ioid, Transport* transport,
+    		   epics::pvData::PVStructurePtr pvRequest) :
+    		   BaseChannelRequester(context, channel, ioid, transport)
+       {
+    	   startRequest(QOS_INIT);
+    	   channel->registerRequest(ioid, this);
+    	   _channelGet = channel->getChannel()->createChannelGet(this, pvRequest);
+    	   // TODO what if last call fails... registration is still present
+       }
+
+       void ChannelGetRequesterImpl::channelGetConnect(const epics::pvData::Status& status, ChannelGet* channelGet, epics::pvData::PVStructurePtr pvStructure,
+    		   epics::pvData::BitSet* bitSet)
+       {
+    	   {
+    		   Lock guard(_mutex);
+    		   _bitSet = bitSet;
+    		   _pvStructure = pvStructure;
+    		   _status = status;
+    		   _channelGet = channelGet;
+    	   }
+			_transport->enqueueSendRequest(this);
+
+			// self-destruction
+			if (!status.isSuccess())
+			{
+				destroy();
+			}
+       }
+
+       void ChannelGetRequesterImpl::getDone(const epics::pvData::Status& status)
+       {
+    	   {
+    		   Lock guard(_mutex);
+    		   _status = status;
+    	   }
+			_transport->enqueueSendRequest(this);
+       }
+
+       void ChannelGetRequesterImpl::destroy()
+       {
+    	   _channel->unregisterRequest(_ioid);
+   			if (_channelGet != NULL)
+   			{
+   				_channelGet->destroy();
+   			}
+       }
+
+       ChannelGet* ChannelGetRequesterImpl::getChannelGet()
+       {
+    	   return _channelGet;
+       }
+
+       void ChannelGetRequesterImpl::lock()
+       {
+    	   //TODO
+       }
+
+       void ChannelGetRequesterImpl::unlock()
+       {
+    	   //TODO
+       }
+
+       void ChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
+       {
+    	   const int32 request = getPendingRequest();
+
+   			control->startMessage((int8)10, sizeof(int32)/sizeof(int8) + 1);
+   			buffer->putInt(_ioid);
+   			buffer->put((int8)request);
+   			IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
+   			{
+   				Lock guard(_mutex);
+   				introspectionRegistry->serializeStatus(buffer, control, _status);
+   			}
+
+   			if (_status.isSuccess())
+   			{
+   				if (request & QOS_INIT)
+   				{
+   					Lock guard(_mutex);
+   					introspectionRegistry->serialize(_pvStructure != NULL ? _pvStructure->getField() : NULL, buffer, control);
+
+   				}
+   				else
+   				{
+   					_bitSet->serialize(buffer, control);
+   					_pvStructure->serialize(buffer, control, _bitSet);
+   				}
+   			}
+
+   			stopRequest();
+
+   			// lastRequest
+   			if (request & QOS_DESTROY)
+   			{
+   				destroy();
+   			}
        }
     }
 }

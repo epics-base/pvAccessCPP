@@ -43,10 +43,11 @@ SRC_DIRS += $(PVACCESS)/server
 INC += serverContext.h
 INC += responseHandlers.h
 INC += serverChannelImpl.h
+INC += baseChannelRequester.h
 LIBSRCS += responseHandlers.cpp
 LIBSRCS += serverContext.cpp
 LIBSRCS += serverChannelImpl.cpp
-
+LIBSRCS += baseChannelRequester.cpp
 
 SRC_DIRS += $(PVACCESS)/factory
 LIBSRCS += ChannelAccessFactory.cpp

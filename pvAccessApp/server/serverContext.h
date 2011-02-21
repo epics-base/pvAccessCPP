@@ -327,7 +327,7 @@ private:
 	/**
 	 * Timer.
 	 */
-	Timer* _timer;
+	epics::pvData::Timer* _timer;
 
 	/**
 	 * Broadcast transport needed for channel searches.
@@ -373,12 +373,12 @@ private:
 	/**
 	 * Run mutex.
 	 */
-	Mutex _mutex;
+	epics::pvData::Mutex _mutex;
 
 	/**
 	 * Run event.
 	 */
-	Event _runEvent;
+	epics::pvData::Event _runEvent;
 
 	/**
 	 * Beacon server status provider interface (optional).
