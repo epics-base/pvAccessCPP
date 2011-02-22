@@ -160,7 +160,7 @@ namespace epics {
 
         /****************************************************************************************/
         /**
-         * Introspection search request handler.
+         * Search channel request handler.
          */
         class ChannelFindRequesterImplObjectPool;
         class SearchHandler : public AbstractServerResponseHandler
@@ -209,6 +209,7 @@ namespace epics {
         {
         public:
         	ChannelFindRequesterImplObjectPool(ServerContextImpl* context);
+        	~ChannelFindRequesterImplObjectPool();
         	ChannelFindRequesterImpl* get();
         	void put(ChannelFindRequesterImpl* element);
 
@@ -229,15 +230,19 @@ namespace epics {
         	 */
         	CreateChannelHandler(ServerContextImpl* context) :
         		AbstractServerResponseHandler(context, "Create channel request") {
+        		_provider = context->getChannelProvider();
         	}
 
-        	//TODO where is implementation???
         	virtual void handleResponse(osiSockAddr* responseFrom,
                     Transport* transport, int8 version, int8 command,
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
 
         private:
+        	/**
+        	 * Disconnect.
+        	 */
         	void disconnect(Transport* transport);
+			ChannelProvider* _provider;
         };
 
         class ChannelRequesterImpl : public ChannelRequester, public TransportSender
@@ -251,6 +256,8 @@ namespace epics {
         	 void lock();
         	 void unlock();
         	 void send(ByteBuffer* buffer, TransportSendControl* control);
+        	 void release();
+        	 void acquire();
 
         private:
         	 Transport* _transport;
@@ -304,7 +311,7 @@ namespace epics {
         	}
 
         	void release() {
-        			delete this;
+        		delete this;
         	}
 
         	void acquire() {
@@ -335,7 +342,7 @@ namespace epics {
         			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
-        class ChannelGetRequesterImpl : private BaseChannelRequester, public ChannelGetRequester, public TransportSender
+        class ChannelGetRequesterImpl : public BaseChannelRequester, public ChannelGetRequester, public TransportSender
         {
         public:
         	ChannelGetRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel, const pvAccessID ioid, Transport* transport,
@@ -348,9 +355,13 @@ namespace epics {
     		 * @return the channelGet
     		 */
         	ChannelGet* getChannelGet();
+        	String getRequesterName();
         	void lock();
         	void unlock();
+        	void release();
+        	void acquire();
 			void send(ByteBuffer* buffer, TransportSendControl* control);
+		    void message(const String message, const epics::pvData::MessageType messageType);
         private:
 			ChannelGet* _channelGet;
 			epics::pvData::BitSet* _bitSet;
