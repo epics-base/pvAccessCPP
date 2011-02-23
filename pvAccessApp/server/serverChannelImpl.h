@@ -59,7 +59,7 @@ public:
 	 * @param id request ID.
 	 * @param request request to be registered.
 	 */
-	void registerRequest(pvAccessID id, Destroyable* request);
+	void registerRequest(pvAccessID id, epics::pvData::Destroyable* request);
 
 	/**
 	 * Unregister request.
@@ -72,7 +72,7 @@ public:
      * @param id request ID.
      * @return request with given ID, <code>null</code> if there is no request with such ID.
      */
-    Destroyable* getRequest(pvAccessID id);
+    epics::pvData::Destroyable* getRequest(pvAccessID id);
 
     /**
      * Destroy server channel.
