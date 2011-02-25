@@ -14,7 +14,7 @@
 namespace epics {
 namespace pvAccess {
 
-class BaseChannelRequester :  virtual public epics::pvData::Requester, public epics::pvData::Destroyable//, virtual public ReferenceCountingInstance
+class BaseChannelRequester :  virtual public epics::pvData::Requester, public epics::pvData::Destroyable
 {
 public:
 	BaseChannelRequester(ServerContextImpl* context, ServerChannelImpl* channel,const pvAccessID ioid, Transport* transport);
@@ -27,8 +27,6 @@ public:
 	void message(const String message, const epics::pvData::MessageType messageType);
 	static void message(Transport* transport, const pvAccessID ioid, const String message, const epics::pvData::MessageType messageType);
 	static void sendFailureMessage(const int8 command, Transport* transport, const pvAccessID ioid, const int8 qos, const Status status);
-	//void release();
-	//void acquire();
 
 	static const Status okStatus;
 	static const Status badCIDStatus;

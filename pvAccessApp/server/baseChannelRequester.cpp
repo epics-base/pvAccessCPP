@@ -23,8 +23,7 @@ BaseChannelRequester::BaseChannelRequester(ServerContextImpl* context, ServerCha
 		_transport(transport),
 		_channel(channel),
 		_context(context),
-		_pendingRequest(BaseChannelRequester::NULL_REQUEST),
-		_refCount(1)
+		_pendingRequest(BaseChannelRequester::NULL_REQUEST)
 {
 
 }
@@ -73,23 +72,6 @@ void BaseChannelRequester::sendFailureMessage(const int8 command, Transport* tra
 {
 	transport->enqueueSendRequest( new BaseChannelRequesterFailureMessageTransportSender(command, transport, ioid, qos, status));
 }
-/*
-void BaseChannelRequester::release()
-{
-    _mutex.lock();
-    _refCount--;
-    _mutex.unlock();
-    if (_refCount == 0)
-    {
-        delete this;
-    }
-}
-
-void BaseChannelRequester::acquire()
-{
-    Lock guard(_mutex);
-    _refCount++;
-}*/
 
 BaseChannelRequesterMessageTransportSender::BaseChannelRequesterMessageTransportSender(const pvAccessID ioid, const String message,const epics::pvData::MessageType messageType):
 		_ioid(ioid),
