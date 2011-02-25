@@ -76,7 +76,7 @@ namespace epics { namespace pvAccess {
          * @author mrk
          *
          */
-        class ChannelArrayRequester : public epics::pvData::Requester {
+        class ChannelArrayRequester : virtual public epics::pvData::Requester {
             public:
 
             /**
@@ -154,7 +154,7 @@ namespace epics { namespace pvAccess {
          * @author mrk
          *
          */
-        class ChannelGetRequester : public epics::pvData::Requester {
+        class ChannelGetRequester : virtual public epics::pvData::Requester {
             public:
 
             /**
@@ -198,7 +198,7 @@ namespace epics { namespace pvAccess {
          * @author mrk
          *
          */
-        class ChannelProcessRequester : public epics::pvData::Requester {
+        class ChannelProcessRequester : virtual public epics::pvData::Requester {
             public:
 
             /**
@@ -245,7 +245,7 @@ namespace epics { namespace pvAccess {
          * @author mrk
          *
          */
-        class ChannelPutRequester : public epics::pvData::Requester {
+        class ChannelPutRequester : virtual public epics::pvData::Requester {
             public:
 
             /**
@@ -306,7 +306,7 @@ namespace epics { namespace pvAccess {
          * @author mrk
          *
          */
-        class ChannelPutGetRequester : public epics::pvData::Requester
+        class ChannelPutGetRequester : virtual public epics::pvData::Requester
         {
             public:
 
@@ -361,7 +361,7 @@ namespace epics { namespace pvAccess {
          * @author mrk
          *
          */
-        class ChannelRPCRequester : public epics::pvData::Requester {
+        class ChannelRPCRequester : virtual public epics::pvData::Requester {
             public:
 
             /**
@@ -388,7 +388,7 @@ namespace epics { namespace pvAccess {
          * @author mrk
          *
          */
-        class GetFieldRequester : public epics::pvData::Requester {
+        class GetFieldRequester : virtual public epics::pvData::Requester {
             public:
 
             /**
