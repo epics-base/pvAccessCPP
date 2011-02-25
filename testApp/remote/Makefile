@@ -38,6 +38,10 @@ PROD_HOST += testServerContext
 testServerContext_SRCS += testServerContext.cpp
 testServerContext_LIBS += pvData pvAccess Com
 
+PROD_HOST += testServer
+testServer_SRCS += testServer.cpp
+testServer_LIBS += pvData pvAccess Com
+
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE
