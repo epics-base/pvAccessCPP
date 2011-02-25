@@ -14,7 +14,7 @@
 namespace epics {
 namespace pvAccess {
 
-class BaseChannelRequester :  public epics::pvData::Requester, public epics::pvData::Destroyable
+class BaseChannelRequester :  virtual public epics::pvData::Requester, public epics::pvData::Destroyable//, virtual public ReferenceCountingInstance
 {
 public:
 	BaseChannelRequester(ServerContextImpl* context, ServerChannelImpl* channel,const pvAccessID ioid, Transport* transport);
@@ -24,9 +24,11 @@ public:
 	void stopRequest();
 	int32 getPendingRequest();
 	String getRequesterName();
-	void message(const String& message, const epics::pvData::MessageType messageType);
-	static void message(Transport* transport, const pvAccessID ioid, const String& message, const epics::pvData::MessageType messageType);
+	void message(const String message, const epics::pvData::MessageType messageType);
+	static void message(Transport* transport, const pvAccessID ioid, const String message, const epics::pvData::MessageType messageType);
 	static void sendFailureMessage(const int8 command, Transport* transport, const pvAccessID ioid, const int8 qos, const Status status);
+	//void release();
+	//void acquire();
 
 	static const Status okStatus;
 	static const Status badCIDStatus;
@@ -39,11 +41,12 @@ protected:
 	const pvAccessID _ioid;
 	Transport* _transport;
 	ServerChannelImpl* _channel;
+	epics::pvData::Mutex _mutex;
 private:
 	ServerContextImpl* _context;
 	static const int32 NULL_REQUEST;
 	int32 _pendingRequest;
-	epics::pvData::Mutex _mutex;
+	int32 _refCount;
 };
 
 class BaseChannelRequesterMessageTransportSender : public TransportSender

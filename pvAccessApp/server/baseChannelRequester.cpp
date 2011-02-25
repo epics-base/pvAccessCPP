@@ -23,7 +23,8 @@ BaseChannelRequester::BaseChannelRequester(ServerContextImpl* context, ServerCha
 		_transport(transport),
 		_channel(channel),
 		_context(context),
-		_pendingRequest(BaseChannelRequester::NULL_REQUEST)
+		_pendingRequest(BaseChannelRequester::NULL_REQUEST),
+		_refCount(1)
 {
 
 }
@@ -35,7 +36,6 @@ boolean BaseChannelRequester::startRequest(int32 qos)
 	{
 		return false;
 	}
-
 	_pendingRequest = qos;
 	return true;
 }
@@ -59,12 +59,12 @@ String BaseChannelRequester::getRequesterName()
 	return name.str();
 }
 
-void BaseChannelRequester::message(const String& message, const epics::pvData::MessageType messageType)
+void BaseChannelRequester::message(const String message, const epics::pvData::MessageType messageType)
 {
 	BaseChannelRequester::message(_transport, _ioid, message, messageType);
 }
 
-void BaseChannelRequester::message(Transport* transport, const pvAccessID ioid, const String& message, const MessageType messageType)
+void BaseChannelRequester::message(Transport* transport, const pvAccessID ioid, const String message, const MessageType messageType)
 {
 	transport->enqueueSendRequest( new BaseChannelRequesterMessageTransportSender(ioid, message, messageType));
 }
@@ -73,6 +73,23 @@ void BaseChannelRequester::sendFailureMessage(const int8 command, Transport* tra
 {
 	transport->enqueueSendRequest( new BaseChannelRequesterFailureMessageTransportSender(command, transport, ioid, qos, status));
 }
+/*
+void BaseChannelRequester::release()
+{
+    _mutex.lock();
+    _refCount--;
+    _mutex.unlock();
+    if (_refCount == 0)
+    {
+        delete this;
+    }
+}
+
+void BaseChannelRequester::acquire()
+{
+    Lock guard(_mutex);
+    _refCount++;
+}*/
 
 BaseChannelRequesterMessageTransportSender::BaseChannelRequesterMessageTransportSender(const pvAccessID ioid, const String message,const epics::pvData::MessageType messageType):
 		_ioid(ioid),
@@ -139,7 +156,7 @@ void BaseChannelRequesterFailureMessageTransportSender::unlock()
 
 void BaseChannelRequesterFailureMessageTransportSender::release()
 {
-	delete this;
+
 }
 
 void BaseChannelRequesterFailureMessageTransportSender::acquire()

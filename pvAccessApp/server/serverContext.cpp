@@ -30,7 +30,6 @@ ServerContextImpl::ServerContextImpl():
 				_receiveBufferSize(MAX_TCP_RECV),
 				_timer(NULL),
 				_broadcastTransport(NULL),
-				_broadcastConnector(NULL),
 				_beaconEmitter(NULL),
 				_acceptor(NULL),
 				_transportRegistry(NULL),
@@ -105,8 +104,7 @@ void ServerContextImpl::loadConfiguration()
 
 void ServerContextImpl::initialize(ChannelAccess* channelAccess)
 {
-	//TODO uncomment
-	/*Lock guard(_mutex);
+	Lock guard(_mutex);
 	if (channelAccess == NULL)
 	{
 		THROW_BASE_EXCEPTION("non null channelAccess expected");
@@ -128,7 +126,7 @@ void ServerContextImpl::initialize(ChannelAccess* channelAccess)
 	{
 		std::string msg = "Channel provider with name '" + _channelProviderName + "' not available.";
 		THROW_BASE_EXCEPTION(msg.c_str());
-	}*/
+	}
 
 	internalInitialize();
 
@@ -137,6 +135,7 @@ void ServerContextImpl::initialize(ChannelAccess* channelAccess)
 
 void ServerContextImpl::internalInitialize()
 {
+	//TODO should be allocated on stack
 	_timer = new Timer("pvAccess-server timer",lowerPriority);
 	_transportRegistry = new TransportRegistry();
 
@@ -144,14 +143,14 @@ void ServerContextImpl::internalInitialize()
 	initializeBroadcastTransport();
 
 	_acceptor = new BlockingTCPAcceptor(this, _serverPort, _receiveBufferSize);
-	_serverPort = _acceptor->getBindAddress()->ia.sin_port;
+	//TODO fix this
+	//_serverPort = _acceptor->getBindAddress()->ia.sin_port;
 
 	_beaconEmitter = new BeaconEmitter(_broadcastTransport, this);
 }
 
 void ServerContextImpl::initializeBroadcastTransport()
 {
-
 	// setup UDP transport
 	try
 	{
@@ -161,7 +160,7 @@ void ServerContextImpl::initializeBroadcastTransport()
 	    listenLocalAddress.ia.sin_port = htons(_broadcastPort);
 	    listenLocalAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
-		// where to send address
+		// where to send addresses
 	    SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	    if (socket == INVALID_SOCKET)
 	    {
@@ -502,9 +501,15 @@ Transport* ServerContextImpl::getSearchTransport()
 	//TODO
 	return NULL;
 }
-// TODO
-void ServerContextImpl::acquire() {}
-void ServerContextImpl::release() {}
+
+void ServerContextImpl::acquire()
+{
+	// TODO
+}
+void ServerContextImpl::release()
+{
+	// TODO
+}
 
 }
 }

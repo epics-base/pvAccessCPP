@@ -335,11 +335,6 @@ private:
 	BlockingUDPTransport* _broadcastTransport;
 
 	/**
-	 * Broadcast connector
-	 */
-	BlockingUDPConnector*  _broadcastConnector;
-
-	/**
 	 * Beacon emitter.
 	 */
 	BeaconEmitter* _beaconEmitter;

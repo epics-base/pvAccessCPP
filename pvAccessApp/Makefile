@@ -44,10 +44,12 @@ INC += serverContext.h
 INC += responseHandlers.h
 INC += serverChannelImpl.h
 INC += baseChannelRequester.h
+INC += referencedTransportSender.h
 LIBSRCS += responseHandlers.cpp
 LIBSRCS += serverContext.cpp
 LIBSRCS += serverChannelImpl.cpp
 LIBSRCS += baseChannelRequester.cpp
+LIBSRCS	+= referencedTransportSender.h
 
 SRC_DIRS += $(PVACCESS)/factory
 LIBSRCS += ChannelAccessFactory.cpp

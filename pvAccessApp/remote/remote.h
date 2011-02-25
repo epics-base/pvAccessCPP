@@ -113,7 +113,7 @@ namespace epics {
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          * @version $Id: TransportSender.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
          */
-        class TransportSender : public ReferenceCountingInstance {
+        class TransportSender : virtual public ReferenceCountingInstance {
         public:
             virtual ~TransportSender() {
             }
