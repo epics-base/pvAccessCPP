@@ -527,6 +527,7 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
+		//TODO who is responsible to delete this pvRequest??
 		PVStructurePtr pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
 
 		// create...
@@ -558,7 +559,7 @@ ServerChannelGetRequesterImpl::ServerChannelGetRequesterImpl(ServerContextImpl* 
 		BaseChannelRequester(context, channel, ioid, transport)
 {
 	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, this);
+	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
 	_channelGet = channel->getChannel()->createChannelGet(this, pvRequest);
 	// TODO what if last call fails... registration is still present
 }
@@ -594,6 +595,7 @@ void ServerChannelGetRequesterImpl::getDone(const Status& status)
 void ServerChannelGetRequesterImpl::destroy()
 {
 	{
+		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
 		if (_channelGet != NULL)
 		{
@@ -727,7 +729,7 @@ ServerChannelPutRequesterImpl::ServerChannelPutRequesterImpl(ServerContextImpl* 
 		BaseChannelRequester(context, channel, ioid, transport)
 {
 	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, this);
+	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
 	_channelPut = channel->getChannel()->createChannelPut(this, pvRequest);
 	// TODO what if last call fails... registration is still present
 }
@@ -919,7 +921,7 @@ ServerChannelPutGetRequesterImpl::ServerChannelPutGetRequesterImpl(ServerContext
 		BaseChannelRequester(context, channel, ioid, transport)
 {
 	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, this);
+	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
 	_channelPutGet = channel->getChannel()->createChannelPutGet(this, pvRequest);
 	// TODO what if last call fails... registration is still present
 }
@@ -1127,7 +1129,7 @@ ServerMonitorRequesterImpl::ServerMonitorRequesterImpl(ServerContextImpl* contex
 		BaseChannelRequester(context, channel, ioid, transport)
 {
 	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, this);
+	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
 	_channelMonitor = channel->getChannel()->createMonitor(this, pvRequest);
 	// TODO what if last call fails... registration is still present
 }
@@ -1184,11 +1186,13 @@ void ServerMonitorRequesterImpl::unlock()
 
 void ServerMonitorRequesterImpl::destroy()
 {
-	Lock guard(_mutex);
-	_channel->unregisterRequest(_ioid);
-	if (_channelMonitor != NULL)
 	{
-		_channelMonitor->destroy();
+		Lock guard(_mutex);
+		_channel->unregisterRequest(_ioid);
+		if (_channelMonitor != NULL)
+		{
+			_channelMonitor->destroy();
+		}
 	}
 	release();
 }
@@ -1330,7 +1334,7 @@ ServerChannelArrayRequesterImpl::ServerChannelArrayRequesterImpl(ServerContextIm
 {
 
 	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, this);
+	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
 	_channelArray = channel->getChannel()->createChannelArray(this, pvRequest);
 	// TODO what if last call fails... registration is still present
 }
@@ -1548,7 +1552,7 @@ ServerChannelProcessRequesterImpl::ServerChannelProcessRequesterImpl(ServerConte
 		_refCount(1)
 {
 	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, this);
+	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
 	_channelProcess = channel->getChannel()->createChannelProcess(this, pvRequest);
 	// TODO what if last call fails... registration is still present
 }
@@ -1767,7 +1771,7 @@ ServerChannelRPCRequesterImpl::ServerChannelRPCRequesterImpl(ServerContextImpl* 
 BaseChannelRequester(context, channel, ioid, transport)
 {
 	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, this);
+	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
 	_channelRPC = channel->getChannel()->createChannelRPC(this, pvRequest);
 
 }

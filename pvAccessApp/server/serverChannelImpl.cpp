@@ -11,7 +11,8 @@ ServerChannelImpl::ServerChannelImpl(Channel* channel, pvAccessID cid,
 			pvAccessID sid, epics::pvData::PVField* securityToken):
 			_channel(channel),
 			_cid(cid),
-			_sid(cid)
+			_sid(cid),
+			_destroyed(false)
 {
 	if (channel == NULL)
 	{
@@ -105,10 +106,12 @@ void ServerChannelImpl::destroyAllRequests()
 	if (_requests.size() == 0)
 		return;
 
-	for(_iter = _requests.begin(); _iter != _requests.end(); _iter++)
+	while(_requests.size() != 0)
 	{
+		_iter = _requests.begin();
 		_iter->second->destroy();
 	}
+
 	_requests.clear();
 }
 

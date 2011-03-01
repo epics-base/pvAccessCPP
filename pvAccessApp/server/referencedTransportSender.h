@@ -13,6 +13,8 @@ namespace pvAccess {
 class ReferencedTransportSender :  public TransportSender
 {
 public:
+	ReferencedTransportSender();
+	virtual ~ReferencedTransportSender();
 	void release();
 	void acquire();
 private:

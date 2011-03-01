@@ -8,6 +8,14 @@ using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
 
+ReferencedTransportSender::ReferencedTransportSender() :
+	_refCount(1)
+{}
+
+ReferencedTransportSender::~ReferencedTransportSender()
+{
+}
+
 void ReferencedTransportSender::release()
 {
 	_refMutex.lock();

@@ -460,7 +460,16 @@ class MockChannel : public Channel {
 
     virtual void getField(GetFieldRequester *requester,epics::pvData::String subField)
     {
-    	PVFieldPtr pvField = m_pvStructure->getSubField(subField);
+    	PVFieldPtr pvField;
+    	if(subField == "")
+    	{
+    		pvField = m_pvStructure;
+    	}
+    	else
+    	{
+    		pvField = m_pvStructure->getSubField(subField);
+    	}
+
     	if(pvField == NULL)
     	{
     		string errMsg = "field '" + subField + "' not found";
@@ -468,7 +477,7 @@ class MockChannel : public Channel {
     		requester->getDone(errorStatus,NULL);
     		return;
     	}
-    	requester->getDone(Status::OK,m_pvStructure->getSubField(subField)->getField());
+    	requester->getDone(Status::OK,pvField->getField());
     }
 
     virtual ChannelProcess* createChannelProcess(
@@ -584,6 +593,8 @@ class MockServerChannelProvider : public ChannelProvider {
 	MockServerChannelProvider() : m_mockChannelFind(new MockChannelFind(this)) {
     }
 
+	 ~MockServerChannelProvider() {};
+
     virtual epics::pvData::String getProviderName()
     {
         return "local";
@@ -630,9 +641,8 @@ class MockServerChannelProvider : public ChannelProvider {
             return 0;
         }
     }
-
     private:
-    ~MockServerChannelProvider() {};
+
 
     MockChannelFind* m_mockChannelFind;
 
@@ -872,11 +882,12 @@ void testServer()
 
 	ctx.printInfo();
 
-	ctx.run(0);
+	ctx.run(25);
 
 	ctx.destroy();
 
 	unregisterChannelProvider(static_cast<ChannelProvider*>(channelProvider));
+	delete channelProvider;
 }
 
 int main(int argc, char *argv[])
