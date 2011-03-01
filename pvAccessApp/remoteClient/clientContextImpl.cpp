@@ -3443,7 +3443,7 @@ namespace epics {
                     m_broadcastPort(CA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV), m_timer(0),
                     m_broadcastTransport(0), m_searchTransport(0), m_connector(0), m_transportRegistry(0),
                     m_namedLocker(0), m_lastCID(0), m_lastIOID(0), m_channelSearchManager(0),
-                    m_version(new Version("CA Client", "cpp", 0, 0, 0, 1)),
+                    m_version(new Version("CA Client", "cpp", 1, 0, 0, 0)),
                     m_provider(new ChannelProviderImpl(this)),
                     m_contextState(CONTEXT_NOT_INITIALIZED), m_configuration(new SystemConfigurationImpl()),
                     m_refCount(1)

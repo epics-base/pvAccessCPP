@@ -8,11 +8,11 @@
 namespace epics { namespace pvAccess {
 
 const char* ServerContextImpl::StateNames[] = { "NOT_INITIALIZED", "INITIALIZED", "RUNNING", "SHUTDOWN", "DESTROYED"};
-const int32 ServerContextImpl::VERSION_MAJOR = 2;
-const int32 ServerContextImpl::VERSION_MINOR = 0;
+const int32 ServerContextImpl::VERSION_MAJOR = 0;
+const int32 ServerContextImpl::VERSION_MINOR = 9;
 const int32 ServerContextImpl::VERSION_MAINTENANCE = 0;
 const int32 ServerContextImpl::VERSION_DEVELOPMENT = 0;
-const Version ServerContextImpl::VERSION("Channel Access Server in C++", "C++",
+const Version ServerContextImpl::VERSION("CA Server", "cpp",
 		ServerContextImpl::VERSION_MAJOR,
 		ServerContextImpl::VERSION_MINOR,
 		ServerContextImpl::VERSION_MAINTENANCE,
@@ -21,8 +21,8 @@ const Version ServerContextImpl::VERSION("Channel Access Server in C++", "C++",
 
 ServerContextImpl::ServerContextImpl():
 				_state(NOT_INITIALIZED),
-				_beaconAddressList(""),
-				_ignoreAddressList(""),
+				_beaconAddressList(),
+				_ignoreAddressList(),
 				_autoBeaconAddressList(true),
 				_beaconPeriod(15.0),
 				_broadcastPort(CA_BROADCAST_PORT),
@@ -59,7 +59,7 @@ const Version& ServerContextImpl::getVersion()
 
 void ServerContextImpl::initializeLogger()
 {
-	createFileLogger("serverContextImpl.log");
+	//createFileLogger("serverContextImpl.log");
 }
 
 Configuration* ServerContextImpl::getConfiguration()
@@ -328,10 +328,11 @@ void ServerContextImpl::destroyAllTransports()
 	}
 
 	int32 size;
-	auto_ptr<Transport*> transports(_transportRegistry->toArray(size));
+	Transport** transports = _transportRegistry->toArray(size);
 
 	if (size == 0)
 	{
+	    delete[] transports;
 		return;
 	}
 
@@ -339,7 +340,7 @@ void ServerContextImpl::destroyAllTransports()
 
 	for (int i = 0; i < size; i++)
 	{
-		Transport* transport = transports.get()[i];
+		Transport* transport = transports[i];
 		try
 		{
 			transport->close(true);
@@ -355,6 +356,8 @@ void ServerContextImpl::destroyAllTransports()
 			 errlogSevPrintf(errlogMajor, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__);
 		}
 	}
+	
+    delete[] transports;
 }
 
 void ServerContextImpl::printInfo()

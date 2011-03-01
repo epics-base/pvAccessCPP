@@ -119,7 +119,7 @@ private:
 	/**
 	 * Destroy state.
 	 */
-	boolean _destroyed;
+	bool _destroyed;
 
 	/**
 	 * Mutex
