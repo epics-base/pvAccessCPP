@@ -216,7 +216,6 @@ class MockChannelPut : public ChannelPut
 		ChannelPutRequester* m_channelPutRequester;
 		PVStructure* m_pvStructure;
 		BitSet* m_bitSet;
-		bool m_first;
 
     private:
     ~MockChannelPut()
@@ -227,7 +226,7 @@ class MockChannelPut : public ChannelPut
     public:
     MockChannelPut(ChannelPutRequester* channelPutRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
         m_channelPutRequester(channelPutRequester), m_pvStructure(pvStructure),
-        m_bitSet(new BitSet(pvStructure->getNumberFields())), m_first(true)
+        m_bitSet(new BitSet(pvStructure->getNumberFields()))
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelPut);
 
@@ -255,6 +254,172 @@ class MockChannelPut : public ChannelPut
 
 };
 
+
+
+
+
+
+
+PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelPutGet);
+
+class MockChannelPutGet : public ChannelPutGet
+{
+    private:
+		ChannelPutGetRequester* m_channelPutGetRequester;
+		PVStructure* m_pvStructure;
+
+    private:
+    ~MockChannelPutGet()
+    {
+        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelPutGet);
+    }
+
+    public:
+    MockChannelPutGet(ChannelPutGetRequester* channelPutGetRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
+        m_channelPutGetRequester(channelPutGetRequester), m_pvStructure(pvStructure)
+    {
+        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelPutGet);
+
+        // TODO pvRequest
+    	m_channelPutGetRequester->channelPutGetConnect(Status::OK, this, m_pvStructure, m_pvStructure);
+    }
+
+    virtual void putGet(bool lastRequest)
+    {
+    	m_channelPutGetRequester->putGetDone(Status::OK);
+    	if (lastRequest)
+    	   destroy();
+    }
+
+    virtual void getGet()
+    {
+    	m_channelPutGetRequester->getGetDone(Status::OK);
+    }
+
+    virtual void getPut()
+    {
+    	m_channelPutGetRequester->getPutDone(Status::OK);
+    }
+
+    virtual void destroy()
+    {
+        delete this;
+    }
+
+};
+
+
+
+
+
+
+PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelRPC);
+
+class MockChannelRPC : public ChannelRPC
+{
+    private:
+		ChannelRPCRequester* m_channelRPCRequester;
+		PVStructure* m_pvStructure;
+		BitSet* m_bitSet;
+
+    private:
+    ~MockChannelRPC()
+    {
+        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelRPC);
+    }
+
+    public:
+    MockChannelRPC(ChannelRPCRequester* channelRPCRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
+        m_channelRPCRequester(channelRPCRequester), m_pvStructure(pvStructure),
+        m_bitSet(new BitSet(pvStructure->getNumberFields()))
+    {
+        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelRPC);
+
+        // TODO pvRequest
+    	m_channelRPCRequester->channelRPCConnect(Status::OK, this, m_pvStructure, m_bitSet);
+    }
+
+    virtual void request(bool lastRequest)
+    {
+    	m_channelRPCRequester->requestDone(Status::OK, m_pvStructure);
+    	if (lastRequest)
+    	   destroy();
+    }
+
+    virtual void destroy()
+    {
+        delete m_bitSet;
+        delete this;
+    }
+
+};
+
+
+
+
+
+
+
+
+
+
+PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelArray);
+
+class MockChannelArray : public ChannelArray
+{
+    private:
+		ChannelArrayRequester* m_channelArrayRequester;
+		PVArray* m_pvArray;
+
+    private:
+    ~MockChannelArray()
+    {
+        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelArray);
+    }
+
+    public:
+    MockChannelArray(ChannelArrayRequester* channelArrayRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
+        m_channelArrayRequester(channelArrayRequester)
+    {
+        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelArray);
+
+        m_pvArray = getPVDataCreate()->createPVScalarArray(0, "", pvDouble);
+
+        // TODO pvRequest
+    	m_channelArrayRequester->channelArrayConnect(Status::OK, this, m_pvArray);
+    }
+
+    virtual void putArray(bool lastRequest, int offset, int count)
+    {
+        // TODO offset, count
+    	m_channelArrayRequester->putArrayDone(Status::OK);
+    	if (lastRequest)
+    	   destroy();
+    }
+
+    virtual void getArray(bool lastRequest, int offset, int count)
+    {
+        // TODO offset, count
+    	m_channelArrayRequester->getArrayDone(Status::OK);
+    	if (lastRequest)
+    	   destroy();
+    }
+
+    virtual void setLength(bool lastRequest, int length, int capacity)
+    {
+        // TODO offset, capacity
+    	m_channelArrayRequester->setLengthDone(Status::OK);
+    	if (lastRequest)
+    	   destroy();
+    }
+
+    virtual void destroy()
+    {
+        delete m_pvArray;
+        delete this;
+    }
+
+};
 
 
 
@@ -299,7 +464,7 @@ class MockMonitor : public Monitor, public MonitorElement
 
     virtual Status start()
     {
-        // fist monitor
+        // first monitor
         m_monitorRequester->monitorEvent(this);
 
         return Status::OK;
@@ -505,15 +670,13 @@ class MockChannel : public Channel {
             ChannelPutGetRequester *channelPutGetRequester,
             epics::pvData::PVStructure *pvRequest)
     {
-        // TODO
-        return 0;
+    	return new MockChannelPutGet(channelPutGetRequester, m_pvStructure, pvRequest);
     }
 
     virtual ChannelRPC* createChannelRPC(ChannelRPCRequester *channelRPCRequester,
             epics::pvData::PVStructure *pvRequest)
     {
-        // TODO
-        return 0;
+    	return new MockChannelRPC(channelRPCRequester, m_pvStructure, pvRequest);
     }
 
     virtual epics::pvData::Monitor* createMonitor(
@@ -527,8 +690,7 @@ class MockChannel : public Channel {
             ChannelArrayRequester *channelArrayRequester,
             epics::pvData::PVStructure *pvRequest)
     {
-        // TODO
-        return 0;
+    	return new MockChannelArray(channelArrayRequester, m_pvStructure, pvRequest);
     }
 
     virtual void printInfo() {
@@ -882,7 +1044,7 @@ void testServer()
 
 	ctx.printInfo();
 
-	ctx.run(25);
+	ctx.run(100);
 
 	ctx.destroy();
 

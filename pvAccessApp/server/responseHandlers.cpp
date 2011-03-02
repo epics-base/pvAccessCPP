@@ -532,6 +532,8 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 
 		// create...
 		new ServerChannelGetRequesterImpl(_context, channel, ioid, transport, pvRequest);
+		
+		delete pvRequest;
 	}
 	else
 	{
@@ -685,10 +687,13 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
+		//TODO who is responsible to delete this pvRequest??
 		PVStructure* pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
 
 		// create...
 		new ServerChannelPutRequesterImpl(_context, channel, ioid, transport, pvRequest);
+
+        delete pvRequest;		
 	}
 	else
 	{
@@ -875,10 +880,13 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
+		//TODO who is responsible to delete this pvRequest??
 		PVStructure* pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
 
 		// create...
 		new ServerChannelPutGetRequesterImpl(_context, channel, ioid, transport, pvRequest);
+		
+		delete pvRequest;
 	}
 	else
 	{
@@ -1081,10 +1089,13 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
+		//TODO who is responsible to delete this pvRequest??
 		PVStructure* pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
 
 		// create...
 		new ServerMonitorRequesterImpl(_context, channel, ioid, transport, pvRequest);
+		
+		delete pvRequest;
 	}
 	else
 	{
@@ -1280,10 +1291,13 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
+		//TODO who is responsible to delete this pvRequest??
 		PVStructure* pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
 
 		// create...
 		new ServerChannelArrayRequesterImpl(_context, channel, ioid, transport, pvRequest);
+		
+		delete pvRequest;
 	}
 	else
 	{
@@ -1521,10 +1535,13 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
+		//TODO who is responsible to delete this pvRequest??
 		PVStructure* pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
 
 		// create...
 		new ServerChannelProcessRequesterImpl(_context, channel, ioid, transport, pvRequest);
+		
+		delete pvRequest;
 	}
 	else
 	{
@@ -1736,10 +1753,13 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
+		//TODO who is responsible to delete this pvRequest??
 		PVStructure* pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
 
 		// create...
 		new ServerChannelRPCRequesterImpl(_context, channel, ioid, transport, pvRequest);
+		
+		delete pvRequest;
 	}
 	else
 	{
