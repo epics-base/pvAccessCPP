@@ -44,7 +44,6 @@ private:
 	ServerContextImpl* _context;
 	static const int32 NULL_REQUEST;
 	int32 _pendingRequest;
-	int32 _refCount;
 };
 
 class BaseChannelRequesterMessageTransportSender : public TransportSender

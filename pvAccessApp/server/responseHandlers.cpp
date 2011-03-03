@@ -40,7 +40,7 @@ void ServerBadResponse::handleResponse(osiSockAddr* responseFrom,
 }
 
 ServerResponseHandler::ServerResponseHandler(ServerContextImpl* context) {
-
+    // TODO replace with auto_ptr and vector
 	_badResponse = new ServerBadResponse(context);
 
 	_handlerTable = new ResponseHandler*[HANDLER_TABLE_LENGTH];
@@ -139,11 +139,12 @@ void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
-	EchoTransportSender* echoReply = new EchoTransportSender(
-			responseFrom);
+	EchoTransportSender* echoReply = new EchoTransportSender(responseFrom);
 
 	// send back
 	transport->enqueueSendRequest(echoReply);
+	
+	echoReply->release();
 }
 
 void ServerIntrospectionSearchHandler::handleResponse(osiSockAddr* responseFrom,
@@ -328,6 +329,7 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 		return;
 	}
 
+    // TODO memory leak... 
 	ChannelRequester* cr = new ServerChannelRequesterImpl(transport, channelName, cid);
 	_provider->createChannel(channelName, cr, transport->getPriority());
 }
@@ -495,7 +497,9 @@ void ServerDestroyChannelHandler::handleResponse(osiSockAddr* responseFrom,
 	casTransport->unregisterChannel(sid);
 
 	// send response back
-	transport->enqueueSendRequest(new ServerDestroyChannelHandlerTransportSender(cid, sid));
+	ServerDestroyChannelHandlerTransportSender* sr = new ServerDestroyChannelHandlerTransportSender(cid, sid);
+	transport->enqueueSendRequest(sr);
+	sr->release();
 }
 
 /****************************************************************************************/
@@ -1697,6 +1701,7 @@ void ServerGetFieldRequesterImpl::getDone(const Status& status, FieldConstPtr fi
 		_field = field;
 	}
 	_transport->enqueueSendRequest(this);
+	release();
 }
 
 void ServerGetFieldRequesterImpl::lock()

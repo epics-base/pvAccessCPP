@@ -65,12 +65,12 @@ void BaseChannelRequester::message(const String message, const epics::pvData::Me
 
 void BaseChannelRequester::message(Transport* transport, const pvAccessID ioid, const String message, const MessageType messageType)
 {
-	transport->enqueueSendRequest( new BaseChannelRequesterMessageTransportSender(ioid, message, messageType));
+	transport->enqueueSendRequest(new BaseChannelRequesterMessageTransportSender(ioid, message, messageType));
 }
 
 void BaseChannelRequester::sendFailureMessage(const int8 command, Transport* transport, const pvAccessID ioid, const int8 qos, const Status status)
 {
-	transport->enqueueSendRequest( new BaseChannelRequesterFailureMessageTransportSender(command, transport, ioid, qos, status));
+	transport->enqueueSendRequest(new BaseChannelRequesterFailureMessageTransportSender(command, transport, ioid, qos, status));
 }
 
 BaseChannelRequesterMessageTransportSender::BaseChannelRequesterMessageTransportSender(const pvAccessID ioid, const String message,const epics::pvData::MessageType messageType):
@@ -138,7 +138,7 @@ void BaseChannelRequesterFailureMessageTransportSender::unlock()
 
 void BaseChannelRequesterFailureMessageTransportSender::release()
 {
-
+	delete this;
 }
 
 void BaseChannelRequesterFailureMessageTransportSender::acquire()

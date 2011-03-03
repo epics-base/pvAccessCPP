@@ -149,6 +149,7 @@ namespace epics {
         	virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
         		control->startMessage(CMD_ECHO, 0);
         		control->setRecipient(_echoFrom);
+        		// TODO content
         	}
 
         	virtual void lock() {
