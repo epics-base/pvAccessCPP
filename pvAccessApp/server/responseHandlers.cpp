@@ -179,7 +179,7 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 	const int32 searchSequenceId = payloadBuffer->getInt();
 	const int8 qosCode = payloadBuffer->getByte();
 	const int32 count = payloadBuffer->getShort() & 0xFFFF;
-	const boolean responseRequired = (QOS_REPLY_REQUIRED & qosCode) != 0;
+	const bool responseRequired = (QOS_REPLY_REQUIRED & qosCode) != 0;
 
 	for (int32 i = 0; i < count; i++)
 	{
@@ -204,7 +204,7 @@ void ServerChannelFindRequesterImpl::clear()
 	_sendTo = NULL;
 }
 
-ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(int32 searchSequenceId, int32 cid, osiSockAddr* sendTo, boolean responseRequired)
+ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(int32 searchSequenceId, int32 cid, osiSockAddr* sendTo, bool responseRequired)
 {
 	Lock guard(_mutex);
 	_searchSequenceId = searchSequenceId;
@@ -214,7 +214,7 @@ ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(int32 search
 	return this;
 }
 
-void ServerChannelFindRequesterImpl::channelFindResult(const Status& status, ChannelFind* channelFind, boolean wasFound)
+void ServerChannelFindRequesterImpl::channelFindResult(const Status& status, ChannelFind* channelFind, bool wasFound)
 {
 	// TODO status
 	Lock guard(_mutex);
@@ -523,7 +523,7 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 		return;
 	}
 
-	const boolean init = (QOS_INIT & qosCode) != 0;
+	const bool init = (QOS_INIT & qosCode) != 0;
 	if (init)
 	{
 		// pvRequest
@@ -537,7 +537,7 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 	else
 	{
-		const boolean lastRequest = (QOS_DESTROY & qosCode) != 0;
+		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
 
 		ServerChannelGetRequesterImpl* request = static_cast<ServerChannelGetRequesterImpl*>(channel->getRequest(ioid));
 		if (request == NULL)
@@ -683,7 +683,7 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 		return;
 	}
 
-	const boolean init = (QOS_INIT & qosCode) != 0;
+	const bool init = (QOS_INIT & qosCode) != 0;
 	if (init)
 	{
 		// pvRequest
@@ -697,8 +697,8 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 	else
 	{
-		const boolean lastRequest = (QOS_DESTROY & qosCode) != 0;
-		const boolean get = (QOS_GET & qosCode) != 0;
+		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
+		const bool get = (QOS_GET & qosCode) != 0;
 
 		ServerChannelPutRequesterImpl* request = static_cast<ServerChannelPutRequesterImpl*>(channel->getRequest(ioid));
 		if (request == NULL)
@@ -876,7 +876,7 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 		return;
 	}
 
-	const boolean init = (QOS_INIT & qosCode) != 0;
+	const bool init = (QOS_INIT & qosCode) != 0;
 	if (init)
 	{
 		// pvRequest
@@ -890,9 +890,9 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 	else
 	{
-		const boolean lastRequest = (QOS_DESTROY & qosCode) != 0;
-		const boolean getGet = (QOS_GET & qosCode) != 0;
-		const boolean getPut = (QOS_GET_PUT & qosCode) != 0;
+		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
+		const bool getGet = (QOS_GET & qosCode) != 0;
+		const bool getPut = (QOS_GET_PUT & qosCode) != 0;
 
 		ServerChannelPutGetRequesterImpl* request = static_cast<ServerChannelPutGetRequesterImpl*>(channel->getRequest(ioid));
 		if (request == NULL)
@@ -1077,7 +1077,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 
 	// mode
 	const int8 qosCode = payloadBuffer->getByte();
-
+	
 	ServerChannelImpl* channel = static_cast<ServerChannelImpl*>(casTransport->getChannel(sid));
 	if (channel == NULL)
 	{
@@ -1085,7 +1085,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 		return;
 	}
 
-	const boolean init = (QOS_INIT & qosCode) != 0;
+	const bool init = (QOS_INIT & qosCode) != 0;
 	if (init)
 	{
 		// pvRequest
@@ -1099,9 +1099,9 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 	else
 	{
-		const boolean lastRequest = (QOS_DESTROY & qosCode) != 0;
-		const boolean get = (QOS_GET & qosCode) != 0;
-		const boolean process = (QOS_PROCESS & qosCode) != 0;
+		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
+		const bool get = (QOS_GET & qosCode) != 0;
+		const bool process = (QOS_PROCESS & qosCode) != 0;
 
 		ServerMonitorRequesterImpl* request = static_cast<ServerMonitorRequesterImpl*>(channel->getRequest(ioid));
 		if (request == NULL)
@@ -1110,12 +1110,13 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 			return;
 		}
 
+        /*
 		if (!request->startRequest(qosCode))
 		{
 			BaseChannelRequester::sendFailureMessage((int8)13, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
 			return;
 		}
-
+		*/
 
 		if (process)
 		{
@@ -1287,7 +1288,7 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 		return;
 	}
 
-	const boolean init = (QOS_INIT & qosCode) != 0;
+	const bool init = (QOS_INIT & qosCode) != 0;
 	if (init)
 	{
 		// pvRequest
@@ -1301,9 +1302,9 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 	else
 	{
-		const boolean lastRequest = (QOS_DESTROY & qosCode) != 0;
-		const boolean get = (QOS_GET & qosCode) != 0;
-		const boolean setLength = (QOS_GET_PUT & qosCode) != 0;
+		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
+		const bool get = (QOS_GET & qosCode) != 0;
+		const bool setLength = (QOS_GET_PUT & qosCode) != 0;
 
 		ServerChannelArrayRequesterImpl* request = static_cast<ServerChannelArrayRequesterImpl*>(channel->getRequest(ioid));
 		if (request == NULL)
@@ -1531,7 +1532,7 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
 		return;
 	}
 
-	const boolean init = (QOS_INIT & qosCode) != 0;
+	const bool init = (QOS_INIT & qosCode) != 0;
 	if (init)
 	{
 		// pvRequest
@@ -1545,7 +1546,7 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 	else
 	{
-		const boolean lastRequest = (QOS_DESTROY & qosCode) != 0;
+		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
 
 		ServerChannelProcessRequesterImpl* request = static_cast<ServerChannelProcessRequesterImpl*>(channel->getRequest(ioid));
 		if (request == NULL)
@@ -1749,7 +1750,7 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 		return;
 	}
 
-	const boolean init = (QOS_INIT & qosCode) != 0;
+	const bool init = (QOS_INIT & qosCode) != 0;
 	if (init)
 	{
 		// pvRequest
@@ -1763,7 +1764,7 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 	else
 	{
-		const boolean lastRequest = (QOS_DESTROY & qosCode) != 0;
+		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
 
 		ServerChannelRPCRequesterImpl* request = static_cast<ServerChannelRPCRequesterImpl*>(channel->getRequest(ioid));
 		if (request == NULL)
