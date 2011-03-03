@@ -14,7 +14,7 @@ namespace epics { namespace pvAccess {
 
 static ChannelAccess* channelAccess = 0;
 
-static Mutex channelProviderMutex = Mutex();
+static Mutex channelProviderMutex;
 
 typedef std::map<String, ChannelProvider*> ChannelProviderMap;
 static ChannelProviderMap channelProviders;
@@ -40,7 +40,7 @@ class ChannelAccessImpl : public ChannelAccess {
 };
 
 ChannelAccess * getChannelAccess() {
-    static Mutex mutex = Mutex();
+    static Mutex mutex;
     Lock guard(mutex);
 
     if(channelAccess==0){

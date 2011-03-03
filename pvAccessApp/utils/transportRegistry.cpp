@@ -9,7 +9,7 @@ using namespace std;
 
 namespace epics { namespace pvAccess {
 
-TransportRegistry::TransportRegistry(): _mutex(Mutex())
+TransportRegistry::TransportRegistry(): _mutex()
 {
 
 }

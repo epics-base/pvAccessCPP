@@ -10,13 +10,20 @@ using namespace epics::pvAccess;
 
 namespace epics { namespace pvAccess {
 
-BeaconHandler::BeaconHandler(ClientContextImpl* context, const osiSockAddr* responseFrom): _context(context), _responseFrom(*responseFrom), _mutex(Mutex()), _serverStartupTime(TimeStamp(0))
+BeaconHandler::BeaconHandler(ClientContextImpl* context,
+                             const osiSockAddr* responseFrom)
+    :_context(context)
+    ,_responseFrom(*responseFrom)
+    ,_mutex()
+    ,_serverStartupTime(0)
 {
 
 }
 
-BeaconHandler::BeaconHandler(const osiSockAddr* responseFrom):
-_responseFrom(*responseFrom), _mutex(Mutex()),  _serverStartupTime(TimeStamp(0))
+BeaconHandler::BeaconHandler(const osiSockAddr* responseFrom)
+    :_responseFrom(*responseFrom)
+    ,_mutex()
+    , _serverStartupTime(0)
 {
 
 }

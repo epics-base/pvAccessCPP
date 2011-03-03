@@ -255,7 +255,7 @@ class CreateRequestImpl : public CreateRequest {
 static CreateRequest* createRequest = 0;
 
 CreateRequest * getCreateRequest() {
-    static Mutex mutex = Mutex();
+    static Mutex mutex;
     Lock guard(mutex);
 
     if(createRequest==0){

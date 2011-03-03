@@ -302,7 +302,7 @@ Configuration* ConfigurationProviderImpl::getConfiguration(const string name)
 }
 
 ConfigurationProviderImpl* ConfigurationFactory::_configurationProvider = NULL;
-Mutex ConfigurationFactory::_conf_factory_mutex = Mutex();
+Mutex ConfigurationFactory::_conf_factory_mutex;
 
 ConfigurationProviderImpl* ConfigurationFactory::getProvider()
 {

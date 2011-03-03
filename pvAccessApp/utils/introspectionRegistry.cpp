@@ -12,7 +12,7 @@ const int8 IntrospectionRegistry::FULL_WITH_ID_TYPE_CODE = (int8)-3;
 PVDataCreate* IntrospectionRegistry::_pvDataCreate = 0;
 FieldCreate* IntrospectionRegistry::_fieldCreate = 0;
 
-IntrospectionRegistry::IntrospectionRegistry(bool serverSide) : _mutex(Mutex())
+IntrospectionRegistry::IntrospectionRegistry(bool serverSide) : _mutex()
 {
     // TODO not optimal
 	_pvDataCreate = getPVDataCreate();
