@@ -143,8 +143,7 @@ void ServerContextImpl::internalInitialize()
 	initializeBroadcastTransport();
 
 	_acceptor = new BlockingTCPAcceptor(this, _serverPort, _receiveBufferSize);
-	//TODO fix this
-	//_serverPort = _acceptor->getBindAddress()->ia.sin_port;
+	_serverPort = ntohs(_acceptor->getBindAddress()->ia.sin_port);
 
 	_beaconEmitter = new BeaconEmitter(_broadcastTransport, this);
 }

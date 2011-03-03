@@ -66,6 +66,9 @@ namespace epics {
                     THROW_BASE_EXCEPTION(temp.str().c_str());
                 }
                 else {
+                    
+                    epicsSocketEnableAddressReuseDuringTimeWaitState(_serverSocketChannel);
+
                     // try to bind
                     int retval = ::bind(_serverSocketChannel,
                             &_bindAddress.sa, sizeof(sockaddr));
