@@ -665,10 +665,10 @@ namespace epics {
                     _sendBuffer->setPosition(currentPos);
                     _sendBuffer->setLimit(_sendBuffer->getSize());
                 }
-            } catch(std::exception& e) {
-                errlogSevPrintf(errlogMajor, "%s", e.what());
-                // error, release lock
-                clearAndReleaseBuffer();
+            //} catch(std::exception& e) {
+            //    errlogSevPrintf(errlogMajor, "%s", e.what());
+            //    // error, release lock
+            //    clearAndReleaseBuffer();
             } catch(...) {
                 clearAndReleaseBuffer();
             }
@@ -707,10 +707,11 @@ namespace epics {
                             buffer->getRemaining(), 0);
 
                     if(bytesSent<0) {
+                        
                         // connection lost
                         ostringstream temp;
                         temp<<"error in sending TCP data: "<<strerror(errno);
-                        errlogSevPrintf(errlogMajor, "%s", temp.str().c_str());
+                        //errlogSevPrintf(errlogMajor, "%s", temp.str().c_str());
                         THROW_BASE_EXCEPTION(temp.str().c_str());
                     }
                     else if(bytesSent==0) {

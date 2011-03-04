@@ -4,6 +4,9 @@
 
 #include "serverChannelImpl.h"
 
+// TODO remove
+#include "responseHandlers.h"
+
 
 namespace epics { namespace pvAccess {
 
@@ -74,6 +77,7 @@ Destroyable* ServerChannelImpl::getRequest(const pvAccessID id)
 
 void ServerChannelImpl::destroy()
 {
+    {
 	Lock guard(_mutex);
 	if (_destroyed) return;
 
@@ -82,9 +86,13 @@ void ServerChannelImpl::destroy()
 	// destroy all requests
 	destroyAllRequests();
 
+    // now thats ugly!!!
+	(static_cast<ServerChannelRequesterImpl*>(_channel->getChannelRequester()))->release();
 	// TODO make impl that does shares channels (and does ref counting)!!!
 	// try catch?
-	static_cast<ChannelImpl*>(_channel)->destroy();
+	_channel->destroy();
+    }
+	delete this;
 }
 
 void ServerChannelImpl::printInfo()
