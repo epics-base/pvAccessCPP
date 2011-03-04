@@ -253,6 +253,12 @@ public:
 	std::string getChannelProviderName();
 
 	/**
+	 * Set channel provider name. 
+	 * This method can only be called before initialize.
+	 */
+	void setChannelProviderName(std::string providerName);
+
+	/**
 	 * Get channel provider.
 	 * @return channel provider.
 	 */

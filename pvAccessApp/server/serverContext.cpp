@@ -477,6 +477,13 @@ std::string ServerContextImpl::getChannelProviderName()
 	return _channelProviderName;
 }
 
+void ServerContextImpl::setChannelProviderName(std::string channelProviderName)
+{
+    if (_state != NOT_INITIALIZED)
+        throw std::logic_error("must be called before initialize");
+    _channelProviderName = channelProviderName;
+}
+
 ChannelProvider* ServerContextImpl::getChannelProvider()
 {
 	return _channelProvider;
