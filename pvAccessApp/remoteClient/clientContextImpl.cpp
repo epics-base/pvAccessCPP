@@ -2284,7 +2284,7 @@ namespace epics {
                 transport->ensureData((2*sizeof(int16)+2*sizeof(int32)+128)/sizeof(int8));
 
                 int16 sequentalID = payloadBuffer->getShort();
-                TimeStamp startupTimestamp(payloadBuffer->getInt(),payloadBuffer->getInt());
+                TimeStamp startupTimestamp(payloadBuffer->getLong(),payloadBuffer->getInt());
 
                 osiSockAddr serverAddress;
                 serverAddress.ia.sin_family = AF_INET;
