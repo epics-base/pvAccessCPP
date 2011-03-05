@@ -99,7 +99,7 @@ void BeaconEmitter::send(ByteBuffer* buffer, TransportSendControl* control)
 	control->startMessage((int8)0, (sizeof(int16)+2*sizeof(int32)+128+sizeof(int16))/sizeof(int8));
 
 	buffer->putShort(_beaconSequenceID);
-	buffer->putInt((int32)_startupTime->getSecondsPastEpoch());
+	buffer->putLong((int64)_startupTime->getSecondsPastEpoch());
 	buffer->putInt((int32)_startupTime->getNanoSeconds());
 
 	// NOTE: is it possible (very likely) that address is any local address ::ffff:0.0.0.0
