@@ -159,7 +159,7 @@ void ServerIntrospectionSearchHandler::handleResponse(osiSockAddr* responseFrom,
 /****************************************************************************************/
 
 ServerSearchHandler::ServerSearchHandler(ServerContextImpl* context) :
-    										AbstractServerResponseHandler(context, "Introspection search request")
+    										AbstractServerResponseHandler(context, "Search request")
     										{
 	_provider = context->getChannelProvider();
 	_objectPool = new ServerChannelFindRequesterImplObjectPool(context);
@@ -560,14 +560,29 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 }
 
+#define INIT_EXCEPTION_GUARD(cmd, code) \
+    try { \
+ 	    code; \
+    } \
+    catch (std::exception &e) { \
+        Status status(Status::STATUSTYPE_FATAL, e.what()); \
+	    BaseChannelRequester::sendFailureMessage((int8)cmd, transport, ioid, (int8)QOS_INIT, status); \
+	    destroy(); \
+    } \
+    catch (...) { \
+        Status status(Status::STATUSTYPE_FATAL, "unknown exception caught"); \
+	    BaseChannelRequester::sendFailureMessage((int8)cmd, transport, ioid, (int8)QOS_INIT, status); \
+	    destroy(); \
+    }
+
 ServerChannelGetRequesterImpl::ServerChannelGetRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel, const pvAccessID ioid, Transport* transport,
 		PVStructurePtr pvRequest) :
-		BaseChannelRequester(context, channel, ioid, transport)
+		BaseChannelRequester(context, channel, ioid, transport), _channelGet(0), _bitSet(0), _pvStructure(0)
+
 {
 	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
-	_channelGet = channel->getChannel()->createChannelGet(this, pvRequest);
-	// TODO what if last call fails... registration is still present
+	channel->registerRequest(ioid, this);
+    INIT_EXCEPTION_GUARD(10, _channelGet = channel->getChannel()->createChannelGet(this, pvRequest));
 }
 
 void ServerChannelGetRequesterImpl::channelGetConnect(const Status& status, ChannelGet* channelGet, PVStructurePtr pvStructure,
@@ -735,12 +750,11 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 
 ServerChannelPutRequesterImpl::ServerChannelPutRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel,
 		const pvAccessID ioid, Transport* transport,PVStructure* pvRequest):
-		BaseChannelRequester(context, channel, ioid, transport)
+		BaseChannelRequester(context, channel, ioid, transport), _channelPut(0), _bitSet(0), _pvStructure(0)
 {
 	startRequest(QOS_INIT);
 	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
-	_channelPut = channel->getChannel()->createChannelPut(this, pvRequest);
-	// TODO what if last call fails... registration is still present
+    INIT_EXCEPTION_GUARD(11, _channelPut = channel->getChannel()->createChannelPut(this, pvRequest));
 }
 
 void ServerChannelPutRequesterImpl::channelPutConnect(const Status& status, ChannelPut* channelPut, PVStructure* pvStructure, BitSet* bitSet)
@@ -930,12 +944,11 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 
 ServerChannelPutGetRequesterImpl::ServerChannelPutGetRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel,
 		const pvAccessID ioid, Transport* transport,PVStructure* pvRequest):
-		BaseChannelRequester(context, channel, ioid, transport)
+		BaseChannelRequester(context, channel, ioid, transport), _channelPutGet(0), _pvPutStructure(0), _pvGetStructure(0)
 {
 	startRequest(QOS_INIT);
 	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
-	_channelPutGet = channel->getChannel()->createChannelPutGet(this, pvRequest);
-	// TODO what if last call fails... registration is still present
+    INIT_EXCEPTION_GUARD(12, _channelPutGet = channel->getChannel()->createChannelPutGet(this, pvRequest));
 }
 
 void ServerChannelPutGetRequesterImpl::channelPutGetConnect(const Status& status, ChannelPutGet* channelPutGet,
@@ -1142,12 +1155,11 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 
 ServerMonitorRequesterImpl::ServerMonitorRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel,
 		const pvAccessID ioid, Transport* transport,PVStructure* pvRequest):
-		BaseChannelRequester(context, channel, ioid, transport)
+		BaseChannelRequester(context, channel, ioid, transport), _monitor(0), _channelMonitor(0), _structure(0)
 {
 	startRequest(QOS_INIT);
 	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
-	_channelMonitor = channel->getChannel()->createMonitor(this, pvRequest);
-	// TODO what if last call fails... registration is still present
+	INIT_EXCEPTION_GUARD(13, _channelMonitor = channel->getChannel()->createMonitor(this, pvRequest));
 }
 
 void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor* monitor, Structure* structure)
@@ -1349,13 +1361,12 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 
 ServerChannelArrayRequesterImpl::ServerChannelArrayRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel,
 		const pvAccessID ioid, Transport* transport,PVStructure* pvRequest):
-		BaseChannelRequester(context, channel, ioid, transport)
+		BaseChannelRequester(context, channel, ioid, transport), _channelArray(0), _pvArray(0)
 {
 
 	startRequest(QOS_INIT);
 	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
-	_channelArray = channel->getChannel()->createChannelArray(this, pvRequest);
-	// TODO what if last call fails... registration is still present
+    INIT_EXCEPTION_GUARD(14, _channelArray = channel->getChannel()->createChannelArray(this, pvRequest));
 }
 
 void ServerChannelArrayRequesterImpl::channelArrayConnect(const Status& status, ChannelArray* channelArray, PVArray* pvArray)
@@ -1571,12 +1582,11 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
 
 ServerChannelProcessRequesterImpl::ServerChannelProcessRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel,
 		const pvAccessID ioid, Transport* transport,PVStructure* pvRequest): BaseChannelRequester(context, channel, ioid, transport),
-		_refCount(1)
+		_channelProcess(0)
 {
 	startRequest(QOS_INIT);
 	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
-	_channelProcess = channel->getChannel()->createChannelProcess(this, pvRequest);
-	// TODO what if last call fails... registration is still present
+	INIT_EXCEPTION_GUARD(16, _channelProcess = channel->getChannel()->createChannelProcess(this, pvRequest));
 }
 
 void ServerChannelProcessRequesterImpl::channelProcessConnect(const Status& status, ChannelProcess* channelProcess)
@@ -1689,7 +1699,7 @@ void ServerGetFieldHandler::getFieldFailureResponse(Transport* transport, const 
 }
 
 ServerGetFieldRequesterImpl::ServerGetFieldRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel, const pvAccessID ioid, Transport* transport) :
-							BaseChannelRequester(context, channel, ioid, transport)
+							BaseChannelRequester(context, channel, ioid, transport), _field(0)
 {
 }
 
@@ -1794,12 +1804,12 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 
 ServerChannelRPCRequesterImpl::ServerChannelRPCRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel,
 		const pvAccessID ioid, Transport* transport,PVStructure* pvRequest):
-BaseChannelRequester(context, channel, ioid, transport)
+BaseChannelRequester(context, channel, ioid, transport), _channelRPC(0), _pvArguments(0), _pvResponse(0), _argumentsBitSet(0)
+
 {
 	startRequest(QOS_INIT);
 	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
-	_channelRPC = channel->getChannel()->createChannelRPC(this, pvRequest);
-
+	INIT_EXCEPTION_GUARD(20, _channelRPC = channel->getChannel()->createChannelRPC(this, pvRequest));
 }
 
 void ServerChannelRPCRequesterImpl::channelRPCConnect(const Status& status, ChannelRPC* channelRPC, PVStructure* arguments, BitSet* bitSet)
@@ -1809,6 +1819,7 @@ void ServerChannelRPCRequesterImpl::channelRPCConnect(const Status& status, Chan
 		_pvArguments = arguments;
 		_argumentsBitSet = bitSet;
 		_status = status;
+		_channelRPC = channelRPC;
 	}
 	_transport->enqueueSendRequest(this);
 

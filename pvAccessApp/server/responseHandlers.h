@@ -625,7 +625,6 @@ namespace epics {
         private:
         	ChannelProcess* _channelProcess;
         	epics::pvData::Status _status;
-        	int32 _refCount;
         };
 
         /****************************************************************************************/
