@@ -580,7 +580,7 @@ namespace epics { namespace pvAccess {
          * @author mrk
          *
          */
-        class ChannelRequester : public epics::pvData::Requester {
+        class ChannelRequester : public virtual epics::pvData::Requester {
             public:
 
             /**
