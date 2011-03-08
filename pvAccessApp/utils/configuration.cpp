@@ -195,8 +195,9 @@ SystemConfigurationImpl::SystemConfigurationImpl()
 {
 	_envParam.name = new char[MAX_NAME_LENGHT];
 	_envParam.pdflt = NULL;
-	_ibuffer.exceptions ( ifstream::failbit | ifstream::badbit );
-	_obuffer.exceptions ( ifstream::failbit | ifstream::badbit );
+	// no exception, default value is taken
+	//_ibuffer.exceptions ( ifstream::failbit | ifstream::badbit );
+	//_obuffer.exceptions ( ifstream::failbit | ifstream::badbit );
 	_properties = new Properties();
 }
 
@@ -215,7 +216,10 @@ bool SystemConfigurationImpl::getPropertyAsBoolean(const string name, const bool
 	_obuffer << defaultValue;
 	_ibuffer.str(getPropertyAsString(name,_obuffer.str()));
 	_ibuffer >> retval;
-	return retval;
+	if (_ibuffer.fail() || _ibuffer.bad())
+        return defaultValue;
+    else
+        return retval;
 }
 
 int32 SystemConfigurationImpl::getPropertyAsInteger(const string name, const int32 defaultValue)
@@ -227,7 +231,10 @@ int32 SystemConfigurationImpl::getPropertyAsInteger(const string name, const int
 	_obuffer << defaultValue;
 	_ibuffer.str(getPropertyAsString(name, _obuffer.str()));
 	_ibuffer >> retval;
-	return retval;
+	if (_ibuffer.fail() || _ibuffer.bad())
+        return defaultValue;
+    else
+        return retval;
 }
 
 float SystemConfigurationImpl::getPropertyAsFloat(const string name, const float defaultValue)
@@ -239,7 +246,10 @@ float SystemConfigurationImpl::getPropertyAsFloat(const string name, const float
 	_obuffer << defaultValue;
 	_ibuffer.str(getPropertyAsString(name, _obuffer.str()));
 	_ibuffer >> retval;
-	return retval;
+	if (_ibuffer.fail() || _ibuffer.bad())
+        return defaultValue;
+    else
+        return retval;
 }
 
 float SystemConfigurationImpl::getPropertyAsDouble(const string name, const double defaultValue)
@@ -251,7 +261,10 @@ float SystemConfigurationImpl::getPropertyAsDouble(const string name, const doub
 	_obuffer << defaultValue;
 	_ibuffer.str(getPropertyAsString(name, _obuffer.str()));
 	_ibuffer >> retval;
-	return retval;
+	if (_ibuffer.fail() || _ibuffer.bad())
+        return defaultValue;
+    else
+        return retval;
 }
 
 string SystemConfigurationImpl::getPropertyAsString(const string name, const string defaultValue)
