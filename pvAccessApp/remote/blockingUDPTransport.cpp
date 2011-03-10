@@ -90,7 +90,7 @@ namespace epics {
             
             // wait for send thread to exit cleanly            
             if (waitForThreadToComplete)
-                _shutdownEvent.wait(3.0);
+                _shutdownEvent.wait();
         }
 
         void BlockingUDPTransport::enqueueSendRequest(TransportSender* sender) {
