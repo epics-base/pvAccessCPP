@@ -498,7 +498,7 @@ namespace epics {
         {
         public:
         	ServerMonitorRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel, const pvAccessID ioid, Transport* transport,epics::pvData::PVStructure* pvRequest);
-        	void monitorConnect(const epics::pvData::Status& status, epics::pvData::Monitor* monitor, epics::pvData::Structure* structure);
+        	void monitorConnect(const epics::pvData::Status& status, epics::pvData::Monitor* monitor, epics::pvData::StructureConstPtr structure);
         	void unlisten(epics::pvData::Monitor* monitor);
         	void monitorEvent(epics::pvData::Monitor* monitor);
         	void lock();
@@ -512,7 +512,7 @@ namespace epics {
         private:
         	 epics::pvData::Monitor* _monitor;
         	 epics::pvData::Monitor* _channelMonitor;
-        	 epics::pvData::Structure* _structure;
+        	 epics::pvData::StructureConstPtr _structure;
         	 epics::pvData::Status _status;
         };
 

@@ -1162,7 +1162,7 @@ ServerMonitorRequesterImpl::ServerMonitorRequesterImpl(ServerContextImpl* contex
 	INIT_EXCEPTION_GUARD(13, _channelMonitor = channel->getChannel()->createMonitor(this, pvRequest));
 }
 
-void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor* monitor, Structure* structure)
+void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor* monitor, StructureConstPtr structure)
 {
 	{
 		Lock guard(_mutex);
