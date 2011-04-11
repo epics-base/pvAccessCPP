@@ -76,7 +76,8 @@ namespace epics {
             if(diff>2*_connectionTimeout) {
                 unresponsiveTransport();
             }
-            else if(diff>_connectionTimeout) {
+            // use some k (3/4) to handle "jitter"
+            else if(diff>=((3*_connectionTimeout)/4)) {
                 // send echo
                 enqueueSendRequest(this);
             }
