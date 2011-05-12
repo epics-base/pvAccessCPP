@@ -17,16 +17,17 @@ namespace pvAccess {
 class BaseChannelRequester :  virtual public epics::pvData::Requester, public epics::pvData::Destroyable
 {
 public:
-	BaseChannelRequester(ServerContextImpl* context, ServerChannelImpl* channel,const pvAccessID ioid, Transport* transport);
-	~BaseChannelRequester() {};
+	BaseChannelRequester(ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
+	                     const pvAccessID ioid, Transport::shared_pointer& transport);
+	virtual ~BaseChannelRequester() {};
 
-	boolean startRequest(int32 qos);
+	bool startRequest(int32 qos);
 	void stopRequest();
 	int32 getPendingRequest();
 	String getRequesterName();
 	void message(const String message, const epics::pvData::MessageType messageType);
-	static void message(Transport* transport, const pvAccessID ioid, const String message, const epics::pvData::MessageType messageType);
-	static void sendFailureMessage(const int8 command, Transport* transport, const pvAccessID ioid, const int8 qos, const Status status);
+	static void message(Transport::shared_pointer& transport, const pvAccessID ioid, const String message, const epics::pvData::MessageType messageType);
+	static void sendFailureMessage(const int8 command, Transport::shared_pointer& transport, const pvAccessID ioid, const int8 qos, const Status status);
 
 	static const Status okStatus;
 	static const Status badCIDStatus;
@@ -37,11 +38,11 @@ public:
 	static const Status otherRequestPendingStatus;
 protected:
 	const pvAccessID _ioid;
-	Transport* _transport;
-	ServerChannelImpl* _channel;
+	Transport::shared_pointer _transport;
+	ServerChannelImpl::shared_pointer _channel;
 	epics::pvData::Mutex _mutex;
 private:
-	ServerContextImpl* _context;
+	ServerContextImpl::shared_pointer _context;
 	static const int32 NULL_REQUEST;
 	int32 _pendingRequest;
 };
@@ -53,8 +54,6 @@ public:
 	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 	void lock();
 	void unlock();
-	void release();
-	void acquire();
 private:
 	const pvAccessID _ioid;
 	const String _message;
@@ -64,19 +63,17 @@ private:
 class BaseChannelRequesterFailureMessageTransportSender : public TransportSender
 {
 public:
-	BaseChannelRequesterFailureMessageTransportSender(const int8 command, Transport* transport, const pvAccessID ioid, const int8 qos, const Status status);
+	BaseChannelRequesterFailureMessageTransportSender(const int8 command, Transport::shared_pointer& transport, const pvAccessID ioid, const int8 qos, const Status& status);
 	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 	void lock();
 	void unlock();
-	void release();
-	void acquire();
 
 private:
 	const int8 _command;
 	const pvAccessID _ioid;
 	const int8 _qos;
 	const Status _status;
-	Transport* _transport;
+	Transport::shared_pointer _transport;
 };
 
 }

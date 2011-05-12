@@ -21,6 +21,8 @@
 #include <iostream>
 #include <cstdio>
 
+using std::tr1::static_pointer_cast;
+
 using namespace epics::pvAccess;
 using namespace epics::pvData;
 
@@ -28,48 +30,49 @@ using std::cout;
 using std::endl;
 using std::sscanf;
 
+
 class ContextImpl : public Context {
 public:
     ContextImpl() :
-        _tr(new TransportRegistry()), _timer(new Timer("server thread",
-                lowPriority)), _conf(new SystemConfigurationImpl()) {
-    }
+    		 _tr(new TransportRegistry()), _timer(new Timer("server thread",
+    		                lowPriority)), _conf(new SystemConfigurationImpl())
+    {}
+
     virtual ~ContextImpl() {
-        delete _tr;
-        delete _timer;
     }
-    virtual Timer* getTimer() {
+    virtual Timer::shared_pointer getTimer() {
         return _timer;
     }
-    virtual TransportRegistry* getTransportRegistry() {
+    virtual std::tr1::shared_ptr<TransportRegistry> getTransportRegistry() {
         return _tr;
     }
-    virtual Channel* getChannel(epics::pvAccess::pvAccessID) {
-        return 0;
+    virtual std::tr1::shared_ptr<Channel> getChannel(epics::pvAccess::pvAccessID) {
+        return std::tr1::shared_ptr<Channel>();
     }
-    virtual Transport* getSearchTransport() {
-        return 0;
+    virtual Transport::shared_pointer getSearchTransport() {
+        return Transport::shared_pointer();
     }
-    virtual Configuration* getConfiguration() {
+    virtual Configuration::shared_pointer getConfiguration() {
         return _conf;
     }
     virtual void acquire() {}
     virtual void release() {}
+    virtual void beaconAnomalyNotify() {}
 
 private:
-    TransportRegistry* _tr;
-    Timer* _timer;
-    Configuration* _conf;
+    std::tr1::shared_ptr<TransportRegistry> _tr;
+    Timer::shared_pointer _timer;
+    Configuration::shared_pointer _conf;
 };
 
 class DummyResponseHandler : public ResponseHandler {
 public:
-    DummyResponseHandler(Context* ctx) :
+    DummyResponseHandler() :
         ResponseHandler() {
     }
 
     virtual void handleResponse(osiSockAddr* responseFrom,
-            Transport* transport, int8 version, int8 command, int payloadSize,
+    		Transport::shared_pointer& transport, int8 version, int8 command, int payloadSize,
             ByteBuffer* payloadBuffer) {
 
         if(command==CMD_CONNECTION_VALIDATION) transport->verified();
@@ -85,7 +88,7 @@ public:
     virtual void transportUnresponsive() {
         errlogSevPrintf(errlogInfo, "unresponsive");
     }
-    virtual void transportResponsive(Transport* transport) {
+    virtual void transportResponsive(Transport::shared_pointer& transport) {
         errlogSevPrintf(errlogInfo, "responsive");
     }
     virtual void transportChanged() {
@@ -96,6 +99,7 @@ public:
     }
     virtual void acquire() {};
     virtual void release() {};
+    virtual pvAccessID getID() {return 0;};
 };
 
 class DummyTransportSender : public TransportSender {
@@ -129,32 +133,31 @@ private:
 };
 
 void testBlockingTCPSender() {
-    ContextImpl ctx;
-    BlockingTCPConnector connector(&ctx, 1024, 1.0);
+	Context::shared_pointer  ctx(new ContextImpl());
+	BlockingTCPConnector connector(ctx, 1024, 1.0);
 
-    DummyTransportClient dtc;
-    DummyTransportSender dts;
-    DummyResponseHandler drh(&ctx);
+    TransportClient::shared_pointer dtc(new DummyTransportClient());
+    TransportSender::shared_pointer dts(new DummyTransportSender());
+    std::auto_ptr<ResponseHandler> drh(new DummyResponseHandler());
 
     osiSockAddr srvAddr;
 
     //srvAddr.ia.sin_family = AF_INET;
-    if(aToIPAddr("192.168.71.132", CA_SERVER_PORT, &srvAddr.ia)<0) {
+    if(aToIPAddr("localhost", CA_SERVER_PORT, &srvAddr.ia)<0) {
         cout<<"error in aToIPAddr(...)"<<endl;
         return;
     }
 
-    Transport* transport=NULL;
     try {
-        transport = connector.connect(&dtc, &drh, srvAddr,
-                CA_MAGIC_AND_VERSION, CA_DEFAULT_PRIORITY);
+    	Transport::shared_pointer transport(connector.connect(dtc, drh, srvAddr,
+                CA_MAGIC_AND_VERSION, CA_DEFAULT_PRIORITY));
 
         cout<<"Sending 10 messages..."<<endl;
 
         for(int i = 0; i<10; i++) {
             cout<<"   Message: "<<i+1<<endl;
             if(!transport->isClosed())
-                transport->enqueueSendRequest(&dts);
+                transport->enqueueSendRequest(dts);
             else
                 break;
             sleep(1);
@@ -163,7 +166,7 @@ void testBlockingTCPSender() {
         cout<<e.what()<<endl;
     }
 
-    delete transport;
+
 }
 
 int main(int argc, char *argv[]) {

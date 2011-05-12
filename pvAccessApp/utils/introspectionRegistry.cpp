@@ -3,6 +3,9 @@
  */
 
 #include "introspectionRegistry.h"
+#include <convert.h>
+
+using std::tr1::static_pointer_cast;
 
 namespace epics { namespace pvAccess {
 
@@ -12,7 +15,7 @@ const int8 IntrospectionRegistry::FULL_WITH_ID_TYPE_CODE = (int8)-3;
 PVDataCreate* IntrospectionRegistry::_pvDataCreate = 0;
 FieldCreate* IntrospectionRegistry::_fieldCreate = 0;
 
-IntrospectionRegistry::IntrospectionRegistry(bool serverSide) : _mutex()
+IntrospectionRegistry::IntrospectionRegistry(bool serverSide)
 {
     // TODO not optimal
 	_pvDataCreate = getPVDataCreate();
@@ -31,11 +34,7 @@ void IntrospectionRegistry::reset()
 {
 	Lock guard(_mutex);
 	_outgoingIdPointer = _direction;
-	//decrement references
-	for(_registryRIter = _registry.rbegin(); _registryRIter != _registry.rend(); _registryRIter++)
-	{
-		_registryRIter->second->decReferenceCount();
-	}
+
 	_registry.clear();
 }
 
@@ -45,7 +44,7 @@ FieldConstPtr IntrospectionRegistry::getIntrospectionInterface(const short id)
 	_registryIter = _registry.find(id);
 	if(_registryIter == _registry.end())
 	{
-	   return NULL;
+           return FieldConstPtr();
 	}
 	return _registryIter->second;
 }
@@ -53,14 +52,11 @@ FieldConstPtr IntrospectionRegistry::getIntrospectionInterface(const short id)
 void IntrospectionRegistry::registerIntrospectionInterface(const short id,FieldConstPtr field)
 {
 	Lock guard(_mutex);
-	//first decrement reference on old value
+
 	_registryIter = _registry.find(id);
-	if(_registryIter != _registry.end())
-	{
-		_registryIter->second->decReferenceCount();
-	}
+
 	_registry[id] = field;
-	field->incReferenceCount();
+
 }
 
 short IntrospectionRegistry::registerIntrospectionInterface(FieldConstPtr field, bool& existing)
@@ -84,13 +80,9 @@ short IntrospectionRegistry::registerIntrospectionInterface(FieldConstPtr field,
 
 		//first decrement reference on old value
 		_registryIter = _registry.find(key);
-		if(_registryIter != _registry.end())
-		{
-			_registryIter->second->decReferenceCount();
-		}
 
 		_registry[key] = field;
-		field->incReferenceCount();
+
 	}
 	return key;
 }
@@ -104,7 +96,7 @@ void IntrospectionRegistry::printKeysAndValues(string name)
 		buffer.clear();
 		cout << "\t" << "Key: "<< _registryIter->first << endl;
 		cout << "\t" << "Value: " << _registryIter->second << endl;
-		_registryIter->second->dumpReferenceCount(&buffer,0);
+
 		cout << "\t" << "References: " << buffer.c_str() << endl;
 		buffer.clear();
 		_registryIter->second->toString(&buffer);
@@ -127,7 +119,7 @@ bool IntrospectionRegistry::registryContainsValue(FieldConstPtr field, short& ke
 
 void IntrospectionRegistry::serialize(FieldConstPtr field, ByteBuffer* buffer, SerializableControl* control)
 {
-	serialize(field, NULL, buffer, control, this);
+        serialize(field, StructureConstPtr(), buffer, control, this);
 }
 
 FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, DeserializableControl* control)
@@ -137,7 +129,7 @@ FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, Deserializa
 
 void IntrospectionRegistry::serializeFull(FieldConstPtr field, ByteBuffer* buffer, SerializableControl* control)
 {
-	serialize(field, NULL, buffer, control, NULL);
+        serialize(field, StructureConstPtr(), buffer, control, NULL);
 }
 
 FieldConstPtr IntrospectionRegistry::deserializeFull(ByteBuffer* buffer, DeserializableControl* control)
@@ -181,7 +173,7 @@ void IntrospectionRegistry::serialize(FieldConstPtr field, StructureConstPtr par
 		{
 		case epics::pvData::scalar:
 		{
-			ScalarConstPtr scalar = static_cast<ScalarConstPtr>(field);
+                        ScalarConstPtr scalar = static_pointer_cast<const Scalar>(field);
 			control->ensureBuffer(1);
 			buffer->putByte((int8)(epics::pvData::scalar << 4 | scalar->getScalarType()));
 			SerializeHelper::serializeString(field->getFieldName(), buffer, control);
@@ -189,7 +181,7 @@ void IntrospectionRegistry::serialize(FieldConstPtr field, StructureConstPtr par
 		}
 		case epics::pvData::scalarArray:
 		{
-			ScalarArrayConstPtr array = static_cast<ScalarArrayConstPtr>(field);
+                        ScalarArrayConstPtr array = static_pointer_cast<const ScalarArray>(field);
 			control->ensureBuffer(1);
 			buffer->putByte((int8)(epics::pvData::scalarArray << 4 | array->getElementType()));
 			SerializeHelper::serializeString(field->getFieldName(), buffer, control);
@@ -197,7 +189,7 @@ void IntrospectionRegistry::serialize(FieldConstPtr field, StructureConstPtr par
 		}
 		case epics::pvData::structure:
 		{
-			StructureConstPtr structure = static_cast<StructureConstPtr>(field);
+                        StructureConstPtr structure = static_pointer_cast<const Structure>(field);
 			control->ensureBuffer(1);
 			buffer->putByte((int8)(epics::pvData::structure << 4));
 			serializeStructureField(buffer, control, registry, structure);
@@ -205,12 +197,12 @@ void IntrospectionRegistry::serialize(FieldConstPtr field, StructureConstPtr par
 		}
 		case epics::pvData::structureArray:
 		{
-			StructureArrayConstPtr structureArray = static_cast<StructureArrayConstPtr>(field);
+                        StructureArrayConstPtr structureArray = static_pointer_cast<const StructureArray>(field);
 			control->ensureBuffer(1);
 			buffer->putByte((int8)(epics::pvData::structureArray << 4));
 			SerializeHelper::serializeString(field->getFieldName(), buffer, control);
 			// we also need to serialize structure field...
-			const Structure* structureElement = structureArray->getStructure();
+                        StructureConstPtr structureElement = structureArray->getStructure();
 			serializeStructureField(buffer, control, registry, structureElement);
 			break;
 		}
@@ -236,13 +228,13 @@ FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, Deserializa
 	const int8 typeCode = buffer->getByte();
 	if(typeCode == IntrospectionRegistry::NULL_TYPE_CODE)
 	{
-		return NULL;
+                return FieldConstPtr();
 	}
 	else if(typeCode == IntrospectionRegistry::ONLY_ID_TYPE_CODE)
 	{
 		control->ensureData(sizeof(int16)/sizeof(int8));
 		FieldConstPtr field = registry->getIntrospectionInterface(buffer->getShort());
-	    field->incReferenceCount();   // we inc, so that deserialize always returns a field with +1 ref. count (as when created)
+
 	    return field;
 	}
 
@@ -286,7 +278,7 @@ FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, Deserializa
 	default:
 	{
 	   // TODO log
-	   return NULL;
+           return FieldConstPtr();
 	}
 	}
 }
@@ -313,7 +305,7 @@ void IntrospectionRegistry::serializeStructure(ByteBuffer* buffer, SerializableC
 {
 	if (pvStructure == NULL)
 	{
-		serialize(NULL, buffer, control);
+                serialize(StructureConstPtr(), buffer, control);
 	}
 	else
 	{
@@ -328,7 +320,8 @@ PVStructurePtr IntrospectionRegistry::deserializeStructure(ByteBuffer* buffer, D
 	FieldConstPtr structureField = deserialize(buffer, control);
 	if (structureField != NULL)
 	{
-		pvStructure = _pvDataCreate->createPVStructure(NULL, static_cast<StructureConstPtr>(structureField));
+                pvStructure = _pvDataCreate->createPVStructure(NULL,
+                                                               static_pointer_cast<const Structure>(structureField));
 		pvStructure->deserialize(buffer, control);
 	}
 	return pvStructure;
@@ -353,7 +346,8 @@ PVStructurePtr IntrospectionRegistry::deserializeStructureAndCreatePVStructure(B
 	{
 		return NULL;
 	}
-	PVStructurePtr retVal = _pvDataCreate->createPVStructure(NULL,static_cast<StructureConstPtr>(field));
+        PVStructurePtr retVal = _pvDataCreate->createPVStructure(NULL,
+                                                                 static_pointer_cast<const Structure>(field));
 	return retVal;
 }
 

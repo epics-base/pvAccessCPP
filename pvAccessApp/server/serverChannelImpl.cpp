@@ -4,36 +4,33 @@
 
 #include "serverChannelImpl.h"
 
-// TODO remove
-#include "responseHandlers.h"
-
+using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
 
-ServerChannelImpl::ServerChannelImpl(Channel* channel, pvAccessID cid,
-			pvAccessID sid, epics::pvData::PVField* securityToken):
+ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer& channel, pvAccessID cid, pvAccessID sid, epics::pvData::PVField::shared_pointer& securityToken):
 			_channel(channel),
 			_cid(cid),
 			_sid(cid),
 			_destroyed(false)
 {
-	if (channel == NULL)
+	if (!channel.get())
 	{
-		THROW_BASE_EXCEPTION("non null local channel required");
+		THROW_BASE_EXCEPTION("non-null channel required");
 	}
 }
 
-Channel* ServerChannelImpl::getChannel()
+Channel::shared_pointer ServerChannelImpl::getChannel()
 {
 	return _channel;
 }
 
-pvAccessID ServerChannelImpl::getCID()
+pvAccessID ServerChannelImpl::getCID() const
 {
 	return _cid;
 }
 
-pvAccessID ServerChannelImpl::getSID()
+pvAccessID ServerChannelImpl::getSID() const
 {
 	return _sid;
 }
@@ -44,13 +41,8 @@ int16 ServerChannelImpl::getAccessRights()
 	return 0;
 }
 
-void ServerChannelImpl::registerRequest(const pvAccessID id, Destroyable* request)
+void ServerChannelImpl::registerRequest(const pvAccessID id, Destroyable::shared_pointer& request)
 {
-	if (request == NULL)
-	{
-		THROW_BASE_EXCEPTION("request == null");
-	}
-
 	Lock guard(_mutex);
 	_requests[id] = request;
 }
@@ -65,19 +57,18 @@ void ServerChannelImpl::unregisterRequest(const pvAccessID id)
 	}
 }
 
-Destroyable* ServerChannelImpl::getRequest(const pvAccessID id)
+Destroyable::shared_pointer ServerChannelImpl::getRequest(const pvAccessID id)
 {
 	_iter = _requests.find(id);
 	if(_iter != _requests.end())
 	{
 		return _iter->second;
 	}
-	return NULL;
+	return Destroyable::shared_pointer();
 }
 
 void ServerChannelImpl::destroy()
 {
-    {
 	Lock guard(_mutex);
 	if (_destroyed) return;
 
@@ -86,13 +77,9 @@ void ServerChannelImpl::destroy()
 	// destroy all requests
 	destroyAllRequests();
 
-    // now thats ugly!!!
-	(static_cast<ServerChannelRequesterImpl*>(_channel->getChannelRequester()))->release();
-	// TODO make impl that does shares channels (and does ref counting)!!!
-	// try catch?
+    // ... and the channel
+    // TODO try catch
 	_channel->destroy();
-    }
-	delete this;
 }
 
 void ServerChannelImpl::printInfo()

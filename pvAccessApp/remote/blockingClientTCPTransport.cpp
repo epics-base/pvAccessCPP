@@ -21,7 +21,7 @@
 #include <epicsTime.h>
 #include <sstream>
 
-using std::set;
+using namespace std;
 using namespace epics::pvData;
 
 namespace epics {
@@ -31,16 +31,18 @@ namespace epics {
         catch (std::exception &e) { errlogSevPrintf(errlogMajor, "Unhandled exception caught from code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { errlogSevPrintf(errlogMajor, "Unhandled exception caught from code at %s:%d.", __FILE__, __LINE__); }
                 
-                        BlockingClientTCPTransport::BlockingClientTCPTransport(
-                Context* context, SOCKET channel,
-                ResponseHandler* responseHandler, int receiveBufferSize,
-                TransportClient* client, short remoteTransportRevision,
+        BlockingClientTCPTransport::BlockingClientTCPTransport(
+                Context::shared_pointer& context, SOCKET channel,
+                auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
+                TransportClient::shared_pointer client, short remoteTransportRevision,
                 float beaconInterval, int16 priority) :
-            BlockingTCPTransport(context, channel, responseHandler,
-                    receiveBufferSize, priority), _introspectionRegistry(
-                    new IntrospectionRegistry(false)), _connectionTimeout(beaconInterval
-                    *1000), _unresponsiveTransport(false), _timerNode(
-                    new TimerNode(*this)), _verifyOrEcho(true) {
+            BlockingTCPTransport(context, channel, responseHandler, receiveBufferSize, priority),
+                    _introspectionRegistry(false),
+                    _connectionTimeout(beaconInterval*1000),
+                    _unresponsiveTransport(false),
+                    _timerNode(*this),
+                    _verifyOrEcho(true)
+        {
 //            _autoDelete = false;
 
             // initialize owners list, send queue
@@ -52,16 +54,13 @@ namespace epics {
             // setup connection timeout timer (watchdog)
             epicsTimeGetCurrent(&_aliveTimestamp);
 
-            context->getTimer()->schedulePeriodic(*_timerNode, beaconInterval,
-                    beaconInterval);
+            context->getTimer()->schedulePeriodic(_timerNode, beaconInterval, beaconInterval);
 
-            start();
+            //start();
 
         }
 
         BlockingClientTCPTransport::~BlockingClientTCPTransport() {
-            delete _introspectionRegistry;
-            delete _timerNode;
         }
 
         void BlockingClientTCPTransport::callback() {
@@ -79,7 +78,8 @@ namespace epics {
             // use some k (3/4) to handle "jitter"
             else if(diff>=((3*_connectionTimeout)/4)) {
                 // send echo
-                enqueueSendRequest(this);
+                TransportSender::shared_pointer transportSender = std::tr1::dynamic_pointer_cast<TransportSender>(shared_from_this());
+                enqueueSendRequest(transportSender);
             }
         }
 
@@ -88,17 +88,18 @@ namespace epics {
             if(!_unresponsiveTransport) {
                 _unresponsiveTransport = true;
 
-                set<TransportClient*>::iterator it = _owners.begin();
+                TransportClientMap_t::iterator it = _owners.begin();
                 for(; it!=_owners.end(); it++) {
-                    TransportClient* client = *it;
-                    client->acquire();
-                    EXCEPTION_GUARD(client->transportUnresponsive());
-                    client->release();
+                    TransportClient::shared_pointer client = it->second.lock();
+                    if (client)
+                    {
+                        EXCEPTION_GUARD(client->transportUnresponsive());
+                    }
                 }
             }
         }
 
-        bool BlockingClientTCPTransport::acquire(TransportClient* client) {
+        bool BlockingClientTCPTransport::acquire(TransportClient::shared_pointer& client) {
             Lock lock(_mutex);
             if(_closed) return false;
             
@@ -108,7 +109,8 @@ namespace epics {
 
             Lock lock2(_ownersMutex);
 // TODO double check?            if(_closed) return false;
-            _owners.insert(client);
+            //_owners.insert(TransportClient::weak_pointer(client));
+            _owners[client->getID()] = TransportClient::weak_pointer(client);
 
             return true;
         }
@@ -116,7 +118,7 @@ namespace epics {
         void BlockingClientTCPTransport::internalClose(bool forced) {
             BlockingTCPTransport::internalClose(forced);
 
-            _timerNode->cancel();
+            _timerNode.cancel();
 
             closedNotifyClients();
         }
@@ -137,12 +139,13 @@ namespace epics {
                         "Transport to %s still has %d client(s) active and closing...",
                         ipAddrStr, refs);
 
-                set<TransportClient*>::iterator it = _owners.begin();
+                TransportClientMap_t::iterator it = _owners.begin();
                 for(; it!=_owners.end(); it++) {
-                    TransportClient* client = *it;
-                    client->acquire();
-                    EXCEPTION_GUARD(client->transportClosed());
-                    client->release();
+                    TransportClient::shared_pointer client = it->second.lock();
+                    if (client)
+                    {
+                        EXCEPTION_GUARD(client->transportClosed());
+                    }
                 }
                 
             }
@@ -150,7 +153,8 @@ namespace epics {
             _owners.clear();
         }
 
-        void BlockingClientTCPTransport::release(TransportClient* client) {
+        //void BlockingClientTCPTransport::release(TransportClient::shared_pointer& client) {
+        void BlockingClientTCPTransport::release(pvAccessID clientID) {
             Lock lock(_mutex);
             if(_closed) return;
             
@@ -160,9 +164,10 @@ namespace epics {
             errlogSevPrintf(errlogInfo, "Releasing transport to %s.", ipAddrStr);
 
             Lock lock2(_ownersMutex);
-            _owners.erase(client);
-
-            // not used anymore
+            _owners.erase(clientID);
+            //_owners.erase(TransportClient::weak_pointer(client));
+            
+            // not used anymore, close it
             // TODO consider delayed destruction (can improve performance!!!)
             if(_owners.size()==0) close(false);
         }
@@ -178,26 +183,29 @@ namespace epics {
             if(_unresponsiveTransport) {
                 _unresponsiveTransport = false;
 
-                set<TransportClient*>::iterator it = _owners.begin();
+                Transport::shared_pointer thisSharedPtr = shared_from_this();
+                TransportClientMap_t::iterator it = _owners.begin();
                 for(; it!=_owners.end(); it++) {
-                    TransportClient* client = *it;
-                    client->acquire();
-                    EXCEPTION_GUARD(client->transportResponsive(this));
-                    client->release();
+                    TransportClient::shared_pointer client = it->second.lock();
+                    if (client)
+                    {
+                        EXCEPTION_GUARD(client->transportResponsive(thisSharedPtr));
+                    }
                 }
             }
         }
 
         void BlockingClientTCPTransport::changedTransport() {
-            _introspectionRegistry->reset();
+            _introspectionRegistry.reset();
 
             Lock lock(_ownersMutex);
-            set<TransportClient*>::iterator it = _owners.begin();
+            TransportClientMap_t::iterator it = _owners.begin();
             for(; it!=_owners.end(); it++) {
-                TransportClient* client = *it;
-                client->acquire();
-                EXCEPTION_GUARD(client->transportChanged());
-                client->release();
+                TransportClient::shared_pointer client = it->second.lock();
+                if (client)
+                {
+                    EXCEPTION_GUARD(client->transportChanged());
+                }
             }
         }
 

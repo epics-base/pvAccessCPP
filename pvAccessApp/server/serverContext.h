@@ -5,16 +5,15 @@
 #ifndef SERVERCONTEXT_H_
 #define SERVERCONTEXT_H_
 
-#include "remote.h"
-#include "beaconServerStatusProvider.h"
-#include "caConstants.h"
-#include "version.h"
-#include "pvAccess.h"
-#include "logger.h"
-#include "blockingUDP.h"
-#include "blockingTCP.h"
+#include <remote.h>
+#include <beaconServerStatusProvider.h>
+#include <caConstants.h>
+#include <version.h>
+#include <pvAccess.h>
+#include <blockingUDP.h>
+#include <blockingTCP.h>
 #include "beaconEmitter.h"
-#include "logger.h"
+#include <logger.h>
 
 #include <errlog.h>
 
@@ -24,10 +23,13 @@ namespace pvAccess {
 /**
  * The class representing a CA Server context.
  */
-class  ServerContext
+class ServerContext
 {
 public:
-	/**
+    typedef std::tr1::shared_ptr<ServerContext> shared_pointer;
+    typedef std::tr1::shared_ptr<const ServerContext> const_shared_pointer;
+	
+    /**
 	 * Destructor
 	 */
 	virtual ~ServerContext() {};
@@ -41,7 +43,7 @@ public:
 	 * Set <code>ChannelAccess</code> implementation and initialize server.
 	 * @param channelAccess implementation of channel access to be served.
 	 */
-	virtual void initialize(ChannelAccess* channelAccess) = 0;
+	virtual void initialize(ChannelAccess::shared_pointer& channelAccess) = 0;
 
 	/**
 	 * Run server (process events).
@@ -89,38 +91,46 @@ public:
 	 * Set beacon server status provider.
 	 * @param beaconServerStatusProvider <code>BeaconServerStatusProvider</code> implementation to set.
 	 */
-	virtual void setBeaconServerStatusProvider(BeaconServerStatusProvider* beaconServerStatusProvider) = 0;
+	virtual void setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer& beaconServerStatusProvider) = 0;
 
 };
 
 
-class BeaconEmitter;
-
-class ServerContextImpl :  public ServerContext, public Context
+class ServerContextImpl :
+    public ServerContext,
+    public Context,
+    public ResponseHandlerFactory,
+    public std::tr1::enable_shared_from_this<ServerContextImpl>
 {
 public:
-	/**
-	 * Constructor.
-	 */
+    typedef std::tr1::shared_ptr<ServerContextImpl> shared_pointer;
+    typedef std::tr1::shared_ptr<const ServerContextImpl> const_shared_pointer;
+protected:
 	ServerContextImpl();
+public:
+    static ServerContextImpl::shared_pointer create();
+    
 	virtual ~ServerContextImpl();
 
 	//**************** derived from ServerContext ****************//
 	const Version& getVersion();
-	void initialize(ChannelAccess* channelAccess);
+	void initialize(ChannelAccess::shared_pointer& channelAccess);
 	void run(int32 seconds);
 	void shutdown();
 	void destroy();
 	void printInfo();
 	void printInfo(ostream& str);
 	void dispose();
-	void setBeaconServerStatusProvider(BeaconServerStatusProvider* beaconServerStatusProvider);
+	void setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer& beaconServerStatusProvider);
 	//**************** derived from Context ****************//
-	Timer* getTimer();
-	Channel* getChannel(pvAccessID id);
-	Transport* getSearchTransport();
-	Configuration* getConfiguration();
-	TransportRegistry* getTransportRegistry();
+	Timer::shared_pointer getTimer();
+	Channel::shared_pointer getChannel(pvAccessID id);
+	Transport::shared_pointer getSearchTransport();
+	Configuration::shared_pointer getConfiguration();
+	TransportRegistry::shared_pointer getTransportRegistry();
+
+    std::auto_ptr<ResponseHandler> createResponseHandler();
+    void beaconAnomalyNotify();
 
     /**
      * Version.
@@ -226,7 +236,7 @@ public:
 	 * Get registered beacon server status provider.
 	 * @return registered beacon server status provider.
 	 */
-	BeaconServerStatusProvider* getBeaconServerStatusProvider();
+	BeaconServerStatusProvider::shared_pointer getBeaconServerStatusProvider();
 
 	/**
 	 * Get server newtwork (IP) address.
@@ -238,13 +248,13 @@ public:
 	 * Broadcast transport.
 	 * @return broadcast transport.
 	 */
-	BlockingUDPTransport* getBroadcastTransport();
+	BlockingUDPTransport::shared_pointer getBroadcastTransport();
 
 	/**
 	 * Get channel access implementation.
 	 * @return channel access implementation.
 	 */
-	ChannelAccess* getChannelAccess();
+	ChannelAccess::shared_pointer getChannelAccess();
 
 	/**
 	 * Get channel provider name.
@@ -262,10 +272,7 @@ public:
 	 * Get channel provider.
 	 * @return channel provider.
 	 */
-	ChannelProvider* getChannelProvider();
-
-	void release();
-	void acquire();
+	ChannelProvider::shared_pointer getChannelProvider();
 
 private:
     /**
@@ -333,33 +340,33 @@ private:
 	/**
 	 * Timer.
 	 */
-	epics::pvData::Timer* _timer;
+	epics::pvData::Timer::shared_pointer _timer;
 
 	/**
 	 * Broadcast transport needed for channel searches.
 	 */
-	BlockingUDPTransport* _broadcastTransport;
+	BlockingUDPTransport::shared_pointer _broadcastTransport;
 
 	/**
 	 * Beacon emitter.
 	 */
-	BeaconEmitter* _beaconEmitter;
+	BeaconEmitter::shared_pointer _beaconEmitter;
 
 	/**
 	 * CAS acceptor (accepts CA virtual circuit).
 	 */
-	BlockingTCPAcceptor* _acceptor;
+	BlockingTCPAcceptor::shared_pointer _acceptor;
 
 	/**
 	 * CA transport (virtual circuit) registry.
 	 * This registry contains all active transports - connections to CA servers.
 	 */
-	TransportRegistry* _transportRegistry;
+	TransportRegistry::shared_pointer _transportRegistry;
 
 	/**
 	 * Channel access.
 	 */
-	ChannelAccess* _channelAccess;
+	ChannelAccess::shared_pointer _channelAccess;
 
 	/**
 	 * Channel provider name.
@@ -369,7 +376,7 @@ private:
 	/**
 	 * Channel provider.
 	 */
-	ChannelProvider* _channelProvider;
+	ChannelProvider::shared_pointer _channelProvider;
 
 	/**
 	 * Run mutex.
@@ -384,7 +391,7 @@ private:
 	/**
 	 * Beacon server status provider interface (optional).
 	 */
-	BeaconServerStatusProvider* _beaconServerStatusProvider;
+	BeaconServerStatusProvider::shared_pointer _beaconServerStatusProvider;
 
 	/**
 	 * Initialize logger.

@@ -3,30 +3,23 @@
  */
 
 #include "beaconServerStatusProvider.h"
+#include <serverContext.h>
+
+using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
 
-BeaconServerStatusProvider::BeaconServerStatusProvider( ServerContext* context): _context(context)
-{
-	if(context == NULL)
-	{
-		THROW_BASE_EXCEPTION("null context");
-	}
-	initialize();
-}
-
-BeaconServerStatusProvider::BeaconServerStatusProvider()
+DefaultBeaconServerStatusProvider::DefaultBeaconServerStatusProvider(ServerContext::shared_pointer& context): _context(context)
 {
 	initialize();
 }
 
-BeaconServerStatusProvider::~BeaconServerStatusProvider()
+DefaultBeaconServerStatusProvider::~DefaultBeaconServerStatusProvider()
 {
 }
 
-void BeaconServerStatusProvider::initialize()
+void DefaultBeaconServerStatusProvider::initialize()
 {
-	PVDataCreate* pvDataCreate = getPVDataCreate();
 	FieldCreate* fieldCreate = getFieldCreate();
 	FieldConstPtrArray fields = new FieldConstPtr[6];
 	// TODO hierarchy can be used...
@@ -37,13 +30,13 @@ void BeaconServerStatusProvider::initialize()
 	fields[4] = fieldCreate->createScalar("deadlocks",pvInt);
 	fields[5] = fieldCreate->createScalar("averageSystemLoad",pvDouble);
 
-	_status = pvDataCreate->createPVStructure(NULL,"status",6,fields);
+	_status.reset(getPVDataCreate()->createPVStructure(0,"status",6,fields));
 }
 
-PVFieldPtr BeaconServerStatusProvider::getServerStatusData()
+PVField::shared_pointer DefaultBeaconServerStatusProvider::getServerStatusData()
 {
-	//TODO implement
-	return static_cast<PVFieldPtr>(_status);
+	//TODO implement (fill data)
+	return _status;
 }
 
 }}

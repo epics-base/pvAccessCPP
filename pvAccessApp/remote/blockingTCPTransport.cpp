@@ -6,9 +6,9 @@
  */
 
 #include "blockingTCP.h"
-#include "inetAddressUtil.h"
-#include "growingCircularBuffer.h"
-#include "caConstants.h"
+#include <inetAddressUtil.h>
+#include <caConstants.h>
+#include <CDRMonitor.h>
 
 /* pvData */
 #include <lock.h>
@@ -37,6 +37,7 @@ using std::ostringstream;
 namespace epics {
     namespace pvAccess {
 
+        /*
         class MonitorSender : public TransportSender, public NoDefaultMethods {
         public:
             MonitorSender(Mutex* monitorMutex, GrowingCircularBuffer<
@@ -67,49 +68,67 @@ namespace epics {
             Mutex* _monitorMutex;
             GrowingCircularBuffer<TransportSender*>* _monitorSendQueue;
         };
+        */
 
-        BlockingTCPTransport::BlockingTCPTransport(Context* context,
-                SOCKET channel, ResponseHandler* responseHandler,
+        PVDATA_REFCOUNT_MONITOR_DEFINE(blockingTCPTransport);
+
+        BlockingTCPTransport::BlockingTCPTransport(Context::shared_pointer& context,
+                SOCKET channel, auto_ptr<ResponseHandler>& responseHandler,
                 int receiveBufferSize, int16 priority) :
-                    _closed(false), _channel(channel),
+                    _channel(channel),
+                    _priority(priority),
+                    _responseHandler(responseHandler),
+                    _markerPeriodBytes(MARKER_PERIOD),
+                    _flushStrategy(DELAYED),
+                    _rcvThreadId(0),
+                    _sendThreadId(0),
+                    //_monitorSender(new MonitorSender(&_monitorMutex,_monitorSendQueue)),
+                    _context(context),
+                    _autoDelete(true),
                     _remoteTransportRevision(0),
                     _remoteTransportReceiveBufferSize(MAX_TCP_RECV),
                     _remoteTransportSocketReceiveBufferSize(MAX_TCP_RECV),
-                    _priority(priority), _responseHandler(responseHandler),
-                    _totalBytesReceived(0), _totalBytesSent(0),
-                    _markerToSend(0), _verified(false), _remoteBufferFreeSpace(
-                            LONG_LONG_MAX), _autoDelete(true),
-                    _markerPeriodBytes(MARKER_PERIOD), _nextMarkerPosition(
-                            _markerPeriodBytes), _sendPending(false),
-                    _lastMessageStartPosition(0), _stage(READ_FROM_SOCKET),
-                    _lastSegmentedMessageType(0), _lastSegmentedMessageCommand(
-                            0), _storedPayloadSize(0), _storedPosition(0),
-                    _storedLimit(0), _magicAndVersion(0), _packetType(0),
-                    _command(0), _payloadSize(0), _flushRequested(false),
-                    _sendBufferSentPosition(0), _flushStrategy(DELAYED),
-                    _sendQueue(
-                            new GrowingCircularBuffer<TransportSender*> (100)),
-                    _rcvThreadId(NULL), _sendThreadId(NULL), _monitorSendQueue(
-                            new GrowingCircularBuffer<TransportSender*> (100)),
-                    _monitorSender(new MonitorSender(&_monitorMutex,
-                            _monitorSendQueue)), _context(context),
-                    _sendThreadExited(false) {
+                    _sendQueue(),
+                    //_monitorSendQueue(),
+                    _nextMarkerPosition(_markerPeriodBytes),
+                    _sendPending(false),
+                    _lastMessageStartPosition(0),
+                    _lastSegmentedMessageType(0),
+                    _lastSegmentedMessageCommand(0),
+                    _flushRequested(false),
+                    _sendBufferSentPosition(0),
+                    _storedPayloadSize(0),
+                    _storedPosition(0),
+                    _storedLimit(0),
+                    _magicAndVersion(0),
+                    _packetType(0),
+                    _command(0),
+                    _payloadSize(0),
+                    _stage(READ_FROM_SOCKET),
+                    _totalBytesReceived(0),
+                    _closed(false),
+                    _sendThreadExited(false),
+                    _verified(false),
+                    _markerToSend(0),
+                    _totalBytesSent(0),
+                    _remoteBufferFreeSpace(LONG_LONG_MAX)
+        {
+            PVDATA_REFCOUNT_MONITOR_CONSTRUCT(blockingTCPTransport);
 
-            _socketBuffer = new ByteBuffer(max(MAX_TCP_RECV
-                    +MAX_ENSURE_DATA_BUFFER_SIZE, receiveBufferSize), EPICS_ENDIAN_BIG);
+            // TODO minor tweak: deque size is not preallocated...
+            
+            _socketBuffer = new ByteBuffer(max(MAX_TCP_RECV+MAX_ENSURE_DATA_BUFFER_SIZE, receiveBufferSize), EPICS_ENDIAN_BIG);
             _socketBuffer->setPosition(_socketBuffer->getLimit());
             _startPosition = _socketBuffer->getPosition();
 
             // allocate buffer
             _sendBuffer = new ByteBuffer(_socketBuffer->getSize(), EPICS_ENDIAN_BIG);
-            _maxPayloadSize = _sendBuffer->getSize()-2*CA_MESSAGE_HEADER_SIZE; // one for header, one for flow control
+            _maxPayloadSize = _sendBuffer->getSize() - 2*CA_MESSAGE_HEADER_SIZE; // one for header, one for flow control
 
             // get send buffer size
-
             socklen_t intLen = sizeof(int);
 
-            int retval = getsockopt(_channel, SOL_SOCKET, SO_SNDBUF,
-                    &_socketSendBufferSize, &intLen);
+            int retval = getsockopt(_channel, SOL_SOCKET, SO_SNDBUF, &_socketSendBufferSize, &intLen);
             if(retval<0) {
                 _socketSendBufferSize = MAX_TCP_RECV;
                 errlogSevPrintf(errlogMinor,
@@ -121,74 +140,64 @@ namespace epics {
             retval = getpeername(_channel, &(_socketAddress.sa), &saSize);
             if(retval<0) {
                 errlogSevPrintf(errlogMajor,
-                        "Error fetching socket remote address: %s", strerror(
-                                errno));
+                        "Error fetching socket remote address: %s",
+                        strerror(errno));
             }
 
             // prepare buffer
             clearAndReleaseBuffer();
-
-            // add to registry
-            _context->acquire();
-            _context->getTransportRegistry()->put(this);
         }
 
         BlockingTCPTransport::~BlockingTCPTransport() {
+            PVDATA_REFCOUNT_MONITOR_DESTRUCT(blockingTCPTransport);
+
             close(true);
 
-            TransportSender* sender;
-            while ((sender = _monitorSendQueue->extract()))
-                sender->release();
-            delete _monitorSendQueue;
-
-            while ((sender = _sendQueue->extract()))
-                sender->release();
-            delete _sendQueue;
-            
-            delete _monitorSender;
-
-            
             delete _socketBuffer;
             delete _sendBuffer;
-
-            delete _responseHandler;
-
-            _context->release();
         }
 
+        // TODO consider epics::pvData::Thread
         void BlockingTCPTransport::start() {
             
-            // TODO consuder epics::pvData::Thread
-            
-            String threadName = "TCP-receive "+inetAddressToString(
-                   _socketAddress);
+            // TODO this was in constructor
+            // add to registry
+            Transport::shared_pointer thisSharedPtr = shared_from_this();
+            _context->getTransportRegistry()->put(thisSharedPtr);
 
-            errlogSevPrintf(errlogInfo, "Starting thread: %s",
-                    threadName.c_str());
+            
+            String socketAddressString = inetAddressToString(_socketAddress);
+
+            //
+            // start receive thread
+            //
+            
+            String threadName = "TCP-receive " + socketAddressString;
+            errlogSevPrintf(errlogInfo, "Starting thread: %s", threadName.c_str());
 
             _rcvThreadId = epicsThreadCreate(threadName.c_str(),
-                    epicsThreadPriorityMedium, epicsThreadGetStackSize(
-                            epicsThreadStackMedium),
+                    epicsThreadPriorityMedium,
+                    epicsThreadGetStackSize(epicsThreadStackMedium),
                     BlockingTCPTransport::rcvThreadRunner, this);
 
-            threadName = "TCP-send "+inetAddressToString(_socketAddress);
+            //
+            // start send thread
+            //
 
-            errlogSevPrintf(errlogInfo, "Starting thread: %s",
-                    threadName.c_str());
+            threadName = "TCP-send " + socketAddressString;
+            errlogSevPrintf(errlogInfo, "Starting thread: %s",threadName.c_str());
 
             _sendThreadId = epicsThreadCreate(threadName.c_str(),
-                    epicsThreadPriorityMedium, epicsThreadGetStackSize(
-                            epicsThreadStackMedium),
+                    epicsThreadPriorityMedium,
+                    epicsThreadGetStackSize(epicsThreadStackMedium),
                     BlockingTCPTransport::sendThreadRunner, this);
-
         }
 
         void BlockingTCPTransport::clearAndReleaseBuffer() {
             // NOTE: take care that nextMarkerPosition is set right
             // fix position to be correct when buffer is cleared
             // do not include pre-buffered flow control message; not 100% correct, but OK
-            _nextMarkerPosition -= _sendBuffer->getPosition()
-                    -CA_MESSAGE_HEADER_SIZE;
+            _nextMarkerPosition -= _sendBuffer->getPosition() - CA_MESSAGE_HEADER_SIZE;
 
             _sendQueueMutex.lock();
             _flushRequested = false;
@@ -214,7 +223,8 @@ namespace epics {
             _closed = true;
 
             // remove from registry
-            _context->getTransportRegistry()->remove(this);
+            Transport::shared_pointer thisSharedPtr = shared_from_this();
+            _context->getTransportRegistry()->remove(thisSharedPtr);
 
             // clean resources
             internalClose(force);
@@ -239,33 +249,17 @@ namespace epics {
             int sockBufSize;
             socklen_t intLen = sizeof(int);
 
-            int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF,
-                    &sockBufSize, &intLen);
-            if(retval<0) errlogSevPrintf(errlogMajor,
-                    "Socket getsockopt SO_RCVBUF error: %s", strerror(errno));
+            int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF,&sockBufSize, &intLen);
+            if(retval<0)
+                errlogSevPrintf(errlogMajor,
+                    "Socket getsockopt SO_RCVBUF error: %s",
+                    strerror(errno));
 
             return sockBufSize;
         }
 
-        // TODO reimplement using Event
         bool BlockingTCPTransport::waitUntilVerified(double timeout) {
-            double internalTimeout = timeout;
-            bool internalVerified = false;
-
-            _verifiedMutex.lock();
-            internalVerified = _verified;
-            _verifiedMutex.unlock();
-
-            while(!internalVerified&&internalTimeout>0) {
-                epicsThreadSleep(min(0.1, internalTimeout));
-                internalTimeout -= 0.1;
-
-                _verifiedMutex.lock();
-                internalVerified = _verified;
-                _verifiedMutex.unlock();
-            }
-            
-            return internalVerified;
+            return _verifiedEvent.wait(timeout);
         }
 
         void BlockingTCPTransport::flush(bool lastMessageCompleted) {
@@ -291,15 +285,14 @@ namespace epics {
                     _lastSegmentedMessageCommand, 0);
         }
 
-        void BlockingTCPTransport::startMessage(int8 command,
-                int ensureCapacity) {
+        void BlockingTCPTransport::startMessage(int8 command, int ensureCapacity) {
             _lastMessageStartPosition = -1;
             ensureBuffer(CA_MESSAGE_HEADER_SIZE+ensureCapacity);
             _lastMessageStartPosition = _sendBuffer->getPosition();
             _sendBuffer->putShort(CA_MAGIC_AND_VERSION);
             _sendBuffer->putByte(_lastSegmentedMessageType); // data
-            _sendBuffer->putByte(command); // command
-            _sendBuffer->putInt(0); // temporary zero payload
+            _sendBuffer->putByte(command);                   // command
+            _sendBuffer->putInt(0);                          // temporary zero payload
 
         }
 
@@ -586,16 +579,14 @@ namespace epics {
                         _socketBuffer->setLimit(min(_storedPosition+_storedPayloadSize, _storedLimit));
                         try {
                             // handle response
+                            Transport::shared_pointer thisPointer = shared_from_this();
                             _responseHandler->handleResponse(&_socketAddress,
-                                    this, version, _command, _payloadSize,
+                                    thisPointer, version, _command, _payloadSize,
                                     _socketBuffer);
                         } catch(...) {
                             //noop      // TODO print?
                         }
 
-                        /*
-                         * Java finally start
-                         */
                         _socketBuffer->setLimit(_storedLimit);
                         int newPosition = _storedPosition+_storedPayloadSize;
                         if(newPosition>_storedLimit) {
@@ -606,9 +597,6 @@ namespace epics {
                         }
                         _socketBuffer->setPosition(newPosition);
                         // TODO discard all possible segments?!!!
-                        /*
-                         * Java finally end
-                         */
 
                         _stage = PROCESS_HEADER;
 
@@ -757,27 +745,25 @@ namespace epics {
             return true;
         }
 
-        TransportSender* BlockingTCPTransport::extractFromSendQueue() {
-            TransportSender* retval;
-
-            _sendQueueMutex.lock();
-            retval = _sendQueue->extract();
-            _sendQueueMutex.unlock();
-
-            return retval;
-        }
-
         void BlockingTCPTransport::processSendQueue() {
             // TODO sync _closed
             while(!_closed) {
-                TransportSender* sender;
 
-                sender = extractFromSendQueue();
+                _sendQueueMutex.lock();
+                // TODO optimize
+                TransportSender::shared_pointer sender;
+                if (!_sendQueue.empty())
+                {
+                    sender = _sendQueue.front();
+                    _sendQueue.pop_front();
+                }
+                _sendQueueMutex.unlock();
+
                 // wait for new message
-                while(sender==NULL&&!_flushRequested&&!_closed) {
+                while(sender.get()==0&&!_flushRequested&&!_closed) {
                     if(_flushStrategy==DELAYED) {
                         if(_delay>0) epicsThreadSleep(_delay);
-                        if(_sendQueue->size()==0) {
+                        if(_sendQueue.empty()) {
                             // if (hasMonitors || sendBuffer.position() > CAConstants.CA_MESSAGE_HEADER_SIZE)
                             if(_sendBuffer->getPosition()>CA_MESSAGE_HEADER_SIZE)
                                 _flushRequested = true;
@@ -787,7 +773,16 @@ namespace epics {
                     }
                     else
                         _sendQueueEvent.wait();
-                    sender = extractFromSendQueue();
+
+                    _sendQueueMutex.lock();
+                    if (!_sendQueue.empty())
+                    {
+                        sender = _sendQueue.front();
+                        _sendQueue.pop_front();
+                    }
+                    else
+                        sender.reset();
+                    _sendQueueMutex.unlock();
                 }
 
                 // always do flush from this thread
@@ -802,7 +797,7 @@ namespace epics {
                     flush();
                 }
 
-                if(sender!=NULL) {
+                if(sender.get()) {
                     sender->lock();
                     try {
                         _lastMessageStartPosition = _sendBuffer->getPosition();
@@ -820,7 +815,6 @@ namespace epics {
                         _sendBuffer->setPosition(_lastMessageStartPosition);
                     }
                     sender->unlock();
-                    sender->release();
                 } // if(sender!=NULL)
             } // while(!_closed)
         }
@@ -843,6 +837,7 @@ namespace epics {
 
         void BlockingTCPTransport::rcvThreadRunner(void* param) {
             BlockingTCPTransport* obj = (BlockingTCPTransport*)param;
+            Transport::shared_pointer ptr = obj->shared_from_this();    // hold reference
 
 try{
             obj->processReadCached(false, NONE, CA_MESSAGE_HEADER_SIZE, false);
@@ -850,6 +845,7 @@ try{
 printf("rcvThreadRunnner exception\n");
 }
 
+            /*
             if(obj->_autoDelete) {
                 while(true)
                 {
@@ -863,12 +859,16 @@ printf("rcvThreadRunnner exception\n");
                 }
                 delete obj;
             }
+             */
         }
 
         void BlockingTCPTransport::sendThreadRunner(void* param) {
             BlockingTCPTransport* obj = (BlockingTCPTransport*)param;
+            Transport::shared_pointer ptr = obj->shared_from_this();    // hold reference
 try {
             obj->processSendQueue();
+} catch (std::exception& ex) {
+    printf("sendThreadRunnner exception %s\n", ex.what());
 } catch (...) {
 printf("sendThreadRunnner exception\n");
 }
@@ -881,21 +881,21 @@ printf("sendThreadRunnner exception\n");
             obj->_mutex.unlock();
         }
 
-        void BlockingTCPTransport::enqueueSendRequest(TransportSender* sender) {
+        void BlockingTCPTransport::enqueueSendRequest(TransportSender::shared_pointer& sender) {
             Lock lock(_sendQueueMutex);
             if(_closed) return;
-            sender->acquire();
-            _sendQueue->insert(sender);
+            _sendQueue.push_back(sender);
             _sendQueueEvent.signal();
         }
 
-        void BlockingTCPTransport::enqueueMonitorSendRequest(TransportSender* sender) {
+        /*
+        void BlockingTCPTransport::enqueueMonitorSendRequest(TransportSender::shared_pointer sender) {
             Lock lock(_monitorMutex);
             if(_closed) return;
-            sender->acquire();
-            _monitorSendQueue->insert(sender);
-            if(_monitorSendQueue->size()==1) enqueueSendRequest(_monitorSender);
+            _monitorSendQueue.insert(sender);
+            if(_monitorSendQueue.size()==1) enqueueSendRequest(_monitorSender);
         }
+        
 
         void MonitorSender::send(ByteBuffer* buffer, TransportSendControl* control) {
             control->startMessage(19, 0);
@@ -911,13 +911,13 @@ printf("sendThreadRunnner exception\n");
 
                 if(sender==NULL) {
                     control->ensureBuffer(sizeof(int32));
-                    buffer->putInt(CAJ_INVALID_IOID);
+                    buffer->putInt(INVALID_IOID);
                     break;
                 }
                 sender->send(buffer, control);
                 sender->release();
             }
         }
-
+*/
     }
 }

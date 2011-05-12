@@ -20,6 +20,7 @@ using std::cout;
 using std::endl;
 using std::hex;
 using std::dec;
+using std::tr1::static_pointer_cast;
 
 class ContextImpl : public Context {
 public:
@@ -27,23 +28,24 @@ public:
 
     virtual ~ContextImpl() {
     }
-    virtual Timer* getTimer() {
-        return 0;
+    virtual Timer::shared_pointer getTimer() {
+        return Timer::shared_pointer();
     }
-    virtual TransportRegistry* getTransportRegistry() {
-        return 0;
+    virtual std::tr1::shared_ptr<TransportRegistry> getTransportRegistry() {
+        return std::tr1::shared_ptr<TransportRegistry>();
     }
-    virtual Channel* getChannel(epics::pvAccess::pvAccessID) {
-        return 0;
+    virtual std::tr1::shared_ptr<Channel> getChannel(epics::pvAccess::pvAccessID) {
+        return std::tr1::shared_ptr<Channel>();
     }
-    virtual Transport* getSearchTransport() {
-        return 0;
+    virtual Transport::shared_pointer getSearchTransport() {
+        return Transport::shared_pointer();
     }
-    virtual Configuration* getConfiguration() {
-        return 0;
+    virtual Configuration::shared_pointer getConfiguration() {
+        return Configuration::shared_pointer();
     }
     virtual void acquire() {}
     virtual void release() {}
+    virtual void beaconAnomalyNotify() {}
 };
 
 class DummyResponseHandler : public ResponseHandler {
@@ -59,14 +61,14 @@ public:
     }
 
     virtual void handleResponse(osiSockAddr* responseFrom,
-            Transport* transport, int8 version, int8 command, int payloadSize,
+    		Transport::shared_pointer&, int8 version, int8 command, int payloadSize,
             ByteBuffer* payloadBuffer);
 private:
     int packets;
 };
 
 void DummyResponseHandler::handleResponse(osiSockAddr* responseFrom,
-        Transport* transport, int8 version, int8 command, int payloadSize,
+		Transport::shared_pointer&, int8 version, int8 command, int payloadSize,
         ByteBuffer* payloadBuffer) {
     std::ostringstream os;
 
@@ -100,7 +102,8 @@ void testBlockingUDPConnector() {
     BlockingUDPConnector connector(false, true);
     ContextImpl ctx;
 
-    DummyResponseHandler drh(&ctx);
+    DummyResponseHandler* drh = new DummyResponseHandler(&ctx);
+    auto_ptr<ResponseHandler> rh(static_cast<ResponseHandler*>(drh));
 
     osiSockAddr bindAddr;
 
@@ -108,17 +111,17 @@ void testBlockingUDPConnector() {
     bindAddr.ia.sin_port = htons(65000);
     bindAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    Transport* transport = connector.connect(NULL, &drh, bindAddr, 1, 50);
+    TransportClient::shared_pointer nullPointer;
+    Transport::shared_pointer transport(connector.connect(nullPointer,rh, bindAddr, 1, 50));
 
-    ((BlockingUDPTransport*)transport)->start();
+    static_pointer_cast<BlockingUDPTransport>(transport)->start();
 
     cout<<"Waiting for 10 packets..."<<endl;
 
-    while(drh.getPackets()<10) {
+    //TODO drh can be deleted in connector!
+    while(drh->getPackets()<10) {
         sleep(1);
     }
-
-    delete transport;
 }
 
 int main(int argc, char *argv[]) {

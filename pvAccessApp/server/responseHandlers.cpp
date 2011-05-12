@@ -1,13 +1,10 @@
 /*
  * responseHandlers.cpp
- *
- *  Created on: Jan 4, 2011
- *      Author: Miha Vitorovic
  */
 
 #include "responseHandlers.h"
-#include "remote.h"
-#include "hexDump.h"
+#include <remote.h>
+#include <hexDump.h>
 
 #include <byteBuffer.h>
 
@@ -19,14 +16,18 @@
 using std::ostringstream;
 using std::hex;
 
+using std::tr1::dynamic_pointer_cast;
+using std::tr1::static_pointer_cast;
+
 using namespace epics::pvData;
 
 namespace epics {
 namespace pvAccess {
 
 void ServerBadResponse::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		Transport::shared_pointer& transport, int8 version, int8 command,
+		int payloadSize, ByteBuffer* payloadBuffer)
+{
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
@@ -39,68 +40,45 @@ void ServerBadResponse::handleResponse(osiSockAddr* responseFrom,
 
 }
 
-ServerResponseHandler::ServerResponseHandler(ServerContextImpl* context) {
-    // TODO replace with auto_ptr and vector
-	_badResponse = new ServerBadResponse(context);
-
-	_handlerTable = new ResponseHandler*[HANDLER_TABLE_LENGTH];
-	_handlerTable[0] = new ServerNoopResponse(context, "Beacon");
-	_handlerTable[1] = new ServerConnectionValidationHandler(context);
-	_handlerTable[2] = new ServerEchoHandler(context);
-	_handlerTable[3] = new ServerSearchHandler(context);
-	_handlerTable[4] = _badResponse;
-	_handlerTable[5] = new ServerIntrospectionSearchHandler(context);
-	_handlerTable[6] = _badResponse;
-	_handlerTable[7] = new ServerCreateChannelHandler(context);
-	_handlerTable[8] = new ServerDestroyChannelHandler(context);
-	_handlerTable[9] = _badResponse;
-	_handlerTable[10] = new ServerGetHandler(context);
-	_handlerTable[11] = new ServerPutHandler(context);
-	_handlerTable[12] = new ServerPutGetHandler(context);
-	_handlerTable[13] = new ServerMonitorHandler(context);
-	_handlerTable[14] = new ServerArrayHandler(context);
-	_handlerTable[15] = new ServerCancelRequestHandler(context);
-	_handlerTable[16] = new ServerProcessHandler(context);
-	_handlerTable[17] = new ServerGetFieldHandler(context);
-	_handlerTable[18] = _badResponse;
-	_handlerTable[19] = _badResponse;
-	_handlerTable[20] = new ServerRPCHandler(context);
-	_handlerTable[21] = _badResponse;
-	_handlerTable[22] = _badResponse;
-	_handlerTable[23] = _badResponse;
-	_handlerTable[24] = _badResponse;
-	_handlerTable[25] = _badResponse;
-	_handlerTable[26] = _badResponse;
-	_handlerTable[27] = _badResponse;
-}
-
-ServerResponseHandler::~ServerResponseHandler() {
-	delete _badResponse;
-	delete _handlerTable[0];
-	delete _handlerTable[1];
-	delete _handlerTable[2];
-	delete _handlerTable[3];
-	delete _handlerTable[5];
-	delete _handlerTable[7];
-	delete _handlerTable[8];
-	delete _handlerTable[10];
-	delete _handlerTable[11];
-	delete _handlerTable[12];
-	delete _handlerTable[13];
-	delete _handlerTable[14];
-	delete _handlerTable[15];
-	delete _handlerTable[16];
-	delete _handlerTable[17];
-	delete _handlerTable[20];
-	delete[] _handlerTable;
+ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer& context)
+{
+    ResponseHandler::shared_pointer badResponse(new ServerBadResponse(context));
+                
+    m_handlerTable.resize(CMD_RPC+1);
+                
+    m_handlerTable[CMD_BEACON].reset(new ServerNoopResponse(context, "Beacon")); /*  0 */
+    m_handlerTable[CMD_CONNECTION_VALIDATION].reset(new ServerConnectionValidationHandler(context)); /*  1 */
+    m_handlerTable[CMD_ECHO].reset(new ServerEchoHandler(context)); /*  2 */
+    m_handlerTable[CMD_SEARCH].reset(new ServerSearchHandler(context)); /*  3 */
+    m_handlerTable[CMD_SEARCH_RESPONSE] = badResponse;
+    m_handlerTable[CMD_INTROSPECTION_SEARCH].reset(new ServerIntrospectionSearchHandler(context)); /*  5 */
+    m_handlerTable[CMD_INTROSPECTION_SEARCH_RESPONSE] = badResponse; /*  6 - introspection search */
+    m_handlerTable[CMD_CREATE_CHANNEL].reset(new ServerCreateChannelHandler(context)); /*  7 */
+    m_handlerTable[CMD_DESTROY_CHANNEL].reset(new ServerDestroyChannelHandler(context)); /*  8 */ 
+    m_handlerTable[CMD_RESERVED0] = badResponse; /*  9 */
+    
+    m_handlerTable[CMD_GET].reset(new ServerGetHandler(context)); /* 10 - get response */
+    m_handlerTable[CMD_PUT].reset(new ServerPutHandler(context)); /* 11 - put response */
+    m_handlerTable[CMD_PUT_GET].reset(new ServerPutGetHandler(context)); /* 12 - put-get response */
+    m_handlerTable[CMD_MONITOR].reset(new ServerMonitorHandler(context)); /* 13 - monitor response */
+    m_handlerTable[CMD_ARRAY].reset(new ServerArrayHandler(context)); /* 14 - array response */
+    m_handlerTable[CMD_CANCEL_REQUEST].reset(new ServerCancelRequestHandler(context)); /* 15 - cancel request */
+    m_handlerTable[CMD_PROCESS].reset(new ServerProcessHandler(context)); /* 16 - process response */
+    m_handlerTable[CMD_GET_FIELD].reset(new ServerGetFieldHandler(context)); /* 17 - get field response */
+    m_handlerTable[CMD_MESSAGE] = badResponse; /* 18 - message to Requester */
+    m_handlerTable[CMD_MULTIPLE_DATA] = badResponse; /* 19 - grouped monitors */
+    m_handlerTable[CMD_RPC].reset(new ServerRPCHandler(context)); /* 20 - RPC response */
 }
 
 void ServerResponseHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
-	if(command<0||command>=HANDLER_TABLE_LENGTH) {
+		Transport::shared_pointer& transport, int8 version, int8 command,
+		int payloadSize, ByteBuffer* payloadBuffer)
+{
+	if(command<0||command>=(int8)m_handlerTable.size())
+	{
 		errlogSevPrintf(errlogMinor,
 				"Invalid (or unsupported) command: %x.", (0xFF&command));
+				
 		// TODO remove debug output
 		ostringstream name;
 		name<<"Invalid CA header "<<hex<<(int)(0xFF&command);
@@ -112,14 +90,15 @@ void ServerResponseHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 
 	// delegate
-	_handlerTable[command]->handleResponse(responseFrom, transport,
+	m_handlerTable[command]->handleResponse(responseFrom, transport,
 			version, command, payloadSize, payloadBuffer);
 }
 
 void ServerConnectionValidationHandler::handleResponse(
-		osiSockAddr* responseFrom, Transport* transport, int8 version,
+		osiSockAddr* responseFrom, Transport::shared_pointer& transport, int8 version,
 		int8 command, int payloadSize,
-		ByteBuffer* payloadBuffer) {
+		ByteBuffer* payloadBuffer)
+{
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
@@ -134,22 +113,21 @@ void ServerConnectionValidationHandler::handleResponse(
 }
 
 void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		Transport::shared_pointer& transport, int8 version, int8 command,
+		int payloadSize, ByteBuffer* payloadBuffer)
+{
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
-	EchoTransportSender* echoReply = new EchoTransportSender(responseFrom);
-
-	// send back
+    // send back
+	TransportSender::shared_pointer echoReply(new EchoTransportSender(responseFrom));
 	transport->enqueueSendRequest(echoReply);
-	
-	echoReply->release();
 }
 
 void ServerIntrospectionSearchHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		Transport::shared_pointer& transport, int8 version, int8 command,
+		int payloadSize, ByteBuffer* payloadBuffer)
+{
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
@@ -158,21 +136,19 @@ void ServerIntrospectionSearchHandler::handleResponse(osiSockAddr* responseFrom,
 
 /****************************************************************************************/
 
-ServerSearchHandler::ServerSearchHandler(ServerContextImpl* context) :
-    										AbstractServerResponseHandler(context, "Search request")
-    										{
-	_provider = context->getChannelProvider();
-	_objectPool = new ServerChannelFindRequesterImplObjectPool(context);
-    										}
+ServerSearchHandler::ServerSearchHandler(ServerContextImpl::shared_pointer& context) :
+        AbstractServerResponseHandler(context, "Search request"), _provider(context->getChannelProvider())
+{
+}
 
 ServerSearchHandler::~ServerSearchHandler()
 {
-	if(_objectPool) delete _objectPool;
 }
 
 void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		Transport::shared_pointer& transport, int8 version, int8 command,
+		int payloadSize, ByteBuffer* payloadBuffer)
+{
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
@@ -186,17 +162,21 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 	{
 		transport->ensureData(sizeof(int32)/sizeof(int8));
 		const int32 cid = payloadBuffer->getInt();
-		const String name = SerializeHelper::deserializeString(payloadBuffer, transport);
+		const String name = SerializeHelper::deserializeString(payloadBuffer, transport.get());
 		// no name check here...
 
-		_provider->channelFind(name, _objectPool->get()->set(searchSequenceId, cid, responseFrom, responseRequired));
+		// TODO object pool!!!
+		ServerChannelFindRequesterImpl* pr = new ServerChannelFindRequesterImpl(_context);
+		pr->set(searchSequenceId, cid, responseFrom, responseRequired);
+		ChannelFindRequester::shared_pointer spr(pr);
+		
+		_provider->channelFind(name, spr);
 	}
 }
 
-ServerChannelFindRequesterImpl::ServerChannelFindRequesterImpl(ServerContextImpl* context, ServerChannelFindRequesterImplObjectPool* objectPool) :
+ServerChannelFindRequesterImpl::ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer& context) :
 												_sendTo(NULL),
-												_context(context),
-												_objectPool(objectPool)
+												_context(context)
 												{}
 
 void ServerChannelFindRequesterImpl::clear()
@@ -215,14 +195,15 @@ ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(int32 search
 	return this;
 }
 
-void ServerChannelFindRequesterImpl::channelFindResult(const Status& status, ChannelFind* channelFind, bool wasFound)
+void ServerChannelFindRequesterImpl::channelFindResult(const Status& status, ChannelFind::shared_pointer& channelFind, bool wasFound)
 {
 	// TODO status
 	Lock guard(_mutex);
 	if (wasFound || _responseRequired)
 	{
 		_wasFound = wasFound;
-		_context->getBroadcastTransport()->enqueueSendRequest(this);
+		TransportSender::shared_pointer thisSender = shared_from_this();
+		_context->getBroadcastTransport()->enqueueSendRequest(thisSender);
 	}
 }
 
@@ -252,52 +233,13 @@ void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendContr
 	buffer->putInt(_cid);
 
 	control->setRecipient(*_sendTo);
-
-	// return this object to the pool
-	_objectPool->put(this);
-}
-
-ServerChannelFindRequesterImplObjectPool::ServerChannelFindRequesterImplObjectPool(ServerContextImpl* context) :
-        										_context(context)
-{}
-
-ServerChannelFindRequesterImplObjectPool::~ServerChannelFindRequesterImplObjectPool()
-{
-	for(std::vector<ServerChannelFindRequesterImpl*>::iterator iter = _elements.begin();
-			iter != _elements.end(); iter++)
-	{
-		delete *iter;
-	}
-	_elements.erase(_elements.begin(), _elements.end());
-}
-
-ServerChannelFindRequesterImpl* ServerChannelFindRequesterImplObjectPool::get()
-{
-	Lock guard(_mutex);
-	const int32 count = _elements.size();
-	if (count == 0)
-	{
-		return new ServerChannelFindRequesterImpl(_context, this);
-	}
-	else
-	{
-		ServerChannelFindRequesterImpl*  channelFindRequesterImpl = _elements.back();
-		_elements.pop_back();
-		return channelFindRequesterImpl;
-	}
-}
-
-void ServerChannelFindRequesterImplObjectPool::put(ServerChannelFindRequesterImpl* element)
-{
-	Lock guard(_mutex);
-	element->clear();
-	_elements.push_back(element);
 }
 
 /****************************************************************************************/
 void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		Transport::shared_pointer& transport, int8 version, int8 command,
+		int payloadSize, ByteBuffer* payloadBuffer)
+{
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
@@ -310,7 +252,7 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 	const pvAccessID cid = payloadBuffer->getInt();
 
-	String channelName = SerializeHelper::deserializeString(payloadBuffer, transport);
+	String channelName = SerializeHelper::deserializeString(payloadBuffer, transport.get());
 	if (channelName.size() == 0)
 	{
 
@@ -329,35 +271,44 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 		return;
 	}
 
-    // TODO memory leak... 
-	ChannelRequester* cr = new ServerChannelRequesterImpl(transport, channelName, cid);
-	_provider->createChannel(channelName, cr, transport->getPriority());
+	ServerChannelRequesterImpl::create(_provider, transport, channelName, cid);
 }
 
-void ServerCreateChannelHandler::disconnect(Transport* transport)
+void ServerCreateChannelHandler::disconnect(Transport::shared_pointer& transport)
 {
 	transport->close(true);
 }
 
-ServerChannelRequesterImpl::ServerChannelRequesterImpl(Transport* transport, const String channelName, const pvAccessID cid) :
-    										   _transport(transport),
-    										   _channelName(channelName),
-    										   _cid(cid),
-    										   _status(),
-    										   _channel(NULL)
+ServerChannelRequesterImpl::ServerChannelRequesterImpl(Transport::shared_pointer& transport,
+    const String channelName, const pvAccessID cid) :
+    _transport(transport),
+    _channelName(channelName),
+    _cid(cid),
+    _status(),
+    _channel()
 {
-
 }
 
-void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel* channel)
+ChannelRequester::shared_pointer ServerChannelRequesterImpl::create(
+    ChannelProvider::shared_pointer& provider, Transport::shared_pointer& transport,
+    const String channelName, const pvAccessID cid)
+{
+	ChannelRequester::shared_pointer cr(new ServerChannelRequesterImpl(transport, channelName, cid));
+    // TODO exception guard and report error back
+	provider->createChannel(channelName, cr, transport->getPriority());
+	return cr;
+}
+
+void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::shared_pointer& channel)
 {
 	Lock guard(_mutex);
 	_status = status;
 	_channel = channel;
-	_transport->enqueueSendRequest(this);
+	TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 }
 
-void ServerChannelRequesterImpl::channelStateChange(Channel* c, const Channel::ConnectionState isConnected)
+void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer& c, const Channel::ConnectionState isConnected)
 {
 	//noop
 }
@@ -386,27 +337,30 @@ void ServerChannelRequesterImpl::unlock()
 
 void ServerChannelRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
-	Channel* channel;
+	Channel::shared_pointer channel;
 	Status status;
 	{
 		Lock guard(_mutex);
 		channel = _channel;
 		status = _status;
+		
+		// TODO
+		_channel.reset();
 	}
 
 	// error response
-	if (channel == NULL)
+	if (channel.get() == NULL)
 	{
 		createChannelFailedResponse(buffer, control, status);
 	}
 	// OK
 	else
 	{
-		ServerChannelImpl* serverChannel = NULL;
+		ServerChannel::shared_pointer serverChannel;
 		try
 		{
 			// NOTE: we do not explicitly check if transport OK
-			ChannelHostingTransport* casTransport = dynamic_cast<ChannelHostingTransport*>(_transport);
+			ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(_transport);
 
 			//
 			// create a new channel instance
@@ -414,7 +368,8 @@ void ServerChannelRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 			pvAccessID sid = casTransport->preallocateChannelSID();
 			try
 			{
-				serverChannel = new ServerChannelImpl(channel, _cid, sid, casTransport->getSecurityToken());
+			    epics::pvData::PVField::shared_pointer securityToken = casTransport->getSecurityToken();
+				serverChannel.reset(new ServerChannelImpl(channel, _cid, sid, securityToken));
 
 				// ack allocation and register
 				casTransport->registerChannel(sid, serverChannel);
@@ -435,19 +390,13 @@ void ServerChannelRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 		{
 			errlogSevPrintf(errlogMinor, "Exception caught when creating channel: %s", _channelName.c_str());
 			createChannelFailedResponse(buffer, control, Status(Status::STATUSTYPE_FATAL,  "failed to create channel", e.what()));
-			if (serverChannel != NULL)
-			{
-				serverChannel->destroy();
-			}
+			// TODO make sure that serverChannel gets destroyed
 		}
 		catch (...)
 		{
 			errlogSevPrintf(errlogMinor, "Exception caught when creating channel: %s", _channelName.c_str());
 			createChannelFailedResponse(buffer, control, Status(Status::STATUSTYPE_FATAL,  "failed to create channel"));
-			if (serverChannel != NULL)
-			{
-				serverChannel->destroy();
-			}
+			// TODO make sure that serverChannel gets destroyed
 		}
 	}
 }
@@ -464,13 +413,14 @@ void ServerChannelRequesterImpl::createChannelFailedResponse(ByteBuffer* buffer,
 /****************************************************************************************/
 
 void ServerDestroyChannelHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		Transport::shared_pointer& transport, int8 version, int8 command,
+		int payloadSize, ByteBuffer* payloadBuffer)
+{
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
 	// NOTE: we do not explicitly check if transport OK
-	ChannelHostingTransport* casTransport = dynamic_cast<ChannelHostingTransport*>(transport);
+	ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
 
 
 	transport->ensureData(2*sizeof(int32)/sizeof(int8));
@@ -478,8 +428,8 @@ void ServerDestroyChannelHandler::handleResponse(osiSockAddr* responseFrom,
 	const pvAccessID cid = payloadBuffer->getInt();
 
 	// get channel by SID
-	ServerChannelImpl* channel = static_cast<ServerChannelImpl*>(casTransport->getChannel(sid));
-	if (channel == NULL)
+	ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+	if (channel.get() == NULL)
 	{
 		if (!transport->isClosed())
 		{
@@ -497,21 +447,21 @@ void ServerDestroyChannelHandler::handleResponse(osiSockAddr* responseFrom,
 	casTransport->unregisterChannel(sid);
 
 	// send response back
-	ServerDestroyChannelHandlerTransportSender* sr = new ServerDestroyChannelHandlerTransportSender(cid, sid);
+	TransportSender::shared_pointer sr(new ServerDestroyChannelHandlerTransportSender(cid, sid));
 	transport->enqueueSendRequest(sr);
-	sr->release();
 }
 
 /****************************************************************************************/
 
 void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		Transport::shared_pointer& transport, int8 version, int8 command,
+		int payloadSize, ByteBuffer* payloadBuffer)
+{
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
 	// NOTE: we do not explicitly check if transport is OK
-	ChannelHostingTransport* casTransport = dynamic_cast<ChannelHostingTransport*>(transport);
+	ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
 
 	transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
 	const pvAccessID sid = payloadBuffer->getInt();
@@ -520,8 +470,8 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 	// mode
 	const int8 qosCode = payloadBuffer->getByte();
 
-	ServerChannelImpl* channel = static_cast<ServerChannelImpl*>(casTransport->getChannel(sid));
-	if (channel == NULL)
+	ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+	if (channel.get() == NULL)
 	{
 		BaseChannelRequester::sendFailureMessage((int8)10, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
 		return;
@@ -531,28 +481,25 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
-		//TODO who is responsible to delete this pvRequest??
-		PVStructurePtr pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
+		PVStructure::shared_pointer pvRequest(transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport.get()));
 
 		// create...
-		new ServerChannelGetRequesterImpl(_context, channel, ioid, transport, pvRequest);
-		
-		delete pvRequest;
+		ServerChannelGetRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
 	}
 	else
 	{
 		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
 
-		ServerChannelGetRequesterImpl* request = static_cast<ServerChannelGetRequesterImpl*>(channel->getRequest(ioid));
+		ServerChannelGetRequesterImpl::shared_pointer request = static_pointer_cast<ServerChannelGetRequesterImpl>(channel->getRequest(ioid));
 		if (request == NULL)
 		{
-			BaseChannelRequester::sendFailureMessage((int8)10, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
+			BaseChannelRequester::sendFailureMessage((int8)CMD_GET, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
 			return;
 		}
 
 		if (!request->startRequest(qosCode))
 		{
-			BaseChannelRequester::sendFailureMessage((int8)10, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
+			BaseChannelRequester::sendFailureMessage((int8)CMD_GET, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
 			return;
 		}
 
@@ -566,27 +513,39 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
     } \
     catch (std::exception &e) { \
         Status status(Status::STATUSTYPE_FATAL, e.what()); \
-	    BaseChannelRequester::sendFailureMessage((int8)cmd, transport, ioid, (int8)QOS_INIT, status); \
+	    BaseChannelRequester::sendFailureMessage((int8)cmd, _transport, _ioid, (int8)QOS_INIT, status); \
 	    destroy(); \
     } \
     catch (...) { \
         Status status(Status::STATUSTYPE_FATAL, "unknown exception caught"); \
-	    BaseChannelRequester::sendFailureMessage((int8)cmd, transport, ioid, (int8)QOS_INIT, status); \
+	    BaseChannelRequester::sendFailureMessage((int8)cmd, _transport, _ioid, (int8)QOS_INIT, status); \
 	    destroy(); \
     }
 
-ServerChannelGetRequesterImpl::ServerChannelGetRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel, const pvAccessID ioid, Transport* transport,
-		PVStructurePtr pvRequest) :
-		BaseChannelRequester(context, channel, ioid, transport), _channelGet(0), _bitSet(0), _pvStructure(0)
+ServerChannelGetRequesterImpl::ServerChannelGetRequesterImpl(ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel, const pvAccessID ioid, Transport::shared_pointer& transport) :
+		BaseChannelRequester(context, channel, ioid, transport), _channelGet(), _bitSet(), _pvStructure()
 
 {
-	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, this);
-    INIT_EXCEPTION_GUARD(10, _channelGet = channel->getChannel()->createChannelGet(this, pvRequest));
 }
 
-void ServerChannelGetRequesterImpl::channelGetConnect(const Status& status, ChannelGet* channelGet, PVStructurePtr pvStructure,
-		BitSet* bitSet)
+ChannelGetRequester::shared_pointer ServerChannelGetRequesterImpl::create(ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel, const pvAccessID ioid, Transport::shared_pointer& transport,
+PVStructure::shared_pointer& pvRequest)
+{
+    ChannelGetRequester::shared_pointer thisPointer(new ServerChannelGetRequesterImpl(context, channel, ioid, transport));
+    static_cast<ServerChannelGetRequesterImpl*>(thisPointer.get())->activate(pvRequest);
+    return thisPointer;
+}
+
+void ServerChannelGetRequesterImpl::activate(PVStructure::shared_pointer& pvRequest)
+{
+	startRequest(QOS_INIT);
+	ChannelGetRequester::shared_pointer thisPointer = shared_from_this();
+	Destroyable::shared_pointer thisDestroyable = shared_from_this();
+	_channel->registerRequest(_ioid, thisDestroyable);
+    INIT_EXCEPTION_GUARD(CMD_GET, _channelGet = _channel->getChannel()->createChannelGet(thisPointer, pvRequest));
+}
+
+void ServerChannelGetRequesterImpl::channelGetConnect(const Status& status, ChannelGet::shared_pointer& channelGet, PVStructure::shared_pointer& pvStructure, BitSet::shared_pointer& bitSet)
 {
 	{
 		Lock guard(_mutex);
@@ -595,7 +554,8 @@ void ServerChannelGetRequesterImpl::channelGetConnect(const Status& status, Chan
 		_status = status;
 		_channelGet = channelGet;
 	}
-	_transport->enqueueSendRequest(this);
+	TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 
 	// self-destruction
 	if (!status.isSuccess())
@@ -610,7 +570,8 @@ void ServerChannelGetRequesterImpl::getDone(const Status& status)
 		Lock guard(_mutex);
 		_status = status;
 	}
-	_transport->enqueueSendRequest(this);
+	TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 }
 
 void ServerChannelGetRequesterImpl::destroy()
@@ -623,10 +584,9 @@ void ServerChannelGetRequesterImpl::destroy()
 			_channelGet->destroy();
 		}
 	}
-	release();
 }
 
-ChannelGet* ServerChannelGetRequesterImpl::getChannelGet()
+ChannelGet::shared_pointer ServerChannelGetRequesterImpl::getChannelGet()
 {
 	return _channelGet;
 }
@@ -659,13 +619,13 @@ void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 		if (request & QOS_INIT)
 		{
 			Lock guard(_mutex);
-			introspectionRegistry->serialize(_pvStructure != NULL ? _pvStructure->getField() : NULL, buffer, control);
+            introspectionRegistry->serialize(_pvStructure != NULL ? _pvStructure->getField() : FieldConstPtr(), buffer, control);
 
 		}
 		else
 		{
 			_bitSet->serialize(buffer, control);
-			_pvStructure->serialize(buffer, control, _bitSet);
+			_pvStructure->serialize(buffer, control, _bitSet.get());
 		}
 	}
 
@@ -679,14 +639,14 @@ void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 }
 /****************************************************************************************/
 void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
+		Transport::shared_pointer& transport, int8 version, int8 command,
 		int payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
 
 	// NOTE: we do not explicitly check if transport is OK
-	ChannelHostingTransport* casTransport = dynamic_cast<ChannelHostingTransport*>(transport);
+	ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
 
 	transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
 	const pvAccessID sid = payloadBuffer->getInt();
@@ -695,10 +655,10 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 	// mode
 	const int8 qosCode = payloadBuffer->getByte();
 
-	ServerChannelImpl* channel = static_cast<ServerChannelImpl*>(casTransport->getChannel(sid));
+	ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
 	if (channel == NULL)
 	{
-		BaseChannelRequester::sendFailureMessage((int8)11, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
+		BaseChannelRequester::sendFailureMessage((int8)CMD_PUT, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
 		return;
 	}
 
@@ -706,29 +666,26 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
-		//TODO who is responsible to delete this pvRequest??
-		PVStructure* pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
+		PVStructure::shared_pointer pvRequest(transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport.get()));
 
 		// create...
-		new ServerChannelPutRequesterImpl(_context, channel, ioid, transport, pvRequest);
-
-        delete pvRequest;		
+		ServerChannelPutRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
 	}
 	else
 	{
 		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
 		const bool get = (QOS_GET & qosCode) != 0;
 
-		ServerChannelPutRequesterImpl* request = static_cast<ServerChannelPutRequesterImpl*>(channel->getRequest(ioid));
+		ServerChannelPutRequesterImpl::shared_pointer request = static_pointer_cast<ServerChannelPutRequesterImpl>(channel->getRequest(ioid));
 		if (request == NULL)
 		{
-			BaseChannelRequester::sendFailureMessage((int8)11, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
+			BaseChannelRequester::sendFailureMessage((int8)CMD_PUT, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
 			return;
 		}
 
 		if (!request->startRequest(qosCode))
 		{
-			BaseChannelRequester::sendFailureMessage((int8)11, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
+			BaseChannelRequester::sendFailureMessage((int8)CMD_PUT, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
 			return;
 		}
 
@@ -740,24 +697,38 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 		else
 		{
 			// deserialize bitSet and do a put
-			BitSet* putBitSet = request->getBitSet();
-			putBitSet->deserialize(payloadBuffer, transport);
-			request->getPVStructure()->deserialize(payloadBuffer, transport, putBitSet);
+			BitSet::shared_pointer putBitSet = request->getBitSet();
+			putBitSet->deserialize(payloadBuffer, transport.get());
+			request->getPVStructure()->deserialize(payloadBuffer, transport.get(), putBitSet.get());
 			request->getChannelPut()->put(lastRequest);
 		}
 	}
 }
 
-ServerChannelPutRequesterImpl::ServerChannelPutRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel,
-		const pvAccessID ioid, Transport* transport,PVStructure* pvRequest):
-		BaseChannelRequester(context, channel, ioid, transport), _channelPut(0), _bitSet(0), _pvStructure(0)
+ServerChannelPutRequesterImpl::ServerChannelPutRequesterImpl(ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
+		const pvAccessID ioid, Transport::shared_pointer& transport):
+		BaseChannelRequester(context, channel, ioid, transport), _channelPut(), _bitSet(), _pvStructure()
 {
-	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
-    INIT_EXCEPTION_GUARD(11, _channelPut = channel->getChannel()->createChannelPut(this, pvRequest));
 }
 
-void ServerChannelPutRequesterImpl::channelPutConnect(const Status& status, ChannelPut* channelPut, PVStructure* pvStructure, BitSet* bitSet)
+ChannelPutRequester::shared_pointer ServerChannelPutRequesterImpl::create(ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
+		const pvAccessID ioid, Transport::shared_pointer& transport, PVStructure::shared_pointer& pvRequest)
+{
+    ChannelPutRequester::shared_pointer thisPointer(new ServerChannelPutRequesterImpl(context, channel, ioid, transport));
+    static_cast<ServerChannelPutRequesterImpl*>(thisPointer.get())->activate(pvRequest);
+    return thisPointer;
+}
+
+void ServerChannelPutRequesterImpl::activate(PVStructure::shared_pointer& pvRequest)
+{
+	startRequest(QOS_INIT);
+	ChannelPutRequester::shared_pointer thisPointer = shared_from_this();
+	Destroyable::shared_pointer thisDestroyable = shared_from_this();
+	_channel->registerRequest(_ioid, thisDestroyable);
+    INIT_EXCEPTION_GUARD(CMD_PUT, _channelPut = _channel->getChannel()->createChannelPut(thisPointer, pvRequest));
+}
+
+void ServerChannelPutRequesterImpl::channelPutConnect(const Status& status, ChannelPut::shared_pointer& channelPut, PVStructure::shared_pointer& pvStructure, BitSet::shared_pointer& bitSet)
 {
 	{
 		Lock guard(_mutex);
@@ -767,7 +738,8 @@ void ServerChannelPutRequesterImpl::channelPutConnect(const Status& status, Chan
 		_channelPut = channelPut;
 	}
 
-	_transport->enqueueSendRequest(this);
+	TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 
 	// self-destruction
 	if (!status.isSuccess())
@@ -782,7 +754,8 @@ void ServerChannelPutRequesterImpl::putDone(const Status& status)
 		Lock guard(_mutex);
 		_status = status;
 	}
-	_transport->enqueueSendRequest(this);
+	TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 }
 
 void ServerChannelPutRequesterImpl::getDone(const Status& status)
@@ -791,7 +764,8 @@ void ServerChannelPutRequesterImpl::getDone(const Status& status)
 		Lock guard(_mutex);
 		_status = status;
 	}
-	_transport->enqueueSendRequest(this);
+	TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 }
 
 void ServerChannelPutRequesterImpl::lock()
@@ -814,24 +788,23 @@ void ServerChannelPutRequesterImpl::destroy()
 			_channelPut->destroy();
 		}
 	}
-	release();
 }
 
-ChannelPut* ServerChannelPutRequesterImpl::getChannelPut()
+ChannelPut::shared_pointer ServerChannelPutRequesterImpl::getChannelPut()
 {
-	Lock guard(_mutex);
+	//Lock guard(_mutex);
 	return _channelPut;
 }
 
-BitSet* ServerChannelPutRequesterImpl::getBitSet()
+BitSet::shared_pointer ServerChannelPutRequesterImpl::getBitSet()
 {
-	Lock guard(_mutex);
+	//Lock guard(_mutex);
 	return _bitSet;
 }
 
-PVStructure* ServerChannelPutRequesterImpl::getPVStructure()
+PVStructure::shared_pointer ServerChannelPutRequesterImpl::getPVStructure()
 {
-	Lock guard(_mutex);
+	//Lock guard(_mutex);
 	return _pvStructure;
 }
 
@@ -839,7 +812,7 @@ void ServerChannelPutRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 {
 	const int32 request = getPendingRequest();
 
-	control->startMessage((int32)11, sizeof(int32)/sizeof(int8) + 1);
+	control->startMessage((int32)CMD_PUT, sizeof(int32)/sizeof(int8) + 1);
 	buffer->putInt(_ioid);
 	buffer->putByte((int8)request);
 	IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
@@ -853,7 +826,7 @@ void ServerChannelPutRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 		if ((QOS_INIT & request) != 0)
 		{
 			Lock guard(_mutex);
-			introspectionRegistry->serialize(_pvStructure != NULL ? _pvStructure->getField() : NULL, buffer, control);
+            introspectionRegistry->serialize(_pvStructure != NULL ? _pvStructure->getField() : FieldConstPtr(), buffer, control);
 		}
 		else if ((QOS_GET & request) != 0)
 		{
@@ -872,13 +845,13 @@ void ServerChannelPutRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 
 /****************************************************************************************/
 void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
+		Transport::shared_pointer& transport, int8 version, int8 command,
 		int payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
 	// NOTE: we do not explicitly check if transport is OK
-	ChannelHostingTransport* casTransport = dynamic_cast<ChannelHostingTransport*>(transport);
+	ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
 
 	transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
 	const pvAccessID sid = payloadBuffer->getInt();
@@ -887,10 +860,10 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 	// mode
 	const int8 qosCode = payloadBuffer->getByte();
 
-	ServerChannelImpl* channel = static_cast<ServerChannelImpl*>(casTransport->getChannel(sid));
+	ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
 	if (channel == NULL)
 	{
-		BaseChannelRequester::sendFailureMessage((int8)12, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
+		BaseChannelRequester::sendFailureMessage((int8)CMD_PUT_GET, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
 		return;
 	}
 
@@ -898,13 +871,10 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
-		//TODO who is responsible to delete this pvRequest??
-		PVStructure* pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
+		PVStructure::shared_pointer pvRequest(transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport.get()));
 
 		// create...
-		new ServerChannelPutGetRequesterImpl(_context, channel, ioid, transport, pvRequest);
-		
-		delete pvRequest;
+		ServerChannelPutGetRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
 	}
 	else
 	{
@@ -912,16 +882,16 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 		const bool getGet = (QOS_GET & qosCode) != 0;
 		const bool getPut = (QOS_GET_PUT & qosCode) != 0;
 
-		ServerChannelPutGetRequesterImpl* request = static_cast<ServerChannelPutGetRequesterImpl*>(channel->getRequest(ioid));
+		ServerChannelPutGetRequesterImpl::shared_pointer request = static_pointer_cast<ServerChannelPutGetRequesterImpl>(channel->getRequest(ioid));
 		if (request == NULL)
 		{
-			BaseChannelRequester::sendFailureMessage((int8)12, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
+			BaseChannelRequester::sendFailureMessage((int8)CMD_PUT_GET, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
 			return;
 		}
 
 		if (!request->startRequest(qosCode))
 		{
-			BaseChannelRequester::sendFailureMessage((int8)12, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
+			BaseChannelRequester::sendFailureMessage((int8)CMD_PUT_GET, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
 			return;
 		}
 
@@ -936,23 +906,37 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 		else
 		{
 			// deserialize bitSet and do a put
-			request->getPVPutStructure()->deserialize(payloadBuffer, transport);
+			request->getPVPutStructure()->deserialize(payloadBuffer, transport.get());
 			request->getChannelPutGet()->putGet(lastRequest);
 		}
 	}
 }
 
-ServerChannelPutGetRequesterImpl::ServerChannelPutGetRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel,
-		const pvAccessID ioid, Transport* transport,PVStructure* pvRequest):
-		BaseChannelRequester(context, channel, ioid, transport), _channelPutGet(0), _pvPutStructure(0), _pvGetStructure(0)
+ServerChannelPutGetRequesterImpl::ServerChannelPutGetRequesterImpl(ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
+		const pvAccessID ioid, Transport::shared_pointer& transport):
+		BaseChannelRequester(context, channel, ioid, transport), _channelPutGet(), _pvPutStructure(), _pvGetStructure()
 {
-	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
-    INIT_EXCEPTION_GUARD(12, _channelPutGet = channel->getChannel()->createChannelPutGet(this, pvRequest));
 }
 
-void ServerChannelPutGetRequesterImpl::channelPutGetConnect(const Status& status, ChannelPutGet* channelPutGet,
-		PVStructure* pvPutStructure, PVStructure* pvGetStructure)
+ChannelPutGetRequester::shared_pointer ServerChannelPutGetRequesterImpl::create(ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
+		const pvAccessID ioid, Transport::shared_pointer& transport,PVStructure::shared_pointer& pvRequest)
+{
+    ChannelPutGetRequester::shared_pointer thisPointer(new ServerChannelPutGetRequesterImpl(context, channel, ioid, transport));
+    static_cast<ServerChannelPutGetRequesterImpl*>(thisPointer.get())->activate(pvRequest);
+    return thisPointer;
+}
+
+void ServerChannelPutGetRequesterImpl::activate(PVStructure::shared_pointer& pvRequest)
+{
+	startRequest(QOS_INIT);
+	ChannelPutGetRequester::shared_pointer thisPointer = shared_from_this();
+	Destroyable::shared_pointer thisDestroyable = shared_from_this();
+	_channel->registerRequest(_ioid, thisDestroyable);
+    INIT_EXCEPTION_GUARD(CMD_PUT_GET, _channelPutGet = _channel->getChannel()->createChannelPutGet(thisPointer, pvRequest));
+}
+
+void ServerChannelPutGetRequesterImpl::channelPutGetConnect(const Status& status, ChannelPutGet::shared_pointer& channelPutGet,
+		PVStructure::shared_pointer& pvPutStructure, PVStructure::shared_pointer& pvGetStructure)
 {
 	{
 		Lock guard(_mutex);
@@ -962,7 +946,8 @@ void ServerChannelPutGetRequesterImpl::channelPutGetConnect(const Status& status
 		_channelPutGet = channelPutGet;
 	}
 
-	_transport->enqueueSendRequest(this);
+	TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 
 	// self-destruction
 	if (!status.isSuccess())
@@ -977,7 +962,8 @@ void ServerChannelPutGetRequesterImpl::getGetDone(const Status& status)
 		Lock guard(_mutex);
 		_status = status;
 	}
-	_transport->enqueueSendRequest(this);
+	TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 }
 
 void ServerChannelPutGetRequesterImpl::getPutDone(const Status& status)
@@ -986,7 +972,8 @@ void ServerChannelPutGetRequesterImpl::getPutDone(const Status& status)
 		Lock guard(_mutex);
 		_status = status;
 	}
-	_transport->enqueueSendRequest(this);
+	TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 }
 
 void ServerChannelPutGetRequesterImpl::putGetDone(const Status& status)
@@ -995,7 +982,8 @@ void ServerChannelPutGetRequesterImpl::putGetDone(const Status& status)
 		Lock guard(_mutex);
 		_status = status;
 	}
-	_transport->enqueueSendRequest(this);
+	TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 }
 
 void ServerChannelPutGetRequesterImpl::lock()
@@ -1018,18 +1006,17 @@ void ServerChannelPutGetRequesterImpl::destroy()
 			_channelPutGet->destroy();
 		}
 	}
-	release();
 }
 
-ChannelPutGet* ServerChannelPutGetRequesterImpl::getChannelPutGet()
+ChannelPutGet::shared_pointer ServerChannelPutGetRequesterImpl::getChannelPutGet()
 {
-	Lock guard(_mutex);
+	//Lock guard(_mutex);
 	return _channelPutGet;
 }
 
-PVStructure* ServerChannelPutGetRequesterImpl::getPVPutStructure()
+PVStructure::shared_pointer ServerChannelPutGetRequesterImpl::getPVPutStructure()
 {
-	Lock guard(_mutex);
+	//Lock guard(_mutex);
 	return _pvPutStructure;
 }
 
@@ -1051,8 +1038,8 @@ void ServerChannelPutGetRequesterImpl::send(ByteBuffer* buffer, TransportSendCon
 		if ((QOS_INIT & request) != 0)
 		{
 			Lock guard(_mutex);
-			introspectionRegistry->serialize(_pvPutStructure != NULL ? _pvPutStructure->getField() : NULL, buffer, control);
-			introspectionRegistry->serialize(_pvGetStructure != NULL ? _pvGetStructure->getField() : NULL, buffer, control);
+                        introspectionRegistry->serialize(_pvPutStructure != NULL ? _pvPutStructure->getField() : FieldConstPtr(), buffer, control);
+                        introspectionRegistry->serialize(_pvGetStructure != NULL ? _pvGetStructure->getField() : FieldConstPtr(), buffer, control);
 		}
 		else if ((QOS_GET & request) != 0)
 		{
@@ -1080,13 +1067,13 @@ void ServerChannelPutGetRequesterImpl::send(ByteBuffer* buffer, TransportSendCon
 
 /****************************************************************************************/
 void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
+		Transport::shared_pointer& transport, int8 version, int8 command,
 		int payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
 	// NOTE: we do not explicitly check if transport is OK
-	ChannelHostingTransport* casTransport = dynamic_cast<ChannelHostingTransport*>(transport);
+	ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
 
 	transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
 	const pvAccessID sid = payloadBuffer->getInt();
@@ -1095,10 +1082,10 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 	// mode
 	const int8 qosCode = payloadBuffer->getByte();
 	
-	ServerChannelImpl* channel = static_cast<ServerChannelImpl*>(casTransport->getChannel(sid));
+	ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
 	if (channel == NULL)
 	{
-		BaseChannelRequester::sendFailureMessage((int8)12, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
+		BaseChannelRequester::sendFailureMessage((int8)CMD_MONITOR, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
 		return;
 	}
 
@@ -1106,13 +1093,10 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
-		//TODO who is responsible to delete this pvRequest??
-		PVStructure* pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
+		PVStructure::shared_pointer pvRequest(transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport.get()));
 
 		// create...
-		new ServerMonitorRequesterImpl(_context, channel, ioid, transport, pvRequest);
-		
-		delete pvRequest;
+		ServerMonitorRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
 	}
 	else
 	{
@@ -1120,10 +1104,10 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 		const bool get = (QOS_GET & qosCode) != 0;
 		const bool process = (QOS_PROCESS & qosCode) != 0;
 
-		ServerMonitorRequesterImpl* request = static_cast<ServerMonitorRequesterImpl*>(channel->getRequest(ioid));
+		ServerMonitorRequesterImpl::shared_pointer request = static_pointer_cast<ServerMonitorRequesterImpl>(channel->getRequest(ioid));
 		if (request == NULL)
 		{
-			BaseChannelRequester::sendFailureMessage((int8)13, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
+			BaseChannelRequester::sendFailureMessage((int8)CMD_MONITOR, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
 			return;
 		}
 
@@ -1153,16 +1137,32 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 }
 
-ServerMonitorRequesterImpl::ServerMonitorRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel,
-		const pvAccessID ioid, Transport* transport,PVStructure* pvRequest):
-		BaseChannelRequester(context, channel, ioid, transport), _monitor(0), _channelMonitor(0), _structure(0)
+ServerMonitorRequesterImpl::ServerMonitorRequesterImpl(
+        ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
+		const pvAccessID ioid, Transport::shared_pointer& transport):
+		BaseChannelRequester(context, channel, ioid, transport), _monitor(), _channelMonitor(), _structure()
 {
-	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
-	INIT_EXCEPTION_GUARD(13, _channelMonitor = channel->getChannel()->createMonitor(this, pvRequest));
 }
 
-void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor* monitor, StructureConstPtr structure)
+MonitorRequester::shared_pointer ServerMonitorRequesterImpl::create(
+        ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
+		const pvAccessID ioid, Transport::shared_pointer& transport,PVStructure::shared_pointer& pvRequest)
+{
+    MonitorRequester::shared_pointer thisPointer(new ServerMonitorRequesterImpl(context, channel, ioid, transport));
+    static_cast<ServerMonitorRequesterImpl*>(thisPointer.get())->activate(pvRequest);
+    return thisPointer;
+}
+
+void ServerMonitorRequesterImpl::activate(PVStructure::shared_pointer& pvRequest)
+{
+	startRequest(QOS_INIT);
+	MonitorRequester::shared_pointer thisPointer = shared_from_this();
+	Destroyable::shared_pointer thisDestroyable = shared_from_this();
+	_channel->registerRequest(_ioid, thisDestroyable);
+    INIT_EXCEPTION_GUARD(CMD_MONITOR, _channelMonitor = _channel->getChannel()->createMonitor(thisPointer, pvRequest));
+}
+
+void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor::shared_pointer& monitor, epics::pvData::StructureConstPtr& structure)
 {
 	{
 		Lock guard(_mutex);
@@ -1171,7 +1171,8 @@ void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor* m
 		_structure = structure;
 		_monitor = monitor;
 	}
-	_transport->enqueueSendRequest(this);
+	TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 
 	// self-destruction
 	if (!status.isSuccess())
@@ -1180,12 +1181,12 @@ void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor* m
 	}
 }
 
-void ServerMonitorRequesterImpl::unlisten(Monitor* monitor)
+void ServerMonitorRequesterImpl::unlisten(Monitor::shared_pointer& monitor)
 {
 	//TODO
 }
 
-void ServerMonitorRequesterImpl::monitorEvent(Monitor* monitor)
+void ServerMonitorRequesterImpl::monitorEvent(Monitor::shared_pointer& monitor)
 {
 	// TODO !!! if queueSize==0, monitor.poll() has to be called and returned NOW (since there is no cache)
 	//sendEvent(transport);
@@ -1199,7 +1200,8 @@ void ServerMonitorRequesterImpl::monitorEvent(Monitor* monitor)
 		}*/
 	// TODO
 	// multiple ((BlockingServerTCPTransport)transport).enqueueMonitorSendRequest(this);
-	_transport->enqueueSendRequest(this);
+	TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 }
 
 void ServerMonitorRequesterImpl::lock()
@@ -1222,12 +1224,11 @@ void ServerMonitorRequesterImpl::destroy()
 			_channelMonitor->destroy();
 		}
 	}
-	release();
 }
 
-Monitor* ServerMonitorRequesterImpl::getChannelMonitor()
+Monitor::shared_pointer ServerMonitorRequesterImpl::getChannelMonitor()
 {
-	Lock guard(_mutex);
+	//Lock guard(_mutex);
 	return _channelMonitor;
 }
 
@@ -1237,7 +1238,7 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 
 	if ((QOS_INIT & request) != 0)
 	{
-		control->startMessage((int32)13, sizeof(int32)/sizeof(int8) + 1);
+		control->startMessage((int32)CMD_MONITOR, sizeof(int32)/sizeof(int8) + 1);
 		buffer->putInt(_ioid);
 		buffer->putByte((int8)request);
 
@@ -1256,20 +1257,20 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 	}
 	else
 	{
-		Monitor* monitor = _monitor;
-		MonitorElement* element = monitor->poll();
+		Monitor::shared_pointer monitor = _monitor;
+		MonitorElement::shared_pointer element = monitor->poll();
 		if (element != NULL)
 		{
-			control->startMessage((int8)13, sizeof(int32)/sizeof(int8) + 1);
+			control->startMessage((int8)CMD_MONITOR, sizeof(int32)/sizeof(int8) + 1);
 			buffer->putInt(_ioid);
 			buffer->putByte((int8)request);
 
 			// changedBitSet and data, if not notify only (i.e. queueSize == -1)
-			BitSet* changedBitSet = element->getChangedBitSet();
+			BitSet::shared_pointer changedBitSet = element->getChangedBitSet();
 			if (changedBitSet != NULL)
 			{
 				changedBitSet->serialize(buffer, control);
-				element->getPVStructure()->serialize(buffer, control, changedBitSet);
+				element->getPVStructure()->serialize(buffer, control, changedBitSet.get());
 
 				// overrunBitset
 				element->getOverrunBitSet()->serialize(buffer, control);
@@ -1282,13 +1283,13 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 
 /****************************************************************************************/
 void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
+		Transport::shared_pointer& transport, int8 version, int8 command,
 		int payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
 	// NOTE: we do not explicitly check if transport is OK
-	ChannelHostingTransport* casTransport = dynamic_cast<ChannelHostingTransport*>(transport);
+	ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
 
 	transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
 	const pvAccessID sid = payloadBuffer->getInt();
@@ -1297,10 +1298,10 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 	// mode
 	const int8 qosCode = payloadBuffer->getByte();
 
-	ServerChannelImpl* channel = static_cast<ServerChannelImpl*>(casTransport->getChannel(sid));
+	ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
 	if (channel == NULL)
 	{
-		BaseChannelRequester::sendFailureMessage((int8)12, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
+		BaseChannelRequester::sendFailureMessage((int8)CMD_ARRAY, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
 		return;
 	}
 
@@ -1308,13 +1309,10 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
-		//TODO who is responsible to delete this pvRequest??
-		PVStructure* pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
+		PVStructure::shared_pointer pvRequest(transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport.get()));
 
 		// create...
-		new ServerChannelArrayRequesterImpl(_context, channel, ioid, transport, pvRequest);
-		
-		delete pvRequest;
+		ServerChannelArrayRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
 	}
 	else
 	{
@@ -1322,54 +1320,69 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 		const bool get = (QOS_GET & qosCode) != 0;
 		const bool setLength = (QOS_GET_PUT & qosCode) != 0;
 
-		ServerChannelArrayRequesterImpl* request = static_cast<ServerChannelArrayRequesterImpl*>(channel->getRequest(ioid));
+		ServerChannelArrayRequesterImpl::shared_pointer request = static_pointer_cast<ServerChannelArrayRequesterImpl>(channel->getRequest(ioid));
 		if (request == NULL)
 		{
-			BaseChannelRequester::sendFailureMessage((int8)14, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
+			BaseChannelRequester::sendFailureMessage((int8)CMD_ARRAY, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
 			return;
 		}
 
 		if (!request->startRequest(qosCode))
 		{
-			BaseChannelRequester::sendFailureMessage((int8)14, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
+			BaseChannelRequester::sendFailureMessage((int8)CMD_ARRAY, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
 			return;
 		}
 
 
 		if (get)
 		{
-			const int32 offset = SerializeHelper::readSize(payloadBuffer, transport);
-			const int32 count = SerializeHelper::readSize(payloadBuffer, transport);
+			const int32 offset = SerializeHelper::readSize(payloadBuffer, transport.get());
+			const int32 count = SerializeHelper::readSize(payloadBuffer, transport.get());
 			request->getChannelArray()->getArray(lastRequest, offset, count);
 		}
 		else if (setLength)
 		{
-			const int32 length = SerializeHelper::readSize(payloadBuffer, transport);
-			const int32 capacity = SerializeHelper::readSize(payloadBuffer, transport);
+			const int32 length = SerializeHelper::readSize(payloadBuffer, transport.get());
+			const int32 capacity = SerializeHelper::readSize(payloadBuffer, transport.get());
 			request->getChannelArray()->setLength(lastRequest, length, capacity);
 		}
 		else
 		{
 			// deserialize data to put
-			const int32 offset = SerializeHelper::readSize(payloadBuffer, transport);
-			PVArray* array = request->getPVArray();
-			array->deserialize(payloadBuffer, transport);
+			const int32 offset = SerializeHelper::readSize(payloadBuffer, transport.get());
+			PVArray::shared_pointer array = request->getPVArray();
+			array->deserialize(payloadBuffer, transport.get());
 			request->getChannelArray()->putArray(lastRequest, offset, array->getLength());
 		}
 	}
 }
 
-ServerChannelArrayRequesterImpl::ServerChannelArrayRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel,
-		const pvAccessID ioid, Transport* transport,PVStructure* pvRequest):
-		BaseChannelRequester(context, channel, ioid, transport), _channelArray(0), _pvArray(0)
+ServerChannelArrayRequesterImpl::ServerChannelArrayRequesterImpl(
+        ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
+		const pvAccessID ioid, Transport::shared_pointer& transport):
+		BaseChannelRequester(context, channel, ioid, transport), _channelArray(), _pvArray()
 {
-
-	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
-    INIT_EXCEPTION_GUARD(14, _channelArray = channel->getChannel()->createChannelArray(this, pvRequest));
 }
 
-void ServerChannelArrayRequesterImpl::channelArrayConnect(const Status& status, ChannelArray* channelArray, PVArray* pvArray)
+ChannelArrayRequester::shared_pointer ServerChannelArrayRequesterImpl::create(
+        ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
+		const pvAccessID ioid, Transport::shared_pointer& transport,PVStructure::shared_pointer& pvRequest)
+{
+    ChannelArrayRequester::shared_pointer thisPointer(new ServerChannelArrayRequesterImpl(context, channel, ioid, transport));
+    static_cast<ServerChannelArrayRequesterImpl*>(thisPointer.get())->activate(pvRequest);
+    return thisPointer;
+}
+
+void ServerChannelArrayRequesterImpl::activate(PVStructure::shared_pointer& pvRequest)
+{
+	startRequest(QOS_INIT);
+	ChannelArrayRequester::shared_pointer thisPointer = shared_from_this();
+	Destroyable::shared_pointer thisDestroyable = shared_from_this();
+	_channel->registerRequest(_ioid, thisDestroyable);
+    INIT_EXCEPTION_GUARD(CMD_ARRAY, _channelArray = _channel->getChannel()->createChannelArray(thisPointer, pvRequest));
+}
+
+void ServerChannelArrayRequesterImpl::channelArrayConnect(const Status& status, ChannelArray::shared_pointer& channelArray, PVArray::shared_pointer& pvArray)
 {
 	{
 		Lock guard(_mutex);
@@ -1377,8 +1390,8 @@ void ServerChannelArrayRequesterImpl::channelArrayConnect(const Status& status, 
 		_pvArray = pvArray;
 		_channelArray = channelArray;
 	}
-
-	_transport->enqueueSendRequest(this);
+    TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 
 	// self-destruction
 	if (!status.isSuccess())
@@ -1393,7 +1406,8 @@ void ServerChannelArrayRequesterImpl::getArrayDone(const Status& status)
 		Lock guard(_mutex);
 		_status = status;
 	}
-	_transport->enqueueSendRequest(this);
+    TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 }
 
 void ServerChannelArrayRequesterImpl::putArrayDone(const Status& status)
@@ -1402,7 +1416,8 @@ void ServerChannelArrayRequesterImpl::putArrayDone(const Status& status)
 		Lock guard(_mutex);
 		_status = status;
 	}
-	_transport->enqueueSendRequest(this);
+    TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 }
 
 void ServerChannelArrayRequesterImpl::setLengthDone(const Status& status)
@@ -1411,7 +1426,8 @@ void ServerChannelArrayRequesterImpl::setLengthDone(const Status& status)
 		Lock guard(_mutex);
 		_status = status;
 	}
-	_transport->enqueueSendRequest(this);
+    TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 }
 
 void ServerChannelArrayRequesterImpl::lock()
@@ -1434,18 +1450,17 @@ void ServerChannelArrayRequesterImpl::destroy()
 			_channelArray->destroy();
 		}
 	}
-	release();
 }
 
-ChannelArray* ServerChannelArrayRequesterImpl::getChannelArray()
+ChannelArray::shared_pointer ServerChannelArrayRequesterImpl::getChannelArray()
 {
-	Lock guard(_mutex);
+	//Lock guard(_mutex);
 	return _channelArray;
 }
 
-PVArray* ServerChannelArrayRequesterImpl::getPVArray()
+PVArray::shared_pointer ServerChannelArrayRequesterImpl::getPVArray()
 {
-	Lock guard(_mutex);
+	//Lock guard(_mutex);
 	return _pvArray;
 }
 
@@ -1453,7 +1468,7 @@ void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendCont
 {
 	const int32 request = getPendingRequest();
 
-	control->startMessage((int32)14, sizeof(int32)/sizeof(int8) + 1);
+	control->startMessage((int32)CMD_ARRAY, sizeof(int32)/sizeof(int8) + 1);
 	buffer->putInt(_ioid);
 	buffer->putByte((int8)request);
 	IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
@@ -1472,7 +1487,7 @@ void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendCont
 		else if ((QOS_INIT & request) != 0)
 		{
 			Lock guard(_mutex);
-			introspectionRegistry->serialize(_pvArray != NULL ? _pvArray->getField() : NULL, buffer, control);
+            introspectionRegistry->serialize(_pvArray != NULL ? _pvArray->getField() : FieldConstPtr(), buffer, control);
 		}
 	}
 
@@ -1485,26 +1500,26 @@ void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendCont
 
 /****************************************************************************************/
 void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
+		Transport::shared_pointer& transport, int8 version, int8 command,
 		int payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
 	// NOTE: we do not explicitly check if transport is OK
-	ChannelHostingTransport* casTransport = dynamic_cast<ChannelHostingTransport*>(transport);
+	ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
 
 	transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
 	const pvAccessID sid = payloadBuffer->getInt();
 	const pvAccessID ioid = payloadBuffer->getInt();
 
-	ServerChannelImpl* channel = static_cast<ServerChannelImpl*>(casTransport->getChannel(sid));
+	ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
 	if (channel == NULL)
 	{
 		failureResponse(transport, ioid, BaseChannelRequester::badCIDStatus);
 		return;
 	}
 
-	Destroyable* request = channel->getRequest(ioid);
+	Destroyable::shared_pointer request = channel->getRequest(ioid);
 	if (request == NULL)
 	{
 		failureResponse(transport, ioid, BaseChannelRequester::badIOIDStatus);
@@ -1518,20 +1533,20 @@ void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
 	channel->unregisterRequest(ioid);
 }
 
-void ServerCancelRequestHandler::failureResponse(Transport* transport, pvAccessID ioid, const Status& errorStatus)
+void ServerCancelRequestHandler::failureResponse(Transport::shared_pointer& transport, pvAccessID ioid, const Status& errorStatus)
 {
 	BaseChannelRequester::message(transport, ioid, errorStatus.getMessage(), warningMessage);
 }
 
 /****************************************************************************************/
 void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
+		Transport::shared_pointer& transport, int8 version, int8 command,
 		int payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
 	// NOTE: we do not explicitly check if transport is OK
-	ChannelHostingTransport* casTransport = dynamic_cast<ChannelHostingTransport*>(transport);
+	ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
 
 	transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
 	const pvAccessID sid = payloadBuffer->getInt();
@@ -1540,10 +1555,10 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
 	// mode
 	const int8 qosCode = payloadBuffer->getByte();
 
-	ServerChannelImpl* channel = static_cast<ServerChannelImpl*>(casTransport->getChannel(sid));
+	ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
 	if (channel == NULL)
 	{
-		BaseChannelRequester::sendFailureMessage((int8)16, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
+		BaseChannelRequester::sendFailureMessage((int8)CMD_PROCESS, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
 		return;
 	}
 
@@ -1551,28 +1566,25 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
-		//TODO who is responsible to delete this pvRequest??
-		PVStructure* pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
+		PVStructure::shared_pointer pvRequest(transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport.get()));
 
 		// create...
-		new ServerChannelProcessRequesterImpl(_context, channel, ioid, transport, pvRequest);
-		
-		delete pvRequest;
+		ServerChannelProcessRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
 	}
 	else
 	{
 		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
 
-		ServerChannelProcessRequesterImpl* request = static_cast<ServerChannelProcessRequesterImpl*>(channel->getRequest(ioid));
+		ServerChannelProcessRequesterImpl::shared_pointer request = static_pointer_cast<ServerChannelProcessRequesterImpl>(channel->getRequest(ioid));
 		if (request == NULL)
 		{
-			BaseChannelRequester::sendFailureMessage((int8)16, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
+			BaseChannelRequester::sendFailureMessage((int8)CMD_PROCESS, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
 			return;
 		}
 
 		if (!request->startRequest(qosCode))
 		{
-			BaseChannelRequester::sendFailureMessage((int8)16, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
+			BaseChannelRequester::sendFailureMessage((int8)CMD_PROCESS, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
 			return;
 		}
 
@@ -1580,23 +1592,40 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 }
 
-ServerChannelProcessRequesterImpl::ServerChannelProcessRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel,
-		const pvAccessID ioid, Transport* transport,PVStructure* pvRequest): BaseChannelRequester(context, channel, ioid, transport),
-		_channelProcess(0)
+ServerChannelProcessRequesterImpl::ServerChannelProcessRequesterImpl(
+        ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
+		const pvAccessID ioid, Transport::shared_pointer& transport):
+		BaseChannelRequester(context, channel, ioid, transport), _channelProcess()
 {
-	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
-	INIT_EXCEPTION_GUARD(16, _channelProcess = channel->getChannel()->createChannelProcess(this, pvRequest));
 }
 
-void ServerChannelProcessRequesterImpl::channelProcessConnect(const Status& status, ChannelProcess* channelProcess)
+ChannelProcessRequester::shared_pointer ServerChannelProcessRequesterImpl::create(
+        ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
+		const pvAccessID ioid, Transport::shared_pointer& transport,PVStructure::shared_pointer& pvRequest)
+{
+    ChannelProcessRequester::shared_pointer thisPointer(new ServerChannelProcessRequesterImpl(context, channel, ioid, transport));
+    static_cast<ServerChannelProcessRequesterImpl*>(thisPointer.get())->activate(pvRequest);
+    return thisPointer;
+}
+
+void ServerChannelProcessRequesterImpl::activate(PVStructure::shared_pointer& pvRequest)
+{
+	startRequest(QOS_INIT);
+	ChannelProcessRequester::shared_pointer thisPointer = shared_from_this();
+	Destroyable::shared_pointer thisDestroyable = shared_from_this();
+	_channel->registerRequest(_ioid, thisDestroyable);
+    INIT_EXCEPTION_GUARD(CMD_PROCESS, _channelProcess = _channel->getChannel()->createChannelProcess(thisPointer, pvRequest));
+}
+
+void ServerChannelProcessRequesterImpl::channelProcessConnect(const Status& status, ChannelProcess::shared_pointer& channelProcess)
 {
 	{
 		Lock guard(_mutex);
 		_status = status;
 		_channelProcess = channelProcess;
 	}
-	_transport->enqueueSendRequest(this);
+    TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 
 	// self-destruction
 	if (!status.isSuccess())
@@ -1611,7 +1640,8 @@ void ServerChannelProcessRequesterImpl::processDone(const Status& status)
 		Lock guard(_mutex);
 		_status = status;
 	}
-	_transport->enqueueSendRequest(this);
+    TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 }
 
 void ServerChannelProcessRequesterImpl::lock()
@@ -1634,12 +1664,11 @@ void ServerChannelProcessRequesterImpl::destroy()
 			_channelProcess->destroy();
 		}
 	}
-	release();
 }
 
-ChannelProcess* ServerChannelProcessRequesterImpl::getChannelProcess()
+ChannelProcess::shared_pointer ServerChannelProcessRequesterImpl::getChannelProcess()
 {
-	Lock guard(_mutex);
+	//Lock guard(_mutex);
 	return _channelProcess;
 }
 
@@ -1647,7 +1676,7 @@ void ServerChannelProcessRequesterImpl::send(ByteBuffer* buffer, TransportSendCo
 {
 	const int32 request = getPendingRequest();
 
-	control->startMessage((int32)16, sizeof(int32)/sizeof(int8) + 1);
+	control->startMessage((int32)CMD_PROCESS, sizeof(int32)/sizeof(int8) + 1);
 	buffer->putInt(_ioid);
 	buffer->putByte((int8)request);
 	IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
@@ -1668,50 +1697,55 @@ void ServerChannelProcessRequesterImpl::send(ByteBuffer* buffer, TransportSendCo
 
 /****************************************************************************************/
 void ServerGetFieldHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
+		Transport::shared_pointer& transport, int8 version, int8 command,
 		int payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
 	// NOTE: we do not explicitly check if transport is OK
-	ChannelHostingTransport* casTransport = dynamic_cast<ChannelHostingTransport*>(transport);
+	ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
 
 	transport->ensureData(2*sizeof(int32)/sizeof(int8));
 	const pvAccessID sid = payloadBuffer->getInt();
 	const pvAccessID ioid = payloadBuffer->getInt();
 
-	ServerChannelImpl* channel = static_cast<ServerChannelImpl*>(casTransport->getChannel(sid));
+	ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
 	if (channel == NULL)
 	{
 		getFieldFailureResponse(transport, ioid, BaseChannelRequester::badCIDStatus);
 		return;
 	}
 
-	String subField = SerializeHelper::deserializeString(payloadBuffer, transport);
+	String subField = SerializeHelper::deserializeString(payloadBuffer, transport.get());
 
 	// issue request
-	channel->getChannel()->getField(new ServerGetFieldRequesterImpl(_context, channel, ioid, transport), subField);
+	GetFieldRequester::shared_pointer gfr(new ServerGetFieldRequesterImpl(_context, channel, ioid, transport));
+	// TODO exception check
+	channel->getChannel()->getField(gfr, subField);
 }
 
-void ServerGetFieldHandler::getFieldFailureResponse(Transport* transport, const pvAccessID ioid, const Status& errorStatus)
+void ServerGetFieldHandler::getFieldFailureResponse(Transport::shared_pointer& transport, const pvAccessID ioid, const Status& errorStatus)
 {
-	transport->enqueueSendRequest(new ServerGetFieldHandlerTransportSender(ioid,errorStatus,transport));
+    TransportSender::shared_pointer sender(new ServerGetFieldHandlerTransportSender(ioid,errorStatus,transport));
+	transport->enqueueSendRequest(sender);
 }
 
-ServerGetFieldRequesterImpl::ServerGetFieldRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel, const pvAccessID ioid, Transport* transport) :
-							BaseChannelRequester(context, channel, ioid, transport), _field(0)
+ServerGetFieldRequesterImpl::ServerGetFieldRequesterImpl(
+        ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
+        const pvAccessID ioid, Transport::shared_pointer& transport) :
+		BaseChannelRequester(context, channel, ioid, transport), _field()
 {
 }
 
-void ServerGetFieldRequesterImpl::getDone(const Status& status, FieldConstPtr field)
+void ServerGetFieldRequesterImpl::getDone(const Status& status, FieldConstPtr& field)
 {
 	{
 		Lock guard(_mutex);
 		_status = status;
 		_field = field;
 	}
-	_transport->enqueueSendRequest(this);
-	release();
+    TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 }
 
 void ServerGetFieldRequesterImpl::lock()
@@ -1726,12 +1760,11 @@ void ServerGetFieldRequesterImpl::unlock()
 
 void ServerGetFieldRequesterImpl::destroy()
 {
-	release();
 }
 
 void ServerGetFieldRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
-	control->startMessage((int8)17, sizeof(int32)/sizeof(int8));
+	control->startMessage((int8)CMD_GET_FIELD, sizeof(int32)/sizeof(int8));
 	buffer->putInt(_ioid);
 	IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
 	{
@@ -1743,13 +1776,13 @@ void ServerGetFieldRequesterImpl::send(ByteBuffer* buffer, TransportSendControl*
 
 /****************************************************************************************/
 void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport* transport, int8 version, int8 command,
+		Transport::shared_pointer& transport, int8 version, int8 command,
 		int payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
 	// NOTE: we do not explicitly check if transport is OK
-	ChannelHostingTransport* casTransport = dynamic_cast<ChannelHostingTransport*>(transport);
+	ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
 
 	transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
 	const pvAccessID sid = payloadBuffer->getInt();
@@ -1758,10 +1791,10 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 	// mode
 	const int8 qosCode = payloadBuffer->getByte();
 
-	ServerChannelImpl* channel = static_cast<ServerChannelImpl*>(casTransport->getChannel(sid));
+	ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
 	if (channel == NULL)
 	{
-		BaseChannelRequester::sendFailureMessage((int8)16, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
+		BaseChannelRequester::sendFailureMessage((int8)CMD_RPC, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
 		return;
 	}
 
@@ -1769,50 +1802,64 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
-		//TODO who is responsible to delete this pvRequest??
-		PVStructure* pvRequest = transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport);
+		PVStructure::shared_pointer pvRequest(transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport.get()));
 
 		// create...
-		new ServerChannelRPCRequesterImpl(_context, channel, ioid, transport, pvRequest);
-		
-		delete pvRequest;
+		ServerChannelRPCRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
 	}
 	else
 	{
 		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
 
-		ServerChannelRPCRequesterImpl* request = static_cast<ServerChannelRPCRequesterImpl*>(channel->getRequest(ioid));
+		ServerChannelRPCRequesterImpl::shared_pointer request = static_pointer_cast<ServerChannelRPCRequesterImpl>(channel->getRequest(ioid));
 		if (request == NULL)
 		{
-			BaseChannelRequester::sendFailureMessage((int8)20, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
+			BaseChannelRequester::sendFailureMessage((int8)CMD_RPC, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
 			return;
 		}
 
 		if (!request->startRequest(qosCode))
 		{
-			BaseChannelRequester::sendFailureMessage((int8)20, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
+			BaseChannelRequester::sendFailureMessage((int8)CMD_RPC, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
 			return;
 		}
 
 		// deserialize put data
-		BitSet* changedBitSet = request->getAgrumentsBitSet();
-		changedBitSet->deserialize(payloadBuffer, transport);
-		request->getPvArguments()->deserialize(payloadBuffer, transport, changedBitSet);
+		BitSet::shared_pointer changedBitSet = request->getAgrumentsBitSet();
+		changedBitSet->deserialize(payloadBuffer, transport.get());
+		request->getPvArguments()->deserialize(payloadBuffer, transport.get(), changedBitSet.get());
 		request->getChannelRPC()->request(lastRequest);
 	}
 }
 
-ServerChannelRPCRequesterImpl::ServerChannelRPCRequesterImpl(ServerContextImpl* context, ServerChannelImpl* channel,
-		const pvAccessID ioid, Transport* transport,PVStructure* pvRequest):
-BaseChannelRequester(context, channel, ioid, transport), _channelRPC(0), _pvArguments(0), _pvResponse(0), _argumentsBitSet(0)
+ServerChannelRPCRequesterImpl::ServerChannelRPCRequesterImpl(
+        ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
+		const pvAccessID ioid, Transport::shared_pointer& transport):
+        BaseChannelRequester(context, channel, ioid, transport),
+        _channelRPC(), _pvArguments(), _pvResponse(), _argumentsBitSet()
 
 {
-	startRequest(QOS_INIT);
-	channel->registerRequest(ioid, static_cast<Destroyable*>(this));
-	INIT_EXCEPTION_GUARD(20, _channelRPC = channel->getChannel()->createChannelRPC(this, pvRequest));
 }
 
-void ServerChannelRPCRequesterImpl::channelRPCConnect(const Status& status, ChannelRPC* channelRPC, PVStructure* arguments, BitSet* bitSet)
+ChannelRPCRequester::shared_pointer ServerChannelRPCRequesterImpl::create(
+        ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
+		const pvAccessID ioid, Transport::shared_pointer& transport, PVStructure::shared_pointer& pvRequest)
+{
+    ChannelRPCRequester::shared_pointer thisPointer(new ServerChannelRPCRequesterImpl(context, channel, ioid, transport));
+    static_cast<ServerChannelRPCRequesterImpl*>(thisPointer.get())->activate(pvRequest);
+    return thisPointer;
+}
+
+void ServerChannelRPCRequesterImpl::activate(PVStructure::shared_pointer& pvRequest)
+{
+	startRequest(QOS_INIT);
+	ChannelRPCRequester::shared_pointer thisPointer = shared_from_this();
+	Destroyable::shared_pointer thisDestroyable = shared_from_this();
+	_channel->registerRequest(_ioid, thisDestroyable);
+    INIT_EXCEPTION_GUARD(CMD_RPC, _channelRPC = _channel->getChannel()->createChannelRPC(thisPointer, pvRequest));
+}
+
+void ServerChannelRPCRequesterImpl::channelRPCConnect(const Status& status, ChannelRPC::shared_pointer& channelRPC, PVStructure::shared_pointer& arguments, BitSet::shared_pointer& bitSet)
 {
 	{
 		Lock guard(_mutex);
@@ -1821,7 +1868,8 @@ void ServerChannelRPCRequesterImpl::channelRPCConnect(const Status& status, Chan
 		_status = status;
 		_channelRPC = channelRPC;
 	}
-	_transport->enqueueSendRequest(this);
+    TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 
 	// self-destruction
 	if (!status.isSuccess())
@@ -1830,14 +1878,15 @@ void ServerChannelRPCRequesterImpl::channelRPCConnect(const Status& status, Chan
 	}
 }
 
-void ServerChannelRPCRequesterImpl::requestDone(const Status& status, PVStructure* pvResponse)
+void ServerChannelRPCRequesterImpl::requestDone(const Status& status, PVStructure::shared_pointer& pvResponse)
 {
 	{
 		Lock guard(_mutex);
 		_status = status;
 		_pvResponse = pvResponse;
 	}
-	_transport->enqueueSendRequest(this);
+    TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
 }
 
 void ServerChannelRPCRequesterImpl::lock()
@@ -1860,24 +1909,23 @@ void ServerChannelRPCRequesterImpl::destroy()
 			_channelRPC->destroy();
 		}
 	}
-	release();
 }
 
-ChannelRPC* ServerChannelRPCRequesterImpl::getChannelRPC()
+ChannelRPC::shared_pointer ServerChannelRPCRequesterImpl::getChannelRPC()
 {
-	Lock guard(_mutex);
+	//Lock guard(_mutex);
 	return _channelRPC;
 }
 
-PVStructure* ServerChannelRPCRequesterImpl::getPvArguments()
+PVStructure::shared_pointer ServerChannelRPCRequesterImpl::getPvArguments()
 {
-	Lock guard(_mutex);
+	//Lock guard(_mutex);
 	return _pvArguments;
 }
 
-BitSet* ServerChannelRPCRequesterImpl::getAgrumentsBitSet()
+BitSet::shared_pointer ServerChannelRPCRequesterImpl::getAgrumentsBitSet()
 {
-	Lock guard(_mutex);
+	//Lock guard(_mutex);
 	return _argumentsBitSet;
 }
 
@@ -1885,7 +1933,7 @@ void ServerChannelRPCRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 {
 	const int32 request = getPendingRequest();
 
-	control->startMessage((int32)20, sizeof(int32)/sizeof(int8) + 1);
+	control->startMessage((int32)CMD_RPC, sizeof(int32)/sizeof(int8) + 1);
 	buffer->putInt(_ioid);
 	buffer->putByte((int8)request);
 	IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
@@ -1899,11 +1947,11 @@ void ServerChannelRPCRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 		if ((QOS_INIT & request) != 0)
 		{
 			Lock guard(_mutex);
-			introspectionRegistry->serialize(_pvArguments != NULL ? _pvArguments->getField() : NULL, buffer, control);
+            introspectionRegistry->serialize(_pvArguments != NULL ? _pvArguments->getField() : FieldConstPtr(), buffer, control);
 		}
 		else
 		{
-			introspectionRegistry->serializeStructure(buffer, control, _pvResponse);
+			introspectionRegistry->serializeStructure(buffer, control, _pvResponse.get());
 		}
 	}
 

@@ -5,83 +5,76 @@
 #ifndef BEACONEMITTER_H
 #define BEACONEMITTER_H
 
-#include "timer.h"
-#include "remote.h"
-#include "beaconServerStatusProvider.h"
-#include "inetAddressUtil.h"
-#include "introspectionRegistry.h"
-#include "serverContext.h"
-
-
+#include <timer.h>
 #include <timeStamp.h>
+#include <remote.h>
+
 #include <osiSock.h>
-#include <errlog.h>
 
-#include <algorithm>
-#include <iostream>
-
-using namespace epics::pvData;
+#include <beaconServerStatusProvider.h>
+//#include <serverContext.h>
+#include <sharedPtr.h>
 
 namespace epics { namespace pvAccess {
 
-	class ServerContextImpl;
+    class ServerContextImpl;
 
 	/**
 	 * BeaconEmitter
 	 *
 	 * @author gjansa
 	 */
-	class BeaconEmitter: public TransportSender, public TimerCallback
+	class BeaconEmitter:
+	   public TransportSender,
+	   public epics::pvData::TimerCallback,
+	   public std::tr1::enable_shared_from_this<BeaconEmitter>
 	{
 	public:
+        typedef std::tr1::shared_ptr<BeaconEmitter> shared_pointer;
+        typedef std::tr1::shared_ptr<const BeaconEmitter> const_shared_pointer;
+
 		/**
 		 * Constructor.
 		 * @param transport	transport to be used to send beacons.
 		 * @param context CA context.
 		 */
-		BeaconEmitter(Transport* transport, ServerContextImpl* context);
-		/**
+//		BeaconEmitter(Transport::shared_pointer& transport, ServerContextImpl::shared_pointer& context);
+		BeaconEmitter(Transport::shared_pointer& transport, std::tr1::shared_ptr<ServerContextImpl>& context);
+		
+        /**
 		 * Test Constructor (ohne context)
 		 * @param transport	transport to be used to send beacons.
 		 */
-		BeaconEmitter(Transport* transport,const osiSockAddr* serverAddress);
+		BeaconEmitter(Transport::shared_pointer& transport, const osiSockAddr& serverAddress);
+        
 		virtual ~BeaconEmitter();
 
-		/*
-		 * @see TransportSender#lock()
-		 */
 		void lock();
-		/*
-		 * @see TransportSender#unlock()
-		 */
 		void unlock();
 		
-		void acquire();
-		void release();
-
 		void send(ByteBuffer* buffer, TransportSendControl* control);
-		/**
-		 * noop
-		 */
+
 		void timerStopped();
-		/**
-		 * noop
-		 */
-		void destroy();
+
 		/**
 		 * Start emitting.
 		 */
 		void start();
-		/**
+		
+        /**
 		 * Reschedule timer.
 		 */
 		void reschedule();
-		/**
+		
+        /**
 		 * Timer callback.
 		 */
 		void callback();
 
-	private:
+		void destroy();
+	
+    private:
+
 		/**
 		 * Minimal (initial) CA beacon period (in seconds).
 		 */
@@ -93,14 +86,9 @@ namespace epics { namespace pvAccess {
 		static const float EPICS_CA_MIN_BEACON_COUNT_LIMIT;
 
 		/**
-		 * Timer.
-		 */
-		Timer* _timer;
-
-		/**
 		 * Transport.
 		 */
-		Transport* _transport;
+        Transport::shared_pointer _transport;
 
 		/**
 		 * Beacon sequence ID.
@@ -110,7 +98,7 @@ namespace epics { namespace pvAccess {
 		/**
 		 * Startup timestamp (when clients detect a change, they will consider server restarted).
 		 */
-		TimeStamp* _startupTime;
+		epics::pvData::TimeStamp _startupTime;
 
 		/**
 		 * Fast (at startup) beacon period (in sec).
@@ -130,7 +118,7 @@ namespace epics { namespace pvAccess {
 		/**
 		 * Server address.
 		 */
-		const osiSockAddr* _serverAddress;
+		const osiSockAddr _serverAddress;
 
 		/**
 		 * Server port.
@@ -140,14 +128,19 @@ namespace epics { namespace pvAccess {
 		/**
 		 * Server status provider implementation (optional).
 		 */
-		BeaconServerStatusProvider* _serverStatusProvider;
+        BeaconServerStatusProvider::shared_pointer _serverStatusProvider;
+
+		/**
+		 * Timer.
+		 */
+        Timer::shared_pointer _timer;
 
 		/**
 		 * Timer task node.
 		 */
-		TimerNode* _timerNode;
+		epics::pvData::TimerNode _timerNode;
 	};
 
 }}
 
-#endif  /* INTROSPECTIONREGISTRY_H */
+#endif  /* BEACONEMITTER_H */

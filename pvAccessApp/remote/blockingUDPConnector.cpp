@@ -17,11 +17,13 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+using namespace std;
+
 namespace epics {
     namespace pvAccess {
 
-        Transport* BlockingUDPConnector::connect(TransportClient* client,
-                ResponseHandler* responseHandler, osiSockAddr& bindAddress,
+    Transport::shared_pointer BlockingUDPConnector::connect(TransportClient::shared_pointer& client,
+                auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& bindAddress,
                 short transportRevision, int16 priority) {
                     
             errlogSevPrintf(errlogInfo, "Creating datagram socket to: %s",
@@ -32,7 +34,7 @@ namespace epics {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
                 errlogSevPrintf(errlogMajor, "Error creating socket: %s", errStr);
-                return 0;
+                return Transport::shared_pointer();
             }
 
             int optval = _broadcast ? 1 : 0;
@@ -41,7 +43,7 @@ namespace epics {
             {
                 errlogSevPrintf(errlogMajor, "Error setting SO_BROADCAST: %s", strerror(errno));
                 epicsSocketDestroy (socket);
-                return 0;
+                return Transport::shared_pointer();
             }
             
             // set SO_REUSEADDR or SO_REUSEPORT, OS dependant
@@ -52,11 +54,12 @@ namespace epics {
             if(retval<0) {
                 errlogSevPrintf(errlogMajor, "Error binding socket: %s", strerror(errno));
                 epicsSocketDestroy (socket);
-                return 0;
+                return Transport::shared_pointer();
             }
 
             // sockets are blocking by default
-            return new BlockingUDPTransport(responseHandler, socket, bindAddress, transportRevision);
+            Transport::shared_pointer transport = BlockingUDPTransport::create(responseHandler, socket, bindAddress, transportRevision);
+            return transport;
         }
 
     }

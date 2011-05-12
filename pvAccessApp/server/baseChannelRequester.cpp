@@ -18,7 +18,11 @@ const Status BaseChannelRequester::otherRequestPendingStatus = Status(Status::ST
 
 const int32 BaseChannelRequester::NULL_REQUEST = -1;
 
-BaseChannelRequester::BaseChannelRequester(ServerContextImpl* context, ServerChannelImpl* channel,const pvAccessID ioid, Transport* transport) :
+BaseChannelRequester::BaseChannelRequester(
+    ServerContextImpl::shared_pointer& context,
+    ServerChannelImpl::shared_pointer& channel,
+    const pvAccessID ioid,
+    Transport::shared_pointer& transport) :
 		_ioid(ioid),
 		_transport(transport),
 		_channel(channel),
@@ -63,14 +67,16 @@ void BaseChannelRequester::message(const String message, const epics::pvData::Me
 	BaseChannelRequester::message(_transport, _ioid, message, messageType);
 }
 
-void BaseChannelRequester::message(Transport* transport, const pvAccessID ioid, const String message, const MessageType messageType)
+void BaseChannelRequester::message(Transport::shared_pointer& transport, const pvAccessID ioid, const String message, const MessageType messageType)
 {
-	transport->enqueueSendRequest(new BaseChannelRequesterMessageTransportSender(ioid, message, messageType));
+    TransportSender::shared_pointer sender(new BaseChannelRequesterMessageTransportSender(ioid, message, messageType));
+	transport->enqueueSendRequest(sender);
 }
 
-void BaseChannelRequester::sendFailureMessage(const int8 command, Transport* transport, const pvAccessID ioid, const int8 qos, const Status status)
+void BaseChannelRequester::sendFailureMessage(const int8 command, Transport::shared_pointer& transport, const pvAccessID ioid, const int8 qos, const Status status)
 {
-	transport->enqueueSendRequest(new BaseChannelRequesterFailureMessageTransportSender(command, transport, ioid, qos, status));
+    TransportSender::shared_pointer sender(new BaseChannelRequesterFailureMessageTransportSender(command, transport, ioid, qos, status));
+	transport->enqueueSendRequest(sender);
 }
 
 BaseChannelRequesterMessageTransportSender::BaseChannelRequesterMessageTransportSender(const pvAccessID ioid, const String message,const epics::pvData::MessageType messageType):
@@ -98,18 +104,8 @@ void BaseChannelRequesterMessageTransportSender::unlock()
 	// noop
 }
 
-void BaseChannelRequesterMessageTransportSender::release()
-{
-	delete this;
-}
-
-void BaseChannelRequesterMessageTransportSender::acquire()
-{
-	// noop
-}
-
 BaseChannelRequesterFailureMessageTransportSender::BaseChannelRequesterFailureMessageTransportSender(const int8 command,
-		Transport* transport, const pvAccessID ioid, const int8 qos, const Status status) :
+		Transport::shared_pointer& transport, const pvAccessID ioid, const int8 qos, const Status& status) :
 	_command(command),
 	_ioid(ioid),
 	_qos(qos),
@@ -136,15 +132,6 @@ void BaseChannelRequesterFailureMessageTransportSender::unlock()
 	// noop
 }
 
-void BaseChannelRequesterFailureMessageTransportSender::release()
-{
-	delete this;
-}
-
-void BaseChannelRequesterFailureMessageTransportSender::acquire()
-{
-	// noop
-}
 
 }
 }

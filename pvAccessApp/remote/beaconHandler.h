@@ -7,7 +7,6 @@
 
 #include "remote.h"
 #include <pvAccess.h>
-#include "clientContextImpl.h"
 
 #include <timeStamp.h>
 #include <osiSock.h>
@@ -21,12 +20,15 @@ namespace epics { namespace pvAccess {
 	class BeaconHandler
 	{
 	public:
+        typedef std::tr1::shared_ptr<BeaconHandler> shared_pointer;
+        typedef std::tr1::shared_ptr<const BeaconHandler> const_shared_pointer;
+
 		/**
 		 * Constructor.
 		 * @param transport	transport to be used to send beacons.
 		 * @param context CA context.
 		 */
-		BeaconHandler(ClientContextImpl* context, const osiSockAddr* responseFrom);
+		BeaconHandler(Context::shared_pointer context, const osiSockAddr* responseFrom);
 		/**
 		 * Test Constructor (for testing)
 		 * @param transport	transport to be used to send beacons.
@@ -52,7 +54,7 @@ namespace epics { namespace pvAccess {
 		/**
 		 * Context instance.
 		 */
-		ClientContextImpl* _context;
+        Context::weak_pointer _context;
 		/**
 		 * Remote address.
 		 */

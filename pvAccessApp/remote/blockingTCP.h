@@ -11,7 +11,6 @@
 /* pvAccess */
 #include "caConstants.h"
 #include "remote.h"
-#include "growingCircularBuffer.h"
 #include "transportRegistry.h"
 #include "introspectionRegistry.h"
 #include "namedLockPattern.h"
@@ -33,11 +32,12 @@
 /* standard */
 #include <set>
 #include <map>
+#include <deque>
 
 namespace epics {
     namespace pvAccess {
 
-        class MonitorSender;
+        //class MonitorSender;
 
         enum ReceiveStage {
             READ_FROM_SOCKET, PROCESS_HEADER, PROCESS_PAYLOAD, NONE
@@ -47,13 +47,17 @@ namespace epics {
             IMMEDIATE, DELAYED, USER_CONTROLED
         };
 
-        class BlockingTCPTransport : public Transport,
-                public TransportSendControl {
-        public:
-            BlockingTCPTransport(Context* context, SOCKET channel,
-                    ResponseHandler* responseHandler, int receiveBufferSize,
+        class BlockingTCPTransport :
+                public Transport,
+                public TransportSendControl,
+                public std::tr1::enable_shared_from_this<BlockingTCPTransport>
+        {
+        protected:
+            BlockingTCPTransport(Context::shared_pointer& context, SOCKET channel,
+                    std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
                     int16 priority);
                     
+        public:
             virtual bool isClosed() {
                 Lock guard(_mutex);
                 return _closed;
@@ -63,16 +67,12 @@ namespace epics {
                 _remoteTransportRevision = minorRevision;
             }
 
-            virtual void setRemoteTransportReceiveBufferSize(
-                    int remoteTransportReceiveBufferSize) {
-                _remoteTransportReceiveBufferSize
-                        = remoteTransportReceiveBufferSize;
+            virtual void setRemoteTransportReceiveBufferSize(int remoteTransportReceiveBufferSize) {
+                _remoteTransportReceiveBufferSize = remoteTransportReceiveBufferSize;
             }
 
-            virtual void setRemoteTransportSocketReceiveBufferSize(
-                    int socketReceiveBufferSize) {
-                _remoteTransportSocketReceiveBufferSize
-                        = socketReceiveBufferSize;
+            virtual void setRemoteTransportSocketReceiveBufferSize(int socketReceiveBufferSize) {
+                _remoteTransportSocketReceiveBufferSize = socketReceiveBufferSize;
             }
 
             virtual const String getType() const {
@@ -117,6 +117,7 @@ namespace epics {
             virtual void verified() {
                 Lock lock(_verifiedMutex);
                 _verified = true;
+                _verifiedEvent.signal();
             }
 
             virtual void setRecipient(const osiSockAddr& sendTo) {
@@ -162,9 +163,9 @@ namespace epics {
              */
             void start();
 
-            virtual void enqueueSendRequest(TransportSender* sender);
+            virtual void enqueueSendRequest(TransportSender::shared_pointer& sender);
 
-            void enqueueMonitorSendRequest(TransportSender* sender);
+            //void enqueueMonitorSendRequest(TransportSender::shared_pointer& sender);
 
         protected:
         
@@ -222,7 +223,7 @@ namespace epics {
             /**
              * CAS response handler.
              */
-            ResponseHandler* _responseHandler;
+            std::auto_ptr<ResponseHandler> _responseHandler;
 
             /**
              * Send buffer size.
@@ -247,9 +248,10 @@ namespace epics {
 
             epicsThreadId _sendThreadId;
 
-            MonitorSender* _monitorSender;
+            // TODO
+            //MonitorSender* _monitorSender;
 
-            Context* _context;
+            Context::shared_pointer _context;
 
             bool _autoDelete;
 
@@ -279,11 +281,11 @@ namespace epics {
             // and its reference is only valid when called from send thread
             
             // initialized at construction time
-            GrowingCircularBuffer<TransportSender*>* _sendQueue;
+            std::deque<TransportSender::shared_pointer> _sendQueue;
             epics::pvData::Mutex _sendQueueMutex;
 
             // initialized at construction time
-            GrowingCircularBuffer<TransportSender*>* _monitorSendQueue;
+            std::deque<TransportSender::shared_pointer> _monitorSendQueue;
             epics::pvData::Mutex _monitorMutex;
 
             /**
@@ -371,6 +373,8 @@ namespace epics {
             
             Event _sendQueueEvent;
 
+            Event _verifiedEvent;
+
 
 
 
@@ -419,43 +423,63 @@ namespace epics {
              * Free all send buffers (return them to the cached buffer allocator).
              */
             void freeSendBuffers();
-
-            TransportSender* extractFromSendQueue();
         };
 
+        
         class BlockingClientTCPTransport : public BlockingTCPTransport,
                 public TransportSender,
                 public epics::pvData::TimerCallback,
                 public ReferenceCountingTransport {
 
         public:
-            BlockingClientTCPTransport(Context* context, SOCKET channel,
-                    ResponseHandler* responseHandler, int receiveBufferSize,
-                    TransportClient* client, short remoteTransportRevision,
+            typedef std::tr1::shared_ptr<BlockingClientTCPTransport> shared_pointer;
+            typedef std::tr1::shared_ptr<const BlockingClientTCPTransport> const_shared_pointer;
+
+        private:
+            BlockingClientTCPTransport(Context::shared_pointer& context, SOCKET channel,
+                    std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
+                    TransportClient::shared_pointer client, short remoteTransportRevision,
                     float beaconInterval, int16 priority);
 
+        public:
+            static BlockingClientTCPTransport::shared_pointer create(Context::shared_pointer& context, SOCKET channel,
+                                       std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
+                                       TransportClient::shared_pointer client, short remoteTransportRevision,
+                                       float beaconInterval, int16 priority)
+            {
+                BlockingClientTCPTransport::shared_pointer thisPointer(
+                            new BlockingClientTCPTransport(context, channel, responseHandler, receiveBufferSize,
+                                                           client, remoteTransportRevision, beaconInterval, priority)
+                );
+                thisPointer->start();
+                return thisPointer;
+            }
+
+            virtual ~BlockingClientTCPTransport();
+                    
             virtual void timerStopped() {
                 // noop
             }
 
             virtual void callback();
 
+            virtual IntrospectionRegistry* getIntrospectionRegistry() {
+                return &_introspectionRegistry;
+            }
+
             /**
              * Acquires transport.
              * @param client client (channel) acquiring the transport
              * @return <code>true</code> if transport was granted, <code>false</code> otherwise.
              */
-            virtual bool acquire(TransportClient* client);
-
-            virtual IntrospectionRegistry* getIntrospectionRegistry() {
-                return _introspectionRegistry;
-            }
+            virtual bool acquire(TransportClient::shared_pointer& client);
 
             /**
              * Releases transport.
              * @param client client (channel) releasing the transport
              */
-            virtual void release(TransportClient* client);
+            virtual void release(pvAccessID clientId);
+            //virtual void release(TransportClient::shared_pointer& client);
 
             /**
              * Alive notification.
@@ -493,18 +517,18 @@ namespace epics {
             /**
              * Introspection registry.
              */
-            IntrospectionRegistry* _introspectionRegistry;
+            IntrospectionRegistry _introspectionRegistry;
 
             virtual void internalClose(bool force);
-
-            virtual ~BlockingClientTCPTransport();
 
         private:
 
             /**
              * Owners (users) of the transport.
              */
-            std::set<TransportClient*> _owners;
+            // TODO consider using TR1 hash map
+            typedef std::map<pvAccessID, TransportClient::weak_pointer> TransportClientMap_t;
+            TransportClientMap_t _owners;
 
             /**
              * Connection timeout (no-traffic) flag.
@@ -519,7 +543,7 @@ namespace epics {
             /**
              * Timer task node.
              */
-            TimerNode* _timerNode;
+            TimerNode _timerNode;
 
             /**
              * Timestamp of last "live" event on this transport.
@@ -531,6 +555,9 @@ namespace epics {
 
             bool _verifyOrEcho;
 
+            /**
+             * Unresponsive transport notify.
+             */
             void unresponsiveTransport();
 
             /**
@@ -551,13 +578,13 @@ namespace epics {
          */
         class BlockingTCPConnector : public Connector {
         public:
-            BlockingTCPConnector(Context* context, int receiveBufferSize,
+            BlockingTCPConnector(Context::shared_pointer& context, int receiveBufferSize,
                     float beaconInterval);
 
             virtual ~BlockingTCPConnector();
 
-            virtual Transport* connect(TransportClient* client,
-                    ResponseHandler* responseHandler, osiSockAddr& address,
+            virtual Transport::shared_pointer connect(TransportClient::shared_pointer& client,
+                    std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
                     short transportRevision, int16 priority);
         private:
             /**
@@ -568,13 +595,12 @@ namespace epics {
             /**
              * Context instance.
              */
-            Context* _context;
+            Context::weak_pointer _context;
 
             /**
              * named lock
              */
-            NamedLockPattern<const osiSockAddr*, comp_osiSockAddrPtr>
-                    * _namedLocker;
+            NamedLockPattern<const osiSockAddr*, comp_osiSockAddrPtr> _namedLocker;
 
             /**
              * Receive buffer size.
@@ -601,11 +627,25 @@ namespace epics {
                 public ChannelHostingTransport,
                 public TransportSender {
         public:
-            BlockingServerTCPTransport(Context* context, SOCKET channel,
-                    ResponseHandler* responseHandler, int receiveBufferSize);
+            typedef std::tr1::shared_ptr<BlockingServerTCPTransport> shared_pointer;
+            typedef std::tr1::shared_ptr<const BlockingServerTCPTransport> const_shared_pointer;
 
+        private:
+            BlockingServerTCPTransport(Context::shared_pointer& context, SOCKET channel,
+                    std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize);
+        public:
+            static BlockingServerTCPTransport::shared_pointer create(Context::shared_pointer& context, SOCKET channel,
+                                       std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize)
+            {
+                BlockingServerTCPTransport::shared_pointer thisPointer(
+                        new BlockingServerTCPTransport(context, channel, responseHandler, receiveBufferSize)
+                );
+                thisPointer->start();
+                return thisPointer;
+            }
+                    
             virtual IntrospectionRegistry* getIntrospectionRegistry() {
-                return _introspectionRegistry;
+                return &_introspectionRegistry;
             }
 
             /**
@@ -627,7 +667,7 @@ namespace epics {
              * @param sid preallocated channel SID.
              * @param channel channel to register.
              */
-            virtual void registerChannel(pvAccessID sid, ServerChannel* channel);
+            virtual void registerChannel(pvAccessID sid, ServerChannel::shared_pointer& channel);
 
             /**
              * Unregister a new channel (and deallocates its handle).
@@ -640,7 +680,7 @@ namespace epics {
              * @param sid channel SID
              * @return channel with given SID, <code>NULL</code> otherwise
              */
-            virtual ServerChannel* getChannel(pvAccessID sid);
+            virtual ServerChannel::shared_pointer getChannel(pvAccessID sid);
 
             /**
              * Get channel count.
@@ -648,8 +688,8 @@ namespace epics {
              */
             virtual int getChannelCount();
 
-            virtual epics::pvData::PVField* getSecurityToken() {
-                return NULL;
+            virtual epics::pvData::PVField::shared_pointer getSecurityToken() {
+                return epics::pvData::PVField::shared_pointer();
             }
 
             virtual void lock() {
@@ -672,7 +712,8 @@ namespace epics {
              * Verify transport. Server side is self-verified.
              */
             void verify() {
-                enqueueSendRequest(this);
+                TransportSender::shared_pointer transportSender = std::tr1::dynamic_pointer_cast<TransportSender>(shared_from_this());
+                enqueueSendRequest(transportSender);
                 verified();
             }
 
@@ -699,15 +740,15 @@ namespace epics {
             virtual void send(epics::pvData::ByteBuffer* buffer,
                     TransportSendControl* control);
 
+            virtual ~BlockingServerTCPTransport();
+
         protected:
             /**
              * Introspection registry.
              */
-            IntrospectionRegistry* _introspectionRegistry;
+            IntrospectionRegistry _introspectionRegistry;
 
             virtual void internalClose(bool force);
-
-            virtual ~BlockingServerTCPTransport();
 
         private:
             /**
@@ -718,7 +759,7 @@ namespace epics {
             /**
              * Channel table (SID -> channel mapping).
              */
-            std::map<pvAccessID, ServerChannel*> _channels;
+            std::map<pvAccessID, ServerChannel::shared_pointer> _channels;
 
             Mutex _channelsMutex;
 
@@ -727,7 +768,18 @@ namespace epics {
              */
             void destroyAllChannels();
         };
+        
+        class ResponseHandlerFactory
+        {
+            public:
+            typedef std::tr1::shared_ptr<ResponseHandlerFactory> shared_pointer;
+            typedef std::tr1::shared_ptr<const ResponseHandlerFactory> const_shared_pointer;
+            
+            virtual ~ResponseHandlerFactory() {};
 
+            virtual std::auto_ptr<ResponseHandler> createResponseHandler() = 0;
+        };
+        
         /**
          * Channel Access Server TCP acceptor.
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
@@ -735,6 +787,8 @@ namespace epics {
          */
         class BlockingTCPAcceptor {
         public:
+            typedef std::tr1::shared_ptr<BlockingTCPAcceptor> shared_pointer;
+            typedef std::tr1::shared_ptr<const BlockingTCPAcceptor> const_shared_pointer;
 
             /**
              * @param context
@@ -742,8 +796,9 @@ namespace epics {
              * @param receiveBufferSize
              * @throws CAException
              */
-            BlockingTCPAcceptor(Context* context, int port,
-                    int receiveBufferSize);
+            BlockingTCPAcceptor(Context::shared_pointer& context,
+                                ResponseHandlerFactory::shared_pointer& responseHandlerFactory,
+                                int port, int receiveBufferSize);
 
             virtual ~BlockingTCPAcceptor();
 
@@ -753,7 +808,7 @@ namespace epics {
              * Bind socket address.
              * @return bind socket address, <code>null</code> if not binded.
              */
-            osiSockAddr* getBindAddress() {
+            const osiSockAddr* getBindAddress() {
                 return &_bindAddress;
             }
 
@@ -766,7 +821,12 @@ namespace epics {
             /**
              * Context instance.
              */
-            Context* _context;
+            Context::shared_pointer _context;
+            
+            /**
+             * ResponseHandler factory.
+             */
+            ResponseHandlerFactory::shared_pointer _responseHandlerFactory;
 
             /**
              * Bind server socket address.
@@ -802,8 +862,7 @@ namespace epics {
              * Validate connection by sending a validation message request.
              * @return <code>true</code> on success.
              */
-            bool validateConnection(BlockingServerTCPTransport* transport,
-                    const char* address);
+            bool validateConnection(BlockingServerTCPTransport::shared_pointer& transport, const char* address);
 
             static void handleEventsRunner(void* param);
         };

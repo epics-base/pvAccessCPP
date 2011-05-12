@@ -13,7 +13,10 @@
 
 #include "referenceCountingLock.h"
 
+// TODO implement using smart pointers
+
 namespace epics { namespace pvAccess {
+
 /**
  * NamedLockPattern
  */
@@ -41,12 +44,12 @@ public:
 	 * @return	<code>true</code> if acquired, <code>false</code> othwerwise.
 	 * 			NOTE: currently this routine always returns true. Look above for explanation.
 	 */
-	bool acquireSynchronizationObject(const Key name, const epics::pvData::int64 msec);
+	bool acquireSynchronizationObject(const Key& name, const epics::pvData::int64 msec);
 	/**
 	 * Release synchronization lock for named object.
 	 * @param	name	name of the object whose lock to release.
 	 */
-	void releaseSynchronizationObject(const Key name);
+	void releaseSynchronizationObject(const Key& name);
 private:
 	epics::pvData::Mutex _mutex;
 	std::map<const Key,ReferenceCountingLock*,Compare> _namedLocks;
@@ -58,11 +61,11 @@ private:
 	 * @param	release	set to <code>false</code> if there is no need to call release
 	 * 					on synchronization lock.
 	 */
-	void releaseSynchronizationObject(const Key name,const bool release);
+	void releaseSynchronizationObject(const Key& name,const bool release);
 };
 
 template <class Key, class Compare>
-bool NamedLockPattern<Key,Compare>::acquireSynchronizationObject(const Key name, const epics::pvData::int64 msec)
+bool NamedLockPattern<Key,Compare>::acquireSynchronizationObject(const Key& name, const epics::pvData::int64 msec)
 {
 	ReferenceCountingLock* lock;
 	{	//due to guard
@@ -96,13 +99,13 @@ bool NamedLockPattern<Key,Compare>::acquireSynchronizationObject(const Key name,
 }
 
 template <class Key, class Compare>
-void NamedLockPattern<Key,Compare>::releaseSynchronizationObject(const Key name)
+void NamedLockPattern<Key,Compare>::releaseSynchronizationObject(const Key& name)
 {
 	releaseSynchronizationObject(name, true);
 }
 
 template <class Key, class Compare>
-void NamedLockPattern<Key,Compare>::releaseSynchronizationObject(const Key name,const bool release)
+void NamedLockPattern<Key,Compare>::releaseSynchronizationObject(const Key& name,const bool release)
 {
 	epics::pvData::Lock guard(_mutex);
 	ReferenceCountingLock* lock;
@@ -134,7 +137,7 @@ class NamedLock : private epics::pvData::NoDefaultMethods
 {
 public:
 	NamedLock(NamedLockPattern<Key,Compare>* namedLockPattern): _namedLockPattern(namedLockPattern) {}
-	bool acquireSynchronizationObject(const Key name, const epics::pvData::int64 msec) {_name = name; return _namedLockPattern->acquireSynchronizationObject(name,msec);}
+	bool acquireSynchronizationObject(const Key& name, const epics::pvData::int64 msec) {_name = name; return _namedLockPattern->acquireSynchronizationObject(name,msec);}
 	~NamedLock(){_namedLockPattern->releaseSynchronizationObject(_name);}
 private:
 	Key _name;

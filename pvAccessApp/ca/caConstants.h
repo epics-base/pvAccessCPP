@@ -74,10 +74,10 @@ namespace epics {
         const int16 INVALID_DATA_TYPE = (int16)0xFFFF;
 
         /** Invalid IOID. */
-        const int32 CAJ_INVALID_IOID = 0;
+        const int32 INVALID_IOID = 0;
 
         /** Default CA provider name. */
-        const String CAJ_DEFAULT_PROVIDER = "local";
+        const String PVACCESS_DEFAULT_PROVIDER = "local";
     }
 }
 

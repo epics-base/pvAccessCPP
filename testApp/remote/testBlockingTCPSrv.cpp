@@ -25,29 +25,41 @@ public:
         _tr(new TransportRegistry()),
         _timer(new Timer("server thread", lowPriority)),
         _conf(new SystemConfigurationImpl()) {}
-    virtual ~ContextImpl() {
-        delete _tr;
-        delete _timer;
-    }
-    virtual Timer* getTimer() { return _timer; }
-    virtual TransportRegistry* getTransportRegistry() { return _tr; }
-	virtual Channel* getChannel(epics::pvAccess::pvAccessID) { return 0; }
-	virtual Transport* getSearchTransport() { return 0; }
-	virtual Configuration* getConfiguration() { return _conf; }
+    Timer::shared_pointer getTimer() { return _timer; }
+    std::tr1::shared_ptr<TransportRegistry> getTransportRegistry() { return _tr; }
+    Channel::shared_pointer getChannel(epics::pvAccess::pvAccessID) { return Channel::shared_pointer(); }
+    Transport::shared_pointer getSearchTransport() { return Transport::shared_pointer(); }
+	Configuration::shared_pointer getConfiguration() { return _conf; }
     virtual void acquire() {}
     virtual void release() {}
 
 private:
-    TransportRegistry* _tr;
-    Timer* _timer;
-    Configuration* _conf;
+    std::tr1::shared_ptr<TransportRegistry> _tr;
+    Timer::shared_pointer _timer;
+    Configuration::shared_pointer _conf;
 };
 
-void testServerConnections() {
-    ContextImpl ctx;
+class DummyResponseHandler : public ResponseHandler {
+public:
+    virtual void handleResponse(osiSockAddr* responseFrom,
+    		Transport::shared_pointer& transport, int8 version, int8 command, int payloadSize,
+            ByteBuffer* payloadBuffer) {
+    	cout << "DummyResponseHandler::handleResponse" << endl;
+    }
+};
 
-    BlockingTCPAcceptor* srv = new BlockingTCPAcceptor(&ctx, CA_SERVER_PORT,
-            1024);
+class DummyResponseHandlerFactory : public ResponseHandlerFactory
+ {
+     public:
+     std::auto_ptr<ResponseHandler> createResponseHandler() {return std::auto_ptr<ResponseHandler>(new DummyResponseHandler());};
+ };
+
+
+void testServerConnections() {
+    Context::shared_pointer ctx(new ContextImpl());
+    ResponseHandlerFactory::shared_pointer rhf(new DummyResponseHandlerFactory());
+
+    BlockingTCPAcceptor* srv = new BlockingTCPAcceptor(ctx, rhf, CA_SERVER_PORT, 1024);
 
     cout<<"Press any key to stop the server...";
     cin.peek();

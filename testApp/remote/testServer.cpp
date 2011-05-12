@@ -11,36 +11,33 @@
 using namespace epics::pvAccess;
 using namespace epics::pvData;
 using namespace std;
-
+using std::tr1::static_pointer_cast;
 
 
 PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelProcess);
 
-class MockChannelProcess : public ChannelProcess
+class MockChannelProcess :
+	public ChannelProcess,
+	public std::tr1::enable_shared_from_this<MockChannelProcess>
 {
     private:
-		ChannelProcessRequester* m_channelProcessRequester;
-		PVStructure* m_pvStructure;
+		ChannelProcessRequester::shared_pointer m_channelProcessRequester;
+		PVStructure::shared_pointer m_pvStructure;
 		PVScalar* m_valueField;
 
-    private:
-    ~MockChannelProcess()
-    {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelProcess);
-    }
-
-    public:
-    MockChannelProcess(ChannelProcessRequester* channelProcessRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
+    protected:
+    MockChannelProcess(ChannelProcessRequester::shared_pointer& channelProcessRequester, PVStructure::shared_pointer& pvStructure, PVStructure::shared_pointer& pvRequest) :
         m_channelProcessRequester(channelProcessRequester), m_pvStructure(pvStructure)
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelProcess);
 
+// TODO wrong
+        ChannelProcess::shared_pointer thisPtr = static_pointer_cast<ChannelProcess>(shared_from_this());
         PVField* field = pvStructure->getSubField(String("value"));
         if (field == 0)
         {
             Status noValueFieldStatus(Status::STATUSTYPE_ERROR, "no 'value' field");
-        	m_channelProcessRequester->channelProcessConnect(noValueFieldStatus, this);
-
+        	m_channelProcessRequester->channelProcessConnect(noValueFieldStatus, thisPtr);
         	// NOTE client must destroy this instance...
         	// do not access any fields and return ASAP
         	return;
@@ -49,18 +46,31 @@ class MockChannelProcess : public ChannelProcess
         if (field->getField()->getType() != scalar)
         {
             Status notAScalarStatus(Status::STATUSTYPE_ERROR, "'value' field not scalar type");
-        	m_channelProcessRequester->channelProcessConnect(notAScalarStatus, this);
-
+        	m_channelProcessRequester->channelProcessConnect(notAScalarStatus, thisPtr);
         	// NOTE client must destroy this instance….
         	// do not access any fields and return ASAP
         	return;
         }
 
         m_valueField = static_cast<PVScalar*>(field);
+    }
+
+    public:
+    static ChannelProcess::shared_pointer create(ChannelProcessRequester::shared_pointer& channelProcessRequester, PVStructure::shared_pointer& pvStructure, PVStructure::shared_pointer& pvRequest)
+    {
+        ChannelProcess::shared_pointer thisPtr(new MockChannelProcess(channelProcessRequester, pvStructure, pvRequest));
 
         // TODO pvRequest
-    	m_channelProcessRequester->channelProcessConnect(Status::OK, this);
+    	channelProcessRequester->channelProcessConnect(Status::OK, thisPtr);
+    	
+    	return thisPtr;
     }
+
+    virtual ~MockChannelProcess()
+    {
+        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelProcess);
+    }
+
 
     virtual void process(bool lastRequest)
     {
@@ -143,7 +153,7 @@ class MockChannelProcess : public ChannelProcess
 
     virtual void destroy()
     {
-        delete this;
+
     }
 
 };
@@ -158,26 +168,32 @@ PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelGet);
 class MockChannelGet : public ChannelGet
 {
     private:
-		ChannelGetRequester* m_channelGetRequester;
-		PVStructure* m_pvStructure;
-		BitSet* m_bitSet;
+		ChannelGetRequester::shared_pointer m_channelGetRequester;
+		PVStructure::shared_pointer m_pvStructure;
+		BitSet::shared_pointer m_bitSet;
 		bool m_first;
 
-    private:
-    ~MockChannelGet()
-    {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelGet);
-    }
-
-    public:
-    MockChannelGet(ChannelGetRequester* channelGetRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
+    protected:
+    MockChannelGet(ChannelGetRequester::shared_pointer& channelGetRequester, PVStructure::shared_pointer& pvStructure, PVStructure::shared_pointer& pvRequest) :
         m_channelGetRequester(channelGetRequester), m_pvStructure(pvStructure),
         m_bitSet(new BitSet(pvStructure->getNumberFields())), m_first(true)
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelGet);
+    }
 
+    public:
+    static ChannelGet::shared_pointer create(ChannelGetRequester::shared_pointer& channelGetRequester, PVStructure::shared_pointer& pvStructure, PVStructure::shared_pointer& pvRequest)
+    {
+        ChannelGet::shared_pointer thisPtr(new MockChannelGet(channelGetRequester, pvStructure, pvRequest));
         // TODO pvRequest
-    	m_channelGetRequester->channelGetConnect(Status::OK, this, m_pvStructure, m_bitSet);
+    	channelGetRequester->channelGetConnect(Status::OK, thisPtr, pvStructure, static_cast<MockChannelGet*>(thisPtr.get())->m_bitSet);
+    	
+    	return thisPtr;
+    }
+
+    virtual ~MockChannelGet()
+    {
+        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelGet);
     }
 
     virtual void get(bool lastRequest)
@@ -195,15 +211,9 @@ class MockChannelGet : public ChannelGet
 
     virtual void destroy()
     {
-        delete m_bitSet;
-        delete this;
     }
 
 };
-
-
-
-
 
 
 
@@ -213,26 +223,33 @@ PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelPut);
 class MockChannelPut : public ChannelPut
 {
     private:
-		ChannelPutRequester* m_channelPutRequester;
-		PVStructure* m_pvStructure;
-		BitSet* m_bitSet;
+		ChannelPutRequester::shared_pointer m_channelPutRequester;
+		PVStructure::shared_pointer m_pvStructure;
+		BitSet::shared_pointer m_bitSet;
 
-    private:
-    ~MockChannelPut()
-    {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelPut);
-    }
-
-    public:
-    MockChannelPut(ChannelPutRequester* channelPutRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
+    protected:
+    MockChannelPut(ChannelPutRequester::shared_pointer& channelPutRequester, PVStructure::shared_pointer& pvStructure, PVStructure::shared_pointer& pvRequest) :
         m_channelPutRequester(channelPutRequester), m_pvStructure(pvStructure),
         m_bitSet(new BitSet(pvStructure->getNumberFields()))
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelPut);
-
-        // TODO pvRequest
-    	m_channelPutRequester->channelPutConnect(Status::OK, this, m_pvStructure, m_bitSet);
     }
+
+    public:
+    static ChannelPut::shared_pointer create(ChannelPutRequester::shared_pointer& channelPutRequester, PVStructure::shared_pointer& pvStructure, PVStructure::shared_pointer& pvRequest)
+    {
+        ChannelPut::shared_pointer thisPtr(new MockChannelPut(channelPutRequester, pvStructure, pvRequest));
+        // TODO pvRequest
+    	channelPutRequester->channelPutConnect(Status::OK, thisPtr, pvStructure, static_cast<MockChannelPut*>(thisPtr.get())->m_bitSet);
+    	
+    	return thisPtr;
+    }
+
+    virtual ~MockChannelPut()
+    {
+        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelPut);
+    }
+
 
     virtual void put(bool lastRequest)
     {
@@ -248,14 +265,9 @@ class MockChannelPut : public ChannelPut
 
     virtual void destroy()
     {
-        delete m_bitSet;
-        delete this;
     }
 
 };
-
-
-
 
 
 
@@ -265,23 +277,29 @@ PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelPutGet);
 class MockChannelPutGet : public ChannelPutGet
 {
     private:
-		ChannelPutGetRequester* m_channelPutGetRequester;
-		PVStructure* m_pvStructure;
+		ChannelPutGetRequester::shared_pointer m_channelPutGetRequester;
+		PVStructure::shared_pointer m_pvStructure;
 
-    private:
-    ~MockChannelPutGet()
-    {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelPutGet);
-    }
-
-    public:
-    MockChannelPutGet(ChannelPutGetRequester* channelPutGetRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
+    protected:
+    MockChannelPutGet(ChannelPutGetRequester::shared_pointer& channelPutGetRequester, PVStructure::shared_pointer& pvStructure, PVStructure::shared_pointer& pvRequest) :
         m_channelPutGetRequester(channelPutGetRequester), m_pvStructure(pvStructure)
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelPutGet);
+    }
 
+    public:
+    static ChannelPutGet::shared_pointer create(ChannelPutGetRequester::shared_pointer& channelPutGetRequester, PVStructure::shared_pointer& pvStructure, PVStructure::shared_pointer& pvRequest)
+    {
+        ChannelPutGet::shared_pointer thisPtr(new MockChannelPutGet(channelPutGetRequester, pvStructure, pvRequest));
         // TODO pvRequest
-    	m_channelPutGetRequester->channelPutGetConnect(Status::OK, this, m_pvStructure, m_pvStructure);
+    	channelPutGetRequester->channelPutGetConnect(Status::OK, thisPtr, pvStructure, pvStructure);
+    	
+    	return thisPtr;
+    }
+
+    virtual ~MockChannelPutGet()
+    {
+        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelPutGet);
     }
 
     virtual void putGet(bool lastRequest)
@@ -303,7 +321,6 @@ class MockChannelPutGet : public ChannelPutGet
 
     virtual void destroy()
     {
-        delete this;
     }
 
 };
@@ -318,25 +335,30 @@ PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelRPC);
 class MockChannelRPC : public ChannelRPC
 {
     private:
-		ChannelRPCRequester* m_channelRPCRequester;
-		PVStructure* m_pvStructure;
-		BitSet* m_bitSet;
+		ChannelRPCRequester::shared_pointer m_channelRPCRequester;
+		PVStructure::shared_pointer m_pvStructure;
+		BitSet::shared_pointer m_bitSet;
 
-    private:
-    ~MockChannelRPC()
-    {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelRPC);
-    }
-
-    public:
-    MockChannelRPC(ChannelRPCRequester* channelRPCRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
+    protected:
+    MockChannelRPC(ChannelRPCRequester::shared_pointer& channelRPCRequester, PVStructure::shared_pointer& pvStructure, PVStructure::shared_pointer& pvRequest) :
         m_channelRPCRequester(channelRPCRequester), m_pvStructure(pvStructure),
         m_bitSet(new BitSet(pvStructure->getNumberFields()))
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelRPC);
+    }
 
+    public:
+    static ChannelRPC::shared_pointer create(ChannelRPCRequester::shared_pointer& channelRPCRequester, PVStructure::shared_pointer& pvStructure, PVStructure::shared_pointer& pvRequest)
+    {
+        ChannelRPC::shared_pointer thisPtr(new MockChannelRPC(channelRPCRequester, pvStructure, pvRequest));
         // TODO pvRequest
-    	m_channelRPCRequester->channelRPCConnect(Status::OK, this, m_pvStructure, m_bitSet);
+    	channelRPCRequester->channelRPCConnect(Status::OK, thisPtr, pvStructure, static_cast<MockChannelRPC*>(thisPtr.get())->m_bitSet);
+    	return thisPtr;
+    }
+
+    virtual ~MockChannelRPC()
+    {
+        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelRPC);
     }
 
     virtual void request(bool lastRequest)
@@ -348,8 +370,6 @@ class MockChannelRPC : public ChannelRPC
 
     virtual void destroy()
     {
-        delete m_bitSet;
-        delete this;
     }
 
 };
@@ -368,25 +388,31 @@ PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelArray);
 class MockChannelArray : public ChannelArray
 {
     private:
-		ChannelArrayRequester* m_channelArrayRequester;
-		PVArray* m_pvArray;
+		ChannelArrayRequester::shared_pointer m_channelArrayRequester;
+		PVArray::shared_pointer m_pvArray;
 
-    private:
-    ~MockChannelArray()
+    protected:
+    MockChannelArray(ChannelArrayRequester::shared_pointer& channelArrayRequester, PVStructure::shared_pointer& pvStructure, PVStructure::shared_pointer& pvRequest) :
+        m_channelArrayRequester(channelArrayRequester),
+        m_pvArray(getPVDataCreate()->createPVScalarArray(0, "", pvDouble))
     {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelArray);
+        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelArray);
     }
 
     public:
-    MockChannelArray(ChannelArrayRequester* channelArrayRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
-        m_channelArrayRequester(channelArrayRequester)
+    static ChannelArray::shared_pointer create(ChannelArrayRequester::shared_pointer& channelArrayRequester, PVStructure::shared_pointer& pvStructure, PVStructure::shared_pointer& pvRequest)
     {
-        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelArray);
-
-        m_pvArray = getPVDataCreate()->createPVScalarArray(0, "", pvDouble);
+        ChannelArray::shared_pointer thisPtr(new MockChannelArray(channelArrayRequester, pvStructure, pvRequest));
 
         // TODO pvRequest
-    	m_channelArrayRequester->channelArrayConnect(Status::OK, this, m_pvArray);
+    	channelArrayRequester->channelArrayConnect(Status::OK, thisPtr, static_cast<MockChannelArray*>(thisPtr.get())->m_pvArray);
+    	
+    	return thisPtr;
+    }
+
+    virtual ~MockChannelArray()
+    {
+        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelArray);
     }
 
     virtual void putArray(bool lastRequest, int offset, int count)
@@ -415,8 +441,6 @@ class MockChannelArray : public ChannelArray
 
     virtual void destroy()
     {
-        delete m_pvArray;
-        delete this;
     }
 
 };
@@ -428,25 +452,19 @@ class MockChannelArray : public ChannelArray
 
 PVDATA_REFCOUNT_MONITOR_DEFINE(mockMonitor);
 
-class MockMonitor : public Monitor, public MonitorElement
+class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enable_shared_from_this<MockMonitor>
 {
     private:
-		MonitorRequester* m_monitorRequester;
-		PVStructure* m_pvStructure;
-		BitSet* m_changedBitSet;
-		BitSet* m_overrunBitSet;
+		MonitorRequester::shared_pointer m_monitorRequester;
+		PVStructure::shared_pointer m_pvStructure;
+		BitSet::shared_pointer m_changedBitSet;
+		BitSet::shared_pointer m_overrunBitSet;
 		bool m_first;
 		Mutex m_lock;
 		int m_count;
 
-    private:
-    ~MockMonitor()
-    {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockMonitor);
-    }
-
-    public:
-    MockMonitor(MonitorRequester* monitorRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
+    protected:
+    MockMonitor(MonitorRequester::shared_pointer& monitorRequester, PVStructure::shared_pointer& pvStructure, PVStructure::shared_pointer& pvRequest) :
         m_monitorRequester(monitorRequester), m_pvStructure(pvStructure),
         m_changedBitSet(new BitSet(pvStructure->getNumberFields())),
         m_overrunBitSet(new BitSet(pvStructure->getNumberFields())),
@@ -457,15 +475,30 @@ class MockMonitor : public Monitor, public MonitorElement
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockMonitor);
 
         m_changedBitSet->set(0);
+    }
+
+    public:
+    static Monitor::shared_pointer create(MonitorRequester::shared_pointer& monitorRequester, PVStructure::shared_pointer& pvStructure, PVStructure::shared_pointer& pvRequest)
+    {
+        Monitor::shared_pointer thisPtr(new MockMonitor(monitorRequester, pvStructure, pvRequest));
 
         // TODO pvRequest
-    	m_monitorRequester->monitorConnect(Status::OK, this, const_cast<Structure*>(m_pvStructure->getStructure()));
+        StructureConstPtr structurePtr = static_cast<MockMonitor*>(thisPtr.get())->m_pvStructure->getStructure();
+        monitorRequester->monitorConnect(Status::OK, thisPtr, structurePtr);
+        
+        return thisPtr;
+    }
+
+    virtual ~MockMonitor()
+    {
+        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockMonitor);
     }
 
     virtual Status start()
     {
         // first monitor
-        m_monitorRequester->monitorEvent(this);
+    	Monitor::shared_pointer thisPtr = shared_from_this();
+        m_monitorRequester->monitorEvent(thisPtr);
 
         return Status::OK;
     }
@@ -475,21 +508,22 @@ class MockMonitor : public Monitor, public MonitorElement
         return Status::OK;
     }
 
-    virtual MonitorElement* poll()
+    virtual MonitorElement::shared_pointer poll()
     {
         Lock xx(m_lock);
         if (m_count)
         {
-            return 0;
+            return MonitorElement::shared_pointer();
         }
         else
         {
             m_count++;
-            return this;
+            MonitorElement::shared_pointer thisPtr = shared_from_this();
+            return thisPtr;
         }
     }
 
-    virtual void release(MonitorElement* monitorElement)
+    virtual void release(MonitorElement::shared_pointer& monitorElement)
     {
         Lock xx(m_lock);
         if (m_count)
@@ -499,25 +533,21 @@ class MockMonitor : public Monitor, public MonitorElement
     virtual void destroy()
     {
         stop();
-
-        delete m_overrunBitSet;
-        delete m_changedBitSet;
-        delete this;
     }
 
     // ============ MonitorElement ============
 
-    virtual PVStructure* getPVStructure()
+    virtual PVStructure::shared_pointer getPVStructure()
     {
         return m_pvStructure;
     }
 
-    virtual BitSet* getChangedBitSet()
+    virtual BitSet::shared_pointer getChangedBitSet()
     {
         return m_changedBitSet;
     }
 
-    virtual BitSet* getOverrunBitSet()
+    virtual BitSet::shared_pointer getOverrunBitSet()
     {
         return m_overrunBitSet;
     }
@@ -526,35 +556,28 @@ class MockMonitor : public Monitor, public MonitorElement
 };
 
 
-
 PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannel);
 
 class MockChannel : public Channel {
     private:
-        ChannelProvider* m_provider;
-        ChannelRequester* m_requester;
+        ChannelProvider::shared_pointer  m_provider;
+        ChannelRequester::shared_pointer m_requester;
         String m_name;
         String m_remoteAddress;
+        PVStructure::shared_pointer m_pvStructure;
 
-        PVStructure* m_pvStructure;
-
-    private:
-    ~MockChannel()
-    {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannel);
-    }
-
-    public:
+    protected:
 
     MockChannel(
-        ChannelProvider* provider,
-        ChannelRequester* requester,
+    	ChannelProvider::shared_pointer provider,
+    	ChannelRequester::shared_pointer requester,
         String name,
         String remoteAddress) :
         m_provider(provider),
         m_requester(requester),
         m_name(name),
-        m_remoteAddress(remoteAddress)
+        m_remoteAddress(remoteAddress),
+        m_pvStructure()
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannel);
 
@@ -562,20 +585,34 @@ class MockChannel : public Channel {
         ScalarType stype = pvDouble;
         String allProperties("alarm,timeStamp,display,control,valueAlarm");
 
-        m_pvStructure = getStandardPVField()->scalar(
-            0,name,stype,allProperties);
+        m_pvStructure.reset(getStandardPVField()->scalar(0,name,stype,allProperties));
         PVDouble *pvField = m_pvStructure->getDoubleField(String("value"));
         pvField->put(1.123);
+    }
+    
+    public:
 
+    static Channel::shared_pointer create(
+    	ChannelProvider::shared_pointer provider,
+    	ChannelRequester::shared_pointer requester,
+        String name,
+        String remoteAddress)
+    {
+        Channel::shared_pointer channelPtr(new MockChannel(provider, requester, name, remoteAddress));
 
         // already connected, report state
-        m_requester->channelStateChange(this, CONNECTED);
+        requester->channelStateChange(channelPtr, CONNECTED);
+        
+        return channelPtr;
+    }    
+
+    virtual ~MockChannel()
+    {
+        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannel);
     }
 
     virtual void destroy()
     {
-        delete m_pvStructure;
-        delete this;
     };
 
     virtual String getRequesterName()
@@ -588,7 +625,7 @@ class MockChannel : public Channel {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual ChannelProvider* getProvider()
+    virtual ChannelProvider::shared_pointer getProvider()
     {
         return m_provider;
     }
@@ -603,7 +640,7 @@ class MockChannel : public Channel {
         return m_name;
     }
 
-    virtual ChannelRequester* getChannelRequester()
+    virtual  std::tr1::shared_ptr<ChannelRequester> getChannelRequester()
     {
         return m_requester;
     }
@@ -618,17 +655,17 @@ class MockChannel : public Channel {
         return getConnectionState() == CONNECTED;
     }
 
-    virtual AccessRights getAccessRights(epics::pvData::PVField *pvField)
+    virtual AccessRights getAccessRights(epics::pvData::PVField::shared_pointer& pvField)
     {
         return readWrite;
     }
 
-    virtual void getField(GetFieldRequester *requester,epics::pvData::String subField)
+    virtual void getField(GetFieldRequester::shared_pointer& requester,epics::pvData::String subField)
     {
     	PVFieldPtr pvField;
     	if(subField == "")
     	{
-    		pvField = m_pvStructure;
+    		pvField = m_pvStructure.get();
     	}
     	else
     	{
@@ -638,59 +675,61 @@ class MockChannel : public Channel {
     	if(pvField == NULL)
     	{
     		string errMsg = "field '" + subField + "' not found";
+    		FieldConstPtr nullPtr;
     		Status errorStatus(Status::STATUSTYPE_ERROR, errMsg);
-    		requester->getDone(errorStatus,NULL);
+                requester->getDone(errorStatus,nullPtr);
     		return;
     	}
-    	requester->getDone(Status::OK,pvField->getField());
+    	FieldConstPtr fieldPtr = pvField->getField();
+    	requester->getDone(Status::OK, fieldPtr);
     }
 
-    virtual ChannelProcess* createChannelProcess(
-            ChannelProcessRequester *channelProcessRequester,
-            epics::pvData::PVStructure *pvRequest)
+    virtual ChannelProcess::shared_pointer createChannelProcess(
+    		ChannelProcessRequester::shared_pointer& channelProcessRequester,
+    		epics::pvData::PVStructure::shared_pointer& pvRequest)
     {
-    	return new MockChannelProcess(channelProcessRequester, m_pvStructure, pvRequest);
+    	return MockChannelProcess::create(channelProcessRequester, m_pvStructure, pvRequest);
     }
 
-    virtual ChannelGet* createChannelGet(
-            ChannelGetRequester *channelGetRequester,
-            epics::pvData::PVStructure *pvRequest)
+    virtual ChannelGet::shared_pointer createChannelGet(
+    		ChannelGetRequester::shared_pointer& channelGetRequester,
+    		epics::pvData::PVStructure::shared_pointer& pvRequest)
     {
-    	return new MockChannelGet(channelGetRequester, m_pvStructure, pvRequest);
+    	return MockChannelGet::create(channelGetRequester, m_pvStructure, pvRequest);
     }
 
-    virtual ChannelPut* createChannelPut(
-            ChannelPutRequester *channelPutRequester,
-            epics::pvData::PVStructure *pvRequest)
+    virtual ChannelPut::shared_pointer createChannelPut(
+    		ChannelPutRequester::shared_pointer& channelPutRequester,
+            epics::pvData::PVStructure::shared_pointer& pvRequest)
     {
-    	return new MockChannelPut(channelPutRequester, m_pvStructure, pvRequest);
+    	return MockChannelPut::create(channelPutRequester, m_pvStructure, pvRequest);
     }
 
-    virtual ChannelPutGet* createChannelPutGet(
-            ChannelPutGetRequester *channelPutGetRequester,
-            epics::pvData::PVStructure *pvRequest)
+    virtual ChannelPutGet::shared_pointer createChannelPutGet(
+    		ChannelPutGetRequester::shared_pointer& channelPutGetRequester,
+            epics::pvData::PVStructure::shared_pointer& pvRequest)
     {
-    	return new MockChannelPutGet(channelPutGetRequester, m_pvStructure, pvRequest);
+    	return MockChannelPutGet::create(channelPutGetRequester, m_pvStructure, pvRequest);
     }
 
-    virtual ChannelRPC* createChannelRPC(ChannelRPCRequester *channelRPCRequester,
-            epics::pvData::PVStructure *pvRequest)
+    virtual ChannelRPC::shared_pointer createChannelRPC(ChannelRPCRequester::shared_pointer& channelRPCRequester,
+    		epics::pvData::PVStructure::shared_pointer& pvRequest)
     {
-    	return new MockChannelRPC(channelRPCRequester, m_pvStructure, pvRequest);
+    	return MockChannelRPC::create(channelRPCRequester, m_pvStructure, pvRequest);
     }
 
-    virtual epics::pvData::Monitor* createMonitor(
-            epics::pvData::MonitorRequester *monitorRequester,
-            epics::pvData::PVStructure *pvRequest)
+    virtual epics::pvData::Monitor::shared_pointer createMonitor(
+            epics::pvData::MonitorRequester::shared_pointer& monitorRequester,
+            epics::pvData::PVStructure::shared_pointer& pvRequest)
     {
-    	return new MockMonitor(monitorRequester, m_pvStructure, pvRequest);
+    	return MockMonitor::create(monitorRequester, m_pvStructure, pvRequest);
     }
 
-    virtual ChannelArray* createChannelArray(
-            ChannelArrayRequester *channelArrayRequester,
-            epics::pvData::PVStructure *pvRequest)
+    virtual ChannelArray::shared_pointer createChannelArray(
+            ChannelArrayRequester::shared_pointer& channelArrayRequester,
+            epics::pvData::PVStructure::shared_pointer& pvRequest)
     {
-    	return new MockChannelArray(channelArrayRequester, m_pvStructure, pvRequest);
+    	return MockChannelArray::create(channelArrayRequester, m_pvStructure, pvRequest);
     }
 
     virtual void printInfo() {
@@ -720,18 +759,23 @@ class MockServerChannelProvider;
 class MockChannelFind : public ChannelFind
 {
     public:
-    MockChannelFind(ChannelProvider* provider) : m_provider(provider)
+    typedef std::tr1::shared_ptr<MockChannelFind> shared_pointer;
+    typedef std::tr1::shared_ptr<const MockChannelFind> const_shared_pointer;
+
+    MockChannelFind(ChannelProvider::shared_pointer &provider) : m_provider(provider)
     {
     }
+
+    virtual ~MockChannelFind() {}
 
     virtual void destroy()
     {
         // one instance for all, do not delete at all
     }
 
-    virtual ChannelProvider* getChannelProvider()
+    virtual ChannelProvider::shared_pointer getChannelProvider()
     {
-        return m_provider;
+        return m_provider.lock();
     };
 
     virtual void cancelChannelFind()
@@ -740,22 +784,26 @@ class MockChannelFind : public ChannelFind
     }
 
     private:
-
-    // only to be destroyed by it
-    friend class MockServerChannelProvider;
-    virtual ~MockChannelFind() {}
-
-    ChannelProvider* m_provider;
+       ChannelProvider::weak_pointer m_provider;
 };
 
 
-class MockServerChannelProvider : public ChannelProvider {
+class MockServerChannelProvider : 	public ChannelProvider,
+									public std::tr1::enable_shared_from_this<MockServerChannelProvider>
+{
     public:
+    typedef std::tr1::shared_ptr<MockServerChannelProvider> shared_pointer;
+    typedef std::tr1::shared_ptr<const MockServerChannelProvider> const_shared_pointer;
 
-	MockServerChannelProvider() : m_mockChannelFind(new MockChannelFind(this)) {
+	MockServerChannelProvider() : m_mockChannelFind()
+	{
     }
 
-	 ~MockServerChannelProvider() {};
+	void initialize()
+	{
+		ChannelProvider::shared_pointer chProviderPtr = shared_from_this();
+		m_mockChannelFind.reset(new MockChannelFind(chProviderPtr));
+	}
 
     virtual epics::pvData::String getProviderName()
     {
@@ -764,56 +812,55 @@ class MockServerChannelProvider : public ChannelProvider {
 
     virtual void destroy()
     {
-        delete m_mockChannelFind;
-        delete this;
     }
 
-    virtual ChannelFind* channelFind(
+    virtual ChannelFind::shared_pointer channelFind(
         epics::pvData::String channelName,
-        ChannelFindRequester *channelFindRequester)
+        ChannelFindRequester::shared_pointer& channelFindRequester)
     {
+        // channel always exists
         channelFindRequester->channelFindResult(Status::OK, m_mockChannelFind, true);
         return m_mockChannelFind;
     }
 
-    virtual Channel* createChannel(
+    virtual Channel::shared_pointer createChannel(
         epics::pvData::String channelName,
-        ChannelRequester *channelRequester,
+        ChannelRequester::shared_pointer& channelRequester,
         short priority)
     {
         return createChannel(channelName, channelRequester, priority, "local");
     }
 
-    virtual Channel* createChannel(
+    virtual Channel::shared_pointer createChannel(
         epics::pvData::String channelName,
-        ChannelRequester *channelRequester,
+        ChannelRequester::shared_pointer& channelRequester,
         short priority,
         epics::pvData::String address)
     {
         if (address == "local")
         {
-            Channel* channel = new MockChannel(this, channelRequester, channelName, address);
+        	ChannelProvider::shared_pointer chProviderPtr = shared_from_this();
+        	Channel::shared_pointer channel = MockChannel::create(chProviderPtr, channelRequester, channelName, address);
             channelRequester->channelCreated(Status::OK, channel);
             return channel;
         }
         else
         {
+        	Channel::shared_pointer nullPtr;
             Status errorStatus(Status::STATUSTYPE_ERROR, "only local supported");
-            channelRequester->channelCreated(errorStatus, 0);
-            return 0;
+            channelRequester->channelCreated(errorStatus, nullPtr);
+            return nullPtr;
         }
     }
     private:
 
-
-    MockChannelFind* m_mockChannelFind;
-
+    ChannelFind::shared_pointer m_mockChannelFind;
 };
 
 
 class ChannelFindRequesterImpl : public ChannelFindRequester
 {
-    virtual void channelFindResult(const epics::pvData::Status& status,ChannelFind *channelFind,bool wasFound)
+    virtual void channelFindResult(const epics::pvData::Status& status,ChannelFind::shared_pointer &channelFind,bool wasFound)
     {
         std::cout << "[ChannelFindRequesterImpl] channelFindResult("
                   << status.toString() << ", ..., " << wasFound << ")" << std::endl;
@@ -832,15 +879,15 @@ class ChannelRequesterImpl : public ChannelRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void channelCreated(const epics::pvData::Status& status, Channel *channel)
+    virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer &channel)
     {
         std::cout << "channelCreated(" << status.toString() << ", "
                   << (channel ? channel->getChannelName() : "(null)") << ")" << std::endl;
     }
 
-    virtual void channelStateChange(Channel *c, Channel::ConnectionState connectionState)
+    virtual void channelStateChange(Channel::shared_pointer &channel, Channel::ConnectionState connectionState)
     {
-        std::cout << "channelStateChange(" << c->getChannelName() << ", " << Channel::ConnectionStateNames[connectionState] << ")" << std::endl;
+        std::cout << "channelStateChange(" << channel->getChannelName() << ", " << Channel::ConnectionStateNames[connectionState] << ")" << std::endl;
     }
 };
 
@@ -873,9 +920,9 @@ class GetFieldRequesterImpl : public GetFieldRequester
 
 class ChannelGetRequesterImpl : public ChannelGetRequester
 {
-    ChannelGet *m_channelGet;
-    epics::pvData::PVStructure *m_pvStructure;
-    epics::pvData::BitSet *m_bitSet;
+    //TODO weak ChannelGet::shared_pointer m_channelGet;
+    epics::pvData::PVStructure::shared_pointer m_pvStructure;
+    epics::pvData::BitSet::shared_pointer m_bitSet;
 
     virtual String getRequesterName()
     {
@@ -887,13 +934,12 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void channelGetConnect(const epics::pvData::Status& status,ChannelGet *channelGet,
-            epics::pvData::PVStructure *pvStructure,epics::pvData::BitSet *bitSet)
+    virtual void channelGetConnect(const epics::pvData::Status& status, ChannelGet::shared_pointer& channelGet,
+    		 epics::pvData::PVStructure::shared_pointer& pvStructure, epics::pvData::BitSet::shared_pointer& bitSet)
     {
         std::cout << "channelGetConnect(" << status.toString() << ")" << std::endl;
 
-        // TODO sync
-        m_channelGet = channelGet;
+        //m_channelGet = channelGet;
         m_pvStructure = pvStructure;
         m_bitSet = bitSet;
     }
@@ -910,9 +956,9 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 
 class ChannelPutRequesterImpl : public ChannelPutRequester
 {
-    ChannelPut *m_channelPut;
-    epics::pvData::PVStructure *m_pvStructure;
-    epics::pvData::BitSet *m_bitSet;
+    //TODO weak ChannelPut::shared_pointer m_channelPut;
+    epics::pvData::PVStructure::shared_pointer m_pvStructure;
+    epics::pvData::BitSet::shared_pointer m_bitSet;
 
     virtual String getRequesterName()
     {
@@ -924,13 +970,12 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void channelPutConnect(const epics::pvData::Status& status,ChannelPut *channelPut,
-            epics::pvData::PVStructure *pvStructure,epics::pvData::BitSet *bitSet)
+    virtual void channelPutConnect(const epics::pvData::Status& status,ChannelPut::shared_pointer& channelPut,
+    		epics::pvData::PVStructure::shared_pointer& pvStructure, epics::pvData::BitSet::shared_pointer& bitSet)
     {
         std::cout << "channelPutConnect(" << status.toString() << ")" << std::endl;
 
-        // TODO sync
-        m_channelPut = channelPut;
+        //m_channelPut = channelPut;
         m_pvStructure = pvStructure;
         m_bitSet = bitSet;
     }
@@ -968,7 +1013,7 @@ class MonitorRequesterImpl : public MonitorRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void monitorConnect(const Status& status, Monitor* monitor, Structure* structure)
+    virtual void monitorConnect(const Status& status, Monitor::shared_pointer& monitor, StructureConstPtr& structure)
     {
         std::cout << "monitorConnect(" << status.toString() << ")" << std::endl;
         if (structure)
@@ -979,11 +1024,11 @@ class MonitorRequesterImpl : public MonitorRequester
         }
     }
 
-    virtual void monitorEvent(Monitor* monitor)
+    virtual void monitorEvent(Monitor::shared_pointer& monitor)
     {
         std::cout << "monitorEvent" << std::endl;
 
-        MonitorElement* element = monitor->poll();
+        MonitorElement::shared_pointer  element = monitor->poll();
 
         String str("changed/overrun ");
         element->getChangedBitSet()->toString(&str);
@@ -996,7 +1041,7 @@ class MonitorRequesterImpl : public MonitorRequester
         monitor->release(element);
     }
 
-    virtual void unlisten(Monitor* monitor)
+    virtual void unlisten(Monitor::shared_pointer& monitor)
     {
         std::cout << "unlisten" << std::endl;
     }
@@ -1005,7 +1050,7 @@ class MonitorRequesterImpl : public MonitorRequester
 
 class ChannelProcessRequesterImpl : public ChannelProcessRequester
 {
-    ChannelProcess *m_channelProcess;
+    //TODO weak ChannelProcess::shared_pointer m_channelProcess;
 
     virtual String getRequesterName()
     {
@@ -1017,12 +1062,11 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void channelProcessConnect(const epics::pvData::Status& status,ChannelProcess *channelProcess)
+    virtual void channelProcessConnect(const epics::pvData::Status& status,ChannelProcess::shared_pointer& channelProcess)
     {
         std::cout << "channelProcessConnect(" << status.toString() << ")" << std::endl;
 
-        // TODO sync
-        m_channelProcess = channelProcess;
+        //m_channelProcess = channelProcess;
     }
 
     virtual void processDone(const epics::pvData::Status& status)
@@ -1035,21 +1079,25 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
 
 void testServer()
 {
-	ChannelAccess* channelAccess = getChannelAccess();
-	MockServerChannelProvider* channelProvider = new MockServerChannelProvider();
-	registerChannelProvider(static_cast<ChannelProvider*>(channelProvider));
+	
+	MockServerChannelProvider::shared_pointer channelProvider(new MockServerChannelProvider());
+	channelProvider->initialize();
+	
+	ChannelProvider::shared_pointer ptr = channelProvider;
+	registerChannelProvider(ptr);
 
-	ServerContextImpl ctx;
-	ctx.initialize(channelAccess);
+	ServerContextImpl::shared_pointer ctx = ServerContextImpl::create();
+	ChannelAccess::shared_pointer channelAccess = getChannelAccess();
+	ctx->initialize(channelAccess);
 
-	ctx.printInfo();
+	ctx->printInfo();
 
-	ctx.run(100);
+	ctx->run(10);
 
-	ctx.destroy();
+	ctx->destroy();
 
-	unregisterChannelProvider(static_cast<ChannelProvider*>(channelProvider));
-	delete channelProvider;
+	unregisterChannelProvider(ptr);
+
 }
 
 int main(int argc, char *argv[])
@@ -1058,6 +1106,8 @@ int main(int argc, char *argv[])
 
 	cout << "Done" << endl;
 
+    epicsThreadSleep ( 1.0 ); 
+    std::cout << "-----------------------------------------------------------------------" << std::endl;
 	epicsExitCallAtExits();
     CDRMonitor::get().show(stdout);
     return (0);

@@ -10,14 +10,6 @@ PROD_HOST += wildcharMatcherTest
 wildcharMatcherTest_SRCS += wildcharMatcherTest.cpp
 wildcharMatcherTest_LIBS += pvAccess pvData Com
 
-PROD_HOST += arrayFIFOTest
-arrayFIFOTest_SRCS += arrayFIFOTest.cpp
-arrayFIFOTest_LIBS += pvAccess pvData Com
-
-PROD_HOST += growingCircularBufferTest
-growingCircularBufferTest_SRCS += growingCircularBufferTest.cpp
-growingCircularBufferTest_LIBS += pvAccess pvData Com
-
 PROD_HOST += inetAddressUtilsTest
 inetAddressUtilsTest_SRCS += inetAddressUtilsTest.cpp
 inetAddressUtilsTest_LIBS += pvAccess pvData Com

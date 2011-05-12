@@ -7,12 +7,13 @@
 /* pvAccess */
 #include "blockingUDP.h"
 
-#include "caConstants.h"
-#include "inetAddressUtil.h"
+#include <caConstants.h>
+#include <inetAddressUtil.h>
 
 /* pvData */
 #include <byteBuffer.h>
 #include <lock.h>
+#include <CDRMonitor.h>
 
 /* EPICSv3 */
 #include <osdSock.h>
@@ -26,13 +27,16 @@
 #include <sys/socket.h>
 #include <errno.h>
 
+using namespace epics::pvData;
+using namespace std;
+
 namespace epics {
     namespace pvAccess {
 
-        using namespace epics::pvData;
+        PVDATA_REFCOUNT_MONITOR_DEFINE(blockingUDPTransport);
 
         BlockingUDPTransport::BlockingUDPTransport(
-                ResponseHandler* responseHandler, SOCKET channel,
+                auto_ptr<ResponseHandler>& responseHandler, SOCKET channel,
                 osiSockAddr& bindAddress,
                 short remoteTransportRevision) :
                     _closed(false),
@@ -47,9 +51,12 @@ namespace epics {
                     _lastMessageStartPosition(0),
                     _threadId(0)
         {
+            PVDATA_REFCOUNT_MONITOR_CONSTRUCT(blockingUDPTransport);
         }
 
         BlockingUDPTransport::~BlockingUDPTransport() {
+            PVDATA_REFCOUNT_MONITOR_DESTRUCT(blockingUDPTransport);
+
             close(true); // close the socket and stop the thread.
             
             if (_sendAddresses) delete _sendAddresses;
@@ -57,12 +64,11 @@ namespace epics {
 
             delete _receiveBuffer;
             delete _sendBuffer;
-            delete _responseHandler;
         }
 
         void BlockingUDPTransport::start() {
-            String threadName = "UDP-receive "+inetAddressToString(_bindAddress);
 
+            String threadName = "UDP-receive "+inetAddressToString(_bindAddress);
             errlogSevPrintf(errlogInfo, "Starting thread: %s",threadName.c_str());
 
             _threadId = epicsThreadCreate(threadName.c_str(),
@@ -93,7 +99,7 @@ namespace epics {
                 _shutdownEvent.wait();
         }
 
-        void BlockingUDPTransport::enqueueSendRequest(TransportSender* sender) {
+        void BlockingUDPTransport::enqueueSendRequest(TransportSender::shared_pointer& sender) {
             Lock lock(_sendMutex);
 
             _sendToEnabled = false;
@@ -132,11 +138,13 @@ namespace epics {
 
             char _readBuffer[MAX_UDP_RECV];
             osiSockAddr fromAddress;
+            Transport::shared_pointer thisTransport = shared_from_this();
 
             try {
 
                 bool closed;
-                while(!_closed) {
+                while(!_closed)
+                {
                     
                     _mutex.lock();
                     closed = _closed;
@@ -161,10 +169,12 @@ namespace epics {
                         if(_ignoredAddresses!=0)
                         {
                             for(size_t i = 0; i <_ignoredAddresses->size(); i++)
-                            if(_ignoredAddresses->at(i).ia.sin_addr.s_addr
-                                    ==fromAddress.ia.sin_addr.s_addr) {
-                                ignore = true;
-                                break;
+                            {
+                                if(_ignoredAddresses->at(i).ia.sin_addr.s_addr==fromAddress.ia.sin_addr.s_addr)
+                                {
+                                    ignore = true;
+                                    break;
+                                }
                             }
                         }
                         
@@ -172,20 +182,19 @@ namespace epics {
                             // TODO do not copy.... wrap the buffer!!!
                             _receiveBuffer->put(_readBuffer, 0, 
                                     bytesRead <_receiveBuffer->getRemaining() ?
-                                        bytesRead :
-                                        _receiveBuffer->getRemaining()
+                                        bytesRead : _receiveBuffer->getRemaining()
                                     );
 
                             _receiveBuffer->flip();
 
-                            processBuffer(fromAddress, _receiveBuffer);
+                            processBuffer(thisTransport, fromAddress, _receiveBuffer);
                         }
                     }
                     else {
                         // 0 == socket remotely closed
                         // log a 'recvfrom' error
-                        if(!_closed && bytesRead==-1) errlogSevPrintf(errlogMajor,
-                                "Socket recv error: %s", strerror(errno));
+                        if(!_closed && bytesRead==-1)
+                            errlogSevPrintf(errlogMajor, "Socket recv error: %s", strerror(errno));
                                 
                         close(true, false);
                         break;
@@ -204,8 +213,7 @@ namespace epics {
             _shutdownEvent.signal();
         }
 
-        bool BlockingUDPTransport::processBuffer(osiSockAddr& fromAddress,
-                ByteBuffer* receiveBuffer) {
+        bool BlockingUDPTransport::processBuffer(Transport::shared_pointer& thisTransport, osiSockAddr& fromAddress, ByteBuffer* receiveBuffer) {
 
             // handle response(s)
             while(receiveBuffer->getRemaining()>=CA_MESSAGE_HEADER_SIZE) {
@@ -225,14 +233,13 @@ namespace epics {
                 // command ID and paylaod
                 int8 command = receiveBuffer->getByte();
                 int payloadSize = receiveBuffer->getInt();
-                int nextRequestPosition = receiveBuffer->getPosition()
-                        +payloadSize;
+                int nextRequestPosition = receiveBuffer->getPosition() + payloadSize;
 
                 // payload size check
                 if(nextRequestPosition>receiveBuffer->getLimit()) return false;
 
                 // handle
-                _responseHandler->handleResponse(&fromAddress, this,
+                _responseHandler->handleResponse(&fromAddress, thisTransport,
                         (int8)(magicAndVersion&0xFF), command, payloadSize,
                         _receiveBuffer);
 
@@ -244,8 +251,7 @@ namespace epics {
             return true;
         }
 
-        bool BlockingUDPTransport::send(ByteBuffer* buffer,
-                const osiSockAddr& address) {
+        bool BlockingUDPTransport::send(ByteBuffer* buffer, const osiSockAddr& address) {
 
             buffer->flip();
             int retval = sendto(_channel, buffer->getArray(),
@@ -268,8 +274,7 @@ namespace epics {
                         buffer->getLimit(), 0, &(_sendAddresses->at(i).sa),
                         sizeof(sockaddr));
                 {
-                    if(retval<0) errlogSevPrintf(errlogMajor,
-                            "Socket sendto error: %s", strerror(errno));
+                    if(retval<0) errlogSevPrintf(errlogMajor, "Socket sendto error: %s", strerror(errno));
                     return false;
                 }
             }

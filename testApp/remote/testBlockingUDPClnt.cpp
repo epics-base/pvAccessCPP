@@ -21,6 +21,7 @@
 
 using namespace epics::pvAccess;
 using namespace epics::pvData;
+using std::tr1::static_pointer_cast;
 
 using std::cout;
 using std::endl;
@@ -30,28 +31,28 @@ static osiSockAddr sendTo;
 
 class ContextImpl : public Context {
 public:
-    ContextImpl() 
-    {}
+    ContextImpl() {}
 
     virtual ~ContextImpl() {
     }
-    virtual Timer* getTimer() {
-        return 0;
+    virtual Timer::shared_pointer getTimer() {
+        return Timer::shared_pointer();
     }
-    virtual TransportRegistry* getTransportRegistry() {
-        return 0;
+    virtual std::tr1::shared_ptr<TransportRegistry> getTransportRegistry() {
+        return std::tr1::shared_ptr<TransportRegistry>();
     }
-    virtual Channel* getChannel(epics::pvAccess::pvAccessID) {
-        return 0;
+    virtual std::tr1::shared_ptr<Channel> getChannel(epics::pvAccess::pvAccessID) {
+        return std::tr1::shared_ptr<Channel>();
     }
-    virtual Transport* getSearchTransport() {
-        return 0;
+    virtual Transport::shared_pointer getSearchTransport() {
+        return Transport::shared_pointer();
     }
-    virtual Configuration* getConfiguration() {
-        return 0;
+    virtual Configuration::shared_pointer getConfiguration() {
+        return Configuration::shared_pointer();
     }
     virtual void acquire() {}
     virtual void release() {}
+    virtual void beaconAnomalyNotify() {}
 };
 
 class DummyResponseHandler : public ResponseHandler {
@@ -62,13 +63,16 @@ public:
     virtual ~DummyResponseHandler() {}
 
     virtual void handleResponse(osiSockAddr* responseFrom,
-            Transport* transport, int8 version, int8 command, int payloadSize,
+    		Transport::shared_pointer&, int8 version, int8 command, int payloadSize,
             ByteBuffer* payloadBuffer) {
     }
 };
 
 class DummyTransportSender : public TransportSender {
 public:
+	 typedef std::tr1::shared_ptr<DummyTransportSender> shared_pointer;
+	 typedef std::tr1::shared_ptr<const DummyTransportSender> const_pointer;
+
     DummyTransportSender() {
         for(int i = 0; i<20; i++)
             data[i] = (char)(i+1);
@@ -102,8 +106,9 @@ void testBlockingUDPSender() {
     BlockingUDPConnector connector(false, true);
     ContextImpl ctx;
 
-    DummyTransportSender dts;
-    DummyResponseHandler drh(&ctx);
+
+    auto_ptr<ResponseHandler> drh(new DummyResponseHandler(&ctx));
+    TransportSender::shared_pointer dts(new DummyTransportSender());
 
     osiSockAddr bindAddr;
 
@@ -111,7 +116,8 @@ void testBlockingUDPSender() {
     bindAddr.ia.sin_port = htons(65001);
     bindAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    Transport* transport = connector.connect(NULL, &drh, bindAddr, 1, 50);
+    TransportClient::shared_pointer nullPointer;
+    Transport::shared_pointer transport(connector.connect(nullPointer, drh, bindAddr, 1, 50));
 
     // SRV_IP defined at the top of the this file
     if(aToIPAddr(SRV_IP, 65000, &sendTo.ia)<0) {
@@ -121,14 +127,12 @@ void testBlockingUDPSender() {
 
     cout<<"Sending 10 packets..."<<endl;
 
+
     for(int i = 0; i<10; i++) {
         cout<<"   Packet: "<<i+1<<endl;
-        transport->enqueueSendRequest(&dts);
+        transport->enqueueSendRequest(dts);
         sleep(1);
     }
-
-    delete transport;
-
 }
 
 int main(int argc, char *argv[]) {

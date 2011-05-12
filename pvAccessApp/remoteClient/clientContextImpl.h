@@ -10,7 +10,10 @@
 
 #include <pvAccess.h>
 #include <remote.h>
+#include <sharedPtr.h>
 #include <channelSearchManager.h>
+
+class ChannelSearchManager;
 
 namespace epics {
     namespace pvAccess {
@@ -25,17 +28,22 @@ namespace epics {
                 public BaseSearchInstance
         {
         public:
+            typedef std::tr1::shared_ptr<ChannelImpl> shared_pointer;
+            typedef std::tr1::shared_ptr<const ChannelImpl> const_shared_pointer;
+            typedef std::tr1::weak_ptr<ChannelImpl> weak_pointer;
+            typedef std::tr1::weak_ptr<const ChannelImpl> const_weak_pointer;
+
             virtual pvAccessID getChannelID() = 0;
             virtual void destroyChannel(bool force) = 0;
             virtual void connectionCompleted(pvAccessID sid/*,  rights*/) = 0;
             virtual void createChannelFailed() = 0;
-            virtual ClientContextImpl* getContext() = 0;
+            virtual std::tr1::shared_ptr<ClientContextImpl> getContext() = 0;
 
             virtual pvAccessID getServerChannelID() = 0;
-            virtual void registerResponseRequest(ResponseRequest* responseRequest) = 0;
-            virtual void unregisterResponseRequest(ResponseRequest* responseRequest) = 0;
-            virtual Transport* checkAndGetTransport() = 0;
-            virtual Transport* getTransport() = 0;
+            virtual void registerResponseRequest(ResponseRequest::shared_pointer& responseRequest) = 0;
+            virtual void unregisterResponseRequest(pvAccessID ioid) = 0;
+            virtual Transport::shared_pointer checkAndGetTransport() = 0;
+            virtual Transport::shared_pointer getTransport() = 0;
 
             static Status channelDestroyed;
             static Status channelDisconnected;
@@ -45,29 +53,34 @@ namespace epics {
         class ClientContextImpl : public ClientContext, public Context
         {
         public:
-            virtual ChannelSearchManager* getChannelSearchManager() = 0;
+            typedef std::tr1::shared_ptr<ClientContextImpl> shared_pointer;
+            typedef std::tr1::shared_ptr<const ClientContextImpl> const_shared_pointer;
+            typedef std::tr1::weak_ptr<ClientContextImpl> weak_pointer;
+            typedef std::tr1::weak_ptr<const ClientContextImpl> const_weak_pointer;
+
+            virtual ChannelSearchManager::shared_pointer getChannelSearchManager() = 0;
             virtual void checkChannelName(String& name) = 0;
 
-            virtual void registerChannel(ChannelImpl* channel) = 0;
-            virtual void unregisterChannel(ChannelImpl* channel) = 0;
+            virtual void registerChannel(ChannelImpl::shared_pointer& channel) = 0;
+            virtual void unregisterChannel(ChannelImpl::shared_pointer& channel) = 0;
 
-            virtual void destroyChannel(ChannelImpl* channel, bool force) = 0;
-            virtual ChannelImpl* createChannelInternal(String name, ChannelRequester* requester, short priority, InetAddrVector* addresses) = 0;
+            virtual void destroyChannel(ChannelImpl::shared_pointer& channel, bool force) = 0;
+            virtual ChannelImpl::shared_pointer createChannelInternal(String name, ChannelRequester::shared_pointer& requester, short priority, std::auto_ptr<InetAddrVector>& addresses) = 0;
 
-            virtual ResponseRequest* getResponseRequest(pvAccessID ioid) = 0;
-            virtual pvAccessID registerResponseRequest(ResponseRequest* request) = 0;
-            virtual ResponseRequest* unregisterResponseRequest(ResponseRequest* request) = 0;
+            virtual ResponseRequest::shared_pointer getResponseRequest(pvAccessID ioid) = 0;
+            virtual pvAccessID registerResponseRequest(ResponseRequest::shared_pointer& request) = 0;
+            virtual ResponseRequest::shared_pointer unregisterResponseRequest(pvAccessID ioid) = 0;
 
 
-            virtual Transport* getTransport(TransportClient* client, osiSockAddr* serverAddress, int16 minorRevision, int16 priority) = 0;
+            virtual Transport::shared_pointer getTransport(TransportClient::shared_pointer& client, osiSockAddr* serverAddress, int16 minorRevision, int16 priority) = 0;
 
             virtual void beaconAnomalyNotify() = 0;
 
-            virtual BeaconHandler* getBeaconHandler(osiSockAddr* responseFrom) = 0;
+            virtual std::tr1::shared_ptr<BeaconHandler> getBeaconHandler(osiSockAddr* responseFrom) = 0;
 
         };
         
-        extern ClientContextImpl* createClientContextImpl();
+        extern ClientContextImpl::shared_pointer createClientContextImpl();
 
     }
 }

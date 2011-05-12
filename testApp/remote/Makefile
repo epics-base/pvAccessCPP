@@ -14,11 +14,11 @@ PROD_HOST += testRemoteClientImpl
 testRemoteClientImpl_SRCS += testRemoteClientImpl.cpp
 testRemoteClientImpl_LIBS += pvData pvAccess Com
 
-PROD_HOST += testBeaconEmitter
+#PROD_HOST += testBeaconEmitter
 testBeaconEmitter_SRCS += testBeaconEmitter.cpp
 testBeaconEmitter_LIBS += pvData pvAccess Com
 
-PROD_HOST += testBeaconHandler
+#PROD_HOST += testBeaconHandler
 testBeaconHandler_SRCS += testBeaconHandler.cpp
 testBeaconHandler_LIBS += pvData pvAccess Com
 

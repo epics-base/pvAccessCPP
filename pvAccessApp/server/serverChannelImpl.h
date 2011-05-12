@@ -5,17 +5,19 @@
 #ifndef SERVERCHANNEL_H_
 #define SERVERCHANNEL_H_
 
-#include "remote.h"
-#include "clientContextImpl.h"
+#include <remote.h>
+#include <clientContextImpl.h>
 
 #include <destroyable.h>
 
 namespace epics {
 namespace pvAccess {
 
-class ServerChannelImpl :  public ServerChannel
+class ServerChannelImpl : public ServerChannel
 {
 public:
+    typedef std::tr1::shared_ptr<ServerChannelImpl> shared_pointer;
+    typedef std::tr1::shared_ptr<const ServerChannelImpl> const_shared_pointer;
 	/**
 	 * Create server channel for given process variable.
 	 * @param channel local channel.
@@ -23,29 +25,29 @@ public:
 	 * @param sid channel SID.
 	 * @param securityToken security token.
 	 */
-	ServerChannelImpl(Channel* channel, pvAccessID cid, pvAccessID sid, epics::pvData::PVField* securityToken);
+	ServerChannelImpl(Channel::shared_pointer& channel, pvAccessID cid, pvAccessID sid, epics::pvData::PVField::shared_pointer& securityToken);
 	/*
 	 * Destructor.
 	 */
-	~ServerChannelImpl() {};
+	virtual ~ServerChannelImpl() {};
 
 	/**
 	 * Get local channel.
 	 * @return local channel.
 	 */
-	Channel* getChannel();
+	Channel::shared_pointer getChannel();
 
 	/**
 	 * Get channel CID.
 	 * @return channel CID.
 	 */
-	pvAccessID getCID();
+	pvAccessID getCID() const;
 
 	/**
 	 * Get channel SID.
 	 * @return channel SID.
 	 */
-	pvAccessID getSID();
+	pvAccessID getSID() const;
 
 	/**
 	 * Get access rights (bit-mask encoded).
@@ -59,7 +61,7 @@ public:
 	 * @param id request ID.
 	 * @param request request to be registered.
 	 */
-	void registerRequest(pvAccessID id, epics::pvData::Destroyable* request);
+	void registerRequest(pvAccessID id, epics::pvData::Destroyable::shared_pointer& request);
 
 	/**
 	 * Unregister request.
@@ -72,7 +74,7 @@ public:
      * @param id request ID.
      * @return request with given ID, <code>null</code> if there is no request with such ID.
      */
-    epics::pvData::Destroyable* getRequest(pvAccessID id);
+    epics::pvData::Destroyable::shared_pointer getRequest(pvAccessID id);
 
     /**
      * Destroy server channel.
@@ -94,7 +96,7 @@ private:
 	/**
 	 * Local channel.
 	 */
-	Channel* _channel;
+	Channel::shared_pointer _channel;
 
 	/**
 	 * Channel CID.
@@ -109,12 +111,13 @@ private:
 	/**
 	 * Requests.
 	 */
-	std::map<pvAccessID, epics::pvData::Destroyable*> _requests;
+	std::map<pvAccessID, epics::pvData::Destroyable::shared_pointer> _requests;
 
 	/**
 	 * Requests iterator.
 	 */
-	std::map<pvAccessID, epics::pvData::Destroyable*>::iterator _iter;
+	 // TODO remove
+	std::map<pvAccessID, epics::pvData::Destroyable::shared_pointer>::iterator _iter;
 
 	/**
 	 * Destroy state.

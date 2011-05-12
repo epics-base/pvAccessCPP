@@ -14,6 +14,9 @@
 #include <sstream>
 #include <vector>
 #include <CDRMonitor.h>
+#include <convert.h>
+
+using std::tr1::static_pointer_cast;
 
 namespace epics {
     namespace pvAccess {
@@ -139,45 +142,45 @@ void testRegistryPutGet()
 	registry->registerIntrospectionInterface(id,structureArrayIn);
 
 	id = 0;
-	ScalarConstPtr scalarOut = static_cast<ScalarConstPtr>(registry->getIntrospectionInterface(id));
+	ScalarConstPtr scalarOut = static_pointer_cast<const Scalar>(registry->getIntrospectionInterface(id));
 	assert(scalarIn == scalarOut);
 
 	id++;
-	ScalarArrayConstPtr scalarArrayOut = static_cast<ScalarArrayConstPtr>(registry->getIntrospectionInterface(id));
+        ScalarArrayConstPtr scalarArrayOut = static_pointer_cast<const ScalarArray>(registry->getIntrospectionInterface(id));
 	assert(scalarArrayIn == scalarArrayOut);
 
 	id++;
-	StructureConstPtr structureOut = static_cast<StructureConstPtr>(registry->getIntrospectionInterface(id));
+        StructureConstPtr structureOut = static_pointer_cast<const Structure>(registry->getIntrospectionInterface(id));
 	assert(structureIn == structureOut);
 
 	id++;
-	StructureArrayConstPtr structureArrayOut = static_cast<StructureArrayConstPtr>(registry->getIntrospectionInterface(id));
+        StructureArrayConstPtr structureArrayOut = static_pointer_cast<const StructureArray>(registry->getIntrospectionInterface(id));
 	assert(structureArrayIn == structureArrayOut);
 
 	bool existing;
-	id = registry->registerIntrospectionInterface(static_cast<FieldConstPtr>(scalarIn),existing);
+        id = registry->registerIntrospectionInterface(static_pointer_cast<const Field>(scalarIn),existing);
 	assert(existing == true);
 	assert(id == 0);
 
-	id = registry->registerIntrospectionInterface(static_cast<FieldConstPtr>(scalarArrayIn),existing);
+        id = registry->registerIntrospectionInterface(static_pointer_cast<const Field>(scalarArrayIn),existing);
 	assert(existing == true);
 	assert(id == 1);
 
-	id = registry->registerIntrospectionInterface(static_cast<FieldConstPtr>(structureIn),existing);
+        id = registry->registerIntrospectionInterface(static_pointer_cast<const Field>(structureIn),existing);
 	assert(existing == true);
 	assert(id == 2);
 
-	id = registry->registerIntrospectionInterface(static_cast<FieldConstPtr>(structureArrayIn),existing);
+        id = registry->registerIntrospectionInterface(static_pointer_cast<const Field>(structureArrayIn),existing);
 	assert(existing == true);
 	assert(id == 3);
 
 	//should exist
 	ScalarConstPtr scalarInNew = getScalar("field1");
-	id = registry->registerIntrospectionInterface(static_cast<FieldConstPtr>(scalarInNew),existing);
+        id = registry->registerIntrospectionInterface(static_pointer_cast<const Field>(scalarInNew),existing);
 	assert(existing == true);
 	assert(id == 0);
 
-	scalarOut = static_cast<ScalarConstPtr>(registry->getIntrospectionInterface(id));
+        scalarOut = static_pointer_cast<const Scalar>(registry->getIntrospectionInterface(id));
 	assert(scalarIn == scalarOut);
 }
 
@@ -186,7 +189,7 @@ void testRegistryReset()
 	registry->reset();
 
 	short id = 0;
-    assert(static_cast<ScalarConstPtr>(registry->getIntrospectionInterface(id)) == 0);
+    assert(static_pointer_cast<const Scalar>(registry->getIntrospectionInterface(id)) == 0);
 }
 
 void serialize(FieldConstPtr field, IntrospectionRegistry* registry)
@@ -214,6 +217,7 @@ FieldConstPtr deserialize(IntrospectionRegistry* registry)
 void checkTypeCode(int8 typeCodeIn)
 {
 	int8 typeCode = buffer->getByte();
+	printf("%d == %d\n", typeCode, typeCodeIn);
 	assert(typeCode == typeCodeIn);
 	buffer->rewind();
 }
@@ -275,7 +279,7 @@ void testSerialize()
 		j++;
 		ss << j;
 		name2 = "field" + ss.str();
-		testSerializeCommon(static_cast<FieldConstPtr>(getScalar(name1)),static_cast<FieldConstPtr>(getScalar(name2)));
+                testSerializeCommon(static_pointer_cast<const Field>(getScalar(name1)),static_pointer_cast<const Field>(getScalar(name2)));
 
 		name1.clear();
 		name2.clear();
@@ -286,7 +290,7 @@ void testSerialize()
 		j++;
 		ss << j;
 		name2 = "fieldArray" + ss.str();
-		testSerializeCommon(static_cast<FieldConstPtr>(getScalarArray(name1)),static_cast<FieldConstPtr>(getScalarArray(name2)));
+                testSerializeCommon(static_pointer_cast<const Field>(getScalarArray(name1)),static_pointer_cast<const Field>(getScalarArray(name2)));
 
 		name1.clear();
 		name2.clear();
@@ -297,7 +301,7 @@ void testSerialize()
 		j++;
 		ss << j;
 		name2 = "structure" + ss.str();
-		testSerializeCommon(static_cast<FieldConstPtr>(getStructure(name1)),static_cast<FieldConstPtr>(getStructure(name2)));
+                testSerializeCommon(static_pointer_cast<const Field>(getStructure(name1)),static_pointer_cast<const Field>(getStructure(name2)));
 
 		name1.clear();
 		name2.clear();
@@ -312,7 +316,7 @@ void testSerialize()
 		ss << j;
 		name3 = "structure" + ss.str();
 		name4 = "structureArray" + ss.str();
-		testSerializeCommon(static_cast<FieldConstPtr>(getStructureArray(name1,name2)),static_cast<FieldConstPtr>(getStructureArray(name3,name4)));
+                testSerializeCommon(static_pointer_cast<const Field>(getStructureArray(name1,name2)),static_pointer_cast<const Field>(getStructureArray(name3,name4)));
 	}
 
 	//serverRegistry->printKeysAndValues("server");
@@ -323,9 +327,9 @@ void testSerializeFull()
 {
 	buffer->clear();
 	ScalarConstPtr scalarIn = getScalar("field1");
-	IntrospectionRegistry::serializeFull(static_cast<FieldConstPtr>(scalarIn),buffer,flusher);
+        IntrospectionRegistry::serializeFull(static_pointer_cast<const Field>(scalarIn),buffer,flusher);
 	buffer->flip();
-	ScalarConstPtr scalarOut = static_cast<ScalarConstPtr>(IntrospectionRegistry::deserializeFull(buffer,control));
+        ScalarConstPtr scalarOut = static_pointer_cast<const Scalar>(IntrospectionRegistry::deserializeFull(buffer,control));
 	PVField *pvField = pvDataCreate->createPVField(0,scalarOut);
 	pvFieldArray.push_back(pvField);
 	assert(scalarIn->getFieldName() == scalarOut->getFieldName());
@@ -333,9 +337,9 @@ void testSerializeFull()
 
 	buffer->clear();
 	ScalarArrayConstPtr scalarArrayIn = getScalarArray("fieldArray1");
-	IntrospectionRegistry::serializeFull(static_cast<FieldConstPtr>(scalarArrayIn),buffer,flusher);
+        IntrospectionRegistry::serializeFull(static_pointer_cast<const Field>(scalarArrayIn),buffer,flusher);
 	buffer->flip();
-	ScalarArrayConstPtr scalarArrayOut = static_cast<ScalarArrayConstPtr>(IntrospectionRegistry::deserializeFull(buffer,control));
+        ScalarArrayConstPtr scalarArrayOut = static_pointer_cast<const ScalarArray>(IntrospectionRegistry::deserializeFull(buffer,control));
 	pvField = pvDataCreate->createPVField(0,scalarArrayOut);
 	pvFieldArray.push_back(pvField);
 	assert(scalarArrayIn->getFieldName() == scalarArrayOut->getFieldName());
@@ -343,9 +347,9 @@ void testSerializeFull()
 
 	buffer->clear();
 	StructureConstPtr structureIn = getStructure("struct1");
-	IntrospectionRegistry::serializeFull(static_cast<FieldConstPtr>(structureIn),buffer,flusher);
+        IntrospectionRegistry::serializeFull(static_pointer_cast<const Field>(structureIn),buffer,flusher);
 	buffer->flip();
-	StructureConstPtr structureOut = static_cast<StructureConstPtr>(IntrospectionRegistry::deserializeFull(buffer,control));
+        StructureConstPtr structureOut = static_pointer_cast<const Structure>(IntrospectionRegistry::deserializeFull(buffer,control));
 	pvField = pvDataCreate->createPVField(0,structureOut);
 	pvFieldArray.push_back(pvField);
 	assert(structureIn->getFieldName() == structureOut->getFieldName());
@@ -353,9 +357,9 @@ void testSerializeFull()
 
 	buffer->clear();
 	StructureArrayConstPtr structureArrayIn = getStructureArray("struct1","structArray1");
-	IntrospectionRegistry::serializeFull(static_cast<FieldConstPtr>(structureArrayIn),buffer,flusher);
+        IntrospectionRegistry::serializeFull(static_pointer_cast<const Field>(structureArrayIn),buffer,flusher);
 	buffer->flip();
-	StructureArrayConstPtr structureArrayOut = static_cast<StructureArrayConstPtr>(IntrospectionRegistry::deserializeFull(buffer,control));
+        StructureArrayConstPtr structureArrayOut = static_pointer_cast<const StructureArray>(IntrospectionRegistry::deserializeFull(buffer,control));
 	pvField = pvDataCreate->createPVField(0,structureArrayOut);
 	pvFieldArray.push_back(pvField);
 	assert(structureArrayIn->getFieldName() == structureArrayOut->getFieldName());

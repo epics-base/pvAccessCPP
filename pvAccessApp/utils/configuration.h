@@ -8,6 +8,7 @@
 #include <pvType.h>
 #include <noDefaultMethods.h>
 #include <lock.h>
+#include <sharedPtr.h>
 
 #include <envDefs.h>
 
@@ -72,6 +73,9 @@ private:
 class Configuration : private epics::pvData::NoDefaultMethods
 {
 public:
+    typedef std::tr1::shared_ptr<Configuration> shared_pointer;
+    typedef std::tr1::shared_ptr<const Configuration> const_shared_pointer;
+
 	/*
 	 * Destructor.
 	 */

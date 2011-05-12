@@ -26,7 +26,7 @@ using namespace std;
 
 namespace epics { namespace pvAccess {
 
-typedef std::map<const short,const Field*> registryMap_t;
+typedef std::map<const short,FieldConstPtr> registryMap_t;
 
 
 	/**
@@ -34,10 +34,11 @@ typedef std::map<const short,const Field*> registryMap_t;
 	 * Registry is used to cache introspection interfaces to minimize network traffic.
 	 * @author gjansa
 	 */
-	class IntrospectionRegistry {
+	class IntrospectionRegistry : public NoDefaultMethods {
 	public:
 		IntrospectionRegistry(bool serverSide);
 		virtual ~IntrospectionRegistry();
+
 		void printKeysAndValues(string name);
 		/**
 		 * Resets registry, i.e. must be done when transport is changed (server restarted).

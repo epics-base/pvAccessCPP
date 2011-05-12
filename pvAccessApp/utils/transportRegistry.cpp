@@ -9,100 +9,97 @@ using namespace std;
 
 namespace epics { namespace pvAccess {
 
-TransportRegistry::TransportRegistry(): _mutex()
+TransportRegistry::TransportRegistry(): _transports(), _transportCount(0), _mutex()
 {
 
 }
 
 TransportRegistry::~TransportRegistry()
 {
-	clear();
 }
 
-void TransportRegistry::put(Transport* transport)
+void TransportRegistry::put(Transport::shared_pointer& transport)
 {
 	Lock guard(_mutex);
 	//const String type = transport.getType();
 	const int16 priority = transport->getPriority();
 	const osiSockAddr* address = transport->getRemoteAddress();
 
-	_transportsIter = _transports.find(address);
-	prioritiesMap_t* priorities;
-	if(_transportsIter == _transports.end())
+	transportsMap_t::iterator transportsIter = _transports.find(address);
+	prioritiesMapSharedPtr_t priorities;
+	if(transportsIter == _transports.end())
 	{
-		priorities = new prioritiesMap_t();
+		priorities.reset(new prioritiesMap_t());
 		_transports[address] = priorities;
+		_transportCount++;
 	}
 	else
 	{
-		priorities = _transportsIter->second;
-	}
-	(*priorities)[priority] =  transport;
-	_allTransports.push_back(transport);
-}
-
-Transport* TransportRegistry::get(const String type, const osiSockAddr* address, const int16 priority)
-{
-	Lock guard(_mutex);
-	_transportsIter = _transports.find(address);
-	if(_transportsIter != _transports.end())
-	{
-		prioritiesMap_t* priorities = _transportsIter->second;
-		_prioritiesIter = priorities->find(priority);
-		if(_prioritiesIter != priorities->end())
+		priorities = transportsIter->second;
+		prioritiesMap_t::iterator prioritiesIter = priorities->find(priority);
+		if(prioritiesIter == priorities->end()) //only increase transportCount if not replacing
 		{
-			return _prioritiesIter->second;
+			_transportCount++;
 		}
 	}
-	return NULL;
+	(*priorities)[priority] = transport;
 }
 
-Transport** TransportRegistry::get(const String type, const osiSockAddr* address, int32& size)
+Transport::shared_pointer TransportRegistry::get(String type, const osiSockAddr* address, const int16 priority)
 {
 	Lock guard(_mutex);
-	_transportsIter = _transports.find(address);
-	if(_transportsIter != _transports.end())
+	transportsMap_t::iterator transportsIter = _transports.find(address);
+	if(transportsIter != _transports.end())
 	{
-		prioritiesMap_t* priorities = _transportsIter->second;
-		size = priorities->size();
-		Transport** transportArray = new Transport*[size];
-		int i = 0;
-		for(_prioritiesIter = priorities->begin(); _prioritiesIter != priorities->end(); _prioritiesIter++, i++)
+		prioritiesMapSharedPtr_t priorities = transportsIter->second;
+		prioritiesMap_t::iterator prioritiesIter = priorities->find(priority);
+		if(prioritiesIter != priorities->end())
 		{
-			transportArray[i] = _prioritiesIter->second;
+			return prioritiesIter->second;
+		}
+	}
+	return Transport::shared_pointer();
+}
+
+auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::get(String type, const osiSockAddr* address)
+{
+	Lock guard(_mutex);
+	transportsMap_t::iterator transportsIter = _transports.find(address);
+	if(transportsIter != _transports.end())
+	{
+		prioritiesMapSharedPtr_t priorities = transportsIter->second;
+        auto_ptr<transportVector_t> transportArray(new transportVector_t(priorities->size()));
+        int32 i = 0;
+		for(prioritiesMap_t::iterator prioritiesIter = priorities->begin();
+            prioritiesIter != priorities->end();
+            prioritiesIter++, i++)
+		{
+			transportArray->at(i) = prioritiesIter->second;
 		}
 		return transportArray;
 	}
-	return NULL;
+	return auto_ptr<transportVector_t>();
 }
 
-Transport* TransportRegistry::remove(Transport* transport)
+Transport::shared_pointer TransportRegistry::remove(Transport::shared_pointer& transport)
 {
 	Lock guard(_mutex);
 	const int16 priority = transport->getPriority();
 	const osiSockAddr* address = transport->getRemoteAddress();
-	Transport* retTransport = NULL;
-	_transportsIter = _transports.find(address);
-	if(_transportsIter != _transports.end())
+    Transport::shared_pointer retTransport;
+	transportsMap_t::iterator transportsIter = _transports.find(address);
+	if(transportsIter != _transports.end())
 	{
-		prioritiesMap_t* priorities = _transportsIter->second;
-		_prioritiesIter = priorities->find(priority);
-		if(_prioritiesIter != priorities->end())
+		prioritiesMapSharedPtr_t priorities = transportsIter->second;
+		prioritiesMap_t::iterator prioritiesIter = priorities->find(priority);
+		if(prioritiesIter != priorities->end())
 		{
-			for(_allTransportsIter = _allTransports.begin(); _allTransportsIter != _allTransports.end(); _allTransportsIter++)
-			{
-				if(_prioritiesIter->second == *_allTransportsIter)
-				{
-					retTransport = _prioritiesIter->second;
-					_allTransports.erase(_allTransportsIter);
-					break;
-				}
-			}
-			priorities->erase(_prioritiesIter);
+            retTransport = prioritiesIter->second;
+			priorities->erase(prioritiesIter);
+            _transportCount--;
 			if(priorities->size() == 0)
 			{
-				_transports.erase(_transportsIter);
-				delete priorities;
+				_transports.erase(transportsIter);
 			}
 		}
 	}
@@ -112,51 +109,44 @@ Transport* TransportRegistry::remove(Transport* transport)
 void TransportRegistry::clear()
 {
 	Lock guard(_mutex);
-	for(_transportsIter = _transports.begin(); _transportsIter != _transports.end(); _transportsIter++)
-	{
-		delete _transportsIter->second;
-	}
-
 	_transports.clear();
-	_allTransports.clear();
+	_transportCount = 0;
 }
 
 int TransportRegistry::numberOfActiveTransports()
 {
 	Lock guard(_mutex);
-	return (int32)_allTransports.size();
+	return _transportCount;
 }
 
-Transport** TransportRegistry::toArray(const String type, int32& size)
+auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::toArray(String type)
 {
 	// TODO support type
-	Lock guard(_mutex);
-	size = _allTransports.size();
-	Transport** transportArray = new Transport*[size];
-	int i = 0;
-	for(_allTransportsIter = _allTransports.begin(); _allTransportsIter != _allTransports.end(); _allTransportsIter++, i++)
-	{
-		transportArray[i] = *_allTransportsIter;
-	}
-	return transportArray;
+    return toArray();
 }
 
-Transport** TransportRegistry::toArray(int32& size)
+auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::toArray()
 {
 	Lock guard(_mutex);
-	size = _allTransports.size();
+    if (_transportCount == 0)
+        return auto_ptr<transportVector_t>(0);
+    
+    auto_ptr<transportVector_t> transportArray(new transportVector_t(_transportCount));
 
-	if(size == 0)
-	{
-		return NULL;
-	}
-
-	Transport** transportArray = new Transport*[size];
-	int i = 0;
-	for(_allTransportsIter = _allTransports.begin(); _allTransportsIter != _allTransports.end(); _allTransportsIter++, i++)
-	{
-		transportArray[i] = *_allTransportsIter;
-	}
+    int32 i = 0;
+	for (transportsMap_t::iterator transportsIter = _transports.begin();
+         transportsIter != _transports.end();
+         transportsIter++)
+    {
+		prioritiesMapSharedPtr_t priorities = transportsIter->second;
+		for (prioritiesMap_t::iterator prioritiesIter = priorities->begin();
+             prioritiesIter != priorities->end();
+             prioritiesIter++, i++)
+        {
+            transportArray->at(i) = prioritiesIter->second;
+        }
+    }
+    
 	return transportArray;
 }
 

@@ -14,7 +14,7 @@ class ClientFactory {
     
     private:
     static epics::pvData::Mutex m_mutex;
-    static ClientContextImpl* m_context;
+    static ClientContextImpl::shared_pointer m_context;
 };
 
 }}

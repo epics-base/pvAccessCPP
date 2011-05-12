@@ -294,7 +294,7 @@ class MockMonitor : public Monitor, public MonitorElement
         m_changedBitSet->set(0);
         
         // TODO pvRequest 
-    	m_monitorRequester->monitorConnect(Status::OK, this, const_cast<Structure*>(m_pvStructure->getStructure()));
+        m_monitorRequester->monitorConnect(Status::OK, this, m_pvStructure->getStructure());
     }
     
     virtual Status start()

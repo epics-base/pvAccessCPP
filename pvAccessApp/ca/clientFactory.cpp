@@ -8,18 +8,19 @@ using namespace epics::pvData;
 using namespace epics::pvAccess;
 
 Mutex ClientFactory::m_mutex;
-ClientContextImpl* ClientFactory::m_context = 0;
+ClientContextImpl::shared_pointer ClientFactory::m_context;
 
 void ClientFactory::start()
 {
     Lock guard(m_mutex);
     
-    if (m_context) return;
+    if (m_context.get()) return;
     
     try {
         m_context = createClientContextImpl();
         m_context->initialize();
-        registerChannelProvider(m_context->getProvider());
+        ChannelProvider::shared_pointer provider = m_context->getProvider();
+        registerChannelProvider(provider);
     } catch (std::exception &e) {
         errlogSevPrintf(errlogMajor, "Unhandled exception caught at %s:%d: %s", __FILE__, __LINE__, e.what());
     } catch (...) {
@@ -31,7 +32,11 @@ void ClientFactory::stop()
 {
     Lock guard(m_mutex);
     
-    unregisterChannelProvider(m_context->getProvider());
+    if (!m_context.get()) return;
+
+    ChannelProvider::shared_pointer provider = m_context->getProvider();
+    unregisterChannelProvider(provider);
+    
     m_context->dispose(); 
-    m_context = 0;
+    m_context.reset();
 }

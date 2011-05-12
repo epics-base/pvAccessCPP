@@ -6,7 +6,7 @@
  */
 
 #include "remote.h"
-#include "hexDump.h"
+#include <hexDump.h>
 
 #include <byteBuffer.h>
 
@@ -23,7 +23,7 @@ namespace epics {
     namespace pvAccess {
 
         void AbstractResponseHandler::handleResponse(osiSockAddr* responseFrom,
-                Transport* transport, int8 version, int8 command,
+                Transport::shared_pointer& transport, int8 version, int8 command,
                 int payloadSize, ByteBuffer* payloadBuffer) {
             if(_debug) {
                 char ipAddrStr[48];

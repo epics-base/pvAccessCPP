@@ -3,6 +3,7 @@
  */
 
 #include "beaconHandler.h"
+#include "transportRegistry.h"
 
 using namespace std;
 using namespace epics::pvData;
@@ -10,9 +11,9 @@ using namespace epics::pvAccess;
 
 namespace epics { namespace pvAccess {
 
-BeaconHandler::BeaconHandler(ClientContextImpl* context,
+BeaconHandler::BeaconHandler(Context::shared_pointer context,
                              const osiSockAddr* responseFrom)
-    :_context(context)
+    :_context(Context::weak_pointer(context))
     ,_responseFrom(*responseFrom)
     ,_mutex()
     ,_serverStartupTime(0)
@@ -54,7 +55,7 @@ bool BeaconHandler::updateBeacon(int8 remoteTransportRevision, TimeStamp* timest
 		_serverStartupTime = *startupTime;
 
 		// new server up..
-		_context->beaconAnomalyNotify();
+		_context.lock()->beaconAnomalyNotify();
 
 		// notify corresponding transport(s)
 		beaconArrivalNotify();
@@ -65,7 +66,7 @@ bool BeaconHandler::updateBeacon(int8 remoteTransportRevision, TimeStamp* timest
 	bool networkChange = !(_serverStartupTime == *startupTime);
 	if (networkChange)
 	{
-		_context->beaconAnomalyNotify();
+		_context.lock()->beaconAnomalyNotify();
 	}
 	else
 	{
@@ -77,38 +78,34 @@ bool BeaconHandler::updateBeacon(int8 remoteTransportRevision, TimeStamp* timest
 
 void BeaconHandler::beaconArrivalNotify()
 {
-	int32 size = 0;
-	//TODO TCP name must be get from somewhere not hardcoded
-	Transport** transports  = _context->getTransportRegistry()->get("TCP", &_responseFrom, size);
-	if (transports == NULL)
-	{
+    auto_ptr<TransportRegistry::transportVector_t> transports =
+        _context.lock()->getTransportRegistry()->get("TCP", &_responseFrom);
+	if (!transports.get())
 		return;
-	}
 
 	// notify all
-	for (int i = 0; i < size; i++)
+	for (TransportRegistry::transportVector_t::iterator iter = transports->begin();
+         iter != transports->end();
+         iter++)
 	{
-		transports[i]->aliveNotification();
+		(*iter)->aliveNotification();
 	}
-	delete[] transports;
 }
 
 void BeaconHandler::changedTransport()
 {
-	int32 size = 0;
-	//TODO TCP name must be get from somewhere not hardcoded
-	Transport** transports = _context->getTransportRegistry()->get("TCP", &_responseFrom, size);
-	if (transports == NULL)
-	{
+    auto_ptr<TransportRegistry::transportVector_t> transports =
+        _context.lock()->getTransportRegistry()->get("TCP", &_responseFrom);
+	if (!transports.get())
 		return;
-	}
-
+    
 	// notify all
-	for (int i = 0; i < size; i++)
+	for (TransportRegistry::transportVector_t::iterator iter = transports->begin();
+         iter != transports->end();
+         iter++)
 	{
-		transports[i]->changedTransport();
+		(*iter)->changedTransport();
 	}
-	delete[] transports;
 }
 
 }}

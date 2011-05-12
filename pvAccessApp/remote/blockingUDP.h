@@ -29,11 +29,27 @@ namespace epics {
 
         class BlockingUDPTransport : public epics::pvData::NoDefaultMethods,
                 public Transport,
-                public TransportSendControl {
+                public TransportSendControl,
+                public std::tr1::enable_shared_from_this<BlockingUDPTransport>
+        {
         public:
-            BlockingUDPTransport(ResponseHandler* responseHandler,
+            typedef std::tr1::shared_ptr<BlockingUDPTransport> shared_pointer;
+            typedef std::tr1::shared_ptr<const BlockingUDPTransport> const_shared_pointer;
+
+        private:
+            BlockingUDPTransport(std::auto_ptr<ResponseHandler>& responseHandler,
+                                 SOCKET channel, osiSockAddr& bindAddress,
+                                 short remoteTransportRevision);
+        public:
+            static BlockingUDPTransport::shared_pointer create(std::auto_ptr<ResponseHandler>& responseHandler,
                     SOCKET channel, osiSockAddr& bindAddress,
-                    short remoteTransportRevision);
+                    short remoteTransportRevision)
+            {
+                BlockingUDPTransport::shared_pointer thisPointer(
+                            new BlockingUDPTransport(responseHandler, channel, bindAddress, remoteTransportRevision)
+                );
+                return thisPointer;
+            }
 
             virtual ~BlockingUDPTransport();
 
@@ -43,6 +59,7 @@ namespace epics {
             }
 
             virtual const osiSockAddr* getRemoteAddress() const {
+                // always connected
                 return &_bindAddress;
             }
 
@@ -90,7 +107,7 @@ namespace epics {
                 // noop
             }
 
-            virtual void enqueueSendRequest(TransportSender* sender);
+            virtual void enqueueSendRequest(TransportSender::shared_pointer& sender);
 
             void start();
 
@@ -190,14 +207,14 @@ namespace epics {
             /**
              * Response handler.
              */
-            ResponseHandler* _responseHandler;
+            std::auto_ptr<ResponseHandler> _responseHandler;
 
             virtual void processRead();
+                    
         private:
             static void threadRunner(void* param);
 
-            bool processBuffer(osiSockAddr& fromAddress,
-                    epics::pvData::ByteBuffer* receiveBuffer);
+            bool processBuffer(Transport::shared_pointer& transport, osiSockAddr& fromAddress, epics::pvData::ByteBuffer* receiveBuffer);
 
             void close(bool forced, bool waitForThreadToComplete);
 
@@ -276,8 +293,8 @@ namespace epics {
             /**
              * NOTE: transport client is ignored for broadcast (UDP).
              */
-            virtual Transport* connect(TransportClient* client,
-                    ResponseHandler* responseHandler, osiSockAddr& bindAddress,
+            virtual Transport::shared_pointer connect(TransportClient::shared_pointer& client,
+                    std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& bindAddress,
                     short transportRevision, int16 priority);
 
         private:

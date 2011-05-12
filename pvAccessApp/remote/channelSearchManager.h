@@ -7,7 +7,6 @@
 
 #include "remote.h"
 #include "pvAccess.h"
-#include "arrayFIFO.h"
 #include "caConstants.h"
 #include "blockingUDP.h"
 
@@ -20,6 +19,8 @@
 #include <float.h>
 #include <math.h>
 
+#include <deque>
+
 using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
@@ -29,8 +30,11 @@ namespace epics { namespace pvAccess {
 /**
  * SearchInstance.
  */
-class SearchInstance : public ReferenceCountingInstance {
+class SearchInstance {
 public:
+    
+    typedef std::deque<SearchInstance*> List; 
+    
 	/**
 	 * Destructor
 	 */
@@ -61,7 +65,7 @@ public:
 	 *
 	 * @throws BaseException if the ownerMutex is NULL.
 	 */
-	virtual void addAndSetListOwnership(ArrayFIFO<SearchInstance*>* newOwner, Mutex* ownerMutex, int32 index) = 0;
+	virtual void addAndSetListOwnership(List* newOwner, Mutex* ownerMutex, int32 index) = 0;
 	/**
 	 * Removes this search instance from the owner list and also removes the list as the owner of this
 	 * search instance.
@@ -97,7 +101,7 @@ public:
 	virtual pvAccessID getSearchInstanceID() = 0;
 	virtual String getSearchInstanceName() = 0;
 	virtual void unsetListOwnership();
-	virtual void addAndSetListOwnership(ArrayFIFO<SearchInstance*>* newOwner, Mutex* ownerMutex, int32 index);
+	virtual void addAndSetListOwnership(List* newOwner, Mutex* ownerMutex, int32 index);
 	virtual void removeAndUnsetListOwnership();
 	virtual int32 getOwnerIndex();
 	/**
@@ -107,7 +111,7 @@ public:
 	virtual bool generateSearchRequestMessage(ByteBuffer* requestMessage, TransportSendControl* control);
 private:
 	Mutex _mutex;
-	ArrayFIFO<SearchInstance*>* _owner;
+	List* _owner;
 	Mutex* _ownerMutex;
 	int32 _ownerIndex;
 
@@ -211,11 +215,13 @@ private:
     /**
 	 * Ordered (as inserted) list of channels with search request pending.
 	 */
-    ArrayFIFO<SearchInstance*>* _requestPendingChannels;
+    // TODO replace with stl::deque<SearchInstance::shared_pointer>
+    SearchInstance::List* _requestPendingChannels;
 	/**
 	 * Ordered (as inserted) list of channels with search request pending.
 	 */
-    ArrayFIFO<SearchInstance*>* _responsePendingChannels;
+    // TODO replace with stl::deque<SearchInstance::shared_pointer>
+    SearchInstance::List* _responsePendingChannels;
 	/**
 	 * Timer node.
 	 * (sync on requestPendingChannels)
@@ -266,6 +272,9 @@ public:
 class ChannelSearchManager
 {
 public:
+    typedef std::tr1::shared_ptr<ChannelSearchManager> shared_pointer;
+    typedef std::tr1::shared_ptr<const ChannelSearchManager> const_shared_pointer;
+    
     /**
 	 * Constructor.
 	 * @param context

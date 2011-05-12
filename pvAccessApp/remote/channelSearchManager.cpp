@@ -21,19 +21,19 @@ void BaseSearchInstance::initializeSearchInstance()
 void BaseSearchInstance::unsetListOwnership()
 {
 	Lock guard(_mutex);
-	if (_owner != NULL) this->release();
+	//if (_owner != NULL) this->release();
 	_owner = NULL;
 }
 
-void BaseSearchInstance::addAndSetListOwnership(ArrayFIFO<SearchInstance*>* newOwner, Mutex* ownerMutex, int32 index)
+void BaseSearchInstance::addAndSetListOwnership(SearchInstance::List* newOwner, Mutex* ownerMutex, int32 index)
 {
 	if(ownerMutex == NULL) THROW_BASE_EXCEPTION("Null owner mutex");
 
 	_ownerMutex = ownerMutex;
 	Lock ownerGuard(*_ownerMutex);
 	Lock guard(_mutex);
-	newOwner->push(this);
-	if (_owner == NULL) this->acquire(); // new owner
+	newOwner->push_back(this);
+	//if (_owner == NULL) this->acquire(); // new owner
 	_owner = newOwner;
 	_ownerIndex = index;
 }
@@ -47,8 +47,14 @@ void BaseSearchInstance::removeAndUnsetListOwnership()
 	Lock guard(_mutex);
 	if(_owner != NULL)
 	{
-	    this->release();
-		_owner->remove(this);
+	    //this->release();
+        // TODO !!!
+        for (SearchInstance::List::iterator iter = _owner->begin(); iter != _owner->end(); iter++)
+            if (*iter == this)
+            {
+                _owner->erase(iter);
+                break;
+            }
 		_owner = NULL;
 	}
 }
@@ -65,10 +71,12 @@ bool BaseSearchInstance::generateSearchRequestMessage(ByteBuffer* requestMessage
 	int16 dataCount = requestMessage->getShort(DATA_COUNT_POSITION);
 
 	dataCount++;
+    /*
 	if(dataCount >= MAX_SEARCH_BATCH_COUNT)
 	{
 		return false;
 	}
+    */
 
 	const String name = getSearchInstanceName();
 	// not nice...
@@ -100,8 +108,8 @@ SearchTimer::SearchTimer(ChannelSearchManager* _chanSearchManager, int32 timerIn
 		_timerIndex(timerIndex),
 		_allowBoost(allowBoost),
 		_allowSlowdown(allowSlowdown),
-		_requestPendingChannels(new ArrayFIFO<SearchInstance*>),
-		_responsePendingChannels(new ArrayFIFO<SearchInstance*>),
+        _requestPendingChannels(new SearchInstance::List()),
+		_responsePendingChannels(new SearchInstance::List()),
 		_timerNode(new TimerNode(*this)),
 		_canceled(false),
 		_timeAtResponseCheck(0)
@@ -141,7 +149,7 @@ void SearchTimer::installChannel(SearchInstance* channel)
 	if(_canceled) return;
 
 	Lock pendingChannelGuard(_requestPendingChannelsMutex);
-	bool startImmediately = _requestPendingChannels->isEmpty();
+	bool startImmediately = _requestPendingChannels->empty();
 	channel->addAndSetListOwnership(_requestPendingChannels, &_requestPendingChannelsMutex, _timerIndex);
 
 	// start searching
@@ -163,9 +171,11 @@ void SearchTimer::installChannel(SearchInstance* channel)
 void SearchTimer::moveChannels(SearchTimer* destination)
 {
 	// do not sync this, not necessary and might cause deadlock
-	SearchInstance* channel;
-	while((channel = _responsePendingChannels->pop()) != NULL)
+	while(!_responsePendingChannels->empty())
 	{
+        SearchInstance* channel = _responsePendingChannels->front();
+        _responsePendingChannels->pop_front();
+        
 		{
 			Lock guard(_volMutex);
 			if(_searchAttempts > 0)
@@ -178,9 +188,12 @@ void SearchTimer::moveChannels(SearchTimer* destination)
 
 	// bulk move
 	Lock guard(_requestPendingChannelsMutex);
-	while (!_requestPendingChannels->isEmpty())
+	while (!_requestPendingChannels->empty())
 	{
-		destination->installChannel(_requestPendingChannels->pop());
+        SearchInstance* channel = _requestPendingChannels->front();
+        _requestPendingChannels->pop_front();
+
+		destination->installChannel(channel);
 	}
 }
 
@@ -206,19 +219,19 @@ void SearchTimer::callback()
 	if(_allowBoost && searchRespones > 0)
 	{
 		Lock guard(_requestPendingChannelsMutex);
-		while(!_requestPendingChannels->isEmpty())
+		while(!_requestPendingChannels->empty())
 		{
-			SearchInstance* channel = _requestPendingChannels->peek();
+			SearchInstance* channel = _requestPendingChannels->front();
 			// boost needed check
 			//final int boostIndex = searchRespones >= searchAttempts * SUCCESS_RATE ? Math.min(Math.max(0, timerIndex - 1), beaconAnomalyTimerIndex) : beaconAnomalyTimerIndex;
 			const int boostIndex = _chanSearchManager->_beaconAnomalyTimerIndex;
 			if(channel->getOwnerIndex() > boostIndex)
 			{
-				_requestPendingChannels->pop();
-				channel->acquire();
+				_requestPendingChannels->pop_front();
+				//channel->acquire();
 				channel->unsetListOwnership();
 				_chanSearchManager->boostSearching(channel, boostIndex);
-				channel->release();
+				//channel->release();
 			}
 		}
 	}
@@ -234,14 +247,17 @@ void SearchTimer::callback()
 		_timeAtResponseCheck = now;
 
 		// notify about timeout (move it to other timer)
-		while((channel = _responsePendingChannels->pop()) != NULL)
+		while(!_responsePendingChannels->empty())
 		{
+            channel = _responsePendingChannels->front();
+            _responsePendingChannels->pop_front();
+            
 			if(_allowSlowdown)
 			{
-			    channel->acquire();
+			    //channel->acquire();
 				channel->unsetListOwnership();
 				_chanSearchManager->searchResponseTimeout(channel, _timerIndex);
-				channel->release();
+				//channel->release();
 			}
 			else
 			{
@@ -306,11 +322,17 @@ void SearchTimer::callback()
 
 	{
 		Lock guard(_requestPendingChannelsMutex);
-		channel = _requestPendingChannels->pop();
+        if (_requestPendingChannels->empty())
+            channel = 0;
+        else {
+            channel = _requestPendingChannels->front();
+            _requestPendingChannels->pop_front();
+        }
+            
 	}
 	while (!canceled && channel != NULL)
 	{
-	    channel->acquire();
+	    //channel->acquire();
 		channel->unsetListOwnership();
 
 		bool requestSent = true;
@@ -345,7 +367,7 @@ void SearchTimer::callback()
 			}
 		}
 		
-		channel->release();
+		//channel->release();
 
 		// limit
 		if(triesInFrame == 0 && !allowNewFrame) break;
@@ -357,7 +379,12 @@ void SearchTimer::callback()
 
 		{
 			Lock guard(_requestPendingChannelsMutex);
-			channel = _requestPendingChannels->pop();
+            if (_requestPendingChannels->empty())
+                channel = 0;
+            else {
+                channel = _requestPendingChannels->front();
+                _requestPendingChannels->pop_front();
+            }
 		}
 	}
 
@@ -380,7 +407,7 @@ void SearchTimer::callback()
 	Lock guard(_requestPendingChannelsMutex);
 	if(!canceled && !_timerNode->isScheduled())
 	{
-		bool someWorkToDo = (!_requestPendingChannels->isEmpty() || !_responsePendingChannels->isEmpty());
+		bool someWorkToDo = (!_requestPendingChannels->empty() || !_responsePendingChannels->empty());
 		if(someWorkToDo)
 		{
 			_chanSearchManager->_context->getTimer()->scheduleAfterDelay(*_timerNode, period()/1000.0);
@@ -546,7 +573,7 @@ void ChannelSearchManager::searchResponse(int32 cid, int32 seqNo, int8 minorRevi
 	{
 		si = _channelsIter->second;
 		_channels.erase(_channelsIter);
-		si->acquire();
+		//si->acquire();
 		si->removeAndUnsetListOwnership();
 
     	// report success
@@ -557,17 +584,17 @@ void ChannelSearchManager::searchResponse(int32 cid, int32 seqNo, int8 minorRevi
     
     	// then notify SearchInstance
     	si->searchResponse(minorRevision, serverAddress);
-    	si->release();
+    	//si->release();
 	}
 	else
 	{
 		// minor hack to enable duplicate reports
-		si = dynamic_cast<SearchInstance*>(_context->getChannel(cid));
+		si = dynamic_cast<SearchInstance*>(_context->getChannel(cid).get()); // TODO
 		if(si != NULL)
 		{
-		    si->acquire();    // TODO not thread/destruction safe
+		    //si->acquire();    // TODO not thread/destruction safe
 			si->searchResponse(minorRevision, serverAddress);
-			si->release();
+			//si->release();
 		}
 		return;
 	}
@@ -611,7 +638,10 @@ void ChannelSearchManager::flushSendBuffer()
 	TimeStamp now;
 	now.getCurrent();
 	_timeAtLastSend = now.getMilliseconds();
-	((BlockingUDPTransport*)_context->getSearchTransport())->send(_sendBuffer);
+    
+    Transport::shared_pointer tt = _context->getSearchTransport();
+    BlockingUDPTransport::shared_pointer ut = std::tr1::static_pointer_cast<BlockingUDPTransport>(tt); 
+	ut->send(_sendBuffer); // TODO
 	initializeSendBuffer();
 }
 
