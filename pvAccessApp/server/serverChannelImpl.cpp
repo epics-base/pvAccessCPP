@@ -8,7 +8,7 @@ using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
 
-ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer& channel, pvAccessID cid, pvAccessID sid, epics::pvData::PVField::shared_pointer& securityToken):
+ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer const & channel, pvAccessID cid, pvAccessID sid, epics::pvData::PVField::shared_pointer const & securityToken):
 			_channel(channel),
 			_cid(cid),
 			_sid(cid),
@@ -41,7 +41,7 @@ int16 ServerChannelImpl::getAccessRights()
 	return 0;
 }
 
-void ServerChannelImpl::registerRequest(const pvAccessID id, Destroyable::shared_pointer& request)
+void ServerChannelImpl::registerRequest(const pvAccessID id, Destroyable::shared_pointer const & request)
 {
 	Lock guard(_mutex);
 	_requests[id] = request;

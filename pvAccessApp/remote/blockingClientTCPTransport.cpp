@@ -32,7 +32,7 @@ namespace epics {
                 catch (...) { errlogSevPrintf(errlogMajor, "Unhandled exception caught from code at %s:%d.", __FILE__, __LINE__); }
                 
         BlockingClientTCPTransport::BlockingClientTCPTransport(
-                Context::shared_pointer& context, SOCKET channel,
+                Context::shared_pointer const & context, SOCKET channel,
                 auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
                 TransportClient::shared_pointer client, short remoteTransportRevision,
                 float beaconInterval, int16 priority) :
@@ -99,7 +99,7 @@ namespace epics {
             }
         }
 
-        bool BlockingClientTCPTransport::acquire(TransportClient::shared_pointer& client) {
+        bool BlockingClientTCPTransport::acquire(TransportClient::shared_pointer const & client) {
             Lock lock(_mutex);
             if(_closed) return false;
             
@@ -153,7 +153,7 @@ namespace epics {
             _owners.clear();
         }
 
-        //void BlockingClientTCPTransport::release(TransportClient::shared_pointer& client) {
+        //void BlockingClientTCPTransport::release(TransportClient::shared_pointer const & client) {
         void BlockingClientTCPTransport::release(pvAccessID clientID) {
             Lock lock(_mutex);
             if(_closed) return;

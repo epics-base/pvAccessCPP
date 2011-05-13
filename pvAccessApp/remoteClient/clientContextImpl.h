@@ -40,7 +40,7 @@ namespace epics {
             virtual std::tr1::shared_ptr<ClientContextImpl> getContext() = 0;
 
             virtual pvAccessID getServerChannelID() = 0;
-            virtual void registerResponseRequest(ResponseRequest::shared_pointer& responseRequest) = 0;
+            virtual void registerResponseRequest(ResponseRequest::shared_pointer const & responseRequest) = 0;
             virtual void unregisterResponseRequest(pvAccessID ioid) = 0;
             virtual Transport::shared_pointer checkAndGetTransport() = 0;
             virtual Transport::shared_pointer getTransport() = 0;
@@ -61,18 +61,18 @@ namespace epics {
             virtual ChannelSearchManager::shared_pointer getChannelSearchManager() = 0;
             virtual void checkChannelName(String& name) = 0;
 
-            virtual void registerChannel(ChannelImpl::shared_pointer& channel) = 0;
-            virtual void unregisterChannel(ChannelImpl::shared_pointer& channel) = 0;
+            virtual void registerChannel(ChannelImpl::shared_pointer const & channel) = 0;
+            virtual void unregisterChannel(ChannelImpl::shared_pointer const & channel) = 0;
 
-            virtual void destroyChannel(ChannelImpl::shared_pointer& channel, bool force) = 0;
-            virtual ChannelImpl::shared_pointer createChannelInternal(String name, ChannelRequester::shared_pointer& requester, short priority, std::auto_ptr<InetAddrVector>& addresses) = 0;
+            virtual void destroyChannel(ChannelImpl::shared_pointer const & channel, bool force) = 0;
+            virtual ChannelImpl::shared_pointer createChannelInternal(String name, ChannelRequester::shared_pointer const & requester, short priority, std::auto_ptr<InetAddrVector>& addresses) = 0;
 
             virtual ResponseRequest::shared_pointer getResponseRequest(pvAccessID ioid) = 0;
-            virtual pvAccessID registerResponseRequest(ResponseRequest::shared_pointer& request) = 0;
+            virtual pvAccessID registerResponseRequest(ResponseRequest::shared_pointer const & request) = 0;
             virtual ResponseRequest::shared_pointer unregisterResponseRequest(pvAccessID ioid) = 0;
 
 
-            virtual Transport::shared_pointer getTransport(TransportClient::shared_pointer& client, osiSockAddr* serverAddress, int16 minorRevision, int16 priority) = 0;
+            virtual Transport::shared_pointer getTransport(TransportClient::shared_pointer const & client, osiSockAddr* serverAddress, int16 minorRevision, int16 priority) = 0;
 
             virtual void beaconAnomalyNotify() = 0;
 

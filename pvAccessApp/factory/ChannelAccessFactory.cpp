@@ -49,12 +49,12 @@ ChannelAccess::shared_pointer getChannelAccess() {
     return channelAccess;
 }
 
-void registerChannelProvider(ChannelProvider::shared_pointer& channelProvider) {
+void registerChannelProvider(ChannelProvider::shared_pointer const & channelProvider) {
     Lock guard(channelProviderMutex);
     channelProviders[channelProvider->getProviderName()] = channelProvider;
 }
 
-void unregisterChannelProvider(ChannelProvider::shared_pointer& channelProvider) {
+void unregisterChannelProvider(ChannelProvider::shared_pointer const & channelProvider) {
     Lock guard(channelProviderMutex);
     channelProviders.erase(channelProvider->getProviderName());
 }

@@ -63,7 +63,7 @@ public:
     virtual ~DummyResponseHandler() {}
 
     virtual void handleResponse(osiSockAddr* responseFrom,
-    		Transport::shared_pointer&, int8 version, int8 command, int payloadSize,
+    		Transport::shared_pointer const &, int8 version, int8 command, int payloadSize,
             ByteBuffer* payloadBuffer) {
     }
 };

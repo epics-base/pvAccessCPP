@@ -43,7 +43,7 @@ namespace epics {
         virtual bool isClosed() {return false;};
         virtual bool isVerified() {return false;};
         virtual void verified(){};
-        virtual void enqueueSendRequest(TransportSender::shared_pointer& sender){};
+        virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender){};
         virtual void ensureData(int) {};
         virtual IntrospectionRegistry* getIntrospectionRegistry() {return NULL;};
 	private:

@@ -43,7 +43,7 @@ public:
 	 * Set <code>ChannelAccess</code> implementation and initialize server.
 	 * @param channelAccess implementation of channel access to be served.
 	 */
-	virtual void initialize(ChannelAccess::shared_pointer& channelAccess) = 0;
+	virtual void initialize(ChannelAccess::shared_pointer const & channelAccess) = 0;
 
 	/**
 	 * Run server (process events).
@@ -91,7 +91,7 @@ public:
 	 * Set beacon server status provider.
 	 * @param beaconServerStatusProvider <code>BeaconServerStatusProvider</code> implementation to set.
 	 */
-	virtual void setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer& beaconServerStatusProvider) = 0;
+	virtual void setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer const & beaconServerStatusProvider) = 0;
 
 };
 
@@ -114,14 +114,14 @@ public:
 
 	//**************** derived from ServerContext ****************//
 	const Version& getVersion();
-	void initialize(ChannelAccess::shared_pointer& channelAccess);
+	void initialize(ChannelAccess::shared_pointer const & channelAccess);
 	void run(int32 seconds);
 	void shutdown();
 	void destroy();
 	void printInfo();
 	void printInfo(ostream& str);
 	void dispose();
-	void setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer& beaconServerStatusProvider);
+	void setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer const & beaconServerStatusProvider);
 	//**************** derived from Context ****************//
 	Timer::shared_pointer getTimer();
 	Channel::shared_pointer getChannel(pvAccessID id);

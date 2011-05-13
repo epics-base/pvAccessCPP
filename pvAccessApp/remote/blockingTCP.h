@@ -53,7 +53,7 @@ namespace epics {
                 public std::tr1::enable_shared_from_this<BlockingTCPTransport>
         {
         protected:
-            BlockingTCPTransport(Context::shared_pointer& context, SOCKET channel,
+            BlockingTCPTransport(Context::shared_pointer const & context, SOCKET channel,
                     std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
                     int16 priority);
                     
@@ -163,9 +163,9 @@ namespace epics {
              */
             void start();
 
-            virtual void enqueueSendRequest(TransportSender::shared_pointer& sender);
+            virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender);
 
-            //void enqueueMonitorSendRequest(TransportSender::shared_pointer& sender);
+            //void enqueueMonitorSendRequest(TransportSender::shared_pointer const & sender);
 
         protected:
         
@@ -436,13 +436,13 @@ namespace epics {
             typedef std::tr1::shared_ptr<const BlockingClientTCPTransport> const_shared_pointer;
 
         private:
-            BlockingClientTCPTransport(Context::shared_pointer& context, SOCKET channel,
+            BlockingClientTCPTransport(Context::shared_pointer const & context, SOCKET channel,
                     std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
                     TransportClient::shared_pointer client, short remoteTransportRevision,
                     float beaconInterval, int16 priority);
 
         public:
-            static BlockingClientTCPTransport::shared_pointer create(Context::shared_pointer& context, SOCKET channel,
+            static BlockingClientTCPTransport::shared_pointer create(Context::shared_pointer const & context, SOCKET channel,
                                        std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
                                        TransportClient::shared_pointer client, short remoteTransportRevision,
                                        float beaconInterval, int16 priority)
@@ -472,14 +472,14 @@ namespace epics {
              * @param client client (channel) acquiring the transport
              * @return <code>true</code> if transport was granted, <code>false</code> otherwise.
              */
-            virtual bool acquire(TransportClient::shared_pointer& client);
+            virtual bool acquire(TransportClient::shared_pointer const & client);
 
             /**
              * Releases transport.
              * @param client client (channel) releasing the transport
              */
             virtual void release(pvAccessID clientId);
-            //virtual void release(TransportClient::shared_pointer& client);
+            //virtual void release(TransportClient::shared_pointer const & client);
 
             /**
              * Alive notification.
@@ -578,12 +578,12 @@ namespace epics {
          */
         class BlockingTCPConnector : public Connector {
         public:
-            BlockingTCPConnector(Context::shared_pointer& context, int receiveBufferSize,
+            BlockingTCPConnector(Context::shared_pointer const & context, int receiveBufferSize,
                     float beaconInterval);
 
             virtual ~BlockingTCPConnector();
 
-            virtual Transport::shared_pointer connect(TransportClient::shared_pointer& client,
+            virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
                     std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
                     short transportRevision, int16 priority);
         private:
@@ -631,10 +631,10 @@ namespace epics {
             typedef std::tr1::shared_ptr<const BlockingServerTCPTransport> const_shared_pointer;
 
         private:
-            BlockingServerTCPTransport(Context::shared_pointer& context, SOCKET channel,
+            BlockingServerTCPTransport(Context::shared_pointer const & context, SOCKET channel,
                     std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize);
         public:
-            static BlockingServerTCPTransport::shared_pointer create(Context::shared_pointer& context, SOCKET channel,
+            static BlockingServerTCPTransport::shared_pointer create(Context::shared_pointer const & context, SOCKET channel,
                                        std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize)
             {
                 BlockingServerTCPTransport::shared_pointer thisPointer(
@@ -667,7 +667,7 @@ namespace epics {
              * @param sid preallocated channel SID.
              * @param channel channel to register.
              */
-            virtual void registerChannel(pvAccessID sid, ServerChannel::shared_pointer& channel);
+            virtual void registerChannel(pvAccessID sid, ServerChannel::shared_pointer const & channel);
 
             /**
              * Unregister a new channel (and deallocates its handle).
@@ -796,8 +796,8 @@ namespace epics {
              * @param receiveBufferSize
              * @throws CAException
              */
-            BlockingTCPAcceptor(Context::shared_pointer& context,
-                                ResponseHandlerFactory::shared_pointer& responseHandlerFactory,
+            BlockingTCPAcceptor(Context::shared_pointer const & context,
+                                ResponseHandlerFactory::shared_pointer const & responseHandlerFactory,
                                 int port, int receiveBufferSize);
 
             virtual ~BlockingTCPAcceptor();
@@ -862,7 +862,7 @@ namespace epics {
              * Validate connection by sending a validation message request.
              * @return <code>true</code> on success.
              */
-            bool validateConnection(BlockingServerTCPTransport::shared_pointer& transport, const char* address);
+            bool validateConnection(BlockingServerTCPTransport::shared_pointer const & transport, const char* address);
 
             static void handleEventsRunner(void* param);
         };

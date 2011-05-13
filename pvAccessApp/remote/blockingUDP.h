@@ -107,7 +107,7 @@ namespace epics {
                 // noop
             }
 
-            virtual void enqueueSendRequest(TransportSender::shared_pointer& sender);
+            virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender);
 
             void start();
 
@@ -214,7 +214,7 @@ namespace epics {
         private:
             static void threadRunner(void* param);
 
-            bool processBuffer(Transport::shared_pointer& transport, osiSockAddr& fromAddress, epics::pvData::ByteBuffer* receiveBuffer);
+            bool processBuffer(Transport::shared_pointer const & transport, osiSockAddr& fromAddress, epics::pvData::ByteBuffer* receiveBuffer);
 
             void close(bool forced, bool waitForThreadToComplete);
 
@@ -293,7 +293,7 @@ namespace epics {
             /**
              * NOTE: transport client is ignored for broadcast (UDP).
              */
-            virtual Transport::shared_pointer connect(TransportClient::shared_pointer& client,
+            virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
                     std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& bindAddress,
                     short transportRevision, int16 priority);
 

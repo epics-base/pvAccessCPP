@@ -72,7 +72,7 @@ public:
     }
 
     virtual void handleResponse(osiSockAddr* responseFrom,
-    		Transport::shared_pointer& transport, int8 version, int8 command, int payloadSize,
+    		Transport::shared_pointer const & transport, int8 version, int8 command, int payloadSize,
             ByteBuffer* payloadBuffer) {
 
         if(command==CMD_CONNECTION_VALIDATION) transport->verified();
@@ -88,7 +88,7 @@ public:
     virtual void transportUnresponsive() {
         errlogSevPrintf(errlogInfo, "unresponsive");
     }
-    virtual void transportResponsive(Transport::shared_pointer& transport) {
+    virtual void transportResponsive(Transport::shared_pointer const & transport) {
         errlogSevPrintf(errlogInfo, "responsive");
     }
     virtual void transportChanged() {

@@ -22,7 +22,7 @@ using namespace std;
 namespace epics {
     namespace pvAccess {
 
-    Transport::shared_pointer BlockingUDPConnector::connect(TransportClient::shared_pointer& client,
+    Transport::shared_pointer BlockingUDPConnector::connect(TransportClient::shared_pointer const & client,
                 auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& bindAddress,
                 short transportRevision, int16 priority) {
                     

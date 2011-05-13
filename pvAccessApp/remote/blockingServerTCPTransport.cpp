@@ -26,7 +26,7 @@ namespace epics {
     namespace pvAccess {
 
         BlockingServerTCPTransport::BlockingServerTCPTransport(
-                Context::shared_pointer& context, SOCKET channel,
+                Context::shared_pointer const & context, SOCKET channel,
                 auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize) :
             BlockingTCPTransport(context, channel, responseHandler, receiveBufferSize, CA_DEFAULT_PRIORITY),
             _introspectionRegistry(true),
@@ -75,7 +75,7 @@ namespace epics {
             return sid;
         }
 
-        void BlockingServerTCPTransport::registerChannel(pvAccessID sid, ServerChannel::shared_pointer& channel) {
+        void BlockingServerTCPTransport::registerChannel(pvAccessID sid, ServerChannel::shared_pointer const & channel) {
             Lock lock(_channelsMutex);
             _channels[sid] = channel;
         }

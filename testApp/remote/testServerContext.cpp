@@ -18,7 +18,7 @@ public:
     
 
     ChannelFind::shared_pointer channelFind(epics::pvData::String channelName,
-                                            ChannelFindRequester::shared_pointer& channelFindRequester)
+                                            ChannelFindRequester::shared_pointer const & channelFindRequester)
     {
         ChannelFind::shared_pointer nullCF;
         channelFindRequester->channelFindResult(Status::OK, nullCF, false); 
@@ -27,7 +27,7 @@ public:
 
     Channel::shared_pointer createChannel(
                 epics::pvData::String channelName,
-                ChannelRequester::shared_pointer& channelRequester,
+                ChannelRequester::shared_pointer const & channelRequester,
                 short priority = PRIORITY_DEFAULT)  
     {
         return createChannel(channelName, channelRequester, priority, "");
@@ -35,7 +35,7 @@ public:
 
     Channel::shared_pointer createChannel(
                 epics::pvData::String channelName,
-                ChannelRequester::shared_pointer& channelRequester,
+                ChannelRequester::shared_pointer const & channelRequester,
                 short priority, epics::pvData::String address)
     {
         Channel::shared_pointer nullC;

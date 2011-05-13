@@ -9,7 +9,7 @@ using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
 
-DefaultBeaconServerStatusProvider::DefaultBeaconServerStatusProvider(ServerContext::shared_pointer& context): _context(context)
+DefaultBeaconServerStatusProvider::DefaultBeaconServerStatusProvider(ServerContext::shared_pointer const & context): _context(context)
 {
 	initialize();
 }

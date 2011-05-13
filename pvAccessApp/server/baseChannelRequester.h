@@ -17,8 +17,8 @@ namespace pvAccess {
 class BaseChannelRequester :  virtual public epics::pvData::Requester, public epics::pvData::Destroyable
 {
 public:
-	BaseChannelRequester(ServerContextImpl::shared_pointer& context, ServerChannelImpl::shared_pointer& channel,
-	                     const pvAccessID ioid, Transport::shared_pointer& transport);
+	BaseChannelRequester(ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+	                     const pvAccessID ioid, Transport::shared_pointer const & transport);
 	virtual ~BaseChannelRequester() {};
 
 	bool startRequest(int32 qos);
@@ -26,8 +26,8 @@ public:
 	int32 getPendingRequest();
 	String getRequesterName();
 	void message(const String message, const epics::pvData::MessageType messageType);
-	static void message(Transport::shared_pointer& transport, const pvAccessID ioid, const String message, const epics::pvData::MessageType messageType);
-	static void sendFailureMessage(const int8 command, Transport::shared_pointer& transport, const pvAccessID ioid, const int8 qos, const Status status);
+	static void message(Transport::shared_pointer const & transport, const pvAccessID ioid, const String message, const epics::pvData::MessageType messageType);
+	static void sendFailureMessage(const int8 command, Transport::shared_pointer const & transport, const pvAccessID ioid, const int8 qos, const Status status);
 
 	static const Status okStatus;
 	static const Status badCIDStatus;
@@ -63,7 +63,7 @@ private:
 class BaseChannelRequesterFailureMessageTransportSender : public TransportSender
 {
 public:
-	BaseChannelRequesterFailureMessageTransportSender(const int8 command, Transport::shared_pointer& transport, const pvAccessID ioid, const int8 qos, const Status& status);
+	BaseChannelRequesterFailureMessageTransportSender(const int8 command, Transport::shared_pointer const & transport, const pvAccessID ioid, const int8 qos, const Status& status);
 	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 	void lock();
 	void unlock();

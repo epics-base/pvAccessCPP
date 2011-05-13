@@ -114,7 +114,7 @@ void ServerContextImpl::loadConfiguration()
 	_channelProviderName = config->getPropertyAsString("EPICS4_CAS_PROVIDER_NAME", _channelProviderName);
 }
 
-void ServerContextImpl::initialize(ChannelAccess::shared_pointer& channelAccess)
+void ServerContextImpl::initialize(ChannelAccess::shared_pointer const & channelAccess)
 {
 	Lock guard(_mutex);
 	if (channelAccess == NULL)
@@ -419,7 +419,7 @@ void ServerContextImpl::dispose()
 	}
 }
 
-void ServerContextImpl::setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer& beaconServerStatusProvider)
+void ServerContextImpl::setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer const & beaconServerStatusProvider)
 {
 	_beaconServerStatusProvider = beaconServerStatusProvider;
 }

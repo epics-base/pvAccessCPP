@@ -18,7 +18,7 @@ TransportRegistry::~TransportRegistry()
 {
 }
 
-void TransportRegistry::put(Transport::shared_pointer& transport)
+void TransportRegistry::put(Transport::shared_pointer const & transport)
 {
 	Lock guard(_mutex);
 	//const String type = transport.getType();
@@ -81,7 +81,7 @@ auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::get(String typ
 	return auto_ptr<transportVector_t>();
 }
 
-Transport::shared_pointer TransportRegistry::remove(Transport::shared_pointer& transport)
+Transport::shared_pointer TransportRegistry::remove(Transport::shared_pointer const & transport)
 {
 	Lock guard(_mutex);
 	const int16 priority = transport->getPriority();

@@ -21,7 +21,7 @@ namespace epics {
     namespace pvAccess {
 
         BlockingTCPConnector::BlockingTCPConnector(
-                Context::shared_pointer& context,
+                Context::shared_pointer const & context,
                 int receiveBufferSize,
                 float beaconInterval) :
             _context(context),
@@ -66,7 +66,7 @@ namespace epics {
             return INVALID_SOCKET;
         }
 
-        Transport::shared_pointer BlockingTCPConnector::connect(TransportClient::shared_pointer& client,
+        Transport::shared_pointer BlockingTCPConnector::connect(TransportClient::shared_pointer const & client,
                 auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
                 short transportRevision, int16 priority) {
 

@@ -38,8 +38,8 @@ namespace epics { namespace pvAccess {
 		 * Constructor.
 		 * @param context CA context.
 		 */
-//		DefaultBeaconServerStatusProvider(ServerContext::shared_pointer& context);
-		DefaultBeaconServerStatusProvider(std::tr1::shared_ptr<ServerContext>& context);
+//		DefaultBeaconServerStatusProvider(ServerContext::shared_pointer const & context);
+		DefaultBeaconServerStatusProvider(std::tr1::shared_ptr<ServerContext> const & context);
 		/**
 		 * Destructor.
 		 */

@@ -38,14 +38,14 @@ namespace epics { namespace pvAccess {
 		 * @param transport	transport to be used to send beacons.
 		 * @param context CA context.
 		 */
-//		BeaconEmitter(Transport::shared_pointer& transport, ServerContextImpl::shared_pointer& context);
-		BeaconEmitter(Transport::shared_pointer& transport, std::tr1::shared_ptr<ServerContextImpl>& context);
+//		BeaconEmitter(Transport::shared_pointer const & transport, ServerContextImpl::shared_pointer const & context);
+		BeaconEmitter(Transport::shared_pointer const & transport, std::tr1::shared_ptr<ServerContextImpl>& context);
 		
         /**
 		 * Test Constructor (ohne context)
 		 * @param transport	transport to be used to send beacons.
 		 */
-		BeaconEmitter(Transport::shared_pointer& transport, const osiSockAddr& serverAddress);
+		BeaconEmitter(Transport::shared_pointer const & transport, const osiSockAddr& serverAddress);
         
 		virtual ~BeaconEmitter();
 

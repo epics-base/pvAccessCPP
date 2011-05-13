@@ -72,7 +72,7 @@ namespace epics {
 
         PVDATA_REFCOUNT_MONITOR_DEFINE(blockingTCPTransport);
 
-        BlockingTCPTransport::BlockingTCPTransport(Context::shared_pointer& context,
+        BlockingTCPTransport::BlockingTCPTransport(Context::shared_pointer const & context,
                 SOCKET channel, auto_ptr<ResponseHandler>& responseHandler,
                 int receiveBufferSize, int16 priority) :
                     _channel(channel),
@@ -881,7 +881,7 @@ printf("sendThreadRunnner exception\n");
             obj->_mutex.unlock();
         }
 
-        void BlockingTCPTransport::enqueueSendRequest(TransportSender::shared_pointer& sender) {
+        void BlockingTCPTransport::enqueueSendRequest(TransportSender::shared_pointer const & sender) {
             Lock lock(_sendQueueMutex);
             if(_closed) return;
             _sendQueue.push_back(sender);

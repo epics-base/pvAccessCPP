@@ -25,7 +25,7 @@ public:
 	 * @param sid channel SID.
 	 * @param securityToken security token.
 	 */
-	ServerChannelImpl(Channel::shared_pointer& channel, pvAccessID cid, pvAccessID sid, epics::pvData::PVField::shared_pointer& securityToken);
+	ServerChannelImpl(Channel::shared_pointer const & channel, pvAccessID cid, pvAccessID sid, epics::pvData::PVField::shared_pointer const & securityToken);
 	/*
 	 * Destructor.
 	 */
@@ -61,7 +61,7 @@ public:
 	 * @param id request ID.
 	 * @param request request to be registered.
 	 */
-	void registerRequest(pvAccessID id, epics::pvData::Destroyable::shared_pointer& request);
+	void registerRequest(pvAccessID id, epics::pvData::Destroyable::shared_pointer const & request);
 
 	/**
 	 * Unregister request.

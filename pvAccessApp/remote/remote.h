@@ -252,7 +252,7 @@ namespace epics {
              * Enqueue send request.
              * @param sender
              */
-            virtual void enqueueSendRequest(TransportSender::shared_pointer& sender) = 0;
+            virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender) = 0;
 
         };
 
@@ -307,7 +307,7 @@ namespace epics {
              *                      Code must not manipulate buffer.
              */
             virtual void
-            handleResponse(osiSockAddr* responseFrom, Transport::shared_pointer& transport,
+            handleResponse(osiSockAddr* responseFrom, Transport::shared_pointer const & transport,
                     int8 version, int8 command, int payloadSize,
                     epics::pvData::ByteBuffer* payloadBuffer) = 0;
         };
@@ -327,7 +327,7 @@ namespace epics {
 
             virtual ~AbstractResponseHandler() {}
 
-            virtual void handleResponse(osiSockAddr* responseFrom, Transport::shared_pointer& transport,
+            virtual void handleResponse(osiSockAddr* responseFrom, Transport::shared_pointer const & transport,
                     int8 version, int8 command, int payloadSize,
                     epics::pvData::ByteBuffer* payloadBuffer);
 
@@ -369,7 +369,7 @@ namespace epics {
              * called to discard <code>transportUnresponsive</code> notification.
              * @param transport responsive transport.
              */
-            virtual void transportResponsive(Transport::shared_pointer& transport) = 0;
+            virtual void transportResponsive(Transport::shared_pointer const & transport) = 0;
 
             /**
              * Notification of network change (server restarted).
@@ -399,7 +399,7 @@ namespace epics {
              * @param[in] priority process priority.
              * @return transport instance.
              */
-            virtual Transport::shared_pointer connect(TransportClient::shared_pointer& client,
+            virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
                     std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
                     short transportRevision, int16 priority) = 0;
 
@@ -418,14 +418,14 @@ namespace epics {
              * @param client client (channel) acquiring the transport
              * @return <code>true</code> if transport was granted, <code>false</code> otherwise.
              */
-            virtual bool acquire(TransportClient::shared_pointer& client) = 0;
+            virtual bool acquire(TransportClient::shared_pointer const & client) = 0;
 
             /**
              * Releases transport.
              * @param client client (channel) releasing the transport
              */
             virtual void release(pvAccessID clientId) = 0;
-            //virtual void release(TransportClient::shared_pointer& client) = 0;
+            //virtual void release(TransportClient::shared_pointer const & client) = 0;
         };
 
         class ServerChannel {
@@ -480,7 +480,7 @@ namespace epics {
              * @param sid preallocated channel SID.
              * @param channel channel to register.
              */
-            virtual void registerChannel(pvAccessID sid, ServerChannel::shared_pointer& channel) =0;
+            virtual void registerChannel(pvAccessID sid, ServerChannel::shared_pointer const & channel) =0;
 
             /**
              * Unregister a new channel (and deallocates its handle).
@@ -561,7 +561,7 @@ namespace epics {
         	 * @param version
         	 * @param payloadBuffer
         	 */
-        	virtual void response(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer) = 0;
+        	virtual void response(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer) = 0;
         
         }; 
 
@@ -588,7 +588,7 @@ namespace epics {
         	 * Rescubscribe (e.g. when server was restarted)
         	 * @param transport new transport to be used.
         	 */
-        	virtual void resubscribeSubscription(Transport::shared_pointer& transport) = 0;
+        	virtual void resubscribeSubscription(Transport::shared_pointer const & transport) = 0;
         };
 
 

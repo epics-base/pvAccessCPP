@@ -30,10 +30,10 @@ public:
     TransportRegistry();
     virtual ~TransportRegistry();
 
-    void put(Transport::shared_pointer& transport);
+    void put(Transport::shared_pointer const & transport);
     Transport::shared_pointer get(epics::pvData::String type, const osiSockAddr* address, const epics::pvData::int16 priority);
     std::auto_ptr<transportVector_t> get(epics::pvData::String type, const osiSockAddr* address);
-    Transport::shared_pointer remove(Transport::shared_pointer& transport);
+    Transport::shared_pointer remove(Transport::shared_pointer const & transport);
     void clear();
     epics::pvData::int32 numberOfActiveTransports();
     std::auto_ptr<transportVector_t> toArray(epics::pvData::String type);

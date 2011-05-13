@@ -23,8 +23,8 @@ namespace epics {
     namespace pvAccess {
 
         BlockingTCPAcceptor::BlockingTCPAcceptor(
-                Context::shared_pointer& context,
-                ResponseHandlerFactory::shared_pointer& responseHandlerFactory,
+                Context::shared_pointer const & context,
+                ResponseHandlerFactory::shared_pointer const & responseHandlerFactory,
                 int port,
                 int receiveBufferSize) :
             _context(context),
@@ -212,7 +212,7 @@ namespace epics {
             } // while
         }
 
-        bool BlockingTCPAcceptor::validateConnection(BlockingServerTCPTransport::shared_pointer& transport, const char* address) {
+        bool BlockingTCPAcceptor::validateConnection(BlockingServerTCPTransport::shared_pointer const & transport, const char* address) {
             try {
                 transport->verify();
                 return true;

@@ -99,7 +99,7 @@ namespace epics {
                 _shutdownEvent.wait();
         }
 
-        void BlockingUDPTransport::enqueueSendRequest(TransportSender::shared_pointer& sender) {
+        void BlockingUDPTransport::enqueueSendRequest(TransportSender::shared_pointer const & sender) {
             Lock lock(_sendMutex);
 
             _sendToEnabled = false;
@@ -213,7 +213,7 @@ namespace epics {
             _shutdownEvent.signal();
         }
 
-        bool BlockingUDPTransport::processBuffer(Transport::shared_pointer& thisTransport, osiSockAddr& fromAddress, ByteBuffer* receiveBuffer) {
+        bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & thisTransport, osiSockAddr& fromAddress, ByteBuffer* receiveBuffer) {
 
             // handle response(s)
             while(receiveBuffer->getRemaining()>=CA_MESSAGE_HEADER_SIZE) {

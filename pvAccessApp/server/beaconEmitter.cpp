@@ -18,8 +18,8 @@ namespace epics { namespace pvAccess {
 const float BeaconEmitter::EPICS_CA_MIN_BEACON_PERIOD = 1.0;
 const float BeaconEmitter::EPICS_CA_MIN_BEACON_COUNT_LIMIT = 3.0;
 
-//BeaconEmitter::BeaconEmitter(Transport::shared_pointer& transport, ServerContextImpl::shared_pointer& context) :
-BeaconEmitter::BeaconEmitter(Transport::shared_pointer& transport, std::tr1::shared_ptr<ServerContextImpl>& context) :
+//BeaconEmitter::BeaconEmitter(Transport::shared_pointer const & transport, ServerContextImpl::shared_pointer const & context) :
+BeaconEmitter::BeaconEmitter(Transport::shared_pointer const & transport, std::tr1::shared_ptr<ServerContextImpl>& context) :
     _transport(transport),
     _beaconSequenceID(0),
     _startupTime(),
@@ -35,7 +35,7 @@ BeaconEmitter::BeaconEmitter(Transport::shared_pointer& transport, std::tr1::sha
 	_startupTime.getCurrent();
 }
 
-BeaconEmitter::BeaconEmitter(Transport::shared_pointer& transport, const osiSockAddr& serverAddress) :
+BeaconEmitter::BeaconEmitter(Transport::shared_pointer const & transport, const osiSockAddr& serverAddress) :
     _transport(transport),
     _beaconSequenceID(0),
     _startupTime(),

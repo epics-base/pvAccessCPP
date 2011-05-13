@@ -117,7 +117,7 @@ namespace epics {
             
             virtual ~BaseRequestImpl() {};
 
-            BaseRequestImpl(ChannelImpl::shared_pointer& channel, Requester::shared_pointer requester) :
+            BaseRequestImpl(ChannelImpl::shared_pointer const & channel, Requester::shared_pointer requester) :
                     m_channel(channel),
                     m_requester(requester),
                     m_destroyed(false),
@@ -167,11 +167,11 @@ namespace epics {
                 return m_ioid;
             }
 
-            virtual bool initResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) = 0;
-            virtual bool destroyResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) = 0;
-            virtual bool normalResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) = 0;
+            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) = 0;
+            virtual bool destroyResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) = 0;
+            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) = 0;
 
-            virtual void response(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer) {
+            virtual void response(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer) {
                 transport->ensureData(1);
                 int8 qos = payloadBuffer->getByte();
                 
@@ -319,7 +319,7 @@ namespace epics {
             ChannelProcessRequester::shared_pointer m_callback;
             PVStructure::shared_pointer m_pvRequest;
 
-            ChannelProcessRequestImpl(ChannelImpl::shared_pointer& channel, ChannelProcessRequester::shared_pointer& callback, PVStructure::shared_pointer& pvRequest) :
+            ChannelProcessRequestImpl(ChannelImpl::shared_pointer const & channel, ChannelProcessRequester::shared_pointer const & callback, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(callback)),
                     m_callback(callback),
                     m_pvRequest(pvRequest)
@@ -345,7 +345,7 @@ namespace epics {
             }
 
         public:
-            static ChannelProcess::shared_pointer create(ChannelImpl::shared_pointer& channel, ChannelProcessRequester::shared_pointer& callback, PVStructure::shared_pointer& pvRequest)
+            static ChannelProcess::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelProcessRequester::shared_pointer const & callback, PVStructure::shared_pointer const & pvRequest)
             {
                 ChannelProcess::shared_pointer thisPointer(
                             new ChannelProcessRequestImpl(channel, callback, pvRequest),
@@ -382,18 +382,18 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool destroyResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 EXCEPTION_GUARD(m_callback->processDone(status));
                 return true;
             }
 
-            virtual bool initResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 ChannelProcess::shared_pointer thisPtr = dynamic_pointer_cast<ChannelProcess>(shared_from_this());
                 EXCEPTION_GUARD(m_callback->channelProcessConnect(status, thisPtr));
                 return true;
             }
 
-            virtual bool normalResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 EXCEPTION_GUARD(m_callback->processDone(status));
                 return true;
             }
@@ -426,7 +426,7 @@ namespace epics {
                 }
             }
 
-            virtual void resubscribeSubscription(Transport::shared_pointer& transport) {
+            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
                 startRequest(QOS_INIT);
                 TransportSender::shared_pointer thisSender = shared_from_this();
                 transport->enqueueSendRequest(thisSender);
@@ -458,7 +458,7 @@ namespace epics {
             PVStructure::shared_pointer m_data;
             BitSet::shared_pointer m_bitSet;
 
-            ChannelGetImpl(ChannelImpl::shared_pointer& channel, ChannelGetRequester::shared_pointer& channelGetRequester, PVStructure::shared_pointer& pvRequest) :
+            ChannelGetImpl(ChannelImpl::shared_pointer const & channel, ChannelGetRequester::shared_pointer const & channelGetRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelGetRequester)),
                     m_channelGetRequester(channelGetRequester), m_pvRequest(pvRequest)
             {
@@ -493,7 +493,7 @@ namespace epics {
             }
 
         public:
-            static ChannelGet::shared_pointer create(ChannelImpl::shared_pointer& channel, ChannelGetRequester::shared_pointer& channelGetRequester, PVStructure::shared_pointer& pvRequest)
+            static ChannelGet::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelGetRequester::shared_pointer const & channelGetRequester, PVStructure::shared_pointer const & pvRequest)
             {
                 ChannelGet::shared_pointer thisPointer(new ChannelGetImpl(channel, channelGetRequester, pvRequest), delayed_destroyable_deleter());
                 static_cast<ChannelGetImpl*>(thisPointer.get())->activate();
@@ -527,14 +527,14 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool destroyResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 // data available
                 if (qos & QOS_GET)
                     return normalResponse(transport, version, payloadBuffer, qos, status);
                 return true;
             }
 
-            virtual bool initResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (!status.isSuccess())
                 {
                     ChannelGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelGet>(shared_from_this());
@@ -554,7 +554,7 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (!status.isSuccess())
                 {
                     EXCEPTION_GUARD(m_channelGetRequester->getDone(status));
@@ -597,7 +597,7 @@ namespace epics {
                 }
             }
 
-            virtual void resubscribeSubscription(Transport::shared_pointer& transport) {
+            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
                 startRequest(QOS_INIT);
                 TransportSender::shared_pointer thisSender = shared_from_this();
                 transport->enqueueSendRequest(thisSender);
@@ -631,7 +631,7 @@ namespace epics {
             PVStructure::shared_pointer m_data;
             BitSet::shared_pointer m_bitSet;
 
-            ChannelPutImpl(ChannelImpl::shared_pointer& channel, ChannelPutRequester::shared_pointer& channelPutRequester, PVStructure::shared_pointer& pvRequest) :
+            ChannelPutImpl(ChannelImpl::shared_pointer const & channel, ChannelPutRequester::shared_pointer const & channelPutRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelPutRequester)),
                     m_channelPutRequester(channelPutRequester), m_pvRequest(pvRequest)
             {
@@ -666,7 +666,7 @@ namespace epics {
             }
 
         public:
-            static ChannelPut::shared_pointer create(ChannelImpl::shared_pointer& channel, ChannelPutRequester::shared_pointer& channelPutRequester, PVStructure::shared_pointer& pvRequest)
+            static ChannelPut::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelPutRequester::shared_pointer const & channelPutRequester, PVStructure::shared_pointer const & pvRequest)
             {
                 ChannelPut::shared_pointer thisPointer(new ChannelPutImpl(channel, channelPutRequester, pvRequest), delayed_destroyable_deleter());
                 static_cast<ChannelPutImpl*>(thisPointer.get())->activate();
@@ -707,12 +707,12 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool destroyResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 EXCEPTION_GUARD(m_channelPutRequester->putDone(status));
                 return true;
             }
 
-            virtual bool initResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (!status.isSuccess())
                 {
                     ChannelPut::shared_pointer nullChannelPut;
@@ -732,7 +732,7 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (qos & QOS_GET)
                 {
                     if (!status.isSuccess())
@@ -810,7 +810,7 @@ namespace epics {
                 }
             }
 
-            virtual void resubscribeSubscription(Transport::shared_pointer& transport) {
+            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
                 startRequest(QOS_INIT);
                 TransportSender::shared_pointer thisSender = shared_from_this(); 
                 transport->enqueueSendRequest(thisSender);
@@ -841,7 +841,7 @@ namespace epics {
             PVStructure::shared_pointer m_putData;
             PVStructure::shared_pointer m_getData;
 
-            ChannelPutGetImpl(ChannelImpl::shared_pointer& channel, ChannelPutGetRequester::shared_pointer& channelPutGetRequester, PVStructure::shared_pointer& pvRequest) :
+            ChannelPutGetImpl(ChannelImpl::shared_pointer const & channel, ChannelPutGetRequester::shared_pointer const & channelPutGetRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelPutGetRequester)),
                     m_channelPutGetRequester(channelPutGetRequester), m_pvRequest(pvRequest)
             {
@@ -871,7 +871,7 @@ namespace epics {
             }
             
         public:
-            static ChannelPutGet::shared_pointer create(ChannelImpl::shared_pointer& channel, ChannelPutGetRequester::shared_pointer& channelPutGetRequester, PVStructure::shared_pointer& pvRequest)
+            static ChannelPutGet::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelPutGetRequester::shared_pointer const & channelPutGetRequester, PVStructure::shared_pointer const & pvRequest)
             {
                 ChannelPutGet::shared_pointer thisPointer(new ChannelPutGetImpl(channel, channelPutGetRequester, pvRequest), delayed_destroyable_deleter());
                 static_cast<ChannelPutGetImpl*>(thisPointer.get())->activate();
@@ -915,13 +915,13 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool destroyResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 // data available
                 // TODO we need a flag here...
                 return normalResponse(transport, version, payloadBuffer, qos, status);
             }
 
-            virtual bool initResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (!status.isSuccess())
                 {
                     ChannelPutGet::shared_pointer nullChannelPutGet;
@@ -941,7 +941,7 @@ namespace epics {
             }
 
 
-            virtual bool normalResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (qos & QOS_GET)
                 {
                     if (!status.isSuccess())
@@ -1068,7 +1068,7 @@ namespace epics {
                 }
             }
 
-            virtual void resubscribeSubscription(Transport::shared_pointer& transport) {
+            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
                 startRequest(QOS_INIT);
                 TransportSender::shared_pointer thisSender = shared_from_this();
                 transport->enqueueSendRequest(thisSender);
@@ -1101,7 +1101,7 @@ namespace epics {
             PVStructure::shared_pointer m_data;
             BitSet::shared_pointer m_bitSet;
 
-            ChannelRPCImpl(ChannelImpl::shared_pointer& channel, ChannelRPCRequester::shared_pointer& channelRPCRequester, PVStructure::shared_pointer& pvRequest) :
+            ChannelRPCImpl(ChannelImpl::shared_pointer const & channel, ChannelRPCRequester::shared_pointer const & channelRPCRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelRPCRequester)),
                     m_channelRPCRequester(channelRPCRequester), m_pvRequest(pvRequest)
             {
@@ -1134,7 +1134,7 @@ namespace epics {
             }
 
         public:
-            static ChannelRPC::shared_pointer create(ChannelImpl::shared_pointer& channel, ChannelRPCRequester::shared_pointer& channelRPCRequester, PVStructure::shared_pointer& pvRequest)
+            static ChannelRPC::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelRPCRequester::shared_pointer const & channelRPCRequester, PVStructure::shared_pointer const & pvRequest)
             {
                 ChannelRPC::shared_pointer thisPointer(new ChannelRPCImpl(channel, channelRPCRequester, pvRequest), delayed_destroyable_deleter());
                 static_cast<ChannelRPCImpl*>(thisPointer.get())->activate();
@@ -1176,13 +1176,13 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool destroyResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 // data available
                 // TODO we need a flag here...
                 return normalResponse(transport, version, payloadBuffer, qos, status);
             }
 
-            virtual bool initResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (!status.isSuccess())
                 {
                     ChannelRPC::shared_pointer nullChannelRPC;
@@ -1202,7 +1202,7 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (!status.isSuccess())
                 {
                     PVStructure::shared_pointer nullPVStructure;
@@ -1248,7 +1248,7 @@ namespace epics {
                 }
             }
 
-            virtual void resubscribeSubscription(Transport::shared_pointer& transport) {
+            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
                 startRequest(QOS_INIT);
                 TransportSender::shared_pointer thisSender = shared_from_this();
                 transport->enqueueSendRequest(thisSender);
@@ -1285,7 +1285,7 @@ namespace epics {
             int32 m_length;
             int32 m_capacity;
 
-            ChannelArrayImpl(ChannelImpl::shared_pointer& channel, ChannelArrayRequester::shared_pointer& channelArrayRequester, PVStructure::shared_pointer& pvRequest) :
+            ChannelArrayImpl(ChannelImpl::shared_pointer const & channel, ChannelArrayRequester::shared_pointer const & channelArrayRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelArrayRequester)),
                     m_channelArrayRequester(channelArrayRequester), m_pvRequest(pvRequest),
                     m_offset(0), m_count(0), m_length(-1), m_capacity(-1)
@@ -1317,7 +1317,7 @@ namespace epics {
             }
 
         public:
-            static ChannelArray::shared_pointer create(ChannelImpl::shared_pointer& channel, ChannelArrayRequester::shared_pointer& channelArrayRequester, PVStructure::shared_pointer& pvRequest)
+            static ChannelArray::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelArrayRequester::shared_pointer const & channelArrayRequester, PVStructure::shared_pointer const & pvRequest)
             {
                 ChannelArray::shared_pointer thisPointer(new ChannelArrayImpl(channel, channelArrayRequester, pvRequest), delayed_destroyable_deleter());
                 static_cast<ChannelArrayImpl*>(thisPointer.get())->activate();
@@ -1367,14 +1367,14 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool destroyResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 // data available (get with destroy)
                 if (qos & QOS_GET)
                     return normalResponse(transport, version, payloadBuffer, qos, status);
                 return true;
             }
 
-            virtual bool initResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (!status.isSuccess())
                 {
                     ChannelArray::shared_pointer nullChannelArray;
@@ -1393,7 +1393,7 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (qos & QOS_GET)
                 {
                     if (!status.isSuccess())
@@ -1511,7 +1511,7 @@ namespace epics {
             }
 
 
-            virtual void resubscribeSubscription(Transport::shared_pointer& transport) {
+            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
                 startRequest(QOS_INIT);
                 TransportSender::shared_pointer thisSender = shared_from_this();
                 transport->enqueueSendRequest(thisSender);
@@ -1556,7 +1556,7 @@ namespace epics {
             
             ResponseRequest::shared_pointer m_thisPointer;
             
-            ChannelGetFieldRequestImpl(ChannelImpl::shared_pointer& channel, GetFieldRequester::shared_pointer& callback, String subField) :
+            ChannelGetFieldRequestImpl(ChannelImpl::shared_pointer const & channel, GetFieldRequester::shared_pointer const & callback, String subField) :
                     m_channel(channel),
                     m_callback(callback),
                     m_subField(subField),
@@ -1584,7 +1584,7 @@ namespace epics {
             }
 
         public:
-            static ChannelGetFieldRequestImpl::shared_pointer create(ChannelImpl::shared_pointer& channel, GetFieldRequester::shared_pointer& callback, String subField)
+            static ChannelGetFieldRequestImpl::shared_pointer create(ChannelImpl::shared_pointer const & channel, GetFieldRequester::shared_pointer const & callback, String subField)
             {
                 ChannelGetFieldRequestImpl::shared_pointer thisPointer(new ChannelGetFieldRequestImpl(channel, callback, subField), delayed_destroyable_deleter());
                 thisPointer->activate();
@@ -1652,7 +1652,7 @@ namespace epics {
                 m_thisPointer.reset();
             }
 
-            virtual void response(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer) {
+            virtual void response(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer) {
 
                 Status status;    
                 transport->getIntrospectionRegistry()->deserializeStatus(status, payloadBuffer, transport.get());
@@ -1687,8 +1687,8 @@ namespace epics {
         class MonitorStrategy : public Monitor {
             public:
             virtual ~MonitorStrategy() {};
-    		virtual void init(StructureConstPtr& structure) = 0;
-    		virtual void response(Transport::shared_pointer& transport, ByteBuffer* payloadBuffer) = 0;
+    		virtual void init(StructureConstPtr const & structure) = 0;
+    		virtual void response(Transport::shared_pointer const & transport, ByteBuffer* payloadBuffer) = 0;
     	};
     	
     	class MonitorStrategyNotify :
@@ -1702,10 +1702,12 @@ namespace epics {
     	   
     	   bool m_gotMonitor;
     	   Mutex m_mutex;
+    	   BitSet::shared_pointer nullBitSet;
+    	   PVStructure::shared_pointer nullPVStructure;
     		
     	   public:
     	   
-    	    MonitorStrategyNotify(MonitorRequester::shared_pointer& callback) :
+    	    MonitorStrategyNotify(MonitorRequester::shared_pointer const & callback) :
     	       m_callback(callback), m_gotMonitor(false), m_mutex()
     	    {
     	    }
@@ -1714,11 +1716,11 @@ namespace epics {
     	    {
     	    }
     	    
-    		virtual void init(StructureConstPtr& structure) {
+    		virtual void init(StructureConstPtr const & structure) {
     			// noop
     		}
     
-    		virtual void response(Transport::shared_pointer& transport, ByteBuffer* payloadBuffer) {
+    		virtual void response(Transport::shared_pointer const & transport, ByteBuffer* payloadBuffer) {
     		    Lock guard(m_mutex);
     			m_gotMonitor = true;
     			// no data, only notify
@@ -1726,12 +1728,12 @@ namespace epics {
             	m_callback->monitorEvent(thisMonitor);
     		}
     
-    		virtual MonitorElement::shared_pointer poll() {
+    		virtual MonitorElement::shared_pointer const & poll() {
     		    Lock guard(m_mutex);
     			return m_gotMonitor ? static_pointer_cast<MonitorElement>(shared_from_this()) : MonitorElement::shared_pointer();
     		}
     
-    		virtual void release(MonitorElement::shared_pointer& monitorElement) {
+    		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
     		}
@@ -1750,19 +1752,19 @@ namespace epics {
     		
             // ============ MonitorElement ============
 
-            virtual PVStructure::shared_pointer getPVStructure()
+            virtual PVStructure::shared_pointer const & getPVStructure()
             {
-                return PVStructure::shared_pointer();
+                return nullPVStructure;
             }
 
-            virtual BitSet::shared_pointer getChangedBitSet()
+            virtual BitSet::shared_pointer const & getChangedBitSet()
             {
-                return BitSet::shared_pointer();
+                return nullBitSet;
             }
 
-            virtual BitSet::shared_pointer getOverrunBitSet()
+            virtual BitSet::shared_pointer const & getOverrunBitSet()
             {
-                return BitSet::shared_pointer();
+                return nullBitSet;
             }
     	};
 
@@ -1784,7 +1786,7 @@ namespace epics {
     		
     	   public:
     	   
-    	    MonitorStrategyEntire(MonitorRequester::shared_pointer& callback) :
+    	    MonitorStrategyEntire(MonitorRequester::shared_pointer const & callback) :
     	       m_callback(callback), m_gotMonitor(false), m_mutex()
     	    {
     	    }
@@ -1793,7 +1795,7 @@ namespace epics {
     	    {
     	    }
     	    
-    		virtual void init(StructureConstPtr& structure) {
+    		virtual void init(StructureConstPtr const & structure) {
     		    Lock guard(m_mutex);
 
 	            m_monitorElementStructure.reset(getPVDataCreate()->createPVStructure(0, structure));
@@ -1802,7 +1804,7 @@ namespace epics {
 	        	m_monitorElementOverrunBitSet.reset(new BitSet(numberFields));
     		}
     
-    		virtual void response(Transport::shared_pointer& transport, ByteBuffer* payloadBuffer) {
+    		virtual void response(Transport::shared_pointer const & transport, ByteBuffer* payloadBuffer) {
     		    Lock guard(m_mutex);
     			// simply deserialize and notify
 				m_monitorElementChangeBitSet->deserialize(payloadBuffer, transport.get());
@@ -1813,12 +1815,12 @@ namespace epics {
             	m_callback->monitorEvent(thisMonitor);
     		}
     
-    		virtual MonitorElement::shared_pointer poll() {
+    		virtual MonitorElement::shared_pointer const & poll() {
     		    Lock guard(m_mutex);
     			return m_gotMonitor ? static_pointer_cast<MonitorElement>(shared_from_this()) : MonitorElement::shared_pointer();
     		}
     
-    		virtual void release(MonitorElement::shared_pointer& monitorElement) {
+    		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
     		}
@@ -1839,17 +1841,17 @@ namespace epics {
     		
             // ============ MonitorElement ============
 
-            virtual PVStructure::shared_pointer getPVStructure()
+            virtual PVStructure::shared_pointer const & getPVStructure()
             {
                 return m_monitorElementStructure;
             }
 
-            virtual BitSet::shared_pointer getChangedBitSet()
+            virtual BitSet::shared_pointer const & getChangedBitSet()
             {
                 return m_monitorElementChangeBitSet;
             }
 
-            virtual BitSet::shared_pointer getOverrunBitSet()
+            virtual BitSet::shared_pointer const & getOverrunBitSet()
             {
                 return m_monitorElementOverrunBitSet;
             }
@@ -1867,6 +1869,8 @@ namespace epics {
     	   
     	   bool m_gotMonitor;
     	   Mutex m_mutex;
+    	   
+    	   MonitorElement::shared_pointer nullMonitorElement;
     	   
            PVStructure::shared_pointer m_monitorElementStructure;
 		   BitSet::shared_pointer m_monitorElementChangeBitSet;
@@ -1888,7 +1892,7 @@ namespace epics {
     	    {
     	    }
     	    
-    		virtual void init(StructureConstPtr& structure) {
+    		virtual void init(StructureConstPtr const & structure) {
     		    Lock guard(m_mutex);
 
 	            m_monitorElementStructure.reset(getPVDataCreate()->createPVStructure(0, structure));
@@ -1901,7 +1905,7 @@ namespace epics {
 
     		}
     
-    		virtual void response(Transport::shared_pointer& transport, ByteBuffer* payloadBuffer) {
+    		virtual void response(Transport::shared_pointer const & transport, ByteBuffer* payloadBuffer) {
     		    Lock guard(m_mutex);
     		    
     		    if (!m_gotMonitor)
@@ -1933,9 +1937,9 @@ namespace epics {
 				}
     		}
     
-    		virtual MonitorElement::shared_pointer poll() {
+    		virtual MonitorElement::shared_pointer const & poll() {
     		    Lock guard(m_mutex);
-    			if (!m_gotMonitor) return MonitorElement::shared_pointer();
+    			if (!m_gotMonitor) return nullMonitorElement;
     			
             	// compress if needed
     			if (m_needToCompress)
@@ -1949,7 +1953,7 @@ namespace epics {
                 return thisMonitorElement;
     		}
     
-    		virtual void release(MonitorElement::shared_pointer& monitorElement) {
+    		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
     		}
@@ -1974,17 +1978,17 @@ namespace epics {
     		
             // ============ MonitorElement ============
 
-            virtual PVStructure::shared_pointer getPVStructure()
+            virtual PVStructure::shared_pointer const & getPVStructure()
             {
                 return m_monitorElementStructure;
             }
 
-            virtual BitSet::shared_pointer getChangedBitSet()
+            virtual BitSet::shared_pointer const & getChangedBitSet()
             {
                 return m_monitorElementChangeBitSet;
             }
 
-            virtual BitSet::shared_pointer getOverrunBitSet()
+            virtual BitSet::shared_pointer const & getOverrunBitSet()
             {
                 return m_monitorElementOverrunBitSet;
             }
@@ -2007,7 +2011,7 @@ namespace epics {
             
             auto_ptr<MonitorStrategy> m_monitorStrategy;
 
-            ChannelMonitorImpl(ChannelImpl::shared_pointer& channel, MonitorRequester::shared_pointer& monitorRequester, PVStructure::shared_pointer& pvRequest) :
+            ChannelMonitorImpl(ChannelImpl::shared_pointer const & channel, MonitorRequester::shared_pointer const & monitorRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(monitorRequester)),
                     m_monitorRequester(monitorRequester),
                     m_started(false),
@@ -2072,7 +2076,7 @@ namespace epics {
             }
 
         public:
-            static Monitor::shared_pointer create(ChannelImpl::shared_pointer& channel, MonitorRequester::shared_pointer& monitorRequester, PVStructure::shared_pointer& pvRequest)
+            static Monitor::shared_pointer create(ChannelImpl::shared_pointer const & channel, MonitorRequester::shared_pointer const & monitorRequester, PVStructure::shared_pointer const & pvRequest)
             {
                 Monitor::shared_pointer thisPointer(new ChannelMonitorImpl(channel, monitorRequester, pvRequest), delayed_destroyable_deleter());
                 static_cast<ChannelMonitorImpl*>(thisPointer.get())->activate();
@@ -2106,13 +2110,13 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool destroyResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 // data available
                 // TODO if (qos & QOS_GET)
                 return normalResponse(transport, version, payloadBuffer, qos, status);
             }
 
-            virtual bool initResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (!status.isSuccess())
                 {
                     Monitor::shared_pointer nullChannelMonitor;
@@ -2138,7 +2142,7 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (qos & QOS_GET)
                 {
                     // TODO not supported by IF yet...
@@ -2150,14 +2154,14 @@ namespace epics {
                 return true;
             }
 
-            virtual void resubscribeSubscription(Transport::shared_pointer& transport) {
+            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
                 startRequest(QOS_INIT);
                 TransportSender::shared_pointer thisSender = shared_from_this();
                 transport->enqueueSendRequest(thisSender);
             }
 
             // override, since we optimize status
-            virtual void response(Transport::shared_pointer& transport, int8 version, ByteBuffer* payloadBuffer) {
+            virtual void response(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer) {
 
                 transport->ensureData(1);
                 int8 qos = payloadBuffer->getByte();
@@ -2252,12 +2256,12 @@ namespace epics {
                 BaseRequestImpl::destroy();
             }
 
-            virtual MonitorElement::shared_pointer poll()
+            virtual MonitorElement::shared_pointer const & poll()
             {
                 return m_monitorStrategy->poll();
             }
 
-            virtual void release(MonitorElement::shared_pointer& monitorElement)
+            virtual void release(MonitorElement::shared_pointer const & monitorElement)
             {
                 m_monitorStrategy->release(monitorElement);
             }
@@ -2270,7 +2274,7 @@ namespace epics {
         protected:
             ClientContextImpl::weak_pointer _context;
         public:
-            AbstractClientResponseHandler(ClientContextImpl::shared_pointer& context, String description) : 
+            AbstractClientResponseHandler(ClientContextImpl::shared_pointer const & context, String description) : 
                     AbstractResponseHandler(context.get(), description), _context(ClientContextImpl::weak_pointer(context)) {
             }
 
@@ -2280,7 +2284,7 @@ namespace epics {
 
         class NoopResponse : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
-            NoopResponse(ClientContextImpl::shared_pointer& context, String description) :
+            NoopResponse(ClientContextImpl::shared_pointer const & context, String description) :
                     AbstractClientResponseHandler(context, description)
             {
             }
@@ -2292,7 +2296,7 @@ namespace epics {
 
         class BadResponse : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
-            BadResponse(ClientContextImpl::shared_pointer& context) :
+            BadResponse(ClientContextImpl::shared_pointer const & context) :
                     AbstractClientResponseHandler(context, "Bad response")
             {
             }
@@ -2301,7 +2305,7 @@ namespace epics {
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,
-                                        Transport::shared_pointer& transport, int8 version, int8 command,
+                                        Transport::shared_pointer const & transport, int8 version, int8 command,
                                         int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
             {
                 char ipAddrStr[48];
@@ -2316,7 +2320,7 @@ namespace epics {
 
         class DataResponseHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
-            DataResponseHandler(ClientContextImpl::shared_pointer& context) :
+            DataResponseHandler(ClientContextImpl::shared_pointer const & context) :
                     AbstractClientResponseHandler(context, "Data response")
             {
             }
@@ -2325,7 +2329,7 @@ namespace epics {
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,
-                                        Transport::shared_pointer& transport, int8 version, int8 command,
+                                        Transport::shared_pointer const & transport, int8 version, int8 command,
                                         int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
             {
                 AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
@@ -2345,7 +2349,7 @@ namespace epics {
 
         class SearchResponseHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
-            SearchResponseHandler(ClientContextImpl::shared_pointer& context) :
+            SearchResponseHandler(ClientContextImpl::shared_pointer const & context) :
                     AbstractClientResponseHandler(context, "Search response")
             {
             }
@@ -2354,7 +2358,7 @@ namespace epics {
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,
-                                        Transport::shared_pointer& transport, int8 version, int8 command,
+                                        Transport::shared_pointer const & transport, int8 version, int8 command,
                                         int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
             {
                 AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
@@ -2408,7 +2412,7 @@ namespace epics {
 
         class BeaconResponseHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
-            BeaconResponseHandler(ClientContextImpl::shared_pointer& context) :
+            BeaconResponseHandler(ClientContextImpl::shared_pointer const & context) :
                     AbstractClientResponseHandler(context, "Beacon")
             {
             }
@@ -2417,7 +2421,7 @@ namespace epics {
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,
-                                        Transport::shared_pointer& transport, int8 version, int8 command,
+                                        Transport::shared_pointer const & transport, int8 version, int8 command,
                                         int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
             {
                 // reception timestamp
@@ -2491,7 +2495,7 @@ namespace epics {
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,
-                                        Transport::shared_pointer& transport, int8 version, int8 command,
+                                        Transport::shared_pointer const & transport, int8 version, int8 command,
                                         int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
             {
                 AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
@@ -2512,7 +2516,7 @@ namespace epics {
 
         class MessageHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
-            MessageHandler(ClientContextImpl::shared_pointer& context) :
+            MessageHandler(ClientContextImpl::shared_pointer const & context) :
                     AbstractClientResponseHandler(context, "Message")
             {
             }
@@ -2521,7 +2525,7 @@ namespace epics {
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,
-                                        Transport::shared_pointer& transport, int8 version, int8 command,
+                                        Transport::shared_pointer const & transport, int8 version, int8 command,
                                         int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
             {
                 AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
@@ -2549,7 +2553,7 @@ namespace epics {
 
         class CreateChannelHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
-            CreateChannelHandler(ClientContextImpl::shared_pointer& context) :
+            CreateChannelHandler(ClientContextImpl::shared_pointer const & context) :
                     AbstractClientResponseHandler(context, "Create channel")
             {
             }
@@ -2558,7 +2562,7 @@ namespace epics {
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,
-                                        Transport::shared_pointer& transport, int8 version, int8 command,
+                                        Transport::shared_pointer const & transport, int8 version, int8 command,
                                         int payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
             {
                 AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
@@ -2609,7 +2613,7 @@ namespace epics {
             /**
              * @param context
              */
-            ClientResponseHandler(ClientContextImpl::shared_pointer& context) {
+            ClientResponseHandler(ClientContextImpl::shared_pointer const & context) {
                 ResponseHandler::shared_pointer badResponse(new BadResponse(context));
                 ResponseHandler::shared_pointer dataResponse(new DataResponseHandler(context));
                 
@@ -2639,7 +2643,7 @@ namespace epics {
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,
-                                        Transport::shared_pointer& transport, int8 version, int8 command,
+                                        Transport::shared_pointer const & transport, int8 version, int8 command,
                                         int payloadSize, ByteBuffer* payloadBuffer)
             {
                 if (command < 0 || command >= (int8)m_handlerTable.size())
@@ -2745,7 +2749,7 @@ namespace epics {
 
                 virtual ChannelFind::shared_pointer channelFind(
                         epics::pvData::String channelName,
-                        ChannelFindRequester::shared_pointer& channelFindRequester)
+                        ChannelFindRequester::shared_pointer const & channelFindRequester)
                 {
                     // TODO
                     m_context->checkChannelName(channelName);
@@ -2761,7 +2765,7 @@ namespace epics {
 
                 virtual Channel::shared_pointer createChannel(
                         epics::pvData::String channelName,
-                        ChannelRequester::shared_pointer& channelRequester,
+                        ChannelRequester::shared_pointer const & channelRequester,
                         short priority)
                 {
                     return createChannel(channelName, channelRequester, priority, emptyString);
@@ -2769,7 +2773,7 @@ namespace epics {
 
                 virtual Channel::shared_pointer createChannel(
                         epics::pvData::String channelName,
-                        ChannelRequester::shared_pointer& channelRequester,
+                        ChannelRequester::shared_pointer const & channelRequester,
                         short priority,
                         epics::pvData::String /*address*/)
                 {
@@ -2894,10 +2898,10 @@ namespace epics {
                  * @throws CAException
                  */
                 InternalChannelImpl(
-                                    ClientContextImpl::shared_pointer& context,
+                                    ClientContextImpl::shared_pointer const & context,
                                     pvAccessID channelID,
                                     String& name,
-                                    ChannelRequester::shared_pointer& requester,
+                                    ChannelRequester::shared_pointer const & requester,
                                     short priority,
                                     auto_ptr<InetAddrVector>& addresses) :
                 m_context(context),
@@ -3001,7 +3005,7 @@ namespace epics {
                     return getConnectionState() == CONNECTED;
                 }
                 
-                virtual AccessRights getAccessRights(std::tr1::shared_ptr<epics::pvData::PVField>&)
+                virtual AccessRights getAccessRights(std::tr1::shared_ptr<epics::pvData::PVField> const &)
                 {
                     return readWrite;
                 }
@@ -3031,7 +3035,7 @@ namespace epics {
                     return m_serverChannelID;
                 }
                 
-                virtual void registerResponseRequest(ResponseRequest::shared_pointer& responseRequest)
+                virtual void registerResponseRequest(ResponseRequest::shared_pointer const & responseRequest)
                 {
                     Lock guard(m_responseRequestsMutex);
                     m_responseRequests[responseRequest->getIOID()] = ResponseRequest::weak_pointer(responseRequest);
@@ -3067,7 +3071,7 @@ namespace epics {
                  * This method is called after search is complete.
                  * @param transport
                  */
-                void createChannel(Transport::shared_pointer& transport)
+                void createChannel(Transport::shared_pointer const & transport)
                 {
                     Lock guard(m_channelMutex);
                     
@@ -3333,7 +3337,7 @@ namespace epics {
                     return m_transport;
                 }
                 
-                virtual void transportResponsive(Transport::shared_pointer& transport) {
+                virtual void transportResponsive(Transport::shared_pointer const & transport) {
                     Lock guard(m_channelMutex);
                     if (m_connectionState == DISCONNECTED)
                     {
@@ -3505,63 +3509,63 @@ namespace epics {
                     }
                 }
                 
-                virtual void getField(GetFieldRequester::shared_pointer& requester,epics::pvData::String subField)
+                virtual void getField(GetFieldRequester::shared_pointer const & requester,epics::pvData::String subField)
                 {
                     ChannelImpl::shared_pointer thisPointer = shared_from_this();
                     ChannelGetFieldRequestImpl::create(thisPointer, requester, subField);
                 }
                 
                 virtual ChannelProcess::shared_pointer createChannelProcess(
-                                                            ChannelProcessRequester::shared_pointer& channelProcessRequester,
-                                                            epics::pvData::PVStructure::shared_pointer& pvRequest)
+                                                            ChannelProcessRequester::shared_pointer const & channelProcessRequester,
+                                                            epics::pvData::PVStructure::shared_pointer const & pvRequest)
                 {
                     ChannelImpl::shared_pointer thisPointer = shared_from_this();
                     return ChannelProcessRequestImpl::create(thisPointer, channelProcessRequester, pvRequest);
                 }
                 
                 virtual ChannelGet::shared_pointer createChannelGet(
-                                                    ChannelGetRequester::shared_pointer& channelGetRequester,
-                                                    epics::pvData::PVStructure::shared_pointer& pvRequest)
+                                                    ChannelGetRequester::shared_pointer const & channelGetRequester,
+                                                    epics::pvData::PVStructure::shared_pointer const & pvRequest)
                 {
                     ChannelImpl::shared_pointer thisPointer = shared_from_this();
                     return ChannelGetImpl::create(thisPointer, channelGetRequester, pvRequest);
                 }
                 
                 virtual ChannelPut::shared_pointer createChannelPut(
-                                                    ChannelPutRequester::shared_pointer& channelPutRequester,
-                                                    epics::pvData::PVStructure::shared_pointer& pvRequest)
+                                                    ChannelPutRequester::shared_pointer const & channelPutRequester,
+                                                    epics::pvData::PVStructure::shared_pointer const & pvRequest)
                 {
                     ChannelImpl::shared_pointer thisPointer = shared_from_this();
                     return ChannelPutImpl::create(thisPointer, channelPutRequester, pvRequest);
                 }
                 
                 virtual ChannelPutGet::shared_pointer createChannelPutGet(
-                                                        ChannelPutGetRequester::shared_pointer& channelPutGetRequester,
-                                                        epics::pvData::PVStructure::shared_pointer& pvRequest)
+                                                        ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
+                                                        epics::pvData::PVStructure::shared_pointer const & pvRequest)
                 {
                     ChannelImpl::shared_pointer thisPointer = shared_from_this();
                     return ChannelPutGetImpl::create(thisPointer, channelPutGetRequester, pvRequest);
                 }
                 
                 virtual ChannelRPC::shared_pointer createChannelRPC(
-                                                        ChannelRPCRequester::shared_pointer& channelRPCRequester,
-                                                        epics::pvData::PVStructure::shared_pointer& pvRequest)
+                                                        ChannelRPCRequester::shared_pointer const & channelRPCRequester,
+                                                        epics::pvData::PVStructure::shared_pointer const & pvRequest)
                 {
                     ChannelImpl::shared_pointer thisPointer = shared_from_this();
                     return ChannelRPCImpl::create(thisPointer, channelRPCRequester, pvRequest);
                 }
                 
                 virtual epics::pvData::Monitor::shared_pointer createMonitor(
-                                                            epics::pvData::MonitorRequester::shared_pointer& monitorRequester,
-                                                            epics::pvData::PVStructure::shared_pointer& pvRequest)
+                                                            epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
+                                                            epics::pvData::PVStructure::shared_pointer const & pvRequest)
                 {
                     ChannelImpl::shared_pointer thisPointer = shared_from_this();
                     return ChannelMonitorImpl::create(thisPointer, monitorRequester, pvRequest);
                 }
                 
                 virtual ChannelArray::shared_pointer createChannelArray(
-                                                            ChannelArrayRequester::shared_pointer& channelArrayRequester,
-                                                            epics::pvData::PVStructure::shared_pointer& pvRequest)
+                                                            ChannelArrayRequester::shared_pointer const & channelArrayRequester,
+                                                            epics::pvData::PVStructure::shared_pointer const & pvRequest)
                 {
                     ChannelImpl::shared_pointer thisPointer = shared_from_this();
                     return ChannelArrayImpl::create(thisPointer, channelArrayRequester, pvRequest);
@@ -3894,7 +3898,7 @@ TODO
              * Register channel.
              * @param channel
              */
-            void registerChannel(ChannelImpl::shared_pointer& channel)
+            void registerChannel(ChannelImpl::shared_pointer const & channel)
             {
                 Lock guard(m_cidMapMutex);
                 m_channelsByCID[channel->getChannelID()] = ChannelImpl::weak_pointer(channel);
@@ -3904,7 +3908,7 @@ TODO
              * Unregister channel.
              * @param channel
              */
-            void unregisterChannel(ChannelImpl::shared_pointer& channel)
+            void unregisterChannel(ChannelImpl::shared_pointer const & channel)
             {
                 Lock guard(m_cidMapMutex);
                 m_channelsByCID.erase(channel->getChannelID());
@@ -3965,7 +3969,7 @@ TODO
              * @param request request to register.
              * @return request ID (IOID).
              */
-            pvAccessID registerResponseRequest(ResponseRequest::shared_pointer& request)
+            pvAccessID registerResponseRequest(ResponseRequest::shared_pointer const & request)
             {
                 Lock guard(m_ioidMapMutex);
                 pvAccessID ioid = generateIOID();
@@ -4045,7 +4049,7 @@ TODO
              * @param priority process priority.
              * @return transport for given address
              */
-            Transport::shared_pointer getTransport(TransportClient::shared_pointer& client, osiSockAddr* serverAddress, int16 minorRevision, int16 priority)
+            Transport::shared_pointer getTransport(TransportClient::shared_pointer const & client, osiSockAddr* serverAddress, int16 minorRevision, int16 priority)
             {
                 try
                 {
@@ -4066,7 +4070,7 @@ TODO
              */
             // TODO no minor version with the addresses
             // TODO what if there is an channel with the same name, but on different host!
-            ChannelImpl::shared_pointer createChannelInternal(String name, ChannelRequester::shared_pointer& requester, short priority,
+            ChannelImpl::shared_pointer createChannelInternal(String name, ChannelRequester::shared_pointer const & requester, short priority,
                                                auto_ptr<InetAddrVector>& addresses) { // TODO addresses
 
                 checkState();
@@ -4107,7 +4111,7 @@ TODO
              * @throws CAException
              * @throws std::runtime_error
              */
-            void destroyChannel(ChannelImpl::shared_pointer& channel, bool force) {
+            void destroyChannel(ChannelImpl::shared_pointer const & channel, bool force) {
 
                 String name = channel->getChannelName();
                 bool lockAcquired = true; //namedLocker->acquireSynchronizationObject(name, LOCK_TIMEOUT);
