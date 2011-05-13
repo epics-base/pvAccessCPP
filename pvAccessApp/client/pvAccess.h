@@ -457,8 +457,8 @@ namespace epics { namespace pvAccess {
              * Get the the channel provider of this channel.
              * @return The channel provider.
              */
-            virtual std::tr1::shared_ptr<ChannelProvider> getProvider() = 0;
-//            virtual ChannelProvider::shared_pointer getProvider() = 0;
+            virtual std::tr1::shared_ptr<ChannelProvider> const & getProvider() = 0;
+//            virtual ChannelProvider::shared_pointer const & getProvider() = 0;
 
             /**
              * Returns the channel's remote address, e.g. "/192.168.1.101:5064" or "#C0 S1".
@@ -482,8 +482,8 @@ namespace epics { namespace pvAccess {
              * Get the channel epics::pvData::Requester.
              * @return The epics::pvData::Requester.
              */
-//            virtual ChannelRequester::shared_pointer getChannelRequester() = 0;
-            virtual std::tr1::shared_ptr<ChannelRequester> getChannelRequester() = 0;
+//            virtual ChannelRequester::shared_pointer const & getChannelRequester() = 0;
+            virtual std::tr1::shared_ptr<ChannelRequester> const & getChannelRequester() = 0;
 
             /**
              * Is the channel connected?
@@ -747,7 +747,7 @@ namespace epics { namespace pvAccess {
              * Get channel provider implementation.
              * @return the channel provider.
              */
-            virtual ChannelProvider::shared_pointer getProvider() = 0;
+            virtual ChannelProvider::shared_pointer const & getProvider() = 0;
 
             /**
              * Prints detailed information about the context to the standard output stream.

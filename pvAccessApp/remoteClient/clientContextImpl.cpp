@@ -1704,6 +1704,9 @@ namespace epics {
     	   Mutex m_mutex;
     	   BitSet::shared_pointer nullBitSet;
     	   PVStructure::shared_pointer nullPVStructure;
+    	   
+    	   MonitorElement::shared_pointer m_nullMonitorElement;
+    	   MonitorElement::shared_pointer m_thisPtr;
     		
     	   public:
     	   
@@ -1730,12 +1733,20 @@ namespace epics {
     
     		virtual MonitorElement::shared_pointer const & poll() {
     		    Lock guard(m_mutex);
-    			return m_gotMonitor ? static_pointer_cast<MonitorElement>(shared_from_this()) : MonitorElement::shared_pointer();
+    		    if (m_gotMonitor)
+    		      return m_nullMonitorElement;
+    		    else
+    		      {
+    		          // TODO this is not OK!!! requires destroy() call to clean-up
+    		          m_thisPtr = shared_from_this();
+    		          return m_thisPtr;
+    		      }
     		}
     
     		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
+    			m_thisPtr.reset();
     		}
     
     		Status start() {
@@ -1747,7 +1758,7 @@ namespace epics {
     		}
     
     		void destroy() {
-    			// noop
+    		  m_thisPtr.reset();
     		}
     		
             // ============ MonitorElement ============
@@ -1784,6 +1795,9 @@ namespace epics {
 		   BitSet::shared_pointer m_monitorElementChangeBitSet;
 	       BitSet::shared_pointer m_monitorElementOverrunBitSet;
     		
+    	   MonitorElement::shared_pointer m_nullMonitorElement;
+    	   MonitorElement::shared_pointer m_thisPtr;
+
     	   public:
     	   
     	    MonitorStrategyEntire(MonitorRequester::shared_pointer const & callback) :
@@ -1817,17 +1831,26 @@ namespace epics {
     
     		virtual MonitorElement::shared_pointer const & poll() {
     		    Lock guard(m_mutex);
-    			return m_gotMonitor ? static_pointer_cast<MonitorElement>(shared_from_this()) : MonitorElement::shared_pointer();
+    		    if (m_gotMonitor)
+    		      return m_nullMonitorElement;
+    		    else
+    		      {
+    		          // TODO this is not OK!!! requires destroy() call to clean-up
+    		          m_thisPtr = shared_from_this();
+    		          return m_thisPtr;
+    		      }
     		}
     
     		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
+    			m_thisPtr.reset();
     		}
     
     		Status start() {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
+    			m_thisPtr.reset();
     			return Status::OK;
     		}
     
@@ -1836,7 +1859,7 @@ namespace epics {
     		}
     
     		void destroy() {
-    			// noop
+    			m_thisPtr.reset();
     		}
     		
             // ============ MonitorElement ============
@@ -1879,6 +1902,8 @@ namespace epics {
            BitSet::shared_pointer m_dataChangeBitSet;
            BitSet::shared_pointer m_dataOverrunBitSet;
 		   bool m_needToCompress;
+		   
+		   MonitorElement::shared_pointer thisMonitorElement;
 
     	   public:
     	   
@@ -1949,13 +1974,15 @@ namespace epics {
 					m_needToCompress = false;
             	}
             	
-                MonitorElement::shared_pointer thisMonitorElement = shared_from_this();
+            	// TODO fix this
+                thisMonitorElement = shared_from_this();
                 return thisMonitorElement;
     		}
     
     		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
+    			thisMonitorElement.reset();
     		}
     
     		Status start() {
@@ -1963,6 +1990,7 @@ namespace epics {
     		    if (!m_monitorElementChangeBitSet)
     		      return Status(Status::STATUSTYPE_ERROR, "Monitor not connected.");
     			m_gotMonitor = false;
+    			thisMonitorElement.reset();
  	    		m_monitorElementChangeBitSet->clear();
 	    		m_monitorElementOverrunBitSet->clear();
    			    return Status::OK;
@@ -1973,7 +2001,7 @@ namespace epics {
     		}
     
     		void destroy() {
-    			// noop
+    			thisMonitorElement.reset();
     		}
     		
             // ============ MonitorElement ============
@@ -2965,7 +2993,7 @@ namespace epics {
                     std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
                 }
                 
-                virtual ChannelProvider::shared_pointer getProvider()
+                virtual ChannelProvider::shared_pointer const & getProvider()
                 {
                     return m_context->getProvider();
                 }
@@ -2989,7 +3017,7 @@ namespace epics {
                     return m_name;
                 }
                 
-                virtual ChannelRequester::shared_pointer getChannelRequester()
+                virtual ChannelRequester::shared_pointer const & getChannelRequester()
                 {
                     return m_requester;
                 }
@@ -3639,7 +3667,7 @@ TODO
                 return m_version;
             }
 
-            virtual ChannelProvider::shared_pointer getProvider() {
+            virtual ChannelProvider::shared_pointer const & getProvider() {
                 //Lock lock(m_contextMutex);
                 return m_provider;
             }

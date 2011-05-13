@@ -462,6 +462,9 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
 		bool m_first;
 		Mutex m_lock;
 		int m_count;
+		
+		MonitorElement::shared_pointer m_thisPtr;
+		MonitorElement::shared_pointer m_nullMonitor;
 
     protected:
     MockMonitor(MonitorRequester::shared_pointer const & monitorRequester, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
@@ -513,13 +516,13 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
         Lock xx(m_lock);
         if (m_count)
         {
-            return MonitorElement::shared_pointer();
+            return m_nullMonitor;
         }
         else
         {
             m_count++;
-            MonitorElement::shared_pointer thisPtr = shared_from_this();
-            return thisPtr;
+            m_thisPtr = shared_from_this();
+            return m_thisPtr;
         }
     }
 
@@ -527,11 +530,15 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
     {
         Lock xx(m_lock);
         if (m_count)
+        {
+            m_thisPtr.reset();
             m_count--;
+        }
     }
 
     virtual void destroy()
     {
+        m_thisPtr.reset();
         stop();
     }
 
@@ -625,7 +632,7 @@ class MockChannel : public Channel {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual ChannelProvider::shared_pointer getProvider()
+    virtual ChannelProvider::shared_pointer const & getProvider()
     {
         return m_provider;
     }
@@ -640,7 +647,7 @@ class MockChannel : public Channel {
         return m_name;
     }
 
-    virtual  std::tr1::shared_ptr<ChannelRequester> getChannelRequester()
+    virtual  std::tr1::shared_ptr<ChannelRequester> const & getChannelRequester()
     {
         return m_requester;
     }
