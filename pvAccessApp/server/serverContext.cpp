@@ -54,6 +54,7 @@ ServerContextImpl::shared_pointer ServerContextImpl::create()
 
 ServerContextImpl::~ServerContextImpl()
 {
+    dispose();
 }
 
 const Version& ServerContextImpl::getVersion()
@@ -529,19 +530,19 @@ TransportRegistry::shared_pointer ServerContextImpl::getTransportRegistry()
 
 Channel::shared_pointer ServerContextImpl::getChannel(pvAccessID id)
 {
-	//TODO, not used
+	// not used
 	return Channel::shared_pointer();
 }
 
 Transport::shared_pointer ServerContextImpl::getSearchTransport()
 {
-	//TODO, not used 
+	// not used 
 	return Transport::shared_pointer();
 }
 
 void ServerContextImpl::beaconAnomalyNotify()
 {
-    // noop
+    // not used
 }
 
 

@@ -31,8 +31,7 @@ class MockChannelProcess :
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelProcess);
 
-// TODO wrong
-        ChannelProcess::shared_pointer thisPtr = static_pointer_cast<ChannelProcess>(shared_from_this());
+        ChannelProcess::shared_pointer thisPtr; // we return null  = static_pointer_cast<ChannelProcess>(shared_from_this());
         PVField* field = pvStructure->getSubField(String("value"));
         if (field == 0)
         {
@@ -47,7 +46,7 @@ class MockChannelProcess :
         {
             Status notAScalarStatus(Status::STATUSTYPE_ERROR, "'value' field not scalar type");
         	m_channelProcessRequester->channelProcessConnect(notAScalarStatus, thisPtr);
-        	// NOTE client must destroy this instance….
+        	// NOTE client must destroy this instance...
         	// do not access any fields and return ASAP
         	return;
         }
@@ -1099,7 +1098,7 @@ void testServer()
 
 	ctx->printInfo();
 
-	ctx->run(10);
+	ctx->run(100);
 
 	ctx->destroy();
 

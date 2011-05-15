@@ -29,7 +29,7 @@ public:
 	/*
 	 * Destructor.
 	 */
-	virtual ~ServerChannelImpl() {};
+	virtual ~ServerChannelImpl();
 
 	/**
 	 * Get local channel.

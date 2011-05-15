@@ -67,6 +67,7 @@ namespace epics {
 
                 //additional whitespaces after four bytes
                 pad += (delta_bytes/4);
+                pad++;
 
                 for(int i = 0; i<pad; i++)
                     chars.insert(0, " ");

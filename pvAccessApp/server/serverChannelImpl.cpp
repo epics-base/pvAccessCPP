@@ -82,6 +82,11 @@ void ServerChannelImpl::destroy()
 	_channel->destroy();
 }
 
+ServerChannelImpl::~ServerChannelImpl()
+{
+    destroy();
+}
+
 void ServerChannelImpl::printInfo()
 {
 	printInfo(stdout);
