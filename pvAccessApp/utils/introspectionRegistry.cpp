@@ -293,7 +293,12 @@ StructureConstPtr IntrospectionRegistry::deserializeStructureField(ByteBuffer* b
 		fields = new FieldConstPtr[size];
 		for(int i = 0; i < size; i++)
 		{
+		  try {
 			fields[i] = deserialize(buffer, control, registry);
+		  } catch (...) {
+		      delete[] fields;
+		      throw;
+		  }
 		}
 	}
 

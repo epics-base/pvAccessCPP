@@ -62,6 +62,7 @@ namespace epics {
         }
 
         void BlockingServerTCPTransport::internalClose(bool force) {
+            Transport::shared_pointer thisSharedPtr = shared_from_this();
             BlockingTCPTransport::internalClose(force);
             destroyAllChannels();
         }

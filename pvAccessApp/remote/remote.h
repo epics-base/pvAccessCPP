@@ -142,6 +142,8 @@ namespace epics {
         public:
             typedef std::tr1::shared_ptr<Transport> shared_pointer;
             typedef std::tr1::shared_ptr<const Transport> const_shared_pointer;
+            typedef std::tr1::weak_ptr<Transport> weak_pointer;
+            typedef std::tr1::weak_ptr<const Transport> const_weak_pointer;
 
             virtual ~Transport() {}
 
@@ -432,6 +434,8 @@ namespace epics {
         public:
             typedef std::tr1::shared_ptr<ServerChannel> shared_pointer;
             typedef std::tr1::shared_ptr<const ServerChannel> const_shared_pointer;
+            typedef std::tr1::weak_ptr<ServerChannel> weak_pointer;
+            typedef std::tr1::weak_ptr<const ServerChannel> const_weak_pointer;
 
             virtual ~ServerChannel() {}
             /**

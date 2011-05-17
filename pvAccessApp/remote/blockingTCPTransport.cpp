@@ -224,7 +224,7 @@ namespace epics {
 
             // remove from registry
             Transport::shared_pointer thisSharedPtr = shared_from_this();
-            _context->getTransportRegistry()->remove(thisSharedPtr);
+            _context->getTransportRegistry()->remove(thisSharedPtr).get();
 
             // clean resources
             internalClose(force);

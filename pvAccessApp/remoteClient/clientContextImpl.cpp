@@ -1681,7 +1681,29 @@ namespace epics {
 
 
 
+        class MonitorElementImpl : public MonitorElement
+        {
+            public:
+            
+            PVStructure::shared_pointer m_pvStructure;
+            BitSet::shared_pointer m_changedBitSet;
+            BitSet::shared_pointer m_overrunBitSet;
+                
+            virtual PVStructure::shared_pointer const & getPVStructure()
+            {
+                return m_pvStructure;
+            }
 
+            virtual BitSet::shared_pointer const & getChangedBitSet()
+            {
+                return m_changedBitSet;
+            }
+
+            virtual BitSet::shared_pointer const & getOverrunBitSet()
+            {
+                return m_overrunBitSet;
+            }
+        };
 
 
         class MonitorStrategy : public Monitor {
@@ -1693,12 +1715,11 @@ namespace epics {
     	
     	class MonitorStrategyNotify :
             public MonitorStrategy,
-            public MonitorElement,
             public std::tr1::enable_shared_from_this<MonitorStrategyNotify>
         {
     	   private:
     	   
-            MonitorRequester::shared_pointer m_callback;
+           MonitorRequester::shared_pointer m_callback;
     	   
     	   bool m_gotMonitor;
     	   Mutex m_mutex;
@@ -1706,12 +1727,12 @@ namespace epics {
     	   PVStructure::shared_pointer nullPVStructure;
     	   
     	   MonitorElement::shared_pointer m_nullMonitorElement;
-    	   MonitorElement::shared_pointer m_thisPtr;
+    	   MonitorElement::shared_pointer m_monitorElement;
     		
     	   public:
     	   
     	    MonitorStrategyNotify(MonitorRequester::shared_pointer const & callback) :
-    	       m_callback(callback), m_gotMonitor(false), m_mutex()
+    	       m_callback(callback), m_gotMonitor(false), m_mutex(), m_monitorElement(new MonitorElementImpl())
     	    {
     	    }
     	   
@@ -1736,17 +1757,12 @@ namespace epics {
     		    if (m_gotMonitor)
     		      return m_nullMonitorElement;
     		    else
-    		      {
-    		          // TODO this is not OK!!! requires destroy() call to clean-up
-    		          m_thisPtr = shared_from_this();
-    		          return m_thisPtr;
-    		      }
+    		      return m_monitorElement;
     		}
     
     		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
-    			m_thisPtr.reset();
     		}
     
     		Status start() {
@@ -1758,50 +1774,29 @@ namespace epics {
     		}
     
     		void destroy() {
-    		  m_thisPtr.reset();
     		}
     		
-            // ============ MonitorElement ============
-
-            virtual PVStructure::shared_pointer const & getPVStructure()
-            {
-                return nullPVStructure;
-            }
-
-            virtual BitSet::shared_pointer const & getChangedBitSet()
-            {
-                return nullBitSet;
-            }
-
-            virtual BitSet::shared_pointer const & getOverrunBitSet()
-            {
-                return nullBitSet;
-            }
     	};
 
     	class MonitorStrategyEntire :
             public MonitorStrategy,
-            public MonitorElement,
             public std::tr1::enable_shared_from_this<MonitorStrategyEntire>
         {
     	   private:
     	   
-            MonitorRequester::shared_pointer m_callback;
+           MonitorRequester::shared_pointer m_callback;
     	   
     	   bool m_gotMonitor;
     	   Mutex m_mutex;
     	   
-           PVStructure::shared_pointer m_monitorElementStructure;
-		   BitSet::shared_pointer m_monitorElementChangeBitSet;
-	       BitSet::shared_pointer m_monitorElementOverrunBitSet;
-    		
     	   MonitorElement::shared_pointer m_nullMonitorElement;
-    	   MonitorElement::shared_pointer m_thisPtr;
+    	   MonitorElement::shared_pointer m_monitorElement;
+    	   std::tr1::shared_ptr<MonitorElementImpl> m_monitorElementImpl;
 
     	   public:
     	   
     	    MonitorStrategyEntire(MonitorRequester::shared_pointer const & callback) :
-    	       m_callback(callback), m_gotMonitor(false), m_mutex()
+    	       m_callback(callback), m_gotMonitor(false), m_mutex(), m_monitorElement(new MonitorElementImpl()), m_monitorElementImpl(static_pointer_cast<MonitorElementImpl>(m_monitorElement))
     	    {
     	    }
     	   
@@ -1812,18 +1807,18 @@ namespace epics {
     		virtual void init(StructureConstPtr const & structure) {
     		    Lock guard(m_mutex);
 
-	            m_monitorElementStructure.reset(getPVDataCreate()->createPVStructure(0, structure));
-   			    int numberFields = m_monitorElementStructure->getNumberFields();
-				m_monitorElementChangeBitSet.reset(new BitSet(numberFields));
-	        	m_monitorElementOverrunBitSet.reset(new BitSet(numberFields));
+	            m_monitorElementImpl->m_pvStructure.reset(getPVDataCreate()->createPVStructure(0, structure));
+   			    int numberFields = m_monitorElementImpl->m_pvStructure->getNumberFields();
+				m_monitorElementImpl->m_changedBitSet.reset(new BitSet(numberFields));
+	        	m_monitorElementImpl->m_overrunBitSet.reset(new BitSet(numberFields));
     		}
     
     		virtual void response(Transport::shared_pointer const & transport, ByteBuffer* payloadBuffer) {
     		    Lock guard(m_mutex);
     			// simply deserialize and notify
-				m_monitorElementChangeBitSet->deserialize(payloadBuffer, transport.get());
-	        	m_monitorElementStructure->deserialize(payloadBuffer, transport.get(), m_monitorElementChangeBitSet.get());
-	        	m_monitorElementOverrunBitSet->deserialize(payloadBuffer, transport.get());
+				m_monitorElementImpl->m_changedBitSet->deserialize(payloadBuffer, transport.get());
+	        	m_monitorElementImpl->m_pvStructure->deserialize(payloadBuffer, transport.get(), m_monitorElementImpl->m_changedBitSet.get());
+	        	m_monitorElementImpl->m_overrunBitSet->deserialize(payloadBuffer, transport.get());
     			m_gotMonitor = true;
                 Monitor::shared_pointer thisMonitor = shared_from_this();
             	m_callback->monitorEvent(thisMonitor);
@@ -1834,23 +1829,17 @@ namespace epics {
     		    if (m_gotMonitor)
     		      return m_nullMonitorElement;
     		    else
-    		      {
-    		          // TODO this is not OK!!! requires destroy() call to clean-up
-    		          m_thisPtr = shared_from_this();
-    		          return m_thisPtr;
-    		      }
+    		      return m_monitorElement;
     		}
     
     		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
-    			m_thisPtr.reset();
     		}
     
     		Status start() {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
-    			m_thisPtr.reset();
     			return Status::OK;
     		}
     
@@ -1859,31 +1848,13 @@ namespace epics {
     		}
     
     		void destroy() {
-    			m_thisPtr.reset();
     		}
     		
-            // ============ MonitorElement ============
-
-            virtual PVStructure::shared_pointer const & getPVStructure()
-            {
-                return m_monitorElementStructure;
-            }
-
-            virtual BitSet::shared_pointer const & getChangedBitSet()
-            {
-                return m_monitorElementChangeBitSet;
-            }
-
-            virtual BitSet::shared_pointer const & getOverrunBitSet()
-            {
-                return m_monitorElementOverrunBitSet;
-            }
     	};
 
 
     	class MonitorStrategySingle :
             public MonitorStrategy,
-            public MonitorElement,
             public std::tr1::enable_shared_from_this<MonitorStrategySingle>
         {
     	   private:
@@ -1893,23 +1864,20 @@ namespace epics {
     	   bool m_gotMonitor;
     	   Mutex m_mutex;
     	   
-    	   MonitorElement::shared_pointer nullMonitorElement;
     	   
-           PVStructure::shared_pointer m_monitorElementStructure;
-		   BitSet::shared_pointer m_monitorElementChangeBitSet;
-	       BitSet::shared_pointer m_monitorElementOverrunBitSet;
-    		
            BitSet::shared_pointer m_dataChangeBitSet;
            BitSet::shared_pointer m_dataOverrunBitSet;
 		   bool m_needToCompress;
 		   
-		   MonitorElement::shared_pointer thisMonitorElement;
+    	   MonitorElement::shared_pointer m_nullMonitorElement;
+    	   MonitorElement::shared_pointer m_monitorElement;
+    	   std::tr1::shared_ptr<MonitorElementImpl> m_monitorElementImpl;
 
     	   public:
     	   
     	    MonitorStrategySingle(MonitorRequester::shared_pointer callback) :
     	       m_callback(callback), m_gotMonitor(false), m_mutex(),
-    	       m_needToCompress(false)
+    	       m_needToCompress(false), m_monitorElement(new MonitorElementImpl()), m_monitorElementImpl(static_pointer_cast<MonitorElementImpl>(m_monitorElement))
     	    {
     	    }
     	   
@@ -1920,10 +1888,10 @@ namespace epics {
     		virtual void init(StructureConstPtr const & structure) {
     		    Lock guard(m_mutex);
 
-	            m_monitorElementStructure.reset(getPVDataCreate()->createPVStructure(0, structure));
-   			    int numberFields = m_monitorElementStructure->getNumberFields();
-				m_monitorElementChangeBitSet.reset(new BitSet(numberFields));
-	        	m_monitorElementOverrunBitSet.reset(new BitSet(numberFields));
+	            m_monitorElementImpl->m_pvStructure.reset(getPVDataCreate()->createPVStructure(0, structure));
+   			    int numberFields = m_monitorElementImpl->m_pvStructure->getNumberFields();
+				m_monitorElementImpl->m_changedBitSet.reset(new BitSet(numberFields));
+	        	m_monitorElementImpl->m_overrunBitSet.reset(new BitSet(numberFields));
 	        	
 	        	m_dataChangeBitSet.reset(new BitSet(numberFields));
 	        	m_dataOverrunBitSet.reset(new BitSet(numberFields));
@@ -1936,9 +1904,9 @@ namespace epics {
     		    if (!m_gotMonitor)
     		    {
         			// simply deserialize and notify
-    				m_monitorElementChangeBitSet->deserialize(payloadBuffer, transport.get());
-    	        	m_monitorElementStructure->deserialize(payloadBuffer, transport.get(), m_monitorElementChangeBitSet.get());
-    	        	m_monitorElementOverrunBitSet->deserialize(payloadBuffer, transport.get());
+    				m_monitorElementImpl->m_changedBitSet->deserialize(payloadBuffer, transport.get());
+    	        	m_monitorElementImpl->m_pvStructure->deserialize(payloadBuffer, transport.get(), m_monitorElementImpl->m_changedBitSet.get());
+    	        	m_monitorElementImpl->m_overrunBitSet->deserialize(payloadBuffer, transport.get());
         			m_gotMonitor = true;
                     Monitor::shared_pointer thisMonitor = shared_from_this();
                     m_callback->monitorEvent(thisMonitor);
@@ -1947,52 +1915,48 @@ namespace epics {
 				{
 					// deserialize first
 					m_dataChangeBitSet->deserialize(payloadBuffer, transport.get());
-		        	m_monitorElementStructure->deserialize(payloadBuffer, transport.get(), m_dataChangeBitSet.get());
+		        	m_monitorElementImpl->m_pvStructure->deserialize(payloadBuffer, transport.get(), m_dataChangeBitSet.get());
 		        	m_dataOverrunBitSet->deserialize(payloadBuffer, transport.get());
 
 		        	// OR local overrun
 		        	// TODO should work only on uncompressed
-					m_monitorElementOverrunBitSet->or_and(*m_dataChangeBitSet.get(), *m_monitorElementChangeBitSet.get());
+					m_monitorElementImpl->m_overrunBitSet->or_and(*m_dataChangeBitSet.get(), *m_monitorElementImpl->m_changedBitSet.get());
 
 					// OR new changes
-					*m_monitorElementChangeBitSet |= *m_dataChangeBitSet.get();
+					*(m_monitorElementImpl->m_changedBitSet) |= *m_dataChangeBitSet.get();
 					
 					// OR remote overrun
-					*m_monitorElementOverrunBitSet |= *m_dataOverrunBitSet.get();
+					*(m_monitorElementImpl->m_overrunBitSet) |= *m_dataOverrunBitSet.get();
 				}
     		}
     
     		virtual MonitorElement::shared_pointer const & poll() {
     		    Lock guard(m_mutex);
-    			if (!m_gotMonitor) return nullMonitorElement;
+    			if (!m_gotMonitor) return m_nullMonitorElement;
     			
             	// compress if needed
     			if (m_needToCompress)
     			{
-	            	BitSetUtil::compress(m_monitorElementChangeBitSet.get(), m_monitorElementStructure.get());
-					BitSetUtil::compress(m_monitorElementOverrunBitSet.get(), m_monitorElementStructure.get());
+	            	BitSetUtil::compress(m_monitorElementImpl->m_changedBitSet.get(), m_monitorElementImpl->m_pvStructure.get());
+					BitSetUtil::compress(m_monitorElementImpl->m_overrunBitSet.get(), m_monitorElementImpl->m_pvStructure.get());
 					m_needToCompress = false;
             	}
             	
-            	// TODO fix this
-                thisMonitorElement = shared_from_this();
-                return thisMonitorElement;
+                return m_monitorElement;
     		}
     
     		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
-    			thisMonitorElement.reset();
     		}
     
     		Status start() {
     		    Lock guard(m_mutex);
-    		    if (!m_monitorElementChangeBitSet)
+    		    if (!m_monitorElementImpl->m_changedBitSet.get())
     		      return Status(Status::STATUSTYPE_ERROR, "Monitor not connected.");
     			m_gotMonitor = false;
-    			thisMonitorElement.reset();
- 	    		m_monitorElementChangeBitSet->clear();
-	    		m_monitorElementOverrunBitSet->clear();
+ 	    		m_monitorElementImpl->m_changedBitSet->clear();
+	    		m_monitorElementImpl->m_overrunBitSet->clear();
    			    return Status::OK;
     		}
     
@@ -2001,25 +1965,8 @@ namespace epics {
     		}
     
     		void destroy() {
-    			thisMonitorElement.reset();
     		}
     		
-            // ============ MonitorElement ============
-
-            virtual PVStructure::shared_pointer const & getPVStructure()
-            {
-                return m_monitorElementStructure;
-            }
-
-            virtual BitSet::shared_pointer const & getChangedBitSet()
-            {
-                return m_monitorElementChangeBitSet;
-            }
-
-            virtual BitSet::shared_pointer const & getOverrunBitSet()
-            {
-                return m_monitorElementOverrunBitSet;
-            }
     	};
 
 

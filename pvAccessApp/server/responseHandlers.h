@@ -227,11 +227,11 @@ namespace epics {
         	 void unlock();
         	 void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
-        	 Transport::shared_pointer _transport;
+        	 ServerChannel::weak_pointer _serverChannel;
+        	 Transport::weak_pointer _transport;
         	 const String _channelName;
         	 const pvAccessID _cid;
         	 epics::pvData::Status _status;
-        	 Channel::shared_pointer _channel;
         	 epics::pvData::Mutex _mutex;
         	 void createChannelFailedResponse(epics::pvData::ByteBuffer* buffer, TransportSendControl* control, const epics::pvData::Status& status);
         };

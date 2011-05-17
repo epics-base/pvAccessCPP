@@ -18,6 +18,8 @@ class ServerChannelImpl : public ServerChannel
 public:
     typedef std::tr1::shared_ptr<ServerChannelImpl> shared_pointer;
     typedef std::tr1::shared_ptr<const ServerChannelImpl> const_shared_pointer;
+    typedef std::tr1::weak_ptr<ServerChannelImpl> weak_pointer;
+    typedef std::tr1::weak_ptr<const ServerChannelImpl> const_weak_pointer;
 	/**
 	 * Create server channel for given process variable.
 	 * @param channel local channel.
