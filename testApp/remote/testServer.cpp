@@ -1098,7 +1098,7 @@ void testServer()
 
 	ctx->printInfo();
 
-	ctx->run(30);
+	ctx->run(100);
 
 	ctx->destroy();
 

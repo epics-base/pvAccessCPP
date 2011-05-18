@@ -484,7 +484,6 @@ namespace epics {
         	epics::pvData::Monitor::shared_pointer getChannelMonitor();
         	 void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
-        	 epics::pvData::Monitor::shared_pointer _monitor;
         	 epics::pvData::Monitor::shared_pointer _channelMonitor;
 		     epics::pvData::StructureConstPtr _structure;
         	 epics::pvData::Status _status;

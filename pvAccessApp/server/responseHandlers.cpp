@@ -1143,7 +1143,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
         /*
 		if (!request->startRequest(qosCode))
 		{
-			BaseChannelRequester::sendFailureMessage((int8)13, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
+			BaseChannelRequester::sendFailureMessage((int8)CMD_MONITOR, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
 			return;
 		}
 		*/
@@ -1169,7 +1169,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 ServerMonitorRequesterImpl::ServerMonitorRequesterImpl(
         ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
 		const pvAccessID ioid, Transport::shared_pointer const & transport):
-		BaseChannelRequester(context, channel, ioid, transport), _monitor(), _channelMonitor(), _structure()
+		BaseChannelRequester(context, channel, ioid, transport), _channelMonitor(), _structure()
 {
 }
 
@@ -1196,9 +1196,8 @@ void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor::s
 	{
 		Lock guard(_mutex);
 		_status = status;
-		_monitor = monitor;
+		_channelMonitor = monitor;
 		_structure = structure;
-		_monitor = monitor;
 	}
 	TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);
@@ -1288,7 +1287,7 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 	}
 	else
 	{
-		Monitor::shared_pointer monitor = _monitor;
+		Monitor::shared_pointer monitor = _channelMonitor;
 		MonitorElement::shared_pointer element = monitor->poll();
 		if (element != NULL)
 		{
