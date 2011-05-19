@@ -1540,7 +1540,7 @@ void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
 	// NOTE: we do not explicitly check if transport is OK
 	ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
 
-	transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
+	transport->ensureData(2*sizeof(int32)/sizeof(int8));
 	const pvAccessID sid = payloadBuffer->getInt();
 	const pvAccessID ioid = payloadBuffer->getInt();
 
