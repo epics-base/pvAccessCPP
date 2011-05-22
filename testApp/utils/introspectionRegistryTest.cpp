@@ -217,7 +217,7 @@ FieldConstPtr deserialize(IntrospectionRegistry* registry)
 void checkTypeCode(int8 typeCodeIn)
 {
 	int8 typeCode = buffer->getByte();
-	printf("%d == %d\n", typeCode, typeCodeIn);
+//printf("%d == %d\n", typeCode, typeCodeIn);
 	assert(typeCode == typeCodeIn);
 	buffer->rewind();
 }
