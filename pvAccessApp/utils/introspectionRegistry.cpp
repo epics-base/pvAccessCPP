@@ -104,6 +104,7 @@ void IntrospectionRegistry::printKeysAndValues(string name)
 	}
 }
 
+// TODO !!!!
 bool IntrospectionRegistry::registryContainsValue(FieldConstPtr field, short& key)
 {
 	for(_registryRIter = _registry.rbegin(); _registryRIter != _registry.rend(); _registryRIter++)
