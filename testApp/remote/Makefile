@@ -42,9 +42,9 @@ PROD_HOST += testServer
 testServer_SRCS += testServer.cpp
 testServer_LIBS += pvData pvAccess Com
 
-PROD_HOST += pvaget
-pvaget_SRCS += pvaget.cpp
-pvaget_LIBS += pvData pvAccess Com
+PROD_HOST += pvget
+pvget_SRCS += pvget.cpp
+pvget_LIBS += pvData pvAccess Com
 
 include $(TOP)/configure/RULES
 #----------------------------------------

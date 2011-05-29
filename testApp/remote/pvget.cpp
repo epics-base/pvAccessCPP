@@ -341,13 +341,13 @@ PVStructure::shared_pointer pvRequest;
 
 void usage (void)
 {
-    fprintf (stderr, "\nUsage: pvaget [options] <PV name>...\n\n"
+    fprintf (stderr, "\nUsage: pvget [options] <PV name>...\n\n"
     "  -h: Help: Print this message\n"
     "options:\n"
     "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
     "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
     "  -t:                Terse mode - print only value, without name"
-    "\nExample: pvaget example001 \n\n"
+    "\nExample: pvget example001 \n\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
 
@@ -488,7 +488,7 @@ public:
  *
  * Function:	main
  *
- * Description:	pvaget main()
+ * Description:	pvget main()
  * 		Evaluate command line options, set up CA, connect the
  * 		channels, print the data as requested
  *
@@ -527,12 +527,12 @@ int main (int argc, char *argv[])
             break;
         case '?':
             fprintf(stderr,
-                    "Unrecognized option: '-%c'. ('pvaget -h' for help.)\n",
+                    "Unrecognized option: '-%c'. ('pvget -h' for help.)\n",
                     optopt);
             return 1;
         case ':':
             fprintf(stderr,
-                    "Option '-%c' requires an argument. ('pvaget -h' for help.)\n",
+                    "Option '-%c' requires an argument. ('pvget -h' for help.)\n",
                     optopt);
             return 1;
         default :
@@ -544,7 +544,7 @@ int main (int argc, char *argv[])
     int nPvs = argc - optind;       /* Remaining arg list are PV names */
     if (nPvs < 1)
     {
-        fprintf(stderr, "No pv name specified. ('pvaget -h' for help.)\n");
+        fprintf(stderr, "No pv name specified. ('pvget -h' for help.)\n");
         return 1;
     }
 
@@ -568,11 +568,25 @@ int main (int argc, char *argv[])
 
     bool allOK = true;
     
-    // for now a simple iterating sync implementation, guarantees order
+    // first connect to all, this allows resource (e.g. TCP connection) sharing
+    vector<Channel::shared_pointer> channels(nPvs);
     for (int n = 0; n < nPvs; n++)
     {
         shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
+        channels[n] = provider->createChannel(pvs[n], channelRequesterImpl);
+    }
+    
+    // for now a simple iterating sync implementation, guarantees order
+    for (int n = 0; n < nPvs; n++)
+    {
+        /*
+        shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
         Channel::shared_pointer channel = provider->createChannel(pvs[n], channelRequesterImpl);
+        */
+        
+        Channel::shared_pointer channel = channels[n];
+        shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+         
         if (channelRequesterImpl->waitUntilConnected(timeOut))
         {
             shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
