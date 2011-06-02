@@ -9,6 +9,8 @@
 #include <vector>
 #include <string>
 
+#include <convert.h>
+
 using namespace std;
 using namespace std::tr1;
 using namespace epics::pvData;
@@ -341,32 +343,35 @@ PVStructure::shared_pointer pvRequest;
 
 void usage (void)
 {
-    fprintf (stderr, "\nUsage: pvget [options] <PV name>...\n\n"
+    fprintf (stderr, "\nUsage: pvput [options] <PV name> <values>...\n\n"
     "  -h: Help: Print this message\n"
     "options:\n"
     "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
     "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
     "  -t:                Terse mode - print only value, without name"
-    "\nExample: pvget example001 \n\n"
+    "\nExample: pvput example001 1.234 10 test\n\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
 
 
-class ChannelGetRequesterImpl : public ChannelGetRequester
+class ChannelPutRequesterImpl : public ChannelPutRequester
 {
     private:
     PVStructure::shared_pointer m_pvStructure;
     BitSet::shared_pointer m_bitSet;
-    Event m_event;
+    auto_ptr<Event> m_event;
     String m_channelName;
 
     public:
     
-    ChannelGetRequesterImpl(String channelName) : m_channelName(channelName) {};
+    ChannelPutRequesterImpl(String channelName) : m_channelName(channelName)
+    {
+        resetEvent();
+    };
     
     virtual String getRequesterName()
     {
-        return "ChannelGetRequesterImpl";
+        return "ChannelPutRequesterImpl";
     };
 
     virtual void message(String message,MessageType messageType)
@@ -374,7 +379,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void channelGetConnect(const epics::pvData::Status& status,ChannelGet::shared_pointer const & channelGet,
+    virtual void channelPutConnect(const epics::pvData::Status& status,ChannelPut::shared_pointer const & channelPut,
                                    epics::pvData::PVStructure::shared_pointer const & pvStructure, 
                                    epics::pvData::BitSet::shared_pointer const & bitSet)
     {
@@ -383,16 +388,20 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << m_channelName << "] channel get create: " << status.toString() << std::endl;
+                std::cout << "[" << m_channelName << "] channel put create: " << status.toString() << std::endl;
             }
 
             m_pvStructure = pvStructure;
             m_bitSet = bitSet;
-            channelGet->get(true);
+            
+            // we always put all
+            m_bitSet->set(0);
+            
+            channelPut->get();
         }
         else
         {
-            std::cout << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
+            std::cout << "[" << m_channelName << "] failed to create channel put: " << status.toString() << std::endl;
         }
     }
 
@@ -416,7 +425,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 
             std::cout << str << std::endl;
             
-            m_event.signal();
+            m_event->signal();
         }
         else
         {
@@ -425,9 +434,38 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         
     }
 
-    bool waitUntilGet(double timeOut)
+    virtual void putDone(const epics::pvData::Status& status)
     {
-        return m_event.wait(timeOut);
+        if (status.isSuccess())
+        {
+            // show warning
+            if (!status.isOK())
+            {
+                std::cout << "[" << m_channelName << "] channel put: " << status.toString() << std::endl;
+            }
+  
+            m_event->signal();
+        }
+        else
+        {
+            std::cout << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
+        }
+        
+    }
+
+    PVStructure::shared_pointer getStructure()
+    {
+        return m_pvStructure;
+    }
+
+    void resetEvent()
+    {
+        m_event.reset(new Event());
+    }
+    
+    bool waitUntilDone(double timeOut)
+    {
+        return m_event->wait(timeOut);
     }
 };
 
@@ -488,11 +526,11 @@ public:
  *
  * Function:	main
  *
- * Description:	pvget main()
+ * Description:	pvput main()
  * 		Evaluate command line options, set up CA, connect the
  * 		channels, print the data as requested
  *
- * Arg(s) In:	[options] <pv-name>...
+ * Arg(s) In:	[options] <pv-name> <values>...
  *
  * Arg(s) Out:	none
  *
@@ -527,12 +565,12 @@ int main (int argc, char *argv[])
             break;
         case '?':
             fprintf(stderr,
-                    "Unrecognized option: '-%c'. ('pvget -h' for help.)\n",
+                    "Unrecognized option: '-%c'. ('pvput -h' for help.)\n",
                     optopt);
             return 1;
         case ':':
             fprintf(stderr,
-                    "Option '-%c' requires an argument. ('pvget -h' for help.)\n",
+                    "Option '-%c' requires an argument. ('pvput -h' for help.)\n",
                     optopt);
             return 1;
         default :
@@ -541,16 +579,24 @@ int main (int argc, char *argv[])
         }
     }
 
-    int nPvs = argc - optind;       /* Remaining arg list are PV names */
-    if (nPvs < 1)
+    if (argc <= optind)
     {
-        fprintf(stderr, "No pv name(s) specified. ('pvget -h' for help.)\n");
+        fprintf(stderr, "No pv name specified. ('pvput -h' for help.)\n");
+        return 1;
+    }
+    string pvName = argv[optind++];
+    
+
+    int nVals = argc - optind;       /* Remaining arg list are PV names */
+    if (nVals < 1)
+    {
+        fprintf(stderr, "No value(s) specified. ('pvput -h' for help.)\n");
         return 1;
     }
 
-    vector<string> pvs;     /* Array of PV structures */
+    vector<string> values;     /* Array of values */
     for (int n = 0; optind < argc; n++, optind++)
-        pvs.push_back(argv[optind]);       /* Copy PV names from command line */
+        values.push_back(argv[optind]);       /* Copy values from command line */
 
     try {
         pvRequest = getCreateRequest()->createRequest(request);
@@ -567,40 +613,55 @@ int main (int argc, char *argv[])
     ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
 
     bool allOK = true;
-    
-    // first connect to all, this allows resource (e.g. TCP connection) sharing
-    vector<Channel::shared_pointer> channels(nPvs);
-    for (int n = 0; n < nPvs; n++)
-    {
-        shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
-        channels[n] = provider->createChannel(pvs[n], channelRequesterImpl);
-    }
-    
-    // for now a simple iterating sync implementation, guarantees order
-    for (int n = 0; n < nPvs; n++)
-    {
-        /*
-        shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
-        Channel::shared_pointer channel = provider->createChannel(pvs[n], channelRequesterImpl);
-        */
-        
-        Channel::shared_pointer channel = channels[n];
-        shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
-         
-        if (channelRequesterImpl->waitUntilConnected(timeOut))
-        {
-            shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
-            ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
-            allOK &= getRequesterImpl->waitUntilGet(timeOut);
-        }
-        else
-        {
-            allOK = false;
-            channel->destroy();
-            std::cout << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
-        }
-    }    
 
+    try
+    {
+        do
+        {
+            // first connect
+            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
+            Channel::shared_pointer channel = provider->createChannel(pvName, channelRequesterImpl);
+            
+            if (channelRequesterImpl->waitUntilConnected(timeOut))
+            {
+                shared_ptr<ChannelPutRequesterImpl> putRequesterImpl(new ChannelPutRequesterImpl(channel->getChannelName()));
+                std::cout << "Old : " << std::endl;
+                ChannelPut::shared_pointer channelPut = channel->createChannelPut(putRequesterImpl, pvRequest);
+                allOK &= putRequesterImpl->waitUntilDone(timeOut);
+                if (allOK)
+                {
+                    getConvert()->fromString(putRequesterImpl->getStructure().get(), values);
+    
+                    putRequesterImpl->resetEvent();
+                    channelPut->put(false);
+                    allOK &= putRequesterImpl->waitUntilDone(timeOut);
+        
+                    if (allOK)
+                    {
+                        std::cout << "New : " << std::endl;
+                        putRequesterImpl->resetEvent();
+                        channelPut->get();
+                        allOK &= putRequesterImpl->waitUntilDone(timeOut);
+                    }
+                }
+            }
+            else
+            {
+                allOK = false;
+                channel->destroy();
+                std::cout << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
+                break;
+            }
+        }
+        while (false);
+    } catch (std::exception& ex) {
+        allOK = false;
+        std::cout << ex.what() << std::endl;
+    } catch (...) {
+        allOK = false;
+        std::cout << "unknown exception caught" << std::endl;
+    }
+        
     ClientFactory::stop();
 
     return allOK ? 0 : 1;
