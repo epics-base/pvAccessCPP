@@ -654,6 +654,9 @@ int main (int argc, char *argv[])
             }
         }
         while (false);
+    } catch (std::out_of_range& oor) {
+        allOK = false;
+        std::cout << "parse error: not enough of values" << std::endl;
     } catch (std::exception& ex) {
         allOK = false;
         std::cout << ex.what() << std::endl;
