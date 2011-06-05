@@ -37,8 +37,8 @@ ServerContextImpl::ServerContextImpl():
 				_acceptor(),
 				_transportRegistry(),
 				_channelAccess(),
-				_channelProviderName(PVACCESS_DEFAULT_PROVIDER),
-				_channelProvider(),
+				_channelProviderNames(PVACCESS_DEFAULT_PROVIDER),
+				_channelProviders(),
 				_beaconServerStatusProvider()
 
 {
@@ -111,8 +111,8 @@ void ServerContextImpl::loadConfiguration()
 	_receiveBufferSize = config->getPropertyAsInteger("EPICS4_CA_MAX_ARRAY_BYTES", _receiveBufferSize);
 	_receiveBufferSize = config->getPropertyAsInteger("EPICS4_CAS_MAX_ARRAY_BYTES", _receiveBufferSize);
 
-	_channelProviderName = config->getPropertyAsString("EPICS4_CA_PROVIDER_NAME", _channelProviderName);
-	_channelProviderName = config->getPropertyAsString("EPICS4_CAS_PROVIDER_NAME", _channelProviderName);
+	_channelProviderNames = config->getPropertyAsString("EPICS4_CA_PROVIDER_NAMES", _channelProviderNames);
+	_channelProviderNames = config->getPropertyAsString("EPICS4_CAS_PROVIDER_NAMES", _channelProviderNames);
 }
 
 void ServerContextImpl::initialize(ChannelAccess::shared_pointer const & channelAccess)
@@ -134,10 +134,20 @@ void ServerContextImpl::initialize(ChannelAccess::shared_pointer const & channel
 
 	_channelAccess = channelAccess;
 
-	_channelProvider = _channelAccess->getProvider(_channelProviderName);
-	if (_channelProvider == NULL)
+
+    // split comma separated names
+    std::stringstream ss(_channelProviderNames);
+    std::string providerName;
+    while (std::getline(ss, providerName, ',')) {
+    	ChannelProvider::shared_pointer channelProvider = _channelAccess->getProvider(providerName);
+    	if (channelProvider)
+            _channelProviders.push_back(channelProvider);
+    }    
+
+	//_channelProvider = _channelAccess->getProvider(_channelProviderNames);
+	if (_channelProviders.size() == 0)
 	{
-		std::string msg = "Channel provider with name '" + _channelProviderName + "' not available.";
+		std::string msg = "None of the specified channel providers are available: " + _channelProviderNames + ".";
 		THROW_BASE_EXCEPTION(msg.c_str());
 	}
 
@@ -397,7 +407,7 @@ void ServerContextImpl::printInfo(ostream& str)
 {
 	Lock guard(_mutex);
 	str << "VERSION : " << getVersion().getVersionString() << endl \
-		<< "CHANNEL PROVIDER : " << _channelProviderName << endl \
+		<< "PROVIDER_NAMES : " << _channelProviderNames << endl \
 		<< "BEACON_ADDR_LIST : " << _beaconAddressList << endl \
 	    << "AUTO_BEACON_ADDR_LIST : " << _autoBeaconAddressList << endl \
 	    << "BEACON_PERIOD : " << _beaconPeriod << endl \
@@ -503,19 +513,19 @@ ChannelAccess::shared_pointer ServerContextImpl::getChannelAccess()
 
 std::string ServerContextImpl::getChannelProviderName()
 {
-	return _channelProviderName;
+	return _channelProviderNames;
 }
 
 void ServerContextImpl::setChannelProviderName(std::string channelProviderName)
 {
     if (_state != NOT_INITIALIZED)
         throw std::logic_error("must be called before initialize");
-    _channelProviderName = channelProviderName;
+    _channelProviderNames = channelProviderName;
 }
 
-ChannelProvider::shared_pointer ServerContextImpl::getChannelProvider()
+std::vector<ChannelProvider::shared_pointer> ServerContextImpl::getChannelProviders()
 {
-	return _channelProvider;
+	return _channelProviders;
 }
 
 Timer::shared_pointer ServerContextImpl::getTimer()

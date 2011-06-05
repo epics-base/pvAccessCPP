@@ -269,10 +269,10 @@ public:
 	void setChannelProviderName(std::string providerName);
 
 	/**
-	 * Get channel provider.
-	 * @return channel provider.
+	 * Get channel providers.
+	 * @return channel providers.
 	 */
-	ChannelProvider::shared_pointer getChannelProvider();
+	std::vector<ChannelProvider::shared_pointer> getChannelProviders();
 
 private:
     /**
@@ -371,12 +371,12 @@ private:
 	/**
 	 * Channel provider name.
 	 */
-	std::string _channelProviderName;
+	std::string _channelProviderNames;
 
 	/**
 	 * Channel provider.
 	 */
-	ChannelProvider::shared_pointer _channelProvider;
+	std::vector<ChannelProvider::shared_pointer> _channelProviders;
 
 	/**
 	 * Run mutex.

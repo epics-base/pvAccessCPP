@@ -137,7 +137,7 @@ void ServerIntrospectionSearchHandler::handleResponse(osiSockAddr* responseFrom,
 /****************************************************************************************/
 
 ServerSearchHandler::ServerSearchHandler(ServerContextImpl::shared_pointer const & context) :
-        AbstractServerResponseHandler(context, "Search request"), _provider(context->getChannelProvider())
+        AbstractServerResponseHandler(context, "Search request"), _providers(context->getChannelProviders())
 {
 }
 
@@ -166,28 +166,37 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 		// no name check here...
 
 		// TODO object pool!!!
-		ServerChannelFindRequesterImpl* pr = new ServerChannelFindRequesterImpl(_context);
-		pr->set(searchSequenceId, cid, responseFrom, responseRequired);
+		int providerCount = _providers.size();
+		ServerChannelFindRequesterImpl* pr = new ServerChannelFindRequesterImpl(_context, providerCount);
+		pr->set(name, searchSequenceId, cid, responseFrom, responseRequired);
 		ChannelFindRequester::shared_pointer spr(pr);
 		
-		_provider->channelFind(name, spr);
+        for (int i = 0; i < providerCount; i++)		
+		  _providers[i]->channelFind(name, spr);
 	}
 }
 
-ServerChannelFindRequesterImpl::ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context) :
+ServerChannelFindRequesterImpl::ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context,
+                                                               int32 expectedResponseCount) :
 												_sendTo(NULL),
-												_context(context)
+												_wasFound(false),
+												_context(context),
+												_expectedResponseCount(expectedResponseCount),
+												_responseCount(0)
 												{}
 
 void ServerChannelFindRequesterImpl::clear()
 {
 	Lock guard(_mutex);
 	_sendTo = NULL;
+	_wasFound = false;
+	_responseCount = 0;
 }
 
-ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(int32 searchSequenceId, int32 cid, osiSockAddr* sendTo, bool responseRequired)
+ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(String name, int32 searchSequenceId, int32 cid, osiSockAddr* sendTo, bool responseRequired)
 {
 	Lock guard(_mutex);
+	_name = name;
 	_searchSequenceId = searchSequenceId;
 	_cid = cid;
 	_sendTo = sendTo;
@@ -195,12 +204,36 @@ ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(int32 search
 	return this;
 }
 
+std::map<String, std::tr1::weak_ptr<ChannelProvider> > ServerSearchHandler::s_channelNameToProvider;
+
 void ServerChannelFindRequesterImpl::channelFindResult(const Status& status, ChannelFind::shared_pointer const & channelFind, bool wasFound)
 {
 	// TODO status
 	Lock guard(_mutex);
-	if (wasFound || _responseRequired)
+	
+	_responseCount++;
+	if (_responseCount > _expectedResponseCount)
 	{
+	   if ((_responseCount+1) == _expectedResponseCount)
+	   {
+    	   errlogSevPrintf(errlogMinor,"[ServerChannelFindRequesterImpl::channelFindResult] More responses received than expected fpr channel '%s'!", _name.c_str());
+	   }
+	   return;
+	}
+	
+	if (wasFound && _wasFound)
+	{
+	   errlogSevPrintf(errlogMinor,"[ServerChannelFindRequesterImpl::channelFindResult] Channel '%s' is hosted by different channel providers!", _name.c_str());
+	   return;
+	}
+	
+	if (wasFound || (_responseRequired && (_responseCount == _expectedResponseCount)))
+	{
+	   if (wasFound && _expectedResponseCount > 1)
+	   {
+        ServerSearchHandler::s_channelNameToProvider[_name] = channelFind->getChannelProvider();
+	   }
+	   
 		_wasFound = wasFound;
 		TransportSender::shared_pointer thisSender = shared_from_this();
 		_context->getBroadcastTransport()->enqueueSendRequest(thisSender);
@@ -271,7 +304,14 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 		return;
 	}
 
-	ServerChannelRequesterImpl::create(_provider, transport, channelName, cid);
+    // TODO !!!
+	//ServerChannelRequesterImpl::create(_providers.at(0), transport, channelName, cid);
+	
+	
+	if (_providers.size() == 1)
+    	ServerChannelRequesterImpl::create(_providers.at(0), transport, channelName, cid);
+	else
+    	ServerChannelRequesterImpl::create(ServerSearchHandler::s_channelNameToProvider[channelName].lock(), transport, channelName, cid);     // TODO !!!!
 }
 
 void ServerCreateChannelHandler::disconnect(Transport::shared_pointer const & transport)

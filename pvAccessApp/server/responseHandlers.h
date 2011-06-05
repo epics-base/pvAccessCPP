@@ -151,6 +151,9 @@ namespace epics {
         class ServerSearchHandler : public AbstractServerResponseHandler
         {
         public:
+            // TODO
+            static std::map<String, std::tr1::weak_ptr<ChannelProvider> > s_channelNameToProvider;
+            
         	ServerSearchHandler(ServerContextImpl::shared_pointer const & context);
         	virtual ~ServerSearchHandler();
 
@@ -159,7 +162,7 @@ namespace epics {
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
 
         private:
-        	ChannelProvider::shared_pointer _provider;
+        	std::vector<ChannelProvider::shared_pointer> _providers;
         };
 
 
@@ -169,21 +172,24 @@ namespace epics {
             public std::tr1::enable_shared_from_this<ServerChannelFindRequesterImpl>
         {
         public:
-        	ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context);
+        	ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context, int32 expectedResponseCount);
         	void clear();
-        	ServerChannelFindRequesterImpl* set(int32 searchSequenceId, int32 cid, osiSockAddr* sendTo, boolean responseRequired);
+        	ServerChannelFindRequesterImpl* set(String _name, int32 searchSequenceId, int32 cid, osiSockAddr* sendTo, boolean responseRequired);
         	void channelFindResult(const epics::pvData::Status& status, ChannelFind::shared_pointer const & channelFind, boolean wasFound);
         	void lock();
         	void unlock();
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
+            String _name;
         	int32 _searchSequenceId;
         	int32 _cid;
         	osiSockAddr* _sendTo;
-        	boolean _responseRequired;
-        	boolean _wasFound;
+        	bool _responseRequired;
+        	bool _wasFound;
         	ServerContextImpl::shared_pointer _context;
         	epics::pvData::Mutex _mutex;
+        	int32 _expectedResponseCount;
+        	int32 _responseCount;
         };
 
         /****************************************************************************************/
@@ -195,7 +201,7 @@ namespace epics {
         public:
         	ServerCreateChannelHandler(ServerContextImpl::shared_pointer const & context) :
         		AbstractServerResponseHandler(context, "Create channel request") {
-        		_provider = context->getChannelProvider();
+        		_providers = context->getChannelProviders();
         	}
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
@@ -204,7 +210,7 @@ namespace epics {
 
         private:
         	void disconnect(Transport::shared_pointer const & transport);
-			ChannelProvider::shared_pointer _provider;
+			std::vector<ChannelProvider::shared_pointer> _providers;
         };
 
         class ServerChannelRequesterImpl :
