@@ -2,7 +2,7 @@
  * namedLockPattern.cpp
  */
 
-#include "referenceCountingLock.h"
+#include <pv/referenceCountingLock.h>
 
 namespace epics { namespace pvAccess {
 

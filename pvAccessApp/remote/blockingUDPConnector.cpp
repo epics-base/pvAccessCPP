@@ -6,8 +6,8 @@
  */
 
 /* pvAccess */
-#include "blockingUDP.h"
-#include "remote.h"
+#include <pv/blockingUDP.h>
+#include <pv/remote.h>
 
 /* EPICSv3 */
 #include <errlog.h>

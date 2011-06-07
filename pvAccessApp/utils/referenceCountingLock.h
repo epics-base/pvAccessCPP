@@ -5,8 +5,8 @@
 #ifndef REFERENCECOUNTINGLOCK_H
 #define REFERENCECOUNTINGLOCK_H
 
-#include <lock.h>
-#include <pvType.h>
+#include <pv/lock.h>
+#include <pv/pvType.h>
 
 namespace epics { namespace pvAccess {
 

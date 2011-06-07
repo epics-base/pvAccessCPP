@@ -5,7 +5,7 @@
  *      Author: Gasper Jansa
  */
 
-#include "introspectionRegistry.h"
+#include <pv/introspectionRegistry.h>
 
 #include <epicsAssert.h>
 #include <epicsExit.h>
@@ -13,8 +13,8 @@
 #include <string>
 #include <sstream>
 #include <vector>
-#include <CDRMonitor.h>
-#include <convert.h>
+#include <pv/CDRMonitor.h>
+#include <pv/convert.h>
 
 using std::tr1::static_pointer_cast;
 

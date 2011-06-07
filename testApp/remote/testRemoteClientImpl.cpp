@@ -5,10 +5,10 @@
 
 #include <iostream>
 #include <sstream>
-#include <CDRMonitor.h>
+#include <pv/CDRMonitor.h>
 #include <epicsExit.h>
-#include <clientContextImpl.h>
-#include <clientFactory.h>
+#include <pv/clientContextImpl.h>
+#include <pv/clientFactory.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;

@@ -5,11 +5,11 @@
  *      Author: Miha Vitorovic
  */
 
-#include "blockingTCP.h"
-#include "remote.h"
-#include "logger.h"
-#include "configuration.h"
-#include "serverContext.h"
+#include <pv/blockingTCP.h>
+#include <pv/remote.h>
+#include <pv/logger.h>
+#include <pv/configuration.h>
+#include <pv/serverContext.h>
 
 #include <iostream>
 

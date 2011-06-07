@@ -2,8 +2,8 @@
  * serverContext.cpp
  */
 
-#include "serverContext.h"
-#include "responseHandlers.h"
+#include <pv/serverContext.h>
+#include <pv/responseHandlers.h>
 
 using std::tr1::dynamic_pointer_cast;
 using std::tr1::static_pointer_cast;

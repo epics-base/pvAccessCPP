@@ -6,9 +6,9 @@
  */
 #include <string>
 #include <sstream>
-#include <pvData.h>
-#include <lock.h>
-#include <pvAccess.h>
+#include <pv/pvData.h>
+#include <pv/lock.h>
+#include <pv/pvAccess.h>
 
 using namespace epics::pvData;
 

@@ -11,12 +11,12 @@
 
 #include <osiSock.h>
 
-#include <lock.h>
-#include <pvType.h>
-#include <epicsException.h>
-#include <remote.h>
-#include "inetAddressUtil.h"
-#include <sharedPtr.h>
+#include <pv/lock.h>
+#include <pv/pvType.h>
+#include <pv/epicsException.h>
+#include <pv/remote.h>
+#include <pv/inetAddressUtil.h>
+#include <pv/sharedPtr.h>
 
 namespace epics { namespace pvAccess {
 

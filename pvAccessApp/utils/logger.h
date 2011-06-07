@@ -8,7 +8,7 @@
 #ifndef LOGGER_H_
 #define LOGGER_H_
 
-#include <pvType.h>
+#include <pv/pvType.h>
 
 namespace epics {
     namespace pvAccess {

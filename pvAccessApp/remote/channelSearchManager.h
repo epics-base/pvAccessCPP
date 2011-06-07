@@ -5,15 +5,15 @@
 #ifndef CHANNELSEARCHMANAGER_H
 #define CHANNELSEARCHMANAGER_H
 
-#include "remote.h"
-#include "pvAccess.h"
-#include "caConstants.h"
-#include "blockingUDP.h"
+#include <pv/remote.h>
+#include <pv/pvAccess.h>
+#include <pv/caConstants.h>
+#include <pv/blockingUDP.h>
 
-#include <timeStamp.h>
+#include <pv/timeStamp.h>
 #include <osiSock.h>
-#include <lock.h>
-#include <timer.h>
+#include <pv/lock.h>
+#include <pv/timer.h>
 
 #include <iostream>
 #include <float.h>

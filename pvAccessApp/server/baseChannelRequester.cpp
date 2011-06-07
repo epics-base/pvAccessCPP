@@ -2,7 +2,7 @@
  * baseChannelRequester.cpp
  */
 
-#include "baseChannelRequester.h"
+#include <pv/baseChannelRequester.h>
 
 using namespace epics::pvData;
 

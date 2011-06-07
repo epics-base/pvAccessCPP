@@ -9,19 +9,19 @@
 #define BLOCKINGTCP_H_
 
 /* pvAccess */
-#include "caConstants.h"
-#include "remote.h"
-#include "transportRegistry.h"
-#include "introspectionRegistry.h"
-#include "namedLockPattern.h"
-#include "inetAddressUtil.h"
+#include <pv/caConstants.h>
+#include <pv/remote.h>
+#include <pv/transportRegistry.h>
+#include <pv/introspectionRegistry.h>
+#include <pv/namedLockPattern.h>
+#include <pv/inetAddressUtil.h>
 
 /* pvData */
-#include <byteBuffer.h>
-#include <pvType.h>
-#include <lock.h>
-#include <timer.h>
-#include <event.h>
+#include <pv/byteBuffer.h>
+#include <pv/pvType.h>
+#include <pv/lock.h>
+#include <pv/timer.h>
+#include <pv/event.h>
 
 /* EPICSv3 */
 #include <osdSock.h>

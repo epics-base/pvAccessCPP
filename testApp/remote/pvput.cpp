@@ -1,5 +1,5 @@
 #include <iostream>
-#include <clientFactory.h>
+#include <pv/clientFactory.h>
 
 #include <stdio.h>
 #include <epicsStdlib.h>
@@ -9,7 +9,7 @@
 #include <vector>
 #include <string>
 
-#include <convert.h>
+#include <pv/convert.h>
 
 using namespace std;
 using namespace std::tr1;

@@ -8,10 +8,10 @@
 #include <map>
 #include <iostream>
 
-#include <lock.h>
-#include <pvType.h>
+#include <pv/lock.h>
+#include <pv/pvType.h>
 
-#include "referenceCountingLock.h"
+#include <pv/referenceCountingLock.h>
 
 // TODO implement using smart pointers
 

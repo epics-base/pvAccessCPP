@@ -3,10 +3,10 @@
  *
  */
 
-#include "namedLockPattern.h"
-#include "inetAddressUtil.h"
-#include "status.h"
-#include "CDRMonitor.h"
+#include <pv/namedLockPattern.h>
+#include <pv/inetAddressUtil.h>
+#include <pv/status.h>
+#include <pv/CDRMonitor.h>
 
 
 #include <epicsAssert.h>

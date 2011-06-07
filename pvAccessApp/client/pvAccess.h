@@ -1,13 +1,13 @@
 /* pvAccess.h */
 #ifndef PVACCESS_H
 #define PVACCESS_H
-#include <pvData.h>
-#include <status.h>
-#include <destroyable.h>
-#include <monitor.h>
-#include <version.h>
+#include <pv/pvData.h>
+#include <pv/status.h>
+#include <pv/destroyable.h>
+#include <pv/monitor.h>
+#include <pv/version.h>
 #include <vector>
-#include <bitSet.h>
+#include <pv/bitSet.h>
 
 namespace epics { namespace pvAccess { 
 

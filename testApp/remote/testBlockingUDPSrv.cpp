@@ -5,10 +5,10 @@
  *      Author: Miha Vitorovic
  */
 
-#include "remote.h"
-#include "blockingUDP.h"
-#include "logger.h"
-#include "hexDump.h"
+#include <pv/remote.h>
+#include <pv/blockingUDP.h>
+#include <pv/logger.h>
+#include <pv/hexDump.h>
 
 #include <osiSock.h>
 

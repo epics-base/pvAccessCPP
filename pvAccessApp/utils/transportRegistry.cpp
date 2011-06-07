@@ -2,7 +2,7 @@
  * transportRegistry.cpp
  */
 
-#include "transportRegistry.h"
+#include <pv/transportRegistry.h>
 
 using namespace epics::pvData;
 using namespace std;

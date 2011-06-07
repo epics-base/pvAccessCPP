@@ -9,15 +9,15 @@
 #define BLOCKINGUDP_H_
 
 /* pvAccess */
-#include "remote.h"
-#include "caConstants.h"
-#include "inetAddressUtil.h"
+#include <pv/remote.h>
+#include <pv/caConstants.h>
+#include <pv/inetAddressUtil.h>
 
 /* pvData */
-#include <noDefaultMethods.h>
-#include <byteBuffer.h>
-#include <lock.h>
-#include <event.h>
+#include <pv/noDefaultMethods.h>
+#include <pv/byteBuffer.h>
+#include <pv/lock.h>
+#include <pv/event.h>
 
 /* EPICSv3 */
 #include <osdSock.h>

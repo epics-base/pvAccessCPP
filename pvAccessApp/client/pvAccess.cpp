@@ -4,7 +4,7 @@
  * EPICS pvDataCPP is distributed subject to a Software License Agreement found
  * in file LICENSE that is included with this distribution.
  */
-#include <pvAccess.h>
+#include <pv/pvAccess.h>
 
 namespace epics { namespace pvAccess {
 

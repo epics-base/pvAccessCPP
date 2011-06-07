@@ -2,7 +2,7 @@
  * serverChannelImpl.cpp
  */
 
-#include "serverChannelImpl.h"
+#include <pv/serverChannelImpl.h>
 
 using namespace epics::pvData;
 

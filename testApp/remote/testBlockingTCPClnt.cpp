@@ -5,15 +5,15 @@
  *      Author: Miha Vitorovic
  */
 
-#include "remote.h"
-#include "blockingTCP.h"
-#include "logger.h"
-#include "inetAddressUtil.h"
-#include "caConstants.h"
+#include <pv/remote.h>
+#include <pv/blockingTCP.h>
+#include <pv/logger.h>
+#include <pv/inetAddressUtil.h>
+#include <pv/caConstants.h>
 
-#include <timer.h>
-#include <epicsException.h>
-#include <pvType.h>
+#include <pv/timer.h>
+#include <pv/epicsException.h>
+#include <pv/pvType.h>
 
 #include <osiSock.h>
 #include <errlog.h>

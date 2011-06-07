@@ -1,7 +1,7 @@
 /* clientFactory.cpp */
 /* Author:  Matej Sekoranja Date: 2011.2.1 */
 
-#include <clientFactory.h>
+#include <pv/clientFactory.h>
 #include <errlog.h>
 
 using namespace epics::pvData;

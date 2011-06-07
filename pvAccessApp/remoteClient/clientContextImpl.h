@@ -8,10 +8,10 @@
 #ifndef CLIENTCONTEXTIMPL_H_
 #define CLIENTCONTEXTIMPL_H_
 
-#include <pvAccess.h>
-#include <remote.h>
-#include <sharedPtr.h>
-#include <channelSearchManager.h>
+#include <pv/pvAccess.h>
+#include <pv/remote.h>
+#include <pv/sharedPtr.h>
+#include <pv/channelSearchManager.h>
 
 class ChannelSearchManager;
 

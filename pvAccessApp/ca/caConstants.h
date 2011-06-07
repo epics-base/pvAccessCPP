@@ -8,7 +8,7 @@
 #ifndef CONSTANTS_H_
 #define CONSTANTS_H_
 
-#include <pvType.h>
+#include <pv/pvType.h>
 
 using namespace epics::pvData;
 

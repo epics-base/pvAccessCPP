@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
-#include <pvAccess.h>
+#include <pv/pvAccess.h>
 
 
 #include <epicsAssert.h>

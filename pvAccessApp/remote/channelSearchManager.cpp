@@ -2,7 +2,7 @@
  * channelSearchManager.cpp
  */
 
-#include "channelSearchManager.h"
+#include <pv/channelSearchManager.h>
 
 using namespace std;
 

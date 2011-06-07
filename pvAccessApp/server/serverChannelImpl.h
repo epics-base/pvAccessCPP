@@ -5,10 +5,10 @@
 #ifndef SERVERCHANNEL_H_
 #define SERVERCHANNEL_H_
 
-#include <remote.h>
-#include <clientContextImpl.h>
+#include <pv/remote.h>
+#include <pv/clientContextImpl.h>
 
-#include <destroyable.h>
+#include <pv/destroyable.h>
 
 namespace epics {
 namespace pvAccess {

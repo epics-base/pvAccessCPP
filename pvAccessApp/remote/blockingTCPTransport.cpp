@@ -5,16 +5,16 @@
  *      Author: Miha Vitorovic
  */
 
-#include "blockingTCP.h"
-#include <inetAddressUtil.h>
-#include <caConstants.h>
-#include <CDRMonitor.h>
+#include <pv/blockingTCP.h>
+#include <pv/inetAddressUtil.h>
+#include <pv/caConstants.h>
+#include <pv/CDRMonitor.h>
 
 /* pvData */
-#include <lock.h>
-#include <byteBuffer.h>
-#include <epicsException.h>
-#include <noDefaultMethods.h>
+#include <pv/lock.h>
+#include <pv/byteBuffer.h>
+#include <pv/epicsException.h>
+#include <pv/noDefaultMethods.h>
 
 /* EPICSv3 */
 #include <osdSock.h>

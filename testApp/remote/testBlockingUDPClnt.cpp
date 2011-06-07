@@ -5,12 +5,12 @@
  *      Author: Miha Vitorovic
  */
 
-#include <remote.h>
-#include <blockingUDP.h>
-#include <logger.h>
-#include <inetAddressUtil.h>
+#include <pv/remote.h>
+#include <pv/blockingUDP.h>
+#include <pv/logger.h>
+#include <pv/inetAddressUtil.h>
 
-//#include <CDRMonitor.h>
+//#include <pv/CDRMonitor.h>
 
 #include <osiSock.h>
 

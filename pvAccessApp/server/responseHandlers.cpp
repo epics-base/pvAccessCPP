@@ -2,11 +2,11 @@
  * responseHandlers.cpp
  */
 
-#include "responseHandlers.h"
-#include <remote.h>
-#include <hexDump.h>
+#include <pv/responseHandlers.h>
+#include <pv/remote.h>
+#include <pv/hexDump.h>
 
-#include <byteBuffer.h>
+#include <pv/byteBuffer.h>
 
 #include <osiSock.h>
 #include <errlog.h>

@@ -2,8 +2,8 @@
  * introspectionRegistry.cpp
  */
 
-#include "introspectionRegistry.h"
-#include <convert.h>
+#include <pv/introspectionRegistry.h>
+#include <pv/convert.h>
 
 using std::tr1::static_pointer_cast;
 

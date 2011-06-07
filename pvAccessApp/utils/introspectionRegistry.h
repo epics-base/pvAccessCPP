@@ -5,14 +5,14 @@
 #ifndef INTROSPECTIONREGISTRY_H
 #define INTROSPECTIONREGISTRY_H
 
-#include <lock.h>
-#include <pvIntrospect.h>
-#include <pvData.h>
-#include <byteBuffer.h>
-#include <serialize.h>
-#include <serializeHelper.h>
-#include <status.h>
-#include <standardField.h>
+#include <pv/lock.h>
+#include <pv/pvIntrospect.h>
+#include <pv/pvData.h>
+#include <pv/byteBuffer.h>
+#include <pv/serialize.h>
+#include <pv/serializeHelper.h>
+#include <pv/status.h>
+#include <pv/standardField.h>
 
 #include <epicsMutex.h>
 

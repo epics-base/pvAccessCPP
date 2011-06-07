@@ -5,11 +5,11 @@
  *      Author: user
  */
 
-#include <inetAddressUtil.h>
-#include <logger.h>
+#include <pv/inetAddressUtil.h>
+#include <pv/logger.h>
 
-#include <byteBuffer.h>
-#include <pvType.h>
+#include <pv/byteBuffer.h>
+#include <pv/pvType.h>
 
 #include <epicsAssert.h>
 #include <osiSock.h>

@@ -2,14 +2,14 @@
  * beaconEmitter.cpp
  */
 
-#include "beaconEmitter.h"
+#include <pv/beaconEmitter.h>
 
-#include <introspectionRegistry.h>
+#include <pv/introspectionRegistry.h>
 
 #include <errlog.h>
 #include <algorithm>
 
-#include <serverContext.h>
+#include <pv/serverContext.h>
 
 using namespace std;
 

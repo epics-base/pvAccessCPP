@@ -5,7 +5,7 @@
  *      Author: Miha Vitorovic
  */
 
-#include "hexDump.h"
+#include <pv/hexDump.h>
 
 #include <iostream>
 #include <sstream>

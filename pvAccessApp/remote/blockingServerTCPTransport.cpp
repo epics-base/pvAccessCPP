@@ -6,12 +6,12 @@
  */
 
 /* pvAccess */
-#include "blockingTCP.h"
-#include "remote.h"
+#include <pv/blockingTCP.h>
+#include <pv/remote.h>
 
 /* pvData */
-#include <lock.h>
-#include <byteBuffer.h>
+#include <pv/lock.h>
+#include <pv/byteBuffer.h>
 
 /* EPICSv3 */
 #include <errlog.h>

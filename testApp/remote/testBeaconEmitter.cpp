@@ -2,10 +2,10 @@
  * testBeaconEmitter.cpp
  */
 
-#include "remote.h"
-#include "blockingUDP.h"
-#include "beaconEmitter.h"
-#include "inetAddressUtil.h"
+#include <pv/remote.h>
+#include <pv/blockingUDP.h>
+#include <pv/beaconEmitter.h>
+#include <pv/inetAddressUtil.h>
 
 #include <osiSock.h>
 

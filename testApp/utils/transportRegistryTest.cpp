@@ -3,9 +3,9 @@
  *
  */
 
-#include "transportRegistry.h"
-#include "introspectionRegistry.h"
-#include "CDRMonitor.h"
+#include <pv/transportRegistry.h>
+#include <pv/introspectionRegistry.h>
+#include <pv/CDRMonitor.h>
 
 #include <epicsAssert.h>
 #include <epicsExit.h>

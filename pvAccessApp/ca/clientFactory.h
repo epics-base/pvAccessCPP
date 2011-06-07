@@ -2,8 +2,8 @@
 #ifndef CLIENTFACTORY_H
 #define CLIENTFACTORY_H
 
-#include <clientContextImpl.h>
-#include <lock.h>
+#include <pv/clientContextImpl.h>
+#include <pv/lock.h>
 
 namespace epics { namespace pvAccess { 
 

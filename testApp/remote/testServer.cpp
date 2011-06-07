@@ -2,11 +2,11 @@
  * testServer.cpp
  */
 
-#include "serverContext.h"
-#include "clientContextImpl.h"
-#include <CDRMonitor.h>
+#include <pv/serverContext.h>
+#include <pv/clientContextImpl.h>
+#include <pv/CDRMonitor.h>
 #include <epicsExit.h>
-#include <standardPVField.h>
+#include <pv/standardPVField.h>
 
 using namespace epics::pvAccess;
 using namespace epics::pvData;

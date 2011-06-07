@@ -3,11 +3,11 @@
  */
 
 /* pvAccess */
-#include <blockingTCP.h>
-#include <remote.h>
+#include <pv/blockingTCP.h>
+#include <pv/remote.h>
 
 /* pvData */
-#include <epicsException.h>
+#include <pv/epicsException.h>
 
 /* EPICSv3 */
 #include <errlog.h>

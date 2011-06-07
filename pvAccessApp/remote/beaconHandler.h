@@ -5,12 +5,12 @@
 #ifndef BEACONHANDLER_H
 #define BEACONHANDLER_H
 
-#include "remote.h"
-#include <pvAccess.h>
+#include <pv/remote.h>
+#include <pv/pvAccess.h>
 
-#include <timeStamp.h>
+#include <pv/timeStamp.h>
 #include <osiSock.h>
-#include <lock.h>
+#include <pv/lock.h>
 
 namespace epics { namespace pvAccess {
 

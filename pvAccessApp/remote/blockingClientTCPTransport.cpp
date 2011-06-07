@@ -6,12 +6,12 @@
  */
 
 /* pvAccess */
-#include "blockingTCP.h"
+#include <pv/blockingTCP.h>
 
-#include "introspectionRegistry.h"
+#include <pv/introspectionRegistry.h>
 
 /* pvData */
-#include <lock.h>
+#include <pv/lock.h>
 
 /* EPICSv3 */
 #include <errlog.h>

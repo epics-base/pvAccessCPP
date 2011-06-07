@@ -8,8 +8,8 @@
 #ifndef VERSION_H_
 #define VERSION_H_
 
-#include <pvType.h>
-#include <noDefaultMethods.h>
+#include <pv/pvType.h>
+#include <pv/noDefaultMethods.h>
 
 namespace epics {
     namespace pvAccess {

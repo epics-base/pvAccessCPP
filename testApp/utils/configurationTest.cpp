@@ -3,8 +3,8 @@
  *
  */
 
-#include "configuration.h"
-#include "CDRMonitor.h"
+#include <pv/configuration.h>
+#include <pv/CDRMonitor.h>
 
 #include <epicsAssert.h>
 #include <epicsExit.h>

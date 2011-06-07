@@ -7,7 +7,7 @@
 
 #include <sstream>
 
-#include "version.h"
+#include <pv/version.h>
 
 using std::stringstream;
 using epics::pvData::String;

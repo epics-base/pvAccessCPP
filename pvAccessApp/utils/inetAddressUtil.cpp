@@ -5,16 +5,16 @@
  *      Author: Miha Vitorovic
  */
 /* pvAccess */
-#include "inetAddressUtil.h"
+#include <pv/inetAddressUtil.h>
 
 /* pvData */
-#include <byteBuffer.h>
+#include <pv/byteBuffer.h>
+#include <pv/epicsException.h>
 
 /* EPICSv3 */
 #include <osiSock.h>
 #include <ellLib.h>
 #include <epicsAssert.h>
-#include <epicsException.h>
 #include <errlog.h>
 
 /* standard */

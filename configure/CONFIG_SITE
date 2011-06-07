@@ -32,3 +32,6 @@ ifeq ($(EPICS_HOST_ARCH),linux-x86)
     USR_LDFLAGS += -lpthread
 endif
 
+INSTALL_INCLUDE = $(INSTALL_LOCATION)/include/pv
+USR_INCLUDES += -I $(INSTALL_LOCATION)/include
+

@@ -2,8 +2,8 @@
  * testServerContext.cpp
  */
 
-#include "serverContext.h"
-#include <CDRMonitor.h>
+#include <pv/serverContext.h>
+#include <pv/CDRMonitor.h>
 #include <epicsExit.h>
 
 using namespace epics::pvAccess;

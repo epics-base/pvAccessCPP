@@ -5,9 +5,9 @@
  *      Author: Miha Vitorovic
  */
 
-#include "blockingTCP.h"
-#include "remote.h"
-#include "namedLockPattern.h"
+#include <pv/blockingTCP.h>
+#include <pv/remote.h>
+#include <pv/namedLockPattern.h>
 
 #include <epicsThread.h>
 #include <osiSock.h>

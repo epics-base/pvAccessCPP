@@ -5,11 +5,11 @@
  *      Author: Miha Vitorovic
  */
 
-#include "logger.h"
+#include <pv/logger.h>
 
-#include <noDefaultMethods.h>
-#include <lock.h>
-#include <pvType.h>
+#include <pv/noDefaultMethods.h>
+#include <pv/lock.h>
+#include <pv/pvType.h>
 
 #include <epicsExit.h>
 #include <errlog.h>

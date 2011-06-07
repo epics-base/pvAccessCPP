@@ -5,11 +5,11 @@
 #ifndef BASECHANNELREQUESTER_H_
 #define BASECHANNELREQUESTER_H_
 
-#include "serverContext.h"
-#include "serverChannelImpl.h"
+#include <pv/serverContext.h>
+#include <pv/serverChannelImpl.h>
 
-#include <requester.h>
-#include <destroyable.h>
+#include <pv/requester.h>
+#include <pv/destroyable.h>
 
 namespace epics {
 namespace pvAccess {

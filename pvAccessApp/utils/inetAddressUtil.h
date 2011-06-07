@@ -20,8 +20,8 @@
  *
  */
 
-#include <pvType.h>
-#include <byteBuffer.h>
+#include <pv/pvType.h>
+#include <pv/byteBuffer.h>
 #include <osiSock.h>
 #include <vector>
 

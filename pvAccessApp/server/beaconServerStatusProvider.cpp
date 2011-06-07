@@ -2,8 +2,8 @@
  * beaconServerStatusProvider.cpp
  */
 
-#include "beaconServerStatusProvider.h"
-#include <serverContext.h>
+#include <pv/beaconServerStatusProvider.h>
+#include <pv/serverContext.h>
 
 using namespace epics::pvData;
 

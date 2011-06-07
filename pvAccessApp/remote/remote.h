@@ -8,17 +8,17 @@
 #ifndef REMOTE_H_
 #define REMOTE_H_
 
-#include <caConstants.h>
-#include <configuration.h>
-#include "introspectionRegistry.h"
+#include <pv/caConstants.h>
+#include <pv/configuration.h>
+#include <pv/introspectionRegistry.h>
 
-#include <serialize.h>
-#include <pvType.h>
-#include <byteBuffer.h>
-#include <timer.h>
-#include <pvData.h>
+#include <pv/serialize.h>
+#include <pv/pvType.h>
+#include <pv/byteBuffer.h>
+#include <pv/timer.h>
+#include <pv/pvData.h>
 
-#include <sharedPtr.h>
+#include <pv/sharedPtr.h>
 
 #include <osiSock.h>
 #include <osdSock.h>

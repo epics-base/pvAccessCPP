@@ -5,10 +5,10 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#include <pvType.h>
-#include <noDefaultMethods.h>
-#include <lock.h>
-#include <sharedPtr.h>
+#include <pv/pvType.h>
+#include <pv/noDefaultMethods.h>
+#include <pv/lock.h>
+#include <pv/sharedPtr.h>
 
 #include <envDefs.h>
 

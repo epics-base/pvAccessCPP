@@ -5,9 +5,9 @@
 #ifndef BEACONSERVERSTATUSPROVIDER_H
 #define BEACONSERVERSTATUSPROVIDER_H
 
-#include <pvData.h>
-//#include <serverContext.h>
-#include <sharedPtr.h>
+#include <pv/pvData.h>
+//#include <pv/serverContext.h>
+#include <pv/sharedPtr.h>
 
 namespace epics { namespace pvAccess {
 

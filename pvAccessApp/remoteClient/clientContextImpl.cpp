@@ -4,29 +4,29 @@
 /* Author:  Matej Sekoranja Date: 2011.1.1 */
 
 
-#include <pvAccess.h>
+#include <pv/pvAccess.h>
 #include <iostream>
 #include <sstream>
-#include <CDRMonitor.h>
-#include <lock.h>
-#include <standardPVField.h>
+#include <pv/CDRMonitor.h>
+#include <pv/lock.h>
+#include <pv/standardPVField.h>
 #include <memory>
 
 #include <stdexcept>
-#include <caConstants.h>
-#include <timer.h>
-#include <blockingUDP.h>
-#include <blockingTCP.h>
-#include <namedLockPattern.h>
-#include <inetAddressUtil.h>
-#include <hexDump.h>
-#include <remote.h>
-#include <channelSearchManager.h>
-#include <clientContextImpl.h>
-#include <configuration.h>
-#include <beaconHandler.h>
+#include <pv/caConstants.h>
+#include <pv/timer.h>
+#include <pv/blockingUDP.h>
+#include <pv/blockingTCP.h>
+#include <pv/namedLockPattern.h>
+#include <pv/inetAddressUtil.h>
+#include <pv/hexDump.h>
+#include <pv/remote.h>
+#include <pv/channelSearchManager.h>
+#include <pv/clientContextImpl.h>
+#include <pv/configuration.h>
+#include <pv/beaconHandler.h>
 #include <errlog.h>
-#include <bitSetUtil.h>
+#include <pv/bitSetUtil.h>
 
 using std::tr1::dynamic_pointer_cast;
 using std::tr1::static_pointer_cast;

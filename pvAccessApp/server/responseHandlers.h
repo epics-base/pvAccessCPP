@@ -5,10 +5,10 @@
 #ifndef RESPONSEHANDLERS_H_
 #define RESPONSEHANDLERS_H_
 
-#include "serverContext.h"
-#include <remote.h>
-#include "serverChannelImpl.h"
-#include "baseChannelRequester.h"
+#include <pv/serverContext.h>
+#include <pv/remote.h>
+#include <pv/serverChannelImpl.h>
+#include <pv/baseChannelRequester.h>
 
 namespace epics {
     namespace pvAccess {

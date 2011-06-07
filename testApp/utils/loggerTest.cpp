@@ -5,7 +5,7 @@
  *      Author: Miha Vitorovic
  */
 
-#include <logger.h>
+#include <pv/logger.h>
 
 #include <errlog.h>
 #include <epicsExit.h>

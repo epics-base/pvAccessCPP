@@ -1,9 +1,9 @@
 /* testChannelSearcManager.cpp */
 
 #include <epicsExit.h>
-#include <channelSearchManager.h>
+#include <pv/channelSearchManager.h>
 #include <sstream>
-#include <CDRMonitor.h>
+#include <pv/CDRMonitor.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;

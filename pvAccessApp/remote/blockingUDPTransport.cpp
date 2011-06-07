@@ -5,15 +5,15 @@
  */
 
 /* pvAccess */
-#include "blockingUDP.h"
+#include <pv/blockingUDP.h>
 
-#include <caConstants.h>
-#include <inetAddressUtil.h>
+#include <pv/caConstants.h>
+#include <pv/inetAddressUtil.h>
 
 /* pvData */
-#include <byteBuffer.h>
-#include <lock.h>
-#include <CDRMonitor.h>
+#include <pv/byteBuffer.h>
+#include <pv/lock.h>
+#include <pv/CDRMonitor.h>
 
 /* EPICSv3 */
 #include <osdSock.h>

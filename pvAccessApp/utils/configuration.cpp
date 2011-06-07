@@ -2,8 +2,8 @@
  * configuration.cpp
  */
 
-#include "configuration.h"
-#include <epicsException.h>
+#include <pv/configuration.h>
+#include <pv/epicsException.h>
 
 namespace epics { namespace pvAccess {
 

@@ -5,15 +5,15 @@
 #ifndef BEACONEMITTER_H
 #define BEACONEMITTER_H
 
-#include <timer.h>
-#include <timeStamp.h>
-#include <remote.h>
+#include <pv/timer.h>
+#include <pv/timeStamp.h>
+#include <pv/remote.h>
 
 #include <osiSock.h>
 
-#include <beaconServerStatusProvider.h>
-//#include <serverContext.h>
-#include <sharedPtr.h>
+#include <pv/beaconServerStatusProvider.h>
+//#include <pv/serverContext.h>
+#include <pv/sharedPtr.h>
 
 namespace epics { namespace pvAccess {
 

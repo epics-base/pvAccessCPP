@@ -1,10 +1,10 @@
 /*ChannelAccessFactory.cpp*/
 
-#include <lock.h>
-#include <noDefaultMethods.h>
-#include <pvAccess.h>
-#include <pvData.h>
-#include <factory.h>
+#include <pv/lock.h>
+#include <pv/noDefaultMethods.h>
+#include <pv/pvAccess.h>
+#include <pv/pvData.h>
+#include <pv/factory.h>
 #include <map>
 #include <vector>
 
