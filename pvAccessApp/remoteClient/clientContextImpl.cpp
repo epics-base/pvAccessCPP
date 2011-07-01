@@ -1984,7 +1984,7 @@ namespace epics {
 
             PVStructure::shared_pointer m_pvRequest;
             
-            auto_ptr<MonitorStrategy> m_monitorStrategy;
+            std::tr1::shared_ptr<MonitorStrategy> m_monitorStrategy;
 
             ChannelMonitorImpl(ChannelImpl::shared_pointer const & channel, MonitorRequester::shared_pointer const & monitorRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(monitorRequester)),
