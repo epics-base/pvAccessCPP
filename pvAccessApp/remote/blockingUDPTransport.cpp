@@ -52,6 +52,24 @@ namespace epics {
                     _threadId(0)
         {
             PVDATA_REFCOUNT_MONITOR_CONSTRUCT(blockingUDPTransport);
+            
+            /*
+            osiSockAddr tmpAddr;
+            osiSocklen_t saddr_length = sizeof (tmpAddr);
+            int status = ::getsockname(_channel, &tmpAddr.sa, &saddr_length);
+            if (status < 0)
+            {
+                char strBuffer[64];
+                epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
+                errlogSevPrintf(errlogMinor, "getsockname error: %s", strBuffer);
+            }
+            else
+            {
+                int localPort = ntohs(tmpAddr.ia.sin_port);
+            }
+            */
+            //errlogSevPrintf(errlogInfo, "UDP bind adrr port: %d", ntohs(_bindAddress.ia.sin_port));
+
         }
 
         BlockingUDPTransport::~BlockingUDPTransport() {
@@ -87,12 +105,16 @@ namespace epics {
                 if(_closed) return;
                 _closed = true;
     
+                // to get out of blocking receive
+                wakeupMessage();
+                
                 errlogSevPrintf(errlogInfo,
                     "UDP socket %s closed.",
                     inetAddressToString(_bindAddress).c_str());
     
                 epicsSocketDestroy(_channel);
             }
+            
             
             // wait for send thread to exit cleanly            
             if (waitForThreadToComplete)
@@ -264,6 +286,20 @@ namespace epics {
 
             return true;
         }
+        
+        
+        void BlockingUDPTransport::wakeupMessage()
+        {
+            osiSockAddr addr;
+            addr.ia.sin_family = AF_INET;
+            addr.ia.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+            addr.ia.sin_port = _bindAddress.ia.sin_port;
+        
+            // send a wakeup msg so the UDP recv thread will exit
+            sendto(_channel, static_cast<char*>(0),  
+                    0, 0, &addr.sa, sizeof(addr.sa ));
+        }
+
 
         bool BlockingUDPTransport::send(ByteBuffer* buffer) {
             if(!_sendAddresses) return false;

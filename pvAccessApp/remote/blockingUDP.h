@@ -210,6 +210,8 @@ namespace epics {
             std::auto_ptr<ResponseHandler> _responseHandler;
 
             virtual void processRead();
+            
+            void wakeupMessage();
                     
         private:
             static void threadRunner(void* param);
