@@ -211,8 +211,6 @@ namespace epics {
 
             virtual void processRead();
             
-            void wakeupMessage();
-                    
         private:
             static void threadRunner(void* param);
 

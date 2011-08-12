@@ -52,23 +52,19 @@ namespace epics {
                     _threadId(0)
         {
             PVDATA_REFCOUNT_MONITOR_CONSTRUCT(blockingUDPTransport);
-            
-            /*
-            osiSockAddr tmpAddr;
-            osiSocklen_t saddr_length = sizeof (tmpAddr);
-            int status = ::getsockname(_channel, &tmpAddr.sa, &saddr_length);
-            if (status < 0)
+
+            // set receive timeout so that we do not have problems at shutdown (recvfrom would block)
+            struct timeval timeout;
+            timeout.tv_sec = 1;
+            timeout.tv_usec = 0;
+
+            if (setsockopt (_channel, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
             {
-                char strBuffer[64];
-                epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                errlogSevPrintf(errlogMinor, "getsockname error: %s", strBuffer);
+                errlogSevPrintf(errlogMajor,
+                    "Failed to set SO_RCVTIMEO for UDP socket %s: %s.",
+                    inetAddressToString(_bindAddress).c_str(), strerror(errno));
             }
-            else
-            {
-                int localPort = ntohs(tmpAddr.ia.sin_port);
-            }
-            */
-            //errlogSevPrintf(errlogInfo, "UDP bind adrr port: %d", ntohs(_bindAddress.ia.sin_port));
+
 
         }
 
@@ -105,9 +101,6 @@ namespace epics {
                 if(_closed) return;
                 _closed = true;
     
-                // to get out of blocking receive
-                wakeupMessage();
-                
                 errlogSevPrintf(errlogInfo,
                     "UDP socket %s closed.",
                     inetAddressToString(_bindAddress).c_str());
@@ -118,7 +111,14 @@ namespace epics {
             
             // wait for send thread to exit cleanly            
             if (waitForThreadToComplete)
-                _shutdownEvent.wait();
+            {
+                if (!_shutdownEvent.wait(5.0))
+                {
+                    errlogSevPrintf(errlogMajor,
+                        "Receive thread for UDP socket %s has not exited.",
+                        inetAddressToString(_bindAddress).c_str());
+                }
+            }
         }
 
         void BlockingUDPTransport::enqueueSendRequest(TransportSender::shared_pointer const & sender) {
@@ -212,10 +212,14 @@ namespace epics {
                             processBuffer(thisTransport, fromAddress, _receiveBuffer);
                         }
                     }
-                    else {
-                        // 0 == socket remotely closed
+                    else if (bytesRead == -1) {
+                        
+                        // timeout
+                        if (errno == EAGAIN || errno == EWOULDBLOCK)
+                            continue;
+                                                    
                         // log a 'recvfrom' error
-                        if(!_closed && bytesRead==-1)
+                        if(!_closed)
                             errlogSevPrintf(errlogMajor, "Socket recv error: %s", strerror(errno));
                                 
                         close(true, false);
@@ -287,20 +291,6 @@ namespace epics {
             return true;
         }
         
-        
-        void BlockingUDPTransport::wakeupMessage()
-        {
-            osiSockAddr addr;
-            addr.ia.sin_family = AF_INET;
-            addr.ia.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-            addr.ia.sin_port = _bindAddress.ia.sin_port;
-        
-            // send a wakeup msg so the UDP recv thread will exit
-            sendto(_channel, static_cast<char*>(0),  
-                    0, 0, &addr.sa, sizeof(addr.sa ));
-        }
-
-
         bool BlockingUDPTransport::send(ByteBuffer* buffer) {
             if(!_sendAddresses) return false;
 
