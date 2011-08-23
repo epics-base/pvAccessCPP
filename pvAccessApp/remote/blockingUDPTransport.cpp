@@ -25,7 +25,6 @@
 #include <cstdio>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <errno.h>
 
 using namespace epics::pvData;
 using namespace std;
@@ -60,9 +59,11 @@ namespace epics {
 
             if (setsockopt (_channel, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
             {
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
                 errlogSevPrintf(errlogMajor,
                     "Failed to set SO_RCVTIMEO for UDP socket %s: %s.",
-                    inetAddressToString(_bindAddress).c_str(), strerror(errno));
+                    inetAddressToString(_bindAddress).c_str(), errStr);
             }
 
 
@@ -105,6 +106,7 @@ namespace epics {
                     "UDP socket %s closed.",
                     inetAddressToString(_bindAddress).c_str());
     
+                // TODO should I wait thread to complete first and then destroy
                 epicsSocketDestroy(_channel);
             }
             
@@ -214,14 +216,26 @@ namespace epics {
                     }
                     else if (bytesRead == -1) {
                         
-                        // timeout
-                        if (errno == EAGAIN || errno == EWOULDBLOCK)
+                        int socketError = SOCKERRNO;
+                        
+                        // interrupted or timeout
+                        if (socketError == EINTR || 
+                            socketError == EAGAIN ||
+                            socketError == EWOULDBLOCK)
+                            continue;
+                            
+                        if (socketError == SOCK_ECONNREFUSED || // avoid spurious ECONNREFUSED in Linux
+                            socketError == SOCK_ECONNRESET)     // or ECONNRESET in Windows
                             continue;
                                                     
                         // log a 'recvfrom' error
                         if(!_closed)
-                            errlogSevPrintf(errlogMajor, "Socket recv error: %s", strerror(errno));
-                                
+                        {
+                            char errStr[64];
+                            epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                            errlogSevPrintf(errlogMajor, "Socket recvfrom error: %s", errStr);
+                        }
+                               
                         close(true, false);
                         break;
                     }
@@ -282,9 +296,11 @@ namespace epics {
             buffer->flip();
             int retval = sendto(_channel, buffer->getArray(),
                     buffer->getLimit(), 0, &(address.sa), sizeof(sockaddr));
-            if(retval<0) {
-                errlogSevPrintf(errlogMajor, "Socket sendto error: %s",
-                        strerror(errno));
+            if(retval<0)
+            {
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                errlogSevPrintf(errlogMajor, "Socket sendto error: %s", errStr);
                 return false;
             }
 
@@ -300,7 +316,12 @@ namespace epics {
                         buffer->getLimit(), 0, &(_sendAddresses->at(i).sa),
                         sizeof(sockaddr));
                 {
-                    if(retval<0) errlogSevPrintf(errlogMajor, "Socket sendto error: %s", strerror(errno));
+                    if(retval<0)
+                    {
+                        char errStr[64];
+                        epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                        errlogSevPrintf(errlogMajor, "Socket sendto error: %s", errStr);
+                    }
                     return false;
                 }
             }
@@ -316,10 +337,13 @@ namespace epics {
             int sockBufSize = -1;
             socklen_t intLen = sizeof(int);
 
-            int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF,
-                    &sockBufSize, &intLen);
-            if(retval<0) errlogSevPrintf(errlogMajor,
-                    "Socket getsockopt SO_RCVBUF error: %s", strerror(errno));
+            int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF, &sockBufSize, &intLen);
+            if(retval<0) 
+            {
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                errlogSevPrintf(errlogMajor, "Socket getsockopt SO_RCVBUF error: %s", errStr);
+            }
 
             return sockBufSize;
         }

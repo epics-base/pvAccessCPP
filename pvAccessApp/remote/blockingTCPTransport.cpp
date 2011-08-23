@@ -131,17 +131,21 @@ namespace epics {
             int retval = getsockopt(_channel, SOL_SOCKET, SO_SNDBUF, &_socketSendBufferSize, &intLen);
             if(retval<0) {
                 _socketSendBufferSize = MAX_TCP_RECV;
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
                 errlogSevPrintf(errlogMinor,
                         "Unable to retrieve socket send buffer size: %s",
-                        strerror(errno));
+                        errStr);
             }
 
             socklen_t saSize = sizeof(sockaddr);
             retval = getpeername(_channel, &(_socketAddress.sa), &saSize);
             if(retval<0) {
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
                 errlogSevPrintf(errlogMajor,
                         "Error fetching socket remote address: %s",
-                        strerror(errno));
+                        errStr);
             }
 
             // prepare buffer
@@ -251,9 +255,13 @@ namespace epics {
 
             int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF,&sockBufSize, &intLen);
             if(retval<0)
+            {
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
                 errlogSevPrintf(errlogMajor,
                     "Socket getsockopt SO_RCVBUF error: %s",
-                    strerror(errno));
+                    errStr);
+            }
 
             return sockBufSize;
         }
@@ -471,6 +479,11 @@ namespace epics {
                             _socketBuffer->put(readBuffer, 0, bytesRead);
 
                             if(bytesRead<=0) {
+
+                                // spurious EINTR check                     
+                                if (bytesRead<0 && SOCKERRNO==SOCK_EINTR)
+                                    continue;
+                                
                                 // error (disconnect, end-of-stream) detected
                                 close(true);
 
@@ -696,13 +709,34 @@ namespace epics {
 
                     if(bytesSent<0) {
                         
+                        int socketError = SOCKERRNO;
+
+                        // spurious EINTR check                     
+                        if (socketError==SOCK_EINTR)
+                            continue;
+
+                        // TODO check this (copy below)... consolidate!!!
+                        if (socketError==SOCK_ENOBUFS) {
+                            /* buffers full, reset the limit and indicate that there
+                             * is more data to be sent
+                             */
+                            if(bytesSent==maxBytesToSend) buffer->setLimit(limit);
+                            return false;
+                        }
+
                         // connection lost
+
+                        char errStr[64];
+                        epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
                         ostringstream temp;
-                        temp<<"error in sending TCP data: "<<strerror(errno);
+                        temp<<"error in sending TCP data: "<<errStr;
                         //errlogSevPrintf(errlogMajor, "%s", temp.str().c_str());
                         THROW_BASE_EXCEPTION(temp.str().c_str());
                     }
                     else if(bytesSent==0) {
+                        
+                        // TODO WINSOCK indicates disconnect by returning zero here !!!
+                        
                         //errlogSevPrintf(errlogInfo,
                         //        "Buffer full, position %d of total %d bytes.",
                         //        buffer->getPosition(), limit);

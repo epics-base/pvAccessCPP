@@ -41,7 +41,9 @@ namespace epics {
             int retval = ::setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &optval, sizeof(optval));
             if(retval<0)
             {
-                errlogSevPrintf(errlogMajor, "Error setting SO_BROADCAST: %s", strerror(errno));
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                errlogSevPrintf(errlogMajor, "Error setting SO_BROADCAST: %s", errStr);
                 epicsSocketDestroy (socket);
                 return Transport::shared_pointer();
             }
@@ -56,7 +58,9 @@ namespace epics {
 
             retval = ::bind(socket, (sockaddr*)&(bindAddress.sa), sizeof(sockaddr));
             if(retval<0) {
-                errlogSevPrintf(errlogMajor, "Error binding socket: %s", strerror(errno));
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                errlogSevPrintf(errlogMajor, "Error binding socket: %s", errStr);
                 epicsSocketDestroy (socket);
                 return Transport::shared_pointer();
             }

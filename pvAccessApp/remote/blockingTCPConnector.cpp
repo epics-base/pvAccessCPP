@@ -121,15 +121,22 @@ namespace epics {
                     int optval = 1; // true
                     int retval = ::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY,
                             &optval, sizeof(int));
-                    if(retval<0) errlogSevPrintf(errlogMajor,
-                            "Error setting TCP_NODELAY: %s", strerror(errno));
-
+                    if(retval<0) {
+                        char errStr[64];
+                        epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                        errlogSevPrintf(errlogMajor, "Error setting TCP_NODELAY: %s", errStr);
+                    }
+                    
                     // enable TCP_KEEPALIVE
                     retval = ::setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE,
                             &optval, sizeof(int));
-                    if(retval<0) errlogSevPrintf(errlogMinor,
-                            "Error setting SO_KEEPALIVE: %s", strerror(errno));
-
+                    if(retval<0) 
+                    {
+                        char errStr[64];
+                        epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                        errlogSevPrintf(errlogMinor, "Error setting SO_KEEPALIVE: %s", errStr);
+                    }
+                    
                     // TODO tune buffer sizes?! Win32 defaults are 8k, which is OK
 
                     // create transport
