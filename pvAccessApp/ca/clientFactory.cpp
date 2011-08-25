@@ -2,7 +2,8 @@
 /* Author:  Matej Sekoranja Date: 2011.2.1 */
 
 #include <pv/clientFactory.h>
-#include <errlog.h>
+#include <logger.h>
+#include <epicsSignal.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
@@ -12,6 +13,9 @@ ClientContextImpl::shared_pointer ClientFactory::m_context;
 
 void ClientFactory::start()
 {
+    epicsSignalInstallSigAlarmIgnore ();
+    epicsSignalInstallSigPipeIgnore ();
+
     Lock guard(m_mutex);
     
     if (m_context.get()) return;
@@ -22,9 +26,9 @@ void ClientFactory::start()
         ChannelProvider::shared_pointer provider = m_context->getProvider();
         registerChannelProvider(provider);
     } catch (std::exception &e) {
-        errlogSevPrintf(errlogMajor, "Unhandled exception caught at %s:%d: %s", __FILE__, __LINE__, e.what());
+        LOG(logLevelError, "Unhandled exception caught at %s:%d: %s", __FILE__, __LINE__, e.what());
     } catch (...) {
-        errlogSevPrintf(errlogMajor, "Unhandled exception caught at %s:%d.", __FILE__, __LINE__);
+        LOG(logLevelError, "Unhandled exception caught at %s:%d.", __FILE__, __LINE__);
     }
 }
 

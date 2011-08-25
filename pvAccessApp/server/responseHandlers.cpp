@@ -9,7 +9,7 @@
 #include <pv/byteBuffer.h>
 
 #include <osiSock.h>
-#include <errlog.h>
+#include <logger.h>
 
 #include <sstream>
 
@@ -34,7 +34,7 @@ void ServerBadResponse::handleResponse(osiSockAddr* responseFrom,
 	char ipAddrStr[48];
 	ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
 
-	errlogSevPrintf(errlogInfo,
+	LOG(logLevelInfo,
 			"Undecipherable message (bad response type %d) from %s.",
 			command, ipAddrStr);
 
@@ -76,7 +76,7 @@ void ServerResponseHandler::handleResponse(osiSockAddr* responseFrom,
 {
 	if(command<0||command>=(int8)m_handlerTable.size())
 	{
-		errlogSevPrintf(errlogMinor,
+		LOG(logLevelDebug,
 				"Invalid (or unsupported) command: %x.", (0xFF&command));
 				
 		// TODO remove debug output
@@ -216,14 +216,14 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& status, Cha
 	{
 	   if ((_responseCount+1) == _expectedResponseCount)
 	   {
-    	   errlogSevPrintf(errlogMinor,"[ServerChannelFindRequesterImpl::channelFindResult] More responses received than expected fpr channel '%s'!", _name.c_str());
+    	   LOG(logLevelDebug,"[ServerChannelFindRequesterImpl::channelFindResult] More responses received than expected fpr channel '%s'!", _name.c_str());
 	   }
 	   return;
 	}
 	
 	if (wasFound && _wasFound)
 	{
-	   errlogSevPrintf(errlogMinor,"[ServerChannelFindRequesterImpl::channelFindResult] Channel '%s' is hosted by different channel providers!", _name.c_str());
+	   LOG(logLevelDebug,"[ServerChannelFindRequesterImpl::channelFindResult] Channel '%s' is hosted by different channel providers!", _name.c_str());
 	   return;
 	}
 	
@@ -291,7 +291,7 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 
 		char host[100];
 		sockAddrToA(&transport->getRemoteAddress()->sa,host,100);
-		errlogSevPrintf(errlogMinor,"Zero length channel name, disconnecting client: %s", host);
+		LOG(logLevelDebug,"Zero length channel name, disconnecting client: %s", host);
 		disconnect(transport);
 		return;
 	}
@@ -299,7 +299,7 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 	{
 		char host[100];
 		sockAddrToA(&transport->getRemoteAddress()->sa,host,100);
-		errlogSevPrintf(errlogMinor,"Unreasonable channel name length, disconnecting client: %s", host);
+		LOG(logLevelDebug,"Unreasonable channel name length, disconnecting client: %s", host);
 		disconnect(transport);
 		return;
 	}
@@ -385,7 +385,7 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
 		}
 		catch (std::exception& e)
 		{
-			errlogSevPrintf(errlogMinor, "Exception caught when creating channel: %s", _channelName.c_str());
+			LOG(logLevelDebug, "Exception caught when creating channel: %s", _channelName.c_str());
 			{
 			 Lock guard(_mutex);
             _status = Status(Status::STATUSTYPE_FATAL,  "failed to create channel", e.what());
@@ -396,7 +396,7 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
 		}
 		catch (...)
 		{
-			errlogSevPrintf(errlogMinor, "Exception caught when creating channel: %s", _channelName.c_str());
+			LOG(logLevelDebug, "Exception caught when creating channel: %s", _channelName.c_str());
 			{
 			 Lock guard(_mutex);
 			_status = Status(Status::STATUSTYPE_FATAL,  "failed to create channel");
@@ -422,7 +422,7 @@ String ServerChannelRequesterImpl::getRequesterName()
 
 void ServerChannelRequesterImpl::message(const String message, const MessageType messageType)
 {
-	errlogSevPrintf(errlogMinor, "[%s] %s", messageTypeName[messageType].c_str(), message.c_str());
+	LOG(logLevelDebug, "[%s] %s", messageTypeName[messageType].c_str(), message.c_str());
 }
 
 void ServerChannelRequesterImpl::lock()
@@ -498,7 +498,7 @@ void ServerDestroyChannelHandler::handleResponse(osiSockAddr* responseFrom,
 		{
 			char host[100];
 			sockAddrToA(&responseFrom->sa,host,100);
-			errlogSevPrintf(errlogMinor, "Trying to destroy a channel that no longer exists (SID: %d, CID %d, client: %s).", sid, cid, host);
+			LOG(logLevelDebug, "Trying to destroy a channel that no longer exists (SID: %d, CID %d, client: %s).", sid, cid, host);
 		}
 		return;
 	}

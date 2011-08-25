@@ -14,6 +14,10 @@ PROD_HOST += testRemoteClientImpl
 testRemoteClientImpl_SRCS += testRemoteClientImpl.cpp
 testRemoteClientImpl_LIBS += pvData pvAccess Com
 
+PROD_HOST += testChannelConnect
+testChannelConnect_SRCS += testChannelConnect.cpp
+testChannelConnect_LIBS += pvData pvAccess Com
+
 #PROD_HOST += testBeaconEmitter
 testBeaconEmitter_SRCS += testBeaconEmitter.cpp
 testBeaconEmitter_LIBS += pvData pvAccess Com

@@ -304,7 +304,7 @@ void SearchTimer::callback()
 
 	{
 		Lock guard(_volMutex);
-		_startSequenceNumber = _chanSearchManager->getSequenceNumber() + 1;
+		_startSequenceNumber = _chanSearchManager->getSequenceNumber();
 		_searchAttempts = 0;
 		_searchRespones = 0;
 	}
@@ -337,6 +337,12 @@ void SearchTimer::callback()
 
 		bool requestSent = true;
 		bool allowNewFrame = (framesSent+1) < _framesPerTry;
+
+                {
+                        Lock guard(_volMutex);
+                        _endSequenceNumber = _chanSearchManager->getSequenceNumber() + 1;
+                }
+
 		bool frameWasSent = _chanSearchManager->generateSearchRequestMessage(channel, allowNewFrame);
 		if(frameWasSent)
 		{
@@ -392,6 +398,12 @@ void SearchTimer::callback()
     // flush out the search request buffer
 	if(triesInFrame > 0)
 	{
+	   
+        {
+                	Lock guard(_volMutex);
+                	_endSequenceNumber = _chanSearchManager->getSequenceNumber() + 1;
+		}
+		
 		_chanSearchManager->flushSendBuffer();
 		framesSent++;
 	}
@@ -400,6 +412,7 @@ void SearchTimer::callback()
 	{
 		Lock guard(_volMutex);
 		_endSequenceNumber = _chanSearchManager->getSequenceNumber();
+	    //printf("[%d] sn %d -> %d\n", _timerIndex, _startSequenceNumber, _endSequenceNumber);
 
 		// reschedule
 		canceled = _canceled;
@@ -424,8 +437,10 @@ void SearchTimer::searchResponse(int32 responseSequenceNumber, bool isSequenceNu
 
 		if(isSequenceNumberValid)
 		{
-			validResponse = _startSequenceNumber <= _chanSearchManager->getSequenceNumber() && _chanSearchManager->getSequenceNumber() <= _endSequenceNumber;
+			validResponse = _startSequenceNumber <= responseSequenceNumber && responseSequenceNumber <= _endSequenceNumber;
 		}
+        //if (!validResponse)
+	    //   printf("[%d] not valid response %d < %d < %d\n", _timerIndex, _startSequenceNumber,responseSequenceNumber, _endSequenceNumber);
 	}
 
 
@@ -582,7 +597,7 @@ void ChannelSearchManager::searchResponse(int32 cid, int32 seqNo, int8 minorRevi
     	now.getCurrent();
     	_timers[timerIndex]->searchResponse(seqNo, seqNo != 0, now.getMilliseconds());
     
-    	// then notify SearchInstance
+    	// then noftify SearchInstance
     	si->searchResponse(minorRevision, serverAddress);
     	//si->release();
 	}

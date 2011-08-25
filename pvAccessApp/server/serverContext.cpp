@@ -4,6 +4,7 @@
 
 #include <pv/serverContext.h>
 #include <pv/responseHandlers.h>
+#include <epicsSignal.h>
 
 using std::tr1::dynamic_pointer_cast;
 using std::tr1::static_pointer_cast;
@@ -42,6 +43,10 @@ ServerContextImpl::ServerContextImpl():
 				_beaconServerStatusProvider()
 
 {
+    // TODO maybe there is a better place for this (when there will be some factory)
+    epicsSignalInstallSigAlarmIgnore ();
+    epicsSignalInstallSigPipeIgnore ();
+
 	initializeLogger();
 	loadConfiguration();
 }
@@ -372,7 +377,7 @@ void ServerContextImpl::destroyAllTransports()
 	if (size == 0)
 		return;
 
-	errlogSevPrintf(errlogInfo, "Server context still has %d transport(s) active and closing...", size);
+	LOG(logLevelInfo, "Server context still has %d transport(s) active and closing...", size);
 
 	for (int i = 0; i < size; i++)
 	{
@@ -384,12 +389,12 @@ void ServerContextImpl::destroyAllTransports()
 		catch (std::exception &e)
 		{
 			// do all exception safe, log in case of an error
-			errlogSevPrintf(errlogMajor, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what());
+			LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what());
 		}
 		catch (...)
 		{
 			// do all exception safe, log in case of an error
-			 errlogSevPrintf(errlogMajor, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__);
+			 LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__);
 		}
 	}
 	

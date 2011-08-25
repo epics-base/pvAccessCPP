@@ -15,7 +15,7 @@
 #include <pv/beaconEmitter.h>
 #include <pv/logger.h>
 
-#include <errlog.h>
+#include <logger.h>
 
 namespace epics {
 namespace pvAccess {

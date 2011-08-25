@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <epicsStdlib.h>
 #include <epicsGetopt.h>
-#include <errlog.h>
+#include <logger.h>
 
 #include <vector>
 #include <string>
@@ -559,8 +559,8 @@ int main (int argc, char *argv[])
         return 1;
     }
     
-    // typedef enum {errlogInfo, errlogMinor, errlogMajor, errlogFatal} errlogSevEnum;
-    errlogSetSevToLog(errlogMajor);
+    // typedef enum {logLevelInfo, logLevelDebug, logLevelError, errlogFatal} errlogSevEnum;
+    SET_LOG_LEVEL(logLevelError);
 
 
     ClientFactory::start();

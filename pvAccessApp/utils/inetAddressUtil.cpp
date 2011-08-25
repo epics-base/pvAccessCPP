@@ -15,7 +15,7 @@
 #include <osiSock.h>
 #include <ellLib.h>
 #include <epicsAssert.h>
-#include <errlog.h>
+#include <logger.h>
 
 /* standard */
 #include <vector>
@@ -94,7 +94,7 @@ namespace epics {
              */
             pIfreqList = new ifreq[nelem];
             if(!pIfreqList) {
-                errlogSevPrintf(errlogMajor,
+                LOG(logLevelError,
                         "getBroadcastAddresses(): no memory to complete request");
                 addDefaultBroadcastAddress(retVector, defaultPort);
                 return retVector;
@@ -106,7 +106,7 @@ namespace epics {
             memset(ifconf.ifc_req, 0, ifconf.ifc_len);
             status = ioctl(sock, SIOCGIFCONF, &ifconf);
             if(status<0||ifconf.ifc_len==0) {
-                errlogSevPrintf(errlogMinor,
+                LOG(logLevelDebug,
                         "getBroadcastAddresses(): unable to fetch network interface configuration");
                 delete[] pIfreqList;
                 addDefaultBroadcastAddress(retVector, defaultPort);
@@ -138,8 +138,8 @@ namespace epics {
                         sizeof(ifrBuff.ifr_name));
                 status = ioctl(sock, SIOCGIFFLAGS, &ifrBuff);
                 if(status) {
-                    errlogSevPrintf(
-                            errlogMinor,
+                    LOG(
+                            logLevelDebug,
                             "getBroadcastAddresses(): net intf flags fetch for \"%s\" failed",
                             pifreq->ifr_name);
                     continue;
@@ -170,8 +170,8 @@ namespace epics {
                             sizeof(ifrBuff.ifr_name));
                     status = ioctl(sock, SIOCGIFBRDADDR, &ifrBuff);
                     if(status) {
-                        errlogSevPrintf(
-                                errlogMinor,
+                        LOG(
+                                logLevelDebug,
                                 "getBroadcastAddresses(): net intf \"%s\": bcast addr fetch fail",
                                 pifreq->ifr_name);
                         continue;
@@ -184,8 +184,8 @@ namespace epics {
                             sizeof(ifrBuff.ifr_name));
                     status = ioctl(sock, SIOCGIFDSTADDR, &ifrBuff);
                     if(status) {
-                        errlogSevPrintf(
-                                errlogMinor,
+                        LOG(
+                                logLevelDebug,
                                 "getBroadcastAddresses(): net intf \"%s\": pt to pt addr fetch fail",
                                 pifreq->ifr_name);
                         continue;
@@ -194,8 +194,8 @@ namespace epics {
                 }
 #endif
                 else {
-                    errlogSevPrintf(
-                            errlogMinor,
+                    LOG(
+                            logLevelDebug,
                             "getBroadcastAddresses(): net intf \"%s\": not point to point or bcast?",
                             pifreq->ifr_name);
                     continue;

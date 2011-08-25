@@ -16,7 +16,7 @@
 #include <pv/pvType.h>
 
 #include <osiSock.h>
-#include <errlog.h>
+#include <logger.h>
 
 #include <iostream>
 #include <cstdio>
@@ -86,16 +86,16 @@ public:
     virtual ~DummyTransportClient() {
     }
     virtual void transportUnresponsive() {
-        errlogSevPrintf(errlogInfo, "unresponsive");
+        LOG(logLevelInfo, "unresponsive");
     }
     virtual void transportResponsive(Transport::shared_pointer const & transport) {
-        errlogSevPrintf(errlogInfo, "responsive");
+        LOG(logLevelInfo, "responsive");
     }
     virtual void transportChanged() {
-        errlogSevPrintf(errlogInfo, "changed");
+        LOG(logLevelInfo, "changed");
     }
     virtual void transportClosed() {
-        errlogSevPrintf(errlogInfo, "closed");
+        LOG(logLevelInfo, "closed");
     }
     virtual void acquire() {};
     virtual void release() {};

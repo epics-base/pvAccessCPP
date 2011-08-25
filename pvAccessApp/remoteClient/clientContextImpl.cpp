@@ -25,7 +25,7 @@
 #include <pv/clientContextImpl.h>
 #include <pv/configuration.h>
 #include <pv/beaconHandler.h>
-#include <errlog.h>
+#include <logger.h>
 #include <pv/bitSetUtil.h>
 
 using std::tr1::dynamic_pointer_cast;
@@ -46,8 +46,8 @@ namespace epics {
 
 
 #define EXCEPTION_GUARD(code) try { code; } \
-        catch (std::exception &e) { errlogSevPrintf(errlogMajor, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
-                catch (...) { errlogSevPrintf(errlogMajor, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
+        catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
+                catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
 
         struct delayed_destroyable_deleter
         {
@@ -211,9 +211,9 @@ namespace epics {
                     }
                 }
                 catch (std::exception &e) {
-                    errlogSevPrintf(errlogMajor, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what());
+                    LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what());
                 }
-                catch (...) { errlogSevPrintf(errlogMajor, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__);
+                catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__);
                 }
             }
 
@@ -2286,7 +2286,7 @@ namespace epics {
                 char ipAddrStr[48];
                 ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
 
-                errlogSevPrintf(errlogInfo,
+                LOG(logLevelInfo,
                                 "Undecipherable message (bad response type %d) from %s.",
                                 command, ipAddrStr);
             }
@@ -3207,7 +3207,7 @@ namespace epics {
                 void disconnect(bool initiateSearch, bool remoteDestroy) {
                     Lock guard(m_channelMutex);
                     
-                    if (m_connectionState != CONNECTED && !m_transport)
+                    if (m_connectionState != CONNECTED)
                         return;
                     
                     if (!initiateSearch) {
@@ -4028,6 +4028,7 @@ TODO
             {
                 try
                 {
+                    // TODO we are creating a new response handler even-though we might not need a new transprot !!!
                     ClientContextImpl::shared_pointer thisPointer = shared_from_this();
                     auto_ptr<ResponseHandler> handler(new ClientResponseHandler(thisPointer));
                     return m_connector->connect(client, handler, *serverAddress, minorRevision, priority);

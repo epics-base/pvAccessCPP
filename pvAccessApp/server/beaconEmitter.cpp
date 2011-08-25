@@ -6,7 +6,7 @@
 
 #include <pv/introspectionRegistry.h>
 
-#include <errlog.h>
+#include <logger.h>
 #include <algorithm>
 
 #include <pv/serverContext.h>
@@ -78,7 +78,7 @@ void BeaconEmitter::send(ByteBuffer* buffer, TransportSendControl* control)
 		}
 		catch (...) {
 			// we have to proctect internal code from external implementation...
-			errlogSevPrintf(errlogMinor, "BeaconServerStatusProvider implementation thrown an exception.");
+			LOG(logLevelDebug, "BeaconServerStatusProvider implementation thrown an exception.");
 		}
 	}
 

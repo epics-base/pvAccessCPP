@@ -7,7 +7,7 @@
 
 #include <pv/logger.h>
 
-#include <errlog.h>
+#include <logger.h>
 #include <epicsExit.h>
 
 #include <iostream>
@@ -19,10 +19,10 @@ int main(int argc, char *argv[]) {
 
     createFileLogger("loggerTest.log");
 
-    errlogSetSevToLog(errlogMinor);
-    errlogSevPrintf( errlogInfo, "This will not appear");
-    errlogSevPrintf( errlogMajor, "This is a test %d", 42);
-    errlogSevPrintf( errlogFatal, "This is another test %f", 3.14);
+    SET_LOG_LEVEL(logLevelDebug);
+    LOG( logLevelInfo, "This will not appear");
+    LOG( logLevelError, "This is a test %d", 42);
+    LOG( logLevelFatal, "This is another test %f", 3.14);
 
     epicsExit(0);
 }

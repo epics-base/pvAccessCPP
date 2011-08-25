@@ -14,7 +14,7 @@
 #include <pv/byteBuffer.h>
 
 /* EPICSv3 */
-#include <errlog.h>
+#include <logger.h>
 
 /* standard */
 #include <map>
@@ -49,8 +49,8 @@ namespace epics {
             char ipAddrStr[64];
             ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
 
-            errlogSevPrintf(
-                    errlogInfo,
+            LOG(
+                    logLevelDebug,
                     "Transport to %s still has %u channel(s) active and closing...",
                     ipAddrStr, (unsigned int)_channels.size());
 

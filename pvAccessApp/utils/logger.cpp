@@ -12,7 +12,7 @@
 #include <pv/pvType.h>
 
 #include <epicsExit.h>
-#include <errlog.h>
+#include <logger.h>
 
 #include <fstream>
 #include <iostream>
@@ -24,8 +24,43 @@ using std::ofstream;
 using std::ios;
 using std::endl;
 
+#include <errlog.h>
+
+#include <epicsTime.h>
+
 namespace epics {
     namespace pvAccess {
+        
+        #define TIMETEXTLEN 32
+        
+        static pvAccessLogLevel g_pvAccessLogLevel = logLevelDebug; //logLevelInfo;
+        
+        void pvAccessLog(pvAccessLogLevel level, const char* format, ...)
+        {
+            // TODO lock
+            if (level >= g_pvAccessLogLevel)
+            {
+                char timeText[TIMETEXTLEN];
+                epicsTimeStamp tsNow;
+    
+                epicsTimeGetCurrent(&tsNow);
+                epicsTimeToStrftime(timeText, TIMETEXTLEN, "%Y-%m-%dT%H:%M:%S.%03f", &tsNow);
+    
+                printf("%s ", timeText);
+
+                va_list arg;
+                va_start(arg, format);
+                vprintf(format, arg);
+                va_end(arg);
+
+                printf("\n");
+            }
+        }
+
+        void pvAccessSetLogLevel(pvAccessLogLevel level)
+        {
+            g_pvAccessLogLevel = level;
+        }
 
         class FileLogger : public NoDefaultMethods {
         public:

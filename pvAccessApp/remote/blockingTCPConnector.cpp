@@ -11,7 +11,7 @@
 
 #include <epicsThread.h>
 #include <osiSock.h>
-#include <errlog.h>
+#include <logger.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -41,7 +41,7 @@ namespace epics {
 
             for(int tryCount = 0; tryCount<tries; tryCount++) {
 
-                errlogSevPrintf(errlogInfo,
+                LOG(logLevelDebug,
                         "Opening socket to CA server %s, attempt %d.",
                         strBuffer, tryCount+1);
 
@@ -49,7 +49,7 @@ namespace epics {
                 if (socket == INVALID_SOCKET)
                 {
                     epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                    errlogSevPrintf(errlogMinor, "Socket create error: %s", strBuffer);
+                    LOG(logLevelWarn, "Socket create error: %s", strBuffer);
                     return INVALID_SOCKET;
                 }
                 else {
@@ -59,7 +59,7 @@ namespace epics {
                     else {
                         epicsSocketDestroy (socket);
                         epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                        errlogSevPrintf(errlogMinor, "Socket connect error: %s", strBuffer);
+                        LOG(logLevelDebug, "Socket connect error: %s", strBuffer);
                     }
                 }
             }
@@ -81,9 +81,9 @@ namespace epics {
             Transport::shared_pointer tt = context->getTransportRegistry()->get("TCP", &address, priority);
             BlockingClientTCPTransport::shared_pointer transport = std::tr1::static_pointer_cast<BlockingClientTCPTransport>(tt);
             if(transport.get()) {
-                errlogSevPrintf(errlogInfo,
-                        "Reusing existing connection to CA server: %s",
-                        ipAddrStr);
+                LOG(logLevelDebug,
+                    "Reusing existing connection to CA server: %s",
+                    ipAddrStr);
                 if (transport->acquire(client))
                     return transport;
             }
@@ -95,27 +95,27 @@ namespace epics {
                     tt = context->getTransportRegistry()->get("TCP", &address, priority);
                     transport = std::tr1::static_pointer_cast<BlockingClientTCPTransport>(tt);
                     if(transport.get()) {
-                        errlogSevPrintf(errlogInfo,
-                                        "Reusing existing connection to CA server: %s",
-                                        ipAddrStr);
+                        LOG(logLevelDebug,
+                            "Reusing existing connection to CA server: %s",
+                            ipAddrStr);
                         if (transport->acquire(client))
                             return transport;
                     }
-                    
-                    errlogSevPrintf(errlogInfo, "Connecting to CA server: %s", ipAddrStr);
+
+                    LOG(logLevelDebug, "Connecting to CA server: %s", ipAddrStr);
 
                     socket = tryConnect(address, 3);
                     
                     // verify
                     if(socket==INVALID_SOCKET) {
-                        errlogSevPrintf(errlogMajor,
+                        LOG(logLevelDebug,
                                 "Connection to CA server %s failed.", ipAddrStr);
                         ostringstream temp;
                         temp<<"Failed to verify TCP connection to '"<<ipAddrStr<<"'.";
                         THROW_BASE_EXCEPTION(temp.str().c_str());
                     }
 
-                    errlogSevPrintf(errlogInfo, "Socket connected to CA server: %s.", ipAddrStr);
+                    LOG(logLevelDebug, "Socket connected to CA server: %s.", ipAddrStr);
 
                     // enable TCP_NODELAY (disable Nagle's algorithm)
                     int optval = 1; // true
@@ -124,7 +124,7 @@ namespace epics {
                     if(retval<0) {
                         char errStr[64];
                         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                        errlogSevPrintf(errlogMajor, "Error setting TCP_NODELAY: %s", errStr);
+                        LOG(logLevelWarn, "Error setting TCP_NODELAY: %s", errStr);
                     }
                     
                     // enable TCP_KEEPALIVE
@@ -134,7 +134,7 @@ namespace epics {
                     {
                         char errStr[64];
                         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                        errlogSevPrintf(errlogMinor, "Error setting SO_KEEPALIVE: %s", errStr);
+                        LOG(logLevelWarn, "Error setting SO_KEEPALIVE: %s", errStr);
                     }
                     
                     // TODO tune buffer sizes?! Win32 defaults are 8k, which is OK
@@ -146,8 +146,8 @@ namespace epics {
 
                     // verify
                     if(!transport->waitUntilVerified(3.0)) {
-                        errlogSevPrintf(
-                                errlogMinor,
+                        LOG(
+                                logLevelDebug,
                                 "Connection to CA server %s failed to be validated, closing it.",
                                 ipAddrStr);
                         ostringstream temp;
@@ -157,13 +157,11 @@ namespace epics {
 
                     // TODO send security token
 
-                    errlogSevPrintf(errlogInfo, "Connected to CA server: %s", ipAddrStr);
+                    LOG(logLevelDebug, "Connected to CA server: %s", ipAddrStr);
 
                     _namedLocker.releaseSynchronizationObject(&address);
                     return transport;
                 } catch(std::exception& ex) {
-                    // TODO
-                    printf("ex %s\n", ex.what());
                     if(transport.get())
                         transport->close(true);
                     else if(socket!=INVALID_SOCKET) epicsSocketDestroy(socket);

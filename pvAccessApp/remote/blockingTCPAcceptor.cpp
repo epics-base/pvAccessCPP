@@ -10,7 +10,7 @@
 #include <pv/epicsException.h>
 
 /* EPICSv3 */
-#include <errlog.h>
+#include <logger.h>
 #include <osiSock.h>
 #include <epicsThread.h>
 
@@ -55,14 +55,14 @@ namespace epics {
             int tryCount = 0;
             while(tryCount<2) {
 
-                errlogSevPrintf(errlogInfo, "Creating acceptor to %s.", ipAddrStr);
+                LOG(logLevelDebug, "Creating acceptor to %s.", ipAddrStr);
 
                 _serverSocketChannel = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
                 if(_serverSocketChannel==INVALID_SOCKET) {
                     epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
                     ostringstream temp;
                     temp<<"Socket create error: "<<strBuffer;
-                    errlogSevPrintf(errlogMajor, "%s", temp.str().c_str());
+                    LOG(logLevelError, "%s", temp.str().c_str());
                     THROW_BASE_EXCEPTION(temp.str().c_str());
                 }
                 else {
@@ -73,12 +73,12 @@ namespace epics {
                     int retval = ::bind(_serverSocketChannel, &_bindAddress.sa, sizeof(sockaddr));
                     if(retval<0) {
                         epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                        errlogSevPrintf(errlogMinor, "Socket bind error: %s", strBuffer);
+                        LOG(logLevelDebug, "Socket bind error: %s", strBuffer);
                         if(_bindAddress.ia.sin_port!=0) {
                             // failed to bind to specified bind address,
                             // try to get port dynamically, but only once
-                            errlogSevPrintf(
-                                    errlogMinor,
+                            LOG(
+                                    logLevelDebug,
                                     "Configured TCP port %d is unavailable, trying to assign it dynamically.",
                                     port);
                             _bindAddress.ia.sin_port = htons(0);
@@ -99,11 +99,11 @@ namespace epics {
                             if(retval<0) {
                                 // error obtaining port number
                                 epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                                errlogSevPrintf(errlogMinor, "getsockname error: %s", strBuffer);
+                                LOG(logLevelDebug, "getsockname error: %s", strBuffer);
                             }
                             else {
-                                errlogSevPrintf(
-                                        errlogInfo,
+                                LOG(
+                                        logLevelInfo,
                                         "Using dynamically assigned TCP port %d.",
                                         ntohs(_bindAddress.ia.sin_port));
                             }
@@ -114,7 +114,7 @@ namespace epics {
                             epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
                             ostringstream temp;
                             temp<<"Socket listen error: "<<strBuffer;
-                            errlogSevPrintf(errlogMajor, "%s", temp.str().c_str());
+                            LOG(logLevelError, "%s", temp.str().c_str());
                             THROW_BASE_EXCEPTION(temp.str().c_str());
                         }
 
@@ -143,7 +143,7 @@ namespace epics {
             // rise level if port is assigned dynamically
             char ipAddrStr[48];
             ipAddrToDottedIP(&_bindAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-            errlogSevPrintf(errlogInfo, "Accepting connections at %s.", ipAddrStr);
+            LOG(logLevelDebug, "Accepting connections at %s.", ipAddrStr);
 
             bool socketOpen = true;
             char strBuffer[64];
@@ -163,21 +163,21 @@ namespace epics {
                 if(newClient!=INVALID_SOCKET) {
                     // accept succeeded
                     ipAddrToDottedIP(&address.ia, ipAddrStr, sizeof(ipAddrStr));
-                    errlogSevPrintf(errlogInfo, "Accepted connection from CA client: %s", ipAddrStr);
+                    LOG(logLevelDebug, "Accepted connection from CA client: %s", ipAddrStr);
 
                     // enable TCP_NODELAY (disable Nagle's algorithm)
                     int optval = 1; // true
                     int retval = ::setsockopt(newClient, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(int));
                     if(retval<0) {
                         epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                        errlogSevPrintf(errlogMinor, "Error setting TCP_NODELAY: %s", strBuffer);
+                        LOG(logLevelDebug, "Error setting TCP_NODELAY: %s", strBuffer);
                     }
 
                     // enable TCP_KEEPALIVE
                     retval = ::setsockopt(newClient, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(int));
                     if(retval<0) {
                         epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                        errlogSevPrintf(errlogMinor, "Error setting SO_KEEPALIVE: %s", strBuffer);
+                        LOG(logLevelDebug, "Error setting SO_KEEPALIVE: %s", strBuffer);
                     }
 
                     // TODO tune buffer sizes?!
@@ -197,14 +197,14 @@ namespace epics {
                     // validate connection
                     if(!validateConnection(transport, ipAddrStr)) {
                         transport->close(true);
-                        errlogSevPrintf(
-                                errlogInfo,
+                        LOG(
+                                logLevelDebug,
                                 "Connection to CA client %s failed to be validated, closing it.",
                                 ipAddrStr);
                         return;
                     }
 
-                    errlogSevPrintf(errlogInfo, "Serving to CA client: %s", ipAddrStr);
+                    LOG(logLevelDebug, "Serving to CA client: %s", ipAddrStr);
 
                 }// accept succeeded
                 else
@@ -217,7 +217,7 @@ namespace epics {
                 transport->verify();
                 return true;
             } catch(...) {
-                errlogSevPrintf(errlogInfo, "Validation of %s failed.", address);
+                LOG(logLevelDebug, "Validation of %s failed.", address);
                 return false;
             }
         }
@@ -234,7 +234,7 @@ namespace epics {
             if(_serverSocketChannel!=INVALID_SOCKET) {
                 char ipAddrStr[48];
                 ipAddrToDottedIP(&_bindAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-                errlogSevPrintf(errlogInfo, "Stopped accepting connections at %s.", ipAddrStr);
+                LOG(logLevelDebug, "Stopped accepting connections at %s.", ipAddrStr);
 
                 epicsSocketDestroy(_serverSocketChannel);
             }

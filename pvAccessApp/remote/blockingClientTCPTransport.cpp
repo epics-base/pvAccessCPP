@@ -14,7 +14,7 @@
 #include <pv/lock.h>
 
 /* EPICSv3 */
-#include <errlog.h>
+#include <logger.h>
 
 /* standard */
 #include <set>
@@ -28,8 +28,8 @@ namespace epics {
     namespace pvAccess {
 
 #define EXCEPTION_GUARD(code) try { code; } \
-        catch (std::exception &e) { errlogSevPrintf(errlogMajor, "Unhandled exception caught from code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
-                catch (...) { errlogSevPrintf(errlogMajor, "Unhandled exception caught from code at %s:%d.", __FILE__, __LINE__); }
+        catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
+                catch (...) { LOG(logLevelError, "Unhandled exception caught from code at %s:%d.", __FILE__, __LINE__); }
                 
         BlockingClientTCPTransport::BlockingClientTCPTransport(
                 Context::shared_pointer const & context, SOCKET channel,
@@ -105,7 +105,7 @@ namespace epics {
             
             char ipAddrStr[48];
             ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-            errlogSevPrintf(errlogInfo, "Acquiring transport to %s.", ipAddrStr);
+            LOG(logLevelDebug, "Acquiring transport to %s.", ipAddrStr);
 
             Lock lock2(_ownersMutex);
 // TODO double check?            if(_closed) return false;
@@ -134,8 +134,8 @@ namespace epics {
             if(refs>0) {
                 char ipAddrStr[48];
                 ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-                errlogSevPrintf(
-                        errlogInfo,
+                LOG(
+                        logLevelDebug,
                         "Transport to %s still has %d client(s) active and closing...",
                         ipAddrStr, refs);
 
@@ -161,7 +161,7 @@ namespace epics {
             char ipAddrStr[48];
             ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
 
-            errlogSevPrintf(errlogInfo, "Releasing transport to %s.", ipAddrStr);
+            LOG(logLevelDebug, "Releasing transport to %s.", ipAddrStr);
 
             Lock lock2(_ownersMutex);
             _owners.erase(clientID);

@@ -10,7 +10,7 @@
 #include <pv/remote.h>
 
 /* EPICSv3 */
-#include <errlog.h>
+#include <logger.h>
 #include <osiSock.h>
 
 /* standard */
@@ -26,14 +26,14 @@ namespace epics {
                 auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& bindAddress,
                 short transportRevision, int16 priority) {
                     
-            errlogSevPrintf(errlogInfo, "Creating datagram socket to: %s",
+            LOG(logLevelDebug, "Creating datagram socket to: %s",
                     inetAddressToString(bindAddress).c_str());
 
             SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
             if(socket==INVALID_SOCKET) {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                errlogSevPrintf(errlogMajor, "Error creating socket: %s", errStr);
+                LOG(logLevelError, "Error creating socket: %s", errStr);
                 return Transport::shared_pointer();
             }
 
@@ -43,7 +43,7 @@ namespace epics {
             {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                errlogSevPrintf(errlogMajor, "Error setting SO_BROADCAST: %s", errStr);
+                LOG(logLevelError, "Error setting SO_BROADCAST: %s", errStr);
                 epicsSocketDestroy (socket);
                 return Transport::shared_pointer();
             }
@@ -60,7 +60,7 @@ namespace epics {
             if(retval<0) {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                errlogSevPrintf(errlogMajor, "Error binding socket: %s", errStr);
+                LOG(logLevelError, "Error binding socket: %s", errStr);
                 epicsSocketDestroy (socket);
                 return Transport::shared_pointer();
             }

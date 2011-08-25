@@ -20,7 +20,7 @@
 #include <osdSock.h>
 #include <osiSock.h>
 #include <epicsThread.h>
-#include <errlog.h>
+#include <logger.h>
 
 /* standard */
 #include <sys/types.h>
@@ -133,7 +133,7 @@ namespace epics {
                 _socketSendBufferSize = MAX_TCP_RECV;
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                errlogSevPrintf(errlogMinor,
+                LOG(logLevelDebug,
                         "Unable to retrieve socket send buffer size: %s",
                         errStr);
             }
@@ -143,7 +143,7 @@ namespace epics {
             if(retval<0) {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                errlogSevPrintf(errlogMajor,
+                LOG(logLevelError,
                         "Error fetching socket remote address: %s",
                         errStr);
             }
@@ -177,7 +177,7 @@ namespace epics {
             //
             
             String threadName = "TCP-receive " + socketAddressString;
-            errlogSevPrintf(errlogInfo, "Starting thread: %s", threadName.c_str());
+            LOG(logLevelDebug, "Starting thread: %s", threadName.c_str());
 
             _rcvThreadId = epicsThreadCreate(threadName.c_str(),
                     epicsThreadPriorityMedium,
@@ -189,7 +189,7 @@ namespace epics {
             //
 
             threadName = "TCP-send " + socketAddressString;
-            errlogSevPrintf(errlogInfo, "Starting thread: %s",threadName.c_str());
+            LOG(logLevelDebug, "Starting thread: %s",threadName.c_str());
 
             _sendThreadId = epicsThreadCreate(threadName.c_str(),
                     epicsThreadPriorityMedium,
@@ -258,7 +258,7 @@ namespace epics {
             {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                errlogSevPrintf(errlogMajor,
+                LOG(logLevelError,
                     "Socket getsockopt SO_RCVBUF error: %s",
                     errStr);
             }
@@ -394,7 +394,7 @@ namespace epics {
 
             // no more data and we have some payload left => read buffer
             if(_storedPayloadSize>=size) {
-                //errlogSevPrintf(errlogInfo,
+                //LOG(logLevelInfo,
                 //        "storedPayloadSize >= size, remaining: %d",
                 //        _socketBuffer->getRemaining());
 
@@ -516,8 +516,8 @@ namespace epics {
                         _magicAndVersion = _socketBuffer->getShort();
                         if((short)(_magicAndVersion&0xFFF0)!=CA_MAGIC_AND_MAJOR_VERSION) {
                             // error... disconnect
-                            errlogSevPrintf(
-                                    errlogMinor,
+                            LOG(
+                                    logLevelError,
                                     "Invalid header received from client %s, disconnecting...",
                                     inetAddressToString(_socketAddress).c_str());
                             close(true);
@@ -565,8 +565,8 @@ namespace epics {
                             continue;
                         }
                         else {
-                            errlogSevPrintf(
-                                    errlogMajor,
+                            LOG(
+                                    logLevelError,
                                     "Unknown packet type %d, received from client %s, disconnecting...",
                                     type,
                                     inetAddressToString(_socketAddress).c_str());
@@ -667,7 +667,7 @@ namespace epics {
                     _sendBuffer->setLimit(_sendBuffer->getSize());
                 }
             //} catch(std::exception& e) {
-            //    errlogSevPrintf(errlogMajor, "%s", e.what());
+            //    LOG(logLevelError, "%s", e.what());
             //    // error, release lock
             //    clearAndReleaseBuffer();
             } catch(...) {
@@ -689,7 +689,7 @@ namespace epics {
                 int limit = buffer->getLimit();
                 int bytesToSend = limit-buffer->getPosition();
 
-                //errlogSevPrintf(errlogInfo,"Total bytes to send: %d", bytesToSend);
+                //LOG(logLevelInfo,"Total bytes to send: %d", bytesToSend);
 
                 // limit sending
                 if(bytesToSend>maxBytesToSend) {
@@ -697,7 +697,7 @@ namespace epics {
                     buffer->setLimit(buffer->getPosition()+bytesToSend);
                 }
 
-                //errlogSevPrintf(errlogInfo,
+                //LOG(logLevelInfo,
                 //        "Sending %d of total %d bytes in the packet to %s.",
                 //        bytesToSend, limit,
                 //        inetAddressToString(_socketAddress).c_str());
@@ -730,14 +730,14 @@ namespace epics {
                         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
                         ostringstream temp;
                         temp<<"error in sending TCP data: "<<errStr;
-                        //errlogSevPrintf(errlogMajor, "%s", temp.str().c_str());
+                        //LOG(logLevelError, "%s", temp.str().c_str());
                         THROW_BASE_EXCEPTION(temp.str().c_str());
                     }
                     else if(bytesSent==0) {
                         
                         // TODO WINSOCK indicates disconnect by returning zero here !!!
                         
-                        //errlogSevPrintf(errlogInfo,
+                        //LOG(logLevelInfo,
                         //        "Buffer full, position %d of total %d bytes.",
                         //        buffer->getPosition(), limit);
 
@@ -746,7 +746,7 @@ namespace epics {
                          */
                         if(bytesSent==maxBytesToSend) buffer->setLimit(limit);
 
-                        //errlogSevPrintf(errlogInfo,
+                        //LOG(logLevelInfo,
                         //        "Send buffer full for %s, waiting...",
                         //        inetAddressToString(_socketAddress));
                         return false;
@@ -766,7 +766,7 @@ namespace epics {
                         buffer->setLimit(buffer->getPosition()+bytesToSend);
                     }
 
-                    //errlogSevPrintf(errlogInfo,
+                    //LOG(logLevelInfo,
                     //        "Sent, position %d of total %d bytes.",
                     //        buffer->getPosition(), limit);
                 } // while
@@ -843,7 +843,7 @@ namespace epics {
                             endMessage(false);// automatic end (to set payload)
 
                     } catch(std::exception &e) {
-                        errlogSevPrintf(errlogMajor, "%s", e.what());
+                        //LOG(logLevelError, "%s", e.what());
                         _sendBuffer->setPosition(_lastMessageStartPosition);
                     } catch(...) {
                         _sendBuffer->setPosition(_lastMessageStartPosition);
@@ -860,7 +860,7 @@ namespace epics {
         void BlockingTCPTransport::freeConnectionResorces() {
             freeSendBuffers();
 
-            errlogSevPrintf(errlogInfo, "Connection to %s closed.",
+            LOG(logLevelDebug, "Connection to %s closed.",
                     inetAddressToString(_socketAddress).c_str());
 
             if(_channel!=INVALID_SOCKET) {
@@ -902,7 +902,7 @@ printf("rcvThreadRunnner exception\n");
 try {
             obj->processSendQueue();
 } catch (std::exception& ex) {
-    printf("sendThreadRunnner exception %s\n", ex.what());
+    printf("sendThreadRunnner exception %s\n", ex.what()); // TODO
 } catch (...) {
 printf("sendThreadRunnner exception\n");
 }

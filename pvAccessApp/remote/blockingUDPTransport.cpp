@@ -18,7 +18,7 @@
 /* EPICSv3 */
 #include <osdSock.h>
 #include <osiSock.h>
-#include <errlog.h>
+#include <logger.h>
 #include <epicsThread.h>
 
 /* standard */
@@ -57,11 +57,11 @@ namespace epics {
             timeout.tv_sec = 1;
             timeout.tv_usec = 0;
 
-            if (setsockopt (_channel, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
+            if (::setsockopt (_channel, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
             {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                errlogSevPrintf(errlogMajor,
+                LOG(logLevelError,
                     "Failed to set SO_RCVTIMEO for UDP socket %s: %s.",
                     inetAddressToString(_bindAddress).c_str(), errStr);
             }
@@ -84,7 +84,7 @@ namespace epics {
         void BlockingUDPTransport::start() {
 
             String threadName = "UDP-receive "+inetAddressToString(_bindAddress);
-            errlogSevPrintf(errlogInfo, "Starting thread: %s",threadName.c_str());
+            LOG(logLevelDebug, "Starting thread: %s",threadName.c_str());
 
             _threadId = epicsThreadCreate(threadName.c_str(),
                     epicsThreadPriorityMedium,
@@ -102,7 +102,7 @@ namespace epics {
                 if(_closed) return;
                 _closed = true;
     
-                errlogSevPrintf(errlogInfo,
+                LOG(logLevelDebug,
                     "UDP socket %s closed.",
                     inetAddressToString(_bindAddress).c_str());
     
@@ -116,7 +116,7 @@ namespace epics {
             {
                 if (!_shutdownEvent.wait(5.0))
                 {
-                    errlogSevPrintf(errlogMajor,
+                    LOG(logLevelError,
                         "Receive thread for UDP socket %s has not exited.",
                         inetAddressToString(_bindAddress).c_str());
                 }
@@ -233,7 +233,7 @@ namespace epics {
                         {
                             char errStr[64];
                             epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                            errlogSevPrintf(errlogMajor, "Socket recvfrom error: %s", errStr);
+                            LOG(logLevelError, "Socket recvfrom error: %s", errStr);
                         }
                                
                         close(true, false);
@@ -248,7 +248,7 @@ namespace epics {
 
             char threadName[40];
             epicsThreadGetName(_threadId, threadName, 40);
-            errlogSevPrintf(errlogInfo, "Thread '%s' exiting", threadName);
+            LOG(logLevelDebug, "Thread '%s' exiting", threadName);
             
             _shutdownEvent.signal();
         }
@@ -300,7 +300,7 @@ namespace epics {
             {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                errlogSevPrintf(errlogMajor, "Socket sendto error: %s", errStr);
+                LOG(logLevelDebug, "Socket sendto error: %s", errStr);
                 return false;
             }
 
@@ -320,7 +320,7 @@ namespace epics {
                     {
                         char errStr[64];
                         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                        errlogSevPrintf(errlogMajor, "Socket sendto error: %s", errStr);
+                        LOG(logLevelDebug, "Socket sendto error: %s", errStr);
                     }
                     return false;
                 }
@@ -342,7 +342,7 @@ namespace epics {
             {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                errlogSevPrintf(errlogMajor, "Socket getsockopt SO_RCVBUF error: %s", errStr);
+                LOG(logLevelError, "Socket getsockopt SO_RCVBUF error: %s", errStr);
             }
 
             return sockBufSize;
