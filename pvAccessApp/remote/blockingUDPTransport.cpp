@@ -160,7 +160,6 @@ namespace epics {
             // This function is always called from only one thread - this
             // object's own thread.
 
-            char _readBuffer[MAX_UDP_RECV];
             osiSockAddr fromAddress;
             Transport::shared_pointer thisTransport = shared_from_this();
 
@@ -183,8 +182,8 @@ namespace epics {
 
                     socklen_t addrStructSize = sizeof(sockaddr);
 
-                    int bytesRead = recvfrom(_channel, _readBuffer,
-                            MAX_UDP_RECV, 0, (sockaddr*)&fromAddress,
+                    int bytesRead = recvfrom(_channel, (void*)_receiveBuffer->getArray(),
+                            _receiveBuffer->getRemaining(), 0, (sockaddr*)&fromAddress,
                             &addrStructSize);
 
                     if(bytesRead>0) {
@@ -203,11 +202,7 @@ namespace epics {
                         }
                         
                         if(!ignore) {
-                            // TODO do not copy.... wrap the buffer!!!
-                            _receiveBuffer->put(_readBuffer, 0, 
-                                    bytesRead <_receiveBuffer->getRemaining() ?
-                                        bytesRead : _receiveBuffer->getRemaining()
-                                    );
+                            _receiveBuffer->setPosition(bytesRead);
 
                             _receiveBuffer->flip();
 

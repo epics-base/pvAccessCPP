@@ -472,11 +472,10 @@ namespace epics {
                         int requiredPosition = (currentStartPosition+requiredBytes);
                         while(_socketBuffer->getPosition()<requiredPosition) {
                             // read
-                            // TODO wrap and do not copy !!!
-                            char readBuffer[MAX_TCP_RECV];
-                            size_t maxToRead = min(MAX_TCP_RECV,_socketBuffer->getRemaining());
-                            ssize_t bytesRead = recv(_channel, readBuffer, maxToRead, 0);
-                            _socketBuffer->put(readBuffer, 0, bytesRead);
+                            int pos = _socketBuffer->getPosition();
+                            ssize_t bytesRead = recv(_channel, (void*)(_socketBuffer->getArray()+pos),
+                                                     _socketBuffer->getRemaining(), 0);
+                            _socketBuffer->setPosition(pos+bytesRead);
 
                             if(bytesRead<=0) {
 
