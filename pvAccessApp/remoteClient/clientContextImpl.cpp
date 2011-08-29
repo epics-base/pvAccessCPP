@@ -3834,7 +3834,10 @@ TODO
                 iter++)
                 {
                     channels[count++] = iter->second;
-                }   
+                }
+                
+                guard.unlock();
+                   
                 
                 ChannelImpl::shared_pointer ptr;
                 for (int i = 0; i < count; i++)

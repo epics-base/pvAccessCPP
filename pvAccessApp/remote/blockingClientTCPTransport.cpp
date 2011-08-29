@@ -67,10 +67,10 @@ namespace epics {
             epicsTimeStamp currentTime;
             epicsTimeGetCurrent(&currentTime);
 
-            _ownersMutex.lock();
+            _mutex.lock();
             // no exception expected here
             double diff = epicsTimeDiffInSeconds(&currentTime, &_aliveTimestamp);
-            _ownersMutex.unlock();
+            _mutex.unlock();
             
             if(diff>2*_connectionTimeout) {
                 unresponsiveTransport();
@@ -84,7 +84,7 @@ namespace epics {
         }
 
         void BlockingClientTCPTransport::unresponsiveTransport() {
-            Lock lock(_ownersMutex);
+            Lock lock(_mutex);
             if(!_unresponsiveTransport) {
                 _unresponsiveTransport = true;
 
@@ -107,19 +107,23 @@ namespace epics {
             ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
             LOG(logLevelDebug, "Acquiring transport to %s.", ipAddrStr);
 
-            Lock lock2(_ownersMutex);
-// TODO double check?            if(_closed) return false;
-            //_owners.insert(TransportClient::weak_pointer(client));
             _owners[client->getID()] = TransportClient::weak_pointer(client);
+            //_owners.insert(TransportClient::weak_pointer(client));
 
             return true;
         }
 
+        // _mutex is held when this method is called
         void BlockingClientTCPTransport::internalClose(bool forced) {
             BlockingTCPTransport::internalClose(forced);
 
             _timerNode.cancel();
+        }
 
+        void BlockingClientTCPTransport::internalPostClose(bool forced) {
+            BlockingTCPTransport::internalPostClose(forced);
+
+            // _owners cannot change when transport is closed
             closedNotifyClients();
         }
 
@@ -127,7 +131,6 @@ namespace epics {
          * Notifies clients about disconnect.
          */
         void BlockingClientTCPTransport::closedNotifyClients() {
-            Lock lock(_ownersMutex);
 
             // check if still acquired
             int refs = _owners.size();
@@ -163,7 +166,6 @@ namespace epics {
 
             LOG(logLevelDebug, "Releasing transport to %s.", ipAddrStr);
 
-            Lock lock2(_ownersMutex);
             _owners.erase(clientID);
             //_owners.erase(TransportClient::weak_pointer(client));
             
@@ -173,13 +175,13 @@ namespace epics {
         }
 
         void BlockingClientTCPTransport::aliveNotification() {
-            Lock guard(_ownersMutex);
+            Lock guard(_mutex);
             epicsTimeGetCurrent(&_aliveTimestamp);
             if(_unresponsiveTransport) responsiveTransport();
         }
 
         void BlockingClientTCPTransport::responsiveTransport() {
-            Lock lock(_ownersMutex);
+            Lock lock(_mutex);
             if(_unresponsiveTransport) {
                 _unresponsiveTransport = false;
 
@@ -198,7 +200,7 @@ namespace epics {
         void BlockingClientTCPTransport::changedTransport() {
             _introspectionRegistry.reset();
 
-            Lock lock(_ownersMutex);
+            Lock lock(_mutex);
             TransportClientMap_t::iterator it = _owners.begin();
             for(; it!=_owners.end(); it++) {
                 TransportClient::shared_pointer client = it->second.lock();

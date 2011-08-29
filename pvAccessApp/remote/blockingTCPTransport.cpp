@@ -235,6 +235,11 @@ namespace epics {
 
             // notify send queue
             _sendQueueEvent.signal();
+            
+            lock.unlock();
+            
+            // post close without a lock
+            internalPostClose(force);
         }
 
         void BlockingTCPTransport::internalClose(bool force) {
@@ -243,6 +248,9 @@ namespace epics {
                 epicsSocketDestroy(_channel);
                 _channel = INVALID_SOCKET;
             }
+        }
+
+        void BlockingTCPTransport::internalPostClose(bool force) {
         }
 
         int BlockingTCPTransport::getSocketReceiveBufferSize() const {

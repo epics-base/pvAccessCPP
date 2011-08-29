@@ -180,6 +180,13 @@ namespace epics {
             virtual void internalClose(bool force);
 
             /**
+             * Called to any resources just after closing transport and without any locks held on transport
+             * @param[in] force   flag indicating if forced (e.g. forced
+             * disconnect) is required
+             */
+            virtual void internalPostClose(bool force);
+
+            /**
              * Send a buffer through the transport.
              * NOTE: TCP sent buffer/sending has to be synchronized (not done by this method).
              * @param buffer[in]    buffer to be sent
@@ -520,6 +527,7 @@ namespace epics {
             IntrospectionRegistry _introspectionRegistry;
 
             virtual void internalClose(bool force);
+            virtual void internalPostClose(bool force);
 
         private:
 
@@ -549,9 +557,6 @@ namespace epics {
              * Timestamp of last "live" event on this transport.
              */
             epicsTimeStamp _aliveTimestamp;
-
-            epics::pvData::Mutex _mutex;
-            epics::pvData::Mutex _ownersMutex;
 
             bool _verifyOrEcho;
 
@@ -749,6 +754,7 @@ namespace epics {
             IntrospectionRegistry _introspectionRegistry;
 
             virtual void internalClose(bool force);
+            virtual void internalPostClose(bool force);
 
         private:
             /**

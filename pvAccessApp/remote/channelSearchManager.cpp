@@ -581,6 +581,7 @@ void ChannelSearchManager::unregisterChannel(SearchInstance* channel)
 void ChannelSearchManager::searchResponse(int32 cid, int32 seqNo, int8 minorRevision, osiSockAddr* serverAddress)
 {
 	Lock guard(_channelMutex);
+	
 	// first remove
 	SearchInstance* si = NULL;
 	_channelsIter = _channels.find(cid);
@@ -597,12 +598,16 @@ void ChannelSearchManager::searchResponse(int32 cid, int32 seqNo, int8 minorRevi
     	now.getCurrent();
     	_timers[timerIndex]->searchResponse(seqNo, seqNo != 0, now.getMilliseconds());
     
+    	guard.unlock();
+
     	// then noftify SearchInstance
     	si->searchResponse(minorRevision, serverAddress);
     	//si->release();
 	}
 	else
 	{
+    	guard.unlock();
+
 		// minor hack to enable duplicate reports
 		si = dynamic_cast<SearchInstance*>(_context->getChannel(cid).get()); // TODO
 		if(si != NULL)

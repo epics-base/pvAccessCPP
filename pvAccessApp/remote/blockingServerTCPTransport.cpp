@@ -67,6 +67,10 @@ namespace epics {
             destroyAllChannels();
         }
 
+        void BlockingServerTCPTransport::internalPostClose(bool forced) {
+            BlockingTCPTransport::internalClose(forced);
+        }
+        
         pvAccessID BlockingServerTCPTransport::preallocateChannelSID() {
             Lock lock(_channelsMutex);
             // search first free (theoretically possible loop of death)
