@@ -32,6 +32,9 @@ namespace epics {
             _introspectionRegistry(true),
             _lastChannelSID(0)
         {
+            // for performance testing
+            // setSendQueueFlushStrategy(IMMEDIATE);
+            
             // NOTE: priority not yet known, default priority is used to register/unregister
             // TODO implement priorities in Reactor... not that user will
             // change it.. still getPriority() must return "registered" priority!

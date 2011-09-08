@@ -90,6 +90,6 @@ int main(int argc,char *argv[])
     epicsThreadSleep ( 1.0 ); 
     std::cout << "-----------------------------------------------------------------------" << std::endl;
     epicsExitCallAtExits();
-    CDRMonitor::get().show(stdout);
+    CDRMonitor::get().show(stdout, true);
     return(0);
 }

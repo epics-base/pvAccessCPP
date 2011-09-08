@@ -82,7 +82,7 @@ bool BaseSearchInstance::generateSearchRequestMessage(ByteBuffer* requestMessage
 	// not nice...
 	const int addedPayloadSize = sizeof(int32)/sizeof(int8) + (1 + sizeof(int32)/sizeof(int8) + name.length());
 
-	if(requestMessage->getRemaining() < addedPayloadSize)
+	if(((int)requestMessage->getRemaining()) < addedPayloadSize)
 	{
 		return false;
 	}

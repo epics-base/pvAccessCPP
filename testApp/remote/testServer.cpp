@@ -588,12 +588,43 @@ class MockChannel : public Channel {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannel);
 
 
-        ScalarType stype = pvDouble;
-        String allProperties("alarm,timeStamp,display,control,valueAlarm");
 
-        m_pvStructure.reset(getStandardPVField()->scalar(0,name,stype,allProperties));
-        PVDouble *pvField = m_pvStructure->getDoubleField(String("value"));
-        pvField->put(1.123);
+        if (m_name.find("array") == 0)
+        {
+            String allProperties("alarm,timeStamp,display,control");
+            m_pvStructure.reset(getStandardPVField()->scalarArray(0,name,pvDouble,allProperties));
+            PVDoubleArray *pvField = static_cast<PVDoubleArray*>(m_pvStructure->getScalarArrayField(String("value"), pvDouble));
+            int v = 0;
+            int ix = 0;
+            int COUNT = 1000;
+            
+            pvField->setCapacity(1000*COUNT);
+            for (int n = 0; n < 1000; n++)
+            {
+            
+                double array[COUNT];
+                for (int i = 0; i < COUNT; i++)
+                {
+                    array[i] = v; v+=1.1;
+                }
+                pvField->put(ix, COUNT, array, 0);
+                ix += COUNT;
+            }
+            /*
+            printf("array prepared------------------------------------!!!\n");
+            String str;
+            pvField->toString(&str);
+            printf("%s\n", str.c_str());
+            printf("=============------------------------------------!!!\n");
+            */   
+        }
+        else
+        {
+            String allProperties("alarm,timeStamp,display,control,valueAlarm");
+            m_pvStructure.reset(getStandardPVField()->scalar(0,name,pvDouble,allProperties));
+            PVDouble *pvField = m_pvStructure->getDoubleField(String("value"));
+            pvField->put(1.123);
+        }
     }
     
     public:
@@ -1115,6 +1146,6 @@ int main(int argc, char *argv[])
     epicsThreadSleep ( 1.0 ); 
     std::cout << "-----------------------------------------------------------------------" << std::endl;
 	epicsExitCallAtExits();
-    CDRMonitor::get().show(stdout);
+    CDRMonitor::get().show(stdout, true);
     return (0);
 }

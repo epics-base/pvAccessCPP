@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
 	}
 
 	epicsExitCallAtExits();
-	CDRMonitor::get().show(stdout);
+	CDRMonitor::get().show(stdout, true);
 
 	return 0;
 }

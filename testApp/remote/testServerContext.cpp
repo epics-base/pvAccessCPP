@@ -94,6 +94,6 @@ int main(int argc, char *argv[])
 	cout << "Done" << endl;
 
 	epicsExitCallAtExits();
-    CDRMonitor::get().show(stdout);
+    CDRMonitor::get().show(stdout, true);
     return (0);
 }

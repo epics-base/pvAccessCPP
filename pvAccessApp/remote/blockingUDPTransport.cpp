@@ -54,6 +54,7 @@ namespace epics {
 
             // set receive timeout so that we do not have problems at shutdown (recvfrom would block)
             struct timeval timeout;
+            bzero(&timeout, sizeof(struct timeval));
             timeout.tv_sec = 1;
             timeout.tv_usec = 0;
 
@@ -251,7 +252,7 @@ namespace epics {
         bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & thisTransport, osiSockAddr& fromAddress, ByteBuffer* receiveBuffer) {
 
             // handle response(s)
-            while(receiveBuffer->getRemaining()>=CA_MESSAGE_HEADER_SIZE) {
+            while((int)receiveBuffer->getRemaining()>=CA_MESSAGE_HEADER_SIZE) {
                 //
                 // read header
                 //
@@ -271,7 +272,7 @@ namespace epics {
                 int nextRequestPosition = receiveBuffer->getPosition() + payloadSize;
 
                 // payload size check
-                if(nextRequestPosition>receiveBuffer->getLimit()) return false;
+                if(nextRequestPosition>(int)receiveBuffer->getLimit()) return false;
 
                 // handle
                 _responseHandler->handleResponse(&fromAddress, thisTransport,

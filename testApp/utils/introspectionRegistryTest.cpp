@@ -448,7 +448,7 @@ int main(int argc, char *argv[])
 	if(serverRegistry) delete serverRegistry;
 
         epicsExitCallAtExits();
-        CDRMonitor::get().show(stdout);
+        CDRMonitor::get().show(stdout, true);
 	cout << "DONE" << endl;
 	return 0;
 }

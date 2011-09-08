@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
 	addrArray.clear();
 	if(registry) delete registry;
 	epicsExitCallAtExits();
-	CDRMonitor::get().show(stdout);
+	CDRMonitor::get().show(stdout, true);
 	return 0;
 }
 

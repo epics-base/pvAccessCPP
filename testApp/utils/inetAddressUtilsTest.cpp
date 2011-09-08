@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
 
     cout<<"Testing \"encodeAsIPv6Address\""<<endl;
 
-    ByteBuffer* buff = new ByteBuffer();
+    ByteBuffer* buff = new ByteBuffer(32);
 
     char src[] = { (char)0, (char)0, (char)0, (char)0, (char)0, (char)0,
             (char)0, (char)0, (char)0, (char)0, (char)0xFF, (char)0xFF,

@@ -317,7 +317,7 @@ namespace epics {
         }
 
         void BlockingTCPTransport::ensureBuffer(int size) {
-            if(_sendBuffer->getRemaining()>=size) return;
+            if((int)(_sendBuffer->getRemaining())>=size) return;
 
             // too large for buffer...
             if(_maxPayloadSize<size) {
@@ -329,7 +329,7 @@ namespace epics {
             
             // TODO sync _closed
 
-            while(_sendBuffer->getRemaining()<size&&!_closed)
+            while(((int)_sendBuffer->getRemaining())<size&&!_closed)
                 flush(false);
 
             if(_closed) THROW_BASE_EXCEPTION("transport closed");
@@ -338,11 +338,12 @@ namespace epics {
         void BlockingTCPTransport::endMessage(bool hasMoreSegments) {
             if(_lastMessageStartPosition>=0) {
 
+                // TODO align?
                 // set message size
                 _sendBuffer->putInt(_lastMessageStartPosition+sizeof(int16)+2,
                         _sendBuffer->getPosition()-_lastMessageStartPosition
                                 -CA_MESSAGE_HEADER_SIZE);
-
+                                
                 int flagsPosition = _lastMessageStartPosition+sizeof(int16);
                 // set segmented bit
                 if(hasMoreSegments) {
@@ -387,7 +388,7 @@ namespace epics {
 
         void BlockingTCPTransport::ensureData(int size) {
             // enough of data?
-            if(_socketBuffer->getRemaining()>=size) return;
+            if(((int)_socketBuffer->getRemaining())>=size) return;
 
             // too large for buffer...
             if(_maxPayloadSize<size) {
@@ -441,7 +442,7 @@ namespace epics {
                 // TODO sync _closed
                 
                 // add if missing...
-                if(!_closed&&_socketBuffer->getRemaining()<size)
+                if(!_closed&&((int)_socketBuffer->getRemaining())<size)
                     ensureData(size);
             }
 
@@ -477,7 +478,7 @@ namespace epics {
 
                         // read at least requiredBytes bytes
 
-                        int requiredPosition = (currentStartPosition+requiredBytes);
+                        uintptr_t requiredPosition = (currentStartPosition+requiredBytes);
                         while(_socketBuffer->getPosition()<requiredPosition) {
                             // read
                             int pos = _socketBuffer->getPosition();
@@ -514,7 +515,7 @@ namespace epics {
 
                     if(_stage==PROCESS_HEADER) {
                         // ensure CAConstants.CA_MESSAGE_HEADER_SIZE bytes of data
-                        if(_socketBuffer->getRemaining()<CA_MESSAGE_HEADER_SIZE)
+                        if(((int)_socketBuffer->getRemaining())<CA_MESSAGE_HEADER_SIZE)
                             processReadCached(true, PROCESS_HEADER, CA_MESSAGE_HEADER_SIZE, false);
 
                         // first byte is CA_MAGIC
@@ -806,7 +807,7 @@ namespace epics {
                         if(_delay>0) epicsThreadSleep(_delay);
                         if(_sendQueue.empty()) {
                             // if (hasMonitors || sendBuffer.position() > CAConstants.CA_MESSAGE_HEADER_SIZE)
-                            if(_sendBuffer->getPosition()>CA_MESSAGE_HEADER_SIZE)
+                            if(((int)_sendBuffer->getPosition())>CA_MESSAGE_HEADER_SIZE)
                                 _flushRequested = true;
                             else
                                 _sendQueueEvent.wait();

@@ -54,6 +54,10 @@ PROD_HOST += pvput
 pvput_SRCS += pvput.cpp
 pvput_LIBS += pvData pvAccess Com
 
+#PROD_HOST += testGetPerformance
+#testGetPerformance_SRCS += testGetPerformance.cpp
+#testGetPerformance_LIBS += pvData pvAccess Com
+
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE
