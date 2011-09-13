@@ -16,10 +16,8 @@
 #include <sstream>
 
 using namespace epics::pvAccess;
-using std::cout;
-using std::endl;
-using std::hex;
-using std::dec;
+using namespace epics::pvData;
+using namespace std;
 using std::tr1::static_pointer_cast;
 
 class ContextImpl : public Context {

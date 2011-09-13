@@ -18,6 +18,7 @@
 #include <sstream>
 
 using std::ostringstream;
+using namespace epics::pvData;
 
 namespace epics {
     namespace pvAccess {
@@ -186,7 +187,7 @@ namespace epics {
                      * Create transport, it registers itself to the registry.
                      * Each transport should have its own response handler since it is not "shareable"
                      */
-                    auto_ptr<ResponseHandler> responseHandler = _responseHandlerFactory->createResponseHandler();
+                    std::auto_ptr<ResponseHandler> responseHandler = _responseHandlerFactory->createResponseHandler();
                     BlockingServerTCPTransport::shared_pointer transport = 
                                     BlockingServerTCPTransport::create(
                                             _context,

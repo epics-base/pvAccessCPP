@@ -15,9 +15,7 @@
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
-
-using std::cin;
-using std::cout;
+using namespace std;
 
 class ContextImpl : public ServerContextImpl {
 public:

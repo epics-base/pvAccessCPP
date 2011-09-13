@@ -12,6 +12,7 @@
 #include <pv/serverContext.h>
 
 using namespace std;
+using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
 

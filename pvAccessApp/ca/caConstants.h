@@ -10,7 +10,11 @@
 
 #include <pv/pvType.h>
 
-using namespace epics::pvData;
+using epics::pvData::int8;
+using epics::pvData::int16;
+using epics::pvData::int32;
+using epics::pvData::uint32;
+using epics::pvData::String;
 
 namespace epics {
     namespace pvAccess {

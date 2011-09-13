@@ -73,7 +73,7 @@ namespace epics {
         PVDATA_REFCOUNT_MONITOR_DEFINE(blockingTCPTransport);
 
         BlockingTCPTransport::BlockingTCPTransport(Context::shared_pointer const & context,
-                SOCKET channel, auto_ptr<ResponseHandler>& responseHandler,
+                SOCKET channel, std::auto_ptr<ResponseHandler>& responseHandler,
                 int receiveBufferSize, int16 priority) :
                     _channel(channel),
                     _priority(priority),
@@ -117,7 +117,7 @@ namespace epics {
 
             // TODO minor tweak: deque size is not preallocated...
             
-            _socketBuffer = new ByteBuffer(max(MAX_TCP_RECV+MAX_ENSURE_DATA_BUFFER_SIZE, receiveBufferSize), EPICS_ENDIAN_BIG);
+            _socketBuffer = new ByteBuffer(max((int)(MAX_TCP_RECV+MAX_ENSURE_DATA_BUFFER_SIZE), receiveBufferSize), EPICS_ENDIAN_BIG);
             _socketBuffer->setPosition(_socketBuffer->getLimit());
             _startPosition = _socketBuffer->getPosition();
 

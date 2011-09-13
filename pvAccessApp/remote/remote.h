@@ -277,7 +277,7 @@ namespace epics {
             virtual Transport::shared_pointer getSearchTransport() = 0;
 
 
-            virtual Timer::shared_pointer getTimer() = 0;
+            virtual epics::pvData::Timer::shared_pointer getTimer() = 0;
             
             //virtual TransportRegistry::shared_pointer getTransportRegistry() = 0;
             virtual std::tr1::shared_ptr<TransportRegistry> getTransportRegistry() = 0;

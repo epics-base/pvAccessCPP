@@ -45,8 +45,8 @@ namespace epics {
             virtual Transport::shared_pointer checkAndGetTransport() = 0;
             virtual Transport::shared_pointer getTransport() = 0;
 
-            static Status channelDestroyed;
-            static Status channelDisconnected;
+            static epics::pvData::Status channelDestroyed;
+            static epics::pvData::Status channelDisconnected;
 
         };
         

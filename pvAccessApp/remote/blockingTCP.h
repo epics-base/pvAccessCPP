@@ -34,6 +34,8 @@
 #include <map>
 #include <deque>
 
+using epics::pvData::int64;
+
 namespace epics {
     namespace pvAccess {
 
@@ -59,7 +61,7 @@ namespace epics {
                     
         public:
             virtual bool isClosed() {
-                Lock guard(_mutex);
+                epics::pvData::Lock guard(_mutex);
                 return _closed;
             }
 
@@ -110,12 +112,12 @@ namespace epics {
             virtual int getSocketReceiveBufferSize() const;
 
             virtual bool isVerified() {
-                Lock lock(_verifiedMutex);
+                epics::pvData::Lock lock(_verifiedMutex);
                 return _verified;
             }
 
             virtual void verified() {
-                Lock lock(_verifiedMutex);
+                epics::pvData::Lock lock(_verifiedMutex);
                 _verified = true;
                 _verifiedEvent.signal();
             }
@@ -378,9 +380,9 @@ namespace epics {
 
 
             
-            Event _sendQueueEvent;
+            epics::pvData::Event _sendQueueEvent;
 
-            Event _verifiedEvent;
+            epics::pvData::Event _verifiedEvent;
 
 
 
@@ -551,7 +553,7 @@ namespace epics {
             /**
              * Timer task node.
              */
-            TimerNode _timerNode;
+            epics::pvData::TimerNode _timerNode;
 
             /**
              * Timestamp of last "live" event on this transport.
@@ -767,7 +769,7 @@ namespace epics {
              */
             std::map<pvAccessID, ServerChannel::shared_pointer> _channels;
 
-            Mutex _channelsMutex;
+            epics::pvData::Mutex _channelsMutex;
 
             /**
              * Destroy all channels.
@@ -854,7 +856,7 @@ namespace epics {
              */
             bool _destroyed;
             
-            Mutex _mutex;
+            epics::pvData::Mutex _mutex;
 
             epicsThreadId _threadId;
 

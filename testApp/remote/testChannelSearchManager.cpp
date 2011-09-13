@@ -153,7 +153,7 @@ int main(int argc,char *argv[])
 	pthread_t _worker1Id;
 	pthread_t _worker2Id;
 
-	ostringstream obuffer;
+	std::ostringstream obuffer;
 	for(int i = 0; i < max_channels; i++)
 	{
 		obuffer.clear();

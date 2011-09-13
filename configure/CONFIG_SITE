@@ -25,7 +25,7 @@
 #IOCS_APPL_TOP = </IOC/path/to/application/top>
 
 ifeq ($(DEBUG),1)
-    DEBUG_CFLAGS=-O0 -g -ggdb
+    DEBUG_CFLAGS=-g -ggdb
 endif
 
 ifeq ($(EPICS_HOST_ARCH),linux-x86)

@@ -5,6 +5,7 @@
 #include <pv/channelSearchManager.h>
 
 using namespace std;
+using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
 

@@ -12,6 +12,7 @@
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
+using namespace std;
 
 #define N_CHANNELS 10000
 

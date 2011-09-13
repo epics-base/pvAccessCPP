@@ -113,7 +113,7 @@ void TransportRegistry::clear()
 	_transportCount = 0;
 }
 
-int TransportRegistry::numberOfActiveTransports()
+int32 TransportRegistry::numberOfActiveTransports()
 {
 	Lock guard(_mutex);
 	return _transportCount;

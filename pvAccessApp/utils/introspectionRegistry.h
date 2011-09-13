@@ -21,8 +21,14 @@
 
 // TODO check for memory leaks
 // TODO to be removed out of header
-using namespace epics::pvData;
-using namespace std;
+using epics::pvData::ByteBuffer;
+using epics::pvData::FieldConstPtr;
+using epics::pvData::StructureConstPtr;
+using epics::pvData::SerializableControl;
+using epics::pvData::DeserializableControl;
+using epics::pvData::PVStructurePtr;
+using std::string;
+using epics::pvData::int8;
 
 namespace epics { namespace pvAccess {
 
@@ -34,7 +40,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 	 * Registry is used to cache introspection interfaces to minimize network traffic.
 	 * @author gjansa
 	 */
-	class IntrospectionRegistry : public NoDefaultMethods {
+	class IntrospectionRegistry : public epics::pvData::NoDefaultMethods {
 	public:
 		IntrospectionRegistry(bool serverSide);
 		virtual ~IntrospectionRegistry();
@@ -209,7 +215,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 * @param control serialization control.
 		 * @param status status to serialize.
 		 */
-		void serializeStatus(ByteBuffer* buffer, SerializableControl* control, const Status &status);
+		void serializeStatus(ByteBuffer* buffer, SerializableControl* control, const epics::pvData::Status &status);
 
 		/**
 		 * Deserialize status.
@@ -217,7 +223,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 * @param buffer data buffer.
 		 * @param control serialization control.
 		 */
-		void deserializeStatus(Status &status, ByteBuffer* buffer, DeserializableControl* control);
+		void deserializeStatus(epics::pvData::Status &status, ByteBuffer* buffer, DeserializableControl* control);
 
 	private:
 		registryMap_t _registry;
@@ -225,17 +231,17 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		registryMap_t::reverse_iterator _registryRIter;
 		short _outgoingIdPointer;
 		short _direction;
-		Mutex _mutex;
+		epics::pvData::Mutex _mutex;
 
 		/**
 		 * PVField factory.
 		 */
-		static PVDataCreate* _pvDataCreate;
+		static epics::pvData::PVDataCreate* _pvDataCreate;
 
 		/**
 		 * Field factory.
 		 */
-		static FieldCreate* _fieldCreate;
+		static epics::pvData::FieldCreate* _fieldCreate;
 
 		bool registryContainsValue(FieldConstPtr field, short& key);
 	};

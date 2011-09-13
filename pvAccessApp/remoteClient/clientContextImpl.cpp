@@ -31,6 +31,7 @@
 using std::tr1::dynamic_pointer_cast;
 using std::tr1::static_pointer_cast;
 
+using namespace std;
 using namespace epics::pvData;
 
 namespace epics {

@@ -12,7 +12,6 @@
 #include <iostream>
 #include <string>
 
-
 namespace epics {
     namespace pvAccess {
 
@@ -154,7 +153,7 @@ int main(int argc, char *argv[])
 	addrArray.clear();
 	if(registry) delete registry;
 	epicsExitCallAtExits();
-	CDRMonitor::get().show(stdout, true);
+	epics::pvData::CDRMonitor::get().show(stdout, true);
 	return 0;
 }
 

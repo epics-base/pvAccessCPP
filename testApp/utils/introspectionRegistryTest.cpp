@@ -17,6 +17,7 @@
 #include <pv/convert.h>
 
 using std::tr1::static_pointer_cast;
+using namespace epics::pvData;
 
 namespace epics {
     namespace pvAccess {

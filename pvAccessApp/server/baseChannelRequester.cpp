@@ -57,7 +57,7 @@ int32 BaseChannelRequester::getPendingRequest()
 
 String BaseChannelRequester::getRequesterName()
 {
-	stringstream name;
+	std::stringstream name;
 	name << typeid(*_transport).name() << "/" << _ioid;
 	return name.str();
 }

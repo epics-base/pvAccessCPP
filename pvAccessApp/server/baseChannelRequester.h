@@ -11,6 +11,8 @@
 #include <pv/requester.h>
 #include <pv/destroyable.h>
 
+using epics::pvData::Status;
+
 namespace epics {
 namespace pvAccess {
 

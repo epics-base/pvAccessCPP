@@ -10,6 +10,9 @@
 #include <pv/serverChannelImpl.h>
 #include <pv/baseChannelRequester.h>
 
+using epics::pvData::BitSet;
+using epics::pvData::PVStructure;
+
 namespace epics {
     namespace pvAccess {
 
@@ -61,7 +64,7 @@ namespace epics {
             /**
              * Table of response handlers for each command ID.
              */
-            vector<ResponseHandler::shared_pointer> m_handlerTable;
+            std::vector<ResponseHandler::shared_pointer> m_handlerTable;
 
         };
 
@@ -174,8 +177,8 @@ namespace epics {
         public:
         	ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context, int32 expectedResponseCount);
         	void clear();
-        	ServerChannelFindRequesterImpl* set(String _name, int32 searchSequenceId, int32 cid, osiSockAddr* sendTo, boolean responseRequired);
-        	void channelFindResult(const epics::pvData::Status& status, ChannelFind::shared_pointer const & channelFind, boolean wasFound);
+        	ServerChannelFindRequesterImpl* set(String _name, int32 searchSequenceId, int32 cid, osiSockAddr* sendTo, bool responseRequired);
+        	void channelFindResult(const epics::pvData::Status& status, ChannelFind::shared_pointer const & channelFind, bool wasFound);
         	void lock();
         	void unlock();
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
@@ -463,7 +466,7 @@ namespace epics {
 
         class ServerMonitorRequesterImpl :
             public BaseChannelRequester,
-            public MonitorRequester,
+            public epics::pvData::MonitorRequester,
             public TransportSender,
             public std::tr1::enable_shared_from_this<ServerMonitorRequesterImpl>
         {
@@ -476,7 +479,7 @@ namespace epics {
         	       Transport::shared_pointer const & transport);
         	void activate(epics::pvData::PVStructure::shared_pointer const & pvRequest);
         public:
-        	static MonitorRequester::shared_pointer create(ServerContextImpl::shared_pointer const & context,
+        	static epics::pvData::MonitorRequester::shared_pointer create(ServerContextImpl::shared_pointer const & context,
         	       ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
         	       Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
         	       

@@ -5,6 +5,8 @@
 #include <pv/introspectionRegistry.h>
 #include <pv/convert.h>
 
+using namespace epics::pvData;
+using namespace std;
 using std::tr1::static_pointer_cast;
 
 namespace epics { namespace pvAccess {

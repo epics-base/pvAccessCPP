@@ -54,7 +54,7 @@ namespace epics {
             virtual ~BlockingUDPTransport();
 
             virtual bool isClosed() {
-                Lock guard(_mutex);
+                epics::pvData::Lock guard(_mutex);
                 return _closed;
             }
 
@@ -264,9 +264,9 @@ namespace epics {
             /**
              * Used for process sync.
              */
-            Mutex _mutex;
-            Mutex _sendMutex;
-            Event _shutdownEvent;
+            epics::pvData::Mutex _mutex;
+            epics::pvData::Mutex _sendMutex;
+            epics::pvData::Event _shutdownEvent;
 
             /**
              * Thread ID

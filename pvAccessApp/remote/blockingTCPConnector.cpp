@@ -67,7 +67,7 @@ namespace epics {
         }
 
         Transport::shared_pointer BlockingTCPConnector::connect(TransportClient::shared_pointer const & client,
-                auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
+                std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
                 short transportRevision, int16 priority) {
 
             SOCKET socket = INVALID_SOCKET;
@@ -110,7 +110,7 @@ namespace epics {
                     if(socket==INVALID_SOCKET) {
                         LOG(logLevelDebug,
                                 "Connection to CA server %s failed.", ipAddrStr);
-                        ostringstream temp;
+                        std::ostringstream temp;
                         temp<<"Failed to verify TCP connection to '"<<ipAddrStr<<"'.";
                         THROW_BASE_EXCEPTION(temp.str().c_str());
                     }
@@ -150,7 +150,7 @@ namespace epics {
                                 logLevelDebug,
                                 "Connection to CA server %s failed to be validated, closing it.",
                                 ipAddrStr);
-                        ostringstream temp;
+                        std::ostringstream temp;
                         temp<<"Failed to verify TCP connection to '"<<ipAddrStr<<"'.";
                         THROW_BASE_EXCEPTION(temp.str().c_str());
                     }
@@ -176,7 +176,7 @@ namespace epics {
                 }
             }
             else {
-                ostringstream temp;
+                std::ostringstream temp;
                 temp<<"Failed to obtain synchronization lock for '"<<ipAddrStr;
                 temp<<"', possible deadlock.";
                 THROW_BASE_EXCEPTION(temp.str().c_str());

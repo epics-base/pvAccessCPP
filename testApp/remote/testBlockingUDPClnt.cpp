@@ -22,10 +22,7 @@
 using namespace epics::pvAccess;
 using namespace epics::pvData;
 using std::tr1::static_pointer_cast;
-
-using std::cout;
-using std::endl;
-using std::sscanf;
+using namespace std;
 
 static osiSockAddr sendTo;
 

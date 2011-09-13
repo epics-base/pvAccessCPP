@@ -73,7 +73,7 @@ public:
 	 * Prints detailed information about the context to the specified output stream.
 	 * @param str stream to which to print the info
 	 */
-	virtual void printInfo(ostream& str) = 0;
+	virtual void printInfo(std::ostream& str) = 0;
 
 	/**
 	 * Dispose (destroy) server context.
@@ -117,11 +117,11 @@ public:
 	void shutdown();
 	void destroy();
 	void printInfo();
-	void printInfo(ostream& str);
+	void printInfo(std::ostream& str);
 	void dispose();
 	void setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer const & beaconServerStatusProvider);
 	//**************** derived from Context ****************//
-	Timer::shared_pointer getTimer();
+	epics::pvData::Timer::shared_pointer getTimer();
 	Channel::shared_pointer getChannel(pvAccessID id);
 	Transport::shared_pointer getSearchTransport();
 	Configuration::shared_pointer getConfiguration();

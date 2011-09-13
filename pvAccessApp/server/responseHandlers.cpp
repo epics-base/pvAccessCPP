@@ -80,7 +80,7 @@ void ServerResponseHandler::handleResponse(osiSockAddr* responseFrom,
 				"Invalid (or unsupported) command: %x.", (0xFF&command));
 				
 		// TODO remove debug output
-		ostringstream name;
+		std::ostringstream name;
 		name<<"Invalid CA header "<<hex<<(int)(0xFF&command);
 		name<<", its payload buffer";
 
@@ -415,7 +415,7 @@ void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer cons
 
 String ServerChannelRequesterImpl::getRequesterName()
 {
-	stringstream name;
+	std::stringstream name;
 	name << "ServerChannelRequesterImpl/" << _channelName << "[" << _cid << "]"; 
 	return name.str();
 }

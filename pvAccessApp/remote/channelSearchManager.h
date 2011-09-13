@@ -21,7 +21,10 @@
 
 #include <deque>
 
-using namespace epics::pvData;
+using epics::pvData::Mutex;
+using epics::pvData::String;
+using epics::pvData::int32;
+using epics::pvData::int64;
 
 namespace epics { namespace pvAccess {
 
@@ -123,7 +126,7 @@ class ChannelSearchManager;
 /**
  * SearchTimer.
  */
-class SearchTimer: public TimerCallback
+class SearchTimer: public epics::pvData::TimerCallback
 {
 public:
     /**
@@ -226,7 +229,7 @@ private:
 	 * Timer node.
 	 * (sync on requestPendingChannels)
 	 */
-	TimerNode* _timerNode;
+	epics::pvData::TimerNode* _timerNode;
 	/**
 	 * Cancel this instance.
 	 */
@@ -263,8 +266,8 @@ public:
 	void endMessage() {}
 	void flush(bool lastMessageCompleted) {}
 	void setRecipient(const osiSockAddr& sendTo) {}
-	void startMessage(int8 command, int32 ensureCapacity) {}
-	void ensureBuffer(int32 size) {}
+	void startMessage(int8 command, int ensureCapacity) {}
+	void ensureBuffer(int size) {}
 	void flushSerializeBuffer() {}
 };
 
