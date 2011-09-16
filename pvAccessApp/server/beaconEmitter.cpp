@@ -2,6 +2,10 @@
  * beaconEmitter.cpp
  */
 
+#ifdef _WIN32
+#define NOMINMAX
+#endif
+
 #include <pv/beaconEmitter.h>
 
 #include <pv/introspectionRegistry.h>

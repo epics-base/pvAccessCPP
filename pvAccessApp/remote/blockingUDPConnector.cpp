@@ -15,7 +15,6 @@
 
 /* standard */
 #include <sys/types.h>
-#include <sys/socket.h>
 
 using namespace std;
 
@@ -38,7 +37,7 @@ namespace epics {
             }
 
             int optval = _broadcast ? 1 : 0;
-            int retval = ::setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &optval, sizeof(optval));
+            int retval = ::setsockopt(socket, SOL_SOCKET, SO_BROADCAST, (char *)&optval, sizeof(optval));
             if(retval<0)
             {
                 char errStr[64];

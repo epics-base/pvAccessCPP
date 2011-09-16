@@ -16,6 +16,7 @@
 #include <pv/pvType.h>
 
 #include <osiSock.h>
+#include <epicsThread.h>
 #include <logger.h>
 
 #include <iostream>
@@ -160,7 +161,7 @@ void testBlockingTCPSender() {
                 transport->enqueueSendRequest(dts);
             else
                 break;
-            sleep(1);
+            epicsThreadSleep(1.0);
         }
     } catch(std::exception& e) {
         cout<<e.what()<<endl;

@@ -26,7 +26,7 @@ testBeaconEmitter_LIBS += pvData pvAccess Com
 testBeaconHandler_SRCS += testBeaconHandler.cpp
 testBeaconHandler_LIBS += pvData pvAccess Com
 
-PROD_HOST += testChannelSearchManager
+PROD_HOST_Linux += testChannelSearchManager
 testChannelSearchManager_SRCS += testChannelSearchManager.cpp
 testChannelSearchManager_LIBS += pvData pvAccess Com
 

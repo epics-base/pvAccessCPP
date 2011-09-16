@@ -43,7 +43,7 @@ namespace epics {
             destroy();
         }
 
-        int BlockingTCPAcceptor::initialize(in_port_t port) {
+        int BlockingTCPAcceptor::initialize(unsigned short port) {
             // specified bind address
             _bindAddress.ia.sin_family = AF_INET;
             _bindAddress.ia.sin_port = htons(port);
@@ -85,7 +85,7 @@ namespace epics {
                             _bindAddress.ia.sin_port = htons(0);
                         }
                         else {
-                            ::close(_serverSocketChannel);
+                            epicsSocketDestroy(_serverSocketChannel);
                             break; // exit while loop
                         }
                     }
@@ -94,7 +94,7 @@ namespace epics {
 
                         // update bind address, if dynamically port selection was used
                         if(ntohs(_bindAddress.ia.sin_port)==0) {
-                            socklen_t sockLen = sizeof(sockaddr);
+                            osiSocklen_t sockLen = sizeof(sockaddr);
                             // read the actual socket info
                             retval = ::getsockname(_serverSocketChannel, &_bindAddress.sa, &sockLen);
                             if(retval<0) {
@@ -168,14 +168,14 @@ namespace epics {
 
                     // enable TCP_NODELAY (disable Nagle's algorithm)
                     int optval = 1; // true
-                    int retval = ::setsockopt(newClient, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(int));
+                    int retval = ::setsockopt(newClient, IPPROTO_TCP, TCP_NODELAY, (char *)&optval, sizeof(int));
                     if(retval<0) {
                         epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
                         LOG(logLevelDebug, "Error setting TCP_NODELAY: %s", strBuffer);
                     }
 
                     // enable TCP_KEEPALIVE
-                    retval = ::setsockopt(newClient, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(int));
+                    retval = ::setsockopt(newClient, SOL_SOCKET, SO_KEEPALIVE, (char *)&optval, sizeof(int));
                     if(retval<0) {
                         epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
                         LOG(logLevelDebug, "Error setting SO_KEEPALIVE: %s", strBuffer);

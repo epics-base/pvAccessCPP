@@ -32,7 +32,7 @@ BaseChannelRequester::BaseChannelRequester(
 
 }
 
-boolean BaseChannelRequester::startRequest(int32 qos)
+bool BaseChannelRequester::startRequest(int32 qos)
 {
 	Lock guard(_mutex);
 	if (_pendingRequest != NULL_REQUEST)

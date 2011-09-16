@@ -596,7 +596,7 @@ class MockChannel : public Channel {
             PVDoubleArray *pvField = static_cast<PVDoubleArray*>(m_pvStructure->getScalarArrayField(String("value"), pvDouble));
             int v = 0;
             int ix = 0;
-            int COUNT = 1000;
+            const int COUNT = 1000;
             
             pvField->setCapacity(1000*COUNT);
             for (int n = 0; n < 1000; n++)

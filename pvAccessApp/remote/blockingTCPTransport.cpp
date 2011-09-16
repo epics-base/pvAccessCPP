@@ -5,6 +5,7 @@
  *      Author: Miha Vitorovic
  */
 
+#define __STDC_LIMIT_MACROS 1
 #include <pv/blockingTCP.h>
 #include <pv/inetAddressUtil.h>
 #include <pv/caConstants.h>
@@ -24,9 +25,13 @@
 
 /* standard */
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <algorithm>
 #include <sstream>
+
+#ifdef _WIN32
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
 
 using namespace epics::pvData;
 
@@ -72,6 +77,8 @@ namespace epics {
 
         PVDATA_REFCOUNT_MONITOR_DEFINE(blockingTCPTransport);
 
+        const double BlockingTCPTransport::_delay = 0.01;
+
         BlockingTCPTransport::BlockingTCPTransport(Context::shared_pointer const & context,
                 SOCKET channel, std::auto_ptr<ResponseHandler>& responseHandler,
                 int receiveBufferSize, int16 priority) :
@@ -111,7 +118,7 @@ namespace epics {
                     _verified(false),
                     _markerToSend(0),
                     _totalBytesSent(0),
-                    _remoteBufferFreeSpace(LONG_LONG_MAX)
+                    _remoteBufferFreeSpace(INT64_MAX)
         {
             PVDATA_REFCOUNT_MONITOR_CONSTRUCT(blockingTCPTransport);
 
@@ -126,9 +133,9 @@ namespace epics {
             _maxPayloadSize = _sendBuffer->getSize() - 2*CA_MESSAGE_HEADER_SIZE; // one for header, one for flow control
 
             // get send buffer size
-            socklen_t intLen = sizeof(int);
+            osiSocklen_t intLen = sizeof(int);
 
-            int retval = getsockopt(_channel, SOL_SOCKET, SO_SNDBUF, &_socketSendBufferSize, &intLen);
+            int retval = getsockopt(_channel, SOL_SOCKET, SO_SNDBUF, (char *)&_socketSendBufferSize, &intLen);
             if(retval<0) {
                 _socketSendBufferSize = MAX_TCP_RECV;
                 char errStr[64];
@@ -138,7 +145,7 @@ namespace epics {
                         errStr);
             }
 
-            socklen_t saSize = sizeof(sockaddr);
+            osiSocklen_t saSize = sizeof(sockaddr);
             retval = getpeername(_channel, &(_socketAddress.sa), &saSize);
             if(retval<0) {
                 char errStr[64];
@@ -259,9 +266,9 @@ namespace epics {
             // this DatagramSocket.
 
             int sockBufSize;
-            socklen_t intLen = sizeof(int);
+            osiSocklen_t intLen = sizeof(int);
 
-            int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF,&sockBufSize, &intLen);
+            int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF, (char *)&sockBufSize, &intLen);
             if(retval<0)
             {
                 char errStr[64];
@@ -482,7 +489,7 @@ namespace epics {
                         while(_socketBuffer->getPosition()<requiredPosition) {
                             // read
                             int pos = _socketBuffer->getPosition();
-                            ssize_t bytesRead = recv(_channel, (void*)(_socketBuffer->getArray()+pos),
+                            ssize_t bytesRead = recv(_channel, (char*)(_socketBuffer->getArray()+pos),
                                                      _socketBuffer->getRemaining(), 0);
                             _socketBuffer->setPosition(pos+bytesRead);
 
