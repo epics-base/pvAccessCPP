@@ -24,7 +24,6 @@
 /* standard */
 #include <cstdio>
 #include <sys/types.h>
-#include <sys/socket.h>
 
 using namespace epics::pvData;
 using namespace std;
@@ -54,7 +53,7 @@ namespace epics {
 
             // set receive timeout so that we do not have problems at shutdown (recvfrom would block)
             struct timeval timeout;
-            bzero(&timeout, sizeof(struct timeval));
+            memset(&timeout, 0, sizeof(struct timeval));
             timeout.tv_sec = 1;
             timeout.tv_usec = 0;
 
@@ -181,9 +180,9 @@ namespace epics {
                     // data ready to be read
                     _receiveBuffer->clear();
 
-                    socklen_t addrStructSize = sizeof(sockaddr);
+                    osiSocklen_t addrStructSize = sizeof(sockaddr);
 
-                    int bytesRead = recvfrom(_channel, (void*)_receiveBuffer->getArray(),
+                    int bytesRead = recvfrom(_channel, (char*)_receiveBuffer->getArray(),
                             _receiveBuffer->getRemaining(), 0, (sockaddr*)&fromAddress,
                             &addrStructSize);
 
@@ -217,6 +216,8 @@ namespace epics {
                         // interrupted or timeout
                         if (socketError == EINTR || 
                             socketError == EAGAIN ||
+                            // windows times out with this
+                            socketError == SOCK_ETIMEDOUT || 
                             socketError == EWOULDBLOCK)
                             continue;
                             
@@ -331,9 +332,9 @@ namespace epics {
             // this DatagramSocket.
 
             int sockBufSize = -1;
-            socklen_t intLen = sizeof(int);
+            osiSocklen_t intLen = sizeof(int);
 
-            int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF, &sockBufSize, &intLen);
+            int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF, (char *)&sockBufSize, &intLen);
             if(retval<0) 
             {
                 char errStr[64];

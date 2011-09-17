@@ -3414,7 +3414,7 @@ namespace epics {
                     m_needSubscriptionUpdate = true;
                     
                     int count = 0;
-                    ResponseRequest::weak_pointer rrs[m_responseRequests.size()];
+                    std::vector<ResponseRequest::weak_pointer> rrs(m_responseRequests.size());
                     for (IOIDResponseRequestMap::iterator iter = m_responseRequests.begin();
                          iter != m_responseRequests.end();
                          iter++)
@@ -3829,7 +3829,7 @@ TODO
                 Lock guard(m_cidMapMutex);
 
                 int count = 0;
-                ChannelImpl::weak_pointer channels[m_channelsByCID.size()];
+                std::vector<ChannelImpl::weak_pointer> channels(m_channelsByCID.size());
                 for (CIDChannelMap::iterator iter = m_channelsByCID.begin();
                 iter != m_channelsByCID.end();
                 iter++)

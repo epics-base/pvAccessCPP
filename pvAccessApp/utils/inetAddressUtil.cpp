@@ -22,42 +22,6 @@
 #include <cstring>
 #include <cstdlib>
 #include <sstream>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <net/if.h>
-
-// since we do not have autoconf
-#ifdef darwin
-#define HAVE_SOCKADDR_SA_LEN
-#endif
-
-/*
- * In newer BSD systems, the socket address is variable-length, and
- * there's an "sa_len" field giving the length of the structure;
- * this allows socket addresses to be longer than 2 bytes of family
- * and 14 bytes of data.
- *
- * Some commercial UNIXes use the old BSD scheme, some use the RFC 2553
- * variant of the old BSD scheme (with "struct sockaddr_storage" rather
- * than "struct sockaddr"), and some use the new BSD scheme.
- *
- * Some versions of GNU libc use neither scheme, but has an "SA_LEN()"
- * macro that determines the size based on the address family.  Other
- * versions don't have "SA_LEN()" (as it was in drafts of RFC 2553
- * but not in the final version).
- *
- * We assume that a UNIX that doesn't have "getifaddrs()" and doesn't have
- * SIOCGLIFCONF, but has SIOCGIFCONF, uses "struct sockaddr" for the
- * address in an entry returned by SIOCGIFCONF.
- */
-#ifndef SA_LEN
-#ifdef HAVE_SOCKADDR_SA_LEN
-#define SA_LEN(addr)    ((addr).sa_len)
-#else /* HAVE_SOCKADDR_SA_LEN */
-#define SA_LEN(addr)    (sizeof (struct sockaddr))
-#endif /* HAVE_SOCKADDR_SA_LEN */
-#endif /* SA_LEN */
-
 
 using namespace std;
 using namespace epics::pvData;
@@ -65,7 +29,7 @@ using namespace epics::pvData;
 namespace epics {
     namespace pvAccess {
 
-        void addDefaultBroadcastAddress(InetAddrVector* v, in_port_t p) {
+        void addDefaultBroadcastAddress(InetAddrVector* v, unsigned short p) {
             osiSockAddr pNewNode;
             pNewNode.ia.sin_family = AF_INET;
             pNewNode.ia.sin_addr.s_addr = htonl(INADDR_BROADCAST);
@@ -73,141 +37,22 @@ namespace epics {
             v->push_back(pNewNode);
         }
 
-        // TODO use osiSockDiscoverBroadcastAddresses() from epics/base/src/libCom/osi/os/default/osdNetIntf.c
-        InetAddrVector* getBroadcastAddresses(SOCKET sock,
-                in_port_t defaultPort) {
-            static const unsigned nelem = 100;
-            int status;
-            struct ifconf ifconf;
-            struct ifreq* pIfreqList;
-            struct ifreq* pifreq;
-            struct ifreq ifrBuff;
-            osiSockAddr pNewNode;
-
-            InetAddrVector* retVector = new InetAddrVector();
-
-            /*
-             * use pool so that we avoid using too much stack space
-             *
-             * nelem is set to the maximum interfaces
-             * on one machine here
-             */
-            pIfreqList = new ifreq[nelem];
-            if(!pIfreqList) {
-                LOG(logLevelError,
-                        "getBroadcastAddresses(): no memory to complete request");
-                addDefaultBroadcastAddress(retVector, defaultPort);
-                return retVector;
+        InetAddrVector* getBroadcastAddresses(SOCKET sock, 
+                unsigned short defaultPort) {
+            ELLLIST as;
+            ellInit(&as);
+            osiSockAddr serverAddr;
+            memset(&serverAddr, 0, sizeof(osiSockAddr));
+            InetAddrVector * v = new InetAddrVector;
+            osiSockDiscoverBroadcastAddresses(&as, sock, &serverAddr);
+            for(ELLNODE * n = ellFirst(&as); n != NULL; n = ellNext(n))
+            {
+                osiSockAddrNode * sn = (osiSockAddrNode *)n;
+                sn->addr.ia.sin_port = htons(defaultPort);
+                v->push_back(sn->addr);
             }
-
-            // get number of interfaces
-            ifconf.ifc_len = nelem*sizeof(ifreq);
-            ifconf.ifc_req = pIfreqList;
-            memset(ifconf.ifc_req, 0, ifconf.ifc_len);
-            status = ioctl(sock, SIOCGIFCONF, &ifconf);
-            if(status<0||ifconf.ifc_len==0) {
-                LOG(logLevelDebug,
-                        "getBroadcastAddresses(): unable to fetch network interface configuration");
-                delete[] pIfreqList;
-                addDefaultBroadcastAddress(retVector, defaultPort);
-                return retVector;
-            }
-
-            int maxNodes = ifconf.ifc_len/sizeof(ifreq);
-            //errlogPrintf("Found %d interfaces\n", maxNodes);
-
-            pifreq = pIfreqList;
-
-            for(int i = 0; i<maxNodes; i++) {
-                if(!(*pifreq->ifr_name)) break;
-
-                if(i>0) {
-                    size_t n = SA_LEN(pifreq->ifr_addr)+sizeof(pifreq->ifr_name);
-                    if(n<sizeof(ifreq))
-                        pifreq++;
-                    else
-                        pifreq = (struct ifreq *)((char *)pifreq+n);
-                }
-
-                /*
-                 * If its not an internet interface then dont use it
-                 */
-                if(pifreq->ifr_addr.sa_family!=AF_INET) continue;
-
-                strncpy(ifrBuff.ifr_name, pifreq->ifr_name,
-                        sizeof(ifrBuff.ifr_name));
-                status = ioctl(sock, SIOCGIFFLAGS, &ifrBuff);
-                if(status) {
-                    LOG(
-                            logLevelDebug,
-                            "getBroadcastAddresses(): net intf flags fetch for \"%s\" failed",
-                            pifreq->ifr_name);
-                    continue;
-                }
-
-                /*
-                 * dont bother with interfaces that have been disabled
-                 */
-                if(!(ifrBuff.ifr_flags&IFF_UP)) continue;
-
-                /*
-                 * dont use the loop back interface
-                 */
-                if(ifrBuff.ifr_flags&IFF_LOOPBACK) continue;
-
-                /*
-                 * If this is an interface that supports
-                 * broadcast fetch the broadcast address.
-                 *
-                 * Otherwise if this is a point to point
-                 * interface then use the destination address.
-                 *
-                 * Otherwise CA will not query through the
-                 * interface.
-                 */
-                if(ifrBuff.ifr_flags&IFF_BROADCAST) {
-                    strncpy(ifrBuff.ifr_name, pifreq->ifr_name,
-                            sizeof(ifrBuff.ifr_name));
-                    status = ioctl(sock, SIOCGIFBRDADDR, &ifrBuff);
-                    if(status) {
-                        LOG(
-                                logLevelDebug,
-                                "getBroadcastAddresses(): net intf \"%s\": bcast addr fetch fail",
-                                pifreq->ifr_name);
-                        continue;
-                    }
-                    pNewNode.sa = ifrBuff.ifr_broadaddr;
-                }
-#ifdef IFF_POINTOPOINT
-                else if(ifrBuff.ifr_flags&IFF_POINTOPOINT) {
-                    strncpy(ifrBuff.ifr_name, pifreq->ifr_name,
-                            sizeof(ifrBuff.ifr_name));
-                    status = ioctl(sock, SIOCGIFDSTADDR, &ifrBuff);
-                    if(status) {
-                        LOG(
-                                logLevelDebug,
-                                "getBroadcastAddresses(): net intf \"%s\": pt to pt addr fetch fail",
-                                pifreq->ifr_name);
-                        continue;
-                    }
-                    pNewNode.sa = ifrBuff.ifr_dstaddr;
-                }
-#endif
-                else {
-                    LOG(
-                            logLevelDebug,
-                            "getBroadcastAddresses(): net intf \"%s\": not point to point or bcast?",
-                            pifreq->ifr_name);
-                    continue;
-                }
-                pNewNode.ia.sin_port = htons(defaultPort);
-
-                retVector->push_back(pNewNode);
-            }
-
-            delete[] pIfreqList;
-
-            return retVector;
+            ellFree(&as);
+            return v;
         }
 
         void encodeAsIPv6Address(ByteBuffer* buffer, const osiSockAddr* address) {
@@ -218,7 +63,7 @@ namespace epics {
             // next 16-bits are 1
             buffer->putShort(0xFFFF);
             // following IPv4 address in big-endian (network) byte order
-            in_addr_t ipv4Addr = ntohl(address->ia.sin_addr.s_addr);
+            uint32_t ipv4Addr = ntohl(address->ia.sin_addr.s_addr);
             buffer->putByte((int8)((ipv4Addr>>24)&0xFF));
             buffer->putByte((int8)((ipv4Addr>>16)&0xFF));
             buffer->putByte((int8)((ipv4Addr>>8)&0xFF));

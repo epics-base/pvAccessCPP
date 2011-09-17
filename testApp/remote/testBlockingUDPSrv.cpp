@@ -11,6 +11,7 @@
 #include <pv/hexDump.h>
 
 #include <osiSock.h>
+#include <epicsThread.h>
 
 #include <iostream>
 #include <sstream>
@@ -118,7 +119,7 @@ void testBlockingUDPConnector() {
 
     //TODO drh can be deleted in connector!
     while(drh->getPackets()<10) {
-        sleep(1);
+        epicsThreadSleep(1.0);
     }
 }
 

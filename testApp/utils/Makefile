@@ -26,11 +26,11 @@ PROD_HOST += transportRegisterTest
 transportRegisterTest_SRCS += transportRegistryTest.cpp
 transportRegisterTest_LIBS += pvAccess Com pvData
 
-PROD_HOST += namedLockPatternTest
+PROD_HOST_Linux += namedLockPatternTest
 namedLockPatternTest_SRCS += namedLockPatternTest.cpp
 namedLockPatternTest_LIBS += pvAccess Com pvData
 
-PROD_HOST += configurationTest
+PROD_HOST_Linux += configurationTest
 configurationTest_SRCS += configurationTest.cpp
 configurationTest_LIBS += pvAccess Com pvData
 

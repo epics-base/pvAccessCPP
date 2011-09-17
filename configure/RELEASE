@@ -26,7 +26,7 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 
 # EPICS_BASE usually appears last so other apps can override stuff:
 
-PVDATA=/Users/msekoranja/tmp/pvDataCPP
+PVDATA=/opt/epics/pvDataCPP
 EPICS_BASE=/opt/epics/base
 
 #PVDATA=/home/mrk/hg/pvDataCPP

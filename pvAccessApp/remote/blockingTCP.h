@@ -207,7 +207,7 @@ namespace epics {
 
             static const int MAX_ENSURE_DATA_BUFFER_SIZE = 1024;
 
-            static const double _delay = 0.01;
+            static const double _delay;
 
             /****** finally initialized at construction time and after start (called by the same thread) ********/
             
@@ -864,7 +864,7 @@ namespace epics {
              * Initialize connection acception.
              * @return port where server is listening
              */
-            int initialize(in_port_t port);
+            int initialize(unsigned short port);
 
             /**
              * Validate connection by sending a validation message request.

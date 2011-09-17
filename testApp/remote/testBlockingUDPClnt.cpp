@@ -13,6 +13,7 @@
 //#include <pv/CDRMonitor.h>
 
 #include <osiSock.h>
+#include <epicsThread.h>
 
 #include <iostream>
 #include <cstdio>
@@ -128,7 +129,7 @@ void testBlockingUDPSender() {
     for(int i = 0; i<10; i++) {
         cout<<"   Packet: "<<i+1<<endl;
         transport->enqueueSendRequest(dts);
-        sleep(1);
+        epicsThreadSleep(1.0);
     }
 }
 

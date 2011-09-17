@@ -497,12 +497,12 @@ ChannelSearchManager::ChannelSearchManager(Context* context):
 	maxPeriod = min(maxPeriod, MAX_SEARCH_PERIOD_LOWER_LIMIT);
 
 	// calculate number of timers to reach maxPeriod (each timer period is doubled)
-	double powerOfTwo = log(maxPeriod / (double)MIN_RTT) / log(2);
+	double powerOfTwo = log(maxPeriod / (double)MIN_RTT) / log(2.0);
 	int32 numberOfTimers = (int32)(powerOfTwo + 1);
 	numberOfTimers = min(numberOfTimers, MAX_TIMERS);
 
 	// calculate beacon anomaly timer index
-	powerOfTwo = log(BEACON_ANOMALY_SEARCH_PERIOD  / (double)MIN_RTT) / log(2);
+	powerOfTwo = log(BEACON_ANOMALY_SEARCH_PERIOD  / (double)MIN_RTT) / log(2.0);
 	_beaconAnomalyTimerIndex = (int32)(powerOfTwo + 1);
 	_beaconAnomalyTimerIndex = min(_beaconAnomalyTimerIndex, numberOfTimers - 1);
 

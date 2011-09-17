@@ -35,10 +35,9 @@ namespace epics {
          * on this machine. IPv6 doesn't have a local broadcast address.
          * Conversion of the defaultPort to network byte order performed by
          * the function.
-         * TODO: Windows implementation of the function.
          */
         InetAddrVector* getBroadcastAddresses(SOCKET sock,
-                in_port_t defaultPort);
+                unsigned short defaultPort);
 
         /**
          * Encode IPv4 address as IPv6 address.

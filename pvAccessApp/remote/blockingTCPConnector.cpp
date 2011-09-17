@@ -14,7 +14,6 @@
 #include <logger.h>
 
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <sstream>
 
 namespace epics {
@@ -120,7 +119,7 @@ namespace epics {
                     // enable TCP_NODELAY (disable Nagle's algorithm)
                     int optval = 1; // true
                     int retval = ::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY,
-                            &optval, sizeof(int));
+                                              (char *)&optval, sizeof(int));
                     if(retval<0) {
                         char errStr[64];
                         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
@@ -129,7 +128,7 @@ namespace epics {
                     
                     // enable TCP_KEEPALIVE
                     retval = ::setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE,
-                            &optval, sizeof(int));
+                                          (char *)&optval, sizeof(int));
                     if(retval<0) 
                     {
                         char errStr[64];

@@ -32,6 +32,14 @@ ifeq ($(EPICS_HOST_ARCH),linux-x86)
     USR_LDFLAGS += -lpthread
 endif
 
+ifeq ($(EPICS_HOST_ARCH),win32-x86)
+    USR_SYS_LIBS += ws2_32
+endif
+
+ifeq ($(EPICS_HOST_ARCH),win32-x86-debug)
+    USR_SYS_LIBS += ws2_32
+endif
+
 INSTALL_INCLUDE = $(INSTALL_LOCATION)/include/pv
 USR_INCLUDES += -I $(INSTALL_LOCATION)/include
 
