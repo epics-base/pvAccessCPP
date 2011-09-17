@@ -148,6 +148,21 @@ namespace epics {
                         errStr);
             }
 
+            // set receive timeout so that we do not have problems at shutdown (recvfrom would block)
+            struct timeval timeout;
+            bzero(&timeout, sizeof(struct timeval));
+            timeout.tv_sec = 1;
+            timeout.tv_usec = 0;
+
+            if (::setsockopt (_channel, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
+            {
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                LOG(logLevelError,
+                    "Failed to set SO_RCVTIMEO for TDP socket %s: %s.",
+                    inetAddressToString(_socketAddress).c_str(), errStr);
+            }
+
             // prepare buffer
             clearAndReleaseBuffer();
         }
@@ -488,9 +503,16 @@ namespace epics {
 
                             if(bytesRead<=0) {
 
-                                // spurious EINTR check                     
-                                if (bytesRead<0 && SOCKERRNO==SOCK_EINTR)
-                                    continue;
+                                if (bytesRead<0)
+                                {
+                                    int socketError = SOCKERRNO;
+                                    
+                                    // interrupted or timeout
+                                    if (socketError == EINTR || 
+                                        socketError == EAGAIN ||
+                                        socketError == EWOULDBLOCK)
+                                        continue;
+                                }
                                 
                                 // error (disconnect, end-of-stream) detected
                                 close(true);
