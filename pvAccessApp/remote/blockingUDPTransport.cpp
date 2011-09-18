@@ -44,8 +44,8 @@ namespace epics {
                     _sendAddresses(0),
                     _ignoredAddresses(0),
                     _sendToEnabled(false),
-                    _receiveBuffer(new ByteBuffer(MAX_UDP_RECV, EPICS_ENDIAN_BIG)),
-                    _sendBuffer(new ByteBuffer(MAX_UDP_RECV, EPICS_ENDIAN_BIG)),
+                    _receiveBuffer(new ByteBuffer(MAX_UDP_RECV)),
+                    _sendBuffer(new ByteBuffer(MAX_UDP_RECV)),
                     _lastMessageStartPosition(0),
                     _threadId(0)
         {
@@ -146,7 +146,7 @@ namespace epics {
             _lastMessageStartPosition = _sendBuffer->getPosition();
             _sendBuffer->putByte(CA_MAGIC);
             _sendBuffer->putByte(CA_VERSION);
-            _sendBuffer->putByte(0); // data
+            _sendBuffer->putByte((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00); // data + 7-bit endianess
             _sendBuffer->putByte(command); // command
             _sendBuffer->putInt(0); // temporary zero payload
         }
@@ -267,7 +267,16 @@ namespace epics {
                     return false;
 
                 // only data for UDP
-                receiveBuffer->getByte();
+                int8 flags = receiveBuffer->getByte();
+                if (flags < 0)
+                {
+                    // 7-bit set
+                    receiveBuffer->setEndianess(EPICS_ENDIAN_BIG);
+                }
+                else
+                {
+                    receiveBuffer->setEndianess(EPICS_ENDIAN_LITTLE);
+                }
 
                 // command ID and paylaod
                 int8 command = receiveBuffer->getByte();

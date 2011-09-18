@@ -124,12 +124,12 @@ namespace epics {
 
             // TODO minor tweak: deque size is not preallocated...
             
-            _socketBuffer = new ByteBuffer(max((int)(MAX_TCP_RECV+MAX_ENSURE_DATA_BUFFER_SIZE), receiveBufferSize), EPICS_ENDIAN_BIG);
+            _socketBuffer = new ByteBuffer(max((int)(MAX_TCP_RECV+MAX_ENSURE_DATA_BUFFER_SIZE), receiveBufferSize));
             _socketBuffer->setPosition(_socketBuffer->getLimit());
             _startPosition = _socketBuffer->getPosition();
 
             // allocate buffer
-            _sendBuffer = new ByteBuffer(_socketBuffer->getSize(), EPICS_ENDIAN_BIG);
+            _sendBuffer = new ByteBuffer(_socketBuffer->getSize());
             _maxPayloadSize = _sendBuffer->getSize() - 2*CA_MESSAGE_HEADER_SIZE; // one for header, one for flow control
 
             // get send buffer size
@@ -330,7 +330,7 @@ namespace epics {
             _lastMessageStartPosition = _sendBuffer->getPosition();
             _sendBuffer->putByte(CA_MAGIC);
             _sendBuffer->putByte(CA_VERSION);
-            _sendBuffer->putByte(_lastSegmentedMessageType); // data
+            _sendBuffer->putByte(_lastSegmentedMessageType | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00)); // data + endianess
             _sendBuffer->putByte(command);                   // command
             _sendBuffer->putInt(0);                          // temporary zero payload
 
@@ -574,20 +574,27 @@ namespace epics {
                         // read payload size
                         _payloadSize = _socketBuffer->getInt();
 
-                        // data
                         int8 type = (int8)(_packetType&0x0F);
-                        if(type==0) {
+                        if(type==0)
+                        {
+                            // data
                             _stage = PROCESS_PAYLOAD;
                         }
-                        else if(type==1) {
-                            if(_command==0) {
+                        else if(type==1)
+                        {
+                            // control
+                            
+                            // marker request sent
+                            if (_command == 0) {
                                 _flowControlMutex.lock();
                                 if(_markerToSend==0)
                                     _markerToSend = _payloadSize;
                                  // TODO send back response
                                 _flowControlMutex.unlock();
                             }
-                            else //if (command == 1)
+                            
+                            // marker received back
+                            else if (_command == 1)
                             {
                                 _flowControlMutex.lock();
                                 int difference = (int)_totalBytesSent-_payloadSize+CA_MESSAGE_HEADER_SIZE;
@@ -600,6 +607,16 @@ namespace epics {
                                 // TODO if this is calculated wrong, this can be critical !!!
                                 _flowControlMutex.unlock();
                             }
+    						// set byte order
+    						else if (_command == 2)
+    						{
+    							// check 7-th bit
+    							
+    							// TODO no sync !!! on send
+    							_socketBuffer->setEndianess(_packetType < 0 ? EPICS_ENDIAN_BIG : EPICS_ENDIAN_LITTLE);
+    							_sendBuffer->setEndianess(_packetType < 0 ? EPICS_ENDIAN_BIG : EPICS_ENDIAN_LITTLE);
+    						}
+                            
 
                             // no payload
                             //stage = ReceiveStage.PROCESS_HEADER;

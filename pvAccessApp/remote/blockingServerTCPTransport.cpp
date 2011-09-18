@@ -109,6 +109,19 @@ namespace epics {
 
         void BlockingServerTCPTransport::send(ByteBuffer* buffer,
                 TransportSendControl* control) {
+                    
+    		//
+    		// set byte order control message 
+    		//
+    		
+    		control->ensureBuffer(CA_MESSAGE_HEADER_SIZE);
+    		buffer->putByte(CA_MAGIC);
+    		buffer->putByte(CA_VERSION);
+    		buffer->putByte(0x01 | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00));		// control + big endian
+    		buffer->putByte(2);		// set byte order
+    		buffer->putInt(0);		
+                    
+                    
             //
             // send verification message
             //
