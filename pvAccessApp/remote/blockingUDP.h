@@ -295,7 +295,7 @@ namespace epics {
              */
             virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
                     std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& bindAddress,
-                    short transportRevision, int16 priority);
+                    int8 transportRevision, int16 priority);
 
         private:
 

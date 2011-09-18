@@ -403,7 +403,7 @@ namespace epics {
              */
             virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
                     std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
-                    short transportRevision, int16 priority) = 0;
+                    int8 transportRevision, int16 priority) = 0;
 
         };
 

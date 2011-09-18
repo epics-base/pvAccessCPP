@@ -67,7 +67,7 @@ namespace epics {
 
         Transport::shared_pointer BlockingTCPConnector::connect(TransportClient::shared_pointer const & client,
                 std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
-                short transportRevision, int16 priority) {
+                int8 transportRevision, int16 priority) {
 
             SOCKET socket = INVALID_SOCKET;
 

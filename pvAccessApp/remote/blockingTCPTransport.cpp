@@ -107,7 +107,7 @@ namespace epics {
                     _storedPayloadSize(0),
                     _storedPosition(0),
                     _storedLimit(0),
-                    _magicAndVersion(0),
+                    _version(0),
                     _packetType(0),
                     _command(0),
                     _payloadSize(0),
@@ -234,7 +234,8 @@ namespace epics {
             _sendPending = false;
 
             // prepare ACK marker
-            _sendBuffer->putShort(CA_MAGIC_AND_VERSION);
+            _sendBuffer->putByte(CA_MAGIC);
+            _sendBuffer->putByte(CA_VERSION);
             _sendBuffer->putByte(1); // control data
             _sendBuffer->putByte(1); // marker ACK
             _sendBuffer->putInt(0);
@@ -327,7 +328,8 @@ namespace epics {
             _lastMessageStartPosition = -1;
             ensureBuffer(CA_MESSAGE_HEADER_SIZE+ensureCapacity);
             _lastMessageStartPosition = _sendBuffer->getPosition();
-            _sendBuffer->putShort(CA_MAGIC_AND_VERSION);
+            _sendBuffer->putByte(CA_MAGIC);
+            _sendBuffer->putByte(CA_VERSION);
             _sendBuffer->putByte(_lastSegmentedMessageType); // data
             _sendBuffer->putByte(command);                   // command
             _sendBuffer->putInt(0);                          // temporary zero payload
@@ -396,9 +398,10 @@ namespace epics {
                 int position = _sendBuffer->getPosition();
                 int bytesLeft = _sendBuffer->getRemaining();
 
-                if(position>=_nextMarkerPosition&&bytesLeft
-                        >=CA_MESSAGE_HEADER_SIZE) {
-                    _sendBuffer->putShort(CA_MAGIC_AND_VERSION);
+                if(position>=_nextMarkerPosition && 
+                   bytesLeft>=CA_MESSAGE_HEADER_SIZE) {
+                    _sendBuffer->putByte(CA_MAGIC);
+                    _sendBuffer->putByte(CA_VERSION);
                     _sendBuffer->putByte(1); // control data
                     _sendBuffer->putByte(0); // marker
                     _sendBuffer->putInt((int)(_totalBytesSent+position
@@ -549,9 +552,10 @@ namespace epics {
 
                         // first byte is CA_MAGIC
                         // second byte version - major/minor nibble
-                        // check magic and version at once
-                        _magicAndVersion = _socketBuffer->getShort();
-                        if((short)(_magicAndVersion&0xFFF0)!=CA_MAGIC_AND_MAJOR_VERSION) {
+                        int8 magic = _socketBuffer->getByte();
+                        _version = _socketBuffer->getByte();
+                        if((magic != CA_MAGIC) || (((unsigned int8)_version) >> 4)!=CA_MAJOR_PROTOCOL_REVISION)
+                        {
                             // error... disconnect
                             LOG(
                                     logLevelError,
@@ -614,7 +618,7 @@ namespace epics {
 
                     if(_stage==PROCESS_PAYLOAD) {
                         // read header
-                        int8 version = (int8)(_magicAndVersion&0xFF);
+
                         // last segment bit set (means in-between segment or last segment)
                         bool notFirstSegment = (_packetType&0x20)!=0;
 
@@ -631,7 +635,7 @@ namespace epics {
                             // handle response
                             Transport::shared_pointer thisPointer = shared_from_this();
                             _responseHandler->handleResponse(&_socketAddress,
-                                    thisPointer, version, _command, _payloadSize,
+                                    thisPointer, _version, _command, _payloadSize,
                                     _socketBuffer);
                         } catch(...) {
                             //noop      // TODO print?

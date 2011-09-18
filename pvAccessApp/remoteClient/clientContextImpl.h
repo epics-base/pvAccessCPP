@@ -72,7 +72,7 @@ namespace epics {
             virtual ResponseRequest::shared_pointer unregisterResponseRequest(pvAccessID ioid) = 0;
 
 
-            virtual Transport::shared_pointer getTransport(TransportClient::shared_pointer const & client, osiSockAddr* serverAddress, int16 minorRevision, int16 priority) = 0;
+            virtual Transport::shared_pointer getTransport(TransportClient::shared_pointer const & client, osiSockAddr* serverAddress, int8 minorRevision, int16 priority) = 0;
 
             virtual void beaconAnomalyNotify() = 0;
 

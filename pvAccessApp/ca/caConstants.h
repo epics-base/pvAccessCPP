@@ -31,13 +31,8 @@ namespace epics {
         /** Unknown CA protocol minor revision. */
         const int8 CA_UNKNOWN_MINOR_PROTOCOL_REVISION = 0;
 
-        /** CA magic/major version signature (e.g. 0xCA50). */
-        const int16 CA_MAGIC_AND_MAJOR_VERSION = CA_MAGIC<<8
-                |CA_MAJOR_PROTOCOL_REVISION<<4;
-
-        /** CA magic/version signature (e.g. 0xCA51). */
-        const int16 CA_MAGIC_AND_VERSION = CA_MAGIC<<8
-                |CA_MAJOR_PROTOCOL_REVISION<<4|CA_MINOR_PROTOCOL_REVISION;
+        /** CA version signature (e.g. 0x50). */
+        const int8 CA_VERSION = ((unsigned int8)CA_MAJOR_PROTOCOL_REVISION<<4)|CA_MINOR_PROTOCOL_REVISION;
 
         /** CA protocol port base. */
         const int32 CA_PORT_BASE = 5056;

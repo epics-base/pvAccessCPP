@@ -637,7 +637,8 @@ void ChannelSearchManager::initializeSendBuffer()
 
 	// new buffer
 	_sendBuffer->clear();
-	_sendBuffer->putShort(CA_MAGIC_AND_VERSION);
+    _sendBuffer->putByte(CA_MAGIC);
+    _sendBuffer->putByte(CA_VERSION);
 	_sendBuffer->putByte((int8)0);	// data
 	_sendBuffer->putByte((int8)3);	// search
 	_sendBuffer->putInt(sizeof(int32)/sizeof(int8) + 1);		// "zero" payload

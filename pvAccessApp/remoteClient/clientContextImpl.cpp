@@ -4028,7 +4028,7 @@ TODO
              * @param priority process priority.
              * @return transport for given address
              */
-            Transport::shared_pointer getTransport(TransportClient::shared_pointer const & client, osiSockAddr* serverAddress, int16 minorRevision, int16 priority)
+            Transport::shared_pointer getTransport(TransportClient::shared_pointer const & client, osiSockAddr* serverAddress, int8 minorRevision, int16 priority)
             {
                 try
                 {

@@ -343,7 +343,7 @@ namespace epics {
             int _storedPosition;
             int _storedLimit;
 
-            short _magicAndVersion;
+            int8 _version;
             int8 _packetType;
             int8 _command;
             int _payloadSize;
@@ -447,13 +447,13 @@ namespace epics {
         private:
             BlockingClientTCPTransport(Context::shared_pointer const & context, SOCKET channel,
                     std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
-                    TransportClient::shared_pointer client, short remoteTransportRevision,
+                    TransportClient::shared_pointer client, int8 remoteTransportRevision,
                     float beaconInterval, int16 priority);
 
         public:
             static BlockingClientTCPTransport::shared_pointer create(Context::shared_pointer const & context, SOCKET channel,
                                        std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
-                                       TransportClient::shared_pointer client, short remoteTransportRevision,
+                                       TransportClient::shared_pointer client, int8 remoteTransportRevision,
                                        float beaconInterval, int16 priority)
             {
                 BlockingClientTCPTransport::shared_pointer thisPointer(
@@ -592,7 +592,7 @@ namespace epics {
 
             virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
                     std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
-                    short transportRevision, int16 priority);
+                    int8 transportRevision, int16 priority);
         private:
             /**
              * Lock timeout

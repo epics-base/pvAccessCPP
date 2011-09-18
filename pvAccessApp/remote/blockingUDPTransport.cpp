@@ -144,7 +144,8 @@ namespace epics {
 
         void BlockingUDPTransport::startMessage(int8 command, int ensureCapacity) {
             _lastMessageStartPosition = _sendBuffer->getPosition();
-            _sendBuffer->putShort(CA_MAGIC_AND_VERSION);
+            _sendBuffer->putByte(CA_MAGIC);
+            _sendBuffer->putByte(CA_VERSION);
             _sendBuffer->putByte(0); // data
             _sendBuffer->putByte(command); // command
             _sendBuffer->putInt(0); // temporary zero payload
@@ -260,9 +261,10 @@ namespace epics {
 
                 // first byte is CA_MAGIC
                 // second byte version - major/minor nibble
-                // check magic and version at once
-                short magicAndVersion = receiveBuffer->getShort();
-                if((short)(magicAndVersion&0xFFF0)!=CA_MAGIC_AND_MAJOR_VERSION) return false;
+                int8 magic = receiveBuffer->getByte();
+                int8 version = receiveBuffer->getByte();
+                if((magic != CA_MAGIC) || (((unsigned int8)version) >> 4)!=CA_MAJOR_PROTOCOL_REVISION)
+                    return false;
 
                 // only data for UDP
                 receiveBuffer->getByte();
@@ -277,7 +279,7 @@ namespace epics {
 
                 // handle
                 _responseHandler->handleResponse(&fromAddress, thisTransport,
-                        (int8)(magicAndVersion&0xFF), command, payloadSize,
+                        version, command, payloadSize,
                         _receiveBuffer);
 
                 // set position (e.g. in case handler did not read all)
