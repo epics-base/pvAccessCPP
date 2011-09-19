@@ -32,7 +32,7 @@ namespace epics {
         const int8 CA_UNKNOWN_MINOR_PROTOCOL_REVISION = 0;
 
         /** CA version signature (e.g. 0x50). */
-        const int8 CA_VERSION = ((unsigned int8)CA_MAJOR_PROTOCOL_REVISION<<4)|CA_MINOR_PROTOCOL_REVISION;
+        const int8 CA_VERSION = ((uint8_t)CA_MAJOR_PROTOCOL_REVISION<<4)|CA_MINOR_PROTOCOL_REVISION;
 
         /** CA protocol port base. */
         const int32 CA_PORT_BASE = 5056;

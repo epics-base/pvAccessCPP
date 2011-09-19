@@ -263,7 +263,7 @@ namespace epics {
                 // second byte version - major/minor nibble
                 int8 magic = receiveBuffer->getByte();
                 int8 version = receiveBuffer->getByte();
-                if((magic != CA_MAGIC) || (((unsigned int8)version) >> 4)!=CA_MAJOR_PROTOCOL_REVISION)
+                if((magic != CA_MAGIC) || (((uint8_t)version) >> 4)!=CA_MAJOR_PROTOCOL_REVISION)
                     return false;
 
                 // only data for UDP
