@@ -1,9 +1,14 @@
 /* testChannelSearcManager.cpp */
 
 #include <epicsExit.h>
+#include <epicsThread.h>
+#include <epicsMessageQueue.h>
 #include <pv/channelSearchManager.h>
 #include <sstream>
 #include <pv/CDRMonitor.h>
+
+epicsMessageQueueId join1;
+epicsMessageQueueId join2;
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
@@ -116,42 +121,43 @@ ContextImpl* context = new ContextImpl();
 ChannelSearchManager* manager = new ChannelSearchManager(static_cast<Context*>(context));
 TestSearcInstance** chanArray = new TestSearcInstance*[max_channels];
 
-void* testWorker1(void* p)
+void testWorker1(void* p)
 		{
 	for(int i = 0; i < 1000; i++)
 	{
 		for(int j = 0; j < max_channels/2; j++)
 		{
 			manager->unregisterChannel(chanArray[j]);
-			usleep(100);
+			epicsThreadSleep(100e-6);
 			manager->registerChannel(chanArray[j]);
 		}
 	}
-
-	return NULL;
+        int dummy = 1;
+        epicsMessageQueueSend(join1, &dummy, 1);
 		}
 
 
-void* testWorker2(void* p)
+void testWorker2(void* p)
 		{
 	for(int i = 0; i < 1000; i++)
 	{
 		for(int j = max_channels/2; j < max_channels; j++)
 		{
 			manager->unregisterChannel(chanArray[j]);
-			usleep(100);
+			epicsThreadSleep(100e-6);
 			manager->registerChannel(chanArray[j]);
 			manager->beaconAnomalyNotify();
 		}
 	}
 
-	return NULL;
+        int dummy = 2;
+        epicsMessageQueueSend(join1, &dummy, 1);
 		}
 
 int main(int argc,char *argv[])
 {
-	pthread_t _worker1Id;
-	pthread_t _worker2Id;
+	epicsThreadId _worker1Id;
+	epicsThreadId _worker2Id;
 
 	std::ostringstream obuffer;
 	for(int i = 0; i < max_channels; i++)
@@ -164,30 +170,21 @@ int main(int argc,char *argv[])
 		manager->registerChannel(chanArray[i]);
 	}
 
+        join1 = epicsMessageQueueCreate(1, 1);
+        join2 = epicsMessageQueueCreate(1, 1);
+
 	//create two threads
-	int32 retval = pthread_create(&_worker1Id, NULL, testWorker1, NULL);
-	if(retval != 0)
-	{
-		assert(true);
-	}
+	_worker1Id = epicsThreadCreate("worker1", epicsThreadPriorityMedium, epicsThreadGetStackSize(epicsThreadStackMedium),
+                                         testWorker1, NULL);
+        assert(_worker1Id != NULL);
 
-	retval = pthread_create(&_worker2Id, NULL, testWorker2, NULL);
-	if(retval != 0)
-	{
-		assert(true);
-	}
+	_worker2Id = epicsThreadCreate("worker2", epicsThreadPriorityMedium, epicsThreadGetStackSize(epicsThreadStackMedium),
+                                         testWorker2, NULL);
+        assert(_worker1Id != NULL);
 
-	retval = pthread_join(_worker1Id, NULL);
-	if(retval != 0)
-	{
-		assert(true);
-	}
-
-	retval = pthread_join(_worker2Id, NULL);
-	if(retval != 0)
-	{
-		assert(true);
-	}
+        int dummy;
+        epicsMessageQueueReceive(join1, &dummy, 1);
+        epicsMessageQueueReceive(join2, &dummy, 1);
 
 	manager->cancel();
 

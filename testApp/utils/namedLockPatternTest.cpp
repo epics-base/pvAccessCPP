@@ -11,6 +11,8 @@
 
 #include <epicsAssert.h>
 #include <epicsExit.h>
+#include <epicsThread.h>
+#include <epicsMessageQueue.h>
 #include <osiSock.h>
 
 #include <iostream>
@@ -19,6 +21,9 @@
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 using namespace std;
+
+epicsMessageQueueId join1;
+epicsMessageQueueId join2;
 
 void testIntLockPattern()
 {
@@ -119,7 +124,7 @@ void testOsiSockAddrWithPtrKeyLockPattern()
 	delete name1;
 }
 
-void* testWorker1(void* p)
+void testWorker1(void* p)
 {
 	int32 timeout = 1000;
 	const int32 max = 1000;
@@ -133,7 +138,7 @@ void* testWorker1(void* p)
 		addr.ia.sin_family = AF_INET;
 		NamedLock<osiSockAddr,comp_osiSockAddr> namedGuard(namedLockPattern);
 		assert(namedGuard.acquireSynchronizationObject(addr,timeout));
-		usleep(1);
+                epicsThreadSleep(1e-6);
 	}
 
 	//this one takes a lock, thread 2 will be slower and will get timeout
@@ -144,14 +149,16 @@ void* testWorker1(void* p)
 		addr.ia.sin_family = AF_INET;
 		NamedLock<osiSockAddr,comp_osiSockAddr> namedGuard(namedLockPattern);
 		assert(namedGuard.acquireSynchronizationObject(addr,timeout));
-		sleep(5);
+                epicsThreadSleep(5.0);
 	}
+        
+        int dummy = 1;
+        epicsMessageQueueSend(join1, &dummy, 1);
 
-	return NULL;
 }
 
 
-void* testWorker2(void* p)
+void testWorker2(void* p)
 {
 	int32 timeout = 1000;
 	const int32 max = 1000;
@@ -165,12 +172,12 @@ void* testWorker2(void* p)
 		addr.ia.sin_family = AF_INET;
 		NamedLock<osiSockAddr,comp_osiSockAddr> namedGuard(namedLockPattern);
 		assert(namedGuard.acquireSynchronizationObject(addr,timeout));
-		usleep(1);
+                epicsThreadSleep(1e-6);
 	}
 
 	//this thread sleeps a while and gets timeout on lock
 	{
-		sleep(1);
+                epicsThreadSleep(1.0);
 		osiSockAddr addr;
 		addr.ia.sin_addr.s_addr = 1;
 		addr.ia.sin_port = 1;
@@ -181,7 +188,8 @@ void* testWorker2(void* p)
 		assert(namedGuard.acquireSynchronizationObject(addr,timeout));
 	}
 
-	return NULL;
+        int dummy = 2;
+        epicsMessageQueueSend(join2, &dummy, 1);
 }
 
 int main(int argc, char *argv[])
@@ -191,36 +199,24 @@ int main(int argc, char *argv[])
 	testCharPtrLockPattern();
 	testOsiSockAddrLockPattern();
 	testOsiSockAddrWithPtrKeyLockPattern();
-	pthread_t _worker1Id;
-	pthread_t _worker2Id;
 
 	NamedLockPattern<osiSockAddr,comp_osiSockAddr> namedLockPattern;
 
+        join1 = epicsMessageQueueCreate(1, 1);
+        join2 = epicsMessageQueueCreate(1, 1);
+
 	//create two threads
-	int32 retval = pthread_create(&_worker1Id, NULL, testWorker1, &namedLockPattern);
-	if(retval != 0)
-	{
-		assert(true);
-	}
+        epicsThreadId t1 = epicsThreadCreate("worker1", epicsThreadPriorityMedium, epicsThreadGetStackSize(epicsThreadStackMedium),
+                                             testWorker1, &namedLockPattern);
+        assert(t1);
+        
+        epicsThreadId t2 = epicsThreadCreate("worker2", epicsThreadPriorityMedium, epicsThreadGetStackSize(epicsThreadStackMedium),
+                                             testWorker2, &namedLockPattern);
+        assert(t2);
 
-	retval = pthread_create(&_worker2Id, NULL, testWorker2, &namedLockPattern);
-	if(retval != 0)
-	{
-		assert(true);
-	}
-
-	//wait for threads
-	retval = pthread_join(_worker1Id, NULL);
-	if(retval != 0)
-	{
-		assert(true);
-	}
-
-	retval = pthread_join(_worker2Id, NULL);
-	if(retval != 0)
-	{
-		assert(true);
-	}
+        int dummy;
+        epicsMessageQueueReceive(join1, &dummy, 1);
+        epicsMessageQueueReceive(join2, &dummy, 1);
 
 	epicsExitCallAtExits();
 	CDRMonitor::get().show(stdout, true);
