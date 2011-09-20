@@ -1,7 +1,5 @@
-/* blockingUDPTransport.cpp
- *
- *  Created on: Dec 20, 2010
- *      Author: Miha Vitorovic
+/* 
+ * blockingUDPTransport.cpp
  */
 
 /* pvAccess */

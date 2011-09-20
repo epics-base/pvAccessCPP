@@ -328,7 +328,7 @@ namespace epics {
 
             int _sendBufferSentPosition;
 
-
+            int8 _byteOrderFlag;
 
 
 

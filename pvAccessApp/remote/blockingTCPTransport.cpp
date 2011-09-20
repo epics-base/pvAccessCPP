@@ -1,8 +1,5 @@
 /*
  * blockingTCPTransport.cpp
- *
- *  Created on: Dec 29, 2010
- *      Author: Miha Vitorovic
  */
 
 #define __STDC_LIMIT_MACROS 1
@@ -116,6 +113,7 @@ namespace epics {
                     _lastSegmentedMessageCommand(0),
                     _flushRequested(false),
                     _sendBufferSentPosition(0),
+                    _byteOrderFlag((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00),
                     _storedPayloadSize(0),
                     _storedPosition(0),
                     _storedLimit(0),
@@ -181,7 +179,8 @@ namespace epics {
                     "Failed to set SO_RCVTIMEO for TDP socket %s: %s.",
                     inetAddressToString(_socketAddress).c_str(), errStr);
             }
-
+            
+            // TODO this will create marker with invalid endian flag
             // prepare buffer
             clearAndReleaseBuffer();
         }
@@ -248,7 +247,7 @@ namespace epics {
             // prepare ACK marker
             _sendBuffer->putByte(CA_MAGIC);
             _sendBuffer->putByte(CA_VERSION);
-            _sendBuffer->putByte(1); // control data
+            _sendBuffer->putByte(0x01 | _byteOrderFlag); // control data
             _sendBuffer->putByte(1); // marker ACK
             _sendBuffer->putInt(0);
         }
@@ -343,7 +342,7 @@ namespace epics {
             _lastMessageStartPosition = _sendBuffer->getPosition();
             _sendBuffer->putByte(CA_MAGIC);
             _sendBuffer->putByte(CA_VERSION);
-            _sendBuffer->putByte(_lastSegmentedMessageType | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00)); // data + endianess
+            _sendBuffer->putByte(_lastSegmentedMessageType | _byteOrderFlag); // data + endianess
             _sendBuffer->putByte(command);                   // command
             _sendBuffer->putInt(0);                          // temporary zero payload
 
@@ -426,7 +425,7 @@ namespace epics {
                    bytesLeft>=CA_MESSAGE_HEADER_SIZE)) {
                     _sendBuffer->putByte(CA_MAGIC);
                     _sendBuffer->putByte(CA_VERSION);
-                    _sendBuffer->putByte(1); // control data
+                    _sendBuffer->putByte(0x01 | _byteOrderFlag); // control data
                     _sendBuffer->putByte(0); // marker
                     _sendBuffer->putInt((int)(_totalBytesSent+position+CA_MESSAGE_HEADER_SIZE));
                     _nextMarkerPosition = position+_markerPeriodBytes;
@@ -649,9 +648,15 @@ namespace epics {
     						{
     							// check 7-th bit
     							
-    							// TODO no sync !!! on send
-    							_socketBuffer->setEndianess(_packetType < 0 ? EPICS_ENDIAN_BIG : EPICS_ENDIAN_LITTLE);
-    							_sendBuffer->setEndianess(_packetType < 0 ? EPICS_ENDIAN_BIG : EPICS_ENDIAN_LITTLE);
+    							int endianess = (_packetType < 0 ? EPICS_ENDIAN_BIG : EPICS_ENDIAN_LITTLE);
+    							_socketBuffer->setEndianess(endianess);
+    							
+    							// TODO register as TransportSender and add to the queue
+    							// current implementation is OK, but not nice
+    							_sendQueueMutex.lock();
+    							_sendBuffer->setEndianess(endianess);
+    							_byteOrderFlag = (endianess == EPICS_ENDIAN_BIG) ? 0x80 : 0x00;
+    							_sendQueueMutex.unlock();
     						}
                             
 
