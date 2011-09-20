@@ -44,6 +44,7 @@ namespace epics {
         virtual void verified(){};
         virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender){};
         virtual void ensureData(int) {};
+        virtual void alignData(int) {};
         virtual IntrospectionRegistry* getIntrospectionRegistry() {return NULL;};
 	private:
 		string _type;

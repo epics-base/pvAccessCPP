@@ -268,6 +268,7 @@ public:
 	void setRecipient(const osiSockAddr& sendTo) {}
 	void startMessage(int8 command, int ensureCapacity) {}
 	void ensureBuffer(int size) {}
+	void alignBuffer(int alignment) {}
 	void flushSerializeBuffer() {}
 };
 

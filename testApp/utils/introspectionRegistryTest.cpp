@@ -31,6 +31,9 @@ namespace epics {
             virtual void ensureBuffer(int size) {
             }
 
+            virtual void alignBuffer(int alignment) {
+            }
+
             SerializableControlImpl() {
             }
 
@@ -42,6 +45,9 @@ namespace epics {
                 public NoDefaultMethods {
         public:
             virtual void ensureData(int size) {
+            }
+
+            virtual void alignData(int alignment) {
             }
 
             DeserializableControlImpl() {
