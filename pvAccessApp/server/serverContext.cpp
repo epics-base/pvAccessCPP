@@ -173,6 +173,7 @@ std::auto_ptr<ResponseHandler> ServerContextImpl::createResponseHandler()
 
 void ServerContextImpl::internalInitialize()
 {
+        osiSockAttach();
 	_timer.reset(new Timer("pvAccess-server timer",lowerPriority));
 	_transportRegistry.reset(new TransportRegistry());
 

@@ -22,6 +22,7 @@ using namespace epics::pvAccess;
 using namespace std;
 
 int main(int argc, char *argv[]) {
+    osiSockAttach();
     createFileLogger("inetAddresUtils.log");
 
     InetAddrVector *vec;
