@@ -117,6 +117,10 @@ namespace epics {
                 // noop
             }
 
+            virtual void alignData(int alignment) {
+                _receiveBuffer->align(alignment);
+            }
+
             virtual void startMessage(int8 command, int ensureCapacity);
             virtual void endMessage();
 
@@ -135,6 +139,10 @@ namespace epics {
 
             virtual void ensureBuffer(int size) {
                 // noop
+            }
+
+            virtual void alignBuffer(int alignment) {
+                _sendBuffer->align(alignment);
             }
 
             /**

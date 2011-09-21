@@ -141,7 +141,11 @@ namespace epics {
 
             virtual void ensureBuffer(int size);
 
+            virtual void alignBuffer(int alignment);
+
             virtual void ensureData(int size);
+
+            virtual void alignData(int alignment);
 
             virtual void close(bool force);
 
@@ -172,7 +176,7 @@ namespace epics {
         protected:
         
             virtual void processReadCached(bool nestedCall,
-                    ReceiveStage inStage, int requiredBytes, bool addToBuffer);
+                    ReceiveStage inStage, int requiredBytes);
 
             /**
              * Called to any resources just before closing transport
@@ -324,7 +328,7 @@ namespace epics {
 
             int _sendBufferSentPosition;
 
-
+            int8 _byteOrderFlag;
 
 
 

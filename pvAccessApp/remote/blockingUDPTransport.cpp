@@ -1,7 +1,5 @@
-/* blockingUDPTransport.cpp
- *
- *  Created on: Dec 20, 2010
- *      Author: Miha Vitorovic
+/* 
+ * blockingUDPTransport.cpp
  */
 
 /* pvAccess */
@@ -27,6 +25,15 @@
 
 using namespace epics::pvData;
 using namespace std;
+
+// TODO moved to some compiler_utils.h?
+#if defined(__GNUC__) 
+	#define likely(x) __builtin_expect (x, 1)
+	#define unlikely(x) __builtin_expect (x, 0)
+#else
+	#define likely(x) (x)
+	#define unlikely(x) (x)
+#endif
 
 namespace epics {
     namespace pvAccess {
@@ -57,7 +64,7 @@ namespace epics {
             timeout.tv_sec = 1;
             timeout.tv_usec = 0;
 
-            if (::setsockopt (_channel, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
+            if (unlikely(::setsockopt (_channel, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0))
             {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
@@ -152,6 +159,8 @@ namespace epics {
         }
 
         void BlockingUDPTransport::endMessage() {
+    		//we always (for now) send by packet, so no need for this here...
+    		//alignBuffer(CA_ALIGNMENT);
             _sendBuffer->putInt(
                     _lastMessageStartPosition+(sizeof(int16)+2),
                     _sendBuffer->getPosition()-_lastMessageStartPosition-CA_MESSAGE_HEADER_SIZE);
@@ -167,7 +176,7 @@ namespace epics {
             try {
 
                 bool closed;
-                while(!_closed)
+                while(likely(!_closed))
                 {
                     
                     _mutex.lock();
@@ -187,7 +196,7 @@ namespace epics {
                             _receiveBuffer->getRemaining(), 0, (sockaddr*)&fromAddress,
                             &addrStructSize);
 
-                    if(bytesRead>0) {
+                    if(likely(bytesRead>0)) {
                         // successfully got datagram
                         bool ignore = false;
                         if(_ignoredAddresses!=0)
@@ -210,7 +219,7 @@ namespace epics {
                             processBuffer(thisTransport, fromAddress, _receiveBuffer);
                         }
                     }
-                    else if (bytesRead == -1) {
+                    else if (unlikely(bytesRead == -1)) {
                         
                         int socketError = SOCKERRNO;
                         
@@ -254,7 +263,7 @@ namespace epics {
         bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & thisTransport, osiSockAddr& fromAddress, ByteBuffer* receiveBuffer) {
 
             // handle response(s)
-            while((int)receiveBuffer->getRemaining()>=CA_MESSAGE_HEADER_SIZE) {
+            while(likely((int)receiveBuffer->getRemaining()>=CA_MESSAGE_HEADER_SIZE)) {
                 //
                 // read header
                 //
@@ -263,7 +272,7 @@ namespace epics {
                 // second byte version - major/minor nibble
                 int8 magic = receiveBuffer->getByte();
                 int8 version = receiveBuffer->getByte();
-                if((magic != CA_MAGIC) || (((uint8_t)version) >> 4)!=CA_MAJOR_PROTOCOL_REVISION)
+                if(unlikely((magic != CA_MAGIC) || (((uint8_t)version) >> 4)!=CA_MAJOR_PROTOCOL_REVISION))
                     return false;
 
                 // only data for UDP
@@ -284,7 +293,7 @@ namespace epics {
                 int nextRequestPosition = receiveBuffer->getPosition() + payloadSize;
 
                 // payload size check
-                if(nextRequestPosition>(int)receiveBuffer->getLimit()) return false;
+                if(unlikely(nextRequestPosition>(int)receiveBuffer->getLimit())) return false;
 
                 // handle
                 _responseHandler->handleResponse(&fromAddress, thisTransport,
@@ -304,7 +313,7 @@ namespace epics {
             buffer->flip();
             int retval = sendto(_channel, buffer->getArray(),
                     buffer->getLimit(), 0, &(address.sa), sizeof(sockaddr));
-            if(retval<0)
+            if(unlikely(retval<0))
             {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
@@ -324,7 +333,7 @@ namespace epics {
                         buffer->getLimit(), 0, &(_sendAddresses->at(i).sa),
                         sizeof(sockaddr));
                 {
-                    if(retval<0)
+                    if(unlikely(retval<0))
                     {
                         char errStr[64];
                         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
@@ -346,7 +355,7 @@ namespace epics {
             osiSocklen_t intLen = sizeof(int);
 
             int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF, (char *)&sockBufSize, &intLen);
-            if(retval<0) 
+            if(unlikely(retval<0)) 
             {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));

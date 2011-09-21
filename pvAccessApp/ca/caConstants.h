@@ -75,6 +75,9 @@ namespace epics {
         /** Invalid IOID. */
         const int32 INVALID_IOID = 0;
 
+        /** All messages must be aligned to 8-bytes (64-bit). */
+        const int32 CA_ALIGNMENT = 8;
+
         /** Default CA provider name. */
         const String PVACCESS_DEFAULT_PROVIDER = "local";
     }
