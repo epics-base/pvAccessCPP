@@ -24,8 +24,9 @@
 #   take effect.
 #IOCS_APPL_TOP = </IOC/path/to/application/top>
 
-ifeq ($(DEBUG),1)
-    DEBUG_CFLAGS=-g -ggdb
+ifeq ($(EPICS_TEST_COVERAGE),1)
+USR_CPPFLAGS += --coverage
+USR_LDFLAGS += --coverage
 endif
 
 ifeq ($(EPICS_HOST_ARCH),linux-x86)
