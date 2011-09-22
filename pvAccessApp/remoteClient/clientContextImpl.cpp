@@ -3729,6 +3729,7 @@ TODO
 
             void internalInitialize() {
 
+                osiSockAttach();
                 m_timer.reset(new Timer("pvAccess-client timer", lowPriority));
                 Context::shared_pointer thisPointer = shared_from_this();
                 m_connector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_beaconPeriod));
