@@ -1,9 +1,4 @@
-/*
- * inetAddressUtilsTest.cpp
- *
- *  Created on: Dec 8, 2010
- *      Author: user
- */
+#include <gtest/gtest.h>
 
 #include <pv/inetAddressUtil.h>
 #include <pv/logger.h>
@@ -21,125 +16,122 @@ using namespace epics::pvData;
 using namespace epics::pvAccess;
 using namespace std;
 
-int main(int argc, char *argv[]) {
-    osiSockAttach();
-    createFileLogger("inetAddresUtils.log");
+TEST(inetAddressUtils, getSocketAddressList)
+{
+    auto_ptr<InetAddrVector> vec(getSocketAddressList("127.0.0.1   10.10.12.11:1234 192.168.3.4", 555));
 
-    InetAddrVector *vec;
-    InetAddrVector *vec1;
-
-    cout<<"Testing \"getSocketAddressList\""<<endl;
-    vec = getSocketAddressList("127.0.0.1   10.10.12.11:1234 192.168.3.4", 555);
-
-    assert(vec->size()==3);
+    ASSERT_EQ(static_cast<size_t>(3), vec->size());
 
     osiSockAddr addr;
     addr = vec->at(0);
-    assert(addr.ia.sin_family==AF_INET);
-    assert(addr.ia.sin_port==htons(555));
-    assert(addr.ia.sin_addr.s_addr==htonl(0x7F000001));
-    assert(inetAddressToString(addr)=="127.0.0.1:555");
-    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
+    EXPECT_EQ(AF_INET, addr.ia.sin_family);
+    EXPECT_EQ(htons(555), addr.ia.sin_port);
+    EXPECT_EQ(htonl(0x7F000001), addr.ia.sin_addr.s_addr);
+    EXPECT_EQ("127.0.0.1:555", inetAddressToString(addr));
 
     addr = vec->at(1);
-    assert(addr.ia.sin_family==AF_INET);
-    assert(addr.ia.sin_port==htons(1234));
-    assert(addr.ia.sin_addr.s_addr==htonl(0x0A0A0C0B));
-    assert(inetAddressToString(addr)=="10.10.12.11:1234");
-    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
+    EXPECT_EQ(AF_INET, addr.ia.sin_family);
+    EXPECT_EQ(htons(1234), addr.ia.sin_port);
+    EXPECT_EQ(htonl(0x0A0A0C0B), addr.ia.sin_addr.s_addr);
+    EXPECT_EQ("10.10.12.11:1234", inetAddressToString(addr));
 
     addr = vec->at(2);
-    assert(addr.ia.sin_family==AF_INET);
-    assert(addr.ia.sin_port==htons(555));
-    assert(addr.ia.sin_addr.s_addr==htonl(0xC0A80304));
-    assert(inetAddressToString(addr)=="192.168.3.4:555");
-    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
+    EXPECT_EQ(AF_INET, addr.ia.sin_family);
+    EXPECT_EQ(htons(555), addr.ia.sin_port);
+    EXPECT_EQ(htonl(0xC0A80304), addr.ia.sin_addr.s_addr);
+    EXPECT_EQ("192.168.3.4:555", inetAddressToString(addr));
+    
+    
+    
 
-    cout<<"\nPASSED!\n";
-
-    cout<<"Testing \"getSocketAddressList\" with append"<<endl;
-
-    vec1 = getSocketAddressList("172.16.55.160", 6789, vec);
-    assert(vec1->size()==4);
+    auto_ptr<InetAddrVector> vec1(getSocketAddressList("172.16.55.160", 6789, vec.get()));
+    
+    ASSERT_EQ(static_cast<size_t>(4), vec1->size());
 
     addr = vec1->at(0);
-    assert(addr.ia.sin_family==AF_INET);
-    assert(addr.ia.sin_port==htons(6789));
-    assert(addr.ia.sin_addr.s_addr==htonl(0xAC1037A0));
-    assert(inetAddressToString(addr)=="172.16.55.160:6789");
-    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
+    EXPECT_EQ(AF_INET, addr.ia.sin_family);
+    EXPECT_EQ(htons(6789), addr.ia.sin_port);
+    EXPECT_EQ(htonl(0xAC1037A0), addr.ia.sin_addr.s_addr);
+    EXPECT_EQ("172.16.55.160:6789", inetAddressToString(addr));
 
     addr = vec1->at(1);
-    assert(addr.ia.sin_family==AF_INET);
-    assert(addr.ia.sin_port==htons(555));
-    assert(addr.ia.sin_addr.s_addr==htonl(0x7F000001));
-    assert(inetAddressToString(addr)=="127.0.0.1:555");
-    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
+    EXPECT_EQ(AF_INET, addr.ia.sin_family);
+    EXPECT_EQ(htons(555), addr.ia.sin_port);
+    EXPECT_EQ(htonl(0x7F000001), addr.ia.sin_addr.s_addr);
+    EXPECT_EQ("127.0.0.1:555", inetAddressToString(addr));
 
     addr = vec1->at(2);
-    assert(addr.ia.sin_family==AF_INET);
-    assert(addr.ia.sin_port==htons(1234));
-    assert(addr.ia.sin_addr.s_addr==htonl(0x0A0A0C0B));
-    assert(inetAddressToString(addr)=="10.10.12.11:1234");
-    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
+    EXPECT_EQ(AF_INET, addr.ia.sin_family);
+    EXPECT_EQ(htons(1234), addr.ia.sin_port);
+    EXPECT_EQ(htonl(0x0A0A0C0B), addr.ia.sin_addr.s_addr);
+    EXPECT_EQ("10.10.12.11:1234", inetAddressToString(addr));
 
     addr = vec1->at(3);
-    assert(addr.ia.sin_family==AF_INET);
-    assert(addr.ia.sin_port==htons(555));
-    assert(addr.ia.sin_addr.s_addr==htonl(0xC0A80304));
-    assert(inetAddressToString(addr)=="192.168.3.4:555");
-    cout<<'\t'<<inetAddressToString(addr, true)<<endl;
+    EXPECT_EQ(AF_INET, addr.ia.sin_family);
+    EXPECT_EQ(htons(555), addr.ia.sin_port);
+    EXPECT_EQ(htonl(0xC0A80304), addr.ia.sin_addr.s_addr);
+    EXPECT_EQ("192.168.3.4:555", inetAddressToString(addr));
+    
+}
 
-    cout<<"\nPASSED!\n";
+TEST(inetAddressUtils, ipv4AddressToInt)
+{
+    auto_ptr<InetAddrVector> vec(getSocketAddressList("127.0.0.1   10.10.12.11:1234 192.168.3.4", 555));
 
-    cout<<"Testing \"ipv4AddressToInt\""<<endl;
-    assert(ipv4AddressToInt((vec->at(0)))==(int32)0x7F000001);
-    assert(ipv4AddressToInt((vec->at(1)))==(int32)0x0A0A0C0B);
-    assert(ipv4AddressToInt((vec->at(2)))==(int32)0xC0A80304);
-    cout<<"\nPASSED!\n";
+    ASSERT_EQ(static_cast<size_t>(3), vec->size());
 
-    delete vec;
-    delete vec1;
+    EXPECT_EQ((int32)0x7F000001, ipv4AddressToInt((vec->at(0))));
+    EXPECT_EQ((int32)0x0A0A0C0B, ipv4AddressToInt((vec->at(1))));
+    EXPECT_EQ((int32)0xC0A80304, ipv4AddressToInt((vec->at(2))));
+}
 
-    osiSockAddr* paddr;
-    cout<<"Testing \"intToIPv4Address\""<<endl;
-    paddr = intToIPv4Address(0x7F000001);
-    assert(paddr->ia.sin_family==AF_INET);
-    assert(inetAddressToString(*paddr)=="127.0.0.1:0");
-    cout<<'\t'<<inetAddressToString(*paddr, true)<<endl;
-    delete paddr;
+TEST(inetAddressUtils, intToIPv4Address)
+{
+    auto_ptr<osiSockAddr> paddr(intToIPv4Address(0x7F000001));
+    ASSERT_NE((uintptr_t)0, (uintptr_t)paddr.get());
+    EXPECT_EQ(AF_INET, paddr->ia.sin_family);
+    EXPECT_EQ("127.0.0.1:0", inetAddressToString(*paddr.get()));
 
-    paddr = intToIPv4Address(0x0A0A0C0B);
-    assert(paddr->ia.sin_family==AF_INET);
-    assert(inetAddressToString(*paddr)=="10.10.12.11:0");
-    cout<<'\t'<<inetAddressToString(*paddr, true)<<endl;
-    addr = *paddr;
-    delete paddr;
+    paddr.reset(intToIPv4Address(0x0A0A0C0B));
+    ASSERT_NE((uintptr_t)0, (uintptr_t)paddr.get());
+    EXPECT_EQ(AF_INET, paddr->ia.sin_family);
+    EXPECT_EQ("10.10.12.11:0", inetAddressToString(*paddr.get()));
+}
 
-    cout<<"\nPASSED!\n";
 
-    cout<<"Testing \"encodeAsIPv6Address\""<<endl;
-
-    ByteBuffer* buff = new ByteBuffer(32);
+TEST(inetAddressUtils, encodeAsIPv6Address)
+{
+    auto_ptr<ByteBuffer> buff(new ByteBuffer(32, EPICS_ENDIAN_LITTLE));
 
     char src[] = { (char)0, (char)0, (char)0, (char)0, (char)0, (char)0,
             (char)0, (char)0, (char)0, (char)0, (char)0xFF, (char)0xFF,
             (char)0x0A, (char)0x0A, (char)0x0C, (char)0x0B };
 
-    encodeAsIPv6Address(buff, &addr);
-    assert(strncmp(buff->getArray(), src, 16)==0);
-    cout<<"\nPASSED!\n";
-
-    SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    InetAddrVector* broadcasts = getBroadcastAddresses(socket,6678);
-    cout<<"Broadcast addresses: "<<broadcasts->size()<<endl;
-    for(size_t i = 0; i<broadcasts->size(); i++) {
-        cout<<"Broadcast address: ";
-        cout<<inetAddressToString(broadcasts->at(i))<<endl;
-    }
-
-    delete broadcasts;
-
-    return 0;
+    auto_ptr<osiSockAddr> paddr(intToIPv4Address(0x0A0A0C0B));
+    ASSERT_NE((uintptr_t)0, (uintptr_t)paddr.get());
+    osiSockAddr addr = *paddr;
+    
+    encodeAsIPv6Address(buff.get(), &addr);
+    ASSERT_EQ(static_cast<uintptr_t>(16), buff->getPosition());
+    
+    EXPECT_TRUE(strncmp(buff->getArray(), src, 16)==0);
 }
 
+
+
+TEST(inetAddressUtils, getBroadcastAddresses)
+{
+    osiSockAttach();
+
+    SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    auto_ptr<InetAddrVector> broadcasts(getBroadcastAddresses(socket,6678));
+    // at least one is expected
+    ASSERT_LT(static_cast<size_t>(0), broadcasts->size());
+    epicsSocketDestroy(socket);
+
+    // debug
+    for(size_t i = 0; i<broadcasts->size(); i++) {
+        cout<<"\t"<<inetAddressToString(broadcasts->at(i))<<endl;
+    }
+
+}

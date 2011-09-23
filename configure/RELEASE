@@ -29,6 +29,8 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 PVDATA=/opt/epics/pvDataCPP
 EPICS_BASE=/opt/epics/base
 
+#GTEST=/opt/epics/gtest
+
 #PVDATA=/home/mrk/hg/pvDataCPP
 #EPICS_BASE=/home/install/epics/base
 

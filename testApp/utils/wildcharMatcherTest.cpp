@@ -1,64 +1,33 @@
-/*
- * wildcharMatcher.cpp
- *
- *  Created on: Nov 8, 2010
- *      Author: Miha Vitorovic
- */
+#include <gtest/gtest.h>
 
 #include <pv/wildcharMatcher.h>
 
-#include <iostream>
-#include <epicsAssert.h>
-
-using namespace epics::pvData;
 using namespace epics::pvAccess;
-using std::cout;
 
-int main(int argc, char *argv[]) {
-    String testString = "Test string for matcher";
+TEST(wildcharMatcher, testSet)
+{
+    EXPECT_TRUE (testSet("[abc]", 1, 'a'));
+    EXPECT_TRUE (testSet("[abc]", 1, 'b'));
+    EXPECT_TRUE (testSet("[abc]", 1, 'c'));
+    EXPECT_FALSE(testSet("[abc]", 1, 'd'));
+    EXPECT_TRUE (testSet("[!abc]", 1, 'd'));
+    EXPECT_FALSE(testSet("[a-c]", 1, 'd'));
+    EXPECT_TRUE (testSet("[!a-c]", 1, 'd'));
+    EXPECT_TRUE (testSet("[ac-f]", 1, 'd'));
+    EXPECT_FALSE(testSet("[!ac-f]", 1, 'd'));
+}
 
-    cout<<"testSet(\"[abc]\",1,'a').\n";
-    assert(testSet("[abc]", 1, 'a'));
-    cout<<"testSet(\"[abc]\",1,'b').\n";
-    assert(testSet("[abc]", 1, 'b'));
-    cout<<"testSet(\"[abc]\",1,'c').\n";
-    assert(testSet("[abc]", 1, 'c'));
-    cout<<"testSet(\"[abc]\",1,'d').\n";
-    assert(!testSet("[abc]", 1, 'd'));
-    cout<<"testSet(\"[!abc]\",1,'d').\n";
-    assert(testSet("[!abc]", 1, 'd'));
-    cout<<"testSet(\"[a-c]\",1,'d').\n";
-    assert(!testSet("[a-c]", 1, 'd'));
-    cout<<"testSet(\"[!a-c]\",1,'d').\n";
-    assert(testSet("[!a-c]", 1, 'd'));
-    cout<<"testSet(\"[ac-f]\",1,'d').\n";
-    assert(testSet("[ac-f]", 1, 'd'));
-    cout<<"testSet(\"[!ac-f]\",1,'d').\n";
-    assert(!testSet("[!ac-f]", 1, 'd'));
-
-
-    cout<<"\n";
-
-    cout<<"Test string is: \""<<testString<<"\"\n";
-
-    cout<<"Testing for '*'\n";
-    assert(match("*", testString));
-    cout<<"Testing for 'test*'.\n";
-    assert(!match("test*", testString));
-    cout<<"Testing for '*est*'.\n";
-    assert(match("*est*", testString));
-    cout<<"Testing for '?est*'.\n";
-    assert(match("?est*", testString));
-    cout<<"Testing for '??est*'.\n";
-    assert(!match("??est*", testString));
-    cout<<"Testing for '*string*'.\n";
-    assert(match("*string*", testString));
-    cout<<"Testing for '*[abc]tring*'.\n";
-    assert(!match("*[abc]tring*", testString));
-    cout<<"Testing for '*[!abc]tring*'.\n";
-    assert(match("*[!abc]tring*", testString));
-    cout<<"Testing for '*[p-z]tring*'.\n";
-    assert(match("*[p-z]tring*", testString));
-    cout<<"\nPASSED!\n";
-
+TEST(wildcharMatcher, testMatch)
+{
+    epics::pvData::String testString = "Test string for matcher";
+    
+    EXPECT_TRUE (match("*", testString));
+    EXPECT_FALSE(match("test*", testString));
+    EXPECT_TRUE (match("*est*", testString));
+    EXPECT_TRUE (match("?est*", testString));
+    EXPECT_FALSE(match("??est*", testString));
+    EXPECT_TRUE (match("*string*", testString));
+    EXPECT_FALSE(match("*[abc]tring*", testString));
+    EXPECT_TRUE (match("*[!abc]tring*", testString));
+    EXPECT_TRUE (match("*[p-z]tring*", testString));
 }
