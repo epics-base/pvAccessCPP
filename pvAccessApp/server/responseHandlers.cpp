@@ -253,7 +253,7 @@ void ServerChannelFindRequesterImpl::unlock()
 void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
 	int32 count = 1;
-	control->startMessage((int8)4, (sizeof(int32)+sizeof(int8)+128+2*sizeof(int16)+count*sizeof(int32))/sizeof(8));
+	control->startMessage((int8)4, (sizeof(int32)+sizeof(int8)+128+2*sizeof(int16)+count*sizeof(int32))/sizeof(int8));
 
 	Lock guard(_mutex);
 	buffer->putInt(_searchSequenceId);
