@@ -3616,25 +3616,21 @@ TODO
             }
 
             virtual ChannelProvider::shared_pointer const & getProvider() {
-                //Lock lock(m_contextMutex);
                 return m_provider;
             }
 
             virtual Timer::shared_pointer getTimer()
             {
-                //Lock lock(m_contextMutex);
                 return m_timer;
             }
 
             virtual TransportRegistry::shared_pointer getTransportRegistry()
             {
-                //Lock lock(m_contextMutex);
                 return m_transportRegistry;
             }
 
             virtual Transport::shared_pointer getSearchTransport()
             {
-                //Lock lock(m_contextMutex);
                 return m_searchTransport;
             }
 
@@ -3735,12 +3731,15 @@ TODO
                 m_connector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_beaconPeriod));
                 m_transportRegistry.reset(new TransportRegistry());
 
-                // setup UDP transport
-                initializeUDPTransport();
-                // TODO what if initialization failed!!!
-
                 // setup search manager
                 m_channelSearchManager.reset(new ChannelSearchManager(thisPointer.get()));
+
+                // TODO put memory barrier here...
+
+                // setup UDP transport
+                initializeUDPTransport();
+
+                // TODO what if initialization failed!!!
             }
 
             /**
