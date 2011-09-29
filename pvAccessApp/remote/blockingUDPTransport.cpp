@@ -327,23 +327,23 @@ namespace epics {
         bool BlockingUDPTransport::send(ByteBuffer* buffer) {
             if(!_sendAddresses) return false;
 
+            buffer->flip();
+
+            bool allOK = true;
             for(size_t i = 0; i<_sendAddresses->size(); i++) {
-                buffer->flip();
                 int retval = sendto(_channel, buffer->getArray(),
                         buffer->getLimit(), 0, &(_sendAddresses->at(i).sa),
                         sizeof(sockaddr));
+                if(unlikely(retval<0))
                 {
-                    if(unlikely(retval<0))
-                    {
-                        char errStr[64];
-                        epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                        LOG(logLevelDebug, "Socket sendto error: %s", errStr);
-                    }
-                    return false;
+                    char errStr[64];
+                    epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                    LOG(logLevelDebug, "Socket sendto error: %s", errStr);
+                    allOK = false;
                 }
             }
 
-            return true;
+            return allOK;
         }
 
         int BlockingUDPTransport::getSocketReceiveBufferSize() const {
