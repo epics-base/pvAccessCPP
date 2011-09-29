@@ -607,5 +607,9 @@ int main (int argc, char *argv[])
 
     ClientFactory::stop();
 
+    fclose(stdin);
+    fclose(stdout);
+    fclose(stderr);
+
     return allOK ? 0 : 1;
 }
