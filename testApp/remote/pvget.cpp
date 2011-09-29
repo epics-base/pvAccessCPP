@@ -346,7 +346,8 @@ void usage (void)
     "options:\n"
     "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
     "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
-    "  -t:                Terse mode - print only value, without name"
+    "  -t:                Terse mode - print only value, without name\n"
+    "  -d:                Enable debug output"
     "\nExample: pvget example001 \n\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
@@ -503,10 +504,11 @@ public:
 int main (int argc, char *argv[])
 {
     int opt;                    /* getopt() current option */
+    bool debug = false;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:w:t")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:td")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -524,6 +526,9 @@ int main (int argc, char *argv[])
             break;
         case 't':               /* Terse mode */
             terseMode = true;
+            break;
+        case 'd':               /* Debug log level */
+            debug = true;
             break;
         case '?':
             fprintf(stderr,
@@ -559,8 +564,7 @@ int main (int argc, char *argv[])
         return 1;
     }
     
-    // typedef enum {logLevelInfo, logLevelDebug, logLevelError, errlogFatal} errlogSevEnum;
-    SET_LOG_LEVEL(logLevelError);
+    SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
 
 
     ClientFactory::start();

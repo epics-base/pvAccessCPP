@@ -3767,6 +3767,10 @@ TODO
                         broadcastAddresses = list;
                     }
                 }
+                
+                for (size_t i = 0; broadcastAddresses.get() && i < broadcastAddresses->size(); i++)
+                    LOG(logLevelDebug,
+                        "Broadcast address #%d: %s", i, inetAddressToString(broadcastAddresses->at(i)).c_str());
 
                 // where to bind (listen) address
                 osiSockAddr listenLocalAddress;
