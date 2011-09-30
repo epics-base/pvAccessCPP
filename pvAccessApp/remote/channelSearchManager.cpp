@@ -30,9 +30,10 @@ void BaseSearchInstance::addAndSetListOwnership(SearchInstance::List* newOwner, 
 {
 	if(ownerMutex == NULL) THROW_BASE_EXCEPTION("Null owner mutex");
 
-	_ownerMutex = ownerMutex;
-	Lock ownerGuard(*_ownerMutex);
-	Lock guard(_mutex);
+        Lock ownerGuard(*ownerMutex);
+        _ownerMutex = ownerMutex;
+
+        Lock guard(_mutex);
 	newOwner->push_back(this);
 	//if (_owner == NULL) this->acquire(); // new owner
 	_owner = newOwner;
@@ -41,23 +42,29 @@ void BaseSearchInstance::addAndSetListOwnership(SearchInstance::List* newOwner, 
 
 void BaseSearchInstance::removeAndUnsetListOwnership()
 {
-	if(_owner == NULL) return;
+    Mutex * localOm;
+    SearchInstance::List* localOwner;
+    BaseSearchInstance *_this;
+    {
+        Lock guard(_mutex);
+        if(_owner == NULL) return;
 
-	if(_ownerMutex == NULL) THROW_BASE_EXCEPTION("Null owner mutex");
-	Lock ownerGuard(*_ownerMutex);
-	Lock guard(_mutex);
-	if(_owner != NULL)
-	{
-	    //this->release();
-        // TODO !!!
-        for (SearchInstance::List::iterator iter = _owner->begin(); iter != _owner->end(); iter++)
-            if (*iter == this)
-            {
-                _owner->erase(iter);
-                break;
-            }
-		_owner = NULL;
-	}
+        if(_ownerMutex == NULL) THROW_BASE_EXCEPTION("Null owner mutex");
+        localOm=_ownerMutex;
+        localOwner=_owner;
+        _owner = NULL;
+        _ownerMutex = NULL;
+        _this=this;
+    }
+
+    Lock ownerGuard(*localOm);
+    for (SearchInstance::List::iterator iter = localOwner->begin(); iter != localOwner->end(); iter++) {
+        if (*iter == _this)
+        {
+            localOwner->erase(iter);
+            break;
+        }
+    }
 }
 
 int32 BaseSearchInstance::getOwnerIndex()
