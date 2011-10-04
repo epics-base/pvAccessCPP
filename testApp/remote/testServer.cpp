@@ -152,9 +152,17 @@ class MockChannelProcess :
 
     virtual void destroy()
     {
-
+    }
+    
+    virtual void lock()
+    {
+        // TODO !!!
     }
 
+    virtual void unlock()
+    {
+        // TODO !!!
+    }
 };
 
 
@@ -212,6 +220,15 @@ class MockChannelGet : public ChannelGet
     {
     }
 
+    virtual void lock()
+    {
+        // TODO !!!
+    }
+
+    virtual void unlock()
+    {
+        // TODO !!!
+    }
 };
 
 
@@ -266,6 +283,15 @@ class MockChannelPut : public ChannelPut
     {
     }
 
+    virtual void lock()
+    {
+        // TODO !!!
+    }
+
+    virtual void unlock()
+    {
+        // TODO !!!
+    }
 };
 
 
@@ -322,6 +348,15 @@ class MockChannelPutGet : public ChannelPutGet
     {
     }
 
+    virtual void lock()
+    {
+        // TODO !!!
+    }
+
+    virtual void unlock()
+    {
+        // TODO !!!
+    }
 };
 
 
@@ -371,6 +406,15 @@ class MockChannelRPC : public ChannelRPC
     {
     }
 
+    virtual void lock()
+    {
+        // TODO !!!
+    }
+
+    virtual void unlock()
+    {
+        // TODO !!!
+    }
 };
 
 
@@ -442,6 +486,15 @@ class MockChannelArray : public ChannelArray
     {
     }
 
+    virtual void lock()
+    {
+        // TODO !!!
+    }
+
+    virtual void unlock()
+    {
+        // TODO !!!
+    }
 };
 
 
@@ -539,6 +592,16 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
     {
         m_thisPtr.reset();
         stop();
+    }
+
+    virtual void lock()
+    {
+        // TODO !!!
+    }
+
+    virtual void unlock()
+    {
+        // TODO !!!
     }
 
     // ============ MonitorElement ============

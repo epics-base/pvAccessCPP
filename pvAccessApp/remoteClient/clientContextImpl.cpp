@@ -100,31 +100,31 @@ namespace epics {
 
             Requester::shared_pointer m_requester;
 
-            bool m_destroyed;
-            bool m_initialized;
-
             /* negative... */
             static const int NULL_REQUEST = -1;
             static const int PURE_DESTROY_REQUEST = -2;
 
-            int32 m_pendingRequest;
-
             pvAccessID m_ioid;
+
+            int32 m_pendingRequest;
 
             Mutex m_mutex;
             
             // used to hold ownership until create is called (to support complete async usage)
             ResponseRequest::shared_pointer m_thisPointer;
             
+            bool m_destroyed;
+            bool m_initialized;
+
             virtual ~BaseRequestImpl() {};
 
             BaseRequestImpl(ChannelImpl::shared_pointer const & channel, Requester::shared_pointer requester) :
                     m_channel(channel),
                     m_requester(requester),
-                    m_destroyed(false),
-                    m_initialized(false),
+                    m_ioid(INVALID_IOID),
                     m_pendingRequest(NULL_REQUEST),
-                    m_ioid(INVALID_IOID)
+                    m_destroyed(false),
+                    m_initialized(false)
             {
             }
             
@@ -271,10 +271,6 @@ namespace epics {
                 // default is noop
             }
 
-            virtual void lock() {
-                // noop
-            }
-
             virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
                 int8 qos = getPendingRequest();
                 if (qos == -1)
@@ -286,10 +282,6 @@ namespace epics {
                     buffer->putInt(m_ioid);
                 }
                 stopRequest();
-            }
-
-            virtual void unlock() {
-                // noop
             }
 
         };
@@ -437,6 +429,14 @@ namespace epics {
             {
                 BaseRequestImpl::destroy();
             }
+            
+            virtual void lock() {
+                // noop
+            }
+
+            virtual void unlock() {
+                // noop
+            }
         };
 
 
@@ -458,6 +458,8 @@ namespace epics {
 
             PVStructure::shared_pointer m_data;
             BitSet::shared_pointer m_bitSet;
+            
+            Mutex m_dataMutex;
 
             ChannelGetImpl(ChannelImpl::shared_pointer const & channel, ChannelGetRequester::shared_pointer const & channelGetRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelGetRequester)),
@@ -608,6 +610,16 @@ namespace epics {
             {
                 BaseRequestImpl::destroy();
             }
+            
+            virtual void lock()
+            {
+                m_dataMutex.lock();
+            }
+
+            virtual void unlock()
+            {
+                m_dataMutex.unlock();
+            }
         };
 
 
@@ -631,6 +643,8 @@ namespace epics {
 
             PVStructure::shared_pointer m_data;
             BitSet::shared_pointer m_bitSet;
+
+            Mutex m_dataMutex;
 
             ChannelPutImpl(ChannelImpl::shared_pointer const & channel, ChannelPutRequester::shared_pointer const & channelPutRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelPutRequester)),
@@ -821,6 +835,16 @@ namespace epics {
             {
                 BaseRequestImpl::destroy();
             }
+
+            virtual void lock()
+            {
+                m_dataMutex.lock();
+            }
+
+            virtual void unlock()
+            {
+                m_dataMutex.unlock();
+            }
         };
 
 
@@ -842,6 +866,8 @@ namespace epics {
             PVStructure::shared_pointer m_putData;
             PVStructure::shared_pointer m_getData;
 
+            Mutex m_dataMutex;
+            
             ChannelPutGetImpl(ChannelImpl::shared_pointer const & channel, ChannelPutGetRequester::shared_pointer const & channelPutGetRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelPutGetRequester)),
                     m_channelPutGetRequester(channelPutGetRequester), m_pvRequest(pvRequest)
@@ -1079,6 +1105,17 @@ namespace epics {
             {
                 BaseRequestImpl::destroy();
             }
+            
+            virtual void lock()
+            {
+                m_dataMutex.lock();
+            }
+
+            virtual void unlock()
+            {
+                m_dataMutex.unlock();
+            }
+            
         };
 
 
@@ -1101,6 +1138,8 @@ namespace epics {
 
             PVStructure::shared_pointer m_data;
             BitSet::shared_pointer m_bitSet;
+            
+            Mutex m_dataMutex;
 
             ChannelRPCImpl(ChannelImpl::shared_pointer const & channel, ChannelRPCRequester::shared_pointer const & channelRPCRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelRPCRequester)),
@@ -1259,6 +1298,16 @@ namespace epics {
             {
                 BaseRequestImpl::destroy();
             }
+            
+            virtual void lock()
+            {
+                m_dataMutex.lock();
+            }
+
+            virtual void unlock()
+            {
+                m_dataMutex.unlock();
+            }
         };
 
 
@@ -1285,6 +1334,8 @@ namespace epics {
 
             int32 m_length;
             int32 m_capacity;
+            
+            Mutex m_dataMutex;
 
             ChannelArrayImpl(ChannelImpl::shared_pointer const & channel, ChannelArrayRequester::shared_pointer const & channelArrayRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelArrayRequester)),
@@ -1521,6 +1572,16 @@ namespace epics {
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
+            }
+
+            virtual void lock()
+            {
+                m_dataMutex.lock();
+            }
+
+            virtual void unlock()
+            {
+                m_dataMutex.unlock();
             }
         };
 
@@ -2240,6 +2301,16 @@ namespace epics {
             virtual void release(MonitorElement::shared_pointer const & monitorElement)
             {
                 m_monitorStrategy->release(monitorElement);
+            }
+
+            virtual void lock()
+            {
+                // noop
+            }
+
+            virtual void unlock()
+            {
+                // noop
             }
 
         };

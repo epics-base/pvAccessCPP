@@ -27,15 +27,66 @@ namespace epics { namespace pvAccess {
         };
 
     	
+        /**
+         * 
+         */
+        class Lockable
+        {
+            public:
+            POINTER_DEFINITIONS(Lockable);
+
+            virtual void lock() = 0;
+            virtual void unlock() = 0;
+        };
+
+        /**
+         * Scope lock.
+         */
+        class ScopedLock : private epics::pvData::NoDefaultMethods {
+            public:
+            
+            explicit ScopedLock(Lockable::shared_pointer const & li)
+                : lockable(li), locked(true) {
+                lockable->lock();
+            }
+            
+            ~ScopedLock() {
+                unlock();
+            }
+            
+            void lock() {
+                if(!locked) { 
+                    lockable->lock();
+                    locked = true;
+                }
+            }
+            
+            void unlock() {
+                if(locked) {
+                    lockable->unlock();
+                    locked=false;
+                }
+            }
+            
+            bool ownsLock() const {
+                return locked;
+            }
+        
+            private:
+            
+            Lockable::shared_pointer const lockable;
+            bool locked;
+        };
+        
+
         class Channel;
         class ChannelProvider;
 
-    
         /**
          * Base interface for all channel requests.
          * @author mse
          */
-        class ChannelRequest : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
+        class ChannelRequest : public epics::pvData::Destroyable, public Lockable, private epics::pvData::NoDefaultMethods {
             public:
             POINTER_DEFINITIONS(ChannelRequest);
         };
@@ -253,9 +304,9 @@ namespace epics { namespace pvAccess {
              * Get the current data.
              */
             virtual void get() = 0;
+            
         };
-
-
+        
         /**
          * epics::pvData::Requester for ChannelPut.
          * @author mrk

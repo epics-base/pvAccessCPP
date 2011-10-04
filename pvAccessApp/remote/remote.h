@@ -23,6 +23,9 @@
 #include <osiSock.h>
 #include <osdSock.h>
 
+/// TODO only here because of the Lockable
+#include <pvAccess.h>
+
 namespace epics {
     namespace pvAccess {
 
@@ -114,7 +117,7 @@ namespace epics {
         /**
          * Interface defining transport sender (instance sending data over transport).
          */
-        class TransportSender {
+        class TransportSender : public Lockable {
         public:
             typedef std::tr1::shared_ptr<TransportSender> shared_pointer;
             typedef std::tr1::shared_ptr<const TransportSender> const_shared_pointer;
@@ -130,9 +133,6 @@ namespace epics {
              * NOTE: these limitations allows efficient implementation.
              */
             virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) = 0;
-
-            virtual void lock() = 0;
-            virtual void unlock() = 0;
         };
 
         /**
