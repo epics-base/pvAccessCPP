@@ -9,6 +9,10 @@
 #include <vector>
 #include <string>
 
+
+#include <pv/CDRMonitor.h>
+#include <epicsExit.h>
+
 using namespace std;
 using namespace std::tr1;
 using namespace epics::pvData;
@@ -337,7 +341,6 @@ double timeOut = DEFAULT_TIMEOUT;
 string request(DEFAULT_REQUEST);
 bool terseMode = false;
 
-PVStructure::shared_pointer pvRequest;
 
 void usage (void)
 {
@@ -347,7 +350,8 @@ void usage (void)
     "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
     "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
     "  -t:                Terse mode - print only value, without name\n"
-    "  -d:                Enable debug output"
+    "  -d:                Enable debug output\n"
+    "  -c:                Wait for clean shutdown and report used instance count (for expert users)"
     "\nExample: pvget example001 \n\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
@@ -356,8 +360,10 @@ void usage (void)
 class ChannelGetRequesterImpl : public ChannelGetRequester
 {
     private:
+    ChannelGet::shared_pointer m_channelGet;
     PVStructure::shared_pointer m_pvStructure;
     BitSet::shared_pointer m_bitSet;
+    Mutex m_pointerMutex;
     Event m_event;
     String m_channelName;
 
@@ -386,9 +392,15 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             {
                 std::cout << "[" << m_channelName << "] channel get create: " << status.toString() << std::endl;
             }
-
-            m_pvStructure = pvStructure;
-            m_bitSet = bitSet;
+            
+            // assign smart pointers
+            {
+                Lock lock(m_pointerMutex);
+                m_channelGet = channelGet;
+                m_pvStructure = pvStructure;
+                m_bitSet = bitSet;
+            }
+            
             channelGet->get(true);
         }
         else
@@ -409,19 +421,35 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 
             String str;
             
-            if (terseMode)
-                convertToString(&str, m_pvStructure.get(), 0);
-            else
-                m_pvStructure->toString(&str);
+            // access smart pointers
+            {
+                Lock lock(m_pointerMutex);
+                {
+                    // needed since we access the data
+                    ScopedLock dataLock(m_channelGet);
+    
+                    if (terseMode)
+                        convertToString(&str, m_pvStructure.get(), 0);
+                    else
+                        m_pvStructure->toString(&str);
+                } 
+                // this is OK since calle holds also owns it
+                m_channelGet.reset();
+            }
             
-
             std::cout << str << std::endl;
             
             m_event.signal();
+            
         }
         else
         {
             std::cout << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
+            {
+                Lock lock(m_pointerMutex);
+                // this is OK since calle holds also owns it
+                m_channelGet.reset();
+            }
         }
         
     }
@@ -505,10 +533,11 @@ int main (int argc, char *argv[])
 {
     int opt;                    /* getopt() current option */
     bool debug = false;
+    bool cleanupAndReport = false;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:w:td")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:tdc")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -529,6 +558,9 @@ int main (int argc, char *argv[])
             break;
         case 'd':               /* Debug log level */
             debug = true;
+            break;
+        case 'c':               /* Clean-up and report used instance count */
+            cleanupAndReport = true;
             break;
         case '?':
             fprintf(stderr,
@@ -557,59 +589,68 @@ int main (int argc, char *argv[])
     for (int n = 0; optind < argc; n++, optind++)
         pvs.push_back(argv[optind]);       /* Copy PV names from command line */
 
-    try {
-        pvRequest = getCreateRequest()->createRequest(request);
-    } catch (std::exception &ex) {
-        printf("failed to parse request string: %s\n", ex.what());
-        return 1;
-    }
-    
+
     SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
 
-
-    ClientFactory::start();
-    ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
-
     bool allOK = true;
-    
-    // first connect to all, this allows resource (e.g. TCP connection) sharing
-    vector<Channel::shared_pointer> channels(nPvs);
-    for (int n = 0; n < nPvs; n++)
+
     {
-        shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
-        channels[n] = provider->createChannel(pvs[n], channelRequesterImpl);
-    }
     
-    // for now a simple iterating sync implementation, guarantees order
-    for (int n = 0; n < nPvs; n++)
-    {
-        /*
-        shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
-        Channel::shared_pointer channel = provider->createChannel(pvs[n], channelRequesterImpl);
-        */
+        PVStructure::shared_pointer pvRequest;
+        try {
+            pvRequest = getCreateRequest()->createRequest(request);
+        } catch (std::exception &ex) {
+            printf("failed to parse request string: %s\n", ex.what());
+            return 1;
+        }
         
-        Channel::shared_pointer channel = channels[n];
-        shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
-         
-        if (channelRequesterImpl->waitUntilConnected(timeOut))
+        ClientFactory::start();
+        ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
+    
+        // first connect to all, this allows resource (e.g. TCP connection) sharing
+        vector<Channel::shared_pointer> channels(nPvs);
+        for (int n = 0; n < nPvs; n++)
         {
-            shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
-            ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
-            allOK &= getRequesterImpl->waitUntilGet(timeOut);
+            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
+            channels[n] = provider->createChannel(pvs[n], channelRequesterImpl);
         }
-        else
+        
+        // for now a simple iterating sync implementation, guarantees order
+        for (int n = 0; n < nPvs; n++)
         {
-            allOK = false;
-            channel->destroy();
-            std::cout << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
-        }
-    }    
+            /*
+            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
+            Channel::shared_pointer channel = provider->createChannel(pvs[n], channelRequesterImpl);
+            */
+            
+            Channel::shared_pointer channel = channels[n];
+            shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+             
+            if (channelRequesterImpl->waitUntilConnected(timeOut))
+            {
+                shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
+                ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
+                allOK &= getRequesterImpl->waitUntilGet(timeOut);
+            }
+            else
+            {
+                allOK = false;
+                channel->destroy();
+                std::cout << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
+            }
+        }    
+    
+        ClientFactory::stop();
+    }
 
-    ClientFactory::stop();
-
-    fclose(stdin);
-    fclose(stdout);
-    fclose(stderr);
+    if (cleanupAndReport)
+    {
+        // TODO implement wait on context
+        epicsThreadSleep ( 3.0 );
+        std::cout << "-----------------------------------------------------------------------" << std::endl;
+        epicsExitCallAtExits();
+        CDRMonitor::get().show(stdout, true);
+    }
 
     return allOK ? 0 : 1;
 }
