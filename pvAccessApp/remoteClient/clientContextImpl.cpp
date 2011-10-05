@@ -548,9 +548,12 @@ namespace epics {
                 }
 
                 // create data and its bitSet
-                m_data.reset(transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
-                m_bitSet.reset(new BitSet(m_data->getNumberFields()));
-
+                {
+                    Lock lock(m_dataMutex);
+                    m_data.reset(transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
+                    m_bitSet.reset(new BitSet(m_data->getNumberFields()));
+                }
+                
                 // notify
                 ChannelGet::shared_pointer thisChannelGet = dynamic_pointer_cast<ChannelGet>(shared_from_this());
                 EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(status, thisChannelGet, m_data, m_bitSet));
@@ -565,9 +568,12 @@ namespace epics {
                 }
 
                 // deserialize bitSet and data
-                m_bitSet->deserialize(payloadBuffer, transport.get());
-                m_data->deserialize(payloadBuffer, transport.get(), m_bitSet.get());
-
+                {
+                    Lock lock(m_dataMutex);
+                    m_bitSet->deserialize(payloadBuffer, transport.get());
+                    m_data->deserialize(payloadBuffer, transport.get(), m_bitSet.get());
+                }
+                
                 EXCEPTION_GUARD(m_channelGetRequester->getDone(status));
                 return true;
             }
@@ -715,8 +721,12 @@ namespace epics {
                 {
                     // put
                     // serialize only what has been changed
-                    m_bitSet->serialize(buffer, control);
-                    m_data->serialize(buffer, control, m_bitSet.get());
+                    {
+                        // no need to lock here, since it is already locked via TransportSender IF
+                        //Lock lock(m_dataMutex);
+                        m_bitSet->serialize(buffer, control);
+                        m_data->serialize(buffer, control, m_bitSet.get());
+                    }
                 }
 
                 stopRequest();
@@ -738,9 +748,12 @@ namespace epics {
                 }
 
                 // create data and its bitSet
-                m_data.reset(transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
-                m_bitSet.reset(new BitSet(m_data->getNumberFields()));
-
+                {
+                    Lock lock(m_dataMutex);
+                    m_data.reset(transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
+                    m_bitSet.reset(new BitSet(m_data->getNumberFields()));
+                }
+                
                 // notify
                 ChannelPut::shared_pointer thisChannelPut = dynamic_pointer_cast<ChannelPut>(shared_from_this());
                 EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(status, thisChannelPut, m_data, m_bitSet));
@@ -756,8 +769,11 @@ namespace epics {
                         return true;
                     }
 
-                    m_data->deserialize(payloadBuffer, transport.get());
-
+                    {
+                        Lock lock(m_dataMutex);
+                        m_data->deserialize(payloadBuffer, transport.get());
+                    }
+                    
                     EXCEPTION_GUARD(m_channelPutRequester->getDone(status));
                     return true;
                 }
@@ -936,7 +952,11 @@ namespace epics {
                 }
                 else
                 {
-                    m_putData->serialize(buffer, control);
+                    {
+                        // no need to lock here, since it is already locked via TransportSender IF
+                        //Lock lock(m_dataMutex);
+                        m_putData->serialize(buffer, control);
+                    }
                 }
 
                 stopRequest();
@@ -958,9 +978,13 @@ namespace epics {
                 }
 
                 IntrospectionRegistry* registry = transport->getIntrospectionRegistry();
-                m_putData.reset(registry->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
-                m_getData.reset(registry->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
-
+                
+                {
+                    Lock lock(m_dataMutex);
+                    m_putData.reset(registry->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
+                    m_getData.reset(registry->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
+                }
+                
                 // notify
                 ChannelPutGet::shared_pointer thisChannelPutGet = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
                 EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(status, thisChannelPutGet, m_putData, m_getData));
@@ -977,9 +1001,12 @@ namespace epics {
                         return true;
                     }
 
-                    // deserialize get data
-                    m_getData->deserialize(payloadBuffer, transport.get());
-
+                    {
+                        Lock lock(m_dataMutex);
+                        // deserialize get data
+                        m_getData->deserialize(payloadBuffer, transport.get());
+                    }
+                    
                     EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(status));
                     return true;
                 }
@@ -991,9 +1018,12 @@ namespace epics {
                         return true;
                     }
 
-                    // deserialize put data
-                    m_putData->deserialize(payloadBuffer, transport.get());
-
+                    {
+                        Lock lock(m_dataMutex);
+                        // deserialize put data
+                        m_putData->deserialize(payloadBuffer, transport.get());
+                    }
+                    
                     EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(status));
                     return true;
                 }
@@ -1005,9 +1035,12 @@ namespace epics {
                         return true;
                     }
 
-                    // deserialize data
-                    m_getData->deserialize(payloadBuffer, transport.get());
-
+                    {
+                        Lock lock(m_dataMutex);
+                        // deserialize data
+                        m_getData->deserialize(payloadBuffer, transport.get());
+                    }
+                    
                     EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(status));
                     return true;
                 }
@@ -1209,8 +1242,12 @@ namespace epics {
                 }
                 else
                 {
-                    m_bitSet->serialize(buffer, control);
-                    m_data->serialize(buffer, control, m_bitSet.get());
+                    {
+                        // no need to lock here, since it is already locked via TransportSender IF
+                        //Lock lock(m_dataMutex);
+                        m_bitSet->serialize(buffer, control);
+                        m_data->serialize(buffer, control, m_bitSet.get());
+                    }
                 }
 
                 stopRequest();
@@ -1233,9 +1270,12 @@ namespace epics {
                 }
 
                 // create data and its bitSet
-                m_data.reset(transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
-                m_bitSet.reset(new BitSet(m_data->getNumberFields()));
-
+                {
+                    Lock lock(m_dataMutex);
+                    m_data.reset(transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
+                    m_bitSet.reset(new BitSet(m_data->getNumberFields()));
+                }
+                
                 // notify
                 ChannelRPC::shared_pointer thisChannelRPC = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
                 EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(status, thisChannelRPC, m_data, m_bitSet));
@@ -1412,8 +1452,12 @@ namespace epics {
                 // put
                 else
                 {
-                    SerializeHelper::writeSize(m_offset, buffer, control);
-                    m_data->serialize(buffer, control, 0, m_count); // put from 0 offset; TODO count out-of-bounds check?!
+                    {
+                        // no need to lock here, since it is already locked via TransportSender IF
+                        //Lock lock(m_dataMutex);
+                        SerializeHelper::writeSize(m_offset, buffer, control);
+                        m_data->serialize(buffer, control, 0, m_count); // put from 0 offset; TODO count out-of-bounds check?!
+                    }
                 }
 
                 stopRequest();
@@ -1437,8 +1481,11 @@ namespace epics {
 
                 // create data and its bitSet
                 FieldConstPtr field = transport->getIntrospectionRegistry()->deserialize(payloadBuffer, transport.get());
-                m_data.reset(dynamic_cast<PVArray*>(getPVDataCreate()->createPVField(0, field)));
-
+                {
+                    Lock lock(m_dataMutex);
+                    m_data.reset(dynamic_cast<PVArray*>(getPVDataCreate()->createPVField(0, field)));
+                }
+                
                 // notify
                 ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
                 EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(status, thisChannelArray, m_data));
@@ -1454,8 +1501,11 @@ namespace epics {
                         return true;
                     }
 
-                    m_data->deserialize(payloadBuffer, transport.get());
-
+                    {
+                        Lock lock(m_dataMutex);
+                        m_data->deserialize(payloadBuffer, transport.get());
+                    }
+                    
                     EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(status));
                     return true;
                 }

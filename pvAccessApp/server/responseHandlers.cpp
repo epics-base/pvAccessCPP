@@ -689,6 +689,9 @@ void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 		}
 		else
 		{
+		    // we locked _mutex above, so _channelGet is valid
+		    ScopedLock lock(_channelGet);
+		    
 			_bitSet->serialize(buffer, control);
 			_pvStructure->serialize(buffer, control, _bitSet.get());
 		}
@@ -762,10 +765,14 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 		else
 		{
 			// deserialize bitSet and do a put
-			BitSet::shared_pointer putBitSet = request->getBitSet();
-			putBitSet->deserialize(payloadBuffer, transport.get());
-			request->getPVStructure()->deserialize(payloadBuffer, transport.get(), putBitSet.get());
-			request->getChannelPut()->put(lastRequest);
+			ChannelPut::shared_pointer channelPut = request->getChannelPut();
+			{
+    			ScopedLock lock(channelPut);     // TODO not needed if put is processed by the same thread
+    			BitSet::shared_pointer putBitSet = request->getBitSet();
+    			putBitSet->deserialize(payloadBuffer, transport.get());
+    			request->getPVStructure()->deserialize(payloadBuffer, transport.get(), putBitSet.get());
+			}
+			channelPut->put(lastRequest);
 		}
 	}
 }
@@ -897,7 +904,7 @@ void ServerChannelPutRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 		}
 		else if ((QOS_GET & request) != 0)
 		{
-			Lock guard(_mutex);
+    		ScopedLock lock(_channelPut); // _channelPut is valid because we required _mutex above
 			_pvStructure->serialize(buffer, control);
 		}
 	}
@@ -973,8 +980,12 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 		else
 		{
 			// deserialize bitSet and do a put
-			request->getPVPutStructure()->deserialize(payloadBuffer, transport.get());
-			request->getChannelPutGet()->putGet(lastRequest);
+			ChannelPutGet::shared_pointer channelPutGet = request->getChannelPutGet();
+			{
+    			ScopedLock lock(channelPutGet);  // TODO not necessary if read is done in putGet
+			    request->getPVPutStructure()->deserialize(payloadBuffer, transport.get());
+			}
+			channelPutGet->putGet(lastRequest);
 		}
 	}
 }
@@ -1117,12 +1128,14 @@ void ServerChannelPutGetRequesterImpl::send(ByteBuffer* buffer, TransportSendCon
 		}
 		else if ((QOS_GET_PUT & request) != 0)
 		{
-			Lock guard(_mutex);
+		    ScopedLock lock(_channelPutGet);  // valid due to _mutex lock above
+			//Lock guard(_mutex);
 			_pvPutStructure->serialize(buffer, control);
 		}
 		else
 		{
-			Lock guard(_mutex);
+		    ScopedLock lock(_channelPutGet);  // valid due to _mutex lock above
+			//Lock guard(_mutex);
 			_pvGetStructure->serialize(buffer, control);
 		}
 	}
@@ -1320,6 +1333,7 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 
 		if (_status.isSuccess())
 		{
+		    // valid due to _mutex lock above
 			introspectionRegistry->serialize(_structure, buffer, control);
 		}
 		stopRequest();
@@ -1419,10 +1433,15 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 		else
 		{
 			// deserialize data to put
-			const int32 offset = SerializeHelper::readSize(payloadBuffer, transport.get());
-			PVArray::shared_pointer array = request->getPVArray();
-			array->deserialize(payloadBuffer, transport.get());
-			request->getChannelArray()->putArray(lastRequest, offset, array->getLength());
+			int32 offset;
+			ChannelArray::shared_pointer channelArray = request->getChannelArray();
+    	    PVArray::shared_pointer array = request->getPVArray();
+			{
+    			ScopedLock lock(channelArray);   // TODO not needed if read by the same thread
+    			offset = SerializeHelper::readSize(payloadBuffer, transport.get());
+    			array->deserialize(payloadBuffer, transport.get());
+			}
+			channelArray->putArray(lastRequest, offset, array->getLength());
 		}
 	}
 }
@@ -1553,7 +1572,8 @@ void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendCont
 	{
 		if ((QOS_GET & request) != 0)
 		{
-			Lock guard(_mutex);
+			//Lock guard(_mutex);
+			ScopedLock lock(_channelArray);  // valid due to _mutex lock above
 			_pvArray->serialize(buffer, control, 0, _pvArray->getLength());
 		}
 		else if ((QOS_INIT & request) != 0)
@@ -1899,10 +1919,14 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 		}
 
 		// deserialize put data
-		BitSet::shared_pointer changedBitSet = request->getAgrumentsBitSet();
-		changedBitSet->deserialize(payloadBuffer, transport.get());
-		request->getPvArguments()->deserialize(payloadBuffer, transport.get(), changedBitSet.get());
-		request->getChannelRPC()->request(lastRequest);
+		ChannelRPC::shared_pointer channelRPC = request->getChannelRPC();
+		{
+    		ScopedLock lock(channelRPC);  // TODO not really needed if channelRPC->request() is reads from the same thread
+    		BitSet::shared_pointer changedBitSet = request->getAgrumentsBitSet();
+    		changedBitSet->deserialize(payloadBuffer, transport.get());
+    		request->getPvArguments()->deserialize(payloadBuffer, transport.get(), changedBitSet.get());
+		}
+		channelRPC->request(lastRequest);
 	}
 }
 
@@ -2013,24 +2037,24 @@ void ServerChannelRPCRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 	buffer->putInt(_ioid);
 	buffer->putByte((int8)request);
 	IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
+	
 	{
-		Lock guard(_mutex);
+    	Lock guard(_mutex);
 		introspectionRegistry->serializeStatus(buffer, control, _status);
-	}
 
-	if (_status.isSuccess())
-	{
-		if ((QOS_INIT & request) != 0)
-		{
-			Lock guard(_mutex);
-            introspectionRegistry->serialize(_pvArguments != NULL ? _pvArguments->getField() : FieldConstPtr(), buffer, control);
-		}
-		else
-		{
-			introspectionRegistry->serializeStructure(buffer, control, _pvResponse.get());
-		}
+    	if (_status.isSuccess())
+    	{
+    		if ((QOS_INIT & request) != 0)
+    		{
+                introspectionRegistry->serialize(_pvArguments != NULL ? _pvArguments->getField() : FieldConstPtr(), buffer, control);
+    		}
+    		else
+    		{
+    			introspectionRegistry->serializeStructure(buffer, control, _pvResponse.get());
+    		}
+    	}
 	}
-
+	
 	stopRequest();
 
 	// lastRequest
