@@ -81,6 +81,8 @@ namespace epics {
 
             close(true); // close the socket and stop the thread.
             
+            // TODO use auto_ptr class members
+            
             if (_sendAddresses) delete _sendAddresses;
             if (_ignoredAddresses) delete _ignoredAddresses;
 
@@ -114,6 +116,7 @@ namespace epics {
                     inetAddressToString(_bindAddress).c_str());
     
                 // TODO should I wait thread to complete first and then destroy
+                // on some OSes (Darwin) this also exits rcvfrom() and speeds up shutdown
                 epicsSocketDestroy(_channel);
             }
             
@@ -175,14 +178,12 @@ namespace epics {
 
             try {
 
-                bool closed;
-                while(likely(!_closed))
+                while(true)
                 {
-                    
                     _mutex.lock();
-                    closed = _closed;
+                    bool closed = _closed;
                     _mutex.unlock();
-                    if (closed)
+                    if (unlikely(closed))
                         break;
                         
                     // we poll to prevent blocking indefinitely
@@ -199,7 +200,7 @@ namespace epics {
                     if(likely(bytesRead>0)) {
                         // successfully got datagram
                         bool ignore = false;
-                        if(_ignoredAddresses!=0)
+                        if(unlikely(_ignoredAddresses!=0))
                         {
                             for(size_t i = 0; i <_ignoredAddresses->size(); i++)
                             {
@@ -211,7 +212,7 @@ namespace epics {
                             }
                         }
                         
-                        if(!ignore) {
+                        if(likely(!ignore)) {
                             _receiveBuffer->setPosition(bytesRead);
 
                             _receiveBuffer->flip();
@@ -224,11 +225,11 @@ namespace epics {
                         int socketError = SOCKERRNO;
                         
                         // interrupted or timeout
-                        if (socketError == EINTR || 
-                            socketError == EAGAIN ||
+                        if (socketError == SOCK_EINTR || 
+                            socketError == EAGAIN ||        // no alias in libCom
                             // windows times out with this
                             socketError == SOCK_ETIMEDOUT || 
-                            socketError == EWOULDBLOCK)
+                            socketError == SOCK_EWOULDBLOCK)
                             continue;
                             
                         if (socketError == SOCK_ECONNREFUSED || // avoid spurious ECONNREFUSED in Linux
@@ -236,7 +237,10 @@ namespace epics {
                             continue;
                                                     
                         // log a 'recvfrom' error
-                        if(!_closed)
+                        _mutex.lock();
+                        closed = _closed;
+                        _mutex.unlock();
+                        if(!closed)
                         {
                             char errStr[64];
                             epicsSocketConvertErrnoToString(errStr, sizeof(errStr));

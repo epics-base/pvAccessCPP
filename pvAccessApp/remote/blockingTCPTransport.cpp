@@ -190,6 +190,8 @@ namespace epics {
 
             close(true);
 
+            // TODO use auto_ptr class members
+            
             delete _socketBuffer;
             delete _sendBuffer;
         }
