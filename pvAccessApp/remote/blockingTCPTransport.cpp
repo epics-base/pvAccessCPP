@@ -281,7 +281,6 @@ namespace epics {
             // close the socket
             if(_channel!=INVALID_SOCKET) {
                 epicsSocketDestroy(_channel);
-                _channel = INVALID_SOCKET;
             }
         }
 
@@ -957,11 +956,12 @@ namespace epics {
 
             LOG(logLevelDebug, "Connection to %s closed.",
                     inetAddressToString(_socketAddress).c_str());
-
+/*
             if(_channel!=INVALID_SOCKET) {
                 epicsSocketDestroy(_channel);
                 _channel = INVALID_SOCKET;
             }
+*/
         }
 
         void BlockingTCPTransport::rcvThreadRunner(void* param) {

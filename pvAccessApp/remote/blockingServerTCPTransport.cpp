@@ -71,7 +71,7 @@ namespace epics {
         }
 
         void BlockingServerTCPTransport::internalPostClose(bool forced) {
-            BlockingTCPTransport::internalClose(forced);
+            BlockingTCPTransport::internalPostClose(forced);
         }
         
         pvAccessID BlockingServerTCPTransport::preallocateChannelSID() {
