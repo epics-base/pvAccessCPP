@@ -7,6 +7,7 @@ PROD_HOST += testUtils
 testUtils_SRCS += hexDumpTest.cpp
 testUtils_SRCS += wildcharMatcherTest.cpp
 testUtils_SRCS += inetAddressUtilsTest.cpp
+testUtils_SRCS += atomicBooleanTest.cpp
 testUtils_LIBS += pvAccess pvData Com gtest_main
 endif
 

@@ -44,7 +44,7 @@ namespace epics {
                 auto_ptr<ResponseHandler>& responseHandler, SOCKET channel,
                 osiSockAddr& bindAddress,
                 short remoteTransportRevision) :
-                    _closed(false),
+                    _closed(),
                     _responseHandler(responseHandler),
                     _channel(channel),
                     _bindAddress(bindAddress),
@@ -108,8 +108,8 @@ namespace epics {
         void BlockingUDPTransport::close(bool forced, bool waitForThreadToComplete) {
             {
                 Lock guard(_mutex);
-                if(_closed) return;
-                _closed = true;
+                if(_closed.get()) return;
+                _closed.set();
     
                 LOG(logLevelDebug,
                     "UDP socket %s closed.",
@@ -178,14 +178,8 @@ namespace epics {
 
             try {
 
-                while(true)
+                while(!_closed.get())
                 {
-                    _mutex.lock();
-                    bool closed = _closed;
-                    _mutex.unlock();
-                    if (unlikely(closed))
-                        break;
-                        
                     // we poll to prevent blocking indefinitely
 
                     // data ready to be read
@@ -237,10 +231,7 @@ namespace epics {
                             continue;
                                                     
                         // log a 'recvfrom' error
-                        _mutex.lock();
-                        closed = _closed;
-                        _mutex.unlock();
-                        if(!closed)
+                        if(!_closed.get())
                         {
                             char errStr[64];
                             epicsSocketConvertErrnoToString(errStr, sizeof(errStr));

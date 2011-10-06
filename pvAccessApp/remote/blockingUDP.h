@@ -54,8 +54,7 @@ namespace epics {
             virtual ~BlockingUDPTransport();
 
             virtual bool isClosed() {
-                epics::pvData::Lock guard(_mutex);
-                return _closed;
+                return _closed.get();
             }
 
             virtual const osiSockAddr* getRemoteAddress() const {
@@ -210,7 +209,7 @@ namespace epics {
             }
 
         protected:
-            bool _closed;
+            AtomicBoolean _closed;
 
             /**
              * Response handler.
