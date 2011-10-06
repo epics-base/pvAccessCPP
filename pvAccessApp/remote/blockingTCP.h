@@ -44,18 +44,21 @@ struct null_deleter
     void operator()(void const *) const {}
 };
 
+// standard performance on set/clear, use of tr1::shared_ptr lock-free counter for get
+// alternative is to use boost::atomic
 class AtomicBoolean
 {
     public:
-        AtomicBoolean() {};
-        
-        void set() { counter.reset(static_cast<void*>(0), null_deleter()); }
-        void clear() { counter.reset(); }
+        AtomicBoolean() : counter(static_cast<void*>(0), null_deleter()) {};
 
-        bool get() { return counter.use_count(); }
-        
+        void set() { mutex.lock(); setp = counter; mutex.unlock(); }
+        void clear() { mutex.lock(); setp.reset(); mutex.unlock(); }
+
+        bool get() const { return counter.use_count() == 2; }
     private:
         std::tr1::shared_ptr<void> counter;
+        std::tr1::shared_ptr<void> setp;
+        epics::pvData::Mutex mutex;
 };
 
 
