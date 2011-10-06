@@ -24,7 +24,7 @@
 #include <osdSock.h>
 
 /// TODO only here because of the Lockable
-#include <pvAccess.h>
+#include <pv/pvAccess.h>
 
 namespace epics {
     namespace pvAccess {
