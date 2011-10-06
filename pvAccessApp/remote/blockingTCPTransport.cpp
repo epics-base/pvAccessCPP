@@ -123,7 +123,7 @@ namespace epics {
                     _payloadSize(0),
                     _stage(READ_FROM_SOCKET),
                     _totalBytesReceived(0),
-                    _closed(false),
+                    _closed(),
                     _sendThreadExited(false),
                     _verified(false),
                     _markerToSend(0),
@@ -258,9 +258,8 @@ namespace epics {
             Lock lock(_mutex);
 
             // already closed check
-            if(_closed) return;
-
-            _closed = true;
+            if(_closed.get()) return;
+            _closed.set();
 
             // remove from registry
             Transport::shared_pointer thisSharedPtr = shared_from_this();
@@ -364,13 +363,11 @@ namespace epics {
                 temp<<_maxPayloadSize<<" available.";
                 THROW_BASE_EXCEPTION(temp.str().c_str());
             }
-            
-            // TODO sync _closed
 
-            while(((int)_sendBuffer->getRemaining())<size && !_closed)
+            while(((int)_sendBuffer->getRemaining())<size && !_closed.get())
                 flush(false);
 
-            if (unlikely(_closed)) THROW_BASE_EXCEPTION("transport closed");
+            if (unlikely(_closed.get())) THROW_BASE_EXCEPTION("transport closed");
         }
         
         void BlockingTCPTransport::alignBuffer(int alignment) {
@@ -488,14 +485,12 @@ namespace epics {
                 _socketBuffer->setLimit(min(_storedPosition+_storedPayloadSize,
                         _storedLimit));
 
-                // TODO sync _closed
-                
                 // add if missing...
-                if(unlikely(!_closed&&((int)_socketBuffer->getRemaining())<size))
+                if(unlikely(!_closed.get()&&((int)_socketBuffer->getRemaining())<size))
                     ensureData(size);
             }
 
-            if(unlikely(_closed)) THROW_BASE_EXCEPTION("transport closed");
+            if(unlikely(_closed.get())) THROW_BASE_EXCEPTION("transport closed");
         }
 
         void BlockingTCPTransport::alignData(int alignment) {
@@ -510,8 +505,7 @@ namespace epics {
         void BlockingTCPTransport::processReadCached(bool nestedCall,
                 ReceiveStage inStage, int requiredBytes) {
             try {
-                // TODO sync _closed
-                while(likely(!_closed)) {
+                while(likely(!_closed.get())) {
                     if(_stage==READ_FROM_SOCKET||inStage!=NONE) {
 
                         // add to bytes read
@@ -882,8 +876,7 @@ namespace epics {
         }
 
         void BlockingTCPTransport::processSendQueue() {
-            // TODO sync _closed
-            while(unlikely(!_closed)) {
+            while(unlikely(!_closed.get())) {
 
                 _sendQueueMutex.lock();
                 // TODO optimize
@@ -896,7 +889,7 @@ namespace epics {
                 _sendQueueMutex.unlock();
 
                 // wait for new message
-                while(likely(sender.get()==0&&!_flushRequested&&!_closed)) {
+                while(likely(sender.get()==0&&!_flushRequested&&!_closed.get())) {
                     if(_flushStrategy==DELAYED) {
                         if(_delay>0) epicsThreadSleep(_delay);
                         if(unlikely(_sendQueue.empty())) {
@@ -952,7 +945,7 @@ namespace epics {
                     }
                     sender->unlock();
                 } // if(sender!=NULL)
-            } // while(!_closed)
+            } // while(!_closed.get())
         }
 
         void BlockingTCPTransport::freeSendBuffers() {
@@ -1019,7 +1012,7 @@ printf("sendThreadRunnner exception\n");
 
         void BlockingTCPTransport::enqueueSendRequest(TransportSender::shared_pointer const & sender) {
             Lock lock(_sendQueueMutex);
-            if(_closed) return;
+            if(unlikely(_closed.get())) return;
             _sendQueue.push_back(sender);
             _sendQueueEvent.signal();
         }
@@ -1027,7 +1020,7 @@ printf("sendThreadRunnner exception\n");
         /*
         void BlockingTCPTransport::enqueueMonitorSendRequest(TransportSender::shared_pointer sender) {
             Lock lock(_monitorMutex);
-            if(_closed) return;
+            if(unlikely(_closed.get())) return;
             _monitorSendQueue.insert(sender);
             if(_monitorSendQueue.size()==1) enqueueSendRequest(_monitorSender);
         }

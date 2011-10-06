@@ -39,6 +39,26 @@ using epics::pvData::int64;
 namespace epics {
     namespace pvAccess {
 
+struct null_deleter
+{
+    void operator()(void const *) const {}
+};
+
+class AtomicBoolean
+{
+    public:
+        AtomicBoolean() {};
+        
+        void set() { counter.reset(static_cast<void*>(0), null_deleter()); }
+        void clear() { counter.reset(); }
+
+        bool get() { return counter.use_count(); }
+        
+    private:
+        std::tr1::shared_ptr<void> counter;
+};
+
+
         //class MonitorSender;
 
         enum ReceiveStage {
@@ -61,8 +81,7 @@ namespace epics {
                     
         public:
             virtual bool isClosed() {
-                epics::pvData::Lock guard(_mutex);
-                return _closed;
+                return _closed.get();
             }
 
             virtual void setRemoteMinorRevision(int8 minorRevision) {
@@ -370,7 +389,7 @@ namespace epics {
              * Connection status
              * NOTE: synced by _mutex
              */
-            bool _closed;
+            AtomicBoolean _closed;
 
             // NOTE: synced by _mutex
             bool _sendThreadExited;

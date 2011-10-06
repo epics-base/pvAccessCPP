@@ -101,7 +101,7 @@ namespace epics {
 
         bool BlockingClientTCPTransport::acquire(TransportClient::shared_pointer const & client) {
             Lock lock(_mutex);
-            if(_closed) return false;
+            if(_closed.get()) return false;
             
             char ipAddrStr[48];
             ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
@@ -159,7 +159,7 @@ namespace epics {
         //void BlockingClientTCPTransport::release(TransportClient::shared_pointer const & client) {
         void BlockingClientTCPTransport::release(pvAccessID clientID) {
             Lock lock(_mutex);
-            if(_closed) return;
+            if(_closed.get()) return;
             
             char ipAddrStr[48];
             ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
