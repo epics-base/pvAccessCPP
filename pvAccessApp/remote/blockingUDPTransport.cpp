@@ -248,9 +248,12 @@ namespace epics {
                 close(true, false);
             }
 
+            String threadName = "UDP-receive "+inetAddressToString(_bindAddress);
+            /*
             char threadName[40];
             epicsThreadGetName(_threadId, threadName, 40);
-            LOG(logLevelDebug, "Thread '%s' exiting", threadName);
+            */
+            LOG(logLevelDebug, "Thread '%s' exiting", threadName.c_str());
             
             _shutdownEvent.signal();
         }
