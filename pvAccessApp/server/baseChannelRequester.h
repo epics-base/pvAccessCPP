@@ -11,8 +11,6 @@
 #include <pv/requester.h>
 #include <pv/destroyable.h>
 
-using epics::pvData::Status;
-
 namespace epics {
 namespace pvAccess {
 
@@ -23,21 +21,21 @@ public:
 	                     const pvAccessID ioid, Transport::shared_pointer const & transport);
 	virtual ~BaseChannelRequester() {};
 
-	bool startRequest(int32 qos);
+	bool startRequest(epics::pvData::int32 qos);
 	void stopRequest();
-	int32 getPendingRequest();
-	String getRequesterName();
-	void message(const String message, const epics::pvData::MessageType messageType);
-	static void message(Transport::shared_pointer const & transport, const pvAccessID ioid, const String message, const epics::pvData::MessageType messageType);
-	static void sendFailureMessage(const int8 command, Transport::shared_pointer const & transport, const pvAccessID ioid, const int8 qos, const Status status);
+	epics::pvData::int32 getPendingRequest();
+	epics::pvData::String getRequesterName();
+	void message(const epics::pvData::String message, const epics::pvData::MessageType messageType);
+	static void message(Transport::shared_pointer const & transport, const pvAccessID ioid, const epics::pvData::String message, const epics::pvData::MessageType messageType);
+	static void sendFailureMessage(const epics::pvData::int8 command, Transport::shared_pointer const & transport, const pvAccessID ioid, const epics::pvData::int8 qos, const epics::pvData::Status status);
 
-	static const Status okStatus;
-	static const Status badCIDStatus;
-	static const Status badIOIDStatus;
-	static const Status noReadACLStatus;
-	static const Status noWriteACLStatus;
-	static const Status noProcessACLStatus;
-	static const Status otherRequestPendingStatus;
+	static const epics::pvData::Status okStatus;
+	static const epics::pvData::Status badCIDStatus;
+	static const epics::pvData::Status badIOIDStatus;
+	static const epics::pvData::Status noReadACLStatus;
+	static const epics::pvData::Status noWriteACLStatus;
+	static const epics::pvData::Status noProcessACLStatus;
+	static const epics::pvData::Status otherRequestPendingStatus;
 protected:
 	const pvAccessID _ioid;
 	Transport::shared_pointer _transport;
@@ -45,36 +43,36 @@ protected:
 	epics::pvData::Mutex _mutex;
 private:
 	ServerContextImpl::shared_pointer _context;
-	static const int32 NULL_REQUEST;
-	int32 _pendingRequest;
+	static const epics::pvData::int32 NULL_REQUEST;
+	epics::pvData::int32 _pendingRequest;
 };
 
 class BaseChannelRequesterMessageTransportSender : public TransportSender
 {
 public:
-	BaseChannelRequesterMessageTransportSender(const pvAccessID _ioid, const String message,const epics::pvData::MessageType messageType);
+	BaseChannelRequesterMessageTransportSender(const pvAccessID _ioid, const epics::pvData::String message,const epics::pvData::MessageType messageType);
 	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 	void lock();
 	void unlock();
 private:
 	const pvAccessID _ioid;
-	const String _message;
+	const epics::pvData::String _message;
 	const epics::pvData::MessageType _messageType;
 };
 
 class BaseChannelRequesterFailureMessageTransportSender : public TransportSender
 {
 public:
-	BaseChannelRequesterFailureMessageTransportSender(const int8 command, Transport::shared_pointer const & transport, const pvAccessID ioid, const int8 qos, const Status& status);
+	BaseChannelRequesterFailureMessageTransportSender(const epics::pvData::int8 command, Transport::shared_pointer const & transport, const pvAccessID ioid, const epics::pvData::int8 qos, const epics::pvData::Status& status);
 	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 	void lock();
 	void unlock();
 
 private:
-	const int8 _command;
+	const epics::pvData::int8 _command;
 	const pvAccessID _ioid;
-	const int8 _qos;
-	const Status _status;
+	const epics::pvData::int8 _qos;
+	const epics::pvData::Status _status;
 	Transport::shared_pointer _transport;
 };
 

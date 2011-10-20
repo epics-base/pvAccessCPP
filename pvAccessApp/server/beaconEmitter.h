@@ -52,7 +52,7 @@ namespace epics { namespace pvAccess {
 		void lock();
 		void unlock();
 		
-		void send(ByteBuffer* buffer, TransportSendControl* control);
+		void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 
 		void timerStopped();
 
@@ -93,7 +93,7 @@ namespace epics { namespace pvAccess {
 		/**
 		 * Beacon sequence ID.
 		 */
-		int16 _beaconSequenceID;
+		epics::pvData::int16 _beaconSequenceID;
 
 		/**
 		 * Startup timestamp (when clients detect a change, they will consider server restarted).
@@ -113,7 +113,7 @@ namespace epics { namespace pvAccess {
 		/**
 		 * Limit on number of beacons issued.
 		 */
-		int16 _beaconCountLimit;
+		epics::pvData::int16 _beaconCountLimit;
 
 		/**
 		 * Server address.
@@ -123,7 +123,7 @@ namespace epics { namespace pvAccess {
 		/**
 		 * Server port.
 		 */
-		int32 _serverPort;
+		epics::pvData::int32 _serverPort;
 
 		/**
 		 * Server status provider implementation (optional).

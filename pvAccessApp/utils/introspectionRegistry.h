@@ -20,20 +20,11 @@
 #include <iostream>
 
 // TODO check for memory leaks
-// TODO to be removed out of header
-using epics::pvData::ByteBuffer;
-using epics::pvData::FieldConstPtr;
-using epics::pvData::StructureConstPtr;
-using epics::pvData::SerializableControl;
-using epics::pvData::DeserializableControl;
-using epics::pvData::PVStructurePtr;
-using std::string;
-using epics::pvData::int8;
 
 namespace epics {
 namespace pvAccess {
 
-typedef std::map<const short,FieldConstPtr> registryMap_t;
+typedef std::map<const short,epics::pvData::FieldConstPtr> registryMap_t;
 
 
 	/**
@@ -46,7 +37,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		IntrospectionRegistry(bool serverSide);
 		virtual ~IntrospectionRegistry();
 
-		void printKeysAndValues(string name);
+		void printKeysAndValues(std::string name);
 		/**
 		 * Resets registry, i.e. must be done when transport is changed (server restarted).
 		 */
@@ -58,7 +49,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 *
 		 * @return <code>Field</code> instance for given ID.
 		 */
-		FieldConstPtr getIntrospectionInterface(const short id);
+		epics::pvData::FieldConstPtr getIntrospectionInterface(const short id);
 
 		/**
 		 * Registers introspection interface with given ID. Always INCOMING.
@@ -66,7 +57,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 * @param id id of the introspection interface to register
 		 * @param field introspection interface to register
 		 */
-		void registerIntrospectionInterface(const short id, FieldConstPtr field);
+		void registerIntrospectionInterface(const short id, epics::pvData::FieldConstPtr field);
 
 		/**
 		 * Registers introspection interface and get it's ID. Always OUTGOING.
@@ -78,7 +69,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 *
 		 * @return id of given introspection interface
 		 */
-		short registerIntrospectionInterface(FieldConstPtr field, bool& existing);
+		short registerIntrospectionInterface(epics::pvData::FieldConstPtr field, bool& existing);
 
 		/**
 		 * Serializes introspection interface
@@ -87,7 +78,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 * @param buffer
 		 * @param control
 		 */
-		void serialize(FieldConstPtr field, ByteBuffer* buffer, SerializableControl* control);
+		void serialize(epics::pvData::FieldConstPtr field, epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control);
 
 		/**
 		 * Deserializes introspection interface
@@ -99,7 +90,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 *
 		 * @return <code>Field</code> deserialized from the buffer.
 		 */
-		FieldConstPtr deserialize(ByteBuffer* buffer, DeserializableControl* control);
+		epics::pvData::FieldConstPtr deserialize(epics::pvData::ByteBuffer* buffer, epics::pvData::DeserializableControl* control);
 
 		/**
 		 * Serializes introspection interface. But this time really fully not like
@@ -111,7 +102,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 * @param buffer
 		 * @param control
 		 */
-		static void serializeFull(FieldConstPtr field, ByteBuffer* buffer, SerializableControl* control);
+		static void serializeFull(epics::pvData::FieldConstPtr field, epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control);
 
 		/**
 		 * Deserializes introspection interface
@@ -123,26 +114,26 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 *
 		 * @return <code>Field</code> deserialized from the buffer.
 		 */
-		static FieldConstPtr deserializeFull(ByteBuffer* buffer, DeserializableControl* control);
+		static epics::pvData::FieldConstPtr deserializeFull(epics::pvData::ByteBuffer* buffer, epics::pvData::DeserializableControl* control);
 
 		/**
 		 * Null type.
 		 */
-		const static int8 NULL_TYPE_CODE;
+		const static epics::pvData::int8 NULL_TYPE_CODE;
 
 		/**
 		 * Serialization contains only an ID (that was assigned by one of the previous <code>FULL_WITH_ID</code> descriptions).
 		 */
-		const static int8 ONLY_ID_TYPE_CODE;
+		const static epics::pvData::int8 ONLY_ID_TYPE_CODE;
 
 		/**
 		 * Serialization contains an ID (that can be used later, if cached) and full interface description.
 		 */
-		const static int8 FULL_WITH_ID_TYPE_CODE;
+		const static epics::pvData::int8 FULL_WITH_ID_TYPE_CODE;
 
 
-		static void serialize(FieldConstPtr field, StructureConstPtr parent, ByteBuffer* buffer,
-							  SerializableControl* control, IntrospectionRegistry* registry);
+		static void serialize(epics::pvData::FieldConstPtr field, epics::pvData::StructureConstPtr parent, epics::pvData::ByteBuffer* buffer,
+							  epics::pvData::SerializableControl* control, IntrospectionRegistry* registry);
 
 
 		/**
@@ -151,8 +142,8 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 * @param registry
 		 * @param structure
 		 */
-		static void serializeStructureField(ByteBuffer* buffer, SerializableControl* control,
-							IntrospectionRegistry* registry, StructureConstPtr structure);
+		static void serializeStructureField(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control,
+							IntrospectionRegistry* registry, epics::pvData::StructureConstPtr structure);
 
 		/**
 		 * @param buffer
@@ -160,7 +151,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 * @param registry
 		 * @param structure
 		 */
-		static FieldConstPtr deserialize(ByteBuffer* buffer, DeserializableControl* control, IntrospectionRegistry* registry);
+		static epics::pvData::FieldConstPtr deserialize(epics::pvData::ByteBuffer* buffer, epics::pvData::DeserializableControl* control, IntrospectionRegistry* registry);
 
 		/**
 		 * Deserialize Structure.
@@ -169,26 +160,26 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 * @param registry
 		 * @return deserialized Structure instance.
 		 */
-		static StructureConstPtr deserializeStructureField(ByteBuffer* buffer, DeserializableControl* control, IntrospectionRegistry* registry);
+		static epics::pvData::StructureConstPtr deserializeStructureField(epics::pvData::ByteBuffer* buffer, epics::pvData::DeserializableControl* control, IntrospectionRegistry* registry);
 
 		/**
 		 * Serialize optional PVStructrue.
 		 * @param buffer data buffer.
 		 */
-		void serializeStructure(ByteBuffer* buffer, SerializableControl* control, PVStructurePtr pvStructure);
+		void serializeStructure(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control, epics::pvData::PVStructurePtr pvStructure);
 
 		/**
 		 * Deserialize optional PVStructrue.
 		 * @param payloadBuffer data buffer.
 		 * @return deserialized PVStructure, can be <code>null</code>.
 		 */
-		PVStructurePtr deserializeStructure(ByteBuffer* payloadBuffer, DeserializableControl* control);
+		epics::pvData::PVStructurePtr deserializeStructure(epics::pvData::ByteBuffer* payloadBuffer, epics::pvData::DeserializableControl* control);
 
 		/**
 		 * Serialize PVRequest.
 		 * @param buffer data buffer.
 		 */
-		void serializePVRequest(ByteBuffer* buffer, SerializableControl* control, PVStructurePtr pvRequest);
+		void serializePVRequest(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control, epics::pvData::PVStructurePtr pvRequest);
 
 		/**
 		 * Deserialize PVRequest.
@@ -197,7 +188,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 *
 		 * @return deserialized PVRequest, can be <code>null</code>.
 		 */
-		PVStructurePtr deserializePVRequest(ByteBuffer* payloadBuffer, DeserializableControl* control);
+		epics::pvData::PVStructurePtr deserializePVRequest(epics::pvData::ByteBuffer* payloadBuffer, epics::pvData::DeserializableControl* control);
 
 		/**
 		 * Deserialize Structure and create PVStructure instance.
@@ -207,7 +198,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 *
 		 * @return PVStructure instance, can be <code>null</code>.
 		 */
-		PVStructurePtr deserializeStructureAndCreatePVStructure(ByteBuffer* payloadBuffer, DeserializableControl* control);
+		epics::pvData::PVStructurePtr deserializeStructureAndCreatePVStructure(epics::pvData::ByteBuffer* payloadBuffer, epics::pvData::DeserializableControl* control);
 
 		/**
 		 * Serialize status.
@@ -216,7 +207,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 * @param control serialization control.
 		 * @param status status to serialize.
 		 */
-		void serializeStatus(ByteBuffer* buffer, SerializableControl* control, const epics::pvData::Status &status);
+		void serializeStatus(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control, const epics::pvData::Status &status);
 
 		/**
 		 * Deserialize status.
@@ -224,7 +215,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 * @param buffer data buffer.
 		 * @param control serialization control.
 		 */
-		void deserializeStatus(epics::pvData::Status &status, ByteBuffer* buffer, DeserializableControl* control);
+		void deserializeStatus(epics::pvData::Status &status, epics::pvData::ByteBuffer* buffer, epics::pvData::DeserializableControl* control);
 
 	private:
 		registryMap_t _registry;
@@ -244,7 +235,7 @@ typedef std::map<const short,FieldConstPtr> registryMap_t;
 		 */
 		static epics::pvData::FieldCreate* _fieldCreate;
 
-		bool registryContainsValue(FieldConstPtr field, short& key);
+		bool registryContainsValue(epics::pvData::FieldConstPtr field, short& key);
 	};
 
 }}

@@ -13,8 +13,6 @@
 namespace epics {
 namespace pvAccess {
 
-        using epics::pvData::String;
-
         class Version : public epics::pvData::NoDefaultMethods {
         public:
             /**
@@ -26,7 +24,7 @@ namespace pvAccess {
              * @param maintenanceVersion	maintenance version.
              * @param developmentVersion	development version.
              */
-            Version(String productName, String implementationLangugage,
+            Version(epics::pvData::String productName, epics::pvData::String implementationLangugage,
                     int majorVersion, int minorVersion,
                     int maintenanceVersion, int developmentVersion) :
                 _productName(productName),
@@ -39,13 +37,13 @@ namespace pvAccess {
             }
 
             /** The name of the product */
-            inline const String getProductName() const {
+            inline const epics::pvData::String getProductName() const {
                 return _productName;
             }
 
             /** Implementation Language: C++
              */
-            inline const String getImplementationLanguage() const {
+            inline const epics::pvData::String getImplementationLanguage() const {
                 return _implementationLanguage;
             }
 
@@ -103,28 +101,28 @@ namespace pvAccess {
             }
 
             /**
-             * Get the long version string. Version String formatted like <BR/><CODE>
+             * Get the long version string. Version epics::pvData::String formatted like <BR/><CODE>
              * "<B>ProductName </B> \[<B>ImplementationLanguage</B>\] 'v'v.r[.dd|<B>D</B>nn]"
              * </CODE> <BR/>e.g. <BR/><CODE>"<B>CAJ </B> [<B>Java</B>] v1.0.1"</CODE>
              * <BR/>
              *
-             * @return String denoting current version
+             * @return epics::pvData::String denoting current version
              */
-            const String getLongVersionString() const;
+            const epics::pvData::String getLongVersionString() const;
 
             /**
-             * Get the basic version string. Version String formatted like <BR/><CODE>
+             * Get the basic version string. Version epics::pvData::String formatted like <BR/><CODE>
              * "<B>ProductName </B> 'v'v.r[.dd|<B>D</B>nn]"
              * </CODE> <BR/>e.g. <BR/><CODE>"<B>CAJ </B> v1.0.1"</CODE>
              * <BR/>
              *
-             * @return String denoting current version
+             * @return epics::pvData::String denoting current version
              */
-            const String getVersionString() const;
+            const epics::pvData::String getVersionString() const;
 
         private:
-            String _productName;
-            String _implementationLanguage;
+            epics::pvData::String _productName;
+            epics::pvData::String _implementationLanguage;
             int _majorVersion;
             int _minorVersion;
             int _maintenanceVersion;

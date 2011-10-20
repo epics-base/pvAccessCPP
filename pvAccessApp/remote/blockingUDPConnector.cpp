@@ -17,6 +17,7 @@
 #include <sys/types.h>
 
 using namespace std;
+using namespace epics::pvData;
 
 namespace epics {
     namespace pvAccess {

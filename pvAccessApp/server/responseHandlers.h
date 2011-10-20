@@ -10,9 +10,6 @@
 #include <pv/serverChannelImpl.h>
 #include <pv/baseChannelRequester.h>
 
-using epics::pvData::BitSet;
-using epics::pvData::PVStructure;
-
 namespace epics {
     namespace pvAccess {
 
@@ -22,7 +19,7 @@ namespace epics {
         protected:
             ServerContextImpl::shared_pointer _context;
         public:
-            AbstractServerResponseHandler(ServerContextImpl::shared_pointer const & context, String description) : 
+            AbstractServerResponseHandler(ServerContextImpl::shared_pointer const & context, epics::pvData::String description) : 
                 AbstractResponseHandler(context.get(), description), _context(context) {
             }
 
@@ -43,7 +40,7 @@ namespace epics {
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,
-                    Transport::shared_pointer const & transport, int8 version, int8 command,
+                    Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
@@ -58,7 +55,7 @@ namespace epics {
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,
-                    Transport::shared_pointer const & transport, int8 version, int8 command,
+                    Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         private:
             /**
@@ -78,7 +75,7 @@ namespace epics {
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,
-                    Transport::shared_pointer const & transport, int8 version, int8 command,
+                    Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
@@ -87,7 +84,7 @@ namespace epics {
          */
         class ServerNoopResponse : public AbstractServerResponseHandler {
         public:
-            ServerNoopResponse(ServerContextImpl::shared_pointer const & context, String description) :
+            ServerNoopResponse(ServerContextImpl::shared_pointer const & context, epics::pvData::String description) :
                 AbstractServerResponseHandler(context, description) {
             }
         };
@@ -102,7 +99,7 @@ namespace epics {
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,
-                    Transport::shared_pointer const & transport, int8 version, int8 command,
+                    Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
@@ -115,7 +112,7 @@ namespace epics {
         	virtual ~EchoTransportSender() {
         	}
 
-        	virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+        	virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) {
         		control->startMessage(CMD_ECHO, 0);
         		control->setRecipient(_echoFrom);
         		// TODO content
@@ -142,7 +139,7 @@ namespace epics {
         	}
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
-                    Transport::shared_pointer const & transport, int8 version, int8 command,
+                    Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
@@ -155,13 +152,13 @@ namespace epics {
         {
         public:
             // TODO
-            static std::map<String, std::tr1::weak_ptr<ChannelProvider> > s_channelNameToProvider;
+            static std::map<epics::pvData::String, std::tr1::weak_ptr<ChannelProvider> > s_channelNameToProvider;
             
         	ServerSearchHandler(ServerContextImpl::shared_pointer const & context);
         	virtual ~ServerSearchHandler();
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
-                    Transport::shared_pointer const & transport, int8 version, int8 command,
+                    Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
 
         private:
@@ -175,24 +172,24 @@ namespace epics {
             public std::tr1::enable_shared_from_this<ServerChannelFindRequesterImpl>
         {
         public:
-        	ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context, int32 expectedResponseCount);
+        	ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context, epics::pvData::int32 expectedResponseCount);
         	void clear();
-        	ServerChannelFindRequesterImpl* set(String _name, int32 searchSequenceId, int32 cid, osiSockAddr* sendTo, bool responseRequired);
+        	ServerChannelFindRequesterImpl* set(epics::pvData::String _name, epics::pvData::int32 searchSequenceId, epics::pvData::int32 cid, osiSockAddr* sendTo, bool responseRequired);
         	void channelFindResult(const epics::pvData::Status& status, ChannelFind::shared_pointer const & channelFind, bool wasFound);
         	void lock();
         	void unlock();
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
-            String _name;
-        	int32 _searchSequenceId;
-        	int32 _cid;
+            epics::pvData::String _name;
+        	epics::pvData::int32 _searchSequenceId;
+        	epics::pvData::int32 _cid;
         	osiSockAddr* _sendTo;
         	bool _responseRequired;
         	bool _wasFound;
         	ServerContextImpl::shared_pointer _context;
         	epics::pvData::Mutex _mutex;
-        	int32 _expectedResponseCount;
-        	int32 _responseCount;
+        	epics::pvData::int32 _expectedResponseCount;
+        	epics::pvData::int32 _responseCount;
         };
 
         /****************************************************************************************/
@@ -208,7 +205,7 @@ namespace epics {
         	}
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
-                    Transport::shared_pointer const & transport, int8 version, int8 command,
+                    Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
 
         private:
@@ -225,20 +222,20 @@ namespace epics {
             typedef std::tr1::shared_ptr<ServerChannelRequesterImpl> shared_pointer;
             typedef std::tr1::shared_ptr<const ServerChannelRequesterImpl> const_shared_pointer;
         protected:
-        	 ServerChannelRequesterImpl(Transport::shared_pointer const & transport, const String channelName, const pvAccessID cid);
+        	 ServerChannelRequesterImpl(Transport::shared_pointer const & transport, const epics::pvData::String channelName, const pvAccessID cid);
         public:
-        	 static ChannelRequester::shared_pointer create(ChannelProvider::shared_pointer const & provider, Transport::shared_pointer const & transport, const String channelName, const pvAccessID cid);
+        	 static ChannelRequester::shared_pointer create(ChannelProvider::shared_pointer const & provider, Transport::shared_pointer const & transport, const epics::pvData::String channelName, const pvAccessID cid);
         	 void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel);
         	 void channelStateChange(Channel::shared_pointer const & c, const Channel::ConnectionState isConnected);
-        	 String getRequesterName();
-        	 void message(const String message, const epics::pvData::MessageType messageType);
+        	 epics::pvData::String getRequesterName();
+        	 void message(const epics::pvData::String message, const epics::pvData::MessageType messageType);
         	 void lock();
         	 void unlock();
         	 void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
         	 ServerChannel::weak_pointer _serverChannel;
         	 Transport::weak_pointer _transport;
-        	 const String _channelName;
+        	 const epics::pvData::String _channelName;
         	 const pvAccessID _cid;
         	 epics::pvData::Status _status;
         	 epics::pvData::Mutex _mutex;
@@ -257,7 +254,7 @@ namespace epics {
         	}
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
-                    Transport::shared_pointer const & transport, int8 version, int8 command,
+                    Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
                     int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
@@ -269,7 +266,7 @@ namespace epics {
         	}
 
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) {
-        		control->startMessage((int8)CMD_DESTROY_CHANNEL, 2*sizeof(int32)/sizeof(int8));
+        		control->startMessage((epics::pvData::int8)CMD_DESTROY_CHANNEL, 2*sizeof(epics::pvData::int32)/sizeof(epics::pvData::int8));
         		buffer->putInt(_sid);
         		buffer->putInt(_cid);
         	}
@@ -299,7 +296,7 @@ namespace epics {
         	}
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
-        			Transport::shared_pointer const & transport, int8 version, int8 command,
+        			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
         			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
@@ -352,7 +349,7 @@ namespace epics {
         	}
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
-        			Transport::shared_pointer const & transport, int8 version, int8 command,
+        			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
         			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
@@ -383,8 +380,8 @@ namespace epics {
             void destroy();
 
             ChannelPut::shared_pointer getChannelPut();
-            BitSet::shared_pointer getBitSet();
-            PVStructure::shared_pointer getPVStructure();
+            epics::pvData::BitSet::shared_pointer getBitSet();
+            epics::pvData::PVStructure::shared_pointer getPVStructure();
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
         	ChannelPut::shared_pointer _channelPut;
@@ -405,7 +402,7 @@ namespace epics {
         	}
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
-        			Transport::shared_pointer const & transport, int8 version, int8 command,
+        			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
         			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
@@ -437,7 +434,7 @@ namespace epics {
             void destroy();
 
             ChannelPutGet::shared_pointer getChannelPutGet();
-            PVStructure::shared_pointer getPVPutStructure();
+            epics::pvData::PVStructure::shared_pointer getPVPutStructure();
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
         	ChannelPutGet::shared_pointer _channelPutGet;
@@ -459,7 +456,7 @@ namespace epics {
         	}
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
-        			Transport::shared_pointer const & transport, int8 version, int8 command,
+        			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
         			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
@@ -511,7 +508,7 @@ namespace epics {
         	}
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
-        			Transport::shared_pointer const & transport, int8 version, int8 command,
+        			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
         			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
@@ -565,7 +562,7 @@ namespace epics {
         	}
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
-        			Transport::shared_pointer const & transport, int8 version, int8 command,
+        			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
         			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         private:
 
@@ -585,7 +582,7 @@ namespace epics {
         	}
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
-        			Transport::shared_pointer const & transport, int8 version, int8 command,
+        			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
         			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
@@ -634,7 +631,7 @@ namespace epics {
         	}
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
-        			Transport::shared_pointer const & transport, int8 version, int8 command,
+        			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
         			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         private:
         	void getFieldFailureResponse(Transport::shared_pointer const & transport, const pvAccessID ioid, const epics::pvData::Status& errorStatus);
@@ -673,7 +670,7 @@ namespace epics {
         	}
 
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) {
-				control->startMessage((int8)CMD_GET_FIELD, sizeof(int32)/sizeof(int8));
+				control->startMessage((epics::pvData::int8)CMD_GET_FIELD, sizeof(epics::pvData::int32)/sizeof(epics::pvData::int8));
 				buffer->putInt(_ioid);
 				_transport->getIntrospectionRegistry()->serializeStatus(buffer, control, _status);
         	}
@@ -706,7 +703,7 @@ namespace epics {
         	}
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
-        			Transport::shared_pointer const & transport, int8 version, int8 command,
+        			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
         			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
@@ -741,11 +738,11 @@ namespace epics {
         	/**
         	 * @return the pvArguments
         	 */
-        	PVStructure::shared_pointer getPvArguments();
+        	epics::pvData::PVStructure::shared_pointer getPvArguments();
         	/**
-        	 * @return the agrumentsBitSet
+        	 * @return the agrumentsepics::pvData::BitSet
         	 */
-        	BitSet::shared_pointer getAgrumentsBitSet();
+        	epics::pvData::BitSet::shared_pointer getArgumentsBitSet();
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
         	ChannelRPC::shared_pointer _channelRPC;

@@ -50,7 +50,7 @@ private:
     typedef std::map<const osiSockAddr*,prioritiesMapSharedPtr_t,comp_osiSockAddrPtr> transportsMap_t;
 
     transportsMap_t _transports;
-    int32 _transportCount;
+    epics::pvData::int32 _transportCount;
     epics::pvData::Mutex _mutex;
 };
 

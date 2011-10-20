@@ -56,7 +56,7 @@ public:
 	 * @see AccessRights
 	 * @return bit-mask encoded access rights.
 	 */
-	int16 getAccessRights();
+	epics::pvData::int16 getAccessRights();
 
 	/**
 	 * Register request

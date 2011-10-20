@@ -1922,7 +1922,7 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 		ChannelRPC::shared_pointer channelRPC = request->getChannelRPC();
 		{
     		ScopedLock lock(channelRPC);  // TODO not really needed if channelRPC->request() is reads from the same thread
-    		BitSet::shared_pointer changedBitSet = request->getAgrumentsBitSet();
+    		BitSet::shared_pointer changedBitSet = request->getArgumentsBitSet();
     		changedBitSet->deserialize(payloadBuffer, transport.get());
     		request->getPvArguments()->deserialize(payloadBuffer, transport.get(), changedBitSet.get());
 		}
@@ -2023,7 +2023,7 @@ PVStructure::shared_pointer ServerChannelRPCRequesterImpl::getPvArguments()
 	return _pvArguments;
 }
 
-BitSet::shared_pointer ServerChannelRPCRequesterImpl::getAgrumentsBitSet()
+BitSet::shared_pointer ServerChannelRPCRequesterImpl::getArgumentsBitSet()
 {
 	//Lock guard(_mutex);
 	return _argumentsBitSet;

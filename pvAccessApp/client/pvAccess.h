@@ -831,7 +831,7 @@ namespace epics { namespace pvAccess {
              * @param requester The requester;
              * @return The request structure if an invalid request was given. 
              */
-             virtual epics::pvData::PVStructure::shared_pointer createRequest(String request) = 0;
+             virtual epics::pvData::PVStructure::shared_pointer createRequest(epics::pvData::String request) = 0;
         };
 
         extern CreateRequest::shared_pointer getCreateRequest();

@@ -70,7 +70,7 @@ namespace epics {
             QOS_GET_PUT = 0x80
         };
 
-        typedef int32 pvAccessID;
+        typedef epics::pvData::int32 pvAccessID;
 
 		enum MessageCommands {
             CMD_BEACON = 0,
@@ -106,7 +106,7 @@ namespace epics {
             
             virtual ~TransportSendControl() {}
 
-            virtual void startMessage(int8 command, int ensureCapacity) = 0;
+            virtual void startMessage(epics::pvData::int8 command, int ensureCapacity) = 0;
             virtual void endMessage() = 0;
 
             virtual void flush(bool lastMessageCompleted) = 0;
@@ -157,13 +157,13 @@ namespace epics {
              * Get protocol type (tcp, udp, ssl, etc.).
              * @return protocol type.
              */
-            virtual const String getType() const = 0;
+            virtual const epics::pvData::String getType() const = 0;
 
             /**
              * Transport protocol major revision.
              * @return protocol major revision.
              */
-            virtual int8 getMajorRevision() const {
+            virtual epics::pvData::int8 getMajorRevision() const {
                 return CA_MAJOR_PROTOCOL_REVISION;
             }
 
@@ -171,7 +171,7 @@ namespace epics {
              * Transport protocol minor revision.
              * @return protocol minor revision.
              */
-            virtual int8 getMinorRevision() const {
+            virtual epics::pvData::int8 getMinorRevision() const {
                 return CA_MINOR_PROTOCOL_REVISION;
             }
 
@@ -191,13 +191,13 @@ namespace epics {
              * Transport priority.
              * @return protocol priority.
              */
-            virtual int16 getPriority() const = 0;
+            virtual epics::pvData::int16 getPriority() const = 0;
 
             /**
              * Set remote transport protocol minor revision.
              * @param minor protocol minor revision.
              */
-            virtual void setRemoteMinorRevision(int8 minor) = 0;
+            virtual void setRemoteMinorRevision(epics::pvData::int8 minor) = 0;
 
             /**
              * Set remote transport receive buffer size.
@@ -310,7 +310,7 @@ namespace epics {
              */
             virtual void
             handleResponse(osiSockAddr* responseFrom, Transport::shared_pointer const & transport,
-                    int8 version, int8 command, int payloadSize,
+                    epics::pvData::int8 version, epics::pvData::int8 command, int payloadSize,
                     epics::pvData::ByteBuffer* payloadBuffer) = 0;
         };
 
@@ -322,7 +322,7 @@ namespace epics {
             /**
              * @param description
              */
-            AbstractResponseHandler(Context* context, String description) :
+            AbstractResponseHandler(Context* context, epics::pvData::String description) :
                 _description(description), 
                 _debug(context->getConfiguration()->getPropertyAsBoolean("PVACCESS_DEBUG", false)) {
             }
@@ -330,14 +330,14 @@ namespace epics {
             virtual ~AbstractResponseHandler() {}
 
             virtual void handleResponse(osiSockAddr* responseFrom, Transport::shared_pointer const & transport,
-                    int8 version, int8 command, int payloadSize,
+                    epics::pvData::int8 version, epics::pvData::int8 command, int payloadSize,
                     epics::pvData::ByteBuffer* payloadBuffer);
 
         protected:
             /**
              * Response hanlder description.
              */
-            String _description;
+            epics::pvData::String _description;
 
             /**
              * Debug flag.
@@ -403,7 +403,7 @@ namespace epics {
              */
             virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
                     std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
-                    int8 transportRevision, int16 priority) = 0;
+                    epics::pvData::int8 transportRevision, epics::pvData::int16 priority) = 0;
 
         };
 
@@ -565,7 +565,7 @@ namespace epics {
         	 * @param version
         	 * @param payloadBuffer
         	 */
-        	virtual void response(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer) = 0;
+        	virtual void response(Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::ByteBuffer* payloadBuffer) = 0;
         
         }; 
 

@@ -49,7 +49,7 @@ public:
 	 * 				the method would block until <code>destroy()</code> is called.
 	 * @throws BaseException if server is already destroyed.
 	 */
-	virtual void run(int32 seconds) = 0;
+	virtual void run(epics::pvData::int32 seconds) = 0;
 
 	/**
 	 * Shutdown (stop executing run() method) of this context.
@@ -113,7 +113,7 @@ public:
 	//**************** derived from ServerContext ****************//
 	const Version& getVersion();
 	void initialize(ChannelAccess::shared_pointer const & channelAccess);
-	void run(int32 seconds);
+	void run(epics::pvData::int32 seconds);
 	void shutdown();
 	void destroy();
 	void printInfo();
@@ -204,25 +204,25 @@ public:
 	 * Get receiver buffer (payload) size.
 	 * @return max payload size.
 	 */
-	int32 getReceiveBufferSize();
+	epics::pvData::int32 getReceiveBufferSize();
 
 	/**
 	 * Get server port.
 	 * @return server port.
 	 */
-	int32 getServerPort();
+	epics::pvData::int32 getServerPort();
 
 	/**
 	 * Set server port number.
 	 * @param port new server port number.
 	 */
-	void setServerPort(int32 port);
+	void setServerPort(epics::pvData::int32 port);
 
 	/**
 	 * Get broadcast port.
 	 * @return broadcast port.
 	 */
-	int32 getBroadcastPort();
+	epics::pvData::int32 getBroadcastPort();
 
 	/**
 	 * Get ignore search address list.
@@ -276,22 +276,22 @@ private:
     /**
      * Major version.
      */
-    static const int32 VERSION_MAJOR;
+    static const epics::pvData::int32 VERSION_MAJOR;
 
     /**
      * Minor version.
      */
-    static const int32 VERSION_MINOR;
+    static const epics::pvData::int32 VERSION_MINOR;
 
     /**
      * Maintenance version.
      */
-    static const int32 VERSION_MAINTENANCE;
+    static const epics::pvData::int32 VERSION_MAINTENANCE;
 
     /**
      * Development version.
      */
-    static const int32 VERSION_DEVELOPMENT;
+    static const epics::pvData::int32 VERSION_DEVELOPMENT;
 
 	/**
 	 * Initialization status.
@@ -323,17 +323,17 @@ private:
 	/**
 	 * Broadcast port number to listen to.
 	 */
-	int32 _broadcastPort;
+	epics::pvData::int32 _broadcastPort;
 
 	/**
 	 * Port number for the server to listen to.
 	 */
-	int32 _serverPort;
+	epics::pvData::int32 _serverPort;
 
 	/**
 	 * Length in bytes of the maximum buffer (payload) size that may pass through CA.
 	 */
-	int32 _receiveBufferSize;
+	epics::pvData::int32 _receiveBufferSize;
 
 	/**
 	 * Timer.

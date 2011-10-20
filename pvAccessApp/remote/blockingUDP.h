@@ -62,8 +62,8 @@ namespace epics {
                 return &_bindAddress;
             }
 
-            virtual const String getType() const {
-                return String("UDP");
+            virtual const epics::pvData::String getType() const {
+                return epics::pvData::String("UDP");
             }
 
             virtual int getReceiveBufferSize() const {
@@ -72,11 +72,11 @@ namespace epics {
 
             virtual int getSocketReceiveBufferSize() const;
 
-            virtual int16 getPriority() const {
+            virtual epics::pvData::int16 getPriority() const {
                 return CA_DEFAULT_PRIORITY;
             }
 
-            virtual void setRemoteMinorRevision(int8 minor) {
+            virtual void setRemoteMinorRevision(epics::pvData::int8 minor) {
                 // noop
             }
 
@@ -120,7 +120,7 @@ namespace epics {
                 _receiveBuffer->align(alignment);
             }
 
-            virtual void startMessage(int8 command, int ensureCapacity);
+            virtual void startMessage(epics::pvData::int8 command, int ensureCapacity);
             virtual void endMessage();
 
             virtual void flush(bool lastMessageCompleted) {
@@ -168,9 +168,9 @@ namespace epics {
                 return _ignoredAddresses;
             }
 
-            bool send(ByteBuffer* buffer, const osiSockAddr& address);
+            bool send(epics::pvData::ByteBuffer* buffer, const osiSockAddr& address);
 
-            bool send(ByteBuffer* buffer);
+            bool send(epics::pvData::ByteBuffer* buffer);
 
             /**
              * Get list of send addresses.
@@ -302,7 +302,7 @@ namespace epics {
              */
             virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
                     std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& bindAddress,
-                    int8 transportRevision, int16 priority);
+                    epics::pvData::int8 transportRevision, epics::pvData::int16 priority);
 
         private:
 

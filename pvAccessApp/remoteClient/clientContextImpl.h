@@ -59,20 +59,20 @@ namespace epics {
             typedef std::tr1::weak_ptr<const ClientContextImpl> const_weak_pointer;
 
             virtual ChannelSearchManager::shared_pointer getChannelSearchManager() = 0;
-            virtual void checkChannelName(String& name) = 0;
+            virtual void checkChannelName(epics::pvData::String& name) = 0;
 
             virtual void registerChannel(ChannelImpl::shared_pointer const & channel) = 0;
             virtual void unregisterChannel(ChannelImpl::shared_pointer const & channel) = 0;
 
             virtual void destroyChannel(ChannelImpl::shared_pointer const & channel, bool force) = 0;
-            virtual ChannelImpl::shared_pointer createChannelInternal(String name, ChannelRequester::shared_pointer const & requester, short priority, std::auto_ptr<InetAddrVector>& addresses) = 0;
+            virtual ChannelImpl::shared_pointer createChannelInternal(epics::pvData::String name, ChannelRequester::shared_pointer const & requester, short priority, std::auto_ptr<InetAddrVector>& addresses) = 0;
 
             virtual ResponseRequest::shared_pointer getResponseRequest(pvAccessID ioid) = 0;
             virtual pvAccessID registerResponseRequest(ResponseRequest::shared_pointer const & request) = 0;
             virtual ResponseRequest::shared_pointer unregisterResponseRequest(pvAccessID ioid) = 0;
 
 
-            virtual Transport::shared_pointer getTransport(TransportClient::shared_pointer const & client, osiSockAddr* serverAddress, int8 minorRevision, int16 priority) = 0;
+            virtual Transport::shared_pointer getTransport(TransportClient::shared_pointer const & client, osiSockAddr* serverAddress, epics::pvData::int8 minorRevision, epics::pvData::int16 priority) = 0;
 
             virtual void beaconAnomalyNotify() = 0;
 

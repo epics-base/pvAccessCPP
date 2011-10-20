@@ -21,11 +21,6 @@
 
 #include <deque>
 
-using epics::pvData::Mutex;
-using epics::pvData::String;
-using epics::pvData::int32;
-using epics::pvData::int64;
-
 namespace epics { namespace pvAccess {
 
 //TODO check the const of parameters
@@ -53,7 +48,7 @@ public:
 	 *
 	 * @return channel channel name.
 	 */
-	virtual String getSearchInstanceName() = 0;
+	virtual epics::pvData::String getSearchInstanceName() = 0;
 	/**
 	 * Removes the owner of this search instance.
 	 */
@@ -68,7 +63,7 @@ public:
 	 *
 	 * @throws BaseException if the ownerMutex is NULL.
 	 */
-	virtual void addAndSetListOwnership(List* newOwner, Mutex* ownerMutex, int32 index) = 0;
+	virtual void addAndSetListOwnership(List* newOwner, epics::pvData::Mutex* ownerMutex, epics::pvData::int32 index) = 0;
 	/**
 	 * Removes this search instance from the owner list and also removes the list as the owner of this
 	 * search instance.
@@ -79,18 +74,18 @@ public:
 	/**
 	 * Returns the index of the owner.
 	 */
-	virtual int32 getOwnerIndex() = 0;
+	virtual epics::pvData::int32 getOwnerIndex() = 0;
 	/**
 	 * Generates request message.
 	 */
-	virtual bool generateSearchRequestMessage(ByteBuffer* requestMessage, TransportSendControl* control) = 0;
+	virtual bool generateSearchRequestMessage(epics::pvData::ByteBuffer* requestMessage, TransportSendControl* control) = 0;
 
 	/**
 	 * Search response from server (channel found).
 	 * @param minorRevision	server minor CA revision.
 	 * @param serverAddress	server address.
 	 */
-	virtual void searchResponse(int8 minorRevision, osiSockAddr* serverAddress) = 0;
+	virtual void searchResponse(epics::pvData::int8 minorRevision, osiSockAddr* serverAddress) = 0;
 };
 
 /**
@@ -102,21 +97,21 @@ public:
 	virtual ~BaseSearchInstance() {};
 	void initializeSearchInstance();
 	virtual pvAccessID getSearchInstanceID() = 0;
-	virtual String getSearchInstanceName() = 0;
+	virtual epics::pvData::String getSearchInstanceName() = 0;
 	virtual void unsetListOwnership();
-	virtual void addAndSetListOwnership(List* newOwner, Mutex* ownerMutex, int32 index);
+	virtual void addAndSetListOwnership(List* newOwner, epics::pvData::Mutex* ownerMutex, epics::pvData::int32 index);
 	virtual void removeAndUnsetListOwnership();
-	virtual int32 getOwnerIndex();
+	virtual epics::pvData::int32 getOwnerIndex();
 	/**
 	 * Send search message.
 	 * @return success status.
 	 */
-	virtual bool generateSearchRequestMessage(ByteBuffer* requestMessage, TransportSendControl* control);
+	virtual bool generateSearchRequestMessage(epics::pvData::ByteBuffer* requestMessage, TransportSendControl* control);
 private:
-	Mutex _mutex;
+	epics::pvData::Mutex _mutex;
 	List* _owner;
-	Mutex* _ownerMutex;
-	int32 _ownerIndex;
+	epics::pvData::Mutex* _ownerMutex;
+	epics::pvData::int32 _ownerIndex;
 
 	const static int DATA_COUNT_POSITION;
 	const static int PAYLOAD_POSITION;
@@ -134,7 +129,7 @@ public:
 	 * @param timerIndex this timer instance index.
 	 * @param allowBoost is boost allowed flag.
 	 */
-	SearchTimer(ChannelSearchManager* csmanager,int32 timerIndex, bool allowBoost, bool allowSlowdown);
+	SearchTimer(ChannelSearchManager* csmanager,epics::pvData::int32 timerIndex, bool allowBoost, bool allowSlowdown);
 	/**
 	 * Destructor.
 	 */
@@ -167,12 +162,12 @@ public:
 	 * @param isSequenceNumberValid valid flag of <code>responseSequenceNumber</code>.
 	 * @param responseTime time of search response.
 	 */
-	void searchResponse(int32 responseSequenceNumber, bool isSequenceNumberValid, int64 responseTime);
+	void searchResponse(epics::pvData::int32 responseSequenceNumber, bool isSequenceNumberValid, epics::pvData::int64 responseTime);
 	/**
 	 * Calculate search time period.
 	 * @return search time period.
 	 */
-	const int64 period();
+	const epics::pvData::int64 period();
 private:
 	/**
 	 * Instance of the channel search manager with which this search timer
@@ -182,11 +177,11 @@ private:
 	/**
 	 * Number of search attempts in one frame.
 	 */
-	int32 _searchAttempts;
+	epics::pvData::int32 _searchAttempts;
 	/**
 	 * Number of search responses in one frame.
 	 */
-	int32 _searchRespones;
+	epics::pvData::int32 _searchRespones;
 	/**
 	 * Number of frames per search try.
 	 */
@@ -198,15 +193,15 @@ private:
     /**
      * Start sequence number (first frame number within a search try).
      */
-    int32 _startSequenceNumber;
+    epics::pvData::int32 _startSequenceNumber;
     /**
      * End sequence number (last frame number within a search try).
      */
-    int32 _endSequenceNumber;
+    epics::pvData::int32 _endSequenceNumber;
     /**
      * This timer index.
      */
-    const int32 _timerIndex;
+    const epics::pvData::int32 _timerIndex;
     /**
      * Flag indicating whether boost is allowed.
      */
@@ -237,27 +232,27 @@ private:
     /**
      * Time of last response check.
      */
-    int64 _timeAtResponseCheck;
+    epics::pvData::int64 _timeAtResponseCheck;
     /**
-     * Mutex for request pending channel list.
+     * epics::pvData::Mutex for request pending channel list.
      */
-    Mutex _requestPendingChannelsMutex;
+    epics::pvData::Mutex _requestPendingChannelsMutex;
     /**
-     * Mutex for request pending channel list.
+     * epics::pvData::Mutex for request pending channel list.
      */
-    Mutex _responsePendingChannelsMutex;
+    epics::pvData::Mutex _responsePendingChannelsMutex;
     /**
      * General mutex.
      */
-    Mutex _mutex;
+    epics::pvData::Mutex _mutex;
     /**
      * Volatile varialbe mutex.
      */
-    Mutex _volMutex;
+    epics::pvData::Mutex _volMutex;
 	/**
 	 * Max search tries per frame.
 	 */
-	static const int32 MAX_FRAMES_PER_TRY;
+	static const epics::pvData::int32 MAX_FRAMES_PER_TRY;
 };
 
 class MockTransportSendControl: public TransportSendControl
@@ -266,7 +261,7 @@ public:
 	void endMessage() {}
 	void flush(bool lastMessageCompleted) {}
 	void setRecipient(const osiSockAddr& sendTo) {}
-	void startMessage(int8 command, int ensureCapacity) {}
+	void startMessage(epics::pvData::int8 command, int ensureCapacity) {}
 	void ensureBuffer(int size) {}
 	void alignBuffer(int alignment) {}
 	void flushSerializeBuffer() {}
@@ -297,7 +292,7 @@ public:
 	 * Get number of registered channels.
 	 * @return number of registered channels.
 	 */
-	int32 registeredChannelCount();
+	epics::pvData::int32 registeredChannelCount();
 	/**
 	 * Register channel.
 	 * @param channel to register.
@@ -315,7 +310,7 @@ public:
 	 * @param minorRevision	server minor CA revision.
 	 * @param serverAddress	server address.
 	 */
-	void searchResponse(int32 cid, int32 seqNo, int8 minorRevision, osiSockAddr* serverAddress);
+	void searchResponse(epics::pvData::int32 cid, epics::pvData::int32 seqNo, epics::pvData::int8 minorRevision, osiSockAddr* serverAddress);
 	/**
 	 * Beacon anomaly detected.
 	 * Boost searching of all channels.
@@ -325,11 +320,11 @@ private:
 	/**
 	 * Minimal RTT (ms).
 	 */
-	static const int64 MIN_RTT;
+	static const epics::pvData::int64 MIN_RTT;
 	/**
 	 * Maximal RTT (ms).
 	 */
-	static const int64 MAX_RTT;
+	static const epics::pvData::int64 MAX_RTT;
 	/**
 	 * Rate to be considered as OK.
 	 */
@@ -354,39 +349,39 @@ private:
 	/**
 	 * Number of timers in timers array.
 	 */
-	int32 _numberOfTimers;
+	epics::pvData::int32 _numberOfTimers;
 	/**
 	 * Index of a timer to be used when beacon anomaly is detected.
 	 */
-	int32 _beaconAnomalyTimerIndex;
+	epics::pvData::int32 _beaconAnomalyTimerIndex;
 	/**
 	 * Search (datagram) sequence number.
 	 */
-	int32 _sequenceNumber;
+	epics::pvData::int32 _sequenceNumber;
 	/**
 	 * Max search period (in ms).
 	 */
-	static const int64 MAX_SEARCH_PERIOD;
+	static const epics::pvData::int64 MAX_SEARCH_PERIOD;
 	/**
 	 * Max search period (in ms) - lower limit.
 	 */
-	static const int64 MAX_SEARCH_PERIOD_LOWER_LIMIT;
+	static const epics::pvData::int64 MAX_SEARCH_PERIOD_LOWER_LIMIT;
 	/**
 	 * Beacon anomaly search period (in ms).
 	 */
-	static const int64 BEACON_ANOMALY_SEARCH_PERIOD;
+	static const epics::pvData::int64 BEACON_ANOMALY_SEARCH_PERIOD;
 	/**
 	 * Max number of timers.
 	 */
-	static const int32 MAX_TIMERS;
+	static const epics::pvData::int32 MAX_TIMERS;
 	/**
 	 * Send byte buffer (frame)
 	 */
-	ByteBuffer* _sendBuffer;
+	epics::pvData::ByteBuffer* _sendBuffer;
     /**
      * Time of last frame send.
      */
-    int64 _timeAtLastSend;
+    epics::pvData::int64 _timeAtLastSend;
     /**
      * Set of registered channels.
      */
@@ -398,15 +393,15 @@ private:
     /**
      * General mutex.
      */
-    Mutex _mutex;
+    epics::pvData::Mutex _mutex;
     /**
      * Channel mutex.
      */
-    Mutex _channelMutex;
+    epics::pvData::Mutex _channelMutex;
     /**
      * Volatile variable mutex.
      */
-    Mutex _volMutex;
+    epics::pvData::Mutex _volMutex;
     /**
      * Mock transport send control
      */
@@ -435,13 +430,13 @@ private:
      * @param channel channel whose search failed.
      * @param timerIndex index of timer which tries to search.
      */
-    void searchResponseTimeout(SearchInstance* channel, int32 timerIndex);
+    void searchResponseTimeout(SearchInstance* channel, epics::pvData::int32 timerIndex);
 	/**
 	 * Boost searching of a channel.
 	 * @param channel channel to boost searching.
 	 * @param timerIndex to what timer-index to boost
 	 */
-	void boostSearching(SearchInstance* channel, int32 timerIndex);
+	void boostSearching(SearchInstance* channel, epics::pvData::int32 timerIndex);
 	/**
 	 * Update (recalculate) round-trip estimate.
 	 * @param rtt new sample of round-trip value.
@@ -456,12 +451,12 @@ private:
 	 * Get search (UDP) frame sequence number.
 	 * @return search (UDP) frame sequence number.
 	 */
-	int32 getSequenceNumber();
+	epics::pvData::int32 getSequenceNumber();
 	/**
 	 * Get time at last send (when sendBuffer was flushed).
 	 * @return time at last send.
 	 */
-	int64 getTimeAtLastSend();
+	epics::pvData::int64 getTimeAtLastSend();
 };
 
 }}

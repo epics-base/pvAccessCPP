@@ -10,6 +10,7 @@
 epicsMessageQueueId join1;
 epicsMessageQueueId join2;
 
+using std::string;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 

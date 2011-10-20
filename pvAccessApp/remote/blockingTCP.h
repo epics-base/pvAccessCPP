@@ -34,8 +34,6 @@
 #include <map>
 #include <deque>
 
-using epics::pvData::int64;
-
 namespace epics {
     namespace pvAccess {
 
@@ -57,14 +55,14 @@ namespace epics {
         protected:
             BlockingTCPTransport(Context::shared_pointer const & context, SOCKET channel,
                     std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
-                    int16 priority);
+                    epics::pvData::int16 priority);
                     
         public:
             virtual bool isClosed() {
                 return _closed.get();
             }
 
-            virtual void setRemoteMinorRevision(int8 minorRevision) {
+            virtual void setRemoteMinorRevision(epics::pvData::int8 minorRevision) {
                 _remoteTransportRevision = minorRevision;
             }
 
@@ -76,8 +74,8 @@ namespace epics {
                 _remoteTransportSocketReceiveBufferSize = socketReceiveBufferSize;
             }
 
-            virtual const String getType() const {
-                return String("TCP");
+            virtual const epics::pvData::String getType() const {
+                return epics::pvData::String("TCP");
             }
 
             virtual void aliveNotification() {
@@ -92,7 +90,7 @@ namespace epics {
                 return &_socketAddress;
             }
 
-            virtual int16 getPriority() const {
+            virtual epics::pvData::int16 getPriority() const {
                 return _priority;
             }
 
@@ -131,7 +129,7 @@ namespace epics {
             bool waitUntilVerified(double timeout);
 
             virtual void flush(bool lastMessageCompleted);
-            virtual void startMessage(int8 command, int ensureCapacity);
+            virtual void startMessage(epics::pvData::int8 command, int ensureCapacity);
             virtual void endMessage();
 
             virtual void flushSerializeBuffer() {
@@ -229,7 +227,7 @@ namespace epics {
              * NOTE: Priority cannot just be changed, since it is registered
              * in transport registry with given priority.
              */
-            int16 _priority;
+            epics::pvData::int16 _priority;
             // TODO to be implemeneted
 
             /**
@@ -250,7 +248,7 @@ namespace epics {
             /**
              * Marker "period" in bytes (every X bytes marker should be set).
              */
-            int64 _markerPeriodBytes;
+            epics::pvData::int64 _markerPeriodBytes;
 
 
             SendQueueFlushStrategy _flushStrategy;
@@ -274,7 +272,7 @@ namespace epics {
             /**
              * Remote side transport revision (minor).
              */
-            int8 _remoteTransportRevision;
+            epics::pvData::int8 _remoteTransportRevision;
 
             /**
              * Remote side transport receive buffer size.
@@ -308,7 +306,7 @@ namespace epics {
             /**
              * Next planned marker position.
              */
-            int64 _nextMarkerPosition;
+            epics::pvData::int64 _nextMarkerPosition;
 
             /**
              * Send pending flag.
@@ -320,14 +318,14 @@ namespace epics {
              */
             int _lastMessageStartPosition;
 
-            int8 _lastSegmentedMessageType;
-            int8 _lastSegmentedMessageCommand;
+            epics::pvData::int8 _lastSegmentedMessageType;
+            epics::pvData::int8 _lastSegmentedMessageCommand;
 
             bool _flushRequested;
 
             int _sendBufferSentPosition;
 
-            int8 _byteOrderFlag;
+            epics::pvData::int8 _byteOrderFlag;
 
 
 
@@ -346,9 +344,9 @@ namespace epics {
             int _storedPosition;
             int _storedLimit;
 
-            int8 _version;
-            int8 _packetType;
-            int8 _command;
+            epics::pvData::int8 _version;
+            epics::pvData::int8 _packetType;
+            epics::pvData::int8 _command;
             int _payloadSize;
 
             ReceiveStage _stage;
@@ -356,7 +354,7 @@ namespace epics {
             /**
              * Total bytes received.
              */
-            int64 _totalBytesReceived;
+            epics::pvData::int64 _totalBytesReceived;
 
 
 
@@ -402,13 +400,13 @@ namespace epics {
              * Total bytes sent.
              * NOTE: synced by _flowControlMutex
              */
-            int64 _totalBytesSent;
+            epics::pvData::int64 _totalBytesSent;
 
             /**
              * Calculated remote free buffer size.
              * NOTE: synced by _flowControlMutex
              */
-            int64 _remoteBufferFreeSpace;
+            epics::pvData::int64 _remoteBufferFreeSpace;
             
             epics::pvData::Mutex _flowControlMutex;
             
@@ -450,14 +448,14 @@ namespace epics {
         private:
             BlockingClientTCPTransport(Context::shared_pointer const & context, SOCKET channel,
                     std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
-                    TransportClient::shared_pointer client, int8 remoteTransportRevision,
-                    float beaconInterval, int16 priority);
+                    TransportClient::shared_pointer client, epics::pvData::int8 remoteTransportRevision,
+                    float beaconInterval, epics::pvData::int16 priority);
 
         public:
             static BlockingClientTCPTransport::shared_pointer create(Context::shared_pointer const & context, SOCKET channel,
                                        std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
-                                       TransportClient::shared_pointer client, int8 remoteTransportRevision,
-                                       float beaconInterval, int16 priority)
+                                       TransportClient::shared_pointer client, epics::pvData::int8 remoteTransportRevision,
+                                       float beaconInterval, epics::pvData::int16 priority)
             {
                 BlockingClientTCPTransport::shared_pointer thisPointer(
                             new BlockingClientTCPTransport(context, channel, responseHandler, receiveBufferSize,
@@ -595,7 +593,7 @@ namespace epics {
 
             virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
                     std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
-                    int8 transportRevision, int16 priority);
+                    epics::pvData::int8 transportRevision, epics::pvData::int16 priority);
         private:
             /**
              * Lock timeout

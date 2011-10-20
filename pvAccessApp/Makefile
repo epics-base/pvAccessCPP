@@ -14,7 +14,6 @@ LIBSRCS += clientFactory.cpp
 
 SRC_DIRS += $(PVACCESS)/utils
 INC += hexDump.h
-INC += wildcharMatcher.h
 INC += inetAddressUtil.h
 INC += logger.h
 INC += introspectionRegistry.h
@@ -23,7 +22,6 @@ INC += namedLockPattern.h
 INC += referenceCountingLock.h
 INC += configuration.h
 LIBSRCS += hexDump.cpp
-LIBSRCS += wildcharMatcher.cpp
 LIBSRCS += inetAddressUtil.cpp
 LIBSRCS += logger.cpp
 LIBSRCS += introspectionRegistry.cpp
