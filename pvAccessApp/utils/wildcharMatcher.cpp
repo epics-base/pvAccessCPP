@@ -1,10 +1,9 @@
-/*
- * wildcharMatcher.cpp
- *
- *  Created on: Nov 4, 2010
- *      Author: Miha Vitorovic
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
-
+ 
 #include <pv/wildcharMatcher.h>
 
 #include <iostream>
@@ -13,7 +12,7 @@ using std::cout;
 using namespace epics::pvData;
 
 namespace epics {
-    namespace pvAccess {
+namespace pvAccess {
 
         /** Wildchar matcher debug */
         const bool WCM_DEBUG = false;
@@ -269,5 +268,5 @@ namespace epics {
             return parse(pattern, 0, str, 0);
         }
 
-    }
+}
 }

@@ -1,5 +1,7 @@
-/*
- * transportRegistry.cpp
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #include <pv/transportRegistry.h>
@@ -7,7 +9,8 @@
 using namespace epics::pvData;
 using namespace std;
 
-namespace epics { namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
 TransportRegistry::TransportRegistry(): _transports(), _transportCount(0), _mutex()
 {

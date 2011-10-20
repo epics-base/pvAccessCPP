@@ -1,5 +1,7 @@
-/*
- * introspectionRegistry.cpp
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #include <pv/introspectionRegistry.h>
@@ -9,7 +11,8 @@ using namespace epics::pvData;
 using namespace std;
 using std::tr1::static_pointer_cast;
 
-namespace epics { namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
 const int8 IntrospectionRegistry::NULL_TYPE_CODE = (int8)-1;
 const int8 IntrospectionRegistry::ONLY_ID_TYPE_CODE = (int8)-2;
@@ -176,7 +179,7 @@ void IntrospectionRegistry::serialize(FieldConstPtr field, StructureConstPtr par
 		{
 		case epics::pvData::scalar:
 		{
-                        ScalarConstPtr scalar = static_pointer_cast<const Scalar>(field);
+            ScalarConstPtr scalar = static_pointer_cast<const Scalar>(field);
 			control->ensureBuffer(1);
 			buffer->putByte((int8)(epics::pvData::scalar << 4 | scalar->getScalarType()));
 			SerializeHelper::serializeString(field->getFieldName(), buffer, control);
@@ -184,7 +187,7 @@ void IntrospectionRegistry::serialize(FieldConstPtr field, StructureConstPtr par
 		}
 		case epics::pvData::scalarArray:
 		{
-                        ScalarArrayConstPtr array = static_pointer_cast<const ScalarArray>(field);
+            ScalarArrayConstPtr array = static_pointer_cast<const ScalarArray>(field);
 			control->ensureBuffer(1);
 			buffer->putByte((int8)(epics::pvData::scalarArray << 4 | array->getElementType()));
 			SerializeHelper::serializeString(field->getFieldName(), buffer, control);
@@ -192,7 +195,7 @@ void IntrospectionRegistry::serialize(FieldConstPtr field, StructureConstPtr par
 		}
 		case epics::pvData::structure:
 		{
-                        StructureConstPtr structure = static_pointer_cast<const Structure>(field);
+            StructureConstPtr structure = static_pointer_cast<const Structure>(field);
 			control->ensureBuffer(1);
 			buffer->putByte((int8)(epics::pvData::structure << 4));
 			serializeStructureField(buffer, control, registry, structure);
@@ -200,12 +203,12 @@ void IntrospectionRegistry::serialize(FieldConstPtr field, StructureConstPtr par
 		}
 		case epics::pvData::structureArray:
 		{
-                        StructureArrayConstPtr structureArray = static_pointer_cast<const StructureArray>(field);
+            StructureArrayConstPtr structureArray = static_pointer_cast<const StructureArray>(field);
 			control->ensureBuffer(1);
 			buffer->putByte((int8)(epics::pvData::structureArray << 4));
 			SerializeHelper::serializeString(field->getFieldName(), buffer, control);
 			// we also need to serialize structure field...
-                        StructureConstPtr structureElement = structureArray->getStructure();
+            StructureConstPtr structureElement = structureArray->getStructure();
 			serializeStructureField(buffer, control, registry, structureElement);
 			break;
 		}
@@ -281,7 +284,7 @@ FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, Deserializa
 	default:
 	{
 	   // TODO log
-           return FieldConstPtr();
+       return FieldConstPtr();
 	}
 	}
 }

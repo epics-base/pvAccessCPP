@@ -1,8 +1,7 @@
-/*
- * wildcharMatcher.h
- *
- *  Created on: Nov 4, 2010
- *      Author: Miha Vitorovic
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #ifndef WILDCHARMATCHER_H_
@@ -11,7 +10,7 @@
 #include <pv/pvType.h>
 
 namespace epics {
-    namespace pvAccess {
+namespace pvAccess {
 
         /**
          * DFA for parsing set strings. DFA was obtained from JFlex using the rule
@@ -56,7 +55,7 @@ namespace epics {
          */
         bool match(const epics::pvData::String pattern, const epics::pvData::String str);
 
-    }
+}
 }
 
 #endif /* WILDCHARMATCHER_H_ */

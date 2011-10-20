@@ -1,8 +1,7 @@
-/*
- * logger.cpp
- *
- *  Created on: Dec 10, 2010
- *      Author: Miha Vitorovic
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #include <pv/logger.h>
@@ -33,7 +32,7 @@ namespace epics {
         
         #define TIMETEXTLEN 32
         
-        static pvAccessLogLevel g_pvAccessLogLevel = logLevelDebug; //logLevelInfo;
+        static pvAccessLogLevel g_pvAccessLogLevel = logLevelInfo;
         
         void pvAccessLog(pvAccessLogLevel level, const char* format, ...)
         {

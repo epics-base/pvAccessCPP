@@ -1,8 +1,7 @@
-/*
- * hexDump.cpp
- *
- *  Created on: Nov 3, 2010
- *      Author: Miha Vitorovic
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #include <pv/hexDump.h>
@@ -16,103 +15,91 @@ using std::endl;
 using std::cout;
 
 namespace epics {
-    namespace pvAccess {
+namespace pvAccess {
 
-        String toHex(int8);
-        char toAscii(int8);
+/// Byte to hexchar mapping.
+static const char lookup[] = {
+        '0', '1', '2', '3', '4', '5', '6', '7',
+        '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
-        void hexDump(const String name, const int8 *bs, int len) {
-            hexDump(name, bs, 0, len);
-        }
+/// Get hex representation of byte.
+String toHex(int8 b) {
+    String sb;
 
-        void hexDump(const String name, const int8 *bs, int start, int len) {
-            hexDump("", name, bs, start, len);
-        }
+    int upper = (b>>4)&0x0F;
+    sb += lookup[upper];
 
-        void hexDump(const String prologue, const String name, const int8 *bs,
-                int start, int len) {
+    int lower = b&0x0F;
+    sb += lookup[lower];
 
-            stringstream header;
+    sb += ' ';
 
-            header<<prologue<<endl<<"Hexdump ["<<name<<"] size = "<<len;
+    return sb;
+}
 
-            String out(header.str());
+/// Get ASCII representation of byte, dot if non-readable.
+char toAscii(int8 b) {
+    if(b>(int8)31&&b<(int8)127)
+        return (char)b;
+    else
+        return '.';
+}
 
-            String chars;
+void hexDump(const String name, const int8 *bs, int len) {
+    hexDump(name, bs, 0, len);
+}
 
-            for(int i = start; i<(start+len); i++) {
-                if(((i-start)%16)==0) {
-                    out += chars;
-                    out += '\n';
-                    chars.clear();
-                }
+void hexDump(const String name, const int8 *bs, int start, int len) {
+    hexDump("", name, bs, start, len);
+}
 
-                chars += toAscii(bs[i]);
+void hexDump(const String prologue, const String name, const int8 *bs,
+        int start, int len) {
 
-                out += toHex(bs[i]);
+    stringstream header;
 
-                if(((i-start)%4)==3) {
-                    chars += ' ';
-                    out += ' ';
-                }
-            }
+    header<<prologue<<endl<<"Hexdump ["<<name<<"] size = "<<len;
 
-            if(len%16!=0) {
-                int pad = 0;
-                int delta_bytes = 16-(len%16);
+    String out(header.str());
 
-                //rest of line (no of bytes)
-                //each byte takes two chars plus one ws
-                pad = delta_bytes*3;
+    String chars;
 
-                //additional whitespaces after four bytes
-                pad += (delta_bytes/4);
-                pad++;
-
-                for(int i = 0; i<pad; i++)
-                    chars.insert(0, " ");
-            }
-
+    for(int i = start; i<(start+len); i++) {
+        if(((i-start)%16)==0) {
             out += chars;
-            cout<<out<<endl;
+            out += '\n';
+            chars.clear();
         }
 
-        /**
-         * byte to hexchar mapping.
-         */
-        static const char lookup[] = { '0', '1', '2', '3', '4', '5', '6', '7',
-                '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+        chars += toAscii(bs[i]);
 
-        /**
-         * Get hex representation of byte.
-         * @param b
-         * @return string hex representation of byte.
-         */
-        String toHex(int8 b) {
-            String sb;
+        out += toHex(bs[i]);
 
-            int upper = (b>>4)&0x0F;
-            sb += lookup[upper];
-
-            int lower = b&0x0F;
-            sb += lookup[lower];
-
-            sb += ' ';
-
-            return sb;
+        if(((i-start)%4)==3) {
+            chars += ' ';
+            out += ' ';
         }
-
-        /**
-         * Get ASCII representation of byte, dot if non-readable.
-         * @param b
-         * @return ASCII representation of byte, dot if non-readable.
-         */
-        char toAscii(int8 b) {
-            if(b>(int8)31&&b<(int8)127)
-                return (char)b;
-            else
-                return '.';
-        }
-
     }
+
+    if(len%16!=0) {
+        int pad = 0;
+        int delta_bytes = 16-(len%16);
+
+        //rest of line (no of bytes)
+        //each byte takes two chars plus one ws
+        pad = delta_bytes*3;
+
+        //additional whitespaces after four bytes
+        pad += (delta_bytes/4);
+        pad++;
+
+        for(int i = 0; i<pad; i++)
+            chars.insert(0, " ");
+    }
+
+    out += chars;
+    cout<<out<<endl;
+}
+
+}
 }

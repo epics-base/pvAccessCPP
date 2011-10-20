@@ -1,5 +1,7 @@
-/*
- * introspectionRegistry.h
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #ifndef INTROSPECTIONREGISTRY_H
@@ -13,8 +15,6 @@
 #include <pv/serializeHelper.h>
 #include <pv/status.h>
 #include <pv/standardField.h>
-
-#include <epicsMutex.h>
 
 #include <map>
 #include <iostream>
@@ -30,7 +30,8 @@ using epics::pvData::PVStructurePtr;
 using std::string;
 using epics::pvData::int8;
 
-namespace epics { namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
 typedef std::map<const short,FieldConstPtr> registryMap_t;
 

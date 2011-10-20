@@ -1,11 +1,14 @@
-/*
- * configuration.cpp
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #include <pv/configuration.h>
 #include <pv/epicsException.h>
 
-namespace epics { namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
 using namespace epics::pvData;
 using namespace std;
@@ -193,7 +196,7 @@ void Properties::list()
 
 SystemConfigurationImpl::SystemConfigurationImpl()
 {
-	_envParam.name = new char[MAX_NAME_LENGHT];
+	_envParam.name = new char[256];
 	_envParam.pdflt = NULL;
 	// no exception, default value is taken
 	//_ibuffer.exceptions ( ifstream::failbit | ifstream::badbit );

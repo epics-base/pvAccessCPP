@@ -1,10 +1,13 @@
-/*
- * namedLockPattern.cpp
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #include <pv/referenceCountingLock.h>
 
-namespace epics { namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
 using namespace epics::pvData;
 
@@ -77,6 +80,7 @@ void ReferenceCountingLock::release()
 	}*/
 }
 
+// TODO use atomic primitive impl.
 int ReferenceCountingLock::increment()
 {
 	Lock guard(_countMutex);

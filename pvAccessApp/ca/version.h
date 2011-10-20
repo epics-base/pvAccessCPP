@@ -1,8 +1,7 @@
-/*
- * version.h
- *
- *  Created on: Oct 8, 2010
- *      Author: Miha Vitorovic
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #ifndef VERSION_H_
@@ -12,7 +11,7 @@
 #include <pv/noDefaultMethods.h>
 
 namespace epics {
-    namespace pvAccess {
+namespace pvAccess {
 
         using epics::pvData::String;
 
@@ -28,17 +27,19 @@ namespace epics {
              * @param developmentVersion	development version.
              */
             Version(String productName, String implementationLangugage,
-                    int majorVersion, int minorVersion, int maintenanceVersion,
-                    int developmentVersion) :
-                _productName(productName), _implementationLanguage(
-                        implementationLangugage), _majorVersion(majorVersion),
-                        _minorVersion(minorVersion), _maintenanceVersion(
-                                maintenanceVersion), _developmentVersion(
-                                developmentVersion) {
+                    int majorVersion, int minorVersion,
+                    int maintenanceVersion, int developmentVersion) :
+                _productName(productName),
+                _implementationLanguage(implementationLangugage),
+                _majorVersion(majorVersion),
+                _minorVersion(minorVersion),
+                _maintenanceVersion(maintenanceVersion),
+                _developmentVersion(developmentVersion)
+            {
             }
 
             /** The name of the product */
-            const inline String getProductName() const {
+            inline const String getProductName() const {
                 return _productName;
             }
 
@@ -129,7 +130,7 @@ namespace epics {
             int _maintenanceVersion;
             int _developmentVersion;
         };
-    }
+}
 }
 
 #endif /* VERSION_H_ */

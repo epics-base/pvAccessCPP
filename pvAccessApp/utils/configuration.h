@@ -1,5 +1,7 @@
-/*
- * configuration.h
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #ifndef CONFIGURATION_H
@@ -20,14 +22,9 @@
 #include <map>
 
 
-namespace epics { namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
-#define MAX_NAME_LENGHT 300
-
-
-/**
- * Properties
- */
 class Properties
 {
 public:
@@ -73,14 +70,13 @@ private:
 class Configuration : private epics::pvData::NoDefaultMethods
 {
 public:
-    typedef std::tr1::shared_ptr<Configuration> shared_pointer;
-    typedef std::tr1::shared_ptr<const Configuration> const_shared_pointer;
+     POINTER_DEFINITIONS(Configuration);
 
-	/*
+	/**
 	 * Destructor.
 	 */
 	virtual ~Configuration() {};
-	/*
+	/**
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
 	 *
@@ -90,7 +86,7 @@ public:
 	 * @return environment variable value as bool or default value if it does not exist.
 	 */
 	virtual bool getPropertyAsBoolean(const std::string name, const bool defaultValue) = 0;
-	/*
+	/**
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
 	 *
@@ -100,7 +96,7 @@ public:
 	 * @return environment variable value as int32 or default value if it does not exist.
 	 */
 	virtual epics::pvData::int32 getPropertyAsInteger(const std::string name, const epics::pvData::int32 defaultValue) = 0;
-	/*
+	/**
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
 	 *
@@ -110,7 +106,7 @@ public:
 	 * @return environment variable value as float or default value if it does not exist.
 	 */
 	virtual float getPropertyAsFloat(const std::string name, const float defaultValue) = 0;
-	/*
+	/**
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
 	 *
@@ -120,7 +116,7 @@ public:
 	 * @return environment variable value as double or default value if it does not exist.
 	 */
 	virtual float getPropertyAsDouble(const std::string name, const double defaultValue) = 0;
-	/*
+	/**
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
 	 *
@@ -156,11 +152,11 @@ private:
 class ConfigurationProvider : private epics::pvData::NoDefaultMethods
 {
 public:
-	/*
+	/**
 	 * Destructor.
 	 */
 	virtual ~ConfigurationProvider() {};
-	/*
+	/**
 	 * Return configuration specified by name.
 	 *
 	 * @param name name of the configuration to return.
@@ -168,7 +164,7 @@ public:
 	 * @return configuration specified by name or NULL if it does not exists.
 	 */
 	virtual Configuration* getConfiguration(const std::string name) = 0;
-	/*
+	/**
 	 * Register configuration.
 	 *
 	 * @param name name of the configuration to register.
@@ -181,7 +177,7 @@ class ConfigurationProviderImpl: public ConfigurationProvider
 {
 public:
 	ConfigurationProviderImpl();
-	/*
+	/**
 	 * Destructor. Note: Registered configurations will be deleted!!
 	 */
 	~ConfigurationProviderImpl();
@@ -199,7 +195,7 @@ private:
 class ConfigurationFactory : private epics::pvData::NoDefaultMethods
 {
 public:
-	/*
+	/**
 	 * Lazily creates configuration provider.
 	 *
 	 * @param name name of the configuration to register.
