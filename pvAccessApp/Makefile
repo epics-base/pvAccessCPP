@@ -17,15 +17,14 @@ INC += hexDump.h
 INC += inetAddressUtil.h
 INC += logger.h
 INC += introspectionRegistry.h
-INC += transportRegistry.h
 INC += namedLockPattern.h
 INC += referenceCountingLock.h
 INC += configuration.h
+INC += likely.h
 LIBSRCS += hexDump.cpp
 LIBSRCS += inetAddressUtil.cpp
 LIBSRCS += logger.cpp
 LIBSRCS += introspectionRegistry.cpp
-LIBSRCS += transportRegistry.cpp
 LIBSRCS += configuration.cpp
 LIBSRCS += referenceCountingLock.cpp
 
@@ -58,6 +57,7 @@ INC += blockingUDP.h
 INC += beaconHandler.h
 INC += blockingTCP.h
 INC += channelSearchManager.h
+INC += transportRegistry.h
 LIBSRCS += blockingUDPTransport.cpp
 LIBSRCS += blockingUDPConnector.cpp
 LIBSRCS += beaconHandler.cpp
@@ -68,7 +68,7 @@ LIBSRCS += blockingServerTCPTransport.cpp
 LIBSRCS += channelSearchManager.cpp
 LIBSRCS += abstractResponseHandler.cpp
 LIBSRCS += blockingTCPAcceptor.cpp
-
+LIBSRCS += transportRegistry.cpp
 
 SRC_DIRS += $(PVACCESS)/remoteClient
 INC += clientContextImpl.h

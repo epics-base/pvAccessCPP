@@ -1,8 +1,7 @@
-/*
- * abstractResponseHandler.cpp
- *
- *  Created on: Jan 10, 2011
- *      Author: Miha Vitorovic
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #include <pv/remote.h>

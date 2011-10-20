@@ -1,5 +1,7 @@
-/*
- * beaconHandler.cpp
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #include <pv/beaconHandler.h>
@@ -9,22 +11,23 @@ using namespace std;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-namespace epics { namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
 BeaconHandler::BeaconHandler(Context::shared_pointer context,
-                             const osiSockAddr* responseFrom)
-    :_context(Context::weak_pointer(context))
-    ,_responseFrom(*responseFrom)
-    ,_mutex()
-    ,_serverStartupTime(0)
+                             const osiSockAddr* responseFrom) :
+    _context(Context::weak_pointer(context)),
+    _responseFrom(*responseFrom),
+    _mutex(),
+    _serverStartupTime(0)
 {
 
 }
 
-BeaconHandler::BeaconHandler(const osiSockAddr* responseFrom)
-    :_responseFrom(*responseFrom)
-    ,_mutex()
-    , _serverStartupTime(0)
+BeaconHandler::BeaconHandler(const osiSockAddr* responseFrom) :
+    _responseFrom(*responseFrom),
+    _mutex(),
+    _serverStartupTime(0)
 {
 
 }

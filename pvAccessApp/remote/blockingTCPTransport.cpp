@@ -1,28 +1,27 @@
-/*
- * blockingTCPTransport.cpp
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
-
+ 
 #define __STDC_LIMIT_MACROS 1
 #include <pv/blockingTCP.h>
 #include <pv/inetAddressUtil.h>
 #include <pv/caConstants.h>
-#include <pv/CDRMonitor.h>
+#include <pv/logger.h>
+#include <pv/hexDump.h>
+#include <pv/likely.h>
 
-/* pvData */
 #include <pv/lock.h>
 #include <pv/byteBuffer.h>
 #include <pv/epicsException.h>
 #include <pv/noDefaultMethods.h>
+#include <pv/CDRMonitor.h>
 
-/* EPICSv3 */
 #include <osdSock.h>
 #include <osiSock.h>
 #include <epicsThread.h>
-#include <logger.h>
 
-#include <pv/hexDump.h>
-
-/* standard */
 #include <sys/types.h>
 #include <algorithm>
 #include <sstream>
@@ -39,17 +38,8 @@ using std::max;
 using std::min;
 using std::ostringstream;
 
-// TODO moved to some compiler_utils.h?
-#if defined(__GNUC__) 
-	#define likely(x) __builtin_expect (x, 1)
-	#define unlikely(x) __builtin_expect (x, 0)
-#else
-	#define likely(x) (x)
-	#define unlikely(x) (x)
-#endif
-
 namespace epics {
-    namespace pvAccess {
+namespace pvAccess {
 
         /*
         class MonitorSender : public TransportSender, public NoDefaultMethods {

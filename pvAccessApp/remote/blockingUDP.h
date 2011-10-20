@@ -1,25 +1,21 @@
-/*
- * blockingUDPTransport.h
- *
- *  Created on: Dec 20, 2010
- *      Author: Miha Vitorovic
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
-
+ 
 #ifndef BLOCKINGUDP_H_
 #define BLOCKINGUDP_H_
 
-/* pvAccess */
 #include <pv/remote.h>
 #include <pv/caConstants.h>
 #include <pv/inetAddressUtil.h>
 
-/* pvData */
 #include <pv/noDefaultMethods.h>
 #include <pv/byteBuffer.h>
 #include <pv/lock.h>
 #include <pv/event.h>
 
-/* EPICSv3 */
 #include <osdSock.h>
 #include <osiSock.h>
 #include <epicsThread.h>

@@ -1,12 +1,15 @@
-/*
- * serverChannelImpl.cpp
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #include <pv/serverChannelImpl.h>
 
 using namespace epics::pvData;
 
-namespace epics { namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
 ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer const & channel, pvAccessID cid, pvAccessID sid, epics::pvData::PVField::shared_pointer const & securityToken):
 			_channel(channel),

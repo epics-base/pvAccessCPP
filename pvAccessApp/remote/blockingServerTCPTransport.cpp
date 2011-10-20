@@ -1,20 +1,15 @@
-/*
- * blockingServerTCPTransport.cpp
- *
- *  Created on: Jan 4, 2011
- *      Author: Miha Vitorovic
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
-/* pvAccess */
 #include <pv/blockingTCP.h>
 #include <pv/remote.h>
+#include <pv/logger.h>
 
-/* pvData */
 #include <pv/lock.h>
 #include <pv/byteBuffer.h>
-
-/* EPICSv3 */
-#include <logger.h>
 
 /* standard */
 #include <map>
@@ -23,7 +18,7 @@ using namespace epics::pvData;
 using namespace std;
 
 namespace epics {
-    namespace pvAccess {
+namespace pvAccess {
 
         BlockingServerTCPTransport::BlockingServerTCPTransport(
                 Context::shared_pointer const & context, SOCKET channel,

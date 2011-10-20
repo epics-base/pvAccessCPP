@@ -1,19 +1,15 @@
-/*
- * blockingUDPConnector.cpp
- *
- *  Created on: Dec 27, 2010
- *      Author: Miha Vitorovic
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
-/* pvAccess */
 #include <pv/blockingUDP.h>
 #include <pv/remote.h>
+#include <pv/logger.h>
 
-/* EPICSv3 */
-#include <logger.h>
 #include <osiSock.h>
 
-/* standard */
 #include <sys/types.h>
 
 using namespace std;

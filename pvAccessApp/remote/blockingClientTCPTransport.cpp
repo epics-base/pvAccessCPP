@@ -1,22 +1,15 @@
-/*
- * BlockingClientTCPTransport.cpp
- *
- *  Created on: Jan 3, 2011
- *      Author: Miha Vitorovic
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
-/* pvAccess */
 #include <pv/blockingTCP.h>
-
 #include <pv/introspectionRegistry.h>
+#include <pv/logger.h>
 
-/* pvData */
 #include <pv/lock.h>
 
-/* EPICSv3 */
-#include <logger.h>
-
-/* standard */
 #include <set>
 #include <epicsTime.h>
 #include <sstream>

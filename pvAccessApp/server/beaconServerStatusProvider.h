@@ -1,5 +1,7 @@
-/*
- * beaconServerStatusProvider.h
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #ifndef BEACONSERVERSTATUSPROVIDER_H
@@ -9,7 +11,8 @@
 //#include <pv/serverContext.h>
 #include <pv/sharedPtr.h>
 
-namespace epics { namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
     class ServerContext;
 

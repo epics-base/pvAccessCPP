@@ -1,5 +1,7 @@
-/*
- * responseHandlers.h
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #ifndef RESPONSEHANDLERS_H_
@@ -11,7 +13,7 @@
 #include <pv/baseChannelRequester.h>
 
 namespace epics {
-    namespace pvAccess {
+namespace pvAccess {
 
         /**
          */

@@ -1,9 +1,9 @@
-/*CreateRequestFactory.cpp*/
 /**
  * Copyright - See the COPYRIGHT that is included with this distribution.
- * EPICS pvDataCPP is distributed subject to a Software License Agreement found
+ * pvAccessCPP is distributed subject to a Software License Agreement found
  * in file LICENSE that is included with this distribution.
  */
+
 #include <string>
 #include <sstream>
 #include <pv/pvData.h>
@@ -13,7 +13,8 @@
 using namespace epics::pvData;
 
 
-namespace epics { namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
 class CreateRequestImpl : public CreateRequest {
 private:

@@ -1,27 +1,25 @@
-/*
- * blockingTCPAcceptor.cpp
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
-/* pvAccess */
 #include <pv/blockingTCP.h>
 #include <pv/remote.h>
+#include <pv/logger.h>
 
-/* pvData */
 #include <pv/epicsException.h>
 
-/* EPICSv3 */
-#include <logger.h>
 #include <osiSock.h>
 #include <epicsThread.h>
 
-/* standard */
 #include <sstream>
 
 using std::ostringstream;
 using namespace epics::pvData;
 
 namespace epics {
-    namespace pvAccess {
+namespace pvAccess {
 
         BlockingTCPAcceptor::BlockingTCPAcceptor(
                 Context::shared_pointer const & context,

@@ -1,17 +1,16 @@
-/*
- * blockingTCPConnector.cpp
- *
- *  Created on: Jan 4, 2011
- *      Author: Miha Vitorovic
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #include <pv/blockingTCP.h>
 #include <pv/remote.h>
 #include <pv/namedLockPattern.h>
+#include <pv/logger.h>
 
 #include <epicsThread.h>
 #include <osiSock.h>
-#include <logger.h>
 
 #include <sys/types.h>
 #include <sstream>

@@ -1,39 +1,28 @@
-/* 
- * blockingUDPTransport.cpp
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
-/* pvAccess */
 #include <pv/blockingUDP.h>
-
 #include <pv/caConstants.h>
 #include <pv/inetAddressUtil.h>
+#include <pv/logger.h>
+#include <pv/likely.h>
 
-/* pvData */
 #include <pv/byteBuffer.h>
 #include <pv/lock.h>
 #include <pv/CDRMonitor.h>
 
-/* EPICSv3 */
 #include <osdSock.h>
 #include <osiSock.h>
-#include <logger.h>
 #include <epicsThread.h>
 
-/* standard */
 #include <cstdio>
 #include <sys/types.h>
 
 using namespace epics::pvData;
 using namespace std;
-
-// TODO moved to some compiler_utils.h?
-#if defined(__GNUC__) 
-	#define likely(x) __builtin_expect (x, 1)
-	#define unlikely(x) __builtin_expect (x, 0)
-#else
-	#define likely(x) (x)
-	#define unlikely(x) (x)
-#endif
 
 namespace epics {
     namespace pvAccess {

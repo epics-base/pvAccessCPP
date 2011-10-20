@@ -1,14 +1,12 @@
-/*
- * blockingTCP.h
- *
- *  Created on: Dec 29, 2010
- *      Author: Miha Vitorovic
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #ifndef BLOCKINGTCP_H_
 #define BLOCKINGTCP_H_
 
-/* pvAccess */
 #include <pv/caConstants.h>
 #include <pv/remote.h>
 #include <pv/transportRegistry.h>
@@ -16,20 +14,17 @@
 #include <pv/namedLockPattern.h>
 #include <pv/inetAddressUtil.h>
 
-/* pvData */
 #include <pv/byteBuffer.h>
 #include <pv/pvType.h>
 #include <pv/lock.h>
 #include <pv/timer.h>
 #include <pv/event.h>
 
-/* EPICSv3 */
 #include <osdSock.h>
 #include <osiSock.h>
 #include <epicsTime.h>
 #include <epicsThread.h>
 
-/* standard */
 #include <set>
 #include <map>
 #include <deque>

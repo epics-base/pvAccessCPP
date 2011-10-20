@@ -1,8 +1,7 @@
-/*
- * remote.h
- *
- *  Created on: Dec 21, 2010
- *      Author: user
+/**
+ * Copyright - See the COPYRIGHT that is included with this distribution.
+ * pvAccessCPP is distributed subject to a Software License Agreement found
+ * in file LICENSE that is included with this distribution.
  */
 
 #ifndef REMOTE_H_
