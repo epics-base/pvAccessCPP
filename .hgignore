@@ -5,6 +5,7 @@ O.*
 .DS_Store
 
 syntax: regexp
+^documentation/html
 ^bin
 ^include
 ^lib
