@@ -11,6 +11,7 @@
 #include <pv/lock.h>
 #include <pv/standardPVField.h>
 #include <memory>
+#include <queue>
 
 #include <stdexcept>
 #include <pv/caConstants.h>
@@ -3155,12 +3156,17 @@ namespace epics {
                 }
                 
                 void disconnect() {
-                    Lock guard(m_channelMutex);
-                    // if not destroyed...
-                    if (m_connectionState == DESTROYED)
-                        throw std::runtime_error("Channel destroyed.");
-                    else if (m_connectionState == CONNECTED)
-                        disconnect(false, true);
+                    {
+                        Lock guard(m_channelMutex);
+                        // if not destroyed...
+                        if (m_connectionState == DESTROYED)
+                            throw std::runtime_error("Channel destroyed.");
+                        else if (m_connectionState == CONNECTED)
+                            disconnect(false, true);
+                    }
+
+                    // should be called without any lock hold
+                    reportChannelStateChange();
                 }
                 
                 /**
@@ -3228,36 +3234,41 @@ namespace epics {
                  */
                 virtual void connectionCompleted(pvAccessID sid/*,  rights*/)
                 {
-                    Lock guard(m_channelMutex);
-                    
-                    bool allOK = false;
-                    try
                     {
-                        // do this silently
-                        if (m_connectionState == DESTROYED)
-                            return;
+                        Lock guard(m_channelMutex);
                         
-                        // store data
-                        m_serverChannelID = sid;
-                        //setAccessRights(rights);
+                        bool allOK = false;
+                        try
+                        {
+                            // do this silently
+                            if (m_connectionState == DESTROYED)
+                                return;
+                            
+                            // store data
+                            m_serverChannelID = sid;
+                            //setAccessRights(rights);
+                            
+                            // user might create monitors in listeners, so this has to be done before this can happen
+                            // however, it would not be nice if events would come before connection event is fired
+                            // but this cannot happen since transport (TCP) is serving in this thread
+                            resubscribeSubscriptions();
+                            setConnectionState(CONNECTED);
+                            allOK = true;
+                        }
+                        catch (...) {
+                            // noop
+                            // TODO at least log something??
+                        }
                         
-                        // user might create monitors in listeners, so this has to be done before this can happen
-                        // however, it would not be nice if events would come before connection event is fired
-                        // but this cannot happen since transport (TCP) is serving in this thread
-                        resubscribeSubscriptions();
-                        setConnectionState(CONNECTED);
-                        allOK = true;
-                    }
-                    catch (...) {
-                        // noop
-                        // TODO at least log something??
+                        if (!allOK)
+                        {
+                            // end connection request
+                            cancel();
+                        }
                     }
                     
-                    if (!allOK)
-                    {
-                        // end connection request
-                        cancel();
-                    }
+                    // should be called without any lock hold
+                    reportChannelStateChange();
                 }
                 
                 /**
@@ -3319,6 +3330,9 @@ namespace epics {
                         ChannelImpl::shared_pointer thisPointer = shared_from_this();
                         m_context->unregisterChannel(thisPointer);
                     }
+
+                    // should be called without any lock hold
+                    reportChannelStateChange();
                 }
                 
                 /**
@@ -3411,6 +3425,9 @@ namespace epics {
                 
                 virtual void transportClosed() {
                     disconnect(true, false);
+
+                    // should be called without any lock hold
+                    reportChannelStateChange();
                 }
                 
                 virtual void transportChanged() {
@@ -3446,14 +3463,19 @@ namespace epics {
                 }
                 
                 void transportUnresponsive() {
-                    Lock guard(m_channelMutex);
-                    if (m_connectionState == CONNECTED)
                     {
-                        // NOTE: 2 types of disconnected state - distinguish them
-                        setConnectionState(DISCONNECTED);
-                        
-                        // ... CA notifies also w/ no access rights callback, although access right are not changed
+                        Lock guard(m_channelMutex);
+                        if (m_connectionState == CONNECTED)
+                        {
+                            // NOTE: 2 types of disconnected state - distinguish them
+                            setConnectionState(DISCONNECTED);
+                            
+                            // ... CA notifies also w/ no access rights callback, although access right are not changed
+                        }
                     }
+                    
+                    // should be called without any lock hold
+                    reportChannelStateChange();
                 }
                 
                 /**
@@ -3472,11 +3494,38 @@ namespace epics {
                         {
                             //lastReportedConnectionState = connectionStatusToReport;
                             // TODO via dispatcher ?!!!
-                            Channel::shared_pointer thisPointer = shared_from_this();
-                            EXCEPTION_GUARD(m_requester->channelStateChange(thisPointer, connectionState));
+                            //Channel::shared_pointer thisPointer = shared_from_this();
+                            //EXCEPTION_GUARD(m_requester->channelStateChange(thisPointer, connectionState));
+                            channelStateChangeQueue.push(connectionState);
                         }
                     }
                 }
+                
+                
+                std::queue<ConnectionState> channelStateChangeQueue;
+                
+                // TODO very suboptimal, usually there is only one element
+                void reportChannelStateChange()
+                {
+                    Channel::shared_pointer thisPointer = shared_from_this();
+
+                    while (true)
+                    {
+                        ConnectionState connectionState;
+                        {
+                            Lock guard(m_channelMutex);
+                            if (channelStateChangeQueue.empty())
+                                break;
+                            connectionState = channelStateChangeQueue.front();
+                            channelStateChangeQueue.pop();
+                        }   
+
+                        EXCEPTION_GUARD(m_requester->channelStateChange(thisPointer, connectionState));
+                    }
+
+
+                }
+                
                 
                 virtual void lock() {
                     // noop
