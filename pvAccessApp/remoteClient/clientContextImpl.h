@@ -27,10 +27,7 @@ namespace epics {
                 public BaseSearchInstance
         {
         public:
-            typedef std::tr1::shared_ptr<ChannelImpl> shared_pointer;
-            typedef std::tr1::shared_ptr<const ChannelImpl> const_shared_pointer;
-            typedef std::tr1::weak_ptr<ChannelImpl> weak_pointer;
-            typedef std::tr1::weak_ptr<const ChannelImpl> const_weak_pointer;
+            POINTER_DEFINITIONS(ChannelImpl);
 
             virtual pvAccessID getChannelID() = 0;
             virtual void destroyChannel(bool force) = 0;
@@ -49,15 +46,47 @@ namespace epics {
 
         };
         
-        class ClientContextImpl : public ClientContext, public Context
+        class ClientContextImpl : public Context
         {
         public:
-            typedef std::tr1::shared_ptr<ClientContextImpl> shared_pointer;
-            typedef std::tr1::shared_ptr<const ClientContextImpl> const_shared_pointer;
-            typedef std::tr1::weak_ptr<ClientContextImpl> weak_pointer;
-            typedef std::tr1::weak_ptr<const ClientContextImpl> const_weak_pointer;
+            POINTER_DEFINITIONS(ClientContextImpl);
 
-            virtual ChannelSearchManager::shared_pointer getChannelSearchManager() = 0;
+            /**
+             * Get context implementation version.
+             * @return version of the context implementation.
+             */
+            virtual Version& getVersion();
+
+            /**
+             * Initialize client context. This method is called immediately after instance construction (call of constructor).
+             */
+            virtual void initialize();
+
+            /**
+             * Get channel provider implementation.
+             * @return the channel provider.
+             */
+            virtual ChannelProvider::shared_pointer const & getProvider();
+
+            /**
+             * Prints detailed information about the context to the standard output stream.
+             */
+            virtual void printInfo();
+
+            /**
+             * Prints detailed information about the context to the specified output stream.
+             * @param out the output stream.
+             */
+            virtual void printInfo(epics::pvData::StringBuilder out);
+
+            /**
+             * Dispose (destroy) server context.
+             * This calls <code>destroy()</code> and silently handles all exceptions.
+             */
+            virtual void dispose();
+            
+            
+                        virtual ChannelSearchManager::shared_pointer getChannelSearchManager() = 0;
             virtual void checkChannelName(epics::pvData::String& name) = 0;
 
             virtual void registerChannel(ChannelImpl::shared_pointer const & channel) = 0;

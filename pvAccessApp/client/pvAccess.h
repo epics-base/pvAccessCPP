@@ -774,51 +774,6 @@ namespace pvAccess {
         extern void registerChannelProvider(ChannelProvider::shared_pointer const & channelProvider);
         extern void unregisterChannelProvider(ChannelProvider::shared_pointer const & channelProvider);
 
-
-        /**
-         * The class representing a CA Client Context.
-         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
-         */
-        class ClientContext : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
-            public:
-            POINTER_DEFINITIONS(ClientContext);
-
-            /**
-             * Get context implementation version.
-             * @return version of the context implementation.
-             */
-            virtual Version& getVersion() = 0;
-
-            /**
-             * Initialize client context. This method is called immediately after instance construction (call of constructor).
-             */
-            virtual void initialize() = 0;
-
-            /**
-             * Get channel provider implementation.
-             * @return the channel provider.
-             */
-            virtual ChannelProvider::shared_pointer const & getProvider() = 0;
-
-            /**
-             * Prints detailed information about the context to the standard output stream.
-             */
-            virtual void printInfo() = 0;
-
-            /**
-             * Prints detailed information about the context to the specified output stream.
-             * @param out the output stream.
-             */
-            virtual void printInfo(epics::pvData::StringBuilder out) = 0;
-
-            /**
-             * Dispose (destroy) server context.
-             * This calls <code>destroy()</code> and silently handles all exceptions.
-             */
-            virtual void dispose() = 0;
-        };
-
-
         /**
          * Interface for creating request structure.
          * @author mse
