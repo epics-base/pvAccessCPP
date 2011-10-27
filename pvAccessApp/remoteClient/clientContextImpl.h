@@ -55,35 +55,35 @@ namespace epics {
              * Get context implementation version.
              * @return version of the context implementation.
              */
-            virtual Version& getVersion();
+            virtual Version& getVersion() = 0;
 
             /**
              * Initialize client context. This method is called immediately after instance construction (call of constructor).
              */
-            virtual void initialize();
+            virtual void initialize() = 0;
 
             /**
              * Get channel provider implementation.
              * @return the channel provider.
              */
-            virtual ChannelProvider::shared_pointer const & getProvider();
+            virtual ChannelProvider::shared_pointer const & getProvider() = 0;
 
             /**
              * Prints detailed information about the context to the standard output stream.
              */
-            virtual void printInfo();
+            virtual void printInfo() = 0;
 
             /**
              * Prints detailed information about the context to the specified output stream.
              * @param out the output stream.
              */
-            virtual void printInfo(epics::pvData::StringBuilder out);
+            virtual void printInfo(epics::pvData::StringBuilder out) = 0;
 
             /**
              * Dispose (destroy) server context.
              * This calls <code>destroy()</code> and silently handles all exceptions.
              */
-            virtual void dispose();
+            virtual void dispose() = 0;
             
             
                         virtual ChannelSearchManager::shared_pointer getChannelSearchManager() = 0;
