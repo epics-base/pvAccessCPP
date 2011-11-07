@@ -728,7 +728,7 @@ namespace pvAccess {
         	       ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
         	       Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
         	       
-        	void channelRPCConnect(const epics::pvData::Status& status, ChannelRPC::shared_pointer const & channelRPC, epics::pvData::PVStructure::shared_pointer const & arguments, epics::pvData::BitSet::shared_pointer const & bitSet);
+        	void channelRPCConnect(const epics::pvData::Status& status, ChannelRPC::shared_pointer const & channelRPC);
         	void requestDone(const epics::pvData::Status& status, epics::pvData::PVStructure::shared_pointer const & pvResponse);
         	void lock();
         	void unlock();
@@ -737,20 +737,11 @@ namespace pvAccess {
     		 * @return the channelRPC
     		 */
         	ChannelRPC::shared_pointer getChannelRPC();
-        	/**
-        	 * @return the pvArguments
-        	 */
-        	epics::pvData::PVStructure::shared_pointer getPvArguments();
-        	/**
-        	 * @return the agrumentsepics::pvData::BitSet
-        	 */
-        	epics::pvData::BitSet::shared_pointer getArgumentsBitSet();
+
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
         	ChannelRPC::shared_pointer _channelRPC;
-        	epics::pvData::PVStructure::shared_pointer _pvArguments;
         	epics::pvData::PVStructure::shared_pointer _pvResponse;
-        	epics::pvData::BitSet::shared_pointer _argumentsBitSet;
         	epics::pvData::Status _status;
         };
     }

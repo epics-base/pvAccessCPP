@@ -1171,7 +1171,6 @@ namespace epics {
             PVStructure::shared_pointer m_pvRequest;
 
             PVStructure::shared_pointer m_data;
-            BitSet::shared_pointer m_bitSet;
             
             Mutex m_dataMutex;
 
@@ -1189,9 +1188,7 @@ namespace epics {
                 if (m_pvRequest.get() == 0)
                 {
                     ChannelRPC::shared_pointer thisPointer = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
-                    PVStructure::shared_pointer nullPVStructure;
-                    BitSet::shared_pointer nullBitSet;
-                    EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(pvRequestNull, thisPointer, nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(pvRequestNull, thisPointer));
                     return;
                 }
                 
@@ -1201,9 +1198,7 @@ namespace epics {
                     resubscribeSubscription(transport);
                 } catch (std::runtime_error &rte) {
                     ChannelRPC::shared_pointer thisPointer = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
-                    PVStructure::shared_pointer nullPVStructure;
-                    BitSet::shared_pointer nullBitSet;
-                    EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(channelNotConnected, thisPointer, nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(channelNotConnected, thisPointer));
                 }
             }
 
@@ -1246,8 +1241,9 @@ namespace epics {
                     {
                         // no need to lock here, since it is already locked via TransportSender IF
                         //Lock lock(m_dataMutex);
-                        m_bitSet->serialize(buffer, control);
-                        m_data->serialize(buffer, control, m_bitSet.get());
+                        m_channel->getTransport()->getIntrospectionRegistry()->serializeStructure(buffer, control, m_data.get());
+                        // release arguments structure
+                        m_data.reset();
                     }
                 }
 
@@ -1264,22 +1260,13 @@ namespace epics {
                 if (!status.isSuccess())
                 {
                     ChannelRPC::shared_pointer nullChannelRPC;
-                    PVStructure::shared_pointer nullPVStructure;
-                    BitSet::shared_pointer nullBitSet;
-                    EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(status, nullChannelRPC, nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(status, nullChannelRPC));
                     return true;
                 }
 
-                // create data and its bitSet
-                {
-                    Lock lock(m_dataMutex);
-                    m_data.reset(transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
-                    m_bitSet.reset(new BitSet(m_data->getNumberFields()));
-                }
-                
                 // notify
                 ChannelRPC::shared_pointer thisChannelRPC = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
-                EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(status, thisChannelRPC, m_data, m_bitSet));
+                EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(status, thisChannelRPC));
                 return true;
             }
 
@@ -1292,12 +1279,12 @@ namespace epics {
                 }
 
 
-                PVStructure::shared_pointer response(transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
+                PVStructure::shared_pointer response(transport->getIntrospectionRegistry()->deserializeStructure(payloadBuffer, transport.get()));
                 EXCEPTION_GUARD(m_channelRPCRequester->requestDone(status, response));
                 return true;
             }
 
-            virtual void request(bool lastRequest) {
+            virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument, bool lastRequest) {
 
                 {
                     Lock guard(m_mutex);
@@ -1320,6 +1307,10 @@ namespace epics {
                 }
 
                 try {
+                    m_dataMutex.lock();
+                    m_data = pvArgument;
+                    m_dataMutex.unlock();
+
                     TransportSender::shared_pointer thisSender = shared_from_this();
                     m_channel->checkAndGetTransport()->enqueueSendRequest(thisSender);
                 } catch (std::runtime_error &rte) {

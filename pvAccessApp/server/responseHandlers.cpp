@@ -1922,13 +1922,9 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 
 		// deserialize put data
 		ChannelRPC::shared_pointer channelRPC = request->getChannelRPC();
-		{
-    		ScopedLock lock(channelRPC);  // TODO not really needed if channelRPC->request() is reads from the same thread
-    		BitSet::shared_pointer changedBitSet = request->getArgumentsBitSet();
-    		changedBitSet->deserialize(payloadBuffer, transport.get());
-    		request->getPvArguments()->deserialize(payloadBuffer, transport.get(), changedBitSet.get());
-		}
-		channelRPC->request(lastRequest);
+		// pvArgument
+		PVStructure::shared_pointer pvArgument(transport->getIntrospectionRegistry()->deserializeStructure(payloadBuffer, transport.get()));
+		channelRPC->request(pvArgument, lastRequest);
 	}
 }
 
@@ -1936,7 +1932,7 @@ ServerChannelRPCRequesterImpl::ServerChannelRPCRequesterImpl(
         ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
 		const pvAccessID ioid, Transport::shared_pointer const & transport):
         BaseChannelRequester(context, channel, ioid, transport),
-        _channelRPC(), _pvArguments(), _pvResponse(), _argumentsBitSet()
+        _channelRPC(), _pvResponse()
 
 {
 }
@@ -1959,12 +1955,10 @@ void ServerChannelRPCRequesterImpl::activate(PVStructure::shared_pointer const &
     INIT_EXCEPTION_GUARD(CMD_RPC, _channelRPC = _channel->getChannel()->createChannelRPC(thisPointer, pvRequest));
 }
 
-void ServerChannelRPCRequesterImpl::channelRPCConnect(const Status& status, ChannelRPC::shared_pointer const & channelRPC, PVStructure::shared_pointer const & arguments, BitSet::shared_pointer const & bitSet)
+void ServerChannelRPCRequesterImpl::channelRPCConnect(const Status& status, ChannelRPC::shared_pointer const & channelRPC)
 {
 	{
 		Lock guard(_mutex);
-		_pvArguments = arguments;
-		_argumentsBitSet = bitSet;
 		_status = status;
 		_channelRPC = channelRPC;
 	}
@@ -2019,18 +2013,6 @@ ChannelRPC::shared_pointer ServerChannelRPCRequesterImpl::getChannelRPC()
 	return _channelRPC;
 }
 
-PVStructure::shared_pointer ServerChannelRPCRequesterImpl::getPvArguments()
-{
-	//Lock guard(_mutex);
-	return _pvArguments;
-}
-
-BitSet::shared_pointer ServerChannelRPCRequesterImpl::getArgumentsBitSet()
-{
-	//Lock guard(_mutex);
-	return _argumentsBitSet;
-}
-
 void ServerChannelRPCRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
 	const int32 request = getPendingRequest();
@@ -2048,7 +2030,7 @@ void ServerChannelRPCRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
     	{
     		if ((QOS_INIT & request) != 0)
     		{
-                introspectionRegistry->serialize(_pvArguments != NULL ? _pvArguments->getField() : FieldConstPtr(), buffer, control);
+    		    // noop
     		}
     		else
     		{

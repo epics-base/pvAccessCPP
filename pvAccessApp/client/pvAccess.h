@@ -427,9 +427,10 @@ namespace pvAccess {
             /**
              * Issue an RPC request to the channel.
              * This fails if the request can not be satisfied.
+             * @param pvArgument The argument structure for an RPC request.
              * @param lastRequest Is this the last request?
              */
-            virtual void request(bool lastRequest) = 0;
+            virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument, bool lastRequest) = 0;
         };
 
 
@@ -446,11 +447,9 @@ namespace pvAccess {
              * The client and server have both completed the createChannelGet request.
              * @param status Completion status.
              * @param channelRPC The channelRPC interface or null if the request failed.
-             * @param pvArgument The argument structure for an RPC request.
              * @param bitSet The bitSet for argument changes.
              */
-            virtual void channelRPCConnect(const epics::pvData::Status& status,ChannelRPC::shared_pointer const & channelRPC,
-                        epics::pvData::PVStructure::shared_pointer const & pvArgument,epics::pvData::BitSet::shared_pointer const & bitSet) = 0;
+            virtual void channelRPCConnect(const epics::pvData::Status& status,ChannelRPC::shared_pointer const & channelRPC) = 0;
 
             /**
              * The request is done. This is always called with no locks held.

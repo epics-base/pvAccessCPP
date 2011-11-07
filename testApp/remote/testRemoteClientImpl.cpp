@@ -267,8 +267,6 @@ class ChannelPutGetRequesterImpl : public ChannelPutGetRequester
 class ChannelRPCRequesterImpl : public ChannelRPCRequester
 {
     //ChannelRPC::shared_pointer m_channelRPC;
-    epics::pvData::PVStructure::shared_pointer m_pvStructure;
-    epics::pvData::BitSet::shared_pointer m_bitSet;
 
     virtual String getRequesterName()
     {
@@ -280,20 +278,11 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
     }
 
-    virtual void channelRPCConnect(const epics::pvData::Status& status,ChannelRPC::shared_pointer const & channelRPC,
-                                   epics::pvData::PVStructure::shared_pointer const & pvStructure,epics::pvData::BitSet::shared_pointer const & bitSet)
+    virtual void channelRPCConnect(const epics::pvData::Status& status,ChannelRPC::shared_pointer const & channelRPC)
     {
         std::cout << "channelRPCConnect(" << status.toString() << ")" << std::endl;
-        if (status.isSuccess())
-        {
-        	String st;
-        	pvStructure->toString(&st);
-            std::cout << st << std::endl;
-        }
         
         //m_channelRPC = channelRPC;
-        m_pvStructure = pvStructure;
-        m_bitSet = bitSet;
     }
 
     virtual void requestDone(const epics::pvData::Status& status,epics::pvData::PVStructure::shared_pointer const & pvResponse)
@@ -529,7 +518,8 @@ int main(int argc,char *argv[])
     PVStructure::shared_pointer pvRequest = getCreateRequest()->createRequest("record[]field(arguments)");
     ChannelRPC::shared_pointer channelRPC = channel->createChannelRPC(channelRPCRequesterImpl, pvRequest);
     epicsThreadSleep ( 1.0 );
-    channelRPC->request(false);
+    // for test simply use pvRequest as arguments
+    channelRPC->request(pvRequest, false);
     epicsThreadSleep ( 1.0 );
     channelRPC->destroy();
         }

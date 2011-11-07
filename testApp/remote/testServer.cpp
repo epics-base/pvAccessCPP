@@ -371,12 +371,10 @@ class MockChannelRPC : public ChannelRPC
     private:
 		ChannelRPCRequester::shared_pointer m_channelRPCRequester;
 		PVStructure::shared_pointer m_pvStructure;
-		BitSet::shared_pointer m_bitSet;
 
     protected:
     MockChannelRPC(ChannelRPCRequester::shared_pointer const & channelRPCRequester, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
-        m_channelRPCRequester(channelRPCRequester), m_pvStructure(pvStructure),
-        m_bitSet(new BitSet(pvStructure->getNumberFields()))
+        m_channelRPCRequester(channelRPCRequester), m_pvStructure(pvStructure)
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelRPC);
     }
@@ -386,7 +384,7 @@ class MockChannelRPC : public ChannelRPC
     {
         ChannelRPC::shared_pointer thisPtr(new MockChannelRPC(channelRPCRequester, pvStructure, pvRequest));
         // TODO pvRequest
-    	channelRPCRequester->channelRPCConnect(Status::OK, thisPtr, pvStructure, static_cast<MockChannelRPC*>(thisPtr.get())->m_bitSet);
+    	channelRPCRequester->channelRPCConnect(Status::OK, thisPtr);
     	return thisPtr;
     }
 
@@ -395,7 +393,7 @@ class MockChannelRPC : public ChannelRPC
         PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelRPC);
     }
 
-    virtual void request(bool lastRequest)
+    virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument, bool lastRequest)
     {
     	m_channelRPCRequester->requestDone(Status::OK, m_pvStructure);
     	if (lastRequest)
