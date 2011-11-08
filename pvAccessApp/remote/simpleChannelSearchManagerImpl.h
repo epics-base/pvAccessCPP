@@ -145,6 +145,11 @@ class SimpleChannelSearchManagerImpl : public ChannelSearchManager, public epics
 	epics::pvData::Mutex m_channelMutex;
     
    	/**
+	 * User value lock.
+	 */
+	epics::pvData::Mutex m_userValueMutex;
+
+   	/**
 	 * m_channels mutex.
 	 */
 	epics::pvData::Mutex m_mutex;

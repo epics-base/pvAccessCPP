@@ -44,6 +44,8 @@ SimpleChannelSearchManagerImpl::SimpleChannelSearchManagerImpl(Context::shared_p
 	m_timerNode(*this),
     m_lastTimeSent(),
     m_mockTransportSendControl(),
+    m_channelMutex(),
+    m_userValueMutex(),
     m_mutex()
 {
 	// initialize send buffer
@@ -90,6 +92,8 @@ void SimpleChannelSearchManagerImpl::registerSearchInstance(SearchInstance::shar
 	Lock guard(m_channelMutex);
 	//overrides if already registered
 	m_channels[channel->getSearchInstanceID()] = channel;
+	
+	Lock guard2(m_userValueMutex);
 	int32_t& userValue = channel->getUserValue();
 	userValue = 1;
 }
@@ -222,6 +226,7 @@ bool SimpleChannelSearchManagerImpl::generateSearchRequestMessage(SearchInstance
 void SimpleChannelSearchManagerImpl::boost()
 {
 	Lock guard(m_channelMutex);
+	Lock guard2(m_userValueMutex);
 	std::map<pvAccessID,SearchInstance::shared_pointer>::iterator channelsIter = m_channels.begin();
 	for(; channelsIter != m_channels.end(); channelsIter++)
     {
@@ -260,6 +265,7 @@ void SimpleChannelSearchManagerImpl::callback()
     vector<SearchInstance::shared_pointer>::iterator siter = toSend.begin();
     for (; siter != toSend.end(); siter++)
     {
+	    m_userValueMutex.lock();
         int32_t& countValue = (*siter)->getUserValue();
 		bool skip = !isPowerOfTwo(countValue);
 		
@@ -267,6 +273,7 @@ void SimpleChannelSearchManagerImpl::callback()
 			countValue = MAX_FALLBACK_COUNT_VALUE;
 		else 
 			countValue++;
+	    m_userValueMutex.unlock();
 		
 		// back-off
 		if (skip)

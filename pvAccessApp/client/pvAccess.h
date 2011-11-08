@@ -40,6 +40,8 @@ namespace pvAccess {
         {
             public:
             POINTER_DEFINITIONS(Lockable);
+            
+            virtual ~Lockable() {};
 
             virtual void lock() = 0;
             virtual void unlock() = 0;
@@ -192,6 +194,7 @@ namespace pvAccess {
             public:
             POINTER_DEFINITIONS(ChannelFindRequester);
 
+            virtual ~ChannelFindRequester() {};
             /**
              * @param status Completion status.
              */
