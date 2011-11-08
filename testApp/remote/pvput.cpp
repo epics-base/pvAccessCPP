@@ -4,12 +4,13 @@
 #include <stdio.h>
 #include <epicsStdlib.h>
 #include <epicsGetopt.h>
-#include <logger.h>
+#include <pv/logger.h>
 
 #include <vector>
 #include <string>
 
 #include <pv/convert.h>
+#include <pv/event.h>
 
 using namespace std;
 using namespace std::tr1;

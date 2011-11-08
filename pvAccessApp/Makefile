@@ -32,6 +32,34 @@ SRC_DIRS += $(PVACCESS)/client
 INC += pvAccess.h
 LIBSRCS += pvAccess.cpp
 
+SRC_DIRS += $(PVACCESS)/factory
+LIBSRCS += ChannelAccessFactory.cpp
+LIBSRCS += CreateRequestFactory.cpp
+
+SRC_DIRS += $(PVACCESS)/remote
+INC += remote.h
+INC += blockingUDP.h
+INC += beaconHandler.h
+INC += blockingTCP.h
+INC += channelSearchManager.h
+INC += simpleChannelSearchManagerImpl.h
+INC += transportRegistry.h
+LIBSRCS += blockingUDPTransport.cpp
+LIBSRCS += blockingUDPConnector.cpp
+LIBSRCS += beaconHandler.cpp
+LIBSRCS += blockingTCPTransport.cpp
+LIBSRCS += blockingClientTCPTransport.cpp
+LIBSRCS += blockingTCPConnector.cpp
+LIBSRCS += blockingServerTCPTransport.cpp
+LIBSRCS += simpleChannelSearchManagerImpl.cpp
+LIBSRCS += abstractResponseHandler.cpp
+LIBSRCS += blockingTCPAcceptor.cpp
+LIBSRCS += transportRegistry.cpp
+
+SRC_DIRS += $(PVACCESS)/remoteClient
+INC += clientContextImpl.h
+LIBSRCS += clientContextImpl.cpp
+
 SRC_DIRS += $(PVACCESS)/server
 INC += serverContext.h
 INC += responseHandlers.h
@@ -45,35 +73,6 @@ LIBSRCS += serverChannelImpl.cpp
 LIBSRCS += baseChannelRequester.cpp
 LIBSRCS += beaconEmitter.cpp
 LIBSRCS += beaconServerStatusProvider.cpp
-
-SRC_DIRS += $(PVACCESS)/factory
-LIBSRCS += ChannelAccessFactory.cpp
-LIBSRCS += CreateRequestFactory.cpp
-
-
-SRC_DIRS += $(PVACCESS)/remote
-INC += remote.h
-INC += blockingUDP.h
-INC += beaconHandler.h
-INC += blockingTCP.h
-INC += channelSearchManager.h
-INC += transportRegistry.h
-LIBSRCS += blockingUDPTransport.cpp
-LIBSRCS += blockingUDPConnector.cpp
-LIBSRCS += beaconHandler.cpp
-LIBSRCS += blockingTCPTransport.cpp
-LIBSRCS += blockingClientTCPTransport.cpp
-LIBSRCS += blockingTCPConnector.cpp
-LIBSRCS += blockingServerTCPTransport.cpp
-LIBSRCS += channelSearchManager.cpp
-LIBSRCS += abstractResponseHandler.cpp
-LIBSRCS += blockingTCPAcceptor.cpp
-LIBSRCS += transportRegistry.cpp
-
-SRC_DIRS += $(PVACCESS)/remoteClient
-INC += clientContextImpl.h
-LIBSRCS += clientContextImpl.cpp
-
 
 LIBRARY = pvAccess
 pvAccess_LIBS += Com

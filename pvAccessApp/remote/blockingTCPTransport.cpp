@@ -124,17 +124,20 @@ namespace pvAccess {
 
             // TODO minor tweak: deque size is not preallocated...
             
-            _socketBuffer = new ByteBuffer(max((int)(MAX_TCP_RECV+MAX_ENSURE_DATA_BUFFER_SIZE), receiveBufferSize));
+            unsigned int bufferSize = max((int)(MAX_TCP_RECV+MAX_ENSURE_DATA_BUFFER_SIZE), receiveBufferSize);
+            // size must be "aligned"
+            bufferSize = (bufferSize + (CA_ALIGNMENT - 1)) & (~(CA_ALIGNMENT - 1));
+            
+            _socketBuffer = new ByteBuffer(bufferSize);
             _socketBuffer->setPosition(_socketBuffer->getLimit());
             _startPosition = _socketBuffer->getPosition();
 
             // allocate buffer
-            _sendBuffer = new ByteBuffer(_socketBuffer->getSize());
+            _sendBuffer = new ByteBuffer(bufferSize);
             _maxPayloadSize = _sendBuffer->getSize() - 2*CA_MESSAGE_HEADER_SIZE; // one for header, one for flow control
 
-            // get send buffer size
+            // get TCP send buffer size
             osiSocklen_t intLen = sizeof(int);
-
             int retval = getsockopt(_channel, SOL_SOCKET, SO_SNDBUF, (char *)&_socketSendBufferSize, &intLen);
             if(unlikely(retval<0)) {
                 _socketSendBufferSize = MAX_TCP_RECV;
@@ -145,6 +148,7 @@ namespace pvAccess {
                         errStr);
             }
 
+            // get remote address
             osiSocklen_t saSize = sizeof(sockaddr);
             retval = getpeername(_channel, &(_socketAddress.sa), &saSize);
             if(unlikely(retval<0)) {
@@ -606,7 +610,7 @@ namespace pvAccess {
                             // control
                             
                             // marker request sent
-                            if (_command == 0) {
+                            if (_command == CMD_SET_MARKER) {
                                 _flowControlMutex.lock();
                                 if(_markerToSend==0)
                                     _markerToSend = _payloadSize;
@@ -615,7 +619,7 @@ namespace pvAccess {
                             }
                             
                             // marker received back
-                            else if (_command == 1)
+                            else if (_command == CMD_ACK_MARKER)
                             {
                                 _flowControlMutex.lock();
                                 int difference = (int)_totalBytesSent-_payloadSize+CA_MESSAGE_HEADER_SIZE;
@@ -629,7 +633,7 @@ namespace pvAccess {
                                 _flowControlMutex.unlock();
                             }
     						// set byte order
-    						else if (_command == 2)
+    						else if (_command == CMD_SET_ENDIANESS)
     						{
     							// check 7-th bit
     							
@@ -642,8 +646,7 @@ namespace pvAccess {
     							_sendBuffer->setEndianess(endianess);
     							_byteOrderFlag = (endianess == EPICS_ENDIAN_BIG) ? 0x80 : 0x00;
     							_sendQueueMutex.unlock();
-    						}
-                            
+    						}                            
 
                             // no payload
                             //stage = ReceiveStage.PROCESS_HEADER;

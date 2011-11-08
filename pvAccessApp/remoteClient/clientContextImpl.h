@@ -11,6 +11,7 @@
 #include <pv/remote.h>
 #include <pv/sharedPtr.h>
 #include <pv/channelSearchManager.h>
+#include <pv/inetAddressUtil.h>
 
 class ChannelSearchManager;
 
@@ -24,7 +25,7 @@ namespace epics {
                 public Channel,
                 public TransportClient,
                 public TransportSender,
-                public BaseSearchInstance
+                public SearchInstance
         {
         public:
             POINTER_DEFINITIONS(ChannelImpl);

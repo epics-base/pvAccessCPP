@@ -4,13 +4,14 @@
 #include <stdio.h>
 #include <epicsStdlib.h>
 #include <epicsGetopt.h>
-#include <logger.h>
+#include <pv/logger.h>
 
 #include <vector>
 #include <string>
 
 
 #include <pv/CDRMonitor.h>
+#include <pv/event.h>
 #include <epicsExit.h>
 
 using namespace std;

@@ -23,6 +23,7 @@
 #include <pv/hexDump.h>
 #include <pv/remote.h>
 #include <pv/channelSearchManager.h>
+#include <pv/simpleChannelSearchManagerImpl.h>
 #include <pv/clientContextImpl.h>
 #include <pv/configuration.h>
 #include <pv/beaconHandler.h>
@@ -2979,6 +2980,9 @@ namespace epics {
                  */
                 bool m_issueCreateMessage;
                 
+                /// Used by SearchInstance.
+                int32_t m_userValue;
+                
                 /**
                  * Constructor.
                  * @param context
@@ -3010,8 +3014,6 @@ namespace epics {
                 
                 void activate()
                 {
-                    initializeSearchInstance();
-                    
                     // register before issuing search request
                     ChannelImpl::shared_pointer thisPointer = shared_from_this();
                     m_context->registerChannel(thisPointer);
@@ -3053,6 +3055,8 @@ namespace epics {
                 {
                     std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
                 }
+                
+                int32_t& getUserValue() { return m_userValue; }
                 
                 virtual ChannelProvider::shared_pointer const & getProvider()
                 {
@@ -3294,7 +3298,8 @@ namespace epics {
                             throw std::runtime_error("Channel already destroyed.");
                         
                         // stop searching...
-                        m_context->getChannelSearchManager()->unregisterChannel(this);
+                        SearchInstance::shared_pointer thisChannelPointer = shared_from_this();
+                        m_context->getChannelSearchManager()->unregisterSearchInstance(thisChannelPointer);
                         cancel();
                         
                         disconnectPendingIO(true);
@@ -3339,7 +3344,8 @@ namespace epics {
                     
                     if (!initiateSearch) {
                         // stop searching...
-                        m_context->getChannelSearchManager()->unregisterChannel(this);
+                        SearchInstance::shared_pointer thisChannelPointer = shared_from_this();
+                        m_context->getChannelSearchManager()->unregisterSearchInstance(thisChannelPointer);
                         cancel();
                     }
                     setConnectionState(DISCONNECTED);
@@ -3378,7 +3384,10 @@ namespace epics {
                     m_allowCreation = true;
                     
                     if (!m_addresses.get())
-                        m_context->getChannelSearchManager()->registerChannel(this);
+                    {
+                        SearchInstance::shared_pointer thisChannelPointer = shared_from_this();
+                        m_context->getChannelSearchManager()->registerSearchInstance(thisChannelPointer);
+                    }
                     /* TODO
                      else
                      // TODO not only first
@@ -3893,7 +3902,7 @@ TODO
                 m_transportRegistry.reset(new TransportRegistry());
 
                 // setup search manager
-                m_channelSearchManager.reset(new ChannelSearchManager(thisPointer.get()));
+                m_channelSearchManager.reset(new SimpleChannelSearchManagerImpl(thisPointer));
 
                 // TODO put memory barrier here...
 

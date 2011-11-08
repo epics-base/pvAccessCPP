@@ -71,7 +71,7 @@ namespace epics {
 
         typedef epics::pvData::int32 pvAccessID;
 
-		enum MessageCommands {
+		enum ApplicationCommands {
             CMD_BEACON = 0,
             CMD_CONNECTION_VALIDATION = 1,
             CMD_ECHO = 2,
@@ -93,6 +93,12 @@ namespace epics {
             CMD_MESSAGE = 18,
             CMD_MULTIPLE_DATA = 19,
             CMD_RPC = 20
+        };
+
+		enum ControlCommands {
+            CMD_SET_MARKER = 0,
+            CMD_ACK_MARKER = 1,
+            CMD_SET_ENDIANESS = 2
         };
 
         /**

@@ -10,6 +10,8 @@
 #include <pv/clientContextImpl.h>
 #include <pv/clientFactory.h>
 
+#include <pv/event.h>
+
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 using namespace std;
@@ -88,7 +90,7 @@ int main(int argc,char *argv[])
         ClientFactory::stop();
     }
     
-    epicsThreadSleep ( 1.0 ); 
+    epicsThreadSleep ( 2.0 ); 
     std::cout << "-----------------------------------------------------------------------" << std::endl;
     epicsExitCallAtExits();
     CDRMonitor::get().show(stdout, true);

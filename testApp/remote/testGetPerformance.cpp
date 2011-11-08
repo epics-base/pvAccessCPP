@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
+#include <pv/event.h>
+
 using namespace std;
 using namespace std::tr1;
 using namespace epics::pvData;
