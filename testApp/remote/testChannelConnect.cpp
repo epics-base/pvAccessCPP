@@ -16,16 +16,15 @@ using namespace epics::pvData;
 using namespace epics::pvAccess;
 using namespace std;
 
-#define N_CHANNELS 10000
-
-static Event g_event;
+#define N_CHANNELS 1000
 
 class ChannelRequesterImpl : public ChannelRequester
 {
 public:
-    ChannelRequesterImpl() : count(0) {}
+    ChannelRequesterImpl(Event& event) : count(0), g_event(event) {}
 private:
     int count;
+    Event& g_event;
     
     virtual String getRequesterName()
     {
@@ -71,9 +70,11 @@ private:
 int main(int argc,char *argv[])
 {
     {
+        Event g_event;
+
         ClientFactory::start();
         ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
-        ChannelRequester::shared_pointer channelRequester(new ChannelRequesterImpl());
+        ChannelRequester::shared_pointer channelRequester(new ChannelRequesterImpl(g_event));
         
         Channel::shared_pointer channels[N_CHANNELS];
         char buf[16];
