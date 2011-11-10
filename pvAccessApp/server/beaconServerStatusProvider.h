@@ -25,6 +25,8 @@ namespace pvAccess {
         typedef std::tr1::shared_ptr<BeaconServerStatusProvider> shared_pointer;
         typedef std::tr1::shared_ptr<const BeaconServerStatusProvider> const_shared_pointer;
 
+        virtual ~BeaconServerStatusProvider() {};
+        
 		/**
 		 * Gets server status data.
 		 */
