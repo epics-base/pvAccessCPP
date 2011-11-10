@@ -251,6 +251,7 @@ void SimpleChannelSearchManagerImpl::callback()
 	}
 
 
+    int count = 0;
 	int frameSent = 0;
 
     vector<SearchInstance::shared_pointer> toSend;
@@ -278,6 +279,8 @@ void SimpleChannelSearchManagerImpl::callback()
 		// back-off
 		if (skip)
 			continue;
+			
+		count++;
 
 		if (generateSearchRequestMessage(*siter, true, false))
 			frameSent++;
@@ -288,7 +291,8 @@ void SimpleChannelSearchManagerImpl::callback()
 		}
     }
 
-	flushSendBuffer();
+    if (count > 0)
+	   flushSendBuffer();
 }
 
 bool SimpleChannelSearchManagerImpl::isPowerOfTwo(int32_t x)
