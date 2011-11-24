@@ -395,6 +395,9 @@ class MockChannelRPC : public ChannelRPC
 
     virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument, bool lastRequest)
     {
+        std::string s;
+        pvArgument->toString(&s);
+        std::cout << "RPC" << std::endl << s << std::endl;
     	m_channelRPCRequester->requestDone(Status::OK, m_pvStructure);
     	if (lastRequest)
     	   destroy();
