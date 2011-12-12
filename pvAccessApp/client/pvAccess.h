@@ -450,7 +450,6 @@ namespace pvAccess {
              * The client and server have both completed the createChannelGet request.
              * @param status Completion status.
              * @param channelRPC The channelRPC interface or null if the request failed.
-             * @param bitSet The bitSet for argument changes.
              */
             virtual void channelRPCConnect(const epics::pvData::Status& status,ChannelRPC::shared_pointer const & channelRPC) = 0;
 

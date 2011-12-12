@@ -1,11 +1,9 @@
 QtC-pvAccess.creator.user
 
-syntax: glob
-O.*
-.DS_Store
+bin
+lib
+doc
+include
+documentation/html
+./O.*
 
-syntax: regexp
-^documentation/html
-^bin
-^include
-^lib
