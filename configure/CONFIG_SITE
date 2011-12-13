@@ -44,3 +44,4 @@ endif
 INSTALL_INCLUDE = $(INSTALL_LOCATION)/include/pv
 USR_INCLUDES += -I $(INSTALL_LOCATION)/include
 
+-include $(TOP)/configure/CONFIG_SITE.local
