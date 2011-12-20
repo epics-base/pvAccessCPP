@@ -25,14 +25,14 @@
 <!-- Maturity: Working Draft or Request for Comments, or Recommendation, and date.  -->
 
 <h2 class="nocount" id="L50">EPICS v4 Working Group, Working Draft,
-19-Dec-2011</h2>
+20-Dec-2011</h2>
 <dl>
   <dt>This version:</dt>
     <dd><a
-      href="http://epics-pvdata.sourceforge.net/pvAccessCPP_20111219.html">pvAccessCPP_20111219.html</a></dd>
+      href="http://epics-pvdata.sourceforge.net/pvAccessCPP_20111220.html">pvAccessCPP_20111220.html</a></dd>
   <dt>Latest version:</dt>
     <dd><a
-      href="http://epics-pvdata.sourceforge.net/pvAccessCPP.html">pvAccessCPP.html</a></dd>
+      href="http://epics-pvdata.sourceforge.net/pvAccessCPP_20111220.html">pvAccessCPP_20111220.html</a></dd>
   <dt>Editors:</dt>
     <dd>Marty Kraimer, BNL</dd>
 </dl>
@@ -40,29 +40,47 @@
 </div>
 
 <h2 class="nocount" id="L72">Abstract</h2>
+<p>pvIOCAccess is the Java implementation of pvAccess, which is one of a related
+set of products:</p>
+<dl>
+  <dt><a
+  href="http://epics-pvdata.hg.sourceforge.net/hgweb/epics-pvdata/pvDataCPP/raw-file/tip/documentation/pvDataCPP.html">pvData</a></dt>
+    <dd>pvData (Process Variable Daata) defines and implements an efficent way
+      to store, access, and transmit memory resident structured data</dd>
+  <dt><a
+  href="http://epics-pvdata.hg.sourceforge.net/hgweb/epics-pvdata/pvAccessCPP/raw-file/tip/documentation/pvAccessCPP.html">pvAccess</a></dt>
+    <dd>pvAccess is network support for transmitting pvData.</dd>
+  <dt><a
+  href="http://epics-pvdata.hg.sourceforge.net/hgweb/epics-pvdata/pvIOCCPP/raw-file/tip/documentation/pvIOCCPP.html">pvIOC</a></dt>
+    <dd>A pvIOC is a network accessable smart real time database. The database
+      consists of memory resident records. Each record has a name that is
+      uniquie within the local area network and contains a top level pvData
+      structure. Each field of a record can optionally have support code
+      attached to it. The support is called when a request is made to process
+      the record. The support code is what makes the record "smart". A pvAccess
+      server is provided so that the records can be accesed via the network.
+    </dd>
+</dl>
 
-<p>pvAccess is an implementation of Channel Access, i. e. network support for
-transmitting Process Variable Data, that fully supports pvData.</p>
+<p>Each of the products has a Java and a C++ implementation.</p>
 
-<p>pvData (Process Variable Data) defines and implements an efficent way to
-store, access, and transmit memory resident structured data.</p>
-
-<p>This document will describe the CPP implementation of EPICS v4 pvAccess.</p>
-
-<p>For more information about the EPICS, please refer to the home page of the
-<a href="http://www.aps.anl.gov/epics/">Experimental Physics and Industrial
+<p>The products are all part of the <a
+href="http://epics-pvdata.sourceforge.net/">V4</a> implementation of <a
+href="http://www.aps.anl.gov/epics/">Experimental Physics and Industrial
 Control System.</a></p>
+
+
 
 <h2 class="nocount" id="L80">Status of this Document</h2>
 
-<p>This is the 19-Dec-2011 version of the C++ implementation of pvAccess. The
+<p>This is the 20-Dec-2011 version of the C++ implementation of pvAccess. The
 code is a complete implementation of pvAccess as currently defined. This
 overview is NOT written.</p>
 CONTENTS 
 
 <div class="toc">
 <ul>
-  <li><a href="#L50">EPICS v4 Working Group, Working Draft, 19-Dec-2011</a></li>
+  <li><a href="#L50">EPICS v4 Working Group, Working Draft, 20-Dec-2011</a></li>
   <li><a href="#L72">Abstract</a></li>
   <li><a href="#L80">Status of this Document</a></li>
   <li><a href="#L88">Introduction</a></li>
