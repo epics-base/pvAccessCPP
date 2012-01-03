@@ -6,4 +6,6 @@ doc
 include
 documentation/html
 ./O.*
+configure/RELEASE.local
+configure/CONFIG_SITE.local
 
