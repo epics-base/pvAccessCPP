@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <pv/pvAccess.h>
-#include <CDRMonitor.h>
+#include <pv/CDRMonitor.h>
 #include <iostream>
 
 #include <epicsAssert.h>
