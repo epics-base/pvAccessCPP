@@ -511,6 +511,115 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
     }
 };
 
+class ChannelRPCRequesterImpl : public ChannelRPCRequester
+{
+    private:
+    ChannelRPC::shared_pointer m_channelRPC;
+    Mutex m_pointerMutex;
+    Event m_event;
+    Event m_connectionEvent;
+    String m_channelName;
+
+    public:
+    
+    ChannelRPCRequesterImpl(String channelName) : m_channelName(channelName) {};
+    
+    virtual String getRequesterName()
+    {
+        return "ChannelRPCRequesterImpl";
+    };
+
+    virtual void message(String message,MessageType messageType)
+    {
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+    }
+
+    virtual void channelRPCConnect(const epics::pvData::Status& status,ChannelRPC::shared_pointer const & channelRPC)
+    {
+        if (status.isSuccess())
+        {
+            // show warning
+            if (!status.isOK())
+            {
+                std::cout << "[" << m_channelName << "] channel RPC create: " << status.toString() << std::endl;
+            }
+            
+            // assign smart pointers
+            {
+                Lock lock(m_pointerMutex);
+                m_channelRPC = channelRPC;
+            }
+            
+            m_connectionEvent.signal();
+        }
+        else
+        {
+            std::cout << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
+        }
+    }
+
+    virtual void requestDone (const epics::pvData::Status &status, epics::pvData::PVStructure::shared_pointer const &pvResponse)
+    {
+        if (status.isSuccess())
+        {
+            // show warning
+            if (!status.isOK())
+            {
+                std::cout << "[" << m_channelName << "] channel RPC: " << status.toString() << std::endl;
+            }
+
+            String str;
+            
+            // access smart pointers
+            {
+                Lock lock(m_pointerMutex);
+                {
+                    // TODO format normative types
+                    if (terseMode)
+                        convertToString(&str, pvResponse.get(), 0);
+                    else
+                        pvResponse->toString(&str);
+                } 
+                // this is OK since calle holds also owns it
+                m_channelRPC.reset();
+            }
+            
+            std::cout << str << std::endl;
+            
+            m_event.signal();
+            
+        }
+        else
+        {
+            std::cout << "[" << m_channelName << "] failed to RPC: " << status.toString() << std::endl;
+            {
+                Lock lock(m_pointerMutex);
+                // this is OK since calle holds also owns it
+                m_channelRPC.reset();
+            }
+        }
+        
+    }
+    
+    /*
+    void request(epics::pvData::PVStructure::shared_pointer const &pvRequest)
+    {
+        Lock lock(m_pointerMutex);
+        m_channelRPC->request(pvRequest, false);
+    }
+    */
+
+    bool waitUntilRPC(double timeOut)
+    {
+        return m_event.wait(timeOut);
+    }
+
+    bool waitUntilConnected(double timeOut)
+    {
+        return m_connectionEvent.wait(timeOut);
+    }
+};
+
 class ChannelRequesterImpl : public ChannelRequester
 {
 private:
@@ -731,8 +840,42 @@ int main (int argc, char *argv[])
         std::cout << "serviceVar         : " << serviceVar << std::endl;
         std::cout << "encoded URL request: '" << urlEncodedRequest << "'" << std::endl;
 
-        std::cout << std::endl << "!!! not yet implemented !!!" << std::endl;
-        return 1;
+        // TODO simply empty?
+        PVStructure::shared_pointer pvRequest;
+        try {
+            pvRequest = getCreateRequest()->createRequest(request);
+        } catch (std::exception &ex) {
+            printf("failed to parse request string: %s\n", ex.what());
+            return 1;
+        }
+
+        ClientFactory::start();
+        ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
+        
+        // TODO connect via service    
+        shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
+        Channel::shared_pointer channel = provider->createChannel(serviceVar, channelRequesterImpl);
+        
+        if (channelRequesterImpl->waitUntilConnected(timeOut))
+        {
+            shared_ptr<ChannelRPCRequesterImpl> getRequesterImpl(new ChannelRPCRequesterImpl(channel->getChannelName()));
+            ChannelRPC::shared_pointer channelRPC = channel->createChannelRPC(getRequesterImpl, pvRequest);
+            
+            // TODO put URL here
+            PVStructure::shared_pointer args(
+                new PVStructure(NULL, getFieldCreate()->createStructure("nothing", 0, NULL)));
+                
+            channelRPC->request(args, true);
+            allOK &= getRequesterImpl->waitUntilRPC(timeOut);
+        }
+        else
+        {
+            allOK = false;
+            channel->destroy();
+            std::cout << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
+        }
+    
+        ClientFactory::stop();
     }
 
     if (cleanupAndReport)
