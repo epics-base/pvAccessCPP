@@ -173,64 +173,15 @@ void IntrospectionRegistry::serialize(FieldConstPtr field, StructureConstPtr par
 				buffer->putShort(key);
 			}
 		}
-
-		// NOTE: high nibble is field.getType() ordinal, low nibble is scalar type ordinal; -1 is null
-		switch (field->getType())
-		{
-		case epics::pvData::scalar:
-		{
-            ScalarConstPtr scalar = static_pointer_cast<const Scalar>(field);
-			control->ensureBuffer(1);
-			buffer->putByte((int8)(epics::pvData::scalar << 4 | scalar->getScalarType()));
-			SerializeHelper::serializeString(field->getFieldName(), buffer, control);
-			break;
-		}
-		case epics::pvData::scalarArray:
-		{
-            ScalarArrayConstPtr array = static_pointer_cast<const ScalarArray>(field);
-			control->ensureBuffer(1);
-			buffer->putByte((int8)(epics::pvData::scalarArray << 4 | array->getElementType()));
-			SerializeHelper::serializeString(field->getFieldName(), buffer, control);
-			break;
-		}
-		case epics::pvData::structure:
-		{
-            StructureConstPtr structure = static_pointer_cast<const Structure>(field);
-			control->ensureBuffer(1);
-			buffer->putByte((int8)(epics::pvData::structure << 4));
-			serializeStructureField(buffer, control, registry, structure);
-			break;
-		}
-		case epics::pvData::structureArray:
-		{
-            StructureArrayConstPtr structureArray = static_pointer_cast<const StructureArray>(field);
-			control->ensureBuffer(1);
-			buffer->putByte((int8)(epics::pvData::structureArray << 4));
-			SerializeHelper::serializeString(field->getFieldName(), buffer, control);
-			// we also need to serialize structure field...
-            StructureConstPtr structureElement = structureArray->getStructure();
-			serializeStructureField(buffer, control, registry, structureElement);
-			break;
-		}
-		}
-	}
-}
-
-void IntrospectionRegistry::serializeStructureField(ByteBuffer* buffer, SerializableControl* control,
-		IntrospectionRegistry* registry, StructureConstPtr structure)
-{
-	SerializeHelper::serializeString(structure->getFieldName(), buffer, control);
-	FieldConstPtrArray fields = structure->getFields();
-	SerializeHelper::writeSize(structure->getNumberFields(), buffer, control);
-	for (int i = 0; i < structure->getNumberFields(); i++)
-	{
-		serialize(fields[i], structure, buffer, control, registry);
+		
+		field->serialize(buffer, control);
 	}
 }
 
 FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, DeserializableControl* control, IntrospectionRegistry* registry)
 {
 	control->ensureData(1);
+	uintptr_t pos = buffer->getPosition();
 	const int8 typeCode = buffer->getByte();
 	if(typeCode == IntrospectionRegistry::NULL_TYPE_CODE)
 	{
@@ -254,62 +205,9 @@ FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, Deserializa
 		return field;
 	}
 
-
-	// high nibble means scalar/array/structure
-	const Type type = (Type)(typeCode >> 4);
-	switch (type)
-	{
-	case scalar:
-	{
-		const ScalarType scalar = (ScalarType)(typeCode & 0x0F);
-		const String scalarFieldName = SerializeHelper::deserializeString(buffer, control);
-		return static_cast<FieldConstPtr>(_fieldCreate->createScalar(scalarFieldName,scalar));
-	}
-	case scalarArray:
-	{
-		const ScalarType element = (ScalarType)(typeCode & 0x0F);
-		const String arrayFieldName = SerializeHelper::deserializeString(buffer, control);
-		return static_cast<FieldConstPtr>(_fieldCreate->createScalarArray(arrayFieldName,element));
-	}
-	case structure:
-	{
-		return static_cast<FieldConstPtr>(deserializeStructureField(buffer, control, registry));
-	}
-	case structureArray:
-	{
-		const String structureArrayFieldName = SerializeHelper::deserializeString(buffer, control);
-		const StructureConstPtr arrayElement = deserializeStructureField(buffer, control, registry);
-		return  static_cast<FieldConstPtr>(_fieldCreate->createStructureArray(structureArrayFieldName, arrayElement));
-	}
-	default:
-	{
-	   // TODO log
-       return FieldConstPtr();
-	}
-	}
-}
-
-StructureConstPtr IntrospectionRegistry::deserializeStructureField(ByteBuffer* buffer, DeserializableControl* control, IntrospectionRegistry* registry)
-{
-	const String structureFieldName = SerializeHelper::deserializeString(buffer, control);
-	const int32 size = SerializeHelper::readSize(buffer, control);
-	FieldConstPtrArray fields = NULL;
-	if (size > 0)
-	{
-		fields = new FieldConstPtr[size];
-		for(int i = 0; i < size; i++)
-		{
-		  try {
-			fields[i] = deserialize(buffer, control, registry);
-		  } catch (...) {
-		      delete[] fields;
-		      throw;
-		  }
-		}
-	}
-
-	StructureConstPtr structure = _fieldCreate->createStructure(structureFieldName, size, fields);
-	return structure;
+    buffer->setPosition(pos);
+    // TODO
+    return getFieldCreate()->deserialize(buffer, control);
 }
 
 void IntrospectionRegistry::serializeStructure(ByteBuffer* buffer, SerializableControl* control, PVStructurePtr pvStructure)

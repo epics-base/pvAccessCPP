@@ -472,6 +472,18 @@ namespace epics {
                 return &_introspectionRegistry;
             }
 
+            virtual void cachedSerialize(
+            const std::tr1::shared_ptr<const epics::pvData::Field>& field, epics::pvData::ByteBuffer* buffer)
+            {
+                getIntrospectionRegistry()->serialize(field, buffer, this);
+            }
+
+            virtual std::tr1::shared_ptr<const epics::pvData::Field>
+            cachedDeserialize(epics::pvData::ByteBuffer* buffer)
+            {
+                return getIntrospectionRegistry()->deserialize(buffer, this);
+            }
+
             /**
              * Acquires transport.
              * @param client client (channel) acquiring the transport
@@ -649,6 +661,18 @@ namespace epics {
                     
             virtual IntrospectionRegistry* getIntrospectionRegistry() {
                 return &_introspectionRegistry;
+            }
+
+            virtual void cachedSerialize(
+            const std::tr1::shared_ptr<const epics::pvData::Field>& field, epics::pvData::ByteBuffer* buffer)
+            {
+                getIntrospectionRegistry()->serialize(field, buffer, this);
+            }
+
+            virtual std::tr1::shared_ptr<const epics::pvData::Field>
+            cachedDeserialize(epics::pvData::ByteBuffer* buffer)
+            {
+                return getIntrospectionRegistry()->deserialize(buffer, this);
             }
 
             /**

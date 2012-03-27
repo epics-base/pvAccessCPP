@@ -136,14 +136,6 @@ typedef std::map<const short,epics::pvData::FieldConstPtr> registryMap_t;
 							  epics::pvData::SerializableControl* control, IntrospectionRegistry* registry);
 
 
-		/**
-		 * @param buffer
-		 * @param control
-		 * @param registry
-		 * @param structure
-		 */
-		static void serializeStructureField(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control,
-							IntrospectionRegistry* registry, epics::pvData::StructureConstPtr structure);
 
 		/**
 		 * @param buffer
@@ -152,15 +144,6 @@ typedef std::map<const short,epics::pvData::FieldConstPtr> registryMap_t;
 		 * @param structure
 		 */
 		static epics::pvData::FieldConstPtr deserialize(epics::pvData::ByteBuffer* buffer, epics::pvData::DeserializableControl* control, IntrospectionRegistry* registry);
-
-		/**
-		 * Deserialize Structure.
-		 * @param buffer
-		 * @param control
-		 * @param registry
-		 * @return deserialized Structure instance.
-		 */
-		static epics::pvData::StructureConstPtr deserializeStructureField(epics::pvData::ByteBuffer* buffer, epics::pvData::DeserializableControl* control, IntrospectionRegistry* registry);
 
 		/**
 		 * Serialize optional PVStructrue.

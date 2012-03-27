@@ -16,6 +16,8 @@
 #include <pv/lock.h>
 #include <pv/event.h>
 
+#include <pv/pvIntrospect.h>
+
 #include <osdSock.h>
 #include <osiSock.h>
 #include <epicsThread.h>
@@ -140,6 +142,21 @@ namespace epics {
                 _sendBuffer->align(alignment);
             }
 
+            virtual void cachedSerialize(
+            const std::tr1::shared_ptr<const epics::pvData::Field>& field, epics::pvData::ByteBuffer* buffer)
+            {
+                // no cache
+                field->serialize(buffer, this);
+            }
+
+            virtual std::tr1::shared_ptr<const epics::pvData::Field>
+            cachedDeserialize(epics::pvData::ByteBuffer* buffer)
+            {
+                // no cache
+                // TODO
+                return epics::pvData::getFieldCreate()->deserialize(buffer, this);
+            }
+            
             /**
              * Set ignore list.
              * @param addresses list of ignored addresses.

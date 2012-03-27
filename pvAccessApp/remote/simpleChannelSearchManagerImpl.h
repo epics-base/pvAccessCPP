@@ -27,6 +27,12 @@ public:
 	void ensureBuffer(int size) {}
 	void alignBuffer(int alignment) {}
 	void flushSerializeBuffer() {}
+    void cachedSerialize(
+    const std::tr1::shared_ptr<const epics::pvData::Field>& field, epics::pvData::ByteBuffer* buffer)
+    {
+        // no cache
+        field->serialize(buffer, this);
+    }
 };
 
 
