@@ -464,7 +464,7 @@ namespace pvAccess {
                 _socketBuffer->setLimit(_storedLimit);
 
                 _stage = PROCESS_HEADER;
-                processReadCached(true, NONE, size-remainingBytes);
+                processReadCached(true, UNDEFINED_STAGE, size-remainingBytes);
 
                 // copy before position
                 for(int i = remainingBytes-1, j = _socketBuffer->getPosition()
@@ -499,7 +499,7 @@ namespace pvAccess {
                 ReceiveStage inStage, int requiredBytes) {
             try {
                 while(likely(!_closed.get())) {
-                    if(_stage==READ_FROM_SOCKET||inStage!=NONE) {
+                    if(_stage==READ_FROM_SOCKET||inStage!=UNDEFINED_STAGE) {
 
                         // add to bytes read
                         int currentPosition = _socketBuffer->getPosition();
@@ -565,7 +565,7 @@ namespace pvAccess {
                         aliveNotification();
 
                         // exit
-                        if(inStage!=NONE) return;
+                        if(inStage!=UNDEFINED_STAGE) return;
 
                         _stage = PROCESS_HEADER;
                     }
@@ -962,7 +962,7 @@ namespace pvAccess {
             Transport::shared_pointer ptr = obj->shared_from_this();    // hold reference
 
 try{
-            obj->processReadCached(false, NONE, CA_MESSAGE_HEADER_SIZE);
+            obj->processReadCached(false, UNDEFINED_STAGE, CA_MESSAGE_HEADER_SIZE);
 } catch (...) {
 printf("rcvThreadRunnner exception\n");
 }

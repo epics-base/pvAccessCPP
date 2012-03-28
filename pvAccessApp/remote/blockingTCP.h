@@ -35,7 +35,7 @@ namespace epics {
         //class MonitorSender;
 
         enum ReceiveStage {
-            READ_FROM_SOCKET, PROCESS_HEADER, PROCESS_PAYLOAD, NONE
+            READ_FROM_SOCKET, PROCESS_HEADER, PROCESS_PAYLOAD, UNDEFINED_STAGE
         };
 
         enum SendQueueFlushStrategy {
