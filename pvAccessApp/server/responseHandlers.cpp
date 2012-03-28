@@ -11,7 +11,7 @@
 #include <pv/byteBuffer.h>
 
 #include <osiSock.h>
-#include <logger.h>
+#include <pv/logger.h>
 
 #include <sstream>
 

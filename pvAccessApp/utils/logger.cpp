@@ -11,7 +11,7 @@
 #include <pv/pvType.h>
 
 #include <epicsExit.h>
-#include <logger.h>
+#include <pv/logger.h>
 
 #include <fstream>
 #include <iostream>

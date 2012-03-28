@@ -27,7 +27,7 @@
 #include <pv/clientContextImpl.h>
 #include <pv/configuration.h>
 #include <pv/beaconHandler.h>
-#include <logger.h>
+#include <pv/logger.h>
 #include <pv/bitSetUtil.h>
 
 using std::tr1::dynamic_pointer_cast;
@@ -458,10 +458,10 @@ namespace epics {
 
             PVStructure::shared_pointer m_pvRequest;
 
-            PVStructure::shared_pointer m_data;
+            PVStructure::shared_pointer m_structure;
             BitSet::shared_pointer m_bitSet;
             
-            Mutex m_dataMutex;
+            Mutex m_structureMutex;
 
             ChannelGetImpl(ChannelImpl::shared_pointer const & channel, ChannelGetRequester::shared_pointer const & channelGetRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelGetRequester)),
@@ -551,14 +551,14 @@ namespace epics {
 
                 // create data and its bitSet
                 {
-                    Lock lock(m_dataMutex);
-                    m_data.reset(transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
-                    m_bitSet.reset(new BitSet(m_data->getNumberFields()));
+                    Lock lock(m_structureMutex);
+                    m_structure.reset(transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
+                    m_bitSet.reset(new BitSet(m_structure->getNumberFields()));
                 }
                 
                 // notify
                 ChannelGet::shared_pointer thisChannelGet = dynamic_pointer_cast<ChannelGet>(shared_from_this());
-                EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(status, thisChannelGet, m_data, m_bitSet));
+                EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(status, thisChannelGet, m_structure, m_bitSet));
                 return true;
             }
 
@@ -571,9 +571,9 @@ namespace epics {
 
                 // deserialize bitSet and data
                 {
-                    Lock lock(m_dataMutex);
+                    Lock lock(m_structureMutex);
                     m_bitSet->deserialize(payloadBuffer, transport.get());
-                    m_data->deserialize(payloadBuffer, transport.get(), m_bitSet.get());
+                    m_structure->deserialize(payloadBuffer, transport.get(), m_bitSet.get());
                 }
                 
                 EXCEPTION_GUARD(m_channelGetRequester->getDone(status));
@@ -621,12 +621,12 @@ namespace epics {
             
             virtual void lock()
             {
-                m_dataMutex.lock();
+                m_structureMutex.lock();
             }
 
             virtual void unlock()
             {
-                m_dataMutex.unlock();
+                m_structureMutex.unlock();
             }
         };
 
@@ -649,10 +649,10 @@ namespace epics {
 
             PVStructure::shared_pointer m_pvRequest;
 
-            PVStructure::shared_pointer m_data;
+            PVStructure::shared_pointer m_structure;
             BitSet::shared_pointer m_bitSet;
 
-            Mutex m_dataMutex;
+            Mutex m_structureMutex;
 
             ChannelPutImpl(ChannelImpl::shared_pointer const & channel, ChannelPutRequester::shared_pointer const & channelPutRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelPutRequester)),
@@ -725,9 +725,9 @@ namespace epics {
                     // serialize only what has been changed
                     {
                         // no need to lock here, since it is already locked via TransportSender IF
-                        //Lock lock(m_dataMutex);
+                        //Lock lock(m_structureMutex);
                         m_bitSet->serialize(buffer, control);
-                        m_data->serialize(buffer, control, m_bitSet.get());
+                        m_structure->serialize(buffer, control, m_bitSet.get());
                     }
                 }
 
@@ -751,14 +751,14 @@ namespace epics {
 
                 // create data and its bitSet
                 {
-                    Lock lock(m_dataMutex);
-                    m_data.reset(transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
-                    m_bitSet.reset(new BitSet(m_data->getNumberFields()));
+                    Lock lock(m_structureMutex);
+                    m_structure.reset(transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
+                    m_bitSet.reset(new BitSet(m_structure->getNumberFields()));
                 }
                 
                 // notify
                 ChannelPut::shared_pointer thisChannelPut = dynamic_pointer_cast<ChannelPut>(shared_from_this());
-                EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(status, thisChannelPut, m_data, m_bitSet));
+                EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(status, thisChannelPut, m_structure, m_bitSet));
                 return true;
             }
 
@@ -772,8 +772,8 @@ namespace epics {
                     }
 
                     {
-                        Lock lock(m_dataMutex);
-                        m_data->deserialize(payloadBuffer, transport.get());
+                        Lock lock(m_structureMutex);
+                        m_structure->deserialize(payloadBuffer, transport.get());
                     }
                     
                     EXCEPTION_GUARD(m_channelPutRequester->getDone(status));
@@ -856,12 +856,12 @@ namespace epics {
 
             virtual void lock()
             {
-                m_dataMutex.lock();
+                m_structureMutex.lock();
             }
 
             virtual void unlock()
             {
-                m_dataMutex.unlock();
+                m_structureMutex.unlock();
             }
         };
 
@@ -884,7 +884,7 @@ namespace epics {
             PVStructure::shared_pointer m_putData;
             PVStructure::shared_pointer m_getData;
 
-            Mutex m_dataMutex;
+            Mutex m_structureMutex;
             
             ChannelPutGetImpl(ChannelImpl::shared_pointer const & channel, ChannelPutGetRequester::shared_pointer const & channelPutGetRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelPutGetRequester)),
@@ -956,7 +956,7 @@ namespace epics {
                 {
                     {
                         // no need to lock here, since it is already locked via TransportSender IF
-                        //Lock lock(m_dataMutex);
+                        //Lock lock(m_structureMutex);
                         m_putData->serialize(buffer, control);
                     }
                 }
@@ -982,7 +982,7 @@ namespace epics {
                 IntrospectionRegistry* registry = transport->getIntrospectionRegistry();
                 
                 {
-                    Lock lock(m_dataMutex);
+                    Lock lock(m_structureMutex);
                     m_putData.reset(registry->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
                     m_getData.reset(registry->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get()));
                 }
@@ -1004,7 +1004,7 @@ namespace epics {
                     }
 
                     {
-                        Lock lock(m_dataMutex);
+                        Lock lock(m_structureMutex);
                         // deserialize get data
                         m_getData->deserialize(payloadBuffer, transport.get());
                     }
@@ -1021,7 +1021,7 @@ namespace epics {
                     }
 
                     {
-                        Lock lock(m_dataMutex);
+                        Lock lock(m_structureMutex);
                         // deserialize put data
                         m_putData->deserialize(payloadBuffer, transport.get());
                     }
@@ -1038,7 +1038,7 @@ namespace epics {
                     }
 
                     {
-                        Lock lock(m_dataMutex);
+                        Lock lock(m_structureMutex);
                         // deserialize data
                         m_getData->deserialize(payloadBuffer, transport.get());
                     }
@@ -1143,12 +1143,12 @@ namespace epics {
             
             virtual void lock()
             {
-                m_dataMutex.lock();
+                m_structureMutex.lock();
             }
 
             virtual void unlock()
             {
-                m_dataMutex.unlock();
+                m_structureMutex.unlock();
             }
             
         };
@@ -1171,9 +1171,9 @@ namespace epics {
 
             PVStructure::shared_pointer m_pvRequest;
 
-            PVStructure::shared_pointer m_data;
+            PVStructure::shared_pointer m_structure;
             
-            Mutex m_dataMutex;
+            Mutex m_structureMutex;
 
             ChannelRPCImpl(ChannelImpl::shared_pointer const & channel, ChannelRPCRequester::shared_pointer const & channelRPCRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelRPCRequester)),
@@ -1241,10 +1241,10 @@ namespace epics {
                 {
                     {
                         // no need to lock here, since it is already locked via TransportSender IF
-                        //Lock lock(m_dataMutex);
-                        m_channel->getTransport()->getIntrospectionRegistry()->serializeStructure(buffer, control, m_data.get());
+                        //Lock lock(m_structureMutex);
+                        m_channel->getTransport()->getIntrospectionRegistry()->serializeStructure(buffer, control, m_structure.get());
                         // release arguments structure
-                        m_data.reset();
+                        m_structure.reset();
                     }
                 }
 
@@ -1308,9 +1308,9 @@ namespace epics {
                 }
 
                 try {
-                    m_dataMutex.lock();
-                    m_data = pvArgument;
-                    m_dataMutex.unlock();
+                    m_structureMutex.lock();
+                    m_structure = pvArgument;
+                    m_structureMutex.unlock();
 
                     TransportSender::shared_pointer thisSender = shared_from_this();
                     m_channel->checkAndGetTransport()->enqueueSendRequest(thisSender);
@@ -1334,12 +1334,12 @@ namespace epics {
             
             virtual void lock()
             {
-                m_dataMutex.lock();
+                m_structureMutex.lock();
             }
 
             virtual void unlock()
             {
-                m_dataMutex.unlock();
+                m_structureMutex.unlock();
             }
         };
 
@@ -1360,7 +1360,7 @@ namespace epics {
 
             PVStructure::shared_pointer m_pvRequest;
 
-            PVArray::shared_pointer m_data;
+            PVArray::shared_pointer m_structure;
 
             int32 m_offset;
             int32 m_count;
@@ -1368,7 +1368,7 @@ namespace epics {
             int32 m_length;
             int32 m_capacity;
             
-            Mutex m_dataMutex;
+            Mutex m_structureMutex;
 
             ChannelArrayImpl(ChannelImpl::shared_pointer const & channel, ChannelArrayRequester::shared_pointer const & channelArrayRequester, PVStructure::shared_pointer const & pvRequest) :
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelArrayRequester)),
@@ -1447,9 +1447,9 @@ namespace epics {
                 {
                     {
                         // no need to lock here, since it is already locked via TransportSender IF
-                        //Lock lock(m_dataMutex);
+                        //Lock lock(m_structureMutex);
                         SerializeHelper::writeSize(m_offset, buffer, control);
-                        m_data->serialize(buffer, control, 0, m_count); // put from 0 offset; TODO count out-of-bounds check?!
+                        m_structure->serialize(buffer, control, 0, m_count); // put from 0 offset; TODO count out-of-bounds check?!
                     }
                 }
 
@@ -1475,13 +1475,13 @@ namespace epics {
                 // create data and its bitSet
                 FieldConstPtr field = transport->getIntrospectionRegistry()->deserialize(payloadBuffer, transport.get());
                 {
-                    Lock lock(m_dataMutex);
-                    m_data.reset(dynamic_cast<PVArray*>(getPVDataCreate()->createPVField(0, field)));
+                    Lock lock(m_structureMutex);
+                    m_structure.reset(dynamic_cast<PVArray*>(getPVDataCreate()->createPVField(0, field)));
                 }
                 
                 // notify
                 ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
-                EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(status, thisChannelArray, m_data));
+                EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(status, thisChannelArray, m_structure));
                 return true;
             }
 
@@ -1495,8 +1495,8 @@ namespace epics {
                     }
 
                     {
-                        Lock lock(m_dataMutex);
-                        m_data->deserialize(payloadBuffer, transport.get());
+                        Lock lock(m_structureMutex);
+                        m_structure->deserialize(payloadBuffer, transport.get());
                     }
                     
                     EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(status));
@@ -1619,12 +1619,12 @@ namespace epics {
 
             virtual void lock()
             {
-                m_dataMutex.lock();
+                m_structureMutex.lock();
             }
 
             virtual void unlock()
             {
-                m_dataMutex.unlock();
+                m_structureMutex.unlock();
             }
         };
 
@@ -1970,8 +1970,8 @@ namespace epics {
     	   Mutex m_mutex;
     	   
     	   
-           BitSet::shared_pointer m_dataChangeBitSet;
-           BitSet::shared_pointer m_dataOverrunBitSet;
+           BitSet::shared_pointer m_structureChangeBitSet;
+           BitSet::shared_pointer m_structureOverrunBitSet;
 		   bool m_needToCompress;
 		   
     	   MonitorElement::shared_pointer m_nullMonitorElement;
@@ -1998,8 +1998,8 @@ namespace epics {
 				m_monitorElementImpl->m_changedBitSet.reset(new BitSet(numberFields));
 	        	m_monitorElementImpl->m_overrunBitSet.reset(new BitSet(numberFields));
 	        	
-	        	m_dataChangeBitSet.reset(new BitSet(numberFields));
-	        	m_dataOverrunBitSet.reset(new BitSet(numberFields));
+	        	m_structureChangeBitSet.reset(new BitSet(numberFields));
+	        	m_structureOverrunBitSet.reset(new BitSet(numberFields));
 
     		}
     
@@ -2019,19 +2019,19 @@ namespace epics {
 				else 
 				{
 					// deserialize first
-					m_dataChangeBitSet->deserialize(payloadBuffer, transport.get());
-		        	m_monitorElementImpl->m_pvStructure->deserialize(payloadBuffer, transport.get(), m_dataChangeBitSet.get());
-		        	m_dataOverrunBitSet->deserialize(payloadBuffer, transport.get());
+					m_structureChangeBitSet->deserialize(payloadBuffer, transport.get());
+		        	m_monitorElementImpl->m_pvStructure->deserialize(payloadBuffer, transport.get(), m_structureChangeBitSet.get());
+		        	m_structureOverrunBitSet->deserialize(payloadBuffer, transport.get());
 
 		        	// OR local overrun
 		        	// TODO should work only on uncompressed
-					m_monitorElementImpl->m_overrunBitSet->or_and(*m_dataChangeBitSet.get(), *m_monitorElementImpl->m_changedBitSet.get());
+					m_monitorElementImpl->m_overrunBitSet->or_and(*m_structureChangeBitSet.get(), *m_monitorElementImpl->m_changedBitSet.get());
 
 					// OR new changes
-					*(m_monitorElementImpl->m_changedBitSet) |= *m_dataChangeBitSet.get();
+					*(m_monitorElementImpl->m_changedBitSet) |= *m_structureChangeBitSet.get();
 					
 					// OR remote overrun
-					*(m_monitorElementImpl->m_overrunBitSet) |= *m_dataOverrunBitSet.get();
+					*(m_monitorElementImpl->m_overrunBitSet) |= *m_structureOverrunBitSet.get();
 				}
     		}
     

@@ -10,7 +10,7 @@
 #include <pv/remote.h>
 #include <pv/beaconServerStatusProvider.h>
 #include <pv/caConstants.h>
-#include <pv/version.h>
+#include <pv/pvVersion.h>
 #include <pv/pvAccess.h>
 #include <pv/blockingUDP.h>
 #include <pv/blockingTCP.h>

@@ -10,7 +10,7 @@
 #include <pv/status.h>
 #include <pv/destroyable.h>
 #include <pv/monitor.h>
-#include <pv/version.h>
+#include <pv/pvVersion.h>
 #include <vector>
 #include <pv/bitSet.h>
 

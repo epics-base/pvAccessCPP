@@ -11,7 +11,6 @@
 #include <osiSock.h>
 #include <ellLib.h>
 #include <epicsAssert.h>
-#include <logger.h>
 
 #include <vector>
 #include <cstring>

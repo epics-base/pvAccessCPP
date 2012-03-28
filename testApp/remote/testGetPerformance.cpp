@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <epicsStdlib.h>
 #include <epicsGetopt.h>
-#include <logger.h>
+#include <pv/logger.h>
 
 #include <vector>
 #include <string>

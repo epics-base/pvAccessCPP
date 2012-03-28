@@ -17,7 +17,7 @@
 
 #include <osiSock.h>
 #include <epicsThread.h>
-#include <logger.h>
+#include <pv/logger.h>
 
 #include <iostream>
 #include <cstdio>

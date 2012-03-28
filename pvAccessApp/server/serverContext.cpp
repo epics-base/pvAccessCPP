@@ -8,7 +8,7 @@
 #include <pv/responseHandlers.h>
 #include <epicsSignal.h>
 
-#include <logger.h>
+#include <pv/logger.h>
 
 using namespace std;
 using namespace epics::pvData;

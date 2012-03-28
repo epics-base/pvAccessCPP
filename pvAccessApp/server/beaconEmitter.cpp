@@ -12,7 +12,7 @@
 
 #include <pv/introspectionRegistry.h>
 
-#include <logger.h>
+#include <pv/logger.h>
 #include <algorithm>
 
 #include <pv/serverContext.h>

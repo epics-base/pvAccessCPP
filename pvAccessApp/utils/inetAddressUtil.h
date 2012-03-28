@@ -65,7 +65,7 @@ namespace pvAccess {
     // comparators for osiSockAddr
 
     struct comp_osiSockAddrPtr {
-        bool operator()(osiSockAddr const *a, osiSockAddr const *b) {
+        bool operator()(osiSockAddr const *a, osiSockAddr const *b) const {
             if(a->sa.sa_family<b->sa.sa_family) return true;
             if((a->sa.sa_family==b->sa.sa_family)&&(a->ia.sin_addr.s_addr
                     <b->ia.sin_addr.s_addr)) return true;
@@ -77,7 +77,7 @@ namespace pvAccess {
     };
 
     struct comp_osiSock_lt {
-        bool operator()(const osiSockAddr& a, const osiSockAddr& b) {
+        bool operator()(const osiSockAddr& a, const osiSockAddr& b) const {
             if(a.sa.sa_family<b.sa.sa_family) return true;
             if((a.sa.sa_family==b.sa.sa_family)&&(a.ia.sin_addr.s_addr
                     <b.ia.sin_addr.s_addr)) return true;
@@ -90,7 +90,7 @@ namespace pvAccess {
 
     //TODO if unordered map is used instead of map we can use sockAddrAreIdentical routine from osiSock.h
     struct comp_osiSockAddr {
-        bool operator()(osiSockAddr const a, osiSockAddr const b) {
+        bool operator()(osiSockAddr const a, osiSockAddr const b) const {
             if(a.sa.sa_family<b.sa.sa_family) return true;
             if((a.sa.sa_family==b.sa.sa_family)&&(a.ia.sin_addr.s_addr
                     <b.ia.sin_addr.s_addr)) return true;

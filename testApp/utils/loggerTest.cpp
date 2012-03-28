@@ -7,7 +7,6 @@
 
 #include <pv/logger.h>
 
-#include <logger.h>
 #include <epicsExit.h>
 
 #include <iostream>
