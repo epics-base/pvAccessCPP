@@ -59,7 +59,7 @@ class MockChannelProcess : public ChannelProcess
         m_valueField = static_cast<PVScalar*>(field);
         	
         // TODO pvRequest 
-    	m_channelProcessRequester->channelProcessConnect(Status::OK, this);
+    	m_channelProcessRequester->channelProcessConnect(Status::Ok, this);
     }
     
     virtual void process(bool lastRequest)
@@ -135,7 +135,7 @@ class MockChannelProcess : public ChannelProcess
                 break;
             
         } 
-    	m_channelProcessRequester->processDone(Status::OK);
+    	m_channelProcessRequester->processDone(Status::Ok);
     	
     	if (lastRequest)
     	   destroy();
@@ -177,12 +177,12 @@ class MockChannelGet : public ChannelGet
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelGet);
 
         // TODO pvRequest 
-    	m_channelGetRequester->channelGetConnect(Status::OK, this, m_pvStructure, m_bitSet);
+    	m_channelGetRequester->channelGetConnect(Status::Ok, this, m_pvStructure, m_bitSet);
     }
     
     virtual void get(bool lastRequest)
     {
-    	m_channelGetRequester->getDone(Status::OK);
+    	m_channelGetRequester->getDone(Status::Ok);
     	if (m_first)
     	{
     		m_first = false;
@@ -232,19 +232,19 @@ class MockChannelPut : public ChannelPut
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelPut);
 
         // TODO pvRequest 
-    	m_channelPutRequester->channelPutConnect(Status::OK, this, m_pvStructure, m_bitSet);
+    	m_channelPutRequester->channelPutConnect(Status::Ok, this, m_pvStructure, m_bitSet);
     }
     
     virtual void put(bool lastRequest)
     {
-    	m_channelPutRequester->putDone(Status::OK);
+    	m_channelPutRequester->putDone(Status::Ok);
     	if (lastRequest)
     	   destroy();
     }
     
     virtual void get()
     {
-    	m_channelPutRequester->getDone(Status::OK);
+    	m_channelPutRequester->getDone(Status::Ok);
     }
 
     virtual void destroy()
@@ -294,7 +294,7 @@ class MockMonitor : public Monitor, public MonitorElement
         m_changedBitSet->set(0);
         
         // TODO pvRequest 
-        m_monitorRequester->monitorConnect(Status::OK, this, m_pvStructure->getStructure());
+        m_monitorRequester->monitorConnect(Status::Ok, this, m_pvStructure->getStructure());
     }
     
     virtual Status start()
@@ -302,12 +302,12 @@ class MockMonitor : public Monitor, public MonitorElement
         // fist monitor
         m_monitorRequester->monitorEvent(this);
         
-        return Status::OK;
+        return Status::Ok;
     }
 
     virtual Status stop()
     {
-        return Status::OK;
+        return Status::Ok;
     }
 
     virtual MonitorElement* poll()
@@ -463,7 +463,7 @@ class MockChannel : public Channel {
 
     virtual void getField(GetFieldRequester *requester,epics::pvData::String subField)
     {
-        requester->getDone(Status::OK,m_pvStructure->getSubField(subField)->getField());
+        requester->getDone(Status::Ok,m_pvStructure->getSubField(subField)->getField());
     }
 
     virtual ChannelProcess* createChannelProcess(
@@ -592,7 +592,7 @@ class MockChannelProvider : public ChannelProvider {
         epics::pvData::String channelName,
         ChannelFindRequester *channelFindRequester)
     {
-        channelFindRequester->channelFindResult(Status::OK, m_mockChannelFind, true);
+        channelFindRequester->channelFindResult(Status::Ok, m_mockChannelFind, true);
         return m_mockChannelFind;
     }
 
@@ -613,7 +613,7 @@ class MockChannelProvider : public ChannelProvider {
         if (address == "local")
         {
             Channel* channel = new MockChannel(this, channelRequester, channelName, address);
-            channelRequester->channelCreated(Status::OK, channel);
+            channelRequester->channelCreated(Status::Ok, channel);
             return channel;
         }
         else
