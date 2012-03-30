@@ -658,7 +658,7 @@ class MockChannel : public Channel {
             String allProperties("alarm,timeStamp,display,control");
             m_pvStructure.reset(getStandardPVField()->scalarArray(0,name,pvDouble,allProperties));
             PVDoubleArray *pvField = static_cast<PVDoubleArray*>(m_pvStructure->getScalarArrayField(String("value"), pvDouble));
-            int v = 0;
+            double v = 0;
             int ix = 0;
             const int COUNT = 1000;
             
