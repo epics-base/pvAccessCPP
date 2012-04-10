@@ -383,7 +383,7 @@ bool terseMode = false;
 
 void usage (void)
 {
-    fprintf (stderr, "\nUsage: eget [options] [<PV name>... | -s <service name> name]\n\n"
+    fprintf (stderr, "\nUsage: eget [options] [<PV name>... | -s <service name>]\n\n"
     "  -h: Help: Print this message\n"
     "\noptions:\n"
     "  -s <service name>:   RPC based service name\n"
@@ -397,11 +397,11 @@ void usage (void)
 "#! Get the value of the PV corr:li32:53:bdes\n"
 "> eget corr:li32:53:bdes\n"
 "\n"
-"#! Get the table of all correctors in SwissFEL from the rdb service\n"
-"> eget -s rdbservice swissfel:allcorrectors\n"
+"#! Get the table of all correctors from the rdb service\n"
+"> eget -s rdbService -p entity=swissfel:devicenames\n"
 "\n"
 "#! Get the archive history of quad345:hist between 2 times, from the archive service\n"
-"> eget -s archiveservice quad345:hist -p \"starttime=2012-02-12T10:04:56\" -p \"endtime=2012-02-01T10:04:56\"\n"
+"> eget -s archiveService -p entity=quad345:hist -p starttime=2012-02-12T10:04:56 -p endtime=2012-02-01T10:04:56\n"
 "\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
@@ -697,8 +697,8 @@ int main (int argc, char *argv[])
     
     bool serviceRequest = false;
     string service;
-    string serviceVar;
     string urlEncodedRequest;
+    vector< pair<string,string> > parameters;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
@@ -720,22 +720,24 @@ int main (int argc, char *argv[])
             break;          
         case 'p':               /* Servie parameters */
         {   
+            string param = optarg;
+            size_t eqPos = param.find('=');
+            if (eqPos==string::npos)
+            {
+                fprintf(stderr, "Parameter not specified in name=value form. ('eget -h' for help.)\n");
+                return 1;
+            }
+            parameters.push_back(pair<string,string>(param.substr(0, eqPos), param.substr(eqPos+1, string::npos)));    
             if (urlEncodedRequest.size())
                 urlEncodedRequest += '&';    
             char* encoded = url_encode(optarg);
             urlEncodedRequest += encoded;
-            free(encoded);      
+            free(encoded);
             break;
         }
         case 's':               /* Service name */
             service = optarg;
             serviceRequest = true;
-            if (optind == argc)
-            {
-                fprintf(stderr, "No name for service to query specified. ('eget -h' for help.)\n");
-                return 1;
-            }
-            serviceVar = argv[optind++];
             break;
         case 't':               /* Terse mode */
             terseMode = true;
@@ -765,13 +767,13 @@ int main (int argc, char *argv[])
     int nPvs = argc - optind;       /* Remaining arg list are PV names */
     if (nPvs < 1 && !serviceRequest)
     {
-        fprintf(stderr, "No pv name(s) or service name specified. ('eget -h' for help.)\n");
+        fprintf(stderr, "No PV name(s) specified. ('eget -h' for help.)\n");
         return 1;
     }
     
     if (nPvs > 0 && serviceRequest)
     {
-        fprintf(stderr, "Pv name(s) specified and service query requested. ('eget -h' for help.)\n");
+        fprintf(stderr, "PV name(s) specified and service query requested. ('eget -h' for help.)\n");
         return 1;
     }
 
@@ -837,9 +839,13 @@ int main (int argc, char *argv[])
     else
     {
         std::cout << "service            : " << service << std::endl;
-        std::cout << "serviceVar         : " << serviceVar << std::endl;
-        std::cout << "encoded URL request: '" << urlEncodedRequest << "'" << std::endl;
+        std::cout << "parameters         : " << std::endl;
 
+        vector< pair<string, string> >::iterator iter = parameters.begin();
+        for (; iter != parameters.end(); iter++)
+            std::cout << "    " << iter->first << " = " << iter->second << std::endl;
+        std::cout << "encoded URL request: '" << urlEncodedRequest << "'" << std::endl;
+        
         // TODO simply empty?
         PVStructure::shared_pointer pvRequest;
         try {
@@ -848,23 +854,36 @@ int main (int argc, char *argv[])
             printf("failed to parse request string: %s\n", ex.what());
             return 1;
         }
+        
+        int i = 0;
+        FieldConstPtrArray fields = new FieldConstPtr[parameters.size()];
+        for (vector< pair<string, string> >::iterator iter = parameters.begin();
+             iter != parameters.end();
+             iter++, i++)
+        {
+            fields[i] = getFieldCreate()->createScalar(iter->first, pvString);
+        }
+        PVStructure::shared_pointer args(
+            new PVStructure(NULL, getFieldCreate()->createStructure("", parameters.size(), fields)));
+        for (vector< pair<string, string> >::iterator iter = parameters.begin();
+             iter != parameters.end();
+             iter++)
+        {
+            args->getStringField(iter->first)->put(iter->second);
+        }
+
 
         ClientFactory::start();
         ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
         
-        // TODO connect via service    
         shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
-        Channel::shared_pointer channel = provider->createChannel(serviceVar, channelRequesterImpl);
+        Channel::shared_pointer channel = provider->createChannel(service, channelRequesterImpl);
         
         if (channelRequesterImpl->waitUntilConnected(timeOut))
         {
             shared_ptr<ChannelRPCRequesterImpl> getRequesterImpl(new ChannelRPCRequesterImpl(channel->getChannelName()));
             ChannelRPC::shared_pointer channelRPC = channel->createChannelRPC(getRequesterImpl, pvRequest);
             
-            // TODO put URL here
-            PVStructure::shared_pointer args(
-                new PVStructure(NULL, getFieldCreate()->createStructure("nothing", 0, NULL)));
-                
             channelRPC->request(args, true);
             allOK &= getRequesterImpl->waitUntilRPC(timeOut);
         }
