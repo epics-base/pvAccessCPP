@@ -21,7 +21,7 @@ using namespace epics::pvAccess;
 
 
 
-
+/// terse mode functions
 
 void convertStructure(StringBuilder buffer,PVStructure *data,int notFirst);
 void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst);
@@ -365,6 +365,39 @@ char *url_encode(char *str) {
 
 
 
+
+
+
+void toNTString(StringBuilder buffer,PVField * pv,int notFirst)
+{
+    Type type = pv->getField()->getType();
+    if(type==structure)
+    {
+        PVStructure* pvStruct = static_cast<PVStructure*>(pv);
+        // TODO type check, getStringField is verbose
+        PVString* ntType = static_cast<PVString*>(pvStruct->getSubField("normativeType"));
+        if (ntType)
+        {
+            String value = ntType->get();
+            
+            if (value == "NTTable")
+            {
+                // TODO
+                pv->toString(buffer);
+            }
+            else
+            {
+                std::cout << "unsupported normative type" << std::endl;
+                pv->toString(buffer);
+            }
+            
+            return;
+        }
+    }
+    
+    
+    pv->toString(buffer);
+}
 
 
 
@@ -871,7 +904,6 @@ int main (int argc, char *argv[])
         {
             args->getStringField(iter->first)->put(iter->second);
         }
-
 
         ClientFactory::start();
         ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
