@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 
+#include <iomanip>
 
 #include <pv/CDRMonitor.h>
 #include <pv/event.h>
@@ -366,9 +367,55 @@ char *url_encode(char *str) {
 
 
 
+void formatNTTable(StringBuilder buffer, PVStructure *pvStruct)
+{
+    PVStringArray* labels = static_cast<PVStringArray*>(pvStruct->getScalarArrayField("labels", pvString));
+    if (labels == 0)
+        return; // TODO
+        
+    int numColumns = labels->getLength();
+    //int count = pvStruct->getNumberFields();
+    // TODO if (count < #numColumns)
+    
+    // next numColumns fields are columns
+    int maxValues = 0;
+    vector<DoubleArrayData> columnData;
+    PVFieldPtrArray fields = pvStruct->getPVFields();
+    for (int i = 0; i < numColumns; i++)
+    {
+        DoubleArrayData values;
+        // TODO we relay on field ordering here (normativeType, labels, <columns>)
+        PVDoubleArray* arrayField = static_cast<PVDoubleArray*>(fields[i+2]);
+        int count = arrayField->get(0, arrayField->getLength(), &values);
+        if (count > maxValues) maxValues = count;
+        columnData.push_back(values);
+    }
 
+    std::cout << std::left;
 
-void toNTString(StringBuilder buffer,PVField * pv,int notFirst)
+    // first print labels
+   	StringArrayData data;
+    labels->get(0, numColumns, &data);
+    for (int i = 0; i < numColumns; i++)
+    {
+    	std::cout << std::setw(16) << data.data[i];
+    }
+    std::cout << std::endl;
+
+    // than values
+    // TODO all the same length!!!
+    for (int r = 0; r < maxValues; r++)
+    {
+        for (int i = 0; i < numColumns; i++)
+        {
+        	std::cout << std::setw(16) << columnData[i].data[r];
+        }
+        std::cout << std::endl;
+    }
+
+}    
+
+void toNTString(StringBuilder buffer, PVField *pv,int notFirst)
 {
     Type type = pv->getField()->getType();
     if(type==structure)
@@ -382,8 +429,7 @@ void toNTString(StringBuilder buffer,PVField * pv,int notFirst)
             
             if (value == "NTTable")
             {
-                // TODO
-                pv->toString(buffer);
+                formatNTTable(buffer, pvStruct);
             }
             else
             {
@@ -606,18 +652,18 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
             // access smart pointers
             {
                 Lock lock(m_pointerMutex);
-                {
-                    // TODO format normative types
-                    if (terseMode)
-                        convertToString(&str, pvResponse.get(), 0);
-                    else
-                        pvResponse->toString(&str);
-                } 
+
+                // TODO
+                pvResponse->toString(&str, 0);
+                std::cout << std::endl;
+                std::cout << str << std::endl;
+                std::cout << std::endl;
+
+                toNTString(&str, pvResponse.get(), 0);
+
                 // this is OK since calle holds also owns it
                 m_channelRPC.reset();
             }
-            
-            std::cout << str << std::endl;
             
             m_event.signal();
             
@@ -913,11 +959,20 @@ int main (int argc, char *argv[])
         
         if (channelRequesterImpl->waitUntilConnected(timeOut))
         {
-            shared_ptr<ChannelRPCRequesterImpl> getRequesterImpl(new ChannelRPCRequesterImpl(channel->getChannelName()));
-            ChannelRPC::shared_pointer channelRPC = channel->createChannelRPC(getRequesterImpl, pvRequest);
-            
-            channelRPC->request(args, true);
-            allOK &= getRequesterImpl->waitUntilRPC(timeOut);
+            shared_ptr<ChannelRPCRequesterImpl> rpcRequesterImpl(new ChannelRPCRequesterImpl(channel->getChannelName()));
+            ChannelRPC::shared_pointer channelRPC = channel->createChannelRPC(rpcRequesterImpl, pvRequest);
+
+            if (rpcRequesterImpl->waitUntilConnected(timeOut))
+            {
+				channelRPC->request(args, true);
+				allOK &= rpcRequesterImpl->waitUntilRPC(timeOut);
+			}
+            else
+            {
+                allOK = false;
+                channel->destroy();
+                std::cout << "[" << channel->getChannelName() << "] RPC create timeout" << std::endl;
+            }
         }
         else
         {

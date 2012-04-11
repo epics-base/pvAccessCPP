@@ -8,6 +8,9 @@
 #include <epicsExit.h>
 #include <pv/standardPVField.h>
 
+#include <stdlib.h>
+#include <time.h>
+
 using namespace epics::pvAccess;
 using namespace epics::pvData;
 using namespace std;
@@ -370,19 +373,20 @@ class MockChannelRPC : public ChannelRPC
 {
     private:
 		ChannelRPCRequester::shared_pointer m_channelRPCRequester;
+		String m_channelName;
 		PVStructure::shared_pointer m_pvStructure;
 
     protected:
-    MockChannelRPC(ChannelRPCRequester::shared_pointer const & channelRPCRequester, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
-        m_channelRPCRequester(channelRPCRequester), m_pvStructure(pvStructure)
+    MockChannelRPC(ChannelRPCRequester::shared_pointer const & channelRPCRequester, String const & channelName, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
+        m_channelRPCRequester(channelRPCRequester), m_channelName(channelName), m_pvStructure(pvStructure)
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelRPC);
     }
 
     public:
-    static ChannelRPC::shared_pointer create(ChannelRPCRequester::shared_pointer const & channelRPCRequester, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
+    static ChannelRPC::shared_pointer create(ChannelRPCRequester::shared_pointer const & channelRPCRequester, String const & channelName, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
     {
-        ChannelRPC::shared_pointer thisPtr(new MockChannelRPC(channelRPCRequester, pvStructure, pvRequest));
+        ChannelRPC::shared_pointer thisPtr(new MockChannelRPC(channelRPCRequester, channelName, pvStructure, pvRequest));
         // TODO pvRequest
     	channelRPCRequester->channelRPCConnect(Status::Ok, thisPtr);
     	return thisPtr;
@@ -395,10 +399,65 @@ class MockChannelRPC : public ChannelRPC
 
     virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument, bool lastRequest)
     {
-        std::string s;
-        pvArgument->toString(&s);
-        std::cout << "RPC" << std::endl << s << std::endl;
-    	m_channelRPCRequester->requestDone(Status::Ok, m_pvStructure);
+		if (m_channelName == "rpcNTTable")
+    	{
+	        // TODO type check, getStringField is verbose
+	        PVString* columns = static_cast<PVString*>(pvArgument->getSubField("columns"));
+			if (columns == 0)
+			{
+	    		PVStructure::shared_pointer nullPtr;
+	    		Status errorStatus(Status::STATUSTYPE_ERROR, "no columns specified");
+	    		m_channelRPCRequester->requestDone(errorStatus, nullPtr);
+			}
+			else
+			{
+		        int i = 0;
+		        int totalFields = 1 + 1 + atoi(columns->get().c_str());  // normativeType, labels, <columns>
+		        FieldConstPtrArray fields = new FieldConstPtr[totalFields];
+		        fields[i++] = getFieldCreate()->createScalar("normativeType", pvString);
+		        fields[i++] = getFieldCreate()->createScalarArray("labels", pvString);
+		        char sbuf[16];
+		        vector<String> labels;
+		        for (; i < totalFields; i++)
+		        {
+		        	sprintf(sbuf, "column%d", i-1	);
+		            fields[i] = getFieldCreate()->createScalarArray(sbuf, pvDouble);
+		            labels.push_back(sbuf);
+		        }
+
+		        PVStructure::shared_pointer result(
+		            new PVStructure(NULL, getFieldCreate()->createStructure("", totalFields, fields)));
+
+		        result->getStringField("normativeType")->put("NTTable");
+		        static_cast<PVStringArray*>(result->getScalarArrayField("labels", pvString))->put(0, labels.size(), &labels[0], 0);
+
+		        srand ( time(NULL) );
+
+		        #define ROWS 10
+		        double values[ROWS];
+                #define FILL_VALUES \
+		        for (int r = 0; r < ROWS; r++) \
+		        	values[r] = (rand()-RAND_MAX/2)/(double)(RAND_MAX/2);
+
+		        for (vector<String>::iterator iter = labels.begin();
+		        		iter != labels.end();
+		        		iter++)
+		        {
+		        	FILL_VALUES;
+		        	static_cast<PVDoubleArray*>(result->getScalarArrayField(*iter, pvDouble))->put(0, ROWS, values, 0);
+		        }
+				m_channelRPCRequester->requestDone(Status::Ok, result);
+			}
+    	}
+    	else
+    	{
+    		std::string s;
+    		pvArgument->toString(&s);
+    		std::cout << "RPC" << std::endl << s << std::endl;
+
+    		m_channelRPCRequester->requestDone(Status::Ok, m_pvStructure);
+    	}
+
     	if (lastRequest)
     	   destroy();
     }
@@ -682,6 +741,10 @@ class MockChannel : public Channel {
             printf("=============------------------------------------!!!\n");
             */   
         }
+        else if (m_name.find("rpc") == 0)
+        {
+        	m_pvStructure.reset(getPVDataCreate()->createPVStructure(0, name, 0, static_cast<epics::pvData::FieldConstPtr*>(0)));
+        }
         else
         {
             String allProperties("alarm,timeStamp,display,control,valueAlarm");
@@ -816,7 +879,7 @@ class MockChannel : public Channel {
     virtual ChannelRPC::shared_pointer createChannelRPC(ChannelRPCRequester::shared_pointer const & channelRPCRequester,
     		epics::pvData::PVStructure::shared_pointer const & pvRequest)
     {
-    	return MockChannelRPC::create(channelRPCRequester, m_pvStructure, pvRequest);
+    	return MockChannelRPC::create(channelRPCRequester, m_name, m_pvStructure, pvRequest);
     }
 
     virtual epics::pvData::Monitor::shared_pointer createMonitor(
