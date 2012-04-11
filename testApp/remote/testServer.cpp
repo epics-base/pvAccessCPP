@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include <pv/logger.h>
+
 using namespace epics::pvAccess;
 using namespace epics::pvData;
 using namespace std;
@@ -1241,7 +1243,7 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
 };
 
 
-void testServer()
+void testServer(int timeToRun)
 {
 	
 	MockServerChannelProvider::shared_pointer channelProvider(new MockServerChannelProvider());
@@ -1256,7 +1258,7 @@ void testServer()
 
 	ctx->printInfo();
 
-	ctx->run(100);
+	ctx->run(timeToRun);
 
 	ctx->destroy();
 
@@ -1264,15 +1266,75 @@ void testServer()
 
 }
 
+#include <epicsGetopt.h>
+
+void usage (char *argv[])
+{
+    fprintf (stderr, "\nUsage: %s [options]\n\n"
+    "  -h: Help: Print this message\n"
+    "\noptions:\n"
+    "  -t <seconds>:   Time to run in seconds, 0 for forever\n"
+    "  -d:             Enable debug output\n"
+    "  -c:             Wait for clean shutdown and report used instance count (for expert users)"
+    "\n\n",
+    argv[0]);
+}
+
+
+
 int main(int argc, char *argv[])
 {
-	testServer();
+    int opt;                    /* getopt() current option */
+    bool debug = false;
+    bool cleanupAndReport = false;
+    int timeToRun = 0;
+
+    setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
+
+    while ((opt = getopt(argc, argv, ":ht:dc")) != -1) {
+        switch (opt) {
+        case 'h':               /* Print usage */
+            usage(argv);
+            return 0;
+        case 't':               /* Print usage */
+            timeToRun = atoi(optarg);
+            break;
+        case 'd':               /* Debug log level */
+            debug = true;
+            break;
+        case 'c':               /* Clean-up and report used instance count */
+            cleanupAndReport = true;
+            break;
+        case '?':
+            fprintf(stderr,
+                    "Unrecognized option: '-%c'. ('%s -h' for help.)\n",
+                    optopt, argv[0]);
+            return 1;
+        case ':':
+            fprintf(stderr,
+                    "Option '-%c' requires an argument. ('%s -h' for help.)\n",
+                    optopt, argv[0]);
+            return 1;
+        default :
+            usage(argv);
+            return 1;
+        }
+    }
+
+    SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
+
+    testServer(timeToRun);
 
 	cout << "Done" << endl;
 
-    epicsThreadSleep ( 3.0 ); 
-    std::cout << "-----------------------------------------------------------------------" << std::endl;
-	epicsExitCallAtExits();
-    CDRMonitor::get().show(stdout, true);
+    if (cleanupAndReport)
+    {
+        // TODO implement wait on context
+		epicsThreadSleep ( 3.0 );
+		std::cout << "-----------------------------------------------------------------------" << std::endl;
+		epicsExitCallAtExits();
+		CDRMonitor::get().show(stdout, true);
+    }
+
     return (0);
 }
