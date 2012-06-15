@@ -23,7 +23,7 @@ namespace epics {
 
         void AbstractResponseHandler::handleResponse(osiSockAddr* responseFrom,
                 Transport::shared_pointer const & transport, int8 version, int8 command,
-                int payloadSize, ByteBuffer* payloadBuffer) {
+                size_t payloadSize, ByteBuffer* payloadBuffer) {
             if(_debug) {
                 char ipAddrStr[48];
                 ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));

@@ -28,7 +28,7 @@ class MockChannelProcess :
     private:
 		ChannelProcessRequester::shared_pointer m_channelProcessRequester;
 		PVStructure::shared_pointer m_pvStructure;
-		PVScalar* m_valueField;
+		PVScalarPtr m_valueField;
 
     protected:
     MockChannelProcess(ChannelProcessRequester::shared_pointer const & channelProcessRequester, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
@@ -37,8 +37,8 @@ class MockChannelProcess :
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelProcess);
 
         ChannelProcess::shared_pointer thisPtr; // we return null  = static_pointer_cast<ChannelProcess>(shared_from_this());
-        PVField* field = pvStructure->getSubField(String("value"));
-        if (field == 0)
+        PVFieldPtr field = pvStructure->getSubField(String("value"));
+        if (field.get() == 0)
         {
             Status noValueFieldStatus(Status::STATUSTYPE_ERROR, "no 'value' field");
         	m_channelProcessRequester->channelProcessConnect(noValueFieldStatus, thisPtr);
@@ -56,7 +56,7 @@ class MockChannelProcess :
         	return;
         }
 
-        m_valueField = static_cast<PVScalar*>(field);
+        m_valueField = static_pointer_cast<PVScalar>(field);
     }
 
     public:
@@ -83,56 +83,56 @@ class MockChannelProcess :
             case pvBoolean:
             {
                 // negate
-                PVBoolean *pvBoolean = static_cast<PVBoolean*>(m_valueField);
+                PVBooleanPtr pvBoolean = static_pointer_cast<PVBoolean>(m_valueField);
                 pvBoolean->put(!pvBoolean->get());
                 break;
             }
             case pvByte:
             {
                 // increment by one
-                PVByte *pvByte = static_cast<PVByte*>(m_valueField);
+                PVBytePtr pvByte = static_pointer_cast<PVByte>(m_valueField);
                 pvByte->put(pvByte->get() + 1);
                 break;
             }
             case pvShort:
             {
                 // increment by one
-                PVShort *pvShort = static_cast<PVShort*>(m_valueField);
+                PVShortPtr pvShort = static_pointer_cast<PVShort>(m_valueField);
                 pvShort->put(pvShort->get() + 1);
                 break;
             }
             case pvInt:
             {
                 // increment by one
-                PVInt *pvInt = static_cast<PVInt*>(m_valueField);
+                PVIntPtr pvInt = static_pointer_cast<PVInt>(m_valueField);
                 pvInt->put(pvInt->get() + 1);
                 break;
             }
             case pvLong:
             {
                 // increment by one
-                PVLong *pvLong = static_cast<PVLong*>(m_valueField);
+                PVLongPtr pvLong = static_pointer_cast<PVLong>(m_valueField);
                 pvLong->put(pvLong->get() + 1);
                 break;
             }
             case pvFloat:
             {
                 // increment by one
-                PVFloat *pvFloat = static_cast<PVFloat*>(m_valueField);
+                PVFloatPtr pvFloat = static_pointer_cast<PVFloat>(m_valueField);
                 pvFloat->put(pvFloat->get() + 1.0f);
                 break;
             }
             case pvDouble:
             {
                 // increment by one
-                PVDouble *pvDouble = static_cast<PVDouble*>(m_valueField);
+                PVDoublePtr pvDouble = static_pointer_cast<PVDouble>(m_valueField);
                 pvDouble->put(pvDouble->get() + 1.0);
                 break;
             }
             case pvString:
             {
                 // increment by one
-                PVString *pvString = static_cast<PVString*>(m_valueField);
+                PVStringPtr pvString = static_pointer_cast<PVString>(m_valueField);
                 String val = pvString->get();
                 if (val.empty())
                     pvString->put("gen0");
@@ -404,8 +404,8 @@ class MockChannelRPC : public ChannelRPC
 		if (m_channelName == "rpcNTTable")
     	{
 	        // TODO type check, getStringField is verbose
-	        PVString* columns = static_cast<PVString*>(pvArgument->getSubField("columns"));
-			if (columns == 0)
+	        PVStringPtr columns = static_pointer_cast<PVString>(pvArgument->getSubField("columns"));
+			if (columns.get() == 0)
 			{
 	    		PVStructure::shared_pointer nullPtr;
 	    		Status errorStatus(Status::STATUSTYPE_ERROR, "no columns specified");
@@ -415,23 +415,27 @@ class MockChannelRPC : public ChannelRPC
 			{
 		        int i = 0;
 		        int totalFields = 1 + 1 + atoi(columns->get().c_str());  // normativeType, labels, <columns>
-		        FieldConstPtrArray fields = new FieldConstPtr[totalFields];
-		        fields[i++] = getFieldCreate()->createScalar("normativeType", pvString);
-		        fields[i++] = getFieldCreate()->createScalarArray("labels", pvString);
+		        StringArray fieldNames(totalFields);
+		        FieldConstPtrArray fields(totalFields);
+		        fieldNames[i] = "normativeType";
+		        fields[i++] = getFieldCreate()->createScalar(pvString);
+		        fieldNames[i] = "labels";
+		        fields[i++] = getFieldCreate()->createScalarArray(pvString);
 		        char sbuf[16];
 		        vector<String> labels;
 		        for (; i < totalFields; i++)
 		        {
 		        	sprintf(sbuf, "column%d", i-1	);
-		            fields[i] = getFieldCreate()->createScalarArray(sbuf, pvDouble);
+		        	fieldNames[i] = sbuf;
+		        	fields[i] = getFieldCreate()->createScalarArray(pvDouble);
 		            labels.push_back(sbuf);
 		        }
 
 		        PVStructure::shared_pointer result(
-		            new PVStructure(NULL, getFieldCreate()->createStructure("", totalFields, fields)));
+		            new PVStructure(getFieldCreate()->createStructure(fieldNames, fields)));
 
 		        result->getStringField("normativeType")->put("NTTable");
-		        static_cast<PVStringArray*>(result->getScalarArrayField("labels", pvString))->put(0, labels.size(), &labels[0], 0);
+		        static_pointer_cast<PVStringArray>(result->getScalarArrayField("labels", pvString))->put(0, labels.size(), &labels[0], 0);
 
 		        srand ( time(NULL) );
 
@@ -446,7 +450,7 @@ class MockChannelRPC : public ChannelRPC
 		        		iter++)
 		        {
 		        	FILL_VALUES;
-		        	static_cast<PVDoubleArray*>(result->getScalarArrayField(*iter, pvDouble))->put(0, ROWS, values, 0);
+		        	static_pointer_cast<PVDoubleArray>(result->getScalarArrayField(*iter, pvDouble))->put(0, ROWS, values, 0);
 		        }
 				m_channelRPCRequester->requestDone(Status::Ok, result);
 			}
@@ -499,7 +503,7 @@ class MockChannelArray : public ChannelArray
     protected:
     MockChannelArray(ChannelArrayRequester::shared_pointer const & channelArrayRequester, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
         m_channelArrayRequester(channelArrayRequester),
-        m_pvArray(getPVDataCreate()->createPVScalarArray(0, "", pvDouble))
+        m_pvArray(getPVDataCreate()->createPVScalarArray(pvDouble))
     {
         PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelArray);
     }
@@ -625,7 +629,7 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
         return Status::Ok;
     }
 
-    virtual MonitorElement::shared_pointer const & poll()
+    virtual MonitorElement::shared_pointer poll()
     {
         Lock xx(m_lock);
         if (m_count)
@@ -640,7 +644,7 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
         }
     }
 
-    virtual void release(MonitorElement::shared_pointer const & monitorElement)
+    virtual void release(MonitorElement::shared_pointer & monitorElement)
     {
         Lock xx(m_lock);
         if (m_count)
@@ -716,21 +720,62 @@ class MockChannel : public Channel {
 
         if (m_name.find("array") == 0)
         {
-            String allProperties("alarm,timeStamp,display,control");
-            m_pvStructure.reset(getStandardPVField()->scalarArray(0,name,pvDouble,allProperties));
-            PVDoubleArray *pvField = static_cast<PVDoubleArray*>(m_pvStructure->getScalarArrayField(String("value"), pvDouble));
-            double v = 0;
-            int ix = 0;
-            const int COUNT = 1000;
+            String allProperties("");
+//            String allProperties("alarm,timeStamp,display,control");
+            m_pvStructure = getStandardPVField()->scalarArray(pvDouble,allProperties);
+            PVDoubleArrayPtr pvField = static_pointer_cast<PVDoubleArray>(m_pvStructure->getScalarArrayField(String("value"), pvDouble));
             
-            pvField->setCapacity(1000*COUNT);
-            for (int n = 0; n < 1000; n++)
+            int specCount = 0; char postfix[64];
+            int done = sscanf(m_name.c_str(), "array%d%s", &specCount, postfix);
+
+            if (done && specCount > 0)
             {
-            
-                double array[COUNT];
+                pvField->setCapacity(specCount);
+                pvField->setLength(specCount);
+            }
+            else
+            {
+                double v = 0;
+                int ix = 0;
+                const int COUNT = 1024;
+                
+                pvField->setCapacity(1024*COUNT);
+                for (int n = 0; n < 1024; n++)
+                {
+                
+                    double array[COUNT];
+                    for (int i = 0; i < COUNT; i++)
+                    {
+                        array[i] = v; v+=1.1;
+                    }
+                    pvField->put(ix, COUNT, array, 0);
+                    ix += COUNT;
+                }
+            }
+            /*
+            printf("array prepared------------------------------------!!!\n");
+            String str;
+            pvField->toString(&str);
+            printf("%s\n", str.c_str());
+            printf("=============------------------------------------!!!\n");
+            */   
+        }
+        else if (m_name.find("image") == 0)
+        {
+            String allProperties("alarm,timeStamp,display,control");
+            m_pvStructure = getStandardPVField()->scalarArray(pvByte,allProperties);
+            PVByteArrayPtr pvField = static_pointer_cast<PVByteArray>(m_pvStructure->getScalarArrayField(String("value"), pvByte));
+            int ix = 0;
+            const int COUNT = 1024;
+
+            pvField->setCapacity(1024*COUNT);
+            for (int n = 0; n < 1024; n++)
+            {
+
+                int8 array[COUNT];
                 for (int i = 0; i < COUNT; i++)
                 {
-                    array[i] = v; v+=1.1;
+                    array[i] = ix;
                 }
                 pvField->put(ix, COUNT, array, 0);
                 ix += COUNT;
@@ -741,17 +786,24 @@ class MockChannel : public Channel {
             pvField->toString(&str);
             printf("%s\n", str.c_str());
             printf("=============------------------------------------!!!\n");
-            */   
+            */
         }
         else if (m_name.find("rpc") == 0)
         {
-        	m_pvStructure.reset(getPVDataCreate()->createPVStructure(0, name, 0, static_cast<epics::pvData::FieldConstPtr*>(0)));
+        	StringArray fieldNames;
+        	PVFieldPtrArray fields;
+        	m_pvStructure = getPVDataCreate()->createPVStructure(fieldNames, fields);
+        }
+        else if (m_name.find("valueOnly") == 0)
+        {
+            String allProperties("");
+            m_pvStructure = getStandardPVField()->scalar(pvDouble,allProperties);
         }
         else
         {
             String allProperties("alarm,timeStamp,display,control,valueAlarm");
-            m_pvStructure.reset(getStandardPVField()->scalar(0,name,pvDouble,allProperties));
-            PVDouble *pvField = m_pvStructure->getDoubleField(String("value"));
+            m_pvStructure = getStandardPVField()->scalar(pvDouble,allProperties);
+            PVDoublePtr pvField = m_pvStructure->getDoubleField(String("value"));
             pvField->put(1.123);
         }
     }
@@ -788,7 +840,7 @@ class MockChannel : public Channel {
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual ChannelProvider::shared_pointer const & getProvider()
@@ -831,7 +883,7 @@ class MockChannel : public Channel {
     	PVFieldPtr pvField;
     	if(subField == "")
     	{
-    		pvField = m_pvStructure.get();
+    		pvField = m_pvStructure;
     	}
     	else
     	{
@@ -1042,7 +1094,7 @@ class ChannelRequesterImpl : public ChannelRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer &channel)
@@ -1066,7 +1118,7 @@ class GetFieldRequesterImpl : public GetFieldRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void getDone(const epics::pvData::Status& status,epics::pvData::FieldConstPtr field)
@@ -1097,7 +1149,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelGetConnect(const epics::pvData::Status& status, ChannelGet::shared_pointer const & channelGet,
@@ -1133,7 +1185,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelPutConnect(const epics::pvData::Status& status,ChannelPut::shared_pointer const & channelPut,
@@ -1176,7 +1228,7 @@ class MonitorRequesterImpl : public MonitorRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void monitorConnect(const Status& status, Monitor::shared_pointer const & monitor, StructureConstPtr& structure)
@@ -1197,11 +1249,11 @@ class MonitorRequesterImpl : public MonitorRequester
         MonitorElement::shared_pointer  element = monitor->poll();
 
         String str("changed/overrun ");
-        element->getChangedBitSet()->toString(&str);
+        element->changedBitSet->toString(&str);
         str += '/';
-        element->getOverrunBitSet()->toString(&str);
+        element->overrunBitSet->toString(&str);
         str += '\n';
-        element->getPVStructure()->toString(&str);
+        element->pvStructurePtr->toString(&str);
         std::cout << str << std::endl;
 
         monitor->release(element);
@@ -1225,7 +1277,7 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelProcessConnect(const epics::pvData::Status& status,ChannelProcess::shared_pointer const & channelProcess)

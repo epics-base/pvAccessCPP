@@ -110,15 +110,15 @@ namespace epics {
 
             virtual void close(bool forced);
 
-            virtual void ensureData(int size) {
+            virtual void ensureData(std::size_t size) {
                 // noop
             }
 
-            virtual void alignData(int alignment) {
+            virtual void alignData(std::size_t alignment) {
                 _receiveBuffer->align(alignment);
             }
 
-            virtual void startMessage(epics::pvData::int8 command, int ensureCapacity);
+            virtual void startMessage(epics::pvData::int8 command, std::size_t ensureCapacity);
             virtual void endMessage();
 
             virtual void flush(bool lastMessageCompleted) {
@@ -134,11 +134,11 @@ namespace epics {
                 // noop
             }
 
-            virtual void ensureBuffer(int size) {
+            virtual void ensureBuffer(std::size_t size) {
                 // noop
             }
 
-            virtual void alignBuffer(int alignment) {
+            virtual void alignBuffer(std::size_t alignment) {
                 _sendBuffer->align(alignment);
             }
 

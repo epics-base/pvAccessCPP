@@ -43,7 +43,7 @@ namespace pvAccess {
 
             virtual void handleResponse(osiSockAddr* responseFrom,
                     Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                    std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
         /**
@@ -58,7 +58,7 @@ namespace pvAccess {
 
             virtual void handleResponse(osiSockAddr* responseFrom,
                     Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                    std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         private:
             /**
              * Table of response handlers for each command ID.
@@ -78,7 +78,7 @@ namespace pvAccess {
 
             virtual void handleResponse(osiSockAddr* responseFrom,
                     Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                    std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
         /**
@@ -102,7 +102,7 @@ namespace pvAccess {
 
             virtual void handleResponse(osiSockAddr* responseFrom,
                     Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                    std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
         class EchoTransportSender : public TransportSender {
@@ -142,7 +142,7 @@ namespace pvAccess {
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
                     Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                    std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
         /****************************************************************************************/
@@ -161,7 +161,7 @@ namespace pvAccess {
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
                     Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                    std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
 
         private:
         	std::vector<ChannelProvider::shared_pointer> _providers;
@@ -208,7 +208,7 @@ namespace pvAccess {
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
                     Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                    std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
 
         private:
         	void disconnect(Transport::shared_pointer const & transport);
@@ -257,7 +257,7 @@ namespace pvAccess {
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
                     Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                    int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                    std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
 
@@ -299,7 +299,7 @@ namespace pvAccess {
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
         			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-        			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        			std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
         class ServerChannelGetRequesterImpl :
@@ -352,7 +352,7 @@ namespace pvAccess {
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
         			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-        			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        			std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
         class ServerChannelPutRequesterImpl :
@@ -405,7 +405,7 @@ namespace pvAccess {
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
         			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-        			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        			std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
         class ServerChannelPutGetRequesterImpl :
@@ -459,7 +459,7 @@ namespace pvAccess {
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
         			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-        			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        			std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
 
@@ -482,7 +482,7 @@ namespace pvAccess {
         	       ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
         	       Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
         	       
-		void monitorConnect(const epics::pvData::Status& status, epics::pvData::Monitor::shared_pointer const & monitor, epics::pvData::StructureConstPtr const & structure);
+		void monitorConnect(const epics::pvData::Status& status, epics::pvData::Monitor::shared_pointer & monitor, epics::pvData::StructureConstPtr const & structure);
         	void unlisten(epics::pvData::Monitor::shared_pointer const & monitor);
         	void monitorEvent(epics::pvData::Monitor::shared_pointer const & monitor);
         	void lock();
@@ -511,7 +511,7 @@ namespace pvAccess {
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
         			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-        			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        			std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
         class ServerChannelArrayRequesterImpl :
@@ -565,7 +565,7 @@ namespace pvAccess {
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
         			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-        			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        			std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         private:
 
         	void failureResponse(Transport::shared_pointer const & transport, pvAccessID ioid, const epics::pvData::Status& errorStatus);
@@ -585,7 +585,7 @@ namespace pvAccess {
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
         			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-        			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        			std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
         class ServerChannelProcessRequesterImpl :
@@ -634,7 +634,7 @@ namespace pvAccess {
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
         			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-        			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        			std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         private:
         	void getFieldFailureResponse(Transport::shared_pointer const & transport, const pvAccessID ioid, const epics::pvData::Status& errorStatus);
         };
@@ -706,7 +706,7 @@ namespace pvAccess {
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
         			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-        			int payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        			std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
         };
 
         class ServerChannelRPCRequesterImpl :

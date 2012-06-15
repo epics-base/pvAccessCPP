@@ -73,7 +73,7 @@ public:
     }
 
     virtual void handleResponse(osiSockAddr* responseFrom,
-    		Transport::shared_pointer const & transport, int8 version, int8 command, int payloadSize,
+    		Transport::shared_pointer const & transport, int8 version, int8 command, std::size_t payloadSize,
             ByteBuffer* payloadBuffer) {
 
         if(command==CMD_CONNECTION_VALIDATION) transport->verified();

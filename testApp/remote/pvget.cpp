@@ -123,16 +123,14 @@ void convertToString(StringBuilder buffer,PVField * pv,int notFirst)
 void convertStructure(StringBuilder buffer,PVStructure *data,int notFirst)
 {
     PVFieldPtrArray fieldsData = data->getPVFields();
-    if (fieldsData != 0) {
-        int length = data->getStructure()->getNumberFields();
-        for(int i=0; i<length; i++) {
-            PVField *fieldField = fieldsData[i];
-            convertToString(buffer,fieldField,notFirst + 1);
-        }
-    }
+	int length = data->getStructure()->getNumberFields();
+	for(int i=0; i<length; i++) {
+		PVFieldPtr fieldField = fieldsData[i];
+		convertToString(buffer,fieldField.get(),notFirst + 1);
+	}
 }
 
-void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
+void convertArray(StringBuilder buffer,PVScalarArray *pv,int notFirst)
 {
     ScalarArrayConstPtr array = pv->getScalarArray();
     ScalarType type = array->getElementType();
@@ -141,9 +139,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
             PVBooleanArray *pvdata = static_cast<PVBooleanArray*>(pv);
             BooleanArrayData data = BooleanArrayData();
             *buffer += "[";
-            for(int i=0; i < pvdata->getLength(); i++) {
+            for(size_t i=0; i < pvdata->getLength(); i++) {
                 if(i!=0) *buffer += ",";
-                int num = pvdata->get(i,1,&data);
+                int num = pvdata->get(i,1,data);
                 if(num==1) {
                      BooleanArray  value = data.data;
                      if(value[data.offset]) {
@@ -162,9 +160,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
             PVByteArray *pvdata = static_cast<PVByteArray*>(pv);
             ByteArrayData data = ByteArrayData();
             *buffer += "[";
-            for(int i=0; i < pvdata->getLength(); i++) {
+            for(size_t i=0; i < pvdata->getLength(); i++) {
                 if(i!=0) *buffer += ",";
-                int num = pvdata->get(i,1,&data);
+                int num = pvdata->get(i,1,data);
                 if(num==1) {
                      int val = data.data[data.offset];
                      char buf[16];
@@ -181,9 +179,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
             PVShortArray *pvdata = static_cast<PVShortArray*>(pv);
             ShortArrayData data = ShortArrayData();
             *buffer += "[";
-            for(int i=0; i < pvdata->getLength(); i++) {
+            for(size_t i=0; i < pvdata->getLength(); i++) {
                 if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,&data);
+                int num = pvdata->get(i,1,data);
                 if(num==1) {
                      int val = data.data[data.offset];
                      char buf[16];
@@ -200,9 +198,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
             PVIntArray *pvdata = static_cast<PVIntArray*>(pv);
             IntArrayData data = IntArrayData();
             *buffer += "[";
-            for(int i=0; i < pvdata->getLength(); i++) {
+            for(size_t i=0; i < pvdata->getLength(); i++) {
                 if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,&data);
+                int num = pvdata->get(i,1,data);
                 if(num==1) {
                      int val = data.data[data.offset];
                      char buf[16];
@@ -219,9 +217,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
             PVLongArray *pvdata = static_cast<PVLongArray*>(pv);
             LongArrayData data = LongArrayData();
             *buffer += "[";
-            for(int i=0; i < pvdata->getLength(); i++) {
+            for(size_t i=0; i < pvdata->getLength(); i++) {
                 if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,&data);
+                int num = pvdata->get(i,1,data);
                 if(num==1) {
                      int64 val = data.data[data.offset];
                      char buf[16];
@@ -238,9 +236,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
             PVFloatArray *pvdata = static_cast<PVFloatArray*>(pv);
             FloatArrayData data = FloatArrayData();
             *buffer += "[";
-            for(int i=0; i < pvdata->getLength(); i++) {
+            for(size_t i=0; i < pvdata->getLength(); i++) {
                 if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,&data);
+                int num = pvdata->get(i,1,data);
                 if(num==1) {
                      float val = data.data[data.offset];
                      char buf[16];
@@ -257,9 +255,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
             PVDoubleArray *pvdata = static_cast<PVDoubleArray*>(pv);
             DoubleArrayData data = DoubleArrayData();
             *buffer += "[";
-            for(int i=0; i < pvdata->getLength(); i++) {
+            for(size_t i=0; i < pvdata->getLength(); i++) {
                 if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,&data);
+                int num = pvdata->get(i,1,data);
                 if(num==1) {
                      double val = data.data[data.offset];
                      char buf[16];
@@ -276,9 +274,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
     	PVStringArray *pvdata = static_cast<PVStringArray*>(pv);
     	StringArrayData data = StringArrayData();
     	*buffer += "[";
-    	for(int i=0; i < pvdata->getLength(); i++) {
+    	for(size_t i=0; i < pvdata->getLength(); i++) {
     		if(i!=0) *buffer += ",";
-    		int num = pvdata->get(i,1,&data);
+    		int num = pvdata->get(i,1,data);
     		StringArray value = data.data;
                 if(num==1) {
                     if(value[data.offset].length()>0) {
@@ -306,13 +304,13 @@ void convertStructureArray(StringBuilder buffer,
         return;
     }
     StructureArrayData data = StructureArrayData();
-    pvdata->get(0, length, &data);
+    pvdata->get(0, length, data);
     for (int i = 0; i < length; i++) {
-        PVStructure *pvStructure = data.data[i];
+        PVStructurePtr pvStructure = data.data[i];
         if (pvStructure == 0) {
             *buffer += "null";
         } else {
-            convertToString(buffer,pvStructure,notFirst+1);
+            convertToString(buffer,pvStructure.get(),notFirst+1);
         }
     }
 }
@@ -379,7 +377,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelGetConnect(const epics::pvData::Status& status,ChannelGet::shared_pointer const & channelGet,
@@ -475,7 +473,7 @@ public:
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel)

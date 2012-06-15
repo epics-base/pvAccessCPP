@@ -28,7 +28,7 @@ namespace pvAccess {
 
 void ServerBadResponse::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer)
+		size_t payloadSize, ByteBuffer* payloadBuffer)
 {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
@@ -74,7 +74,7 @@ ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer c
 
 void ServerResponseHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer)
+		size_t payloadSize, ByteBuffer* payloadBuffer)
 {
 	if(command<0||command>=(int8)m_handlerTable.size())
 	{
@@ -98,7 +98,7 @@ void ServerResponseHandler::handleResponse(osiSockAddr* responseFrom,
 
 void ServerConnectionValidationHandler::handleResponse(
 		osiSockAddr* responseFrom, Transport::shared_pointer const & transport, int8 version,
-		int8 command, int payloadSize,
+		int8 command, size_t payloadSize,
 		ByteBuffer* payloadBuffer)
 {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
@@ -116,7 +116,7 @@ void ServerConnectionValidationHandler::handleResponse(
 
 void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer)
+		size_t payloadSize, ByteBuffer* payloadBuffer)
 {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
@@ -128,7 +128,7 @@ void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
 
 void ServerIntrospectionSearchHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer)
+		size_t payloadSize, ByteBuffer* payloadBuffer)
 {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
@@ -149,7 +149,7 @@ ServerSearchHandler::~ServerSearchHandler()
 
 void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer)
+		size_t payloadSize, ByteBuffer* payloadBuffer)
 {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
@@ -273,7 +273,7 @@ void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendContr
 /****************************************************************************************/
 void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer)
+		size_t payloadSize, ByteBuffer* payloadBuffer)
 {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
@@ -424,7 +424,7 @@ String ServerChannelRequesterImpl::getRequesterName()
 
 void ServerChannelRequesterImpl::message(const String message, const MessageType messageType)
 {
-	LOG(logLevelDebug, "[%s] %s", messageTypeName[messageType].c_str(), message.c_str());
+	LOG(logLevelDebug, "[%s] %s", getMessageTypeName(messageType).c_str(), message.c_str());
 }
 
 void ServerChannelRequesterImpl::lock()
@@ -479,7 +479,7 @@ void ServerChannelRequesterImpl::createChannelFailedResponse(ByteBuffer* buffer,
 
 void ServerDestroyChannelHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer)
+		size_t payloadSize, ByteBuffer* payloadBuffer)
 {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
@@ -520,7 +520,7 @@ void ServerDestroyChannelHandler::handleResponse(osiSockAddr* responseFrom,
 
 void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer)
+		size_t payloadSize, ByteBuffer* payloadBuffer)
 {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
@@ -710,7 +710,7 @@ void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 /****************************************************************************************/
 void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		size_t payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
@@ -922,7 +922,7 @@ void ServerChannelPutRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 /****************************************************************************************/
 void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		size_t payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
@@ -1152,7 +1152,7 @@ void ServerChannelPutGetRequesterImpl::send(ByteBuffer* buffer, TransportSendCon
 /****************************************************************************************/
 void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		size_t payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
@@ -1246,7 +1246,7 @@ void ServerMonitorRequesterImpl::activate(PVStructure::shared_pointer const & pv
     INIT_EXCEPTION_GUARD(CMD_MONITOR, _channelMonitor = _channel->getChannel()->createMonitor(thisPointer, pvRequest));
 }
 
-void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor::shared_pointer const & monitor, epics::pvData::StructureConstPtr const & structure)
+void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor::shared_pointer & monitor, epics::pvData::StructureConstPtr const & structure)
 {
 	{
 		Lock guard(_mutex);
@@ -1352,14 +1352,14 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 			buffer->putByte((int8)request);
 
 			// changedBitSet and data, if not notify only (i.e. queueSize == -1)
-			BitSet::shared_pointer changedBitSet = element->getChangedBitSet();
+			BitSet::shared_pointer changedBitSet = element->changedBitSet;
 			if (changedBitSet != NULL)
 			{
 				changedBitSet->serialize(buffer, control);
-				element->getPVStructure()->serialize(buffer, control, changedBitSet.get());
+				element->pvStructurePtr->serialize(buffer, control, changedBitSet.get());
 
 				// overrunBitset
-				element->getOverrunBitSet()->serialize(buffer, control);
+				element->overrunBitSet->serialize(buffer, control);
 			}
 
 			monitor->release(element);
@@ -1370,7 +1370,7 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 /****************************************************************************************/
 void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		size_t payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
@@ -1595,7 +1595,7 @@ void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendCont
 /****************************************************************************************/
 void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		size_t payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
@@ -1635,7 +1635,7 @@ void ServerCancelRequestHandler::failureResponse(Transport::shared_pointer const
 /****************************************************************************************/
 void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		size_t payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
@@ -1794,7 +1794,7 @@ void ServerChannelProcessRequesterImpl::send(ByteBuffer* buffer, TransportSendCo
 /****************************************************************************************/
 void ServerGetFieldHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		size_t payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
@@ -1873,7 +1873,7 @@ void ServerGetFieldRequesterImpl::send(ByteBuffer* buffer, TransportSendControl*
 /****************************************************************************************/
 void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
-		int payloadSize, ByteBuffer* payloadBuffer) {
+		size_t payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
@@ -2034,7 +2034,7 @@ void ServerChannelRPCRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
     		}
     		else
     		{
-    			introspectionRegistry->serializeStructure(buffer, control, _pvResponse.get());
+    			introspectionRegistry->serializeStructure(buffer, control, _pvResponse);
     		}
     	}
 	}

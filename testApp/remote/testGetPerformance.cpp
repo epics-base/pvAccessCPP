@@ -20,9 +20,11 @@ using namespace std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-#define COUNT 100000
+#define COUNT 1000   // repetitions per result
+#define CHANNELS 1000
+#define ARRAY_SIZE 1
 
-#define DEFAULT_TIMEOUT 60.0
+#define DEFAULT_TIMEOUT 600.0
 #define DEFAULT_REQUEST "field(value)"
 
 double timeOut = DEFAULT_TIMEOUT;
@@ -40,6 +42,25 @@ void usage (void)
             , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
 
+vector<ChannelGet::shared_pointer> getCs;
+int channelCount = 0;
+int allCount = 0;
+
+timeval startTime;
+
+void get_all()
+{
+    ChannelGet::shared_pointer last;
+    for (vector<ChannelGet::shared_pointer>::const_iterator i = getCs.begin();
+        i != getCs.end();
+        i++)
+        {
+        (*i)->get(false);
+        last = *i;
+        }
+    last->get(true);
+}
+
 
 class ChannelGetRequesterImpl : public ChannelGetRequester
 {
@@ -48,6 +69,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
    PVStructure::shared_pointer m_pvStructure;
    BitSet::shared_pointer m_bitSet;
    Event m_event;
+   Event m_connectionEvent;
    String m_channelName;
    int m_count;
 
@@ -64,7 +86,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 
    virtual void message(String message,MessageType messageType)
    {
-       std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+       std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
    }
 
    virtual void channelGetConnect(const epics::pvData::Status& status,
@@ -83,11 +105,14 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
            m_channelGet = channelGet;
            m_pvStructure = pvStructure;
            m_bitSet = bitSet;
+           
+           m_connectionEvent.signal();
 
+/*
            m_count = COUNT;
 
            gettimeofday(&m_startTime, NULL);
-           m_channelGet->get(false);
+*/   
        }
        else
        {
@@ -105,32 +130,43 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
                std::cout << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
            }
 
+    channelCount++;
+    if (channelCount == CHANNELS)
+    {
+        allCount++;
+        channelCount = 0;
+    }
+//printf("channelCount %d\n", channelCount);
+    
+    if (allCount == COUNT)
+    {
+        timeval endTime;
+        gettimeofday(&endTime, NULL);
+    
+    
+        long seconds, nseconds;
+        double duration;
+        seconds  = endTime.tv_sec  - startTime.tv_sec;
+        nseconds = endTime.tv_usec - startTime.tv_usec;
+    
+        duration = seconds + nseconds/1000000.0;
+    
+        printf("%5.6f seconds, %5.3f (x %d = %5.3f) gets/s\n", duration, COUNT/duration, CHANNELS, COUNT*CHANNELS/duration);
+    
+        allCount = 0;
+        gettimeofday(&startTime, NULL);
+        
+        get_all();
 
-           //String str;
-           //m_pvStructure->toString(&str);
-           //std::cout << str << std::endl;
-
-           //m_event.signal();
-
-           if (--m_count)
-               m_channelGet->get(false);
-           else
-           {
-               timeval endTime;
-               gettimeofday(&endTime, NULL);
+    }
+    else if (channelCount == 0)
+    {
+            
+        get_all();
+    }
 
 
-               long seconds, nseconds;
-               double duration;
-               seconds  = endTime.tv_sec  - m_startTime.tv_sec;
-               nseconds = endTime.tv_usec - m_startTime.tv_usec;
 
-               duration = seconds + nseconds/1000000.0;
-
-               printf("%5.6f seconds, %5.3f gets/s \n", duration, COUNT/duration);
-
-               m_event.signal();
-           }
        }
        else
        {
@@ -139,9 +175,15 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 
    }
 
-   bool wait(double timeOut)
+/*
+   void get()
    {
        return m_event.wait(timeOut);
+   }
+*/
+   bool waitUntilConnected(double timeOut)
+   {
+       return m_connectionEvent.wait(timeOut);
    }
 };
 
@@ -159,7 +201,7 @@ public:
 
    virtual void message(String message,MessageType messageType)
    {
-       std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+       std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
    }
 
    virtual void channelCreated(const epics::pvData::Status& status,
@@ -194,9 +236,10 @@ public:
 };
 
 
-
 int main (int argc, char *argv[])
 {
+printf("this does not work... since this impl. requires bulk get control... tODO\n");
+return -1;
    int opt;                    // getopt() current option
 
    setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    // Set stdout to line buffering
@@ -233,14 +276,17 @@ int main (int argc, char *argv[])
        }
    }
 
-   int nPvs = argc - optind;       // Remaining arg list is PV name
-   if (nPvs < 1 || nPvs > 1)
-   {
-       fprintf(stderr, "No pv name specified. ('testGetPerformance -h' for help.)\n");
-       return 1;
-   }
+    printf("%d channels of double array size of %d elements, %d repetitions per sample\n", CHANNELS, ARRAY_SIZE, COUNT);
+    
+    vector<string> pvs;
+    char buf[64];
+    for (int i = 0; i < CHANNELS; i++)
+    {
+        sprintf(buf, "array%d_%d", ARRAY_SIZE, i);
+        pvs.push_back(buf);
+        //printf("%s\n", buf);
+    }
 
-   string pvName = argv[optind];      // Copy PV name from command line
 
    try {
        pvRequest = getCreateRequest()->createRequest(request);
@@ -257,33 +303,57 @@ int main (int argc, char *argv[])
    ClientFactory::start();
    ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
 
+
+      vector<Channel::shared_pointer> chs;
+
+  for (vector<string>::iterator i = pvs.begin();
+        i != pvs.end();
+        i++)
+        {
+
+
    shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new
         ChannelRequesterImpl());
-   Channel::shared_pointer channel = provider->createChannel(pvName, channelRequesterImpl);
+   Channel::shared_pointer channel = provider->createChannel(*i, channelRequesterImpl);
+        chs.push_back(channel);
+        }
 
+  for (vector<Channel::shared_pointer>::iterator i = chs.begin();
+        i != chs.end();
+        i++)
+        {
+          Channel::shared_pointer channel = *i;  
+          shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
    if (channelRequesterImpl->waitUntilConnected(5.0))
    {
        shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new
             ChannelGetRequesterImpl(channel->getChannelName()));
        ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
 
-       allOK &= getRequesterImpl->wait(timeOut);
+       allOK = getRequesterImpl->waitUntilConnected(timeOut);
 
        if (!allOK)
        {
            std::cout << "[" << channel->getChannelName() << "] failed to get all the gets" << std::endl;
+           return 1;
        }
 
-       channelGet->destroy();
+        getCs.push_back(channelGet);
+        
    }
    else
    {
-       allOK = false;
-       channel->destroy();
        std::cout << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
+       return 1;
    }
+}
+           std::cout << "all connected" << std::endl;
 
-   ClientFactory::stop();
+    gettimeofday(&startTime, NULL);
+   get_all();
+   
+   epicsThreadSleep(DEFAULT_TIMEOUT);
+   //ClientFactory::stop();
 
    return allOK ? 0 : 1;
 }

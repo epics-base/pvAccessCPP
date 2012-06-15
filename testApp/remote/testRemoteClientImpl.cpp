@@ -32,7 +32,7 @@ class ChannelRequesterImpl : public ChannelRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel)
@@ -56,7 +56,7 @@ class GetFieldRequesterImpl : public GetFieldRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void getDone(const epics::pvData::Status& status,epics::pvData::FieldConstPtr const & field)
@@ -91,7 +91,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelGetConnect(const epics::pvData::Status& status,ChannelGet::shared_pointer const & channelGet,
@@ -141,7 +141,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelPutConnect(const epics::pvData::Status& status,ChannelPut::shared_pointer const & channelPut,
@@ -197,7 +197,7 @@ class ChannelPutGetRequesterImpl : public ChannelPutGetRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelPutGetConnect(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
@@ -275,7 +275,7 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelRPCConnect(const epics::pvData::Status& status,ChannelRPC::shared_pointer const & channelRPC)
@@ -314,7 +314,7 @@ class ChannelArrayRequesterImpl : public ChannelArrayRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelArrayConnect(const epics::pvData::Status& status,ChannelArray::shared_pointer const & channelArray,
@@ -364,10 +364,10 @@ class MonitorRequesterImpl : public MonitorRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, StructureConstPtr const & structure)
+    virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer & monitor, StructureConstPtr const & structure)
     {
         std::cout << "monitorConnect(" << status.toString() << ")" << std::endl;
         if (status.isSuccess() && structure)
@@ -385,11 +385,11 @@ class MonitorRequesterImpl : public MonitorRequester
         MonitorElement::shared_pointer element = monitor->poll();
 
         String str("changed/overrun ");
-        element->getChangedBitSet()->toString(&str);
+        element->changedBitSet->toString(&str);
         str += '/';
-        element->getOverrunBitSet()->toString(&str);
+        element->overrunBitSet->toString(&str);
         str += '\n';
-        element->getPVStructure()->toString(&str);
+        element->pvStructurePtr->toString(&str);
         std::cout << str << std::endl;
 
         monitor->release(element);
@@ -413,7 +413,7 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelProcessConnect(const epics::pvData::Status& status,ChannelProcess::shared_pointer const & channelProcess)
@@ -526,10 +526,9 @@ int main(int argc,char *argv[])
          
         {
     ChannelArrayRequester::shared_pointer channelArrayRequesterImpl(new ChannelArrayRequesterImpl());
-    PVStructure::shared_pointer pvRequest(getPVDataCreate()->createPVStructure(0, "", 0));
-    PVString* pvFieldName = (PVString*)getPVDataCreate()->createPVScalar(pvRequest.get(), "field", pvString);
-    pvFieldName->put("value");
-    pvRequest->appendPVField(pvFieldName);
+    StringArray fieldNames(1); fieldNames.push_back("field");
+    FieldConstPtrArray fields(1); fields.push_back(getFieldCreate()->createScalar(pvString));
+    PVStructure::shared_pointer pvRequest(getPVDataCreate()->createPVStructure(getFieldCreate()->createStructure(fieldNames, fields)));
 
     ChannelArray::shared_pointer channelArray = channel->createChannelArray(channelArrayRequesterImpl, pvRequest);
     epicsThreadSleep ( 1.0 );

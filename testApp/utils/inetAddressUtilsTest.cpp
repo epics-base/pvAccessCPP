@@ -112,7 +112,7 @@ TEST(inetAddressUtils, encodeAsIPv6Address)
     osiSockAddr addr = *paddr;
     
     encodeAsIPv6Address(buff.get(), &addr);
-    ASSERT_EQ(static_cast<uintptr_t>(16), buff->getPosition());
+    ASSERT_EQ(static_cast<size_t>(16), buff->getPosition());
     
     EXPECT_TRUE(strncmp(buff->getArray(), src, 16)==0);
 }

@@ -124,20 +124,20 @@ namespace epics {
             bool waitUntilVerified(double timeout);
 
             virtual void flush(bool lastMessageCompleted);
-            virtual void startMessage(epics::pvData::int8 command, int ensureCapacity);
+            virtual void startMessage(epics::pvData::int8 command, std::size_t ensureCapacity);
             virtual void endMessage();
 
             virtual void flushSerializeBuffer() {
                 flush(false);
             }
 
-            virtual void ensureBuffer(int size);
+            virtual void ensureBuffer(std::size_t size);
 
-            virtual void alignBuffer(int alignment);
+            virtual void alignBuffer(std::size_t alignment);
 
-            virtual void ensureData(int size);
+            virtual void ensureData(std::size_t size);
 
-            virtual void alignData(int alignment);
+            virtual void alignData(std::size_t alignment);
 
             virtual void close(bool force);
 
@@ -165,10 +165,15 @@ namespace epics {
 
             //void enqueueMonitorSendRequest(TransportSender::shared_pointer const & sender);
 
+            virtual void enqueueOnlySendRequest(TransportSender::shared_pointer const & sender);
+         
+            virtual void flushSendQueue();
+        
+
         protected:
         
             virtual void processReadCached(bool nestedCall,
-                    ReceiveStage inStage, int requiredBytes);
+                    ReceiveStage inStage, std::size_t requiredBytes);
 
             /**
              * Called to any resources just before closing transport
@@ -199,11 +204,12 @@ namespace epics {
             /**
              * Default marker period.
              */
-            static const int MARKER_PERIOD = 1024;
+            static const std::size_t MARKER_PERIOD = 1024;
 
-            static const int MAX_ENSURE_DATA_BUFFER_SIZE = 1024;
+            static const std::size_t MAX_ENSURE_DATA_BUFFER_SIZE = 1024;
 
-            static const double _delay;
+// TODO
+              double _delay;
 
             /****** finally initialized at construction time and after start (called by the same thread) ********/
             
@@ -230,10 +236,12 @@ namespace epics {
              */
             std::auto_ptr<ResponseHandler> _responseHandler;
 
+            // TODO review int vs std::size_t
+
             /**
              * Send buffer size.
              */
-            int _maxPayloadSize;
+            std::size_t _maxPayloadSize;
 
             /**
              * Send buffer size.
@@ -333,16 +341,16 @@ namespace epics {
             // initialized at construction time
             epics::pvData::ByteBuffer* _socketBuffer;
 
-            int _startPosition;
+            std::size_t _startPosition;
 
-            int _storedPayloadSize;
-            int _storedPosition;
-            int _storedLimit;
+            std::size_t _storedPayloadSize;
+            std::size_t _storedPosition;
+            std::size_t _storedLimit;
 
             epics::pvData::int8 _version;
             epics::pvData::int8 _packetType;
             epics::pvData::int8 _command;
-            int _payloadSize;
+            std::size_t _payloadSize;
 
             ReceiveStage _stage;
 

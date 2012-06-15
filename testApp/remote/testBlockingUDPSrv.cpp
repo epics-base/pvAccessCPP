@@ -60,14 +60,14 @@ public:
     }
 
     virtual void handleResponse(osiSockAddr* responseFrom,
-    		Transport::shared_pointer const &, int8 version, int8 command, int payloadSize,
+    		Transport::shared_pointer const &, int8 version, int8 command, std::size_t payloadSize,
             ByteBuffer* payloadBuffer);
 private:
     int packets;
 };
 
 void DummyResponseHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport::shared_pointer const &, int8 version, int8 command, int payloadSize,
+		Transport::shared_pointer const &, int8 version, int8 command, std::size_t payloadSize,
         ByteBuffer* payloadBuffer) {
     std::ostringstream os;
 
@@ -84,7 +84,7 @@ void DummyResponseHandler::handleResponse(osiSockAddr* responseFrom,
 
     char payload[50];
 
-    for(int i = 0; i<payloadSize;) {
+    for(std::size_t i = 0; i<payloadSize;) {
         int dataCount = payloadSize-i<50 ? payloadSize-i : 50;
         payloadBuffer->get(payload, 0, dataCount);
         os<<"Payload ("<<i<<"-"<<(dataCount-1)<<")";

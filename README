@@ -3,4 +3,21 @@ Define
 EPICS_BASE
 PVDATA_HOME
 
-variables that points to EPICS base and pvDataCPP installation directory (includes and libraries) in configure/RELEASE.
+variables that points to EPICS base and pvDataCPP installation directory (includes and libraries) in configure/RELEASE.local
+
+Google C++ Testing Framework
+----------------------------
+Download:
+http://code.google.com/p/googletest/
+
+Extract, go to its root directory and in run:
+export GTEST_DIR=$PWD
+g++ -g -O3 -I${GTEST_DIR}/include -I${GTEST_DIR} -c ${GTEST_DIR}/src/gtest-all.cc
+g++ -g -O3 -I${GTEST_DIR}/include -I${GTEST_DIR} -c ${GTEST_DIR}/src/gtest_main.cc
+ar -rv libgtest_main.a gtest_main.o gtest-all.o
+
+mkdir -p $EPICS_HOME/gtest/lib
+cp -r ${GTEST_DIR}/include $EPICS_HOME/gtest
+cp libgtest_main.a $EPICS_HOME/gtest/lib
+
+(you can use cmake, see gtest README)

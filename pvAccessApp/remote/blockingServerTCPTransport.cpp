@@ -28,7 +28,8 @@ namespace pvAccess {
             _lastChannelSID(0)
         {
             // for performance testing
-            // setSendQueueFlushStrategy(IMMEDIATE);
+            setSendQueueFlushStrategy(DELAYED);
+            _delay = 0.000;
             
             // NOTE: priority not yet known, default priority is used to register/unregister
             // TODO implement priorities in Reactor... not that user will

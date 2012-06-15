@@ -141,7 +141,7 @@ namespace epics {
             }
         }
 
-        void BlockingUDPTransport::startMessage(int8 command, int ensureCapacity) {
+        void BlockingUDPTransport::startMessage(int8 command, size_t ensureCapacity) {
             _lastMessageStartPosition = _sendBuffer->getPosition();
             _sendBuffer->putByte(CA_MAGIC);
             _sendBuffer->putByte(CA_VERSION);
@@ -276,11 +276,12 @@ namespace epics {
 
                 // command ID and paylaod
                 int8 command = receiveBuffer->getByte();
-                int payloadSize = receiveBuffer->getInt();
-                int nextRequestPosition = receiveBuffer->getPosition() + payloadSize;
+                // TODO check this cast (size_t must be 32-bit)
+                size_t payloadSize = receiveBuffer->getInt();
+                size_t nextRequestPosition = receiveBuffer->getPosition() + payloadSize;
 
                 // payload size check
-                if(unlikely(nextRequestPosition>(int)receiveBuffer->getLimit())) return false;
+                if(unlikely(nextRequestPosition>receiveBuffer->getLimit())) return false;
 
                 // handle
                 _responseHandler->handleResponse(&fromAddress, thisTransport,

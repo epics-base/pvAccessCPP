@@ -111,7 +111,7 @@ namespace epics {
             
             virtual ~TransportSendControl() {}
 
-            virtual void startMessage(epics::pvData::int8 command, int ensureCapacity) = 0;
+            virtual void startMessage(epics::pvData::int8 command, std::size_t ensureCapacity) = 0;
             virtual void endMessage() = 0;
 
             virtual void flush(bool lastMessageCompleted) = 0;
@@ -261,6 +261,10 @@ namespace epics {
              */
             virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender) = 0;
 
+            virtual void enqueueOnlySendRequest(TransportSender::shared_pointer const & sender) {};
+            
+            virtual void flushSendQueue() {};
+
         };
 
         class Channel;
@@ -315,7 +319,7 @@ namespace epics {
              */
             virtual void
             handleResponse(osiSockAddr* responseFrom, Transport::shared_pointer const & transport,
-                    epics::pvData::int8 version, epics::pvData::int8 command, int payloadSize,
+                    epics::pvData::int8 version, epics::pvData::int8 command, std::size_t payloadSize,
                     epics::pvData::ByteBuffer* payloadBuffer) = 0;
         };
 
@@ -335,7 +339,7 @@ namespace epics {
             virtual ~AbstractResponseHandler() {}
 
             virtual void handleResponse(osiSockAddr* responseFrom, Transport::shared_pointer const & transport,
-                    epics::pvData::int8 version, epics::pvData::int8 command, int payloadSize,
+                    epics::pvData::int8 version, epics::pvData::int8 command, std::size_t payloadSize,
                     epics::pvData::ByteBuffer* payloadBuffer);
 
         protected:

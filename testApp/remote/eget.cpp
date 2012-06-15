@@ -124,13 +124,11 @@ void convertToString(StringBuilder buffer,PVField * pv,int notFirst)
 void convertStructure(StringBuilder buffer,PVStructure *data,int notFirst)
 {
     PVFieldPtrArray fieldsData = data->getPVFields();
-    if (fieldsData != 0) {
-        int length = data->getStructure()->getNumberFields();
-        for(int i=0; i<length; i++) {
-            PVField *fieldField = fieldsData[i];
-            convertToString(buffer,fieldField,notFirst + 1);
-        }
-    }
+	int length = data->getStructure()->getNumberFields();
+	for(int i=0; i<length; i++) {
+		PVFieldPtr fieldField = fieldsData[i];
+		convertToString(buffer,fieldField.get(),notFirst + 1);
+	}
 }
 
 void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
@@ -142,9 +140,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
             PVBooleanArray *pvdata = static_cast<PVBooleanArray*>(pv);
             BooleanArrayData data = BooleanArrayData();
             *buffer += "[";
-            for(int i=0; i < pvdata->getLength(); i++) {
+            for(size_t i=0; i < pvdata->getLength(); i++) {
                 if(i!=0) *buffer += ",";
-                int num = pvdata->get(i,1,&data);
+                int num = pvdata->get(i,1,data);
                 if(num==1) {
                      BooleanArray  value = data.data;
                      if(value[data.offset]) {
@@ -163,9 +161,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
             PVByteArray *pvdata = static_cast<PVByteArray*>(pv);
             ByteArrayData data = ByteArrayData();
             *buffer += "[";
-            for(int i=0; i < pvdata->getLength(); i++) {
+            for(size_t i=0; i < pvdata->getLength(); i++) {
                 if(i!=0) *buffer += ",";
-                int num = pvdata->get(i,1,&data);
+                int num = pvdata->get(i,1,data);
                 if(num==1) {
                      int val = data.data[data.offset];
                      char buf[16];
@@ -182,9 +180,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
             PVShortArray *pvdata = static_cast<PVShortArray*>(pv);
             ShortArrayData data = ShortArrayData();
             *buffer += "[";
-            for(int i=0; i < pvdata->getLength(); i++) {
+            for(size_t i=0; i < pvdata->getLength(); i++) {
                 if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,&data);
+                int num = pvdata->get(i,1,data);
                 if(num==1) {
                      int val = data.data[data.offset];
                      char buf[16];
@@ -201,9 +199,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
             PVIntArray *pvdata = static_cast<PVIntArray*>(pv);
             IntArrayData data = IntArrayData();
             *buffer += "[";
-            for(int i=0; i < pvdata->getLength(); i++) {
+            for(size_t i=0; i < pvdata->getLength(); i++) {
                 if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,&data);
+                int num = pvdata->get(i,1,data);
                 if(num==1) {
                      int val = data.data[data.offset];
                      char buf[16];
@@ -220,9 +218,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
             PVLongArray *pvdata = static_cast<PVLongArray*>(pv);
             LongArrayData data = LongArrayData();
             *buffer += "[";
-            for(int i=0; i < pvdata->getLength(); i++) {
+            for(size_t i=0; i < pvdata->getLength(); i++) {
                 if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,&data);
+                int num = pvdata->get(i,1,data);
                 if(num==1) {
                      int64 val = data.data[data.offset];
                      char buf[16];
@@ -239,9 +237,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
             PVFloatArray *pvdata = static_cast<PVFloatArray*>(pv);
             FloatArrayData data = FloatArrayData();
             *buffer += "[";
-            for(int i=0; i < pvdata->getLength(); i++) {
+            for(size_t i=0; i < pvdata->getLength(); i++) {
                 if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,&data);
+                int num = pvdata->get(i,1,data);
                 if(num==1) {
                      float val = data.data[data.offset];
                      char buf[16];
@@ -258,9 +256,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
             PVDoubleArray *pvdata = static_cast<PVDoubleArray*>(pv);
             DoubleArrayData data = DoubleArrayData();
             *buffer += "[";
-            for(int i=0; i < pvdata->getLength(); i++) {
+            for(size_t i=0; i < pvdata->getLength(); i++) {
                 if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,&data);
+                int num = pvdata->get(i,1,data);
                 if(num==1) {
                      double val = data.data[data.offset];
                      char buf[16];
@@ -277,9 +275,9 @@ void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
     	PVStringArray *pvdata = static_cast<PVStringArray*>(pv);
     	StringArrayData data = StringArrayData();
     	*buffer += "[";
-    	for(int i=0; i < pvdata->getLength(); i++) {
+    	for(size_t i=0; i < pvdata->getLength(); i++) {
     		if(i!=0) *buffer += ",";
-    		int num = pvdata->get(i,1,&data);
+    		int num = pvdata->get(i,1,data);
     		StringArray value = data.data;
                 if(num==1) {
                     if(value[data.offset].length()>0) {
@@ -307,13 +305,13 @@ void convertStructureArray(StringBuilder buffer,
         return;
     }
     StructureArrayData data = StructureArrayData();
-    pvdata->get(0, length, &data);
+    pvdata->get(0, length, data);
     for (int i = 0; i < length; i++) {
-        PVStructure *pvStructure = data.data[i];
+        PVStructurePtr pvStructure = data.data[i];
         if (pvStructure == 0) {
             *buffer += "null";
         } else {
-            convertToString(buffer,pvStructure,notFirst+1);
+            convertToString(buffer,pvStructure.get(),notFirst+1);
         }
     }
 }
@@ -369,8 +367,8 @@ char *url_encode(char *str) {
 
 void formatNTTable(StringBuilder buffer, PVStructure *pvStruct)
 {
-    PVStringArray* labels = static_cast<PVStringArray*>(pvStruct->getScalarArrayField("labels", pvString));
-    if (labels == 0)
+    PVStringArrayPtr labels = static_pointer_cast<PVStringArray>(pvStruct->getScalarArrayField("labels", pvString));
+    if (labels.get() == 0)
         return; // TODO
         
     int numColumns = labels->getLength();
@@ -379,23 +377,24 @@ void formatNTTable(StringBuilder buffer, PVStructure *pvStruct)
     
     // next numColumns fields are columns
     int maxValues = 0;
-    vector<DoubleArrayData> columnData;
+//    vector<DoubleArrayData> columnData;
+    vector<vector<double>*> columnData;
     PVFieldPtrArray fields = pvStruct->getPVFields();
     for (int i = 0; i < numColumns; i++)
     {
         DoubleArrayData values;
         // TODO we relay on field ordering here (normativeType, labels, <columns>)
-        PVDoubleArray* arrayField = static_cast<PVDoubleArray*>(fields[i+2]);
-        int count = arrayField->get(0, arrayField->getLength(), &values);
+        PVDoubleArrayPtr arrayField = static_pointer_cast<PVDoubleArray>(fields[i+2]);
+        int count = arrayField->get(0, arrayField->getLength(), values);
         if (count > maxValues) maxValues = count;
-        columnData.push_back(values);
+        columnData.push_back(&values.data);
     }
 
     std::cout << std::left;
 
     // first print labels
    	StringArrayData data;
-    labels->get(0, numColumns, &data);
+    labels->get(0, numColumns, data);
     for (int i = 0; i < numColumns; i++)
     {
     	std::cout << std::setw(16) << data.data[i];
@@ -408,7 +407,8 @@ void formatNTTable(StringBuilder buffer, PVStructure *pvStruct)
     {
         for (int i = 0; i < numColumns; i++)
         {
-        	std::cout << std::setw(16) << columnData[i].data[r];
+//        	std::cout << std::setw(16) << columnData[i].data[r];
+        	std::cout << std::setw(16) << (*columnData[i])[r];
         }
         std::cout << std::endl;
     }
@@ -422,8 +422,8 @@ void toNTString(StringBuilder buffer, PVField *pv,int notFirst)
     {
         PVStructure* pvStruct = static_cast<PVStructure*>(pv);
         // TODO type check, getStringField is verbose
-        PVString* ntType = static_cast<PVString*>(pvStruct->getSubField("normativeType"));
-        if (ntType)
+        PVStringPtr ntType = static_pointer_cast<PVString>(pvStruct->getSubField("normativeType"));
+        if (ntType.get())
         {
             String value = ntType->get();
             
@@ -508,7 +508,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelGetConnect(const epics::pvData::Status& status,ChannelGet::shared_pointer const & channelGet,
@@ -610,7 +610,7 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelRPCConnect(const epics::pvData::Status& status,ChannelRPC::shared_pointer const & channelRPC)
@@ -713,7 +713,7 @@ public:
 
     virtual void message(String message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl;
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel)
@@ -935,15 +935,17 @@ int main (int argc, char *argv[])
         }
         
         int i = 0;
-        FieldConstPtrArray fields = new FieldConstPtr[parameters.size()];
+        StringArray fieldNames(parameters.size());
+        FieldConstPtrArray fields(parameters.size());
         for (vector< pair<string, string> >::iterator iter = parameters.begin();
              iter != parameters.end();
              iter++, i++)
         {
-            fields[i] = getFieldCreate()->createScalar(iter->first, pvString);
+        	fieldNames[i] = iter->first;
+            fields[i] = getFieldCreate()->createScalar(pvString);
         }
         PVStructure::shared_pointer args(
-            new PVStructure(NULL, getFieldCreate()->createStructure("", parameters.size(), fields)));
+            new PVStructure(getFieldCreate()->createStructure(fieldNames, fields)));
         for (vector< pair<string, string> >::iterator iter = parameters.begin();
              iter != parameters.end();
              iter++)

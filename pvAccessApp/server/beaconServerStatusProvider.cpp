@@ -23,17 +23,28 @@ DefaultBeaconServerStatusProvider::~DefaultBeaconServerStatusProvider()
 
 void DefaultBeaconServerStatusProvider::initialize()
 {
-	FieldCreate* fieldCreate = getFieldCreate();
-	FieldConstPtrArray fields = new FieldConstPtr[6];
-	// TODO hierarchy can be used...
-	fields[0] = fieldCreate->createScalar("connections",pvInt);
-	fields[1] = fieldCreate->createScalar("allocatedMemory",pvLong);
-	fields[2] = fieldCreate->createScalar("freeMemory",pvLong);
-	fields[3] = fieldCreate->createScalar("threads",pvInt);
-	fields[4] = fieldCreate->createScalar("deadlocks",pvInt);
-	fields[5] = fieldCreate->createScalar("averageSystemLoad",pvDouble);
+	FieldCreatePtr fieldCreate = getFieldCreate();
 
-	_status.reset(getPVDataCreate()->createPVStructure(0,"status",6,fields));
+	StringArray fieldNames;
+	fieldNames.resize(6);
+	fieldNames[0] = "connections";
+	fieldNames[1] = "allocatedMemory";
+	fieldNames[2] = "freeMemory";
+	fieldNames[3] = "threads";
+	fieldNames[4] = "deadlocks";
+	fieldNames[5] = "averageSystemLoad";
+
+	FieldConstPtrArray fields;
+	fields.resize(6);
+	// TODO hierarchy can be used...
+	fields[0] = fieldCreate->createScalar(pvInt);
+	fields[1] = fieldCreate->createScalar(pvLong);
+	fields[2] = fieldCreate->createScalar(pvLong);
+	fields[3] = fieldCreate->createScalar(pvInt);
+	fields[4] = fieldCreate->createScalar(pvInt);
+	fields[5] = fieldCreate->createScalar(pvDouble);
+
+	_status = getPVDataCreate()->createPVStructure(fieldCreate->createStructure(fieldNames, fields));
 }
 
 PVField::shared_pointer DefaultBeaconServerStatusProvider::getServerStatusData()

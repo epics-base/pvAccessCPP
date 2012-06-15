@@ -17,15 +17,11 @@ namespace pvAccess {
 const int8 IntrospectionRegistry::NULL_TYPE_CODE = (int8)-1;
 const int8 IntrospectionRegistry::ONLY_ID_TYPE_CODE = (int8)-2;
 const int8 IntrospectionRegistry::FULL_WITH_ID_TYPE_CODE = (int8)-3;
-PVDataCreate* IntrospectionRegistry::_pvDataCreate = 0;
-FieldCreate* IntrospectionRegistry::_fieldCreate = 0;
+PVDataCreatePtr IntrospectionRegistry::_pvDataCreate (getPVDataCreate());
+FieldCreatePtr IntrospectionRegistry::_fieldCreate(getFieldCreate());
 
 IntrospectionRegistry::IntrospectionRegistry(bool serverSide)
 {
-    // TODO not optimal
-	_pvDataCreate = getPVDataCreate();
-	_fieldCreate = getFieldCreate();
-
 	_direction = serverSide ? 1 : -1;
 	reset();
 }
@@ -181,7 +177,7 @@ void IntrospectionRegistry::serialize(FieldConstPtr field, StructureConstPtr par
 FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, DeserializableControl* control, IntrospectionRegistry* registry)
 {
 	control->ensureData(1);
-	uintptr_t pos = buffer->getPosition();
+	size_t pos = buffer->getPosition();
 	const int8 typeCode = buffer->getByte();
 	if(typeCode == IntrospectionRegistry::NULL_TYPE_CODE)
 	{
@@ -225,12 +221,11 @@ void IntrospectionRegistry::serializeStructure(ByteBuffer* buffer, SerializableC
 
 PVStructurePtr IntrospectionRegistry::deserializeStructure(ByteBuffer* buffer, DeserializableControl* control)
 {
-	PVStructurePtr pvStructure = NULL;
+	PVStructurePtr pvStructure;
 	FieldConstPtr structureField = deserialize(buffer, control);
-	if (structureField != NULL)
+	if (structureField.get() != NULL)
 	{
-                pvStructure = _pvDataCreate->createPVStructure(NULL,
-                                                               static_pointer_cast<const Structure>(structureField));
+        pvStructure = _pvDataCreate->createPVStructure(static_pointer_cast<const Structure>(structureField));
 		pvStructure->deserialize(buffer, control);
 	}
 	return pvStructure;
@@ -252,12 +247,9 @@ PVStructurePtr IntrospectionRegistry::deserializeStructureAndCreatePVStructure(B
 {
 	FieldConstPtr field = deserialize(buffer, control);
 	if (field == NULL)
-	{
-		return NULL;
-	}
-        PVStructurePtr retVal = _pvDataCreate->createPVStructure(NULL,
-                                                                 static_pointer_cast<const Structure>(field));
-	return retVal;
+		return PVStructurePtr();
+
+	return _pvDataCreate->createPVStructure(static_pointer_cast<const Structure>(field));
 }
 
 void IntrospectionRegistry::serializeStatus(ByteBuffer* buffer, SerializableControl* control, const Status& status)

@@ -76,11 +76,12 @@ namespace pvAccess {
 
         PVDATA_REFCOUNT_MONITOR_DEFINE(blockingTCPTransport);
 
-        const double BlockingTCPTransport::_delay = 0.01;
+        //const double BlockingTCPTransport::_delay = 0.000;
 
         BlockingTCPTransport::BlockingTCPTransport(Context::shared_pointer const & context,
                 SOCKET channel, std::auto_ptr<ResponseHandler>& responseHandler,
                 int receiveBufferSize, int16 priority) :
+                _delay(0.0),
                     _channel(channel),
                     _priority(priority),
                     _responseHandler(responseHandler),
@@ -221,7 +222,7 @@ namespace pvAccess {
             LOG(logLevelDebug, "Starting thread: %s",threadName.c_str());
 
             _sendThreadId = epicsThreadCreate(threadName.c_str(),
-                    epicsThreadPriorityMedium,
+            		epicsThreadPriorityMedium,
                     epicsThreadGetStackSize(epicsThreadStackMedium),
                     BlockingTCPTransport::sendThreadRunner, this);
         }
@@ -330,7 +331,7 @@ namespace pvAccess {
                 startMessage(_lastSegmentedMessageCommand, 0);
         }
 
-        void BlockingTCPTransport::startMessage(int8 command, int ensureCapacity) {
+        void BlockingTCPTransport::startMessage(int8 command, size_t ensureCapacity) {
             _lastMessageStartPosition = -1;
             ensureBuffer(CA_MESSAGE_HEADER_SIZE+ensureCapacity);
             _lastMessageStartPosition = _sendBuffer->getPosition();
@@ -346,8 +347,8 @@ namespace pvAccess {
             endMessage(false);
         }
 
-        void BlockingTCPTransport::ensureBuffer(int size) {
-            if(likely((int)(_sendBuffer->getRemaining())>=size)) return;
+        void BlockingTCPTransport::ensureBuffer(size_t size) {
+            if(likely(_sendBuffer->getRemaining()>=size)) return;
 
             // too large for buffer...
             if(unlikely(_maxPayloadSize<size)) {
@@ -357,16 +358,16 @@ namespace pvAccess {
                 THROW_BASE_EXCEPTION(temp.str().c_str());
             }
 
-            while(((int)_sendBuffer->getRemaining())<size && !_closed.get())
+            while(_sendBuffer->getRemaining()<size && !_closed.get())
                 flush(false);
 
             if (unlikely(_closed.get())) THROW_BASE_EXCEPTION("transport closed");
         }
         
-        void BlockingTCPTransport::alignBuffer(int alignment) {
+        void BlockingTCPTransport::alignBuffer(size_t alignment) {
             // not space optimal (always requires 7-bytes), but fast
             
-            if(unlikely((int)(_sendBuffer->getRemaining())<(alignment-1)))
+            if(unlikely(_sendBuffer->getRemaining()<(alignment-1)))
                 ensureBuffer(alignment-1);
 
             _sendBuffer->align(alignment);
@@ -425,9 +426,9 @@ namespace pvAccess {
             }
         }
 
-        void BlockingTCPTransport::ensureData(int size) {
+        void BlockingTCPTransport::ensureData(size_t size) {
             // enough of data?
-            if(likely(((int)_socketBuffer->getRemaining())>=size)) return;
+            if(likely(_socketBuffer->getRemaining()>=size)) return;
 
             // too large for buffer...
             if(unlikely(MAX_ENSURE_DATA_BUFFER_SIZE<size)) {
@@ -479,24 +480,24 @@ namespace pvAccess {
                         _storedLimit));
 
                 // add if missing...
-                if(unlikely(!_closed.get()&&((int)_socketBuffer->getRemaining())<size))
+                if(unlikely(!_closed.get()&&(_socketBuffer->getRemaining()<size)))
                     ensureData(size);
             }
 
             if(unlikely(_closed.get())) THROW_BASE_EXCEPTION("transport closed");
         }
 
-        void BlockingTCPTransport::alignData(int alignment) {
+        void BlockingTCPTransport::alignData(size_t alignment) {
             // not space optimal (always requires 7-bytes), but fast
             
-            if(unlikely((int)(_socketBuffer->getRemaining())<(alignment-1)))
+            if(unlikely(_socketBuffer->getRemaining()<(alignment-1)))
                 ensureData(alignment-1);
 
             _socketBuffer->align(alignment);
         }
 
         void BlockingTCPTransport::processReadCached(bool nestedCall,
-                ReceiveStage inStage, int requiredBytes) {
+                ReceiveStage inStage, size_t requiredBytes) {
             try {
                 while(likely(!_closed.get())) {
                     if(_stage==READ_FROM_SOCKET||inStage!=UNDEFINED_STAGE) {
@@ -521,7 +522,7 @@ namespace pvAccess {
 
                         // read at least requiredBytes bytes
 
-                        uintptr_t requiredPosition = (currentStartPosition+requiredBytes);
+                        size_t requiredPosition = (currentStartPosition+requiredBytes);
                         while(_socketBuffer->getPosition()<requiredPosition) {
                             // read
                             int pos = _socketBuffer->getPosition();
@@ -689,7 +690,7 @@ namespace pvAccess {
                         }
 
                         _socketBuffer->setLimit(_storedLimit);
-                        int newPosition = _storedPosition+_storedPayloadSize;
+                        size_t newPosition = _storedPosition+_storedPayloadSize;
                         if(unlikely(newPosition>_storedLimit)) {
                             newPosition -= _storedLimit;
                             _socketBuffer->setPosition(_storedLimit);
@@ -778,6 +779,7 @@ namespace pvAccess {
                 int bytesToSend = limit-buffer->getPosition();
 
                 //LOG(logLevelInfo,"Total bytes to send: %d", bytesToSend);
+               //printf("Total bytes to send: %d\n", bytesToSend);
 
                 // limit sending
                 if(bytesToSend>maxBytesToSend) {
@@ -1007,6 +1009,18 @@ printf("sendThreadRunnner exception\n");
             Lock lock(_sendQueueMutex);
             if(unlikely(_closed.get())) return;
             _sendQueue.push_back(sender);
+            _sendQueueEvent.signal();
+        }
+
+        void BlockingTCPTransport::enqueueOnlySendRequest(TransportSender::shared_pointer const & sender) {
+            Lock lock(_sendQueueMutex);
+            if(unlikely(_closed.get())) return;
+            _sendQueue.push_back(sender);
+        }
+
+        void BlockingTCPTransport::flushSendQueue() {
+            Lock lock(_sendQueueMutex);
+            if(unlikely(_closed.get())) return;
             _sendQueueEvent.signal();
         }
 

@@ -211,12 +211,12 @@ typedef std::map<const short,epics::pvData::FieldConstPtr> registryMap_t;
 		/**
 		 * PVField factory.
 		 */
-		static epics::pvData::PVDataCreate* _pvDataCreate;
+		static epics::pvData::PVDataCreatePtr _pvDataCreate;
 
 		/**
 		 * Field factory.
 		 */
-		static epics::pvData::FieldCreate* _fieldCreate;
+		static epics::pvData::FieldCreatePtr _fieldCreate;
 
 		bool registryContainsValue(epics::pvData::FieldConstPtr field, short& key);
 	};
