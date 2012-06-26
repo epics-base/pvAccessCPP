@@ -20,6 +20,21 @@ using namespace std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
+class RequesterImpl : public Requester,
+     public std::tr1::enable_shared_from_this<RequesterImpl>
+{
+public:
+
+    virtual String getRequesterName()
+    {
+        return "RequesterImpl";
+    };
+
+    virtual void message(String message,MessageType messageType)
+    {
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+    }
+};
 
 
 /// terse mode functions
@@ -773,6 +788,8 @@ int main (int argc, char *argv[])
     int opt;                    /* getopt() current option */
     bool debug = false;
     bool cleanupAndReport = false;
+
+    Requester::shared_pointer requester(new RequesterImpl());
     
     bool serviceRequest = false;
     string service;
@@ -869,10 +886,9 @@ int main (int argc, char *argv[])
             pvs.push_back(argv[optind]);       /* Copy PV names from command line */
         
         PVStructure::shared_pointer pvRequest;
-        try {
-            pvRequest = getCreateRequest()->createRequest(request);
-        } catch (std::exception &ex) {
-            printf("failed to parse request string: %s\n", ex.what());
+        pvRequest = getCreateRequest()->createRequest(request,requester);
+        if(pvRequest.get()==NULL) {
+            printf("failed to parse request string\n");
             return 1;
         }
         
@@ -927,10 +943,9 @@ int main (int argc, char *argv[])
         
         // TODO simply empty?
         PVStructure::shared_pointer pvRequest;
-        try {
-            pvRequest = getCreateRequest()->createRequest(request);
-        } catch (std::exception &ex) {
-            printf("failed to parse request string: %s\n", ex.what());
+        pvRequest = getCreateRequest()->createRequest(request,requester);
+        if(pvRequest.get()==NULL) {
+            printf("failed to parse request string\n");
             return 1;
         }
         

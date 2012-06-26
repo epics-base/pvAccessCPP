@@ -32,6 +32,23 @@ string request(DEFAULT_REQUEST);
 
 PVStructure::shared_pointer pvRequest;
 
+class RequesterImpl : public Requester,
+     public std::tr1::enable_shared_from_this<RequesterImpl>
+{
+public:
+
+    virtual String getRequesterName()
+    {
+        return "RequesterImpl";
+    };
+
+    virtual void message(String message,MessageType messageType)
+    {
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+    }
+};
+
+
 void usage (void)
 {
    fprintf (stderr, "\nUsage: testGetPerformance [options] <PV name>...\n\n"
@@ -242,6 +259,8 @@ printf("this does not work... since this impl. requires bulk get control... tODO
 return -1;
    int opt;                    // getopt() current option
 
+   Requester::shared_pointer requester(new RequesterImpl());
+
    setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    // Set stdout to line buffering
 
    while ((opt = getopt(argc, argv, ":hr:w:t")) != -1) {
@@ -288,12 +307,11 @@ return -1;
     }
 
 
-   try {
-       pvRequest = getCreateRequest()->createRequest(request);
-   } catch (std::exception &ex) {
-       printf("failed to parse request string: %s\n", ex.what());
-       return 1;
-   }
+    pvRequest = getCreateRequest()->createRequest(request,requester);
+    if(pvRequest.get()==NULL) {
+        printf("failed to parse request string\n");
+        return 1;
+    }
 
    // typedef enum {logLevelInfo, logLevelDebug, logLevelError, errlogFatal} errlogSevEnum;
    SET_LOG_LEVEL(logLevelError);

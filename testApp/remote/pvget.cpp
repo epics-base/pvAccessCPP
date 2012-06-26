@@ -19,19 +19,25 @@ using namespace std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-
-
-
-
 void convertStructure(StringBuilder buffer,PVStructure *data,int notFirst);
 void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst);
 void convertStructureArray(StringBuilder buffer,PVStructureArray * pvdata,int notFirst);
 
+class RequesterImpl : public Requester,
+     public std::tr1::enable_shared_from_this<RequesterImpl>
+{
+public:
 
+    virtual String getRequesterName()
+    {
+        return "RequesterImpl";
+    };
 
-
-
-
+    virtual void message(String message,MessageType messageType)
+    {
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+    }
+};
 
 
 void convertToString(StringBuilder buffer,PVField * pv,int notFirst)
@@ -594,12 +600,12 @@ int main (int argc, char *argv[])
     bool allOK = true;
 
     {
+       Requester::shared_pointer requester(new RequesterImpl());
     
         PVStructure::shared_pointer pvRequest;
-        try {
-            pvRequest = getCreateRequest()->createRequest(request);
-        } catch (std::exception &ex) {
-            printf("failed to parse request string: %s\n", ex.what());
+        pvRequest = getCreateRequest()->createRequest(request,requester);
+        if(pvRequest.get()==NULL) {
+            printf("failed to parse request string\n");
             return 1;
         }
         

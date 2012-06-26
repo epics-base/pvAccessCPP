@@ -780,7 +780,7 @@ namespace pvAccess {
          * @author mse
          *
          */
-        class CreateRequest : private epics::pvData::NoDefaultMethods {
+        class CreateRequest {
             public:
             POINTER_DEFINITIONS(CreateRequest);
 
@@ -793,7 +793,9 @@ namespace pvAccess {
              * @param requester The requester;
              * @return The request structure if an invalid request was given. 
              */
-             virtual epics::pvData::PVStructure::shared_pointer createRequest(epics::pvData::String request) = 0;
+             virtual epics::pvData::PVStructure::shared_pointer createRequest(
+                 epics::pvData::String request,
+                 epics::pvData::Requester::shared_pointer const & requester) = 0;
         };
 
         extern CreateRequest::shared_pointer getCreateRequest();
