@@ -11,208 +11,272 @@
 #include <pv/pvAccess.h>
 
 using namespace epics::pvData;
+using std::tr1::static_pointer_cast;
+
 
 
 namespace epics {
 namespace pvAccess {
 
+static PVDataCreatePtr pvDataCreate = getPVDataCreate();
+
 class CreateRequestImpl : public CreateRequest {
 private:
 
-	static void trim(std::string& str)
-	{
-		std::string::size_type pos = str.find_last_not_of(' ');
-		if(pos != std::string::npos) {
-			str.erase(pos + 1);
-			pos = str.find_first_not_of(' ');
-			if(pos != std::string::npos) str.erase(0, pos);
-		}
-		else str.erase(str.begin(), str.end());
-	}
+    static void trim(String& str)
+    {
+        String::size_type pos = str.find_last_not_of(' ');
+        if(pos != String::npos) {
+            str.erase(pos + 1);
+            pos = str.find_first_not_of(' ');
+            if(pos != String::npos) str.erase(0, pos);
+        }
+        else str.erase(str.begin(), str.end());
+    }
 
-	static size_t findMatchingBrace(std::string& request, int index, int numOpen) {
-		size_t openBrace = request.find('{', index+1);
-		size_t closeBrace = request.find('}', index+1);
-		if(openBrace == std::string::npos && closeBrace == std::string::npos) return std::string::npos;
-		if (openBrace != std::string::npos) {
-			if(openBrace<closeBrace) return findMatchingBrace(request,openBrace,numOpen+1);
-			if(numOpen==1) return closeBrace;
-			return findMatchingBrace(request,closeBrace,numOpen-1);
-		}
-		if(numOpen==1) return closeBrace;
-		return findMatchingBrace(request,closeBrace,numOpen-1);
-	}
+    static size_t findMatchingBrace(String& request, int index, int numOpen) {
+        size_t openBrace = request.find('{', index+1);
+        size_t closeBrace = request.find('}', index+1);
+        if(openBrace == String::npos && closeBrace == std::string::npos) return std::string::npos;
+        if (openBrace != String::npos && openBrace!=0) {
+            if(openBrace<closeBrace) return findMatchingBrace(request,openBrace,numOpen+1);
+            if(numOpen==1) return closeBrace;
+            return findMatchingBrace(request,closeBrace,numOpen-1);
+        }
+        if(numOpen==1) return closeBrace;
+        return findMatchingBrace(request,closeBrace,numOpen-1);
+    }
 
-	static void createFieldRequest(PVStructurePtr const & pvParent,std::string request,bool fieldListOK) {
-		trim(request);
-		if(request.length()<=0) return;
-		size_t comma = request.find(',');
-		size_t openBrace = request.find('{');
-		size_t openBracket = request.find('[');
-		if(openBrace != std::string::npos || openBracket != std::string::npos) fieldListOK = false;
-		if(openBrace != std::string::npos && (comma==std::string::npos || comma>openBrace)) {
-			//find matching brace
-			size_t closeBrace = findMatchingBrace(request,openBrace+1,1);
-			if(closeBrace==std::string::npos) {
-				THROW_BASE_EXCEPTION("mismatched { }");
-			}
-			String fieldName = request.substr(0,openBrace);
+    static std::vector<String> split(String commaSeparatedList) {
+        String::size_type numValues = 1;
+        String::size_type index=0;
+        while(true) {
+            String::size_type pos = commaSeparatedList.find(',',index);
+            if(pos==String::npos) break;
+            numValues++;
+            index = pos +1;
+        }
+        std::vector<String> valueList(numValues,"");
+        index=0;
+        for(size_t i=0; i<numValues; i++) {
+            size_t pos = commaSeparatedList.find(',',index);
+            String value = commaSeparatedList.substr(index,pos-index);
+            valueList[i] = value;
+            index = pos +1;
+        }
+        return valueList;
+    }
 
-			PVFieldPtrArray fields;
-			StringArray fieldNames;
-			PVStructurePtr pvStructure(getPVDataCreate()->createPVStructure(fieldNames, fields));
-			createFieldRequest(pvStructure,request.substr(openBrace+1,closeBrace-openBrace-1),false);
-			pvParent->appendPVField(fieldName, pvStructure);
-			if(request.length()>closeBrace+1) {
-				if(request.at(closeBrace+1) != ',') {
-					THROW_BASE_EXCEPTION("misssing , after }");
-				}
-				createFieldRequest(pvParent,request.substr(closeBrace+2),false);
-			}
-			return;
-		}
-		if(openBracket==std::string::npos && fieldListOK) {
-			PVStringPtr pvStringField(std::tr1::static_pointer_cast<PVString>(getPVDataCreate()->createPVScalar(pvString)));
-			pvStringField->put(request);
-			pvParent->appendPVField("fieldList", pvStringField);
-			return;
-		}
-		if(openBracket!=std::string::npos && (comma==std::string::npos || comma>openBracket)) {
-			size_t closeBracket = request.find(']');
-			if(closeBracket==std::string::npos) {
-				THROW_BASE_EXCEPTION("option does not have matching []");
-			}
-			createLeafFieldRequest(pvParent,request.substr(0, closeBracket+1));
-			size_t commaLoc = request.rfind(',');
-			if(commaLoc!=std::string::npos && commaLoc>closeBracket) {
-				int nextComma = request.find(',', closeBracket);
-				createFieldRequest(pvParent,request.substr(nextComma+1),false);
-			}
-			return;
-		}
-		if(comma!=std::string::npos) {
-			createLeafFieldRequest(pvParent,request.substr(0, comma));
-			createFieldRequest(pvParent,request.substr(comma+1),false);
-			return;
-		}
-		createLeafFieldRequest(pvParent,request);
-	}
 
-	static void createLeafFieldRequest(PVStructurePtr const & pvParent,String request) {
-		size_t openBracket = request.find('[');
-		String fullName = request;
-		if(openBracket != std::string::npos) fullName = request.substr(0,openBracket);
-		size_t indLast = fullName.rfind('.');
-		String fieldName = fullName;
-		if(indLast>1 && indLast != std::string::npos) fieldName = fullName.substr(indLast+1);
-		PVFieldPtrArray fields;
-		StringArray fieldNames;
-		PVStructurePtr pvStructure(getPVDataCreate()->createPVStructure(fieldNames, fields));
-		PVStructurePtr pvLeaf(getPVDataCreate()->createPVStructure(fieldNames, fields));
-		PVStringPtr pvStringField(std::tr1::static_pointer_cast<PVString>(getPVDataCreate()->createPVScalar(pvString)));
-		pvStringField->put(fullName);
-		pvLeaf->appendPVField("source", pvStringField);
-		if(openBracket != std::string::npos) {
-			size_t closeBracket = request.find(']');
-			if(closeBracket==std::string::npos) {
-				THROW_BASE_EXCEPTION("option does not have matching []");
-			}
-			createRequestOptions(pvLeaf,request.substr(openBracket+1, closeBracket-openBracket-1));
-		}
-		pvStructure->appendPVField("leaf", pvLeaf);
-		pvParent->appendPVField("fieldName", pvStructure);
-	}
+    static bool createRequestOptions(
+        PVStructurePtr const & pvParent,
+        String request,
+        Requester::shared_pointer const & requester)
+    {
+        trim(request);
+        if(request.length()<=1) return true;
+        std::vector<String> items = split(request);
+        size_t nitems = items.size();
+        StringArray fieldNames;
+        PVFieldPtrArray pvFields;
+        fieldNames.reserve(nitems);
+        pvFields.reserve(nitems);
+        for(size_t j=0; j<nitems; j++) {
+            String item = items[j];
+            size_t equals = item.find('=');
+            if(equals==String::npos || equals==0) {
+                requester->message(item + " illegal option", errorMessage);
 
-	static void createRequestOptions(PVStructurePtr const & pvParent,std::string request) {
-		trim(request);
-		if(request.length()<=1) return;
+                return false;
+            }
+            String name = item.substr(0,equals);
+            String value = item.substr(equals+1);
+            fieldNames.push_back(name);
+            PVStringPtr pvValue = static_pointer_cast<PVString>(getPVDataCreate()->createPVScalar(pvString));
+            pvValue->put(value);
+            pvFields.push_back(pvValue);
+        }
+        PVStructurePtr pvOptions = getPVDataCreate()->createPVStructure(fieldNames,pvFields);
+        pvParent->appendPVField("_options",pvOptions);
+        return true;
+    }
 
-		std::string token;
-		std::istringstream iss(request);
-		while (getline(iss, token, ','))
-		{
-			size_t equalsPos = token.find('=');
-			size_t equalsRPos = token.rfind('=');
-			if (equalsPos != equalsRPos)
-			{
-				THROW_BASE_EXCEPTION("illegal option");
-			}
+    static bool createFieldRequest(
+        PVStructurePtr const & pvParent,
+        String request,
+        Requester::shared_pointer const & requester)
+    {
+        static PVFieldPtrArray emptyFields;
+        static StringArray emptyFieldNames;
 
-			if (equalsPos != std::string::npos)
-			{
-				PVStringPtr pvStringField(std::tr1::static_pointer_cast<PVString>(getPVDataCreate()->createPVScalar(pvString)));
-				pvStringField->put(token.substr(equalsPos+1));
-				pvParent->appendPVField(token.substr(0, equalsPos), pvStringField);
-			}
-		}
-	}
+        trim(request);
+        if(request.length()<=0) return true;
+        size_t comma = request.find(',');
+        if(comma==0) {
+            return createFieldRequest(pvParent,request.substr(1),requester);
+        }
+        size_t openBrace = request.find('{');
+        size_t openBracket = request.find('[');
+        PVStructurePtr pvStructure = pvDataCreate->createPVStructure(emptyFieldNames, emptyFields);
+        if(comma==String::npos && openBrace==std::string::npos && openBracket==std::string::npos) {
+            size_t period = request.find('.');
+            if(period!=String::npos && period!=0) {
+                String fieldName = request.substr(0,period);
+                request = request.substr(period+1);
+                pvParent->appendPVField(fieldName, pvStructure);
+                return createFieldRequest(pvStructure,request,requester);
+            }
+            pvParent->appendPVField(request, pvStructure);
+            return true;
+        }
+        size_t end = comma;
+        if(openBrace!=String::npos && (end>openBrace || end==std::string::npos)) end = openBrace;
+        if(openBracket!=String::npos && (end>openBracket || end==std::string::npos)) end = openBracket;
+        String nextFieldName = request.substr(0,end);
+        if(end==comma) {
+            size_t period = nextFieldName.find('.');
+            if(period!=String::npos && period!=0) {
+                String fieldName = nextFieldName.substr(0,period);
+                PVStructurePtr xxx= pvDataCreate->createPVStructure(emptyFieldNames, emptyFields);
+                String rest = nextFieldName.substr(period+1);
+                createFieldRequest(xxx,rest,requester);
+                pvParent->appendPVField(fieldName, xxx);
+            } else {
+                pvParent->appendPVField(nextFieldName, pvStructure);
+            }
+            request = request.substr(end+1);
+            return createFieldRequest(pvParent,request,requester);
+        }
+        if(end==openBracket) {
+            size_t closeBracket =  request.find(']');
+            if(closeBracket==String::npos || closeBracket==0) {
+                requester->message(request + " does not have matching ]", errorMessage);
+                return false;
+            }
+            String options = request.substr(openBracket+1, closeBracket-openBracket-1);
+            size_t period = nextFieldName.find('.');
+            if(period!=String::npos && period!=0) {
+                String fieldName = nextFieldName.substr(0,period);
+                PVStructurePtr xxx = pvDataCreate->createPVStructure(emptyFieldNames, emptyFields);
+                if(!createRequestOptions(xxx,options,requester)) return false;
+                String rest = nextFieldName.substr(period+1);
+                createFieldRequest(xxx,rest,requester);
+                pvParent->appendPVField(fieldName, xxx);
+            } else {
+                if(!createRequestOptions(pvStructure,options,requester)) return false;
+                pvParent->appendPVField(nextFieldName, pvStructure);
+            }
+            request = request.substr(end+1);
+            return createFieldRequest(pvParent,request,requester);
+        }
+        // end== openBrace
+        size_t closeBrace = findMatchingBrace(request,openBrace+1,1);
+        if(closeBrace==String::npos || closeBrace==0) {
+            requester->message(request + " does not have matching }", errorMessage);
+            return false;
+        }
+        String subFields = request.substr(openBrace+1, closeBrace-openBrace-1);
+        if(!createFieldRequest(pvStructure,subFields,requester)) return false;
+        request = request.substr(closeBrace+1);
+        size_t period = nextFieldName.find('.');
+        if(period==String::npos) {
+            pvParent->appendPVField(nextFieldName,pvStructure);
+            return createFieldRequest(pvParent,request,requester);
+        }
+        PVStructure::shared_pointer yyy = pvParent;
+        while(period!=String::npos && period!=0) {
+            String fieldName = nextFieldName.substr(0,period);
+            PVStructurePtr xxx = pvDataCreate->createPVStructure(emptyFieldNames, emptyFields);
+            yyy->appendPVField(fieldName,xxx);
+            nextFieldName = nextFieldName.substr(period+1);
+            period = nextFieldName.find('.');
+            if(period==String::npos || period==0) {
+                xxx->appendPVField(nextFieldName, pvStructure);
+                break;
+            }
+            yyy = xxx;
+        }
+        return createFieldRequest(pvParent,request,requester);
+    }
 
 public:
 
-	virtual PVStructure::shared_pointer createRequest(String request)
-	{
-		static PVFieldPtrArray emptyFields;
-		static StringArray emptyFieldNames;
+    virtual PVStructure::shared_pointer createRequest(
+        String request,
+        Requester::shared_pointer const &  requester)
+    {
+        PVFieldPtrArray pvFields;
+        StringArray fieldNames;
+        PVStructurePtr emptyPVStructure = pvDataCreate->createPVStructure(fieldNames,pvFields);
+        static PVStructure::shared_pointer nullStructure;
 
-		if (!request.empty()) trim(request);
-		if (request.empty())
-		{
-			PVStructure::shared_pointer pvStructure(getPVDataCreate()->createPVStructure(emptyFieldNames, emptyFields));
-			return pvStructure;
-		}
-
-		size_t offsetRecord = request.find("record[");
-		size_t offsetField = request.find("field(");
-		size_t offsetPutField = request.find("putField(");
-		size_t offsetGetField = request.find("getField(");
-
-		PVStructure::shared_pointer pvStructure(getPVDataCreate()->createPVStructure(emptyFieldNames, emptyFields));
-
-		if (offsetRecord != std::string::npos) {
-			size_t offsetBegin = request.find('[', offsetRecord);
-			size_t offsetEnd = request.find(']', offsetBegin);
-			if(offsetEnd == std::string::npos) {
-				THROW_BASE_EXCEPTION("record[ does not have matching ]");
-			}
-			PVStructure::shared_pointer pvStruct(getPVDataCreate()->createPVStructure(emptyFieldNames, emptyFields));
-			createRequestOptions(pvStruct,request.substr(offsetBegin+1, offsetEnd-offsetBegin-1));
-			pvStructure->appendPVField("record", pvStruct);
-		}
-		if (offsetField != std::string::npos) {
-			size_t offsetBegin = request.find('(', offsetField);
-			size_t offsetEnd = request.find(')', offsetBegin);
-			if(offsetEnd == std::string::npos) {
-				THROW_BASE_EXCEPTION("field( does not have matching )");
-			}
-			PVStructure::shared_pointer pvStruct(getPVDataCreate()->createPVStructure(emptyFieldNames, emptyFields));
-			createFieldRequest(pvStruct,request.substr(offsetBegin+1, offsetEnd-offsetBegin-1),true);
-			pvStructure->appendPVField("field", pvStruct);
-		}
-		if (offsetPutField != std::string::npos) {
-			size_t offsetBegin = request.find('(', offsetPutField);
-			size_t offsetEnd = request.find(')', offsetBegin);
-			if(offsetEnd == std::string::npos) {
-				THROW_BASE_EXCEPTION("putField( does not have matching )");
-			}
-			PVStructure::shared_pointer pvStruct(getPVDataCreate()->createPVStructure(emptyFieldNames, emptyFields));
-			createFieldRequest(pvStruct,request.substr(offsetBegin+1, offsetEnd-offsetBegin-1),true);
-			pvStructure->appendPVField("putField", pvStruct);
-		}
-		if (offsetGetField != std::string::npos) {
-			size_t offsetBegin = request.find('(', offsetGetField);
-			size_t offsetEnd = request.find(')', offsetBegin);
-			if(offsetEnd == std::string::npos) {
-				THROW_BASE_EXCEPTION("getField( does not have matching )");
-			}
-			PVStructure::shared_pointer pvStruct(getPVDataCreate()->createPVStructure(emptyFieldNames, emptyFields));
-			createFieldRequest(pvStruct,request.substr(offsetBegin+1, offsetEnd-offsetBegin-1),true);
-			pvStructure->appendPVField("getField", pvStruct);
-		}
-		if (pvStructure.get()->getStructure()->getNumberFields()==0) {
-			createFieldRequest(pvStructure,request,true);
-		}
-		return pvStructure;
-	}
+        if (!request.empty()) trim(request);
+        if (request.empty())
+        {
+            return emptyPVStructure;
+        }
+        size_t offsetRecord = request.find("record[");
+        size_t offsetField = request.find("field(");
+        size_t offsetPutField = request.find("putField(");
+        size_t offsetGetField = request.find("getField(");
+        PVStructurePtr pvStructure = pvDataCreate->createPVStructure(emptyPVStructure);
+        if (offsetRecord != String::npos) {
+            size_t offsetBegin = request.find('[', offsetRecord);
+            size_t offsetEnd = request.find(']', offsetBegin);
+            if(offsetEnd == String::npos) {
+                requester->message(request.substr(offsetRecord) + " record[ does not have matching ]", errorMessage);
+                return nullStructure;
+            }
+            PVStructurePtr pvStruct =  pvDataCreate->createPVStructure(emptyPVStructure);
+            if(!createRequestOptions(pvStruct,request.substr(offsetBegin+1, offsetEnd-offsetBegin-1),requester)) {
+                 return nullStructure;
+            }
+            pvStructure->appendPVField("record", pvStruct);
+        }
+        if (offsetField != String::npos) {
+            size_t offsetBegin = request.find('(', offsetField);
+            size_t offsetEnd = request.find(')', offsetBegin);
+            if(offsetEnd == String::npos) {
+                requester->message(request.substr(offsetField) + " field( does not have matching )", errorMessage);
+                return nullStructure;
+            }
+            PVStructurePtr pvStruct =  pvDataCreate->createPVStructure(emptyPVStructure);
+            if(!createFieldRequest(pvStruct,request.substr(offsetBegin+1, offsetEnd-offsetBegin-1),requester)) {
+                return nullStructure;
+            }
+            pvStructure->appendPVField("field", pvStruct);
+        }
+        if (offsetPutField != String::npos) {
+            size_t offsetBegin = request.find('(', offsetPutField);
+            size_t offsetEnd = request.find(')', offsetBegin);
+            if(offsetEnd == String::npos) {
+                requester->message(request.substr(offsetField) + " putField( does not have matching )", errorMessage);
+                return nullStructure;
+            }
+            PVStructurePtr pvStruct =  pvDataCreate->createPVStructure(emptyPVStructure);
+            if(!createFieldRequest(pvStruct,request.substr(offsetBegin+1, offsetEnd-offsetBegin-1),requester)) {
+                 return nullStructure;
+            }
+            pvStructure->appendPVField("putField", pvStruct);
+        }
+        if (offsetGetField != String::npos) {
+            size_t offsetBegin = request.find('(', offsetGetField);
+            size_t offsetEnd = request.find(')', offsetBegin);
+            if(offsetEnd == String::npos) {
+                requester->message(request.substr(offsetField) + " getField( does not have matching )", errorMessage);
+                return nullStructure;
+            }
+            PVStructurePtr pvStruct =  pvDataCreate->createPVStructure(emptyPVStructure);
+            if(!createFieldRequest(pvStruct,request.substr(offsetBegin+1, offsetEnd-offsetBegin-1),requester)) {
+                return nullStructure;
+            }
+            pvStructure->appendPVField("getField", pvStruct);
+        }
+        if (pvStructure.get()->getStructure()->getNumberFields()==0) {
+            if(!createFieldRequest(pvStructure,request,requester)) return nullStructure;
+        }
+        return pvStructure;
+    }
 
 };
 

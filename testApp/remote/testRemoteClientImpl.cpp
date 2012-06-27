@@ -479,7 +479,7 @@ int main(int argc,char *argv[])
         
         {
     ChannelGetRequester::shared_pointer channelGetRequesterImpl(new ChannelGetRequesterImpl());
-    PVStructure::shared_pointer pvRequest = getCreateRequest()->createRequest("field()");
+    PVStructure::shared_pointer pvRequest = getCreateRequest()->createRequest("field()",channelGetRequesterImpl);
     ChannelGet::shared_pointer channelGet = channel->createChannelGet(channelGetRequesterImpl, pvRequest);
     epicsThreadSleep ( 3.0 );
     channelGet->get(false);
@@ -489,7 +489,7 @@ int main(int argc,char *argv[])
     
         {
     ChannelPutRequester::shared_pointer channelPutRequesterImpl(new ChannelPutRequesterImpl());
-    PVStructure::shared_pointer pvRequest = getCreateRequest()->createRequest("field(value,timeStamp)");
+    PVStructure::shared_pointer pvRequest = getCreateRequest()->createRequest("field(value,timeStamp)",channelPutRequesterImpl);
     ChannelPut::shared_pointer channelPut = channel->createChannelPut(channelPutRequesterImpl, pvRequest);
     epicsThreadSleep ( 1.0 );
     channelPut->get();
@@ -501,7 +501,7 @@ int main(int argc,char *argv[])
 
         {
     ChannelPutGetRequester::shared_pointer channelPutGetRequesterImpl(new ChannelPutGetRequesterImpl());
-    PVStructure::shared_pointer pvRequest = getCreateRequest()->createRequest("putField(value,timeStamp)getField(timeStamp)");
+    PVStructure::shared_pointer pvRequest = getCreateRequest()->createRequest("putField(value,timeStamp)getField(timeStamp)",channelPutGetRequesterImpl);
     ChannelPutGet::shared_pointer channelPutGet = channel->createChannelPutGet(channelPutGetRequesterImpl, pvRequest);
     epicsThreadSleep ( 1.0 );
     channelPutGet->getGet();
@@ -515,7 +515,7 @@ int main(int argc,char *argv[])
 
         {
     ChannelRPCRequester::shared_pointer channelRPCRequesterImpl(new ChannelRPCRequesterImpl());
-    PVStructure::shared_pointer pvRequest = getCreateRequest()->createRequest("record[]field(arguments)");
+    PVStructure::shared_pointer pvRequest = getCreateRequest()->createRequest("record[]field(arguments)",channelRPCRequesterImpl);
     ChannelRPC::shared_pointer channelRPC = channel->createChannelRPC(channelRPCRequesterImpl, pvRequest);
     epicsThreadSleep ( 1.0 );
     // for test simply use pvRequest as arguments
@@ -543,7 +543,7 @@ int main(int argc,char *argv[])
 
         {
     MonitorRequester::shared_pointer monitorRequesterImpl(new MonitorRequesterImpl());
-    PVStructure::shared_pointer pvRequest = getCreateRequest()->createRequest("field()");
+    PVStructure::shared_pointer pvRequest = getCreateRequest()->createRequest("field()",monitorRequesterImpl);
     Monitor::shared_pointer monitor = channel->createMonitor(monitorRequesterImpl, pvRequest);
 
     epicsThreadSleep( 1.0 );

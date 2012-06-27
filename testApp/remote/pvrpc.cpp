@@ -26,6 +26,23 @@ bool terseMode = false;
 
 PVStructure::shared_pointer pvRequest;
 
+class RequesterImpl : public Requester,
+     public std::tr1::enable_shared_from_this<RequesterImpl>
+{
+public:
+
+    virtual String getRequesterName()
+    {
+        return "RequesterImpl";
+    };
+
+    virtual void message(String message,MessageType messageType)
+    {
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+    }
+};
+
+
 void usage ()
 {
     fprintf (stderr, "\nUsage: pvrpc [options] <PV name> <values>...\n\n"
@@ -156,6 +173,8 @@ int main (int argc, char *argv[])
     int opt;                    /* getopt() current option */
     bool debug = false;
 
+    Requester::shared_pointer requester(new RequesterImpl());
+
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
     while ((opt = getopt(argc, argv, ":hr:w:t")) != -1) {
@@ -215,10 +234,9 @@ int main (int argc, char *argv[])
     for (int n = 0; optind < argc; n++, optind++)
         values.push_back(argv[optind]);       /* Copy values from command line */
 
-    try {
-        pvRequest = getCreateRequest()->createRequest(request);
-    } catch (std::exception &ex) {
-        printf("failed to parse request string: %s\n", ex.what());
+    pvRequest = getCreateRequest()->createRequest(request,requester);
+    if(pvRequest.get()==NULL) {
+        printf("failed to parse request string\n");
         return 1;
     }
     

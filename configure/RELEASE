@@ -34,8 +34,8 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 # do not edit the locations in this file
 # create RELEASE.local with the paths to your EPICS_BASE and PVDATA
 
-PVDATA=/home/mrk/hg/pvDataCPP
-EPICS_BASE=/home/install/epics/base
+#PVDATA=/home/mrk/hg/pvDataCPP
+#EPICS_BASE=/home/install/epics/base
 
 # Set RULES here if you want to take build rules from somewhere
 # other than EPICS_BASE:
