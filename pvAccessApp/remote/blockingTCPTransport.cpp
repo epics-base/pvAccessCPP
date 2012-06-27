@@ -580,7 +580,7 @@ namespace pvAccess {
                         // second byte version - major/minor nibble
                         int8 magic = _socketBuffer->getByte();
                         _version = _socketBuffer->getByte();
-                        if(unlikely((magic != CA_MAGIC) || (((uint8_t)_version) >> 4)!=CA_MAJOR_PROTOCOL_REVISION))
+                        if(unlikely(magic != CA_MAGIC))
                         {
                             // error... disconnect
                             LOG(

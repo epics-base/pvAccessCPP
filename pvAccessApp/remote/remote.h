@@ -165,19 +165,11 @@ namespace epics {
             virtual const epics::pvData::String getType() const = 0;
 
             /**
-             * Transport protocol major revision.
-             * @return protocol major revision.
-             */
-            virtual epics::pvData::int8 getMajorRevision() const {
-                return CA_MAJOR_PROTOCOL_REVISION;
-            }
-
-            /**
              * Transport protocol minor revision.
              * @return protocol minor revision.
              */
-            virtual epics::pvData::int8 getMinorRevision() const {
-                return CA_MINOR_PROTOCOL_REVISION;
+            virtual epics::pvData::int8 getRevision() const {
+                return CA_PROTOCOL_REVISION;
             }
 
             /**

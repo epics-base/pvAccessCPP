@@ -3943,7 +3943,7 @@ TODO
                 auto_ptr<BlockingUDPConnector> broadcastConnector(new BlockingUDPConnector(true, true));
                 m_broadcastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
                         nullTransportClient, clientResponseHandler,
-                        listenLocalAddress, CA_MINOR_PROTOCOL_REVISION,
+                        listenLocalAddress, CA_PROTOCOL_REVISION,
                         CA_DEFAULT_PRIORITY));
                 if (!m_broadcastTransport.get())
                     return false;
@@ -3959,7 +3959,7 @@ TODO
                 auto_ptr<BlockingUDPConnector> searchConnector(new BlockingUDPConnector(false, true));
                 m_searchTransport = static_pointer_cast<BlockingUDPTransport>(searchConnector->connect(
                         nullTransportClient, clientResponseHandler,
-                        undefinedAddress, CA_MINOR_PROTOCOL_REVISION,
+                        undefinedAddress, CA_PROTOCOL_REVISION,
                         CA_DEFAULT_PRIORITY));
                 if (!m_searchTransport.get())
                     return false;

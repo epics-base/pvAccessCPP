@@ -419,6 +419,8 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             }
 
             String str;
+
+            str.reserve(16*1024*1024);
             
             // access smart pointers
             {

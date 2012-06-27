@@ -218,7 +218,7 @@ void ServerContextImpl::initializeBroadcastTransport()
 	    auto_ptr<epics::pvAccess::ResponseHandler> responseHandler = createResponseHandler();
         _broadcastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
                 nullTransportClient, responseHandler,
-                listenLocalAddress, CA_MINOR_PROTOCOL_REVISION,
+                listenLocalAddress, CA_PROTOCOL_REVISION,
                 CA_DEFAULT_PRIORITY));
 		_broadcastTransport->setBroadcastAddresses(broadcastAddresses.get());
 

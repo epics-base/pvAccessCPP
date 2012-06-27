@@ -15,26 +15,17 @@ namespace pvAccess {
     /** CA protocol magic number */
     const epics::pvData::int8 CA_MAGIC = 0xCA;
     
-    /** CA protocol major revision (implemented by this library). */
-    const epics::pvData::int8 CA_MAJOR_PROTOCOL_REVISION = 5;
+    /** CA protocol revision (implemented by this library). */
+    const epics::pvData::int8 CA_PROTOCOL_REVISION = 0;
     
-    /** CA protocol minor revision (implemented by this library). */
-    const epics::pvData::int8 CA_MINOR_PROTOCOL_REVISION = 0;
-    
-    /** Unknown CA protocol minor revision. */
-    const epics::pvData::int8 CA_UNKNOWN_MINOR_PROTOCOL_REVISION = 0;
-    
-    /** CA version signature (e.g. 0x50). */
-    const epics::pvData::int8 CA_VERSION = ((uint8_t)CA_MAJOR_PROTOCOL_REVISION<<4)|CA_MINOR_PROTOCOL_REVISION;
-    
-    /** CA protocol port base. */
-    const epics::pvData::int32 CA_PORT_BASE = 5056;
-    
+    /** CA version signature used to report this implementation version in header. */
+    const epics::pvData::int8 CA_VERSION = CA_PROTOCOL_REVISION;
+
     /** Default CA server port. */
-    const epics::pvData::int32 CA_SERVER_PORT = CA_PORT_BASE+2*CA_MAJOR_PROTOCOL_REVISION;
+    const epics::pvData::int32 CA_SERVER_PORT = 5075;
     
     /** Default CA beacon port. */
-    const epics::pvData::int32 CA_BROADCAST_PORT = CA_SERVER_PORT+1;
+    const epics::pvData::int32 CA_BROADCAST_PORT = 5076;
     
     /** CA protocol message header size. */
     const epics::pvData::int16 CA_MESSAGE_HEADER_SIZE = 8;
