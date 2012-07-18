@@ -12,7 +12,6 @@
 
 #include <pv/byteBuffer.h>
 #include <pv/lock.h>
-#include <pv/CDRMonitor.h>
 
 #include <osdSock.h>
 #include <osiSock.h>
@@ -27,7 +26,7 @@ using namespace std;
 namespace epics {
     namespace pvAccess {
 
-        PVDATA_REFCOUNT_MONITOR_DEFINE(blockingUDPTransport);
+        PVACCESS_REFCOUNT_MONITOR_DEFINE(blockingUDPTransport);
 
         BlockingUDPTransport::BlockingUDPTransport(
                 auto_ptr<ResponseHandler>& responseHandler, SOCKET channel,
@@ -45,7 +44,7 @@ namespace epics {
                     _lastMessageStartPosition(0),
                     _threadId(0)
         {
-            PVDATA_REFCOUNT_MONITOR_CONSTRUCT(blockingUDPTransport);
+            PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(blockingUDPTransport);
 
             // set receive timeout so that we do not have problems at shutdown (recvfrom would block)
             struct timeval timeout;
@@ -66,7 +65,7 @@ namespace epics {
         }
 
         BlockingUDPTransport::~BlockingUDPTransport() {
-            PVDATA_REFCOUNT_MONITOR_DESTRUCT(blockingUDPTransport);
+            PVACCESS_REFCOUNT_MONITOR_DESTRUCT(blockingUDPTransport);
 
             close(true); // close the socket and stop the thread.
             

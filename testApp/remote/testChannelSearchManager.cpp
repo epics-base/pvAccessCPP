@@ -5,7 +5,6 @@
 #include <epicsMessageQueue.h>
 #include <pv/channelSearchManager.h>
 #include <sstream>
-#include <pv/CDRMonitor.h>
 
 epicsMessageQueueId join1;
 epicsMessageQueueId join2;
@@ -191,8 +190,7 @@ int main(int argc,char *argv[])
 
 
 	context->destroy();
-	epicsExitCallAtExits();
-	CDRMonitor::get().show(stdout);
+	//epicsExitCallAtExits();
 
 	for(int i = 0; i < max_channels; i++)
 	{

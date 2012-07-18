@@ -135,12 +135,7 @@ namespace epics { namespace pvAccess {
 		/**
 		 * Timer.
 		 */
-                epics::pvData::Timer::shared_pointer _timer;
-
-		/**
-		 * Timer task node.
-		 */
-		epics::pvData::TimerNode _timerNode;
+        epics::pvData::Timer::shared_pointer _timer;
 	};
 
 }}

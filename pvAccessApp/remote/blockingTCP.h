@@ -159,7 +159,7 @@ namespace epics {
             /**
              * Starts the receive and send threads
              */
-            void start();
+            virtual void start();
 
             virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender);
 
@@ -467,6 +467,8 @@ namespace epics {
                 thisPointer->start();
                 return thisPointer;
             }
+            
+            virtual void start();
 
             virtual ~BlockingClientTCPTransport();
                     
@@ -565,11 +567,6 @@ namespace epics {
              * Unresponsive transport flag.
              */
             bool _unresponsiveTransport;
-
-            /**
-             * Timer task node.
-             */
-            epics::pvData::TimerNode _timerNode;
 
             /**
              * Timestamp of last "live" event on this transport.

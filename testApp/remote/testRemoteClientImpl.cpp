@@ -5,7 +5,6 @@
 
 #include <iostream>
 #include <sstream>
-#include <pv/CDRMonitor.h>
 #include <epicsExit.h>
 #include <pv/clientContextImpl.h>
 #include <pv/clientFactory.h>
@@ -578,8 +577,7 @@ int main(int argc,char *argv[])
     */
     
     epicsThreadSleep ( 1.0 ); }
-    std::cout << "-----------------------------------------------------------------------" << std::endl;
-    epicsExitCallAtExits();
-    CDRMonitor::get().show(stdout, true);
+    //std::cout << "-----------------------------------------------------------------------" << std::endl;
+    //epicsExitCallAtExits();
     return(0);
 }

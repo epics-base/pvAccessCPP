@@ -16,7 +16,6 @@
 #include <pv/byteBuffer.h>
 #include <pv/epicsException.h>
 #include <pv/noDefaultMethods.h>
-#include <pv/CDRMonitor.h>
 
 #include <osdSock.h>
 #include <osiSock.h>
@@ -74,7 +73,7 @@ namespace pvAccess {
         };
         */
 
-        PVDATA_REFCOUNT_MONITOR_DEFINE(blockingTCPTransport);
+        PVACCESS_REFCOUNT_MONITOR_DEFINE(blockingTCPTransport);
 
         //const double BlockingTCPTransport::_delay = 0.000;
 
@@ -121,7 +120,7 @@ namespace pvAccess {
                     _totalBytesSent(0),
                     _remoteBufferFreeSpace(INT64_MAX)
         {
-            PVDATA_REFCOUNT_MONITOR_CONSTRUCT(blockingTCPTransport);
+            PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(blockingTCPTransport);
 
             // TODO minor tweak: deque size is not preallocated...
             
@@ -181,7 +180,7 @@ namespace pvAccess {
         }
 
         BlockingTCPTransport::~BlockingTCPTransport() {
-            PVDATA_REFCOUNT_MONITOR_DESTRUCT(blockingTCPTransport);
+            PVACCESS_REFCOUNT_MONITOR_DESTRUCT(blockingTCPTransport);
 
             close(true);
 

@@ -3,7 +3,6 @@
  */
 
 #include <pv/serverContext.h>
-#include <pv/CDRMonitor.h>
 #include <epicsExit.h>
 
 using namespace epics::pvAccess;
@@ -93,7 +92,6 @@ int main(int argc, char *argv[])
 
 	cout << "Done" << endl;
 
-	epicsExitCallAtExits();
-    CDRMonitor::get().show(stdout, true);
+	//epicsExitCallAtExits();
     return (0);
 }

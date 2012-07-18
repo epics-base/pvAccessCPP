@@ -36,7 +36,10 @@ public:
 };
 
 
-class SimpleChannelSearchManagerImpl : public ChannelSearchManager, public epics::pvData::TimerCallback
+class SimpleChannelSearchManagerImpl :
+    public ChannelSearchManager,
+    public epics::pvData::TimerCallback,
+	public std::tr1::enable_shared_from_this<SimpleChannelSearchManagerImpl>
 {
     public:
     POINTER_DEFINITIONS(SimpleChannelSearchManagerImpl);
@@ -45,7 +48,7 @@ class SimpleChannelSearchManagerImpl : public ChannelSearchManager, public epics
 	 * Constructor.
 	 * @param context
 	 */
-	SimpleChannelSearchManagerImpl(Context::shared_pointer const & context);
+	static SimpleChannelSearchManagerImpl::shared_pointer create(Context::shared_pointer const & context);
     /**
 	 * Constructor.
 	 * @param context
@@ -92,6 +95,13 @@ class SimpleChannelSearchManagerImpl : public ChannelSearchManager, public epics
 
     private:
     
+    /**
+	 * Private constructor.
+	 * @param context
+	 */
+	SimpleChannelSearchManagerImpl(Context::shared_pointer const & context);
+	void activate();
+
     bool generateSearchRequestMessage(SearchInstance::shared_pointer const & channel, bool allowNewFrame, bool flush);
     
     static bool generateSearchRequestMessage(SearchInstance::shared_pointer const & channel,
@@ -129,12 +139,6 @@ class SimpleChannelSearchManagerImpl : public ChannelSearchManager, public epics
      */
     std::map<pvAccessID,SearchInstance::shared_pointer> m_channels;
     
-	/**
-	 * Timer node.
-	 * (sync on requestPendingChannels)
-	 */
-	epics::pvData::TimerNode m_timerNode;
-
     /**
      * Time of last frame send.
      */

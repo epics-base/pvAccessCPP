@@ -7,7 +7,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <pv/pvAccess.h>
-#include <pv/CDRMonitor.h>
 #include <iostream>
 
 #include <epicsAssert.h>
@@ -131,9 +130,8 @@ int main(int argc,char *argv[])
 {
     testCreateRequest();
 
-    std::cout << "-----------------------------------------------------------------------" << std::endl;
-    epicsExitCallAtExits();
-    CDRMonitor::get().show(stdout, true);
+    //std::cout << "-----------------------------------------------------------------------" << std::endl;
+    //epicsExitCallAtExits();
     return 0;
 }
 

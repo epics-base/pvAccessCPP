@@ -10,7 +10,6 @@
 #include <string>
 
 
-#include <pv/CDRMonitor.h>
 #include <pv/event.h>
 #include <epicsExit.h>
 
@@ -654,9 +653,8 @@ int main (int argc, char *argv[])
     {
         // TODO implement wait on context
         epicsThreadSleep ( 3.0 );
-        std::cout << "-----------------------------------------------------------------------" << std::endl;
-        epicsExitCallAtExits();
-        CDRMonitor::get().show(stdout, true);
+        //std::cout << "-----------------------------------------------------------------------" << std::endl;
+        //epicsExitCallAtExits();
     }
 
     return allOK ? 0 : 1;

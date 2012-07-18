@@ -5,7 +5,6 @@
 #include <epicsExit.h>
 #include <pv/pvAccess.h>
 #include <iostream>
-#include <CDRMonitor.h>
 #include <lock.h>
 #include <standardPVField.h>
 
@@ -14,7 +13,7 @@ using namespace epics::pvAccess;
 
 
 
-PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelProcess);
+PVACCESS_REFCOUNT_MONITOR_DEFINE(mockChannelProcess);
 
 class MockChannelProcess : public ChannelProcess
 {
@@ -26,14 +25,14 @@ class MockChannelProcess : public ChannelProcess
     private:
     ~MockChannelProcess()
     {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelProcess);
+        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockChannelProcess);
     }
 
     public:
     MockChannelProcess(ChannelProcessRequester* channelProcessRequester, PVStructure *pvStructure, PVStructure *pvRequest) :
         m_channelProcessRequester(channelProcessRequester), m_pvStructure(pvStructure)
     {
-        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelProcess);
+        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelProcess);
 
         PVField* field = pvStructure->getSubField(String("value"));
         if (field == 0)
@@ -153,7 +152,7 @@ class MockChannelProcess : public ChannelProcess
 
 
 
-PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelGet);
+PVACCESS_REFCOUNT_MONITOR_DEFINE(mockChannelGet);
 
 class MockChannelGet : public ChannelGet
 {
@@ -166,7 +165,7 @@ class MockChannelGet : public ChannelGet
     private:
     ~MockChannelGet()
     {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelGet);
+        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockChannelGet);
     }
 
     public:
@@ -174,7 +173,7 @@ class MockChannelGet : public ChannelGet
         m_channelGetRequester(channelGetRequester), m_pvStructure(pvStructure),
         m_bitSet(new BitSet(pvStructure->getNumberFields())), m_first(true)
     {
-        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelGet);
+        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelGet);
 
         // TODO pvRequest 
     	m_channelGetRequester->channelGetConnect(Status::Ok, this, m_pvStructure, m_bitSet);
@@ -208,7 +207,7 @@ class MockChannelGet : public ChannelGet
 
 
 
-PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannelPut);
+PVACCESS_REFCOUNT_MONITOR_DEFINE(mockChannelPut);
 
 class MockChannelPut : public ChannelPut
 {
@@ -221,7 +220,7 @@ class MockChannelPut : public ChannelPut
     private:
     ~MockChannelPut()
     {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannelPut);
+        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockChannelPut);
     }
 
     public:
@@ -229,7 +228,7 @@ class MockChannelPut : public ChannelPut
         m_channelPutRequester(channelPutRequester), m_pvStructure(pvStructure),
         m_bitSet(new BitSet(pvStructure->getNumberFields())), m_first(true)
     {
-        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannelPut);
+        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelPut);
 
         // TODO pvRequest 
     	m_channelPutRequester->channelPutConnect(Status::Ok, this, m_pvStructure, m_bitSet);
@@ -261,7 +260,7 @@ class MockChannelPut : public ChannelPut
 
 
 
-PVDATA_REFCOUNT_MONITOR_DEFINE(mockMonitor);
+PVACCESS_REFCOUNT_MONITOR_DEFINE(mockMonitor);
 
 class MockMonitor : public Monitor, public MonitorElement
 {
@@ -277,7 +276,7 @@ class MockMonitor : public Monitor, public MonitorElement
     private:
     ~MockMonitor()
     {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockMonitor);
+        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockMonitor);
     }
 
     public:
@@ -289,7 +288,7 @@ class MockMonitor : public Monitor, public MonitorElement
         m_lock(),
         m_count(0)
     {
-        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockMonitor);
+        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockMonitor);
 
         m_changedBitSet->set(0);
         
@@ -365,7 +364,7 @@ class MockMonitor : public Monitor, public MonitorElement
 
 
 
-PVDATA_REFCOUNT_MONITOR_DEFINE(mockChannel);
+PVACCESS_REFCOUNT_MONITOR_DEFINE(mockChannel);
 
 class MockChannel : public Channel {
     private:
@@ -379,7 +378,7 @@ class MockChannel : public Channel {
     private:
     ~MockChannel()
     {
-        PVDATA_REFCOUNT_MONITOR_DESTRUCT(mockChannel);
+        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockChannel);
     }
     
     public:
@@ -394,7 +393,7 @@ class MockChannel : public Channel {
         m_name(name),
         m_remoteAddress(remoteAddress)
     {
-        PVDATA_REFCOUNT_MONITOR_CONSTRUCT(mockChannel);
+        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannel);
      
      
         ScalarType stype = pvDouble;
@@ -960,8 +959,7 @@ int main(int argc,char *argv[])
     
     context->destroy();
     
-    std::cout << "-----------------------------------------------------------------------" << std::endl;
-    epicsExitCallAtExits();
-    CDRMonitor::get().show(stdout, true);
+    //std::cout << "-----------------------------------------------------------------------" << std::endl;
+    //epicsExitCallAtExits();
     return(0);
 }

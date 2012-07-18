@@ -36,8 +36,7 @@ BeaconEmitter::BeaconEmitter(Transport::shared_pointer const & transport, std::t
     _serverAddress(*(context->getServerInetAddress())),
     _serverPort(context->getServerPort()),
     _serverStatusProvider(context->getBeaconServerStatusProvider()),
-    _timer(context->getTimer()),
-    _timerNode(*this)
+    _timer(context->getTimer())
 {
 	_startupTime.getCurrent();
 }
@@ -52,8 +51,7 @@ BeaconEmitter::BeaconEmitter(Transport::shared_pointer const & transport, const 
     _serverAddress(serverAddress),
     _serverPort(serverAddress.ia.sin_port),
     _serverStatusProvider(),
-    _timer(new Timer("pvAccess-server timer", lowPriority)),
-    _timerNode(*this)
+    _timer(new Timer("pvAccess-server timer", lowPriority))
 {
  	_startupTime.getCurrent();
 }
@@ -125,12 +123,12 @@ void BeaconEmitter::timerStopped()
 
 void BeaconEmitter::destroy()
 {
-	_timerNode.cancel();
+    _timer->cancel(shared_from_this());
 }
 
 void BeaconEmitter::start()
 {
-	_timer->scheduleAfterDelay(_timerNode, 0.0);
+    _timer->scheduleAfterDelay(shared_from_this(), 0.0);
 }
 
 void BeaconEmitter::reschedule()
@@ -138,7 +136,7 @@ void BeaconEmitter::reschedule()
 	const double period = (_beaconSequenceID >= _beaconCountLimit) ? _slowBeaconPeriod : _fastBeaconPeriod;
 	if (period > 0)
 	{
-		_timer->scheduleAfterDelay(_timerNode, period);
+        _timer->scheduleAfterDelay(shared_from_this(), period);
 	}
 }
 

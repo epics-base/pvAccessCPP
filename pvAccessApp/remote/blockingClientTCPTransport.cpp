@@ -33,7 +33,6 @@ namespace epics {
                     _introspectionRegistry(false),
                     _connectionTimeout(beaconInterval*1000),
                     _unresponsiveTransport(false),
-                    _timerNode(*this),
                     _verifyOrEcho(true)
         {
 //            _autoDelete = false;
@@ -46,13 +45,15 @@ namespace epics {
 
             // setup connection timeout timer (watchdog)
             epicsTimeGetCurrent(&_aliveTimestamp);
-
-            context->getTimer()->schedulePeriodic(_timerNode, beaconInterval, beaconInterval);
-
-            //start();
-
         }
 
+        void BlockingClientTCPTransport::start()
+        {
+            TimerCallbackPtr tcb = std::tr1::dynamic_pointer_cast<TimerCallback>(shared_from_this());
+            _context->getTimer()->schedulePeriodic(tcb, _connectionTimeout, _connectionTimeout);
+            BlockingTCPTransport::start();
+        }
+        
         BlockingClientTCPTransport::~BlockingClientTCPTransport() {
         }
 
@@ -110,7 +111,8 @@ namespace epics {
         void BlockingClientTCPTransport::internalClose(bool forced) {
             BlockingTCPTransport::internalClose(forced);
 
-            _timerNode.cancel();
+            TimerCallbackPtr tcb = std::tr1::dynamic_pointer_cast<TimerCallback>(shared_from_this());
+            _context->getTimer()->cancel(tcb);
         }
 
         void BlockingClientTCPTransport::internalPostClose(bool forced) {

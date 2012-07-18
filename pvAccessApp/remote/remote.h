@@ -28,6 +28,10 @@
 namespace epics {
     namespace pvAccess {
 
+#define PVACCESS_REFCOUNT_MONITOR_DEFINE(name)
+#define PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(name)
+#define PVACCESS_REFCOUNT_MONITOR_DESTRUCT(name)
+
         class TransportRegistry;
 
         enum QoS {

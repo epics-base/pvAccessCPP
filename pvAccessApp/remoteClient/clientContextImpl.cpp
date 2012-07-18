@@ -7,7 +7,6 @@
 #include <pv/pvAccess.h>
 #include <iostream>
 #include <sstream>
-#include <pv/CDRMonitor.h>
 #include <pv/lock.h>
 #include <pv/standardPVField.h>
 #include <memory>
@@ -306,7 +305,7 @@ namespace epics {
 
 
 
-        PVDATA_REFCOUNT_MONITOR_DEFINE(channelProcess);
+        PVACCESS_REFCOUNT_MONITOR_DEFINE(channelProcess);
 
         class ChannelProcessRequestImpl :
             public BaseRequestImpl,
@@ -321,7 +320,7 @@ namespace epics {
                     m_callback(callback),
                     m_pvRequest(pvRequest)
             {
-                PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelProcess);
+                PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelProcess);
             }
             
             void activate()
@@ -354,7 +353,7 @@ namespace epics {
             
             ~ChannelProcessRequestImpl()
             {
-                PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelProcess);
+                PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelProcess);
             }
 
             virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
@@ -449,7 +448,7 @@ namespace epics {
 
 
 
-        PVDATA_REFCOUNT_MONITOR_DEFINE(channelGet);
+        PVACCESS_REFCOUNT_MONITOR_DEFINE(channelGet);
 
         class ChannelGetImpl :
             public BaseRequestImpl,
@@ -469,7 +468,7 @@ namespace epics {
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelGetRequester)),
                     m_channelGetRequester(channelGetRequester), m_pvRequest(pvRequest)
             {
-                PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelGet);
+                PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelGet);
             }
             
             void activate()
@@ -509,7 +508,7 @@ namespace epics {
 
             ~ChannelGetImpl()
             {
-                PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelGet);
+                PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelGet);
             }
 
             virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
@@ -655,7 +654,7 @@ namespace epics {
 
 
 
-        PVDATA_REFCOUNT_MONITOR_DEFINE(channelPut);
+        PVACCESS_REFCOUNT_MONITOR_DEFINE(channelPut);
 
         class ChannelPutImpl : public BaseRequestImpl, public ChannelPut
         {
@@ -673,7 +672,7 @@ namespace epics {
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelPutRequester)),
                     m_channelPutRequester(channelPutRequester), m_pvRequest(pvRequest)
             {
-                PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelPut);
+                PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelPut);
             }
             
             void activate()
@@ -713,7 +712,7 @@ namespace epics {
 
             ~ChannelPutImpl()
             {
-                PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelPut);
+                PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelPut);
             }
             
             virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
@@ -887,7 +886,7 @@ namespace epics {
 
 
 
-        PVDATA_REFCOUNT_MONITOR_DEFINE(channelPutGet);
+        PVACCESS_REFCOUNT_MONITOR_DEFINE(channelPutGet);
 
         class ChannelPutGetImpl : public BaseRequestImpl, public ChannelPutGet
         {
@@ -905,7 +904,7 @@ namespace epics {
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelPutGetRequester)),
                     m_channelPutGetRequester(channelPutGetRequester), m_pvRequest(pvRequest)
             {
-                PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelPutGet);
+                PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelPutGet);
             }
 
             void activate()
@@ -940,7 +939,7 @@ namespace epics {
 
             ~ChannelPutGetImpl()
             {
-                PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelPutGet);
+                PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelPutGet);
             }
 
             virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
@@ -1177,7 +1176,7 @@ namespace epics {
 
 
 
-        PVDATA_REFCOUNT_MONITOR_DEFINE(channelRPC);
+        PVACCESS_REFCOUNT_MONITOR_DEFINE(channelRPC);
 
         class ChannelRPCImpl : public BaseRequestImpl, public ChannelRPC
         {
@@ -1194,7 +1193,7 @@ namespace epics {
                     BaseRequestImpl(channel, static_pointer_cast<Requester>(channelRPCRequester)),
                     m_channelRPCRequester(channelRPCRequester), m_pvRequest(pvRequest)
             {
-                PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelRPC);
+                PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelRPC);
             }
             
             void activate()
@@ -1228,7 +1227,7 @@ namespace epics {
 
             ~ChannelRPCImpl()
             {
-                PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelRPC);
+                PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelRPC);
             }
 
             virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
@@ -1366,7 +1365,7 @@ namespace epics {
 
 
 
-        PVDATA_REFCOUNT_MONITOR_DEFINE(channelArray);
+        PVACCESS_REFCOUNT_MONITOR_DEFINE(channelArray);
 
         class ChannelArrayImpl : public BaseRequestImpl, public ChannelArray
         {
@@ -1390,7 +1389,7 @@ namespace epics {
                     m_channelArrayRequester(channelArrayRequester), m_pvRequest(pvRequest),
                     m_offset(0), m_count(0), m_length(-1), m_capacity(-1)
             {
-                PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelArray);
+                PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelArray);
             }
             
             void activate()
@@ -1426,7 +1425,7 @@ namespace epics {
 
             ~ChannelArrayImpl()
             {
-                PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelArray);
+                PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelArray);
             }
 
             virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
@@ -1651,7 +1650,7 @@ namespace epics {
 
 
 
-        PVDATA_REFCOUNT_MONITOR_DEFINE(channelGetField);
+        PVACCESS_REFCOUNT_MONITOR_DEFINE(channelGetField);
 
         // NOTE: this instance is not returned as Request, so it must self-destruct
         class ChannelGetFieldRequestImpl :
@@ -1683,7 +1682,7 @@ namespace epics {
                     m_ioid(INVALID_IOID),
                     m_destroyed(false)
             {
-                PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelGetField);
+                PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelGetField);
             }
             
             void activate()
@@ -1713,7 +1712,7 @@ namespace epics {
 
             ~ChannelGetFieldRequestImpl()
             {
-                PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelGetField);
+                PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelGetField);
             }
 
             Requester::shared_pointer getRequester() {
@@ -2065,7 +2064,7 @@ namespace epics {
 
 
 
-        PVDATA_REFCOUNT_MONITOR_DEFINE(channelMonitor);
+        PVACCESS_REFCOUNT_MONITOR_DEFINE(channelMonitor);
 
         class ChannelMonitorImpl :
             public BaseRequestImpl,
@@ -2085,7 +2084,7 @@ namespace epics {
                     m_started(false),
                     m_pvRequest(pvRequest)
             {
-                PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channelMonitor);
+                PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelMonitor);
             }
             
             void activate()
@@ -2153,7 +2152,7 @@ namespace epics {
 
             ~ChannelMonitorImpl()
             {
-                PVDATA_REFCOUNT_MONITOR_DESTRUCT(channelMonitor);
+                PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelMonitor);
             }
 
             virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
@@ -2740,7 +2739,7 @@ namespace epics {
 
 
 
-        PVDATA_REFCOUNT_MONITOR_DEFINE(channel);
+        PVACCESS_REFCOUNT_MONITOR_DEFINE(channel);
 
 
         /**
@@ -2766,7 +2765,7 @@ namespace epics {
 
 
 
-        PVDATA_REFCOUNT_MONITOR_DEFINE(remoteClientContext);
+        PVACCESS_REFCOUNT_MONITOR_DEFINE(remoteClientContext);
 
         class InternalClientContextImpl :
             public ClientContextImpl,
@@ -2996,7 +2995,7 @@ namespace epics {
                 m_serverChannelID(0xFFFFFFFF),
                 m_issueCreateMessage(true)
                 {
-                    PVDATA_REFCOUNT_MONITOR_CONSTRUCT(channel);
+                    PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channel);
                 }
                 
                 void activate()
@@ -3025,7 +3024,7 @@ namespace epics {
                 
                 ~InternalChannelImpl()
                 {
-                    PVDATA_REFCOUNT_MONITOR_DESTRUCT(channel);
+                    PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channel);
                 }
                 
                 virtual void destroy()
@@ -3743,7 +3742,7 @@ namespace epics {
                     m_contextState(CONTEXT_NOT_INITIALIZED),
                     m_configuration(new SystemConfigurationImpl())
             {
-                PVDATA_REFCOUNT_MONITOR_CONSTRUCT(remoteClientContext);
+                PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(remoteClientContext);
                 m_provider.reset(new ChannelProviderImpl(this));
                 loadConfiguration();
             }
@@ -3866,7 +3865,7 @@ TODO
 
             ~InternalClientContextImpl()
             {
-                PVDATA_REFCOUNT_MONITOR_DESTRUCT(remoteClientContext);
+                PVACCESS_REFCOUNT_MONITOR_DESTRUCT(remoteClientContext);
             };
 
         private:
@@ -3889,7 +3888,7 @@ TODO
                 m_transportRegistry.reset(new TransportRegistry());
 
                 // setup search manager
-                m_channelSearchManager.reset(new SimpleChannelSearchManagerImpl(thisPointer));
+                m_channelSearchManager = SimpleChannelSearchManagerImpl::create(thisPointer);
 
                 // TODO put memory barrier here...
 
