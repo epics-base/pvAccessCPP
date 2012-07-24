@@ -56,7 +56,7 @@ LIBSRCS += simpleChannelSearchManagerImpl.cpp
 LIBSRCS += abstractResponseHandler.cpp
 LIBSRCS += blockingTCPAcceptor.cpp
 LIBSRCS += transportRegistry.cpp
-#LIBSRCS += serializationHelper.cpp
+LIBSRCS += serializationHelper.cpp
 
 SRC_DIRS += $(PVACCESS)/remoteClient
 INC += clientContextImpl.h

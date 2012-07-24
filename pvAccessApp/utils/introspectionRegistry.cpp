@@ -6,6 +6,7 @@
 
 #include <pv/introspectionRegistry.h>
 #include <pv/convert.h>
+#include <pv/serializationHelper.h>
 
 using namespace epics::pvData;
 using namespace std;
@@ -102,10 +103,7 @@ void IntrospectionRegistry::serialize(FieldConstPtr const & field, ByteBuffer* b
 {
 	if (field.get() == NULL)
 	{
-		// TODO
-		//SerializationHelper::serializeNullField(buffer, control);
-		control->ensureBuffer(1);
-		buffer->putByte(IntrospectionRegistry::NULL_TYPE_CODE);
+		SerializationHelper::serializeNullField(buffer, control);
 	}
 	else
 	{
@@ -160,74 +158,6 @@ FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, Deserializa
     buffer->setPosition(pos);
 	return _fieldCreate->deserialize(buffer, control);
 }
-
-/*
-void IntrospectionRegistry::serializeFull(FieldConstPtr field, ByteBuffer* buffer, SerializableControl* control)
-{
-        serialize(field, StructureConstPtr(), buffer, control, NULL);
-}
-
-FieldConstPtr IntrospectionRegistry::deserializeFull(ByteBuffer* buffer, DeserializableControl* control)
-{
-	return deserialize(buffer, control, NULL);
-}
-
-void IntrospectionRegistry::serializeStructure(ByteBuffer* buffer, SerializableControl* control, PVStructurePtr pvStructure)
-{
-	if (pvStructure == NULL)
-	{
-                serialize(StructureConstPtr(), buffer, control);
-	}
-	else
-	{
-		serialize(pvStructure->getField(), buffer, control);
-		pvStructure->serialize(buffer, control);
-	}
-}
-
-PVStructurePtr IntrospectionRegistry::deserializeStructure(ByteBuffer* buffer, DeserializableControl* control)
-{
-	PVStructurePtr pvStructure;
-	FieldConstPtr structureField = deserialize(buffer, control);
-	if (structureField.get() != NULL)
-	{
-        pvStructure = _pvDataCreate->createPVStructure(static_pointer_cast<const Structure>(structureField));
-		pvStructure->deserialize(buffer, control);
-	}
-	return pvStructure;
-}
-
-void IntrospectionRegistry::serializePVRequest(ByteBuffer* buffer, SerializableControl* control, PVStructurePtr pvRequest)
-{
-	// for now ordinary structure, later can be changed
-	serializeStructure(buffer, control, pvRequest);
-}
-
-PVStructurePtr IntrospectionRegistry::deserializePVRequest(ByteBuffer* buffer, DeserializableControl* control)
-{
-	// for now ordinary structure, later can be changed
-	return deserializeStructure(buffer, control);
-}
-
-PVStructurePtr IntrospectionRegistry::deserializeStructureAndCreatePVStructure(ByteBuffer* buffer, DeserializableControl* control)
-{
-	FieldConstPtr field = deserialize(buffer, control);
-	if (field == NULL)
-		return PVStructurePtr();
-
-	return _pvDataCreate->createPVStructure(static_pointer_cast<const Structure>(field));
-}
-
-void IntrospectionRegistry::serializeStatus(ByteBuffer* buffer, SerializableControl* control, const Status& status)
-{
-    status.serialize(buffer, control);
-}
-
-void IntrospectionRegistry::deserializeStatus(Status &status, ByteBuffer* buffer, DeserializableControl* control)
-{
-	status.deserialize(buffer, control);
-}
-*/
 
 }}
 

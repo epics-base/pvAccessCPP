@@ -20,9 +20,9 @@
 
 
 namespace epics {
-    namespace pvData {
+    namespace pvAccess {
 
-        class SerializationHelper : public NoDefaultMethods {
+        class SerializationHelper : public epics::pvData::NoDefaultMethods {
         public:
 
     		static epics::pvData::PVDataCreatePtr _pvDataCreate;
@@ -32,7 +32,7 @@ namespace epics {
 			 * @param payloadBuffer data buffer.
 			 * @return deserialized PVRequest, can be <code>null</code>.
 			 */
-			static PVStructure::shared_pointer deserializePVRequest(ByteBuffer* payloadBuffer, DeserializableControl* control);
+			static epics::pvData::PVStructure::shared_pointer deserializePVRequest(epics::pvData::ByteBuffer* payloadBuffer, epics::pvData::DeserializableControl* control);
 
 			/**
 			 * Deserialize Structure and create PVStructure instance.
@@ -40,7 +40,7 @@ namespace epics {
 			 * @param control deserialization control.
 			 * @return PVStructure instance, can be <code>null</code>.
 			 */
-			static PVStructure::shared_pointer deserializeStructureAndCreatePVStructure(ByteBuffer* payloadBuffer, DeserializableControl* control);
+			static epics::pvData::PVStructure::shared_pointer deserializeStructureAndCreatePVStructure(epics::pvData::ByteBuffer* payloadBuffer, epics::pvData::DeserializableControl* control);
 
 			/**
 			 * Deserialize Structure and create PVStructure instance, if necessary.
@@ -50,28 +50,28 @@ namespace epics {
 			 * 			<code>existingStructure</code> instance is returned. <code>null</code> value is allowed.
 			 * @return PVStructure instance, can be <code>null</code>.
 			 */
-			static PVStructure deserializeStructureAndCreatePVStructure(ByteBuffer* payloadBuffer, DeserializableControl* control, PVStructure::shared_pointer const & existingStructure);
+			static epics::pvData::PVStructure::shared_pointer deserializeStructureAndCreatePVStructure(epics::pvData::ByteBuffer* payloadBuffer, epics::pvData::DeserializableControl* control, epics::pvData::PVStructure::shared_pointer const & existingStructure);
 
 			/**
 			 * Deserialize optional PVStructrue.
 			 * @param payloadBuffer data buffer.
 			 * @return deserialized PVStructure, can be <code>null</code>.
 			 */
-			static PVStructure::shared_pointer deserializeStructureFull(ByteBuffer* payloadBuffer, DeserializableControl* control);
+			static epics::pvData::PVStructure::shared_pointer deserializeStructureFull(epics::pvData::ByteBuffer* payloadBuffer, epics::pvData::DeserializableControl* control);
 
-			static void serializeNullField(ByteBuffer* buffer, SerializableControl* control);
+			static void serializeNullField(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control);
 
 			/**
 			 * Serialize PVRequest.
 			 * @param buffer data buffer.
 			 */
-			static void serializePVRequest(ByteBuffer* buffer, SerializableControl* control, PVStructure::shared_pointer const & pvRequest);
+			static void serializePVRequest(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control, epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
 			/**
 			 * Serialize optional PVStructrue.
 			 * @param buffer data buffer.
 			 */
-			static void serializeStructureFull(ByteBuffer* buffer, SerializableControl* control, PVStructure::shared_pointer const & pvStructure);
+			static void serializeStructureFull(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control, epics::pvData::PVStructure::shared_pointer const & pvStructure);
 
 };
 
