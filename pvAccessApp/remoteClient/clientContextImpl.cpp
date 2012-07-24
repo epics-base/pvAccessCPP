@@ -28,6 +28,7 @@
 #include <pv/beaconHandler.h>
 #include <pv/logger.h>
 #include <pv/bitSetUtil.h>
+#include <pv/serializationHelper.h>
 
 #include <tr1/unordered_map>
 
@@ -180,7 +181,7 @@ namespace epics {
                 int8 qos = payloadBuffer->getByte();
                 
                 Status m_status;
-                transport->getIntrospectionRegistry()->deserializeStatus(m_status, payloadBuffer, transport.get());
+                m_status.deserialize(payloadBuffer, transport.get());
                 
                 try
                 {
@@ -372,7 +373,7 @@ namespace epics {
                 if (pendingRequest & QOS_INIT)
                 {
                     // pvRequest
-                    m_channel->getTransport()->getIntrospectionRegistry()->serializePVRequest(buffer, control, m_pvRequest);
+                	SerializationHelper::serializePVRequest(buffer, control, m_pvRequest);
                 }
 
                 stopRequest();
@@ -527,7 +528,7 @@ namespace epics {
                 if (pendingRequest & QOS_INIT)
                 {
                     // pvRequest
-                    m_channel->getTransport()->getIntrospectionRegistry()->serializePVRequest(buffer, control, m_pvRequest);
+                	SerializationHelper::serializePVRequest(buffer, control, m_pvRequest);
                 }
 
                 stopRequest();
@@ -553,7 +554,7 @@ namespace epics {
                 // create data and its bitSet
                 {
                     Lock lock(m_structureMutex);
-                    m_structure = transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get());
+                    m_structure = SerializationHelper::deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get());
                     m_bitSet.reset(new BitSet(m_structure->getNumberFields()));
                 }
                 
@@ -731,7 +732,7 @@ namespace epics {
                 if (pendingRequest & QOS_INIT)
                 {
                     // pvRequest
-                    m_channel->getTransport()->getIntrospectionRegistry()->serializePVRequest(buffer, control, m_pvRequest);
+                	SerializationHelper::serializePVRequest(buffer, control, m_pvRequest);
                 }
                 else if (!(pendingRequest & QOS_GET))
                 {
@@ -766,7 +767,7 @@ namespace epics {
                 // create data and its bitSet
                 {
                     Lock lock(m_structureMutex);
-                    m_structure = transport->getIntrospectionRegistry()->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get());
+                    m_structure = SerializationHelper::deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get());
                     m_bitSet.reset(new BitSet(m_structure->getNumberFields()));
                 }
                 
@@ -961,7 +962,7 @@ namespace epics {
                     buffer->putByte((int8)QOS_INIT);
 
                     // pvRequest
-                    m_channel->getTransport()->getIntrospectionRegistry()->serializePVRequest(buffer, control, m_pvRequest);
+                    SerializationHelper::serializePVRequest(buffer, control, m_pvRequest);
                 }
                 else if (pendingRequest & (QOS_GET | QOS_GET_PUT)) {
                     // noop
@@ -993,12 +994,10 @@ namespace epics {
                     return true;
                 }
 
-                IntrospectionRegistry* registry = transport->getIntrospectionRegistry();
-                
                 {
                     Lock lock(m_structureMutex);
-                    m_putData = registry->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get());
-                    m_getData = registry->deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get());
+                    m_putData = SerializationHelper::deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get());
+                    m_getData = SerializationHelper::deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get());
                 }
                 
                 // notify
@@ -1249,14 +1248,14 @@ namespace epics {
                     buffer->putByte((int8)QOS_INIT);
 
                     // pvRequest
-                    m_channel->getTransport()->getIntrospectionRegistry()->serializePVRequest(buffer, control, m_pvRequest);
+                    SerializationHelper::serializePVRequest(buffer, control, m_pvRequest);
                 }
                 else
                 {
                     {
                         // no need to lock here, since it is already locked via TransportSender IF
                         //Lock lock(m_structureMutex);
-                        m_channel->getTransport()->getIntrospectionRegistry()->serializeStructure(buffer, control, m_structure);
+                    	SerializationHelper::serializeStructureFull(buffer, control, m_structure);
                         // release arguments structure
                         m_structure.reset();
                     }
@@ -1294,7 +1293,7 @@ namespace epics {
                 }
 
 
-                PVStructure::shared_pointer response(transport->getIntrospectionRegistry()->deserializeStructure(payloadBuffer, transport.get()));
+                PVStructure::shared_pointer response(SerializationHelper::deserializeStructureFull(payloadBuffer, transport.get()));
                 EXCEPTION_GUARD(m_channelRPCRequester->requestDone(status, response));
                 return true;
             }
@@ -1444,7 +1443,7 @@ namespace epics {
                 if (pendingRequest & QOS_INIT)
                 {
                     // pvRequest
-                    m_channel->getTransport()->getIntrospectionRegistry()->serializePVRequest(buffer, control, m_pvRequest);
+                	SerializationHelper::serializePVRequest(buffer, control, m_pvRequest);
                 }
                 else if (pendingRequest & QOS_GET)
                 {
@@ -1487,7 +1486,7 @@ namespace epics {
                 }
 
                 // create data and its bitSet
-                FieldConstPtr field = transport->getIntrospectionRegistry()->deserialize(payloadBuffer, transport.get());
+                FieldConstPtr field = transport->cachedDeserialize(payloadBuffer);
                 {
                     Lock lock(m_structureMutex);
                     m_structure = dynamic_pointer_cast<PVArray>(getPVDataCreate()->createPVField(field));
@@ -1774,11 +1773,11 @@ namespace epics {
             virtual void response(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer) {
 
                 Status status;    
-                transport->getIntrospectionRegistry()->deserializeStatus(status, payloadBuffer, transport.get());
+                status.deserialize(payloadBuffer, transport.get());
                 if (status.isSuccess())
                 {
                     // deserialize Field...
-                    FieldConstPtr field = transport->getIntrospectionRegistry()->deserialize(payloadBuffer, transport.get());
+                    FieldConstPtr field = transport->cachedDeserialize(payloadBuffer);
                     EXCEPTION_GUARD(m_callback->getDone(status, field));
                 }
                 else
@@ -1854,7 +1853,7 @@ namespace epics {
     		      return m_monitorElement;
     		}
     
-    		virtual void release(MonitorElement::shared_pointer & monitorElement) {
+    		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
     		}
@@ -1925,7 +1924,7 @@ namespace epics {
     		      return m_monitorElement;
     		}
     
-    		virtual void release(MonitorElement::shared_pointer & monitorElement) {
+    		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
     		}
@@ -2037,7 +2036,7 @@ namespace epics {
                 return m_monitorElement;
     		}
     
-    		virtual void release(MonitorElement::shared_pointer & monitorElement) {
+    		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
     		}
@@ -2171,7 +2170,7 @@ namespace epics {
                 if (pendingRequest & QOS_INIT)
                 {
                     // pvRequest
-                    m_channel->getTransport()->getIntrospectionRegistry()->serializePVRequest(buffer, control, m_pvRequest);
+                	SerializationHelper::serializePVRequest(buffer, control, m_pvRequest);
                 }
 
                 stopRequest();
@@ -2194,8 +2193,7 @@ namespace epics {
 
                 StructureConstPtr structure =
                                 dynamic_pointer_cast<const Structure>(
-                                        transport->getIntrospectionRegistry()->
-                                            deserialize(payloadBuffer, transport.get())
+                                        transport->cachedDeserialize(payloadBuffer)
                                             );
                 m_monitorStrategy->init(structure);
                 
@@ -2235,7 +2233,7 @@ namespace epics {
                 if (qos & QOS_INIT)
                 {
                     Status status;
-                    transport->getIntrospectionRegistry()->deserializeStatus(status, payloadBuffer, transport.get());
+                    status.deserialize(payloadBuffer, transport.get());
                     if (status.isSuccess())
                     {
                         m_mutex.lock();
@@ -2247,7 +2245,7 @@ namespace epics {
                 else if (qos & QOS_DESTROY)
                 {
                     Status status;
-                    transport->getIntrospectionRegistry()->deserializeStatus(status, payloadBuffer, transport.get());
+                    status.deserialize(payloadBuffer, transport.get());
 
                     m_mutex.lock();
                     m_initialized = false;
@@ -2328,7 +2326,7 @@ namespace epics {
                 return m_monitorStrategy->poll();
             }
 
-            virtual void release(MonitorElement::shared_pointer & monitorElement)
+            virtual void release(MonitorElement::shared_pointer const & monitorElement)
             {
                 m_monitorStrategy->release(monitorElement);
             }
@@ -2548,7 +2546,7 @@ namespace epics {
                 // TODO smart pointers
                 // extra data
                 PVFieldPtr data;
-                const FieldConstPtr field = IntrospectionRegistry::deserializeFull(payloadBuffer, transport.get());
+                const FieldConstPtr field = getFieldCreate()->deserialize(payloadBuffer, transport.get());
                 if (field != 0)
                 {
                     data = getPVDataCreate()->createPVField(field);
@@ -2648,7 +2646,7 @@ namespace epics {
                 pvAccessID sid = payloadBuffer->getInt();
 
                 Status status;
-                transport->getIntrospectionRegistry()->deserializeStatus(status, payloadBuffer, transport.get());
+                status.deserialize(payloadBuffer, transport.get());
 
                 // TODO optimize
                 ChannelImpl::shared_pointer channel = static_pointer_cast<ChannelImpl>(_context.lock()->getChannel(cid));

@@ -24,7 +24,6 @@ namespace pvAccess {
                 Context::shared_pointer const & context, SOCKET channel,
                 auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize) :
             BlockingTCPTransport(context, channel, responseHandler, receiveBufferSize, CA_DEFAULT_PRIORITY),
-            _introspectionRegistry(true),
             _lastChannelSID(0)
         {
             // for performance testing

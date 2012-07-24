@@ -643,7 +643,7 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
         }
     }
 
-    virtual void release(MonitorElement::shared_pointer & monitorElement)
+    virtual void release(MonitorElement::shared_pointer const & monitorElement)
     {
         Lock xx(m_lock);
         if (m_count)

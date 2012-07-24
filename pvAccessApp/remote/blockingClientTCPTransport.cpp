@@ -30,7 +30,6 @@ namespace epics {
                 TransportClient::shared_pointer client, int8 remoteTransportRevision,
                 float beaconInterval, int16 priority) :
             BlockingTCPTransport(context, channel, responseHandler, receiveBufferSize, priority),
-                    _introspectionRegistry(false),
                     _connectionTimeout(beaconInterval*1000),
                     _unresponsiveTransport(false),
                     _verifyOrEcho(true)
@@ -193,7 +192,7 @@ namespace epics {
         }
 
         void BlockingClientTCPTransport::changedTransport() {
-            _introspectionRegistry.reset();
+        	outgoingIR.reset();
 
             Lock lock(_mutex);
             TransportClientMap_t::iterator it = _owners.begin();

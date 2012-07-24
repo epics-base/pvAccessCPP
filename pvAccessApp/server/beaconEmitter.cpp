@@ -9,8 +9,7 @@
 #endif
 
 #include <pv/beaconEmitter.h>
-
-#include <pv/introspectionRegistry.h>
+#include <pv/serializationHelper.h>
 
 #include <pv/logger.h>
 #include <algorithm>
@@ -101,12 +100,12 @@ void BeaconEmitter::send(ByteBuffer* buffer, TransportSendControl* control)
 	if (serverStatus)
 	{
 		// introspection interface + data
-		IntrospectionRegistry::serializeFull(serverStatus->getField(), buffer, control);
+		serverStatus->getField()->serialize(buffer, control);
 		serverStatus->serialize(buffer, control);
 	}
 	else
 	{
-        IntrospectionRegistry::serializeFull(FieldConstPtr(), buffer, control);
+        SerializationHelper::serializeNullField(buffer, control);
 	}
 	control->flush(true);
 

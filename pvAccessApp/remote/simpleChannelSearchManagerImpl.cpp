@@ -7,6 +7,7 @@
 #include <pv/simpleChannelSearchManagerImpl.h>
 #include <pv/caConstants.h>
 #include <pv/blockingUDP.h>
+#include <pv/serializeHelper.h>
 
 #include <stdlib.h>
 #include <time.h>

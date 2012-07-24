@@ -366,7 +366,7 @@ class MonitorRequesterImpl : public MonitorRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer & monitor, StructureConstPtr const & structure)
+    virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, StructureConstPtr const & structure)
     {
         std::cout << "monitorConnect(" << status.toString() << ")" << std::endl;
         if (status.isSuccess() && structure)

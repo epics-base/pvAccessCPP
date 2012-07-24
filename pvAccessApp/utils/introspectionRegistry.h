@@ -34,7 +34,7 @@ typedef std::map<const short,epics::pvData::FieldConstPtr> registryMap_t;
 	 */
 	class IntrospectionRegistry : public epics::pvData::NoDefaultMethods {
 	public:
-		IntrospectionRegistry(bool serverSide);
+		IntrospectionRegistry();
 		virtual ~IntrospectionRegistry();
 
 		void printKeysAndValues(std::string name);
@@ -49,7 +49,7 @@ typedef std::map<const short,epics::pvData::FieldConstPtr> registryMap_t;
 		 *
 		 * @return <code>Field</code> instance for given ID.
 		 */
-		epics::pvData::FieldConstPtr getIntrospectionInterface(const short id);
+		epics::pvData::FieldConstPtr getIntrospectionInterface(const epics::pvData::int16 id);
 
 		/**
 		 * Registers introspection interface with given ID. Always INCOMING.
@@ -57,7 +57,7 @@ typedef std::map<const short,epics::pvData::FieldConstPtr> registryMap_t;
 		 * @param id id of the introspection interface to register
 		 * @param field introspection interface to register
 		 */
-		void registerIntrospectionInterface(const short id, epics::pvData::FieldConstPtr field);
+		void registerIntrospectionInterface(const epics::pvData::int16 id, epics::pvData::FieldConstPtr const & field);
 
 		/**
 		 * Registers introspection interface and get it's ID. Always OUTGOING.
@@ -69,7 +69,7 @@ typedef std::map<const short,epics::pvData::FieldConstPtr> registryMap_t;
 		 *
 		 * @return id of given introspection interface
 		 */
-		short registerIntrospectionInterface(epics::pvData::FieldConstPtr field, bool& existing);
+		epics::pvData::int16 registerIntrospectionInterface(epics::pvData::FieldConstPtr const & field, bool& existing);
 
 		/**
 		 * Serializes introspection interface
@@ -78,7 +78,7 @@ typedef std::map<const short,epics::pvData::FieldConstPtr> registryMap_t;
 		 * @param buffer
 		 * @param control
 		 */
-		void serialize(epics::pvData::FieldConstPtr field, epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control);
+		void serialize(epics::pvData::FieldConstPtr const & field, epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control);
 
 		/**
 		 * Deserializes introspection interface
@@ -91,30 +91,6 @@ typedef std::map<const short,epics::pvData::FieldConstPtr> registryMap_t;
 		 * @return <code>Field</code> deserialized from the buffer.
 		 */
 		epics::pvData::FieldConstPtr deserialize(epics::pvData::ByteBuffer* buffer, epics::pvData::DeserializableControl* control);
-
-		/**
-		 * Serializes introspection interface. But this time really fully not like
-		 * the serialize which only says it serializes but in fact does not. :)
-		 *
-		 * TODO
-		 *
-		 * @param field
-		 * @param buffer
-		 * @param control
-		 */
-		static void serializeFull(epics::pvData::FieldConstPtr field, epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control);
-
-		/**
-		 * Deserializes introspection interface
-		 *
-		 * TODO
-		 *
-		 * @param buffer
-		 * @param control
-		 *
-		 * @return <code>Field</code> deserialized from the buffer.
-		 */
-		static epics::pvData::FieldConstPtr deserializeFull(epics::pvData::ByteBuffer* buffer, epics::pvData::DeserializableControl* control);
 
 		/**
 		 * Null type.
@@ -131,94 +107,16 @@ typedef std::map<const short,epics::pvData::FieldConstPtr> registryMap_t;
 		 */
 		const static epics::pvData::int8 FULL_WITH_ID_TYPE_CODE;
 
-
-		static void serialize(epics::pvData::FieldConstPtr field, epics::pvData::StructureConstPtr parent, epics::pvData::ByteBuffer* buffer,
-							  epics::pvData::SerializableControl* control, IntrospectionRegistry* registry);
-
-
-
-		/**
-		 * @param buffer
-		 * @param control
-		 * @param registry
-		 * @param structure
-		 */
-		static epics::pvData::FieldConstPtr deserialize(epics::pvData::ByteBuffer* buffer, epics::pvData::DeserializableControl* control, IntrospectionRegistry* registry);
-
-		/**
-		 * Serialize optional PVStructrue.
-		 * @param buffer data buffer.
-		 */
-		void serializeStructure(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control, epics::pvData::PVStructurePtr pvStructure);
-
-		/**
-		 * Deserialize optional PVStructrue.
-		 * @param payloadBuffer data buffer.
-		 * @return deserialized PVStructure, can be <code>null</code>.
-		 */
-		epics::pvData::PVStructurePtr deserializeStructure(epics::pvData::ByteBuffer* payloadBuffer, epics::pvData::DeserializableControl* control);
-
-		/**
-		 * Serialize PVRequest.
-		 * @param buffer data buffer.
-		 */
-		void serializePVRequest(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control, epics::pvData::PVStructurePtr pvRequest);
-
-		/**
-		 * Deserialize PVRequest.
-		 * @param payloadBuffer data buffer.
-		 * @param control serialization control.
-		 *
-		 * @return deserialized PVRequest, can be <code>null</code>.
-		 */
-		epics::pvData::PVStructurePtr deserializePVRequest(epics::pvData::ByteBuffer* payloadBuffer, epics::pvData::DeserializableControl* control);
-
-		/**
-		 * Deserialize Structure and create PVStructure instance.
-		 *
-		 * @param payloadBuffer data buffer.
-		 * @param control serialization control.
-		 *
-		 * @return PVStructure instance, can be <code>null</code>.
-		 */
-		epics::pvData::PVStructurePtr deserializeStructureAndCreatePVStructure(epics::pvData::ByteBuffer* payloadBuffer, epics::pvData::DeserializableControl* control);
-
-		/**
-		 * Serialize status.
-		 *
-		 * @param buffer data buffer.
-		 * @param control serialization control.
-		 * @param status status to serialize.
-		 */
-		void serializeStatus(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control, const epics::pvData::Status &status);
-
-		/**
-		 * Deserialize status.
-		 *
-		 * @param buffer data buffer.
-		 * @param control serialization control.
-		 */
-		void deserializeStatus(epics::pvData::Status &status, epics::pvData::ByteBuffer* buffer, epics::pvData::DeserializableControl* control);
-
 	private:
 		registryMap_t _registry;
-		registryMap_t::iterator _registryIter;
-		registryMap_t::reverse_iterator _registryRIter;
-		short _outgoingIdPointer;
-		short _direction;
-		epics::pvData::Mutex _mutex;
-
-		/**
-		 * PVField factory.
-		 */
-		static epics::pvData::PVDataCreatePtr _pvDataCreate;
+		epics::pvData::int16 _pointer;
 
 		/**
 		 * Field factory.
 		 */
 		static epics::pvData::FieldCreatePtr _fieldCreate;
 
-		bool registryContainsValue(epics::pvData::FieldConstPtr field, short& key);
+		bool registryContainsValue(epics::pvData::FieldConstPtr const & field, epics::pvData::int16& key);
 	};
 
 }}

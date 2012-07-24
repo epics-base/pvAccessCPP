@@ -482,7 +482,7 @@ namespace pvAccess {
         	       ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
         	       Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
         	       
-		void monitorConnect(const epics::pvData::Status& status, epics::pvData::Monitor::shared_pointer & monitor, epics::pvData::StructureConstPtr const & structure);
+		void monitorConnect(const epics::pvData::Status& status, epics::pvData::Monitor::shared_pointer const & monitor, epics::pvData::StructureConstPtr const & structure);
         	void unlisten(epics::pvData::Monitor::shared_pointer const & monitor);
         	void monitorEvent(epics::pvData::Monitor::shared_pointer const & monitor);
         	void lock();
@@ -674,7 +674,7 @@ namespace pvAccess {
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) {
 				control->startMessage((epics::pvData::int8)CMD_GET_FIELD, sizeof(epics::pvData::int32)/sizeof(epics::pvData::int8));
 				buffer->putInt(_ioid);
-				_transport->getIntrospectionRegistry()->serializeStatus(buffer, control, _status);
+				_status.serialize(buffer, control);
         	}
 
         	void lock() {

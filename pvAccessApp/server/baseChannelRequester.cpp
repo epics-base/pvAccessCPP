@@ -122,7 +122,7 @@ void BaseChannelRequesterFailureMessageTransportSender::send(ByteBuffer* buffer,
 	control->startMessage(_command, sizeof(int32)/sizeof(int8) + 1);
 	buffer->putInt(_ioid);
 	buffer->put(_qos);
-	_transport->getIntrospectionRegistry()->serializeStatus(buffer, control, _status);
+	_status.serialize(buffer, control);
 }
 
 void BaseChannelRequesterFailureMessageTransportSender::lock()

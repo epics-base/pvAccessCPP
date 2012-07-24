@@ -13,6 +13,8 @@
 #include <osiSock.h>
 #include <vector>
 
+// TODO implement using smart pointers
+
 namespace epics {
 namespace pvAccess {
 

@@ -217,10 +217,6 @@ namespace epics {
                 }
             }
 
-            virtual IntrospectionRegistry* getIntrospectionRegistry() {
-                return 0;
-            }
-
         protected:
             AtomicBoolean _closed;
 

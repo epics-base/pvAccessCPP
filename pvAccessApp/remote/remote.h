@@ -9,7 +9,6 @@
 
 #include <pv/caConstants.h>
 #include <pv/configuration.h>
-#include <pv/introspectionRegistry.h>
 
 #include <pv/serialize.h>
 #include <pv/pvType.h>
@@ -221,12 +220,6 @@ namespace epics {
              * Notification that transport has changed.
              */
             virtual void changedTransport() = 0;
-
-            /**
-             * Get introspection registry for transport.
-             * @return <code>IntrospectionRegistry</code> instance, can be <code>null</code>.
-             */
-            virtual IntrospectionRegistry* getIntrospectionRegistry() = 0;
 
             /**
              * Close transport.

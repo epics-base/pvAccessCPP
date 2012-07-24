@@ -7,6 +7,7 @@
 #include <pv/responseHandlers.h>
 #include <pv/remote.h>
 #include <pv/hexDump.h>
+#include <pv/serializationHelper.h>
 
 #include <pv/byteBuffer.h>
 
@@ -459,7 +460,7 @@ void ServerChannelRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 		control->startMessage((int8)CMD_CREATE_CHANNEL, 2*sizeof(int32)/sizeof(int8));
 		buffer->putInt(serverChannelImpl->getCID());
 		buffer->putInt(serverChannelImpl->getSID());
-		transport->getIntrospectionRegistry()->serializeStatus(buffer, control, status);
+		status.serialize(buffer, control);
 	}
 }
 
@@ -471,7 +472,7 @@ void ServerChannelRequesterImpl::createChannelFailedResponse(ByteBuffer* buffer,
         control->startMessage((int8)CMD_CREATE_CHANNEL, 2*sizeof(int32)/sizeof(int8));
     	buffer->putInt(_cid);
     	buffer->putInt(-1);
-	    transport->getIntrospectionRegistry()->serializeStatus(buffer, control, status);
+		status.serialize(buffer, control);
 	}
 }
 
@@ -546,7 +547,7 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
-		PVStructure::shared_pointer pvRequest(transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport.get()));
+		PVStructure::shared_pointer pvRequest(SerializationHelper::deserializePVRequest(payloadBuffer, transport.get()));
 
 		// create...
 		ServerChannelGetRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
@@ -675,10 +676,9 @@ void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 	control->startMessage((int8)CMD_GET, sizeof(int32)/sizeof(int8) + 1);
 	buffer->putInt(_ioid);
 	buffer->put((int8)request);
-	IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
 	{
 		Lock guard(_mutex);
-		introspectionRegistry->serializeStatus(buffer, control, _status);
+		_status.serialize(buffer, control);
 	}
 
 	if (_status.isSuccess())
@@ -686,7 +686,7 @@ void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 		if (request & QOS_INIT)
 		{
 			Lock guard(_mutex);
-            introspectionRegistry->serialize(_pvStructure != NULL ? _pvStructure->getField() : FieldConstPtr(), buffer, control);
+            control->cachedSerialize(_pvStructure != NULL ? _pvStructure->getField() : FieldConstPtr(), buffer);
 
 		}
 		else
@@ -736,7 +736,7 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
-		PVStructure::shared_pointer pvRequest(transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport.get()));
+		PVStructure::shared_pointer pvRequest(SerializationHelper::deserializePVRequest(payloadBuffer, transport.get()));
 
 		// create...
 		ServerChannelPutRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
@@ -891,10 +891,9 @@ void ServerChannelPutRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 	control->startMessage((int32)CMD_PUT, sizeof(int32)/sizeof(int8) + 1);
 	buffer->putInt(_ioid);
 	buffer->putByte((int8)request);
-	IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
 	{
 		Lock guard(_mutex);
-		introspectionRegistry->serializeStatus(buffer, control, _status);
+		_status.serialize(buffer, control);
 	}
 
 	if (_status.isSuccess())
@@ -902,7 +901,7 @@ void ServerChannelPutRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 		if ((QOS_INIT & request) != 0)
 		{
 			Lock guard(_mutex);
-            introspectionRegistry->serialize(_pvStructure != NULL ? _pvStructure->getField() : FieldConstPtr(), buffer, control);
+            control->cachedSerialize(_pvStructure != NULL ? _pvStructure->getField() : FieldConstPtr(), buffer);
 		}
 		else if ((QOS_GET & request) != 0)
 		{
@@ -947,7 +946,7 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
-		PVStructure::shared_pointer pvRequest(transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport.get()));
+		PVStructure::shared_pointer pvRequest(SerializationHelper::deserializePVRequest(payloadBuffer, transport.get()));
 
 		// create...
 		ServerChannelPutGetRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
@@ -1109,10 +1108,9 @@ void ServerChannelPutGetRequesterImpl::send(ByteBuffer* buffer, TransportSendCon
 	control->startMessage((int32)12, sizeof(int32)/sizeof(int8) + 1);
 	buffer->putInt(_ioid);
 	buffer->putByte((int8)request);
-	IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
 	{
 		Lock guard(_mutex);
-		introspectionRegistry->serializeStatus(buffer, control, _status);
+		_status.serialize(buffer, control);
 	}
 
 	if (_status.isSuccess())
@@ -1120,8 +1118,8 @@ void ServerChannelPutGetRequesterImpl::send(ByteBuffer* buffer, TransportSendCon
 		if ((QOS_INIT & request) != 0)
 		{
 			Lock guard(_mutex);
-                        introspectionRegistry->serialize(_pvPutStructure != NULL ? _pvPutStructure->getField() : FieldConstPtr(), buffer, control);
-                        introspectionRegistry->serialize(_pvGetStructure != NULL ? _pvGetStructure->getField() : FieldConstPtr(), buffer, control);
+            control->cachedSerialize(_pvPutStructure != NULL ? _pvPutStructure->getField() : FieldConstPtr(), buffer);
+            control->cachedSerialize(_pvGetStructure != NULL ? _pvGetStructure->getField() : FieldConstPtr(), buffer);
 		}
 		else if ((QOS_GET & request) != 0)
 		{
@@ -1177,7 +1175,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
-		PVStructure::shared_pointer pvRequest(transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport.get()));
+		PVStructure::shared_pointer pvRequest(SerializationHelper::deserializePVRequest(payloadBuffer, transport.get()));
 
 		// create...
 		ServerMonitorRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
@@ -1246,7 +1244,7 @@ void ServerMonitorRequesterImpl::activate(PVStructure::shared_pointer const & pv
     INIT_EXCEPTION_GUARD(CMD_MONITOR, _channelMonitor = _channel->getChannel()->createMonitor(thisPointer, pvRequest));
 }
 
-void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor::shared_pointer & monitor, epics::pvData::StructureConstPtr const & structure)
+void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor::shared_pointer const & monitor, epics::pvData::StructureConstPtr const & structure)
 {
 	{
 		Lock guard(_mutex);
@@ -1327,16 +1325,15 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 		buffer->putInt(_ioid);
 		buffer->putByte((int8)request);
 
-		IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
 		{
 			Lock guard(_mutex);
-			introspectionRegistry->serializeStatus(buffer, control, _status);
+			_status.serialize(buffer, control);
 		}
 
 		if (_status.isSuccess())
 		{
 		    // valid due to _mutex lock above
-			introspectionRegistry->serialize(_structure, buffer, control);
+			control->cachedSerialize(_structure, buffer);
 		}
 		stopRequest();
 		startRequest(QOS_DEFAULT);
@@ -1395,7 +1392,7 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
-		PVStructure::shared_pointer pvRequest(transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport.get()));
+		PVStructure::shared_pointer pvRequest(SerializationHelper::deserializePVRequest(payloadBuffer, transport.get()));
 
 		// create...
 		ServerChannelArrayRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
@@ -1564,10 +1561,9 @@ void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendCont
 	control->startMessage((int32)CMD_ARRAY, sizeof(int32)/sizeof(int8) + 1);
 	buffer->putInt(_ioid);
 	buffer->putByte((int8)request);
-	IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
 	{
 		Lock guard(_mutex);
-		introspectionRegistry->serializeStatus(buffer, control, _status);
+		_status.serialize(buffer, control);
 	}
 
 	if (_status.isSuccess())
@@ -1581,7 +1577,7 @@ void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendCont
 		else if ((QOS_INIT & request) != 0)
 		{
 			Lock guard(_mutex);
-            introspectionRegistry->serialize(_pvArray != NULL ? _pvArray->getField() : FieldConstPtr(), buffer, control);
+            control->cachedSerialize(_pvArray != NULL ? _pvArray->getField() : FieldConstPtr(), buffer);
 		}
 	}
 
@@ -1660,7 +1656,7 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
-		PVStructure::shared_pointer pvRequest(transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport.get()));
+		PVStructure::shared_pointer pvRequest(SerializationHelper::deserializePVRequest(payloadBuffer, transport.get()));
 
 		// create...
 		ServerChannelProcessRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
@@ -1775,10 +1771,9 @@ void ServerChannelProcessRequesterImpl::send(ByteBuffer* buffer, TransportSendCo
 	control->startMessage((int32)CMD_PROCESS, sizeof(int32)/sizeof(int8) + 1);
 	buffer->putInt(_ioid);
 	buffer->putByte((int8)request);
-	IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
 	{
 		Lock guard(_mutex);
-		introspectionRegistry->serializeStatus(buffer, control, _status);
+		_status.serialize(buffer, control);
 	}
 
 	stopRequest();
@@ -1862,11 +1857,10 @@ void ServerGetFieldRequesterImpl::send(ByteBuffer* buffer, TransportSendControl*
 {
 	control->startMessage((int8)CMD_GET_FIELD, sizeof(int32)/sizeof(int8));
 	buffer->putInt(_ioid);
-	IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
 	{
 		Lock guard(_mutex);
-		introspectionRegistry->serializeStatus(buffer, control, _status);
-		introspectionRegistry->serialize(_field, buffer, control);
+		_status.serialize(buffer, control);
+		control->cachedSerialize(_field, buffer);
 	}
 }
 
@@ -1898,7 +1892,7 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 	if (init)
 	{
 		// pvRequest
-		PVStructure::shared_pointer pvRequest(transport->getIntrospectionRegistry()->deserializePVRequest(payloadBuffer, transport.get()));
+		PVStructure::shared_pointer pvRequest(SerializationHelper::deserializePVRequest(payloadBuffer, transport.get()));
 
 		// create...
 		ServerChannelRPCRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
@@ -1923,7 +1917,7 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 		// deserialize put data
 		ChannelRPC::shared_pointer channelRPC = request->getChannelRPC();
 		// pvArgument
-		PVStructure::shared_pointer pvArgument(transport->getIntrospectionRegistry()->deserializeStructure(payloadBuffer, transport.get()));
+		PVStructure::shared_pointer pvArgument(SerializationHelper::deserializeStructureFull(payloadBuffer, transport.get()));
 		channelRPC->request(pvArgument, lastRequest);
 	}
 }
@@ -2020,11 +2014,10 @@ void ServerChannelRPCRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 	control->startMessage((int32)CMD_RPC, sizeof(int32)/sizeof(int8) + 1);
 	buffer->putInt(_ioid);
 	buffer->putByte((int8)request);
-	IntrospectionRegistry* introspectionRegistry = _transport->getIntrospectionRegistry();
 	
 	{
     	Lock guard(_mutex);
-		introspectionRegistry->serializeStatus(buffer, control, _status);
+		_status.serialize(buffer, control);
 
     	if (_status.isSuccess())
     	{
@@ -2034,7 +2027,7 @@ void ServerChannelRPCRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
     		}
     		else
     		{
-    			introspectionRegistry->serializeStructure(buffer, control, _pvResponse);
+    			SerializationHelper::serializeStructureFull(buffer, control, _pvResponse);
     		}
     	}
 	}
