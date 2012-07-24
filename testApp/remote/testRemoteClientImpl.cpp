@@ -525,8 +525,8 @@ int main(int argc,char *argv[])
          
         {
     ChannelArrayRequester::shared_pointer channelArrayRequesterImpl(new ChannelArrayRequesterImpl());
-    StringArray fieldNames(1); fieldNames.push_back("field");
-    FieldConstPtrArray fields(1); fields.push_back(getFieldCreate()->createScalar(pvString));
+    StringArray fieldNames; fieldNames.push_back("field");
+    FieldConstPtrArray fields; fields.push_back(getFieldCreate()->createScalar(pvString));
     PVStructure::shared_pointer pvRequest(getPVDataCreate()->createPVStructure(getFieldCreate()->createStructure(fieldNames, fields)));
 
     ChannelArray::shared_pointer channelArray = channel->createChannelArray(channelArrayRequesterImpl, pvRequest);
