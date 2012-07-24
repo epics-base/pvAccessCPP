@@ -329,7 +329,7 @@ namespace epics {
              */
             AbstractResponseHandler(Context* context, epics::pvData::String description) :
                 _description(description), 
-                _debug(context->getConfiguration()->getPropertyAsBoolean("PVACCESS_DEBUG", false)) {
+                _debug(context->getConfiguration()->getPropertyAsBoolean(PVACCESS_DEBUG, false)) {
             }
 
             virtual ~AbstractResponseHandler() {}

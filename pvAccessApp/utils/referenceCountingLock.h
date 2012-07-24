@@ -9,6 +9,7 @@
 
 #include <pv/lock.h>
 #include <pv/pvType.h>
+#include <pv/sharedPtr.h>
 
 namespace epics {
 namespace pvAccess {
@@ -24,6 +25,8 @@ namespace pvAccess {
 class ReferenceCountingLock
 {
 public:
+    POINTER_DEFINITIONS(ReferenceCountingLock);
+
 	/**
 	 * Constructor of <code>ReferenceCountingLock</code>.
 	 * After construction lock is free and reference count equals <code>1</code>.

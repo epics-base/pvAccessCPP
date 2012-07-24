@@ -3738,7 +3738,7 @@ namespace epics {
                     m_addressList(""), m_autoAddressList(true), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
                     m_broadcastPort(CA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV),
                     m_namedLocker(), m_lastCID(0), m_lastIOID(0),
-                    m_version("CA Client", "cpp", 1, 0, 0, 0),
+                    m_version("pvAccess Client", "cpp", 1, 2, 0, true),
                     m_contextState(CONTEXT_NOT_INITIALIZED),
                     m_configuration(new SystemConfigurationImpl())
             {
@@ -4017,7 +4017,7 @@ TODO
             void checkChannelName(String& name) {
                 if (name.empty())
                     throw std::runtime_error("0 or empty channel name");
-                else if (name.length() > UNREASONABLE_CHANNEL_NAME_LENGTH)
+                else if (name.length() > MAX_CHANNEL_NAME_LENGTH)
                     throw std::runtime_error("name too long");
             }
 

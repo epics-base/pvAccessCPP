@@ -297,7 +297,7 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 		disconnect(transport);
 		return;
 	}
-	else if (channelName.size() > UNREASONABLE_CHANNEL_NAME_LENGTH)
+	else if (channelName.size() > MAX_CHANNEL_NAME_LENGTH)
 	{
 		char host[100];
 		sockAddrToA(&transport->getRemoteAddress()->sa,host,100);

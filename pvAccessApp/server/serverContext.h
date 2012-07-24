@@ -275,26 +275,6 @@ public:
 	std::vector<ChannelProvider::shared_pointer> getChannelProviders();
 
 private:
-    /**
-     * Major version.
-     */
-    static const epics::pvData::int32 VERSION_MAJOR;
-
-    /**
-     * Minor version.
-     */
-    static const epics::pvData::int32 VERSION_MINOR;
-
-    /**
-     * Maintenance version.
-     */
-    static const epics::pvData::int32 VERSION_MAINTENANCE;
-
-    /**
-     * Development version.
-     */
-    static const epics::pvData::int32 VERSION_DEVELOPMENT;
-
 	/**
 	 * Initialization status.
 	 */

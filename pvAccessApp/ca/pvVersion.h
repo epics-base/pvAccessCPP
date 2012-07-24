@@ -9,6 +9,7 @@
 
 #include <pv/pvType.h>
 #include <pv/noDefaultMethods.h>
+#include <ostream>
 
 namespace epics {
 namespace pvAccess {
@@ -22,30 +23,19 @@ namespace pvAccess {
              * @param majorVersion	major version.
              * @param minorVersion	minor version.
              * @param maintenanceVersion	maintenance version.
-             * @param developmentVersion	development version.
+             * @param developmentFlag	development indicator flag.
              */
-            Version(epics::pvData::String productName, epics::pvData::String implementationLangugage,
+            Version(epics::pvData::String productName,
+            		epics::pvData::String implementationLangugage,
                     int majorVersion, int minorVersion,
-                    int maintenanceVersion, int developmentVersion) :
-                _productName(productName),
-                _implementationLanguage(implementationLangugage),
-                _majorVersion(majorVersion),
-                _minorVersion(minorVersion),
-                _maintenanceVersion(maintenanceVersion),
-                _developmentVersion(developmentVersion)
-            {
-            }
+                    int maintenanceVersion, bool developmentFlag);
 
             /** The name of the product */
-            inline const epics::pvData::String getProductName() const {
-                return _productName;
-            }
+            const epics::pvData::String getProductName() const;
 
             /** Implementation Language: C++
              */
-            inline const epics::pvData::String getImplementationLanguage() const {
-                return _implementationLanguage;
-            }
+            const epics::pvData::String getImplementationLanguage() const;
 
             /**
              * Major version number. This changes only when there is a
@@ -55,21 +45,17 @@ namespace pvAccess {
              * Clients should carefully consider the implications of new versions as
              * external interfaces and behaviour may have changed.
              */
-            inline int getMajorVersion() const {
-                return _majorVersion;
-            }
+            int getMajorVersion() const;
 
             /**
-             * Minor vesion number. This changes when:
+             * Minor version number. This changes when:
              * <ul>
              * <li>a new set of functionality is to be added</li>
              * <li>API or behaviour change</li>
              * <li>its designated as a reference release</li>
              * </ul>
              */
-            inline int getMinorVersion() const {
-                return _minorVersion;
-            }
+            int getMinorVersion() const;
 
             /**
              * Maintenance version number. Optional identifier used to designate
@@ -78,44 +64,27 @@ namespace pvAccess {
              * contains no API changes. When missing, it designates the final and
              * complete development drop for a release.
              */
-            inline int getMaintenanceVersion() const {
-                return _maintenanceVersion;
-            }
+            int getMaintenanceVersion() const;
 
             /**
-             * Development drop number. Optional identifier designates development drop
-             * of a specific release. D01 is the first development drop of a new
-             * release.
+             * Development flag.
              *
-             * Development drops are works in progress towards a compeleted, final
+             * Development drops are works in progress towards a completed, final
              * release. A specific development drop may not completely implement all
              * aspects of a new feature, which may take several development drops to
-             * complete. At the point of the final drop for the release, the D suffix
+             * complete. At the point of the final drop for the release, the -SNAPSHOT suffix
              * will be omitted.
-             *
-             * Each 'D' drops can contain functional enhancements as well as defect
-             * fixes. 'D' drops may not be as stable as the final releases.
              */
-            inline int getDevelopmentVersion() const {
-                return _developmentVersion;
-            }
+            bool isDevelopmentVersion() const;
 
             /**
-             * Get the long version string. Version epics::pvData::String formatted like <BR/><CODE>
-             * "<B>ProductName </B> \[<B>ImplementationLanguage</B>\] 'v'v.r[.dd|<B>D</B>nn]"
-             * </CODE> <BR/>e.g. <BR/><CODE>"<B>CAJ </B> [<B>Java</B>] v1.0.1"</CODE>
-             * <BR/>
-             *
+             * Get the long version string.
              * @return epics::pvData::String denoting current version
              */
             const epics::pvData::String getLongVersionString() const;
 
             /**
-             * Get the basic version string. Version epics::pvData::String formatted like <BR/><CODE>
-             * "<B>ProductName </B> 'v'v.r[.dd|<B>D</B>nn]"
-             * </CODE> <BR/>e.g. <BR/><CODE>"<B>CAJ </B> v1.0.1"</CODE>
-             * <BR/>
-             *
+             * Get the basic version string.
              * @return epics::pvData::String denoting current version
              */
             const epics::pvData::String getVersionString() const;
@@ -126,8 +95,10 @@ namespace pvAccess {
             int _majorVersion;
             int _minorVersion;
             int _maintenanceVersion;
-            int _developmentVersion;
+            bool _developmentFlag;
         };
+
+        std::ostream& operator<<(std::ostream& o, const Version& v);
 }
 }
 

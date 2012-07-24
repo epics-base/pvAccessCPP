@@ -18,16 +18,7 @@ using std::tr1::static_pointer_cast;
 namespace epics { namespace pvAccess {
 
 const char* ServerContextImpl::StateNames[] = { "NOT_INITIALIZED", "INITIALIZED", "RUNNING", "SHUTDOWN", "DESTROYED"};
-const int32 ServerContextImpl::VERSION_MAJOR = 0;
-const int32 ServerContextImpl::VERSION_MINOR = 9;
-const int32 ServerContextImpl::VERSION_MAINTENANCE = 0;
-const int32 ServerContextImpl::VERSION_DEVELOPMENT = 0;
-const Version ServerContextImpl::VERSION("CA Server", "cpp",
-		ServerContextImpl::VERSION_MAJOR,
-		ServerContextImpl::VERSION_MINOR,
-		ServerContextImpl::VERSION_MAINTENANCE,
-		ServerContextImpl::VERSION_DEVELOPMENT);
-
+const Version ServerContextImpl::VERSION("pvAccess Server", "cpp", 1, 2, 0, true);
 
 ServerContextImpl::ServerContextImpl():
 				_state(NOT_INITIALIZED),

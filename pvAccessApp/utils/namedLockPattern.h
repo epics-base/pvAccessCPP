@@ -12,6 +12,7 @@
 
 #include <pv/lock.h>
 #include <pv/pvType.h>
+#include <pv/sharedPtr.h>
 
 #include <pv/referenceCountingLock.h>
 
@@ -54,8 +55,8 @@ public:
 	void releaseSynchronizationObject(const Key& name);
 private:
 	epics::pvData::Mutex _mutex;
-	std::map<const Key,ReferenceCountingLock*,Compare> _namedLocks;
-	typename std::map<const Key,ReferenceCountingLock*,Compare>::iterator _namedLocksIter;
+	std::map<const Key,ReferenceCountingLock::shared_pointer,Compare> _namedLocks;
+	typename std::map<const Key,ReferenceCountingLock::shared_pointer,Compare>::iterator _namedLocksIter;
 
 	/**
 	 * Release synchronization lock for named object.
@@ -69,7 +70,7 @@ private:
 template <class Key, class Compare>
 bool NamedLockPattern<Key,Compare>::acquireSynchronizationObject(const Key& name, const epics::pvData::int64 msec)
 {
-	ReferenceCountingLock* lock;
+	ReferenceCountingLock::shared_pointer lock;
 	{	//due to guard
 		epics::pvData::Lock guard(_mutex);
 
@@ -80,7 +81,7 @@ bool NamedLockPattern<Key,Compare>::acquireSynchronizationObject(const Key& name
 		// increment references
 		if(_namedLocksIter == _namedLocks.end())
 		{
-			lock = new ReferenceCountingLock();
+			lock.reset(new ReferenceCountingLock());
 			_namedLocks[name] = lock;
 		}
 		else
@@ -110,7 +111,7 @@ template <class Key, class Compare>
 void NamedLockPattern<Key,Compare>::releaseSynchronizationObject(const Key& name,const bool release)
 {
 	epics::pvData::Lock guard(_mutex);
-	ReferenceCountingLock* lock;
+	ReferenceCountingLock::shared_pointer lock;
 	_namedLocksIter = _namedLocks.find(name);
 
 	// release lock
@@ -129,7 +130,6 @@ void NamedLockPattern<Key,Compare>::releaseSynchronizationObject(const Key& name
 		if (lock->decrement() <= 0)
 		{
 			_namedLocks.erase(_namedLocksIter);
-			delete lock;
 		}
 	}
 }

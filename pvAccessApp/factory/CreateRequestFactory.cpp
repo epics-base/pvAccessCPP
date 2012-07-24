@@ -280,7 +280,7 @@ public:
 
 };
 
-CreateRequest::shared_pointer createRequest;
+static CreateRequest::shared_pointer createRequest;
 
 CreateRequest::shared_pointer getCreateRequest() {
     static Mutex mutex;

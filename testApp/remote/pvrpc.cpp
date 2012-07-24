@@ -1,10 +1,12 @@
 #include <iostream>
 #include <pv/clientFactory.h>
+#include <pv/pvAccess.h>
 
 #include <stdio.h>
 #include <epicsStdlib.h>
 #include <epicsGetopt.h>
 #include <pv/logger.h>
+#include <pv/lock.h>
 
 #include <vector>
 #include <string>
