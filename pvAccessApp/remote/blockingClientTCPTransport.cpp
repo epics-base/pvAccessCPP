@@ -165,7 +165,7 @@ namespace epics {
             
             // not used anymore, close it
             // TODO consider delayed destruction (can improve performance!!!)
-            if(_owners.size()==0) close(false);
+            if(_owners.size()==0) close();		// TODO close(false)
         }
 
         void BlockingClientTCPTransport::aliveNotification() {

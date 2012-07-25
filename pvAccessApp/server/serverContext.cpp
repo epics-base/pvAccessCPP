@@ -336,7 +336,7 @@ void ServerContextImpl::internalDestroy()
 	// stop responding to search requests
 	if (_broadcastTransport != NULL)
 	{
-		_broadcastTransport->close(true);
+		_broadcastTransport->close();
 		_broadcastTransport.reset();
 	}
 
@@ -382,7 +382,7 @@ void ServerContextImpl::destroyAllTransports()
 		Transport::shared_pointer transport = (*transports)[i];
 		try
 		{
-			transport->close(true);
+			transport->close();
 		}
 		catch (std::exception &e)
 		{
@@ -553,7 +553,7 @@ Transport::shared_pointer ServerContextImpl::getSearchTransport()
 	return Transport::shared_pointer();
 }
 
-void ServerContextImpl::beaconAnomalyNotify()
+void ServerContextImpl::newServerDetected()
 {
     // not used
 }

@@ -163,13 +163,13 @@ namespace epics {
                     return transport;
                 } catch(std::exception& ex) {
                     if(transport.get())
-                        transport->close(true);
+                        transport->close();
                     else if(socket!=INVALID_SOCKET) epicsSocketDestroy(socket);
                     _namedLocker.releaseSynchronizationObject(&address);
                     throw;
                 } catch(...) {
                     if(transport.get())
-                        transport->close(true);
+                        transport->close();
                     else if(socket!=INVALID_SOCKET) epicsSocketDestroy(socket);
                     _namedLocker.releaseSynchronizationObject(&address);
                     throw;

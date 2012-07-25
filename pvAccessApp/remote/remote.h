@@ -109,8 +109,7 @@ namespace epics {
          */
         class TransportSendControl : public epics::pvData::SerializableControl {
         public:
-            typedef std::tr1::shared_ptr<TransportSendControl> shared_pointer;
-            typedef std::tr1::shared_ptr<const TransportSendControl> const_shared_pointer;
+        	POINTER_DEFINITIONS(TransportSendControl);
             
             virtual ~TransportSendControl() {}
 
@@ -119,7 +118,7 @@ namespace epics {
 
             virtual void flush(bool lastMessageCompleted) = 0;
 
-            virtual void setRecipient(const osiSockAddr& sendTo) = 0;
+            virtual void setRecipient(osiSockAddr const & sendTo) = 0;
         };
         
         /**
@@ -127,8 +126,7 @@ namespace epics {
          */
         class TransportSender : public Lockable {
         public:
-            typedef std::tr1::shared_ptr<TransportSender> shared_pointer;
-            typedef std::tr1::shared_ptr<const TransportSender> const_shared_pointer;
+        	POINTER_DEFINITIONS(TransportSender);
 
             virtual ~TransportSender() {}
 
@@ -138,22 +136,42 @@ namespace epics {
              * Calls on <code>TransportSendControl</code> instance must be made from
              * calling thread. Moreover, ownership is valid only for the time of call
              * of this method.
-             * NOTE: these limitations allows efficient implementation.
+             * NOTE: these limitations allow efficient implementation.
              */
             virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) = 0;
         };
+
+        class TransportClient;
 
         /**
          * Interface defining transport (connection).
          */
         class Transport : public epics::pvData::DeserializableControl {
         public:
-            typedef std::tr1::shared_ptr<Transport> shared_pointer;
-            typedef std::tr1::shared_ptr<const Transport> const_shared_pointer;
-            typedef std::tr1::weak_ptr<Transport> weak_pointer;
-            typedef std::tr1::weak_ptr<const Transport> const_weak_pointer;
+        	POINTER_DEFINITIONS(Transport);
 
             virtual ~Transport() {}
+
+            /**
+             * Acquires transport.
+             * @param client client (channel) acquiring the transport
+             * @return <code>true</code> if transport was granted, <code>false</code> otherwise.
+             */
+            //virtual bool acquire(TransportClient::shared_pointer const & client) = 0;
+            virtual bool acquire(std::tr1::shared_ptr<TransportClient> const & client) = 0;
+
+            /**
+             * Releases transport.
+             * @param client client (channel) releasing the transport
+             */
+            virtual void release(pvAccessID clientId) = 0;
+            //virtual void release(TransportClient::shared_pointer const & client) = 0;
+
+            /**
+             * Get protocol type (tcp, udp, ssl, etc.).
+             * @return protocol type.
+             */
+            virtual epics::pvData::String getType() const = 0;
 
             /**
              * Get remote address.
@@ -161,31 +179,25 @@ namespace epics {
              */
             virtual const osiSockAddr* getRemoteAddress() const = 0;
 
-            /**
-             * Get protocol type (tcp, udp, ssl, etc.).
-             * @return protocol type.
-             */
-            virtual const epics::pvData::String getType() const = 0;
+            // TODO getContext?
 
             /**
              * Transport protocol minor revision.
              * @return protocol minor revision.
              */
-            virtual epics::pvData::int8 getRevision() const {
-                return CA_PROTOCOL_REVISION;
-            }
+            virtual epics::pvData::int8 getRevision() const = 0;
 
             /**
              * Get receive buffer size.
              * @return receive buffer size.
              */
-            virtual int getReceiveBufferSize() const = 0;
+            virtual std::size_t getReceiveBufferSize() const = 0;
 
             /**
              * Get socket receive buffer size.
              * @return socket receive buffer size.
              */
-            virtual int getSocketReceiveBufferSize() const = 0;
+            virtual std::size_t getSocketReceiveBufferSize() const = 0;
 
             /**
              * Transport priority.
@@ -194,27 +206,29 @@ namespace epics {
             virtual epics::pvData::int16 getPriority() const = 0;
 
             /**
-             * Set remote transport protocol minor revision.
-             * @param minor protocol minor revision.
+             * Set remote transport protocol revision.
+             * @param revision protocol revision.
              */
-            virtual void setRemoteMinorRevision(epics::pvData::int8 minor) = 0;
+            virtual void setRemoteRevision(epics::pvData::int8 revision) = 0;
 
             /**
              * Set remote transport receive buffer size.
              * @param receiveBufferSize receive buffer size.
              */
-            virtual void setRemoteTransportReceiveBufferSize(int receiveBufferSize) = 0;
+            virtual void setRemoteTransportReceiveBufferSize(std::size_t receiveBufferSize) = 0;
 
             /**
              * Set remote transport socket receive buffer size.
              * @param socketReceiveBufferSize remote socket receive buffer size.
              */
-            virtual void setRemoteTransportSocketReceiveBufferSize(int socketReceiveBufferSize) = 0;
+            virtual void setRemoteTransportSocketReceiveBufferSize(std::size_t socketReceiveBufferSize) = 0;
 
-            /**
-             * Notification transport that is still alive.
-             */
-            virtual void aliveNotification() = 0;
+        	/**
+        	 * Set byte order.
+        	 * @param byteOrder byte order to set.
+        	 */
+            // TODO enum
+        	virtual void setByteOrder(int byteOrder) = 0;
 
             /**
              * Notification that transport has changed.
@@ -222,38 +236,37 @@ namespace epics {
             virtual void changedTransport() = 0;
 
             /**
-             * Close transport.
-             * @param force flag indicating force-full (e.g. remote disconnect) close.
+             * Enqueue send request.
+             * @param sender
              */
-            virtual void close(bool force) = 0;
-
-            /**
-             * Check connection status.
-             * @return <code>true</code> if connected.
-             */
-            virtual bool isClosed() = 0;
-
-            /**
-             * Get transport verification status.
-             * @return verification flag.
-             */
-            virtual bool isVerified() = 0;
+            virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender) = 0;
 
             /**
              * Notify transport that it is has been verified.
              */
             virtual void verified() = 0;
 
+        	/**
+        	 * Waits (if needed) until transport is verified, i.e. verified() method is being called.
+        	 * @param timeoutMs timeout to wait for verification, infinite if 0.
+        	 */
+        	virtual bool verify(epics::pvData::int32 timeoutMs) = 0;
+
             /**
-             * Enqueue send request.
-             * @param sender
+             * Notification transport that is still alive.
              */
-            virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender) = 0;
+            virtual void aliveNotification() = 0;
 
-            virtual void enqueueOnlySendRequest(TransportSender::shared_pointer const & sender) {};
-            
-            virtual void flushSendQueue() {};
+            /**
+             * Close transport.
+             */
+            virtual void close() = 0;
 
+            /**
+             * Check connection status.
+             * @return <code>true</code> if connected.
+             */
+            virtual bool isClosed() = 0;
         };
 
         class Channel;
@@ -263,27 +276,30 @@ namespace epics {
          */
         class Context {
         public:
-            typedef std::tr1::shared_ptr<Context> shared_pointer;
-            typedef std::tr1::shared_ptr<const Context> const_shared_pointer;
-            typedef std::tr1::weak_ptr<Context> weak_pointer;
-            typedef std::tr1::weak_ptr<const Context> const_weak_pointer;
+        	POINTER_DEFINITIONS(Context);
 
             virtual ~Context() {}
-
-            virtual std::tr1::shared_ptr<Channel> getChannel(pvAccessID id) = 0;
-            
-            virtual Transport::shared_pointer getSearchTransport() = 0;
-
 
             virtual epics::pvData::Timer::shared_pointer getTimer() = 0;
             
             //virtual TransportRegistry::shared_pointer getTransportRegistry() = 0;
             virtual std::tr1::shared_ptr<TransportRegistry> getTransportRegistry() = 0;
+
             
+
+
             virtual Configuration::shared_pointer getConfiguration() = 0;
-            
-            virtual void beaconAnomalyNotify() = 0;
-            
+
+
+
+            ///
+            /// due to ClientContextImpl
+            ///
+
+            virtual void newServerDetected() = 0;
+
+            virtual std::tr1::shared_ptr<Channel> getChannel(pvAccessID id) = 0;
+            virtual Transport::shared_pointer getSearchTransport() = 0;
         };
 
         /**
@@ -291,8 +307,7 @@ namespace epics {
          */
         class ResponseHandler {
         public:
-            typedef std::tr1::shared_ptr<ResponseHandler> shared_pointer;
-            typedef std::tr1::shared_ptr<const ResponseHandler> const_shared_pointer;
+        	POINTER_DEFINITIONS(ResponseHandler);
 
             virtual ~ResponseHandler() {}
             
@@ -348,10 +363,7 @@ namespace epics {
          */
         class TransportClient {
         public:
-            typedef std::tr1::shared_ptr<TransportClient> shared_pointer;
-            typedef std::tr1::shared_ptr<const TransportClient> const_shared_pointer;
-            typedef std::tr1::weak_ptr<TransportClient> weak_pointer;
-            typedef std::tr1::weak_ptr<const TransportClient> const_weak_pointer;
+        	POINTER_DEFINITIONS(TransportClient);
 
             virtual ~TransportClient() {
             }
@@ -405,35 +417,9 @@ namespace epics {
 
         };
 
-        /**
-         * Interface defining reference counting transport IF.
-         */
-        class ReferenceCountingTransport {
-        public:
-            virtual ~ReferenceCountingTransport() {
-            }
-
-            /**
-             * Acquires transport.
-             * @param client client (channel) acquiring the transport
-             * @return <code>true</code> if transport was granted, <code>false</code> otherwise.
-             */
-            virtual bool acquire(TransportClient::shared_pointer const & client) = 0;
-
-            /**
-             * Releases transport.
-             * @param client client (channel) releasing the transport
-             */
-            virtual void release(pvAccessID clientId) = 0;
-            //virtual void release(TransportClient::shared_pointer const & client) = 0;
-        };
-
         class ServerChannel {
         public:
-            typedef std::tr1::shared_ptr<ServerChannel> shared_pointer;
-            typedef std::tr1::shared_ptr<const ServerChannel> const_shared_pointer;
-            typedef std::tr1::weak_ptr<ServerChannel> weak_pointer;
-            typedef std::tr1::weak_ptr<const ServerChannel> const_weak_pointer;
+        	POINTER_DEFINITIONS(ServerChannel);
 
             virtual ~ServerChannel() {}
             /**
@@ -454,8 +440,7 @@ namespace epics {
          */
         class ChannelHostingTransport {
         public:
-            typedef std::tr1::shared_ptr<ChannelHostingTransport> shared_pointer;
-            typedef std::tr1::shared_ptr<const ChannelHostingTransport> const_shared_pointer;
+        	POINTER_DEFINITIONS(ChannelHostingTransport);
 
             virtual ~ChannelHostingTransport() {}
 
@@ -510,10 +495,7 @@ namespace epics {
          */
         class ResponseRequest {
         public:
-            typedef std::tr1::shared_ptr<ResponseRequest> shared_pointer;
-            typedef std::tr1::shared_ptr<const ResponseRequest> const_shared_pointer;
-            typedef std::tr1::weak_ptr<ResponseRequest> weak_pointer;
-            typedef std::tr1::weak_ptr<const ResponseRequest> const_weak_pointer;
+        	POINTER_DEFINITIONS(ResponseRequest);
 
             virtual ~ResponseRequest() {}
 
@@ -537,7 +519,7 @@ namespace epics {
              * Report status to clients (e.g. disconnected).
              * @param status to report.
              */
-            virtual void reportStatus(const epics::pvData::Status& status) = 0;
+            virtual void reportStatus(epics::pvData::Status const & status) = 0;
 
             /**
              * Get request requester.
@@ -547,13 +529,10 @@ namespace epics {
         };
         
         /**
-         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
-         * @version $Id: DataResponse.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
          */
         class DataResponse : public ResponseRequest {
         public:
-            typedef std::tr1::shared_ptr<DataResponse> shared_pointer;
-            typedef std::tr1::shared_ptr<const DataResponse> const_shared_pointer;
+        	POINTER_DEFINITIONS(DataResponse);
 
             virtual ~DataResponse() {}
 
@@ -571,13 +550,10 @@ namespace epics {
          * A request that expects an response multiple responses.
          * Responses identified by its I/O ID. 
          * This interface needs to be extended (to provide method called on response).
-         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
-         * @version $Id: SubscriptionRequest.java,v 1.1 2010/05/03 14:45:39 mrkraimer Exp $
          */
         class SubscriptionRequest /*: public ResponseRequest*/ {
         public:
-            typedef std::tr1::shared_ptr<SubscriptionRequest> shared_pointer;
-            typedef std::tr1::shared_ptr<const SubscriptionRequest> const_shared_pointer;
+        	POINTER_DEFINITIONS(SubscriptionRequest);
 
             virtual ~SubscriptionRequest() {}
             

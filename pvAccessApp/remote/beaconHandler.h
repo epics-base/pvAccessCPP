@@ -23,15 +23,14 @@ namespace pvAccess {
 	class BeaconHandler
 	{
 	public:
-        typedef std::tr1::shared_ptr<BeaconHandler> shared_pointer;
-        typedef std::tr1::shared_ptr<const BeaconHandler> const_shared_pointer;
+		POINTER_DEFINITIONS(BeaconHandler);
 
 		/**
 		 * Constructor.
 		 * @param transport	transport to be used to send beacons.
 		 * @param context CA context.
 		 */
-		BeaconHandler(Context::shared_pointer context, const osiSockAddr* responseFrom);
+		BeaconHandler(Context::shared_pointer const & context, const osiSockAddr* responseFrom);
 		/**
 		 * Test Constructor (for testing)
 		 * @param transport	transport to be used to send beacons.
@@ -81,10 +80,6 @@ namespace pvAccess {
 		                  epics::pvData::TimeStamp* timestamp,
 					      epics::pvData::TimeStamp* startupTime,
 					      epics::pvData::int16 sequentalID);
-		/**
-		 * Notify transport about beacon arrival.
-		 */
-		void beaconArrivalNotify();
 		/**
 		 * Changed transport (server restarted) notify.
 		 */

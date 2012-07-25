@@ -130,7 +130,7 @@ public:
 	TransportRegistry::shared_pointer getTransportRegistry();
 
     std::auto_ptr<ResponseHandler> createResponseHandler();
-    void beaconAnomalyNotify();
+    virtual void newServerDetected();
 
     /**
      * Version.

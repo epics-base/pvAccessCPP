@@ -110,7 +110,7 @@ void ServerConnectionValidationHandler::handleResponse(
 			payloadBuffer->getInt());
 	transport->setRemoteTransportSocketReceiveBufferSize(
 			payloadBuffer->getInt());
-	transport->setRemoteMinorRevision(version);
+	transport->setRemoteRevision(version);
 	// TODO support priority  !!!
 	//transport.setPriority(payloadBuffer.getShort());
 }
@@ -319,7 +319,7 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 
 void ServerCreateChannelHandler::disconnect(Transport::shared_pointer const & transport)
 {
-	transport->close(true);
+	transport->close();
 }
 
 ServerChannelRequesterImpl::ServerChannelRequesterImpl(Transport::shared_pointer const & transport,

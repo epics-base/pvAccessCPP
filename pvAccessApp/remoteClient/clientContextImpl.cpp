@@ -2578,7 +2578,7 @@ namespace epics {
                 transport->setRemoteTransportReceiveBufferSize(payloadBuffer->getInt());
                 transport->setRemoteTransportSocketReceiveBufferSize(payloadBuffer->getInt());
 
-                transport->setRemoteMinorRevision(version);
+                transport->setRemoteRevision(version);
                 TransportSender::shared_pointer sender = dynamic_pointer_cast<TransportSender>(transport);
                 if (sender.get()) {
                     transport->enqueueSendRequest(sender);
@@ -3167,12 +3167,7 @@ namespace epics {
                     {
                         disconnectPendingIO(false);
                         
-                        ReferenceCountingTransport* rct = dynamic_cast<ReferenceCountingTransport*>(m_transport.get());
-                        if (rct)
-                        {
-                            //TransportClient::shared_pointer thisPointer = shared_from_this();
-                            rct->release(getID());
-                        }
+                    	m_transport->release(getID());
                     }
                     else if (m_transport == transport)
                     {
@@ -3295,11 +3290,7 @@ namespace epics {
                         else if (m_transport)
                         {
                             // unresponsive state, do not forget to release transport
-                            ReferenceCountingTransport* rct = dynamic_cast<ReferenceCountingTransport*>(m_transport.get());
-                            if (rct) {
-                                //TransportClient::shared_pointer thisPointer = shared_from_this();
-                                rct->release(getID());
-                            }
+                            m_transport->release(getID());
                             m_transport.reset();
                         }
                         
@@ -3345,11 +3336,7 @@ namespace epics {
                             m_transport->enqueueSendRequest(thisSender);
                         }
 
-                        ReferenceCountingTransport* rct = dynamic_cast<ReferenceCountingTransport*>(m_transport.get());
-                        if (rct) {
-                            //TransportClient::shared_pointer thisPointer = shared_from_this();
-                            rct->release(getID());
-                        }
+                        m_transport->release(getID());
                         m_transport.reset();
                     }
                     
@@ -3979,8 +3966,8 @@ TODO
                 destroyAllChannels();
                 
                 // stop UDPs
-                m_searchTransport->close(true);
-                m_broadcastTransport->close(true);
+                m_searchTransport->close();
+                m_broadcastTransport->close();
             }
 
             void destroyAllChannels() {
@@ -4154,7 +4141,7 @@ TODO
             /**
              * Called each time beacon anomaly is detected. 
              */
-            void beaconAnomalyNotify()
+            virtual void newServerDetected()
             {
                 if (m_channelSearchManager)
                     m_channelSearchManager->beaconAnomalyNotify();

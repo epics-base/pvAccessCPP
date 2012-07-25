@@ -89,11 +89,11 @@ namespace epics {
                     BlockingUDPTransport::threadRunner, this);
         }
 
-        void BlockingUDPTransport::close(bool forced) {
-            close(forced, true);
+        void BlockingUDPTransport::close() {
+            close(true);
         }
 
-        void BlockingUDPTransport::close(bool forced, bool waitForThreadToComplete) {
+        void BlockingUDPTransport::close(bool waitForThreadToComplete) {
             {
                 Lock guard(_mutex);
                 if(_closed.get()) return;
@@ -226,14 +226,14 @@ namespace epics {
                             LOG(logLevelError, "Socket recvfrom error: %s", errStr);
                         }
                                
-                        close(true, false);
+                        close(false);
                         break;
                     }
 
                 }
             } catch(...) {
                 // TODO: catch all exceptions, and act accordingly
-                close(true, false);
+                close(false);
             }
 
             String threadName = "UDP-receive "+inetAddressToString(_bindAddress);
@@ -333,7 +333,7 @@ namespace epics {
             return allOK;
         }
 
-        int BlockingUDPTransport::getSocketReceiveBufferSize() const {
+        size_t BlockingUDPTransport::getSocketReceiveBufferSize() const {
             // Get value of the SO_RCVBUF option for this DatagramSocket,
             // that is the buffer size used by the platform for input on
             // this DatagramSocket.
@@ -349,7 +349,7 @@ namespace epics {
                 LOG(logLevelError, "Socket getsockopt SO_RCVBUF error: %s", errStr);
             }
 
-            return sockBufSize;
+            return (size_t)sockBufSize;
         }
 
         void BlockingUDPTransport::threadRunner(void* param) {

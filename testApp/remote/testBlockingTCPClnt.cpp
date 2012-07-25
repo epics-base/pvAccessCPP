@@ -58,7 +58,7 @@ public:
     }
     virtual void acquire() {}
     virtual void release() {}
-    virtual void beaconAnomalyNotify() {}
+    virtual void newServerDetected() {}
 
 private:
     std::tr1::shared_ptr<TransportRegistry> _tr;

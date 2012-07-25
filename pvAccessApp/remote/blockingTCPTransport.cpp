@@ -182,7 +182,7 @@ namespace pvAccess {
         BlockingTCPTransport::~BlockingTCPTransport() {
             PVACCESS_REFCOUNT_MONITOR_DESTRUCT(blockingTCPTransport);
 
-            close(true);
+            close();
 
             // TODO use auto_ptr class members
             
@@ -248,7 +248,7 @@ namespace pvAccess {
             _sendBuffer->putInt(0);
         }
 
-        void BlockingTCPTransport::close(bool force) {
+        void BlockingTCPTransport::close() {
             Lock lock(_mutex);
 
             // already closed check
@@ -258,6 +258,9 @@ namespace pvAccess {
             // remove from registry
             Transport::shared_pointer thisSharedPtr = shared_from_this();
             _context->getTransportRegistry()->remove(thisSharedPtr).get();
+
+            // TODO !!!
+            bool force = true;
 
             // clean resources
             internalClose(force);
@@ -281,7 +284,7 @@ namespace pvAccess {
         void BlockingTCPTransport::internalPostClose(bool force) {
         }
 
-        int BlockingTCPTransport::getSocketReceiveBufferSize() const {
+        size_t BlockingTCPTransport::getSocketReceiveBufferSize() const {
             // Get value of the SO_RCVBUF option for this DatagramSocket,
             // that is the buffer size used by the platform for input on
             // this DatagramSocket.
@@ -299,7 +302,7 @@ namespace pvAccess {
                     errStr);
             }
 
-            return sockBufSize;
+            return (size_t)sockBufSize;
         }
 
         bool BlockingTCPTransport::waitUntilVerified(double timeout) {
@@ -542,7 +545,7 @@ namespace pvAccess {
                                 }
                                 
                                 // error (disconnect, end-of-stream) detected
-                                close(true);
+                                close();
 
                                 if(nestedCall)
                                     THROW_BASE_EXCEPTION("bytesRead < 0");
@@ -586,7 +589,7 @@ namespace pvAccess {
                                     logLevelError,
                                     "Invalid header received from client %s, disconnecting...",
                                     inetAddressToString(_socketAddress).c_str());
-                            close(true);
+                            close();
                             return;
                         }
 
@@ -658,7 +661,7 @@ namespace pvAccess {
                                     "Unknown packet type %d, received from client %s, disconnecting...",
                                     type,
                                     inetAddressToString(_socketAddress).c_str());
-                            close(true);
+                            close();
                             return;
                         }
                     }
@@ -707,7 +710,7 @@ namespace pvAccess {
                 }
             } catch(...) {
                 // close connection
-                close(true);
+                close();
 
                 if(nestedCall) throw;
             }
@@ -860,7 +863,7 @@ namespace pvAccess {
                     //        buffer->getPosition(), limit);
                 } // while
             } catch(...) {
-                close(true);
+                close();
                 throw;
             }
 

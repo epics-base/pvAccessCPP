@@ -31,8 +31,7 @@ namespace epics {
                 public std::tr1::enable_shared_from_this<BlockingUDPTransport>
         {
         public:
-            typedef std::tr1::shared_ptr<BlockingUDPTransport> shared_pointer;
-            typedef std::tr1::shared_ptr<const BlockingUDPTransport> const_shared_pointer;
+        	POINTER_DEFINITIONS(BlockingUDPTransport);
 
         private:
             BlockingUDPTransport(std::auto_ptr<ResponseHandler>& responseHandler,
@@ -60,31 +59,35 @@ namespace epics {
                 return &_bindAddress;
             }
 
-            virtual const epics::pvData::String getType() const {
+            virtual epics::pvData::String getType() const {
                 return epics::pvData::String("UDP");
             }
 
-            virtual int getReceiveBufferSize() const {
+            virtual std::size_t getReceiveBufferSize() const {
                 return _receiveBuffer->getSize();
             }
 
-            virtual int getSocketReceiveBufferSize() const;
+            virtual std::size_t getSocketReceiveBufferSize() const;
 
             virtual epics::pvData::int16 getPriority() const {
                 return CA_DEFAULT_PRIORITY;
             }
 
-            virtual void setRemoteMinorRevision(epics::pvData::int8 minor) {
+            virtual epics::pvData::int8 getRevision() const {
+                return CA_PROTOCOL_REVISION;
+            }
+
+            virtual void setRemoteRevision(epics::pvData::int8 revision) {
                 // noop
             }
 
             virtual void setRemoteTransportReceiveBufferSize(
-                    int receiveBufferSize) {
+            		std::size_t receiveBufferSize) {
                 // noop for UDP (limited by 64k; MAX_UDP_SEND for CA)
             }
 
             virtual void setRemoteTransportSocketReceiveBufferSize(
-                    int socketReceiveBufferSize) {
+            		std::size_t socketReceiveBufferSize) {
                 // noop for UDP (limited by 64k; MAX_UDP_SEND for CA)
             }
 
@@ -96,19 +99,24 @@ namespace epics {
                 // noop
             }
 
-            virtual bool isVerified() {
-                return false;
+        	virtual bool verify(epics::pvData::int32 timeoutMs) {
+        		// noop
+                return true;
             }
 
             virtual void verified() {
                 // noop
             }
 
+            virtual void setByteOrder(int byteOrder)  {
+            	// TODO
+            }
+
             virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender);
 
             void start();
 
-            virtual void close(bool forced);
+            virtual void close();
 
             virtual void ensureData(std::size_t size) {
                 // noop
@@ -157,6 +165,13 @@ namespace epics {
                 return epics::pvData::getFieldCreate()->deserialize(buffer, this);
             }
             
+            virtual bool acquire(std::tr1::shared_ptr<TransportClient> const & client)
+            {
+            	return false;
+            }
+
+            virtual void release(pvAccessID clientId) {}
+
             /**
              * Set ignore list.
              * @param addresses list of ignored addresses.
@@ -232,7 +247,7 @@ namespace epics {
 
             bool processBuffer(Transport::shared_pointer const & transport, osiSockAddr& fromAddress, epics::pvData::ByteBuffer* receiveBuffer);
 
-            void close(bool forced, bool waitForThreadToComplete);
+            void close(bool waitForThreadToComplete);
 
             // Context only used for logging in this class
 
@@ -295,6 +310,7 @@ namespace epics {
                 public Connector,
                 private epics::pvData::NoDefaultMethods {
         public:
+            POINTER_DEFINITIONS(BlockingUDPConnector);
 
             BlockingUDPConnector(
                     bool reuseSocket,

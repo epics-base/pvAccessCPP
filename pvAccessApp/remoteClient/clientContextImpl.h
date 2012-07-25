@@ -87,7 +87,7 @@ namespace epics {
             virtual void dispose() = 0;
             
             
-                        virtual ChannelSearchManager::shared_pointer getChannelSearchManager() = 0;
+            virtual ChannelSearchManager::shared_pointer getChannelSearchManager() = 0;
             virtual void checkChannelName(epics::pvData::String& name) = 0;
 
             virtual void registerChannel(ChannelImpl::shared_pointer const & channel) = 0;
@@ -103,12 +103,12 @@ namespace epics {
 
             virtual Transport::shared_pointer getTransport(TransportClient::shared_pointer const & client, osiSockAddr* serverAddress, epics::pvData::int8 minorRevision, epics::pvData::int16 priority) = 0;
 
-            virtual void beaconAnomalyNotify() = 0;
+            virtual void newServerDetected() = 0;
 
             virtual std::tr1::shared_ptr<BeaconHandler> getBeaconHandler(osiSockAddr* responseFrom) = 0;
 
         };
-        
+
         extern ClientContextImpl::shared_pointer createClientContextImpl();
 
     }

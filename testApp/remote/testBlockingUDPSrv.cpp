@@ -44,7 +44,7 @@ public:
     }
     virtual void acquire() {}
     virtual void release() {}
-    virtual void beaconAnomalyNotify() {}
+    virtual void newServerDetected() {}
 };
 
 class DummyResponseHandler : public ResponseHandler {

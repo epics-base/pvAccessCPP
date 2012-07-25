@@ -57,19 +57,23 @@ namespace epics {
                 return _closed.get();
             }
 
-            virtual void setRemoteMinorRevision(epics::pvData::int8 minorRevision) {
-                _remoteTransportRevision = minorRevision;
+            virtual epics::pvData::int8 getRevision() const {
+                return CA_PROTOCOL_REVISION;
             }
 
-            virtual void setRemoteTransportReceiveBufferSize(int remoteTransportReceiveBufferSize) {
+            virtual void setRemoteRevision(epics::pvData::int8 revision) {
+                _remoteTransportRevision = revision;
+            }
+
+            virtual void setRemoteTransportReceiveBufferSize(std::size_t remoteTransportReceiveBufferSize) {
                 _remoteTransportReceiveBufferSize = remoteTransportReceiveBufferSize;
             }
 
-            virtual void setRemoteTransportSocketReceiveBufferSize(int socketReceiveBufferSize) {
+            virtual void setRemoteTransportSocketReceiveBufferSize(std::size_t socketReceiveBufferSize) {
                 _remoteTransportSocketReceiveBufferSize = socketReceiveBufferSize;
             }
 
-            virtual const epics::pvData::String getType() const {
+            virtual epics::pvData::String getType() const {
                 return epics::pvData::String("TCP");
             }
 
@@ -89,7 +93,7 @@ namespace epics {
                 return _priority;
             }
 
-            virtual int getReceiveBufferSize() const {
+            virtual std::size_t getReceiveBufferSize() const {
                 return _socketBuffer->getSize();
             }
 
@@ -97,15 +101,16 @@ namespace epics {
              * Get remote transport receive buffer size (in bytes).
              * @return remote transport receive buffer size
              */
-            int getRemoteTransportReceiveBufferSize() {
+            virtual std::size_t getRemoteTransportReceiveBufferSize() const {
                 return _remoteTransportReceiveBufferSize;
             }
 
-            virtual int getSocketReceiveBufferSize() const;
+            virtual std::size_t getSocketReceiveBufferSize() const;
 
-            virtual bool isVerified() {
+            virtual bool verify(epics::pvData::int32 timeoutMs) {
                 epics::pvData::Lock lock(_verifiedMutex);
                 return _verified;
+                // TODO !!!
             }
 
             virtual void verified() {
@@ -139,7 +144,12 @@ namespace epics {
 
             virtual void alignData(std::size_t alignment);
 
-            virtual void close(bool force);
+            virtual void close();
+
+            virtual void setByteOrder(int byteOrder)
+            {
+            	// TODO !!!
+            }
 
             SendQueueFlushStrategy getSendQueueFlushStrategy() {
                 return _flushStrategy;
@@ -459,12 +469,10 @@ namespace epics {
         
         class BlockingClientTCPTransport : public BlockingTCPTransport,
                 public TransportSender,
-                public epics::pvData::TimerCallback,
-                public ReferenceCountingTransport {
+                public epics::pvData::TimerCallback {
 
         public:
-            typedef std::tr1::shared_ptr<BlockingClientTCPTransport> shared_pointer;
-            typedef std::tr1::shared_ptr<const BlockingClientTCPTransport> const_shared_pointer;
+        	POINTER_DEFINITIONS(BlockingClientTCPTransport);
 
         private:
             BlockingClientTCPTransport(Context::shared_pointer const & context, SOCKET channel,
@@ -596,6 +604,8 @@ namespace epics {
          */
         class BlockingTCPConnector : public Connector {
         public:
+        	POINTER_DEFINITIONS(BlockingTCPConnector);
+
             BlockingTCPConnector(Context::shared_pointer const & context, int receiveBufferSize,
                     float beaconInterval);
 
@@ -645,8 +655,7 @@ namespace epics {
                 public ChannelHostingTransport,
                 public TransportSender {
         public:
-            typedef std::tr1::shared_ptr<BlockingServerTCPTransport> shared_pointer;
-            typedef std::tr1::shared_ptr<const BlockingServerTCPTransport> const_shared_pointer;
+        	POINTER_DEFINITIONS(BlockingServerTCPTransport);
 
         private:
             BlockingServerTCPTransport(Context::shared_pointer const & context, SOCKET channel,
@@ -662,6 +671,13 @@ namespace epics {
                 return thisPointer;
             }
                     
+            virtual bool acquire(std::tr1::shared_ptr<TransportClient> const & client)
+            {
+            	return false;
+            }
+
+            virtual void release(pvAccessID clientId) {}
+
             /**
              * Preallocate new channel SID.
              * @return new channel server id (SID).
@@ -783,8 +799,7 @@ namespace epics {
         class ResponseHandlerFactory
         {
             public:
-            typedef std::tr1::shared_ptr<ResponseHandlerFactory> shared_pointer;
-            typedef std::tr1::shared_ptr<const ResponseHandlerFactory> const_shared_pointer;
+        	POINTER_DEFINITIONS(ResponseHandlerFactory);
             
             virtual ~ResponseHandlerFactory() {};
 
@@ -798,8 +813,7 @@ namespace epics {
          */
         class BlockingTCPAcceptor {
         public:
-            typedef std::tr1::shared_ptr<BlockingTCPAcceptor> shared_pointer;
-            typedef std::tr1::shared_ptr<const BlockingTCPAcceptor> const_shared_pointer;
+        	POINTER_DEFINITIONS(BlockingTCPAcceptor);
 
             /**
              * @param context

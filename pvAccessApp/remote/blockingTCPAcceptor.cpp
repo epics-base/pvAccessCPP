@@ -195,7 +195,7 @@ namespace pvAccess {
 
                     // validate connection
                     if(!validateConnection(transport, ipAddrStr)) {
-                        transport->close(true);
+                        transport->close();
                         LOG(
                                 logLevelDebug,
                                 "Connection to CA client %s failed to be validated, closing it.",
