@@ -39,7 +39,7 @@ namespace pvAccess {
      * - 8(UDP) - some reserve (the MTU of Ethernet is currently independent
      * of its speed variant)
      */
-    const epics::pvData::int32 MAX_UDP_SEND = 1440;
+    const epics::pvData::int32 MAX_UDP_UNFRAGMENTED_SEND = 1440;
     
 	 /**
 	  * UDP maximum receive message size.

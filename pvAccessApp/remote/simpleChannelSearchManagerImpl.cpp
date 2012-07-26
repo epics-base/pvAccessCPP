@@ -48,7 +48,7 @@ SimpleChannelSearchManagerImpl::SimpleChannelSearchManagerImpl(Context::shared_p
     m_context(context),
 	m_canceled(),
 	m_sequenceNumber(0),
-	m_sendBuffer(MAX_UDP_SEND),
+	m_sendBuffer(MAX_UDP_UNFRAGMENTED_SEND),
     m_channels(),
     m_lastTimeSent(),
     m_mockTransportSendControl(),
@@ -150,7 +150,7 @@ void SimpleChannelSearchManagerImpl::searchResponse(pvAccessID cid, int32_t seqN
 	}
 }
 
-void SimpleChannelSearchManagerImpl::beaconAnomalyNotify()
+void SimpleChannelSearchManagerImpl::newServerDetected()
 {
     boost();
     callback();

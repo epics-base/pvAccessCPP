@@ -77,10 +77,10 @@ class ChannelSearchManager {
 	virtual void searchResponse(pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress) = 0;
 
 	/**
-	 * Beacon anomaly detected.
+	 * New server detected.
 	 * Boost searching of all channels.
 	 */
-	virtual void beaconAnomalyNotify() = 0;
+	virtual void newServerDetected() = 0;
 	
 	/**
 	 * Cancel.

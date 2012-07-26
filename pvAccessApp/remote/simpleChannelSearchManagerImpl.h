@@ -27,8 +27,7 @@ public:
 	void ensureBuffer(std::size_t) {}
 	void alignBuffer(std::size_t alignment) {}
 	void flushSerializeBuffer() {}
-    void cachedSerialize(
-    const std::tr1::shared_ptr<const epics::pvData::Field>& field, epics::pvData::ByteBuffer* buffer)
+    void cachedSerialize(const std::tr1::shared_ptr<const epics::pvData::Field>& field, epics::pvData::ByteBuffer* buffer)
     {
         // no cache
         field->serialize(buffer, this);
@@ -82,10 +81,10 @@ class SimpleChannelSearchManagerImpl :
 	 */
 	void searchResponse(pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress);
 	/**
-	 * Beacon anomaly detected.
+	 * New server detected.
 	 * Boost searching of all channels.
 	 */
-	void beaconAnomalyNotify();
+	void newServerDetected();
     
     /// Timer callback.	
     void callback();

@@ -77,6 +77,7 @@ bool BeaconHandler::updateBeacon(int8 remoteTransportRevision, TimeStamp* timest
 
 void BeaconHandler::changedTransport()
 {
+	// TODO why only TCP, actually TCP does not need this
     auto_ptr<TransportRegistry::transportVector_t> transports =
         _context.lock()->getTransportRegistry()->get("TCP", &_responseFrom);
 	if (!transports.get())
