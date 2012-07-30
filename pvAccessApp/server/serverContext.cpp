@@ -69,23 +69,24 @@ void ServerContextImpl::initializeLogger()
 	//createFileLogger("serverContextImpl.log");
 }
 
-    struct noop_deleter
-    {
-        template<class T> void operator()(T * p)
-        {
-        }
-    };
+struct noop_deleter
+{
+    template<class T> void operator()(T * p) {}
+};
 
 Configuration::shared_pointer ServerContextImpl::getConfiguration()
 {
-	ConfigurationProvider* configurationProvider = ConfigurationFactory::getProvider();
-	Configuration* config = configurationProvider->getConfiguration("pvAccess-server");
-	if (config == NULL)
+	Lock guard(_mutex);
+	if (configuration.get() == 0)
 	{
-		config = configurationProvider->getConfiguration("system");
+		ConfigurationProvider::shared_pointer configurationProvider = ConfigurationFactory::getProvider();
+		configuration = configurationProvider->getConfiguration("pvAccess-server");
+		if (configuration.get() == 0)
+		{
+			configuration = configurationProvider->getConfiguration("system");
+		}
 	}
-	return Configuration::shared_pointer(config, noop_deleter());
-	// TODO cache !!!
+	return configuration;
 }
 
 /**
@@ -166,21 +167,20 @@ std::auto_ptr<ResponseHandler> ServerContextImpl::createResponseHandler()
 
 void ServerContextImpl::internalInitialize()
 {
-        osiSockAttach();
-	_timer.reset(new Timer("pvAccess-server timer",lowerPriority));
+    osiSockAttach();
+
+	_timer.reset(new Timer("pvAccess-server timer", lowerPriority));
 	_transportRegistry.reset(new TransportRegistry());
 
 	// setup broadcast UDP transport
 	initializeBroadcastTransport();
 
-    Context::shared_pointer thisContext = shared_from_this();
-    ResponseHandlerFactory::shared_pointer thisFactory = shared_from_this();
-	_acceptor.reset(new BlockingTCPAcceptor(thisContext, thisFactory, _serverPort, _receiveBufferSize));
+    ServerContextImpl::shared_pointer thisServerContext = shared_from_this();
+
+	_acceptor.reset(new BlockingTCPAcceptor(thisServerContext, thisServerContext, _serverPort, _receiveBufferSize));
 	_serverPort = ntohs(_acceptor->getBindAddress()->ia.sin_port);
 
-    ServerContextImpl::shared_pointer thisServerContext = shared_from_this();
-    Transport::shared_pointer transport = _broadcastTransport;
-	_beaconEmitter.reset(new BeaconEmitter(transport, thisServerContext));
+	_beaconEmitter.reset(new BeaconEmitter(_broadcastTransport, thisServerContext));
 }
 
 void ServerContextImpl::initializeBroadcastTransport()
@@ -318,7 +318,11 @@ void ServerContextImpl::destroy()
 	Lock guard(_mutex);
 	if (_state == DESTROYED)
 	{
-		THROW_BASE_EXCEPTION("Context already destroyed.");
+		// silent return
+		return;
+		// exception is not OK, since we use
+		// shared_pointer-s auto-cleanup/destruction
+		// THROW_BASE_EXCEPTION("Context already destroyed.");
 	}
 
 	// shutdown if not already
@@ -519,6 +523,7 @@ std::string ServerContextImpl::getChannelProviderName()
 	return _channelProviderNames;
 }
 
+// NOTE: not synced
 void ServerContextImpl::setChannelProviderName(std::string channelProviderName)
 {
     if (_state != NOT_INITIALIZED)

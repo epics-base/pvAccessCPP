@@ -57,7 +57,9 @@ BeaconEmitter::BeaconEmitter(Transport::shared_pointer const & transport, const 
 
 BeaconEmitter::~BeaconEmitter()
 {
-    destroy();
+	// shared_from_this is not yet allows in destructor
+	// be sure to call destroy() first !!!
+	// destroy();
 }
 
 void BeaconEmitter::lock()
@@ -141,9 +143,7 @@ void BeaconEmitter::reschedule()
 
 void BeaconEmitter::callback()
 {
-    // requires this instance has already a valid pointer to this
-    TransportSender::shared_pointer thisSender = shared_from_this();
-	_transport->enqueueSendRequest(thisSender);
+	_transport->enqueueSendRequest(shared_from_this());
 }
 
 }}

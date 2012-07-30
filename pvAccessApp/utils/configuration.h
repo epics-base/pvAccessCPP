@@ -21,8 +21,6 @@
 #include <fstream>
 #include <map>
 
-// TODO implement using smart pointers
-
 namespace epics {
 namespace pvAccess {
 
@@ -45,9 +43,8 @@ public:
 
 private:
 	std::map<std::string,std::string> _properties;
-	std::map<std::string,std::string>::iterator _propertiesIterator;
-	std::ifstream* _infile;
-	std::ofstream* _outfile;
+	std::auto_ptr<std::ifstream> _infile;
+	std::auto_ptr<std::ofstream> _outfile;
 	std::string _fileName;
 
 	inline void	truncate(std::string& str)
@@ -139,7 +136,7 @@ public:
 	float getPropertyAsFloat(const std::string name, const float defaultValue);
 	float getPropertyAsDouble(const std::string name, const double defaultValue);
 	std::string getPropertyAsString(const std::string name, std::string defaultValue);
-	Properties* _properties;
+	std::auto_ptr<Properties> _properties;
 private:
 	ENV_PARAM _envParam;
 	std::istringstream _ibuffer;
@@ -153,6 +150,7 @@ private:
 class ConfigurationProvider : private epics::pvData::NoDefaultMethods
 {
 public:
+	POINTER_DEFINITIONS(ConfigurationProvider);
 	/**
 	 * Destructor.
 	 */
@@ -164,14 +162,14 @@ public:
 	 *
 	 * @return configuration specified by name or NULL if it does not exists.
 	 */
-	virtual Configuration* getConfiguration(const std::string name) = 0;
+	virtual Configuration::shared_pointer getConfiguration(const std::string name) = 0;
 	/**
 	 * Register configuration.
 	 *
 	 * @param name name of the configuration to register.
 	 * @param configuration configuration to register.
 	 */
-	virtual void registerConfiguration(const std::string name, const Configuration* configuration) = 0;
+	virtual void registerConfiguration(const std::string name, Configuration::shared_pointer const & configuration) = 0;
 };
 
 class ConfigurationProviderImpl: public ConfigurationProvider
@@ -182,12 +180,11 @@ public:
 	 * Destructor. Note: Registered configurations will be deleted!!
 	 */
 	~ConfigurationProviderImpl();
-	Configuration* getConfiguration(const std::string name);
-	void registerConfiguration(const std::string name, const Configuration* configuration);
+	Configuration::shared_pointer getConfiguration(const std::string name);
+	void registerConfiguration(const std::string name, Configuration::shared_pointer const & configuration);
 private:
 	epics::pvData::Mutex _mutex;
-	std::map<std::string,const Configuration*> _configs;
-	std::map<std::string,const Configuration*>::iterator _configsIter;
+	std::map<std::string,Configuration::shared_pointer> _configs;
 };
 
 /**
@@ -196,6 +193,8 @@ private:
 class ConfigurationFactory : private epics::pvData::NoDefaultMethods
 {
 public:
+	POINTER_DEFINITIONS(ConfigurationFactory);
+
 	/**
 	 * Lazily creates configuration provider.
 	 *
@@ -204,12 +203,10 @@ public:
 	 *
 	 * @return configuration provider
 	 */
-	static ConfigurationProviderImpl* getProvider();
+	static ConfigurationProvider::shared_pointer getProvider();
 
 private:
 	ConfigurationFactory() {};
-	static ConfigurationProviderImpl* _configurationProvider;
-	static epics::pvData::Mutex _conf_factory_mutex;
 };
 
 }}

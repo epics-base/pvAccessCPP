@@ -16,47 +16,43 @@ using namespace std;
 Properties::Properties()
 {
 	_fileName = "";
-	_infile = new ifstream();
+	_infile.reset(new ifstream());
 	_infile->exceptions (ifstream::failbit | ifstream::badbit );
-	_outfile = new ofstream();
+	_outfile.reset(new ofstream());
 	_outfile->exceptions (ofstream::failbit | ofstream::badbit );
 }
 
 Properties::Properties(const string fileName)
 {
 	_fileName = fileName;
-	_infile = new ifstream();
+	_infile.reset(new ifstream());
 	_infile->exceptions (ifstream::failbit | ifstream::badbit );
-	_outfile = new ofstream();
+	_outfile.reset(new ofstream());
 	_outfile->exceptions (ofstream::failbit | ofstream::badbit );
 }
 
 Properties::~Properties()
 {
-	delete _infile;
-	delete _outfile;
-	//clear map
-	_properties.clear();
 }
 
 void Properties::setProperty(const string key,const  string value)
 {
 	string oldValue;
-	_propertiesIterator = _properties.find(key);
+	std::map<std::string,std::string>::iterator propertiesIterator = _properties.find(key);
 
-	if(_propertiesIterator != _properties.end()) //found in map
+	if(propertiesIterator != _properties.end()) //found in map
 	{
-		_properties.erase(_propertiesIterator);
+		_properties.erase(propertiesIterator);
 	}
 	_properties[key] = value;
 }
 
 string Properties::getProperty(const string key)
 {
-	_propertiesIterator = _properties.find(key);
-	if(_propertiesIterator != _properties.end()) //found in map
+	std::map<std::string,std::string>::iterator propertiesIterator = _properties.find(key);
+	if(propertiesIterator != _properties.end()) //found in map
 	{
-		return string(_propertiesIterator->second);
+		return string(propertiesIterator->second);
 	}
 	else
 	{
@@ -67,10 +63,10 @@ string Properties::getProperty(const string key)
 
 string Properties::getProperty(const string key, const string defaultValue)
 {
-	_propertiesIterator = _properties.find(key);
-	if(_propertiesIterator != _properties.end()) //found in map
+	std::map<std::string,std::string>::iterator propertiesIterator = _properties.find(key);
+	if(propertiesIterator != _properties.end()) //found in map
 	{
-		return string(_propertiesIterator->second);
+		return string(propertiesIterator->second);
 	}
 
 	_properties[key] = defaultValue;
@@ -160,13 +156,13 @@ void Properties::store()
 	}
 
 
-	for (_propertiesIterator = _properties.begin() ;
-			_propertiesIterator != _properties.end();
-			_propertiesIterator++ )
+	for (std::map<std::string,std::string>::iterator propertiesIterator = _properties.begin();
+			propertiesIterator != _properties.end();
+			propertiesIterator++ )
 	{
 		try
 		{
-			string line = string(_propertiesIterator->first) + string("=") + string(_propertiesIterator->second) + string("\n");
+			string line = string(propertiesIterator->first) + string("=") + string(propertiesIterator->second) + string("\n");
 			_outfile->write(line.c_str(),line.length());
 		}
 		catch (ofstream::failure& e) {
@@ -186,28 +182,27 @@ void Properties::store(const string fileName)
 
 void Properties::list()
 {
-	for (_propertiesIterator = _properties.begin() ;
-			_propertiesIterator != _properties.end();
-			_propertiesIterator++ )
+	for (std::map<std::string,std::string>::iterator propertiesIterator =  _properties.begin() ;
+			propertiesIterator != _properties.end();
+			propertiesIterator++ )
 	{
-		cout << "Key:" << _propertiesIterator->first << ",Value: " << _propertiesIterator->second << endl;
+		cout << "Key:" << propertiesIterator->first << ",Value: " << propertiesIterator->second << endl;
 	}
 }
 
-SystemConfigurationImpl::SystemConfigurationImpl()
+SystemConfigurationImpl::SystemConfigurationImpl() :
+		_properties(new Properties())
 {
 	_envParam.name = new char[256];
 	_envParam.pdflt = NULL;
 	// no exception, default value is taken
 	//_ibuffer.exceptions ( ifstream::failbit | ifstream::badbit );
 	//_obuffer.exceptions ( ifstream::failbit | ifstream::badbit );
-	_properties = new Properties();
 }
 
 SystemConfigurationImpl::~SystemConfigurationImpl()
 {
 	if(_envParam.name) delete[] _envParam.name;
-	if(_properties) delete _properties;
 }
 
 bool SystemConfigurationImpl::getPropertyAsBoolean(const string name, const bool defaultValue)
@@ -288,18 +283,13 @@ ConfigurationProviderImpl::ConfigurationProviderImpl()
 
 ConfigurationProviderImpl::~ConfigurationProviderImpl()
 {
-	for(_configsIter = _configs.begin(); _configsIter != _configs.end(); _configsIter++)
-	{
-		delete _configsIter->second;
-	}
-	_configs.clear();
 }
 
-void ConfigurationProviderImpl::registerConfiguration(const string name, const Configuration* configuration)
+void ConfigurationProviderImpl::registerConfiguration(const string name, Configuration::shared_pointer const & configuration)
 {
 	Lock guard(_mutex);
-	_configsIter = _configs.find(name);
-	if(_configsIter != _configs.end())
+	std::map<std::string,Configuration::shared_pointer>::iterator configsIter = _configs.find(name);
+	if(configsIter != _configs.end())
 	{
 		string msg = "configuration with name " + name + " already registered";
 		THROW_BASE_EXCEPTION(msg.c_str());
@@ -307,29 +297,30 @@ void ConfigurationProviderImpl::registerConfiguration(const string name, const C
 	_configs[name] = configuration;
 }
 
-Configuration* ConfigurationProviderImpl::getConfiguration(const string name)
+Configuration::shared_pointer ConfigurationProviderImpl::getConfiguration(const string name)
 {
-	_configsIter = _configs.find(name);
-	if(_configsIter != _configs.end())
+	std::map<std::string,Configuration::shared_pointer>::iterator configsIter = _configs.find(name);
+	if(configsIter != _configs.end())
 	{
-		return const_cast<Configuration*>(_configsIter->second);
+		return configsIter->second;
 	}
-	return NULL;
+	return Configuration::shared_pointer();
 }
 
-ConfigurationProviderImpl* ConfigurationFactory::_configurationProvider = NULL;
-Mutex ConfigurationFactory::_conf_factory_mutex;
+ConfigurationProvider::shared_pointer configurationProvider;
+Mutex conf_factory_mutex;
 
-ConfigurationProviderImpl* ConfigurationFactory::getProvider()
+ConfigurationProvider::shared_pointer ConfigurationFactory::getProvider()
 {
-	Lock guard(_conf_factory_mutex);
-	if(_configurationProvider == NULL)
+	Lock guard(conf_factory_mutex);
+	if(configurationProvider.get() == NULL)
 	{
-		_configurationProvider = new ConfigurationProviderImpl();
+		configurationProvider.reset(new ConfigurationProviderImpl());
 		// default
-		_configurationProvider->registerConfiguration("system", new SystemConfigurationImpl());
+		Configuration::shared_pointer systemConfig(new SystemConfigurationImpl());
+		configurationProvider->registerConfiguration("system", systemConfig);
 	}
-	return _configurationProvider;
+	return configurationProvider;
 }
 
 }}

@@ -402,6 +402,8 @@ private:
 	 * Destroy all transports.
 	 */
 	void destroyAllTransports();
+
+	Configuration::shared_pointer configuration;
 };
 
 

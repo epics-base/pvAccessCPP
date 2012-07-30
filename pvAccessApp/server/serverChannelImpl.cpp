@@ -53,19 +53,20 @@ void ServerChannelImpl::registerRequest(const pvAccessID id, Destroyable::shared
 void ServerChannelImpl::unregisterRequest(const pvAccessID id)
 {
 	Lock guard(_mutex);
-	_iter = _requests.find(id);
-	if(_iter != _requests.end())
+	std::map<pvAccessID, epics::pvData::Destroyable::shared_pointer>::iterator iter = _requests.find(id);
+	if(iter != _requests.end())
 	{
-		_requests.erase(_iter);
+		_requests.erase(iter);
 	}
 }
 
 Destroyable::shared_pointer ServerChannelImpl::getRequest(const pvAccessID id)
 {
-	_iter = _requests.find(id);
-	if(_iter != _requests.end())
+	Lock guard(_mutex);
+	std::map<pvAccessID, epics::pvData::Destroyable::shared_pointer>::iterator iter = _requests.find(id);
+	if(iter != _requests.end())
 	{
-		return _iter->second;
+		return iter->second;
 	}
 	return Destroyable::shared_pointer();
 }
@@ -74,7 +75,6 @@ void ServerChannelImpl::destroy()
 {
 	Lock guard(_mutex);
 	if (_destroyed) return;
-
 	_destroyed = true;
 
 	// destroy all requests
@@ -111,8 +111,7 @@ void ServerChannelImpl::destroyAllRequests()
 
 	while(_requests.size() != 0)
 	{
-		_iter = _requests.begin();
-		_iter->second->destroy();
+		_requests.begin()->second->destroy();
 	}
 
 	_requests.clear();
