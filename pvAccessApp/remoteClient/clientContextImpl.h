@@ -56,7 +56,7 @@ namespace epics {
              * Get context implementation version.
              * @return version of the context implementation.
              */
-            virtual Version& getVersion() = 0;
+            virtual const Version& getVersion() = 0;
 
             /**
              * Initialize client context. This method is called immediately after instance construction (call of constructor).
