@@ -108,8 +108,13 @@ namespace epics {
                 // noop
             }
 
+            // NOTE: this is not yet used for UDP
             virtual void setByteOrder(int byteOrder)  {
-            	// TODO
+        		// called from receive thread... or before processing
+        		_receiveBuffer->setEndianess(byteOrder);
+
+        		// sync?!
+     			_sendBuffer->setEndianess(byteOrder);
             }
 
             virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender);
@@ -280,12 +285,12 @@ namespace epics {
             /**
              * Receive buffer.
              */
-            epics::pvData::ByteBuffer* _receiveBuffer;
+            std::auto_ptr<epics::pvData::ByteBuffer> _receiveBuffer;
 
             /**
              * Send buffer.
              */
-            epics::pvData::ByteBuffer* _sendBuffer;
+            std::auto_ptr<epics::pvData::ByteBuffer> _sendBuffer;
 
             /**
              * Last message start position.

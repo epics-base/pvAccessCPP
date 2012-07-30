@@ -140,16 +140,18 @@ namespace epics {
                     // TODO tune buffer sizes?! Win32 defaults are 8k, which is OK
 
                     // create transport
+                    // TODO introduce factory
                     transport = BlockingClientTCPTransport::create(
                                             context, socket, responseHandler, _receiveBufferSize,
                                             client, transportRevision, _beaconInterval, priority);
 
                     // verify
-                    if(!transport->waitUntilVerified(3.0)) {
+                    if(!transport->verify(3000)) {
                         LOG(
                                 logLevelDebug,
                                 "Connection to CA server %s failed to be validated, closing it.",
                                 ipAddrStr);
+
                         std::ostringstream temp;
                         temp<<"Failed to verify TCP connection to '"<<ipAddrStr<<"'.";
                         THROW_BASE_EXCEPTION(temp.str().c_str());

@@ -73,9 +73,6 @@ namespace epics {
             
             if (_sendAddresses) delete _sendAddresses;
             if (_ignoredAddresses) delete _ignoredAddresses;
-
-            delete _receiveBuffer;
-            delete _sendBuffer;
         }
 
         void BlockingUDPTransport::start() {
@@ -128,13 +125,13 @@ namespace epics {
             _sendBuffer->clear();
             sender->lock();
             try {
-                sender->send(_sendBuffer, this);
+                sender->send(_sendBuffer.get(), this);
                 sender->unlock();
                 endMessage();
                 if(!_sendToEnabled)
-                    send(_sendBuffer);
+                    send(_sendBuffer.get());
                 else
-                    send(_sendBuffer, _sendTo);
+                    send(_sendBuffer.get(), _sendTo);
             } catch(...) {
                 sender->unlock();
             }
@@ -162,6 +159,7 @@ namespace epics {
             // object's own thread.
 
             osiSockAddr fromAddress;
+            osiSocklen_t addrStructSize = sizeof(sockaddr);
             Transport::shared_pointer thisTransport = shared_from_this();
 
             try {
@@ -173,8 +171,6 @@ namespace epics {
                     // data ready to be read
                     _receiveBuffer->clear();
 
-                    osiSocklen_t addrStructSize = sizeof(sockaddr);
-
                     int bytesRead = recvfrom(_channel, (char*)_receiveBuffer->getArray(),
                             _receiveBuffer->getRemaining(), 0, (sockaddr*)&fromAddress,
                             &addrStructSize);
@@ -182,7 +178,7 @@ namespace epics {
                     if(likely(bytesRead>0)) {
                         // successfully got datagram
                         bool ignore = false;
-                        if(unlikely(_ignoredAddresses!=0))
+                        if(likely(_ignoredAddresses!=0))
                         {
                             for(size_t i = 0; i <_ignoredAddresses->size(); i++)
                             {
@@ -199,7 +195,7 @@ namespace epics {
 
                             _receiveBuffer->flip();
 
-                            processBuffer(thisTransport, fromAddress, _receiveBuffer);
+                            processBuffer(thisTransport, fromAddress, _receiveBuffer.get());
                         }
                     }
                     else if (unlikely(bytesRead == -1)) {
@@ -255,11 +251,12 @@ namespace epics {
                 //
 
                 // first byte is CA_MAGIC
-                // second byte version - major/minor nibble
                 int8 magic = receiveBuffer->getByte();
-                int8 version = receiveBuffer->getByte();
                 if(unlikely(magic != CA_MAGIC))
                     return false;
+
+                // second byte version
+                int8 version = receiveBuffer->getByte();
 
                 // only data for UDP
                 int8 flags = receiveBuffer->getByte();
@@ -285,7 +282,7 @@ namespace epics {
                 // handle
                 _responseHandler->handleResponse(&fromAddress, thisTransport,
                         version, command, payloadSize,
-                        _receiveBuffer);
+                        _receiveBuffer.get());
 
                 // set position (e.g. in case handler did not read all)
                 receiveBuffer->setPosition(nextRequestPosition);

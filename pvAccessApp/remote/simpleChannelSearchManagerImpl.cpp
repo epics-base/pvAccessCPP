@@ -78,7 +78,9 @@ void SimpleChannelSearchManagerImpl::activate()
 
 SimpleChannelSearchManagerImpl::~SimpleChannelSearchManagerImpl()
 {
-    cancel();
+	// shared_from_this() is not allowed from destructor
+	// be sure to call cancel() first
+    // cancel();
 }
 
 void SimpleChannelSearchManagerImpl::cancel()

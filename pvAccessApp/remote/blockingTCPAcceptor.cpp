@@ -211,9 +211,9 @@ namespace pvAccess {
             } // while
         }
 
-        bool BlockingTCPAcceptor::validateConnection(BlockingServerTCPTransport::shared_pointer const & transport, const char* address) {
+        bool BlockingTCPAcceptor::validateConnection(Transport::shared_pointer const & transport, const char* address) {
             try {
-                transport->verify();
+                transport->verify(0);
                 return true;
             } catch(...) {
                 LOG(logLevelDebug, "Validation of %s failed.", address);

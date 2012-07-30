@@ -108,9 +108,10 @@ namespace epics {
             virtual std::size_t getSocketReceiveBufferSize() const;
 
             virtual bool verify(epics::pvData::int32 timeoutMs) {
-                epics::pvData::Lock lock(_verifiedMutex);
-                return _verified;
-                // TODO !!!
+                return _verifiedEvent.wait(timeoutMs/1000.0);
+
+                //epics::pvData::Lock lock(_verifiedMutex);
+                //return _verified;
             }
 
             virtual void verified() {
@@ -122,11 +123,6 @@ namespace epics {
             virtual void setRecipient(const osiSockAddr& sendTo) {
                 // noop
             }
-
-            /**
-             * @param[in] timeout Timeout in seconds
-             */
-            bool waitUntilVerified(double timeout);
 
             virtual void flush(bool lastMessageCompleted);
             virtual void startMessage(epics::pvData::int8 command, std::size_t ensureCapacity);
@@ -148,7 +144,7 @@ namespace epics {
 
             virtual void setByteOrder(int byteOrder)
             {
-            	// TODO !!!
+            	// not used this this implementation
             }
 
             SendQueueFlushStrategy getSendQueueFlushStrategy() {
@@ -741,10 +737,11 @@ namespace epics {
             /**
              * Verify transport. Server side is self-verified.
              */
-            void verify() {
-                TransportSender::shared_pointer transportSender = std::tr1::dynamic_pointer_cast<TransportSender>(shared_from_this());
-                enqueueSendRequest(transportSender);
-                verified();
+            virtual bool verify(epics::pvData::int32 timeoutMs) {
+            	TransportSender::shared_pointer transportSender = std::tr1::dynamic_pointer_cast<TransportSender>(shared_from_this());
+            	enqueueSendRequest(transportSender);
+            	verified();
+            	return true;
             }
 
             /**
@@ -887,7 +884,7 @@ namespace epics {
              * Validate connection by sending a validation message request.
              * @return <code>true</code> on success.
              */
-            bool validateConnection(BlockingServerTCPTransport::shared_pointer const & transport, const char* address);
+            bool validateConnection(Transport::shared_pointer const & transport, const char* address);
 
             static void handleEventsRunner(void* param);
         };

@@ -37,6 +37,7 @@ using std::max;
 using std::min;
 using std::ostringstream;
 
+// TODO to be completely replaced by codec based implementation (see Java)
 namespace epics {
 namespace pvAccess {
 
@@ -303,10 +304,6 @@ namespace pvAccess {
             }
 
             return (size_t)sockBufSize;
-        }
-
-        bool BlockingTCPTransport::waitUntilVerified(double timeout) {
-            return _verifiedEvent.wait(timeout);
         }
 
         void BlockingTCPTransport::flush(bool lastMessageCompleted) {
