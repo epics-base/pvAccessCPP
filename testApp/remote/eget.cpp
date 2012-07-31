@@ -386,8 +386,11 @@ void formatNTTable(StringBuilder buffer, PVStructure *pvStruct)
 {
     PVStringArrayPtr labels = static_pointer_cast<PVStringArray>(pvStruct->getScalarArrayField("labels", pvString));
     if (labels.get() == 0)
+    {
+    	std::cout << "no 'labels' column" << std::endl;
         return; // TODO
-        
+    }
+
     int numColumns = labels->getLength();
     //int count = pvStruct->getNumberFields();
     // TODO if (count < #numColumns)
@@ -400,8 +403,8 @@ void formatNTTable(StringBuilder buffer, PVStructure *pvStruct)
     for (int i = 0; i < numColumns; i++)
     {
         DoubleArrayData values;
-        // TODO we relay on field ordering here (normativeType, labels, <columns>)
-        PVDoubleArrayPtr arrayField = static_pointer_cast<PVDoubleArray>(fields[i+2]);
+        // TODO we relay on field ordering here (labels, <columns>)
+        PVDoubleArrayPtr arrayField = static_pointer_cast<PVDoubleArray>(fields[i+1]);
         int count = arrayField->get(0, arrayField->getLength(), values);
         if (count > maxValues) maxValues = count;
         columnData.push_back(&values.data);
@@ -439,11 +442,12 @@ void toNTString(StringBuilder buffer, PVField *pv,int notFirst)
     {
         PVStructure* pvStruct = static_cast<PVStructure*>(pv);
         // TODO type check, getStringField is verbose
-        PVStringPtr ntType = static_pointer_cast<PVString>(pvStruct->getSubField("normativeType"));
-        if (ntType.get())
+//        PVStringPtr ntType = static_pointer_cast<PVString>(pvStruct->getSubField("normativeType"));
+//        if (ntType.get())
         {
-            String value = ntType->get();
-            
+//            String value = ntType->get();
+            String value = pvStruct->getField()->getID();
+
             if (value == "NTTable")
             {
                 formatNTTable(buffer, pvStruct);

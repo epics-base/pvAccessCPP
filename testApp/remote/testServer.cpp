@@ -416,8 +416,8 @@ class MockChannelRPC : public ChannelRPC
 		        int totalFields = 1 + 1 + atoi(columns->get().c_str());  // normativeType, labels, <columns>
 		        StringArray fieldNames(totalFields);
 		        FieldConstPtrArray fields(totalFields);
-		        fieldNames[i] = "normativeType";
-		        fields[i++] = getFieldCreate()->createScalar(pvString);
+		        //fieldNames[i] = "normativeType";
+		        //fields[i++] = getFieldCreate()->createScalar(pvString);
 		        fieldNames[i] = "labels";
 		        fields[i++] = getFieldCreate()->createScalarArray(pvString);
 		        char sbuf[16];
@@ -431,9 +431,9 @@ class MockChannelRPC : public ChannelRPC
 		        }
 
 		        PVStructure::shared_pointer result(
-		            new PVStructure(getFieldCreate()->createStructure(fieldNames, fields)));
+		            new PVStructure(getFieldCreate()->createStructure("NTTable", fieldNames, fields)));
 
-		        result->getStringField("normativeType")->put("NTTable");
+		        //result->getStringField("normativeType")->put("NTTable");
 		        static_pointer_cast<PVStringArray>(result->getScalarArrayField("labels", pvString))->put(0, labels.size(), &labels[0], 0);
 
 		        srand ( time(NULL) );
