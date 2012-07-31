@@ -307,6 +307,19 @@ namespace epics {
         BitSet::shared_pointer BaseRequestImpl::nullBitSet;
 
 
+		static BitSet::shared_pointer createBitSetFor(PVStructure::shared_pointer const & pvStructure, BitSet::shared_pointer const & existingBitSet)
+		{
+			int pvStructureSize = pvStructure->getNumberFields();
+			if (existingBitSet.get() && static_cast<int32>(existingBitSet->size()) >= pvStructureSize)
+			{
+				// clear existing BitSet
+				// also necessary if larger BitSet is reused
+				existingBitSet->clear();
+				return existingBitSet;
+			}
+			else
+				return BitSet::shared_pointer(new BitSet(pvStructureSize));
+		}
 
 
         PVACCESS_REFCOUNT_MONITOR_DEFINE(channelProcess);
@@ -548,8 +561,8 @@ namespace epics {
                 // create data and its bitSet
                 {
                     Lock lock(m_structureMutex);
-                    m_structure = SerializationHelper::deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get());
-                    m_bitSet.reset(new BitSet(m_structure->getNumberFields()));
+                    m_structure = SerializationHelper::deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get(), m_structure);
+                    m_bitSet = createBitSetFor(m_structure, m_bitSet);
                 }
                 
                 // notify
@@ -755,8 +768,8 @@ namespace epics {
                 // create data and its bitSet
                 {
                     Lock lock(m_structureMutex);
-                    m_structure = SerializationHelper::deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get());
-                    m_bitSet.reset(new BitSet(m_structure->getNumberFields()));
+                    m_structure = SerializationHelper::deserializeStructureAndCreatePVStructure(payloadBuffer, transport.get(), m_structure);
+                    m_bitSet = createBitSetFor(m_structure, m_bitSet);
                 }
                 
                 // notify
