@@ -6,9 +6,6 @@ readSize checks if size is in limits of size_t?
 
 
 1. protected void destroy(boolean createRequestFailed) {
-2. reuse on reconnect !!!
-3. initResponse failed: should I give non-null instance or thisPtr?
-4. channelArray need to lock offset, conut, ..
 
 
 

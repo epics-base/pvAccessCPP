@@ -760,8 +760,8 @@ namespace epics {
             virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (!status.isSuccess())
                 {
-                    ChannelPut::shared_pointer nullChannelPut;
-                    EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(status, nullChannelPut, nullPVStructure, nullBitSet));
+                    ChannelPut::shared_pointer thisChannelPut = dynamic_pointer_cast<ChannelPut>(shared_from_this());
+                    EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(status, thisChannelPut, nullPVStructure, nullBitSet));
                     return true;
                 }
 
@@ -986,8 +986,8 @@ namespace epics {
             virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (!status.isSuccess())
                 {
-                    ChannelPutGet::shared_pointer nullChannelPutGet;
-                    EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(status, nullChannelPutGet, nullPVStructure, nullPVStructure));
+                    ChannelPutGet::shared_pointer thisChannelPutGet = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
+                    EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(status, thisChannelPutGet, nullPVStructure, nullPVStructure));
                     return true;
                 }
 
@@ -1268,8 +1268,8 @@ namespace epics {
             virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (!status.isSuccess())
                 {
-                    ChannelRPC::shared_pointer nullChannelRPC;
-                    EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(status, nullChannelRPC));
+                    ChannelRPC::shared_pointer thisChannelRPC = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
+                    EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(status, thisChannelRPC));
                     return true;
                 }
 
@@ -1437,11 +1437,13 @@ namespace epics {
                 }
                 else if (pendingRequest & QOS_GET)
                 {
+                	// lock... see comment below
                     SerializeHelper::writeSize(m_offset, buffer, control);
                     SerializeHelper::writeSize(m_count, buffer, control);
                 }
                 else if (pendingRequest & QOS_GET_PUT) // i.e. setLength
                 {
+                	// lock... see comment below
                     SerializeHelper::writeSize(m_length, buffer, control);
                     SerializeHelper::writeSize(m_capacity, buffer, control);
                 }
@@ -1469,8 +1471,8 @@ namespace epics {
             virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (!status.isSuccess())
                 {
-                    ChannelArray::shared_pointer nullChannelArray;
-                    EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(status, nullChannelArray, PVArray::shared_pointer()));
+                    ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
+                    EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(status, thisChannelArray, PVArray::shared_pointer()));
                     return true;
                 }
 
@@ -1537,8 +1539,11 @@ namespace epics {
                 }
 
                 try {
-                    m_offset = offset;
-                    m_count = count;
+                    {
+                        Lock lock(m_structureMutex);
+                    	m_offset = offset;
+                    	m_count = count;
+                    }
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
                     stopRequest();
@@ -1566,8 +1571,11 @@ namespace epics {
                 }
 
                 try {
-                    m_offset = offset;
-                    m_count = count;
+                    {
+                        Lock lock(m_structureMutex);
+                        m_offset = offset;
+                        m_count = count;
+                    }
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
                     stopRequest();
@@ -1595,8 +1603,11 @@ namespace epics {
                 }
 
                 try {
-                    m_length = length;
-                    m_capacity = capacity;
+                    {
+                        Lock lock(m_structureMutex);
+						m_length = length;
+						m_capacity = capacity;
+                    }
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
                     stopRequest();
@@ -2164,8 +2175,8 @@ namespace epics {
             virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (!status.isSuccess())
                 {
-                    Monitor::shared_pointer nullChannelMonitor;
-                    EXCEPTION_GUARD(m_monitorRequester->monitorConnect(status, nullChannelMonitor, StructureConstPtr()));
+                    Monitor::shared_pointer thisChannelMonitor = dynamic_pointer_cast<Monitor>(shared_from_this());
+                    EXCEPTION_GUARD(m_monitorRequester->monitorConnect(status, thisChannelMonitor, StructureConstPtr()));
                     return true;
                 }
 
