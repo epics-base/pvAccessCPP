@@ -357,6 +357,7 @@ void usage (void)
     "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
     "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
     "  -t:                Terse mode - print only value, without name\n"
+    "  -m:                Monitor mode\n"
     "  -d:                Enable debug output\n"
     "  -c:                Wait for clean shutdown and report used instance count (for expert users)"
     "\nExample: pvget example001 \n\n"
@@ -469,6 +470,88 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
     }
 };
 
+class MonitorRequesterImpl : public MonitorRequester
+{
+	private:
+
+    String m_channelName;
+
+    public:
+
+    MonitorRequesterImpl(String channelName) : m_channelName(channelName) {};
+
+    virtual String getRequesterName()
+    {
+        return "MonitorRequesterImpl";
+    };
+
+    virtual void message(String message,MessageType messageType)
+    {
+        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+    }
+
+    virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, StructureConstPtr const & structure)
+    {
+        std::cout << "monitorConnect(" << status.toString() << ")" << std::endl;
+        if (status.isSuccess() && structure)
+        {
+        	/*
+            String str;
+            structure->toString(&str);
+            std::cout << str << std::endl;
+        	*/
+
+            Status startStatus = monitor->start();
+            // show error
+            // TODO and exit
+            if (!startStatus.isSuccess())
+            {
+                std::cout << "[" << m_channelName << "] channel monitor start: " << startStatus.toString() << std::endl;
+            }
+
+        }
+    }
+
+    virtual void monitorEvent(Monitor::shared_pointer const & monitor)
+    {
+
+		MonitorElement::shared_pointer element;
+		while (element = monitor->poll())
+		{
+
+
+			String str;
+
+			str.reserve(16*1024*1024);
+
+			str += "\n";
+			str += m_channelName;
+			str += ": ";
+
+			element->changedBitSet->toString(&str);
+			str += '/';
+			element->overrunBitSet->toString(&str);
+			str += '\n';
+
+			if (terseMode)
+				convertToString(&str, element->pvStructurePtr.get(), 0);
+			else
+				element->pvStructurePtr->toString(&str);
+
+			std::cout << str << std::endl;
+
+			monitor->release(element);
+		}
+
+    }
+
+    virtual void unlisten(Monitor::shared_pointer const & monitor)
+    {
+        std::cout << "unlisten" << std::endl;
+    }
+};
+
+
 class ChannelRequesterImpl : public ChannelRequester
 {
 private:
@@ -543,16 +626,17 @@ int main (int argc, char *argv[])
     int opt;                    /* getopt() current option */
     bool debug = false;
     bool cleanupAndReport = false;
+    bool monitor = false;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:w:tdc")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:tmdc")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
             return 0;
         case 'w':               /* Set CA timeout value */
-            if(epicsScanDouble(optarg, &timeOut) != 1)
+            if(epicsScanDouble(optarg, &timeOut) != 1 || timeOut <= 0.0)
             {
                 fprintf(stderr, "'%s' is not a valid timeout value "
                         "- ignored. ('cainfo -h' for help.)\n", optarg);
@@ -564,6 +648,9 @@ int main (int argc, char *argv[])
             break;
         case 't':               /* Terse mode */
             terseMode = true;
+            break;
+        case 'm':               /* Monitor mode */
+            monitor = true;
             break;
         case 'd':               /* Debug log level */
             debug = true;
@@ -637,9 +724,18 @@ int main (int argc, char *argv[])
              
             if (channelRequesterImpl->waitUntilConnected(timeOut))
             {
-                shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
-                ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
-                allOK &= getRequesterImpl->waitUntilGet(timeOut);
+            	if (!monitor)
+            	{
+					shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
+					ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
+					allOK &= getRequesterImpl->waitUntilGet(timeOut);
+            	}
+            	else
+            	{
+					shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
+					Monitor::shared_pointer monitorGet = channel->createMonitor(monitorRequesterImpl, pvRequest);
+					allOK &= true;
+            	}
             }
             else
             {
@@ -648,7 +744,13 @@ int main (int argc, char *argv[])
                 std::cout << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
             }
         }    
-    
+
+        if (monitor)
+        {
+        	while (true)
+        		epicsThreadSleep(timeOut);
+        }
+
         ClientFactory::stop();
     }
 
