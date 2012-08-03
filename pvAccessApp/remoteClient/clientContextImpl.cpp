@@ -1834,8 +1834,7 @@ namespace epics {
     		    Lock guard(m_mutex);
     			m_gotMonitor = true;
     			// no data, only notify
-                Monitor::shared_pointer thisMonitor = shared_from_this();
-            	m_callback->monitorEvent(thisMonitor);
+            	EXCEPTION_GUARD(m_callback->monitorEvent(shared_from_this()));
     		}
     
     		virtual MonitorElement::shared_pointer poll() {
@@ -1906,8 +1905,7 @@ namespace epics {
 	        	m_monitorElement->pvStructurePtr->deserialize(payloadBuffer, transport.get(), m_monitorElement->changedBitSet.get());
 	        	m_monitorElement->overrunBitSet->deserialize(payloadBuffer, transport.get());
     			m_gotMonitor = true;
-                Monitor::shared_pointer thisMonitor = shared_from_this();
-            	m_callback->monitorEvent(thisMonitor);
+            	EXCEPTION_GUARD(m_callback->monitorEvent(shared_from_this()));
     		}
     
     		virtual MonitorElement::shared_pointer poll() {
@@ -1993,8 +1991,7 @@ namespace epics {
     	        	m_monitorElement->pvStructurePtr->deserialize(payloadBuffer, transport.get(), m_monitorElement->changedBitSet.get());
     	        	m_monitorElement->overrunBitSet->deserialize(payloadBuffer, transport.get());
         			m_gotMonitor = true;
-                    Monitor::shared_pointer thisMonitor = shared_from_this();
-                    m_callback->monitorEvent(thisMonitor);
+                    EXCEPTION_GUARD(m_callback->monitorEvent(shared_from_this()));
     		    }            	
 				else 
 				{
