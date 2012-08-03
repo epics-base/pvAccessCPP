@@ -21,6 +21,8 @@ using namespace std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
+// TODO cout vs cerr
+
 void convertStructure(StringBuilder buffer,PVStructure *data,int notFirst);
 void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst);
 void convertStructureArray(StringBuilder buffer,PVStructureArray * pvdata,int notFirst);
@@ -492,8 +494,7 @@ class MonitorRequesterImpl : public MonitorRequester
 
     virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, StructureConstPtr const & structure)
     {
-        std::cout << "monitorConnect(" << status.toString() << ")" << std::endl;
-        if (status.isSuccess() && structure)
+        if (status.isSuccess())
         {
         	/*
             String str;
@@ -509,6 +510,10 @@ class MonitorRequesterImpl : public MonitorRequester
                 std::cout << "[" << m_channelName << "] channel monitor start: " << startStatus.toString() << std::endl;
             }
 
+        }
+        else
+        {
+            std::cout << "monitorConnect(" << status.toString() << ")" << std::endl;
         }
     }
 
@@ -745,7 +750,7 @@ int main (int argc, char *argv[])
             }
         }    
 
-        if (monitor)
+        if (allOK && monitor)
         {
         	while (true)
         		epicsThreadSleep(timeOut);
