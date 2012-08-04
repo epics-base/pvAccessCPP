@@ -29,6 +29,7 @@
 #include <pv/logger.h>
 #include <pv/bitSetUtil.h>
 #include <pv/serializationHelper.h>
+#include <pv/convert.h>
 
 #include <tr1/unordered_map>
 
@@ -1839,15 +1840,17 @@ namespace epics {
     
     		virtual MonitorElement::shared_pointer poll() {
     		    Lock guard(m_mutex);
-    		    if (m_gotMonitor)
-    		      return m_nullMonitorElement;
+    		    // TODO CAS when available
+    		    bool gotMonitor = m_gotMonitor;
+    		    m_gotMonitor = false;
+    		    if (gotMonitor)
+      		      return m_monitorElement;
     		    else
-    		      return m_monitorElement;
+      		      return m_nullMonitorElement;
     		}
     
     		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
-    		    Lock guard(m_mutex);
-    			m_gotMonitor = false;
+    			// noop
     		}
     
     		Status start() {
@@ -1892,10 +1895,15 @@ namespace epics {
     		virtual void init(StructureConstPtr const & structure) {
     		    Lock guard(m_mutex);
 
-	            m_monitorElement->pvStructurePtr = getPVDataCreate()->createPVStructure(structure);
-   			    int numberFields = m_monitorElement->pvStructurePtr->getNumberFields();
-				m_monitorElement->changedBitSet.reset(new BitSet(numberFields));
-	        	m_monitorElement->overrunBitSet.reset(new BitSet(numberFields));
+    		    // reuse on reconnect
+				if (m_monitorElement->pvStructurePtr.get() == 0 ||
+					*(m_monitorElement->pvStructurePtr->getStructure().get()) != *(structure.get()))
+				{
+					m_monitorElement->pvStructurePtr = getPVDataCreate()->createPVStructure(structure);
+					int numberFields = m_monitorElement->pvStructurePtr->getNumberFields();
+					m_monitorElement->changedBitSet.reset(new BitSet(numberFields));
+					m_monitorElement->overrunBitSet.reset(new BitSet(numberFields));
+				}
     		}
     
     		virtual void response(Transport::shared_pointer const & transport, ByteBuffer* payloadBuffer) {
@@ -1910,15 +1918,17 @@ namespace epics {
     
     		virtual MonitorElement::shared_pointer poll() {
     		    Lock guard(m_mutex);
-    		    if (m_gotMonitor)
-    		      return m_nullMonitorElement;
+    		    // TODO CAS when available
+    		    bool gotMonitor = m_gotMonitor;
+    		    m_gotMonitor = false;
+    		    if (gotMonitor)
+      		      return m_monitorElement;
     		    else
-    		      return m_monitorElement;
+      		      return m_nullMonitorElement;
     		}
     
     		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
-    		    Lock guard(m_mutex);
-    			m_gotMonitor = false;
+    			// noop
     		}
     
     		Status start() {
@@ -1971,19 +1981,22 @@ namespace epics {
     		virtual void init(StructureConstPtr const & structure) {
     		    Lock guard(m_mutex);
 
-	            m_monitorElement->pvStructurePtr = getPVDataCreate()->createPVStructure(structure);
-   			    int numberFields = m_monitorElement->pvStructurePtr->getNumberFields();
-				m_monitorElement->changedBitSet.reset(new BitSet(numberFields));
-	        	m_monitorElement->overrunBitSet.reset(new BitSet(numberFields));
-	        	
-	        	m_structureChangeBitSet.reset(new BitSet(numberFields));
-	        	m_structureOverrunBitSet.reset(new BitSet(numberFields));
+    		    // reuse on reconnect
+				if (m_monitorElement->pvStructurePtr.get() == 0 ||
+					*(m_monitorElement->pvStructurePtr->getStructure().get()) == *(structure.get()))
+				{
+					m_monitorElement->pvStructurePtr = getPVDataCreate()->createPVStructure(structure);
+					int numberFields = m_monitorElement->pvStructurePtr->getNumberFields();
+					m_monitorElement->changedBitSet.reset(new BitSet(numberFields));
+					m_monitorElement->overrunBitSet.reset(new BitSet(numberFields));
 
+					m_structureChangeBitSet.reset(new BitSet(numberFields));
+					m_structureOverrunBitSet.reset(new BitSet(numberFields));
+				}
     		}
     
     		virtual void response(Transport::shared_pointer const & transport, ByteBuffer* payloadBuffer) {
     		    Lock guard(m_mutex);
-    		    
     		    if (!m_gotMonitor)
     		    {
         			// simply deserialize and notify
@@ -1991,7 +2004,7 @@ namespace epics {
     	        	m_monitorElement->pvStructurePtr->deserialize(payloadBuffer, transport.get(), m_monitorElement->changedBitSet.get());
     	        	m_monitorElement->overrunBitSet->deserialize(payloadBuffer, transport.get());
         			m_gotMonitor = true;
-                    EXCEPTION_GUARD(m_callback->monitorEvent(shared_from_this()));
+        			EXCEPTION_GUARD(m_callback->monitorEvent(shared_from_this()));
     		    }            	
 				else 
 				{
@@ -2015,6 +2028,7 @@ namespace epics {
     		virtual MonitorElement::shared_pointer poll() {
     		    Lock guard(m_mutex);
     			if (!m_gotMonitor) return m_nullMonitorElement;
+    			m_gotMonitor = false;
     			
             	// compress if needed
     			if (m_needToCompress)
@@ -2028,12 +2042,12 @@ namespace epics {
     		}
     
     		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
-    		    Lock guard(m_mutex);
-    			m_gotMonitor = false;
+    			// noop
     		}
     
     		Status start() {
     		    Lock guard(m_mutex);
+    		    // TODO no such check in Java
     		    if (!m_monitorElement->changedBitSet.get())
     		      return Status(Status::STATUSTYPE_ERROR, "Monitor not connected.");
     			m_gotMonitor = false;
