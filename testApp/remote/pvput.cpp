@@ -393,7 +393,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         if (status.isSuccess())
         {
             // show warning
-            if (!status.isOk())
+            if (!status.isOK())
             {
                 std::cout << "[" << m_channelName << "] channel put create: " << status.toString() << std::endl;
             }
@@ -417,7 +417,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         if (status.isSuccess())
         {
             // show warning
-            if (!status.isOk())
+            if (!status.isOK())
             {
                 std::cout << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
             }
@@ -446,7 +446,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         if (status.isSuccess())
         {
             // show warning
-            if (!status.isOk())
+            if (!status.isOK())
             {
                 std::cout << "[" << m_channelName << "] channel put: " << status.toString() << std::endl;
             }
@@ -498,7 +498,7 @@ public:
         if (status.isSuccess())
         {
             // show warning
-            if (!status.isOk())
+            if (!status.isOK())
             {
                 std::cout << "[" << channel->getChannelName() << "] channel create: " << status.toString() << std::endl;
             }

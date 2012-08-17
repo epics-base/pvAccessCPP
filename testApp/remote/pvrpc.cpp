@@ -123,7 +123,7 @@ public:
         if (status.isSuccess())
         {
             // show warning
-            if (!status.isOk())
+            if (!status.isOK())
             {
                 std::cout << "[" << channel->getChannelName() << "] channel create: " << status.toString() << std::endl;
             }

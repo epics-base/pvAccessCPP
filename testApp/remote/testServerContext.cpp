@@ -20,7 +20,7 @@ public:
                                             ChannelFindRequester::shared_pointer const & channelFindRequester)
     {
         ChannelFind::shared_pointer nullCF;
-        channelFindRequester->channelFindResult(Status::Ok, nullCF, false); 
+        channelFindRequester->channelFindResult(Status::OK, nullCF, false); 
         return nullCF;  
     }
 
@@ -38,7 +38,7 @@ public:
                 short priority, epics::pvData::String address)
     {
         Channel::shared_pointer nullC;
-        channelRequester->channelCreated(Status::Ok, nullC);
+        channelRequester->channelCreated(Status::OK, nullC);
         return nullC;    
     }
     

@@ -1854,11 +1854,11 @@ namespace epics {
     		}
     
     		Status start() {
-    			return Status::Ok;
+    			return Status::OK;
     		}
     
     		Status stop() {
-    			return Status::Ok;
+    			return Status::OK;
     		}
     
     		void destroy() {
@@ -1934,11 +1934,11 @@ namespace epics {
     		Status start() {
     		    Lock guard(m_mutex);
     			m_gotMonitor = false;
-    			return Status::Ok;
+    			return Status::OK;
     		}
     
     		Status stop() {
-    			return Status::Ok;
+    			return Status::OK;
     		}
     
     		void destroy() {
@@ -2053,11 +2053,11 @@ namespace epics {
     			m_gotMonitor = false;
  	    		m_monitorElement->changedBitSet->clear();
 	    		m_monitorElement->overrunBitSet->clear();
-   			    return Status::Ok;
+   			    return Status::OK;
     		}
     
     		Status stop() {
-    			return Status::Ok;
+    			return Status::OK;
     		}
     
     		void destroy() {
@@ -2255,7 +2255,7 @@ namespace epics {
                 }
                 else
                 {
-                    normalResponse(transport, version, payloadBuffer, qos, Status::Ok);
+                    normalResponse(transport, version, payloadBuffer, qos, Status::OK);
                 }
 
             }
@@ -2279,7 +2279,7 @@ namespace epics {
                 {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                     m_started = true;
-                    return Status::Ok;
+                    return Status::OK;
                 } catch (std::runtime_error &rte) {
                     stopRequest();
                     return BaseRequestImpl::channelNotConnected;
@@ -2305,7 +2305,7 @@ namespace epics {
                 {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                     m_started = false;
-                    return Status::Ok;
+                    return Status::OK;
                 } catch (std::runtime_error &rte) {
                     stopRequest();
                     return BaseRequestImpl::channelNotConnected;
@@ -2863,7 +2863,7 @@ namespace epics {
                     auto_ptr<InetAddrVector> addresses;
                     Channel::shared_pointer channel = context->createChannelInternal(channelName, channelRequester, priority, addresses);
                     if (channel.get())
-                        channelRequester->channelCreated(Status::Ok, channel);
+                        channelRequester->channelCreated(Status::OK, channel);
                     return channel;
 
                     // NOTE it's up to internal code to respond w/ error to requester and return 0 in case of errors
