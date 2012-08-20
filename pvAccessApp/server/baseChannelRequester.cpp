@@ -65,7 +65,7 @@ String BaseChannelRequester::getRequesterName()
 	return name.str();
 }
 
-void BaseChannelRequester::message(const String message, const epics::pvData::MessageType messageType)
+void BaseChannelRequester::message(String const & message, epics::pvData::MessageType messageType)
 {
 	BaseChannelRequester::message(_transport, _ioid, message, messageType);
 }

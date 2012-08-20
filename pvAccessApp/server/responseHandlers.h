@@ -230,7 +230,7 @@ namespace pvAccess {
         	 void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel);
         	 void channelStateChange(Channel::shared_pointer const & c, const Channel::ConnectionState isConnected);
         	 epics::pvData::String getRequesterName();
-        	 void message(const epics::pvData::String message, const epics::pvData::MessageType messageType);
+        	 void message(epics::pvData::String const & message, epics::pvData::MessageType messageType);
         	 void lock();
         	 void unlock();
         	 void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);

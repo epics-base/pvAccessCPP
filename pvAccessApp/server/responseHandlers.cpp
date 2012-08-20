@@ -423,7 +423,7 @@ String ServerChannelRequesterImpl::getRequesterName()
 	return name.str();
 }
 
-void ServerChannelRequesterImpl::message(const String message, const MessageType messageType)
+void ServerChannelRequesterImpl::message(String const & message, MessageType messageType)
 {
 	LOG(logLevelDebug, "[%s] %s", getMessageTypeName(messageType).c_str(), message.c_str());
 }

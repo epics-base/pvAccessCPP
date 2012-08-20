@@ -45,7 +45,7 @@ public:
         return "RequesterImpl";
     };
 
-    virtual void message(String message,MessageType messageType)
+    virtual void message(String const & message,MessageType messageType)
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -104,7 +104,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
        return "ChannelGetRequesterImpl";
    };
 
-   virtual void message(String message,MessageType messageType)
+   virtual void message(String const & message,MessageType messageType)
    {
        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
    }
@@ -219,7 +219,7 @@ public:
        return "ChannelRequesterImpl";
    };
 
-   virtual void message(String message,MessageType messageType)
+   virtual void message(String const & message,MessageType messageType)
    {
        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
    }

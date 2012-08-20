@@ -25,7 +25,7 @@ public:
         return "RequesterImpl";
     };
 
-    virtual void message(String message,MessageType messageType)
+    virtual void message(String const & message,MessageType messageType)
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
