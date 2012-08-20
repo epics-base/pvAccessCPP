@@ -45,15 +45,15 @@ char toAscii(int8 b) {
         return '.';
 }
 
-void hexDump(const String name, const int8 *bs, int len) {
+void hexDump(String const & name, const int8 *bs, int len) {
     hexDump(name, bs, 0, len);
 }
 
-void hexDump(const String name, const int8 *bs, int start, int len) {
+void hexDump(String const & name, const int8 *bs, int start, int len) {
     hexDump("", name, bs, start, len);
 }
 
-void hexDump(const String prologue, const String name, const int8 *bs,
+void hexDump(String const & prologue, String const & name, const int8 *bs,
         int start, int len) {
 
     stringstream header;

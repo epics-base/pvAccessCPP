@@ -877,7 +877,7 @@ class MockChannel : public Channel {
         return readWrite;
     }
 
-    virtual void getField(GetFieldRequester::shared_pointer const & requester,epics::pvData::String subField)
+    virtual void getField(GetFieldRequester::shared_pointer const & requester,epics::pvData::String const & subField)
     {
     	PVFieldPtr pvField;
     	if(subField == "")
@@ -1032,7 +1032,7 @@ class MockServerChannelProvider : 	public ChannelProvider,
     }
 
     virtual ChannelFind::shared_pointer channelFind(
-        epics::pvData::String channelName,
+        epics::pvData::String const & channelName,
         ChannelFindRequester::shared_pointer const & channelFindRequester)
     {
         // channel always exists
@@ -1041,7 +1041,7 @@ class MockServerChannelProvider : 	public ChannelProvider,
     }
 
     virtual Channel::shared_pointer createChannel(
-        epics::pvData::String channelName,
+        epics::pvData::String const & channelName,
         ChannelRequester::shared_pointer const & channelRequester,
         short priority)
     {
@@ -1049,10 +1049,10 @@ class MockServerChannelProvider : 	public ChannelProvider,
     }
 
     virtual Channel::shared_pointer createChannel(
-        epics::pvData::String channelName,
+        epics::pvData::String const & channelName,
         ChannelRequester::shared_pointer const & channelRequester,
         short priority,
-        epics::pvData::String address)
+        epics::pvData::String const & address)
     {
         if (address == "local")
         {

@@ -28,7 +28,7 @@ static ChannelProviderMap channelProviders;
 class ChannelAccessImpl : public ChannelAccess {
     public:
 
-    ChannelProvider::shared_pointer getProvider(String providerName) {
+    ChannelProvider::shared_pointer getProvider(String const & providerName) {
         Lock guard(channelProviderMutex);
         return channelProviders[providerName];
     }

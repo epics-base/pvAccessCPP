@@ -58,7 +58,7 @@ namespace pvAccess {
         * @param[in] fname The file to write to. If the file exists, it
         * is opened for append.
         */
-    void createFileLogger( epics::pvData::String fname );
+    void createFileLogger( epics::pvData::String const & fname );
 
 }
 }

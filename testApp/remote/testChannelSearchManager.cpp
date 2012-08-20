@@ -74,7 +74,7 @@ private:
 	void initializeUDPTransport() { }
 	void internalDestroy() { }
 	void destroyAllChannels() { }
-	void checkChannelName(String& name) {}
+	void checkChannelName(String const & name) {}
 	void checkState() {	}
 	pvAccessID generateCID()
 	{

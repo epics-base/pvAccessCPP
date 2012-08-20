@@ -25,8 +25,8 @@ namespace pvAccess {
              * @param maintenanceVersion	maintenance version.
              * @param developmentFlag	development indicator flag.
              */
-            Version(epics::pvData::String productName,
-            		epics::pvData::String implementationLangugage,
+            Version(epics::pvData::String const & productName,
+            		epics::pvData::String const & implementationLangugage,
                     int majorVersion, int minorVersion,
                     int maintenanceVersion, bool developmentFlag);
 

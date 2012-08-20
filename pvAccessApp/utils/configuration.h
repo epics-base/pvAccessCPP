@@ -28,17 +28,17 @@ class Properties
 {
 public:
 	Properties();
-	Properties(const std::string fileName);
+	Properties(const std::string &fileName);
 	virtual ~Properties();
 
-	void setProperty(const std::string key,const  std::string value);
-	std::string getProperty(const std::string key);
-	std::string getProperty(const std::string key, const std::string defaultValue);
+	void setProperty(const std::string &key,const std::string &value);
+	std::string getProperty(const std::string &key);
+	std::string getProperty(const std::string &key, const std::string &defaultValue);
 
 	void store();
-	void store(const std::string fileName);
+	void store(const std::string &fileName);
 	void load();
-	void load(const std::string fileName);
+	void load(const std::string &fileName);
 	void list();
 
 private:
@@ -83,7 +83,7 @@ public:
 	 *
 	 * @return environment variable value as bool or default value if it does not exist.
 	 */
-	virtual bool getPropertyAsBoolean(const std::string name, const bool defaultValue) = 0;
+	virtual bool getPropertyAsBoolean(const std::string &name, const bool defaultValue) = 0;
 	/**
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
@@ -93,7 +93,7 @@ public:
 	 *
 	 * @return environment variable value as int32 or default value if it does not exist.
 	 */
-	virtual epics::pvData::int32 getPropertyAsInteger(const std::string name, const epics::pvData::int32 defaultValue) = 0;
+	virtual epics::pvData::int32 getPropertyAsInteger(const std::string &name, const epics::pvData::int32 defaultValue) = 0;
 	/**
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
@@ -103,7 +103,7 @@ public:
 	 *
 	 * @return environment variable value as float or default value if it does not exist.
 	 */
-	virtual float getPropertyAsFloat(const std::string name, const float defaultValue) = 0;
+	virtual float getPropertyAsFloat(const std::string &name, const float defaultValue) = 0;
 	/**
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
@@ -113,7 +113,7 @@ public:
 	 *
 	 * @return environment variable value as double or default value if it does not exist.
 	 */
-	virtual float getPropertyAsDouble(const std::string name, const double defaultValue) = 0;
+	virtual float getPropertyAsDouble(const std::string &name, const double defaultValue) = 0;
 	/**
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
@@ -123,7 +123,7 @@ public:
 	 *
 	 * @return environment variable value as std::string or default value if it does not exist.
 	 */
-	virtual std::string getPropertyAsString(const std::string name, const std::string defaultValue) = 0;
+	virtual std::string getPropertyAsString(const std::string &name, const std::string &defaultValue) = 0;
 };
 
 class SystemConfigurationImpl: public Configuration
@@ -131,11 +131,11 @@ class SystemConfigurationImpl: public Configuration
 public:
 	SystemConfigurationImpl();
 	~SystemConfigurationImpl();
-	bool getPropertyAsBoolean(const std::string name, const bool defaultValue);
-	epics::pvData::int32 getPropertyAsInteger(const std::string name, const epics::pvData::int32 defaultValue);
-	float getPropertyAsFloat(const std::string name, const float defaultValue);
-	float getPropertyAsDouble(const std::string name, const double defaultValue);
-	std::string getPropertyAsString(const std::string name, std::string defaultValue);
+	bool getPropertyAsBoolean(const std::string &name, const bool defaultValue);
+	epics::pvData::int32 getPropertyAsInteger(const std::string &name, const epics::pvData::int32 defaultValue);
+	float getPropertyAsFloat(const std::string &name, const float defaultValue);
+	float getPropertyAsDouble(const std::string &name, const double defaultValue);
+	std::string getPropertyAsString(const std::string &name, const std::string &defaultValue);
 	std::auto_ptr<Properties> _properties;
 private:
 	ENV_PARAM _envParam;
@@ -162,14 +162,14 @@ public:
 	 *
 	 * @return configuration specified by name or NULL if it does not exists.
 	 */
-	virtual Configuration::shared_pointer getConfiguration(const std::string name) = 0;
+	virtual Configuration::shared_pointer getConfiguration(const std::string &name) = 0;
 	/**
 	 * Register configuration.
 	 *
 	 * @param name name of the configuration to register.
 	 * @param configuration configuration to register.
 	 */
-	virtual void registerConfiguration(const std::string name, Configuration::shared_pointer const & configuration) = 0;
+	virtual void registerConfiguration(const std::string &name, Configuration::shared_pointer const & configuration) = 0;
 };
 
 class ConfigurationProviderImpl: public ConfigurationProvider
@@ -180,8 +180,8 @@ public:
 	 * Destructor. Note: Registered configurations will be deleted!!
 	 */
 	~ConfigurationProviderImpl();
-	Configuration::shared_pointer getConfiguration(const std::string name);
-	void registerConfiguration(const std::string name, Configuration::shared_pointer const & configuration);
+	Configuration::shared_pointer getConfiguration(const std::string &name);
+	void registerConfiguration(const std::string &name, Configuration::shared_pointer const & configuration);
 private:
 	epics::pvData::Mutex _mutex;
 	std::map<std::string,Configuration::shared_pointer> _configs;

@@ -47,7 +47,7 @@ private:
         return findMatchingBrace(request,closeBrace,numOpen-1);
     }
 
-    static std::vector<String> split(String commaSeparatedList) {
+    static std::vector<String> split(String const & commaSeparatedList) {
         String::size_type numValues = 1;
         String::size_type index=0;
         while(true) {
@@ -202,9 +202,10 @@ private:
 public:
 
     virtual PVStructure::shared_pointer createRequest(
-        String request,
+        String const & crequest,
         Requester::shared_pointer const &  requester)
     {
+    	String request = crequest;
         PVFieldPtrArray pvFields;
         StringArray fieldNames;
         PVStructurePtr emptyPVStructure = pvDataCreate->createPVStructure(fieldNames,pvFields);

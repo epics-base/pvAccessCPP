@@ -1671,7 +1671,7 @@ namespace epics {
             
             ResponseRequest::shared_pointer m_thisPointer;
             
-            ChannelGetFieldRequestImpl(ChannelImpl::shared_pointer const & channel, GetFieldRequester::shared_pointer const & callback, String subField) :
+            ChannelGetFieldRequestImpl(ChannelImpl::shared_pointer const & channel, GetFieldRequester::shared_pointer const & callback, String const & subField) :
                     m_channel(channel),
                     m_callback(callback),
                     m_subField(subField),
@@ -1697,7 +1697,7 @@ namespace epics {
             }
 
         public:
-            static ChannelGetFieldRequestImpl::shared_pointer create(ChannelImpl::shared_pointer const & channel, GetFieldRequester::shared_pointer const & callback, String subField)
+            static ChannelGetFieldRequestImpl::shared_pointer create(ChannelImpl::shared_pointer const & channel, GetFieldRequester::shared_pointer const & callback, String const & subField)
             {
                 ChannelGetFieldRequestImpl::shared_pointer thisPointer(new ChannelGetFieldRequestImpl(channel, callback, subField), delayed_destroyable_deleter());
                 thisPointer->activate();
@@ -2068,6 +2068,233 @@ namespace epics {
 
 
 
+        	class MonitorStrategyQueue :
+                public MonitorStrategy,
+                public std::tr1::enable_shared_from_this<MonitorStrategyQueue>
+            {
+        	private:
+
+    		   int32 m_queueSize;
+
+    	       StructureConstPtr m_lastStructure;
+    	       //MonitorQueue::shared_pointer m_monitorQueue;
+
+
+               MonitorRequester::shared_pointer m_callback;
+
+        	   Mutex m_mutex;
+
+    		   BitSet::shared_pointer m_bitSet1;
+    		   BitSet::shared_pointer m_bitSet2;
+    	       bool m_overrunInProgress;
+
+    	       bool m_needToReleaseFirst;
+
+    	       MonitorElement::shared_pointer m_nullMonitorElement;
+        	   MonitorElement::shared_pointer m_monitorElement;
+
+        	   public:
+
+        	   MonitorStrategyQueue(MonitorRequester::shared_pointer const & callback, int32 queueSize) :
+        	       m_queueSize(queueSize), m_lastStructure(),// m_monitorQueue(),
+        	       m_callback(callback), m_mutex(),
+        	       m_bitSet1(), m_bitSet2(), m_overrunInProgress(false),
+        	       m_needToReleaseFirst(false),
+        	       m_nullMonitorElement(), m_monitorElement()
+        	    {
+					if (queueSize <= 1)
+						throw std::invalid_argument("queueSize <= 1");
+        	    }
+
+        	    virtual ~MonitorStrategyQueue()
+        	    {
+        	    }
+
+        		virtual void init(StructureConstPtr const & structure) {
+        		    Lock guard(m_mutex);
+
+        		    // reuse on reconnect
+    				if (m_lastStructure.get() == 0 ||
+    					*(m_lastStructure.get()) == *(structure.get()))
+    				{
+    					/*
+		    		MonitorElement[] monitorElements = new MonitorElement[queueSize];
+		            for(int i=0; i<queueSize; i++) {
+		                PVStructure pvNew = pvDataCreate.createPVStructure(structure);
+		                monitorElements[i] = MonitorQueueFactory.createMonitorElement(pvNew);
+		            }
+		            monitorQueue = MonitorQueueFactory.create(monitorElements);
+		            lastStructure = structure;
+				}
+    					 */
+    				}
+        		}
+
+        		virtual void response(Transport::shared_pointer const & transport, ByteBuffer* payloadBuffer) {
+
+			bool notify = false;
+
+			{
+    		    Lock guard(m_mutex);
+
+    		    // if in overrun mode, check if some is free
+	            if (m_overrunInProgress)
+	            {
+	            	MonitorElementPtr newElement;//TODO = monitorQueue.getFree();
+	            	if (newElement.get() != 0)
+	            	{
+	            		// take new, put current in use
+	    				PVStructurePtr pvStructure = m_monitorElement->pvStructurePtr;
+			            getConvert()->copy(pvStructure, newElement->pvStructurePtr);
+
+			            BitSetUtil::compress(m_monitorElement->changedBitSet.get(), pvStructure.get());
+			            BitSetUtil::compress(m_monitorElement->overrunBitSet.get(), pvStructure.get());
+
+			            //monitorQueue.setUsed(monitorElement);
+
+	            		m_monitorElement = newElement;
+	            		notify = true;
+
+	            		m_overrunInProgress = false;
+	            	}
+	            }
+			}
+
+			if (notify)
+			{
+				EXCEPTION_GUARD(m_callback->monitorEvent(shared_from_this()));
+			}
+
+			{
+    		    Lock guard(m_mutex);
+
+	            // setup current fields
+				PVStructurePtr pvStructure = m_monitorElement->pvStructurePtr;
+	            BitSet::shared_pointer changedBitSet = m_monitorElement->changedBitSet;
+	            BitSet::shared_pointer overrunBitSet = m_monitorElement->overrunBitSet;
+
+	            // special treatment if in overrun state
+	            if (m_overrunInProgress)
+	            {
+	            	// lazy init
+	            	if (m_bitSet1.get() == 0) m_bitSet1.reset(new BitSet(changedBitSet->size()));
+	            	if (m_bitSet2.get() == 0) m_bitSet2.reset(new BitSet(overrunBitSet->size()));
+
+	            	m_bitSet1->deserialize(payloadBuffer, transport.get());
+					pvStructure->deserialize(payloadBuffer, transport.get(), m_bitSet1.get());
+					m_bitSet2->deserialize(payloadBuffer, transport.get());
+
+					// OR local overrun
+					// TODO this does not work perfectly... uncompressed bitSets should be used!!!
+					overrunBitSet->or_and(*(changedBitSet.get()), *(m_bitSet1.get()));
+
+					// OR remove change
+					*(changedBitSet.get()) |= *(m_bitSet1.get());
+
+					// OR remote overrun
+					*(overrunBitSet.get()) |= *(m_bitSet2.get());
+	            }
+	            else
+	            {
+	            	// deserialize changedBitSet and data, and overrun bit set
+		            changedBitSet->deserialize(payloadBuffer, transport.get());
+					pvStructure->deserialize(payloadBuffer, transport.get(), changedBitSet.get());
+					overrunBitSet->deserialize(payloadBuffer, transport.get());
+	            }
+
+				// prepare next free (if any)
+				MonitorElementPtr newElement; // = monitorQueue.getFree();
+	            if (newElement.get() == 0) {
+	                m_overrunInProgress = true;
+	                return;
+	            }
+
+	            // if there was overrun in progress we manipulated bitSets... compress them
+	            if (m_overrunInProgress) {
+		            BitSetUtil::compress(changedBitSet.get(), pvStructure.get());
+		            BitSetUtil::compress(overrunBitSet.get(), pvStructure.get());
+
+		            m_overrunInProgress = false;
+	            }
+
+	            getConvert()->copy(pvStructure, newElement->pvStructurePtr);
+
+	            //monitorQueue.setUsed(monitorElement);
+
+	            m_monitorElement = newElement;
+			}
+
+        	EXCEPTION_GUARD(m_callback->monitorEvent(shared_from_this()));
+
+        		}
+
+        		virtual MonitorElement::shared_pointer poll() {
+        		    Lock guard(m_mutex);
+
+        		    if (m_needToReleaseFirst)
+            		return m_nullMonitorElement;
+            	MonitorElementPtr retVal;// = monitorQueue.getUsed();
+            	if (retVal.get() != 0)
+            	{
+            		m_needToReleaseFirst = true;
+            		return retVal;
+            	}
+
+	            // if in overrun mode and we have free, make it as last element
+	            if (m_overrunInProgress)
+	            {
+	            	MonitorElementPtr newElement;// = monitorQueue.getFree();
+	            	if (newElement.get() != 0)
+	            	{
+	            		// take new, put current in use
+	    				PVStructurePtr pvStructure = m_monitorElement->pvStructurePtr;
+			            getConvert()->copy(pvStructure, newElement->pvStructurePtr);
+
+			            BitSetUtil::compress(m_monitorElement->changedBitSet.get(), pvStructure.get());
+			            BitSetUtil::compress(m_monitorElement->overrunBitSet.get(), pvStructure.get());
+	            		//monitorQueue.setUsed(monitorElement);
+
+	            		m_monitorElement = newElement;
+
+	            		m_overrunInProgress = false;
+
+	            		m_needToReleaseFirst = true;
+	            		return m_nullMonitorElement; // TODO monitorQueue.getUsed();
+	            	}
+	            	else
+	            		return m_nullMonitorElement;		// should never happen since queueSize >= 2, but a client not calling release can do this
+	            }
+	            else
+	            	return m_nullMonitorElement;
+            }
+
+        		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
+        		    Lock guard(m_mutex);
+        		    //monitorQueue.releaseUsed(monitorElement);
+        		    m_needToReleaseFirst = false;
+        		}
+
+        		Status start() {
+        		    Lock guard(m_mutex);
+				m_overrunInProgress = false;
+	            //monitorQueue.clear();
+	            //m_monitorElement = monitorQueue.getFree();
+	            m_needToReleaseFirst = false;
+	            return Status::OK;
+        		}
+
+        		Status stop() {
+        			return Status::OK;
+        		}
+
+        		void destroy() {
+        		}
+
+        	};
+
+
+
+
         PVACCESS_REFCOUNT_MONITOR_DEFINE(channelMonitor);
 
         class ChannelMonitorImpl :
@@ -2346,7 +2573,7 @@ namespace epics {
         protected:
             ClientContextImpl::weak_pointer _context;
         public:
-            AbstractClientResponseHandler(ClientContextImpl::shared_pointer const & context, String description) : 
+            AbstractClientResponseHandler(ClientContextImpl::shared_pointer const & context, String const & description) :
                     AbstractResponseHandler(context.get(), description), _context(ClientContextImpl::weak_pointer(context)) {
             }
 
@@ -2356,7 +2583,7 @@ namespace epics {
 
         class NoopResponse : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
-            NoopResponse(ClientContextImpl::shared_pointer const & context, String description) :
+            NoopResponse(ClientContextImpl::shared_pointer const & context, String const & description) :
                     AbstractClientResponseHandler(context, description)
             {
             }
@@ -2818,7 +3045,7 @@ namespace epics {
                 }
 
                 virtual ChannelFind::shared_pointer channelFind(
-                        epics::pvData::String channelName,
+                        epics::pvData::String const & channelName,
                         ChannelFindRequester::shared_pointer const & channelFindRequester)
                 {
                     // TODO not implemented
@@ -2837,7 +3064,7 @@ namespace epics {
                 }
 
                 virtual Channel::shared_pointer createChannel(
-                        epics::pvData::String channelName,
+                        epics::pvData::String const & channelName,
                         ChannelRequester::shared_pointer const & channelRequester,
                         short priority)
                 {
@@ -2845,10 +3072,10 @@ namespace epics {
                 }
 
                 virtual Channel::shared_pointer createChannel(
-                        epics::pvData::String channelName,
+                        epics::pvData::String const & channelName,
                         ChannelRequester::shared_pointer const & channelRequester,
                         short priority,
-                        epics::pvData::String /*address*/)
+                        epics::pvData::String const & /*address*/)
                 {
                 	std::tr1::shared_ptr<ClientContextImpl> context = m_context.lock();
                 	if (!context.get())
@@ -2985,7 +3212,7 @@ namespace epics {
                 InternalChannelImpl(
                                     ClientContextImpl::shared_pointer const & context,
                                     pvAccessID channelID,
-                                    String& name,
+                                    String const & name,
                                     ChannelRequester::shared_pointer const & requester,
                                     short priority,
                                     auto_ptr<InetAddrVector>& addresses) :
@@ -3018,7 +3245,7 @@ namespace epics {
                 
                 static ChannelImpl::shared_pointer create(ClientContextImpl::shared_pointer context,
                                                    pvAccessID channelID,
-                                                   String name,
+                                                   String const & name,
                                                    ChannelRequester::shared_pointer requester,
                                                    short priority,
                                                    auto_ptr<InetAddrVector>& addresses)
@@ -3631,7 +3858,7 @@ namespace epics {
                     }
                 }
                 
-                virtual void getField(GetFieldRequester::shared_pointer const & requester,epics::pvData::String subField)
+                virtual void getField(GetFieldRequester::shared_pointer const & requester,epics::pvData::String const & subField)
                 {
                     ChannelGetFieldRequestImpl::create(shared_from_this(), requester, subField);
                 }
@@ -4001,7 +4228,7 @@ TODO
             /**
              * Check channel name.
              */
-            void checkChannelName(String& name) {
+            void checkChannelName(String const & name) {
                 if (name.empty())
                     throw std::runtime_error("0 or empty channel name");
                 else if (name.length() > MAX_CHANNEL_NAME_LENGTH)
@@ -4196,7 +4423,7 @@ TODO
              */
             // TODO no minor version with the addresses
             // TODO what if there is an channel with the same name, but on different host!
-            ChannelImpl::shared_pointer createChannelInternal(String name, ChannelRequester::shared_pointer const & requester, short priority,
+            ChannelImpl::shared_pointer createChannelInternal(String const & name, ChannelRequester::shared_pointer const & requester, short priority,
                                                auto_ptr<InetAddrVector>& addresses) { // TODO addresses
 
                 checkState();

@@ -16,7 +16,7 @@ public:
     epics::pvData::String getProviderName() { return "local"; };
     
 
-    ChannelFind::shared_pointer channelFind(epics::pvData::String channelName,
+    ChannelFind::shared_pointer channelFind(epics::pvData::String const & channelName,
                                             ChannelFindRequester::shared_pointer const & channelFindRequester)
     {
         ChannelFind::shared_pointer nullCF;
@@ -25,7 +25,7 @@ public:
     }
 
     Channel::shared_pointer createChannel(
-                epics::pvData::String channelName,
+                epics::pvData::String const & channelName,
                 ChannelRequester::shared_pointer const & channelRequester,
                 short priority = PRIORITY_DEFAULT)  
     {
@@ -33,9 +33,9 @@ public:
     }
 
     Channel::shared_pointer createChannel(
-                epics::pvData::String channelName,
+                epics::pvData::String const & channelName,
                 ChannelRequester::shared_pointer const & channelRequester,
-                short priority, epics::pvData::String address)
+                short priority, epics::pvData::String const & address)
     {
         Channel::shared_pointer nullC;
         channelRequester->channelCreated(Status::OK, nullC);
@@ -53,7 +53,7 @@ public:
                 
     virtual ~TestChannelAccess() {};
             
-    ChannelProvider::shared_pointer getProvider(epics::pvData::String providerName)
+    ChannelProvider::shared_pointer getProvider(epics::pvData::String const & providerName)
     {
         if (providerName == "local")
         {

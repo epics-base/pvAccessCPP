@@ -551,7 +551,7 @@ namespace pvAccess {
              * @param subField The name of the subField.
              * If this is null or an empty epics::pvData::String the returned Field is for the entire record.
              */
-            virtual void getField(GetFieldRequester::shared_pointer const & requester,epics::pvData::String subField) = 0;
+            virtual void getField(GetFieldRequester::shared_pointer const & requester,epics::pvData::String const & subField) = 0;
 
             /**
              * Get the access rights for a field of a PVStructure created via a call to createPVStructure.
@@ -719,7 +719,7 @@ namespace pvAccess {
              * @param channelFindRequester The epics::pvData::Requester.
              * @return An interface for the find.
              */
-            virtual ChannelFind::shared_pointer channelFind(epics::pvData::String channelName,
+            virtual ChannelFind::shared_pointer channelFind(epics::pvData::String const & channelName,
                                                      ChannelFindRequester::shared_pointer const & channelFindRequester) = 0;
 
             /**
@@ -729,7 +729,7 @@ namespace pvAccess {
              * @param priority channel priority, must be <code>PRIORITY_MIN</code> <= priority <= <code>PRIORITY_MAX</code>.
              * @return <code>Channel</code> instance. If channel does not exist <code>null</code> is returned and <code>channelRequester</code> notified.
              */
-            virtual Channel::shared_pointer createChannel(epics::pvData::String channelName,ChannelRequester::shared_pointer const & channelRequester,
+            virtual Channel::shared_pointer createChannel(epics::pvData::String const & channelName,ChannelRequester::shared_pointer const & channelRequester,
                                                    short priority = PRIORITY_DEFAULT) = 0;
 
             /**
@@ -740,8 +740,8 @@ namespace pvAccess {
              * @param address address (or list of addresses) where to look for a channel. Implementation independed epics::pvData::String.
              * @return <code>Channel</code> instance. If channel does not exist <code>null</code> is returned and <code>channelRequester</code> notified.
              */
-            virtual Channel::shared_pointer createChannel(epics::pvData::String channelName,ChannelRequester::shared_pointer const & channelRequester,
-                                                   short priority, epics::pvData::String address) = 0;
+            virtual Channel::shared_pointer createChannel(epics::pvData::String const & channelName,ChannelRequester::shared_pointer const & channelRequester,
+                                                   short priority, epics::pvData::String const & address) = 0;
         };
 
         /**
@@ -762,7 +762,7 @@ namespace pvAccess {
              * @param providerName The name of the provider.
              * @return The interface for the provider or null if the provider is not known.
              */
-            virtual ChannelProvider::shared_pointer getProvider(epics::pvData::String providerName) = 0;
+            virtual ChannelProvider::shared_pointer getProvider(epics::pvData::String const & providerName) = 0;
             
             /**
              * Get a array of the names of all the known providers.
@@ -794,7 +794,7 @@ namespace pvAccess {
              * @return The request structure if an invalid request was given. 
              */
              virtual epics::pvData::PVStructure::shared_pointer createRequest(
-                 epics::pvData::String request,
+                 epics::pvData::String const & request,
                  epics::pvData::Requester::shared_pointer const & requester) = 0;
         };
 

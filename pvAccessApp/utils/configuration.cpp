@@ -22,7 +22,7 @@ Properties::Properties()
 	_outfile->exceptions (ofstream::failbit | ofstream::badbit );
 }
 
-Properties::Properties(const string fileName)
+Properties::Properties(const string &fileName)
 {
 	_fileName = fileName;
 	_infile.reset(new ifstream());
@@ -35,7 +35,7 @@ Properties::~Properties()
 {
 }
 
-void Properties::setProperty(const string key,const  string value)
+void Properties::setProperty(const string &key, const string &value)
 {
 	string oldValue;
 	std::map<std::string,std::string>::iterator propertiesIterator = _properties.find(key);
@@ -47,7 +47,7 @@ void Properties::setProperty(const string key,const  string value)
 	_properties[key] = value;
 }
 
-string Properties::getProperty(const string key)
+string Properties::getProperty(const string &key)
 {
 	std::map<std::string,std::string>::iterator propertiesIterator = _properties.find(key);
 	if(propertiesIterator != _properties.end()) //found in map
@@ -61,7 +61,7 @@ string Properties::getProperty(const string key)
 	}
 }
 
-string Properties::getProperty(const string key, const string defaultValue)
+string Properties::getProperty(const string &key, const string &defaultValue)
 {
 	std::map<std::string,std::string>::iterator propertiesIterator = _properties.find(key);
 	if(propertiesIterator != _properties.end()) //found in map
@@ -138,7 +138,7 @@ void Properties::load()
 	_infile->close();
 }
 
-void Properties::load(const string fileName)
+void Properties::load(const string &fileName)
 {
 	_fileName = fileName;
 	load();
@@ -174,7 +174,7 @@ void Properties::store()
 	_outfile->close();
 }
 
-void Properties::store(const string fileName)
+void Properties::store(const string &fileName)
 {
 	_fileName = fileName;
 	store();
@@ -205,7 +205,7 @@ SystemConfigurationImpl::~SystemConfigurationImpl()
 	if(_envParam.name) delete[] _envParam.name;
 }
 
-bool SystemConfigurationImpl::getPropertyAsBoolean(const string name, const bool defaultValue)
+bool SystemConfigurationImpl::getPropertyAsBoolean(const string &name, const bool defaultValue)
 {
 	bool retval;
 	_ibuffer.clear();
@@ -220,7 +220,7 @@ bool SystemConfigurationImpl::getPropertyAsBoolean(const string name, const bool
         return retval;
 }
 
-int32 SystemConfigurationImpl::getPropertyAsInteger(const string name, const int32 defaultValue)
+int32 SystemConfigurationImpl::getPropertyAsInteger(const string &name, const int32 defaultValue)
 {
 	int32 retval;
 	_ibuffer.clear();
@@ -235,7 +235,7 @@ int32 SystemConfigurationImpl::getPropertyAsInteger(const string name, const int
         return retval;
 }
 
-float SystemConfigurationImpl::getPropertyAsFloat(const string name, const float defaultValue)
+float SystemConfigurationImpl::getPropertyAsFloat(const string &name, const float defaultValue)
 {
 	float retval;
 	_ibuffer.clear();
@@ -250,7 +250,7 @@ float SystemConfigurationImpl::getPropertyAsFloat(const string name, const float
         return retval;
 }
 
-float SystemConfigurationImpl::getPropertyAsDouble(const string name, const double defaultValue)
+float SystemConfigurationImpl::getPropertyAsDouble(const string &name, const double defaultValue)
 {
 	float retval;
 	_ibuffer.clear();
@@ -265,7 +265,7 @@ float SystemConfigurationImpl::getPropertyAsDouble(const string name, const doub
         return retval;
 }
 
-string SystemConfigurationImpl::getPropertyAsString(const string name, const string defaultValue)
+string SystemConfigurationImpl::getPropertyAsString(const string &name, const string &defaultValue)
 {
 	strncpy(_envParam.name,name.c_str(),name.length() + 1);
 	const char* val = envGetConfigParamPtr(&_envParam);
@@ -285,7 +285,7 @@ ConfigurationProviderImpl::~ConfigurationProviderImpl()
 {
 }
 
-void ConfigurationProviderImpl::registerConfiguration(const string name, Configuration::shared_pointer const & configuration)
+void ConfigurationProviderImpl::registerConfiguration(const string &name, Configuration::shared_pointer const & configuration)
 {
 	Lock guard(_mutex);
 	std::map<std::string,Configuration::shared_pointer>::iterator configsIter = _configs.find(name);
@@ -297,7 +297,7 @@ void ConfigurationProviderImpl::registerConfiguration(const string name, Configu
 	_configs[name] = configuration;
 }
 
-Configuration::shared_pointer ConfigurationProviderImpl::getConfiguration(const string name)
+Configuration::shared_pointer ConfigurationProviderImpl::getConfiguration(const string &name)
 {
 	std::map<std::string,Configuration::shared_pointer>::iterator configsIter = _configs.find(name);
 	if(configsIter != _configs.end())

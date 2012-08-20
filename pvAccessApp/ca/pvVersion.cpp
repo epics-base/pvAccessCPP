@@ -14,8 +14,8 @@ using epics::pvData::String;
 namespace epics {
 namespace pvAccess {
 
-Version::Version(epics::pvData::String productName,
-		epics::pvData::String implementationLangugage,
+Version::Version(epics::pvData::String const & productName,
+		epics::pvData::String const & implementationLangugage,
         int majorVersion, int minorVersion,
         int maintenanceVersion, bool developmentFlag) :
     _productName(productName),
