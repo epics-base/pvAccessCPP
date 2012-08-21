@@ -12,6 +12,7 @@
 #include <vector>
 #include <string>
 #include <ostream>
+#include <sstream>
 #include <iomanip>
 
 #include <pv/event.h>
@@ -70,71 +71,11 @@ void convertToString(StringBuilder buffer,PVField * pv,int notFirst)
         *buffer += "\t";
         return;
     }
-    PVScalar *pvScalar = static_cast<PVScalar*>(pv);
-    ScalarConstPtr pscalar = pvScalar->getScalar();
-    ScalarType scalarType = pscalar->getScalarType();
-    switch(scalarType) {
-    case pvBoolean: {
-            PVBoolean *data = static_cast<PVBoolean*>(pv);
-            bool value = data->get();
-            if(value) {
-                *buffer += "true";
-            } else {
-                *buffer += "false";
-            }
-        }
-        break;
-    case pvByte: {
-            PVByte *data = static_cast<PVByte*>(pv);
-            char xxx[30];
-            sprintf(xxx,"%d",(int)data->get());
-            *buffer += xxx;
-        }
-        break;
-    case pvShort: {
-            PVShort *data = static_cast<PVShort*>(pv);
-            char xxx[30];
-            sprintf(xxx,"%d",(int)data->get());
-            *buffer += xxx;
-        }
-        break;
-    case pvInt: {
-            PVInt *data = static_cast<PVInt*>(pv);
-            char xxx[30];
-            sprintf(xxx,"%d",(int)data->get());
-            *buffer += xxx;
-        }
-        break;
-    case pvLong: {
-            PVLong *data = static_cast<PVLong*>(pv);
-            char xxx[30];
-            sprintf(xxx,"%lld",(int64)data->get());
-            *buffer += xxx;
-        }
-        break;
-    case pvFloat: {
-            PVFloat *data = static_cast<PVFloat*>(pv);
-            char xxx[30];
-            sprintf(xxx,"%g",data->get());
-            *buffer += xxx;
-        }
-        break;
-    case pvDouble: {
-            PVDouble *data = static_cast<PVDouble*>(pv);
-            char xxx[30];
-            sprintf(xxx,"%lg",data->get());
-            *buffer += xxx;
-        }
-        break;
-    case pvString: {
-            PVString *data = static_cast<PVString*>(pv);
-            *buffer += data->get();
-        }
-        break;
-    default:
-        *buffer += "(unknown ScalarType)";
-    }
     
+    // scalar stringification
+    std::stringstream sstream;
+    sstream << std::boolalpha << *pv;
+    *buffer += sstream.str();
     *buffer += "\t";
 }
 
@@ -150,168 +91,10 @@ void convertStructure(StringBuilder buffer,PVStructure *data,int notFirst)
 
 void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
 {
-    ScalarArrayConstPtr array = pv->getScalarArray();
-    ScalarType type = array->getElementType();
-    switch(type) {
-    case pvBoolean: {
-            PVBooleanArray *pvdata = static_cast<PVBooleanArray*>(pv);
-            BooleanArrayData data = BooleanArrayData();
-            *buffer += "[";
-            for(size_t i=0; i < pvdata->getLength(); i++) {
-                if(i!=0) *buffer += ",";
-                int num = pvdata->get(i,1,data);
-                if(num==1) {
-                     BooleanArray  value = data.data;
-                     if(value[data.offset]) {
-                         *buffer += "true";
-                     } else {
-                         *buffer += "false";
-                     }
-                } else {
-                     *buffer += "???? ";
-                }
-            }
-            *buffer += "]";
-            break;
-        }
-    case pvByte: {
-            PVByteArray *pvdata = static_cast<PVByteArray*>(pv);
-            ByteArrayData data = ByteArrayData();
-            *buffer += "[";
-            for(size_t i=0; i < pvdata->getLength(); i++) {
-                if(i!=0) *buffer += ",";
-                int num = pvdata->get(i,1,data);
-                if(num==1) {
-                     int val = data.data[data.offset];
-                     char buf[16];
-                     sprintf(buf,"%d",val);
-                     *buffer += buf;
-                } else {
-                     *buffer += "???? ";
-                }
-            }
-            *buffer += "]";
-            break;
-        }
-    case pvShort: {
-            PVShortArray *pvdata = static_cast<PVShortArray*>(pv);
-            ShortArrayData data = ShortArrayData();
-            *buffer += "[";
-            for(size_t i=0; i < pvdata->getLength(); i++) {
-                if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,data);
-                if(num==1) {
-                     int val = data.data[data.offset];
-                     char buf[16];
-                     sprintf(buf,"%d",val);
-                     *buffer += buf;
-                } else {
-                     *buffer += "???? ";
-                }
-            }
-            *buffer += "]";
-            break;
-        }
-    case pvInt: {
-            PVIntArray *pvdata = static_cast<PVIntArray*>(pv);
-            IntArrayData data = IntArrayData();
-            *buffer += "[";
-            for(size_t i=0; i < pvdata->getLength(); i++) {
-                if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,data);
-                if(num==1) {
-                     int val = data.data[data.offset];
-                     char buf[16];
-                     sprintf(buf,"%d",val);
-                     *buffer += buf;
-                } else {
-                     *buffer += "???? ";
-                }
-            }
-            *buffer += "]";
-            break;
-        }
-    case pvLong: {
-            PVLongArray *pvdata = static_cast<PVLongArray*>(pv);
-            LongArrayData data = LongArrayData();
-            *buffer += "[";
-            for(size_t i=0; i < pvdata->getLength(); i++) {
-                if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,data);
-                if(num==1) {
-                     int64 val = data.data[data.offset];
-                     char buf[16];
-                     sprintf(buf,"%lld",val);
-                     *buffer += buf;
-                } else {
-                     *buffer += "???? ";
-                }
-            }
-            *buffer += "]";
-            break;
-        }
-    case pvFloat: {
-            PVFloatArray *pvdata = static_cast<PVFloatArray*>(pv);
-            FloatArrayData data = FloatArrayData();
-            *buffer += "[";
-            for(size_t i=0; i < pvdata->getLength(); i++) {
-                if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,data);
-                if(num==1) {
-                     float val = data.data[data.offset];
-                     char buf[16];
-                     sprintf(buf,"%g",val);
-                     *buffer += buf;
-                } else {
-                     *buffer += "???? ";
-                }
-            }
-            *buffer += "]";
-            break;
-        }
-    case pvDouble: {
-            PVDoubleArray *pvdata = static_cast<PVDoubleArray*>(pv);
-            DoubleArrayData data = DoubleArrayData();
-            *buffer += "[";
-            for(size_t i=0; i < pvdata->getLength(); i++) {
-                if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,data);
-                if(num==1) {
-                     double val = data.data[data.offset];
-                     char buf[16];
-                     sprintf(buf,"%lg",val);
-                     *buffer += buf;
-                } else {
-                     *buffer += "???? ";
-                }
-            }
-            *buffer += ("]");
-            break;
-        }
-    case pvString: {
-    	PVStringArray *pvdata = static_cast<PVStringArray*>(pv);
-    	StringArrayData data = StringArrayData();
-    	*buffer += "[";
-    	for(size_t i=0; i < pvdata->getLength(); i++) {
-    		if(i!=0) *buffer += ",";
-    		int num = pvdata->get(i,1,data);
-    		StringArray value = data.data;
-                if(num==1) {
-                    if(value[data.offset].length()>0) {
-                         *buffer += value[data.offset].c_str();
-                    } else {
-                         *buffer += "null";
-                    }
-    		} else {
-    			*buffer += "null";
-    		}
-    	}
-    	*buffer += "]";
-    	break;
-    }
-    default:
-        *buffer += "(array element is unknown ScalarType)";
-    }
+    // array stringification
+    std::stringstream sstream;
+    sstream << std::boolalpha << *pv;
+    *buffer += sstream.str();
 }
 
 void convertStructureArray(StringBuilder buffer,
