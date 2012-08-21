@@ -14,6 +14,7 @@
 #include <ostream>
 #include <sstream>
 #include <iomanip>
+#include <map>
 
 #include <pv/event.h>
 #include <epicsExit.h>
@@ -162,7 +163,6 @@ char *url_encode(char *str) {
 
 
 
-
 void formatNTAny(std::ostream& o, PVStructurePtr const & pvStruct)
 {
     PVFieldPtr value = pvStruct->getSubField("value");
@@ -262,32 +262,42 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
 
 }    
 
+typedef void(*NTFormatterFunc)(std::ostream& o, PVStructurePtr const & pvStruct);
+typedef map<String, NTFormatterFunc> NTFormatterLUTMap;
+NTFormatterLUTMap ntFormatterLUT;
+
+void initializeNTFormatterLUT()
+{
+	ntFormatterLUT["NTTable"] = formatNTTable;
+	ntFormatterLUT["NTScalar"] = formatNTScalar;
+	ntFormatterLUT["NTScalarArray"] = formatNTScalarArray;
+	ntFormatterLUT["NTAny"] = formatNTAny;
+
+	// bug in StandardPV
+	ntFormatterLUT["scalar_t"] = formatNTScalar;
+	ntFormatterLUT["scalarArray_t"] = formatNTScalarArray;
+}
+
 void toNTString(std::ostream& o, PVFieldPtr const & pv)
 {
+	static bool lutInitialized = false;
+	if (!lutInitialized)
+	{
+		initializeNTFormatterLUT();
+		lutInitialized = true;
+	}
+
     Type type = pv->getField()->getType();
     if (type==structure)
     {
         PVStructurePtr pvStruct = static_pointer_cast<PVStructure>(pv);
         {
-            String value = pvStruct->getField()->getID();
+            String id = pvStruct->getField()->getID();
 
-            if (value == "NTTable")
+            NTFormatterLUTMap::const_iterator formatter = ntFormatterLUT.find(id);
+            if (formatter != ntFormatterLUT.end())
             {
-                formatNTTable(std::cout, pvStruct);
-            }
-//            else if (value == "NTScalar")
-            else if (value == "scalar_t")
-            {
-                formatNTScalar(std::cout, pvStruct);
-            }
-            //            else if (value == "NTScalarArray")
-            else if (value == "scalarArray_t")
-            {
-                formatNTScalarArray(std::cout, pvStruct);
-            }
-            else if (value == "NTAny")
-            {
-                formatNTAny(std::cout, pvStruct);
+            	(formatter->second)(o, pvStruct);
             }
             else
             {
@@ -301,6 +311,7 @@ void toNTString(std::ostream& o, PVFieldPtr const & pv)
         }
     }
     
+    // no ID, just dump
     String buffer;
     pv->toString(&buffer);
     o << buffer;
