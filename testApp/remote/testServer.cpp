@@ -456,10 +456,11 @@ class MockChannelRPC : public ChannelRPC
     	}
     	else
     	{
+    		/*
     		std::string s;
     		pvArgument->toString(&s);
     		std::cout << "RPC" << std::endl << s << std::endl;
-
+			*/
     		m_channelRPCRequester->requestDone(Status::OK, m_pvStructure);
     	}
 

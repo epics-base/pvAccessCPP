@@ -11,7 +11,7 @@
 
 #include <vector>
 #include <string>
-
+#include <ostream>
 #include <iomanip>
 
 #include <pv/event.h>
@@ -380,90 +380,147 @@ char *url_encode(char *str) {
 
 
 
-
-
-void formatNTTable(StringBuilder buffer, PVStructure *pvStruct)
+void formatNTAny(std::ostream& o, PVStructurePtr const & pvStruct)
 {
-    PVStringArrayPtr labels = static_pointer_cast<PVStringArray>(pvStruct->getScalarArrayField("labels", pvString));
+    PVFieldPtr value = pvStruct->getSubField("value");
+    if (value.get() == 0)
+    {
+    	std::cerr << "no 'value' column in NTAny" << std::endl;
+        return;
+    }
+
+    o << *value;
+}
+
+void formatNTScalar(std::ostream& o, PVStructurePtr const & pvStruct)
+{
+    PVScalarPtr value = dynamic_pointer_cast<PVScalar>(pvStruct->getSubField("value"));
+    if (value.get() == 0)
+    {
+    	std::cerr << "no scalar_t 'value' column in NTScalar" << std::endl;
+        return;
+    }
+
+    o << *value;
+}
+
+void formatNTScalarArray(std::ostream& o, PVStructurePtr const & pvStruct)
+{
+    PVScalarArrayPtr value = dynamic_pointer_cast<PVScalarArray>(pvStruct->getSubField("value"));
+    if (value.get() == 0)
+    {
+    	std::cerr << "no scalar_t[] 'value' column in NTScalarArray" << std::endl;
+        return;
+    }
+
+    o << *value;
+}
+
+void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
+{
+    PVStringArrayPtr labels = dynamic_pointer_cast<PVStringArray>(pvStruct->getScalarArrayField("labels", pvString));
     if (labels.get() == 0)
     {
-    	std::cout << "no 'labels' column" << std::endl;
-        return; // TODO
+    	std::cerr << "no string[] 'labels' column in NTTable" << std::endl;
+        return;
     }
 
-    int numColumns = labels->getLength();
-    //int count = pvStruct->getNumberFields();
-    // TODO if (count < #numColumns)
+    size_t numColumns = labels->getLength();
+    if ((pvStruct->getPVFields().size()-1) < numColumns)
+    {
+    	std::cerr << "malformed NTTable, not enough of columns - " << numColumns << " column(s) expected" << std::endl;
+		return;
+    }
     
     // next numColumns fields are columns
-    int maxValues = 0;
-//    vector<DoubleArrayData> columnData;
-    vector<vector<double>*> columnData;
+    size_t maxValues = 0;
+    vector<PVScalarArrayPtr> columnData;
     PVFieldPtrArray fields = pvStruct->getPVFields();
-    for (int i = 0; i < numColumns; i++)
+    for (size_t i = 0; i < numColumns; i++)
     {
-        DoubleArrayData values;
         // TODO we relay on field ordering here (labels, <columns>)
-        PVDoubleArrayPtr arrayField = static_pointer_cast<PVDoubleArray>(fields[i+1]);
-        int count = arrayField->get(0, arrayField->getLength(), values);
-        if (count > maxValues) maxValues = count;
-        columnData.push_back(&values.data);
+    	PVScalarArrayPtr array = dynamic_pointer_cast<PVScalarArray>(fields[i+1]);
+    	if (array.get() == 0)
+    	{
+        	std::cerr << "malformed NTTable, " << (i+1+1) << ". field is not scalar_t[]" << std::endl;
+    		return;
+    	}
+    	size_t arrayLength = array->getLength();
+    	if (maxValues < arrayLength) maxValues = arrayLength;
+        columnData.push_back(array);
     }
 
-    std::cout << std::left;
+
+
+    o << std::left;
 
     // first print labels
    	StringArrayData data;
     labels->get(0, numColumns, data);
-    for (int i = 0; i < numColumns; i++)
+    for (size_t i = 0; i < numColumns; i++)
     {
-    	std::cout << std::setw(16) << data.data[i];
+    	o << std::setw(16) << data.data[i];
     }
-    std::cout << std::endl;
+    o << std::endl;
 
-    // than values
-    // TODO all the same length!!!
-    for (int r = 0; r < maxValues; r++)
+    // then values
+    for (size_t r = 0; r < maxValues; r++)
     {
-        for (int i = 0; i < numColumns; i++)
+        for (size_t i = 0; i < numColumns; i++)
         {
-//        	std::cout << std::setw(16) << columnData[i].data[r];
-        	std::cout << std::setw(16) << (*columnData[i])[r];
+        	o << std::setw(16);
+        	if (r < columnData[i]->getLength())
+        		columnData[i]->dumpValue(o, r);
+        	else
+        		o << "";
         }
-        std::cout << std::endl;
+        o << std::endl;
     }
 
 }    
 
-void toNTString(StringBuilder buffer, PVField *pv,int notFirst)
+void toNTString(std::ostream& o, PVFieldPtr const & pv)
 {
     Type type = pv->getField()->getType();
-    if(type==structure)
+    if (type==structure)
     {
-        PVStructure* pvStruct = static_cast<PVStructure*>(pv);
-        // TODO type check, getStringField is verbose
-//        PVStringPtr ntType = static_pointer_cast<PVString>(pvStruct->getSubField("normativeType"));
-//        if (ntType.get())
+        PVStructurePtr pvStruct = static_pointer_cast<PVStructure>(pv);
         {
-//            String value = ntType->get();
             String value = pvStruct->getField()->getID();
 
             if (value == "NTTable")
             {
-                formatNTTable(buffer, pvStruct);
+                formatNTTable(std::cout, pvStruct);
+            }
+//            else if (value == "NTScalar")
+            else if (value == "scalar_t")
+            {
+                formatNTScalar(std::cout, pvStruct);
+            }
+            //            else if (value == "NTScalarArray")
+            else if (value == "scalarArray_t")
+            {
+                formatNTScalarArray(std::cout, pvStruct);
+            }
+            else if (value == "NTAny")
+            {
+                formatNTAny(std::cout, pvStruct);
             }
             else
             {
-                std::cout << "unsupported normative type" << std::endl;
-                pv->toString(buffer);
+                std::cerr << "unsupported normative type" << std::endl;
+                String buffer;
+                pv->toString(&buffer);
+                o << buffer;
             }
-            
+
             return;
         }
     }
     
-    
-    pv->toString(buffer);
+    String buffer;
+    pv->toString(&buffer);
+    o << buffer;
 }
 
 
@@ -529,7 +586,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 
     virtual void message(String const & message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelGetConnect(const epics::pvData::Status& status,ChannelGet::shared_pointer const & channelGet,
@@ -541,7 +598,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << m_channelName << "] channel get create: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get create: " << status.toString() << std::endl;
             }
             
             // assign smart pointers
@@ -556,7 +613,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         }
         else
         {
-            std::cout << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
         }
     }
 
@@ -567,7 +624,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
             }
 
             String str;
@@ -595,7 +652,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         }
         else
         {
-            std::cout << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
             {
                 Lock lock(m_pointerMutex);
                 // this is OK since calle holds also owns it
@@ -631,7 +688,7 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
 
     virtual void message(String const & message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelRPCConnect(const epics::pvData::Status& status,ChannelRPC::shared_pointer const & channelRPC)
@@ -641,7 +698,7 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << m_channelName << "] channel RPC create: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel RPC create: " << status.toString() << std::endl;
             }
             
             // assign smart pointers
@@ -654,7 +711,7 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
         }
         else
         {
-            std::cout << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
         }
     }
 
@@ -665,22 +722,15 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << m_channelName << "] channel RPC: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel RPC: " << status.toString() << std::endl;
             }
 
-            String str;
-            
             // access smart pointers
             {
                 Lock lock(m_pointerMutex);
 
-                // TODO
-                pvResponse->toString(&str, 0);
+                toNTString(std::cout, pvResponse);
                 std::cout << std::endl;
-                std::cout << str << std::endl;
-                std::cout << std::endl;
-
-                toNTString(&str, pvResponse.get(), 0);
 
                 // this is OK since calle holds also owns it
                 m_channelRPC.reset();
@@ -691,7 +741,7 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
         }
         else
         {
-            std::cout << "[" << m_channelName << "] failed to RPC: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to RPC: " << status.toString() << std::endl;
             {
                 Lock lock(m_pointerMutex);
                 // this is OK since calle holds also owns it
@@ -734,7 +784,7 @@ public:
 
     virtual void message(String const & message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel)
@@ -744,12 +794,12 @@ public:
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << channel->getChannelName() << "] channel create: " << status.toString() << std::endl;
+                std::cerr << "[" << channel->getChannelName() << "] channel create: " << status.toString() << std::endl;
             }
         }
         else
         {
-            std::cout << "[" << channel->getChannelName() << "] failed to create a channel: " << status.toString() << std::endl;
+            std::cerr << "[" << channel->getChannelName() << "] failed to create a channel: " << status.toString() << std::endl;
         }
     }
 
@@ -893,8 +943,8 @@ int main (int argc, char *argv[])
         
         PVStructure::shared_pointer pvRequest;
         pvRequest = getCreateRequest()->createRequest(request,requester);
-        if(pvRequest.get()==NULL) {
-            printf("failed to parse request string\n");
+        if(pvRequest.get()==0) {
+        	fprintf(stderr, "failed to parse request string\n");
             return 1;
         }
         
@@ -930,7 +980,7 @@ int main (int argc, char *argv[])
             {
                 allOK = false;
                 channel->destroy();
-                std::cout << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
+                std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
             }
         }    
     
@@ -939,19 +989,21 @@ int main (int argc, char *argv[])
     // service RPC mode
     else
     {
-        std::cout << "service            : " << service << std::endl;
-        std::cout << "parameters         : " << std::endl;
+    	/*
+        std::cerr << "service            : " << service << std::endl;
+        std::cerr << "parameters         : " << std::endl;
 
         vector< pair<string, string> >::iterator iter = parameters.begin();
         for (; iter != parameters.end(); iter++)
-            std::cout << "    " << iter->first << " = " << iter->second << std::endl;
-        std::cout << "encoded URL request: '" << urlEncodedRequest << "'" << std::endl;
-        
+            std::cerr << "    " << iter->first << " = " << iter->second << std::endl;
+        //std::cerr << "encoded URL request: '" << urlEncodedRequest << "'" << std::endl;
+        */
+
         // TODO simply empty?
         PVStructure::shared_pointer pvRequest;
         pvRequest = getCreateRequest()->createRequest(request,requester);
         if(pvRequest.get()==NULL) {
-            printf("failed to parse request string\n");
+        	fprintf(stderr, "failed to parse request string\n");
             return 1;
         }
         
@@ -994,14 +1046,14 @@ int main (int argc, char *argv[])
             {
                 allOK = false;
                 channel->destroy();
-                std::cout << "[" << channel->getChannelName() << "] RPC create timeout" << std::endl;
+                std::cerr << "[" << channel->getChannelName() << "] RPC create timeout" << std::endl;
             }
         }
         else
         {
             allOK = false;
             channel->destroy();
-            std::cout << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
+            std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
         }
     
         ClientFactory::stop();
@@ -1011,7 +1063,7 @@ int main (int argc, char *argv[])
     {
         // TODO implement wait on context
         epicsThreadSleep ( 3.0 );
-        //std::cout << "-----------------------------------------------------------------------" << std::endl;
+        //std::cerr << "-----------------------------------------------------------------------" << std::endl;
         //epicsExitCallAtExits();
     }
 
