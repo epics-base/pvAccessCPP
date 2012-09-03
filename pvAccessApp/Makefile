@@ -76,6 +76,11 @@ LIBSRCS += baseChannelRequester.cpp
 LIBSRCS += beaconEmitter.cpp
 LIBSRCS += beaconServerStatusProvider.cpp
 
+SRC_DIRS += $(PVACCESS)/rpcService
+INC += rpcService.h
+INC += rpcServer.h
+LIBSRCS += rpcServer.cpp
+
 LIBRARY = pvAccess
 pvAccess_LIBS += Com
 pvAccess_LIBS += pvData

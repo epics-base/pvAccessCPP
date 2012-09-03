@@ -66,6 +66,10 @@ PROD_HOST += eget
 eget_SRCS += eget.cpp
 eget_LIBS += pvData pvAccess Com
 
+PROD_HOST += rpcServiceExample
+rpcServiceExample_SRCS += rpcServiceExample.cpp
+rpcServiceExample_LIBS += pvData pvAccess Com
+
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE
