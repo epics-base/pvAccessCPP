@@ -17,6 +17,7 @@
 #include <iostream>
 #include <time.h>
 #include <cstring>
+#include <stdio.h>
 
 using namespace epics::pvData;
 using std::ofstream;

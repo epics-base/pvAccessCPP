@@ -477,12 +477,12 @@ namespace epics {
                     float beaconInterval, epics::pvData::int16 priority);
 
         public:
-            static BlockingClientTCPTransport::shared_pointer create(Context::shared_pointer const & context, SOCKET channel,
+            static shared_pointer create(Context::shared_pointer const & context, SOCKET channel,
                                        std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
                                        TransportClient::shared_pointer client, epics::pvData::int8 remoteTransportRevision,
                                        float beaconInterval, epics::pvData::int16 priority)
             {
-                BlockingClientTCPTransport::shared_pointer thisPointer(
+                shared_pointer thisPointer(
                             new BlockingClientTCPTransport(context, channel, responseHandler, receiveBufferSize,
                                                            client, remoteTransportRevision, beaconInterval, priority)
                 );
@@ -657,10 +657,10 @@ namespace epics {
             BlockingServerTCPTransport(Context::shared_pointer const & context, SOCKET channel,
                     std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize);
         public:
-            static BlockingServerTCPTransport::shared_pointer create(Context::shared_pointer const & context, SOCKET channel,
+            static shared_pointer create(Context::shared_pointer const & context, SOCKET channel,
                                        std::auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize)
             {
-                BlockingServerTCPTransport::shared_pointer thisPointer(
+                shared_pointer thisPointer(
                         new BlockingServerTCPTransport(context, channel, responseHandler, receiveBufferSize)
                 );
                 thisPointer->start();

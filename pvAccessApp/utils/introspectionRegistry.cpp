@@ -74,12 +74,20 @@ void IntrospectionRegistry::printKeysAndValues(string name)
 	cout << "############## print of all key/values of " << name.c_str() << " registry : ###################" << endl;
 	for(registryMap_t::iterator registryIter = _registry.begin(); registryIter != _registry.end(); registryIter++)
 	{
+#if defined(__GNUC__) && __GNUC__ < 3
+		buffer.erase();
+#else
 		buffer.clear();
+#endif
 		cout << "\t" << "Key: "<< registryIter->first << endl;
 		cout << "\t" << "Value: " << registryIter->second << endl;
 
 		cout << "\t" << "References: " << buffer.c_str() << endl;
+#if defined(__GNUC__) && __GNUC__ < 3
+		buffer.erase();
+#else
 		buffer.clear();
+#endif
 		registryIter->second->toString(&buffer);
 		cout << "\t" << "Value toString: " << buffer.c_str() << endl;
 	}

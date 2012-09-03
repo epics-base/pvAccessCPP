@@ -38,11 +38,11 @@ namespace epics {
                                  SOCKET channel, osiSockAddr& bindAddress,
                                  short remoteTransportRevision);
         public:
-            static BlockingUDPTransport::shared_pointer create(std::auto_ptr<ResponseHandler>& responseHandler,
+            static shared_pointer create(std::auto_ptr<ResponseHandler>& responseHandler,
                     SOCKET channel, osiSockAddr& bindAddress,
                     short remoteTransportRevision)
             {
-                BlockingUDPTransport::shared_pointer thisPointer(
+                shared_pointer thisPointer(
                             new BlockingUDPTransport(responseHandler, channel, bindAddress, remoteTransportRevision)
                 );
                 return thisPointer;

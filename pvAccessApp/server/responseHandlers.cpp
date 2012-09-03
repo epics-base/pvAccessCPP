@@ -308,11 +308,11 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 
     // TODO !!!
-	//ServerChannelRequesterImpl::create(_providers.at(0), transport, channelName, cid);
+	//ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid);
 	
 	
 	if (_providers.size() == 1)
-    	ServerChannelRequesterImpl::create(_providers.at(0), transport, channelName, cid);
+    	ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid);
 	else
     	ServerChannelRequesterImpl::create(ServerSearchHandler::s_channelNameToProvider[channelName].lock(), transport, channelName, cid);     // TODO !!!!
 }

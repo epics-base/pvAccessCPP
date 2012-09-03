@@ -31,7 +31,7 @@
 #include <pv/serializationHelper.h>
 #include <pv/convert.h>
 
-#include <tr1/unordered_map>
+//#include <tr1/unordered_map>
 
 using std::tr1::dynamic_pointer_cast;
 using std::tr1::static_pointer_cast;
@@ -48,7 +48,8 @@ namespace epics {
         String emptyString;
 
         // TODO consider std::unordered_map
-        typedef std::tr1::unordered_map<pvAccessID, ResponseRequest::weak_pointer> IOIDResponseRequestMap;
+        //typedef std::tr1::unordered_map<pvAccessID, ResponseRequest::weak_pointer> IOIDResponseRequestMap;
+        typedef std::map<pvAccessID, ResponseRequest::weak_pointer> IOIDResponseRequestMap;
 
 
 #define EXCEPTION_GUARD(code) try { code; } \
@@ -1697,9 +1698,9 @@ namespace epics {
             }
 
         public:
-            static ChannelGetFieldRequestImpl::shared_pointer create(ChannelImpl::shared_pointer const & channel, GetFieldRequester::shared_pointer const & callback, String const & subField)
+            static shared_pointer create(ChannelImpl::shared_pointer const & channel, GetFieldRequester::shared_pointer const & callback, String const & subField)
             {
-                ChannelGetFieldRequestImpl::shared_pointer thisPointer(new ChannelGetFieldRequestImpl(channel, callback, subField), delayed_destroyable_deleter());
+                shared_pointer thisPointer(new ChannelGetFieldRequestImpl(channel, callback, subField), delayed_destroyable_deleter());
                 thisPointer->activate();
                 return thisPointer;
             }
@@ -3957,9 +3958,9 @@ namespace epics {
 
         public:
             
-            static InternalClientContextImpl::shared_pointer create()
+            static shared_pointer create()
             {
-                InternalClientContextImpl::shared_pointer thisPointer(new InternalClientContextImpl(), delayed_destroyable_deleter());
+                shared_pointer thisPointer(new InternalClientContextImpl(), delayed_destroyable_deleter());
                 static_cast<InternalClientContextImpl*>(thisPointer.get())->activate();
                 return thisPointer;
             }
@@ -4140,7 +4141,7 @@ TODO
                 
                 for (size_t i = 0; broadcastAddresses.get() && i < broadcastAddresses->size(); i++)
                     LOG(logLevelDebug,
-                        "Broadcast address #%d: %s", i, inetAddressToString(broadcastAddresses->at(i)).c_str());
+                        "Broadcast address #%d: %s", i, inetAddressToString((*broadcastAddresses)[i]).c_str());
 
                 // where to bind (listen) address
                 osiSockAddr listenLocalAddress;

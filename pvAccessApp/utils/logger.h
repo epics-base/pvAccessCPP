@@ -39,7 +39,11 @@ namespace pvAccess {
     void pvAccessLog(pvAccessLogLevel level, const char* format, ...);
     void pvAccessSetLogLevel(pvAccessLogLevel level);
 
-    #define LOG(level, format, ...) pvAccessLog(level, format, ##__VA_ARGS__)
+	#if defined (__GNUC__) && __GNUC__ < 3
+	#define LOG(level, format, ARGS...) pvAccessLog(level, format, ##ARGS)
+	#else
+	#define LOG(level, format, ...) pvAccessLog(level, format, ##__VA_ARGS__)
+	#endif
     #define SET_LOG_LEVEL(level) pvAccessSetLogLevel(level)
     
     // EPICS errlog

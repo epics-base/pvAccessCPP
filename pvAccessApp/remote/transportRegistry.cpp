@@ -77,7 +77,7 @@ auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::get(String con
             prioritiesIter != priorities->end();
             prioritiesIter++, i++)
 		{
-			transportArray->at(i) = prioritiesIter->second;
+			(*transportArray)[i] = prioritiesIter->second;
 		}
 		return transportArray;
 	}
@@ -146,7 +146,7 @@ auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::toArray()
              prioritiesIter != priorities->end();
              prioritiesIter++, i++)
         {
-            transportArray->at(i) = prioritiesIter->second;
+            (*transportArray)[i] = prioritiesIter->second;
         }
     }
     

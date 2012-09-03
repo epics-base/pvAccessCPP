@@ -182,7 +182,7 @@ namespace epics {
                         {
                             for(size_t i = 0; i <_ignoredAddresses->size(); i++)
                             {
-                                if(_ignoredAddresses->at(i).ia.sin_addr.s_addr==fromAddress.ia.sin_addr.s_addr)
+                                if((*_ignoredAddresses)[i].ia.sin_addr.s_addr==fromAddress.ia.sin_addr.s_addr)
                                 {
                                     ignore = true;
                                     break;
@@ -295,8 +295,17 @@ namespace epics {
         bool BlockingUDPTransport::send(ByteBuffer* buffer, const osiSockAddr& address) {
 
             buffer->flip();
-            int retval = sendto(_channel, buffer->getArray(),
-                    buffer->getLimit(), 0, &(address.sa), sizeof(sockaddr));
+            int retval = sendto(_channel,
+#ifdef __vxworks
+            		(char *)
+#endif
+            		buffer->getArray(),
+                    buffer->getLimit(), 0,
+#ifdef __vxworks
+                    (sockaddr*)
+#endif
+                    &(address.sa), sizeof(sockaddr));
+
             if(unlikely(retval<0))
             {
                 char errStr[64];
@@ -315,8 +324,16 @@ namespace epics {
 
             bool allOK = true;
             for(size_t i = 0; i<_sendAddresses->size(); i++) {
-                int retval = sendto(_channel, buffer->getArray(),
-                        buffer->getLimit(), 0, &(_sendAddresses->at(i).sa),
+                int retval = sendto(_channel,
+#ifdef __vxworks
+                		(char *)
+#endif
+                		buffer->getArray(),
+                        buffer->getLimit(), 0,
+#ifdef __vxworks
+                        (sockaddr*)
+#endif
+                        &(_sendAddresses->at(i).sa),
                         sizeof(sockaddr));
                 if(unlikely(retval<0))
                 {

@@ -11,6 +11,7 @@
 #include <osiSock.h>
 #include <ellLib.h>
 #include <epicsAssert.h>
+#include <pv/logger.h>
 
 #include <vector>
 #include <cstring>
@@ -134,7 +135,7 @@ InetAddrVector* getSocketAddressList(String list, int defaultPort,
 
     if(appendList!=NULL) {
         for(size_t i = 0; i<appendList->size(); i++)
-            iav->push_back(appendList->at(i));
+        	iav->push_back((*appendList)[i]);
     }
     return iav;
 }

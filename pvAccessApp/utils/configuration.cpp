@@ -7,6 +7,11 @@
 #include <pv/configuration.h>
 #include <pv/epicsException.h>
 
+#if defined(__GNUC__) && __GNUC__ < 3
+#define OLDGCC
+#define NO_STREAM_EXCEPTIONS
+#endif
+
 namespace epics {
 namespace pvAccess {
 
@@ -77,11 +82,17 @@ void Properties::load()
 {
 	_properties.clear();
 
+#ifdef NO_STREAM_EXCEPTIONS
+	_infile->open(_fileName.c_str(),ifstream::in);
+	if (_infile->fail())
+#else
 	try
 	{
 		_infile->open(_fileName.c_str(),ifstream::in);
 	}
-	catch (ifstream::failure& e) {
+	catch (ifstream::failure& e)
+#endif
+	{
 		string errMsg = "Error opening file: " + string(_fileName.c_str());
 		THROW_BASE_EXCEPTION(errMsg.c_str());
 	}
@@ -89,12 +100,27 @@ void Properties::load()
 	string line;
 	string property;
 	string key;
+#ifndef NO_STREAM_EXCEPTIONS
 	try
 	{
+#endif
 		while(!_infile->eof())
 		{
 			line.clear();
 			std::getline(*_infile,line);
+
+#ifdef NO_STREAM_EXCEPTIONS
+			if (_infile->fail())
+			{
+				_infile->close();
+				if(_infile->eof())
+				{
+					return; //end of file
+				}
+				string errMsg = "Error reading file: " + _fileName;
+				THROW_BASE_EXCEPTION(errMsg.c_str());
+			}
+#endif
 
 			//remove trailing spaces
 			truncate(line);
@@ -105,7 +131,7 @@ void Properties::load()
 				continue;
 			}
 			// comment
-			if(line.at(0) == '#')
+			if(line[0] == '#')
 			{
 				continue;
 			}
@@ -124,6 +150,7 @@ void Properties::load()
 			truncate(property);
 			_properties[key] = property;
 		}
+#ifndef NO_STREAM_EXCEPTIONS
 	}
 	catch (ifstream::failure& e)
 	{
@@ -135,6 +162,7 @@ void Properties::load()
 		string errMsg = "Error reading file: " + _fileName;
 		THROW_BASE_EXCEPTION(errMsg.c_str());
 	}
+#endif
 	_infile->close();
 }
 
@@ -146,11 +174,17 @@ void Properties::load(const string &fileName)
 
 void Properties::store()
 {
+#ifdef NO_STREAM_EXCEPTIONS
+	_outfile->open(_fileName.c_str(),ifstream::trunc);
+	if (_outfile->fail())
+#else
 	try
 	{
 		_outfile->open(_fileName.c_str(),ifstream::trunc);
 	}
-	catch (ofstream::failure& e) {
+	catch (ofstream::failure& e)
+#endif
+	{
 		string errMsg = "Error opening file: " + string(_fileName.c_str());
 		THROW_BASE_EXCEPTION(errMsg.c_str());
 	}
@@ -160,12 +194,19 @@ void Properties::store()
 			propertiesIterator != _properties.end();
 			propertiesIterator++ )
 	{
+#ifndef NO_STREAM_EXCEPTIONS
 		try
 		{
+#endif
 			string line = string(propertiesIterator->first) + string("=") + string(propertiesIterator->second) + string("\n");
 			_outfile->write(line.c_str(),line.length());
+#ifdef NO_STREAM_EXCEPTIONS
+			if(_outfile->fail())
+#else
 		}
-		catch (ofstream::failure& e) {
+		catch (ofstream::failure& e)
+#endif
+		{
 			_outfile->close();
 			string errMsg = "Error writing to file: " + string(_fileName.c_str());
 			THROW_BASE_EXCEPTION(errMsg.c_str());
