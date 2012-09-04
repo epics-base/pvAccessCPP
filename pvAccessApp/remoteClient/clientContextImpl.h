@@ -40,6 +40,7 @@ namespace epics {
             virtual void registerResponseRequest(ResponseRequest::shared_pointer const & responseRequest) = 0;
             virtual void unregisterResponseRequest(pvAccessID ioid) = 0;
             virtual Transport::shared_pointer checkAndGetTransport() = 0;
+            virtual Transport::shared_pointer checkDestroyedAndGetTransport() = 0;
             virtual Transport::shared_pointer getTransport() = 0;
 
             static epics::pvData::Status channelDestroyed;

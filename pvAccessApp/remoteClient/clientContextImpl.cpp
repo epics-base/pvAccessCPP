@@ -97,6 +97,7 @@ namespace epics {
             static Status notInitializedStatus;
             static Status destroyedStatus;
             static Status channelNotConnected;
+            static Status channelDestroyed;
             static Status otherRequestPendingStatus;
             static Status pvRequestNull;
             
@@ -232,6 +233,10 @@ namespace epics {
             }
 
             virtual void destroy() {
+            	destroy(false);
+            }
+
+            virtual void destroy(bool createRequestFailed) {
 
                 {
                     Lock guard(m_mutex);
@@ -245,7 +250,7 @@ namespace epics {
                 m_channel->unregisterResponseRequest(m_ioid);
 
                 // destroy remote instance
-                if (m_initialized)
+                if (!createRequestFailed && m_initialized)
                 {
                     try
                     {
@@ -276,6 +281,11 @@ namespace epics {
                 // TODO notify?
             }
 
+            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
+                if (transport.get() != 0 && startRequest(QOS_INIT))
+                	transport->enqueueSendRequest(shared_from_this());
+            }
+
             virtual void updateSubscription() {
                 // default is noop
             }
@@ -302,6 +312,7 @@ namespace epics {
         Status BaseRequestImpl::notInitializedStatus = Status(Status::STATUSTYPE_ERROR, "request not initialized");
         Status BaseRequestImpl::destroyedStatus = Status(Status::STATUSTYPE_ERROR, "request destroyed");
         Status BaseRequestImpl::channelNotConnected = Status(Status::STATUSTYPE_ERROR, "channel not connected");
+        Status BaseRequestImpl::channelDestroyed = Status(Status::STATUSTYPE_ERROR, "channel destroyed");
         Status BaseRequestImpl::otherRequestPendingStatus = Status(Status::STATUSTYPE_ERROR, "other request pending");
         Status BaseRequestImpl::pvRequestNull = Status(Status::STATUSTYPE_ERROR, "pvRequest == 0");
 
@@ -351,10 +362,11 @@ namespace epics {
                 // TODO best-effort support
 
                 try {
-                    resubscribeSubscription(m_channel->checkAndGetTransport());
+                    resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
                 } catch (std::runtime_error &rte) {
                     ChannelProcess::shared_pointer thisPointer = dynamic_pointer_cast<ChannelProcess>(shared_from_this());
-                    EXCEPTION_GUARD(m_callback->channelProcessConnect(channelNotConnected, thisPointer));
+                    EXCEPTION_GUARD(m_callback->channelProcessConnect(channelDestroyed, thisPointer));
+                    BaseRequestImpl::destroy(true);
                 }
             }
 
@@ -439,11 +451,6 @@ namespace epics {
                 }
             }
 
-            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
-                startRequest(QOS_INIT);
-                transport->enqueueSendRequest(shared_from_this());
-            }
-            
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
@@ -503,10 +510,11 @@ namespace epics {
                 // TODO one-time get, i.e. immediate get + lastRequest
                 
                 try {
-                    resubscribeSubscription(m_channel->checkAndGetTransport());
+                    resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
                 } catch (std::runtime_error &rte) {
                     ChannelGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelGet>(shared_from_this());
-                    EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(channelNotConnected, thisPointer, nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(channelDestroyed, thisPointer, nullPVStructure, nullBitSet));
+                    BaseRequestImpl::destroy(true);
                 }
             }
 
@@ -631,11 +639,6 @@ namespace epics {
                 }
             }
 
-            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
-                startRequest(QOS_INIT);
-                transport->enqueueSendRequest(shared_from_this());
-            }
-
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
@@ -701,10 +704,11 @@ namespace epics {
                 // TODO best-effort put
                 
                 try {
-                    resubscribeSubscription(m_channel->checkAndGetTransport());
+                    resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
                 } catch (std::runtime_error &rte) {
                     ChannelPut::shared_pointer thisPointer = dynamic_pointer_cast<ChannelPut>(shared_from_this());
-                    EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(channelNotConnected, thisPointer, nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(channelDestroyed, thisPointer, nullPVStructure, nullBitSet));
+                    BaseRequestImpl::destroy(true);
                 }
             }
 
@@ -859,11 +863,6 @@ namespace epics {
                 }
             }
 
-            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
-                startRequest(QOS_INIT);
-                transport->enqueueSendRequest(shared_from_this());
-            }
-
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
@@ -923,10 +922,11 @@ namespace epics {
                 BaseRequestImpl::activate();
                 
                 try {
-                    resubscribeSubscription(m_channel->checkAndGetTransport());
+                    resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
                 } catch (std::runtime_error &rte) {
                     ChannelPutGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
-                    EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(channelNotConnected, thisPointer, nullPVStructure, nullPVStructure));
+                    EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(channelDestroyed, thisPointer, nullPVStructure, nullPVStructure));
+                    BaseRequestImpl::destroy(true);
                 }
             }
             
@@ -1139,11 +1139,6 @@ namespace epics {
                 }
             }
 
-            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
-                startRequest(QOS_INIT);
-                transport->enqueueSendRequest(shared_from_this());
-            }
-
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
@@ -1206,10 +1201,11 @@ namespace epics {
 
                 // subscribe
                 try {
-                    resubscribeSubscription(m_channel->checkAndGetTransport());
+                    resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
                 } catch (std::runtime_error &rte) {
                     ChannelRPC::shared_pointer thisPointer = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
-                    EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(channelNotConnected, thisPointer));
+                    EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(channelDestroyed, thisPointer));
+                    BaseRequestImpl::destroy(true);
                 }
             }
 
@@ -1325,11 +1321,6 @@ namespace epics {
                 }
             }
 
-            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
-                startRequest(QOS_INIT);
-                transport->enqueueSendRequest(shared_from_this());
-            }
-
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
@@ -1399,10 +1390,11 @@ namespace epics {
 
                 // subscribe
                 try {
-                    resubscribeSubscription(m_channel->checkAndGetTransport());
+                    resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
                 } catch (std::runtime_error &rte) {
                     ChannelArray::shared_pointer thisPointer = dynamic_pointer_cast<ChannelArray>(shared_from_this());
-                    EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(channelNotConnected, thisPointer, PVArray::shared_pointer()));
+                    EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(channelDestroyed, thisPointer, PVArray::shared_pointer()));
+                    BaseRequestImpl::destroy(true);
                 }
             }
 
@@ -1615,12 +1607,6 @@ namespace epics {
                     stopRequest();
                     EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(channelNotConnected));
                 }
-            }
-
-
-            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
-                startRequest(QOS_INIT);
-                transport->enqueueSendRequest(shared_from_this());
             }
 
             virtual void destroy()
@@ -2363,10 +2349,11 @@ namespace epics {
                 
                 // subscribe
                 try {
-                    resubscribeSubscription(m_channel->checkAndGetTransport());
+                    resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
                 } catch (std::runtime_error &rte) {
                     Monitor::shared_pointer thisPointer = dynamic_pointer_cast<Monitor>(shared_from_this());
-                    EXCEPTION_GUARD(m_monitorRequester->monitorConnect(channelNotConnected, thisPointer, StructureConstPtr()));
+                    EXCEPTION_GUARD(m_monitorRequester->monitorConnect(channelDestroyed, thisPointer, StructureConstPtr()));
+                    BaseRequestImpl::destroy(true);
                 }
             }
 
@@ -2445,11 +2432,6 @@ namespace epics {
         			m_monitorStrategy->response(transport, payloadBuffer);
                 }
                 return true;
-            }
-
-            virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
-                startRequest(QOS_INIT);
-                transport->enqueueSendRequest(shared_from_this());
             }
 
             // override, since we optimize status
@@ -3648,6 +3630,15 @@ namespace epics {
                     return m_transport;
                 }
                 
+                virtual Transport::shared_pointer checkDestroyedAndGetTransport()
+                {
+                    Lock guard(m_channelMutex);
+
+                    if (m_connectionState == DESTROYED)
+                        throw std::runtime_error("Channel destroyed.");
+                    return m_transport;
+                }
+
                 virtual Transport::shared_pointer getTransport()
                 {
                     Lock guard(m_channelMutex);
