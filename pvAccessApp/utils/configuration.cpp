@@ -106,7 +106,7 @@ void Properties::load()
 #endif
 		while(!_infile->eof())
 		{
-			line.clear();
+			line.erase();
 			std::getline(*_infile,line);
 
 #ifdef NO_STREAM_EXCEPTIONS

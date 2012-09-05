@@ -64,7 +64,7 @@ class MockChannelProcess :
         ChannelProcess::shared_pointer thisPtr(new MockChannelProcess(channelProcessRequester, pvStructure, pvRequest));
 
         // TODO pvRequest
-    	channelProcessRequester->channelProcessConnect(Status::OK, thisPtr);
+    	channelProcessRequester->channelProcessConnect(Status::Ok, thisPtr);
     	
     	return thisPtr;
     }
@@ -148,7 +148,7 @@ class MockChannelProcess :
                 break;
 
         }
-    	m_channelProcessRequester->processDone(Status::OK);
+    	m_channelProcessRequester->processDone(Status::Ok);
 
     	if (lastRequest)
     	   destroy();
@@ -197,7 +197,7 @@ class MockChannelGet : public ChannelGet
     {
         ChannelGet::shared_pointer thisPtr(new MockChannelGet(channelGetRequester, pvStructure, pvRequest));
         // TODO pvRequest
-    	channelGetRequester->channelGetConnect(Status::OK, thisPtr, pvStructure, static_cast<MockChannelGet*>(thisPtr.get())->m_bitSet);
+    	channelGetRequester->channelGetConnect(Status::Ok, thisPtr, pvStructure, static_cast<MockChannelGet*>(thisPtr.get())->m_bitSet);
     	
     	return thisPtr;
     }
@@ -209,7 +209,7 @@ class MockChannelGet : public ChannelGet
 
     virtual void get(bool lastRequest)
     {
-    	m_channelGetRequester->getDone(Status::OK);
+    	m_channelGetRequester->getDone(Status::Ok);
     	if (m_first)
     	{
     		m_first = false;
@@ -260,7 +260,7 @@ class MockChannelPut : public ChannelPut
     {
         ChannelPut::shared_pointer thisPtr(new MockChannelPut(channelPutRequester, pvStructure, pvRequest));
         // TODO pvRequest
-    	channelPutRequester->channelPutConnect(Status::OK, thisPtr, pvStructure, static_cast<MockChannelPut*>(thisPtr.get())->m_bitSet);
+    	channelPutRequester->channelPutConnect(Status::Ok, thisPtr, pvStructure, static_cast<MockChannelPut*>(thisPtr.get())->m_bitSet);
     	
     	return thisPtr;
     }
@@ -273,14 +273,14 @@ class MockChannelPut : public ChannelPut
 
     virtual void put(bool lastRequest)
     {
-    	m_channelPutRequester->putDone(Status::OK);
+    	m_channelPutRequester->putDone(Status::Ok);
     	if (lastRequest)
     	   destroy();
     }
 
     virtual void get()
     {
-    	m_channelPutRequester->getDone(Status::OK);
+    	m_channelPutRequester->getDone(Status::Ok);
     }
 
     virtual void destroy()
@@ -321,7 +321,7 @@ class MockChannelPutGet : public ChannelPutGet
     {
         ChannelPutGet::shared_pointer thisPtr(new MockChannelPutGet(channelPutGetRequester, pvStructure, pvRequest));
         // TODO pvRequest
-    	channelPutGetRequester->channelPutGetConnect(Status::OK, thisPtr, pvStructure, pvStructure);
+    	channelPutGetRequester->channelPutGetConnect(Status::Ok, thisPtr, pvStructure, pvStructure);
     	
     	return thisPtr;
     }
@@ -333,19 +333,19 @@ class MockChannelPutGet : public ChannelPutGet
 
     virtual void putGet(bool lastRequest)
     {
-    	m_channelPutGetRequester->putGetDone(Status::OK);
+    	m_channelPutGetRequester->putGetDone(Status::Ok);
     	if (lastRequest)
     	   destroy();
     }
 
     virtual void getGet()
     {
-    	m_channelPutGetRequester->getGetDone(Status::OK);
+    	m_channelPutGetRequester->getGetDone(Status::Ok);
     }
 
     virtual void getPut()
     {
-    	m_channelPutGetRequester->getPutDone(Status::OK);
+    	m_channelPutGetRequester->getPutDone(Status::Ok);
     }
 
     virtual void destroy()
@@ -389,7 +389,7 @@ class MockChannelRPC : public ChannelRPC
     {
         ChannelRPC::shared_pointer thisPtr(new MockChannelRPC(channelRPCRequester, channelName, pvStructure, pvRequest));
         // TODO pvRequest
-    	channelRPCRequester->channelRPCConnect(Status::OK, thisPtr);
+    	channelRPCRequester->channelRPCConnect(Status::Ok, thisPtr);
     	return thisPtr;
     }
 
@@ -451,7 +451,7 @@ class MockChannelRPC : public ChannelRPC
 		        	FILL_VALUES;
 		        	static_pointer_cast<PVDoubleArray>(result->getScalarArrayField(*iter, pvDouble))->put(0, ROWS, values, 0);
 		        }
-				m_channelRPCRequester->requestDone(Status::OK, result);
+				m_channelRPCRequester->requestDone(Status::Ok, result);
 			}
     	}
     	else
@@ -461,7 +461,7 @@ class MockChannelRPC : public ChannelRPC
     		pvArgument->toString(&s);
     		std::cout << "RPC" << std::endl << s << std::endl;
 			*/
-    		m_channelRPCRequester->requestDone(Status::OK, m_pvStructure);
+    		m_channelRPCRequester->requestDone(Status::Ok, m_pvStructure);
     	}
 
     	if (lastRequest)
@@ -514,7 +514,7 @@ class MockChannelArray : public ChannelArray
         ChannelArray::shared_pointer thisPtr(new MockChannelArray(channelArrayRequester, pvStructure, pvRequest));
 
         // TODO pvRequest
-    	channelArrayRequester->channelArrayConnect(Status::OK, thisPtr, static_cast<MockChannelArray*>(thisPtr.get())->m_pvArray);
+    	channelArrayRequester->channelArrayConnect(Status::Ok, thisPtr, static_cast<MockChannelArray*>(thisPtr.get())->m_pvArray);
     	
     	return thisPtr;
     }
@@ -527,7 +527,7 @@ class MockChannelArray : public ChannelArray
     virtual void putArray(bool lastRequest, int offset, int count)
     {
         // TODO offset, count
-    	m_channelArrayRequester->putArrayDone(Status::OK);
+    	m_channelArrayRequester->putArrayDone(Status::Ok);
     	if (lastRequest)
     	   destroy();
     }
@@ -535,7 +535,7 @@ class MockChannelArray : public ChannelArray
     virtual void getArray(bool lastRequest, int offset, int count)
     {
         // TODO offset, count
-    	m_channelArrayRequester->getArrayDone(Status::OK);
+    	m_channelArrayRequester->getArrayDone(Status::Ok);
     	if (lastRequest)
     	   destroy();
     }
@@ -543,7 +543,7 @@ class MockChannelArray : public ChannelArray
     virtual void setLength(bool lastRequest, int length, int capacity)
     {
         // TODO offset, capacity
-    	m_channelArrayRequester->setLengthDone(Status::OK);
+    	m_channelArrayRequester->setLengthDone(Status::Ok);
     	if (lastRequest)
     	   destroy();
     }
@@ -605,7 +605,7 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
 
         // TODO pvRequest
         StructureConstPtr structurePtr = static_cast<MockMonitor*>(thisPtr.get())->m_pvStructure->getStructure();
-        monitorRequester->monitorConnect(Status::OK, thisPtr, structurePtr);
+        monitorRequester->monitorConnect(Status::Ok, thisPtr, structurePtr);
         
         return thisPtr;
     }
@@ -621,12 +621,12 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
     	Monitor::shared_pointer thisPtr = shared_from_this();
         m_monitorRequester->monitorEvent(thisPtr);
 
-        return Status::OK;
+        return Status::Ok;
     }
 
     virtual Status stop()
     {
-        return Status::OK;
+        return Status::Ok;
     }
 
     virtual MonitorElement::shared_pointer poll()
@@ -899,7 +899,7 @@ class MockChannel : public Channel {
     		return;
     	}
     	FieldConstPtr fieldPtr = pvField->getField();
-    	requester->getDone(Status::OK, fieldPtr);
+    	requester->getDone(Status::Ok, fieldPtr);
     }
 
     virtual ChannelProcess::shared_pointer createChannelProcess(
@@ -1037,7 +1037,7 @@ class MockServerChannelProvider : 	public ChannelProvider,
         ChannelFindRequester::shared_pointer const & channelFindRequester)
     {
         // channel always exists
-        channelFindRequester->channelFindResult(Status::OK, m_mockChannelFind, true);
+        channelFindRequester->channelFindResult(Status::Ok, m_mockChannelFind, true);
         return m_mockChannelFind;
     }
 
@@ -1059,7 +1059,7 @@ class MockServerChannelProvider : 	public ChannelProvider,
         {
         	ChannelProvider::shared_pointer chProviderPtr = shared_from_this();
         	Channel::shared_pointer channel = MockChannel::create(chProviderPtr, channelRequester, channelName, address);
-            channelRequester->channelCreated(Status::OK, channel);
+            channelRequester->channelCreated(Status::Ok, channel);
             return channel;
         }
         else

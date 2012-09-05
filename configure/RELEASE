@@ -39,3 +39,4 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 #RULES=/path/to/epics/support/module/rules/x-y
 
 -include $(TOP)/configure/RELEASE.local
+-include $(TOP)/../RELEASE.local

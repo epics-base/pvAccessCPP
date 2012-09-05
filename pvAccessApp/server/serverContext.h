@@ -108,7 +108,7 @@ public:
 protected:
 	ServerContextImpl();
 public:
-    static ServerContextImpl::shared_pointer create();
+    static shared_pointer create();
     
 	virtual ~ServerContextImpl();
 

@@ -333,7 +333,7 @@ namespace epics {
 #ifdef __vxworks
                         (sockaddr*)
 #endif
-                        &(_sendAddresses->at(i).sa),
+                        &((*_sendAddresses)[i].sa),
                         sizeof(sockaddr));
                 if(unlikely(retval<0))
                 {

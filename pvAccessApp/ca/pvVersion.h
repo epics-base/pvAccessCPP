@@ -9,7 +9,6 @@
 
 #include <pv/pvType.h>
 #include <pv/noDefaultMethods.h>
-#include <ostream>
 
 namespace epics {
 namespace pvAccess {

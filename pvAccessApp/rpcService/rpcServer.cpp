@@ -6,6 +6,9 @@
 
 #include <stdexcept>
 #include <rpcServer.h>
+#ifdef __vxworks
+#include <envLib.h>
+#endif
 
 using namespace epics::pvData;
 
@@ -36,7 +39,7 @@ class ChannelRPCServiceImpl : public ChannelRPC
     void processRequest(epics::pvData::PVStructure::shared_pointer const & pvArgument, bool lastRequest)
     {
         epics::pvData::PVStructure::shared_pointer result;
-        Status status = Status::OK;
+        Status status = Status::Ok;
         bool ok = true;
         try
         {
@@ -233,7 +236,7 @@ public:
         }
         
         ChannelRPC::shared_pointer channelRPCImpl(new ChannelRPCServiceImpl(channelRPCRequester, m_rpcService));
-        channelRPCRequester->channelRPCConnect(Status::OK, channelRPCImpl);
+        channelRPCRequester->channelRPCConnect(Status::Ok, channelRPCImpl);
         return channelRPCImpl;
     }
 
@@ -331,7 +334,7 @@ public:
             found = (m_services.find(channelName) != m_services.end());
         }
         ChannelFind::shared_pointer thisPtr(shared_from_this());
-        channelFindRequester->channelFindResult(Status::OK, thisPtr, found);
+        channelFindRequester->channelFindResult(Status::Ok, thisPtr, found);
         return thisPtr;
     }
 
@@ -359,7 +362,7 @@ public:
                 channelName,
                 channelRequester,
                 iter->second));
-        channelRequester->channelCreated(Status::OK, rpcChannel);
+        channelRequester->channelCreated(Status::Ok, rpcChannel);
         return rpcChannel;
     }
 
@@ -400,8 +403,11 @@ RPCServer::RPCServer()
     m_channelProviderImpl.reset(new RPCChannelProvider());
     registerChannelProvider(m_channelProviderImpl);
 
+#ifdef __vxworks
+    putenv(const_cast<char*>(("EPICS4_CAS_PROVIDER_NAMES=" + m_channelProviderImpl->getProviderName()).c_str()));
+#else
     setenv("EPICS4_CAS_PROVIDER_NAMES", m_channelProviderImpl->getProviderName().c_str(), 1);
-
+#endif
     m_serverContext = ServerContextImpl::create();
     
     m_serverContext->initialize(getChannelAccess());

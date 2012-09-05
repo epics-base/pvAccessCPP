@@ -47,7 +47,7 @@ class SimpleChannelSearchManagerImpl :
 	 * Constructor.
 	 * @param context
 	 */
-	static SimpleChannelSearchManagerImpl::shared_pointer create(Context::shared_pointer const & context);
+	static shared_pointer create(Context::shared_pointer const & context);
     /**
 	 * Constructor.
 	 * @param context
