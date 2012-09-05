@@ -126,6 +126,8 @@ namespace epics {
             bool m_destroyed;
             bool m_initialized;
 
+            AtomicBoolean m_subscribed;
+
             virtual ~BaseRequestImpl() {};
 
             BaseRequestImpl(ChannelImpl::shared_pointer const & channel, Requester::shared_pointer const & requester) :
@@ -134,7 +136,8 @@ namespace epics {
                     m_ioid(INVALID_IOID),
                     m_pendingRequest(NULL_REQUEST),
                     m_destroyed(false),
-                    m_initialized(false)
+                    m_initialized(false),
+                    m_subscribed()
             {
             }
             
@@ -277,13 +280,19 @@ namespace epics {
                 if (&status == &ChannelImpl::channelDestroyed)
                     destroy();
                 else if (&status == &ChannelImpl::channelDisconnected)
+                {
+                	m_subscribed.clear();
                     stopRequest();
+                }
                 // TODO notify?
             }
 
             virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
-                if (transport.get() != 0 && startRequest(QOS_INIT))
+                if (transport.get() != 0 && !m_subscribed.get() && startRequest(QOS_INIT))
+                {
+                	m_subscribed.set();
                 	transport->enqueueSendRequest(shared_from_this());
+                }
             }
 
             virtual void updateSubscription() {
