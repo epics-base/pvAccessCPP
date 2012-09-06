@@ -5,9 +5,6 @@ readSize checks if size is in limits of size_t?
 
 
 
-1. protected void destroy(boolean createRequestFailed) {
-
-
 
         // should be called without any lock hold
         // TODO in Java as in C++ ? reportChannelStateChange();

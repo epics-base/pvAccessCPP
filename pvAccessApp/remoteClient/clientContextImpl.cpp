@@ -3645,7 +3645,10 @@ namespace epics {
 
                     if (m_connectionState == DESTROYED)
                         throw std::runtime_error("Channel destroyed.");
-                    return m_transport;
+                    else if (m_connectionState == CONNECTED)
+						return m_transport;
+                    else
+                    	return Transport::shared_pointer();
                 }
 
                 virtual Transport::shared_pointer getTransport()
