@@ -30,10 +30,6 @@
 typedef SSIZE_T ssize_t;
 #endif
 
-#ifdef __vxworks
-#define INT64_MAX (0x7fffffffffffffffLL)
-#endif
-
 using namespace epics::pvData;
 
 using std::max;

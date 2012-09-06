@@ -10,11 +10,6 @@
 #include <pv/remote.h>
 #include <osiSock.h>
 
-#ifndef __vxworks
-/* why not use pvType.h here? */
-#include <stdint.h>
-#endif
-
 namespace epics {
 namespace pvAccess {
 

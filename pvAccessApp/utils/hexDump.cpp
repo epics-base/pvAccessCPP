@@ -68,11 +68,7 @@ void hexDump(String const & prologue, String const & name, const int8 *bs,
         if(((i-start)%16)==0) {
             out += chars;
             out += '\n';
-#if defined(__GNUC__) && __GNUC__ < 3
             chars.erase();
-#else
-            chars.clear();
-#endif
         }
 
         chars += toAscii(bs[i]);
