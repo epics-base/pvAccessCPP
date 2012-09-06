@@ -82,7 +82,7 @@ namespace epics {
 
             _threadId = epicsThreadCreate(threadName.c_str(),
                     epicsThreadPriorityMedium,
-                    epicsThreadGetStackSize(epicsThreadStackMedium),
+                    epicsThreadGetStackSize(epicsThreadStackSmall),
                     BlockingUDPTransport::threadRunner, this);
         }
 

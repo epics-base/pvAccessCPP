@@ -25,7 +25,6 @@
 #include <algorithm>
 #include <sstream>
 
-
 #ifdef _WIN32
 #include <BaseTsd.h>
 typedef SSIZE_T ssize_t;
@@ -215,7 +214,7 @@ namespace pvAccess {
 
             _rcvThreadId = epicsThreadCreate(threadName.c_str(),
                     epicsThreadPriorityMedium,
-                    epicsThreadGetStackSize(epicsThreadStackMedium),
+                    epicsThreadGetStackSize(epicsThreadStackBig),
                     BlockingTCPTransport::rcvThreadRunner, this);
 
             //
@@ -227,7 +226,7 @@ namespace pvAccess {
 
             _sendThreadId = epicsThreadCreate(threadName.c_str(),
             		epicsThreadPriorityMedium,
-                    epicsThreadGetStackSize(epicsThreadStackMedium),
+                    epicsThreadGetStackSize(epicsThreadStackSmall),
                     BlockingTCPTransport::sendThreadRunner, this);
         }
 
