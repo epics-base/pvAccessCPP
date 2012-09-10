@@ -413,11 +413,9 @@ class MockChannelRPC : public ChannelRPC
 			else
 			{
 		        int i = 0;
-		        int totalFields = 1 + 1 + atoi(columns->get().c_str());  // normativeType, labels, <columns>
+		        int totalFields = 1 + atoi(columns->get().c_str());  // labels, <columns>
 		        StringArray fieldNames(totalFields);
 		        FieldConstPtrArray fields(totalFields);
-		        //fieldNames[i] = "normativeType";
-		        //fields[i++] = getFieldCreate()->createScalar(pvString);
 		        fieldNames[i] = "labels";
 		        fields[i++] = getFieldCreate()->createScalarArray(pvString);
 		        char sbuf[16];
@@ -454,7 +452,48 @@ class MockChannelRPC : public ChannelRPC
 				m_channelRPCRequester->requestDone(Status::Ok, result);
 			}
     	}
-    	else
+		else if (m_channelName == "rpcNTMatrix")
+    	{
+	        // TODO type check, getStringField is verbose
+	        PVStringPtr rows = static_pointer_cast<PVString>(pvArgument->getSubField("rows"));
+	        PVStringPtr columns = static_pointer_cast<PVString>(pvArgument->getSubField("columns"));
+			if (rows.get() == 0 || columns.get() == 0)
+			{
+	    		PVStructure::shared_pointer nullPtr;
+	    		Status errorStatus(Status::STATUSTYPE_ERROR, "no rows and columns specified");
+	    		m_channelRPCRequester->requestDone(errorStatus, nullPtr);
+			}
+			else
+			{
+				int i = 0;
+		        int totalFields = 2;  // value[], dim
+		        StringArray fieldNames(totalFields);
+		        FieldConstPtrArray fields(totalFields);
+		        fieldNames[i] = "value";
+		        fields[i++] = getFieldCreate()->createScalarArray(pvDouble);
+		        fieldNames[i] = "dim";
+		        fields[i++] = getFieldCreate()->createScalarArray(pvInt);
+
+		        PVStructure::shared_pointer result(
+		            new PVStructure(getFieldCreate()->createStructure("NTMatrix", fieldNames, fields)));
+
+		        int32 rowsVal = atoi(rows->get().c_str());
+		        int32 colsVal = atoi(columns->get().c_str());
+		        int32 dimValues[] = { rowsVal, colsVal };
+		        static_pointer_cast<PVIntArray>(result->getScalarArrayField("dim", pvInt))->put(0, 2, &dimValues[0], 0);
+
+		        srand ( time(NULL) );
+
+		        int32 len = rowsVal * colsVal;
+		        vector<double> mv(len);
+		        for (int r = 0; r < len; r++)
+		        	mv[r] = (rand()-RAND_MAX/2)/(double)(RAND_MAX/2);
+		        static_pointer_cast<PVDoubleArray>(result->getScalarArrayField("value", pvDouble))->put(0, len, &mv[0], 0);
+
+	    		m_channelRPCRequester->requestDone(Status::Ok, result);
+			}
+    	}
+		else
     	{
     		/*
     		std::string s;

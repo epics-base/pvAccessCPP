@@ -262,18 +262,80 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
 
 }    
 
+
+void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
+{
+    PVDoubleArrayPtr value = dynamic_pointer_cast<PVDoubleArray>(pvStruct->getScalarArrayField("value", pvDouble));
+    if (value.get() == 0)
+    {
+    	std::cerr << "no double[] 'value' column in NTMatrix" << std::endl;
+        return;
+    }
+
+    int32 rows, cols;
+
+    PVIntArrayPtr dim = dynamic_pointer_cast<PVIntArray>(pvStruct->getScalarArrayField("dim", pvInt));
+    if (dim.get() != 0)
+    {
+		// dim[] = { rows, columns }
+		size_t dims = dim->getLength();
+		if (dims != 1 && dims != 2)
+		{
+			std::cerr << "malformed NTMatrix, dim[] must contain 1 or 2 elements instead of  " << dims << std::endl;
+			return;
+		}
+
+	    IntArrayData data;
+	    dim->get(0, dims, data);
+	    rows = data.data[0];
+	    cols = (dims == 2) ? data.data[1] : 1;
+
+		if (rows <= 0 || cols <= 0)
+		{
+			std::cerr << "malformed NTMatrix, dim[] must contain elements >= 0" << std::endl;
+			return;
+		}
+    }
+    else
+    {
+    	rows = value->getLength();
+    	cols = 1;
+    }
+
+    o << std::left;
+
+    size_t len = static_cast<size_t>(rows*cols);
+    if (len != value->getLength())
+    {
+		std::cerr << "malformed NTMatrix, values[] must contain " << len << " elements instead of  " << value->getLength() << std::endl;
+		return;
+    }
+
+    size_t ix = 0;
+    for (int32 r = 0; r < rows; r++)
+    {
+    	for (int32 c = 0; c < cols; c++)
+    	{
+        	o << std::setw(16);
+        	value->dumpValue(o, ix++);
+    	}
+        o << std::endl;
+    }
+}
+
 typedef void(*NTFormatterFunc)(std::ostream& o, PVStructurePtr const & pvStruct);
 typedef map<String, NTFormatterFunc> NTFormatterLUTMap;
 NTFormatterLUTMap ntFormatterLUT;
 
 void initializeNTFormatterLUT()
 {
-	ntFormatterLUT["NTTable"] = formatNTTable;
 	ntFormatterLUT["NTScalar"] = formatNTScalar;
 	ntFormatterLUT["NTScalarArray"] = formatNTScalarArray;
+	ntFormatterLUT["NTTable"] = formatNTTable;
+	ntFormatterLUT["NTMatrix"] = formatNTMatrix;
 	ntFormatterLUT["NTAny"] = formatNTAny;
 
-	// bug in StandardPV
+	// StandardPV "support"
 	ntFormatterLUT["scalar_t"] = formatNTScalar;
 	ntFormatterLUT["scalarArray_t"] = formatNTScalarArray;
 }
