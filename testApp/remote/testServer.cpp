@@ -771,6 +771,24 @@ class MockChannel : public Channel {
             {
                 pvField->setCapacity(specCount);
                 pvField->setLength(specCount);
+
+                double v = 0;
+                int ix = 0;
+                const int COUNT = 1024;
+
+                int n = 0;
+                while (n < specCount)
+                {
+
+                    double array[COUNT];
+                    int i = 0;
+                    for (; i < COUNT && n < specCount; i++)
+                    {
+                        array[i] = v; v+=1; n++;
+                    }
+                    pvField->put(ix, i, array, 0);
+                    ix += i;
+                }
             }
             else
             {
@@ -797,7 +815,7 @@ class MockChannel : public Channel {
             pvField->toString(&str);
             printf("%s\n", str.c_str());
             printf("=============------------------------------------!!!\n");
-            */   
+            */
         }
         else if (m_name.find("image") == 0)
         {

@@ -90,7 +90,7 @@ void convertStructure(StringBuilder buffer,PVStructure *data,int notFirst)
 	}
 }
 
-void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
+void convertArray(StringBuilder buffer,PVScalarArray * pv,int /*notFirst*/)
 {
     // array stringification
     std::stringstream sstream;
@@ -391,7 +391,9 @@ void toNTString(std::ostream& o, PVFieldPtr const & pv)
 
 double timeOut = DEFAULT_TIMEOUT;
 string request(DEFAULT_REQUEST);
-bool terseMode = false;
+
+enum PrintMode { ValueOnlyMode, StructureMode, TerseMode };
+PrintMode mode = ValueOnlyMode;
 
 
 void usage (void)
@@ -483,8 +485,6 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
                 std::cerr << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
             }
 
-            String str;
-            
             // access smart pointers
             {
                 Lock lock(m_pointerMutex);
@@ -492,16 +492,50 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
                     // needed since we access the data
                     ScopedLock dataLock(m_channelGet);
     
-                    if (terseMode)
+                    if (mode == ValueOnlyMode)
+                    {
+                    	PVFieldPtr pvField = m_pvStructure->getSubField("value");
+                    	if (pvField.get())
+                    	{
+                    		PVScalarArrayPtr pvScalarArray = std::tr1::dynamic_pointer_cast<PVScalarArray>(pvField);
+                    		if (pvScalarArray.get())
+                    		{
+                    			size_t len = pvScalarArray->getLength();
+                    			for (size_t i = 0; i < len; i++)
+                    			{
+                        			(pvScalarArray.get())->dumpValue(std::cout, i) << std::endl;
+                    			}
+                    		}
+                    		else
+                    		{
+                    			std::cout << *(pvField.get()) << std::endl;
+                    		}
+                    	}
+                    	else
+                    	{
+                    		// do a structure mode, as fallback
+                    		std::cerr << "no 'value' field" << std::endl;
+                            String str;
+                            m_pvStructure->toString(&str);
+                            std::cout << str << std::endl;
+                    	}
+                    }
+                    else if (mode == TerseMode)
+                    {
+                        String str;
                         convertToString(&str, m_pvStructure.get(), 0);
-                    else
+                        std::cout << str << std::endl;
+                    }
+                    else //if (mode == StructureMode)
+                    {
+                        String str;
                         m_pvStructure->toString(&str);
+                        std::cout << str << std::endl;
+                    }
                 } 
                 // this is OK since calle holds also owns it
                 m_channelGet.reset();
             }
-            
-            std::cout << str << std::endl;
             
             m_event.signal();
             
@@ -659,7 +693,7 @@ public:
         }
     }
 
-    virtual void channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState)
+    virtual void channelStateChange(Channel::shared_pointer const & /*channel*/, Channel::ConnectionState connectionState)
     {
         if (connectionState == Channel::CONNECTED)
         {
@@ -723,10 +757,11 @@ int main (int argc, char *argv[])
                 timeOut = DEFAULT_TIMEOUT;
             }
             break;
-        case 'r':               /* Set timeout value */
+        case 'r':               /* Set pvRequest value */
             request = optarg;
+            mode = StructureMode;
             break;          
-        case 'p':               /* Servie parameters */
+        case 'p':               /* Service parameters */
         {   
             string param = optarg;
             size_t eqPos = param.find('=');
@@ -748,7 +783,7 @@ int main (int argc, char *argv[])
             serviceRequest = true;
             break;
         case 't':               /* Terse mode */
-            terseMode = true;
+            mode = TerseMode;
             break;
         case 'd':               /* Debug log level */
             debug = true;

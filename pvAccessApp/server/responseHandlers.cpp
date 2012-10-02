@@ -155,26 +155,39 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
+	LOG(logLevelInfo,"[ServerSearchHandler::handleResponse] Search request received.");
+
 	transport->ensureData((sizeof(int32)+sizeof(int16))/sizeof(int8)+1);
+	//LOG(logLevelInfo,"[ServerSearchHandler::handleResponse] pos %d", payloadBuffer->getPosition());
 	const int32 searchSequenceId = payloadBuffer->getInt();
+	//LOG(logLevelInfo,"[ServerSearchHandler::handleResponse] pos %d", payloadBuffer->getPosition());
 	const int8 qosCode = payloadBuffer->getByte();
-	const int32 count = payloadBuffer->getShort() & 0xFFFF;
+	//LOG(logLevelInfo,"[ServerSearchHandler::handleResponse] pos %d", payloadBuffer->getPosition());
+	const int32 count = payloadBuffer->getShort();
+	//LOG(logLevelInfo,"[ServerSearchHandler::handleResponse] pos %d", payloadBuffer->getPosition());
 	const bool responseRequired = (QOS_REPLY_REQUIRED & qosCode) != 0;
+
+	//LOG(logLevelInfo,"[ServerSearchHandler::handleResponse] Search request received: ID %d count %d.", searchSequenceId, count);
 
 	for (int32 i = 0; i < count; i++)
 	{
 		transport->ensureData(sizeof(int32)/sizeof(int8));
 		const int32 cid = payloadBuffer->getInt();
+		//LOG(logLevelInfo,"[ServerSearchHandler::handleResponse] pos %d", payloadBuffer->getPosition());
 		const String name = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+		//LOG(logLevelInfo,"[ServerSearchHandler::handleResponse] pos %d", payloadBuffer->getPosition());
 		// no name check here...
+
+		//LOG(logLevelInfo,"[ServerSearchHandler::handleResponse] Search request received for CID %d name '%s'.", cid, name.c_str());
 
 		// TODO object pool!!!
 		int providerCount = _providers.size();
+
 		ServerChannelFindRequesterImpl* pr = new ServerChannelFindRequesterImpl(_context, providerCount);
 		pr->set(name, searchSequenceId, cid, responseFrom, responseRequired);
 		ChannelFindRequester::shared_pointer spr(pr);
 		
-        for (int i = 0; i < providerCount; i++)		
+		for (int i = 0; i < providerCount; i++)
 		  _providers[i]->channelFind(name, spr);
 	}
 }
@@ -237,6 +250,8 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& status, Cha
         ServerSearchHandler::s_channelNameToProvider[_name] = channelFind->getChannelProvider();
 	   }
 	   
+
+LOG(logLevelInfo,"[ServerChannelFindRequesterImpl::channelFindResult] Channel '%s' was found.", _name.c_str());
 		_wasFound = wasFound;
 		TransportSender::shared_pointer thisSender = shared_from_this();
 		_context->getBroadcastTransport()->enqueueSendRequest(thisSender);
@@ -255,6 +270,10 @@ void ServerChannelFindRequesterImpl::unlock()
 
 void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
+    char ipAddrStr[48];
+    ipAddrToDottedIP(&_sendTo->ia, ipAddrStr, sizeof(ipAddrStr));
+LOG(logLevelInfo,"[ServerChannelFindRequesterImpl::send] Sending search response back for %s to %s.", _name.c_str(), ipAddrStr);
+
 	int32 count = 1;
 	control->startMessage((int8)4, (sizeof(int32)+sizeof(int8)+128+2*sizeof(int16)+count*sizeof(int32))/sizeof(int8));
 
@@ -1342,7 +1361,7 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 	{
 		Monitor::shared_pointer monitor = _channelMonitor;
 		MonitorElement::shared_pointer element = monitor->poll();
-		if (element != NULL)
+		if (element.get())
 		{
 			control->startMessage((int8)CMD_MONITOR, sizeof(int32)/sizeof(int8) + 1);
 			buffer->putInt(_ioid);
@@ -1350,7 +1369,7 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 
 			// changedBitSet and data, if not notify only (i.e. queueSize == -1)
 			BitSet::shared_pointer changedBitSet = element->changedBitSet;
-			if (changedBitSet != NULL)
+			if (changedBitSet.get())
 			{
 				changedBitSet->serialize(buffer, control);
 				element->pvStructurePtr->serialize(buffer, control, changedBitSet.get());
