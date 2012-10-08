@@ -311,14 +311,16 @@ class MonitorRequesterImpl : public MonitorRequester
 
 			str.reserve(16*1024*1024);
 
-			str += "\n";
+			//str += "\n";
 			str += m_channelName;
 			str += ": ";
 
+			/*
 			element->changedBitSet->toString(&str);
 			str += '/';
 			element->overrunBitSet->toString(&str);
 			str += '\n';
+			*/
 
 			if (terseMode)
 				convertToString(&str, element->pvStructurePtr.get(), 0);

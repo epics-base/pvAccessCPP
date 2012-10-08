@@ -759,7 +759,8 @@ int main (int argc, char *argv[])
             break;
         case 'r':               /* Set pvRequest value */
             request = optarg;
-            mode = StructureMode;
+            // do not override terse mode
+            if (mode == ValueOnlyMode) mode = StructureMode;
             break;          
         case 'p':               /* Service parameters */
         {   

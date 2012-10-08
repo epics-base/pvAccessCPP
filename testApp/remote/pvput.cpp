@@ -554,7 +554,7 @@ int main (int argc, char *argv[])
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:w:t")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:td")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
