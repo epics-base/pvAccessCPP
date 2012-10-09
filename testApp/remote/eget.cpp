@@ -401,11 +401,12 @@ void usage (void)
     fprintf (stderr, "\nUsage: eget [options] [<PV name>... | -s <service name>]\n\n"
     "  -h: Help: Print this message\n"
     "\noptions:\n"
-    "  -s <service name>:   RPC based service name\n"
-    "  -p <service param>:  Service parameter in form 'name=value'\n"
-    "  -r <pv request>:     Request, specifies what fields to return and options, default is '%s'\n"
+    "  -s <service name>:   Service API compliant based RPC service name (accepts NTURI request argument)\n"
+    "  -a <service arg>:    Service argument in form 'name=value'\n"
+    "  -r <pv request>:     Get request string, specifies what fields to return and options, default is '%s'\n"
     "  -w <sec>:            Wait time, specifies timeout, default is %f second(s)\n"
-    "  -t:                  Terse mode - print only value, without name\n"
+    "  -q:					Pure pvAccess RPC based service (send NTURI.query as request argument)\n"
+    "  -t:                  Terse mode - print only value, without field names\n"
     "  -d:                  Enable debug output\n"
     "  -c:                  Wait for clean shutdown and report used instance count (for expert users)"
     "\n\nexamples:\n\n"
@@ -413,10 +414,10 @@ void usage (void)
 "> eget corr:li32:53:bdes\n"
 "\n"
 "#! Get the table of all correctors from the rdb service\n"
-"> eget -s rdbService -p entity=swissfel:devicenames\n"
+"> eget -s rdbService -a entity=swissfel:devicenames\n"
 "\n"
-"#! Get the archive history of quad345:hist between 2 times, from the archive service\n"
-"> eget -s archiveService -p entity=quad345:hist -p starttime=2012-02-12T10:04:56 -p endtime=2012-02-01T10:04:56\n"
+"#! Get the archive history of quad45:bdes;history between 2 times, from the archive service\n"
+"> eget -s archiveService -a entity=quad45:bdes;history -a starttime=2012-02-12T10:04:56 -a endtime=2012-02-01T10:04:56\n"
 "\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
@@ -738,13 +739,14 @@ int main (int argc, char *argv[])
     Requester::shared_pointer requester(new RequesterImpl());
     
     bool serviceRequest = false;
+    bool onlyQuery = false;
     string service;
     string urlEncodedRequest;
     vector< pair<string,string> > parameters;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:s:p:w:tdc")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:s:a:w:qtdc")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -762,7 +764,7 @@ int main (int argc, char *argv[])
             // do not override terse mode
             if (mode == ValueOnlyMode) mode = StructureMode;
             break;          
-        case 'p':               /* Service parameters */
+        case 'a':               /* Service parameters */
         {   
             string param = optarg;
             size_t eqPos = param.find('=');
@@ -782,6 +784,9 @@ int main (int argc, char *argv[])
         case 's':               /* Service name */
             service = optarg;
             serviceRequest = true;
+            break;
+        case 'q':               /* pvAccess RPC mode */
+            onlyQuery = true;
             break;
         case 't':               /* Terse mode */
             mode = TerseMode;
@@ -891,7 +896,7 @@ int main (int argc, char *argv[])
         //std::cerr << "encoded URL request: '" << urlEncodedRequest << "'" << std::endl;
         */
 
-        // TODO simply empty?
+        // simply empty
         PVStructure::shared_pointer pvRequest;
         pvRequest = getCreateRequest()->createRequest(request,requester);
         if(pvRequest.get()==NULL) {
@@ -899,6 +904,7 @@ int main (int argc, char *argv[])
             return 1;
         }
         
+        /*
         int i = 0;
         StringArray fieldNames(parameters.size());
         FieldConstPtrArray fields(parameters.size());
@@ -917,6 +923,65 @@ int main (int argc, char *argv[])
         {
             args->getStringField(iter->first)->put(iter->second);
         }
+		*/
+
+        StringArray queryFieldNames;
+        FieldConstPtrArray queryFields;
+        for (vector< pair<string, string> >::iterator iter = parameters.begin();
+             iter != parameters.end();
+             iter++)
+        {
+        	queryFieldNames.push_back(iter->first);
+        	queryFields.push_back(getFieldCreate()->createScalar(pvString));
+        }
+
+        Structure::const_shared_pointer queryStructure(
+        		getFieldCreate()->createStructure(
+        				queryFieldNames,
+        				queryFields
+        			)
+        	);
+
+
+
+        StringArray uriFieldNames;
+        uriFieldNames.push_back("path");
+        uriFieldNames.push_back("query");
+
+        FieldConstPtrArray uriFields;
+        uriFields.push_back(getFieldCreate()->createScalar(pvString));
+        uriFields.push_back(queryStructure);
+
+        Structure::const_shared_pointer uriStructure(
+        		getFieldCreate()->createStructure(
+        				"uri:ev4:nt/2012/pwd:NTURI",
+        				uriFieldNames,
+        				uriFields
+        			)
+        	);
+
+
+
+        PVStructure::shared_pointer request(
+        		getPVDataCreate()->createPVStructure(uriStructure)
+        	);
+
+        request->getStringField("path")->put(service);
+        PVStructure::shared_pointer query = request->getStructureField("query");
+        for (vector< pair<string, string> >::iterator iter = parameters.begin();
+             iter != parameters.end();
+             iter++)
+        {
+        	query->getStringField(iter->first)->put(iter->second);
+        }
+
+
+        PVStructure::shared_pointer arg = onlyQuery ? query : request;
+        if (debug)
+        {
+        	std::cout << "Request structure: " << std::endl << *(arg.get()) << std::endl;
+        }
+
 
         ClientFactory::start();
         ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
@@ -931,7 +996,7 @@ int main (int argc, char *argv[])
 
             if (rpcRequesterImpl->waitUntilConnected(timeOut))
             {
-				channelRPC->request(args, true);
+				channelRPC->request(arg, true);
 				allOK &= rpcRequesterImpl->waitUntilRPC(timeOut);
 			}
             else
