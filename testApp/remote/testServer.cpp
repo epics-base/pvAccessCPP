@@ -402,8 +402,14 @@ class MockChannelRPC : public ChannelRPC
     {
 		if (m_channelName == "rpcNTTable")
     	{
+			PVStructure::shared_pointer args(
+					(pvArgument->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+							pvArgument->getStructureField("query") :
+							pvArgument
+				);
+
 	        // TODO type check, getStringField is verbose
-	        PVStringPtr columns = static_pointer_cast<PVString>(pvArgument->getSubField("columns"));
+	        PVStringPtr columns = static_pointer_cast<PVString>(args->getSubField("columns"));
 			if (columns.get() == 0)
 			{
 	    		PVStructure::shared_pointer nullPtr;
@@ -429,9 +435,10 @@ class MockChannelRPC : public ChannelRPC
 		        }
 
 		        PVStructure::shared_pointer result(
-		            new PVStructure(getFieldCreate()->createStructure("NTTable", fieldNames, fields)));
-
-		        //result->getStringField("normativeType")->put("NTTable");
+		        		getPVDataCreate()->createPVStructure(
+		        				getFieldCreate()->createStructure("uri:ev4:nt/2012/pwd:NTTable", fieldNames, fields)
+		        			)
+		        		);
 		        static_pointer_cast<PVStringArray>(result->getScalarArrayField("labels", pvString))->put(0, labels.size(), &labels[0], 0);
 
 		        srand ( time(NULL) );
@@ -454,9 +461,15 @@ class MockChannelRPC : public ChannelRPC
     	}
 		else if (m_channelName == "rpcNTMatrix")
     	{
-	        // TODO type check, getStringField is verbose
-	        PVStringPtr rows = static_pointer_cast<PVString>(pvArgument->getSubField("rows"));
-	        PVStringPtr columns = static_pointer_cast<PVString>(pvArgument->getSubField("columns"));
+			PVStructure::shared_pointer args(
+					(pvArgument->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+							pvArgument->getStructureField("query") :
+							pvArgument
+				);
+
+			// TODO type check, getStringField is verbose
+	        PVStringPtr rows = static_pointer_cast<PVString>(args->getSubField("rows"));
+	        PVStringPtr columns = static_pointer_cast<PVString>(args->getSubField("columns"));
 			if (rows.get() == 0 || columns.get() == 0)
 			{
 	    		PVStructure::shared_pointer nullPtr;
@@ -475,7 +488,10 @@ class MockChannelRPC : public ChannelRPC
 		        fields[i++] = getFieldCreate()->createScalarArray(pvInt);
 
 		        PVStructure::shared_pointer result(
-		            new PVStructure(getFieldCreate()->createStructure("NTMatrix", fieldNames, fields)));
+		        		getPVDataCreate()->createPVStructure(
+		        				getFieldCreate()->createStructure("uri:ev4:nt/2012/pwd:NTMatrix", fieldNames, fields)
+		        			)
+		        		);
 
 		        int32 rowsVal = atoi(rows->get().c_str());
 		        int32 colsVal = atoi(columns->get().c_str());

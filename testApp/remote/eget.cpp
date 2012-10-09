@@ -329,6 +329,16 @@ NTFormatterLUTMap ntFormatterLUT;
 
 void initializeNTFormatterLUT()
 {
+	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTScalar"] = formatNTScalar;
+	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTScalarArray"] = formatNTScalarArray;
+	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTTable"] = formatNTTable;
+	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTMatrix"] = formatNTMatrix;
+	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTAny"] = formatNTAny;
+
+	//
+	// TODO remove: smooth transition
+	//
+
 	ntFormatterLUT["NTScalar"] = formatNTScalar;
 	ntFormatterLUT["NTScalarArray"] = formatNTScalarArray;
 	ntFormatterLUT["NTTable"] = formatNTTable;
@@ -904,26 +914,6 @@ int main (int argc, char *argv[])
             return 1;
         }
         
-        /*
-        int i = 0;
-        StringArray fieldNames(parameters.size());
-        FieldConstPtrArray fields(parameters.size());
-        for (vector< pair<string, string> >::iterator iter = parameters.begin();
-             iter != parameters.end();
-             iter++, i++)
-        {
-        	fieldNames[i] = iter->first;
-            fields[i] = getFieldCreate()->createScalar(pvString);
-        }
-        PVStructure::shared_pointer args(
-            new PVStructure(getFieldCreate()->createStructure(fieldNames, fields)));
-        for (vector< pair<string, string> >::iterator iter = parameters.begin();
-             iter != parameters.end();
-             iter++)
-        {
-            args->getStringField(iter->first)->put(iter->second);
-        }
-		*/
 
         StringArray queryFieldNames;
         FieldConstPtrArray queryFields;
