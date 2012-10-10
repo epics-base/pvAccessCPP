@@ -38,7 +38,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
         BlockingUDPTransport::BlockingUDPTransport(
                 auto_ptr<ResponseHandler>& responseHandler, SOCKET channel,
                 osiSockAddr& bindAddress,
-                short remoteTransportRevision) :
+                short /*remoteTransportRevision*/) :
                     _closed(),
                     _responseHandler(responseHandler),
                     _channel(channel),
@@ -144,7 +144,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             }
         }
 
-        void BlockingUDPTransport::startMessage(int8 command, size_t ensureCapacity) {
+        void BlockingUDPTransport::startMessage(int8 command, size_t /*ensureCapacity*/) {
             _lastMessageStartPosition = _sendBuffer->getPosition();
             _sendBuffer->putByte(CA_MAGIC);
             _sendBuffer->putByte(CA_VERSION);

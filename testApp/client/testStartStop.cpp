@@ -1,7 +1,7 @@
 #include <iostream>
 #include <pv/clientFactory.h>
 
-int main(int argc, char *argv[]) {
+int main() {
    std::cout << "to start pvAccess ClientFactory" << std::endl;
    ::epics::pvAccess::ClientFactory::start();
    std::cout << "do nothing after starting pvAccess ClientFactory" << std::endl;

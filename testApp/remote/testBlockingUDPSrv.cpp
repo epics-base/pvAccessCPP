@@ -49,7 +49,7 @@ public:
 
 class DummyResponseHandler : public ResponseHandler {
 public:
-    DummyResponseHandler(Context* context) 
+    DummyResponseHandler(Context* /*context*/)
        : packets(0) {
     }
     
@@ -123,7 +123,7 @@ void testBlockingUDPConnector() {
     }
 }
 
-int main(int argc, char *argv[]) {
+int main() {
 //    createFileLogger("testBlockingUDPSrv.log");
 
     testBlockingUDPConnector();

@@ -22,7 +22,7 @@ namespace epics {
     namespace pvAccess {
 
         void AbstractResponseHandler::handleResponse(osiSockAddr* responseFrom,
-                Transport::shared_pointer const & transport, int8 version, int8 command,
+                Transport::shared_pointer const & /*transport*/, int8 version, int8 command,
                 size_t payloadSize, ByteBuffer* payloadBuffer) {
             if(_debug) {
                 char ipAddrStr[48];

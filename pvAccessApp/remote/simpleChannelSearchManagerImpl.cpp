@@ -125,7 +125,7 @@ void SimpleChannelSearchManagerImpl::unregisterSearchInstance(SearchInstance::sh
 		m_channels.erase(id);
 }
 
-void SimpleChannelSearchManagerImpl::searchResponse(pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress)
+void SimpleChannelSearchManagerImpl::searchResponse(pvAccessID cid, int32_t /*seqNo*/, int8_t minorRevision, osiSockAddr* serverAddress)
 {
 	Lock guard(m_channelMutex);
 	std::map<pvAccessID,SearchInstance::shared_pointer>::iterator channelsIter = m_channels.find(cid);

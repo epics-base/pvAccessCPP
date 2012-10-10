@@ -27,7 +27,7 @@ namespace epics {
         BlockingClientTCPTransport::BlockingClientTCPTransport(
                 Context::shared_pointer const & context, SOCKET channel,
                 auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize,
-                TransportClient::shared_pointer client, int8 remoteTransportRevision,
+                TransportClient::shared_pointer client, int8 /*remoteTransportRevision*/,
                 float beaconInterval, int16 priority) :
             BlockingTCPTransport(context, channel, responseHandler, receiveBufferSize, priority),
                     _connectionTimeout(beaconInterval*1000),

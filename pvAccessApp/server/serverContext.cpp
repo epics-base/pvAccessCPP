@@ -546,7 +546,7 @@ TransportRegistry::shared_pointer ServerContextImpl::getTransportRegistry()
 	return _transportRegistry;
 }
 
-Channel::shared_pointer ServerContextImpl::getChannel(pvAccessID id)
+Channel::shared_pointer ServerContextImpl::getChannel(pvAccessID /*id*/)
 {
 	// not used
 	return Channel::shared_pointer();

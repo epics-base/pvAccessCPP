@@ -18,9 +18,9 @@ using namespace epics::pvData;
 namespace epics {
     namespace pvAccess {
 
-    Transport::shared_pointer BlockingUDPConnector::connect(TransportClient::shared_pointer const & client,
+    Transport::shared_pointer BlockingUDPConnector::connect(TransportClient::shared_pointer const & /*client*/,
                 auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& bindAddress,
-                int8 transportRevision, int16 priority) {
+                int8 transportRevision, int16 /*priority*/) {
                     
             LOG(logLevelDebug, "Creating datagram socket to: %s",
                     inetAddressToString(bindAddress).c_str());

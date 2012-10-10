@@ -80,7 +80,7 @@ void convertStructure(StringBuilder buffer,PVStructure *data,int notFirst)
 	}
 }
 
-void convertArray(StringBuilder buffer,PVScalarArray *pv,int notFirst)
+void convertArray(StringBuilder buffer,PVScalarArray *pv,int /*notFirst*/)
 {
     // array stringification
     std::stringstream sstream;
@@ -274,7 +274,7 @@ class MonitorRequesterImpl : public MonitorRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, StructureConstPtr const & structure)
+    virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, StructureConstPtr const & /*structure*/)
     {
         if (status.isSuccess())
         {
@@ -334,7 +334,7 @@ class MonitorRequesterImpl : public MonitorRequester
 
     }
 
-    virtual void unlisten(Monitor::shared_pointer const & monitor)
+    virtual void unlisten(Monitor::shared_pointer const & /*monitor*/)
     {
         std::cout << "unlisten" << std::endl;
     }
@@ -374,7 +374,7 @@ public:
         }
     }
 
-    virtual void channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState)
+    virtual void channelStateChange(Channel::shared_pointer const & /*channel*/, Channel::ConnectionState connectionState)
     {
         if (connectionState == Channel::CONNECTED)
         {

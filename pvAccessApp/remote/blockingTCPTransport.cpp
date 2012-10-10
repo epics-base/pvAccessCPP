@@ -274,14 +274,14 @@ namespace pvAccess {
             internalPostClose(force);
         }
 
-        void BlockingTCPTransport::internalClose(bool force) {
+        void BlockingTCPTransport::internalClose(bool /*force*/) {
             // close the socket
             if(_channel!=INVALID_SOCKET) {
                 epicsSocketDestroy(_channel);
             }
         }
 
-        void BlockingTCPTransport::internalPostClose(bool force) {
+        void BlockingTCPTransport::internalPostClose(bool /*force*/) {
         }
 
         size_t BlockingTCPTransport::getSocketReceiveBufferSize() const {

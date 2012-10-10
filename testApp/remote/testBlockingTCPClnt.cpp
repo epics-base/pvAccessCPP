@@ -72,9 +72,9 @@ public:
         ResponseHandler() {
     }
 
-    virtual void handleResponse(osiSockAddr* responseFrom,
-    		Transport::shared_pointer const & transport, int8 version, int8 command, std::size_t payloadSize,
-            ByteBuffer* payloadBuffer) {
+    virtual void handleResponse(osiSockAddr* /*responseFrom*/,
+    		Transport::shared_pointer const & transport, int8 /*version*/, int8 command, std::size_t /*payloadSize*/,
+            ByteBuffer* /*payloadBuffer*/) {
 
         if(command==CMD_CONNECTION_VALIDATION) transport->verified();
     }
@@ -89,7 +89,7 @@ public:
     virtual void transportUnresponsive() {
         LOG(logLevelInfo, "unresponsive");
     }
-    virtual void transportResponsive(Transport::shared_pointer const & transport) {
+    virtual void transportResponsive(Transport::shared_pointer const & /*transport*/) {
         LOG(logLevelInfo, "responsive");
     }
     virtual void transportChanged() {
@@ -170,7 +170,7 @@ void testBlockingTCPSender() {
 
 }
 
-int main(int argc, char *argv[]) {
+int main() {
     createFileLogger("testBlockingTCPClnt.log");
 
     testBlockingTCPSender();

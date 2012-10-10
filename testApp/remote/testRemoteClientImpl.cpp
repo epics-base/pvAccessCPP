@@ -15,7 +15,9 @@ using namespace epics::pvAccess;
 
 class ChannelFindRequesterImpl : public ChannelFindRequester
 {
-    virtual void channelFindResult(const epics::pvData::Status& status,ChannelFind::shared_pointer const & channelFind,bool wasFound)
+    virtual void channelFindResult(const epics::pvData::Status& status,
+    		ChannelFind::shared_pointer const & /*channelFind*/,
+    		bool wasFound)
     {
         std::cout << "[ChannelFindRequesterImpl] channelFindResult("
                   << status.toString() << ", ..., " << wasFound << ")" << std::endl;
@@ -93,8 +95,9 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void channelGetConnect(const epics::pvData::Status& status,ChannelGet::shared_pointer const & channelGet,
-                                   epics::pvData::PVStructure::shared_pointer const & pvStructure,epics::pvData::BitSet::shared_pointer const & bitSet)
+    virtual void channelGetConnect(const epics::pvData::Status& status,ChannelGet::shared_pointer const & /*channelGet*/,
+                                   epics::pvData::PVStructure::shared_pointer const & pvStructure,
+                                   epics::pvData::BitSet::shared_pointer const & bitSet)
     {
         std::cout << "channelGetConnect(" << status.toString() << ")" << std::endl;
         if (status.isSuccess())
@@ -143,8 +146,9 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void channelPutConnect(const epics::pvData::Status& status,ChannelPut::shared_pointer const & channelPut,
-                                   epics::pvData::PVStructure::shared_pointer const & pvStructure,epics::pvData::BitSet::shared_pointer const & bitSet)
+    virtual void channelPutConnect(const epics::pvData::Status& status,ChannelPut::shared_pointer const & /*channelPut*/,
+                                   epics::pvData::PVStructure::shared_pointer const & pvStructure,
+                                   epics::pvData::BitSet::shared_pointer const & bitSet)
     {
         std::cout << "channelPutConnect(" << status.toString() << ")" << std::endl;
 
@@ -199,8 +203,9 @@ class ChannelPutGetRequesterImpl : public ChannelPutGetRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void channelPutGetConnect(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
-                                      epics::pvData::PVStructure::shared_pointer const & putData,epics::pvData::PVStructure::shared_pointer const & getData)
+    virtual void channelPutGetConnect(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & /*channelPutGet*/,
+                                      epics::pvData::PVStructure::shared_pointer const & putData,
+                                      epics::pvData::PVStructure::shared_pointer const & getData)
     {
         std::cout << "channelGetPutConnect(" << status.toString() << ")" << std::endl;
 
@@ -277,7 +282,8 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void channelRPCConnect(const epics::pvData::Status& status,ChannelRPC::shared_pointer const & channelRPC)
+    virtual void channelRPCConnect(const epics::pvData::Status& status,
+    		ChannelRPC::shared_pointer const & /*channelRPC*/)
     {
         std::cout << "channelRPCConnect(" << status.toString() << ")" << std::endl;
         
@@ -316,7 +322,7 @@ class ChannelArrayRequesterImpl : public ChannelArrayRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void channelArrayConnect(const epics::pvData::Status& status,ChannelArray::shared_pointer const & channelArray,
+    virtual void channelArrayConnect(const epics::pvData::Status& status,ChannelArray::shared_pointer const & /*channelArray*/,
                                      epics::pvData::PVArray::shared_pointer const & pvArray)
     {
         std::cout << "channelArrayConnect(" << status.toString() << ")" << std::endl;
@@ -366,7 +372,8 @@ class MonitorRequesterImpl : public MonitorRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, StructureConstPtr const & structure)
+    virtual void monitorConnect(const epics::pvData::Status& status,
+    		Monitor::shared_pointer const & /*monitor*/, StructureConstPtr const & structure)
     {
         std::cout << "monitorConnect(" << status.toString() << ")" << std::endl;
         if (status.isSuccess() && structure)
@@ -394,7 +401,7 @@ class MonitorRequesterImpl : public MonitorRequester
         monitor->release(element);
     }
 
-    virtual void unlisten(Monitor::shared_pointer const & monitor)
+    virtual void unlisten(Monitor::shared_pointer const & /*monitor*/)
     {
         std::cout << "unlisten" << std::endl;
     }
@@ -415,7 +422,8 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void channelProcessConnect(const epics::pvData::Status& status,ChannelProcess::shared_pointer const & channelProcess)
+    virtual void channelProcessConnect(const epics::pvData::Status& status,
+    		ChannelProcess::shared_pointer const & /*channelProcess*/)
     {
         std::cout << "channelProcessConnect(" << status.toString() << ")" << std::endl;
 
@@ -430,7 +438,7 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
 };
 
 
-int main(int argc,char *argv[])
+int main()
 {
     for (int i = 0; i < 10; i++) {
     {

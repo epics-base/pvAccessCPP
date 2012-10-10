@@ -209,7 +209,7 @@ ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(String name,
 
 std::map<String, std::tr1::weak_ptr<ChannelProvider> > ServerSearchHandler::s_channelNameToProvider;
 
-void ServerChannelFindRequesterImpl::channelFindResult(const Status& status, ChannelFind::shared_pointer const & channelFind, bool wasFound)
+void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/, ChannelFind::shared_pointer const & channelFind, bool wasFound)
 {
 	// TODO status
 	Lock guard(_mutex);
@@ -411,7 +411,7 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
     }
 }
 
-void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer const & c, const Channel::ConnectionState isConnected)
+void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer const & /*channel*/, const Channel::ConnectionState /*isConnected*/)
 {
 	// TODO should we notify remote side?
 }
@@ -1262,12 +1262,12 @@ void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor::s
 	}
 }
 
-void ServerMonitorRequesterImpl::unlisten(Monitor::shared_pointer const & monitor)
+void ServerMonitorRequesterImpl::unlisten(Monitor::shared_pointer const & /*monitor*/)
 {
 	//TODO
 }
 
-void ServerMonitorRequesterImpl::monitorEvent(Monitor::shared_pointer const & monitor)
+void ServerMonitorRequesterImpl::monitorEvent(Monitor::shared_pointer const & /*monitor*/)
 {
 	// TODO !!! if queueSize==0, monitor.poll() has to be called and returned NOW (since there is no cache)
 	//sendEvent(transport);

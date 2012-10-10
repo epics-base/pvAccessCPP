@@ -37,17 +37,17 @@ BeaconHandler::~BeaconHandler()
 
 }
 
-void BeaconHandler::beaconNotify(osiSockAddr* from, int8 remoteTransportRevision,
+void BeaconHandler::beaconNotify(osiSockAddr* /*from*/, int8 remoteTransportRevision,
 							 TimeStamp* timestamp, TimeStamp* startupTime, int16 sequentalID,
-							 PVFieldPtr data)
+							 PVFieldPtr /*data*/)
 {
 	bool networkChanged = updateBeacon(remoteTransportRevision, timestamp, startupTime, sequentalID);
 	if (networkChanged)
 		changedTransport();
 }
 
-bool BeaconHandler::updateBeacon(int8 remoteTransportRevision, TimeStamp* timestamp,
-			                     TimeStamp* startupTime, int16 sequentalID)
+bool BeaconHandler::updateBeacon(int8 /*remoteTransportRevision*/, TimeStamp* /*timestamp*/,
+			                     TimeStamp* startupTime, int16 /*sequentalID*/)
 {
 	Lock guard(_mutex);
 	// first beacon notification check

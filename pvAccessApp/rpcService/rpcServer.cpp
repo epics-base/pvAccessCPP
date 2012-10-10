@@ -178,19 +178,19 @@ public:
     }
 
 
-    virtual AccessRights getAccessRights(epics::pvData::PVField::shared_pointer const & pvField)
+    virtual AccessRights getAccessRights(epics::pvData::PVField::shared_pointer const & /*pvField*/)
     {
         return none;
     }
 
-    virtual void getField(GetFieldRequester::shared_pointer const & requester,epics::pvData::String const & subField)
+    virtual void getField(GetFieldRequester::shared_pointer const & requester,epics::pvData::String const & /*subField*/)
     {
         requester->getDone(notSupportedStatus, epics::pvData::Field::shared_pointer());    
     }
 
     virtual ChannelProcess::shared_pointer createChannelProcess(
             ChannelProcessRequester::shared_pointer const & channelProcessRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest)
+            epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
     {
         ChannelProcess::shared_pointer nullPtr;
         channelProcessRequester->channelProcessConnect(notSupportedStatus, nullPtr);
@@ -199,7 +199,7 @@ public:
 
     virtual ChannelGet::shared_pointer createChannelGet(
             ChannelGetRequester::shared_pointer const & channelGetRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest)
+            epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
     {
         ChannelGet::shared_pointer nullPtr;
         channelGetRequester->channelGetConnect(notSupportedStatus, nullPtr,
@@ -209,7 +209,7 @@ public:
             
     virtual ChannelPut::shared_pointer createChannelPut(
             ChannelPutRequester::shared_pointer const & channelPutRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest)
+            epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
     {
         ChannelPut::shared_pointer nullPtr;
         channelPutRequester->channelPutConnect(notSupportedStatus, nullPtr,
@@ -220,7 +220,7 @@ public:
 
     virtual ChannelPutGet::shared_pointer createChannelPutGet(
             ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest)
+            epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
     {
         ChannelPutGet::shared_pointer nullPtr;
         epics::pvData::PVStructure::shared_pointer nullStructure;
@@ -230,7 +230,7 @@ public:
 
     virtual ChannelRPC::shared_pointer createChannelRPC(
             ChannelRPCRequester::shared_pointer const & channelRPCRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest)
+            epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
     {
         // nothing expected to be in pvRequest
         
@@ -251,7 +251,7 @@ public:
 
     virtual epics::pvData::Monitor::shared_pointer createMonitor(
             epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest)
+            epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
     {
         epics::pvData::Monitor::shared_pointer nullPtr;
         monitorRequester->monitorConnect(notSupportedStatus, nullPtr, epics::pvData::Structure::shared_pointer());
@@ -260,7 +260,7 @@ public:
 
     virtual ChannelArray::shared_pointer createChannelArray(
             ChannelArrayRequester::shared_pointer const & channelArrayRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest)
+            epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
     {
         ChannelArray::shared_pointer nullPtr;
         channelArrayRequester->channelArrayConnect(notSupportedStatus, nullPtr, epics::pvData::PVArray::shared_pointer());
@@ -351,7 +351,7 @@ public:
      virtual Channel::shared_pointer createChannel(
             epics::pvData::String const & channelName,
             ChannelRequester::shared_pointer const & channelRequester,
-            short priority)
+            short /*priority*/)
     {
         RPCServiceMap::const_iterator iter;
         {
@@ -376,10 +376,10 @@ public:
     }
 
     virtual Channel::shared_pointer createChannel(
-        epics::pvData::String const & channelName,
-        ChannelRequester::shared_pointer const & channelRequester,
-        short priority,
-        epics::pvData::String const & address)
+        epics::pvData::String const & /*channelName*/,
+        ChannelRequester::shared_pointer const & /*channelRequester*/,
+        short /*priority*/,
+        epics::pvData::String const & /*address*/)
    {
         // this will never get called by the pvAccess server
         throw std::runtime_error("not supported");

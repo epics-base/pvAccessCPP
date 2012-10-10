@@ -135,7 +135,7 @@ void convertStructure(StringBuilder buffer,PVStructure *data,int notFirst)
 	}
 }
 
-void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst)
+void convertArray(StringBuilder buffer,PVScalarArray * pv,int /*notFirst*/)
 {
     ScalarArrayConstPtr array = pv->getScalarArray();
     ScalarType type = array->getElementType();
@@ -509,7 +509,7 @@ public:
         }
     }
 
-    virtual void channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState)
+    virtual void channelStateChange(Channel::shared_pointer const & /*channel*/, Channel::ConnectionState connectionState)
     {
         if (connectionState == Channel::CONNECTED)
         {
@@ -641,14 +641,21 @@ int main (int argc, char *argv[])
                 allOK &= putRequesterImpl->waitUntilDone(timeOut);
                 if (allOK)
                 {
-                    getConvert()->fromString(putRequesterImpl->getStructure(), values);
-    
+                	// convert value from string
+                	// since we access structure from another thread, we need to lock
+                	{
+						ScopedLock lock(channelPut);
+						getConvert()->fromString(putRequesterImpl->getStructure(), values);
+                	}
+
+                    // we do a put
                     putRequesterImpl->resetEvent();
                     channelPut->put(false);
                     allOK &= putRequesterImpl->waitUntilDone(timeOut);
         
                     if (allOK)
                     {
+                        // and than a get again to verify put
                         std::cout << "New : " << std::endl;
                         putRequesterImpl->resetEvent();
                         channelPut->get();

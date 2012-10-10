@@ -44,7 +44,7 @@ ReferenceCountingLock::~ReferenceCountingLock()
 //	pthread_mutex_destroy(_mutex);
 }
 
-bool ReferenceCountingLock::acquire(int64 msecs)
+bool ReferenceCountingLock::acquire(int64 /*msecs*/)
 {
 	_mutex.lock();
 	return true;

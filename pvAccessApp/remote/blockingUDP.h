@@ -77,17 +77,17 @@ namespace epics {
                 return CA_PROTOCOL_REVISION;
             }
 
-            virtual void setRemoteRevision(epics::pvData::int8 revision) {
+            virtual void setRemoteRevision(epics::pvData::int8 /*revision*/) {
                 // noop
             }
 
             virtual void setRemoteTransportReceiveBufferSize(
-            		std::size_t receiveBufferSize) {
+            		std::size_t /*receiveBufferSize*/) {
                 // noop for UDP (limited by 64k; MAX_UDP_SEND for CA)
             }
 
             virtual void setRemoteTransportSocketReceiveBufferSize(
-            		std::size_t socketReceiveBufferSize) {
+            		std::size_t /*socketReceiveBufferSize*/) {
                 // noop for UDP (limited by 64k; MAX_UDP_SEND for CA)
             }
 
@@ -99,7 +99,7 @@ namespace epics {
                 // noop
             }
 
-        	virtual bool verify(epics::pvData::int32 timeoutMs) {
+        	virtual bool verify(epics::pvData::int32 /*timeoutMs*/) {
         		// noop
                 return true;
             }
@@ -123,7 +123,7 @@ namespace epics {
 
             virtual void close();
 
-            virtual void ensureData(std::size_t size) {
+            virtual void ensureData(std::size_t /*size*/) {
                 // noop
             }
 
@@ -134,7 +134,7 @@ namespace epics {
             virtual void startMessage(epics::pvData::int8 command, std::size_t ensureCapacity);
             virtual void endMessage();
 
-            virtual void flush(bool lastMessageCompleted) {
+            virtual void flush(bool /*lastMessageCompleted*/) {
                 // noop since all UDP requests are sent immediately
             }
 
@@ -147,7 +147,7 @@ namespace epics {
                 // noop
             }
 
-            virtual void ensureBuffer(std::size_t size) {
+            virtual void ensureBuffer(std::size_t /*size*/) {
                 // noop
             }
 
@@ -170,12 +170,12 @@ namespace epics {
                 return epics::pvData::getFieldCreate()->deserialize(buffer, this);
             }
             
-            virtual bool acquire(std::tr1::shared_ptr<TransportClient> const & client)
+            virtual bool acquire(std::tr1::shared_ptr<TransportClient> const & /*client*/)
             {
             	return false;
             }
 
-            virtual void release(pvAccessID clientId) {}
+            virtual void release(pvAccessID /*clientId*/) {}
 
             /**
              * Set ignore list.

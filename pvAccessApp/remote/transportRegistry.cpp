@@ -48,7 +48,7 @@ void TransportRegistry::put(Transport::shared_pointer const & transport)
 	(*priorities)[priority] = transport;
 }
 
-Transport::shared_pointer TransportRegistry::get(String const & type, const osiSockAddr* address, const int16 priority)
+Transport::shared_pointer TransportRegistry::get(String const & /*type*/, const osiSockAddr* address, const int16 priority)
 {
 	Lock guard(_mutex);
 	transportsMap_t::iterator transportsIter = _transports.find(address);
@@ -64,7 +64,7 @@ Transport::shared_pointer TransportRegistry::get(String const & type, const osiS
 	return Transport::shared_pointer();
 }
 
-auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::get(String const & type, const osiSockAddr* address)
+auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::get(String const & /*type*/, const osiSockAddr* address)
 {
 	Lock guard(_mutex);
 	transportsMap_t::iterator transportsIter = _transports.find(address);
@@ -122,7 +122,7 @@ int32 TransportRegistry::numberOfActiveTransports()
 	return _transportCount;
 }
 
-auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::toArray(String const & type)
+auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::toArray(String const & /*type*/)
 {
 	// TODO support type
     return toArray();

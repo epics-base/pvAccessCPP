@@ -55,14 +55,14 @@ public:
 
 class DummyResponseHandler : public ResponseHandler {
 public:
-    DummyResponseHandler(Context* ctx)
+    DummyResponseHandler(Context* /*ctx*/)
     { }
 
     virtual ~DummyResponseHandler() {}
 
-    virtual void handleResponse(osiSockAddr* responseFrom,
-    		Transport::shared_pointer const &, int8 version, int8 command, std::size_t payloadSize,
-            ByteBuffer* payloadBuffer) {
+    virtual void handleResponse(osiSockAddr* /*responseFrom*/,
+    		Transport::shared_pointer const & /*transport*/, int8 /*version*/, int8 /*command*/, std::size_t /*payloadSize*/,
+            ByteBuffer* /*payloadBuffer*/) {
     }
 };
 
@@ -133,7 +133,7 @@ void testBlockingUDPSender() {
     }
 }
 
-int main(int argc, char *argv[]) {
+int main() {
 //    createFileLogger("testBlockingUDPClnt.log");
 
     testBlockingUDPSender();

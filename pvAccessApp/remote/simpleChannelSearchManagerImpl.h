@@ -21,11 +21,11 @@ class MockTransportSendControl: public TransportSendControl
 {
 public:
 	void endMessage() {}
-	void flush(bool lastMessageCompleted) {}
-	void setRecipient(const osiSockAddr& sendTo) {}
-	void startMessage(epics::pvData::int8 command, std::size_t ensureCapacity) {}
-	void ensureBuffer(std::size_t) {}
-	void alignBuffer(std::size_t alignment) {}
+	void flush(bool /*lastMessageCompleted*/) {}
+	void setRecipient(const osiSockAddr& /*sendTo*/) {}
+	void startMessage(epics::pvData::int8 /*command*/, std::size_t /*ensureCapacity*/) {}
+	void ensureBuffer(std::size_t /*size*/) {}
+	void alignBuffer(std::size_t /*alignment*/) {}
 	void flushSerializeBuffer() {}
     void cachedSerialize(const std::tr1::shared_ptr<const epics::pvData::Field>& field, epics::pvData::ByteBuffer* buffer)
     {

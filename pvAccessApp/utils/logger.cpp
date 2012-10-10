@@ -87,11 +87,11 @@ namespace epics {
 
         static FileLogger* fileLogger = NULL;
 
-        static void errLogFileListener(void* pPrivate, const char *message) {
+        static void errLogFileListener(void* /*pPrivate*/, const char *message) {
             fileLogger->logMessage(message);
         }
 
-        static void exitFileLoggerHandler(void* pPrivate) {
+        static void exitFileLoggerHandler(void* /*pPrivate*/) {
             errlogFlush();
             delete fileLogger;
         }

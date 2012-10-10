@@ -64,17 +64,17 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
     auto_ptr<Event> m_event;
     public:
     shared_ptr<epics::pvData::PVStructure> pvResponse;
-    ChannelRPCRequesterImpl(String channelName) 
+    ChannelRPCRequesterImpl(String /*channelName*/)
     {
         resetEvent();
     }
 
-    virtual void channelRPCConnect (const epics::pvData::Status &status, ChannelRPC::shared_pointer const &channelRPC)
+    virtual void channelRPCConnect (epics::pvData::Status const & /*status*/, ChannelRPC::shared_pointer const & /*channelRPC*/)
     {
         m_event->signal();
     }
 
-    virtual void requestDone (const epics::pvData::Status &status, epics::pvData::PVStructure::shared_pointer const &pvResponse)
+    virtual void requestDone (epics::pvData::Status const & /*status*/, epics::pvData::PVStructure::shared_pointer const & pvResponse)
     {
         this->pvResponse = pvResponse;
         m_event->signal();
@@ -134,7 +134,7 @@ public:
         }
     }
 
-    virtual void channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState)
+    virtual void channelStateChange(Channel::shared_pointer const & /*channel*/, Channel::ConnectionState connectionState)
     {
         if (connectionState == Channel::CONNECTED)
         {

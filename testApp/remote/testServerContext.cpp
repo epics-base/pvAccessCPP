@@ -16,7 +16,7 @@ public:
     epics::pvData::String getProviderName() { return "local"; };
     
 
-    ChannelFind::shared_pointer channelFind(epics::pvData::String const & channelName,
+    ChannelFind::shared_pointer channelFind(epics::pvData::String const & /*channelName*/,
                                             ChannelFindRequester::shared_pointer const & channelFindRequester)
     {
         ChannelFind::shared_pointer nullCF;
@@ -33,9 +33,9 @@ public:
     }
 
     Channel::shared_pointer createChannel(
-                epics::pvData::String const & channelName,
+                epics::pvData::String const & /*channelName*/,
                 ChannelRequester::shared_pointer const & channelRequester,
-                short priority, epics::pvData::String const & address)
+                short /*priority*/, epics::pvData::String const & /*address*/)
     {
         Channel::shared_pointer nullC;
         channelRequester->channelCreated(Status::Ok, nullC);
@@ -86,7 +86,7 @@ void testServerContext()
 	ctx->destroy();
 }
 
-int main(int argc, char *argv[])
+int main()
 {
 	testServerContext();
 

@@ -11,7 +11,7 @@ using namespace epics::pvData;
 namespace epics {
 namespace pvAccess {
 
-ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer const & channel, pvAccessID cid, pvAccessID sid, epics::pvData::PVField::shared_pointer const & securityToken):
+ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer const & channel, pvAccessID cid, pvAccessID sid, epics::pvData::PVField::shared_pointer const & /*securityToken*/):
 			_channel(channel),
 			_cid(cid),
 			_sid(sid),

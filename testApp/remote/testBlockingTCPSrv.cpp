@@ -39,9 +39,9 @@ private:
 
 class DummyResponseHandler : public ResponseHandler {
 public:
-    virtual void handleResponse(osiSockAddr* responseFrom,
-    		Transport::shared_pointer const & transport, int8 version, int8 command, std::size_t payloadSize,
-            ByteBuffer* payloadBuffer) {
+    virtual void handleResponse(osiSockAddr* /*responseFrom*/,
+    		Transport::shared_pointer const & /*transport*/, int8 /*version*/, int8 /*command*/, std::size_t /*payloadSize*/,
+            ByteBuffer* /*payloadBuffer*/) {
     	cout << "DummyResponseHandler::handleResponse" << endl;
     }
 };
@@ -65,7 +65,7 @@ void testServerConnections() {
     delete srv;
 }
 
-int main(int argc, char *argv[]) {
+int main() {
 
     createFileLogger("testBlockingTCPSrv.log");
 

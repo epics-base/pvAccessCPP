@@ -241,7 +241,7 @@ public:
        }
    }
 
-   virtual void channelStateChange(Channel::shared_pointer const &channel, Channel::ConnectionState connectionState)
+   virtual void channelStateChange(Channel::shared_pointer const & /*channel*/, Channel::ConnectionState connectionState)
    {
        if (connectionState == Channel::CONNECTED)
        {

@@ -417,18 +417,18 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool destroyResponse(Transport::shared_pointer const & /*transport*/, int8 /*version*/, ByteBuffer* /*payloadBuffer*/, int8 /*qos*/, const Status& status) {
                 EXCEPTION_GUARD(m_callback->processDone(status));
                 return true;
             }
 
-            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool initResponse(Transport::shared_pointer const & /*transport*/, int8 /*version*/, ByteBuffer* /*payloadBuffer*/, int8 /*qos*/, const Status& status) {
                 ChannelProcess::shared_pointer thisPtr = dynamic_pointer_cast<ChannelProcess>(shared_from_this());
                 EXCEPTION_GUARD(m_callback->channelProcessConnect(status, thisPtr));
                 return true;
             }
 
-            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool normalResponse(Transport::shared_pointer const & /*transport*/, int8 /*version*/, ByteBuffer* /*payloadBuffer*/, int8 /*qos*/, const Status& status) {
                 EXCEPTION_GUARD(m_callback->processDone(status));
                 return true;
             }
@@ -569,7 +569,7 @@ namespace epics {
                 return true;
             }
 
-            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool initResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
                 if (!status.isSuccess())
                 {
                     ChannelGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelGet>(shared_from_this());
@@ -590,7 +590,7 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
                 if (!status.isSuccess())
                 {
                     EXCEPTION_GUARD(m_channelGetRequester->getDone(status));
@@ -767,12 +767,12 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool destroyResponse(Transport::shared_pointer const & /*transport*/, int8 /*version*/, ByteBuffer* /*payloadBuffer*/, int8 /*qos*/, const Status& status) {
                 EXCEPTION_GUARD(m_channelPutRequester->putDone(status));
                 return true;
             }
 
-            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool initResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
                 if (!status.isSuccess())
                 {
                     ChannelPut::shared_pointer thisChannelPut = dynamic_pointer_cast<ChannelPut>(shared_from_this());
@@ -793,7 +793,7 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (qos & QOS_GET)
                 {
                     if (!status.isSuccess())
@@ -994,7 +994,7 @@ namespace epics {
                 return normalResponse(transport, version, payloadBuffer, qos, status);
             }
 
-            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool initResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
                 if (!status.isSuccess())
                 {
                     ChannelPutGet::shared_pointer thisChannelPutGet = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
@@ -1015,7 +1015,7 @@ namespace epics {
             }
 
 
-            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (qos & QOS_GET)
                 {
                     if (!status.isSuccess())
@@ -1272,7 +1272,7 @@ namespace epics {
                 return normalResponse(transport, version, payloadBuffer, qos, status);
             }
 
-            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool initResponse(Transport::shared_pointer const & /*transport*/, int8 /*version*/, ByteBuffer* /*payloadBuffer*/, int8 /*qos*/, const Status& status) {
                 if (!status.isSuccess())
                 {
                     ChannelRPC::shared_pointer thisChannelRPC = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
@@ -1286,7 +1286,7 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
                 if (!status.isSuccess())
                 {
                     EXCEPTION_GUARD(m_channelRPCRequester->requestDone(status, nullPVStructure));
@@ -1471,7 +1471,7 @@ namespace epics {
                 return true;
             }
 
-            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool initResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
                 if (!status.isSuccess())
                 {
                     ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
@@ -1492,7 +1492,7 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
                 if (qos & QOS_GET)
                 {
                     if (!status.isSuccess())
@@ -1761,7 +1761,7 @@ namespace epics {
                 m_thisPointer.reset();
             }
 
-            virtual void response(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer) {
+            virtual void response(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer) {
 
                 Status status;    
                 status.deserialize(payloadBuffer, transport.get());
@@ -1823,11 +1823,11 @@ namespace epics {
     	    {
     	    }
     	    
-    		virtual void init(StructureConstPtr const & structure) {
+    		virtual void init(StructureConstPtr const & /*structure*/) {
     			// noop
     		}
     
-    		virtual void response(Transport::shared_pointer const & transport, ByteBuffer* payloadBuffer) {
+    		virtual void response(Transport::shared_pointer const & /*transport*/, ByteBuffer* /*payloadBuffer*/) {
     		    Lock guard(m_mutex);
     			m_gotMonitor = true;
     			// no data, only notify
@@ -1845,7 +1845,7 @@ namespace epics {
       		      return m_nullMonitorElement;
     		}
     
-    		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
+    		virtual void release(MonitorElement::shared_pointer const & /*monitorElement*/) {
     			// noop
     		}
     
@@ -1923,7 +1923,7 @@ namespace epics {
       		      return m_nullMonitorElement;
     		}
     
-    		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
+    		virtual void release(MonitorElement::shared_pointer const & /*monitorElement*/) {
     			// noop
     		}
     
@@ -2037,7 +2037,7 @@ namespace epics {
                 return m_monitorElement;
     		}
     
-    		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
+    		virtual void release(MonitorElement::shared_pointer const & /*monitorElement*/) {
     			// noop
     		}
     
@@ -2264,7 +2264,7 @@ namespace epics {
 	            	return m_nullMonitorElement;
             }
 
-        		virtual void release(MonitorElement::shared_pointer const & monitorElement) {
+        		virtual void release(MonitorElement::shared_pointer const & /*monitorElement*/) {
         		    Lock guard(m_mutex);
         		    //monitorQueue.releaseUsed(monitorElement);
         		    m_needToReleaseFirst = false;
@@ -2407,7 +2407,7 @@ namespace epics {
                 return normalResponse(transport, version, payloadBuffer, qos, status);
             }
 
-            virtual bool initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool initResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
                 if (!status.isSuccess())
                 {
                     Monitor::shared_pointer thisChannelMonitor = dynamic_pointer_cast<Monitor>(shared_from_this());
@@ -2431,7 +2431,7 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 qos, const Status& /*status*/) {
                 if (qos & QOS_GET)
                 {
                     // TODO not supported by IF yet...
@@ -2596,8 +2596,8 @@ namespace epics {
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,
-                                        Transport::shared_pointer const & transport, int8 version, int8 command,
-                                        size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                                        Transport::shared_pointer const & /*transport*/, int8 /*version*/, int8 command,
+                                        size_t /*payloadSize*/, epics::pvData::ByteBuffer* /*payloadBuffer*/)
             {
                 char ipAddrStr[48];
                 ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
@@ -3494,7 +3494,7 @@ namespace epics {
                  * @throws std::runtime_error
                  * @throws IOException
                  */
-                void destroyChannel(bool force) {
+                void destroyChannel(bool /*force*/) {
                     {
                         Lock guard(m_channelMutex);
                         
@@ -3657,7 +3657,7 @@ namespace epics {
                     return m_transport;
                 }
                 
-                virtual void transportResponsive(Transport::shared_pointer const & transport) {
+                virtual void transportResponsive(Transport::shared_pointer const & /*transport*/) {
                     Lock guard(m_channelMutex);
                     if (m_connectionState == DISCONNECTED)
                     {
@@ -4292,7 +4292,7 @@ TODO
                 Lock guard(m_cidMapMutex);
 
                 // search first free (theoretically possible loop of death)
-                while (m_channelsByCID.find(++m_lastCID) != m_channelsByCID.end());
+                while (m_channelsByCID.find(++m_lastCID) != m_channelsByCID.end()) ;
                 // reserve CID
                 m_channelsByCID[m_lastCID].reset();
                 return m_lastCID;
@@ -4363,7 +4363,7 @@ TODO
 
                 // search first free (theoretically possible loop of death)
                 do {
-                    while (m_pendingResponseRequests.find(++m_lastIOID) != m_pendingResponseRequests.end());
+                    while (m_pendingResponseRequests.find(++m_lastIOID) != m_pendingResponseRequests.end()) ;
                 } while (m_lastIOID == INVALID_IOID);
                 
                 // reserve IOID

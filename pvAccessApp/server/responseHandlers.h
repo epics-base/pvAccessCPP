@@ -114,7 +114,7 @@ namespace pvAccess {
         	virtual ~EchoTransportSender() {
         	}
 
-        	virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) {
+        	virtual void send(epics::pvData::ByteBuffer* /*buffer*/, TransportSendControl* control) {
         		control->startMessage(CMD_ECHO, 0);
         		control->setRecipient(_echoFrom);
         		// TODO content

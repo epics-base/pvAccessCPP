@@ -126,7 +126,7 @@ void testCreateRequest() {
     assert(pvRequest.get()==NULL);
 }
 
-int main(int argc,char *argv[])
+int main()
 {
     testCreateRequest();
 

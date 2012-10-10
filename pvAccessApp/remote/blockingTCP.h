@@ -120,7 +120,7 @@ namespace epics {
                 _verifiedEvent.signal();
             }
 
-            virtual void setRecipient(const osiSockAddr& sendTo) {
+            virtual void setRecipient(const osiSockAddr& /*sendTo*/) {
                 // noop
             }
 
@@ -142,7 +142,7 @@ namespace epics {
 
             virtual void close();
 
-            virtual void setByteOrder(int byteOrder)
+            virtual void setByteOrder(int /*byteOrder*/)
             {
             	// not used this this implementation
             }
@@ -667,12 +667,12 @@ namespace epics {
                 return thisPointer;
             }
                     
-            virtual bool acquire(std::tr1::shared_ptr<TransportClient> const & client)
+            virtual bool acquire(std::tr1::shared_ptr<TransportClient> const & /*client*/)
             {
             	return false;
             }
 
-            virtual void release(pvAccessID clientId) {}
+            virtual void release(pvAccessID /*clientId*/) {}
 
             /**
              * Preallocate new channel SID.
@@ -684,7 +684,7 @@ namespace epics {
              * De-preallocate new channel SID.
              * @param sid preallocated channel SID.
              */
-            virtual void depreallocateChannelSID(pvAccessID sid) {
+            virtual void depreallocateChannelSID(pvAccessID /*sid*/) {
                 // noop
             }
 
@@ -737,7 +737,7 @@ namespace epics {
             /**
              * Verify transport. Server side is self-verified.
              */
-            virtual bool verify(epics::pvData::int32 timeoutMs) {
+            virtual bool verify(epics::pvData::int32 /*timeoutMs*/) {
             	TransportSender::shared_pointer transportSender = std::tr1::dynamic_pointer_cast<TransportSender>(shared_from_this());
             	enqueueSendRequest(transportSender);
             	verified();
