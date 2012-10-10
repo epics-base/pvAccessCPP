@@ -765,7 +765,7 @@ int main (int argc, char *argv[])
             if(epicsScanDouble(optarg, &timeOut) != 1)
             {
                 fprintf(stderr, "'%s' is not a valid timeout value "
-                        "- ignored. ('cainfo -h' for help.)\n", optarg);
+                        "- ignored. ('eget -h' for help.)\n", optarg);
                 timeOut = DEFAULT_TIMEOUT;
             }
             break;

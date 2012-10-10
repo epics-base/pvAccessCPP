@@ -16,109 +16,12 @@
 #include <pv/event.h>
 #include <epicsExit.h>
 
+#include "pvutils.cpp"
+
 using namespace std;
 using namespace std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
-
-// TODO cout vs cerr
-
-void convertStructure(StringBuilder buffer,PVStructure *data,int notFirst);
-void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst);
-void convertStructureArray(StringBuilder buffer,PVStructureArray * pvdata,int notFirst);
-
-class RequesterImpl : public Requester,
-     public std::tr1::enable_shared_from_this<RequesterImpl>
-{
-public:
-
-    virtual String getRequesterName()
-    {
-        return "RequesterImpl";
-    };
-
-    virtual void message(String const & message,MessageType messageType)
-    {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
-    }
-};
-
-
-void convertToString(StringBuilder buffer,PVField * pv,int notFirst)
-{
-    Type type = pv->getField()->getType();
-    if(type==structure) {
-        convertStructure(buffer,static_cast<PVStructure*>(pv),notFirst);
-        return;
-    }
-    if(type==scalarArray) {
-        convertArray(buffer,static_cast<PVScalarArray *>(pv),notFirst);
-        *buffer += "\t";
-        return;
-    }
-    if(type==structureArray) {
-    	convertStructureArray(
-            buffer,static_cast<PVStructureArray*>(pv),notFirst);
-        *buffer += "\t";
-        return;
-    }
-
-    // scalar stringification
-    std::stringstream sstream;
-    sstream << std::boolalpha << *pv;
-    *buffer += sstream.str();
-    *buffer += "\t";
-}
-
-void convertStructure(StringBuilder buffer,PVStructure *data,int notFirst)
-{
-    PVFieldPtrArray fieldsData = data->getPVFields();
-	int length = data->getStructure()->getNumberFields();
-	for(int i=0; i<length; i++) {
-		PVFieldPtr fieldField = fieldsData[i];
-		convertToString(buffer,fieldField.get(),notFirst + 1);
-	}
-}
-
-void convertArray(StringBuilder buffer,PVScalarArray *pv,int /*notFirst*/)
-{
-    // array stringification
-    std::stringstream sstream;
-    sstream << std::boolalpha << *pv;
-    *buffer += sstream.str();
-}
-
-void convertStructureArray(StringBuilder buffer,
-    PVStructureArray * pvdata,int notFirst)
-{
-    int length = pvdata->getLength();
-    if(length<=0) {
-        return;
-    }
-    StructureArrayData data = StructureArrayData();
-    pvdata->get(0, length, data);
-    for (int i = 0; i < length; i++) {
-        PVStructurePtr pvStructure = data.data[i];
-        if (pvStructure == 0) {
-            *buffer += "null";
-        } else {
-            convertToString(buffer,pvStructure.get(),notFirst+1);
-        }
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -130,8 +33,11 @@ void convertStructureArray(StringBuilder buffer,
 
 double timeOut = DEFAULT_TIMEOUT;
 string request(DEFAULT_REQUEST);
-bool terseMode = false;
 
+enum PrintMode { ValueOnlyMode, StructureMode, TerseMode };
+PrintMode mode = ValueOnlyMode;
+
+char fieldSeparator = ' ';
 
 void usage (void)
 {
@@ -140,9 +46,10 @@ void usage (void)
     "options:\n"
     "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
     "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
-    "  -t:                Terse mode - print only value, without name\n"
+    "  -t:                Terse mode - print only value, without names\n"
     "  -m:                Monitor mode\n"
     "  -d:                Enable debug output\n"
+    "  -F <ofs>:          Use <ofs> as an alternate output field separator"
     "  -c:                Wait for clean shutdown and report used instance count (for expert users)"
     "\nExample: pvget example001 \n\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
@@ -211,10 +118,6 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
                 std::cout << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
             }
 
-            String str;
-
-            str.reserve(16*1024*1024);
-            
             // access smart pointers
             {
                 Lock lock(m_pointerMutex);
@@ -222,16 +125,30 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
                     // needed since we access the data
                     ScopedLock dataLock(m_channelGet);
     
-                    if (terseMode)
-                        convertToString(&str, m_pvStructure.get(), 0);
+                    if (mode == ValueOnlyMode)
+                    {
+                        PVField::shared_pointer value = m_pvStructure->getSubField("value");
+                        if (value.get() == 0)
+                        {
+                        	std::cerr << "no 'value' field" << std::endl;
+                            return;
+                        }
+
+                        if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
+                        	std::cout << std::setw(31) << std::left << m_channelName;
+                        else
+                        	std::cout << m_channelName << fieldSeparator;
+
+                        terse(std::cout, value) << std::endl;
+                    }
+                    else if (mode == TerseMode)
+                        terseStructure(std::cout, m_pvStructure) << std::endl;
                     else
-                        m_pvStructure->toString(&str);
+                        std::cout << *(m_pvStructure.get()) << std::endl;
                 } 
                 // this is OK since calle holds also owns it
                 m_channelGet.reset();
             }
-            
-            std::cout << str << std::endl;
             
             m_event.signal();
             
@@ -305,29 +222,13 @@ class MonitorRequesterImpl : public MonitorRequester
 		MonitorElement::shared_pointer element;
 		while (element = monitor->poll())
 		{
+			std::cout << m_channelName << ":  ";
 
-
-			String str;
-
-			str.reserve(16*1024*1024);
-
-			//str += "\n";
-			str += m_channelName;
-			str += ": ";
-
-			/*
-			element->changedBitSet->toString(&str);
-			str += '/';
-			element->overrunBitSet->toString(&str);
-			str += '\n';
-			*/
-
-			if (terseMode)
-				convertToString(&str, element->pvStructurePtr.get(), 0);
-			else
-				element->pvStructurePtr->toString(&str);
-
-			std::cout << str << std::endl;
+			// TODO value only mode !!!
+            if (mode == TerseMode)
+                terseStructure(std::cout, element->pvStructurePtr) << std::endl;
+            else
+                std::cout << *(element->pvStructurePtr.get()) << std::endl;
 
 			monitor->release(element);
 		}
@@ -341,58 +242,6 @@ class MonitorRequesterImpl : public MonitorRequester
 };
 
 
-class ChannelRequesterImpl : public ChannelRequester
-{
-private:
-    Event m_event;    
-    
-public:
-    
-    virtual String getRequesterName()
-    {
-        return "ChannelRequesterImpl";
-    };
-
-    virtual void message(String const & message,MessageType messageType)
-    {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
-    }
-
-    virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel)
-    {
-        if (status.isSuccess())
-        {
-            // show warning
-            if (!status.isOK())
-            {
-                std::cout << "[" << channel->getChannelName() << "] channel create: " << status.toString() << std::endl;
-            }
-        }
-        else
-        {
-            std::cout << "[" << channel->getChannelName() << "] failed to create a channel: " << status.toString() << std::endl;
-        }
-    }
-
-    virtual void channelStateChange(Channel::shared_pointer const & /*channel*/, Channel::ConnectionState connectionState)
-    {
-        if (connectionState == Channel::CONNECTED)
-        {
-            m_event.signal();
-        }
-        /*
-        else if (connectionState != Channel::DESTROYED)
-        {
-            std::cout << "[" << channel->getChannelName() << "] channel state change: "  << Channel::ConnectionStateNames[connectionState] << std::endl;
-        }
-        */
-    }
-    
-    bool waitUntilConnected(double timeOut)
-    {
-        return m_event.wait(timeOut);
-    }
-};
 
 /*+**************************************************************************
  *
@@ -419,7 +268,7 @@ int main (int argc, char *argv[])
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:w:tmdc")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:tmdcF:")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -428,15 +277,17 @@ int main (int argc, char *argv[])
             if(epicsScanDouble(optarg, &timeOut) != 1 || timeOut <= 0.0)
             {
                 fprintf(stderr, "'%s' is not a valid timeout value "
-                        "- ignored. ('cainfo -h' for help.)\n", optarg);
+                        "- ignored. ('pvget -h' for help.)\n", optarg);
                 timeOut = DEFAULT_TIMEOUT;
             }
             break;
         case 'r':               /* Set CA timeout value */
             request = optarg;
+            // do not override terse mode
+            if (mode == ValueOnlyMode) mode = StructureMode;
             break;
         case 't':               /* Terse mode */
-            terseMode = true;
+            mode = TerseMode;
             break;
         case 'm':               /* Monitor mode */
             monitor = true;
@@ -446,6 +297,9 @@ int main (int argc, char *argv[])
             break;
         case 'c':               /* Clean-up and report used instance count */
             cleanupAndReport = true;
+            break;
+        case 'F':               /* Store this for output formatting */
+            fieldSeparator = (char) *optarg;
             break;
         case '?':
             fprintf(stderr,
@@ -477,10 +331,13 @@ int main (int argc, char *argv[])
 
     SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
 
+    std::cout << std::boolalpha;
+    terseSeparator(fieldSeparator);
+
     bool allOK = true;
 
     {
-       Requester::shared_pointer requester(new RequesterImpl());
+       Requester::shared_pointer requester(new RequesterImpl("pvget"));
     
         PVStructure::shared_pointer pvRequest;
         pvRequest = getCreateRequest()->createRequest(request,requester);
