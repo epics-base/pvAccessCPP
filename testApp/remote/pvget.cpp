@@ -135,9 +135,11 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
                         }
 
                         if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
-                        	std::cout << std::setw(31) << std::left << m_channelName;
+                        	std::cout << std::setw(30) << std::left << m_channelName;
                         else
-                        	std::cout << m_channelName << fieldSeparator;
+                        	std::cout << m_channelName;
+
+                        std::cout << fieldSeparator;
 
                         terse(std::cout, value) << std::endl;
                     }
@@ -222,13 +224,40 @@ class MonitorRequesterImpl : public MonitorRequester
 		MonitorElement::shared_pointer element;
 		while (element = monitor->poll())
 		{
-			std::cout << m_channelName << ":  ";
+            if (mode == ValueOnlyMode)
+            {
+                PVField::shared_pointer value = element->pvStructurePtr->getSubField("value");
+                if (value.get() == 0)
+                {
+                	std::cerr << "no 'value' field" << std::endl;
+                    return;
+                }
 
-			// TODO value only mode !!!
-            if (mode == TerseMode)
+                if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
+                	std::cout << std::setw(30) << std::left << m_channelName;
+                else
+                	std::cout << m_channelName;
+
+                std::cout << fieldSeparator;
+
+                terse(std::cout, value) << std::endl;
+            }
+            else if (mode == TerseMode)
+            {
+            	if (fieldSeparator == ' ')
+                	std::cout << std::setw(30) << std::left << m_channelName;
+                else
+                	std::cout << m_channelName;
+
+                std::cout << fieldSeparator;
+
                 terseStructure(std::cout, element->pvStructurePtr) << std::endl;
+            }
             else
-                std::cout << *(element->pvStructurePtr.get()) << std::endl;
+            {
+            	std::cout << m_channelName << std::endl;
+                std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+            }
 
 			monitor->release(element);
 		}
