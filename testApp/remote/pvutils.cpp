@@ -25,7 +25,7 @@ String RequesterImpl::getRequesterName()
 
 void RequesterImpl::message(String const & message, MessageType messageType)
 {
-	std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+	std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
 }
 
 
@@ -207,7 +207,7 @@ void ChannelRequesterImpl::channelStateChange(Channel::shared_pointer const & /*
 	/*
 	else if (connectionState != Channel::DESTROYED)
 	{
-		std::cout << "[" << channel->getChannelName() << "] channel state change: "  << Channel::ConnectionStateNames[connectionState] << std::endl;
+		std::cerr << "[" << channel->getChannelName() << "] channel state change: "  << Channel::ConnectionStateNames[connectionState] << std::endl;
 	}
 	*/
 }

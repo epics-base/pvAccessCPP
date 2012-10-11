@@ -49,9 +49,9 @@ void usage (void)
     "  -t:                Terse mode - print only value, without names\n"
     "  -m:                Monitor mode\n"
     "  -d:                Enable debug output\n"
-    "  -F <ofs>:          Use <ofs> as an alternate output field separator"
+    "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
     "  -c:                Wait for clean shutdown and report used instance count (for expert users)"
-    "\nExample: pvget example001 \n\n"
+    "\nExample: pvget double01\n\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
 
@@ -68,16 +68,16 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 
     public:
     
-    ChannelGetRequesterImpl(String channelName) : m_channelName(channelName) {};
+    ChannelGetRequesterImpl(String channelName) : m_channelName(channelName) {}
     
     virtual String getRequesterName()
     {
         return "ChannelGetRequesterImpl";
-    };
+    }
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(String const & message, MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelGetConnect(const epics::pvData::Status& status,ChannelGet::shared_pointer const & channelGet,
@@ -89,7 +89,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << m_channelName << "] channel get create: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get create: " << status.toString() << std::endl;
             }
             
             // assign smart pointers
@@ -104,7 +104,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         }
         else
         {
-            std::cout << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
         }
     }
 
@@ -115,7 +115,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
             }
 
             // access smart pointers
@@ -157,7 +157,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         }
         else
         {
-            std::cout << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
             {
                 Lock lock(m_pointerMutex);
                 // this is OK since calle holds also owns it
@@ -190,7 +190,7 @@ class MonitorRequesterImpl : public MonitorRequester
 
     virtual void message(String const & message,MessageType messageType)
     {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, StructureConstPtr const & /*structure*/)
@@ -208,13 +208,13 @@ class MonitorRequesterImpl : public MonitorRequester
             // TODO and exit
             if (!startStatus.isSuccess())
             {
-                std::cout << "[" << m_channelName << "] channel monitor start: " << startStatus.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel monitor start: " << startStatus.toString() << std::endl;
             }
 
         }
         else
         {
-            std::cout << "monitorConnect(" << status.toString() << ")" << std::endl;
+            std::cerr << "monitorConnect(" << status.toString() << ")" << std::endl;
         }
     }
 
@@ -266,7 +266,7 @@ class MonitorRequesterImpl : public MonitorRequester
 
     virtual void unlisten(Monitor::shared_pointer const & /*monitor*/)
     {
-        std::cout << "unlisten" << std::endl;
+        std::cerr << "unlisten" << std::endl;
     }
 };
 
@@ -366,12 +366,11 @@ int main (int argc, char *argv[])
     bool allOK = true;
 
     {
-       Requester::shared_pointer requester(new RequesterImpl("pvget"));
+        Requester::shared_pointer requester(new RequesterImpl("pvget"));
     
-        PVStructure::shared_pointer pvRequest;
-        pvRequest = getCreateRequest()->createRequest(request,requester);
+        PVStructure::shared_pointer pvRequest = getCreateRequest()->createRequest(request, requester);
         if(pvRequest.get()==NULL) {
-            printf("failed to parse request string\n");
+            fprintf(stderr, "failed to parse request string\n");
             return 1;
         }
         
@@ -416,7 +415,7 @@ int main (int argc, char *argv[])
             {
                 allOK = false;
                 channel->destroy();
-                std::cout << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
+                std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
             }
         }    
 

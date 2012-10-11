@@ -5,334 +5,24 @@
 #include <stdio.h>
 #include <epicsStdlib.h>
 #include <epicsGetopt.h>
+#include <epicsThread.h>
 #include <pv/logger.h>
 #include <pv/lock.h>
 
 #include <vector>
 #include <string>
+#include <sstream>
 
-#include <pv/convert.h>
 #include <pv/event.h>
+#include <epicsExit.h>
+
+#include "pvutils.cpp"
+#include <pv/convert.h>
 
 using namespace std;
 using namespace std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
-
-void convertStructure(StringBuilder buffer,PVStructure *data,int notFirst);
-void convertArray(StringBuilder buffer,PVScalarArray * pv,int notFirst);
-void convertStructureArray(StringBuilder buffer,PVStructureArray * pvdata,int notFirst);
-
-class RequesterImpl : public Requester,
-     public std::tr1::enable_shared_from_this<RequesterImpl>
-{
-public:
-
-    virtual String getRequesterName()
-    {
-        return "RequesterImpl";
-    };
-
-    virtual void message(String const & message,MessageType messageType)
-    {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
-    }
-};
-
-void convertToString(StringBuilder buffer,PVField * pv,int notFirst)
-{
-    Type type = pv->getField()->getType();
-    if(type==structure) {
-        convertStructure(buffer,static_cast<PVStructure*>(pv),notFirst);
-        return;
-    }
-    if(type==scalarArray) {
-        convertArray(buffer,static_cast<PVScalarArray *>(pv),notFirst);
-        *buffer += "\t";
-        return;
-    }
-    if(type==structureArray) {
-    	convertStructureArray(
-            buffer,static_cast<PVStructureArray*>(pv),notFirst);
-        *buffer += "\t";
-        return;
-    }
-    PVScalar *pvScalar = static_cast<PVScalar*>(pv);
-    ScalarConstPtr pscalar = pvScalar->getScalar();
-    ScalarType scalarType = pscalar->getScalarType();
-    switch(scalarType) {
-    case pvBoolean: {
-            PVBoolean *data = static_cast<PVBoolean*>(pv);
-            bool value = data->get();
-            if(value) {
-                *buffer += "true";
-            } else {
-                *buffer += "false";
-            }
-        }
-        break;
-    case pvByte: {
-            PVByte *data = static_cast<PVByte*>(pv);
-            char xxx[30];
-            sprintf(xxx,"%d",(int)data->get());
-            *buffer += xxx;
-        }
-        break;
-    case pvShort: {
-            PVShort *data = static_cast<PVShort*>(pv);
-            char xxx[30];
-            sprintf(xxx,"%d",(int)data->get());
-            *buffer += xxx;
-        }
-        break;
-    case pvInt: {
-            PVInt *data = static_cast<PVInt*>(pv);
-            char xxx[30];
-            sprintf(xxx,"%d",(int)data->get());
-            *buffer += xxx;
-        }
-        break;
-    case pvLong: {
-            PVLong *data = static_cast<PVLong*>(pv);
-            char xxx[30];
-            sprintf(xxx,"%lld",(int64)data->get());
-            *buffer += xxx;
-        }
-        break;
-    case pvFloat: {
-            PVFloat *data = static_cast<PVFloat*>(pv);
-            char xxx[30];
-            sprintf(xxx,"%g",data->get());
-            *buffer += xxx;
-        }
-        break;
-    case pvDouble: {
-            PVDouble *data = static_cast<PVDouble*>(pv);
-            char xxx[30];
-            sprintf(xxx,"%lg",data->get());
-            *buffer += xxx;
-        }
-        break;
-    case pvString: {
-            PVString *data = static_cast<PVString*>(pv);
-            *buffer += data->get();
-        }
-        break;
-    default:
-        *buffer += "(unknown ScalarType)";
-    }
-    
-    *buffer += "\t";
-}
-
-void convertStructure(StringBuilder buffer,PVStructure *data,int notFirst)
-{
-    PVFieldPtrArray fieldsData = data->getPVFields();
-	int length = data->getStructure()->getNumberFields();
-	for(int i=0; i<length; i++) {
-		PVFieldPtr fieldField = fieldsData[i];
-		convertToString(buffer,fieldField.get(),notFirst + 1);
-	}
-}
-
-void convertArray(StringBuilder buffer,PVScalarArray * pv,int /*notFirst*/)
-{
-    ScalarArrayConstPtr array = pv->getScalarArray();
-    ScalarType type = array->getElementType();
-    switch(type) {
-    case pvBoolean: {
-            PVBooleanArray *pvdata = static_cast<PVBooleanArray*>(pv);
-            BooleanArrayData data = BooleanArrayData();
-            *buffer += "[";
-            for(size_t i=0; i < pvdata->getLength(); i++) {
-                if(i!=0) *buffer += ",";
-                int num = pvdata->get(i,1,data);
-                if(num==1) {
-                     BooleanArray  value = data.data;
-                     if(value[data.offset]) {
-                         *buffer += "true";
-                     } else {
-                         *buffer += "false";
-                     }
-                } else {
-                     *buffer += "???? ";
-                }
-            }
-            *buffer += "]";
-            break;
-        }
-    case pvByte: {
-            PVByteArray *pvdata = static_cast<PVByteArray*>(pv);
-            ByteArrayData data = ByteArrayData();
-            *buffer += "[";
-            for(size_t i=0; i < pvdata->getLength(); i++) {
-                if(i!=0) *buffer += ",";
-                int num = pvdata->get(i,1,data);
-                if(num==1) {
-                     int val = data.data[data.offset];
-                     char buf[16];
-                     sprintf(buf,"%d",val);
-                     *buffer += buf;
-                } else {
-                     *buffer += "???? ";
-                }
-            }
-            *buffer += "]";
-            break;
-        }
-    case pvShort: {
-            PVShortArray *pvdata = static_cast<PVShortArray*>(pv);
-            ShortArrayData data = ShortArrayData();
-            *buffer += "[";
-            for(size_t i=0; i < pvdata->getLength(); i++) {
-                if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,data);
-                if(num==1) {
-                     int val = data.data[data.offset];
-                     char buf[16];
-                     sprintf(buf,"%d",val);
-                     *buffer += buf;
-                } else {
-                     *buffer += "???? ";
-                }
-            }
-            *buffer += "]";
-            break;
-        }
-    case pvInt: {
-            PVIntArray *pvdata = static_cast<PVIntArray*>(pv);
-            IntArrayData data = IntArrayData();
-            *buffer += "[";
-            for(size_t i=0; i < pvdata->getLength(); i++) {
-                if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,data);
-                if(num==1) {
-                     int val = data.data[data.offset];
-                     char buf[16];
-                     sprintf(buf,"%d",val);
-                     *buffer += buf;
-                } else {
-                     *buffer += "???? ";
-                }
-            }
-            *buffer += "]";
-            break;
-        }
-    case pvLong: {
-            PVLongArray *pvdata = static_cast<PVLongArray*>(pv);
-            LongArrayData data = LongArrayData();
-            *buffer += "[";
-            for(size_t i=0; i < pvdata->getLength(); i++) {
-                if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,data);
-                if(num==1) {
-                     int64 val = data.data[data.offset];
-                     char buf[16];
-                     sprintf(buf,"%lld",val);
-                     *buffer += buf;
-                } else {
-                     *buffer += "???? ";
-                }
-            }
-            *buffer += "]";
-            break;
-        }
-    case pvFloat: {
-            PVFloatArray *pvdata = static_cast<PVFloatArray*>(pv);
-            FloatArrayData data = FloatArrayData();
-            *buffer += "[";
-            for(size_t i=0; i < pvdata->getLength(); i++) {
-                if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,data);
-                if(num==1) {
-                     float val = data.data[data.offset];
-                     char buf[16];
-                     sprintf(buf,"%g",val);
-                     *buffer += buf;
-                } else {
-                     *buffer += "???? ";
-                }
-            }
-            *buffer += "]";
-            break;
-        }
-    case pvDouble: {
-            PVDoubleArray *pvdata = static_cast<PVDoubleArray*>(pv);
-            DoubleArrayData data = DoubleArrayData();
-            *buffer += "[";
-            for(size_t i=0; i < pvdata->getLength(); i++) {
-                if(i!=0) *buffer += ',';
-                int num = pvdata->get(i,1,data);
-                if(num==1) {
-                     double val = data.data[data.offset];
-                     char buf[16];
-                     sprintf(buf,"%lg",val);
-                     *buffer += buf;
-                } else {
-                     *buffer += "???? ";
-                }
-            }
-            *buffer += ("]");
-            break;
-        }
-    case pvString: {
-    	PVStringArray *pvdata = static_cast<PVStringArray*>(pv);
-    	StringArrayData data = StringArrayData();
-    	*buffer += "[";
-    	for(size_t i=0; i < pvdata->getLength(); i++) {
-    		if(i!=0) *buffer += ",";
-    		int num = pvdata->get(i,1,data);
-    		StringArray value = data.data;
-                if(num==1) {
-                    if(value[data.offset].length()>0) {
-                         *buffer += value[data.offset].c_str();
-                    } else {
-                         *buffer += "null";
-                    }
-    		} else {
-    			*buffer += "null";
-    		}
-    	}
-    	*buffer += "]";
-    	break;
-    }
-    default:
-        *buffer += "(array element is unknown ScalarType)";
-    }
-}
-
-void convertStructureArray(StringBuilder buffer,
-    PVStructureArray * pvdata,int notFirst)
-{
-    int length = pvdata->getLength();
-    if(length<=0) {
-        return;
-    }
-    StructureArrayData data = StructureArrayData();
-    pvdata->get(0, length, data);
-    for (int i = 0; i < length; i++) {
-        PVStructurePtr pvStructure = data.data[i];
-        if (pvStructure == 0) {
-            *buffer += "null";
-        } else {
-            convertToString(buffer,pvStructure.get(),notFirst+1);
-        }
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -343,9 +33,13 @@ void convertStructureArray(StringBuilder buffer,
 
 double timeOut = DEFAULT_TIMEOUT;
 string request(DEFAULT_REQUEST);
-bool terseMode = false;
 
-PVStructure::shared_pointer pvRequest;
+enum PrintMode { ValueOnlyMode, StructureMode, TerseMode };
+PrintMode mode = ValueOnlyMode;
+
+char fieldSeparator = ' ';
+
+//PVStructure::shared_pointer pvRequest;
 
 void usage (void)
 {
@@ -354,39 +48,67 @@ void usage (void)
     "options:\n"
     "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
     "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
-    "  -t:                Terse mode - print only value, without name\n"
-    "  -d:                Enable debug output"
-    "\nExample: pvput example001 1.234 10 test\n\n"
+    "  -t:                Terse mode - print only successfully written value, without names\n"
+    "  -d:                Enable debug output\n"
+    "  -F <ofs>:          Use <ofs> as an alternate output field separator"
+    "\nExample: pvput double01 1.234\n\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
 
 
+struct AtomicBoolean_null_deleter
+{
+    void operator()(void const *) const {}
+};
+
+// standard performance on set/clear, use of tr1::shared_ptr lock-free counter for get
+// alternative is to use boost::atomic
+class AtomicBoolean
+{
+    public:
+        AtomicBoolean() : counter(static_cast<void*>(0), AtomicBoolean_null_deleter()) {};
+
+        void set() { mutex.lock(); setp = counter; mutex.unlock(); }
+        void clear() { mutex.lock(); setp.reset(); mutex.unlock(); }
+
+        bool get() const { return counter.use_count() == 2; }
+    private:
+        std::tr1::shared_ptr<void> counter;
+        std::tr1::shared_ptr<void> setp;
+        epics::pvData::Mutex mutex;
+};
+
 class ChannelPutRequesterImpl : public ChannelPutRequester
 {
     private:
+    ChannelPut::shared_pointer m_channelPut;
     PVStructure::shared_pointer m_pvStructure;
     BitSet::shared_pointer m_bitSet;
+    Mutex m_pointerMutex;
+    Mutex m_eventMutex;
     auto_ptr<Event> m_event;
     String m_channelName;
+    AtomicBoolean m_supressGetValue;
 
     public:
     
     ChannelPutRequesterImpl(String channelName) : m_channelName(channelName)
     {
-        resetEvent();
-    };
+    	resetEvent();
+    }
     
     virtual String getRequesterName()
     {
         return "ChannelPutRequesterImpl";
-    };
-
-    virtual void message(String const & message,MessageType messageType)
-    {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void channelPutConnect(const epics::pvData::Status& status,ChannelPut::shared_pointer const & channelPut,
+    virtual void message(String const & message, MessageType messageType)
+    {
+        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+    }
+
+    virtual void channelPutConnect(const epics::pvData::Status& status,
+    							   ChannelPut::shared_pointer const & channelPut,
                                    epics::pvData::PVStructure::shared_pointer const & pvStructure, 
                                    epics::pvData::BitSet::shared_pointer const & bitSet)
     {
@@ -395,20 +117,26 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << m_channelName << "] channel put create: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel put create: " << status.toString() << std::endl;
             }
 
-            m_pvStructure = pvStructure;
-            m_bitSet = bitSet;
+            // assign smart pointers
+            {
+                Lock lock(m_pointerMutex);
+                m_channelPut = channelPut;
+                m_pvStructure = pvStructure;
+            	m_bitSet = bitSet;
+            }
             
             // we always put all
             m_bitSet->set(0);
             
+            // get immediately old value
             channelPut->get();
         }
         else
         {
-            std::cout << "[" << m_channelName << "] failed to create channel put: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to create channel put: " << status.toString() << std::endl;
         }
     }
 
@@ -419,24 +147,48 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
             }
 
-            String str;
-            
-            if (terseMode)
-                convertToString(&str, m_pvStructure.get(), 0);
-            else
-                m_pvStructure->toString(&str);
-            
+            // access smart pointers
+            // do not print old value in terseMode
+            if (!m_supressGetValue.get())
+            {
+                Lock lock(m_pointerMutex);
+                {
+                    // needed since we access the data
+                    ScopedLock dataLock(m_channelPut);
 
-            std::cout << str << std::endl;
+                    if (mode == ValueOnlyMode)
+                    {
+                        PVField::shared_pointer value = m_pvStructure->getSubField("value");
+                        if (value.get() == 0)
+                        {
+                        	std::cerr << "no 'value' field" << std::endl;
+                            return;
+                        }
+
+                        if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
+                        	std::cout << std::setw(30) << std::left << m_channelName;
+                        else
+                        	std::cout << m_channelName;
+
+                        std::cout << fieldSeparator;
+
+                        terse(std::cout, value) << std::endl;
+                    }
+                    else if (mode == TerseMode)
+                        terseStructure(std::cout, m_pvStructure) << std::endl;
+                    else
+                        std::cout << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
+                }
+            }
             
             m_event->signal();
         }
         else
         {
-            std::cout << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
         }
         
     }
@@ -448,84 +200,46 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << m_channelName << "] channel put: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel put: " << status.toString() << std::endl;
             }
   
             m_event->signal();
         }
         else
         {
-            std::cout << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
         }
         
     }
 
     PVStructure::shared_pointer getStructure()
     {
+        Lock lock(m_pointerMutex);
         return m_pvStructure;
     }
 
     void resetEvent()
     {
+        Lock lock(m_eventMutex);
         m_event.reset(new Event());
     }
     
     bool waitUntilDone(double timeOut)
     {
-        return m_event->wait(timeOut);
-    }
-};
-
-class ChannelRequesterImpl : public ChannelRequester
-{
-private:
-    Event m_event;    
-    
-public:
-    
-    virtual String getRequesterName()
-    {
-        return "ChannelRequesterImpl";
-    };
-
-    virtual void message(String const & message,MessageType messageType)
-    {
-        std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+    	Event* event;
+    	{
+    		Lock lock(m_eventMutex);
+    		event = m_event.get();
+    	}
+        return event->wait(timeOut);
     }
 
-    virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel)
+    void supressGetValue(bool flag)
     {
-        if (status.isSuccess())
-        {
-            // show warning
-            if (!status.isOK())
-            {
-                std::cout << "[" << channel->getChannelName() << "] channel create: " << status.toString() << std::endl;
-            }
-        }
-        else
-        {
-            std::cout << "[" << channel->getChannelName() << "] failed to create a channel: " << status.toString() << std::endl;
-        }
-    }
-
-    virtual void channelStateChange(Channel::shared_pointer const & /*channel*/, Channel::ConnectionState connectionState)
-    {
-        if (connectionState == Channel::CONNECTED)
-        {
-            m_event.signal();
-        }
-        /*
-        else if (connectionState != Channel::DESTROYED)
-        {
-            std::cout << "[" << channel->getChannelName() << "] channel state change: "  << Channel::ConnectionStateNames[connectionState] << std::endl;
-        }
-        */
-    }
-    
-    bool waitUntilConnected(double timeOut)
-    {
-        return m_event.wait(timeOut);
+    	if (flag)
+    		m_supressGetValue.set();
+    	else
+    		m_supressGetValue.clear();
     }
 };
 
@@ -550,11 +264,9 @@ int main (int argc, char *argv[])
     int opt;                    /* getopt() current option */
     bool debug = false;
 
-    Requester::shared_pointer requester(new RequesterImpl());
-
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:w:td")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:tdF:")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -569,12 +281,17 @@ int main (int argc, char *argv[])
             break;
         case 'r':               /* Set CA timeout value */
             request = optarg;
+            // do not override terse mode
+            if (mode == ValueOnlyMode) mode = StructureMode;
             break;
         case 't':               /* Terse mode */
-            terseMode = true;
+            mode = TerseMode;
             break;
         case 'd':               /* Debug log level */
             debug = true;
+            break;
+        case 'F':               /* Store this for output formatting */
+            fieldSeparator = (char) *optarg;
             break;
         case '?':
             fprintf(stderr,
@@ -611,14 +328,18 @@ int main (int argc, char *argv[])
     for (int n = 0; optind < argc; n++, optind++)
         values.push_back(argv[optind]);       /* Copy values from command line */
 
-    pvRequest = getCreateRequest()->createRequest(request,requester);
+    Requester::shared_pointer requester(new RequesterImpl("pvput"));
+
+    PVStructure::shared_pointer pvRequest = getCreateRequest()->createRequest(request, requester);
     if(pvRequest.get()==NULL) {
-        printf("failed to parse request string\n");
+        fprintf(stderr, "failed to parse request string\n");
         return 1;
     }
     
     SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
 
+    std::cout << std::boolalpha;
+    terseSeparator(fieldSeparator);
 
     ClientFactory::start();
     ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
@@ -636,7 +357,10 @@ int main (int argc, char *argv[])
             if (channelRequesterImpl->waitUntilConnected(timeOut))
             {
                 shared_ptr<ChannelPutRequesterImpl> putRequesterImpl(new ChannelPutRequesterImpl(channel->getChannelName()));
-                std::cout << "Old : " << std::endl;
+                if (mode == TerseMode)
+                	putRequesterImpl->supressGetValue(true);
+                else
+                	std::cout << "Old : ";
                 ChannelPut::shared_pointer channelPut = channel->createChannelPut(putRequesterImpl, pvRequest);
                 allOK &= putRequesterImpl->waitUntilDone(timeOut);
                 if (allOK)
@@ -645,6 +369,7 @@ int main (int argc, char *argv[])
                 	// since we access structure from another thread, we need to lock
                 	{
 						ScopedLock lock(channelPut);
+						// TODO SIGSEG
 						getConvert()->fromString(putRequesterImpl->getStructure(), values);
                 	}
 
@@ -656,7 +381,8 @@ int main (int argc, char *argv[])
                     if (allOK)
                     {
                         // and than a get again to verify put
-                        std::cout << "New : " << std::endl;
+                        if (mode != TerseMode) std::cout << "New : ";
+                        putRequesterImpl->supressGetValue(false);
                         putRequesterImpl->resetEvent();
                         channelPut->get();
                         allOK &= putRequesterImpl->waitUntilDone(timeOut);
@@ -667,20 +393,20 @@ int main (int argc, char *argv[])
             {
                 allOK = false;
                 channel->destroy();
-                std::cout << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
+                std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
                 break;
             }
         }
         while (false);
     } catch (std::out_of_range& oor) {
         allOK = false;
-        std::cout << "parse error: not enough of values" << std::endl;
+        std::cerr << "parse error: not enough of values" << std::endl;
     } catch (std::exception& ex) {
         allOK = false;
-        std::cout << ex.what() << std::endl;
+        std::cerr << ex.what() << std::endl;
     } catch (...) {
         allOK = false;
-        std::cout << "unknown exception caught" << std::endl;
+        std::cerr << "unknown exception caught" << std::endl;
     }
         
     ClientFactory::stop();
