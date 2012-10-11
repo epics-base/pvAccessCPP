@@ -424,28 +424,40 @@ class MockChannelRPC : public ChannelRPC
 			}
 			else
 			{
-		        int i = 0;
-		        int totalFields = 1 + atoi(columns->get().c_str());  // labels, <columns>
-		        StringArray fieldNames(totalFields);
-		        FieldConstPtrArray fields(totalFields);
-		        fieldNames[i] = "labels";
-		        fields[i++] = getFieldCreate()->createScalarArray(pvString);
+
+		        int columnsCount = atoi(columns->get().c_str());
+		        StringArray fieldNames(columnsCount);
+		        FieldConstPtrArray fields(columnsCount);
 		        char sbuf[16];
 		        vector<String> labels;
-		        for (; i < totalFields; i++)
+		        for (int i = 0; i < columnsCount; i++)
 		        {
-		        	sprintf(sbuf, "column%d", i-1	);
+		        	sprintf(sbuf, "column%d", i);
 		        	fieldNames[i] = sbuf;
 		        	fields[i] = getFieldCreate()->createScalarArray(pvDouble);
 		            labels.push_back(sbuf);
 		        }
 
+		        Structure::const_shared_pointer valueStructure(
+		        			getFieldCreate()->createStructure(fieldNames, fields)
+		        	);
+
+		        StringArray tableFieldNames(2);
+		        FieldConstPtrArray tableFields(2);
+		        tableFieldNames[0] = "labels";
+		        tableFields[0] = getFieldCreate()->createScalarArray(pvString);
+		        tableFieldNames[1] = "value";
+		        tableFields[1] = valueStructure;
+
 		        PVStructure::shared_pointer result(
 		        		getPVDataCreate()->createPVStructure(
-		        				getFieldCreate()->createStructure("uri:ev4:nt/2012/pwd:NTTable", fieldNames, fields)
+		        				getFieldCreate()->createStructure(
+		        						"uri:ev4:nt/2012/pwd:NTTable", tableFieldNames, tableFields)
 		        			)
 		        		);
 		        static_pointer_cast<PVStringArray>(result->getScalarArrayField("labels", pvString))->put(0, labels.size(), &labels[0], 0);
+
+		        PVStructure::shared_pointer resultValue = result->getStructureField("value");
 
 		        srand ( time(NULL) );
 
@@ -460,7 +472,7 @@ class MockChannelRPC : public ChannelRPC
 		        		iter++)
 		        {
 		        	FILL_VALUES;
-		        	static_pointer_cast<PVDoubleArray>(result->getScalarArrayField(*iter, pvDouble))->put(0, ROWS, values, 0);
+		        	static_pointer_cast<PVDoubleArray>(resultValue->getScalarArrayField(*iter, pvDouble))->put(0, ROWS, values, 0);
 		        }
 				m_channelRPCRequester->requestDone(Status::Ok, result);
 			}

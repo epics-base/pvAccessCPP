@@ -525,8 +525,6 @@ PrintMode mode = ValueOnlyMode;
 
 char fieldSeparator = ' ';
 
-//PVStructure::shared_pointer pvRequest;
-
 void usage (void)
 {
     fprintf (stderr, "\nUsage: pvput [options] <PV name> <values>...\n\n"

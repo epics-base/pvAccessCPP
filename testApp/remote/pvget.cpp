@@ -169,7 +169,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             std::cerr << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
             {
                 Lock lock(m_pointerMutex);
-                // this is OK since calle holds also owns it
+                // this is OK since caller holds also owns it
                 m_channelGet.reset();
             }
         }
