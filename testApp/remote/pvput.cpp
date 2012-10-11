@@ -654,14 +654,23 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
                             return;
                         }
 
-                        if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
-                        	std::cout << std::setw(30) << std::left << m_channelName;
+                        Type valueType = value->getField()->getType();
+                        if (valueType != scalar && valueType != scalarArray)
+                        {
+                        	// switch to structure mode
+                            std::cout << m_channelName << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
+                        }
                         else
-                        	std::cout << m_channelName;
+                        {
+							if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
+								std::cout << std::setw(30) << std::left << m_channelName;
+							else
+								std::cout << m_channelName;
 
-                        std::cout << fieldSeparator;
+							std::cout << fieldSeparator;
 
-                        terse(std::cout, value) << std::endl;
+							terse(std::cout, value) << std::endl;
+                        }
                     }
                     else if (mode == TerseMode)
                         terseStructure(std::cout, m_pvStructure) << std::endl;
