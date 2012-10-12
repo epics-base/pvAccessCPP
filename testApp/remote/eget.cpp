@@ -29,6 +29,8 @@ using namespace epics::pvAccess;
 enum PrintMode { ValueOnlyMode, StructureMode, TerseMode };
 PrintMode mode = ValueOnlyMode;
 
+char fieldSeparator = ' ';
+
 
 void formatNTAny(std::ostream& o, PVStructurePtr const & pvStruct)
 {
@@ -54,20 +56,60 @@ void formatNTScalar(std::ostream& o, PVStructurePtr const & pvStruct)
     o << *value;
 }
 
+std::ostream& formatVector(std::ostream& o,
+		String label,
+		PVScalarArrayPtr const & pvScalarArray,
+		bool transpose)
+{
+	size_t len = pvScalarArray->getLength();
+
+	if (!transpose)
+	{
+		if (!label.empty())
+			o << label << std::endl;
+
+		for (size_t i = 0; i < len; i++)
+			pvScalarArray->dumpValue(o, i) << std::endl;
+	}
+	else
+	{
+		bool first = true;
+		if (!label.empty())
+		{
+			o << label;
+			first = false;
+		}
+
+	    for (size_t i = 0; i < len; i++) {
+			if (first)
+				first = false;
+			else
+				o << fieldSeparator;
+
+			pvScalarArray->dumpValue(o, i);
+	    }
+	}
+
+	return o;
+}
+
+/*
 std::ostream& formatScalarArray(std::ostream& o, PVScalarArrayPtr const & pvScalarArray)
 {
 	size_t len = pvScalarArray->getLength();
 	if (len == 0)
 	{
+		// TODO do we really want this
 		o << "(empty)" << std::endl;
 	}
 	else
 	{
 		for (size_t i = 0; i < len; i++)
-			(pvScalarArray.get())->dumpValue(o, i) << std::endl;
+			pvScalarArray->dumpValue(o, i) << std::endl;
 	}
 	return o;
 }
+*/
 
 void formatNTScalarArray(std::ostream& o, PVStructurePtr const & pvStruct)
 {
@@ -79,10 +121,11 @@ void formatNTScalarArray(std::ostream& o, PVStructurePtr const & pvStruct)
     }
 
     //o << *value;
-    formatScalarArray(o, value);
+    //formatScalarArray(o, value);
+    formatVector(o, "", value, mode == TerseMode);
 }
 
-size_t getLongestString(PVScalarArrayPtr array)
+size_t getLongestString(PVScalarArrayPtr const & array)
 {
 	size_t max = 0;
 
@@ -100,52 +143,33 @@ size_t getLongestString(PVScalarArrayPtr array)
     return max;
 }
 
-void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
+// labels are optional
+// if provided labels.size() must equals columnData.size()
+void formatTable(std::ostream& o,
+		PVStringArrayPtr const & labels,
+		vector<PVScalarArrayPtr> const & columnData,
+		bool transpose)
 {
-    PVStringArrayPtr labels = dynamic_pointer_cast<PVStringArray>(pvStruct->getScalarArrayField("labels", pvString));
-    if (labels.get() == 0)
-    {
-    	std::cerr << "no string[] 'labels' column in NTTable" << std::endl;
-        return;
-    }
-
-    PVStructurePtr value = pvStruct->getStructureField("value");
-    if (value.get() == 0)
-    {
-    	std::cerr << "no 'value' structure in NTTable" << std::endl;
-        return;
-    }
-
-    // next numColumns fields are columns
+	// array with maximum number of elements
     size_t maxValues = 0;
-    vector<PVScalarArrayPtr> columnData;
-    PVFieldPtrArray fields = value->getPVFields();
-    size_t numColumns = fields.size();
 
-    if (labels->getLength() != numColumns)
-    {
-       	std::cerr << "malformed NTTable, length of 'labels' array does not equal to a number of 'value' structure subfields" << std::endl;
-       	return;
-    }
+    // value with longest string form
+    size_t maxColumnLength = labels.get() ? getLongestString(labels) : 0;
 
-    size_t maxColumnLength = getLongestString(labels);
-
+    //
+    // get maxValue and maxColumnLength
+    //
+    size_t numColumns = columnData.size();
     for (size_t i = 0; i < numColumns; i++)
     {
-    	PVScalarArrayPtr array = dynamic_pointer_cast<PVScalarArray>(fields[i]);
-    	if (array.get() == 0)
-    	{
-        	std::cerr << "malformed NTTable, " << (i+1) << ". field is not scalar_t[]" << std::endl;
-    		return;
-    	}
+    	PVScalarArrayPtr array = columnData[i];
+
     	size_t arrayLength = array->getLength();
     	if (maxValues < arrayLength) maxValues = arrayLength;
-        columnData.push_back(array);
 
         size_t colLen = getLongestString(array);
         if (colLen > maxColumnLength) maxColumnLength = colLen;
     }
-
 
     // add some space
     size_t padding = 2;
@@ -155,8 +179,7 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
    	StringArrayData labelsData;
     labels->get(0, numColumns, labelsData);
 
-    // TerseMode as Transpose
-    if (mode != TerseMode)
+    if (!transpose)
     {
 
 		//
@@ -210,6 +233,47 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
 		}
 
     }
+}
+
+void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
+{
+    PVStringArrayPtr labels = dynamic_pointer_cast<PVStringArray>(pvStruct->getScalarArrayField("labels", pvString));
+    if (labels.get() == 0)
+    {
+    	std::cerr << "no string[] 'labels' column in NTTable" << std::endl;
+        return;
+    }
+
+    PVStructurePtr value = pvStruct->getStructureField("value");
+    if (value.get() == 0)
+    {
+    	std::cerr << "no 'value' structure in NTTable" << std::endl;
+        return;
+    }
+
+    vector<PVScalarArrayPtr> columnData;
+    PVFieldPtrArray fields = value->getPVFields();
+    size_t numColumns = fields.size();
+
+    if (labels->getLength() != numColumns)
+    {
+       	std::cerr << "malformed NTTable, length of 'labels' array does not equal to a number of 'value' structure subfields" << std::endl;
+       	return;
+    }
+
+    for (size_t i = 0; i < numColumns; i++)
+    {
+    	PVScalarArrayPtr array = dynamic_pointer_cast<PVScalarArray>(fields[i]);
+    	if (array.get() == 0)
+    	{
+        	std::cerr << "malformed NTTable, " << (i+1) << ". field is not scalar_t[]" << std::endl;
+    		return;
+    	}
+
+        columnData.push_back(array);
+    }
+
+    formatTable(o, labels, columnData, mode == TerseMode);
 }    
 
 
@@ -380,7 +444,6 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
 double timeOut = DEFAULT_TIMEOUT;
 string request(DEFAULT_REQUEST);
 
-char fieldSeparator = ' ';
 
 void usage (void)
 {
@@ -495,7 +558,8 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 								std::cout << *(value.get()) << std::endl;
 							else if (valueType == scalarArray)
 							{
-								formatScalarArray(std::cout, dynamic_pointer_cast<PVScalarArray>(value));
+								//formatScalarArray(std::cout, dynamic_pointer_cast<PVScalarArray>(value));
+								formatVector(std::cout, "", dynamic_pointer_cast<PVScalarArray>(value), false);
 							}
 							else
 							{
@@ -544,7 +608,7 @@ PVFieldPtr pvField = m_pvStructure->getSubField("value");
                     			size_t len = pvScalarArray->getLength();
                     			for (size_t i = 0; i < len; i++)
                     			{
-                        			(pvScalarArray.get())->dumpValue(std::cout, i) << std::endl;
+                        			pvScalarArray->dumpValue(std::cout, i) << std::endl;
                     			}
                     		}
                     		else
