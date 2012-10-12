@@ -54,11 +54,9 @@ void formatNTScalar(std::ostream& o, PVStructurePtr const & pvStruct)
 std::ostream& formatScalarArray(std::ostream& o, PVScalarArrayPtr const & pvScalarArray)
 {
 	size_t len = pvScalarArray->getLength();
-	if (len == 0)
-		o << "(empty)" << std::endl;	// TODO is this OK?
-	else
-		for (size_t i = 0; i < len; i++)
-			(pvScalarArray.get())->dumpValue(o, i) << std::endl;
+	o << len << std::endl;
+	for (size_t i = 0; i < len; i++)
+		(pvScalarArray.get())->dumpValue(o, i) << std::endl;
 	return o;
 }
 
@@ -399,8 +397,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 								std::cout << *(value.get()) << std::endl;
 							else if (valueType == scalarArray)
 							{
-								// TODO decide on formatting (with or without std::endl)
-								formatScalarArray(std::cout, dynamic_pointer_cast<PVScalarArray>(value)) << std::endl;
+								formatScalarArray(std::cout, dynamic_pointer_cast<PVScalarArray>(value));
 							}
 							else
 							{

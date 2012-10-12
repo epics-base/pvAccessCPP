@@ -248,6 +248,7 @@ SystemConfigurationImpl::~SystemConfigurationImpl()
 
 bool SystemConfigurationImpl::getPropertyAsBoolean(const string &name, const bool defaultValue)
 {
+	/*
 	bool retval;
 	_ibuffer.clear();
 	_obuffer.clear();
@@ -259,6 +260,19 @@ bool SystemConfigurationImpl::getPropertyAsBoolean(const string &name, const boo
         return defaultValue;
     else
         return retval;
+        */
+
+	string value = getPropertyAsString(name, defaultValue ? "1" : "0");
+	std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+
+	bool isTrue = (value == "1") || (value == "true") || (value == "yes");
+	bool isFalse = (value == "0") || (value == "false") || (value == "no");
+
+	// invalid value
+	if (!(isTrue || isFalse))
+		return defaultValue;
+	else
+		return isTrue == true;
 }
 
 int32 SystemConfigurationImpl::getPropertyAsInteger(const string &name, const int32 defaultValue)
