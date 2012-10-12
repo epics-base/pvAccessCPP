@@ -463,15 +463,17 @@ class MockChannelRPC : public ChannelRPC
 
 		        #define ROWS 10
 		        double values[ROWS];
-                #define FILL_VALUES \
+                #define FILL_VALUES(OFFSET) \
 		        for (int r = 0; r < ROWS; r++) \
-		        	values[r] = (rand()-RAND_MAX/2)/(double)(RAND_MAX/2);
+		        	values[r] = rand()/((double)RAND_MAX+1) + OFFSET;
+//		        	values[r] = (rand()-RAND_MAX/2)/(double)(RAND_MAX/2); // -1 ... 1
 
+		        int offset = 0;
 		        for (vector<String>::iterator iter = labels.begin();
 		        		iter != labels.end();
-		        		iter++)
+		        		iter++, offset++)
 		        {
-		        	FILL_VALUES;
+		        	FILL_VALUES(offset);
 		        	static_pointer_cast<PVDoubleArray>(resultValue->getScalarArrayField(*iter, pvDouble))->put(0, ROWS, values, 0);
 		        }
 				m_channelRPCRequester->requestDone(Status::Ok, result);
@@ -521,7 +523,8 @@ class MockChannelRPC : public ChannelRPC
 		        int32 len = rowsVal * colsVal;
 		        vector<double> mv(len);
 		        for (int r = 0; r < len; r++)
-		        	mv[r] = (rand()-RAND_MAX/2)/(double)(RAND_MAX/2);
+//		        	mv[r] = (rand()-RAND_MAX/2)/(double)(RAND_MAX/2); // -1 .. 1
+		        	mv[r] = rand()/((double)RAND_MAX+1) + r/rowsVal;
 		        static_pointer_cast<PVDoubleArray>(result->getScalarArrayField("value", pvDouble))->put(0, len, &mv[0], 0);
 
 	    		m_channelRPCRequester->requestDone(Status::Ok, result);

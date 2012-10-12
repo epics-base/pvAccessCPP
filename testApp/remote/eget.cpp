@@ -26,6 +26,9 @@ using namespace std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
+enum PrintMode { ValueOnlyMode, StructureMode, TerseMode };
+PrintMode mode = ValueOnlyMode;
+
 
 void formatNTAny(std::ostream& o, PVStructurePtr const & pvStruct)
 {
@@ -54,9 +57,15 @@ void formatNTScalar(std::ostream& o, PVStructurePtr const & pvStruct)
 std::ostream& formatScalarArray(std::ostream& o, PVScalarArrayPtr const & pvScalarArray)
 {
 	size_t len = pvScalarArray->getLength();
-	o << len << std::endl;
-	for (size_t i = 0; i < len; i++)
-		(pvScalarArray.get())->dumpValue(o, i) << std::endl;
+	if (len == 0)
+	{
+		o << "(empty)" << std::endl;
+	}
+	else
+	{
+		for (size_t i = 0; i < len; i++)
+			(pvScalarArray.get())->dumpValue(o, i) << std::endl;
+	}
 	return o;
 }
 
@@ -142,32 +151,65 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
     size_t padding = 2;
     maxColumnLength += padding;
 
-    // first print labels
-   	StringArrayData data;
-    labels->get(0, numColumns, data);
-    for (size_t i = 0; i < numColumns; i++)
+    // get labels
+   	StringArrayData labelsData;
+    labels->get(0, numColumns, labelsData);
+
+    // TerseMode as Transpose
+    if (mode != TerseMode)
     {
-    	o << std::setw(maxColumnLength) << std::right << data.data[i];
-    }
-    o << std::endl;
 
-    // then values
-    for (size_t r = 0; r < maxValues; r++)
+		//
+		// <column0>, <column1>, ...
+		//   values     values   ...
+		//
+
+		// first print labels
+		for (size_t i = 0; i < numColumns; i++)
+		{
+			o << std::setw(maxColumnLength) << std::right << labelsData.data[i];
+		}
+		o << std::endl;
+
+		// then values
+		for (size_t r = 0; r < maxValues; r++)
+		{
+			for (size_t i = 0; i < numColumns; i++)
+			{
+				o << std::setw(maxColumnLength) << std::right;
+				if (r < columnData[i]->getLength())
+					columnData[i]->dumpValue(o, r);
+				else
+					o << "";
+			}
+			o << std::endl;
+		}
+
+    }
+    else
     {
-        for (size_t i = 0; i < numColumns; i++)
-        {
-        	o << std::setw(maxColumnLength) << std::right;
-        	if (r < columnData[i]->getLength())
-        		columnData[i]->dumpValue(o, r);
-        	else
-        		o << "";
-        }
-        o << std::endl;
+
+		//
+		// <column0> values...
+		// <column1> values...
+		// ...
+		//
+
+		for (size_t i = 0; i < numColumns; i++)
+		{
+			o << std::setw(maxColumnLength) << std::left << labelsData.data[i];
+			for (size_t r = 0; r < maxValues; r++)
+			{
+				o << std::setw(maxColumnLength) << std::right;
+				if (r < columnData[i]->getLength())
+					columnData[i]->dumpValue(o, r);
+				else
+					o << "";
+			}
+			o << std::endl;
+		}
+
     }
-
-    // reset back
-    o << std::left;
-
 }    
 
 
@@ -223,15 +265,43 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
     size_t padding = 2;
     size_t maxColumnLength = getLongestString(value) + padding;
 
-    size_t ix = 0;
-    for (int32 r = 0; r < rows; r++)
+    // TerseMode as Transpose
+    if (mode != TerseMode)
     {
-    	for (int32 c = 0; c < cols; c++)
-    	{
-        	o << std::setw(maxColumnLength) << std::right;
-        	value->dumpValue(o, ix++);
-    	}
-        o << std::endl;
+
+		//
+		// el1 el2 el3
+		// el4 el5 el6
+		//
+
+		size_t ix = 0;
+		for (int32 r = 0; r < rows; r++)
+		{
+			for (int32 c = 0; c < cols; c++)
+			{
+				o << std::setw(maxColumnLength) << std::right;
+				value->dumpValue(o, ix++);
+			}
+			o << std::endl;
+		}
+
+    }
+    else
+    {
+		//
+		// el1 el4
+		// el2 el5
+		// el3 el6
+		//
+		for (int32 c = 0; c < cols; c++)
+		{
+			for (int32 r = 0; r < rows; r++)
+			{
+				o << std::setw(maxColumnLength) << std::right;
+				value->dumpValue(o, r * rows + c);
+			}
+			o << std::endl;
+		}
     }
 }
 
@@ -309,9 +379,6 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
 
 double timeOut = DEFAULT_TIMEOUT;
 string request(DEFAULT_REQUEST);
-
-enum PrintMode { ValueOnlyMode, StructureMode, TerseMode };
-PrintMode mode = ValueOnlyMode;
 
 char fieldSeparator = ' ';
 
@@ -728,6 +795,7 @@ int main (int argc, char *argv[])
 
     std::cout << std::boolalpha;
     terseSeparator(fieldSeparator);
+    terseArrayCount(false);
 
     bool allOK = true;
 

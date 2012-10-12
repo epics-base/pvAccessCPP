@@ -35,6 +35,13 @@ void terseSeparator(char c)
 	separator = c;
 }
 
+char arrayCountFlag = true;
+void terseArrayCount(bool flag)
+{
+	arrayCountFlag = flag;
+}
+
+
 std::ostream& terse(std::ostream& o, PVField::shared_pointer const & pv)
 {
     Type type = pv->getField()->getType();
@@ -76,12 +83,15 @@ std::ostream& terseStructure(std::ostream& o, PVStructure::shared_pointer const 
 std::ostream& terseScalarArray(std::ostream& o, PVScalarArray::shared_pointer const & pvArray)
 {
     size_t length = pvArray->getLength();
-    if (length<=0)
+    if (arrayCountFlag)
     {
-    	o << '0';
-    	return o;
+		if (length<=0)
+		{
+			o << '0';
+			return o;
+		}
+		o << length << separator;
     }
-    o << length << separator;
 
     bool first = true;
     for (size_t i = 0; i < length; i++) {
@@ -104,12 +114,15 @@ std::ostream& terseScalarArray(std::ostream& o, PVScalarArray::shared_pointer co
 std::ostream& terseStructureArray(std::ostream& o, PVStructureArray::shared_pointer const & pvArray)
 {
     size_t length = pvArray->getLength();
-    if (length<=0)
+    if (arrayCountFlag)
     {
-    	o << '0';
-    	return o;
+		if (length<=0)
+		{
+			o << '0';
+			return o;
+		}
+		o << length << separator;
     }
-    o << length << separator;
 
     StructureArrayData data = StructureArrayData();
     pvArray->get(0, length, data);

@@ -8,6 +8,7 @@ void convertArray(epics::pvData::StringBuilder buffer, epics::pvData::PVScalarAr
 void convertStructureArray(epics::pvData::StringBuilder buffer, epics::pvData::PVStructureArray * pvdata, int notFirst);
 
 void terseSeparator(char c);
+void terseArrayCount(bool flag);
 std::ostream& terse(std::ostream& o, epics::pvData::PVField::shared_pointer const & pv);
 std::ostream& terseStructure(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvStructure);
 std::ostream& terseScalarArray(std::ostream& o, epics::pvData::PVScalarArray::shared_pointer const & pvArray);
