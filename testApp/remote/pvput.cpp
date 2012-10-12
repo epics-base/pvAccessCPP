@@ -443,14 +443,16 @@ size_t fromString(PVScalarArrayPtr const &pv, StringArray const & from, size_t f
 	if (fromStartIndex >= fromValueCount)
 		throw std::runtime_error("not enough values, stopped at field " + pv->getFieldName());
 
-	unsigned int count;
-	int result = sscanf(from[fromStartIndex].c_str(), "%u", &count);
-	if (result != 1)
-    	throw runtime_error("failed to parse element count value (uint) of field " + pv->getFieldName() + " from string value '" + from[fromStartIndex] + "'");
+	size_t count;
+	istringstream iss(from[fromStartIndex]);
+	iss >> count;
+	// not fail and entire value is parsed (e.g. to detect 1.2 parsing to 1)
+	if (iss.fail() || !iss.eof())
+    	throw runtime_error("failed to parse element count value (uint) of field '" + pv->getFieldName() + "' from string value '" + from[fromStartIndex] + "'");
 	fromStartIndex++;
 	processed++;
 
-	if (static_cast<size_t>(fromStartIndex+count) > fromValueCount)
+	if ((fromStartIndex+count) > fromValueCount)
 	{
     	throw runtime_error("not enough array values for field " + pv->getFieldName());
 	}
