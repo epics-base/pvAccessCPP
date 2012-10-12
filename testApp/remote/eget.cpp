@@ -125,6 +125,18 @@ void formatNTScalarArray(std::ostream& o, PVStructurePtr const & pvStruct)
     formatVector(o, "", value, mode == TerseMode);
 }
 
+size_t getLongestString(vector<String> const & array)
+{
+	size_t max = 0;
+	size_t len = array.size();
+    for (size_t i = 0; i < len; i++)
+    {
+       	size_t l = array[i].size();
+       	if (l > max) max = l;
+    }
+    return max;
+}
+
 size_t getLongestString(PVScalarArrayPtr const & array)
 {
 	size_t max = 0;
@@ -146,7 +158,7 @@ size_t getLongestString(PVScalarArrayPtr const & array)
 // labels are optional
 // if provided labels.size() must equals columnData.size()
 void formatTable(std::ostream& o,
-		PVStringArrayPtr const & labels,
+		vector<String> const & labels,
 		vector<PVScalarArrayPtr> const & columnData,
 		bool transpose)
 {
@@ -154,7 +166,7 @@ void formatTable(std::ostream& o,
     size_t maxValues = 0;
 
     // value with longest string form
-    size_t maxColumnLength = labels.get() ? getLongestString(labels) : 0;
+    size_t maxColumnLength = labels.size() ? getLongestString(labels) : 0;
 
     //
     // get maxValue and maxColumnLength
@@ -163,21 +175,19 @@ void formatTable(std::ostream& o,
     for (size_t i = 0; i < numColumns; i++)
     {
     	PVScalarArrayPtr array = columnData[i];
+    	if (array.get())
+    	{
+			size_t arrayLength = array->getLength();
+			if (maxValues < arrayLength) maxValues = arrayLength;
 
-    	size_t arrayLength = array->getLength();
-    	if (maxValues < arrayLength) maxValues = arrayLength;
-
-        size_t colLen = getLongestString(array);
-        if (colLen > maxColumnLength) maxColumnLength = colLen;
+			size_t colLen = getLongestString(array);
+			if (colLen > maxColumnLength) maxColumnLength = colLen;
+    	}
     }
 
     // add some space
     size_t padding = 2;
     maxColumnLength += padding;
-
-    // get labels
-   	StringArrayData labelsData;
-    labels->get(0, numColumns, labelsData);
 
     if (!transpose)
     {
@@ -188,11 +198,14 @@ void formatTable(std::ostream& o,
 		//
 
 		// first print labels
-		for (size_t i = 0; i < numColumns; i++)
-		{
-			o << std::setw(maxColumnLength) << std::right << labelsData.data[i];
-		}
-		o << std::endl;
+    	if (labels.size())
+    	{
+			for (size_t i = 0; i < numColumns; i++)
+			{
+				o << std::setw(maxColumnLength) << std::right << labels[i];
+			}
+			o << std::endl;
+    	}
 
 		// then values
 		for (size_t r = 0; r < maxValues; r++)
@@ -200,8 +213,9 @@ void formatTable(std::ostream& o,
 			for (size_t i = 0; i < numColumns; i++)
 			{
 				o << std::setw(maxColumnLength) << std::right;
-				if (r < columnData[i]->getLength())
-					columnData[i]->dumpValue(o, r);
+				PVScalarArrayPtr array = columnData[i];
+				if (array.get() && r < array->getLength())
+					array->dumpValue(o, r);
 				else
 					o << "";
 			}
@@ -220,12 +234,15 @@ void formatTable(std::ostream& o,
 
 		for (size_t i = 0; i < numColumns; i++)
 		{
-			o << std::setw(maxColumnLength) << std::left << labelsData.data[i];
+			if (labels.size())
+				o << std::setw(maxColumnLength) << std::left << labels[i];
+
 			for (size_t r = 0; r < maxValues; r++)
 			{
 				o << std::setw(maxColumnLength) << std::right;
-				if (r < columnData[i]->getLength())
-					columnData[i]->dumpValue(o, r);
+				PVScalarArrayPtr array = columnData[i];
+				if (array.get() && r < array->getLength())
+					array->dumpValue(o, r);
 				else
 					o << "";
 			}
@@ -273,7 +290,11 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
         columnData.push_back(array);
     }
 
-    formatTable(o, labels, columnData, mode == TerseMode);
+    // get labels
+    StringArrayData labelsData;
+    labels->get(0, numColumns, labelsData);
+
+    formatTable(o, labelsData.data, columnData, mode == TerseMode);
 }    
 
 
@@ -433,10 +454,89 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
 
 
 
+void printValue(String const & channelName, PVStructure::shared_pointer const & pv)
+{
+	if (mode == ValueOnlyMode)
+	{
+		PVField::shared_pointer value = pv->getSubField("value");
+		if (value.get() == 0)
+		{
+			std::cerr << "no 'value' field" << std::endl;
+			std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+		}
+		else
+		{
+			Type valueType = value->getField()->getType();
+			if (valueType == scalar)
+				std::cout << *(value.get()) << std::endl;
+			else if (valueType == scalarArray)
+			{
+				//formatScalarArray(std::cout, dynamic_pointer_cast<PVScalarArray>(value));
+				formatVector(std::cout, "", dynamic_pointer_cast<PVScalarArray>(value), false);
+			}
+			else
+			{
+				// switch to structure mode
+				std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+			}
+		}
+	}
+	else if (mode == TerseMode)
+		terseStructure(std::cout, pv) << std::endl;
+	else
+		std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+}
 
+// only in ValueOnlyMode
+void printValues(vector<string> const & names, vector<PVStructure::shared_pointer> const & values)
+{
+	size_t len = values.size();
 
+	vector<PVScalar::shared_pointer> scalars;
+	vector<PVScalarArray::shared_pointer> scalarArrays;
 
+	for (size_t i = 0; i < len; i++)
+	{
+		PVField::shared_pointer value = values[i]->getSubField("value");
+		if (value.get() != 0)
+		{
+			Type type = value->getField()->getType();
+			if (type == scalarArray)
+				scalarArrays.push_back(dynamic_pointer_cast<PVScalarArray>(value));
+			else if (type == scalar)
+			{
+				scalars.push_back(dynamic_pointer_cast<PVScalar>(value));
 
+				// TODO also try to make an PVStringArray out of a scalar
+			}
+		}
+	}
+
+	if (scalars.size() == len)
+	{
+		bool first = true;
+		for (size_t i = 0; i < len; i++)
+		{
+			if (first)
+				first = false;
+			else
+				std::cout << fieldSeparator;
+			std::cout << *(scalars[i].get());
+		}
+		std::cout << std::endl;
+	}
+	else if (scalarArrays.size() == len)
+	{
+		// TODO labels switch
+		formatTable(std::cout, names, scalarArrays, false);
+	}
+	else
+	{
+		// classic output
+		for (size_t i = 0; i < len; i++)
+			printValue(names[i], values[i]);
+	}
+}
 
 #define DEFAULT_TIMEOUT 3.0
 #define DEFAULT_REQUEST "field(value)"
@@ -455,7 +555,7 @@ void usage (void)
     "  -r <pv request>:     Get request string, specifies what fields to return and options, default is '%s'\n"
     "  -w <sec>:            Wait time, specifies timeout, default is %f second(s)\n"
     "  -q:					Pure pvAccess RPC based service (send NTURI.query as request argument)\n"
-    "  -t:                  Terse mode - print only value, without field names\n"
+    "  -t:                  Terse mode / transpose vector, table, matrix.\n"
     "  -d:                  Enable debug output\n"
     "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
     "  -c:                  Wait for clean shutdown and report used instance count (for expert users)"
@@ -473,20 +573,25 @@ void usage (void)
 }
 
 
-
 class ChannelGetRequesterImpl : public ChannelGetRequester
 {
     private:
+    String m_channelName;
+    bool m_printValue;
+
     ChannelGet::shared_pointer m_channelGet;
     PVStructure::shared_pointer m_pvStructure;
     BitSet::shared_pointer m_bitSet;
     Mutex m_pointerMutex;
     Event m_event;
-    String m_channelName;
 
     public:
     
-    ChannelGetRequesterImpl(String channelName) : m_channelName(channelName) {}
+    ChannelGetRequesterImpl(String channelName, bool printValue) :
+    	m_channelName(channelName),
+    	m_printValue(printValue)
+    {
+    }
     
     virtual String getRequesterName()
     {
@@ -540,39 +645,15 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             {
                 Lock lock(m_pointerMutex);
                 {
-                    // needed since we access the data
-                    ScopedLock dataLock(m_channelGet);
-    
-                    if (mode == ValueOnlyMode)
-                    {
-                        PVField::shared_pointer value = m_pvStructure->getSubField("value");
-                        if (value.get() == 0)
-                        {
-                        	std::cerr << "no 'value' field" << std::endl;
-                            std::cout << m_channelName << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
-                        }
-                        else
-                        {
-							Type valueType = value->getField()->getType();
-							if (valueType == scalar)
-								std::cout << *(value.get()) << std::endl;
-							else if (valueType == scalarArray)
-							{
-								//formatScalarArray(std::cout, dynamic_pointer_cast<PVScalarArray>(value));
-								formatVector(std::cout, "", dynamic_pointer_cast<PVScalarArray>(value), false);
-							}
-							else
-							{
-								// switch to structure mode
-								std::cout << m_channelName << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
-							}
-                        }
-                    }
-                    else if (mode == TerseMode)
-                        terseStructure(std::cout, m_pvStructure) << std::endl;
-                    else
-                        std::cout << m_channelName << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
+                	if (m_printValue)
+                	{
+						// needed since we access the data
+						ScopedLock dataLock(m_channelGet);
+
+						printValue(m_channelName, m_pvStructure);
+					}
                 }
+
                 // this is OK since calle holds also owns it
                 m_channelGet.reset();
             }
@@ -592,53 +673,18 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 
     }
 
+    PVStructure::shared_pointer getPVStructure()
+    {
+        Lock lock(m_pointerMutex);
+        return m_pvStructure;
+    }
+
     bool waitUntilGet(double timeOut)
     {
         return m_event.wait(timeOut);
     }
 };
 
-/*
-PVFieldPtr pvField = m_pvStructure->getSubField("value");
-                    	if (pvField.get())
-                    	{
-                    		PVScalarArrayPtr pvScalarArray = std::tr1::dynamic_pointer_cast<PVScalarArray>(pvField);
-                    		if (pvScalarArray.get())
-                    		{
-                    			size_t len = pvScalarArray->getLength();
-                    			for (size_t i = 0; i < len; i++)
-                    			{
-                        			pvScalarArray->dumpValue(std::cout, i) << std::endl;
-                    			}
-                    		}
-                    		else
-                    		{
-                    			std::cout << *(pvField.get()) << std::endl;
-                    		}
-                    	}
-                    	else
-                    	{
-                    		// do a structure mode, as fallback
-                    		std::cerr << "no 'value' field" << std::endl;
-                            String str;
-                            m_pvStructure->toString(&str);
-                            std::cout << str << std::endl;
-                    	}
-                    }
-                    else if (mode == TerseMode)
-                    {
-                        String str;
-                        convertToString(&str, m_pvStructure.get(), 0);
-                        std::cout << str << std::endl;
-                    }
-                    else //if (mode == StructureMode)
-                    {
-                        String str;
-                        m_pvStructure->toString(&str);
-                        std::cout << str << std::endl;
-                    }
-                } 
-*/
 
 class ChannelRPCRequesterImpl : public ChannelRPCRequester
 {
@@ -889,7 +935,15 @@ int main (int argc, char *argv[])
             shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
             channels[n] = provider->createChannel(pvs[n], channelRequesterImpl);
         }
-        
+
+        // TODO maybe unify for nPvs == 1?!
+        bool collectValues = (mode == ValueOnlyMode) && nPvs > 1;
+
+        vector<PVStructure::shared_pointer> collectedValues;
+        collectedValues.reserve(nPvs);
+        vector<String> collectedNames;
+        collectedNames.reserve(nPvs);
+
         // for now a simple iterating sync implementation, guarantees order
         for (int n = 0; n < nPvs; n++)
         {
@@ -906,7 +960,8 @@ int main (int argc, char *argv[])
             	shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl;
 
             	// probe for value field
-            	if (mode == ValueOnlyMode)
+            	// but only if there is only one PV request (otherwise mode change makes a mess)
+            	if (mode == ValueOnlyMode && nPvs == 1)
             	{
             		getFieldRequesterImpl.reset(new GetFieldRequesterImpl(channel));
             		// get all to be immune to bad clients not supporting selective getField request
@@ -929,9 +984,17 @@ int main (int argc, char *argv[])
 						}
             		}
 
-            		shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
+            		shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(
+            				new ChannelGetRequesterImpl(channel->getChannelName(), !collectValues)
+            			);
                     ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
-                    allOK &= getRequesterImpl->waitUntilGet(timeOut);
+                    bool ok = getRequesterImpl->waitUntilGet(timeOut);
+                    allOK &= ok;
+                    if (ok && collectValues)
+                    {
+                    	collectedValues.push_back(getRequesterImpl->getPVStructure());
+                    	//collectedNames.push_back(channel->getChannelName());
+                    }
             	}
             	else
             	{
@@ -946,7 +1009,10 @@ int main (int argc, char *argv[])
                 channel->destroy();
                 std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
             }
-        }    
+        }
+
+        if (collectValues)
+        	printValues(collectedNames, collectedValues);
     
         ClientFactory::stop();
     }
