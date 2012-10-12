@@ -73,6 +73,24 @@ void formatNTScalarArray(std::ostream& o, PVStructurePtr const & pvStruct)
     formatScalarArray(o, value);
 }
 
+size_t getLongestString(PVScalarArrayPtr array)
+{
+	size_t max = 0;
+
+	string empty;
+
+	ostringstream oss;
+	size_t len = array->getLength();
+    for (size_t i = 0; i < len; i++)
+    {
+    	oss.str(empty);
+       	array->dumpValue(oss, i);
+       	size_t l = oss.tellp();
+       	if (l > max) max = l;
+    }
+    return max;
+}
+
 void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
 {
     PVStringArrayPtr labels = dynamic_pointer_cast<PVStringArray>(pvStruct->getScalarArrayField("labels", pvString));
@@ -101,6 +119,8 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
        	return;
     }
 
+    size_t maxColumnLength = getLongestString(labels);
+
     for (size_t i = 0; i < numColumns; i++)
     {
     	PVScalarArrayPtr array = dynamic_pointer_cast<PVScalarArray>(fields[i]);
@@ -112,18 +132,22 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
     	size_t arrayLength = array->getLength();
     	if (maxValues < arrayLength) maxValues = arrayLength;
         columnData.push_back(array);
+
+        size_t colLen = getLongestString(array);
+        if (colLen > maxColumnLength) maxColumnLength = colLen;
     }
 
 
-
-    o << std::left;
+    // add some space
+    size_t padding = 2;
+    maxColumnLength += padding;
 
     // first print labels
    	StringArrayData data;
     labels->get(0, numColumns, data);
     for (size_t i = 0; i < numColumns; i++)
     {
-    	o << std::setw(16) << data.data[i];
+    	o << std::setw(maxColumnLength) << std::right << data.data[i];
     }
     o << std::endl;
 
@@ -132,7 +156,7 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
     {
         for (size_t i = 0; i < numColumns; i++)
         {
-        	o << std::setw(16);
+        	o << std::setw(maxColumnLength) << std::right;
         	if (r < columnData[i]->getLength())
         		columnData[i]->dumpValue(o, r);
         	else
@@ -140,6 +164,9 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
         }
         o << std::endl;
     }
+
+    // reset back
+    o << std::left;
 
 }    
 
@@ -192,12 +219,16 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
 		return;
     }
 
+    // add some space
+    size_t padding = 2;
+    size_t maxColumnLength = getLongestString(value) + padding;
+
     size_t ix = 0;
     for (int32 r = 0; r < rows; r++)
     {
     	for (int32 c = 0; c < cols; c++)
     	{
-        	o << std::setw(16);
+        	o << std::setw(maxColumnLength) << std::right;
         	value->dumpValue(o, ix++);
     	}
         o << std::endl;
