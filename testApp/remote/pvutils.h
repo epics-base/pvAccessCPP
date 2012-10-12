@@ -52,3 +52,27 @@ class ChannelRequesterImpl :
     
         bool waitUntilConnected(double timeOut);
 };
+
+class GetFieldRequesterImpl :
+	public epics::pvAccess::GetFieldRequester
+{
+    private:
+		epics::pvAccess::Channel::shared_pointer m_channel;
+		epics::pvData::FieldConstPtr m_field;
+        epics::pvData::Event m_event;
+        epics::pvData::Mutex m_pointerMutex;
+
+    public:
+
+        GetFieldRequesterImpl(epics::pvAccess::Channel::shared_pointer channel);
+
+        virtual epics::pvData::String getRequesterName();
+        virtual void message(epics::pvData::String const & message, epics::pvData::MessageType messageType);
+
+        virtual void getDone(const epics::pvData::Status& status, epics::pvData::FieldConstPtr const & field);
+
+        epics::pvData::FieldConstPtr getField();
+
+        bool waitUntilFieldGet(double timeOut);
+};
+

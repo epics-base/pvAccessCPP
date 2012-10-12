@@ -390,21 +390,23 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
                         if (value.get() == 0)
                         {
                         	std::cerr << "no 'value' field" << std::endl;
-                            return;
-                        }
-
-                        Type valueType = value->getField()->getType();
-                        if (valueType == scalar)
-                        	std::cout << *(value.get()) << std::endl;
-                        else if (valueType == scalarArray)
-                        {
-                        	// TODO decide on formatting (with or without std::endl)
-                        	formatScalarArray(std::cout, dynamic_pointer_cast<PVScalarArray>(value)) << std::endl;
+                            std::cout << m_channelName << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
                         }
                         else
                         {
-                        	// switch to structure mode
-                            std::cout << m_channelName << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
+							Type valueType = value->getField()->getType();
+							if (valueType == scalar)
+								std::cout << *(value.get()) << std::endl;
+							else if (valueType == scalarArray)
+							{
+								// TODO decide on formatting (with or without std::endl)
+								formatScalarArray(std::cout, dynamic_pointer_cast<PVScalarArray>(value)) << std::endl;
+							}
+							else
+							{
+								// switch to structure mode
+								std::cout << m_channelName << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
+							}
                         }
                     }
                     else if (mode == TerseMode)
@@ -741,9 +743,42 @@ int main (int argc, char *argv[])
                 
             if (channelRequesterImpl->waitUntilConnected(timeOut))
             {
-                shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
-                ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
-                allOK &= getRequesterImpl->waitUntilGet(timeOut);
+            	shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl;
+
+            	// probe for value field
+            	if (mode == ValueOnlyMode)
+            	{
+            		getFieldRequesterImpl.reset(new GetFieldRequesterImpl(channel));
+            		// get all to be immune to bad clients not supporting selective getField request
+            		channel->getField(getFieldRequesterImpl, "");
+            	}
+
+            	if (getFieldRequesterImpl.get() == 0 ||
+            		getFieldRequesterImpl->waitUntilFieldGet(timeOut))
+            	{
+            		// check probe
+            		if (getFieldRequesterImpl.get())
+            		{
+						Structure::const_shared_pointer structure =
+								dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
+						if (structure.get() == 0 || structure->getField("value").get() == 0)
+						{
+							// fallback to structure
+							mode = StructureMode;
+							pvRequest = getCreateRequest()->createRequest("field()", requester);
+						}
+            		}
+
+            		shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
+                    ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
+                    allOK &= getRequesterImpl->waitUntilGet(timeOut);
+            	}
+            	else
+            	{
+            		allOK = false;
+                    channel->destroy();
+                    std::cerr << "[" << channel->getChannelName() << "] failed to get channel introspection data" << std::endl;
+            	}
             }
             else
             {

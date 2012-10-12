@@ -175,7 +175,7 @@ char *url_encode(const char *str) {
 String ChannelRequesterImpl::getRequesterName()
 {
 	return "ChannelRequesterImpl";
-};
+}
 
 void ChannelRequesterImpl::message(String const & message, MessageType messageType)
 {
@@ -215,4 +215,58 @@ void ChannelRequesterImpl::channelStateChange(Channel::shared_pointer const & /*
 bool ChannelRequesterImpl::waitUntilConnected(double timeOut)
 {
 	return m_event.wait(timeOut);
+}
+
+
+
+GetFieldRequesterImpl::GetFieldRequesterImpl(epics::pvAccess::Channel::shared_pointer channel) :
+		m_channel(channel)
+{
+
+}
+
+String GetFieldRequesterImpl::getRequesterName()
+{
+	return "GetFieldRequesterImpl";
+}
+
+void GetFieldRequesterImpl::message(String const & message, MessageType messageType)
+{
+	std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+}
+
+void GetFieldRequesterImpl::getDone(const epics::pvData::Status& status, epics::pvData::FieldConstPtr const & field)
+{
+	if (status.isSuccess())
+	{
+		// show warning
+		if (!status.isOK())
+		{
+			std::cerr << "[" << m_channel->getChannelName() << "] getField create: " << status.toString() << std::endl;
+		}
+
+		// assign smart pointers
+		{
+		    Lock lock(m_pointerMutex);
+		    m_field = field;
+		}
+	}
+	else
+	{
+		// do not complain about missing field
+		//std::cerr << "[" << m_channel->getChannelName() << "] failed to get channel introspection data: " << status.toString() << std::endl;
+	}
+
+	m_event.signal();
+}
+
+bool GetFieldRequesterImpl::waitUntilFieldGet(double timeOut)
+{
+	return m_event.wait(timeOut);
+}
+
+epics::pvData::FieldConstPtr GetFieldRequesterImpl::getField()
+{
+    Lock lock(m_pointerMutex);
+    return m_field;
 }

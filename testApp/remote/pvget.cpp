@@ -131,25 +131,27 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
                         if (value.get() == 0)
                         {
                         	std::cerr << "no 'value' field" << std::endl;
-                            return;
-                        }
-
-                        Type valueType = value->getField()->getType();
-                        if (valueType != scalar && valueType != scalarArray)
-                        {
-                        	// switch to structure mode
                             std::cout << m_channelName << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
                         }
                         else
                         {
-							if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
-								std::cout << std::setw(30) << std::left << m_channelName;
+							Type valueType = value->getField()->getType();
+							if (valueType != scalar && valueType != scalarArray)
+							{
+								// switch to structure mode
+								std::cout << m_channelName << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
+							}
 							else
-								std::cout << m_channelName;
+							{
+								if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
+									std::cout << std::setw(30) << std::left << m_channelName;
+								else
+									std::cout << m_channelName;
 
-							std::cout << fieldSeparator;
+								std::cout << fieldSeparator;
 
-							terse(std::cout, value) << std::endl;
+								terse(std::cout, value) << std::endl;
+							}
                         }
                     }
                     else if (mode == TerseMode)
@@ -239,26 +241,29 @@ class MonitorRequesterImpl : public MonitorRequester
                 if (value.get() == 0)
                 {
                 	std::cerr << "no 'value' field" << std::endl;
-                    return;
-                }
-
-                Type valueType = value->getField()->getType();
-                if (valueType != scalar && valueType != scalarArray)
-                {
-                	// switch to structure mode
                 	std::cout << m_channelName << std::endl;
                     std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
                 }
                 else
                 {
-					if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
-						std::cout << std::setw(30) << std::left << m_channelName;
+					Type valueType = value->getField()->getType();
+					if (valueType != scalar && valueType != scalarArray)
+					{
+						// switch to structure mode
+						std::cout << m_channelName << std::endl;
+						std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+					}
 					else
-						std::cout << m_channelName;
+					{
+						if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
+							std::cout << std::setw(30) << std::left << m_channelName;
+						else
+							std::cout << m_channelName;
 
-					std::cout << fieldSeparator;
+						std::cout << fieldSeparator;
 
-					terse(std::cout, value) << std::endl;
+						terse(std::cout, value) << std::endl;
+					}
                 }
             }
             else if (mode == TerseMode)
@@ -417,17 +422,50 @@ int main (int argc, char *argv[])
              
             if (channelRequesterImpl->waitUntilConnected(timeOut))
             {
-            	if (!monitor)
+            	shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl;
+
+            	// probe for value field
+            	if (mode == ValueOnlyMode)
             	{
-					shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
-					ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
-					allOK &= getRequesterImpl->waitUntilGet(timeOut);
+            		getFieldRequesterImpl.reset(new GetFieldRequesterImpl(channel));
+            		// get all to be immune to bad clients not supporting selective getField request
+            		channel->getField(getFieldRequesterImpl, "");
+            	}
+
+            	if (getFieldRequesterImpl.get() == 0 ||
+            		getFieldRequesterImpl->waitUntilFieldGet(timeOut))
+            	{
+            		// check probe
+            		if (getFieldRequesterImpl.get())
+            		{
+						Structure::const_shared_pointer structure =
+								dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
+						if (structure.get() == 0 || structure->getField("value").get() == 0)
+						{
+							// fallback to structure
+							mode = StructureMode;
+							pvRequest = getCreateRequest()->createRequest("field()", requester);
+						}
+            		}
+
+					if (!monitor)
+					{
+						shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
+						ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
+						allOK &= getRequesterImpl->waitUntilGet(timeOut);
+					}
+					else
+					{
+						shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
+						Monitor::shared_pointer monitorGet = channel->createMonitor(monitorRequesterImpl, pvRequest);
+						allOK &= true;
+					}
             	}
             	else
             	{
-					shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
-					Monitor::shared_pointer monitorGet = channel->createMonitor(monitorRequesterImpl, pvRequest);
-					allOK &= true;
+            		allOK = false;
+                    channel->destroy();
+                    std::cerr << "[" << channel->getChannelName() << "] failed to get channel introspection data" << std::endl;
             	}
             }
             else
