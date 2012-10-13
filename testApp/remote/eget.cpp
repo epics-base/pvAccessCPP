@@ -31,6 +31,7 @@ PrintMode mode = ValueOnlyMode;
 
 char fieldSeparator = ' ';
 
+bool columnMajor = false;
 
 void formatNTAny(std::ostream& o, PVStructurePtr const & pvStruct)
 {
@@ -365,7 +366,10 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
 			for (int32 c = 0; c < cols; c++)
 			{
 				o << std::setw(maxColumnLength) << std::right;
-				value->dumpValue(o, ix++);
+				if (columnMajor)
+					value->dumpValue(o, r + c * rows);
+				else
+					value->dumpValue(o, ix++);
 			}
 			o << std::endl;
 		}
@@ -378,12 +382,16 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
 		// el2 el5
 		// el3 el6
 		//
+		size_t ix = 0;
 		for (int32 c = 0; c < cols; c++)
 		{
 			for (int32 r = 0; r < rows; r++)
 			{
 				o << std::setw(maxColumnLength) << std::right;
-				value->dumpValue(o, r * rows + c);
+				if (columnMajor)
+					value->dumpValue(o, ix++);
+				else
+					value->dumpValue(o, r * cols + c);
 			}
 			o << std::endl;
 		}
@@ -554,10 +562,11 @@ void usage (void)
     "  -a <service arg>:    Service argument in form 'name=value'\n"
     "  -r <pv request>:     Get request string, specifies what fields to return and options, default is '%s'\n"
     "  -w <sec>:            Wait time, specifies timeout, default is %f second(s)\n"
-    "  -q:					Pure pvAccess RPC based service (send NTURI.query as request argument)\n"
+    "  -q:                  Pure pvAccess RPC based service (send NTURI.query as request argument)\n"
     "  -t:                  Terse mode / transpose vector, table, matrix.\n"
+    "  -x:                  Use column-major order to decode matrix.\n"
     "  -d:                  Enable debug output\n"
-    "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
+    "  -F <ofs>:            Use <ofs> as an alternate output field separator\n"
     "  -c:                  Wait for clean shutdown and report used instance count (for expert users)"
     "\n\nexamples:\n\n"
 "#! Get the value of the PV corr:li32:53:bdes\n"
@@ -818,7 +827,7 @@ int main (int argc, char *argv[])
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:s:a:w:qtdcF:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:s:a:w:qtxdcF:")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -862,6 +871,9 @@ int main (int argc, char *argv[])
             break;
         case 't':               /* Terse mode */
             mode = TerseMode;
+            break;
+        case 'x':               /* Column-major order mode */
+            columnMajor = true;
             break;
         case 'd':               /* Debug log level */
             debug = true;

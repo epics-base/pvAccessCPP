@@ -466,7 +466,6 @@ class MockChannelRPC : public ChannelRPC
                 #define FILL_VALUES(OFFSET) \
 		        for (int r = 0; r < ROWS; r++) \
 		        	values[r] = rand()/((double)RAND_MAX+1) + OFFSET;
-//		        	values[r] = (rand()-RAND_MAX/2)/(double)(RAND_MAX/2); // -1 ... 1
 
 		        int offset = 0;
 		        for (vector<String>::iterator iter = labels.begin();
@@ -487,7 +486,6 @@ class MockChannelRPC : public ChannelRPC
 							pvArgument
 				);
 
-			// TODO type check, getStringField is verbose
 	        PVStringPtr rows = static_pointer_cast<PVString>(args->getSubField("rows"));
 	        PVStringPtr columns = static_pointer_cast<PVString>(args->getSubField("columns"));
 			if (rows.get() == 0 || columns.get() == 0)
@@ -520,11 +518,16 @@ class MockChannelRPC : public ChannelRPC
 
 		        srand ( time(NULL) );
 
+		        PVStringPtr byColumns = static_pointer_cast<PVString>(args->getSubField("bycolumns"));
+		        bool bycolumns = (byColumns.get() && byColumns->get() == "1");
+
 		        int32 len = rowsVal * colsVal;
 		        vector<double> mv(len);
 		        for (int r = 0; r < len; r++)
-//		        	mv[r] = (rand()-RAND_MAX/2)/(double)(RAND_MAX/2); // -1 .. 1
-		        	mv[r] = rand()/((double)RAND_MAX+1) + r/rowsVal;
+		        	if (bycolumns)
+		        		mv[r] = rand()/((double)RAND_MAX+1) + (int)(r%rowsVal);
+		        	else
+		        		mv[r] = rand()/((double)RAND_MAX+1) + (int)(r/colsVal);
 		        static_pointer_cast<PVDoubleArray>(result->getScalarArrayField("value", pvDouble))->put(0, len, &mv[0], 0);
 
 	    		m_channelRPCRequester->requestDone(Status::Ok, result);
