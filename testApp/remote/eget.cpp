@@ -334,6 +334,7 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
     }
     else
     {
+    	// column vector
     	rows = value->getLength();
     	cols = 1;
     }

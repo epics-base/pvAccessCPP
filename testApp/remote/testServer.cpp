@@ -406,7 +406,7 @@ class MockChannelRPC : public ChannelRPC
 
     virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument, bool lastRequest)
     {
-		if (m_channelName == "rpcNTTable")
+		if (m_channelName == "testNTTable")
     	{
 			PVStructure::shared_pointer args(
 					(pvArgument->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
@@ -478,7 +478,7 @@ class MockChannelRPC : public ChannelRPC
 				m_channelRPCRequester->requestDone(Status::Ok, result);
 			}
     	}
-		else if (m_channelName == "rpcNTMatrix")
+		else if (m_channelName == "testNTMatrix")
     	{
 			PVStructure::shared_pointer args(
 					(pvArgument->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
@@ -799,7 +799,7 @@ class MockChannel : public Channel {
 
 
 
-        if (m_name.find("array") == 0)
+        if (m_name.find("testArray") == 0)
         {
             String allProperties("");
 //            String allProperties("alarm,timeStamp,display,control");
@@ -807,7 +807,7 @@ class MockChannel : public Channel {
             PVDoubleArrayPtr pvField = static_pointer_cast<PVDoubleArray>(m_pvStructure->getScalarArrayField(String("value"), pvDouble));
             
             int specCount = 0; char postfix[64];
-            int done = sscanf(m_name.c_str(), "array%d%s", &specCount, postfix);
+            int done = sscanf(m_name.c_str(), "testArray%d%s", &specCount, postfix);
 
             if (done && specCount > 0)
             {
@@ -859,7 +859,7 @@ class MockChannel : public Channel {
             printf("=============------------------------------------!!!\n");
             */
         }
-        else if (m_name.find("image") == 0)
+        else if (m_name.find("testImage") == 0)
         {
             String allProperties("alarm,timeStamp,display,control");
             m_pvStructure = getStandardPVField()->scalarArray(pvByte,allProperties);
@@ -887,13 +887,13 @@ class MockChannel : public Channel {
             printf("=============------------------------------------!!!\n");
             */
         }
-        else if (m_name.find("rpc") == 0)
+        else if (m_name.find("testRPC") == 0 || m_name == "testNTTable" || m_name == "testNTMatrix")
         {
         	StringArray fieldNames;
         	PVFieldPtrArray fields;
         	m_pvStructure = getPVDataCreate()->createPVStructure(fieldNames, fields);
         }
-        else if (m_name.find("valueOnly") == 0)
+        else if (m_name.find("testValueOnly") == 0)
         {
             String allProperties("");
             m_pvStructure = getStandardPVField()->scalar(pvDouble,allProperties);
@@ -1132,11 +1132,12 @@ class MockServerChannelProvider : 	public ChannelProvider,
     }
 
     virtual ChannelFind::shared_pointer channelFind(
-        epics::pvData::String const & /*channelName*/,
+        epics::pvData::String const & channelName,
         ChannelFindRequester::shared_pointer const & channelFindRequester)
     {
-        // channel always exists
-        channelFindRequester->channelFindResult(Status::Ok, m_mockChannelFind, true);
+        // channel that starts with "test" always exists
+    	bool exists = (channelName.find("test") == 0);
+        channelFindRequester->channelFindResult(Status::Ok, m_mockChannelFind, exists);
         return m_mockChannelFind;
     }
 
