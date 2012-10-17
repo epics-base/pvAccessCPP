@@ -7,6 +7,8 @@
 #include <pv/configuration.h>
 #include <pv/epicsException.h>
 
+#include <algorithm>
+
 #if defined(__GNUC__) && __GNUC__ < 3
 #define OLDGCC
 #define NO_STREAM_EXCEPTIONS
