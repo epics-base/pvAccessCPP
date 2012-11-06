@@ -5,7 +5,7 @@
  */
 
 #include <stdexcept>
-#include <rpcServer.h>
+#include <pv/rpcServer.h>
 
 #ifdef __vxworks
 #include <envLib.h>
