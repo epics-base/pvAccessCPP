@@ -10,7 +10,7 @@
 #include <pv/sharedPtr.h>
 #include <pv/pvAccess.h>
 
-#include <rpcService.h>
+#include <pv/rpcService.h>
 #include <pv/serverContext.h>
 
 namespace epics { namespace pvAccess { 

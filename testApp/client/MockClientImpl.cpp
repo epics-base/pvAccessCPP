@@ -5,8 +5,8 @@
 #include <epicsExit.h>
 #include <pv/pvAccess.h>
 #include <iostream>
-#include <lock.h>
-#include <standardPVField.h>
+#include <pv/lock.h>
+#include <pv/standardPVField.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
