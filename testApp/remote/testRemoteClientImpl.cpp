@@ -458,12 +458,12 @@ int main()
     ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
 
     ChannelFindRequester::shared_pointer findRequester(new ChannelFindRequesterImpl());
-    ChannelFind::shared_pointer channelFind = provider->channelFind("something", findRequester);
+    ChannelFind::shared_pointer channelFind = provider->channelFind("testSomething", findRequester);
     epicsThreadSleep ( 1.0 );
     //channelFind->destroy();
 
     ChannelRequester::shared_pointer channelRequester(new ChannelRequesterImpl());
-    Channel::shared_pointer channel = provider->createChannel("structureArrayTest", channelRequester);
+    Channel::shared_pointer channel = provider->createChannel("testStructureArrayTest", channelRequester);
     epicsThreadSleep ( 1.0 );
     channel->printInfo();
         

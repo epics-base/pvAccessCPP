@@ -304,7 +304,7 @@ return -1;
     char buf[64];
     for (int i = 0; i < CHANNELS; i++)
     {
-        sprintf(buf, "array%d_%d", ARRAY_SIZE, i);
+        sprintf(buf, "testArray%d_%d", ARRAY_SIZE, i);
         pvs.push_back(buf);
         //printf("%s\n", buf);
     }

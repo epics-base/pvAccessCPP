@@ -79,7 +79,7 @@ int main()
         char buf[16];
         for (int i = 0; i < N_CHANNELS; i++)
         {
-            sprintf(buf, "record%d", (i+1));
+            sprintf(buf, "test%d", (i+1));
             channels[i] = provider->createChannel(buf, channelRequester);
         }
         
