@@ -56,8 +56,8 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             // set receive timeout so that we do not have problems at shutdown (recvfrom would block)
             struct timeval timeout;
             memset(&timeout, 0, sizeof(struct timeval));
-            timeout.tv_sec = 1;
-            timeout.tv_usec = 0;
+            timeout.tv_sec = 0;
+            timeout.tv_usec = 100000; // 100ms TODO tune this
 
             if (unlikely(::setsockopt (_channel, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0))
             {
@@ -112,6 +112,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 epicsSocketDestroy(_channel);
             }
             
+            // TODO send yourself a packet
             
             // wait for send thread to exit cleanly            
             if (waitForThreadToComplete)
