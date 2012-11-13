@@ -81,6 +81,10 @@ INC += rpcService.h
 INC += rpcServer.h
 LIBSRCS += rpcServer.cpp
 
+SRC_DIRS += $(PVACCESS)/rpcClient
+INC += rpcClient.h
+LIBSRCS += rpcClient.cpp
+
 LIBRARY = pvAccess
 pvAccess_LIBS += Com
 pvAccess_LIBS += pvData
