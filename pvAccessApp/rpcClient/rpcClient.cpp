@@ -20,7 +20,6 @@
 
 
 using namespace epics::pvData;
-using namespace epics::pvAccess;
 
 
 namespace epics
