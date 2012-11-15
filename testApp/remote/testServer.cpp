@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <vector>
+#include <map>
 
 #include <pv/logger.h>
 
@@ -18,6 +19,45 @@ using namespace epics::pvAccess;
 using namespace epics::pvData;
 using namespace std;
 using std::tr1::static_pointer_cast;
+
+
+map<String, PVStructure::shared_pointer> structureStore;
+
+static PVStructure::shared_pointer getRequestedStructure(PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
+{
+	// if pvRequest is empty, just use pvStructure
+	if (pvRequest.get() && pvRequest->getPVFields().size() > 0)
+	{
+		PVStructure::shared_pointer pvRequestFields;
+		if (pvRequest->getSubField("field"))
+			pvRequestFields = pvRequest->getStructureField("field");
+		else
+			pvRequestFields = pvRequest;
+
+		// if pvRequest is empty, just use pvStructure
+		if (pvRequestFields->getPVFields().size() > 0)
+		{
+			StringArray const & fieldNames = pvRequestFields->getStructure()->getFieldNames();
+			PVFieldPtrArray pvFields;
+			StringArray actualFieldNames;
+			for (StringArray::const_iterator iter = fieldNames.begin();
+				 iter != fieldNames.end();
+				 iter++)
+			{
+				PVFieldPtr pvField = pvStructure->getSubField(*iter);
+				if (pvField)
+				{
+					actualFieldNames.push_back(*iter);
+					pvFields.push_back(pvField);
+				}
+			}
+
+			return getPVDataCreate()->createPVStructure(actualFieldNames, pvFields);
+		}
+	}
+
+	return pvStructure;
+}
 
 
 class ProcessAction : public Runnable {
@@ -49,7 +89,6 @@ public:
     			epicsThreadSleep(period);
     		}
     	}
-		printf("exited!!!\n");
     }
 };
 
@@ -459,9 +498,9 @@ class MockChannelGet : public ChannelGet
 
     protected:
     MockChannelGet(ChannelGetRequester::shared_pointer const & channelGetRequester,
-    		PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & /*pvRequest*/) :
-        m_channelGetRequester(channelGetRequester), m_pvStructure(pvStructure),
-        m_bitSet(new BitSet(pvStructure->getNumberFields())), m_first(true)
+    		PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
+        m_channelGetRequester(channelGetRequester), m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
+        m_bitSet(new BitSet(m_pvStructure->getNumberFields())), m_first(true)
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelGet);
     }
@@ -469,10 +508,10 @@ class MockChannelGet : public ChannelGet
     public:
     static ChannelGet::shared_pointer create(ChannelGetRequester::shared_pointer const & channelGetRequester, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
     {
-        ChannelGet::shared_pointer thisPtr(new MockChannelGet(channelGetRequester, pvStructure, pvRequest));
-        // TODO pvRequest
-    	channelGetRequester->channelGetConnect(Status::Ok, thisPtr, pvStructure, static_cast<MockChannelGet*>(thisPtr.get())->m_bitSet);
-    	
+    	ChannelGet::shared_pointer thisPtr(new MockChannelGet(channelGetRequester, pvStructure, pvRequest));
+    	channelGetRequester->channelGetConnect(Status::Ok, thisPtr,
+    			static_cast<MockChannelGet*>(thisPtr.get())->m_pvStructure,
+    			static_cast<MockChannelGet*>(thisPtr.get())->m_bitSet);
     	return thisPtr;
     }
 
@@ -523,9 +562,9 @@ class MockChannelPut : public ChannelPut
 
     protected:
     MockChannelPut(ChannelPutRequester::shared_pointer const & channelPutRequester,
-    		PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & /*pvRequest*/) :
-        m_channelPutRequester(channelPutRequester), m_pvStructure(pvStructure),
-        m_bitSet(new BitSet(pvStructure->getNumberFields()))
+    		PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
+        m_channelPutRequester(channelPutRequester), m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
+        m_bitSet(new BitSet(m_pvStructure->getNumberFields()))
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelPut);
     }
@@ -534,8 +573,9 @@ class MockChannelPut : public ChannelPut
     static ChannelPut::shared_pointer create(ChannelPutRequester::shared_pointer const & channelPutRequester, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
     {
         ChannelPut::shared_pointer thisPtr(new MockChannelPut(channelPutRequester, pvStructure, pvRequest));
-        // TODO pvRequest
-    	channelPutRequester->channelPutConnect(Status::Ok, thisPtr, pvStructure, static_cast<MockChannelPut*>(thisPtr.get())->m_bitSet);
+    	channelPutRequester->channelPutConnect(Status::Ok, thisPtr,
+    			static_cast<MockChannelPut*>(thisPtr.get())->m_pvStructure,
+    			static_cast<MockChannelPut*>(thisPtr.get())->m_bitSet);
     	
     	return thisPtr;
     }
@@ -597,7 +637,8 @@ class MockChannelPutGet : public ChannelPutGet
     {
         ChannelPutGet::shared_pointer thisPtr(new MockChannelPutGet(channelPutGetRequester, pvStructure, pvRequest));
         // TODO pvRequest
-    	channelPutGetRequester->channelPutGetConnect(Status::Ok, thisPtr, pvStructure, pvStructure);
+        Status pvRequestIgnored(Status::STATUSTYPE_WARNING, "pvRequest ignored, put-get actions not implemented - dummy OK always returned");
+    	channelPutGetRequester->channelPutGetConnect(pvRequestIgnored, thisPtr, pvStructure, pvStructure);
     	
     	return thisPtr;
     }
@@ -938,10 +979,10 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
 
     protected:
     MockMonitor(MonitorRequester::shared_pointer const & monitorRequester,
-    		PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & /*pvRequest*/) :
-        m_monitorRequester(monitorRequester), m_pvStructure(pvStructure),
-        m_changedBitSet(new BitSet(pvStructure->getNumberFields())),
-        m_overrunBitSet(new BitSet(pvStructure->getNumberFields())),
+    		PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
+        m_monitorRequester(monitorRequester), m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
+        m_changedBitSet(new BitSet(m_pvStructure->getNumberFields())),
+        m_overrunBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_first(true),
         m_lock(),
         m_count(0)
@@ -955,10 +996,9 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
     static Monitor::shared_pointer create(MonitorRequester::shared_pointer const & monitorRequester, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
     {
         Monitor::shared_pointer thisPtr(new MockMonitor(monitorRequester, pvStructure, pvRequest));
-
-        // TODO pvRequest
         StructureConstPtr structurePtr = static_cast<MockMonitor*>(thisPtr.get())->m_pvStructure->getStructure();
-        monitorRequester->monitorConnect(Status::Ok, thisPtr, structurePtr);
+        Status changeMonitoringNotImplemented(Status::STATUSTYPE_WARNING, "structure change monitoring not implemented");
+        monitorRequester->monitorConnect(changeMonitoringNotImplemented, thisPtr, structurePtr);
         
         return thisPtr;
     }
@@ -1069,118 +1109,126 @@ class MockChannel : public Channel {
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannel);
 
+        if (structureStore.find(m_name) != structureStore.end())
+        	m_pvStructure = structureStore[m_name];
 
-
-        if (m_name.find("testArray") == 0)
-        {
-            String allProperties("");
-//            String allProperties("alarm,timeStamp,display,control");
-            m_pvStructure = getStandardPVField()->scalarArray(pvDouble,allProperties);
-            PVDoubleArrayPtr pvField = static_pointer_cast<PVDoubleArray>(m_pvStructure->getScalarArrayField(String("value"), pvDouble));
-            
-            int specCount = 0; char postfix[64];
-            int done = sscanf(m_name.c_str(), "testArray%d%s", &specCount, postfix);
-
-            if (done && specCount > 0)
-            {
-                pvField->setCapacity(specCount);
-                pvField->setLength(specCount);
-
-                double v = 0;
-                int ix = 0;
-                const int COUNT = 1024;
-
-                int n = 0;
-                while (n < specCount)
-                {
-
-                    double array[COUNT];
-                    int i = 0;
-                    for (; i < COUNT && n < specCount; i++)
-                    {
-                        array[i] = v; v+=1; n++;
-                    }
-                    pvField->put(ix, i, array, 0);
-                    ix += i;
-                }
-            }
-            else
-            {
-                double v = 0;
-                int ix = 0;
-                const int COUNT = 1024;
-                
-                pvField->setCapacity(1024*COUNT);
-                for (int n = 0; n < 1024; n++)
-                {
-                
-                    double array[COUNT];
-                    for (int i = 0; i < COUNT; i++)
-                    {
-                        array[i] = v; v+=1.1;
-                    }
-                    pvField->put(ix, COUNT, array, 0);
-                    ix += COUNT;
-                }
-            }
-            /*
-            printf("array prepared------------------------------------!!!\n");
-            String str;
-            pvField->toString(&str);
-            printf("%s\n", str.c_str());
-            printf("=============------------------------------------!!!\n");
-            */
-        }
-        else if (m_name.find("testImage") == 0)
-        {
-            String allProperties("alarm,timeStamp,display,control");
-            m_pvStructure = getStandardPVField()->scalarArray(pvByte,allProperties);
-            PVByteArrayPtr pvField = static_pointer_cast<PVByteArray>(m_pvStructure->getScalarArrayField(String("value"), pvByte));
-            int ix = 0;
-            const int COUNT = 1024;
-
-            pvField->setCapacity(1024*COUNT);
-            for (int n = 0; n < 1024; n++)
-            {
-
-                int8 array[COUNT];
-                for (int i = 0; i < COUNT; i++)
-                {
-                    array[i] = ix;
-                }
-                pvField->put(ix, COUNT, array, 0);
-                ix += COUNT;
-            }
-            /*
-            printf("array prepared------------------------------------!!!\n");
-            String str;
-            pvField->toString(&str);
-            printf("%s\n", str.c_str());
-            printf("=============------------------------------------!!!\n");
-            */
-        }
-        else if (m_name.find("testRPC") == 0 || m_name == "testNTTable" || m_name == "testNTMatrix")
-        {
-        	StringArray fieldNames;
-        	PVFieldPtrArray fields;
-        	m_pvStructure = getPVDataCreate()->createPVStructure(fieldNames, fields);
-        }
-        else if (m_name.find("testValueOnly") == 0)
-        {
-            String allProperties("");
-            m_pvStructure = getStandardPVField()->scalar(pvDouble,allProperties);
-        }
-        else if (m_name.find("testCounter") == 0)
-        {
-            String allProperties("timeStamp");
-            m_pvStructure = getStandardPVField()->scalar(pvInt,allProperties);
-        }
         else
         {
-            String allProperties("alarm,timeStamp,display,control,valueAlarm");
-            m_pvStructure = getStandardPVField()->scalar(pvDouble,allProperties);
-            //PVDoublePtr pvField = m_pvStructure->getDoubleField(String("value"));
-            //pvField->put(1.123);
+        	// create structure
+
+			if (m_name.find("testArray") == 0)
+			{
+				String allProperties("");
+	//            String allProperties("alarm,timeStamp,display,control");
+				m_pvStructure = getStandardPVField()->scalarArray(pvDouble,allProperties);
+				PVDoubleArrayPtr pvField = static_pointer_cast<PVDoubleArray>(m_pvStructure->getScalarArrayField(String("value"), pvDouble));
+
+				int specCount = 0; char postfix[64];
+				int done = sscanf(m_name.c_str(), "testArray%d%s", &specCount, postfix);
+
+				if (done && specCount > 0)
+				{
+					pvField->setCapacity(specCount);
+					pvField->setLength(specCount);
+
+					double v = 0;
+					int ix = 0;
+					const int COUNT = 1024;
+
+					int n = 0;
+					while (n < specCount)
+					{
+
+						double array[COUNT];
+						int i = 0;
+						for (; i < COUNT && n < specCount; i++)
+						{
+							array[i] = v; v+=1; n++;
+						}
+						pvField->put(ix, i, array, 0);
+						ix += i;
+					}
+				}
+				else
+				{
+					double v = 0;
+					int ix = 0;
+					const int COUNT = 1024;
+
+					pvField->setCapacity(1024*COUNT);
+					for (int n = 0; n < 1024; n++)
+					{
+
+						double array[COUNT];
+						for (int i = 0; i < COUNT; i++)
+						{
+							array[i] = v; v+=1.1;
+						}
+						pvField->put(ix, COUNT, array, 0);
+						ix += COUNT;
+					}
+				}
+				/*
+				printf("array prepared------------------------------------!!!\n");
+				String str;
+				pvField->toString(&str);
+				printf("%s\n", str.c_str());
+				printf("=============------------------------------------!!!\n");
+				*/
+			}
+			else if (m_name.find("testImage") == 0)
+			{
+				String allProperties("alarm,timeStamp,display,control");
+				m_pvStructure = getStandardPVField()->scalarArray(pvByte,allProperties);
+				PVByteArrayPtr pvField = static_pointer_cast<PVByteArray>(m_pvStructure->getScalarArrayField(String("value"), pvByte));
+				int ix = 0;
+				const int COUNT = 1024;
+
+				pvField->setCapacity(1024*COUNT);
+				for (int n = 0; n < 1024; n++)
+				{
+
+					int8 array[COUNT];
+					for (int i = 0; i < COUNT; i++)
+					{
+						array[i] = ix;
+					}
+					pvField->put(ix, COUNT, array, 0);
+					ix += COUNT;
+				}
+				/*
+				printf("array prepared------------------------------------!!!\n");
+				String str;
+				pvField->toString(&str);
+				printf("%s\n", str.c_str());
+				printf("=============------------------------------------!!!\n");
+				*/
+			}
+			else if (m_name.find("testRPC") == 0 || m_name == "testNTTable" || m_name == "testNTMatrix")
+			{
+				StringArray fieldNames;
+				PVFieldPtrArray fields;
+				m_pvStructure = getPVDataCreate()->createPVStructure(fieldNames, fields);
+			}
+			else if (m_name.find("testValueOnly") == 0)
+			{
+				String allProperties("");
+				m_pvStructure = getStandardPVField()->scalar(pvDouble,allProperties);
+			}
+			else if (m_name.find("testCounter") == 0)
+			{
+				String allProperties("timeStamp");
+				m_pvStructure = getStandardPVField()->scalar(pvInt,allProperties);
+			}
+			else
+			{
+				String allProperties("alarm,timeStamp,display,control,valueAlarm");
+				m_pvStructure = getStandardPVField()->scalar(pvDouble,allProperties);
+				//PVDoublePtr pvField = m_pvStructure->getDoubleField(String("value"));
+				//pvField->put(1.123);
+			}
+
+			structureStore[m_name] = m_pvStructure;
         }
     }
     
@@ -1508,6 +1556,7 @@ void testServer(int timeToRun)
 
 	unregisterChannelProvider(ptr);
 
+	structureStore.clear();
 }
 
 #include <epicsGetopt.h>
