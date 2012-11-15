@@ -23,16 +23,43 @@ using std::tr1::static_pointer_cast;
 
 map<String, PVStructure::shared_pointer> structureStore;
 
-static PVStructure::shared_pointer getRequestedStructure(PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
+class StructureChangedCallback {
+public:
+	POINTER_DEFINITIONS(StructureChangedCallback);
+	// TODO for now no BitSets, etc.
+	virtual void structureChanged() = 0;
+};
+
+map<String, vector<StructureChangedCallback::shared_pointer> > structureChangedListeners;
+
+static void notifyStructureChanged(String const & name)
+{
+	// NOTE: not thread-safe
+	if (structureChangedListeners.find(name) != structureChangedListeners.end())
+	{
+		vector<StructureChangedCallback::shared_pointer> & vec = structureChangedListeners[name];
+		for (vector<StructureChangedCallback::shared_pointer>::iterator iter = vec.begin();
+				iter != vec.end();
+				iter++)
+		{
+			(*iter)->structureChanged();
+		}
+	}
+}
+
+static PVStructure::shared_pointer getRequestedStructure(
+		PVStructure::shared_pointer const & pvStructure,
+		PVStructure::shared_pointer const & pvRequest,
+		String subfieldName = "field")
 {
 	// if pvRequest is empty, just use pvStructure
 	if (pvRequest.get() && pvRequest->getPVFields().size() > 0)
 	{
 		PVStructure::shared_pointer pvRequestFields;
-		if (pvRequest->getSubField("field"))
-			pvRequestFields = pvRequest->getStructureField("field");
+		if (pvRequest->getSubField(subfieldName))
+			pvRequestFields = pvRequest->getStructureField(subfieldName);
 		else
-			pvRequestFields = pvRequest;
+			pvRequestFields = pvRequest;	// really?!!
 
 		// if pvRequest is empty, just use pvStructure
 		if (pvRequestFields->getPVFields().size() > 0)
@@ -324,15 +351,16 @@ class MockChannelProcess :
 	public std::tr1::enable_shared_from_this<MockChannelProcess>
 {
     private:
+		String m_channelName;
 		ChannelProcessRequester::shared_pointer m_channelProcessRequester;
 		PVStructure::shared_pointer m_pvStructure;
 		PVScalarPtr m_valueField;
 		PVTimeStamp m_timeStamp;
 
     protected:
-    MockChannelProcess(ChannelProcessRequester::shared_pointer const & channelProcessRequester,
+    MockChannelProcess(String const & channelName, ChannelProcessRequester::shared_pointer const & channelProcessRequester,
     		PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & /*pvRequest*/) :
-        m_channelProcessRequester(channelProcessRequester), m_pvStructure(pvStructure)
+        m_channelName(channelName), m_channelProcessRequester(channelProcessRequester), m_pvStructure(pvStructure)
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelProcess);
 
@@ -363,9 +391,12 @@ class MockChannelProcess :
     }
 
     public:
-    static ChannelProcess::shared_pointer create(ChannelProcessRequester::shared_pointer const & channelProcessRequester, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
+    static ChannelProcess::shared_pointer create(
+    		String const & channelName,
+    		ChannelProcessRequester::shared_pointer const & channelProcessRequester,
+    		PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
     {
-        ChannelProcess::shared_pointer thisPtr(new MockChannelProcess(channelProcessRequester, pvStructure, pvRequest));
+        ChannelProcess::shared_pointer thisPtr(new MockChannelProcess(channelName, channelProcessRequester, pvStructure, pvRequest));
 
         // TODO pvRequest
     	channelProcessRequester->channelProcessConnect(Status::Ok, thisPtr);
@@ -462,6 +493,8 @@ class MockChannelProcess :
 
     	m_channelProcessRequester->processDone(Status::Ok);
 
+    	notifyStructureChanged(m_channelName);
+
     	if (lastRequest)
     	   destroy();
     }
@@ -556,13 +589,15 @@ PVACCESS_REFCOUNT_MONITOR_DEFINE(mockChannelPut);
 class MockChannelPut : public ChannelPut
 {
     private:
+		String m_channelName;
 		ChannelPutRequester::shared_pointer m_channelPutRequester;
 		PVStructure::shared_pointer m_pvStructure;
 		BitSet::shared_pointer m_bitSet;
 
     protected:
-    MockChannelPut(ChannelPutRequester::shared_pointer const & channelPutRequester,
+    MockChannelPut(String const & channelName, ChannelPutRequester::shared_pointer const & channelPutRequester,
     		PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
+        m_channelName(channelName),
         m_channelPutRequester(channelPutRequester), m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
         m_bitSet(new BitSet(m_pvStructure->getNumberFields()))
     {
@@ -570,9 +605,13 @@ class MockChannelPut : public ChannelPut
     }
 
     public:
-    static ChannelPut::shared_pointer create(ChannelPutRequester::shared_pointer const & channelPutRequester, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
+    static ChannelPut::shared_pointer create(
+    		String const & channelName,
+    		ChannelPutRequester::shared_pointer const & channelPutRequester,
+    		PVStructure::shared_pointer const & pvStructure,
+    		PVStructure::shared_pointer const & pvRequest)
     {
-        ChannelPut::shared_pointer thisPtr(new MockChannelPut(channelPutRequester, pvStructure, pvRequest));
+        ChannelPut::shared_pointer thisPtr(new MockChannelPut(channelName, channelPutRequester, pvStructure, pvRequest));
     	channelPutRequester->channelPutConnect(Status::Ok, thisPtr,
     			static_cast<MockChannelPut*>(thisPtr.get())->m_pvStructure,
     			static_cast<MockChannelPut*>(thisPtr.get())->m_bitSet);
@@ -589,6 +628,9 @@ class MockChannelPut : public ChannelPut
     virtual void put(bool lastRequest)
     {
     	m_channelPutRequester->putDone(Status::Ok);
+
+    	notifyStructureChanged(m_channelName);
+
     	if (lastRequest)
     	   destroy();
     }
@@ -621,24 +663,34 @@ PVACCESS_REFCOUNT_MONITOR_DEFINE(mockChannelPutGet);
 class MockChannelPutGet : public ChannelPutGet
 {
     private:
+		String m_channelName;
 		ChannelPutGetRequester::shared_pointer m_channelPutGetRequester;
-		PVStructure::shared_pointer m_pvStructure;
+		PVStructure::shared_pointer m_getStructure;
+		PVStructure::shared_pointer m_putStructure;
 
     protected:
-    MockChannelPutGet(ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
-    		PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & /*pvRequest*/) :
-        m_channelPutGetRequester(channelPutGetRequester), m_pvStructure(pvStructure)
+    MockChannelPutGet(String const & channelName, ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
+    		PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
+    	m_channelName(channelName),
+        m_channelPutGetRequester(channelPutGetRequester),
+        m_getStructure(getRequestedStructure(pvStructure, pvRequest, "getField")),
+        m_putStructure(getRequestedStructure(pvStructure, pvRequest, "putField"))
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelPutGet);
     }
 
     public:
-    static ChannelPutGet::shared_pointer create(ChannelPutGetRequester::shared_pointer const & channelPutGetRequester, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
+    static ChannelPutGet::shared_pointer create(
+    		String const & channelName,
+    		ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
+    		PVStructure::shared_pointer const & pvStructure,
+    		PVStructure::shared_pointer const & pvRequest)
     {
-        ChannelPutGet::shared_pointer thisPtr(new MockChannelPutGet(channelPutGetRequester, pvStructure, pvRequest));
-        // TODO pvRequest
-        Status pvRequestIgnored(Status::STATUSTYPE_WARNING, "pvRequest ignored, put-get actions not implemented - dummy OK always returned");
-    	channelPutGetRequester->channelPutGetConnect(pvRequestIgnored, thisPtr, pvStructure, pvStructure);
+        ChannelPutGet::shared_pointer thisPtr(new MockChannelPutGet(channelName, channelPutGetRequester, pvStructure, pvRequest));
+
+    	channelPutGetRequester->channelPutGetConnect(Status::Ok, thisPtr,
+    			static_cast<MockChannelPutGet*>(thisPtr.get())->m_putStructure,
+    			static_cast<MockChannelPutGet*>(thisPtr.get())->m_getStructure);
     	
     	return thisPtr;
     }
@@ -651,6 +703,9 @@ class MockChannelPutGet : public ChannelPutGet
     virtual void putGet(bool lastRequest)
     {
     	m_channelPutGetRequester->putGetDone(Status::Ok);
+
+    	notifyStructureChanged(m_channelName);
+
     	if (lastRequest)
     	   destroy();
     }
@@ -963,9 +1018,10 @@ class MockChannelArray : public ChannelArray
 
 PVACCESS_REFCOUNT_MONITOR_DEFINE(mockMonitor);
 
-class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enable_shared_from_this<MockMonitor>
+class MockMonitor : public Monitor, public StructureChangedCallback, public std::tr1::enable_shared_from_this<MockMonitor>
 {
     private:
+		String m_channelName;
 		MonitorRequester::shared_pointer m_monitorRequester;
 		PVStructure::shared_pointer m_pvStructure;
 		BitSet::shared_pointer m_changedBitSet;
@@ -978,28 +1034,36 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
 		MonitorElement::shared_pointer m_nullMonitor;
 
     protected:
-    MockMonitor(MonitorRequester::shared_pointer const & monitorRequester,
+    MockMonitor(String const & channelName, MonitorRequester::shared_pointer const & monitorRequester,
     		PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
+    	m_channelName(channelName),
         m_monitorRequester(monitorRequester), m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
         m_changedBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_overrunBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_first(true),
         m_lock(),
-        m_count(0)
+        m_count(0),
+        m_thisPtr(new MonitorElement())
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockMonitor);
 
         m_changedBitSet->set(0);
-    }
+
+        m_thisPtr->pvStructurePtr = m_pvStructure;
+        m_thisPtr->changedBitSet = m_changedBitSet;
+        m_thisPtr->overrunBitSet = m_overrunBitSet;
+   }
 
     public:
-    static Monitor::shared_pointer create(MonitorRequester::shared_pointer const & monitorRequester, PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
+    static Monitor::shared_pointer create(String const & channelName,
+    		MonitorRequester::shared_pointer const & monitorRequester,
+    		PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
     {
-        Monitor::shared_pointer thisPtr(new MockMonitor(monitorRequester, pvStructure, pvRequest));
+        Monitor::shared_pointer thisPtr(new MockMonitor(channelName, monitorRequester, pvStructure, pvRequest));
         StructureConstPtr structurePtr = static_cast<MockMonitor*>(thisPtr.get())->m_pvStructure->getStructure();
-        Status changeMonitoringNotImplemented(Status::STATUSTYPE_WARNING, "structure change monitoring not implemented");
-        monitorRequester->monitorConnect(changeMonitoringNotImplemented, thisPtr, structurePtr);
-        
+        monitorRequester->monitorConnect(Status::Ok, thisPtr, structurePtr);
+
+        structureChangedListeners[channelName].push_back(std::tr1::dynamic_pointer_cast<StructureChangedCallback>(thisPtr));
         return thisPtr;
     }
 
@@ -1022,6 +1086,13 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
         return Status::Ok;
     }
 
+	virtual void structureChanged()
+	{
+		m_count = 0;
+    	Monitor::shared_pointer thisPtr = shared_from_this();
+        m_monitorRequester->monitorEvent(thisPtr);
+	}
+
     virtual MonitorElement::shared_pointer poll()
     {
         Lock xx(m_lock);
@@ -1032,7 +1103,6 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
         else
         {
             m_count++;
-            m_thisPtr = shared_from_this();
             return m_thisPtr;
         }
     }
@@ -1042,15 +1112,17 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
         Lock xx(m_lock);
         if (m_count)
         {
-            m_thisPtr.reset();
             m_count--;
         }
     }
 
     virtual void destroy()
     {
-        m_thisPtr.reset();
         stop();
+
+        // remove itself from listeners table
+        vector<StructureChangedCallback::shared_pointer> &vec = structureChangedListeners[m_channelName];
+        vec.erase(find(vec.begin(), vec.end(), std::tr1::dynamic_pointer_cast<StructureChangedCallback>(shared_from_this())));
     }
 
     virtual void lock()
@@ -1062,24 +1134,6 @@ class MockMonitor : public Monitor, public MonitorElement, public std::tr1::enab
     {
         // TODO !!!
     }
-
-    // ============ MonitorElement ============
-
-    virtual PVStructure::shared_pointer const & getPVStructure()
-    {
-        return m_pvStructure;
-    }
-
-    virtual BitSet::shared_pointer const & getChangedBitSet()
-    {
-        return m_changedBitSet;
-    }
-
-    virtual BitSet::shared_pointer const & getOverrunBitSet()
-    {
-        return m_overrunBitSet;
-    }
-
 
 };
 
@@ -1215,7 +1269,7 @@ class MockChannel : public Channel {
 				String allProperties("");
 				m_pvStructure = getStandardPVField()->scalar(pvDouble,allProperties);
 			}
-			else if (m_name.find("testCounter") == 0)
+			else if (m_name == "testCounter")
 			{
 				String allProperties("timeStamp");
 				m_pvStructure = getStandardPVField()->scalar(pvInt,allProperties);
@@ -1330,7 +1384,7 @@ class MockChannel : public Channel {
     		ChannelProcessRequester::shared_pointer const & channelProcessRequester,
     		epics::pvData::PVStructure::shared_pointer const & pvRequest)
     {
-    	return MockChannelProcess::create(channelProcessRequester, m_pvStructure, pvRequest);
+    	return MockChannelProcess::create(m_name, channelProcessRequester, m_pvStructure, pvRequest);
     }
 
     virtual ChannelGet::shared_pointer createChannelGet(
@@ -1344,14 +1398,14 @@ class MockChannel : public Channel {
     		ChannelPutRequester::shared_pointer const & channelPutRequester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest)
     {
-    	return MockChannelPut::create(channelPutRequester, m_pvStructure, pvRequest);
+    	return MockChannelPut::create(m_name, channelPutRequester, m_pvStructure, pvRequest);
     }
 
     virtual ChannelPutGet::shared_pointer createChannelPutGet(
     		ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest)
     {
-    	return MockChannelPutGet::create(channelPutGetRequester, m_pvStructure, pvRequest);
+    	return MockChannelPutGet::create(m_name, channelPutGetRequester, m_pvStructure, pvRequest);
     }
 
     virtual ChannelRPC::shared_pointer createChannelRPC(ChannelRPCRequester::shared_pointer const & channelRPCRequester,
@@ -1364,7 +1418,7 @@ class MockChannel : public Channel {
             epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest)
     {
-    	return MockMonitor::create(monitorRequester, m_pvStructure, pvRequest);
+    	return MockMonitor::create(m_name, monitorRequester, m_pvStructure, pvRequest);
     }
 
     virtual ChannelArray::shared_pointer createChannelArray(
@@ -1556,6 +1610,7 @@ void testServer(int timeToRun)
 
 	unregisterChannelProvider(ptr);
 
+	structureChangedListeners.clear();
 	structureStore.clear();
 }
 
