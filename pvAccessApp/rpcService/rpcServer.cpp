@@ -144,7 +144,7 @@ public:
         destroy();
     }
 
-    virtual std::tr1::shared_ptr<ChannelProvider> const & getProvider()
+    virtual std::tr1::shared_ptr<ChannelProvider> getProvider()
     {
         return m_provider;
     }
@@ -167,7 +167,7 @@ public:
         return m_channelName;
     }
 
-    virtual std::tr1::shared_ptr<ChannelRequester> const & getChannelRequester()
+    virtual std::tr1::shared_ptr<ChannelRequester> getChannelRequester()
     {
         return m_channelRequester;
     }

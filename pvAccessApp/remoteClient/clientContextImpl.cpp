@@ -3269,7 +3269,7 @@ namespace epics {
                 
                 int32_t& getUserValue() { return m_userValue; }
                 
-                virtual ChannelProvider::shared_pointer const & getProvider()
+                virtual ChannelProvider::shared_pointer getProvider()
                 {
                     return m_context->getProvider();
                 }
@@ -3293,7 +3293,7 @@ namespace epics {
                     return m_name;
                 }
                 
-                virtual ChannelRequester::shared_pointer const & getChannelRequester()
+                virtual ChannelRequester::shared_pointer getChannelRequester()
                 {
                     return m_requester;
                 }
