@@ -59,7 +59,7 @@ static PVStructure::shared_pointer getRequestedStructure(
 		if (pvRequest->getSubField(subfieldName))
 			pvRequestFields = pvRequest->getStructureField(subfieldName);
 		else
-			pvRequestFields = pvRequest;	// really?!!
+			pvRequestFields = pvRequest;
 
 		// if pvRequest is empty, just use pvStructure
 		if (pvRequestFields->getPVFields().size() > 0)
@@ -74,8 +74,23 @@ static PVStructure::shared_pointer getRequestedStructure(
 				PVFieldPtr pvField = pvStructure->getSubField(*iter);
 				if (pvField)
 				{
-					actualFieldNames.push_back(*iter);
-					pvFields.push_back(pvField);
+					PVStructurePtr pvFieldStructure =
+							std::tr1::dynamic_pointer_cast<PVStructure>(pvField);
+
+					PVStructurePtr pvRequestFieldStructure =
+							std::tr1::dynamic_pointer_cast<PVStructure>(pvRequestFields->getSubField(*iter));
+					if (pvRequestFieldStructure->getPVFields().size() > 0 && pvFieldStructure.get())
+					{
+						// add subfields only
+						actualFieldNames.push_back(*iter);
+						pvFields.push_back(getRequestedStructure(pvFieldStructure, pvRequestFieldStructure));
+					}
+					else
+					{
+						// add entire field
+						actualFieldNames.push_back(*iter);
+						pvFields.push_back(pvField);
+					}
 				}
 			}
 
