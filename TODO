@@ -19,5 +19,5 @@ readSize checks if size is in limits of size_t?
 
 void transportUnresponsive() { not implemented (also in Java)
 
-
+socket termination - usage of epicsSocketSystemCallInterruptMechanismQuery() API
  
