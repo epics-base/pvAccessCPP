@@ -15,10 +15,14 @@
 
 #include <pv/logger.h>
 
+// TODO temp
+#include "testADCSim.cpp"
+
 using namespace epics::pvAccess;
 using namespace epics::pvData;
 using namespace std;
 using std::tr1::static_pointer_cast;
+
 
 
 map<String, PVStructure::shared_pointer> structureStore;
@@ -133,6 +137,63 @@ public:
     	}
     }
 };
+
+// ADC
+class ADCAction : public Runnable {
+public:
+	String name;
+    epics::pvData::PVStructure::shared_pointer adcMatrix;
+    SimADC::smart_pointer_type adcSim;
+
+	AtomicBoolean stopped;
+
+	ADCAction() {}
+
+    virtual void run()
+    {
+    	while (!stopped.get())
+    	{
+    	    if (adcSim->updated.wait(1.0))
+    	    {
+
+				try {
+
+			        epicsGuard<epicsMutex> guard(adcSim->mutex);
+
+			        epicsUInt32 len = adcSim->prev_nSamples;
+			        double *val = adcSim->data.value.get();
+			        static_pointer_cast<PVDoubleArray>(adcMatrix->getScalarArrayField("value", pvDouble))->put(0, len, val, 0);
+
+			        baseValue::shape_t* shape = &adcSim->data.shape;
+			        size_t shapeLen = shape->size();
+			        vector<int> intVal(shapeLen);
+			        for (size_t i = 0; i < shapeLen; i++)
+			        	intVal[i] = (*shape)[i];
+			        static_pointer_cast<PVIntArray>(adcMatrix->getScalarArrayField("dim", pvInt))->put(0, shapeLen, &intVal[0], 0);
+
+			        PVStructure::shared_pointer ts = adcMatrix->getStructureField("timeStamp");
+
+					PVTimeStamp timeStamp;
+					timeStamp.attach(ts);
+					TimeStamp current;
+					current.put(adcSim->X.timeStamp.tv_sec, adcSim->X.timeStamp.tv_nsec);
+					timeStamp.set(current);
+
+					notifyStructureChanged(name);
+
+				} catch (std::exception &ex) {
+					std::cerr << "Unhandled exception caught in ADCThread::run(): " << ex.what() << std::endl;
+				} catch (...) {
+					std::cerr << "Unhandled exception caught in ADCThread::run()" << std::endl;
+				}
+
+    	    }
+    	}
+    }
+};
+
+
+
 
 class ChannelFindRequesterImpl : public ChannelFindRequester
 {
@@ -1161,6 +1222,7 @@ class MockChannel : public Channel {
         ChannelRequester::shared_pointer m_requester;
         String m_name;
         String m_remoteAddress;
+    public: // TODO
         PVStructure::shared_pointer m_pvStructure;
 
     protected:
@@ -1272,6 +1334,42 @@ class MockChannel : public Channel {
 				printf("%s\n", str.c_str());
 				printf("=============------------------------------------!!!\n");
 				*/
+			}
+			else if (m_name.find("testADC") == 0)
+			{
+				int i = 0;
+		        int totalFields = 6;
+		        StringArray fieldNames(totalFields);
+		        FieldConstPtrArray fields(totalFields);
+		        fieldNames[i] = "value";
+		        fields[i++] = getFieldCreate()->createScalarArray(pvDouble);
+		        fieldNames[i] = "dim";
+		        fields[i++] = getFieldCreate()->createScalarArray(pvInt);
+		        fieldNames[i] = "descriptor";
+		        fields[i++] = getFieldCreate()->createScalar(pvString);
+		        fieldNames[i] = "timeStamp";
+		        fields[i++] = getStandardField()->timeStamp();
+		        fieldNames[i] = "alarm";
+		        fields[i++] = getStandardField()->alarm();
+		        fieldNames[i] = "display";
+		        fields[i++] = getStandardField()->display();
+
+		        m_pvStructure =
+		        		getPVDataCreate()->createPVStructure(
+		        				getFieldCreate()->createStructure("uri:ev4:nt/2012/pwd:NTMatrix", fieldNames, fields)
+		        			);
+
+		        // fill with default values
+		        int dimValue = 0;
+		        static_pointer_cast<PVIntArray>(m_pvStructure->getScalarArrayField("dim", pvInt))->put(0, 1, &dimValue, 0);
+
+		        m_pvStructure->getStringField("descriptor")->put("Simulated ADC that provides NTMatrix value");
+		        PVStructurePtr displayStructure = m_pvStructure->getStructureField("display");
+		        displayStructure->getDoubleField("limitLow")->put(-1.0);
+		        displayStructure->getDoubleField("limitHigh")->put(1.0);
+		        displayStructure->getStringField("description")->put("Simulated ADC");
+		        displayStructure->getStringField("format")->put("%f");
+		        displayStructure->getStringField("units")->put("V");
 			}
 			else if (m_name.find("testRPC") == 0 || m_name == "testNTTable" || m_name == "testNTMatrix")
 			{
@@ -1510,14 +1608,18 @@ class MockServerChannelProvider : 	public ChannelProvider,
 	MockServerChannelProvider() :
 		m_mockChannelFind(),
 		m_counterChannel(),
+		m_adcChannel(),
 		m_scan1Hz(1.0),
-		m_scan1HzThread()
+		m_scan1HzThread(),
+		m_adcAction(),
+		m_adcThread()
 	{
     }
 
 	virtual ~MockServerChannelProvider()
 	{
 		m_scan1Hz.stopped.set();
+		m_adcAction.stopped.set();
 	}
 
 	void initialize()
@@ -1534,6 +1636,12 @@ class MockServerChannelProvider : 	public ChannelProvider,
 
 		m_scan1Hz.toProcess.push_back(process);
 	    m_scan1HzThread.reset(new Thread("process1hz", highPriority, &m_scan1Hz));
+
+		m_adcChannel = MockChannel::create(chProviderPtr, cr, "testADC", "local");
+	    m_adcAction.name = "testADC";
+	    m_adcAction.adcMatrix = static_pointer_cast<MockChannel>(m_adcChannel)->m_pvStructure;
+	    m_adcAction.adcSim = createSimADC("testADC");
+	    m_adcThread.reset(new Thread("adcThread", highPriority, &m_adcAction));
 	}
 
     virtual epics::pvData::String getProviderName()
@@ -1576,6 +1684,11 @@ class MockServerChannelProvider : 	public ChannelProvider,
         		channelRequester->channelCreated(Status::Ok, m_counterChannel);
         		return m_counterChannel;
         	}
+        	else if (channelName == "testADC")
+        	{
+        		channelRequester->channelCreated(Status::Ok, m_adcChannel);
+        		return m_adcChannel;
+        	}
         	else
         	{
         		ChannelProvider::shared_pointer chProviderPtr = shared_from_this();
@@ -1596,9 +1709,13 @@ class MockServerChannelProvider : 	public ChannelProvider,
 
     ChannelFind::shared_pointer m_mockChannelFind;
     Channel::shared_pointer m_counterChannel;
+    Channel::shared_pointer m_adcChannel;
 
 	ProcessAction m_scan1Hz;
 	auto_ptr<Thread> m_scan1HzThread;
+
+	ADCAction m_adcAction;
+	auto_ptr<Thread> m_adcThread;
 };
 
 
@@ -1687,6 +1804,8 @@ int main(int argc, char *argv[])
     SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
 
     testServer(timeToRun);
+
+    shutdownSimADCs();
 
 	cout << "Done" << endl;
 
