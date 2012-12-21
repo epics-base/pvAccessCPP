@@ -25,6 +25,14 @@ char to_hex(char code);
 /* IMPORTANT: be sure to free() the returned string after use */
 char *url_encode(const char *str);
 
+#include <string>
+
+struct URI {
+public:
+    static bool parse(const std::string& uri, URI& result);
+public:
+    std::string protocol, host, path, query, fragment;
+};
 
 class RequesterImpl :
 	public epics::pvData::Requester

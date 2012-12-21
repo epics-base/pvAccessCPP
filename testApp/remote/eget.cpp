@@ -1032,6 +1032,53 @@ int main (int argc, char *argv[])
     // service RPC mode
     else
     {
+    	URI uri;
+    	bool validURI = URI::parse(service, uri);
+    	if (validURI)
+    	{
+    		if (uri.protocol != "pva")
+    		{
+                std::cerr << "invalid URI scheme '" << uri.protocol << "', only 'pva' is supported" << std::endl;
+    			// TODO
+                return 1;
+    		}
+
+    		if (uri.path.length() <= 1)
+    		{
+                std::cerr << "invalid URI, empty path" << std::endl;
+    			// TODO
+                return 1;
+    		}
+
+    		// skip trailing '/'
+    		service = uri.path.substr(1);
+
+    		string::const_iterator end_i = uri.query.end();
+    		string::const_iterator begin_i = uri.query.begin();
+    		while (begin_i != end_i)
+    		{
+        		string::const_iterator pair_end_i = find(begin_i, end_i, '&');
+
+        		string::const_iterator name_end_i = find(begin_i, pair_end_i, '=');
+        		if (name_end_i != pair_end_i)
+        		{
+        			string name(begin_i, name_end_i);
+        			string value(name_end_i+1, pair_end_i);
+        			parameters.push_back(pair<string,string>(name, value));
+        		}
+        		else
+        		{
+                    fprintf(stderr, "Parameter not specified in name=value form. ('eget -h' for help.)\n");
+        			// TODO
+                    return 1;
+        		}
+
+        		begin_i = pair_end_i;
+        		if (begin_i != end_i)
+        			begin_i++;	// skip '&'
+    		}
+    	}
+
     	/*
         std::cerr << "service            : " << service << std::endl;
         std::cerr << "parameters         : " << std::endl;
@@ -1040,7 +1087,7 @@ int main (int argc, char *argv[])
         for (; iter != parameters.end(); iter++)
             std::cerr << "    " << iter->first << " = " << iter->second << std::endl;
         //std::cerr << "encoded URL request: '" << urlEncodedRequest << "'" << std::endl;
-        */
+		*/
 
         // simply empty
         PVStructure::shared_pointer pvRequest =
