@@ -541,6 +541,42 @@ void usage (void)
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
 
+void printValue(String const & channelName, PVStructure::shared_pointer const & pv)
+{
+    if (mode == ValueOnlyMode)
+    {
+        PVField::shared_pointer value = pv->getSubField("value");
+        if (value.get() == 0)
+        {
+        	std::cerr << "no 'value' field" << std::endl;
+            std::cout << std::endl << *(pv.get()) << std::endl << std::endl;
+        }
+        else
+        {
+			Type valueType = value->getField()->getType();
+			if (valueType != scalar && valueType != scalarArray)
+			{
+				// switch to structure mode
+				std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+			}
+			else
+			{
+				if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
+					std::cout << std::setw(30) << std::left << channelName;
+				else
+					std::cout << channelName;
+
+				std::cout << fieldSeparator;
+
+				terse(std::cout, value) << std::endl;
+			}
+        }
+    }
+    else if (mode == TerseMode)
+        terseStructure(std::cout, pv) << std::endl;
+    else
+        std::cout << std::endl << *(pv.get()) << std::endl << std::endl;
+}
 
 struct AtomicBoolean_null_deleter
 {
@@ -574,7 +610,6 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     Mutex m_eventMutex;
     auto_ptr<Event> m_event;
     String m_channelName;
-    AtomicBoolean m_supressGetValue;
     AtomicBoolean m_done;
 
     public:
@@ -640,6 +675,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
 
         	m_done.set();
 
+        	/*
             // access smart pointers
             // do not print old value in terseMode
             if (!m_supressGetValue.get())
@@ -650,41 +686,11 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
                     // needed since we access the data
                     ScopedLock dataLock(m_channelPut);
 
-                    if (mode == ValueOnlyMode)
-                    {
-                        PVField::shared_pointer value = m_pvStructure->getSubField("value");
-                        if (value.get() == 0)
-                        {
-                        	std::cerr << "no 'value' field" << std::endl;
-                            std::cout << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
-                        }
-                        else
-                        {
-							Type valueType = value->getField()->getType();
-							if (valueType != scalar && valueType != scalarArray)
-							{
-								// switch to structure mode
-								std::cout << m_channelName << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
-							}
-							else
-							{
-								if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
-									std::cout << std::setw(30) << std::left << m_channelName;
-								else
-									std::cout << m_channelName;
-
-								std::cout << fieldSeparator;
-
-								terse(std::cout, value) << std::endl;
-							}
-                        }
-                    }
-                    else if (mode == TerseMode)
-                        terseStructure(std::cout, m_pvStructure) << std::endl;
-                    else
-                        std::cout << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
+                    printValue(m_channelName, m_pvStructure);
                 }
             }
+            */
+
         }
         else
         {
@@ -745,13 +751,6 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         return m_done.get();
     }
 
-    void supressGetValue(bool flag)
-    {
-    	if (flag)
-    		m_supressGetValue.set();
-    	else
-    		m_supressGetValue.clear();
-    }
 };
 
 /*+**************************************************************************
@@ -868,14 +867,15 @@ int main (int argc, char *argv[])
             if (channelRequesterImpl->waitUntilConnected(timeOut))
             {
                 shared_ptr<ChannelPutRequesterImpl> putRequesterImpl(new ChannelPutRequesterImpl(channel->getChannelName()));
-                if (mode == TerseMode)
-                	putRequesterImpl->supressGetValue(true);
-                else
+                if (mode != TerseMode)
                 	std::cout << "Old : ";
                 ChannelPut::shared_pointer channelPut = channel->createChannelPut(putRequesterImpl, pvRequest);
                 allOK &= putRequesterImpl->waitUntilDone(timeOut);
                 if (allOK)
                 {
+                	if (mode != TerseMode)
+                        printValue(pvName, putRequesterImpl->getStructure());
+
                 	// convert value from string
                 	// since we access structure from another thread, we need to lock
                 	{
@@ -892,10 +892,11 @@ int main (int argc, char *argv[])
                     {
                         // and than a get again to verify put
                         if (mode != TerseMode) std::cout << "New : ";
-                        putRequesterImpl->supressGetValue(false);
                         putRequesterImpl->resetEvent();
                         channelPut->get();
                         allOK &= putRequesterImpl->waitUntilDone(timeOut);
+                    	if (allOK)
+                            printValue(pvName, putRequesterImpl->getStructure());
                     }
                 }
             }
