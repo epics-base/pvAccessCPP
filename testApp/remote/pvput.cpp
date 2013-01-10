@@ -575,6 +575,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     auto_ptr<Event> m_event;
     String m_channelName;
     AtomicBoolean m_supressGetValue;
+    AtomicBoolean m_done;
 
     public:
     
@@ -623,6 +624,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         else
         {
             std::cerr << "[" << m_channelName << "] failed to create channel put: " << status.toString() << std::endl;
+            m_event->signal();
         }
     }
 
@@ -636,12 +638,15 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
                 std::cerr << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
             }
 
+        	m_done.set();
+
             // access smart pointers
             // do not print old value in terseMode
             if (!m_supressGetValue.get())
             {
                 Lock lock(m_pointerMutex);
                 {
+
                     // needed since we access the data
                     ScopedLock dataLock(m_channelPut);
 
@@ -680,14 +685,13 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
                         std::cout << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
                 }
             }
-            
-            m_event->signal();
         }
         else
         {
             std::cerr << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
         }
         
+        m_event->signal();
     }
 
     virtual void putDone(const epics::pvData::Status& status)
@@ -700,13 +704,14 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
                 std::cerr << "[" << m_channelName << "] channel put: " << status.toString() << std::endl;
             }
   
-            m_event->signal();
+            m_done.set();
         }
         else
         {
             std::cerr << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
         }
         
+        m_event->signal();
     }
 
     PVStructure::shared_pointer getStructure()
@@ -719,6 +724,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     {
         Lock lock(m_eventMutex);
         m_event.reset(new Event());
+        m_done.clear();
     }
     
     bool waitUntilDone(double timeOut)
@@ -728,7 +734,15 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     		Lock lock(m_eventMutex);
     		event = m_event.get();
     	}
-        return event->wait(timeOut);
+
+        bool signaled = event->wait(timeOut);
+        if (!signaled)
+        {
+            std::cerr << "[" << m_channelName << "] timeout" << std::endl;
+            return false;
+    	}
+
+        return m_done.get();
     }
 
     void supressGetValue(bool flag)

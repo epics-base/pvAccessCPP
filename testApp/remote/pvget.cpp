@@ -55,6 +55,43 @@ void usage (void)
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
 
+void printValue(String const & channelName, PVStructure::shared_pointer const & pv)
+{
+    if (mode == ValueOnlyMode)
+    {
+        PVField::shared_pointer value = pv->getSubField("value");
+        if (value.get() == 0)
+        {
+        	std::cerr << "no 'value' field" << std::endl;
+            std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+        }
+        else
+        {
+			Type valueType = value->getField()->getType();
+			if (valueType != scalar && valueType != scalarArray)
+			{
+				// switch to structure mode
+				std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+			}
+			else
+			{
+				if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
+					std::cout << std::setw(30) << std::left << channelName;
+				else
+					std::cout << channelName;
+
+				std::cout << fieldSeparator;
+
+				terse(std::cout, value) << std::endl;
+			}
+        }
+    }
+    else if (mode == TerseMode)
+        terseStructure(std::cout, pv) << std::endl;
+    else
+        std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+}
+
 
 class ChannelGetRequesterImpl : public ChannelGetRequester
 {
@@ -66,9 +103,11 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
     Event m_event;
     String m_channelName;
 
+    bool m_done;
+
     public:
     
-    ChannelGetRequesterImpl(String channelName) : m_channelName(channelName) {}
+    ChannelGetRequesterImpl(String channelName) : m_channelName(channelName), m_done(false) {}
     
     virtual String getRequesterName()
     {
@@ -105,6 +144,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         else
         {
             std::cerr << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
+            m_event.signal();
         }
     }
 
@@ -121,50 +161,21 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             // access smart pointers
             {
                 Lock lock(m_pointerMutex);
+
+                m_done = true;
+
+                /*
                 {
                     // needed since we access the data
                     ScopedLock dataLock(m_channelGet);
+
+                    printValue(m_channelName, m_pvStructure);
     
-                    if (mode == ValueOnlyMode)
-                    {
-                        PVField::shared_pointer value = m_pvStructure->getSubField("value");
-                        if (value.get() == 0)
-                        {
-                        	std::cerr << "no 'value' field" << std::endl;
-                            std::cout << m_channelName << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
-                        }
-                        else
-                        {
-							Type valueType = value->getField()->getType();
-							if (valueType != scalar && valueType != scalarArray)
-							{
-								// switch to structure mode
-								std::cout << m_channelName << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
-							}
-							else
-							{
-								if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
-									std::cout << std::setw(30) << std::left << m_channelName;
-								else
-									std::cout << m_channelName;
-
-								std::cout << fieldSeparator;
-
-								terse(std::cout, value) << std::endl;
-							}
-                        }
-                    }
-                    else if (mode == TerseMode)
-                        terseStructure(std::cout, m_pvStructure) << std::endl;
-                    else
-                        std::cout << m_channelName << std::endl << *(m_pvStructure.get()) << std::endl << std::endl;
-                } 
-                // this is OK since calle holds also owns it
+                }
+                */
+                // this is OK since callee holds also owns it
                 m_channelGet.reset();
             }
-            
-            m_event.signal();
-            
         }
         else
         {
@@ -176,11 +187,26 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             }
         }
         
+        m_event.signal();
+    }
+
+    PVStructure::shared_pointer getPVStructure()
+    {
+        Lock lock(m_pointerMutex);
+        return m_pvStructure;
     }
 
     bool waitUntilGet(double timeOut)
     {
-        return m_event.wait(timeOut);
+    	bool signaled = m_event.wait(timeOut);
+    	if (!signaled)
+    	{
+            std::cerr << "[" << m_channelName << "] get timeout" << std::endl;
+            return false;
+    	}
+
+		Lock lock(m_pointerMutex);
+		return m_done;
     }
 };
 
@@ -453,6 +479,8 @@ int main (int argc, char *argv[])
 						shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
 						ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
 						allOK &= getRequesterImpl->waitUntilGet(timeOut);
+						if (allOK)
+	                    	printValue(channel->getChannelName(), getRequesterImpl->getPVStructure());
 					}
 					else
 					{

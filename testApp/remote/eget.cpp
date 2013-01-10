@@ -595,11 +595,14 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
     Mutex m_pointerMutex;
     Event m_event;
 
+    bool m_done;
+
     public:
     
     ChannelGetRequesterImpl(String channelName, bool printValue) :
     	m_channelName(channelName),
-    	m_printValue(printValue)
+    	m_printValue(printValue),
+    	m_done(false)
     {
     }
     
@@ -638,6 +641,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         else
         {
             std::cerr << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
+            m_event.signal();
         }
     }
 
@@ -655,6 +659,8 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             {
                 Lock lock(m_pointerMutex);
                 {
+                	m_done = true;
+
                 	if (m_printValue)
                 	{
 						// needed since we access the data
@@ -664,12 +670,9 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 					}
                 }
 
-                // this is OK since calle holds also owns it
+                // this is OK since callee holds also owns it
                 m_channelGet.reset();
             }
-
-            m_event.signal();
-
         }
         else
         {
@@ -681,6 +684,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             }
         }
 
+        m_event.signal();
     }
 
     PVStructure::shared_pointer getPVStructure()
@@ -691,7 +695,15 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 
     bool waitUntilGet(double timeOut)
     {
-        return m_event.wait(timeOut);
+    	bool signaled = m_event.wait(timeOut);
+    	if (!signaled)
+    	{
+            std::cerr << "[" << m_channelName << "] get timeout" << std::endl;
+            return false;
+    	}
+
+		Lock lock(m_pointerMutex);
+		return m_done;
     }
 };
 
@@ -705,9 +717,12 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
     Event m_connectionEvent;
     String m_channelName;
 
+    PVStructure::shared_pointer m_lastResponse;
+    bool m_done;
+
     public:
     
-    ChannelRPCRequesterImpl(String channelName) : m_channelName(channelName) {}
+    ChannelRPCRequesterImpl(String channelName) : m_channelName(channelName), m_done(false) {}
     
     virtual String getRequesterName()
     {
@@ -740,6 +755,7 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
         else
         {
             std::cerr << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
+            m_connectionEvent.signal();
         }
     }
 
@@ -757,15 +773,17 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
             {
                 Lock lock(m_pointerMutex);
 
+                m_done = true;
+                m_lastResponse = pvResponse;
+
+                /*
                 formatNT(std::cout, pvResponse);
                 std::cout << std::endl;
+                 */
 
                 // this is OK since calle holds also owns it
                 m_channelRPC.reset();
             }
-            
-            m_event.signal();
-            
         }
         else
         {
@@ -777,6 +795,7 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
             }
         }
         
+        m_event.signal();
     }
     
     /*
@@ -787,14 +806,40 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
     }
     */
 
+    PVStructure::shared_pointer getLastResponse()
+    {
+        Lock lock(m_pointerMutex);
+        return m_lastResponse;
+    }
+
     bool waitUntilRPC(double timeOut)
     {
-        return m_event.wait(timeOut);
+    	bool signaled = m_event.wait(timeOut);
+    	if (!signaled)
+    	{
+            std::cerr << "[" << m_channelName << "] RPC timeout" << std::endl;
+            return false;
+    	}
+
+		Lock lock(m_pointerMutex);
+    	return m_done;
     }
 
     bool waitUntilConnected(double timeOut)
     {
-        return m_connectionEvent.wait(timeOut);
+    	bool signaled = m_connectionEvent.wait(timeOut);
+    	if (!signaled)
+    	{
+            std::cerr << "[" << m_channelName << "] RPC create timeout" << std::endl;
+            return false;
+    	}
+
+        bool connected;
+    	{
+    		Lock lock(m_pointerMutex);
+            connected = (m_channelRPC.get() != 0);
+        }
+    	return connected ? true : false;
     }
 };
 
@@ -998,7 +1043,7 @@ int main (int argc, char *argv[])
             		}
 
             		shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(
-            				new ChannelGetRequesterImpl(channel->getChannelName(), !collectValues)
+            				new ChannelGetRequesterImpl(channel->getChannelName(), false)
             			);
                     ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
                     bool ok = getRequesterImpl->waitUntilGet(timeOut);
@@ -1006,7 +1051,12 @@ int main (int argc, char *argv[])
                     if (ok && collectValues)
                     {
                     	collectedValues.push_back(getRequesterImpl->getPVStructure());
-                    	//collectedNames.push_back(channel->getChannelName());
+                    	// no labels collectedNames.push_back(channel->getChannelName());
+                    }
+                    else
+                    {
+                    	// print immediately
+                    	printValue(channel->getChannelName(), getRequesterImpl->getPVStructure());
                     }
             	}
             	else
@@ -1171,21 +1221,25 @@ int main (int argc, char *argv[])
             {
 				channelRPC->request(arg, true);
 				allOK &= rpcRequesterImpl->waitUntilRPC(timeOut);
+				if (allOK)
+				{
+	                formatNT(std::cout, rpcRequesterImpl->getLastResponse());
+	                std::cout << std::endl;
+				}
 			}
             else
             {
                 allOK = false;
-                channel->destroy();
-                std::cerr << "[" << channel->getChannelName() << "] RPC create timeout" << std::endl;
             }
         }
         else
         {
             allOK = false;
-            channel->destroy();
             std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
         }
-    
+
+        channel->destroy();
+
         ClientFactory::stop();
     }
 
