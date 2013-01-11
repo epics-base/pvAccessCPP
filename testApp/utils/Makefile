@@ -11,6 +11,7 @@ inetAddressUtilsTest_CXXFLAGS=-O0
 testUtils_SRCS += atomicBooleanTest.cpp
 testUtils_LIBS += pvAccess pvData Com gtest_main
 gtest_main_DIR=$(GTEST)/lib
+testUtils_SYS_LIBS += pthread
 endif
 
 #PROD_HOST += loggerTest
