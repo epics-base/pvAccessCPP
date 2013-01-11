@@ -6,8 +6,11 @@ ifdef GTEST
 PROD_HOST += testUtils
 testUtils_SRCS += hexDumpTest.cpp
 testUtils_SRCS += inetAddressUtilsTest.cpp
+# Avoid errors from inlined htonl() etc. used as template argument
+inetAddressUtilsTest_CXXFLAGS=-O0
 testUtils_SRCS += atomicBooleanTest.cpp
 testUtils_LIBS += pvAccess pvData Com gtest_main
+gtest_main_DIR=$(GTEST)/lib
 endif
 
 #PROD_HOST += loggerTest
