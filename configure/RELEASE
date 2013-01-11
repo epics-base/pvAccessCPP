@@ -1,11 +1,11 @@
-# RELEASE - Location of external support modules
+# pvAccessCPP RELEASE - Location of external support modules
 #
-# IF YOU MAKE ANY CHANGES to this file you must subsequently
-# do a "gnumake rebuild" in this application's top level
-# directory.
+# IF YOU CHANGE this file or any file it includes you must
+# subsequently do a "gnumake rebuild" in the application's
+# top level directory.
 #
 # The build process does not check dependencies against files
-# that are outside this application, thus you should do a
+# that are outside this application, thus you should also do a
 # "gnumake rebuild" in the top level directory after EPICS_BASE
 # or any other external module pointed to below is rebuilt.
 #
@@ -13,30 +13,14 @@
 #  RELEASE.$(EPICS_HOST_ARCH).Common
 #  RELEASE.Common.$(T_A)
 #  RELEASE.$(EPICS_HOST_ARCH).$(T_A)
+
+# EPICS V4 Developers: Do not edit the locations in this file!
 #
-# This file should ONLY define paths to other support modules,
-# or include statements that pull in similar RELEASE files.
-# Build settings that are NOT module paths should appear in a
-# CONFIG_SITE file.
-
-TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
-
-# If using the sequencer, point SNCSEQ at its top directory:
-#SNCSEQ=$(EPICS_BASE)/../modules/soft/seq
-
-# EPICS_BASE usually appears last so other apps can override stuff:
-
-PVDATA=/Users/msekoranja/b2/pvDataCPP
-EPICS_BASE=/opt/epics/base
-
-#GTEST=/opt/epics/gtest
-
-# do not edit the locations in this file
-# create RELEASE.local with the paths to your EPICS_BASE and PVDATA
-
-# Set RULES here if you want to take build rules from somewhere
-# other than EPICS_BASE:
-#RULES=/path/to/epics/support/module/rules/x-y
+# Create a file RELEASE.local pointing to your PVDATA and
+# EPICS_BASE build directories, and optionally GTEST e.g.
+#   PVDATA = /home/install/epics/pvDataCPP
+#   EPICS_BASE = /home/install/epics/base
+#   # GTEST not used
 
 -include $(TOP)/configure/RELEASE.local
 -include $(TOP)/../RELEASE.local
