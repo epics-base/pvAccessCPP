@@ -1,0 +1,52 @@
+# pvAccess C++ implementation
+# Jenkins @ Cloudbees build script
+#
+# Author: Ralph Lange <Ralph.Lange@gmx.de>
+# Copyright (C) 2013 Helmholtz-Zentrum Berlin für Materialien und Energie GmbH
+# All rights reserved. Use is subject to license terms.
+
+###########################################
+# Fetch and unpack dependencies
+
+export STUFF=/tmp/stuff
+
+rm -fr ${STUFF}
+mkdir -p ${STUFF}
+cd ${STUFF}
+
+wget -nv https://openepics.ci.cloudbees.com/view/EPICS%20V3/job/Base-3.14.12.3_Build/lastSuccessfulBuild/artifact/baseR3.14.12.3.CB-dist.tar.gz
+wget -nv https://openepics.ci.cloudbees.com/job/pvData_CPP_Build/lastSuccessfulBuild/artifact/pvData.CB-dist.tar.gz
+wget -nv https://openepics.ci.cloudbees.com/view/EPICS%20V3/job/Googletest-1.6.0_Build/lastSuccessfulBuild/artifact/gtest-1.6.0.CB-dist.tar.gz
+tar -xzf baseR3.14.12.3.CB-dist.tar.gz
+tar -xzf pvData.CB-dist.tar.gz
+tar -xzf gtest-1.6.0.CB-dist.tar.gz
+
+###########################################
+# Build
+
+cd ${WORKSPACE}
+
+export EPICS_BASE=${STUFF}
+export EPICS_HOST_ARCH=$(${EPICS_BASE}/startup/EpicsHostArch)
+export LD_LIBRARY_PATH=${EPICS_BASE}/lib/${EPICS_HOST_ARCH}
+
+cat > configure/RELEASE.local << EOF
+EPICS_BASE=${EPICS_BASE}
+GTEST=${STUFF}/gtest
+EOF
+
+make distclean all
+# There's no doxygen on CB... (yet)
+#doxygen
+
+###########################################
+# Test
+
+./bin/${EPICS_HOST_ARCH}/testUtils
+./bin/${EPICS_HOST_ARCH}/testServer &
+./bin/${EPICS_HOST_ARCH}/testRemoteClientImpl
+
+###########################################
+# Create distribution
+
+tar --exclude=test* -czf pvAccess.CB-dist.tar.gz bin lib include
