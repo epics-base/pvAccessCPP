@@ -1,6 +1,9 @@
 # pvAccess C++ implementation
 # Jenkins @ Cloudbees build script
 #
+# Jenkins invokes scripts with the "-ex" option. So the build is considered a failure
+# if any of the commands exits with a non-zero exit code.
+#
 # Author: Ralph Lange <Ralph.Lange@gmx.de>
 # Copyright (C) 2013 Helmholtz-Zentrum Berlin für Materialien und Energie GmbH
 # All rights reserved. Use is subject to license terms.
@@ -15,9 +18,11 @@ mkdir -p ${STUFF}
 cd ${STUFF}
 
 wget -nv https://openepics.ci.cloudbees.com/view/EPICS%20V3/job/Base-3.14.12.3_Build/lastSuccessfulBuild/artifact/baseR3.14.12.3.CB-dist.tar.gz
+wget -nv https://openepics.ci.cloudbees.com/view/Tools/job/Doxygen-1.8.3_Build/lastSuccessfulBuild/artifact/doxygen-1.8.3.CB-dist.tar.gz
 wget -nv https://openepics.ci.cloudbees.com/job/pvData_CPP_Build/lastSuccessfulBuild/artifact/pvData.CB-dist.tar.gz
 wget -nv https://openepics.ci.cloudbees.com/view/EPICS%20V3/job/Googletest-1.6.0_Build/lastSuccessfulBuild/artifact/gtest-1.6.0.CB-dist.tar.gz
 tar -xzf baseR3.14.12.3.CB-dist.tar.gz
+tar -xzf doxygen-1.8.3.CB-dist.tar.gz
 tar -xzf pvData.CB-dist.tar.gz
 tar -xzf gtest-1.6.0.CB-dist.tar.gz
 
@@ -29,6 +34,7 @@ cd ${WORKSPACE}
 export EPICS_BASE=${STUFF}
 export EPICS_HOST_ARCH=$(${EPICS_BASE}/startup/EpicsHostArch)
 export LD_LIBRARY_PATH=${EPICS_BASE}/lib/${EPICS_HOST_ARCH}
+export PATH=${STUFF}/bin:${PATH}
 
 cat > configure/RELEASE.local << EOF
 EPICS_BASE=${EPICS_BASE}
@@ -36,8 +42,7 @@ GTEST=${STUFF}/gtest
 EOF
 
 make distclean all
-# There's no doxygen on CB... (yet)
-#doxygen
+doxygen
 
 ###########################################
 # Test
