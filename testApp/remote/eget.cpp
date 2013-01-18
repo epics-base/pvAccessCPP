@@ -490,6 +490,52 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
 
 }
 
+void formatNTURI(std::ostream& o, PVStructurePtr const & pvStruct)
+{
+    PVStringPtr scheme = dynamic_pointer_cast<PVString>(pvStruct->getStringField("scheme"));
+    if (scheme.get() == 0)
+    {
+    	std::cerr << "no string 'scheme' field in NTURI" << std::endl;
+    }
+
+    PVStringPtr authority = dynamic_pointer_cast<PVString>(pvStruct->getSubField("authority"));
+
+    PVStringPtr path = dynamic_pointer_cast<PVString>(pvStruct->getStringField("path"));
+    if (path.get() == 0)
+    {
+    	std::cerr << "no string 'path' field in NTURI" << std::endl;
+        return;
+    }
+
+    PVStructurePtr query = dynamic_pointer_cast<PVStructure>(pvStruct->getSubField("query"));
+
+	o << scheme->get() << "://";
+    if (authority.get()) o << authority->get();
+    o << '/' << path->get();
+
+    // query
+    if (query.get())
+    {
+		PVFieldPtrArray fields = query->getPVFields();
+		size_t numColumns = fields.size();
+
+		if (numColumns > 0)
+		{
+		    o << '?';
+
+			for (size_t i = 0; i < numColumns; i++)
+			{
+				if (i)
+					o << '&';
+
+				// TODO encode value!!!
+				o << fields[i]->getFieldName() << '=' << *(fields[i].get());
+			}
+		}
+	}
+
+    o << std::endl;
+}
 
 typedef void(*NTFormatterFunc)(std::ostream& o, PVStructurePtr const & pvStruct);
 typedef map<String, NTFormatterFunc> NTFormatterLUTMap;
@@ -503,6 +549,7 @@ void initializeNTFormatterLUT()
 	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTMatrix"] = formatNTMatrix;
 	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTAny"] = formatNTAny;
 	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTNameValue"] = formatNTNameValue;
+	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTURI"] = formatNTURI;
 
 	//
 	// TODO remove: smooth transition
@@ -514,6 +561,7 @@ void initializeNTFormatterLUT()
 	ntFormatterLUT["NTMatrix"] = formatNTMatrix;
 	ntFormatterLUT["NTAny"] = formatNTAny;
 	ntFormatterLUT["NTNameValue"] = formatNTNameValue;
+	ntFormatterLUT["NTURI"] = formatNTURI;
 
 	// StandardPV "support"
 	ntFormatterLUT["scalar_t"] = formatNTScalar;
@@ -962,7 +1010,7 @@ int main (int argc, char *argv[])
     bool serviceRequest = false;
     bool onlyQuery = false;
     string service;
-    string urlEncodedRequest;
+    //string urlEncodedRequest;
     vector< pair<string,string> > parameters;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
@@ -995,11 +1043,13 @@ int main (int argc, char *argv[])
                 return 1;
             }
             parameters.push_back(pair<string,string>(param.substr(0, eqPos), param.substr(eqPos+1, string::npos)));    
+            /*
             if (urlEncodedRequest.size())
                 urlEncodedRequest += '&';    
             char* encoded = url_encode(optarg);
             urlEncodedRequest += encoded;
             free(encoded);
+            */
             break;
         }
         case 's':               /* Service name */
@@ -1176,6 +1226,8 @@ int main (int argc, char *argv[])
     // service RPC mode
     else
     {
+    	String authority;
+
     	URI uri;
     	bool validURI = URI::parse(service, uri);
     	if (validURI)
@@ -1186,6 +1238,8 @@ int main (int argc, char *argv[])
     			// TODO
                 return 1;
     		}
+
+    		authority = uri.host;
 
     		if (uri.path.length() <= 1)
     		{
@@ -1262,10 +1316,14 @@ int main (int argc, char *argv[])
 
 
         StringArray uriFieldNames;
+        uriFieldNames.push_back("scheme");
+        if (!authority.empty()) uriFieldNames.push_back("authority");
         uriFieldNames.push_back("path");
         uriFieldNames.push_back("query");
 
         FieldConstPtrArray uriFields;
+        uriFields.push_back(getFieldCreate()->createScalar(pvString));
+        if (!authority.empty()) uriFields.push_back(getFieldCreate()->createScalar(pvString));
         uriFields.push_back(getFieldCreate()->createScalar(pvString));
         uriFields.push_back(queryStructure);
 
@@ -1283,6 +1341,8 @@ int main (int argc, char *argv[])
         		getPVDataCreate()->createPVStructure(uriStructure)
         	);
 
+        request->getStringField("scheme")->put("pva");
+        if (!authority.empty()) request->getStringField("authority")->put(authority);
         request->getStringField("path")->put(service);
         PVStructure::shared_pointer query = request->getStructureField("query");
         for (vector< pair<string, string> >::iterator iter = parameters.begin();
@@ -1304,7 +1364,11 @@ int main (int argc, char *argv[])
         ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
         
         shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
-        Channel::shared_pointer channel = provider->createChannel(service, channelRequesterImpl);
+        Channel::shared_pointer channel =
+        		authority.empty() ?
+        				provider->createChannel(service, channelRequesterImpl) :
+        				provider->createChannel(service, channelRequesterImpl,
+        										ChannelProvider::PRIORITY_DEFAULT, authority);
         
         if (channelRequesterImpl->waitUntilConnected(timeOut))
         {

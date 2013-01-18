@@ -1032,6 +1032,20 @@ class MockChannelRPC : public ChannelRPC
 	    		m_channelRPCRequester->requestDone(Status::Ok, result);
 			}
     	}
+		else if (m_channelName == "testNTURI")
+    	{
+			if (pvArgument->getStructure()->getID() != "uri:ev4:nt/2012/pwd:NTURI")
+			{
+				PVStructure::shared_pointer nullPtr;
+				Status errorStatus(Status::STATUSTYPE_ERROR, "argument is not a NTURI structure");
+				m_channelRPCRequester->requestDone(errorStatus, nullPtr);
+			}
+			else
+			{
+				// return argument as result
+				m_channelRPCRequester->requestDone(Status::Ok, pvArgument);
+			}
+    	}
 		else
     	{
     		/*
