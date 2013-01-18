@@ -922,6 +922,61 @@ class MockChannelRPC : public ChannelRPC
 				m_channelRPCRequester->requestDone(Status::Ok, result);
 			}
     	}
+		else if (m_channelName == "testNTNameValue")
+    	{
+			PVStructure::shared_pointer args(
+					(pvArgument->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+							pvArgument->getStructureField("query") :
+							pvArgument
+				);
+
+	        // TODO type check, getStringField is verbose
+	        PVStringPtr columns = static_pointer_cast<PVString>(args->getSubField("columns"));
+			if (columns.get() == 0)
+			{
+	    		PVStructure::shared_pointer nullPtr;
+	    		Status errorStatus(Status::STATUSTYPE_ERROR, "no columns specified");
+	    		m_channelRPCRequester->requestDone(errorStatus, nullPtr);
+			}
+			else
+			{
+
+		        int columnsCount = atoi(columns->get().c_str());
+
+		        char sbuf[16];
+		        vector<String> labels;
+		        for (int i = 0; i < columnsCount; i++)
+		        {
+		        	sprintf(sbuf, "name%d", i);
+		            labels.push_back(sbuf);
+		        }
+
+		        StringArray tableFieldNames(2);
+		        FieldConstPtrArray tableFields(2);
+		        tableFieldNames[0] = "name";
+		        tableFields[0] = getFieldCreate()->createScalarArray(pvString);
+		        tableFieldNames[1] = "value";
+		        tableFields[1] = getFieldCreate()->createScalarArray(pvDouble);
+
+		        PVStructure::shared_pointer result(
+		        		getPVDataCreate()->createPVStructure(
+		        				getFieldCreate()->createStructure(
+		        						"uri:ev4:nt/2012/pwd:NTNameValue", tableFieldNames, tableFields)
+		        			)
+		        		);
+		        static_pointer_cast<PVStringArray>(result->getScalarArrayField("name", pvString))->put(0, labels.size(), &labels[0], 0);
+
+		        srand ( time(NULL) );
+
+		        int32 len = columnsCount;
+		        vector<double> mv(len);
+		        for (int r = 0; r < len; r++)
+		        		mv[r] = rand()/((double)RAND_MAX+1) + (int)(r);
+		        static_pointer_cast<PVDoubleArray>(result->getScalarArrayField("value", pvDouble))->put(0, len, &mv[0], 0);
+
+		        m_channelRPCRequester->requestDone(Status::Ok, result);
+			}
+    	}
 		else if (m_channelName == "testNTMatrix")
     	{
 			PVStructure::shared_pointer args(

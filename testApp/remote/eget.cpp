@@ -399,6 +399,98 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
     }
 }
 
+
+void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
+{
+    PVStringArrayPtr name = dynamic_pointer_cast<PVStringArray>(pvStruct->getScalarArrayField("name", pvString));
+    if (name.get() == 0)
+    {
+    	std::cerr << "no string[] 'name' field in NTNameValue" << std::endl;
+        return;
+    }
+
+    PVFieldPtr value = pvStruct->getSubField("value");
+    if (value.get() == 0)
+    {
+    	std::cerr << "no 'value' field in NTNameValue" << std::endl;
+        return;
+    }
+
+	PVScalarArrayPtr array = dynamic_pointer_cast<PVScalarArray>(value);
+	if (array.get() == 0)
+	{
+    	std::cerr << "malformed NTNameValue, 'value' field is not scalar_t[]" << std::endl;
+		return;
+	}
+
+	if (name->getLength() != array->getLength())
+    {
+       	std::cerr << "malformed NTNameValue, length of 'name' and 'value' array does not equal" << std::endl;
+       	return;
+    }
+
+	size_t numColumns = name->getLength();
+
+	// get names
+    StringArrayData nameData;
+    name->get(0, name->getLength(), nameData);
+
+    // get max column size
+    size_t maxColumnLength = getLongestString(nameData.data);
+
+	size_t valueLen = getLongestString(array);
+	if (valueLen > maxColumnLength) maxColumnLength = valueLen;
+
+    // add some space
+    size_t padding = 2;
+    maxColumnLength += padding;
+
+    bool transpose = (mode == TerseMode);
+    if (transpose)
+    {
+
+		//
+		//   <name0>, <name1>, ...
+		//   value     values   ...
+		//
+
+		// first print names
+		for (size_t i = 0; i < numColumns; i++)
+		{
+			o << std::setw(maxColumnLength) << std::right << nameData.data[i];
+		}
+		o << std::endl;
+
+		// then values
+		for (size_t i = 0; i < numColumns; i++)
+		{
+			o << std::setw(maxColumnLength) << std::right;
+			array->dumpValue(o, i);
+		}
+		o << std::endl;
+    }
+    else
+    {
+
+		//
+		// <name0> values...
+		// <name1> values...
+		// ...
+		//
+
+		for (size_t i = 0; i < numColumns; i++)
+		{
+			o << std::setw(maxColumnLength) << std::left << nameData.data[i];
+			o << std::setw(maxColumnLength) << std::right;
+			array->dumpValue(o, i);
+			o << std::endl;
+		}
+
+    }
+
+}
+
+
 typedef void(*NTFormatterFunc)(std::ostream& o, PVStructurePtr const & pvStruct);
 typedef map<String, NTFormatterFunc> NTFormatterLUTMap;
 NTFormatterLUTMap ntFormatterLUT;
@@ -410,6 +502,7 @@ void initializeNTFormatterLUT()
 	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTTable"] = formatNTTable;
 	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTMatrix"] = formatNTMatrix;
 	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTAny"] = formatNTAny;
+	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTNameValue"] = formatNTNameValue;
 
 	//
 	// TODO remove: smooth transition
@@ -420,6 +513,7 @@ void initializeNTFormatterLUT()
 	ntFormatterLUT["NTTable"] = formatNTTable;
 	ntFormatterLUT["NTMatrix"] = formatNTMatrix;
 	ntFormatterLUT["NTAny"] = formatNTAny;
+	ntFormatterLUT["NTNameValue"] = formatNTNameValue;
 
 	// StandardPV "support"
 	ntFormatterLUT["scalar_t"] = formatNTScalar;
