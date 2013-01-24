@@ -538,7 +538,7 @@ void formatNTURI(std::ostream& o, PVStructurePtr const & pvStruct)
 }
 
 
-void formatNTImage(std::ostream& o, PVStructurePtr const & pvStruct)
+void formatNTImage(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
 {
     PVScalarArrayPtr value = dynamic_pointer_cast<PVScalarArray>(pvStruct->getSubField("value"));
     if (value.get() == 0)
@@ -595,16 +595,18 @@ void formatNTImage(std::ostream& o, PVStructurePtr const & pvStruct)
 
     FILE* gnuplotPipe = popen ("gnuplot -p", "w");
 
+    const char *prologue = getenv("EGET_GNUPLOT_PROLOGUE");
+    if (prologue)
+        fprintf(gnuplotPipe, "%s\n", prologue);
+
     fprintf(gnuplotPipe, "set format \"\"\n");
     fprintf(gnuplotPipe, "unset key\n");
     fprintf(gnuplotPipe, "unset border\n");
     fprintf(gnuplotPipe, "unset colorbox\n");
     fprintf(gnuplotPipe, "unset xtics\n");
     fprintf(gnuplotPipe, "unset ytics\n");
-    fprintf(gnuplotPipe, "set lmargin at screen 0\n");
-    fprintf(gnuplotPipe, "set bmargin at screen 0\n");
-    fprintf(gnuplotPipe, "set rmargin at screen 0.99999\n");
-    fprintf(gnuplotPipe, "set tmargin at screen 0.99999\n");
+
+    fprintf(gnuplotPipe, "set size ratio 1\n");
     fprintf(gnuplotPipe, "set xrange [0:%u]\n", cols-1);
     fprintf(gnuplotPipe, "set yrange [0:%u]\n", rows-1);
 
