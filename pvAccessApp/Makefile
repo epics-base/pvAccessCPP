@@ -89,4 +89,13 @@ LIBRARY = pvAccess
 pvAccess_LIBS += Com
 pvAccess_LIBS += pvData
 
+SRC_DIRS += $(PVACCESS)/mb
+INC += mb.h
+LIBSRCS += mb.cpp
+
+PROD_HOST += mb_stat
+mb_stat_SRCS += mb_test.cpp
+mb_stat_LIBS += pvAccess pvData Com
+
+
 include $(TOP)/configure/RULES
