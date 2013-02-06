@@ -16,9 +16,6 @@
 
 #include <sstream>
 
-#include <pv/mb.h>
-MB_DECLARE(channelGetServer, 100000);
-
 using std::ostringstream;
 using std::hex;
 
@@ -48,9 +45,8 @@ void ServerBadResponse::handleResponse(osiSockAddr* responseFrom,
 
 ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer const & context)
 {
-    MB_INIT;                
-
     ResponseHandler::shared_pointer badResponse(new ServerBadResponse(context));
+                
     m_handlerTable.resize(CMD_RPC+1);
                 
     m_handlerTable[CMD_BEACON].reset(new ServerNoopResponse(context, "Beacon")); /*  0 */
@@ -558,9 +554,6 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 	else
 	{
-        MB_INC_AUTO_ID(channelGetServer);
-        MB_POINT(channelGetServer, 3);
-        
 		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
 
 		ServerChannelGetRequesterImpl::shared_pointer request = static_pointer_cast<ServerChannelGetRequesterImpl>(channel->getRequest(ioid));
@@ -576,8 +569,6 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 			return;
 		}
 
-        MB_POINT(channelGetServer, 4);
-        
 		request->getChannelGet()->get(lastRequest);
 	}
 }
@@ -641,7 +632,6 @@ void ServerChannelGetRequesterImpl::channelGetConnect(const Status& status, Chan
 
 void ServerChannelGetRequesterImpl::getDone(const Status& status)
 {
-    MB_POINT(channelGetServer, 5);
 	{
 		Lock guard(_mutex);
 		_status = status;
@@ -701,15 +691,11 @@ void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 		}
 		else
 		{
-            MB_POINT(channelGetServer, 6);
-            {
 		    // we locked _mutex above, so _channelGet is valid
 		    ScopedLock lock(_channelGet);
 		    
 			_bitSet->serialize(buffer, control);
 			_pvStructure->serialize(buffer, control, _bitSet.get());
-            }
-            MB_POINT(channelGetServer, 7);
 		}
 	}
 
