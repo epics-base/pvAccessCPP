@@ -31,6 +31,8 @@
 #include <pv/serializationHelper.h>
 #include <pv/convert.h>
 
+#include <pv/pvAccessMB.h>
+
 //#include <tr1/unordered_map>
 
 using std::tr1::dynamic_pointer_cast;
@@ -542,6 +544,10 @@ namespace epics {
 
             virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
                 int32 pendingRequest = getPendingRequest();
+                bool initStage = (pendingRequest & QOS_INIT);
+
+                MB_POINT_CONDITIONAL(channelGet, 1, !initStage); 
+                
                 if (pendingRequest < 0)
                 {
                     BaseRequestImpl::send(buffer, control);
@@ -553,11 +559,13 @@ namespace epics {
                 buffer->putInt(m_ioid);
                 buffer->putByte((int8)m_pendingRequest);
 
-                if (pendingRequest & QOS_INIT)
+                if (initStage)
                 {
                     // pvRequest
                 	SerializationHelper::serializePVRequest(buffer, control, m_pvRequest);
                 }
+
+                MB_POINT_CONDITIONAL(channelGet, 2, !initStage); 
 
                 stopRequest();
             }
@@ -591,6 +599,9 @@ namespace epics {
             }
 
             virtual bool normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
+                
+                MB_POINT(channelGet, 8);
+                
                 if (!status.isSuccess())
                 {
                     EXCEPTION_GUARD(m_channelGetRequester->getDone(status));
@@ -604,6 +615,8 @@ namespace epics {
                     m_structure->deserialize(payloadBuffer, transport.get(), m_bitSet.get());
                 }
                 
+                MB_POINT(channelGet, 9);
+                
                 EXCEPTION_GUARD(m_channelGetRequester->getDone(status));
                 return true;
             }
@@ -611,6 +624,9 @@ namespace epics {
             virtual void get(bool lastRequest) {
 
                 {
+                    MB_INC_AUTO_ID(channelGet);
+                    MB_POINT(channelGet, 0);
+
                     Lock guard(m_mutex);
                     if (m_destroyed) {
                         EXCEPTION_GUARD(m_channelGetRequester->getDone(destroyedStatus));
@@ -3025,6 +3041,7 @@ namespace epics {
                 ChannelProviderImpl(std::tr1::shared_ptr<ClientContextImpl> const & context) :
                         m_context(context)
                 {
+                    MB_INIT;
                 }
 
                 virtual epics::pvData::String getProviderName()
