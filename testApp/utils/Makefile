@@ -9,7 +9,7 @@ testUtils_SRCS += inetAddressUtilsTest.cpp
 # Avoid errors from inlined htonl() etc. used as template argument
 inetAddressUtilsTest_CXXFLAGS = -O0
 testUtils_SRCS += atomicBooleanTest.cpp
-testUtils_LIBS += pvAccess pvData Com gtest_main
+testUtils_LIBS += pvAccess pvData pvMB Com gtest_main
 gtest_main_DIR = $(GTEST)/lib
 testUtils_SYS_LIBS += pthread
 endif
