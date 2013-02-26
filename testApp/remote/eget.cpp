@@ -38,7 +38,7 @@ void formatNTAny(std::ostream& o, PVStructurePtr const & pvStruct)
     PVFieldPtr value = pvStruct->getSubField("value");
     if (value.get() == 0)
     {
-    	std::cerr << "no 'value' column in NTAny" << std::endl;
+    	std::cerr << "no 'value' field in NTAny" << std::endl;
         return;
     }
 
@@ -50,7 +50,7 @@ void formatNTScalar(std::ostream& o, PVStructurePtr const & pvStruct)
     PVScalarPtr value = dynamic_pointer_cast<PVScalar>(pvStruct->getSubField("value"));
     if (value.get() == 0)
     {
-    	std::cerr << "no scalar_t 'value' column in NTScalar" << std::endl;
+    	std::cerr << "no scalar_t 'value' field in NTScalar" << std::endl;
         return;
     }
 
@@ -117,7 +117,7 @@ void formatNTScalarArray(std::ostream& o, PVStructurePtr const & pvStruct)
     PVScalarArrayPtr value = dynamic_pointer_cast<PVScalarArray>(pvStruct->getSubField("value"));
     if (value.get() == 0)
     {
-    	std::cerr << "no scalar_t[] 'value' column in NTScalarArray" << std::endl;
+    	std::cerr << "no scalar_t[] 'value' field in NTScalarArray" << std::endl;
         return;
     }
 
@@ -258,7 +258,7 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
     PVStringArrayPtr labels = dynamic_pointer_cast<PVStringArray>(pvStruct->getScalarArrayField("labels", pvString));
     if (labels.get() == 0)
     {
-    	std::cerr << "no string[] 'labels' column in NTTable" << std::endl;
+    	std::cerr << "no string[] 'labels' field in NTTable" << std::endl;
         return;
     }
 
@@ -304,7 +304,7 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
     PVDoubleArrayPtr value = dynamic_pointer_cast<PVDoubleArray>(pvStruct->getScalarArrayField("value", pvDouble));
     if (value.get() == 0)
     {
-    	std::cerr << "no double[] 'value' column in NTMatrix" << std::endl;
+    	std::cerr << "no double[] 'value' field in NTMatrix" << std::endl;
         return;
     }
 
@@ -328,7 +328,7 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
 
 		if (rows <= 0 || cols <= 0)
 		{
-			std::cerr << "malformed NTMatrix, dim[] must contain elements >= 0" << std::endl;
+			std::cerr << "malformed NTMatrix, dim[] must contain elements > 0" << std::endl;
 			return;
 		}
     }
@@ -490,6 +490,139 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
 
 }
 
+void formatNTURI(std::ostream& o, PVStructurePtr const & pvStruct)
+{
+    PVStringPtr scheme = dynamic_pointer_cast<PVString>(pvStruct->getStringField("scheme"));
+    if (scheme.get() == 0)
+    {
+    	std::cerr << "no string 'scheme' field in NTURI" << std::endl;
+    }
+
+    PVStringPtr authority = dynamic_pointer_cast<PVString>(pvStruct->getSubField("authority"));
+
+    PVStringPtr path = dynamic_pointer_cast<PVString>(pvStruct->getStringField("path"));
+    if (path.get() == 0)
+    {
+    	std::cerr << "no string 'path' field in NTURI" << std::endl;
+        return;
+    }
+
+    PVStructurePtr query = dynamic_pointer_cast<PVStructure>(pvStruct->getSubField("query"));
+
+	o << scheme->get() << "://";
+    if (authority.get()) o << authority->get();
+    o << '/' << path->get();
+
+    // query
+    if (query.get())
+    {
+		PVFieldPtrArray fields = query->getPVFields();
+		size_t numColumns = fields.size();
+
+		if (numColumns > 0)
+		{
+		    o << '?';
+
+			for (size_t i = 0; i < numColumns; i++)
+			{
+				if (i)
+					o << '&';
+
+				// TODO encode value!!!
+				o << fields[i]->getFieldName() << '=' << *(fields[i].get());
+			}
+		}
+	}
+
+    o << std::endl;
+}
+
+
+void formatNTImage(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
+{
+    PVScalarArrayPtr value = dynamic_pointer_cast<PVScalarArray>(pvStruct->getSubField("value"));
+    if (value.get() == 0)
+    {
+        std::cerr << "no scalar array 'value' field in NTImage" << std::endl;
+        return;
+    }
+
+    int32 rows, cols;
+
+    PVIntArrayPtr dim = dynamic_pointer_cast<PVIntArray>(pvStruct->getScalarArrayField("dim", pvInt));
+    if (dim.get() == 0)
+    {
+        std::cerr << "no int[] 'dim' field in NTImage" << std::endl;
+        return;
+    }
+    
+    // dim[] = { rows, columns }
+    size_t dims = dim->getLength();
+    if (dims != 2)
+    {
+    	std::cerr << "malformed NTImage, dim[] must 2 elements instead of  " << dims << std::endl;
+    	return;
+    }
+    
+
+    IntArrayData data;
+    dim->get(0, dims, data);
+    cols = data.data[0];
+    rows = data.data[1];
+
+    if (rows <= 0 || cols <= 0)
+    {
+    	std::cerr << "malformed NTImage, dim[] must contain elements > 0" << std::endl;
+    	return;
+    }
+
+    // TODO !!!
+    PVByteArrayPtr array = dynamic_pointer_cast<PVByteArray>(value);
+    if (array.get() == 0)
+    {
+    	std::cerr << "currently only grayscale NTImage with byte[] value field are supported" << std::endl;
+    	return;
+    }
+
+    ByteArrayData img;
+    array->get(0, array->getLength(), img);
+    /*
+    size_t len = static_cast<size_t>(rows*cols);
+    for (size_t i = 0; i < len; i++)
+        o << img.data[i];
+    */
+    //eget -s testImage | gnuplot  -e "set size ratio -1; set palette grey; set cbrange [0:255]; plot '-'  binary array=(512,384) flipy format='%uchar' with image"
+
+    FILE* gnuplotPipe = popen ("gnuplot -p", "w");
+
+    const char *prologue = getenv("EGET_GNUPLOT_PROLOGUE");
+    if (prologue)
+        fprintf(gnuplotPipe, "%s\n", prologue);
+
+    fprintf(gnuplotPipe, "set format \"\"\n");
+    fprintf(gnuplotPipe, "unset key\n");
+    fprintf(gnuplotPipe, "unset border\n");
+    fprintf(gnuplotPipe, "unset colorbox\n");
+    fprintf(gnuplotPipe, "unset xtics\n");
+    fprintf(gnuplotPipe, "unset ytics\n");
+
+    fprintf(gnuplotPipe, "set size ratio 1\n");
+    fprintf(gnuplotPipe, "set xrange [0:%u]\n", cols-1);
+    fprintf(gnuplotPipe, "set yrange [0:%u]\n", rows-1);
+
+    fprintf(gnuplotPipe, "set palette grey\n");
+    fprintf(gnuplotPipe, "set cbrange [0:255]\n");
+
+    fprintf(gnuplotPipe, "plot '-'  binary array=(%u,%u) flipy format='%%uchar' with image\n", cols, rows);
+
+    size_t len = static_cast<size_t>(rows*cols);
+    for (size_t i = 0; i < len; i++)
+        fprintf(gnuplotPipe, "%c", img.data[i]);
+
+    fflush(gnuplotPipe);
+    pclose(gnuplotPipe);
+
+}
 
 typedef void(*NTFormatterFunc)(std::ostream& o, PVStructurePtr const & pvStruct);
 typedef map<String, NTFormatterFunc> NTFormatterLUTMap;
@@ -503,21 +636,8 @@ void initializeNTFormatterLUT()
 	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTMatrix"] = formatNTMatrix;
 	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTAny"] = formatNTAny;
 	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTNameValue"] = formatNTNameValue;
-
-	//
-	// TODO remove: smooth transition
-	//
-
-	ntFormatterLUT["NTScalar"] = formatNTScalar;
-	ntFormatterLUT["NTScalarArray"] = formatNTScalarArray;
-	ntFormatterLUT["NTTable"] = formatNTTable;
-	ntFormatterLUT["NTMatrix"] = formatNTMatrix;
-	ntFormatterLUT["NTAny"] = formatNTAny;
-	ntFormatterLUT["NTNameValue"] = formatNTNameValue;
-
-	// StandardPV "support"
-	ntFormatterLUT["scalar_t"] = formatNTScalar;
-	ntFormatterLUT["scalarArray_t"] = formatNTScalarArray;
+	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTURI"] = formatNTURI;
+	ntFormatterLUT["uri:ev4:nt/2012/pwd:NTImage"] = formatNTImage;
 }
 
 void formatNT(std::ostream& o, PVFieldPtr const & pv)
@@ -962,7 +1082,7 @@ int main (int argc, char *argv[])
     bool serviceRequest = false;
     bool onlyQuery = false;
     string service;
-    string urlEncodedRequest;
+    //string urlEncodedRequest;
     vector< pair<string,string> > parameters;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
@@ -995,11 +1115,13 @@ int main (int argc, char *argv[])
                 return 1;
             }
             parameters.push_back(pair<string,string>(param.substr(0, eqPos), param.substr(eqPos+1, string::npos)));    
+            /*
             if (urlEncodedRequest.size())
                 urlEncodedRequest += '&';    
             char* encoded = url_encode(optarg);
             urlEncodedRequest += encoded;
             free(encoded);
+            */
             break;
         }
         case 's':               /* Service name */
@@ -1176,6 +1298,8 @@ int main (int argc, char *argv[])
     // service RPC mode
     else
     {
+    	String authority;
+
     	URI uri;
     	bool validURI = URI::parse(service, uri);
     	if (validURI)
@@ -1186,6 +1310,8 @@ int main (int argc, char *argv[])
     			// TODO
                 return 1;
     		}
+
+    		authority = uri.host;
 
     		if (uri.path.length() <= 1)
     		{
@@ -1262,10 +1388,14 @@ int main (int argc, char *argv[])
 
 
         StringArray uriFieldNames;
+        uriFieldNames.push_back("scheme");
+        if (!authority.empty()) uriFieldNames.push_back("authority");
         uriFieldNames.push_back("path");
         uriFieldNames.push_back("query");
 
         FieldConstPtrArray uriFields;
+        uriFields.push_back(getFieldCreate()->createScalar(pvString));
+        if (!authority.empty()) uriFields.push_back(getFieldCreate()->createScalar(pvString));
         uriFields.push_back(getFieldCreate()->createScalar(pvString));
         uriFields.push_back(queryStructure);
 
@@ -1283,6 +1413,8 @@ int main (int argc, char *argv[])
         		getPVDataCreate()->createPVStructure(uriStructure)
         	);
 
+        request->getStringField("scheme")->put("pva");
+        if (!authority.empty()) request->getStringField("authority")->put(authority);
         request->getStringField("path")->put(service);
         PVStructure::shared_pointer query = request->getStructureField("query");
         for (vector< pair<string, string> >::iterator iter = parameters.begin();
@@ -1304,7 +1436,11 @@ int main (int argc, char *argv[])
         ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
         
         shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
-        Channel::shared_pointer channel = provider->createChannel(service, channelRequesterImpl);
+        Channel::shared_pointer channel =
+        		authority.empty() ?
+        				provider->createChannel(service, channelRequesterImpl) :
+        				provider->createChannel(service, channelRequesterImpl,
+        										ChannelProvider::PRIORITY_DEFAULT, authority);
         
         if (channelRequesterImpl->waitUntilConnected(timeOut))
         {

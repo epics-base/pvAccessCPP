@@ -23,9 +23,10 @@ using namespace std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-#define COUNT 1000   // repetitions per result
-#define CHANNELS 1000
-#define ARRAY_SIZE 1
+#define COUNT 10000   // repetitions per result
+#define CHANNELS 1 
+#define ARRAY_SIZE 0 // 0 means scalar
+#define LOOP_FOREVER 1
 
 #define DEFAULT_TIMEOUT 600.0
 #define DEFAULT_REQUEST "field(value)"
@@ -78,7 +79,7 @@ void get_all()
         (*i)->get(false);
         last = *i;
         }
-    last->get(true);
+    // bulk testing dirty trigger last->get(true);
 }
 
 
@@ -175,8 +176,11 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
     
         allCount = 0;
         gettimeofday(&startTime, NULL);
-        
-        get_all();
+
+        if (LOOP_FOREVER)
+        	get_all();
+        else
+        	exit(0);	// TODO not the nicest way to exit
 
     }
     else if (channelCount == 0)
@@ -258,8 +262,6 @@ public:
 
 int main (int argc, char *argv[])
 {
-printf("this does not work... since this impl. requires bulk get control... tODO\n");
-return -1;
    int opt;                    // getopt() current option
 
    Requester::shared_pointer requester(new RequesterImpl());
@@ -298,13 +300,16 @@ return -1;
        }
    }
 
-    printf("%d channels of double array size of %d elements, %d repetitions per sample\n", CHANNELS, ARRAY_SIZE, COUNT);
+    printf("%d channels of double array size of %d elements (0==scalar), %d repetitions per sample\n", CHANNELS, ARRAY_SIZE, COUNT);
     
     vector<string> pvs;
     char buf[64];
     for (int i = 0; i < CHANNELS; i++)
     {
-        sprintf(buf, "testArray%d_%d", ARRAY_SIZE, i);
+        if (ARRAY_SIZE > 0)
+            sprintf(buf, "testArray%d_%d", ARRAY_SIZE, i);
+        else
+            sprintf(buf, "test%d", i);
         pvs.push_back(buf);
         //printf("%s\n", buf);
     }

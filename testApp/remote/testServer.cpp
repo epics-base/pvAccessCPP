@@ -18,12 +18,14 @@
 // TODO temp
 #include "testADCSim.cpp"
 
+
 using namespace epics::pvAccess;
 using namespace epics::pvData;
 using namespace std;
 using std::tr1::static_pointer_cast;
 
-
+// TODO temp
+#include "testNTImage.cpp"
 
 map<String, PVStructure::shared_pointer> structureStore;
 
@@ -1032,6 +1034,20 @@ class MockChannelRPC : public ChannelRPC
 	    		m_channelRPCRequester->requestDone(Status::Ok, result);
 			}
     	}
+		else if (m_channelName == "testNTURI")
+    	{
+			if (pvArgument->getStructure()->getID() != "uri:ev4:nt/2012/pwd:NTURI")
+			{
+				PVStructure::shared_pointer nullPtr;
+				Status errorStatus(Status::STATUSTYPE_ERROR, "argument is not a NTURI structure");
+				m_channelRPCRequester->requestDone(errorStatus, nullPtr);
+			}
+			else
+			{
+				// return argument as result
+				m_channelRPCRequester->requestDone(Status::Ok, pvArgument);
+			}
+    	}
 		else
     	{
     		/*
@@ -1362,33 +1378,10 @@ class MockChannel : public Channel {
 				printf("=============------------------------------------!!!\n");
 				*/
 			}
-			else if (m_name.find("testImage") == 0)
+			else if (m_name.find("testNTImage") == 0)
 			{
-				String allProperties("alarm,timeStamp,display,control");
-				m_pvStructure = getStandardPVField()->scalarArray(pvByte,allProperties);
-				PVByteArrayPtr pvField = static_pointer_cast<PVByteArray>(m_pvStructure->getScalarArrayField(String("value"), pvByte));
-				int ix = 0;
-				const int COUNT = 1024;
-
-				pvField->setCapacity(1024*COUNT);
-				for (int n = 0; n < 1024; n++)
-				{
-
-					int8 array[COUNT];
-					for (int i = 0; i < COUNT; i++)
-					{
-						array[i] = ix;
-					}
-					pvField->put(ix, COUNT, array, 0);
-					ix += COUNT;
-				}
-				/*
-				printf("array prepared------------------------------------!!!\n");
-				String str;
-				pvField->toString(&str);
-				printf("%s\n", str.c_str());
-				printf("=============------------------------------------!!!\n");
-				*/
+				m_pvStructure = getPVDataCreate()->createPVStructure(makeImageStruc());
+				initImage(m_pvStructure);
 			}
 			else if (m_name.find("testADC") == 0)
 			{
