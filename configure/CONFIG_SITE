@@ -43,6 +43,7 @@ endif
 
 INSTALL_INCLUDE = $(INSTALL_LOCATION)/include/pv
 USR_INCLUDES += -I $(INSTALL_LOCATION)/include
+USR_CXXFLAGS += -Wall -Wextra
 
 -include $(TOP)/configure/CONFIG_SITE.local
 -include $(TOP)/../CONFIG.local

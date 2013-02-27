@@ -195,6 +195,43 @@ public:
 };
 
 
+// testNTImage
+class NTImageAction : public Runnable {
+public:
+    String name;
+    PVStructure::shared_pointer pvImage;
+    float angle;
+    double period;
+
+    AtomicBoolean stopped;
+
+    NTImageAction(double periodHz) :
+        angle(0),
+        period(periodHz)
+    {
+    }
+
+    virtual void run()
+    {
+        while (!stopped.get())
+        {
+
+            {
+                try {
+                    rotateImage(pvImage, angle);
+                    angle += 1;
+                    notifyStructureChanged(name);
+                } catch (std::exception &ex) {
+                    std::cerr << "Unhandled exception caught in NTImageAction::run(): " << ex.what() << std::endl;
+                } catch (...) {
+                    std::cerr << "Unhandled exception caught in NTImageAction::run()" << std::endl;
+                }
+
+                epicsThreadSleep(period);
+            }
+        }
+    }
+};
 
 
 class ChannelFindRequesterImpl : public ChannelFindRequester
@@ -1378,7 +1415,7 @@ class MockChannel : public Channel {
 				printf("=============------------------------------------!!!\n");
 				*/
 			}
-			else if (m_name.find("testNTImage") == 0)
+            else if (m_name.find("testNTImage") == 0 || m_name.find("testImage") == 0)
 			{
 				m_pvStructure = getPVDataCreate()->createPVStructure(makeImageStruc());
 				initImage(m_pvStructure);
@@ -1430,7 +1467,7 @@ class MockChannel : public Channel {
 				String allProperties("");
 				m_pvStructure = getStandardPVField()->scalar(pvDouble,allProperties);
 			}
-			else if (m_name == "testCounter")
+            else if (m_name == "testCounter")
 			{
 				String allProperties("timeStamp");
 				m_pvStructure = getStandardPVField()->scalar(pvInt,allProperties);
@@ -1657,18 +1694,22 @@ class MockServerChannelProvider : 	public ChannelProvider,
 		m_mockChannelFind(),
 		m_counterChannel(),
 		m_adcChannel(),
-		m_scan1Hz(1.0),
+        m_ntImageChannel(),
+        m_scan1Hz(1.0),
 		m_scan1HzThread(),
 		m_adcAction(),
-		m_adcThread()
-	{
+        m_adcThread(),
+        m_imgAction(0.1),
+        m_imgThread()
+    {
     }
 
 	virtual ~MockServerChannelProvider()
 	{
 		m_scan1Hz.stopped.set();
 		m_adcAction.stopped.set();
-	}
+        m_imgAction.stopped.set();
+    }
 
 	void initialize()
 	{
@@ -1690,6 +1731,11 @@ class MockServerChannelProvider : 	public ChannelProvider,
 	    m_adcAction.adcMatrix = static_pointer_cast<MockChannel>(m_adcChannel)->m_pvStructure;
 	    m_adcAction.adcSim = createSimADC("testADC");
 	    m_adcThread.reset(new Thread("adcThread", highPriority, &m_adcAction));
+
+        m_ntImageChannel = MockChannel::create(chProviderPtr, cr, "testImage", "local");
+        m_imgAction.name = "testImage";
+        m_imgAction.pvImage = static_pointer_cast<MockChannel>(m_ntImageChannel)->m_pvStructure;
+        m_imgThread.reset(new Thread("imgThread", highPriority, &m_imgAction));
 	}
 
     virtual epics::pvData::String getProviderName()
@@ -1758,12 +1804,16 @@ class MockServerChannelProvider : 	public ChannelProvider,
     ChannelFind::shared_pointer m_mockChannelFind;
     Channel::shared_pointer m_counterChannel;
     Channel::shared_pointer m_adcChannel;
+    Channel::shared_pointer m_ntImageChannel;
 
 	ProcessAction m_scan1Hz;
 	auto_ptr<Thread> m_scan1HzThread;
 
 	ADCAction m_adcAction;
 	auto_ptr<Thread> m_adcThread;
+
+    NTImageAction m_imgAction;
+    auto_ptr<Thread> m_imgThread;
 };
 
 

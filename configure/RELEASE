@@ -16,9 +16,10 @@
 
 # EPICS V4 Developers: Do not edit the locations in this file!
 #
-# Create a file RELEASE.local pointing to your PVDATA and
-# EPICS_BASE build directories, and optionally GTEST e.g.
-#   PVDATA = /home/install/epics/pvDataCPP
+# Create a file RELEASE.local pointing to your PVDATA, PVCOMMON
+# and EPICS_BASE build directories, and optionally GTEST e.g.
+#   PVCOMMON = /home/install/epicsV4/pvCommonCPP
+#   PVDATA = /home/install/epicsV4/pvDataCPP
 #   EPICS_BASE = /home/install/epics/base
 #   # GTEST not used
 
