@@ -540,6 +540,19 @@ void formatNTURI(std::ostream& o, PVStructurePtr const & pvStruct)
 
 void formatNTImage(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
 {
+    PVIntPtr colorMode = pvStruct->getIntField("colorMode");
+    if (colorMode.get() == 0)
+    {
+        std::cerr << "no int 'colorMode' field in NTImage" << std::endl;
+        return;
+    }
+    int32 cm = colorMode->get();
+    if (cm != 0 && cm != 1 && cm != 2)
+    {
+        std::cerr << "unsupported image 'colorMode', only {0,1,2} modes are supported" << std::endl;
+        return;
+    }
+
     PVScalarArrayPtr value = dynamic_pointer_cast<PVScalarArray>(pvStruct->getSubField("value"));
     if (value.get() == 0)
     {
@@ -556,19 +569,29 @@ void formatNTImage(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
         return;
     }
     
-    // dim[] = { rows, columns }
+    // dim[] = { rows, columns } or
+    // dim[] = { 3, rows, columns }
+    IntArrayData data;
     size_t dims = dim->getLength();
-    if (dims != 2)
+    dim->get(0, dims, data);
+    size_t imageSize;
+    if ((cm == 0 || cm == 1) && dims == 2)
     {
-    	std::cerr << "malformed NTImage, dim[] must 2 elements instead of  " << dims << std::endl;
+        cols = data.data[0];
+        rows = data.data[1];
+        imageSize = cols * rows;
+    }
+    else if (cm == 2 && dims == 3)
+    {
+        cols = data.data[1];
+        rows = data.data[2];
+        imageSize = cols * rows * 3;
+    }
+    else
+    {
+        std::cerr << "malformed NTImage, dim[] is invalid for specified color mode" << std::endl;
     	return;
     }
-    
-
-    IntArrayData data;
-    dim->get(0, dims, data);
-    cols = data.data[0];
-    rows = data.data[1];
 
     if (rows <= 0 || cols <= 0)
     {
@@ -576,12 +599,18 @@ void formatNTImage(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
     	return;
     }
 
-    // TODO !!!
     PVByteArrayPtr array = dynamic_pointer_cast<PVByteArray>(value);
     if (array.get() == 0)
     {
-    	std::cerr << "currently only grayscale NTImage with byte[] value field are supported" << std::endl;
+        std::cerr << "currently only byte[] value field is supported" << std::endl;
     	return;
+    }
+
+    if (array->getLength() != imageSize)
+    {
+        std::cerr << "byte[] length does not match expected image size (" <<
+                     array->getLength() << " != " << imageSize << ")" << std::endl;
+        return;
     }
 
     ByteArrayData img;
@@ -610,14 +639,27 @@ void formatNTImage(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
     fprintf(gnuplotPipe, "set xrange [0:%u]\n", cols-1);
     fprintf(gnuplotPipe, "set yrange [0:%u]\n", rows-1);
 
-    fprintf(gnuplotPipe, "set palette grey\n");
-    fprintf(gnuplotPipe, "set cbrange [0:255]\n");
+    if (cm == 2)
+    {
+        // RGB
 
-    fprintf(gnuplotPipe, "plot '-'  binary array=(%u,%u) flipy format='%%uchar' with image\n", cols, rows);
+        fprintf(gnuplotPipe, "plot '-'  binary array=(%u,%u) flipy format='%%uchar' with rgbimage\n", cols, rows);
 
-    size_t len = static_cast<size_t>(rows*cols);
-    for (size_t i = 0; i < len; i++)
-        fprintf(gnuplotPipe, "%c", img.data[i]);
+        for (size_t i = 0; i < imageSize; i++)
+            fprintf(gnuplotPipe, "%c", img.data[i]);
+    }
+    else
+    {
+        // grayscale
+
+        fprintf(gnuplotPipe, "set palette grey\n");
+        fprintf(gnuplotPipe, "set cbrange [0:255]\n");
+
+        fprintf(gnuplotPipe, "plot '-'  binary array=(%u,%u) flipy format='%%uchar' with image\n", cols, rows);
+
+        for (size_t i = 0; i < imageSize; i++)
+            fprintf(gnuplotPipe, "%c", img.data[i]);
+    }
 
     fflush(gnuplotPipe);
     pclose(gnuplotPipe);
@@ -778,6 +820,7 @@ void usage (void)
     "  -r <pv request>:     Get request string, specifies what fields to return and options, default is '%s'\n"
     "  -w <sec>:            Wait time, specifies timeout, default is %f second(s)\n"
     "  -q:                  Pure pvAccess RPC based service (send NTURI.query as request argument)\n"
+    "  -n:                  Do not format NT types, dump structure instread."
     "  -t:                  Terse mode / transpose vector, table, matrix.\n"
     "  -x:                  Use column-major order to decode matrix.\n"
     "  -d:                  Enable debug output\n"
@@ -1081,13 +1124,14 @@ int main (int argc, char *argv[])
 
     bool serviceRequest = false;
     bool onlyQuery = false;
+    bool dumpStructure = false;
     string service;
     //string urlEncodedRequest;
     vector< pair<string,string> > parameters;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:s:a:w:qtxdcF:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:s:a:w:qntxdcF:")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -1130,6 +1174,9 @@ int main (int argc, char *argv[])
             break;
         case 'q':               /* pvAccess RPC mode */
             onlyQuery = true;
+            break;
+        case 'n':               /* Do not format NT types */
+            dumpStructure = true;
             break;
         case 't':               /* Terse mode */
             mode = TerseMode;
@@ -1453,7 +1500,10 @@ int main (int argc, char *argv[])
 				allOK &= rpcRequesterImpl->waitUntilRPC(timeOut);
 				if (allOK)
 				{
-	                formatNT(std::cout, rpcRequesterImpl->getLastResponse());
+                    if (dumpStructure)
+                        std::cout << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
+                    else
+                        formatNT(std::cout, rpcRequesterImpl->getLastResponse());
 	                std::cout << std::endl;
 				}
 			}

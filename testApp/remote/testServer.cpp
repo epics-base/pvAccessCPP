@@ -218,7 +218,8 @@ public:
 
             {
                 try {
-                    rotateImage(pvImage, angle);
+                    // TODO not nice, since we supply original here
+                    rotateImage(pvImage, epicsv4_raw, angle);
                     angle += 1;
                     notifyStructureChanged(name);
                 } catch (std::exception &ex) {
@@ -902,7 +903,7 @@ class MockChannelRPC : public ChannelRPC
 			if (columns.get() == 0)
 			{
 	    		PVStructure::shared_pointer nullPtr;
-	    		Status errorStatus(Status::STATUSTYPE_ERROR, "no columns specified");
+                Status errorStatus(Status::STATUSTYPE_ERROR, "no 'columns' argument specified");
 	    		m_channelRPCRequester->requestDone(errorStatus, nullPtr);
 			}
 			else
@@ -974,7 +975,7 @@ class MockChannelRPC : public ChannelRPC
 			if (columns.get() == 0)
 			{
 	    		PVStructure::shared_pointer nullPtr;
-	    		Status errorStatus(Status::STATUSTYPE_ERROR, "no columns specified");
+                Status errorStatus(Status::STATUSTYPE_ERROR, "no 'columns' argument specified");
 	    		m_channelRPCRequester->requestDone(errorStatus, nullPtr);
 			}
 			else
@@ -1029,7 +1030,7 @@ class MockChannelRPC : public ChannelRPC
 			if (rows.get() == 0 || columns.get() == 0)
 			{
 	    		PVStructure::shared_pointer nullPtr;
-	    		Status errorStatus(Status::STATUSTYPE_ERROR, "no rows and columns specified");
+                Status errorStatus(Status::STATUSTYPE_ERROR, "no 'rows' and 'columns' arguments specified");
 	    		m_channelRPCRequester->requestDone(errorStatus, nullPtr);
 			}
 			else
@@ -1071,7 +1072,86 @@ class MockChannelRPC : public ChannelRPC
 	    		m_channelRPCRequester->requestDone(Status::Ok, result);
 			}
     	}
-		else if (m_channelName == "testNTURI")
+        else if (m_channelName.find("testImage") == 0)
+        {
+            PVStructure::shared_pointer args(
+                    (pvArgument->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+                            pvArgument->getStructureField("query") :
+                            pvArgument
+                );
+
+            PVStringPtr file = static_pointer_cast<PVString>(args->getSubField("file"));
+            PVStringPtr w = static_pointer_cast<PVString>(args->getSubField("w"));
+            PVStringPtr h = static_pointer_cast<PVString>(args->getSubField("h"));
+            if (file.get() == 0 || w.get() == 0 || h.get() == 0)
+            {
+                PVStructure::shared_pointer nullPtr;
+                Status errorStatus(Status::STATUSTYPE_ERROR, "not all 'file', 'w' and 'h' arguments specified");
+                m_channelRPCRequester->requestDone(errorStatus, nullPtr);
+            }
+            else
+            {
+                int32 wv = atoi(w->get().c_str());
+                int32 hv = atoi(h->get().c_str());
+                String filev = file->get();
+
+                // ImageMagick conversion
+                // RGB888:    convert img.png img.rgb
+                // grayscale: convert img.png img.g
+                bool isRGB = (filev.find(".rgb") != string::npos);
+
+                ifstream in(filev.c_str(), ifstream::in | ifstream::binary);
+                if (in.is_open())
+                {
+                    // get file size
+                    in.seekg(0, ifstream::end);
+                    std::size_t fileSize = in.tellg();
+
+                    // in case of negative values, etc., this will return right result, however it will fail next check
+                    std::size_t expectedSize = wv*hv* (isRGB ? 3 : 1);
+                    if (expectedSize == fileSize)
+                    {
+                        in.seekg(0, ifstream::beg);
+
+                        // TODO sync missing on m_pvStructure
+                        if (isRGB)
+                        {
+                            const int32_t dim[] = { 3, wv, hv };
+                            initImage(m_pvStructure, 2 /* RGB */, 3, dim, fileSize, 0);
+                        }
+                        else
+                        {
+                            const int32_t dim[] = { wv, hv };
+                            initImage(m_pvStructure, 0 /* grayscale */, 2, dim, fileSize, 0);
+                        }
+
+                        PVByteArrayPtr value = std::tr1::dynamic_pointer_cast<PVByteArray>(m_pvStructure->getSubField("value"));
+                        value->setCapacity(fileSize);
+
+                        value->setLength(fileSize);
+                        in.readsome((char*)value->get(), fileSize);
+
+                        m_channelRPCRequester->requestDone(Status::Ok, m_pvStructure);
+
+                        // for monitors
+                        notifyStructureChanged(m_channelName);
+                    }
+                    else
+                    {
+                        PVStructure::shared_pointer nullPtr;
+                        Status errorStatus(Status::STATUSTYPE_ERROR, "file size does not match given 'w' and 'h'");
+                        m_channelRPCRequester->requestDone(errorStatus, nullPtr);
+                    }
+                }
+                else
+                {
+                    PVStructure::shared_pointer nullPtr;
+                    Status errorStatus(Status::STATUSTYPE_ERROR, "failed to open image file specified");
+                    m_channelRPCRequester->requestDone(errorStatus, nullPtr);
+                }
+            }
+        }
+        else if (m_channelName == "testNTURI")
     	{
 			if (pvArgument->getStructure()->getID() != "uri:ev4:nt/2012/pwd:NTURI")
 			{
@@ -1415,11 +1495,12 @@ class MockChannel : public Channel {
 				printf("=============------------------------------------!!!\n");
 				*/
 			}
-            else if (m_name.find("testNTImage") == 0 || m_name.find("testImage") == 0)
+            else if (m_name.find("testNTImage") == 0 || m_name.find("testMP") == 0
+                     || m_name.find("testImage") == 0)
 			{
 				m_pvStructure = getPVDataCreate()->createPVStructure(makeImageStruc());
-				initImage(m_pvStructure);
-			}
+                initImageEPICSv4GrayscaleLogo(m_pvStructure);
+            }
 			else if (m_name.find("testADC") == 0)
 			{
 				int i = 0;
@@ -1694,7 +1775,7 @@ class MockServerChannelProvider : 	public ChannelProvider,
 		m_mockChannelFind(),
 		m_counterChannel(),
 		m_adcChannel(),
-        m_ntImageChannel(),
+        m_mpChannel(),
         m_scan1Hz(1.0),
 		m_scan1HzThread(),
 		m_adcAction(),
@@ -1732,9 +1813,9 @@ class MockServerChannelProvider : 	public ChannelProvider,
 	    m_adcAction.adcSim = createSimADC("testADC");
 	    m_adcThread.reset(new Thread("adcThread", highPriority, &m_adcAction));
 
-        m_ntImageChannel = MockChannel::create(chProviderPtr, cr, "testImage", "local");
-        m_imgAction.name = "testImage";
-        m_imgAction.pvImage = static_pointer_cast<MockChannel>(m_ntImageChannel)->m_pvStructure;
+        m_mpChannel = MockChannel::create(chProviderPtr, cr, "testMP", "local");
+        m_imgAction.name = "testMP";
+        m_imgAction.pvImage = static_pointer_cast<MockChannel>(m_mpChannel)->m_pvStructure;
         m_imgThread.reset(new Thread("imgThread", highPriority, &m_imgAction));
 	}
 
@@ -1783,7 +1864,12 @@ class MockServerChannelProvider : 	public ChannelProvider,
         		channelRequester->channelCreated(Status::Ok, m_adcChannel);
         		return m_adcChannel;
         	}
-        	else
+            else if (channelName == "testMP")
+            {
+                channelRequester->channelCreated(Status::Ok, m_mpChannel);
+                return m_mpChannel;
+            }
+            else
         	{
         		ChannelProvider::shared_pointer chProviderPtr = shared_from_this();
         		Channel::shared_pointer channel = MockChannel::create(chProviderPtr, channelRequester, channelName, address);
@@ -1804,7 +1890,7 @@ class MockServerChannelProvider : 	public ChannelProvider,
     ChannelFind::shared_pointer m_mockChannelFind;
     Channel::shared_pointer m_counterChannel;
     Channel::shared_pointer m_adcChannel;
-    Channel::shared_pointer m_ntImageChannel;
+    Channel::shared_pointer m_mpChannel;
 
 	ProcessAction m_scan1Hz;
 	auto_ptr<Thread> m_scan1HzThread;
