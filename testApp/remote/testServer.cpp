@@ -23,6 +23,7 @@ using namespace epics::pvAccess;
 using namespace epics::pvData;
 using namespace std;
 using std::tr1::static_pointer_cast;
+using std::tr1::dynamic_pointer_cast;
 
 // TODO temp
 #include "testNTImage.cpp"
@@ -853,7 +854,36 @@ class MockChannelPutGet : public ChannelPutGet
 
 
 
+static bool handleHelp(
+        epics::pvData::PVStructure::shared_pointer const & args,
+        ChannelRPCRequester::shared_pointer const & channelRPCRequester,
+        String const & helpText
+        )
+{
+    if (args->getSubField("help"))
+    {
 
+        StringArray fieldNames(1);
+        FieldConstPtrArray fields(1);
+        fieldNames[0] = "value";
+        fields[0] = getFieldCreate()->createScalar(pvString);
+
+        PVStructure::shared_pointer result(
+                getPVDataCreate()->createPVStructure(
+                        getFieldCreate()->createStructure(
+                            "uri:ev4:nt/2012/pwd:NTScalar", fieldNames, fields)
+                    )
+                );
+
+        static_pointer_cast<PVString>(result->getStringField("value"))->put(helpText);
+        channelRPCRequester->requestDone(Status::Ok, result);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
 
 
 PVACCESS_REFCOUNT_MONITOR_DEFINE(mockChannelRPC);
@@ -898,12 +928,18 @@ class MockChannelRPC : public ChannelRPC
 							pvArgument
 				);
 
-	        // TODO type check, getStringField is verbose
-	        PVStringPtr columns = static_pointer_cast<PVString>(args->getSubField("columns"));
+            const String helpText =
+                    "Generates a NTTable structure response with 10 rows and a specified number of columns.\n"
+                    "Columns are labeled 'column<num>' and values are '<num> + random [0..1)'.\n"
+                    "Arguments:\n\tstring columns\tnumber of table columns\n";
+            if (handleHelp(args, m_channelRPCRequester, helpText))
+                return;
+
+            PVStringPtr columns = dynamic_pointer_cast<PVString>(args->getSubField("columns"));
 			if (columns.get() == 0)
 			{
 	    		PVStructure::shared_pointer nullPtr;
-                Status errorStatus(Status::STATUSTYPE_ERROR, "no 'columns' argument specified");
+                Status errorStatus(Status::STATUSTYPE_ERROR, "no string 'columns' argument specified");
 	    		m_channelRPCRequester->requestDone(errorStatus, nullPtr);
 			}
 			else
@@ -970,12 +1006,18 @@ class MockChannelRPC : public ChannelRPC
 							pvArgument
 				);
 
-	        // TODO type check, getStringField is verbose
-	        PVStringPtr columns = static_pointer_cast<PVString>(args->getSubField("columns"));
+            const String helpText =
+                    "Generates a NTNameValue structure response with a specified number of columns.\n"
+                    "Columns are labeled 'name<num>' and values are '<num> + random [0..1)'.\n"
+                    "Arguments:\n\tstring columns\tnumber of columns\n";
+            if (handleHelp(args, m_channelRPCRequester, helpText))
+                return;
+
+            PVStringPtr columns = dynamic_pointer_cast<PVString>(args->getSubField("columns"));
 			if (columns.get() == 0)
 			{
 	    		PVStructure::shared_pointer nullPtr;
-                Status errorStatus(Status::STATUSTYPE_ERROR, "no 'columns' argument specified");
+                Status errorStatus(Status::STATUSTYPE_ERROR, "no string 'columns' argument specified");
 	    		m_channelRPCRequester->requestDone(errorStatus, nullPtr);
 			}
 			else
@@ -1025,12 +1067,22 @@ class MockChannelRPC : public ChannelRPC
 							pvArgument
 				);
 
-	        PVStringPtr rows = static_pointer_cast<PVString>(args->getSubField("rows"));
-	        PVStringPtr columns = static_pointer_cast<PVString>(args->getSubField("columns"));
+            const String helpText =
+                    "Generates a NTMatrix structure response with a specified number of rows and columns.\n"
+                    "Matrix values are '<row> + random [0..1)'.\n"
+                    "Arguments:\n"
+                    "\tstring rows\tnumber of matrix rows\n"
+                    "\tstring columns\tnumber of matrix columns\n"
+                    "\t[string bycolumns\torder matrix values in a column-major order]\n";
+            if (handleHelp(args, m_channelRPCRequester, helpText))
+                return;
+
+            PVStringPtr rows = dynamic_pointer_cast<PVString>(args->getSubField("rows"));
+            PVStringPtr columns = dynamic_pointer_cast<PVString>(args->getSubField("columns"));
 			if (rows.get() == 0 || columns.get() == 0)
 			{
 	    		PVStructure::shared_pointer nullPtr;
-                Status errorStatus(Status::STATUSTYPE_ERROR, "no 'rows' and 'columns' arguments specified");
+                Status errorStatus(Status::STATUSTYPE_ERROR, "no string 'rows' and 'columns' arguments specified");
 	    		m_channelRPCRequester->requestDone(errorStatus, nullPtr);
 			}
 			else
@@ -1080,9 +1132,23 @@ class MockChannelRPC : public ChannelRPC
                             pvArgument
                 );
 
-            PVStringPtr file = static_pointer_cast<PVString>(args->getSubField("file"));
-            PVStringPtr w = static_pointer_cast<PVString>(args->getSubField("w"));
-            PVStringPtr h = static_pointer_cast<PVString>(args->getSubField("h"));
+            const String helpText =
+                    "Generates a NTImage structure response that has encoded a specified image.\n"
+                    "Arguments:\n"
+                    "\tstring file\tfile path (relative to a location where the server was started) of a raw encoded image.\n"
+                    "\t\t\tTwo image types are supported:\n"
+                    "\t\t\t\t- RGB888 encoded (file extension '.rgb')\n"
+                    "\t\t\t\t- 8-bit grayscale encoded (any other extension).\n"
+                    "\t\t\tTo generate such encoded images you can use ImageMagick 'convert' tool, e.g.:\n"
+                    "\t\t\t\tconvert my_image.png my_image.rgb\n"
+                    "\tstring w\timage width\n"
+                    "\tstring h\timage height\n";
+            if (handleHelp(args, m_channelRPCRequester, helpText))
+                return;
+
+            PVStringPtr file = dynamic_pointer_cast<PVString>(args->getSubField("file"));
+            PVStringPtr w = dynamic_pointer_cast<PVString>(args->getSubField("w"));
+            PVStringPtr h = dynamic_pointer_cast<PVString>(args->getSubField("h"));
             if (file.get() == 0 || w.get() == 0 || h.get() == 0)
             {
                 PVStructure::shared_pointer nullPtr;
@@ -1153,7 +1219,13 @@ class MockChannelRPC : public ChannelRPC
         }
         else if (m_channelName == "testNTURI")
     	{
-			if (pvArgument->getStructure()->getID() != "uri:ev4:nt/2012/pwd:NTURI")
+            const String helpText =
+                    "Returns the NTURI structure response identical the NTURI request.\n"
+                    "Arguments: (none)\n";
+            if (handleHelp(pvArgument, m_channelRPCRequester, helpText))
+                return;
+
+            if (pvArgument->getStructure()->getID() != "uri:ev4:nt/2012/pwd:NTURI")
 			{
 				PVStructure::shared_pointer nullPtr;
 				Status errorStatus(Status::STATUSTYPE_ERROR, "argument is not a NTURI structure");

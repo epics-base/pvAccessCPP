@@ -32,6 +32,7 @@ public:
     static bool parse(const std::string& uri, URI& result);
 public:
     std::string protocol, host, path, query, fragment;
+    bool query_indicated;
 };
 
 class RequesterImpl :

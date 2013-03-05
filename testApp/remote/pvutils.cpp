@@ -314,7 +314,8 @@ bool URI::parse(const string& uri, URI& result)
 
     string::const_iterator query_i = find(path_i, fragment_i, '?');
     result.path.assign(path_i, query_i);
-    if( query_i != fragment_i )
+    result.query_indicated = (query_i != fragment_i);
+    if ( result.query_indicated )
         result.query.assign(++query_i, fragment_i);
 
     return true;

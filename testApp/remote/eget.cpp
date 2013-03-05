@@ -816,11 +816,11 @@ void usage (void)
     "  -h: Help: Print this message\n"
     "\noptions:\n"
     "  -s <service name>:   Service API compliant based RPC service name (accepts NTURI request argument)\n"
-    "  -a <service arg>:    Service argument in form 'name=value'\n"
+    "  -a <service arg>:    Service argument in form 'name[=value]'\n"
     "  -r <pv request>:     Get request string, specifies what fields to return and options, default is '%s'\n"
     "  -w <sec>:            Wait time, specifies timeout, default is %f second(s)\n"
     "  -q:                  Pure pvAccess RPC based service (send NTURI.query as request argument)\n"
-    "  -n:                  Do not format NT types, dump structure instread."
+    "  -n:                  Do not format NT types, dump structure instead.\n"
     "  -t:                  Terse mode / transpose vector, table, matrix.\n"
     "  -x:                  Use column-major order to decode matrix.\n"
     "  -d:                  Enable debug output\n"
@@ -1155,10 +1155,14 @@ int main (int argc, char *argv[])
             size_t eqPos = param.find('=');
             if (eqPos==string::npos)
             {
-                fprintf(stderr, "Parameter not specified in name=value form. ('eget -h' for help.)\n");
-                return 1;
+                //fprintf(stderr, "Parameter not specified in name=value form. ('eget -h' for help.)\n");
+                //return 1;
+                parameters.push_back(pair<string,string>(param, ""));
             }
-            parameters.push_back(pair<string,string>(param.substr(0, eqPos), param.substr(eqPos+1, string::npos)));    
+            else
+            {
+                parameters.push_back(pair<string,string>(param.substr(0, eqPos), param.substr(eqPos+1, string::npos)));
+            }
             /*
             if (urlEncodedRequest.size())
                 urlEncodedRequest += '&';    
@@ -1232,9 +1236,27 @@ int main (int argc, char *argv[])
 
     Requester::shared_pointer requester(new RequesterImpl("eget"));
 
+    // parse URI
+    // try to parse as URI if only one nPvs
+    URI uri;
+    bool validURI =
+            (serviceRequest || nPvs == 1) ?
+                URI::parse(serviceRequest ? service : argv[optind], uri) :
+                false;
+
+    // if there is only one nPvs and it's a valid URI that has ? character,
+    // then it's an service (RPC) request
+    if (validURI && uri.query_indicated)
+    {
+        service = argv[optind];
+        serviceRequest = true;
+    }
+
     // PVs mode
     if (!serviceRequest)
     {
+        // TODO URI support
+
         vector<string> pvs;     /* Array of PV structures */
         for (int n = 0; optind < argc; n++, optind++)
             pvs.push_back(argv[optind]);       /* Copy PV names from command line */
@@ -1347,8 +1369,6 @@ int main (int argc, char *argv[])
     {
     	String authority;
 
-    	URI uri;
-    	bool validURI = URI::parse(service, uri);
     	if (validURI)
     	{
     		if (uri.protocol != "pva")
@@ -1385,10 +1405,11 @@ int main (int argc, char *argv[])
         		}
         		else
         		{
-                    fprintf(stderr, "Parameter not specified in name=value form. ('eget -h' for help.)\n");
-        			// TODO
-                    return 1;
-        		}
+                    //fprintf(stderr, "Parameter not specified in name=value form. ('eget -h' for help.)\n");
+                    //return 1;
+                    string name(begin_i, pair_end_i);
+                    parameters.push_back(pair<string,string>(name, ""));
+                }
 
         		begin_i = pair_end_i;
         		if (begin_i != end_i)
