@@ -546,7 +546,7 @@ namespace epics {
                 int32 pendingRequest = getPendingRequest();
                 bool initStage = (pendingRequest & QOS_INIT);
 
-                MB_POINT_CONDITIONAL(channelGet, 1, !initStage); 
+                MB_POINT_CONDITIONAL(channelGet, 1, "client channelGet->serialize (start)", !initStage); 
                 
                 if (pendingRequest < 0)
                 {
@@ -565,7 +565,7 @@ namespace epics {
                 	SerializationHelper::serializePVRequest(buffer, control, m_pvRequest);
                 }
 
-                MB_POINT_CONDITIONAL(channelGet, 2, !initStage); 
+                MB_POINT_CONDITIONAL(channelGet, 2, "client channelGet->serialize (end)", !initStage); 
 
                 stopRequest();
             }
@@ -600,7 +600,7 @@ namespace epics {
 
             virtual bool normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
                 
-                MB_POINT(channelGet, 8);
+                MB_POINT(channelGet, 8, "client channelGet->deserialize (start)");
                 
                 if (!status.isSuccess())
                 {
@@ -615,7 +615,7 @@ namespace epics {
                     m_structure->deserialize(payloadBuffer, transport.get(), m_bitSet.get());
                 }
                 
-                MB_POINT(channelGet, 9);
+                MB_POINT(channelGet, 9, "client channelGet->deserialize (end), just before channelGet->getDone() is called");
                 
                 EXCEPTION_GUARD(m_channelGetRequester->getDone(status));
                 return true;
@@ -625,7 +625,7 @@ namespace epics {
 
                 {
                     MB_INC_AUTO_ID(channelGet);
-                    MB_POINT(channelGet, 0);
+                    MB_POINT(channelGet, 0, "client channelGet->get()");
 
                     Lock guard(m_mutex);
                     if (m_destroyed) {

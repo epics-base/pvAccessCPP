@@ -558,7 +558,7 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 	else
 	{
         MB_INC_AUTO_ID(channelGet);
-        MB_POINT(channelGet, 3);
+        MB_POINT(channelGet, 3, "server channelGet->deserialize request (start)");
         
 		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
 
@@ -575,7 +575,7 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 			return;
 		}
 
-        MB_POINT(channelGet, 4);
+        MB_POINT(channelGet, 4, "server channelGet->deserialize request (end)");
         
 		request->getChannelGet()->get(lastRequest);
 	}
@@ -640,7 +640,7 @@ void ServerChannelGetRequesterImpl::channelGetConnect(const Status& status, Chan
 
 void ServerChannelGetRequesterImpl::getDone(const Status& status)
 {
-    MB_POINT(channelGet, 5);
+    MB_POINT(channelGet, 5, "server channelGet->getDone()");
 	{
 		Lock guard(_mutex);
 		_status = status;
@@ -700,7 +700,7 @@ void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 		}
 		else
 		{
-            MB_POINT(channelGet, 6);
+            MB_POINT(channelGet, 6, "server channelGet->serialize response (start)");
             {
 		    // we locked _mutex above, so _channelGet is valid
 		    ScopedLock lock(_channelGet);
@@ -708,7 +708,7 @@ void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 			_bitSet->serialize(buffer, control);
 			_pvStructure->serialize(buffer, control, _bitSet.get());
             }
-            MB_POINT(channelGet, 7);
+            MB_POINT(channelGet, 7, "server channelGet->serialize response (end)");
 		}
 	}
 
