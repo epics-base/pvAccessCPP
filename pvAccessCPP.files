@@ -152,7 +152,6 @@ testApp/remote/eget.cpp
 testApp/remote/epicsv4Grayscale.h
 testApp/remote/pvget.cpp
 testApp/remote/pvput.cpp
-testApp/remote/pvrpc.cpp
 testApp/remote/pvutils.cpp
 testApp/remote/pvutils.h
 testApp/remote/rpcServiceExample.cpp
@@ -187,3 +186,4 @@ Doxyfile
 README
 runTestServer
 TODO
+testApp/remote/pvinfo.cpp
