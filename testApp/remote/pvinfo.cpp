@@ -151,7 +151,7 @@ int main (int argc, char *argv[])
                     channel->printInfo();
                     String s;
                     structure->toString(&s);
-                    std::cout << s << std::endl;
+                    std::cout << s << std::endl << std::endl;
             	}
             	else
             	{

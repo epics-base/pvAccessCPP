@@ -236,6 +236,69 @@ public:
 };
 
 
+
+static epics::pvData::PVStructure::shared_pointer createNTTable(int columnsCount)
+{
+    StringArray fieldNames(columnsCount);
+    FieldConstPtrArray fields(columnsCount);
+    char sbuf[16];
+    vector<String> labels;
+    for (int i = 0; i < columnsCount; i++)
+    {
+        sprintf(sbuf, "column%d", i);
+        fieldNames[i] = sbuf;
+        fields[i] = getFieldCreate()->createScalarArray(pvDouble);
+        labels.push_back(sbuf);
+    }
+
+    Structure::const_shared_pointer valueStructure(
+                getFieldCreate()->createStructure(fieldNames, fields)
+        );
+
+    StringArray tableFieldNames(2);
+    FieldConstPtrArray tableFields(2);
+    tableFieldNames[0] = "labels";
+    tableFields[0] = getFieldCreate()->createScalarArray(pvString);
+    tableFieldNames[1] = "value";
+    tableFields[1] = valueStructure;
+
+    PVStructure::shared_pointer result(
+            getPVDataCreate()->createPVStructure(
+                    getFieldCreate()->createStructure(
+                            "uri:ev4:nt/2012/pwd:NTTable", tableFieldNames, tableFields)
+                )
+            );
+    static_pointer_cast<PVStringArray>(result->getScalarArrayField("labels", pvString))->put(0, labels.size(), &labels[0], 0);
+
+    return result;
+}
+
+static void generateNTTableDoubleValues(epics::pvData::PVStructure::shared_pointer result)
+{
+    PVStringArray::shared_pointer pvLabels(static_pointer_cast<PVStringArray>(result->getScalarArrayField("labels", pvString)));
+    StringArrayData ld;
+    pvLabels->get(0, pvLabels->getLength(), ld);
+
+
+    PVStructure::shared_pointer resultValue = result->getStructureField("value");
+
+    #define ROWS 10
+    double values[ROWS];
+    #define FILL_VALUES(OFFSET) \
+    for (int r = 0; r < ROWS; r++) \
+        values[r] = rand()/((double)RAND_MAX+1) + OFFSET;
+
+    int offset = 0;
+    for (vector<String>::iterator iter = ld.data.begin();
+            iter != ld.data.end();
+            iter++, offset++)
+    {
+        FILL_VALUES(offset);
+        static_pointer_cast<PVDoubleArray>(resultValue->getScalarArrayField(*iter, pvDouble))->put(0, ROWS, values, 0);
+    }
+}
+
+
 class ChannelFindRequesterImpl : public ChannelFindRequester
 {
     virtual void channelFindResult(epics::pvData::Status const & status,
@@ -501,7 +564,7 @@ class MockChannelProcess :
         	return;
         }
 
-        m_valueField = static_pointer_cast<PVScalar>(field);
+        m_valueField = dynamic_pointer_cast<PVScalar>(field);
 
         PVFieldPtr ts = pvStructure->getSubField("timeStamp");
         if (ts) m_timeStamp.attach(ts);
@@ -529,76 +592,83 @@ class MockChannelProcess :
 
     virtual void process(bool lastRequest)
     {
-        switch (m_valueField->getScalar()->getScalarType())
+        if (m_pvStructure->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTTable")
         {
-            case pvBoolean:
+            generateNTTableDoubleValues(m_pvStructure);
+        }
+        else if (m_valueField.get())
+        {
+            switch (m_valueField->getScalar()->getScalarType())
             {
-                // negate
-                PVBooleanPtr pvBoolean = static_pointer_cast<PVBoolean>(m_valueField);
-                pvBoolean->put(!pvBoolean->get());
-                break;
-            }
-            case pvByte:
-            {
-                // increment by one
-                PVBytePtr pvByte = static_pointer_cast<PVByte>(m_valueField);
-                pvByte->put(pvByte->get() + 1);
-                break;
-            }
-            case pvShort:
-            {
-                // increment by one
-                PVShortPtr pvShort = static_pointer_cast<PVShort>(m_valueField);
-                pvShort->put(pvShort->get() + 1);
-                break;
-            }
-            case pvInt:
-            {
-                // increment by one
-                PVIntPtr pvInt = static_pointer_cast<PVInt>(m_valueField);
-                pvInt->put(pvInt->get() + 1);
-                break;
-            }
-            case pvLong:
-            {
-                // increment by one
-                PVLongPtr pvLong = static_pointer_cast<PVLong>(m_valueField);
-                pvLong->put(pvLong->get() + 1);
-                break;
-            }
-            case pvFloat:
-            {
-                // increment by one
-                PVFloatPtr pvFloat = static_pointer_cast<PVFloat>(m_valueField);
-                pvFloat->put(pvFloat->get() + 1.0f);
-                break;
-            }
-            case pvDouble:
-            {
-                // increment by one
-                PVDoublePtr pvDouble = static_pointer_cast<PVDouble>(m_valueField);
-                pvDouble->put(pvDouble->get() + 1.0);
-                break;
-            }
-            case pvString:
-            {
-                // increment by one
-                PVStringPtr pvString = static_pointer_cast<PVString>(m_valueField);
-                String val = pvString->get();
-                if (val.empty())
-                    pvString->put("gen0");
-                else
+                case pvBoolean:
                 {
-                    char c = val[0];
-                    c++;
-                    pvString->put("gen" + c);
+                    // negate
+                    PVBooleanPtr pvBoolean = static_pointer_cast<PVBoolean>(m_valueField);
+                    pvBoolean->put(!pvBoolean->get());
+                    break;
                 }
-                break;
+                case pvByte:
+                {
+                    // increment by one
+                    PVBytePtr pvByte = static_pointer_cast<PVByte>(m_valueField);
+                    pvByte->put(pvByte->get() + 1);
+                    break;
+                }
+                case pvShort:
+                {
+                    // increment by one
+                    PVShortPtr pvShort = static_pointer_cast<PVShort>(m_valueField);
+                    pvShort->put(pvShort->get() + 1);
+                    break;
+                }
+                case pvInt:
+                {
+                    // increment by one
+                    PVIntPtr pvInt = static_pointer_cast<PVInt>(m_valueField);
+                    pvInt->put(pvInt->get() + 1);
+                    break;
+                }
+                case pvLong:
+                {
+                    // increment by one
+                    PVLongPtr pvLong = static_pointer_cast<PVLong>(m_valueField);
+                    pvLong->put(pvLong->get() + 1);
+                    break;
+                }
+                case pvFloat:
+                {
+                    // increment by one
+                    PVFloatPtr pvFloat = static_pointer_cast<PVFloat>(m_valueField);
+                    pvFloat->put(pvFloat->get() + 1.0f);
+                    break;
+                }
+                case pvDouble:
+                {
+                    double noise = ((rand()/(double)RAND_MAX)-0.5)*2;
+                    // increment by one
+                    PVDoublePtr pvDouble = static_pointer_cast<PVDouble>(m_valueField);
+                    pvDouble->put(pvDouble->get() + noise /*1.0*/);
+                    break;
+                }
+                case pvString:
+                {
+                    // increment by one
+                    PVStringPtr pvString = static_pointer_cast<PVString>(m_valueField);
+                    String val = pvString->get();
+                    if (val.empty())
+                        pvString->put("gen0");
+                    else
+                    {
+                        char c = val[3];
+                        c++;
+                        pvString->put("gen" + c);
+                    }
+                    break;
+                }
+                default:
+                    // noop
+                    break;
             }
-            default:
-                // noop
-                break;
-
         }
 
         if (m_timeStamp.isAttached())
@@ -944,57 +1014,9 @@ class MockChannelRPC : public ChannelRPC
 			}
 			else
 			{
-
 		        int columnsCount = atoi(columns->get().c_str());
-		        StringArray fieldNames(columnsCount);
-		        FieldConstPtrArray fields(columnsCount);
-		        char sbuf[16];
-		        vector<String> labels;
-		        for (int i = 0; i < columnsCount; i++)
-		        {
-		        	sprintf(sbuf, "column%d", i);
-		        	fieldNames[i] = sbuf;
-		        	fields[i] = getFieldCreate()->createScalarArray(pvDouble);
-		            labels.push_back(sbuf);
-		        }
-
-		        Structure::const_shared_pointer valueStructure(
-		        			getFieldCreate()->createStructure(fieldNames, fields)
-		        	);
-
-		        StringArray tableFieldNames(2);
-		        FieldConstPtrArray tableFields(2);
-		        tableFieldNames[0] = "labels";
-		        tableFields[0] = getFieldCreate()->createScalarArray(pvString);
-		        tableFieldNames[1] = "value";
-		        tableFields[1] = valueStructure;
-
-		        PVStructure::shared_pointer result(
-		        		getPVDataCreate()->createPVStructure(
-		        				getFieldCreate()->createStructure(
-		        						"uri:ev4:nt/2012/pwd:NTTable", tableFieldNames, tableFields)
-		        			)
-		        		);
-		        static_pointer_cast<PVStringArray>(result->getScalarArrayField("labels", pvString))->put(0, labels.size(), &labels[0], 0);
-
-		        PVStructure::shared_pointer resultValue = result->getStructureField("value");
-
-		        srand ( time(NULL) );
-
-		        #define ROWS 10
-		        double values[ROWS];
-                #define FILL_VALUES(OFFSET) \
-		        for (int r = 0; r < ROWS; r++) \
-		        	values[r] = rand()/((double)RAND_MAX+1) + OFFSET;
-
-		        int offset = 0;
-		        for (vector<String>::iterator iter = labels.begin();
-		        		iter != labels.end();
-		        		iter++, offset++)
-		        {
-		        	FILL_VALUES(offset);
-		        	static_pointer_cast<PVDoubleArray>(resultValue->getScalarArrayField(*iter, pvDouble))->put(0, ROWS, values, 0);
-		        }
+                PVStructure::shared_pointer result = createNTTable(columnsCount);
+                generateNTTableDoubleValues(result);
 				m_channelRPCRequester->requestDone(Status::Ok, result);
 			}
     	}
@@ -1047,8 +1069,6 @@ class MockChannelRPC : public ChannelRPC
 		        			)
 		        		);
 		        static_pointer_cast<PVStringArray>(result->getScalarArrayField("name", pvString))->put(0, labels.size(), &labels[0], 0);
-
-		        srand ( time(NULL) );
 
 		        int32 len = columnsCount;
 		        vector<double> mv(len);
@@ -1106,8 +1126,6 @@ class MockChannelRPC : public ChannelRPC
 		        int32 colsVal = atoi(columns->get().c_str());
 		        int32 dimValues[] = { rowsVal, colsVal };
 		        static_pointer_cast<PVIntArray>(result->getScalarArrayField("dim", pvInt))->put(0, 2, &dimValues[0], 0);
-
-		        srand ( time(NULL) );
 
 		        PVStringPtr byColumns = static_pointer_cast<PVString>(args->getSubField("bycolumns"));
 		        bool bycolumns = (byColumns.get() && byColumns->get() == "1");
@@ -1567,13 +1585,19 @@ class MockChannel : public Channel {
 				printf("=============------------------------------------!!!\n");
 				*/
 			}
-            else if (m_name.find("testNTImage") == 0 || m_name.find("testMP") == 0
+            else if (m_name.find("testMP") == 0
                      || m_name.find("testImage") == 0)
 			{
 				m_pvStructure = getPVDataCreate()->createPVStructure(makeImageStruc());
                 initImageEPICSv4GrayscaleLogo(m_pvStructure);
             }
-			else if (m_name.find("testADC") == 0)
+            else if (m_name.find("testTable") == 0)
+            {
+                cout << "test Taaa ble " << endl;
+                m_pvStructure = createNTTable(5);   // 5 columns
+                generateNTTableDoubleValues(m_pvStructure);
+            }
+            else if (m_name.find("testADC") == 0)
 			{
 				int i = 0;
 		        int totalFields = 6;
@@ -1850,7 +1874,9 @@ class MockServerChannelProvider : 	public ChannelProvider,
         m_mpChannel(),
         m_scan1Hz(1.0),
 		m_scan1HzThread(),
-		m_adcAction(),
+        m_scan10Hz(0.1),
+        m_scan10HzThread(),
+        m_adcAction(),
         m_adcThread(),
         m_imgAction(0.1),
         m_imgThread()
@@ -1860,7 +1886,8 @@ class MockServerChannelProvider : 	public ChannelProvider,
 	virtual ~MockServerChannelProvider()
 	{
 		m_scan1Hz.stopped.set();
-		m_adcAction.stopped.set();
+        m_scan10Hz.stopped.set();
+        m_adcAction.stopped.set();
         m_imgAction.stopped.set();
     }
 
@@ -1874,10 +1901,18 @@ class MockServerChannelProvider : 	public ChannelProvider,
 		m_counterChannel = MockChannel::create(chProviderPtr, cr, "testCounter", "local");
 		std::tr1::shared_ptr<ChannelProcessRequesterImpl> cpr(new ChannelProcessRequesterImpl());
 		ChannelProcess::shared_pointer process = m_counterChannel->createChannelProcess(cpr, PVStructure::shared_pointer());
-		//process->process(false);
+        m_scan1Hz.toProcess.push_back(process);
 
-		m_scan1Hz.toProcess.push_back(process);
-	    m_scan1HzThread.reset(new Thread("process1hz", highPriority, &m_scan1Hz));
+        Channel::shared_pointer c = MockChannel::create(chProviderPtr, cr, "testRandom", "local");
+        process = c->createChannelProcess(cpr, PVStructure::shared_pointer());
+        m_scan10Hz.toProcess.push_back(process);
+
+        c = MockChannel::create(chProviderPtr, cr, "testTable", "local");
+        process = c->createChannelProcess(cpr, PVStructure::shared_pointer());
+        m_scan1Hz.toProcess.push_back(process);
+
+        m_scan1HzThread.reset(new Thread("process1hz", highPriority, &m_scan1Hz));
+        m_scan10HzThread.reset(new Thread("process10hz", highPriority, &m_scan10Hz));
 
 		m_adcChannel = MockChannel::create(chProviderPtr, cr, "testADC", "local");
 	    m_adcAction.name = "testADC";
@@ -1967,7 +2002,10 @@ class MockServerChannelProvider : 	public ChannelProvider,
 	ProcessAction m_scan1Hz;
 	auto_ptr<Thread> m_scan1HzThread;
 
-	ADCAction m_adcAction;
+    ProcessAction m_scan10Hz;
+    auto_ptr<Thread> m_scan10HzThread;
+
+    ADCAction m_adcAction;
 	auto_ptr<Thread> m_adcThread;
 
     NTImageAction m_imgAction;
@@ -2058,6 +2096,8 @@ int main(int argc, char *argv[])
     }
 
     SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
+
+    srand ( time(NULL) );
 
     testServer(timeToRun);
 
