@@ -149,9 +149,16 @@ int main (int argc, char *argv[])
                             dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
 
                     channel->printInfo();
-                    String s;
-                    structure->toString(&s);
-                    std::cout << s << std::endl << std::endl;
+                    if (structure)
+                    {
+                        String s;
+                        structure->toString(&s);
+                        std::cout << s << std::endl << std::endl;
+                    }
+                    else
+                    {
+                        std::cout << "(null introspection data)" << std::endl << std::endl;
+                    }
             	}
             	else
             	{
