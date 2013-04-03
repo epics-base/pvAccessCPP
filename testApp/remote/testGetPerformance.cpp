@@ -92,7 +92,7 @@ void get_all()
         (*i)->get(false);
 
     // we assume all channels are from the same provider
-    if (bulkMode) provider->flush();
+    //if (bulkMode) provider->flush();
 }
 
 
@@ -371,7 +371,7 @@ int main (int argc, char *argv[])
         Channel::shared_pointer channel = *i;
         shared_ptr<ChannelRequesterImpl> channelRequesterImpl =
                 dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
-        if (bulkMode) provider->flush();
+        //if (bulkMode) provider->flush();
         if (channelRequesterImpl->waitUntilConnected(5.0))
         {
             String remoteAddress = channel->getRemoteAddress();
@@ -395,7 +395,7 @@ int main (int argc, char *argv[])
                             new ChannelGetRequesterImpl(channel->getChannelName())
                         );
             ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
-            if (bulkMode) provider->flush();
+            //if (bulkMode) provider->flush();
 
             allOK = getRequesterImpl->waitUntilConnected(timeOut);
 
