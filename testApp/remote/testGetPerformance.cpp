@@ -72,7 +72,7 @@ void usage (void)
              "  -l <runs>:         number of runs (0 means execute runs continuously), default is '%d'\n"
              //"  -b:                bulk mode (send request messages in bulks), default is %d\n"
              "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n\n"
-             , DEFAULT_REQUEST, DEFAULT_ITERATIONS, DEFAULT_CHANNELS, DEFAULT_ARRAY_SIZE, DEFAULT_RUNS, DEFAULT_BULK, DEFAULT_TIMEOUT);
+             , DEFAULT_REQUEST, DEFAULT_ITERATIONS, DEFAULT_CHANNELS, DEFAULT_ARRAY_SIZE, DEFAULT_RUNS, /*DEFAULT_BULK,*/ DEFAULT_TIMEOUT);
 }
 
 // TODO thread-safety
