@@ -35,6 +35,7 @@ int iterations = DEFAULT_ITERATIONS;
 int channels = DEFAULT_CHANNELS;
 int runs = DEFAULT_RUNS;
 bool bulkMode = DEFAULT_BULK;
+int arraySize = DEFAULT_ARRAY_SIZE;          // 0 means scalar
 
 #define DEFAULT_TIMEOUT 600.0
 #define DEFAULT_REQUEST "field(value)"
@@ -71,7 +72,10 @@ void usage (void)
              "  -s <array size>:   number of array elements (0 means scalar), default is '%d'\n"
              "  -l <runs>:         number of runs (0 means execute runs continuously), default is '%d'\n"
              //"  -b:                bulk mode (send request messages in bulks), default is %d\n"
-             "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n\n"
+             "  -f <filename>:     read configuration file that contains list of tests to be performed\n"
+             "                         each test is defined by a \"<c> <s> <i> <l>\" line\n"
+             "                         output is a space separated list of get operations per second for each run, one line per test\n"
+             "  -w <sec>:          wait time, specifies timeout, default is %f second(s)\n\n"
              , DEFAULT_REQUEST, DEFAULT_ITERATIONS, DEFAULT_CHANNELS, DEFAULT_ARRAY_SIZE, DEFAULT_RUNS, /*DEFAULT_BULK,*/ DEFAULT_TIMEOUT);
 }
 
@@ -182,7 +186,10 @@ public:
 
                 duration = seconds + nseconds/1000000.0;
 
-                printf("%5.6f seconds, %5.3f (x %d = %5.3f) gets/s\n", duration, iterations/duration, channels, iterations*channels/duration);
+                double getPerSec = iterations*channels/duration;
+                double gbit = getPerSec*arraySize*sizeof(double)*8/(1024*1024*1024); // * bits / giga
+                printf("%5.6f seconds, %5.3f (x %d = %5.3f) gets/s, data throughput %5.3f Gbits/s\n",
+                       duration, iterations/duration, channels, getPerSec, gbit);
 
                 iterationCount = 0;
                 gettimeofday(&startTime, NULL);
@@ -269,13 +276,13 @@ public:
 int main (int argc, char *argv[])
 {
     int opt;                    // getopt() current option
-    int arraySize = DEFAULT_ARRAY_SIZE;          // 0 means scalar
+    std::string testFile;
 
     Requester::shared_pointer requester(new RequesterImpl());
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    // Set stdout to line buffering
 
-    while ((opt = getopt(argc, argv, ":hr:w:i:c:s:l:b")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:i:c:s:l:bf:")) != -1) {
         switch (opt) {
         case 'h':               // Print usage
             usage();
@@ -306,6 +313,15 @@ int main (int argc, char *argv[])
         //case 'b':               // bulk mode
         //    bulkMode = true;
         //    break;
+        case 'f':               // testFile
+            testFile = optarg;
+
+            // TODO
+            fprintf(stderr,
+                    "Unimplemented option: '-%c'.\n",
+                    opt);
+            return 1;
+            break;
         case '?':
             fprintf(stderr,
                     "Unrecognized option: '-%c'. ('testGetPerformance -h' for help.)\n",
@@ -322,6 +338,18 @@ int main (int argc, char *argv[])
         }
     }
 
+    // typedef enum {logLevelInfo, logLevelDebug, logLevelError, errlogFatal} errlogSevEnum;
+    SET_LOG_LEVEL(logLevelError);
+
+    pvRequest = getCreateRequest()->createRequest(request,requester);
+    if (pvRequest.get() == 0) {
+        printf("failed to parse request string\n");
+        return 1;
+    }
+
+    ClientFactory::start();
+    provider = getChannelAccess()->getProvider("pvAccess");
+
     printf("%d channel(s) of double array size of %d element(s) (0==scalar), %d iteration(s) per run, %d run(s) (0==forever)\n", channels, arraySize, iterations, runs);
 
     vector<string> channelNames;
@@ -335,20 +363,7 @@ int main (int argc, char *argv[])
         channelNames.push_back(buf);
     }
 
-
-    pvRequest = getCreateRequest()->createRequest(request,requester);
-    if (pvRequest.get() == 0) {
-        printf("failed to parse request string\n");
-        return 1;
-    }
-
-    // typedef enum {logLevelInfo, logLevelDebug, logLevelError, errlogFatal} errlogSevEnum;
-    SET_LOG_LEVEL(logLevelError);
-
     bool allOK = 1;
-
-    ClientFactory::start();
-    provider = getChannelAccess()->getProvider("pvAccess");
 
     vector<Channel::shared_pointer> channels;
     for (vector<string>::const_iterator i = channelNames.begin();
