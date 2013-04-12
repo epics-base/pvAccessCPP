@@ -3105,6 +3105,27 @@ namespace epics {
                     // NOTE it's up to internal code to respond w/ error to requester and return 0 in case of errors
                 }
 
+                virtual void configure(epics::pvData::PVStructure::shared_pointer configuration)
+                {
+                    std::tr1::shared_ptr<ClientContextImpl> context = m_context.lock();
+                    if (context.get())
+                        context->configure(configuration);
+                }
+
+                virtual void flush()
+                {
+                    std::tr1::shared_ptr<ClientContextImpl> context = m_context.lock();
+                    if (context.get())
+                        context->flush();
+                }
+
+                virtual void poll()
+                {
+                    std::tr1::shared_ptr<ClientContextImpl> context = m_context.lock();
+                    if (context.get())
+                        context->poll();
+                }
+
                 ~ChannelProviderImpl() {};
 
             private:
@@ -4504,6 +4525,25 @@ TODO
                     // TODO is this OK?
                     throw std::runtime_error("Failed to obtain synchronization lock for '" + name + "', possible deadlock.");
                 }
+            }
+
+            virtual void configure(epics::pvData::PVStructure::shared_pointer /*configuration*/)
+            {
+                // TODO
+            }
+
+            virtual void flush()
+            {
+                // TODO not OK, since new object is created by toArray() call
+                std::auto_ptr<TransportRegistry::transportVector_t> transports = m_transportRegistry->toArray();
+                TransportRegistry::transportVector_t::const_iterator iter = transports->begin();
+                while (iter != transports->end())
+                    (*iter)->flushSendQueue();
+            }
+
+            virtual void poll()
+            {
+                // TODO
             }
 
             /**

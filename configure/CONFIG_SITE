@@ -45,5 +45,7 @@ INSTALL_INCLUDE = $(INSTALL_LOCATION)/include/pv
 USR_INCLUDES += -I $(INSTALL_LOCATION)/include
 USR_CXXFLAGS += -Wall -Wextra
 
+#USR_CPPFLAGS += -DPV_MB -g -ggdb
+
 -include $(TOP)/configure/CONFIG_SITE.local
 -include $(TOP)/../CONFIG.local

@@ -92,7 +92,6 @@ namespace pvAccess {
 
         /**
          * Base interface for all channel requests.
-         * @author mse
          */
         class ChannelRequest : public epics::pvData::Destroyable, public Lockable, private epics::pvData::NoDefaultMethods {
             public:
@@ -102,8 +101,6 @@ namespace pvAccess {
         /**
          * Request to put and get Array Data.
          * The data is either taken from or put in the PVArray returned by ChannelArrayRequester.channelArrayConnect.
-         * @author mrk
-         *
          */
         class ChannelArray : public ChannelRequest{
             public:
@@ -136,8 +133,6 @@ namespace pvAccess {
 
         /**
          * The epics::pvData::Requester for a ChannelArray.
-         * @author mrk
-         *
          */
         class ChannelArrayRequester : virtual public epics::pvData::Requester {
             public:
@@ -175,7 +170,6 @@ namespace pvAccess {
 
 
         /**
-         * @author mrk
          *
          */
         class ChannelFind : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
@@ -187,7 +181,6 @@ namespace pvAccess {
         };
 
         /**
-         * @author mrk
          *
          */
         class ChannelFindRequester {
@@ -204,8 +197,6 @@ namespace pvAccess {
 
         /**
          * Request to get data from a channel.
-         * @author mrk
-         *
          */
         class ChannelGet : public ChannelRequest {
             public:
@@ -223,8 +214,6 @@ namespace pvAccess {
 
         /**
          * epics::pvData::Requester for channelGet.
-         * @author mrk
-         *
          */
         class ChannelGetRequester : virtual public epics::pvData::Requester {
             public:
@@ -250,8 +239,6 @@ namespace pvAccess {
 
         /**
          * ChannelProcess - request that a channel be processed..
-         * @author mrk
-         *
          */
         class ChannelProcess : public ChannelRequest {
             public:
@@ -269,8 +256,6 @@ namespace pvAccess {
 
         /**
          * epics::pvData::Requester for channelProcess.
-         * @author mrk
-         *
          */
         class ChannelProcessRequester : virtual public epics::pvData::Requester {
             public:
@@ -294,8 +279,6 @@ namespace pvAccess {
 
         /**
          * Interface for a channel access put request.
-         * @author mrk
-         *
          */
         class ChannelPut  : public ChannelRequest {
             public:
@@ -318,8 +301,6 @@ namespace pvAccess {
         
         /**
          * epics::pvData::Requester for ChannelPut.
-         * @author mrk
-         *
          */
         class ChannelPutRequester : virtual public epics::pvData::Requester {
             public:
@@ -352,8 +333,6 @@ namespace pvAccess {
         /**
          * Channel access put/get request.
          * The put is performed first, followed optionally by a process request, and then by a get request.
-         * @author mrk
-         *
          */
         class ChannelPutGet : public ChannelRequest {
             public:
@@ -381,8 +360,6 @@ namespace pvAccess {
 
         /**
          * epics::pvData::Requester for ChannelPutGet.
-         * @author mrk
-         *
          */
         class ChannelPutGetRequester : virtual public epics::pvData::Requester
         {
@@ -420,8 +397,6 @@ namespace pvAccess {
 
         /**
          * epics::pvData::Requester for channelGet.
-         * @author mrk
-         *
          */
         class ChannelRPC : public ChannelRequest {
             public:
@@ -439,8 +414,6 @@ namespace pvAccess {
 
         /**
          * epics::pvData::Requester for channelGet.
-         * @author mrk
-         *
          */
         class ChannelRPCRequester : virtual public epics::pvData::Requester {
             public:
@@ -464,8 +437,6 @@ namespace pvAccess {
 
         /**
          * epics::pvData::Requester for a getStructure request.
-         * @author mrk
-         *
          */
         class GetFieldRequester : virtual public epics::pvData::Requester {
             public:
@@ -486,8 +457,6 @@ namespace pvAccess {
         /**
          * Interface for accessing a channel.
          * A channel is created via a call to ChannelAccess.createChannel(String channelName).
-         * @author mrk
-         * @author msekoranja
          */
         class Channel : 
                 public epics::pvData::Requester,
@@ -662,8 +631,6 @@ namespace pvAccess {
 
         /**
          * Listener for connect state changes.
-         * @author mrk
-         *
          */
         class ChannelRequester : public virtual epics::pvData::Requester {
             public:
@@ -685,10 +652,15 @@ namespace pvAccess {
         };
 
         /**
+         * @brief The FlushStrategy enum
+         */
+        enum FlushStrategy {
+            IMMEDIATE, DELAYED, USER_CONTROLED
+        };
+
+        /**
          * Interface implemented by code that can provide access to the record
          * to which a channel connects.
-         * @author mrk
-         *
          */
         class ChannelProvider : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
         public:
@@ -742,12 +714,15 @@ namespace pvAccess {
              */
             virtual Channel::shared_pointer createChannel(epics::pvData::String const & channelName,ChannelRequester::shared_pointer const & channelRequester,
                                                    short priority, epics::pvData::String const & address) = 0;
+
+            virtual void configure(epics::pvData::PVStructure::shared_pointer /*configuration*/) {};
+            virtual void flush() {};
+            virtual void poll() {};
+
         };
 
         /**
          * Interface for locating channel providers.
-         * @author mrk
-         *
          */
         class ChannelAccess : private epics::pvData::NoDefaultMethods {
         public:
@@ -777,8 +752,6 @@ namespace pvAccess {
 
         /**
          * Interface for creating request structure.
-         * @author mse
-         *
          */
         class CreateRequest {
             public:

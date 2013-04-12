@@ -242,6 +242,11 @@ namespace epics {
             virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender) = 0;
 
             /**
+             * Flush send queue (sent messages).
+             */
+            virtual void flushSendQueue() = 0;
+
+            /**
              * Notify transport that it is has been verified.
              */
             virtual void verified() = 0;

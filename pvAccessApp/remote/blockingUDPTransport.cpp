@@ -145,6 +145,12 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             }
         }
 
+
+        void BlockingUDPTransport::flushSendQueue()
+        {
+            // noop (note different sent addresses are possible)
+        }
+
         void BlockingUDPTransport::startMessage(int8 command, size_t /*ensureCapacity*/) {
             _lastMessageStartPosition = _sendBuffer->getPosition();
             _sendBuffer->putByte(CA_MAGIC);

@@ -119,6 +119,8 @@ namespace epics {
 
             virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender);
 
+            virtual void flushSendQueue();
+
             void start();
 
             virtual void close();
@@ -129,6 +131,18 @@ namespace epics {
 
             virtual void alignData(std::size_t alignment) {
                 _receiveBuffer->align(alignment);
+            }
+
+            virtual bool directSerialize(epics::pvData::ByteBuffer */*existingBuffer*/, const char* /*toSerialize*/,
+                                         std::size_t /*elementCount*/, std::size_t /*elementSize*/)
+            {
+                return false;
+            }
+
+            virtual bool directDeserialize(epics::pvData::ByteBuffer */*existingBuffer*/, char* /*deserializeTo*/,
+                                           std::size_t /*elementCount*/, std::size_t /*elementSize*/)
+            {
+                return false;
             }
 
             virtual void startMessage(epics::pvData::int8 command, std::size_t ensureCapacity);

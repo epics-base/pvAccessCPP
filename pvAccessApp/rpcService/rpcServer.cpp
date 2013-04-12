@@ -380,10 +380,10 @@ public:
         ChannelRequester::shared_pointer const & /*channelRequester*/,
         short /*priority*/,
         epics::pvData::String const & /*address*/)
-   {
+    {
         // this will never get called by the pvAccess server
         throw std::runtime_error("not supported");
-   }
+    }
 
     void registerService(String const & serviceName, RPCService::shared_pointer const & service)
     {

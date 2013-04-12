@@ -40,7 +40,7 @@ namespace epics {
             acquire(client);
 
             // use immediate for clients
-            setSendQueueFlushStrategy(DELAYED);
+            setFlushStrategy(DELAYED);
 
             // setup connection timeout timer (watchdog)
             epicsTimeGetCurrent(&_aliveTimestamp);

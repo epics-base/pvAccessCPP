@@ -27,7 +27,7 @@ namespace pvAccess {
             _lastChannelSID(0)
         {
             // for performance testing
-            setSendQueueFlushStrategy(DELAYED);
+            setFlushStrategy(DELAYED);
             _delay = 0.000;
             
             // NOTE: priority not yet known, default priority is used to register/unregister
