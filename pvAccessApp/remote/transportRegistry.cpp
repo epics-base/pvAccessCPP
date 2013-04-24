@@ -122,11 +122,13 @@ int32 TransportRegistry::numberOfActiveTransports()
 	return _transportCount;
 }
 
+
 auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::toArray(String const & /*type*/)
 {
 	// TODO support type
     return toArray();
 }
+
 
 auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::toArray()
 {
@@ -151,6 +153,28 @@ auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::toArray()
     }
     
 	return transportArray;
+}
+
+void TransportRegistry::toArray(transportVector_t & transportArray)
+{
+	Lock guard(_mutex);
+    if (_transportCount == 0)
+        return;
+    
+    transportArray.reserve(transportArray.size() + _transportCount);
+
+	for (transportsMap_t::iterator transportsIter = _transports.begin();
+         transportsIter != _transports.end();
+         transportsIter++)
+    {
+		prioritiesMapSharedPtr_t priorities = transportsIter->second;
+		for (prioritiesMap_t::iterator prioritiesIter = priorities->begin();
+             prioritiesIter != priorities->end();
+             prioritiesIter++)
+        {
+            transportArray.push_back(prioritiesIter->second);
+        }
+    }
 }
 
 }}

@@ -112,7 +112,7 @@ void get_all()
         (*i)->get(false);
 
     // we assume all channels are from the same provider
-    //if (bulkMode) provider->flush();
+    if (bulkMode) provider->flush();
 }
 
 
@@ -301,6 +301,14 @@ void runTest()
     if (verbose)
         printf("%d channel(s) of double array size of %d element(s) (0==scalar), %d iteration(s) per run, %d run(s) (0==forever)\n", channels, arraySize, iterations, runs);
 
+    StringArray fieldNames;
+    fieldNames.push_back("strategy");
+    FieldConstPtrArray fields;
+    fields.push_back(getFieldCreate()->createScalar(pvInt));
+    PVStructure::shared_pointer configuration =
+        getPVDataCreate()->createPVStructure(getFieldCreate()->createStructure(fieldNames, fields));
+    configuration->getIntField("strategy")->put(bulkMode ? USER_CONTROLED : DELAYED);
+
     vector<string> channelNames;
     char buf[64];
     for (int i = 0; i < channels; i++)
@@ -323,6 +331,7 @@ void runTest()
         Channel::shared_pointer channel = provider->createChannel(*i, channelRequesterImpl);
         channels.push_back(channel);
     }
+    if (bulkMode) provider->flush();
 
     bool differentConnectionsWarningIssued = false;
     String theRemoteAddress;
@@ -333,7 +342,6 @@ void runTest()
         Channel::shared_pointer channel = *i;
         shared_ptr<ChannelRequesterImpl> channelRequesterImpl =
                 dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
-        //if (bulkMode) provider->flush();
         if (channelRequesterImpl->waitUntilConnected(5.0))
         {
             String remoteAddress = channel->getRemoteAddress();
@@ -357,7 +365,7 @@ void runTest()
                             new ChannelGetRequesterImpl(channel->getChannelName())
                         );
             ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
-            //if (bulkMode) provider->flush();
+            if (bulkMode) provider->flush();
 
             bool allOK = getRequesterImpl->waitUntilConnected(timeOut);
 
@@ -426,9 +434,9 @@ int main (int argc, char *argv[])
         case 'l':               // runs
             runs = atoi(optarg);
             break;
-        //case 'b':               // bulk mode
-        //    bulkMode = true;
-        //    break;
+        case 'b':               // bulk mode
+            bulkMode = true;
+            break;
         case 'f':               // testFile
             testFile = optarg;
             break;

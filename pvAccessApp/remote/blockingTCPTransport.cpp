@@ -1276,10 +1276,21 @@ printf("sendThreadRunnner exception\n");
             _sendQueue.push_back(sender);
         }
 
+        class FlushTransportSender : public TransportSender {
+        public:
+            virtual void send(epics::pvData::ByteBuffer*, TransportSendControl* control)
+            {
+                control->flush(true);
+            }
+            
+            virtual void lock() {}
+            virtual void unlock() {}
+        };
+
+        static TransportSender::shared_pointer flushTransportSender(new FlushTransportSender());
+
         void BlockingTCPTransport::flushSendQueue() {
-            Lock lock(_sendQueueMutex);
-            if(unlikely(_closed.get())) return;
-            _sendQueueEvent.signal();
+            enqueueSendRequest(flushTransportSender);
         }
 
         /*

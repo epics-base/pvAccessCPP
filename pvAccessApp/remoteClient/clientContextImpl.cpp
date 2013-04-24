@@ -3991,9 +3991,11 @@ namespace epics {
                     m_namedLocker(), m_lastCID(0), m_lastIOID(0),
                     m_version("pvAccess Client", "cpp", 1, 2, 0, true),
                     m_contextState(CONTEXT_NOT_INITIALIZED),
-                    m_configuration(new SystemConfigurationImpl())
+                    m_configuration(new SystemConfigurationImpl()),
+                    m_flushStrategy(DELAYED)
             {
                 PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(remoteClientContext);
+                m_flushTransports.reserve(64);
                 loadConfiguration();
             }
 
@@ -4450,7 +4452,10 @@ TODO
                 {
                     // TODO we are creating a new response handler even-though we might not need a new transprot !!!
                     auto_ptr<ResponseHandler> handler(new ClientResponseHandler(shared_from_this()));
-                    return m_connector->connect(client, handler, *serverAddress, minorRevision, priority);
+                    Transport::shared_pointer t = m_connector->connect(client, handler, *serverAddress, minorRevision, priority);
+                    // TODO !!!
+                    static_pointer_cast<BlockingTCPTransport>(t)->setFlushStrategy(m_flushStrategy);
+                    return t;
                 }
                 catch (...)
                 {
@@ -4526,19 +4531,38 @@ TODO
                     throw std::runtime_error("Failed to obtain synchronization lock for '" + name + "', possible deadlock.");
                 }
             }
-
-            virtual void configure(epics::pvData::PVStructure::shared_pointer /*configuration*/)
+            
+            virtual void configure(epics::pvData::PVStructure::shared_pointer configuration)
             {
-                // TODO
+                if (m_transportRegistry->numberOfActiveTransports() > 0)
+                    throw std::runtime_error("Configure must be called when there is no transports active.");
+                
+                PVInt::shared_pointer pvStrategy = dynamic_pointer_cast<PVInt>(configuration->getSubField("strategy"));
+                if (pvStrategy.get())
+                {
+                    int32 value = pvStrategy->get();
+                    switch (value)
+                    {
+                        case IMMEDIATE:
+                        case DELAYED:
+                        case USER_CONTROLED:
+                            m_flushStrategy = static_cast<FlushStrategy>(value);
+                            break;
+                        default:
+                        // TODO report warning
+                            break;    
+                    }
+                }
+                
             }
 
             virtual void flush()
             {
-                // TODO not OK, since new object is created by toArray() call
-                std::auto_ptr<TransportRegistry::transportVector_t> transports = m_transportRegistry->toArray();
-                TransportRegistry::transportVector_t::const_iterator iter = transports->begin();
-                while (iter != transports->end())
-                    (*iter)->flushSendQueue();
+                m_transportRegistry->toArray(m_flushTransports);
+                TransportRegistry::transportVector_t::const_iterator iter = m_flushTransports.begin();
+                while (iter != m_flushTransports.end())
+                    (*iter++)->flushSendQueue();
+                m_flushTransports.clear();
             }
 
             virtual void poll()
@@ -4698,7 +4722,9 @@ TODO
 
             Configuration::shared_pointer m_configuration;
             
-            int m_refCount;
+            TransportRegistry::transportVector_t m_flushTransports;
+            
+            FlushStrategy m_flushStrategy;
         };
 
         ClientContextImpl::shared_pointer createClientContextImpl()

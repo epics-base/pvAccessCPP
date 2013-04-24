@@ -39,8 +39,12 @@ public:
     Transport::shared_pointer remove(Transport::shared_pointer const & transport);
     void clear();
     epics::pvData::int32 numberOfActiveTransports();
+    
+    // TODO note type not supported
     std::auto_ptr<transportVector_t> toArray(epics::pvData::String const & type);
     std::auto_ptr<transportVector_t> toArray();
+    // optimized to avoid reallocation, adds to array
+    void toArray(transportVector_t & transportArray);
 
 private:
     //TODO if unordered map is used instead of map we can use sockAddrAreIdentical routine from osiSock.h
