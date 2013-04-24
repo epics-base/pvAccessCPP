@@ -32,6 +32,8 @@ using namespace epics::pvAccess;
 #define DEFAULT_RUNS 1
 #define DEFAULT_BULK false
 
+bool verbose = false;
+
 int iterations = DEFAULT_ITERATIONS;
 int channels = DEFAULT_CHANNELS;
 int runs = DEFAULT_RUNS;
@@ -78,6 +80,7 @@ void usage (void)
              "  -f <filename>:     read configuration file that contains list of tests to be performed\n"
              "                         each test is defined by a \"<c> <s> <i> <l>\" line\n"
              "                         output is a space separated list of get operations per second for each run, one line per test\n"
+             "  -v                 enable verbose output when configuration is read from the file\n"
              "  -w <sec>:          wait time, specifies timeout, default is %f second(s)\n\n"
              , DEFAULT_REQUEST, DEFAULT_ITERATIONS, DEFAULT_CHANNELS, DEFAULT_ARRAY_SIZE, DEFAULT_RUNS, /*DEFAULT_BULK,*/ DEFAULT_TIMEOUT);
 }
@@ -88,6 +91,7 @@ vector<ChannelGet::shared_pointer> channelGetList;
 int channelCount = 0;
 int iterationCount = 0;
 int runCount = 0;
+double sum = 0;
 
 void reset()
 {
@@ -95,6 +99,7 @@ void reset()
     channelCount = 0;
     iterationCount = 0;
     runCount = 0;
+    sum = 0;
 }
 
 timeval startTime;
@@ -199,8 +204,10 @@ public:
 
                 double getPerSec = iterations*channels/duration;
                 double gbit = getPerSec*arraySize*sizeof(double)*8/(1024*1024*1024); // * bits / giga
-                printf("%5.6f seconds, %5.3f (x %d = %5.3f) gets/s, data throughput %5.3f Gbits/s\n",
-                       duration, iterations/duration, channels, getPerSec, gbit);
+                if (verbose)
+                    printf("%5.6f seconds, %.3f (x %d = %.3f) gets/s, data throughput %5.3f Gbits/s\n",
+                           duration, iterations/duration, channels, getPerSec, gbit);
+                sum += getPerSec;
 
                 iterationCount = 0;
                 gettimeofday(&startTime, NULL);
@@ -210,6 +217,8 @@ public:
                     get_all();
                 else
                 {
+                    printf("%d %d %d %d %.3f\n", channels, arraySize, iterations, runs, sum/runs);
+        
                     Lock guard(waitLoopPtrMutex);
                     waitLoopEvent->signal();	// all done
                 }
@@ -289,7 +298,8 @@ void runTest()
 {
     reset();
 
-    printf("%d channel(s) of double array size of %d element(s) (0==scalar), %d iteration(s) per run, %d run(s) (0==forever)\n", channels, arraySize, iterations, runs);
+    if (verbose)
+        printf("%d channel(s) of double array size of %d element(s) (0==scalar), %d iteration(s) per run, %d run(s) (0==forever)\n", channels, arraySize, iterations, runs);
 
     vector<string> channelNames;
     char buf[64];
@@ -366,7 +376,8 @@ void runTest()
             exit(1);
         }
     }
-    std::cout << "all connected" << std::endl;
+    if (verbose)
+        std::cout << "all connected" << std::endl;
 
     {
         Lock guard(waitLoopPtrMutex);
@@ -387,7 +398,7 @@ int main (int argc, char *argv[])
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    // Set stdout to line buffering
 
-    while ((opt = getopt(argc, argv, ":hr:w:i:c:s:l:bf:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:i:c:s:l:bf:v")) != -1) {
         switch (opt) {
         case 'h':               // Print usage
             usage();
@@ -420,6 +431,9 @@ int main (int argc, char *argv[])
         //    break;
         case 'f':               // testFile
             testFile = optarg;
+            break;
+        case 'v':               // testFile
+            verbose = true;
             break;
         case '?':
             fprintf(stderr,
@@ -496,6 +510,8 @@ int main (int argc, char *argv[])
     }
     else
     {
+        // in non-file mode, verbose is true by default
+        verbose = true;
         runTest();
     }
 
