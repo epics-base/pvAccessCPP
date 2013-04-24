@@ -690,6 +690,13 @@ void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 		_status.serialize(buffer, control);
 	}
 
+    // TODO !!!
+    // if we call stopRequest() below (the second one, commented out), we might be too late
+    // since between last serialization data and stopRequest() a buffer can be already flushed
+    // (i.e. in case of directSerialize)
+    // if we call it here, then a bad client can issue another request just after stopRequest() was called
+	stopRequest();
+	
 	if (_status.isSuccess())
 	{
 		if (request & QOS_INIT)
@@ -712,7 +719,7 @@ void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 		}
 	}
 
-	stopRequest();
+	//stopRequest();
 
 	// lastRequest
 	if (request & QOS_DESTROY)
