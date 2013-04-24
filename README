@@ -1,9 +1,10 @@
 Define
 
 EPICS_BASE
-PVDATA_HOME
+PVDATA
+PVCOMMON
 
-variables that points to EPICS base and pvDataCPP installation directory (includes and libraries) in configure/RELEASE.local
+variables that points to EPICS base, pvDataCPP, and pvCommonCPP installation directory (includes and libraries) in configure/RELEASE.local
 
 Google C++ Testing Framework
 ----------------------------
