@@ -308,6 +308,7 @@ void runTest()
     PVStructure::shared_pointer configuration =
         getPVDataCreate()->createPVStructure(getFieldCreate()->createStructure(fieldNames, fields));
     configuration->getIntField("strategy")->put(bulkMode ? USER_CONTROLED : DELAYED);
+    provider->configure(configuration);
 
     vector<string> channelNames;
     char buf[64];
