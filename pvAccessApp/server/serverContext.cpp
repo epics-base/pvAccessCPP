@@ -96,26 +96,26 @@ void ServerContextImpl::loadConfiguration()
 {
 	Configuration::shared_pointer config = getConfiguration();
 
-	_beaconAddressList = config->getPropertyAsString("EPICS4_CA_ADDR_LIST", _beaconAddressList);
-	_beaconAddressList = config->getPropertyAsString("EPICS4_CAS_BEACON_ADDR_LIST", _beaconAddressList);
+    _beaconAddressList = config->getPropertyAsString("EPICS_PVA_ADDR_LIST", _beaconAddressList);
+    _beaconAddressList = config->getPropertyAsString("EPICS_PVAS_BEACON_ADDR_LIST", _beaconAddressList);
 
-	_autoBeaconAddressList = config->getPropertyAsBoolean("EPICS4_CA_AUTO_ADDR_LIST", _autoBeaconAddressList);
-	_autoBeaconAddressList = config->getPropertyAsBoolean("EPICS4_CAS_AUTO_BEACON_ADDR_LIST", _autoBeaconAddressList);
+    _autoBeaconAddressList = config->getPropertyAsBoolean("EPICS_PVA_AUTO_ADDR_LIST", _autoBeaconAddressList);
+    _autoBeaconAddressList = config->getPropertyAsBoolean("EPICS_PVAS_AUTO_BEACON_ADDR_LIST", _autoBeaconAddressList);
 
-	_beaconPeriod = config->getPropertyAsFloat("EPICS4_CA_BEACON_PERIOD", _beaconPeriod);
-	_beaconPeriod = config->getPropertyAsFloat("EPICS4_CAS_BEACON_PERIOD", _beaconPeriod);
+    _beaconPeriod = config->getPropertyAsFloat("EPICS_PVA_BEACON_PERIOD", _beaconPeriod);
+    _beaconPeriod = config->getPropertyAsFloat("EPICS_PVAS_BEACON_PERIOD", _beaconPeriod);
 
-	_serverPort = config->getPropertyAsInteger("EPICS4_CA_SERVER_PORT", _serverPort);
-	_serverPort = config->getPropertyAsInteger("EPICS4_CAS_SERVER_PORT", _serverPort);
+    _serverPort = config->getPropertyAsInteger("EPICS_PVA_SERVER_PORT", _serverPort);
+    _serverPort = config->getPropertyAsInteger("EPICS_PVAS_SERVER_PORT", _serverPort);
 
-	_broadcastPort = config->getPropertyAsInteger("EPICS4_CA_BROADCAST_PORT", _broadcastPort);
-	_broadcastPort = config->getPropertyAsInteger("EPICS4_CAS_BROADCAST_PORT", _broadcastPort);
+    _broadcastPort = config->getPropertyAsInteger("EPICS_PVA_BROADCAST_PORT", _broadcastPort);
+    _broadcastPort = config->getPropertyAsInteger("EPICS_PVAS_BROADCAST_PORT", _broadcastPort);
 
-	_receiveBufferSize = config->getPropertyAsInteger("EPICS4_CA_MAX_ARRAY_BYTES", _receiveBufferSize);
-	_receiveBufferSize = config->getPropertyAsInteger("EPICS4_CAS_MAX_ARRAY_BYTES", _receiveBufferSize);
+    _receiveBufferSize = config->getPropertyAsInteger("EPICS_PVA_MAX_ARRAY_BYTES", _receiveBufferSize);
+    _receiveBufferSize = config->getPropertyAsInteger("EPICS_PVAS_MAX_ARRAY_BYTES", _receiveBufferSize);
 
-	_channelProviderNames = config->getPropertyAsString("EPICS4_CA_PROVIDER_NAMES", _channelProviderNames);
-	_channelProviderNames = config->getPropertyAsString("EPICS4_CAS_PROVIDER_NAMES", _channelProviderNames);
+    _channelProviderNames = config->getPropertyAsString("EPICS_PVA_PROVIDER_NAMES", _channelProviderNames);
+    _channelProviderNames = config->getPropertyAsString("EPICS_PVAS_PROVIDER_NAMES", _channelProviderNames);
 }
 
 void ServerContextImpl::initialize(ChannelAccess::shared_pointer const & channelAccess)
