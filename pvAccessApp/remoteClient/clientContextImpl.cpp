@@ -2045,8 +2045,8 @@ namespace epics {
             	// compress if needed
     			if (m_needToCompress)
     			{
-	            	BitSetUtil::compress(m_monitorElement->changedBitSet.get(), m_monitorElement->pvStructurePtr.get());
-					BitSetUtil::compress(m_monitorElement->overrunBitSet.get(), m_monitorElement->pvStructurePtr.get());
+	            	BitSetUtil::compress(m_monitorElement->changedBitSet, m_monitorElement->pvStructurePtr);
+					BitSetUtil::compress(m_monitorElement->overrunBitSet, m_monitorElement->pvStructurePtr);
 					m_needToCompress = false;
             	}
             	
@@ -2159,8 +2159,8 @@ namespace epics {
 	    				PVStructurePtr pvStructure = m_monitorElement->pvStructurePtr;
 			            getConvert()->copy(pvStructure, newElement->pvStructurePtr);
 
-			            BitSetUtil::compress(m_monitorElement->changedBitSet.get(), pvStructure.get());
-			            BitSetUtil::compress(m_monitorElement->overrunBitSet.get(), pvStructure.get());
+			            BitSetUtil::compress(m_monitorElement->changedBitSet, pvStructure);
+			            BitSetUtil::compress(m_monitorElement->overrunBitSet, pvStructure);
 
 			            //monitorQueue.setUsed(monitorElement);
 
@@ -2223,8 +2223,8 @@ namespace epics {
 
 	            // if there was overrun in progress we manipulated bitSets... compress them
 	            if (m_overrunInProgress) {
-		            BitSetUtil::compress(changedBitSet.get(), pvStructure.get());
-		            BitSetUtil::compress(overrunBitSet.get(), pvStructure.get());
+		            BitSetUtil::compress(changedBitSet, pvStructure);
+		            BitSetUtil::compress(overrunBitSet, pvStructure);
 
 		            m_overrunInProgress = false;
 	            }
@@ -2262,8 +2262,8 @@ namespace epics {
 	    				PVStructurePtr pvStructure = m_monitorElement->pvStructurePtr;
 			            getConvert()->copy(pvStructure, newElement->pvStructurePtr);
 
-			            BitSetUtil::compress(m_monitorElement->changedBitSet.get(), pvStructure.get());
-			            BitSetUtil::compress(m_monitorElement->overrunBitSet.get(), pvStructure.get());
+			            BitSetUtil::compress(m_monitorElement->changedBitSet, pvStructure);
+			            BitSetUtil::compress(m_monitorElement->overrunBitSet, pvStructure);
 	            		//monitorQueue.setUsed(monitorElement);
 
 	            		m_monitorElement = newElement;

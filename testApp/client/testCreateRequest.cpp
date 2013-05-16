@@ -43,6 +43,13 @@ void testCreateRequest() {
     assert(pvRequest.get());
     out.clear(); pvRequest->toString(&out); std::cout << out << std::endl;
 
+request = "record[process=true]field(alarm,timeStamp)putField(synput:a,synput:b,stnput:c)";
+        std::cout << std::endl << String("request") <<std::endl << request <<std::endl;
+pvRequest = getCreateRequest()->createRequest(request,requester);
+assert(pvRequest.get());
+out.clear(); pvRequest->toString(&out); std::cout << out << std::endl;
+
+
     request = "alarm,timeStamp,power.value";
         std::cout << std::endl << String("request") <<std::endl << request <<std::endl;
     pvRequest = getCreateRequest()->createRequest(request,requester);
