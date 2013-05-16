@@ -7,7 +7,7 @@
 #ifndef BLOCKINGTCP_H_
 #define BLOCKINGTCP_H_
 
-#include <pv/caConstants.h>
+#include <pv/pvaConstants.h>
 #include <pv/remote.h>
 #include <pv/transportRegistry.h>
 #include <pv/introspectionRegistry.h>
@@ -57,7 +57,7 @@ namespace epics {
             }
 
             virtual epics::pvData::int8 getRevision() const {
-                return CA_PROTOCOL_REVISION;
+                return PVA_PROTOCOL_REVISION;
             }
 
             virtual void setRemoteRevision(epics::pvData::int8 revision) {
@@ -256,7 +256,7 @@ namespace epics {
             // TODO to be implemeneted
 
             /**
-             * CAS response handler.
+             * PVAS response handler.
              */
             std::auto_ptr<ResponseHandler> _responseHandler;
 
@@ -759,7 +759,7 @@ namespace epics {
             }
 
             /**
-             * CA connection validation request.
+             * PVA connection validation request.
              * A server sends a validate connection message when it receives a new connection.
              * The message indicates that the server is ready to receive requests; the client must
              * not send any messages on the connection until it has received the validate connection message
@@ -830,7 +830,7 @@ namespace epics {
              * @param context
              * @param port
              * @param receiveBufferSize
-             * @throws CAException
+             * @throws PVAException
              */
             BlockingTCPAcceptor(Context::shared_pointer const & context,
                                 ResponseHandlerFactory::shared_pointer const & responseHandlerFactory,

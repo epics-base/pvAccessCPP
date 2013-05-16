@@ -301,6 +301,7 @@ void runTest()
     if (verbose)
         printf("%d channel(s) of double array size of %d element(s) (0==scalar), %d iteration(s) per run, %d run(s) (0==forever)\n", channels, arraySize, iterations, runs);
 
+    /*
     StringArray fieldNames;
     fieldNames.push_back("strategy");
     FieldConstPtrArray fields;
@@ -309,6 +310,7 @@ void runTest()
         getPVDataCreate()->createPVStructure(getFieldCreate()->createStructure(fieldNames, fields));
     configuration->getIntField("strategy")->put(bulkMode ? USER_CONTROLED : DELAYED);
     provider->configure(configuration);
+    */
 
     vector<string> channelNames;
     char buf[64];
@@ -412,7 +414,7 @@ int main (int argc, char *argv[])
         case 'h':               // Print usage
             usage();
             return 0;
-        case 'w':               // Set CA timeout value
+        case 'w':               // Set PVA timeout value
             if(epicsScanDouble(optarg, &timeOut) != 1)
             {
                 fprintf(stderr, "'%s' is not a valid timeout value "

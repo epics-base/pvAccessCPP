@@ -41,7 +41,7 @@ namespace pvAccess {
 	public:
 		/**
 		 * Constructor.
-		 * @param context CA context.
+		 * @param context PVA context.
 		 */
 //		DefaultBeaconServerStatusProvider(ServerContext::shared_pointer const & context);
 		DefaultBeaconServerStatusProvider(std::tr1::shared_ptr<ServerContext> const & context);

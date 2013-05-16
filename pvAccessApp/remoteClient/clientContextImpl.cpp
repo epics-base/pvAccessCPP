@@ -13,7 +13,7 @@
 #include <queue>
 
 #include <stdexcept>
-#include <pv/caConstants.h>
+#include <pv/pvaConstants.h>
 #include <pv/timer.h>
 #include <pv/blockingUDP.h>
 #include <pv/blockingTCP.h>
@@ -1852,7 +1852,7 @@ namespace epics {
     
     		virtual MonitorElement::shared_pointer poll() {
     		    Lock guard(m_mutex);
-    		    // TODO CAS when available
+    		    // TODO PVAS when available
     		    bool gotMonitor = m_gotMonitor;
     		    m_gotMonitor = false;
     		    if (gotMonitor)
@@ -1930,7 +1930,7 @@ namespace epics {
     
     		virtual MonitorElement::shared_pointer poll() {
     		    Lock guard(m_mutex);
-    		    // TODO CAS when available
+    		    // TODO PVAS when available
     		    bool gotMonitor = m_gotMonitor;
     		    m_gotMonitor = false;
     		    if (gotMonitor)
@@ -2899,7 +2899,7 @@ namespace epics {
 
 
         /**
-         * CA response handler - main handler which dispatches responses to appripriate handlers.
+         * PVA response handler - main handler which dispatches responses to appripriate handlers.
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          */
         class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoDefaultMethods {
@@ -3139,7 +3139,7 @@ namespace epics {
             
             
             /**
-             * Implementation of CAJ JCA <code>Channel</code>.
+             * Implementation of PVAJ JCA <code>Channel</code>.
              */
             class InternalChannelImpl :
                 public ChannelImpl,
@@ -3206,7 +3206,7 @@ namespace epics {
                 int m_references;
                 
                 /* ****************** */
-                /* CA protocol fields */
+                /* PVA protocol fields */
                 /* ****************** */
                 
                 /**
@@ -3237,7 +3237,7 @@ namespace epics {
                  * @param context
                  * @param name
                  * @param listener
-                 * @throws CAException
+                 * @throws PVAException
                  */
                 InternalChannelImpl(
                                     ClientContextImpl::shared_pointer const & context,
@@ -3528,7 +3528,7 @@ namespace epics {
                 /**
                  * Actual destroy method, to be called <code>CAJContext</code>.
                  * @param force force destruction regardless of reference count
-                 * @throws CAException
+                 * @throws PVAException
                  * @throws std::runtime_error
                  * @throws IOException
                  */
@@ -3623,7 +3623,7 @@ namespace epics {
                      // TODO not only first
                      // TODO minor version
                      // TODO what to do if there is no channel, do not search in a loop!!! do this in other thread...!
-                     searchResponse(CAConstants.CA_MINOR_PROTOCOL_REVISION, addresses[0]);
+                     searchResponse(CAConstants.PVA_MINOR_PROTOCOL_REVISION, addresses[0]);
                      */
                 }
                 
@@ -3715,7 +3715,7 @@ namespace epics {
                 			// TODO 2 types of disconnected state - distinguish them otherwise disconnect will handle connection loss right
                             setConnectionState(DISCONNECTED);
                             
-                            // ... CA notifies also w/ no access rights callback, although access right are not changed
+                            // ... PVA notifies also w/ no access rights callback, although access right are not changed
                         }
                     }
                     
@@ -3987,7 +3987,7 @@ namespace epics {
             
             InternalClientContextImpl() :
                     m_addressList(""), m_autoAddressList(true), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
-                    m_broadcastPort(CA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV),
+                    m_broadcastPort(PVA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV),
                     m_namedLocker(), m_lastCID(0), m_lastIOID(0),
                     m_version("pvAccess Client", "cpp", 1, 2, 0, true),
                     m_contextState(CONTEXT_NOT_INITIALIZED),
@@ -4200,8 +4200,8 @@ TODO
                 auto_ptr<BlockingUDPConnector> broadcastConnector(new BlockingUDPConnector(true, true));
                 m_broadcastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
                         nullTransportClient, clientResponseHandler,
-                        listenLocalAddress, CA_PROTOCOL_REVISION,
-                        CA_DEFAULT_PRIORITY));
+                        listenLocalAddress, PVA_PROTOCOL_REVISION,
+                        PVA_DEFAULT_PRIORITY));
                 if (!m_broadcastTransport.get())
                     return false;
                 m_broadcastTransport->setBroadcastAddresses(broadcastAddresses.get());
@@ -4216,8 +4216,8 @@ TODO
                 auto_ptr<BlockingUDPConnector> searchConnector(new BlockingUDPConnector(false, true));
                 m_searchTransport = static_pointer_cast<BlockingUDPTransport>(searchConnector->connect(
                         nullTransportClient, clientResponseHandler,
-                        undefinedAddress, CA_PROTOCOL_REVISION,
-                        CA_DEFAULT_PRIORITY));
+                        undefinedAddress, PVA_PROTOCOL_REVISION,
+                        PVA_DEFAULT_PRIORITY));
                 if (!m_searchTransport.get())
                     return false;
                 m_searchTransport->setBroadcastAddresses(broadcastAddresses.get());
@@ -4235,7 +4235,7 @@ TODO
                 // cleanup
                 //
 
-                // this will also close all CA transports
+                // this will also close all PVA transports
                 destroyAllChannels();
                 
                 // stop UDPs
@@ -4507,7 +4507,7 @@ TODO
              * Destroy channel.
              * @param channel
              * @param force
-             * @throws CAException
+             * @throws PVAException
              * @throws std::runtime_error
              */
             void destroyChannel(ChannelImpl::shared_pointer const & channel, bool force) {
@@ -4628,13 +4628,13 @@ TODO
             BlockingUDPTransport::shared_pointer m_searchTransport;
 
             /**
-             * CA connector (creates CA virtual circuit).
+             * PVA connector (creates PVA virtual circuit).
              */
             auto_ptr<BlockingTCPConnector> m_connector;
 
             /**
-             * CA transport (virtual circuit) registry.
-             * This registry contains all active transports - connections to CA servers.
+             * PVA transport (virtual circuit) registry.
+             * This registry contains all active transports - connections to PVA servers.
              */
             TransportRegistry::shared_pointer m_transportRegistry;
 

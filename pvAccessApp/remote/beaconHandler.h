@@ -28,7 +28,7 @@ namespace pvAccess {
 		/**
 		 * Constructor.
 		 * @param transport	transport to be used to send beacons.
-		 * @param context CA context.
+		 * @param context PVA context.
 		 */
 		BeaconHandler(Context::shared_pointer const & context, const osiSockAddr* responseFrom);
 		/**

@@ -8,7 +8,7 @@
 #define BLOCKINGUDP_H_
 
 #include <pv/remote.h>
-#include <pv/caConstants.h>
+#include <pv/pvaConstants.h>
 #include <pv/inetAddressUtil.h>
 
 #include <pv/noDefaultMethods.h>
@@ -70,11 +70,11 @@ namespace epics {
             virtual std::size_t getSocketReceiveBufferSize() const;
 
             virtual epics::pvData::int16 getPriority() const {
-                return CA_DEFAULT_PRIORITY;
+                return PVA_DEFAULT_PRIORITY;
             }
 
             virtual epics::pvData::int8 getRevision() const {
-                return CA_PROTOCOL_REVISION;
+                return PVA_PROTOCOL_REVISION;
             }
 
             virtual void setRemoteRevision(epics::pvData::int8 /*revision*/) {
@@ -83,12 +83,12 @@ namespace epics {
 
             virtual void setRemoteTransportReceiveBufferSize(
             		std::size_t /*receiveBufferSize*/) {
-                // noop for UDP (limited by 64k; MAX_UDP_SEND for CA)
+                // noop for UDP (limited by 64k; MAX_UDP_SEND for PVA)
             }
 
             virtual void setRemoteTransportSocketReceiveBufferSize(
             		std::size_t /*socketReceiveBufferSize*/) {
-                // noop for UDP (limited by 64k; MAX_UDP_SEND for CA)
+                // noop for UDP (limited by 64k; MAX_UDP_SEND for PVA)
             }
 
             virtual void aliveNotification() {

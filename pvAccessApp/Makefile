@@ -4,11 +4,11 @@ include $(TOP)/configure/CONFIG
 PVACCESS = $(TOP)/pvAccessApp/
 
 
-SRC_DIRS += $(PVACCESS)/ca
-INC += caConstants.h
-INC += pvVersion.h
+SRC_DIRS += $(PVACCESS)/pva
+INC += pvaConstants.h
+INC += pvaVersion.h
 INC += clientFactory.h
-LIBSRCS += pvVersion.cpp
+LIBSRCS += pvaVersion.cpp
 LIBSRCS += clientFactory.cpp
 
 

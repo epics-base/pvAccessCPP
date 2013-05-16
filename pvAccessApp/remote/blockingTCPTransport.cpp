@@ -7,7 +7,7 @@
 #define __STDC_LIMIT_MACROS 1
 #include <pv/blockingTCP.h>
 #include <pv/inetAddressUtil.h>
-#include <pv/caConstants.h>
+#include <pv/pvaConstants.h>
 #include <pv/logger.h>
 #include <pv/hexDump.h>
 #include <pv/likely.h>
@@ -137,7 +137,7 @@ namespace pvAccess {
             
             unsigned int bufferSize = max((int)(MAX_TCP_RECV+MAX_ENSURE_DATA_BUFFER_SIZE), receiveBufferSize);
             // size must be "aligned"
-            bufferSize = (bufferSize + (CA_ALIGNMENT - 1)) & (~(CA_ALIGNMENT - 1));
+            bufferSize = (bufferSize + (PVA_ALIGNMENT - 1)) & (~(PVA_ALIGNMENT - 1));
             
             _socketBuffer = new ByteBuffer(bufferSize);
             _socketBuffer->setPosition(_socketBuffer->getLimit());
@@ -145,7 +145,7 @@ namespace pvAccess {
 
             // allocate buffer
             _sendBuffer = new ByteBuffer(bufferSize);
-            _maxPayloadSize = _sendBuffer->getSize() - 2*CA_MESSAGE_HEADER_SIZE; // one for header, one for flow control
+            _maxPayloadSize = _sendBuffer->getSize() - 2*PVA_MESSAGE_HEADER_SIZE; // one for header, one for flow control
 
             // get TCP send buffer size
             osiSocklen_t intLen = sizeof(int);
@@ -242,7 +242,7 @@ namespace pvAccess {
             // NOTE: take care that nextMarkerPosition is set right
             // fix position to be correct when buffer is cleared
             // do not include pre-buffered flow control message; not 100% correct, but OK
-            _nextMarkerPosition -= _sendBuffer->getPosition() - CA_MESSAGE_HEADER_SIZE;
+            _nextMarkerPosition -= _sendBuffer->getPosition() - PVA_MESSAGE_HEADER_SIZE;
 #endif
 
             _sendQueueMutex.lock();
@@ -255,8 +255,8 @@ namespace pvAccess {
 
 #if FLOW_CONTROL
             // prepare ACK marker
-            _sendBuffer->putByte(CA_MAGIC);
-            _sendBuffer->putByte(CA_VERSION);
+            _sendBuffer->putByte(PVA_MAGIC);
+            _sendBuffer->putByte(PVA_VERSION);
             _sendBuffer->putByte(0x01 | _byteOrderFlag); // control data
             _sendBuffer->putByte(1); // marker ACK
             _sendBuffer->putInt(0);
@@ -347,10 +347,10 @@ namespace pvAccess {
 
         void BlockingTCPTransport::startMessage(int8 command, size_t ensureCapacity) {
             _lastMessageStartPosition = -1;
-            ensureBuffer(CA_MESSAGE_HEADER_SIZE+ensureCapacity);
+            ensureBuffer(PVA_MESSAGE_HEADER_SIZE+ensureCapacity);
             _lastMessageStartPosition = _sendBuffer->getPosition();
-            _sendBuffer->putByte(CA_MAGIC);
-            _sendBuffer->putByte(CA_VERSION);
+            _sendBuffer->putByte(PVA_MAGIC);
+            _sendBuffer->putByte(PVA_VERSION);
             _sendBuffer->putByte(_lastSegmentedMessageType | _byteOrderFlag); // data + endianess
             _sendBuffer->putByte(command);                   // command
             _sendBuffer->putInt(0);                          // temporary zero payload
@@ -391,10 +391,10 @@ namespace pvAccess {
             if(likely(_lastMessageStartPosition>=0)) {
                 
     			// align
-    //			alignBuffer(CA_ALIGNMENT);
+    //			alignBuffer(PVA_ALIGNMENT);
     			
     			// set paylaod size
-                const size_t payloadSize = _sendBuffer->getPosition()-_lastMessageStartPosition-CA_MESSAGE_HEADER_SIZE;
+                const size_t payloadSize = _sendBuffer->getPosition()-_lastMessageStartPosition-PVA_MESSAGE_HEADER_SIZE;
 
                 // TODO by spec?
                 // ignore empty segmented messages
@@ -441,12 +441,12 @@ namespace pvAccess {
                 int bytesLeft = _sendBuffer->getRemaining();
 
                 if(unlikely(position>=_nextMarkerPosition &&
-                   bytesLeft>=CA_MESSAGE_HEADER_SIZE)) {
-                    _sendBuffer->putByte(CA_MAGIC);
-                    _sendBuffer->putByte(CA_VERSION);
+                   bytesLeft>=PVA_MESSAGE_HEADER_SIZE)) {
+                    _sendBuffer->putByte(PVA_MAGIC);
+                    _sendBuffer->putByte(PVA_VERSION);
                     _sendBuffer->putByte(0x01 | _byteOrderFlag); // control data
                     _sendBuffer->putByte(0); // marker
-                    s_sendBuffer->putInt((int)(_totalBytesSent+position+CA_MESSAGE_HEADER_SIZE));
+                    s_sendBuffer->putInt((int)(_totalBytesSent+position+PVA_MESSAGE_HEADER_SIZE));
                     _nextMarkerPosition = position+_markerPeriodBytes;
                 }
 #endif
@@ -737,7 +737,7 @@ namespace pvAccess {
 #endif
     					// preserve alignment
                         int currentStartPosition = _startPosition =
-                            MAX_ENSURE_DATA_BUFFER_SIZE; // "TODO uncomment align" + (unsigned int)currentPosition % CA_ALIGNMENT;
+                            MAX_ENSURE_DATA_BUFFER_SIZE; // "TODO uncomment align" + (unsigned int)currentPosition % PVA_ALIGNMENT;
 
                         // copy remaining bytes, if any
                         int remainingBytes = _socketBuffer->getRemaining();
@@ -814,15 +814,15 @@ namespace pvAccess {
                         // reveal what's already in buffer
                         _socketBuffer->setLimit(_storedLimit);
 
-                        // ensure CAConstants.CA_MESSAGE_HEADER_SIZE bytes of data
-                        if(unlikely(((int)_socketBuffer->getRemaining())<CA_MESSAGE_HEADER_SIZE))
-                            processReadCached(true, PROCESS_HEADER, CA_MESSAGE_HEADER_SIZE);
+                        // ensure PVAConstants.PVA_MESSAGE_HEADER_SIZE bytes of data
+                        if(unlikely(((int)_socketBuffer->getRemaining())<PVA_MESSAGE_HEADER_SIZE))
+                            processReadCached(true, PROCESS_HEADER, PVA_MESSAGE_HEADER_SIZE);
 
-                        // first byte is CA_MAGIC
+                        // first byte is PVA_MAGIC
                         // second byte version - major/minor nibble
                         int8 magic = _socketBuffer->getByte();
                         _version = _socketBuffer->getByte();
-                        if(unlikely(magic != CA_MAGIC))
+                        if(unlikely(magic != PVA_MAGIC))
                         {
                             // error... disconnect
                             LOG(
@@ -867,7 +867,7 @@ namespace pvAccess {
                             {
 #if FLOW_CONTROL
                                 _flowControlMutex.lock();
-                                int difference = (int)_totalBytesSent-_payloadSize+CA_MESSAGE_HEADER_SIZE;
+                                int difference = (int)_totalBytesSent-_payloadSize+PVA_MESSAGE_HEADER_SIZE;
                                 // overrun check
                                 if(difference<0) difference += INT_MAX;
                                 _remoteBufferFreeSpace
@@ -980,7 +980,7 @@ namespace pvAccess {
                 _markerToSend = 0;
                 _flowControlMutex.unlock();
                 if(markerValue==0)
-                    _sendBufferSentPosition = CA_MESSAGE_HEADER_SIZE;
+                    _sendBufferSentPosition = PVA_MESSAGE_HEADER_SIZE;
                 else
                     _sendBuffer->putInt(4, markerValue);
 #endif
@@ -1142,9 +1142,9 @@ namespace pvAccess {
                     if(_flushStrategy==DELAYED) {
                         if(_delay>0) epicsThreadSleep(_delay);
                         if(unlikely(_sendQueue.empty())) {
-                            // if (hasMonitors || sendBuffer.position() > CAConstants.CA_MESSAGE_HEADER_SIZE)
+                            // if (hasMonitors || sendBuffer.position() > PVAConstants.PVA_MESSAGE_HEADER_SIZE)
 #if FLOW_CONTROL
-                            if(((int)_sendBuffer->getPosition())>CA_MESSAGE_HEADER_SIZE)
+                            if(((int)_sendBuffer->getPosition())>PVA_MESSAGE_HEADER_SIZE)
 #else
                             if(((int)_sendBuffer->getPosition())>0)
 #endif
@@ -1222,7 +1222,7 @@ namespace pvAccess {
             Transport::shared_pointer ptr = obj->shared_from_this();    // hold reference
 
 try{
-            obj->processReadCached(false, UNDEFINED_STAGE, CA_MESSAGE_HEADER_SIZE);
+            obj->processReadCached(false, UNDEFINED_STAGE, PVA_MESSAGE_HEADER_SIZE);
 } catch (...) {
 printf("rcvThreadRunnner exception\n");
 }

@@ -8,7 +8,7 @@
 #ifndef SERIALIZATIONHELPER_H_
 #define SERIALIZATIONHELPER_H_
 
-#include <pv/caConstants.h>
+#include <pv/pvaConstants.h>
 
 #include <pv/serialize.h>
 #include <pv/pvData.h>

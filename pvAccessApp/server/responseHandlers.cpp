@@ -87,7 +87,7 @@ void ServerResponseHandler::handleResponse(osiSockAddr* responseFrom,
 				
 		// TODO remove debug output
 		std::ostringstream name;
-		name<<"Invalid CA header "<<hex<<(int)(0xFF&command);
+		name<<"Invalid PVA header "<<hex<<(int)(0xFF&command);
 		name<<", its payload buffer";
 
 		hexDump(name.str(), (const int8*)payloadBuffer->getArray(),

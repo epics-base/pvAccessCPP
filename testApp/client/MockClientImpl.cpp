@@ -637,7 +637,7 @@ class MockClientContext : public ClientContext
 {
     public:
     
-    MockClientContext() : m_version(new Version("Mock CA Client", "cpp", 1, 0, 0, 0))
+    MockClientContext() : m_version(new Version("Mock PVA Client", "cpp", 1, 0, 0, 0))
     {
         initialize();
     }

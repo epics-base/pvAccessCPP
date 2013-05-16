@@ -5,7 +5,7 @@
  */
 
 #include <pv/blockingUDP.h>
-#include <pv/caConstants.h>
+#include <pv/pvaConstants.h>
 #include <pv/inetAddressUtil.h>
 #include <pv/logger.h>
 #include <pv/likely.h>
@@ -153,8 +153,8 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
 
         void BlockingUDPTransport::startMessage(int8 command, size_t /*ensureCapacity*/) {
             _lastMessageStartPosition = _sendBuffer->getPosition();
-            _sendBuffer->putByte(CA_MAGIC);
-            _sendBuffer->putByte(CA_VERSION);
+            _sendBuffer->putByte(PVA_MAGIC);
+            _sendBuffer->putByte(PVA_VERSION);
             _sendBuffer->putByte((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00); // data + 7-bit endianess
             _sendBuffer->putByte(command); // command
             _sendBuffer->putInt(0); // temporary zero payload
@@ -162,10 +162,10 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
 
         void BlockingUDPTransport::endMessage() {
     		//we always (for now) send by packet, so no need for this here...
-    		//alignBuffer(CA_ALIGNMENT);
+    		//alignBuffer(PVA_ALIGNMENT);
             _sendBuffer->putInt(
                     _lastMessageStartPosition+(sizeof(int16)+2),
-                    _sendBuffer->getPosition()-_lastMessageStartPosition-CA_MESSAGE_HEADER_SIZE);
+                    _sendBuffer->getPosition()-_lastMessageStartPosition-PVA_MESSAGE_HEADER_SIZE);
         }
 
         void BlockingUDPTransport::processRead() {
@@ -259,14 +259,14 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
         bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & thisTransport, osiSockAddr& fromAddress, ByteBuffer* receiveBuffer) {
 
             // handle response(s)
-            while(likely((int)receiveBuffer->getRemaining()>=CA_MESSAGE_HEADER_SIZE)) {
+            while(likely((int)receiveBuffer->getRemaining()>=PVA_MESSAGE_HEADER_SIZE)) {
                 //
                 // read header
                 //
 
-                // first byte is CA_MAGIC
+                // first byte is PVA_MAGIC
                 int8 magic = receiveBuffer->getByte();
-                if(unlikely(magic != CA_MAGIC))
+                if(unlikely(magic != PVA_MAGIC))
                     return false;
 
                 // second byte version

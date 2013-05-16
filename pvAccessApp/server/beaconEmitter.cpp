@@ -21,17 +21,17 @@ using namespace epics::pvData;
 
 namespace epics { namespace pvAccess {
 
-const float BeaconEmitter::EPICS_CA_MIN_BEACON_PERIOD = 1.0;
-const float BeaconEmitter::EPICS_CA_MIN_BEACON_COUNT_LIMIT = 3.0;
+const float BeaconEmitter::EPICS_PVA_MIN_BEACON_PERIOD = 1.0;
+const float BeaconEmitter::EPICS_PVA_MIN_BEACON_COUNT_LIMIT = 3.0;
 
 //BeaconEmitter::BeaconEmitter(Transport::shared_pointer const & transport, ServerContextImpl::shared_pointer const & context) :
 BeaconEmitter::BeaconEmitter(Transport::shared_pointer const & transport, std::tr1::shared_ptr<ServerContextImpl>& context) :
     _transport(transport),
     _beaconSequenceID(0),
     _startupTime(),
-    _fastBeaconPeriod(std::max(context->getBeaconPeriod(), EPICS_CA_MIN_BEACON_PERIOD)),
+    _fastBeaconPeriod(std::max(context->getBeaconPeriod(), EPICS_PVA_MIN_BEACON_PERIOD)),
     _slowBeaconPeriod(std::max(180.0, _fastBeaconPeriod)), // TODO configurable
-    _beaconCountLimit((int16)std::max(10.0f, EPICS_CA_MIN_BEACON_COUNT_LIMIT)), // TODO configurable
+    _beaconCountLimit((int16)std::max(10.0f, EPICS_PVA_MIN_BEACON_COUNT_LIMIT)), // TODO configurable
     _serverAddress(*(context->getServerInetAddress())),
     _serverPort(context->getServerPort()),
     _serverStatusProvider(context->getBeaconServerStatusProvider()),
@@ -44,7 +44,7 @@ BeaconEmitter::BeaconEmitter(Transport::shared_pointer const & transport, const 
     _transport(transport),
     _beaconSequenceID(0),
     _startupTime(),
-    _fastBeaconPeriod(EPICS_CA_MIN_BEACON_PERIOD),
+    _fastBeaconPeriod(EPICS_PVA_MIN_BEACON_PERIOD),
     _slowBeaconPeriod(180.0),
     _beaconCountLimit(10),
     _serverAddress(serverAddress),

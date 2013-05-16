@@ -38,7 +38,7 @@ namespace epics { namespace pvAccess {
 		/**
 		 * Constructor.
 		 * @param transport	transport to be used to send beacons.
-		 * @param context CA context.
+		 * @param context PVA context.
 		 */
 //		BeaconEmitter(Transport::shared_pointer const & transport, ServerContextImpl::shared_pointer const & context);
 		BeaconEmitter(Transport::shared_pointer const & transport, std::tr1::shared_ptr<ServerContextImpl>& context);
@@ -78,14 +78,14 @@ namespace epics { namespace pvAccess {
     private:
 
 		/**
-		 * Minimal (initial) CA beacon period (in seconds).
+		 * Minimal (initial) PVA beacon period (in seconds).
 		 */
-		static const float EPICS_CA_MIN_BEACON_PERIOD;
+		static const float EPICS_PVA_MIN_BEACON_PERIOD;
 
 		/**
-		 * Minimal CA beacon count limit.
+		 * Minimal PVA beacon count limit.
 		 */
-		static const float EPICS_CA_MIN_BEACON_COUNT_LIMIT;
+		static const float EPICS_PVA_MIN_BEACON_COUNT_LIMIT;
 
 		/**
 		 * Transport.

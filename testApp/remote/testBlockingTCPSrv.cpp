@@ -57,7 +57,7 @@ void testServerConnections() {
     Context::shared_pointer ctx(new ContextImpl());
     ResponseHandlerFactory::shared_pointer rhf(new DummyResponseHandlerFactory());
 
-    BlockingTCPAcceptor* srv = new BlockingTCPAcceptor(ctx, rhf, CA_SERVER_PORT, 1024);
+    BlockingTCPAcceptor* srv = new BlockingTCPAcceptor(ctx, rhf, PVA_SERVER_PORT, 1024);
 
     cout<<"Press any key to stop the server...";
     cin.peek();

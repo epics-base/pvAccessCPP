@@ -758,7 +758,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
  * Function:	main
  *
  * Description:	pvput main()
- * 		Evaluate command line options, set up CA, connect the
+ * 		Evaluate command line options, set up PVA, connect the
  * 		channels, print the data as requested
  *
  * Arg(s) In:	[options] <pv-name> <values>...
@@ -781,7 +781,7 @@ int main (int argc, char *argv[])
         case 'h':               /* Print usage */
             usage();
             return 0;
-        case 'w':               /* Set CA timeout value */
+        case 'w':               /* Set PVA timeout value */
             if(epicsScanDouble(optarg, &timeOut) != 1)
             {
                 fprintf(stderr, "'%s' is not a valid timeout value "
@@ -789,7 +789,7 @@ int main (int argc, char *argv[])
                 timeOut = DEFAULT_TIMEOUT;
             }
             break;
-        case 'r':               /* Set CA timeout value */
+        case 'r':               /* Set PVA timeout value */
             request = optarg;
             // do not override terse mode
             if (mode == ValueOnlyMode) mode = StructureMode;

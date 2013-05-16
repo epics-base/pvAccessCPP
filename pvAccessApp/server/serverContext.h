@@ -9,8 +9,8 @@
 
 #include <pv/remote.h>
 #include <pv/beaconServerStatusProvider.h>
-#include <pv/caConstants.h>
-#include <pv/pvVersion.h>
+#include <pv/pvaConstants.h>
+#include <pv/pvaVersion.h>
 #include <pv/pvAccess.h>
 #include <pv/blockingUDP.h>
 #include <pv/blockingTCP.h>
@@ -21,7 +21,7 @@ namespace epics {
 namespace pvAccess {
 
 /**
- * The class representing a CA Server context.
+ * The class representing a PVA Server context.
  */
 class ServerContext
 {
@@ -313,7 +313,7 @@ private:
 	epics::pvData::int32 _serverPort;
 
 	/**
-	 * Length in bytes of the maximum buffer (payload) size that may pass through CA.
+	 * Length in bytes of the maximum buffer (payload) size that may pass through PVA.
 	 */
 	epics::pvData::int32 _receiveBufferSize;
 
@@ -333,13 +333,13 @@ private:
 	BeaconEmitter::shared_pointer _beaconEmitter;
 
 	/**
-	 * CAS acceptor (accepts CA virtual circuit).
+	 * PVAS acceptor (accepts PVA virtual circuit).
 	 */
 	BlockingTCPAcceptor::shared_pointer _acceptor;
 
 	/**
-	 * CA transport (virtual circuit) registry.
-	 * This registry contains all active transports - connections to CA servers.
+	 * PVA transport (virtual circuit) registry.
+	 * This registry contains all active transports - connections to PVA servers.
 	 */
 	TransportRegistry::shared_pointer _transportRegistry;
 

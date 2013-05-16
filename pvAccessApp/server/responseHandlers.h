@@ -47,7 +47,7 @@ namespace pvAccess {
         };
 
         /**
-         * CAS request handler - main handler which dispatches requests to appropriate handlers.
+         * PVAS request handler - main handler which dispatches requests to appropriate handlers.
          */
         class ServerResponseHandler : public ResponseHandler {
         public:

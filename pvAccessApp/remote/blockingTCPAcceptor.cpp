@@ -162,7 +162,7 @@ namespace pvAccess {
                 if(newClient!=INVALID_SOCKET) {
                     // accept succeeded
                     ipAddrToDottedIP(&address.ia, ipAddrStr, sizeof(ipAddrStr));
-                    LOG(logLevelDebug, "Accepted connection from CA client: %s", ipAddrStr);
+                    LOG(logLevelDebug, "Accepted connection from PVA client: %s", ipAddrStr);
 
                     // enable TCP_NODELAY (disable Nagle's algorithm)
                     int optval = 1; // true
@@ -198,12 +198,12 @@ namespace pvAccess {
                         transport->close();
                         LOG(
                                 logLevelDebug,
-                                "Connection to CA client %s failed to be validated, closing it.",
+                                "Connection to PVA client %s failed to be validated, closing it.",
                                 ipAddrStr);
                         return;
                     }
 
-                    LOG(logLevelDebug, "Serving to CA client: %s", ipAddrStr);
+                    LOG(logLevelDebug, "Serving to PVA client: %s", ipAddrStr);
 
                 }// accept succeeded
                 else

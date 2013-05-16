@@ -7,7 +7,7 @@
 #ifndef REMOTE_H_
 #define REMOTE_H_
 
-#include <pv/caConstants.h>
+#include <pv/pvaConstants.h>
 #include <pv/configuration.h>
 
 #include <pv/serialize.h>

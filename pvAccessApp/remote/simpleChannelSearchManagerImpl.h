@@ -81,7 +81,7 @@ class SimpleChannelSearchManagerImpl :
 	 * Search response from server (channel found).
 	 * @param cid	client channel ID.
 	 * @param seqNo	search sequence number.
-	 * @param minorRevision	server minor CA revision.
+	 * @param minorRevision	server minor PVA revision.
 	 * @param serverAddress	server address.
 	 */
 	void searchResponse(pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress);

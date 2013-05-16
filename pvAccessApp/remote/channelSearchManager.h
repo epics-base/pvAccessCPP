@@ -30,7 +30,7 @@ class SearchInstance {
 
 	/**
 	 * Search response from server (channel found).
-	 * @param minorRevision	server minor CA revision.
+	 * @param minorRevision	server minor PVA revision.
 	 * @param serverAddress	server address.
 	 */
 	// TODO make serverAddress an URI or similar
@@ -69,7 +69,7 @@ class ChannelSearchManager {
 	 * Search response from server (channel found).
 	 * @param cid	client channel ID.
 	 * @param seqNo	search sequence number.
-	 * @param minorRevision	server minor CA revision.
+	 * @param minorRevision	server minor PVA revision.
 	 * @param serverAddress	server address.
 	 */
 	virtual void searchResponse(pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress) = 0;

@@ -5,7 +5,7 @@
  */
 
 #include <pv/simpleChannelSearchManagerImpl.h>
-#include <pv/caConstants.h>
+#include <pv/pvaConstants.h>
 #include <pv/blockingUDP.h>
 #include <pv/serializeHelper.h>
 
@@ -20,7 +20,7 @@ using namespace epics::pvData;
 namespace epics {
 namespace pvAccess {
 
-const int SimpleChannelSearchManagerImpl::DATA_COUNT_POSITION = CA_MESSAGE_HEADER_SIZE + sizeof(int32)/sizeof(int8) + 1;
+const int SimpleChannelSearchManagerImpl::DATA_COUNT_POSITION = PVA_MESSAGE_HEADER_SIZE + sizeof(int32)/sizeof(int8) + 1;
 const int SimpleChannelSearchManagerImpl::PAYLOAD_POSITION = sizeof(int16)/sizeof(int8) + 2;
 
 // 225ms +/- 25ms random
@@ -166,8 +166,8 @@ void SimpleChannelSearchManagerImpl::initializeSendBuffer()
 
 	// new buffer
 	m_sendBuffer.clear();
-    m_sendBuffer.putByte(CA_MAGIC);
-    m_sendBuffer.putByte(CA_VERSION);
+    m_sendBuffer.putByte(PVA_MAGIC);
+    m_sendBuffer.putByte(PVA_VERSION);
     m_sendBuffer.putByte((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00); // data + 7-bit endianess
 	m_sendBuffer.putByte((int8_t)3);	// search
 	m_sendBuffer.putInt(sizeof(int32_t)/sizeof(int8_t) + 1);		// "zero" payload
@@ -214,7 +214,7 @@ bool SimpleChannelSearchManagerImpl::generateSearchRequestMessage(SearchInstance
     requestMessage->putInt(channel->getSearchInstanceID());
     SerializeHelper::serializeString(name, requestMessage, control);
 
-    requestMessage->putInt(PAYLOAD_POSITION, requestMessage->getPosition() - CA_MESSAGE_HEADER_SIZE);
+    requestMessage->putInt(PAYLOAD_POSITION, requestMessage->getPosition() - PVA_MESSAGE_HEADER_SIZE);
     requestMessage->putShort(DATA_COUNT_POSITION, dataCount);
     return true;
 } 

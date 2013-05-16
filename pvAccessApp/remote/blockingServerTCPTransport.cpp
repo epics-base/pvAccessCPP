@@ -23,7 +23,7 @@ namespace pvAccess {
         BlockingServerTCPTransport::BlockingServerTCPTransport(
                 Context::shared_pointer const & context, SOCKET channel,
                 auto_ptr<ResponseHandler>& responseHandler, int receiveBufferSize) :
-            BlockingTCPTransport(context, channel, responseHandler, receiveBufferSize, CA_DEFAULT_PRIORITY),
+            BlockingTCPTransport(context, channel, responseHandler, receiveBufferSize, PVA_DEFAULT_PRIORITY),
             _lastChannelSID(0)
         {
             // for performance testing
@@ -109,9 +109,9 @@ namespace pvAccess {
     		// set byte order control message 
     		//
     		
-    		control->ensureBuffer(CA_MESSAGE_HEADER_SIZE);
-    		buffer->putByte(CA_MAGIC);
-    		buffer->putByte(CA_VERSION);
+    		control->ensureBuffer(PVA_MESSAGE_HEADER_SIZE);
+    		buffer->putByte(PVA_MAGIC);
+    		buffer->putByte(PVA_VERSION);
     		buffer->putByte(0x01 | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00));		// control + big endian
     		buffer->putByte(2);		// set byte order
     		buffer->putInt(0);		

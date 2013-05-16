@@ -42,7 +42,7 @@ namespace epics {
             for(int tryCount = 0; tryCount<tries; tryCount++) {
 
                 LOG(logLevelDebug,
-                        "Opening socket to CA server %s, attempt %d.",
+                        "Opening socket to PVA server %s, attempt %d.",
                         strBuffer, tryCount+1);
 
                 SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -82,7 +82,7 @@ namespace epics {
             BlockingClientTCPTransport::shared_pointer transport = std::tr1::static_pointer_cast<BlockingClientTCPTransport>(tt);
             if(transport.get()) {
                 LOG(logLevelDebug,
-                    "Reusing existing connection to CA server: %s",
+                    "Reusing existing connection to PVA server: %s",
                     ipAddrStr);
                 if (transport->acquire(client))
                     return transport;
@@ -96,26 +96,26 @@ namespace epics {
                     transport = std::tr1::static_pointer_cast<BlockingClientTCPTransport>(tt);
                     if(transport.get()) {
                         LOG(logLevelDebug,
-                            "Reusing existing connection to CA server: %s",
+                            "Reusing existing connection to PVA server: %s",
                             ipAddrStr);
                         if (transport->acquire(client))
                             return transport;
                     }
 
-                    LOG(logLevelDebug, "Connecting to CA server: %s", ipAddrStr);
+                    LOG(logLevelDebug, "Connecting to PVA server: %s", ipAddrStr);
 
                     socket = tryConnect(address, 3);
                     
                     // verify
                     if(socket==INVALID_SOCKET) {
                         LOG(logLevelDebug,
-                                "Connection to CA server %s failed.", ipAddrStr);
+                                "Connection to PVA server %s failed.", ipAddrStr);
                         std::ostringstream temp;
                         temp<<"Failed to verify TCP connection to '"<<ipAddrStr<<"'.";
                         THROW_BASE_EXCEPTION(temp.str().c_str());
                     }
 
-                    LOG(logLevelDebug, "Socket connected to CA server: %s.", ipAddrStr);
+                    LOG(logLevelDebug, "Socket connected to PVA server: %s.", ipAddrStr);
 
                     // enable TCP_NODELAY (disable Nagle's algorithm)
                     int optval = 1; // true
@@ -149,7 +149,7 @@ namespace epics {
                     if(!transport->verify(3000)) {
                         LOG(
                                 logLevelDebug,
-                                "Connection to CA server %s failed to be validated, closing it.",
+                                "Connection to PVA server %s failed to be validated, closing it.",
                                 ipAddrStr);
 
                         std::ostringstream temp;
@@ -159,7 +159,7 @@ namespace epics {
 
                     // TODO send security token
 
-                    LOG(logLevelDebug, "Connected to CA server: %s", ipAddrStr);
+                    LOG(logLevelDebug, "Connected to PVA server: %s", ipAddrStr);
 
                     _namedLocker.releaseSynchronizationObject(&address);
                     return transport;

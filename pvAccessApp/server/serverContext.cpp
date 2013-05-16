@@ -26,8 +26,8 @@ ServerContextImpl::ServerContextImpl():
 				_ignoreAddressList(),
 				_autoBeaconAddressList(true),
 				_beaconPeriod(15.0),
-				_broadcastPort(CA_BROADCAST_PORT),
-				_serverPort(CA_SERVER_PORT),
+				_broadcastPort(PVA_BROADCAST_PORT),
+				_serverPort(PVA_SERVER_PORT),
 				_receiveBufferSize(MAX_TCP_RECV),
 				_timer(),
 				_broadcastTransport(),
@@ -209,8 +209,8 @@ void ServerContextImpl::initializeBroadcastTransport()
 	    auto_ptr<epics::pvAccess::ResponseHandler> responseHandler = createResponseHandler();
         _broadcastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
                 nullTransportClient, responseHandler,
-                listenLocalAddress, CA_PROTOCOL_REVISION,
-                CA_DEFAULT_PRIORITY));
+                listenLocalAddress, PVA_PROTOCOL_REVISION,
+                PVA_DEFAULT_PRIORITY));
 		_broadcastTransport->setBroadcastAddresses(broadcastAddresses.get());
 
 		// set ignore address list

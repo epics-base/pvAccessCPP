@@ -9,7 +9,7 @@
 #include <pv/blockingTCP.h>
 #include <pv/logger.h>
 #include <pv/inetAddressUtil.h>
-#include <pv/caConstants.h>
+#include <pv/pvaConstants.h>
 
 #include <pv/timer.h>
 #include <pv/epicsException.h>
@@ -144,14 +144,14 @@ void testBlockingTCPSender() {
     osiSockAddr srvAddr;
 
     //srvAddr.ia.sin_family = AF_INET;
-    if(aToIPAddr("localhost", CA_SERVER_PORT, &srvAddr.ia)<0) {
+    if(aToIPAddr("localhost", PVA_SERVER_PORT, &srvAddr.ia)<0) {
         cout<<"error in aToIPAddr(...)"<<endl;
         return;
     }
 
     try {
     	Transport::shared_pointer transport(connector.connect(dtc, drh, srvAddr,
-                CA_VERSION, CA_DEFAULT_PRIORITY));
+                PVA_VERSION, PVA_DEFAULT_PRIORITY));
 
         cout<<"Sending 10 messages..."<<endl;
 

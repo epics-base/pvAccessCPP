@@ -46,7 +46,7 @@ void usage (void)
  * Function:	main
  *
  * Description:	pvinfo main()
- * 		Evaluate command line options, set up CA, connect the
+ * 		Evaluate command line options, set up PVA, connect the
  * 		channels, print the data as requested
  *
  * Arg(s) In:	[options] <pv-name>...
@@ -70,7 +70,7 @@ int main (int argc, char *argv[])
         case 'h':               /* Print usage */
             usage();
             return 0;
-        case 'w':               /* Set CA timeout value */
+        case 'w':               /* Set PVA timeout value */
             if(epicsScanDouble(optarg, &timeOut) != 1 || timeOut <= 0.0)
             {
                 fprintf(stderr, "'%s' is not a valid timeout value "

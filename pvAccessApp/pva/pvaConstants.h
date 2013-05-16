@@ -4,34 +4,34 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#ifndef CONSTANTS_H_
-#define CONSTANTS_H_
+#ifndef PVACONSTANTS_H_
+#define PVACONSTANTS_H_
 
 #include <pv/pvType.h>
 
 namespace epics {
 namespace pvAccess {
 
-    /** CA protocol magic number */
-    const epics::pvData::int8 CA_MAGIC = 0xCA;
+    /** PVA protocol magic number */
+    const epics::pvData::int8 PVA_MAGIC = 0xCA;
     
-    /** CA protocol revision (implemented by this library). */
-    const epics::pvData::int8 CA_PROTOCOL_REVISION = 0;
+    /** PVA protocol revision (implemented by this library). */
+    const epics::pvData::int8 PVA_PROTOCOL_REVISION = 0;
     
-    /** CA version signature used to report this implementation version in header. */
-    const epics::pvData::int8 CA_VERSION = CA_PROTOCOL_REVISION;
+    /** PVA version signature used to report this implementation version in header. */
+    const epics::pvData::int8 PVA_VERSION = PVA_PROTOCOL_REVISION;
 
-    /** Default CA server port. */
-    const epics::pvData::int32 CA_SERVER_PORT = 5075;
+    /** Default PVA server port. */
+    const epics::pvData::int32 PVA_SERVER_PORT = 5075;
     
-    /** Default CA beacon port. */
-    const epics::pvData::int32 CA_BROADCAST_PORT = 5076;
+    /** Default PVA beacon port. */
+    const epics::pvData::int32 PVA_BROADCAST_PORT = 5076;
     
-    /** CA protocol message header size. */
-    const epics::pvData::int16 CA_MESSAGE_HEADER_SIZE = 8;
+    /** PVA protocol message header size. */
+    const epics::pvData::int16 PVA_MESSAGE_HEADER_SIZE = 8;
     
     /** All messages must be aligned to 8-bytes (64-bit). */
-    const epics::pvData::int32 CA_ALIGNMENT = 1;	// TODO
+    const epics::pvData::int32 PVA_ALIGNMENT = 1;	// TODO
 
     /**
      * UDP maximum send message size.
@@ -54,7 +54,7 @@ namespace pvAccess {
     const epics::pvData::int32 MAX_SEARCH_BATCH_COUNT = 0x7FFF;  // 32767
     
     /** Default priority (corresponds to POSIX SCHED_OTHER) */
-    const epics::pvData::int16 CA_DEFAULT_PRIORITY = 0;
+    const epics::pvData::int16 PVA_DEFAULT_PRIORITY = 0;
     
     /** Unreasonable channel name length. */
     const epics::pvData::uint32 MAX_CHANNEL_NAME_LENGTH = 500;
@@ -65,12 +65,12 @@ namespace pvAccess {
     /** Invalid IOID. */
     const epics::pvData::int32 INVALID_IOID = 0;
     
-    /** Default CA provider name. */
+    /** Default PVA provider name. */
     const epics::pvData::String PVACCESS_DEFAULT_PROVIDER = "local";
 
     /** Name of the system env. variable to turn on debugging. */
-    const epics::pvData::String PVACCESS_DEBUG = "PVACCESS_DEBUG";
+    const epics::pvData::String PVACCESS_DEBUG = "EPICS_PVA_DEBUG";
 }
 }
 
-#endif /* CONSTANTS_H_ */
+#endif /* PVACONSTANTS_H_ */

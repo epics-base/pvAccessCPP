@@ -9,11 +9,11 @@ configure/RULES_TOP
 documentation/pvAccessCPP.html
 documentation/README
 jenkins/cloudbees_build
-pvAccessApp/ca/caConstants.h
-pvAccessApp/ca/clientFactory.cpp
-pvAccessApp/ca/clientFactory.h
-pvAccessApp/ca/pvVersion.cpp
-pvAccessApp/ca/pvVersion.h
+pvAccessApp/pva/pvaConstants.h
+pvAccessApp/pva/clientFactory.cpp
+pvAccessApp/pva/clientFactory.h
+pvAccessApp/pva/pvaVersion.cpp
+pvAccessApp/pva/pvaVersion.h
 pvAccessApp/client/pvAccess.cpp
 pvAccessApp/client/pvAccess.h
 pvAccessApp/client/pvAccess.h.orig
