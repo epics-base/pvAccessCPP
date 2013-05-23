@@ -1226,7 +1226,15 @@ int main (int argc, char *argv[])
         return 1;
     }
     
-    if (nPvs > 0 && serviceRequest)
+    // only one pv, arguments provided without serviceRequest switch
+    if (nPvs == 1 && parameters.size() > 0)
+    {
+        // switch to serviceRequest
+        service = argv[optind];
+        serviceRequest = true;
+        nPvs = 0;
+    }
+    else if (nPvs > 0 && serviceRequest)
     {
         fprintf(stderr, "PV name(s) specified and service query requested. ('eget -h' for help.)\n");
         return 1;
@@ -1261,12 +1269,39 @@ int main (int argc, char *argv[])
     // PVs mode
     if (!serviceRequest)
     {
-        // TODO URI support
+        vector<string> pvs;
 
-        vector<string> pvs;     /* Array of PV structures */
-        for (int n = 0; optind < argc; n++, optind++)
-            pvs.push_back(argv[optind]);       /* Copy PV names from command line */
-        
+        if (validURI)
+        {
+            // standard get request
+            // for now only pva schema is supported, without authroity
+            // TODO
+            if (uri.protocol != "pva")
+            {
+                std::cerr << "invalid URI scheme '" << uri.protocol << "', only 'pva' is supported" << std::endl;
+                // TODO
+                return 1;
+            }
+
+            // authority = uri.host;
+
+            if (uri.path.length() <= 1)
+            {
+                std::cerr << "invalid URI, empty path" << std::endl;
+                // TODO
+                return 1;
+            }
+
+            // skip trailing '/'
+            pvs.push_back(uri.path.substr(1));
+        }
+        else
+        {
+            // TODO URI support
+            for (int n = 0; optind < argc; n++, optind++)
+                pvs.push_back(argv[optind]);
+        }
+
         PVStructure::shared_pointer pvRequest =
                 getCreateRequest()->createRequest(request, requester);
         if(pvRequest.get()==0) {
