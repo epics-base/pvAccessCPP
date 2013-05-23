@@ -187,3 +187,5 @@ README
 runTestServer
 TODO
 testApp/remote/pvinfo.cpp
+pvAccessApp/ca/caProvider.h
+pvAccessApp/ca/caProvider.cpp

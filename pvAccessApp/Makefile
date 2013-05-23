@@ -85,6 +85,10 @@ SRC_DIRS += $(PVACCESS)/rpcClient
 INC += rpcClient.h
 LIBSRCS += rpcClient.cpp
 
+SRC_DIRS += $(PVACCESS)/ca
+INC += caProvider.h
+LIBSRCS += caProvider.cpp
+
 SRC_DIRS += $(PVACCESS)/mb
 INC += pvAccessMB.h
 LIBSRCS += pvAccessMB.cpp
@@ -92,5 +96,6 @@ LIBSRCS += pvAccessMB.cpp
 LIBRARY = pvAccess
 pvAccess_LIBS += Com
 pvAccess_LIBS += pvData
+pvAccess_LIBS += ca
 
 include $(TOP)/configure/RULES
