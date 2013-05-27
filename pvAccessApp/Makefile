@@ -87,7 +87,9 @@ LIBSRCS += rpcClient.cpp
 
 SRC_DIRS += $(PVACCESS)/ca
 INC += caProvider.h
+INC += caChannel.h
 LIBSRCS += caProvider.cpp
+LIBSRCS += caChannel.cpp
 
 SRC_DIRS += $(PVACCESS)/mb
 INC += pvAccessMB.h

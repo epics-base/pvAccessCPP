@@ -13,7 +13,8 @@ namespace epics {
 namespace pvAccess {
 
 class CAChannelProvider :
-        public ChannelProvider
+        public ChannelProvider,
+        public std::tr1::enable_shared_from_this<CAChannelProvider>
 {
 public:
 

@@ -17,6 +17,8 @@
 namespace epics {
 namespace pvAccess { 
 
+        // TODO add write-only?
+        // change names
         enum AccessRights {
             /**
              * Neither read or write access is allowed.

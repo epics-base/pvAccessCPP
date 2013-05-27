@@ -6,7 +6,9 @@
 
 #include <pv/logger.h>
 #include <pv/caProvider.h>
+#include <pv/caChannel.h>
 
+/* for CA */
 #include <cadef.h>
 
 using namespace epics::pvData;
@@ -70,11 +72,7 @@ Channel::shared_pointer CAChannelProvider::createChannel(
     if (!address.empty())
         throw std::invalid_argument("CA does not support 'address' parameter");
 
-    // TODO
-    Status errorStatus(Status::STATUSTYPE_ERROR, "not implemented");
-    Channel::shared_pointer nullChannel;
-    EXCEPTION_GUARD(channelRequester->channelCreated(errorStatus, nullChannel));
-    return nullChannel;
+    return CAChannel::create(shared_from_this(), channelName, priority, channelRequester);
 
     // NOTE it's up to internal code to respond w/ error to requester and return 0 in case of errors
 }
@@ -94,7 +92,7 @@ void CAChannelProvider::poll()
 void CAChannelProvider::initialize()
 {
     /* Create Channel Access */
-    int result = ca_context_create(ca_disable_preemptive_callback);
+    int result = ca_context_create(ca_enable_preemptive_callback);
     if (result != ECA_NORMAL) {
         throw std::runtime_error(std::string("CA error %s occurred while trying "
                 "to start channel access:") + ca_message(result));
@@ -103,9 +101,12 @@ void CAChannelProvider::initialize()
     // TODO create a ca_poll thread
 }
 
+namespace epics { namespace pvAccess {
+
 ChannelProvider::shared_pointer createCAChannelProvider()
 {
     ChannelProvider::shared_pointer ptr(new CAChannelProvider());
     return ptr;
 }
 
+}}
