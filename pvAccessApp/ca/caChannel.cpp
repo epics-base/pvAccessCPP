@@ -41,6 +41,18 @@ static void ca_connection_handler(struct connection_handler_args args)
         channel->disconnected();
 }
 
+
+static ScalarType dbr2ST[] =
+{
+    pvString,   // DBR_STRING = 0
+    pvShort,    // DBR_SHORT. DBR_INT = 1
+    pvFloat,    // DBR_FLOAT = 2
+    static_cast<ScalarType>(-1),         // DBR_ENUM = 3
+    pvByte,     // DBR_CHAR = 4
+    pvInt,      // DBR_LONG = 5
+    pvDouble    // DBR_DOUBLE = 6
+};
+
 void CAChannel::connected()
 {
     StandardPVFieldPtr standardPVField = getStandardPVField();
@@ -48,39 +60,23 @@ void CAChannel::connected()
 
     // TODO
     String properties("value,timeStamp");
-    // TODO arrays
-    unsigned elementCount = ca_element_count(channelID);
 
-    chtype type = ca_field_type(channelID);
-    switch (type)
+    // TODO sync
+    // we assume array if element count > 1
+    elementCount = ca_element_count(channelID);
+
+    channelType = ca_field_type(channelID);
+    if (channelType != DBR_ENUM)
     {
-        case DBR_CHAR:
-            // byte
-            break;
-        case DBR_SHORT:
-            // short
-            break;
-        case DBR_ENUM:
-            // enum
-            break;
-        case DBR_LONG:
-            // int
-            break;
-        case DBR_FLOAT:
-            // float
-            break;
-        case DBR_DOUBLE:
-            // double
-            pvStructure = (elementCount > 1) ?
-                           standardPVField->scalarArray(pvDouble, properties) :
-                           standardPVField->scalar(pvDouble, properties);
-            break;
-        case DBR_STRING:
-            // string
-            break;
-        default:
-            // TODO !!!
-            break;
+        ScalarType st = dbr2ST[channelType];
+        pvStructure = (elementCount > 1) ?
+                       standardPVField->scalarArray(st, properties) :
+                       standardPVField->scalar(st, properties);
+    }
+    else
+    {
+        // TODO handle enum
+        //     introduce ackConnected(pvStructure), if non-enum directly call, else when labels are retrieved
     }
 
     // TODO thread sync
@@ -98,7 +94,10 @@ void CAChannel::disconnected()
 CAChannel::CAChannel(ChannelProvider::shared_pointer const & _channelProvider,
                      ChannelRequester::shared_pointer const & _channelRequester) :
     channelProvider(_channelProvider),
-    channelRequester(_channelRequester)
+    channelRequester(_channelRequester),
+    channelID(0),
+    channelType(0),
+    elementCount(0)
 {
     PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(caChannel);
 }
@@ -125,6 +124,29 @@ void CAChannel::activate(epics::pvData::String const & channelName, short priori
 CAChannel::~CAChannel()
 {
     PVACCESS_REFCOUNT_MONITOR_DESTRUCT(caChannel);
+}
+
+
+chid CAChannel::getChannelID()
+{
+    return channelID;
+}
+
+
+chtype CAChannel::getNativeType()
+{
+    return channelType;
+}
+
+
+unsigned CAChannel::getElementCount()
+{
+    return elementCount;
+}
+
+PVStructure::shared_pointer CAChannel::getPVStructure()
+{
+    return pvStructure;
 }
 
 
@@ -207,7 +229,7 @@ ChannelProcess::shared_pointer CAChannel::createChannelProcess(
         ChannelProcessRequester::shared_pointer const & channelProcessRequester,
         epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
 {
-    Status errorStatus(Status::STATUSTYPE_ERROR, "not implemented");
+    Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
     ChannelProcess::shared_pointer nullChannelProcess;
     EXCEPTION_GUARD(channelProcessRequester->channelProcessConnect(errorStatus, nullChannelProcess));
     return nullChannelProcess;
@@ -215,13 +237,9 @@ ChannelProcess::shared_pointer CAChannel::createChannelProcess(
 
 ChannelGet::shared_pointer CAChannel::createChannelGet(
         ChannelGetRequester::shared_pointer const & channelGetRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
+        epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
-    Status errorStatus(Status::STATUSTYPE_ERROR, "not implemented");
-    ChannelGet::shared_pointer nullChannelGet;
-    EXCEPTION_GUARD(channelGetRequester->channelGetConnect(errorStatus, nullChannelGet,
-                                                           PVStructure::shared_pointer(), BitSet::shared_pointer()));
-    return nullChannelGet;
+    return CAChannelGet::create(shared_from_this(), channelGetRequester, pvRequest);
 }
 
 
@@ -324,6 +342,129 @@ void CAChannel::message(String const & message,MessageType messageType)
 
 
 void CAChannel::destroy()
+{
+    // TODO
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ChannelGet::shared_pointer CAChannelGet::create(
+        CAChannel::shared_pointer const & channel,
+        ChannelGetRequester::shared_pointer const & channelGetRequester,
+        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
+{
+    // TODO for not pvRequest ignored
+    ChannelGet::shared_pointer thisPtr(new CAChannelGet(channel, channelGetRequester));
+    static_cast<CAChannelGet*>(thisPtr.get())->activate();
+    return thisPtr;
+}
+
+
+CAChannelGet::~CAChannelGet()
+{
+    // TODO
+}
+
+
+CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & _channel,
+                           ChannelGetRequester::shared_pointer const & _channelGetRequester) :
+    channel(_channel),
+    channelGetRequester(_channelGetRequester)
+{
+    // TODO
+}
+
+void CAChannelGet::activate()
+{
+    // TODO
+    BitSet::shared_pointer bitSet(new BitSet()); bitSet->set(0);
+    EXCEPTION_GUARD(channelGetRequester->channelGetConnect(Status::Ok, shared_from_this(),
+                                                           channel->getPVStructure(), bitSet));
+}
+
+
+/* --------------- epics::pvAccess::ChannelGet --------------- */
+
+
+static void ca_get_handler(struct event_handler_args args)
+{
+    CAChannelGet *channelGet = static_cast<CAChannelGet*>(args.usr);
+    channelGet->getDone(args);
+}
+
+
+void CAChannelGet::getDone(struct event_handler_args &args)
+{
+    if (args.status == ECA_NORMAL)
+    {
+        // TODO
+        EXCEPTION_GUARD(channelGetRequester->getDone(Status::Ok));
+        //memcpy(ppv->value, args.dbr, dbr_size_n(args.type, args.count));
+
+        PVDouble::shared_pointer value = channel->getPVStructure()->getDoubleField("value");
+        value->put(static_cast<const double*>(args.dbr)[0]);
+    }
+    else
+    {
+        // TODO check: ca_message from args.status
+        Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(args.status)));
+        EXCEPTION_GUARD(channelGetRequester->getDone(errorStatus));
+    }
+}
+
+void CAChannelGet::get(bool lastRequest)
+{
+    // TODO error handling
+    int result = ca_array_get_callback(channel->getNativeType(), channel->getElementCount(),
+                                       channel->getChannelID(), ca_get_handler, this);
+    if (result == ECA_NORMAL)
+    {
+        ca_flush_io();
+    }
+    else
+    {
+        Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(result)));
+        EXCEPTION_GUARD(channelGetRequester->getDone(errorStatus));
+    }
+
+    if (lastRequest)
+        destroy();
+}
+
+
+/* --------------- epics::pvData::Destroyable --------------- */
+
+
+void CAChannelGet::destroy()
+{
+    // TODO
+}
+
+
+/* --------------- epics::pvData::Lockable --------------- */
+
+
+void CAChannelGet::lock()
+{
+    // TODO
+}
+
+
+void CAChannelGet::unlock()
 {
     // TODO
 }

@@ -73,8 +73,6 @@ Channel::shared_pointer CAChannelProvider::createChannel(
         throw std::invalid_argument("CA does not support 'address' parameter");
 
     return CAChannel::create(shared_from_this(), channelName, priority, channelRequester);
-
-    // NOTE it's up to internal code to respond w/ error to requester and return 0 in case of errors
 }
 
 void CAChannelProvider::configure(epics::pvData::PVStructure::shared_pointer /*configuration*/)
@@ -98,7 +96,7 @@ void CAChannelProvider::initialize()
                 "to start channel access:") + ca_message(result));
     }
 
-    // TODO create a ca_poll thread
+    // TODO create a ca_poll thread, if ca_disable_preemptive_callback
 }
 
 namespace epics { namespace pvAccess {

@@ -33,6 +33,12 @@ public:
     void connected();
     void disconnected();
 
+    chid getChannelID();
+    chtype getNativeType();
+    unsigned getElementCount();
+
+    epics::pvData::PVStructure::shared_pointer getPVStructure();
+
     /* --------------- epics::pvAccess::Channel --------------- */
 
     virtual std::tr1::shared_ptr<ChannelProvider> getProvider();
@@ -99,9 +105,52 @@ private:
     ChannelRequester::shared_pointer channelRequester;
 
     chid channelID;
+    chtype channelType;
+    unsigned elementCount;
     epics::pvData::PVStructure::shared_pointer pvStructure;
 };
 
+
+
+class CAChannelGet :
+        public ChannelGet,
+        public std::tr1::enable_shared_from_this<CAChannelGet>
+{
+
+public:
+    POINTER_DEFINITIONS(CAChannelGet);
+
+    static ChannelGet::shared_pointer create(CAChannel::shared_pointer const & channel,
+                                             ChannelGetRequester::shared_pointer const & channelGetRequester,
+                                             epics::pvData::PVStructure::shared_pointer const & pvRequest);
+
+    virtual ~CAChannelGet();
+
+    void getDone(struct event_handler_args &args);
+
+    /* --------------- epics::pvAccess::ChannelGet --------------- */
+
+    virtual void get(bool lastRequest);
+
+    /* --------------- epics::pvData::Destroyable --------------- */
+
+    virtual void destroy();
+
+    /* --------------- epics::pvData::Lockable --------------- */
+
+    virtual void lock();
+    virtual void unlock();
+
+private:
+
+    CAChannelGet(CAChannel::shared_pointer const & _channel,
+                 ChannelGetRequester::shared_pointer const & _channelGetRequester);
+    void activate();
+
+    // TODO weak_ptr usage?
+    CAChannel::shared_pointer channel;
+    ChannelGetRequester::shared_pointer channelGetRequester;
+};
 
 }}
 
