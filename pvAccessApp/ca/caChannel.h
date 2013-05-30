@@ -144,12 +144,17 @@ public:
 private:
 
     CAChannelGet(CAChannel::shared_pointer const & _channel,
-                 ChannelGetRequester::shared_pointer const & _channelGetRequester);
+                 ChannelGetRequester::shared_pointer const & _channelGetRequester,
+                 epics::pvData::PVStructure::shared_pointer const & pvRequest);
     void activate();
 
     // TODO weak_ptr usage?
     CAChannel::shared_pointer channel;
     ChannelGetRequester::shared_pointer channelGetRequester;
+    chtype getType;
+
+    epics::pvData::PVStructure::shared_pointer pvStructure;
+    epics::pvData::BitSet::shared_pointer bitSet;
 };
 
 }}
