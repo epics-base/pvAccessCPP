@@ -1374,15 +1374,18 @@ int main (int argc, char *argv[])
                     ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
                     bool ok = getRequesterImpl->waitUntilGet(timeOut);
                     allOK &= ok;
-                    if (ok && collectValues)
+                    if (ok)
                     {
-                        collectedValues.push_back(getRequesterImpl->getPVStructure());
-                        // no labels collectedNames.push_back(channel->getChannelName());
-                    }
-                    else
-                    {
-                        // print immediately
-                        printValue(channel->getChannelName(), getRequesterImpl->getPVStructure());
+                        if (collectValues)
+                        {
+                            collectedValues.push_back(getRequesterImpl->getPVStructure());
+                            // no labels collectedNames.push_back(channel->getChannelName());
+                        }
+                        else
+                        {
+                            // print immediately
+                            printValue(channel->getChannelName(), getRequesterImpl->getPVStructure());
+                        }
                     }
                 }
                 else
