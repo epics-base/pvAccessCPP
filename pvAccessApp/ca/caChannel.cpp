@@ -53,23 +53,18 @@ static ScalarType dbr2ST[] =
     pvDouble    // DBR_DOUBLE = 6
 };
 
-void CAChannel::connected()
+
+static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer const & channel, String const & properties)
 {
+    // TODO
     StandardPVFieldPtr standardPVField = getStandardPVField();
     PVStructure::shared_pointer pvStructure;
 
-    // TODO
-    String properties("value,timeStamp");
-
-    // TODO sync
-    // we assume array if element count > 1
-    elementCount = ca_element_count(channelID);
-
-    channelType = ca_field_type(channelID);
+    chtype channelType = channel->getNativeType();
     if (channelType != DBR_ENUM)
     {
         ScalarType st = dbr2ST[channelType];
-        pvStructure = (elementCount > 1) ?
+        pvStructure = (channel->getElementCount() > 1) ?
                        standardPVField->scalarArray(st, properties) :
                        standardPVField->scalar(st, properties);
     }
@@ -78,6 +73,40 @@ void CAChannel::connected()
         // TODO handle enum
         //     introduce ackConnected(pvStructure), if non-enum directly call, else when labels are retrieved
     }
+
+    return pvStructure;
+}
+
+
+static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer const & channel, chtype dbrType)
+{
+    // TODO constants
+    // TODO value is always there
+    String properties;
+    if (dbrType >= DBR_CTRL_STRING)      // 28
+        properties = "value,alarm,display,control";
+    else if (dbrType >= DBR_GR_STRING)   // 21
+        properties = "value,alarm,display";
+    else if (dbrType >= DBR_TIME_STRING) // 14
+        properties = "value,timeStamp";
+    else if (dbrType >= DBR_STS_STRING)  // 7
+        properties = "value,alarm";
+    else
+        properties = "value";
+
+    return createPVStructure(channel, properties);
+}
+
+
+void CAChannel::connected()
+{
+    // TODO sync
+    // we assume array if element count > 1
+    elementCount = ca_element_count(channelID);
+    channelType = ca_field_type(channelID);
+
+    String allProperties("value,timeStamp,alarm,display,control");
+    PVStructure::shared_pointer pvStructure = createPVStructure(shared_from_this(), allProperties);
 
     // TODO thread sync
     this->pvStructure = pvStructure;
@@ -365,10 +394,10 @@ void CAChannel::destroy()
 ChannelGet::shared_pointer CAChannelGet::create(
         CAChannel::shared_pointer const & channel,
         ChannelGetRequester::shared_pointer const & channelGetRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
+        epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
     // TODO for not pvRequest ignored
-    ChannelGet::shared_pointer thisPtr(new CAChannelGet(channel, channelGetRequester));
+    ChannelGet::shared_pointer thisPtr(new CAChannelGet(channel, channelGetRequester, pvRequest));
     static_cast<CAChannelGet*>(thisPtr.get())->activate();
     return thisPtr;
 }
@@ -380,20 +409,55 @@ CAChannelGet::~CAChannelGet()
 }
 
 
+static chtype getDBRType(PVStructure::shared_pointer const & pvRequest, chtype nativeType)
+{
+    // get "field" sub-structure
+    PVStructure::shared_pointer fieldSubField =
+            std::tr1::dynamic_pointer_cast<PVStructure>(pvRequest->getSubField("field"));
+    if (!fieldSubField)
+        fieldSubField = pvRequest;
+    Structure::const_shared_pointer fieldStructure = fieldSubField->getStructure();
+
+    // no fields or control -> DBR_CTRL_<type>
+    if (fieldStructure->getNumberFields() == 0 ||
+          fieldStructure->getField("control"))
+        return static_cast<chtype>(static_cast<int>(nativeType) + DBR_CTRL_STRING);
+
+    // display -> DBR_GR_<type>
+    if (fieldStructure->getField("display"))
+        return static_cast<chtype>(static_cast<int>(nativeType) + DBR_GR_STRING);
+
+    // alarm -> DBR_STS_<type>
+    if (fieldStructure->getField("alarm"))
+        return static_cast<chtype>(static_cast<int>(nativeType) + DBR_STS_STRING);
+
+    // timeStamp -> DBR_TIME_<type>
+    // NOTE: that only DBR_TIME_<type> type holds timestamp, therefore if you request for
+    // the fields above, you will never get timestamp
+    if (fieldStructure->getField("timeStamp"))
+        return static_cast<chtype>(static_cast<int>(nativeType) + DBR_TIME_STRING);
+
+    return nativeType;
+}
+
+
 CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & _channel,
-                           ChannelGetRequester::shared_pointer const & _channelGetRequester) :
+                           ChannelGetRequester::shared_pointer const & _channelGetRequester,
+                           epics::pvData::PVStructure::shared_pointer const & pvRequest) :
     channel(_channel),
-    channelGetRequester(_channelGetRequester)
+    channelGetRequester(_channelGetRequester),
+    getType(getDBRType(pvRequest, _channel->getNativeType())),
+    pvStructure(createPVStructure(_channel, getType)),
+    bitSet(new BitSet(pvStructure->getStructure()->getNumberFields()))
 {
     // TODO
+    bitSet->set(0);
 }
 
 void CAChannelGet::activate()
 {
-    // TODO
-    BitSet::shared_pointer bitSet(new BitSet()); bitSet->set(0);
     EXCEPTION_GUARD(channelGetRequester->channelGetConnect(Status::Ok, shared_from_this(),
-                                                           channel->getPVStructure(), bitSet));
+                                                           pvStructure, bitSet));
 }
 
 
@@ -415,7 +479,7 @@ void CAChannelGet::getDone(struct event_handler_args &args)
         EXCEPTION_GUARD(channelGetRequester->getDone(Status::Ok));
         //memcpy(ppv->value, args.dbr, dbr_size_n(args.type, args.count));
 
-        PVDouble::shared_pointer value = channel->getPVStructure()->getDoubleField("value");
+        PVDouble::shared_pointer value = pvStructure->getDoubleField("value");
         value->put(static_cast<const double*>(args.dbr)[0]);
     }
     else
@@ -425,6 +489,7 @@ void CAChannelGet::getDone(struct event_handler_args &args)
         EXCEPTION_GUARD(channelGetRequester->getDone(errorStatus));
     }
 }
+
 
 void CAChannelGet::get(bool lastRequest)
 {
