@@ -84,9 +84,9 @@ static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer c
     // TODO value is always there
     String properties;
     if (dbrType >= DBR_CTRL_STRING)      // 28
-        properties = "value,alarm,display,control";
+        properties = "value,alarm,display,valueAlarm,control";
     else if (dbrType >= DBR_GR_STRING)   // 21
-        properties = "value,alarm,display";
+        properties = "value,alarm,display,valueAlarm";
     else if (dbrType >= DBR_TIME_STRING) // 14
         properties = "value,timeStamp";
     else if (dbrType >= DBR_STS_STRING)  // 7
@@ -105,10 +105,11 @@ void CAChannel::connected()
     elementCount = ca_element_count(channelID);
     channelType = ca_field_type(channelID);
 
-    String allProperties("value,timeStamp,alarm,display,control");
+    String allProperties("value,timeStamp,alarm,display,valueAlarm,control");
     PVStructure::shared_pointer pvStructure = createPVStructure(shared_from_this(), allProperties);
 
     // TODO thread sync
+    // TODO we need only Structure here
     this->pvStructure = pvStructure;
 
     // TODO call channelCreated if structure has changed
@@ -423,8 +424,8 @@ static chtype getDBRType(PVStructure::shared_pointer const & pvRequest, chtype n
           fieldStructure->getField("control"))
         return static_cast<chtype>(static_cast<int>(nativeType) + DBR_CTRL_STRING);
 
-    // display -> DBR_GR_<type>
-    if (fieldStructure->getField("display"))
+    // display/valueAlarm -> DBR_GR_<type>
+    if (fieldStructure->getField("display") || fieldStructure->getField("valueAlarm"))
         return static_cast<chtype>(static_cast<int>(nativeType) + DBR_GR_STRING);
 
     // alarm -> DBR_STS_<type>
@@ -487,6 +488,127 @@ void copy_DBR_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_point
     }
 }
 
+static String dbrStatus2alarmMessage[] = {
+    "NO_ALARM",     // 0 ..
+    "READ_ALARM",
+    "WRITE_ALARM",
+    "HIHI_ALARM",
+    "HIGH_ALARM",
+    "LOLO_ALARM",
+    "LOW_ALARM",
+    "STATE_ALARM",
+    "COS_ALARM",
+    "COMM_ALARM",
+    "TIMEOUT_ALARM",
+    "HW_LIMIT_ALARM",
+    "CALC_ALARM",
+    "SCAN_ALARM",
+    "LINK_ALARM",
+    "SOFT_ALARM",
+    "BAD_SUB_ALARM",
+    "UDF_ALARM",
+    "DISABLE_ALARM",
+    "SIMM_ALARM",
+    "READ_ACCESS_ALARM",
+    "WRITE_ACCESS_ALARM"        // .. 21
+};
+
+void copy_DBR_STS_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+{
+    const dbr_sts_double* data = static_cast<const dbr_sts_double*>(dbr);
+
+    PVStructure::shared_pointer alarm = pvStructure->getStructureField("alarm");
+    // TODO any mapping
+    alarm->getIntField("status")->put(0);
+    alarm->getIntField("severity")->put(data->severity);
+    alarm->getStringField("message")->put(dbrStatus2alarmMessage[data->status]);
+
+    copy_DBR_DOUBLE(&data->value, count, pvStructure);
+}
+
+void copy_DBR_TIME_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+{
+    const dbr_time_double* data = static_cast<const dbr_time_double*>(dbr);
+
+    PVStructure::shared_pointer ts = pvStructure->getStructureField("timeStamp");
+    epics::pvData::int64 spe = data->stamp.secPastEpoch;
+    spe += 7305*86400;
+    ts->getLongField("secondsPastEpoch")->put(spe);
+    ts->getIntField("nanoSeconds")->put(data->stamp.nsec);
+
+    copy_DBR_DOUBLE(&data->value, count, pvStructure);
+}
+
+void copy_DBR_GR_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+{
+    const dbr_gr_double* data = static_cast<const dbr_gr_double*>(dbr);
+
+    PVStructure::shared_pointer alarm = pvStructure->getStructureField("alarm");
+    alarm->getIntField("status")->put(0);
+    alarm->getIntField("severity")->put(data->severity);
+    alarm->getStringField("message")->put(dbrStatus2alarmMessage[data->status]);
+
+    PVStructure::shared_pointer disp = pvStructure->getStructureField("display");
+    disp->getStringField("units")->put(String(data->units));
+    disp->getDoubleField("limitHigh")->put(data->upper_disp_limit);
+    disp->getDoubleField("limitLow")->put(data->lower_disp_limit);
+    if (data->precision)
+    {
+        char fmt[16];
+        sprintf(fmt, "%%.%df", data->precision);
+        disp->getStringField("format")->put(String(fmt));
+    }
+    else
+    {
+        disp->getStringField("format")->put("%f");
+    }
+
+    PVStructure::shared_pointer va = pvStructure->getStructureField("valueAlarm");
+    va->getDoubleField("highAlarmLimit")->put(data->upper_alarm_limit);
+    va->getDoubleField("highWarningLimit")->put(data->upper_warning_limit);
+    va->getDoubleField("lowWarningLimit")->put(data->lower_warning_limit);
+    va->getDoubleField("lowAlarmLimit")->put(data->lower_alarm_limit);
+
+    copy_DBR_DOUBLE(&data->value, count, pvStructure);
+}
+
+void copy_DBR_CTRL_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+{
+    const dbr_ctrl_double* data = static_cast<const dbr_ctrl_double*>(dbr);
+
+    PVStructure::shared_pointer alarm = pvStructure->getStructureField("alarm");
+    alarm->getIntField("status")->put(0);
+    alarm->getIntField("severity")->put(data->severity);
+    alarm->getStringField("message")->put(dbrStatus2alarmMessage[data->status]);
+
+    PVStructure::shared_pointer disp = pvStructure->getStructureField("display");
+    disp->getStringField("units")->put(String(data->units));
+    disp->getDoubleField("limitHigh")->put(data->upper_disp_limit);
+    disp->getDoubleField("limitLow")->put(data->lower_disp_limit);
+    if (data->precision)
+    {
+        char fmt[16];
+        sprintf(fmt, "%%.%df", data->precision);
+        disp->getStringField("format")->put(String(fmt));
+    }
+    else
+    {
+        disp->getStringField("format")->put("%f");
+    }
+
+    PVStructure::shared_pointer va = pvStructure->getStructureField("valueAlarm");
+    va->getDoubleField("highAlarmLimit")->put(data->upper_alarm_limit);
+    va->getDoubleField("highWarningLimit")->put(data->upper_warning_limit);
+    va->getDoubleField("lowWarningLimit")->put(data->lower_warning_limit);
+    va->getDoubleField("lowAlarmLimit")->put(data->lower_alarm_limit);
+
+    PVStructure::shared_pointer ctrl = pvStructure->getStructureField("control");
+    ctrl->getDoubleField("limitHigh")->put(data->upper_ctrl_limit);
+    ctrl->getDoubleField("limitLow")->put(data->lower_ctrl_limit);
+
+    copy_DBR_DOUBLE(&data->value, count, pvStructure);
+}
+
 static copyDBRtoPVStructure copyFuncTable[] =
 {
     0,          // DBR_STRING
@@ -503,7 +625,7 @@ static copyDBRtoPVStructure copyFuncTable[] =
     0,          // DBR_STS_ENUM
     0,          // DBR_STS_CHAR
     0,          // DBR_STS_LONG
-    0,          // DBR_STS_DOUBLE
+    copy_DBR_STS_DOUBLE,          // DBR_STS_DOUBLE
 
     0,          // DBR_TIME_STRING
     0,          // DBR_TIME_INT, DBR_TIME_SHORT
@@ -511,7 +633,7 @@ static copyDBRtoPVStructure copyFuncTable[] =
     0,          // DBR_TIME_ENUM
     0,          // DBR_TIME_CHAR
     0,          // DBR_TIME_LONG
-    0,          // DBR_TIME_DOUBLE
+    copy_DBR_TIME_DOUBLE,          // DBR_TIME_DOUBLE
 
     0,          // DBR_GR_STRING
     0,          // DBR_GR_INT, DBR_GR_SHORT
@@ -519,7 +641,7 @@ static copyDBRtoPVStructure copyFuncTable[] =
     0,          // DBR_GR_ENUM
     0,          // DBR_GR_CHAR
     0,          // DBR_GR_LONG
-    0,          // DBR_GR_DOUBLE
+    copy_DBR_GR_DOUBLE,          // DBR_GR_DOUBLE
 
     0,          // DBR_CTRL_STRING
     0,          // DBR_CTRL_INT, DBR_CTRL_SHORT
@@ -527,16 +649,13 @@ static copyDBRtoPVStructure copyFuncTable[] =
     0,          // DBR_CTRL_ENUM
     0,          // DBR_CTRL_CHAR
     0,          // DBR_CTRL_LONG
-    0           // DBR_CTRL_DOUBLE
+    copy_DBR_CTRL_DOUBLE           // DBR_CTRL_DOUBLE
 };
 
 void CAChannelGet::getDone(struct event_handler_args &args)
 {
     if (args.status == ECA_NORMAL)
     {
-        // TODO
-        EXCEPTION_GUARD(channelGetRequester->getDone(Status::Ok));
-
         copyDBRtoPVStructure copyFunc = copyFuncTable[getType];
         if (copyFunc)
             copyFunc(args.dbr, args.count, pvStructure);
@@ -546,6 +665,8 @@ void CAChannelGet::getDone(struct event_handler_args &args)
             std::cout << "no copy func implemented" << std::endl;
         }
 
+        // TODO
+        EXCEPTION_GUARD(channelGetRequester->getDone(Status::Ok));
     }
     else
     {
@@ -559,7 +680,7 @@ void CAChannelGet::getDone(struct event_handler_args &args)
 void CAChannelGet::get(bool lastRequest)
 {
     // TODO error handling
-    int result = ca_array_get_callback(channel->getNativeType(), channel->getElementCount(),
+    int result = ca_array_get_callback(getType, channel->getElementCount(),
                                        channel->getChannelID(), ca_get_handler, this);
     if (result == ECA_NORMAL)
     {
