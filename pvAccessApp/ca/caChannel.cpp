@@ -470,6 +470,65 @@ static void ca_get_handler(struct event_handler_args args)
     channelGet->getDone(args);
 }
 
+typedef void (*copyDBRtoPVStructure)(const void * from, unsigned count, PVStructure::shared_pointer const & tp);
+
+void copy_DBR_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+{
+    if (count == 1)
+    {
+        PVDouble::shared_pointer value = pvStructure->getDoubleField("value");
+        value->put(static_cast<const double*>(dbr)[0]);
+    }
+    else
+    {
+        PVDoubleArray::shared_pointer value =
+                std::tr1::dynamic_pointer_cast<PVDoubleArray>(pvStructure->getScalarArrayField("value", pvDouble));
+        value->put(0, count, static_cast<const double*>(dbr), 0);
+    }
+}
+
+static copyDBRtoPVStructure copyFuncTable[] =
+{
+    0,          // DBR_STRING
+    0,          // DBR_INT, DBR_SHORT
+    0,          // DBR_FLOAT
+    0,          // DBR_ENUM
+    0,          // DBR_CHAR
+    0,          // DBR_LONG
+    copy_DBR_DOUBLE,          // DBR_DOUBLE
+
+    0,          // DBR_STS_STRING
+    0,          // DBR_STS_INT, DBR_STS_SHORT
+    0,          // DBR_STS_FLOAT
+    0,          // DBR_STS_ENUM
+    0,          // DBR_STS_CHAR
+    0,          // DBR_STS_LONG
+    0,          // DBR_STS_DOUBLE
+
+    0,          // DBR_TIME_STRING
+    0,          // DBR_TIME_INT, DBR_TIME_SHORT
+    0,          // DBR_TIME_FLOAT
+    0,          // DBR_TIME_ENUM
+    0,          // DBR_TIME_CHAR
+    0,          // DBR_TIME_LONG
+    0,          // DBR_TIME_DOUBLE
+
+    0,          // DBR_GR_STRING
+    0,          // DBR_GR_INT, DBR_GR_SHORT
+    0,          // DBR_GR_FLOAT
+    0,          // DBR_GR_ENUM
+    0,          // DBR_GR_CHAR
+    0,          // DBR_GR_LONG
+    0,          // DBR_GR_DOUBLE
+
+    0,          // DBR_CTRL_STRING
+    0,          // DBR_CTRL_INT, DBR_CTRL_SHORT
+    0,          // DBR_CTRL_FLOAT
+    0,          // DBR_CTRL_ENUM
+    0,          // DBR_CTRL_CHAR
+    0,          // DBR_CTRL_LONG
+    0           // DBR_CTRL_DOUBLE
+};
 
 void CAChannelGet::getDone(struct event_handler_args &args)
 {
@@ -477,10 +536,16 @@ void CAChannelGet::getDone(struct event_handler_args &args)
     {
         // TODO
         EXCEPTION_GUARD(channelGetRequester->getDone(Status::Ok));
-        //memcpy(ppv->value, args.dbr, dbr_size_n(args.type, args.count));
 
-        PVDouble::shared_pointer value = pvStructure->getDoubleField("value");
-        value->put(static_cast<const double*>(args.dbr)[0]);
+        copyDBRtoPVStructure copyFunc = copyFuncTable[getType];
+        if (copyFunc)
+            copyFunc(args.dbr, args.count, pvStructure);
+        else
+        {
+            // TODO remove
+            std::cout << "no copy func implemented" << std::endl;
+        }
+
     }
     else
     {
