@@ -594,6 +594,44 @@ void copy_DBR_TIME(const void * dbr, unsigned count, PVStructure::shared_pointer
     copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
 }
 
+
+template <typename T>
+void copy_format(const void * /*dbr*/, PVStructure::shared_pointer const & pvDisplayStructure)
+{
+    pvDisplayStructure->getStringField("format")->put("%d");
+}
+
+template <>
+void copy_format<dbr_time_string>(const void * /*dbr*/, PVStructure::shared_pointer const & pvDisplayStructure)
+{
+    pvDisplayStructure->getStringField("format")->put("%s");
+}
+
+#define COPY_FORMAT_FOR(T) \
+template <> \
+void copy_format<T>(const void * dbr, PVStructure::shared_pointer const & pvDisplayStructure) \
+{ \
+    const T* data = static_cast<const T*>(dbr); \
+\
+    if (data->precision) \
+    { \
+        char fmt[16]; \
+        sprintf(fmt, "%%.%df", data->precision); \
+        pvDisplayStructure->getStringField("format")->put(String(fmt)); \
+    } \
+    else \
+    { \
+        pvDisplayStructure->getStringField("format")->put("%f"); \
+    } \
+}
+
+COPY_FORMAT_FOR(dbr_gr_float)
+COPY_FORMAT_FOR(dbr_ctrl_float)
+COPY_FORMAT_FOR(dbr_gr_double)
+COPY_FORMAT_FOR(dbr_ctrl_double)
+
+#undef COPY_FORMAT_FOR
+
 // template<DBR type, primitive type, ScalarType, scalar Field, array Field>
 template<typename T, typename pT, epics::pvData::ScalarType sT, typename sF, typename aF>
 void copy_DBR_GR(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
@@ -609,18 +647,8 @@ void copy_DBR_GR(const void * dbr, unsigned count, PVStructure::shared_pointer c
     disp->getStringField("units")->put(String(data->units));
     disp->getDoubleField("limitHigh")->put(data->upper_disp_limit);
     disp->getDoubleField("limitLow")->put(data->lower_disp_limit);
-    /* TODO
-    if (data->precision)
-    {
-        char fmt[16];
-        sprintf(fmt, "%%.%df", data->precision);
-        disp->getStringField("format")->put(String(fmt));
-    }
-    else
-    {
-        disp->getStringField("format")->put("%f");
-    }
-    */
+
+    copy_format<T>(dbr, disp);
 
     PVStructure::shared_pointer va = pvStructure->getStructureField("valueAlarm");
     va->getDoubleField("highAlarmLimit")->put(data->upper_alarm_limit);
@@ -646,19 +674,8 @@ void copy_DBR_CTRL(const void * dbr, unsigned count, PVStructure::shared_pointer
     disp->getStringField("units")->put(String(data->units));
     disp->getDoubleField("limitHigh")->put(data->upper_disp_limit);
     disp->getDoubleField("limitLow")->put(data->lower_disp_limit);
-    // TODO
-    /*
-    if (data->precision)
-    {
-        char fmt[16];
-        sprintf(fmt, "%%.%df", data->precision);
-        disp->getStringField("format")->put(String(fmt));
-    }
-    else
-    {
-        disp->getStringField("format")->put("%f");
-    }
-    */
+
+    copy_format<T>(dbr, disp);
 
     PVStructure::shared_pointer va = pvStructure->getStructureField("valueAlarm");
     va->getDoubleField("highAlarmLimit")->put(data->upper_alarm_limit);
