@@ -473,18 +473,69 @@ static void ca_get_handler(struct event_handler_args args)
 
 typedef void (*copyDBRtoPVStructure)(const void * from, unsigned count, PVStructure::shared_pointer const & tp);
 
-void copy_DBR_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+
+// template<primitive type, ScalarType, scalar Field, array Field>
+template<typename pT, epics::pvData::ScalarType sT, typename sF, typename aF>
+void copy_DBR(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
     if (count == 1)
     {
-        PVDouble::shared_pointer value = pvStructure->getDoubleField("value");
-        value->put(static_cast<const double*>(dbr)[0]);
+        std::tr1::shared_ptr<sF> value = std::tr1::static_pointer_cast<sF>(pvStructure->getSubField("value"));
+        value->put(static_cast<const pT*>(dbr)[0]);
     }
     else
     {
-        PVDoubleArray::shared_pointer value =
-                std::tr1::dynamic_pointer_cast<PVDoubleArray>(pvStructure->getScalarArrayField("value", pvDouble));
-        value->put(0, count, static_cast<const double*>(dbr), 0);
+        std::tr1::shared_ptr<aF> value =
+                std::tr1::static_pointer_cast<aF>(pvStructure->getScalarArrayField("value", sT));
+        value->put(0, count, static_cast<const pT*>(dbr), 0);
+    }
+}
+
+// string specialization
+template<>
+void copy_DBR<String, pvString, PVString, PVStringArray>(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+{
+    if (count == 1)
+    {
+        std::tr1::shared_ptr<PVString> value = std::tr1::static_pointer_cast<PVString>(pvStructure->getSubField("value"));
+        value->put(String(static_cast<const char*>(dbr)));
+    }
+    else
+    {
+        std::tr1::shared_ptr<PVStringArray> value =
+                std::tr1::static_pointer_cast<PVStringArray>(pvStructure->getScalarArrayField("value", pvString));
+        const dbr_string_t* dbrStrings = static_cast<const dbr_string_t*>(dbr);
+        StringArray sA;
+        sA.reserve(count);
+        for (unsigned i = 0; i < count; i++)
+            sA.push_back(dbrStrings[i]);
+        value->put(0, count, sA, 0);
+    }
+}
+
+// enum specialization
+template<>
+void copy_DBR<dbr_enum_t, pvString, PVString, PVStringArray>(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+{
+    // TODO
+    if (count == 1)
+    {
+        std::tr1::shared_ptr<PVInt> value = std::tr1::static_pointer_cast<PVInt>(pvStructure->getSubField("value.index"));
+        value->put(static_cast<const dbr_enum_t*>(dbr)[0]);
+    }
+    else
+    {
+        // TODO
+        /*
+        std::tr1::shared_ptr<PVStringArray> value =
+                std::tr1::static_pointer_cast<PVStringArray>(pvStructure->getScalarArrayField("value", pvString));
+        const dbr_string_t* dbrStrings = static_cast<const dbr_string_t*>(dbr);
+        StringArray sA;
+        sA.reserve(count);
+        for (unsigned i = 0; i < count; i++)
+            sA.push_back(dbrStrings[i]);
+        value->put(0, count, sA, 0);
+        */
     }
 }
 
@@ -513,9 +564,11 @@ static String dbrStatus2alarmMessage[] = {
     "WRITE_ACCESS_ALARM"        // .. 21
 };
 
-void copy_DBR_STS_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+// template<DBR type, primitive type, ScalarType, scalar Field, array Field>
+template<typename T, typename pT, epics::pvData::ScalarType sT, typename sF, typename aF>
+void copy_DBR_STS(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
-    const dbr_sts_double* data = static_cast<const dbr_sts_double*>(dbr);
+    const T* data = static_cast<const T*>(dbr);
 
     PVStructure::shared_pointer alarm = pvStructure->getStructureField("alarm");
     // TODO any mapping
@@ -523,12 +576,14 @@ void copy_DBR_STS_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_p
     alarm->getIntField("severity")->put(data->severity);
     alarm->getStringField("message")->put(dbrStatus2alarmMessage[data->status]);
 
-    copy_DBR_DOUBLE(&data->value, count, pvStructure);
+    copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
 }
 
-void copy_DBR_TIME_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+// template<DBR type, primitive type, ScalarType, scalar Field, array Field>
+template<typename T, typename pT, epics::pvData::ScalarType sT, typename sF, typename aF>
+void copy_DBR_TIME(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
-    const dbr_time_double* data = static_cast<const dbr_time_double*>(dbr);
+    const T* data = static_cast<const T*>(dbr);
 
     PVStructure::shared_pointer ts = pvStructure->getStructureField("timeStamp");
     epics::pvData::int64 spe = data->stamp.secPastEpoch;
@@ -536,12 +591,14 @@ void copy_DBR_TIME_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_
     ts->getLongField("secondsPastEpoch")->put(spe);
     ts->getIntField("nanoSeconds")->put(data->stamp.nsec);
 
-    copy_DBR_DOUBLE(&data->value, count, pvStructure);
+    copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
 }
 
-void copy_DBR_GR_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+// template<DBR type, primitive type, ScalarType, scalar Field, array Field>
+template<typename T, typename pT, epics::pvData::ScalarType sT, typename sF, typename aF>
+void copy_DBR_GR(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
-    const dbr_gr_double* data = static_cast<const dbr_gr_double*>(dbr);
+    const T* data = static_cast<const T*>(dbr);
 
     PVStructure::shared_pointer alarm = pvStructure->getStructureField("alarm");
     alarm->getIntField("status")->put(0);
@@ -552,6 +609,7 @@ void copy_DBR_GR_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_po
     disp->getStringField("units")->put(String(data->units));
     disp->getDoubleField("limitHigh")->put(data->upper_disp_limit);
     disp->getDoubleField("limitLow")->put(data->lower_disp_limit);
+    /* TODO
     if (data->precision)
     {
         char fmt[16];
@@ -562,6 +620,7 @@ void copy_DBR_GR_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_po
     {
         disp->getStringField("format")->put("%f");
     }
+    */
 
     PVStructure::shared_pointer va = pvStructure->getStructureField("valueAlarm");
     va->getDoubleField("highAlarmLimit")->put(data->upper_alarm_limit);
@@ -569,12 +628,14 @@ void copy_DBR_GR_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_po
     va->getDoubleField("lowWarningLimit")->put(data->lower_warning_limit);
     va->getDoubleField("lowAlarmLimit")->put(data->lower_alarm_limit);
 
-    copy_DBR_DOUBLE(&data->value, count, pvStructure);
+    copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
 }
 
-void copy_DBR_CTRL_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+// template<DBR type, primitive type, ScalarType, scalar Field, array Field>
+template<typename T, typename pT, epics::pvData::ScalarType sT, typename sF, typename aF>
+void copy_DBR_CTRL(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
-    const dbr_ctrl_double* data = static_cast<const dbr_ctrl_double*>(dbr);
+    const T* data = static_cast<const T*>(dbr);
 
     PVStructure::shared_pointer alarm = pvStructure->getStructureField("alarm");
     alarm->getIntField("status")->put(0);
@@ -585,6 +646,8 @@ void copy_DBR_CTRL_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_
     disp->getStringField("units")->put(String(data->units));
     disp->getDoubleField("limitHigh")->put(data->upper_disp_limit);
     disp->getDoubleField("limitLow")->put(data->lower_disp_limit);
+    // TODO
+    /*
     if (data->precision)
     {
         char fmt[16];
@@ -595,6 +658,7 @@ void copy_DBR_CTRL_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_
     {
         disp->getStringField("format")->put("%f");
     }
+    */
 
     PVStructure::shared_pointer va = pvStructure->getStructureField("valueAlarm");
     va->getDoubleField("highAlarmLimit")->put(data->upper_alarm_limit);
@@ -606,50 +670,49 @@ void copy_DBR_CTRL_DOUBLE(const void * dbr, unsigned count, PVStructure::shared_
     ctrl->getDoubleField("limitHigh")->put(data->upper_ctrl_limit);
     ctrl->getDoubleField("limitLow")->put(data->lower_ctrl_limit);
 
-    copy_DBR_DOUBLE(&data->value, count, pvStructure);
+    copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
 }
-
 static copyDBRtoPVStructure copyFuncTable[] =
 {
-    0,          // DBR_STRING
-    0,          // DBR_INT, DBR_SHORT
-    0,          // DBR_FLOAT
-    0,          // DBR_ENUM
-    0,          // DBR_CHAR
-    0,          // DBR_LONG
-    copy_DBR_DOUBLE,          // DBR_DOUBLE
+    copy_DBR<String, pvString, PVString, PVStringArray>,          // DBR_STRING
+    copy_DBR<dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_INT, DBR_SHORT
+    copy_DBR<dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_FLOAT
+    copy_DBR<dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_ENUM
+    copy_DBR<int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_CHAR
+    copy_DBR<dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_LONG
+    copy_DBR<dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_DOUBLE
 
-    0,          // DBR_STS_STRING
-    0,          // DBR_STS_INT, DBR_STS_SHORT
-    0,          // DBR_STS_FLOAT
-    0,          // DBR_STS_ENUM
-    0,          // DBR_STS_CHAR
-    0,          // DBR_STS_LONG
-    copy_DBR_STS_DOUBLE,          // DBR_STS_DOUBLE
+    copy_DBR_STS<dbr_sts_string, String, pvString, PVString, PVStringArray>,          // DBR_STS_STRING
+    copy_DBR_STS<dbr_sts_short, dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_STS_INT, DBR_STS_SHORT
+    copy_DBR_STS<dbr_sts_float, dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_STS_FLOAT
+    copy_DBR_STS<dbr_sts_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_STS_ENUM
+    copy_DBR_STS<dbr_sts_char, int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_STS_CHAR
+    copy_DBR_STS<dbr_sts_long, dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_STS_LONG
+    copy_DBR_STS<dbr_sts_double, dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_STS_DOUBLE
 
-    0,          // DBR_TIME_STRING
-    0,          // DBR_TIME_INT, DBR_TIME_SHORT
-    0,          // DBR_TIME_FLOAT
-    0,          // DBR_TIME_ENUM
-    0,          // DBR_TIME_CHAR
-    0,          // DBR_TIME_LONG
-    copy_DBR_TIME_DOUBLE,          // DBR_TIME_DOUBLE
+    copy_DBR_TIME<dbr_time_string, String, pvString, PVString, PVStringArray>,          // DBR_TIME_STRING
+    copy_DBR_TIME<dbr_time_short, dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_TIME_INT, DBR_TIME_SHORT
+    copy_DBR_TIME<dbr_time_float, dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_TIME_FLOAT
+    copy_DBR_TIME<dbr_time_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_TIME_ENUM
+    copy_DBR_TIME<dbr_time_char, int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_TIME_CHAR
+    copy_DBR_TIME<dbr_time_long, dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_TIME_LONG
+    copy_DBR_TIME<dbr_time_double, dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_TIME_DOUBLE
 
-    0,          // DBR_GR_STRING
-    0,          // DBR_GR_INT, DBR_GR_SHORT
-    0,          // DBR_GR_FLOAT
-    0,          // DBR_GR_ENUM
-    0,          // DBR_GR_CHAR
-    0,          // DBR_GR_LONG
-    copy_DBR_GR_DOUBLE,          // DBR_GR_DOUBLE
+    copy_DBR_TIME<dbr_time_string, String, pvString, PVString, PVStringArray>,          // DBR_GR_STRING -> DBR_STS_STRING
+    copy_DBR_GR<dbr_gr_short, dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_GR_INT, DBR_GR_SHORT
+    copy_DBR_GR<dbr_gr_float, dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_GR_FLOAT
+    0,// TODO  copy_DBR_GR<dbr_gr_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_GR_ENUM
+    copy_DBR_GR<dbr_gr_char, int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_GR_CHAR
+    copy_DBR_GR<dbr_gr_long, dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_GR_LONG
+    copy_DBR_GR<dbr_gr_double, dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_GR_DOUBLE
 
-    0,          // DBR_CTRL_STRING
-    0,          // DBR_CTRL_INT, DBR_CTRL_SHORT
-    0,          // DBR_CTRL_FLOAT
-    0,          // DBR_CTRL_ENUM
-    0,          // DBR_CTRL_CHAR
-    0,          // DBR_CTRL_LONG
-    copy_DBR_CTRL_DOUBLE           // DBR_CTRL_DOUBLE
+    copy_DBR_TIME<dbr_time_string, String, pvString, PVString, PVStringArray>,          // DBR_CTRL_STRING -> DBR_STS_STRING
+    copy_DBR_CTRL<dbr_ctrl_short, dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_CTRL_INT, DBR_CTRL_SHORT
+    copy_DBR_CTRL<dbr_ctrl_float, dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_CTRL_FLOAT
+    0,// TODO  copy_DBR_CTRL<dbr_ctrl_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_CTRL_ENUM
+    copy_DBR_CTRL<dbr_ctrl_char, int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_CTRL_CHAR
+    copy_DBR_CTRL<dbr_ctrl_long, dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_CTRL_LONG
+    copy_DBR_CTRL<dbr_ctrl_double, dbr_double_t, pvDouble, PVDouble, PVDoubleArray>          // DBR_CTRL_DOUBLE
 };
 
 void CAChannelGet::getDone(struct event_handler_args &args)
