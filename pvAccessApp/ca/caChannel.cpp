@@ -84,9 +84,19 @@ static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer c
     // TODO value is always there
     String properties;
     if (dbrType >= DBR_CTRL_STRING)      // 28
-        properties = "value,alarm,display,valueAlarm,control";
+    {
+        if (dbrType != DBR_CTRL_STRING && dbrType != DBR_CTRL_ENUM)
+            properties = "value,alarm,display,valueAlarm,control";
+        else
+            properties = "value,alarm,display";
+    }
     else if (dbrType >= DBR_GR_STRING)   // 21
-        properties = "value,alarm,display,valueAlarm";
+    {
+        if (dbrType != DBR_GR_STRING && dbrType != DBR_GR_STRING)
+            properties = "value,alarm,display,valueAlarm";
+        else
+            properties = "value,alarm,display";
+    }
     else if (dbrType >= DBR_TIME_STRING) // 14
         properties = "value,timeStamp";
     else if (dbrType >= DBR_STS_STRING)  // 7
@@ -105,7 +115,11 @@ void CAChannel::connected()
     elementCount = ca_element_count(channelID);
     channelType = ca_field_type(channelID);
 
-    String allProperties("value,timeStamp,alarm,display,valueAlarm,control");
+    // no valueAlarm and control for non-numeric type
+    String allProperties =
+            channelType != DBR_STRING && channelType != DBR_ENUM ?
+                "value,timeStamp,alarm,display,valueAlarm,control" :
+                "value,timeStamp,alarm,display";
     PVStructure::shared_pointer pvStructure = createPVStructure(shared_from_this(), allProperties);
 
     // TODO thread sync
