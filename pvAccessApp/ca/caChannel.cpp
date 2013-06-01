@@ -507,9 +507,8 @@ void copy_DBR(const void * dbr, unsigned count, PVStructure::shared_pointer cons
         if (sizeof(pT) == 4)
             value->put(0, count, static_cast<const int32*>(dbr), 0);
         else
-#else
-        value->put(0, count, static_cast<const pT*>(dbr), 0);
 #endif
+        value->put(0, count, static_cast<const pT*>(dbr), 0);
     }
 }
 
