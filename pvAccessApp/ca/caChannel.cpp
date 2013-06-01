@@ -501,7 +501,15 @@ void copy_DBR(const void * dbr, unsigned count, PVStructure::shared_pointer cons
     {
         std::tr1::shared_ptr<aF> value =
                 std::tr1::static_pointer_cast<aF>(pvStructure->getScalarArrayField("value", sT));
+#ifdef vxWorks
+        // dbr_long_t is defined as "int", pvData uses int32 which can be defined as "long int" (32-bit)
+        // this makes static cast to fail, this is a workaround (compiler will optimize this efficiently)
+        if (sizeof(pT) == 4)
+            value->put(0, count, static_cast<const int32*>(dbr), 0);
+        else
+#else
         value->put(0, count, static_cast<const pT*>(dbr), 0);
+#endif
     }
 }
 
