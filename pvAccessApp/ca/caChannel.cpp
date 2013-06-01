@@ -501,16 +501,30 @@ void copy_DBR(const void * dbr, unsigned count, PVStructure::shared_pointer cons
     {
         std::tr1::shared_ptr<aF> value =
                 std::tr1::static_pointer_cast<aF>(pvStructure->getScalarArrayField("value", sT));
-#ifdef vxWorks
-        // dbr_long_t is defined as "int", pvData uses int32 which can be defined as "long int" (32-bit)
-        // this makes static cast to fail, this is a workaround (compiler will optimize this efficiently)
-        if (sizeof(pT) == 4)
-            value->put(0, count, static_cast<const int32*>(dbr), 0);
-        else
-#endif
         value->put(0, count, static_cast<const pT*>(dbr), 0);
     }
 }
+
+#ifdef vxWorks
+// dbr_long_t is defined as "int", pvData uses int32 which can be defined as "long int" (32-bit)
+// this makes static cast to fail, this is a workaround (compiler will optimize this efficiently)
+// template<primitive type, ScalarType, scalar Field, array Field>
+template<>
+void copy_DBR<dbr_long_t, pvInt, PVInt, PVIntArray>(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+{
+    if (count == 1)
+    {
+        std::tr1::shared_ptr<PVInt> value = std::tr1::static_pointer_cast<PVInt>(pvStructure->getSubField("value"));
+        value->put(static_cast<const int32*>(dbr)[0]);
+    }
+    else
+    {
+        std::tr1::shared_ptr<PVIntArray> value =
+                std::tr1::static_pointer_cast<PVIntArray>(pvStructure->getScalarArrayField("value", pvInt));
+        value->put(0, count, static_cast<const int32*>(dbr), 0);
+    }
+}
+#endif
 
 // string specialization
 template<>
