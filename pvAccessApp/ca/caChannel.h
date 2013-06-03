@@ -157,6 +157,55 @@ private:
     epics::pvData::BitSet::shared_pointer bitSet;
 };
 
+
+
+class CAChannelPut :
+        public ChannelPut,
+        public std::tr1::enable_shared_from_this<CAChannelPut>
+{
+
+public:
+    POINTER_DEFINITIONS(CAChannelPut);
+
+    static ChannelPut::shared_pointer create(CAChannel::shared_pointer const & channel,
+                                             ChannelPutRequester::shared_pointer const & channelPutRequester,
+                                             epics::pvData::PVStructure::shared_pointer const & pvRequest);
+
+    virtual ~CAChannelPut();
+
+    void putDone(struct event_handler_args &args);
+    void getDone(struct event_handler_args &args);
+
+    /* --------------- epics::pvAccess::ChannelPut --------------- */
+
+    virtual void put(bool lastRequest);
+    virtual void get();
+
+    /* --------------- epics::pvData::Destroyable --------------- */
+
+    virtual void destroy();
+
+    /* --------------- epics::pvData::Lockable --------------- */
+
+    virtual void lock();
+    virtual void unlock();
+
+private:
+
+    CAChannelPut(CAChannel::shared_pointer const & _channel,
+                 ChannelPutRequester::shared_pointer const & _channelPutRequester,
+                 epics::pvData::PVStructure::shared_pointer const & pvRequest);
+    void activate();
+
+    // TODO weak_ptr usage?
+    CAChannel::shared_pointer channel;
+    ChannelPutRequester::shared_pointer channelPutRequester;
+    chtype getType;
+
+    epics::pvData::PVStructure::shared_pointer pvStructure;
+    epics::pvData::BitSet::shared_pointer bitSet;
+};
+
 }}
 
 #endif  /* CACHANNEL_H */
