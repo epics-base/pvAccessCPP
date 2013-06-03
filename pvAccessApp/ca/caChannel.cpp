@@ -504,7 +504,6 @@ void copy_DBR(const void * dbr, unsigned count, PVStructure::shared_pointer cons
 
 #ifdef vxWorks
 // dbr_long_t is defined as "int", pvData uses int32 which can be defined as "long int" (32-bit)
-// this makes static cast to fail, this is a workaround (compiler will optimize this efficiently)
 // template<primitive type, ScalarType, scalar Field, array Field>
 template<>
 void copy_DBR<dbr_long_t, pvInt, PVInt, PVIntArray>(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
@@ -549,7 +548,6 @@ void copy_DBR<String, pvString, PVString, PVStringArray>(const void * dbr, unsig
 template<>
 void copy_DBR<dbr_enum_t, pvString, PVString, PVStringArray>(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
-    // TODO
     if (count == 1)
     {
         std::tr1::shared_ptr<PVInt> value = std::tr1::static_pointer_cast<PVInt>(pvStructure->getSubField("value.index"));
@@ -603,7 +601,7 @@ void copy_DBR_STS(const void * dbr, unsigned count, PVStructure::shared_pointer 
     const T* data = static_cast<const T*>(dbr);
 
     PVStructure::shared_pointer alarm = pvStructure->getStructureField("alarm");
-    // TODO any mapping
+    // no mapping needed
     alarm->getIntField("status")->put(0);
     alarm->getIntField("severity")->put(data->severity);
     alarm->getStringField("message")->put(dbrStatus2alarmMessage[data->status]);
@@ -777,7 +775,6 @@ void CAChannelGet::getDone(struct event_handler_args &args)
             std::cout << "no copy func implemented" << std::endl;
         }
 
-        // TODO
         EXCEPTION_GUARD(channelGetRequester->getDone(Status::Ok));
     }
     else
@@ -790,7 +787,6 @@ void CAChannelGet::getDone(struct event_handler_args &args)
 
 void CAChannelGet::get(bool lastRequest)
 {
-    // TODO error handling
     int result = ca_array_get_callback(getType, channel->getElementCount(),
                                        channel->getChannelID(), ca_get_handler, this);
     if (result == ECA_NORMAL)
@@ -908,7 +904,6 @@ int doPut_pvStructure(CAChannel::shared_pointer const & channel, void *usrArg, P
     {
         std::tr1::shared_ptr<sF> value = std::tr1::static_pointer_cast<sF>(pvStructure->getSubField("value"));
 
-        // TODO error handling
         pT val = value->get();
         int result = ca_array_put_callback(channel->getNativeType(), 1,
                                            channel->getChannelID(), &val,
@@ -923,13 +918,20 @@ int doPut_pvStructure(CAChannel::shared_pointer const & channel, void *usrArg, P
     }
     else
     {
-        /*TODO
         std::tr1::shared_ptr<aF> value =
                 std::tr1::static_pointer_cast<aF>(pvStructure->getScalarArrayField("value", sT));
-        value->put(0, count, static_cast<const pT*>(dbr), 0);
-        */
 
-        return ECA_NOSUPPORT;
+        const pT* val = value->get();
+        int result = ca_array_put_callback(channel->getNativeType(), value->getLength(),
+                                           channel->getChannelID(), val,
+                                           ca_put_handler, usrArg);
+
+        if (result == ECA_NORMAL)
+        {
+            ca_flush_io();
+        }
+
+        return result;
     }
 }
 
@@ -940,7 +942,11 @@ static doPut doPutFuncTable[] =
     doPut_pvStructure<dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_FLOAT
     0, //doPut_pvStructure<dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_ENUM
     doPut_pvStructure<int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_CHAR
+    #ifdef vxWorks
+    doPut_pvStructure<int32, pvInt, PVInt, PVIntArray>,          // DBR_LONG
+    #else
     doPut_pvStructure<dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_LONG
+    #endif
     doPut_pvStructure<dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_DOUBLE
 };
 
@@ -977,8 +983,8 @@ void CAChannelPut::put(bool lastRequest)
     }
 
     // TODO here???!!!
-    //if (lastRequest)
-    //    destroy();
+    if (lastRequest)
+        destroy();
 }
 
 
@@ -995,7 +1001,6 @@ void CAChannelPut::getDone(struct event_handler_args &args)
             std::cout << "no copy func implemented" << std::endl;
         }
 
-        // TODO
         EXCEPTION_GUARD(channelPutRequester->getDone(Status::Ok));
     }
     else
@@ -1008,7 +1013,6 @@ void CAChannelPut::getDone(struct event_handler_args &args)
 
 void CAChannelPut::get()
 {
-    // TODO error handling
     int result = ca_array_get_callback(getType, channel->getElementCount(),
                                        channel->getChannelID(), ca_put_get_handler, this);
     if (result == ECA_NORMAL)
