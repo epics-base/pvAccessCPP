@@ -70,7 +70,8 @@ static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer c
     }
     else
     {
-        // TODO handle enum array
+        // enum arrays not supported
+
         //     introduce ackConnected(pvStructure), if non-enum directly call, else when labels are retrieved
         StringArray labels;
         pvStructure = standardPVField->enumerated(labels, properties);
@@ -555,17 +556,8 @@ void copy_DBR<dbr_enum_t, pvString, PVString, PVStringArray>(const void * dbr, u
     }
     else
     {
-        // TODO
-        /*
-        std::tr1::shared_ptr<PVStringArray> value =
-                std::tr1::static_pointer_cast<PVStringArray>(pvStructure->getScalarArrayField("value", pvString));
-        const dbr_string_t* dbrStrings = static_cast<const dbr_string_t*>(dbr);
-        StringArray sA;
-        sA.reserve(count);
-        for (unsigned i = 0; i < count; i++)
-            sA.push_back(dbrStrings[i]);
-        value->put(0, count, sA, 0);
-        */
+        // not supported
+        std::cerr << "caChannel: array of enums not supported" << std::endl;
     }
 }
 
@@ -935,12 +927,84 @@ int doPut_pvStructure(CAChannel::shared_pointer const & channel, void *usrArg, P
     }
 }
 
+// string specialization
+template<>
+int doPut_pvStructure<String, pvString, PVString, PVStringArray>(CAChannel::shared_pointer const & channel, void *usrArg, PVStructure::shared_pointer const & pvStructure)
+{
+    bool isScalarValue = pvStructure->getStructure()->getField("value")->getType() == scalar;
+
+    if (isScalarValue)
+    {
+        std::tr1::shared_ptr<PVString> value = std::tr1::static_pointer_cast<PVString>(pvStructure->getSubField("value"));
+
+        String val = value->get();
+        int result = ca_array_put_callback(channel->getNativeType(), 1,
+                                           channel->getChannelID(), val.c_str(),
+                                           ca_put_handler, usrArg);
+
+        if (result == ECA_NORMAL)
+        {
+            ca_flush_io();
+        }
+
+        return result;
+    }
+    else
+    {
+        std::tr1::shared_ptr<PVStringArray> value =
+                std::tr1::static_pointer_cast<PVStringArray>(pvStructure->getScalarArrayField("value", pvString));
+
+        //const String* val = value->get();
+        int result = ECA_NOSUPPORT; // TODO
+        /*
+        int result = ca_array_put_callback(channel->getNativeType(), value->getLength(),
+                                           channel->getChannelID(), val,
+                                           ca_put_handler, usrArg);
+*/
+        if (result == ECA_NORMAL)
+        {
+            ca_flush_io();
+        }
+
+        return result;
+    }
+}
+
+// enum specialization
+template<>
+int doPut_pvStructure<dbr_enum_t, pvString, PVString, PVStringArray>(CAChannel::shared_pointer const & channel, void *usrArg, PVStructure::shared_pointer const & pvStructure)
+{
+    bool isScalarValue = pvStructure->getStructure()->getField("value")->getType() == structure;
+
+    if (isScalarValue)
+    {
+        std::tr1::shared_ptr<PVInt> value = std::tr1::static_pointer_cast<PVInt>(pvStructure->getSubField("value.index"));
+
+        dbr_enum_t val = value->get();
+        int result = ca_array_put_callback(channel->getNativeType(), 1,
+                                           channel->getChannelID(), &val,
+                                           ca_put_handler, usrArg);
+
+        if (result == ECA_NORMAL)
+        {
+            ca_flush_io();
+        }
+
+        return result;
+    }
+    else
+    {
+        // no enum arrays in V3
+        return ECA_NOSUPPORT;
+    }
+}
+
 static doPut doPutFuncTable[] =
 {
-    0, //doPut_pvStructure<String, pvString, PVString, PVStringArray>,          // DBR_STRING
+    doPut_pvStructure<String, pvString, PVString, PVStringArray>,          // DBR_STRING
     doPut_pvStructure<dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_INT, DBR_SHORT
     doPut_pvStructure<dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_FLOAT
-    0, //doPut_pvStructure<dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_ENUM
+    doPut_pvStructure<dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_ENUM
     doPut_pvStructure<int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_CHAR
     #ifdef vxWorks
     doPut_pvStructure<int32, pvInt, PVInt, PVIntArray>,          // DBR_LONG
