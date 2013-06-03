@@ -10,13 +10,17 @@
 
 /* for CA */
 #include <cadef.h>
+#include <epicsSignal.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
+using namespace epics::pvAccess::ca;
 
 #define EXCEPTION_GUARD(code) try { code; } \
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
+
+String CAChannelProvider::PROVIDER_NAME = "ca";
 
 CAChannelProvider::CAChannelProvider()
 {
@@ -29,7 +33,7 @@ CAChannelProvider::~CAChannelProvider()
 
 epics::pvData::String CAChannelProvider::getProviderName()
 {
-    return "ca";
+    return PROVIDER_NAME;
 }
 
 void CAChannelProvider::destroy()
@@ -99,12 +103,87 @@ void CAChannelProvider::initialize()
     // TODO create a ca_poll thread, if ca_disable_preemptive_callback
 }
 
-namespace epics { namespace pvAccess {
 
-ChannelProvider::shared_pointer createCAChannelProvider()
+
+
+
+
+
+
+
+
+
+// TODO global static variable (de/initialization order not guaranteed)
+static Mutex mutex;
+static CAChannelProvider::shared_pointer sharedProvider;
+
+class CAChannelProviderFactoryImpl : public ChannelProviderFactory
 {
-    ChannelProvider::shared_pointer ptr(new CAChannelProvider());
-    return ptr;
+public:
+    POINTER_DEFINITIONS(CAChannelProviderFactoryImpl);
+
+    virtual epics::pvData::String getFactoryName()
+    {
+        return CAChannelProvider::PROVIDER_NAME;
+    }
+
+    virtual ChannelProvider::shared_pointer sharedInstance()
+    {
+        Lock guard(mutex);
+        if (!sharedProvider.get())
+        {
+            try {
+                sharedProvider.reset(new CAChannelProvider());
+            } catch (std::exception &e) {
+                LOG(logLevelError, "Unhandled exception caught at %s:%d: %s", __FILE__, __LINE__, e.what());
+            } catch (...) {
+                LOG(logLevelError, "Unhandled exception caught at %s:%d.", __FILE__, __LINE__);
+            }
+        }
+        return sharedProvider;
+    }
+
+    virtual ChannelProvider::shared_pointer newInstance()
+    {
+        try {
+            return ChannelProvider::shared_pointer(new CAChannelProvider());
+        } catch (std::exception &e) {
+            LOG(logLevelError, "Unhandled exception caught at %s:%d: %s", __FILE__, __LINE__, e.what());
+            return ChannelProvider::shared_pointer();
+        } catch (...) {
+            LOG(logLevelError, "Unhandled exception caught at %s:%d.", __FILE__, __LINE__);
+            return ChannelProvider::shared_pointer();
+        }
+    }
+
+    void destroySharedInstance()
+    {
+        sharedProvider->destroy();
+        sharedProvider.reset();
+    }
+};
+
+static CAChannelProviderFactoryImpl::shared_pointer factory;
+
+void CAClientFactory::start()
+{
+    epicsSignalInstallSigAlarmIgnore();
+    epicsSignalInstallSigPipeIgnore();
+
+    Lock guard(mutex);
+    if (!factory.get())
+        factory.reset(new CAChannelProviderFactoryImpl());
+
+    registerChannelProviderFactory(factory);
 }
 
-}}
+void CAClientFactory::stop()
+{
+    Lock guard(mutex);
+
+    if (factory.get())
+    {
+        unregisterChannelProviderFactory(factory);
+        factory->destroySharedInstance();
+    }
+}

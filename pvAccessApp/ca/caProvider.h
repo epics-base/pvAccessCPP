@@ -11,12 +11,15 @@
 
 namespace epics {
 namespace pvAccess {
+namespace ca {
 
 class CAChannelProvider :
         public ChannelProvider,
         public std::tr1::enable_shared_from_this<CAChannelProvider>
 {
 public:
+
+    static epics::pvData::String PROVIDER_NAME;
 
     CAChannelProvider();
     virtual ~CAChannelProvider();
@@ -50,9 +53,14 @@ private:
     void initialize();
 };
 
-extern ChannelProvider::shared_pointer createCAChannelProvider();
 
+class CAClientFactory
+{
+public:
+    static void start();
+    static void stop();
+};
 
-}}
+}}}
 
 #endif  /* CAPROVIDER_H */

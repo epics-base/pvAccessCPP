@@ -14,6 +14,7 @@
 
 namespace epics {
 namespace pvAccess {
+namespace ca {
 
 class CAChannel :
         public Channel,
@@ -261,6 +262,6 @@ private:
     Monitor::shared_pointer thisPointer;
 };
 
-}}
+}}}
 
 #endif  /* CACHANNEL_H */

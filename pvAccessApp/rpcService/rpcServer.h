@@ -19,8 +19,9 @@ class RPCServer {
     private:
 
     ServerContextImpl::shared_pointer m_serverContext;
+    ChannelProviderFactory::shared_pointer m_channelProviderFactory;
     ChannelProvider::shared_pointer m_channelProviderImpl;
-    
+
     // TODO no thread poll implementation
     
     public:

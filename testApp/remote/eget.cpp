@@ -2,6 +2,8 @@
 #include <pv/clientFactory.h>
 #include <pv/pvAccess.h>
 
+#include <caProvider.h>
+
 #include <stdio.h>
 #include <epicsStdlib.h>
 #include <epicsGetopt.h>
@@ -1270,15 +1272,16 @@ int main (int argc, char *argv[])
     if (!serviceRequest)
     {
         vector<string> pvs;
+        vector<string> providerNames;
 
         if (validURI)
         {
             // standard get request
-            // for now only pva schema is supported, without authroity
+            // for now no only pva/ca schema is supported, without authority
             // TODO
-            if (uri.protocol != "pva")
+            if (uri.protocol != "pva" && uri.protocol != "ca")
             {
-                std::cerr << "invalid URI scheme '" << uri.protocol << "', only 'pva' is supported" << std::endl;
+                std::cerr << "invalid URI scheme '" << uri.protocol << "', only 'pva' and 'ca' is supported" << std::endl;
                 // TODO
                 return 1;
             }
@@ -1294,12 +1297,47 @@ int main (int argc, char *argv[])
 
             // skip trailing '/'
             pvs.push_back(uri.path.substr(1));
+            providerNames.push_back(uri.protocol);
         }
         else
         {
             // TODO URI support
             for (int n = 0; optind < argc; n++, optind++)
-                pvs.push_back(argv[optind]);
+            {
+                URI uri;
+                bool validURI = URI::parse(argv[optind], uri);
+                if (validURI)
+                {
+                    // TODO this is copy&pase code from above, clean it up
+                    // for now no only pva/ca schema is supported, without authority
+                    // TODO
+                    if (uri.protocol != "pva" && uri.protocol != "ca")
+                    {
+                        std::cerr << "invalid URI scheme '" << uri.protocol << "', only 'pva' and 'ca' is supported" << std::endl;
+                        // TODO
+                        return 1;
+                    }
+
+                    // authority = uri.host;
+
+                    if (uri.path.length() <= 1)
+                    {
+                        std::cerr << "invalid URI, empty path" << std::endl;
+                        // TODO
+                        return 1;
+                    }
+
+                    // skip trailing '/'
+                    pvs.push_back(uri.path.substr(1));
+                    providerNames.push_back(uri.protocol);
+                }
+                else
+                {
+                    // defaults to "pva"
+                    pvs.push_back(argv[optind]);
+                    providerNames.push_back("pva");
+                }
+            }
         }
 
         PVStructure::shared_pointer pvRequest =
@@ -1309,15 +1347,23 @@ int main (int argc, char *argv[])
             return 1;
         }
         
+        // register "pva" and "ca" providers
         ClientFactory::start();
-        ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
+        epics::pvAccess::ca::CAClientFactory::start();
 
         // first connect to all, this allows resource (e.g. TCP connection) sharing
         vector<Channel::shared_pointer> channels(nPvs);
         for (int n = 0; n < nPvs; n++)
         {
             shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
-            channels[n] = provider->createChannel(pvs[n], channelRequesterImpl);
+
+            // TODO to be removed
+            String providerName = providerNames[n];
+            if (providerName == "pva")
+                providerName = "pvAccess";
+
+            // TODO no privder check
+            channels[n] = getChannelAccess()->getProvider(providerName)->createChannel(pvs[n], channelRequesterImpl);
         }
 
         // TODO maybe unify for nPvs == 1?!
@@ -1590,6 +1636,7 @@ int main (int argc, char *argv[])
 
         channel->destroy();
 
+        epics::pvAccess::ca::CAClientFactory::stop();
         ClientFactory::stop();
     }
 

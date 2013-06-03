@@ -18,6 +18,8 @@
 
 #include "pvutils.cpp"
 
+#include <pv/caProvider.h>
+
 using namespace std;
 using namespace std::tr1;
 using namespace epics::pvData;
@@ -426,7 +428,10 @@ int main (int argc, char *argv[])
         
         ClientFactory::start();
         ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
-    
+
+        //epics::pvAccess::ca::CAClientFactory::start();
+        //ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("ca");
+
         // first connect to all, this allows resource (e.g. TCP connection) sharing
         vector<Channel::shared_pointer> channels(nPvs);
         for (int n = 0; n < nPvs; n++)

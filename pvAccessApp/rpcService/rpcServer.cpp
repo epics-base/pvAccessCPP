@@ -407,12 +407,46 @@ String RPCChannelProvider::PROVIDER_NAME("rpcService");
 Status RPCChannelProvider::noSuchChannelStatus(Status::STATUSTYPE_ERROR, "no such channel");
 
 
+
+class RPCChannelProviderFactory : public ChannelProviderFactory
+{
+public:
+    POINTER_DEFINITIONS(RPCChannelProviderFactory);
+
+    RPCChannelProviderFactory() :
+        m_channelProviderImpl(new RPCChannelProvider())
+    {
+    }
+
+    virtual epics::pvData::String getFactoryName()
+    {
+        return RPCChannelProvider::PROVIDER_NAME;
+    }
+
+    virtual ChannelProvider::shared_pointer sharedInstance()
+    {
+        return m_channelProviderImpl;
+    }
+
+    virtual ChannelProvider::shared_pointer newInstance()
+    {
+        return ChannelProvider::shared_pointer(new RPCChannelProvider());
+    }
+
+private:
+    RPCChannelProvider::shared_pointer m_channelProviderImpl;
+};
+
+
 RPCServer::RPCServer()
 {
-    m_channelProviderImpl.reset(new RPCChannelProvider());
-    registerChannelProvider(m_channelProviderImpl);
+    // TODO factory is never deregistered, multiple RPCServer instances create multiple factories, etc.
+    m_channelProviderFactory.reset(new RPCChannelProviderFactory());
+    registerChannelProviderFactory(m_channelProviderFactory);
 
-    setenv("EPICS4_CAS_PROVIDER_NAMES", m_channelProviderImpl->getProviderName().c_str(), 1);
+    m_channelProviderImpl = m_channelProviderFactory->sharedInstance();
+
+    setenv("EPICS_PVAS_PROVIDER_NAMES", m_channelProviderImpl->getProviderName().c_str(), 1);
     m_serverContext = ServerContextImpl::create();
     
     m_serverContext->initialize(getChannelAccess());

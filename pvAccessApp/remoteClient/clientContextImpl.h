@@ -53,6 +53,8 @@ namespace epics {
         public:
             POINTER_DEFINITIONS(ClientContextImpl);
 
+            static epics::pvData::String PROVIDER_NAME;
+
             /**
              * Get context implementation version.
              * @return version of the context implementation.

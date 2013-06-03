@@ -19,6 +19,8 @@
 #include "pvutils.cpp"
 #include <pv/convert.h>
 
+#include <pv/caProvider.h>
+
 using namespace std;
 using namespace std::tr1;
 using namespace epics::pvData;
@@ -714,7 +716,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to put: " << status.toString() << std::endl;
         }
         
         m_event->signal();
@@ -854,6 +856,9 @@ int main (int argc, char *argv[])
     ClientFactory::start();
     ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
 
+    //epics::pvAccess::ca::CAClientFactory::start();
+    //ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("ca");
+
     bool allOK = true;
 
     try
@@ -863,7 +868,7 @@ int main (int argc, char *argv[])
             // first connect
             shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
             Channel::shared_pointer channel = provider->createChannel(pvName, channelRequesterImpl);
-            
+
             if (channelRequesterImpl->waitUntilConnected(timeOut))
             {
                 shared_ptr<ChannelPutRequesterImpl> putRequesterImpl(new ChannelPutRequesterImpl(channel->getChannelName()));

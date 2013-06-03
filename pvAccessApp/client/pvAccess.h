@@ -724,6 +724,32 @@ namespace pvAccess {
         };
 
         /**
+         * <code>ChanneProvider</code> factory interface.
+         */
+        class ChannelProviderFactory : private epics::pvData::NoDefaultMethods {
+        public:
+            POINTER_DEFINITIONS(ChannelProviderFactory);
+
+            /**
+             * Get factory name (i.e. name of the provider).
+             * @return the factory name.
+             */
+            virtual epics::pvData::String getFactoryName() = 0;
+
+            /**
+             * Get a shared instance.
+             * @return a shared instance.
+             */
+            virtual ChannelProvider::shared_pointer sharedInstance() = 0;
+
+            /**
+             * Create a new instance.
+             * @return a new instance.
+             */
+            virtual ChannelProvider::shared_pointer newInstance() = 0;
+        };
+
+        /**
          * Interface for locating channel providers.
          */
         class ChannelAccess : private epics::pvData::NoDefaultMethods {
@@ -735,12 +761,19 @@ namespace pvAccess {
             virtual ~ChannelAccess() {};
             
             /**
-             * Get the provider with the specified name.
+             * Get a shared instance of the provider with the specified name.
              * @param providerName The name of the provider.
              * @return The interface for the provider or null if the provider is not known.
              */
             virtual ChannelProvider::shared_pointer getProvider(epics::pvData::String const & providerName) = 0;
             
+            /**
+             * Creates a new instanceof the provider with the specified name.
+             * @param providerName The name of the provider.
+             * @return The interface for the provider or null if the provider is not known.
+             */
+            virtual ChannelProvider::shared_pointer createProvider(epics::pvData::String const & providerName) = 0;
+
             /**
              * Get a array of the names of all the known providers.
              * @return The names. Be sure to delete vector instance.
@@ -749,8 +782,8 @@ namespace pvAccess {
         };
     
         extern ChannelAccess::shared_pointer getChannelAccess();
-        extern void registerChannelProvider(ChannelProvider::shared_pointer const & channelProvider);
-        extern void unregisterChannelProvider(ChannelProvider::shared_pointer const & channelProvider);
+        extern void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
+        extern void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
 
         /**
          * Interface for creating request structure.

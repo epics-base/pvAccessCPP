@@ -16,7 +16,6 @@ pvAccessApp/pva/pvaVersion.cpp
 pvAccessApp/pva/pvaVersion.h
 pvAccessApp/client/pvAccess.cpp
 pvAccessApp/client/pvAccess.h
-pvAccessApp/client/pvAccess.h.orig
 pvAccessApp/factory/ChannelAccessFactory.cpp
 pvAccessApp/factory/CreateRequestFactory.cpp
 pvAccessApp/mb/pvAccessMB.cpp

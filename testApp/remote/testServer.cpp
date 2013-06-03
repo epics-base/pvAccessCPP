@@ -1874,6 +1874,7 @@ public:
     typedef std::tr1::shared_ptr<MockServerChannelProvider> shared_pointer;
     typedef std::tr1::shared_ptr<const MockServerChannelProvider> const_shared_pointer;
 
+    static String PROVIDER_NAME;
 
     MockServerChannelProvider() :
         m_mockChannelFind(),
@@ -1936,7 +1937,7 @@ public:
 
     virtual epics::pvData::String getProviderName()
     {
-        return "local";
+        return PROVIDER_NAME;
     }
 
     virtual void destroy()
@@ -2020,17 +2021,41 @@ private:
     auto_ptr<Thread> m_imgThread;
 };
 
+String MockServerChannelProvider::PROVIDER_NAME = "local";
+
+class MockChannelProviderFactory : public ChannelProviderFactory
+{
+public:
+    POINTER_DEFINITIONS(MockChannelProviderFactory);
+
+    virtual epics::pvData::String getFactoryName()
+    {
+        return MockServerChannelProvider::PROVIDER_NAME;
+    }
+
+    virtual ChannelProvider::shared_pointer sharedInstance()
+    {
+        // no shared instance support for mock...
+        return newInstance();
+    }
+
+    virtual ChannelProvider::shared_pointer newInstance()
+    {
+        MockServerChannelProvider::shared_pointer channelProvider(new MockServerChannelProvider());
+        channelProvider->initialize();
+        return channelProvider;
+    }
+
+};
+
 
 static ServerContextImpl::shared_pointer ctx;
 
 void testServer(int timeToRun)
 {
 
-    MockServerChannelProvider::shared_pointer channelProvider(new MockServerChannelProvider());
-    channelProvider->initialize();
-
-    ChannelProvider::shared_pointer ptr = channelProvider;
-    registerChannelProvider(ptr);
+    MockChannelProviderFactory::shared_pointer factory(new MockChannelProviderFactory());
+    registerChannelProviderFactory(factory);
 
     //ServerContextImpl::shared_pointer ctx = ServerContextImpl::create();
     ctx = ServerContextImpl::create();
@@ -2043,7 +2068,7 @@ void testServer(int timeToRun)
 
     ctx->destroy();
 
-    unregisterChannelProvider(ptr);
+    unregisterChannelProviderFactory(factory);
 
     structureChangedListeners.clear();
     structureStore.clear();

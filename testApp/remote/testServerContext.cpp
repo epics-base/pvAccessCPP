@@ -63,6 +63,11 @@ public:
             return ChannelProvider::shared_pointer(); 
     }
             
+    ChannelProvider::shared_pointer createProvider(epics::pvData::String const & providerName)
+    {
+        return getProvider(providerName);
+    }
+
     std::auto_ptr<stringVector_t> getProviderNames()
     {
         std::auto_ptr<stringVector_t> pn(new stringVector_t());

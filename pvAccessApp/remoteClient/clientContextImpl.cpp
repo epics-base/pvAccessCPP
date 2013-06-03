@@ -44,6 +44,8 @@ using namespace epics::pvData;
 namespace epics {
     namespace pvAccess {
 
+        String ClientContextImpl::PROVIDER_NAME = "pvAccess";   // TODO to be renamed to "pva"
+
         Status ChannelImpl::channelDestroyed = Status(Status::STATUSTYPE_WARNING, "channel destroyed");
         Status ChannelImpl::channelDisconnected = Status(Status::STATUSTYPE_WARNING, "channel disconnected");
 
@@ -3046,7 +3048,7 @@ namespace epics {
 
                 virtual epics::pvData::String getProviderName()
                 {
-                    return "pvAccess";
+                    return PROVIDER_NAME;
                 }
 
                 virtual void destroy()

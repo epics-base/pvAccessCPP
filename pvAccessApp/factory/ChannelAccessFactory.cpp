@@ -21,8 +21,8 @@ static ChannelAccess::shared_pointer channelAccess;
 
 static Mutex channelProviderMutex;
 
-typedef std::map<String, ChannelProvider::shared_pointer> ChannelProviderMap;
-static ChannelProviderMap channelProviders;
+typedef std::map<String, ChannelProviderFactory::shared_pointer> ChannelProviderFactoryMap;
+static ChannelProviderFactoryMap channelProviders;
 
 
 class ChannelAccessImpl : public ChannelAccess {
@@ -30,13 +30,26 @@ class ChannelAccessImpl : public ChannelAccess {
 
     ChannelProvider::shared_pointer getProvider(String const & providerName) {
         Lock guard(channelProviderMutex);
-        return channelProviders[providerName];
+        ChannelProviderFactoryMap::const_iterator iter = channelProviders.find(providerName);
+        if (iter != channelProviders.end())
+            return iter->second->sharedInstance();
+        else
+            return ChannelProvider::shared_pointer();
+    }
+
+    ChannelProvider::shared_pointer createProvider(String const & providerName) {
+        Lock guard(channelProviderMutex);
+        ChannelProviderFactoryMap::const_iterator iter = channelProviders.find(providerName);
+        if (iter != channelProviders.end())
+            return iter->second->newInstance();
+        else
+            return ChannelProvider::shared_pointer();
     }
 
     std::auto_ptr<stringVector_t> getProviderNames() {
         Lock guard(channelProviderMutex);
         std::auto_ptr<stringVector_t> providers(new stringVector_t());
-        for (ChannelProviderMap::const_iterator i = channelProviders.begin();
+        for (ChannelProviderFactoryMap::const_iterator i = channelProviders.begin();
             i != channelProviders.end(); i++)
             providers->push_back(i->first);
 
@@ -54,14 +67,14 @@ ChannelAccess::shared_pointer getChannelAccess() {
     return channelAccess;
 }
 
-void registerChannelProvider(ChannelProvider::shared_pointer const & channelProvider) {
+void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) {
     Lock guard(channelProviderMutex);
-    channelProviders[channelProvider->getProviderName()] = channelProvider;
+    channelProviders[channelProviderFactory->getFactoryName()] = channelProviderFactory;
 }
 
-void unregisterChannelProvider(ChannelProvider::shared_pointer const & channelProvider) {
+void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) {
     Lock guard(channelProviderMutex);
-    channelProviders.erase(channelProvider->getProviderName());
+    channelProviders.erase(channelProviderFactory->getFactoryName());
 }
 
 }}
