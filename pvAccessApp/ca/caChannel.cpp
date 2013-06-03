@@ -322,13 +322,9 @@ ChannelRPC::shared_pointer CAChannel::createChannelRPC(
 
 epics::pvData::Monitor::shared_pointer CAChannel::createMonitor(
         epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
+        epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
-    Status errorStatus(Status::STATUSTYPE_ERROR, "not implemented");
-    Monitor::shared_pointer nullMonitor;
-    EXCEPTION_GUARD(monitorRequester->monitorConnect(errorStatus, nullMonitor,
-                                                     Structure::shared_pointer()));
-    return nullMonitor;
+    return CAChannelMonitor::create(shared_from_this(), monitorRequester, pvRequest);
 }
 
 
@@ -1110,6 +1106,165 @@ void CAChannelPut::lock()
 
 
 void CAChannelPut::unlock()
+{
+    // TODO
+}
+
+
+
+
+
+
+
+
+
+
+
+Monitor::shared_pointer CAChannelMonitor::create(
+        CAChannel::shared_pointer const & channel,
+        epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
+        epics::pvData::PVStructure::shared_pointer const & pvRequest)
+{
+    Monitor::shared_pointer thisPtr(new CAChannelMonitor(channel, monitorRequester, pvRequest));
+    static_cast<CAChannelMonitor*>(thisPtr.get())->activate();
+    return thisPtr;
+}
+
+
+CAChannelMonitor::~CAChannelMonitor()
+{
+    // TODO
+}
+
+
+CAChannelMonitor::CAChannelMonitor(CAChannel::shared_pointer const & _channel,
+                           epics::pvData::MonitorRequester::shared_pointer const & _monitorRequester,
+                           epics::pvData::PVStructure::shared_pointer const & pvRequest) :
+    channel(_channel),
+    monitorRequester(_monitorRequester),
+    getType(getDBRType(pvRequest, _channel->getNativeType())),
+    pvStructure(createPVStructure(_channel, getType)),
+    changedBitSet(new BitSet(pvStructure->getStructure()->getNumberFields())),
+    overrunBitSet(new BitSet(pvStructure->getStructure()->getNumberFields())),
+    count(0),
+    element(new MonitorElement())
+{
+    // TODO
+    changedBitSet->set(0);
+
+    element->pvStructurePtr = pvStructure;
+    element->changedBitSet = changedBitSet;
+    element->overrunBitSet = overrunBitSet;
+}
+
+void CAChannelMonitor::activate()
+{
+    // TODO remove
+    thisPointer = shared_from_this();
+
+    EXCEPTION_GUARD(monitorRequester->monitorConnect(Status::Ok, shared_from_this(),
+                                                     pvStructure->getStructure()));
+}
+
+
+/* --------------- epics::pvData::Monitor --------------- */
+
+
+static void ca_subscription_handler(struct event_handler_args args)
+{
+    CAChannelMonitor *channelMonitor = static_cast<CAChannelMonitor*>(args.usr);
+    channelMonitor->subscriptionEvent(args);
+}
+
+
+void CAChannelMonitor::subscriptionEvent(struct event_handler_args &args)
+{
+    if (args.status == ECA_NORMAL)
+    {
+        // TODO override indicator
+
+        copyDBRtoPVStructure copyFunc = copyFuncTable[getType];
+        if (copyFunc)
+            copyFunc(args.dbr, args.count, pvStructure);
+        else
+        {
+            // TODO remove
+            std::cout << "no copy func implemented" << std::endl;
+        }
+
+        {
+            Lock lock(mutex);
+            count = 1;
+        }
+        monitorRequester->monitorEvent(shared_from_this());
+    }
+    else
+    {
+        //Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(args.status)));
+        //EXCEPTION_GUARD(channelMonitorRequester->MonitorDone(errorStatus));
+    }
+}
+
+
+epics::pvData::Status CAChannelMonitor::start()
+{
+    // TODO DBE_PROPERTY support
+    int result = ca_create_subscription(getType, channel->getElementCount(),
+                                        channel->getChannelID(), DBE_VALUE,
+                                        ca_subscription_handler, this,
+                                        &eventID);
+    if (result == ECA_NORMAL)
+    {
+        ca_flush_io();
+        return Status::Ok;
+    }
+    else
+    {
+        return Status(Status::STATUSTYPE_ERROR, String(ca_message(result)));
+    }
+}
+
+
+epics::pvData::Status CAChannelMonitor::stop()
+{
+    int result = ca_clear_subscription(eventID);
+
+    if (result == ECA_NORMAL)
+    {
+        return Status::Ok;
+    }
+    else
+    {
+        return Status(Status::STATUSTYPE_ERROR, String(ca_message(result)));
+    }
+}
+
+
+epics::pvData::MonitorElementPtr CAChannelMonitor::poll()
+{
+    Lock lock(mutex);
+    if (count)
+    {
+        count--;
+        return element;
+    }
+    else
+    {
+        return nullElement;
+    }
+}
+
+
+void CAChannelMonitor::release(epics::pvData::MonitorElementPtr const & /*monitorElement*/)
+{
+    // noop
+}
+
+
+/* --------------- epics::pvData::Destroyable --------------- */
+
+
+void CAChannelMonitor::destroy()
 {
     // TODO
 }
