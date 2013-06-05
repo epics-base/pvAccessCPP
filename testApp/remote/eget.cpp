@@ -128,6 +128,40 @@ void formatNTScalarArray(std::ostream& o, PVStructurePtr const & pvStruct)
     formatVector(o, "", value, mode == TerseMode);
 }
 
+void formatNTEnum(std::ostream& o, PVStructurePtr const & pvStruct)
+{
+    PVStructurePtr enumt = dynamic_pointer_cast<PVStructure>(pvStruct->getSubField("value"));
+    if (enumt.get() == 0)
+    {
+        std::cerr << "no enum_t 'value' field in NTEnum" << std::endl;
+        return;
+    }
+
+    PVIntPtr index = dynamic_pointer_cast<PVInt>(enumt->getSubField("index"));
+    if (index.get() == 0)
+    {
+        std::cerr << "no int 'value.index' field in NTEnum" << std::endl;
+        return;
+    }
+
+    PVStringArrayPtr choices = dynamic_pointer_cast<PVStringArray>(enumt->getSubField("choices"));
+    if (choices.get() == 0)
+    {
+        std::cerr << "no string[] 'value.choices' field in NTEnum" << std::endl;
+        return;
+    }
+    
+    int32 ix = index->get();
+    if (ix < 0 || ix > static_cast<int32>(choices->getLength()))
+    {
+        o << ix;
+    }
+    else
+    {
+        choices->dumpValue(o, ix);
+    }
+}
+
 size_t getLongestString(vector<String> const & array)
 {
     size_t max = 0;
@@ -676,6 +710,7 @@ void initializeNTFormatterLUT()
 {
     ntFormatterLUT["uri:ev4:nt/2012/pwd:NTScalar"] = formatNTScalar;
     ntFormatterLUT["uri:ev4:nt/2012/pwd:NTScalarArray"] = formatNTScalarArray;
+    ntFormatterLUT["uri:ev4:nt/2012/pwd:NTEnum"] = formatNTEnum;
     ntFormatterLUT["uri:ev4:nt/2012/pwd:NTTable"] = formatNTTable;
     ntFormatterLUT["uri:ev4:nt/2012/pwd:NTMatrix"] = formatNTMatrix;
     ntFormatterLUT["uri:ev4:nt/2012/pwd:NTAny"] = formatNTAny;
@@ -749,8 +784,14 @@ void printValue(String const & channelName, PVStructure::shared_pointer const & 
             }
             else
             {
-                // switch to structure mode
-                std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+                // switch to structure mode, unless it's NTEnum
+                if (value->getField()->getID() == "enum_t")
+                {
+                    formatNTEnum(std::cout, pv);
+                    std::cout << std::endl;
+                }
+                else                 
+                    std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
             }
         }
     }
