@@ -27,8 +27,8 @@ CAChannel::shared_pointer CAChannel::create(ChannelProvider::shared_pointer cons
                                             short priority,
                                             ChannelRequester::shared_pointer const & channelRequester)
 {
-    CAChannel::shared_pointer thisPtr(new CAChannel(channelProvider, channelRequester));
-    thisPtr->activate(channelName, priority);
+    CAChannel::shared_pointer thisPtr(new CAChannel(channelName, channelProvider, channelRequester));
+    thisPtr->activate(priority);
     return thisPtr;
 }
 
@@ -181,8 +181,10 @@ void CAChannel::disconnected()
     EXCEPTION_GUARD(channelRequester->channelStateChange(shared_from_this(), Channel::DISCONNECTED));
 }
 
-CAChannel::CAChannel(ChannelProvider::shared_pointer const & _channelProvider,
+CAChannel::CAChannel(epics::pvData::String const & _channelName,
+                     ChannelProvider::shared_pointer const & _channelProvider,
                      ChannelRequester::shared_pointer const & _channelRequester) :
+    channelName(_channelName),
     channelProvider(_channelProvider),
     channelRequester(_channelRequester),
     channelID(0),
@@ -192,7 +194,7 @@ CAChannel::CAChannel(ChannelProvider::shared_pointer const & _channelProvider,
     PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(caChannel);
 }
 
-void CAChannel::activate(epics::pvData::String const & channelName, short priority)
+void CAChannel::activate(short priority)
 {
     int result = ca_create_channel(channelName.c_str(),
                                    ca_connection_handler,
@@ -263,7 +265,7 @@ Channel::ConnectionState CAChannel::getConnectionState()
 
 epics::pvData::String CAChannel::getChannelName()
 {
-    return epics::pvData::String(ca_name(channelID));
+    return channelName;
 }
 
 

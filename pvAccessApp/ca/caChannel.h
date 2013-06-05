@@ -100,11 +100,13 @@ public:
 
 private:
 
-    CAChannel(ChannelProvider::shared_pointer const & channelProvider,
+    CAChannel(epics::pvData::String const & channelName,
+              ChannelProvider::shared_pointer const & channelProvider,
               ChannelRequester::shared_pointer const & channelRequester);
-    void activate(epics::pvData::String const & channelName, short priority);
+    void activate(short priority);
 
-    // TODO weak_ptr usage?
+    epics::pvData::String channelName;
+    
     ChannelProvider::shared_pointer channelProvider;
     ChannelRequester::shared_pointer channelRequester;
 
@@ -158,7 +160,6 @@ private:
                  epics::pvData::PVStructure::shared_pointer const & pvRequest);
     void activate();
 
-    // TODO weak_ptr usage?
     CAChannel::shared_pointer channel;
     ChannelGetRequester::shared_pointer channelGetRequester;
     chtype getType;
@@ -207,7 +208,6 @@ private:
                  epics::pvData::PVStructure::shared_pointer const & pvRequest);
     void activate();
 
-    // TODO weak_ptr usage?
     CAChannel::shared_pointer channel;
     ChannelPutRequester::shared_pointer channelPutRequester;
     chtype getType;
@@ -251,7 +251,6 @@ private:
                  epics::pvData::PVStructure::shared_pointer const & pvRequest);
     void activate();
 
-    // TODO weak_ptr usage?
     CAChannel::shared_pointer channel;
     epics::pvData::MonitorRequester::shared_pointer monitorRequester;
     chtype getType;
