@@ -38,8 +38,6 @@ public:
     chtype getNativeType();
     unsigned getElementCount();
 
-    epics::pvData::PVStructure::shared_pointer getPVStructure();
-
     /* --------------- epics::pvAccess::Channel --------------- */
 
     virtual std::tr1::shared_ptr<ChannelProvider> getProvider();
@@ -95,6 +93,11 @@ public:
 
     virtual void destroy();
 
+    /* ---------------------------------------------------------------- */
+
+    void registerRequest(ChannelRequest::shared_pointer const & request);
+    void unregisterRequest(ChannelRequest::shared_pointer const & request);
+
 private:
 
     CAChannel(ChannelProvider::shared_pointer const & channelProvider,
@@ -108,7 +111,13 @@ private:
     chid channelID;
     chtype channelType;
     unsigned elementCount;
-    epics::pvData::PVStructure::shared_pointer pvStructure;
+    epics::pvData::Structure::const_shared_pointer structure;
+
+    epics::pvData::Mutex requestsMutex;
+    // TODO std::unordered_map
+    // void* is not the nicest thing, but there is no fast weak_ptr==
+    typedef std::map<void*, ChannelRequest::weak_pointer> RequestsList;
+    RequestsList requests;
 };
 
 

@@ -8,6 +8,7 @@
 #define CAPROVIDER_H
 
 #include <pv/pvAccess.h>
+#include <map>
 
 namespace epics {
 namespace pvAccess {
@@ -24,9 +25,9 @@ public:
     CAChannelProvider();
     virtual ~CAChannelProvider();
 
-    virtual epics::pvData::String getProviderName();
+    /* --------------- epics::pvAccess::ChannelProvider --------------- */
 
-    virtual void destroy();
+    virtual epics::pvData::String getProviderName();
 
     virtual ChannelFind::shared_pointer channelFind(
             epics::pvData::String const & channelName,
@@ -48,9 +49,22 @@ public:
     virtual void flush();
     virtual void poll();
 
+    virtual void destroy();
+
+    /* ---------------------------------------------------------------- */
+
+    void registerChannel(Channel::shared_pointer const & channel);
+    void unregisterChannel(Channel::shared_pointer const & channel);
+
 private:
 
     void initialize();
+
+    epics::pvData::Mutex channelsMutex;
+    // TODO std::unordered_map
+    // void* is not the nicest thing, but there is no fast weak_ptr==
+    typedef std::map<void*, Channel::weak_pointer> ChannelList;
+    ChannelList channels;
 };
 
 

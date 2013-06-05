@@ -6,7 +6,7 @@
 
 #include <pv/logger.h>
 #include <pv/caChannel.h>
-#include <pv/standardPVField.h>
+#include <pv/standardField.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
@@ -54,38 +54,80 @@ static ScalarType dbr2ST[] =
     pvDouble    // DBR_DOUBLE = 6
 };
 
-
-static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer const & channel, String const & properties)
+static Structure::const_shared_pointer createStructure(CAChannel::shared_pointer const & channel, String const & properties)
 {
-    // TODO
-    StandardPVFieldPtr standardPVField = getStandardPVField();
-    PVStructure::shared_pointer pvStructure;
+    StandardFieldPtr standardField = getStandardField();
+    Structure::const_shared_pointer structure;
 
     chtype channelType = channel->getNativeType();
     if (channelType != DBR_ENUM)
     {
         ScalarType st = dbr2ST[channelType];
-        pvStructure = (channel->getElementCount() > 1) ?
-                       standardPVField->scalarArray(st, properties) :
-                       standardPVField->scalar(st, properties);
+        structure = (channel->getElementCount() > 1) ?
+                     standardField->scalarArray(st, properties) :
+                     standardField->scalar(st, properties);
     }
     else
     {
-        // enum arrays not supported
+        // NOTE: enum arrays not supported
+        structure = standardField->enumerated(properties);
+    }
 
-        //     introduce ackConnected(pvStructure), if non-enum directly call, else when labels are retrieved
+    return structure;
+}
+
+static void ca_get_labels_handler(struct event_handler_args args)
+{
+
+    if (args.status == ECA_NORMAL)
+    {
+        const dbr_gr_enum* dbr_enum_p = static_cast<const dbr_gr_enum*>(args.dbr);
+
         StringArray labels;
-        pvStructure = standardPVField->enumerated(labels, properties);
+        labels.reserve(dbr_enum_p->no_str);
+        for (dbr_short_t i = 0; i < dbr_enum_p->no_str; i++)
+            labels.push_back(dbr_enum_p->strs[i]);
+
+        PVStringArray* labelsArray = static_cast<PVStringArray*>(args.usr);
+        labelsArray->put(0, labels.size(), labels, 0);
+    }
+    else
+    {
+        // TODO better error handling
+        std::cerr << "failed to get labels for enum : " << ca_message(args.status) << std::endl;
+    }
+}
+
+static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer const & channel, String const & properties)
+{
+    PVStructure::shared_pointer pvStructure = getPVDataCreate()->createPVStructure(createStructure(channel, properties));
+    if (channel->getNativeType() == DBR_ENUM)
+    {
+
+        PVScalarArrayPtr pvScalarArray = pvStructure->getScalarArrayField("value.choices", pvString);
+
+        // TODO avoid getting labels if DBR_GR_ENUM or DBR_CTRL_ENUM is used in subsequent get
+        int result = ca_array_get_callback(DBR_GR_ENUM, 1, channel->getChannelID(), ca_get_labels_handler, pvScalarArray.get());
+        if (result == ECA_NORMAL)
+        {
+            ca_flush_io();
+
+            // NOTE: we do not wait here, since all subsequent request (over TCP) is serialized
+            // and will guarantee that ca_get_labels_handler is called first
+        }
+        else
+        {
+            // TODO better error handling
+            std::cerr << "failed to get labels for enum " << channel->getChannelName() << ": " << ca_message(result) << std::endl;
+        }
     }
 
     return pvStructure;
 }
 
-
 static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer const & channel, chtype dbrType)
 {
-    // TODO constants
-    // TODO value is always there
+    // NOTE: value is always there
     String properties;
     if (dbrType >= DBR_CTRL_STRING)      // 28
     {
@@ -124,11 +166,11 @@ void CAChannel::connected()
             (channelType != DBR_STRING && channelType != DBR_ENUM) ?
                 "value,timeStamp,alarm,display,valueAlarm,control" :
                 "value,timeStamp,alarm";
-    PVStructure::shared_pointer pvStructure = createPVStructure(shared_from_this(), allProperties);
+    Structure::const_shared_pointer structure = createStructure(shared_from_this(), allProperties);
 
     // TODO thread sync
     // TODO we need only Structure here
-    this->pvStructure = pvStructure;
+    this->structure = structure;
 
     // TODO call channelCreated if structure has changed
     EXCEPTION_GUARD(channelRequester->channelStateChange(shared_from_this(), Channel::CONNECTED));
@@ -192,11 +234,6 @@ unsigned CAChannel::getElementCount()
     return elementCount;
 }
 
-PVStructure::shared_pointer CAChannel::getPVStructure()
-{
-    return pvStructure;
-}
-
 
 std::tr1::shared_ptr<ChannelProvider> CAChannel::getProvider()
 {
@@ -245,14 +282,14 @@ bool CAChannel::isConnected()
 void CAChannel::getField(GetFieldRequester::shared_pointer const & requester,
                          epics::pvData::String const & subField)
 {
-    PVField::shared_pointer pvField =
-            subField.empty() ?
-                std::tr1::static_pointer_cast<PVField>(pvStructure) :
-                pvStructure->getSubField(subField);
+    Field::const_shared_pointer field =
+                subField.empty() ?
+                std::tr1::static_pointer_cast<const Field>(structure) :
+                structure->getField(subField);
 
-    if (pvField)
+    if (field)
     {
-        EXCEPTION_GUARD(requester->getDone(Status::Ok, pvField->getField()));
+        EXCEPTION_GUARD(requester->getDone(Status::Ok, field));
     }
     else
     {
@@ -383,11 +420,33 @@ void CAChannel::message(String const & message,MessageType messageType)
 
 void CAChannel::destroy()
 {
-    // TODO
+    Lock lock(requestsMutex);
+    {
+        while (!requests.empty())
+        {
+            ChannelRequest::shared_pointer request = requests.rbegin()->second.lock();
+            if (request)
+                request->destroy();
+        }
+    }
+
+    /* Clear CA Channel */
+    ca_clear_channel(channelID);
 }
 
+/* ---------------------------------------------------------- */
 
+void CAChannel::registerRequest(ChannelRequest::shared_pointer const & request)
+{
+    Lock lock(requestsMutex);
+    requests[request.get()] = ChannelRequest::weak_pointer(request);
+}
 
+void CAChannel::unregisterRequest(ChannelRequest::shared_pointer const & request)
+{
+    Lock lock(requestsMutex);
+    requests.erase(request.get());
+}
 
 
 
@@ -678,6 +737,17 @@ void copy_DBR_GR(const void * dbr, unsigned count, PVStructure::shared_pointer c
     copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
 }
 
+// enum specialization
+template<>
+void copy_DBR_GR<dbr_gr_enum, dbr_enum_t, pvString, PVString, PVStringArray>
+        (const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+{
+    const dbr_gr_enum* data = static_cast<const dbr_gr_enum*>(dbr);
+
+    copy_DBR_STS<dbr_gr_enum, dbr_enum_t, pvString, PVString, PVStringArray>(data, count, pvStructure);
+}
+
+
 // template<DBR type, primitive type, ScalarType, scalar Field, array Field>
 template<typename T, typename pT, epics::pvData::ScalarType sT, typename sF, typename aF>
 void copy_DBR_CTRL(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
@@ -708,6 +778,18 @@ void copy_DBR_CTRL(const void * dbr, unsigned count, PVStructure::shared_pointer
 
     copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
 }
+
+// enum specialization
+template<>
+void copy_DBR_CTRL<dbr_ctrl_enum, dbr_enum_t, pvString, PVString, PVStringArray>
+        (const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+{
+    const dbr_ctrl_enum* data = static_cast<const dbr_ctrl_enum*>(dbr);
+
+    copy_DBR_STS<dbr_ctrl_enum, dbr_enum_t, pvString, PVString, PVStringArray>(data, count, pvStructure);
+}
+
+
 static copyDBRtoPVStructure copyFuncTable[] =
 {
     copy_DBR<String, pvString, PVString, PVStringArray>,          // DBR_STRING
@@ -737,7 +819,7 @@ static copyDBRtoPVStructure copyFuncTable[] =
     copy_DBR_STS<dbr_sts_string, String, pvString, PVString, PVStringArray>,          // DBR_GR_STRING -> DBR_STS_STRING
     copy_DBR_GR<dbr_gr_short, dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_GR_INT, DBR_GR_SHORT
     copy_DBR_GR<dbr_gr_float, dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_GR_FLOAT
-    copy_DBR_STS<dbr_sts_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_GR_ENUM -> DBR_STS_ENUM
+    copy_DBR_GR<dbr_gr_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_GR_ENUM
     copy_DBR_GR<dbr_gr_char, int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_GR_CHAR
     copy_DBR_GR<dbr_gr_long, dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_GR_LONG
     copy_DBR_GR<dbr_gr_double, dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_GR_DOUBLE
@@ -745,7 +827,7 @@ static copyDBRtoPVStructure copyFuncTable[] =
     copy_DBR_STS<dbr_sts_string, String, pvString, PVString, PVStringArray>,          // DBR_CTRL_STRING -> DBR_STS_STRING
     copy_DBR_CTRL<dbr_ctrl_short, dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_CTRL_INT, DBR_CTRL_SHORT
     copy_DBR_CTRL<dbr_ctrl_float, dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_CTRL_FLOAT
-    copy_DBR_STS<dbr_sts_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_CTRL_ENUM -> DBR_STS_ENUM
+    copy_DBR_CTRL<dbr_ctrl_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_CTRL_ENUM
     copy_DBR_CTRL<dbr_ctrl_char, int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_CTRL_CHAR
     copy_DBR_CTRL<dbr_ctrl_long, dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_CTRL_LONG
     copy_DBR_CTRL<dbr_ctrl_double, dbr_double_t, pvDouble, PVDouble, PVDoubleArray>          // DBR_CTRL_DOUBLE
@@ -1267,5 +1349,8 @@ void CAChannelMonitor::release(epics::pvData::MonitorElementPtr const & /*monito
 
 void CAChannelMonitor::destroy()
 {
+    ca_clear_subscription(eventID);
+
     // TODO
+    thisPointer.reset();
 }

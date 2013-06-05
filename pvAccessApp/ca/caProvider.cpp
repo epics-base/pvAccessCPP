@@ -8,6 +8,8 @@
 #include <pv/caProvider.h>
 #include <pv/caChannel.h>
 
+#include <algorithm>
+
 /* for CA */
 #include <cadef.h>
 #include <epicsSignal.h>
@@ -34,12 +36,6 @@ CAChannelProvider::~CAChannelProvider()
 epics::pvData::String CAChannelProvider::getProviderName()
 {
     return PROVIDER_NAME;
-}
-
-void CAChannelProvider::destroy()
-{
-    /* Shut down Channel Access */
-    ca_context_destroy();
 }
 
 ChannelFind::shared_pointer CAChannelProvider::channelFind(
@@ -89,6 +85,34 @@ void CAChannelProvider::flush()
 
 void CAChannelProvider::poll()
 {
+}
+
+void CAChannelProvider::destroy()
+{
+    Lock lock(channelsMutex);
+    {
+        while (!channels.empty())
+        {
+            Channel::shared_pointer channel = channels.rbegin()->second.lock();
+            if (channel)
+                channel->destroy();
+        }
+    }
+
+    /* Destroy CA Context */
+    ca_context_destroy();
+}
+
+void CAChannelProvider::registerChannel(Channel::shared_pointer const & channel)
+{
+    Lock lock(channelsMutex);
+    channels[channel.get()] = Channel::weak_pointer(channel);
+}
+
+void CAChannelProvider::unregisterChannel(Channel::shared_pointer const & channel)
+{
+    Lock lock(channelsMutex);
+    channels.erase(channel.get());
 }
 
 void CAChannelProvider::initialize()
