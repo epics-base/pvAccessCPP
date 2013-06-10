@@ -769,10 +769,10 @@ void copy_DBR_CTRL(const void * dbr, unsigned count, PVStructure::shared_pointer
     copy_format<T>(dbr, disp);
 
     PVStructure::shared_pointer va = pvStructure->getStructureField("valueAlarm");
-    va->getDoubleField("highAlarmLimit")->put(data->upper_alarm_limit);
-    va->getDoubleField("highWarningLimit")->put(data->upper_warning_limit);
-    va->getDoubleField("lowWarningLimit")->put(data->lower_warning_limit);
-    va->getDoubleField("lowAlarmLimit")->put(data->lower_alarm_limit);
+    std::tr1::static_pointer_cast<sF>(va->getSubField("highAlarmLimit"))->put(data->upper_alarm_limit);
+    std::tr1::static_pointer_cast<sF>(va->getSubField("highWarningLimit"))->put(data->upper_warning_limit);
+    std::tr1::static_pointer_cast<sF>(va->getSubField("lowWarningLimit"))->put(data->lower_warning_limit);
+    std::tr1::static_pointer_cast<sF>(va->getSubField("lowAlarmLimit"))->put(data->lower_alarm_limit);
 
     PVStructure::shared_pointer ctrl = pvStructure->getStructureField("control");
     ctrl->getDoubleField("limitHigh")->put(data->upper_ctrl_limit);
