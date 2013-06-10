@@ -18,7 +18,7 @@ using std::tr1::static_pointer_cast;
 namespace epics { namespace pvAccess {
 
 const char* ServerContextImpl::StateNames[] = { "NOT_INITIALIZED", "INITIALIZED", "RUNNING", "SHUTDOWN", "DESTROYED"};
-const Version ServerContextImpl::VERSION("pvAccess Server", "cpp", 1, 2, 0, true);
+const Version ServerContextImpl::VERSION("pvAccess Server", "cpp", 4, 3, 0, false);
 
 ServerContextImpl::ServerContextImpl():
 				_state(NOT_INITIALIZED),
@@ -118,6 +118,12 @@ void ServerContextImpl::loadConfiguration()
     _channelProviderNames = config->getPropertyAsString("EPICS_PVAS_PROVIDER_NAMES", _channelProviderNames);
 }
 
+bool ServerContextImpl::isChannelProviderNamePreconfigured()
+{
+    Configuration::shared_pointer config = getConfiguration();
+    return config->hasProperty("EPICS_PVA_PROVIDER_NAMES") || config->hasProperty("EPICS_PVAS_PROVIDER_NAMES");
+}
+
 void ServerContextImpl::initialize(ChannelAccess::shared_pointer const & channelAccess)
 {
 	Lock guard(_mutex);
@@ -138,13 +144,37 @@ void ServerContextImpl::initialize(ChannelAccess::shared_pointer const & channel
 	_channelAccess = channelAccess;
 
 
-    // split comma separated names
-    std::stringstream ss(_channelProviderNames);
-    std::string providerName;
-    while (std::getline(ss, providerName, ',')) {
-    	ChannelProvider::shared_pointer channelProvider = _channelAccess->getProvider(providerName);
-    	if (channelProvider)
-            _channelProviders.push_back(channelProvider);
+    // user all providers
+    if (_channelProviderNames == PVACCESS_ALL_PROVIDERS)
+    {
+        _channelProviderNames.clear();
+
+        std::auto_ptr<ChannelAccess::stringVector_t> names = _channelAccess->getProviderNames();
+        for (ChannelAccess::stringVector_t::iterator iter = names->begin(); iter != names->end(); iter++)
+        {
+            ChannelProvider::shared_pointer channelProvider = _channelAccess->getProvider(*iter);
+            if (channelProvider)
+            {
+                _channelProviders.push_back(channelProvider);
+
+                // compile a list
+                if (!_channelProviderNames.empty())
+                    _channelProviderNames += ' ';
+                _channelProviderNames += *iter;
+            }
+        }
+    }
+    else
+    {
+        // split space separated names
+        std::stringstream ss(_channelProviderNames);
+        std::string providerName;
+        while (std::getline(ss, providerName, ' '))
+        {
+            ChannelProvider::shared_pointer channelProvider = _channelAccess->getProvider(providerName);
+            if (channelProvider)
+                _channelProviders.push_back(channelProvider);
+        }
     }    
 
 	//_channelProvider = _channelAccess->getProvider(_channelProviderNames);
@@ -563,6 +593,61 @@ void ServerContextImpl::newServerDetected()
     // not used
 }
 
+
+
+struct ThreadRunnerParam {
+    ServerContextImpl::shared_pointer ctx;
+    int timeToRun;
+};
+
+static void threadRunner(void* usr)
+{
+    ThreadRunnerParam* pusr = static_cast<ThreadRunnerParam*>(usr);
+    ThreadRunnerParam param = *pusr;
+    delete pusr;
+
+    param.ctx->run(param.timeToRun);
+}
+
+
+
+ServerContext::shared_pointer startPVAServer(String const & providerNames, int timeToRun, bool runInSeparateThread, bool printInfo)
+{
+    ServerContextImpl::shared_pointer ctx = ServerContextImpl::create();
+
+    // do not override configuration
+    if (providerNames == PVACCESS_ALL_PROVIDERS && !ctx->isChannelProviderNamePreconfigured())
+        ctx->setChannelProviderName(providerNames);
+
+    ChannelAccess::shared_pointer channelAccess = getChannelAccess();
+    ctx->initialize(channelAccess);
+
+    if (printInfo)
+        ctx->printInfo();
+
+
+    if (runInSeparateThread)
+    {
+        // delete left to the thread
+        auto_ptr<ThreadRunnerParam> param(new ThreadRunnerParam());
+        param->ctx = ctx;
+        param->timeToRun = timeToRun;
+
+        // TODO can this fail?
+        epicsThreadCreate("startPVAServer",
+                          epicsThreadPriorityMedium,
+                          epicsThreadGetStackSize(epicsThreadStackBig),
+                          threadRunner, param.get());
+
+        param.release();
+    }
+    else
+    {
+        ctx->run(timeToRun);
+    }
+
+    return ctx;
+}
 
 }
 }

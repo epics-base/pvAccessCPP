@@ -68,6 +68,9 @@ namespace pvAccess {
     /** Default PVA provider name. */
     const epics::pvData::String PVACCESS_DEFAULT_PROVIDER = "local";
 
+    /** "All-providers registered" PVA provider name. */
+    const epics::pvData::String PVACCESS_ALL_PROVIDERS = "<all>";
+
     /** Name of the system env. variable to turn on debugging. */
     const epics::pvData::String PVACCESS_DEBUG = "EPICS_PVA_DEBUG";
 }

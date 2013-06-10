@@ -39,7 +39,7 @@ public:
 	 */
 	virtual const Version& getVersion() = 0;
 
-	/**
+    /**
 	 * Set <code>ChannelAccess</code> implementation and initialize server.
 	 * @param channelAccess implementation of channel access to be served.
 	 */
@@ -114,7 +114,7 @@ public:
 
 	//**************** derived from ServerContext ****************//
 	const Version& getVersion();
-	void initialize(ChannelAccess::shared_pointer const & channelAccess);
+    void initialize(ChannelAccess::shared_pointer const & channelAccess);
 	void run(epics::pvData::int32 seconds);
 	void shutdown();
 	void destroy();
@@ -274,6 +274,12 @@ public:
 	 */
 	std::vector<ChannelProvider::shared_pointer> getChannelProviders();
 
+    /**
+     * Return <code>true</code> if channel provider name is provided by configuration (e.g. system env. var.).
+     * @return <code>true</code> if channel provider name is provided by configuration (e.g. system env. var.)
+     */
+    bool isChannelProviderNamePreconfigured();
+
 private:
 	/**
 	 * Initialization status.
@@ -406,7 +412,11 @@ private:
 	Configuration::shared_pointer configuration;
 };
 
-
+extern ServerContext::shared_pointer startPVAServer(
+        epics::pvData::String const & providerNames = PVACCESS_ALL_PROVIDERS,
+        int timeToRun = 0,
+        bool runInSeparateThread = false,
+        bool printInfo = false);
 
 }
 }
