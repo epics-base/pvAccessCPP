@@ -38,6 +38,7 @@ namespace pvAccess {
 
     void pvAccessLog(pvAccessLogLevel level, const char* format, ...);
     void pvAccessSetLogLevel(pvAccessLogLevel level);
+    bool pvAccessIsLoggable(pvAccessLogLevel level);
 
 	#if defined (__GNUC__) && __GNUC__ < 3
 	#define LOG(level, format, ARGS...) pvAccessLog(level, format, ##ARGS)
@@ -45,7 +46,8 @@ namespace pvAccess {
 	#define LOG(level, format, ...) pvAccessLog(level, format, ##__VA_ARGS__)
 	#endif
     #define SET_LOG_LEVEL(level) pvAccessSetLogLevel(level)
-    
+    #define IS_LOGGABLE(level) pvAccessIsLoggable(level)
+
     // EPICS errlog
     //#define LOG errlogSevPrintf 
     //#define SET_LOG_LEVEL(level) errlogSetSevToLog(level)

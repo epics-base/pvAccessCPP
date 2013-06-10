@@ -931,7 +931,7 @@ public:
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel get create: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get create: " << status << std::endl;
             }
             
             // assign smart pointers
@@ -946,7 +946,7 @@ public:
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status << std::endl;
             m_event.signal();
         }
     }
@@ -958,7 +958,7 @@ public:
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get: " << status << std::endl;
             }
 
             // access smart pointers
@@ -982,7 +982,7 @@ public:
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to get: " << status << std::endl;
             {
                 Lock lock(m_pointerMutex);
                 // this is OK since caller holds also owns it
@@ -1047,7 +1047,7 @@ public:
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel RPC create: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel RPC create: " << status << std::endl;
             }
             
             // assign smart pointers
@@ -1060,7 +1060,7 @@ public:
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status << std::endl;
             m_connectionEvent.signal();
         }
     }
@@ -1072,7 +1072,7 @@ public:
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel RPC: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel RPC: " << status << std::endl;
             }
 
             // access smart pointers
@@ -1093,7 +1093,7 @@ public:
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to RPC: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to RPC: " << status << std::endl;
             {
                 Lock lock(m_pointerMutex);
                 // this is OK since caller holds also owns it

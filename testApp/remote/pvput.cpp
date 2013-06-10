@@ -641,7 +641,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel put create: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel put create: " << status << std::endl;
             }
 
             // assign smart pointers
@@ -660,7 +660,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to create channel put: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to create channel put: " << status << std::endl;
             m_event->signal();
         }
     }
@@ -672,7 +672,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get: " << status << std::endl;
             }
 
         	m_done.set();
@@ -696,7 +696,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to get: " << status << std::endl;
         }
         
         m_event->signal();
@@ -709,14 +709,14 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel put: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel put: " << status << std::endl;
             }
   
             m_done.set();
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to put: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to put: " << status << std::endl;
         }
         
         m_event->signal();

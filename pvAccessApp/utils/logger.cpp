@@ -62,6 +62,11 @@ namespace epics {
             g_pvAccessLogLevel = level;
         }
 
+        bool pvAccessIsLoggable(pvAccessLogLevel level)
+        {
+            return level >= g_pvAccessLogLevel;
+        }
+
         class FileLogger : public NoDefaultMethods {
         public:
             FileLogger(String const & name) {

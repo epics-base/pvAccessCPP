@@ -130,7 +130,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel get create: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get create: " << status << std::endl;
             }
             
             // assign smart pointers
@@ -145,7 +145,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status << std::endl;
             m_event.signal();
         }
     }
@@ -157,7 +157,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get: " << status << std::endl;
             }
 
             // access smart pointers
@@ -181,7 +181,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to get: " << status << std::endl;
             {
                 Lock lock(m_pointerMutex);
                 // this is OK since caller holds also owns it
@@ -247,13 +247,13 @@ class MonitorRequesterImpl : public MonitorRequester
             // TODO and exit
             if (!startStatus.isSuccess())
             {
-                std::cerr << "[" << m_channelName << "] channel monitor start: " << startStatus.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel monitor start: " << startStatus << std::endl;
             }
 
         }
         else
         {
-            std::cerr << "monitorConnect(" << status.toString() << ")" << std::endl;
+            std::cerr << "monitorConnect(" << status << ")" << std::endl;
         }
     }
 

@@ -9,6 +9,8 @@
 #include <stdexcept>
 #include <algorithm>
 
+#include <pv/logger.h>
+
 using namespace std;
 using namespace std::tr1;
 using namespace epics::pvData;
@@ -29,6 +31,29 @@ void RequesterImpl::message(String const & message, MessageType messageType)
 	std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
 }
 
+std::ostream& operator<<(std::ostream& o, const Status& s)
+{
+    o << '[' << Status::StatusTypeName[s.getType()] << "] ";
+    String msg = s.getMessage();
+    if (!msg.empty())
+    {
+        o << msg;
+    }
+    else
+    {
+        o << "(no error message)";
+    }
+    // dump stack trace only if on debug mode
+    if (IS_LOGGABLE(logLevelDebug))
+    {
+        String sd = s.getStackDump();
+        if (!sd.empty())
+        {
+            o << std::endl << sd;
+        }
+    }
+    return o;
+}
 
 char separator = ' ';
 void terseSeparator(char c)
@@ -203,12 +228,12 @@ void ChannelRequesterImpl::channelCreated(const epics::pvData::Status& status, C
 		// show warning
 		if (!status.isOK())
 		{
-			std::cerr << "[" << channel->getChannelName() << "] channel create: " << status.toString() << std::endl;
+            std::cerr << "[" << channel->getChannelName() << "] channel create: " << status << std::endl;
 		}
 	}
 	else
 	{
-		std::cerr << "[" << channel->getChannelName() << "] failed to create a channel: " << status.toString() << std::endl;
+        std::cerr << "[" << channel->getChannelName() << "] failed to create a channel: " << status << std::endl;
 	}
 }
 
@@ -256,7 +281,7 @@ void GetFieldRequesterImpl::getDone(const epics::pvData::Status& status, epics::
 		// show warning
 		if (!status.isOK())
 		{
-			std::cerr << "[" << m_channel->getChannelName() << "] getField create: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channel->getChannelName() << "] getField create: " << status << std::endl;
 		}
 
 		// assign smart pointers
@@ -268,7 +293,7 @@ void GetFieldRequesterImpl::getDone(const epics::pvData::Status& status, epics::
 	else
 	{
 		// do not complain about missing field
-		//std::cerr << "[" << m_channel->getChannelName() << "] failed to get channel introspection data: " << status.toString() << std::endl;
+        //std::cerr << "[" << m_channel->getChannelName() << "] failed to get channel introspection data: " << status << std::endl;
 	}
 
 	m_event.signal();

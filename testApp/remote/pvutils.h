@@ -86,3 +86,4 @@ class GetFieldRequesterImpl :
         bool waitUntilFieldGet(double timeOut);
 };
 
+std::ostream& operator<<(std::ostream& o, const epics::pvData::Status& s);
