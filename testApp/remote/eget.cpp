@@ -883,16 +883,24 @@ void printValues(vector<string> const & names, vector<PVStructure::shared_pointe
 
     if (scalars.size() == len)
     {
-        bool first = true;
-        for (size_t i = 0; i < len; i++)
+        if (!transpose)
         {
-            if (first)
-                first = false;
-            else
-                std::cout << fieldSeparator;
-            std::cout << *(scalars[i].get());
+            bool first = true;
+            for (size_t i = 0; i < len; i++)
+            {
+                if (first)
+                    first = false;
+                else
+                    std::cout << fieldSeparator;
+                std::cout << *(scalars[i].get());
+            }
+            std::cout << std::endl;
         }
-        std::cout << std::endl;
+        else
+        {
+            for (size_t i = 0; i < len; i++)
+                std::cout << *(scalars[i].get()) << std::endl;
+        }
     }
     else if (scalarArrays.size() == len)
     {
