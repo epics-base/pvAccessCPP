@@ -18,6 +18,7 @@
 #include <iomanip>
 #include <map>
 
+#include <pv/convert.h>
 #include <pv/event.h>
 #include <epicsExit.h>
 
@@ -34,6 +35,8 @@ PrintMode mode = ValueOnlyMode;
 char fieldSeparator = ' ';
 
 bool columnMajor = false;
+
+bool transpose = false;
 
 void formatNTAny(std::ostream& o, PVStructurePtr const & pvStruct)
 {
@@ -125,7 +128,7 @@ void formatNTScalarArray(std::ostream& o, PVStructurePtr const & pvStruct)
 
     //o << *value;
     //formatScalarArray(o, value);
-    formatVector(o, "", value, mode == TerseMode);
+    formatVector(o, "", value, mode == TerseMode || transpose);
 }
 
 void formatNTEnum(std::ostream& o, PVStructurePtr const & pvStruct)
@@ -197,14 +200,14 @@ size_t getLongestString(PVScalarArrayPtr const & array)
 void formatTable(std::ostream& o,
                  vector<String> const & labels,
                  vector<PVScalarArrayPtr> const & columnData,
-                 bool transpose)
+                 bool showHeader, bool transpose)
 {
     // array with maximum number of elements
     size_t maxValues = 0;
 
     // value with longest string form
-    size_t maxColumnLength = labels.size() ? getLongestString(labels) : 0;
-
+    size_t maxLabelColumnLength = (showHeader && labels.size()) ? getLongestString(labels) : 0;
+    size_t maxColumnLength = 0;
     //
     // get maxValue and maxColumnLength
     //
@@ -228,6 +231,13 @@ void formatTable(std::ostream& o,
 
     if (!transpose)
     {
+        /* non-compact
+        maxLabelColumnLength += padding;
+
+        // increase maxColumnLength to maxLabelColumnLength
+        if (maxLabelColumnLength > maxColumnLength)
+            maxColumnLength = maxLabelColumnLength;
+        */
 
         //
         // <column0>, <column1>, ...
@@ -235,11 +245,13 @@ void formatTable(std::ostream& o,
         //
 
         // first print labels
-        if (labels.size())
+        if (showHeader && labels.size())
         {
             for (size_t i = 0; i < numColumns; i++)
             {
-                o << std::setw(maxColumnLength) << std::right << labels[i];
+                int width = std::max(labels[i].size()+padding, maxColumnLength);
+                o << std::setw(width) << std::right << labels[i];
+                // non-compact o << std::setw(maxColumnLength) << std::right << labels[i];
             }
             o << std::endl;
         }
@@ -249,7 +261,9 @@ void formatTable(std::ostream& o,
         {
             for (size_t i = 0; i < numColumns; i++)
             {
-                o << std::setw(maxColumnLength) << std::right;
+                int width = std::max(labels[i].size()+padding, maxColumnLength);
+                o << setw(width) << std::right;
+                // non-compact o << std::setw(maxColumnLength) << std::right;
                 PVScalarArrayPtr array = columnData[i];
                 if (array.get() && r < array->getLength())
                     array->dumpValue(o, r);
@@ -271,8 +285,8 @@ void formatTable(std::ostream& o,
 
         for (size_t i = 0; i < numColumns; i++)
         {
-            if (labels.size())
-                o << std::setw(maxColumnLength) << std::left << labels[i];
+            if (showHeader && labels.size())
+                o << std::setw(maxLabelColumnLength) << std::left << labels[i];
 
             for (size_t r = 0; r < maxValues; r++)
             {
@@ -331,7 +345,8 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
     StringArrayData labelsData;
     labels->get(0, numColumns, labelsData);
 
-    formatTable(o, labelsData.data, columnData, mode == TerseMode);
+    bool showHeader = (mode != TerseMode);
+    formatTable(o, labelsData.data, columnData, showHeader, transpose);
 }    
 
 
@@ -388,8 +403,7 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
     size_t padding = 2;
     size_t maxColumnLength = getLongestString(value) + padding;
 
-    // TerseMode as Transpose
-    if (mode != TerseMode)
+    if (!transpose)
     {
 
         //
@@ -471,19 +485,25 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
     StringArrayData nameData;
     name->get(0, name->getLength(), nameData);
 
-    // get max column size
-    size_t maxColumnLength = getLongestString(nameData.data);
+    // get max column name size
+    bool showHeader = (mode != TerseMode);
+    size_t maxLabelColumnLength = showHeader ? getLongestString(nameData.data) : 0;
 
-    size_t valueLen = getLongestString(array);
-    if (valueLen > maxColumnLength) maxColumnLength = valueLen;
+    size_t maxColumnLength = getLongestString(array);
 
     // add some space
     size_t padding = 2;
     maxColumnLength += padding;
 
-    bool transpose = (mode == TerseMode);
     if (transpose)
     {
+        /* non-compact
+        maxLabelColumnLength += padding;
+
+        // increase maxColumnLength to maxLabelColumnLength
+        if (maxLabelColumnLength > maxColumnLength)
+            maxColumnLength = maxLabelColumnLength;
+        */
 
         //
         //   <name0>, <name1>, ...
@@ -491,16 +511,23 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
         //
 
         // first print names
-        for (size_t i = 0; i < numColumns; i++)
+        if (showHeader)
         {
-            o << std::setw(maxColumnLength) << std::right << nameData.data[i];
+            for (size_t i = 0; i < numColumns; i++)
+            {
+                int width = std::max(nameData.data[i].size()+padding, maxColumnLength);
+                o << std::setw(width) << std::right << nameData.data[i];
+                // non-compact o << std::setw(maxColumnLength) << std::right << nameData.data[i];
+            }
+            o << std::endl;
         }
-        o << std::endl;
 
         // then values
         for (size_t i = 0; i < numColumns; i++)
         {
-            o << std::setw(maxColumnLength) << std::right;
+            int width = std::max(nameData.data[i].size()+padding, maxColumnLength);
+            o << std::setw(width) << std::right;
+            // non-compact o << std::setw(maxColumnLength) << std::right;
             array->dumpValue(o, i);
         }
         o << std::endl;
@@ -516,7 +543,8 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
 
         for (size_t i = 0; i < numColumns; i++)
         {
-            o << std::setw(maxColumnLength) << std::left << nameData.data[i];
+            if (showHeader)
+                o << std::setw(maxLabelColumnLength) << std::left << nameData.data[i];
             o << std::setw(maxColumnLength) << std::right;
             array->dumpValue(o, i);
             o << std::endl;
@@ -760,17 +788,28 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
     o << *(pv.get()) << std::endl;
 }
 
-
-
-void printValue(String const & channelName, PVStructure::shared_pointer const & pv)
+void dumpValue(String const & channelName, PVField::shared_pointer const & pv)
 {
-    if (mode == ValueOnlyMode)
+    if (!channelName.empty())
+        std::cout << channelName << std::endl;
+    std::cout << *(pv.get()) << std::endl << std::endl;
+}
+
+void printValue(String const & channelName, PVStructure::shared_pointer const & pv, bool forceTerseWithName = false)
+{
+    if (forceTerseWithName)
+    {
+        if (!channelName.empty())
+            std::cout << channelName << separator;
+        terseStructure(std::cout, pv) << std::endl;
+    }
+    else if (mode == ValueOnlyMode)
     {
         PVField::shared_pointer value = pv->getSubField("value");
         if (value.get() == 0)
         {
             std::cerr << "no 'value' field" << std::endl;
-            std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+            dumpValue(channelName, pv);
         }
         else
         {
@@ -791,17 +830,20 @@ void printValue(String const & channelName, PVStructure::shared_pointer const & 
                     std::cout << std::endl;
                 }
                 else                 
-                    std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+                    dumpValue(channelName, pv);
             }
         }
     }
     else if (mode == TerseMode)
         terseStructure(std::cout, pv) << std::endl;
     else
-        std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+        dumpValue(channelName, pv);
 }
 
+static String emptyString;
+
 // only in ValueOnlyMode
+// NOTE: names might be empty
 void printValues(vector<string> const & names, vector<PVStructure::shared_pointer> const & values)
 {
     size_t len = values.size();
@@ -819,10 +861,23 @@ void printValues(vector<string> const & names, vector<PVStructure::shared_pointe
                 scalarArrays.push_back(dynamic_pointer_cast<PVScalarArray>(value));
             else if (type == scalar)
             {
-                scalars.push_back(dynamic_pointer_cast<PVScalar>(value));
+                PVScalar::shared_pointer scalar = dynamic_pointer_cast<PVScalar>(value);
+                scalars.push_back(scalar);
 
-                // TODO also try to make an PVStringArray out of a scalar
+                // make an array, i.e. PVStringArray, out of a scalar (since scalar is an array w/ element count == 1)
+                PVStringArray::shared_pointer stringArray =
+                        dynamic_pointer_cast<PVStringArray>(getPVDataCreate()->createPVScalarArray(pvString));
+                StringArray values;
+                values.reserve(1);
+                values.push_back(getConvert()->toString(scalar));
+                stringArray->put(0, values.size(), values, 0);
+                scalarArrays.push_back(stringArray);
             }
+        }
+        else
+        {
+            // a structure detected, break
+            break;
         }
     }
 
@@ -841,14 +896,15 @@ void printValues(vector<string> const & names, vector<PVStructure::shared_pointe
     }
     else if (scalarArrays.size() == len)
     {
-        // TODO labels switch
-        formatTable(std::cout, names, scalarArrays, false);
+        // format as a table
+        bool showHeader = false; //(mode != TerseMode);
+        formatTable(std::cout, names, scalarArrays, showHeader, transpose);
     }
     else
     {
-        // classic output
+        // force terse mode with names
         for (size_t i = 0; i < len; i++)
-            printValue(names[i], values[i]);
+            printValue(names[i], values[i], true);
     }
 }
 
@@ -868,10 +924,12 @@ void usage (void)
              "  -a <service arg>:    Service argument in form 'name[=value]'\n"
              "  -r <pv request>:     Get request string, specifies what fields to return and options, default is '%s'\n"
              "  -w <sec>:            Wait time, specifies timeout, default is %f second(s)\n"
-             "  -q:                  Pure pvAccess RPC based service (send NTURI.query as request argument)\n"
+             "  -z:                  Pure pvAccess RPC based service (send NTURI.query as request argument)\n"
              "  -n:                  Do not format NT types, dump structure instead.\n"
-             "  -t:                  Terse mode / transpose vector, table, matrix.\n"
+             "  -t:                  Terse mode.\n"
+             "  -T:                  Transpose vector, table, matrix.\n"
              "  -x:                  Use column-major order to decode matrix.\n"
+             "  -q:                  Quiet mode, print only error messages\n"
              "  -d:                  Enable debug output\n"
              "  -F <ofs>:            Use <ofs> as an alternate output field separator\n"
              "  -c:                  Wait for clean shutdown and report used instance count (for expert users)"
@@ -1177,10 +1235,11 @@ int main (int argc, char *argv[])
     string service;
     //string urlEncodedRequest;
     vector< pair<string,string> > parameters;
+    bool quiet = false;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:s:a:w:qntxdcF:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:s:a:w:zntTxqdcF:")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -1225,7 +1284,7 @@ int main (int argc, char *argv[])
             service = optarg;
             serviceRequest = true;
             break;
-        case 'q':               /* pvAccess RPC mode */
+        case 'z':               /* pvAccess RPC mode */
             onlyQuery = true;
             break;
         case 'n':               /* Do not format NT types */
@@ -1234,8 +1293,14 @@ int main (int argc, char *argv[])
         case 't':               /* Terse mode */
             mode = TerseMode;
             break;
+        case 'T':               /* Terse mode */
+            transpose = true;
+            break;
         case 'x':               /* Column-major order mode */
             columnMajor = true;
+            break;
+        case 'q':               /* Quiet mode */
+            quiet = true;
             break;
         case 'd':               /* Debug log level */
             debug = true;
@@ -1396,7 +1461,7 @@ int main (int argc, char *argv[])
         vector<Channel::shared_pointer> channels(nPvs);
         for (int n = 0; n < nPvs; n++)
         {
-            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
+            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
 
             // TODO to be removed
             String providerName = providerNames[n];
@@ -1466,7 +1531,7 @@ int main (int argc, char *argv[])
                         if (collectValues)
                         {
                             collectedValues.push_back(getRequesterImpl->getPVStructure());
-                            // no labels collectedNames.push_back(channel->getChannelName());
+                            collectedNames.push_back(channel->getChannelName());
                         }
                         else
                         {
@@ -1634,7 +1699,7 @@ int main (int argc, char *argv[])
         ClientFactory::start();
         ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
         
-        shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
+        shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
         Channel::shared_pointer channel =
                 authority.empty() ?
                     provider->createChannel(service, channelRequesterImpl) :

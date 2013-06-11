@@ -50,6 +50,7 @@ void usage (void)
     "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
     "  -t:                Terse mode - print only value, without names\n"
     "  -m:                Monitor mode\n"
+    "  -q:                Quiet mode, print only error messages\n"
     "  -d:                Enable debug output\n"
     "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
     "  -c:                Wait for clean shutdown and report used instance count (for expert users)"
@@ -346,10 +347,11 @@ int main (int argc, char *argv[])
     bool debug = false;
     bool cleanupAndReport = false;
     bool monitor = false;
+    bool quiet = false;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:w:tmdcF:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:tmqdcF:")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -372,6 +374,9 @@ int main (int argc, char *argv[])
             break;
         case 'm':               /* Monitor mode */
             monitor = true;
+            break;
+        case 'q':               /* Quiet mode */
+            quiet = true;
             break;
         case 'd':               /* Debug log level */
             debug = true;
@@ -436,7 +441,7 @@ int main (int argc, char *argv[])
         vector<Channel::shared_pointer> channels(nPvs);
         for (int n = 0; n < nPvs; n++)
         {
-            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
+            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
             channels[n] = provider->createChannel(pvs[n], channelRequesterImpl);
         }
         

@@ -211,6 +211,11 @@ char *url_encode(const char *str) {
 
 
 
+ChannelRequesterImpl::ChannelRequesterImpl(bool _printOnlyErrors) :
+    printOnlyErrors(_printOnlyErrors)
+{
+}
+
 String ChannelRequesterImpl::getRequesterName()
 {
 	return "ChannelRequesterImpl";
@@ -218,7 +223,8 @@ String ChannelRequesterImpl::getRequesterName()
 
 void ChannelRequesterImpl::message(String const & message, MessageType messageType)
 {
-	std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+    if (!printOnlyErrors || messageType > warningMessage)
+        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
 }
 
 void ChannelRequesterImpl::channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel)

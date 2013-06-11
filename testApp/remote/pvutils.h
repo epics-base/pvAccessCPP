@@ -52,8 +52,12 @@ class ChannelRequesterImpl :
 {
     private:
         epics::pvData::Event m_event;
+        bool printOnlyErrors;
     
     public:
+
+        ChannelRequesterImpl(bool printOnlyErrors = false);
+
         virtual epics::pvData::String getRequesterName();
         virtual void message(epics::pvData::String const & message, epics::pvData::MessageType messageType);
     
