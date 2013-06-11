@@ -19,12 +19,10 @@ cd ${STUFF}
 
 wget -nv https://openepics.ci.cloudbees.com/job/Base-3.14.12.3_Build/lastSuccessfulBuild/artifact/baseR3.14.12.3.CB-dist.tar.gz
 wget -nv https://openepics.ci.cloudbees.com/job/Doxygen-1.8.3_Build/lastSuccessfulBuild/artifact/doxygen-1.8.3.CB-dist.tar.gz
-wget -nv https://openepics.ci.cloudbees.com/job/Googletest-1.6.0_Build/lastSuccessfulBuild/artifact/gtest-1.6.0.CB-dist.tar.gz
 wget -nv https://openepics.ci.cloudbees.com/job/pvCommon_CPP_Build/lastSuccessfulBuild/artifact/pvCommon.CB-dist.tar.gz
 wget -nv https://openepics.ci.cloudbees.com/job/pvData_CPP_Build/lastSuccessfulBuild/artifact/pvData.CB-dist.tar.gz
 tar -xzf baseR3.14.12.3.CB-dist.tar.gz
 tar -xzf doxygen-1.8.3.CB-dist.tar.gz
-tar -xzf gtest-1.6.0.CB-dist.tar.gz
 tar -xzf pvCommon.CB-dist.tar.gz
 tar -xzf pvData.CB-dist.tar.gz
 
@@ -49,7 +47,8 @@ doxygen
 ###########################################
 # Test
 
-./bin/${EPICS_HOST_ARCH}/testUtils
+make runtests
+
 ./bin/${EPICS_HOST_ARCH}/testServer &
 ./bin/${EPICS_HOST_ARCH}/testRemoteClientImpl
 
