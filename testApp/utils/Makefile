@@ -2,17 +2,23 @@ TOP=../..
 
 include $(TOP)/configure/CONFIG
 
-ifdef GTEST
-PROD_HOST += testUtils
-testUtils_SRCS += hexDumpTest.cpp
-testUtils_SRCS += inetAddressUtilsTest.cpp
+PROD_LIBS += pvAccess pvData pvMB Com
+
+TESTPROD += testAtomicBoolean
+testAtomicBoolean_SRCS = testAtomicBoolean.cpp
+TESTS += testAtomicBoolean
+
+TESTPROD += testHexDump
+testHexDump = testHexDump.cpp
+TESTS += testHexDump
+
+TESTPROD += testInetAddressUtils
+testInetAddressUtils = testInetAddressUtils.cpp
 # Avoid errors from inlined htonl() etc. used as template argument
-inetAddressUtilsTest_CXXFLAGS = -O0
-testUtils_SRCS += atomicBooleanTest.cpp
-testUtils_LIBS += pvAccess pvData pvMB Com gtest_main
-gtest_main_DIR = $(GTEST)/lib
-testUtils_SYS_LIBS += pthread
-endif
+testInetAddressUtils_CXXFLAGS = -O0
+TESTS += testInetAddressUtils
+
+TESTSCRIPTS_HOST += $(TESTS:%=%.t)
 
 #PROD_HOST += loggerTest
 #loggerTest_SRCS += loggerTest.cpp
