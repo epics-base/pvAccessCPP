@@ -779,6 +779,7 @@ int main (int argc, char *argv[])
     bool quiet = false;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
+    putenv(const_cast<char*>("POSIXLY_CORRECT="));            /* Behave correct on GNU getopt systems; e.g. handle negative numbers */
 
     while ((opt = getopt(argc, argv, ":hr:w:tqdF:")) != -1) {
         switch (opt) {
