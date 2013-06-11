@@ -249,9 +249,18 @@ void formatTable(std::ostream& o,
         {
             for (size_t i = 0; i < numColumns; i++)
             {
-                int width = std::max(labels[i].size()+padding, maxColumnLength);
-                o << std::setw(width) << std::right << labels[i];
-                // non-compact o << std::setw(maxColumnLength) << std::right << labels[i];
+                if (separator == ' ')
+                {
+                    int width = std::max(labels[i].size()+padding, maxColumnLength);
+                    o << std::setw(width) << std::right;
+                    // non-compact o << std::setw(maxColumnLength) << std::right;
+                }
+                else if (i > 0)
+                {
+                    o << separator;
+                }
+
+                o << labels[i];
             }
             o << std::endl;
         }
@@ -261,9 +270,17 @@ void formatTable(std::ostream& o,
         {
             for (size_t i = 0; i < numColumns; i++)
             {
-                int width = std::max(labels[i].size()+padding, maxColumnLength);
-                o << setw(width) << std::right;
-                // non-compact o << std::setw(maxColumnLength) << std::right;
+                if (separator == ' ')
+                {
+                    int width = std::max(labels[i].size()+padding, maxColumnLength);
+                    o << setw(width) << std::right;
+                    // non-compact o << std::setw(maxColumnLength) << std::right;
+                }
+                else if (i > 0)
+                {
+                    o << separator;
+                }
+
                 PVScalarArrayPtr array = columnData[i];
                 if (array.get() && r < array->getLength())
                     array->dumpValue(o, r);
@@ -286,11 +303,23 @@ void formatTable(std::ostream& o,
         for (size_t i = 0; i < numColumns; i++)
         {
             if (showHeader && labels.size())
-                o << std::setw(maxLabelColumnLength) << std::left << labels[i];
+            {
+                if (separator == ' ')
+                {
+                    o << std::setw(maxLabelColumnLength) << std::left;
+                }
+                o << labels[i];
+            }
 
             for (size_t r = 0; r < maxValues; r++)
             {
-                o << std::setw(maxColumnLength) << std::right;
+                if (separator == ' ')
+                {
+                    o << std::setw(maxColumnLength) << std::right;
+                }
+                else if (showHeader || r > 0)
+                    o << separator;
+
                 PVScalarArrayPtr array = columnData[i];
                 if (array.get() && r < array->getLength())
                     array->dumpValue(o, r);
@@ -416,7 +445,11 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
         {
             for (int32 c = 0; c < cols; c++)
             {
-                o << std::setw(maxColumnLength) << std::right;
+                if (separator == ' ')
+                    o << std::setw(maxColumnLength) << std::right;
+                else if (c > 0)
+                    o << separator;
+
                 if (columnMajor)
                     value->dumpValue(o, r + c * rows);
                 else
@@ -438,7 +471,11 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
         {
             for (int32 r = 0; r < rows; r++)
             {
-                o << std::setw(maxColumnLength) << std::right;
+                if (separator == ' ')
+                    o << std::setw(maxColumnLength) << std::right;
+                else if (r > 0)
+                    o << separator;
+
                 if (columnMajor)
                     value->dumpValue(o, ix++);
                 else
@@ -515,9 +552,18 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
         {
             for (size_t i = 0; i < numColumns; i++)
             {
-                int width = std::max(nameData.data[i].size()+padding, maxColumnLength);
-                o << std::setw(width) << std::right << nameData.data[i];
-                // non-compact o << std::setw(maxColumnLength) << std::right << nameData.data[i];
+                if (separator == ' ')
+                {
+                    int width = std::max(nameData.data[i].size()+padding, maxColumnLength);
+                    o << std::setw(width) << std::right;
+                    // non-compact o << std::setw(maxColumnLength) << std::right;
+                }
+                else if (i > 0)
+                {
+                    o << separator;
+                }
+
+                o << nameData.data[i];
             }
             o << std::endl;
         }
@@ -525,9 +571,16 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
         // then values
         for (size_t i = 0; i < numColumns; i++)
         {
-            int width = std::max(nameData.data[i].size()+padding, maxColumnLength);
-            o << std::setw(width) << std::right;
-            // non-compact o << std::setw(maxColumnLength) << std::right;
+            if (separator == ' ')
+            {
+                int width = std::max(nameData.data[i].size()+padding, maxColumnLength);
+                o << std::setw(width) << std::right;
+                // non-compact o << std::setw(maxColumnLength) << std::right;
+            }
+            else if (i > 0)
+            {
+                o << separator;
+            }
             array->dumpValue(o, i);
         }
         o << std::endl;
@@ -544,8 +597,23 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
         for (size_t i = 0; i < numColumns; i++)
         {
             if (showHeader)
-                o << std::setw(maxLabelColumnLength) << std::left << nameData.data[i];
-            o << std::setw(maxColumnLength) << std::right;
+            {
+                if (separator == ' ')
+                {
+                    o << std::setw(maxLabelColumnLength) << std::left;
+                }
+                o << nameData.data[i];
+            }
+
+            if (separator == ' ')
+            {
+                o << std::setw(maxColumnLength) << std::right;
+            }
+            else if (showHeader)
+            {
+                o << separator;
+            }
+
             array->dumpValue(o, i);
             o << std::endl;
         }
