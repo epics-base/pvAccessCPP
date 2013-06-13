@@ -139,7 +139,7 @@ void test_getBroadcastAddresses()
 
     // debug
     for(size_t i = 0; i<broadcasts->size(); i++) {
-        testDiag(inetAddressToString(broadcasts->at(i)).c_str());
+        testDiag("%s", inetAddressToString(broadcasts->at(i)).c_str());
     }
 
 }
