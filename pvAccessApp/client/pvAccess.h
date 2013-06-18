@@ -730,6 +730,8 @@ namespace pvAccess {
         public:
             POINTER_DEFINITIONS(ChannelProviderFactory);
 
+            virtual ~ChannelProviderFactory();
+
             /**
              * Get factory name (i.e. name of the provider).
              * @return the factory name.
