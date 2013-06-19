@@ -1,0 +1,20 @@
+# pvAccess C++ implementation
+# Jenkins @ Cloudbees hgweb sync script
+#
+# Jenkins invokes scripts with the "-ex" option. So the build is considered a failure
+# if any of the commands exits with a non-zero exit code.
+#
+# Author: Ralph Lange <Ralph.Lange@gmx.de>
+# Copyright (C) 2013 Helmholtz-Zentrum Berlin für Materialien und Energie GmbH
+# All rights reserved. Use is subject to license terms.
+
+###########################################
+# Fetch complete repo
+
+rm -fr hgweb
+hg clone -U http://hg.code.sf.net/p/epics-pvdata/pvAccessCPP hgweb
+
+###########################################
+# Sync into SF webspace
+
+rsync -aqP --delete --exclude=\.hg/hgrc -e ssh hgweb/.hg epics-jenkins@web.sourceforge.net:/home/project-web/epics-pvdata/repos/pvAccessCPP
