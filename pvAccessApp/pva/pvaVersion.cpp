@@ -53,12 +53,8 @@ bool Version::isDevelopmentVersion() const {
 
 const String Version::getVersionString() const {
     stringstream ret;
-    ret<<getProductName()<<" v"<<getMajorVersion()<<"."<<getMinorVersion();
-
-    if (getMaintenanceVersion()>0)
-    	ret<<'.'<<getMaintenanceVersion();
-
-    if(isDevelopmentVersion())
+    ret<<getProductName()<<" v"<<getMajorVersion()<<"."<<getMinorVersion()<<'.'<<getMaintenanceVersion();
+    if (isDevelopmentVersion())
         ret<<"-SNAPSHOT";
 
     return ret.str();
