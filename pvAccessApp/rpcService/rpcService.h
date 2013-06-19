@@ -34,7 +34,9 @@ private:
 class RPCService {
     public:
     POINTER_DEFINITIONS(RPCService);
-    
+   
+    virtual ~RPCService() {};
+ 
     virtual epics::pvData::PVStructure::shared_pointer request(
         epics::pvData::PVStructure::shared_pointer const & args
     ) throw (RPCRequestException) = 0;

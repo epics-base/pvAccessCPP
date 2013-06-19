@@ -7,18 +7,6 @@
 #include <stdexcept>
 #include <pv/rpcServer.h>
 
-#ifdef __vxworks
-#include <envLib.h>
-using std::string;
-inline int setenv(const char *name, const char *value, int overwrite)
-{
-    string e(name);
-    e += "=";
-    e += value;
-    return putenv(const_cast<char*>(e.c_str()));
-}
-#endif
-
 using namespace epics::pvData;
 
 
@@ -446,9 +434,9 @@ RPCServer::RPCServer()
 
     m_channelProviderImpl = m_channelProviderFactory->sharedInstance();
 
-    setenv("EPICS_PVAS_PROVIDER_NAMES", m_channelProviderImpl->getProviderName().c_str(), 1);
     m_serverContext = ServerContextImpl::create();
-    
+    m_serverContext->setChannelProviderName(m_channelProviderImpl->getProviderName());
+ 
     m_serverContext->initialize(getChannelAccess());
 }
 
