@@ -31,6 +31,7 @@ void testServerShutdown();
 // TODO temp
 #include "testNTImage.cpp"
 
+Mutex structureStoreMutex;
 map<String, PVStructure::shared_pointer> structureStore;
 
 class StructureChangedCallback {
@@ -164,6 +165,7 @@ public:
 
                 try {
 
+                    // TODO lock structureStoreMutex
                     epicsGuard<epicsMutex> guard(adcSim->mutex);
 
                     epicsUInt32 len = adcSim->prev_nSamples;
@@ -222,6 +224,7 @@ public:
 
             {
                 try {
+                    // TODO lock structureStoreMutex
                     // TODO not nice, since we supply original here
                     rotateImage(pvImage, epicsv4_raw, angle);
                     angle += 1;
@@ -595,92 +598,96 @@ public:
 
     virtual void process(bool lastRequest)
     {
-        if (m_pvStructure->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTTable")
         {
-            generateNTTableDoubleValues(m_pvStructure);
-        }
-        else if (m_valueField.get())
-        {
-            switch (m_valueField->getScalar()->getScalarType())
+            ScopedLock lock(shared_from_this());
+                
+            if (m_pvStructure->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTTable")
             {
-            case pvBoolean:
-            {
-                // negate
-                PVBooleanPtr pvBoolean = static_pointer_cast<PVBoolean>(m_valueField);
-                pvBoolean->put(!pvBoolean->get());
-                break;
+                generateNTTableDoubleValues(m_pvStructure);
             }
-            case pvByte:
+            else if (m_valueField.get())
             {
-                // increment by one
-                PVBytePtr pvByte = static_pointer_cast<PVByte>(m_valueField);
-                pvByte->put(pvByte->get() + 1);
-                break;
-            }
-            case pvShort:
-            {
-                // increment by one
-                PVShortPtr pvShort = static_pointer_cast<PVShort>(m_valueField);
-                pvShort->put(pvShort->get() + 1);
-                break;
-            }
-            case pvInt:
-            {
-                // increment by one
-                PVIntPtr pvInt = static_pointer_cast<PVInt>(m_valueField);
-                pvInt->put(pvInt->get() + 1);
-                break;
-            }
-            case pvLong:
-            {
-                // increment by one
-                PVLongPtr pvLong = static_pointer_cast<PVLong>(m_valueField);
-                pvLong->put(pvLong->get() + 1);
-                break;
-            }
-            case pvFloat:
-            {
-                // increment by one
-                PVFloatPtr pvFloat = static_pointer_cast<PVFloat>(m_valueField);
-                pvFloat->put(pvFloat->get() + 1.0f);
-                break;
-            }
-            case pvDouble:
-            {
-                double noise = ((rand()/(double)RAND_MAX)-0.5)*2;
-                // increment by one
-                PVDoublePtr pvDouble = static_pointer_cast<PVDouble>(m_valueField);
-                pvDouble->put(pvDouble->get() + noise /*1.0*/);
-                break;
-            }
-            case pvString:
-            {
-                // increment by one
-                PVStringPtr pvString = static_pointer_cast<PVString>(m_valueField);
-                String val = pvString->get();
-                if (val.empty())
-                    pvString->put("gen0");
-                else
+                switch (m_valueField->getScalar()->getScalarType())
                 {
-                    char c = val[3];
-                    c++;
-                    pvString->put("gen" + c);
+                case pvBoolean:
+                {
+                    // negate
+                    PVBooleanPtr pvBoolean = static_pointer_cast<PVBoolean>(m_valueField);
+                    pvBoolean->put(!pvBoolean->get());
+                    break;
                 }
-                break;
+                case pvByte:
+                {
+                    // increment by one
+                    PVBytePtr pvByte = static_pointer_cast<PVByte>(m_valueField);
+                    pvByte->put(pvByte->get() + 1);
+                    break;
+                }
+                case pvShort:
+                {
+                    // increment by one
+                    PVShortPtr pvShort = static_pointer_cast<PVShort>(m_valueField);
+                    pvShort->put(pvShort->get() + 1);
+                    break;
+                }
+                case pvInt:
+                {
+                    // increment by one
+                    PVIntPtr pvInt = static_pointer_cast<PVInt>(m_valueField);
+                    pvInt->put(pvInt->get() + 1);
+                    break;
+                }
+                case pvLong:
+                {
+                    // increment by one
+                    PVLongPtr pvLong = static_pointer_cast<PVLong>(m_valueField);
+                    pvLong->put(pvLong->get() + 1);
+                    break;
+                }
+                case pvFloat:
+                {
+                    // increment by one
+                    PVFloatPtr pvFloat = static_pointer_cast<PVFloat>(m_valueField);
+                    pvFloat->put(pvFloat->get() + 1.0f);
+                    break;
+                }
+                case pvDouble:
+                {
+                    double noise = ((rand()/(double)RAND_MAX)-0.5)*2;
+                    // increment by one
+                    PVDoublePtr pvDouble = static_pointer_cast<PVDouble>(m_valueField);
+                    pvDouble->put(pvDouble->get() + noise /*1.0*/);
+                    break;
+                }
+                case pvString:
+                {
+                    // increment by one
+                    PVStringPtr pvString = static_pointer_cast<PVString>(m_valueField);
+                    String val = pvString->get();
+                    if (val.empty())
+                        pvString->put("gen0");
+                    else
+                    {
+                        char c = val[3];
+                        c++;
+                        pvString->put("gen" + c);
+                    }
+                    break;
+                }
+                default:
+                    // noop
+                    break;
+                }
             }
-            default:
-                // noop
-                break;
+    
+            if (m_timeStamp.isAttached())
+            {
+                TimeStamp current;
+                current.getCurrent();
+                m_timeStamp.set(current);
             }
         }
-
-        if (m_timeStamp.isAttached())
-        {
-            TimeStamp current;
-            current.getCurrent();
-            m_timeStamp.set(current);
-        }
-
+        
         m_channelProcessRequester->processDone(Status::Ok);
 
         notifyStructureChanged(m_channelName);
@@ -695,12 +702,12 @@ public:
     
     virtual void lock()
     {
-        // TODO !!!
+        structureStoreMutex.lock();
     }
 
     virtual void unlock()
     {
-        // TODO !!!
+        structureStoreMutex.unlock();
     }
 };
 
@@ -762,12 +769,12 @@ public:
 
     virtual void lock()
     {
-        // TODO !!!
+        structureStoreMutex.lock();
     }
 
     virtual void unlock()
     {
-        // TODO !!!
+        structureStoreMutex.unlock();
     }
 };
 
@@ -836,12 +843,12 @@ public:
 
     virtual void lock()
     {
-        // TODO !!!
+        structureStoreMutex.lock();
     }
 
     virtual void unlock()
     {
-        // TODO !!!
+        structureStoreMutex.unlock();
     }
 };
 
@@ -916,12 +923,12 @@ public:
 
     virtual void lock()
     {
-        // TODO !!!
+        structureStoreMutex.lock();
     }
 
     virtual void unlock()
     {
-        // TODO !!!
+        structureStoreMutex.unlock();
     }
 };
 
@@ -1284,12 +1291,12 @@ public:
 
     virtual void lock()
     {
-        // TODO !!!
+        structureStoreMutex.lock();
     }
 
     virtual void unlock()
     {
-        // TODO !!!
+        structureStoreMutex.unlock();
     }
 };
 
@@ -1365,12 +1372,12 @@ public:
 
     virtual void lock()
     {
-        // TODO !!!
+        structureStoreMutex.lock();
     }
 
     virtual void unlock()
     {
-        // TODO !!!
+        structureStoreMutex.unlock();
     }
 };
 
@@ -1490,12 +1497,12 @@ public:
 
     virtual void lock()
     {
-        // TODO !!!
+        structureStoreMutex.lock();
     }
 
     virtual void unlock()
     {
-        // TODO !!!
+        structureStoreMutex.unlock();
     }
 
 };
