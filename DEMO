@@ -105,7 +105,7 @@ testCounter                    409
 
 8. Get a NTMatrix and print its transponse matrix
 -------------------------------------------------
-> eget -a columns=3 -a rows=5 -t -s testNTMatrix
+> eget -a columns=3 -a rows=5 -T -s testNTMatrix
   0.677924   1.66402   2.42248    3.8881   4.22758
   0.874961   1.20251   2.56682   3.21442   4.92651
    0.47145   1.65475    2.4864   3.79319   4.80394
