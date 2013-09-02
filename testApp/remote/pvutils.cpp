@@ -287,7 +287,7 @@ void GetFieldRequesterImpl::getDone(const epics::pvData::Status& status, epics::
 		// show warning
 		if (!status.isOK())
 		{
-            std::cerr << "[" << m_channel->getChannelName() << "] getField create: " << status << std::endl;
+            std::cerr << "[" << m_channel->getChannelName() << "] getField: " << status << std::endl;
 		}
 
 		// assign smart pointers
