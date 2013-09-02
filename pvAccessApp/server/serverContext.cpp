@@ -18,7 +18,8 @@ using std::tr1::static_pointer_cast;
 namespace epics { namespace pvAccess {
 
 const char* ServerContextImpl::StateNames[] = { "NOT_INITIALIZED", "INITIALIZED", "RUNNING", "SHUTDOWN", "DESTROYED"};
-const Version ServerContextImpl::VERSION("pvAccess Server", "cpp", 4, 3, 0, false);
+const Version ServerContextImpl::VERSION("pvAccess Server", "cpp", 
+    EPICS_PVA_MAJOR_VERSION, EPICS_PVA_MINOR_VERSION, EPICS_PVA_MAINTENANCE_VERSION, EPICS_PVA_DEVELOPMENT_FLAG);
 
 ServerContextImpl::ServerContextImpl():
 				_state(NOT_INITIALIZED),
@@ -616,9 +617,9 @@ ServerContext::shared_pointer startPVAServer(String const & providerNames, int t
     ServerContextImpl::shared_pointer ctx = ServerContextImpl::create();
 
     // do not override configuration
-    if (providerNames == PVACCESS_ALL_PROVIDERS && !ctx->isChannelProviderNamePreconfigured())
+    if (!ctx->isChannelProviderNamePreconfigured())
         ctx->setChannelProviderName(providerNames);
-
+    
     ChannelAccess::shared_pointer channelAccess = getChannelAccess();
     ctx->initialize(channelAccess);
 

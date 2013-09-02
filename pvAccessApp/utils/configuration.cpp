@@ -76,7 +76,6 @@ string Properties::getProperty(const string &key, const string &defaultValue)
 		return string(propertiesIterator->second);
 	}
 
-	_properties[key] = defaultValue;
 	return defaultValue;
 }
 
@@ -335,12 +334,14 @@ string SystemConfigurationImpl::getPropertyAsString(const string &name, const st
 	{
 		return _properties->getProperty(name, string(val));
 	}
-	return _properties->getProperty(name,defaultValue);
+	return _properties->getProperty(name, defaultValue);
 }
 
 bool SystemConfigurationImpl::hasProperty(const string &key)
 {
-    return _properties->hasProperty(key);
+	strncpy(_envParam.name,key.c_str(),key.length() + 1);
+	const char* val = envGetConfigParamPtr(&_envParam);
+    return (val != NULL) || _properties->hasProperty(key);
 }
 
 ConfigurationProviderImpl::ConfigurationProviderImpl()

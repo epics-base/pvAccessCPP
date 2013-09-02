@@ -651,6 +651,11 @@ void ServerChannelGetRequesterImpl::getDone(const Status& status)
 
 void ServerChannelGetRequesterImpl::destroy()
 {
+	// keep a reference to ourselves as the owner
+	// could release its reference and we don't want to be
+	// destroyed prematurely
+	shared_pointer self(shared_from_this());
+
 	{
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
@@ -874,6 +879,11 @@ void ServerChannelPutRequesterImpl::unlock()
 
 void ServerChannelPutRequesterImpl::destroy()
 {
+	// keep a reference to ourselves as the owner
+	// could release its reference and we don't want to be
+	// destroyed prematurely
+	shared_pointer self(shared_from_this());
+
 	{
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
@@ -1097,6 +1107,11 @@ void ServerChannelPutGetRequesterImpl::unlock()
 
 void ServerChannelPutGetRequesterImpl::destroy()
 {
+	// keep a reference to ourselves as the owner
+	// could release its reference and we don't want to be
+	// destroyed prematurely
+	shared_pointer self(shared_from_this());
+
 	{
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
@@ -1317,6 +1332,11 @@ void ServerMonitorRequesterImpl::unlock()
 
 void ServerMonitorRequesterImpl::destroy()
 {
+	// keep a reference to ourselves as the owner
+	// could release its reference and we don't want to be
+	// destroyed prematurely
+	shared_pointer self(shared_from_this());
+
 	{
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
@@ -1550,6 +1570,11 @@ void ServerChannelArrayRequesterImpl::unlock()
 
 void ServerChannelArrayRequesterImpl::destroy()
 {
+	// keep a reference to ourselves as the owner
+	// could release its reference and we don't want to be
+	// destroyed prematurely
+	shared_pointer self(shared_from_this());
+
 	{
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
@@ -1766,6 +1791,11 @@ void ServerChannelProcessRequesterImpl::unlock()
 
 void ServerChannelProcessRequesterImpl::destroy()
 {
+	// keep a reference to ourselves as the owner
+	// could release its reference and we don't want to be
+	// destroyed prematurely
+	shared_pointer self(shared_from_this());
+
 	{
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
@@ -1880,7 +1910,8 @@ void ServerGetFieldRequesterImpl::send(ByteBuffer* buffer, TransportSendControl*
 	{
 		Lock guard(_mutex);
 		_status.serialize(buffer, control);
-		control->cachedSerialize(_field, buffer);
+		if (_status.isSuccess())
+		  control->cachedSerialize(_field, buffer);
 	}
 }
 
@@ -2009,6 +2040,11 @@ void ServerChannelRPCRequesterImpl::unlock()
 
 void ServerChannelRPCRequesterImpl::destroy()
 {
+	// keep a reference to ourselves as the owner
+	// could release its reference and we don't want to be
+	// destroyed prematurely
+	shared_pointer self(shared_from_this());
+
 	{
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
