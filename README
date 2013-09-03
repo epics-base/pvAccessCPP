@@ -1,6 +1,6 @@
-README OF PVACCESSCPP
+README OF pvAccessCPP
 
-PvAccess is a computer communications protocol for control systems, and is a central 
+pvAccess is a computer communications protocol for control systems, and is a central 
 component of the EPICS software toolkit. PvAccessCPP is the name of the software 
 module which contains the C++ implementation of pvAccess.
 
@@ -33,11 +33,11 @@ client.
       EPICS_BASE - MUST be assigned to the top level directory of a local installation of 
                    EPICS base, of version 3.14; per the RELEASE.local file
                    used to build this pvAccessCPP. 
-      PVDATA     - MUST be assigned to the top level directory of a local installation of
-                   pvDataCPP [4], per the RELEASE.local file
-                   used to build this pvAccessCPP. 
       PVCOMMON   - MUST be assigned to the top level directory of a local installation of
                    pvCommonCPP [5], per the RELEASE.local file
+                   used to build this pvAccessCPP.
+      PVDATA     - MUST be assigned to the top level directory of a local installation of
+                   pvDataCPP [4], per the RELEASE.local file
                    used to build this pvAccessCPP. 
 
 2. Add the pvAccessCPP binaries to your PATH.
@@ -73,7 +73,7 @@ then use it prior to executing "runTestServer":
 $ source testServer_setup.bash
 $ ./runTestServer 
 Starting pvAccess C++ test server...
-VERSION : pvAccess Server v4.3.0
+VERSION : pvAccess Server v3.0.1
 PROVIDER_NAMES : local
 BEACON_ADDR_LIST : 
 AUTO_BEACON_ADDR_LIST : 1
