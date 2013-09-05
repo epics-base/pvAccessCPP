@@ -1,10 +1,10 @@
 # pvAccess C++ implementation
-# Jenkins @ Cloudbees build script
+# Jenkins @ APS build script
 #
 # Jenkins invokes scripts with the "-ex" option. So the build is considered a failure
 # if any of the commands exits with a non-zero exit code.
 #
-# Author: Ralph Lange <Ralph.Lange@gmx.de>
+# Authors: Ralph Lange <Ralph.Lange@gmx.de> and Andrew Johnson <anj@aps.anl.gov>
 # Copyright (C) 2013 Helmholtz-Zentrum Berlin für Materialien und Energie GmbH
 # All rights reserved. Use is subject to license terms.
 
@@ -20,4 +20,9 @@ PVCOMMON=${HOME}/jobs/epics-pvCommon/workspace
 EPICS_BASE=${EPICS_BASE}
 EOF
 
-make distclean all
+make
+
+###########################################
+# Test
+
+# Currently tests use GoogleTest, which I don't build
