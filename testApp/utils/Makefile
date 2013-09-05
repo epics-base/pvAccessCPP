@@ -4,15 +4,15 @@ include $(TOP)/configure/CONFIG
 
 PROD_LIBS += pvAccess pvData pvMB Com
 
-TESTPROD += testAtomicBoolean
+TESTPROD_HOST += testAtomicBoolean
 testAtomicBoolean_SRCS = testAtomicBoolean.cpp
 TESTS += testAtomicBoolean
 
-TESTPROD += testHexDump
+TESTPROD_HOST += testHexDump
 testHexDump = testHexDump.cpp
 TESTS += testHexDump
 
-TESTPROD += testInetAddressUtils
+TESTPROD_HOST += testInetAddressUtils
 testInetAddressUtils = testInetAddressUtils.cpp
 # Avoid errors from inlined htonl() etc. used as template argument
 testInetAddressUtils_CXXFLAGS = -O0

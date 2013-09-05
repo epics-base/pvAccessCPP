@@ -2,7 +2,7 @@ TOP = ..
 include $(TOP)/configure/CONFIG
 
 PVACCESS = $(TOP)/pvAccessApp/
-
+USR_CXXFLAGS_RTEMS = -D__rtems__
 
 SRC_DIRS += $(PVACCESS)/pva
 INC += pvaConstants.h

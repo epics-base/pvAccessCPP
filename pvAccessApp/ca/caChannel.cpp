@@ -561,7 +561,7 @@ void copy_DBR(const void * dbr, unsigned count, PVStructure::shared_pointer cons
     }
 }
 
-#ifdef vxWorks
+#if defined(__vxworks) || defined(__rtems__)
 // dbr_long_t is defined as "int", pvData uses int32 which can be defined as "long int" (32-bit)
 // template<primitive type, ScalarType, scalar Field, array Field>
 template<>
@@ -1087,7 +1087,7 @@ static doPut doPutFuncTable[] =
     doPut_pvStructure<dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_FLOAT
     doPut_pvStructure<dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_ENUM
     doPut_pvStructure<int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_CHAR
-    #ifdef vxWorks
+    #if defined(__vxworks) || defined(__rtems__)
     doPut_pvStructure<int32, pvInt, PVInt, PVIntArray>,          // DBR_LONG
     #else
     doPut_pvStructure<dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_LONG

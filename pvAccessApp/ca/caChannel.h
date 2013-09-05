@@ -24,7 +24,7 @@ class CAChannel :
 public:
     POINTER_DEFINITIONS(CAChannel);
 
-    static CAChannel::shared_pointer create(ChannelProvider::shared_pointer const & channelProvider,
+    static shared_pointer create(ChannelProvider::shared_pointer const & channelProvider,
                                             epics::pvData::String const & channelName,
                                             short priority,
                                             ChannelRequester::shared_pointer const & channelRequester);

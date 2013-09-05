@@ -148,7 +148,7 @@ void ServerContextImpl::initialize(ChannelAccess::shared_pointer const & channel
     // user all providers
     if (_channelProviderNames == PVACCESS_ALL_PROVIDERS)
     {
-        _channelProviderNames.clear();
+        _channelProviderNames.resize(0); // VxWorks 5.5 omits clear()
 
         std::auto_ptr<ChannelAccess::stringVector_t> names = _channelAccess->getProviderNames();
         for (ChannelAccess::stringVector_t::iterator iter = names->begin(); iter != names->end(); iter++)
