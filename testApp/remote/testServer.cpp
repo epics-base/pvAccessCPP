@@ -1399,6 +1399,8 @@ private:
     bool m_first;
     Mutex m_lock;
     int m_count;
+    AtomicBoolean m_active;
+
 
     MonitorElement::shared_pointer m_thisPtr;
     MonitorElement::shared_pointer m_nullMonitor;
@@ -1444,6 +1446,8 @@ public:
 
     virtual Status start()
     {
+        m_active.set();
+        
         // first monitor
         Monitor::shared_pointer thisPtr = shared_from_this();
         m_monitorRequester->monitorEvent(thisPtr);
@@ -1453,14 +1457,18 @@ public:
 
     virtual Status stop()
     {
+        m_active.clear();
         return Status::Ok;
     }
 
     virtual void structureChanged()
     {
-        m_count = 0;
-        Monitor::shared_pointer thisPtr = shared_from_this();
-        m_monitorRequester->monitorEvent(thisPtr);
+        if (m_active.get())
+        {
+            m_count = 0;
+            Monitor::shared_pointer thisPtr = shared_from_this();
+            m_monitorRequester->monitorEvent(thisPtr);
+        }
     }
 
     virtual MonitorElement::shared_pointer poll()
