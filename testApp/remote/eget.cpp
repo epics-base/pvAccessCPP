@@ -38,6 +38,8 @@ bool columnMajor = false;
 
 bool transpose = false;
 
+bool dumpStructure = false;
+
 void formatNTAny(std::ostream& o, PVStructurePtr const & pvStruct)
 {
     PVFieldPtr value = pvStruct->getSubField("value");
@@ -892,7 +894,7 @@ void printValue(String const & channelName, PVStructure::shared_pointer const & 
             else
             {
                 // switch to structure mode, unless it's NTEnum
-                if (value->getField()->getID() == "enum_t")
+                if (!dumpStructure && value->getField()->getID() == "enum_t")
                 {
                     formatNTEnum(std::cout, pv);
                     std::cout << std::endl;
@@ -1001,10 +1003,11 @@ void usage (void)
              "  -r <pv request>:     Get request string, specifies what fields to return and options, default is '%s'\n"
              "  -w <sec>:            Wait time, specifies timeout, default is %f second(s)\n"
              "  -z:                  Pure pvAccess RPC based service (send NTURI.query as request argument)\n"
-             "  -n:                  Do not format NT types, dump structure instead.\n"
-             "  -t:                  Terse mode.\n"
-             "  -T:                  Transpose vector, table, matrix.\n"
-             "  -x:                  Use column-major order to decode matrix.\n"
+             "  -n:                  Do not format NT types, dump structure instead\n"
+             "  -t:                  Terse mode\n"
+             "  -T:                  Transpose vector, table, matrix\n"
+             "  -m:                  Monitor mode\n"
+             "  -x:                  Use column-major order to decode matrix\n"
              "  -q:                  Quiet mode, print only error messages\n"
              "  -d:                  Enable debug output\n"
              "  -F <ofs>:            Use <ofs> as an alternate output field separator\n"
@@ -1283,6 +1286,127 @@ public:
     }
 };
 
+
+
+
+class MonitorRequesterImpl : public MonitorRequester
+{
+	private:
+
+    String m_channelName;
+
+    public:
+
+    MonitorRequesterImpl(String channelName) : m_channelName(channelName) {};
+
+    virtual String getRequesterName()
+    {
+        return "MonitorRequesterImpl";
+    };
+
+    virtual void message(String const & message,MessageType messageType)
+    {
+        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+    }
+
+    virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, StructureConstPtr const & /*structure*/)
+    {
+        if (status.isSuccess())
+        {
+        	/*
+            String str;
+            structure->toString(&str);
+            std::cout << str << std::endl;
+        	*/
+
+            Status startStatus = monitor->start();
+            // show error
+            // TODO and exit
+            if (!startStatus.isSuccess())
+            {
+                std::cerr << "[" << m_channelName << "] channel monitor start: " << startStatus << std::endl;
+            }
+
+        }
+        else
+        {
+            std::cerr << "monitorConnect(" << status << ")" << std::endl;
+        }
+    }
+
+    virtual void monitorEvent(Monitor::shared_pointer const & monitor)
+    {
+
+		MonitorElement::shared_pointer element;
+		while (element = monitor->poll())
+		{
+            if (mode == ValueOnlyMode)
+            {
+                PVField::shared_pointer value = element->pvStructurePtr->getSubField("value");
+                if (value.get() == 0)
+                {
+                	std::cerr << "no 'value' field" << std::endl;
+                    dumpValue(m_channelName, element->pvStructurePtr);
+                }
+                else
+                {
+					Type valueType = value->getField()->getType();
+					if (valueType != scalar && valueType != scalarArray)
+					{
+                        // switch to structure mode, unless it's NTEnum
+                        if (!dumpStructure && value->getField()->getID() == "enum_t")
+                        {
+        					if (fieldSeparator == ' ')
+        						std::cout << std::setw(30) << std::left << m_channelName;
+        					else
+        						std::cout << m_channelName;
+        					std::cout << fieldSeparator;
+
+                            formatNTEnum(std::cout, element->pvStructurePtr);
+                            std::cout << std::endl;
+                        }
+                        else                 
+                            dumpValue(m_channelName, element->pvStructurePtr);
+					}
+					else
+					{
+						if (fieldSeparator == ' ')
+							std::cout << std::setw(30) << std::left << m_channelName;
+						else
+							std::cout << m_channelName;
+						std::cout << fieldSeparator;
+
+						terse(std::cout, value) << std::endl;
+					}
+                }
+            }
+            else if (mode == TerseMode)
+            {
+            	if (fieldSeparator == ' ')
+                	std::cout << std::setw(30) << std::left << m_channelName;
+                else
+                	std::cout << m_channelName;
+                std::cout << fieldSeparator;
+
+                terseStructure(std::cout, element->pvStructurePtr) << std::endl;
+            }
+            else
+            {
+                dumpValue(m_channelName, element->pvStructurePtr);
+            }
+
+			monitor->release(element);
+		}
+
+    }
+
+    virtual void unlisten(Monitor::shared_pointer const & /*monitor*/)
+    {
+        std::cerr << "unlisten" << std::endl;
+    }
+};
+
+
 /*+**************************************************************************
  *
  * Function:	main
@@ -1307,15 +1431,15 @@ int main (int argc, char *argv[])
 
     bool serviceRequest = false;
     bool onlyQuery = false;
-    bool dumpStructure = false;
     string service;
     //string urlEncodedRequest;
     vector< pair<string,string> > parameters;
+    bool monitor = false;
     bool quiet = false;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:s:a:w:zntTxqdcF:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:s:a:w:zntTmxqdcF:")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -1371,6 +1495,9 @@ int main (int argc, char *argv[])
             break;
         case 'T':               /* Terse mode */
             transpose = true;
+            break;
+        case 'm':               /* Monitor mode */
+            monitor = true;
             break;
         case 'x':               /* Column-major order mode */
             columnMajor = true;
@@ -1559,80 +1686,95 @@ int main (int argc, char *argv[])
         // for now a simple iterating sync implementation, guarantees order
         for (int n = 0; n < nPvs; n++)
         {
-            /*
-            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
-            Channel::shared_pointer channel = provider->createChannel(pvs[n], channelRequesterImpl);
-            */
-            
-            Channel::shared_pointer channel = channels[n];
-            shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
-
-            if (channelRequesterImpl->waitUntilConnected(timeOut))
+            if (monitor)
             {
-                shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl;
-
-                // probe for value field
-                // but only if there is only one PV request (otherwise mode change makes a mess)
-                if (mode == ValueOnlyMode && nPvs == 1)
+                Channel::shared_pointer channel = channels[n];
+				shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
+				channel->createMonitor(monitorRequesterImpl, pvRequest);
+            }
+            else
+            {
+                /*
+                shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
+                Channel::shared_pointer channel = provider->createChannel(pvs[n], channelRequesterImpl);
+                */
+                
+                Channel::shared_pointer channel = channels[n];
+                shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+    
+                if (channelRequesterImpl->waitUntilConnected(timeOut))
                 {
-                    getFieldRequesterImpl.reset(new GetFieldRequesterImpl(channel));
-                    // get all to be immune to bad clients not supporting selective getField request
-                    channel->getField(getFieldRequesterImpl, "");
-                }
-
-                if (getFieldRequesterImpl.get() == 0 ||
-                        getFieldRequesterImpl->waitUntilFieldGet(timeOut))
-                {
-                    // check probe
-                    if (getFieldRequesterImpl.get())
+                    shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl;
+    
+                    // probe for value field
+                    // but only if there is only one PV request (otherwise mode change makes a mess)
+                    if (mode == ValueOnlyMode && nPvs == 1)
                     {
-                        Structure::const_shared_pointer structure =
-                                dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
-                        if (structure.get() == 0 || structure->getField("value").get() == 0)
+                        getFieldRequesterImpl.reset(new GetFieldRequesterImpl(channel));
+                        // get all to be immune to bad clients not supporting selective getField request
+                        channel->getField(getFieldRequesterImpl, "");
+                    }
+    
+                    if (getFieldRequesterImpl.get() == 0 ||
+                            getFieldRequesterImpl->waitUntilFieldGet(timeOut))
+                    {
+                        // check probe
+                        if (getFieldRequesterImpl.get())
                         {
-                            // fallback to structure
-                            mode = StructureMode;
-                            pvRequest = getCreateRequest()->createRequest("field()", requester);
+                            Structure::const_shared_pointer structure =
+                                    dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
+                            if (structure.get() == 0 || structure->getField("value").get() == 0)
+                            {
+                                // fallback to structure
+                                mode = StructureMode;
+                                pvRequest = getCreateRequest()->createRequest("field()", requester);
+                            }
+                        }
+    
+                        shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(
+                                    new ChannelGetRequesterImpl(channel->getChannelName(), false)
+                                    );
+                        ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
+                        bool ok = getRequesterImpl->waitUntilGet(timeOut);
+                        allOK &= ok;
+                        if (ok)
+                        {
+                            if (collectValues)
+                            {
+                                collectedValues.push_back(getRequesterImpl->getPVStructure());
+                                collectedNames.push_back(channel->getChannelName());
+                            }
+                            else
+                            {
+                                // print immediately
+                                printValue(channel->getChannelName(), getRequesterImpl->getPVStructure());
+                            }
                         }
                     }
-
-                    shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(
-                                new ChannelGetRequesterImpl(channel->getChannelName(), false)
-                                );
-                    ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
-                    bool ok = getRequesterImpl->waitUntilGet(timeOut);
-                    allOK &= ok;
-                    if (ok)
+                    else
                     {
-                        if (collectValues)
-                        {
-                            collectedValues.push_back(getRequesterImpl->getPVStructure());
-                            collectedNames.push_back(channel->getChannelName());
-                        }
-                        else
-                        {
-                            // print immediately
-                            printValue(channel->getChannelName(), getRequesterImpl->getPVStructure());
-                        }
+                        allOK = false;
+                        channel->destroy();
+                        std::cerr << "[" << channel->getChannelName() << "] failed to get channel introspection data" << std::endl;
                     }
                 }
                 else
                 {
                     allOK = false;
                     channel->destroy();
-                    std::cerr << "[" << channel->getChannelName() << "] failed to get channel introspection data" << std::endl;
+                    std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
                 }
-            }
-            else
-            {
-                allOK = false;
-                channel->destroy();
-                std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
             }
         }
 
         if (collectValues)
             printValues(collectedNames, collectedValues);
+
+        if (allOK && monitor)
+        {
+        	while (true)
+        		epicsThreadSleep(timeOut);
+        }
 
         ClientFactory::stop();
     }
