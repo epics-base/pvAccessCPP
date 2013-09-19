@@ -1672,6 +1672,20 @@ protected:
                 String allProperties("timeStamp");
                 m_pvStructure = getStandardPVField()->scalar(pvInt,allProperties);
             }
+            else if (m_name == "testEnum")
+            {
+                StringArray choices;
+                choices.push_back("zeroValue");
+                choices.push_back("oneValue");
+                choices.push_back("twoValue");
+                choices.push_back("threeValue");
+                choices.push_back("fourValue");
+                choices.push_back("fiveValue");
+                choices.push_back("sixValue");
+                choices.push_back("sevenValue");
+                String allProperties("timeStamp");
+                m_pvStructure = getStandardPVField()->enumerated(choices,allProperties);
+            }
             else
             {
                 String allProperties("alarm,timeStamp,display,control,valueAlarm");
