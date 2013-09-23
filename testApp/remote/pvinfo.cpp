@@ -122,7 +122,7 @@ int main (int argc, char *argv[])
         Requester::shared_pointer requester(new RequesterImpl("pvinfo"));
     
         ClientFactory::start();
-        ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
+        ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pva");
     
         // first connect to all, this allows resource (e.g. TCP connection) sharing
         vector<Channel::shared_pointer> channels(nPvs);

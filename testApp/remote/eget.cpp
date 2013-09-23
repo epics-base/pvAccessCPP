@@ -1668,14 +1668,8 @@ int main (int argc, char *argv[])
         for (int n = 0; n < nPvs; n++)
         {
             shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
-
-            // TODO to be removed
-            String providerName = providerNames[n];
-            if (providerName == "pva")
-                providerName = "pvAccess";
-
             // TODO no privder check
-            channels[n] = getChannelAccess()->getProvider(providerName)->createChannel(pvs[n], channelRequesterImpl);
+            channels[n] = getChannelAccess()->getProvider(providerNames[n])->createChannel(pvs[n], channelRequesterImpl);
         }
 
         // TODO maybe unify for nPvs == 1?!
@@ -1921,7 +1915,7 @@ int main (int argc, char *argv[])
 
 
         ClientFactory::start();
-        ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
+        ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pva");
         
         shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
         Channel::shared_pointer channel =

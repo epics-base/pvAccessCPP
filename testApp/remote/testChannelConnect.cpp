@@ -72,7 +72,7 @@ int main()
         Event g_event;
 
         ClientFactory::start();
-        ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
+        ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pva");
         ChannelRequester::shared_pointer channelRequester(new ChannelRequesterImpl(g_event));
         
         Channel::shared_pointer channels[N_CHANNELS];

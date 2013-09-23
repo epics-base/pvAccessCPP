@@ -213,7 +213,7 @@ private:
     void init()
     {
         using namespace std::tr1;
-        m_provider = getChannelAccess()->getProvider("pvAccess");
+        m_provider = getChannelAccess()->getProvider("pva");
     
         shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
         m_channelRequesterImpl = channelRequesterImpl;

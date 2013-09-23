@@ -28,7 +28,11 @@ static ChannelProviderFactoryMap channelProviders;
 class ChannelAccessImpl : public ChannelAccess {
     public:
 
-    ChannelProvider::shared_pointer getProvider(String const & providerName) {
+    ChannelProvider::shared_pointer getProvider(String const & _providerName) {
+        
+        // TODO remove, here for backward compatibility 
+        const String providerName = (_providerName == "pvAccess") ? "pva" : _providerName;
+            
         Lock guard(channelProviderMutex);
         ChannelProviderFactoryMap::const_iterator iter = channelProviders.find(providerName);
         if (iter != channelProviders.end())
@@ -37,7 +41,11 @@ class ChannelAccessImpl : public ChannelAccess {
             return ChannelProvider::shared_pointer();
     }
 
-    ChannelProvider::shared_pointer createProvider(String const & providerName) {
+    ChannelProvider::shared_pointer createProvider(String const & _providerName) {
+
+        // TODO remove, here for backward compatibility 
+        const String providerName = (_providerName == "pvAccess") ? "pva" : _providerName;
+            
         Lock guard(channelProviderMutex);
         ChannelProviderFactoryMap::const_iterator iter = channelProviders.find(providerName);
         if (iter != channelProviders.end())

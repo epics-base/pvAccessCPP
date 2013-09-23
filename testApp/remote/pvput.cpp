@@ -860,7 +860,7 @@ int main (int argc, char *argv[])
     terseSeparator(fieldSeparator);
 
     ClientFactory::start();
-    ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pvAccess");
+    ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pva");
 
     //epics::pvAccess::ca::CAClientFactory::start();
     //ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("ca");
