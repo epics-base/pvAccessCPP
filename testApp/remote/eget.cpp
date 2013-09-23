@@ -988,6 +988,7 @@ void printValues(vector<string> const & names, vector<PVStructure::shared_pointe
 
 #define DEFAULT_TIMEOUT 3.0
 #define DEFAULT_REQUEST "field(value)"
+#define DEFAULT_RPC_REQUEST ""
 
 double timeOut = DEFAULT_TIMEOUT;
 string request(DEFAULT_REQUEST);
@@ -1197,7 +1198,7 @@ public:
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to create channel RPC: " << status << std::endl;
             m_connectionEvent.signal();
         }
     }
@@ -1430,6 +1431,7 @@ int main (int argc, char *argv[])
     bool cleanupAndReport = false;
 
     bool serviceRequest = false;
+    bool pvRequestProvidedByUser = false;
     bool onlyQuery = false;
     string service;
     //string urlEncodedRequest;
@@ -1454,6 +1456,7 @@ int main (int argc, char *argv[])
             break;
         case 'r':               /* Set pvRequest value */
             request = optarg;
+            pvRequestProvidedByUser = true;
             // do not override terse mode
             if (mode == ValueOnlyMode) mode = StructureMode;
             break;
@@ -1843,7 +1846,10 @@ int main (int argc, char *argv[])
 
         // simply empty
         PVStructure::shared_pointer pvRequest =
-                getCreateRequest()->createRequest(request, requester);
+                getCreateRequest()->createRequest(
+                    !pvRequestProvidedByUser ? DEFAULT_RPC_REQUEST : request,
+                    requester
+                 );
         if(pvRequest.get()==NULL) {
             fprintf(stderr, "failed to parse request string\n");
             return 1;

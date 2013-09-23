@@ -596,6 +596,21 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 	    destroy(); \
     }
 
+#define DESERIALIZE_EXCEPTION_GUARD(code) \
+    try { \
+ 	    code; \
+    } \
+    catch (std::exception &e) { \
+        Status status(Status::STATUSTYPE_ERROR, e.what()); \
+	    BaseChannelRequester::sendFailureMessage((int8)command, transport, ioid, qosCode, status); \
+	    throw; \
+    } \
+    catch (...) { \
+        Status status(Status::STATUSTYPE_ERROR, "unknown exception caught"); \
+	    BaseChannelRequester::sendFailureMessage((int8)command, transport, ioid, qosCode, status); \
+	    throw; \
+    }
+
 ServerChannelGetRequesterImpl::ServerChannelGetRequesterImpl(ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid, Transport::shared_pointer const & transport) :
 		BaseChannelRequester(context, channel, ioid, transport), _channelGet(), _bitSet(), _pvStructure()
 
@@ -796,8 +811,12 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 			{
     			ScopedLock lock(channelPut);     // TODO not needed if put is processed by the same thread
     			BitSet::shared_pointer putBitSet = request->getBitSet();
-    			putBitSet->deserialize(payloadBuffer, transport.get());
-    			request->getPVStructure()->deserialize(payloadBuffer, transport.get(), putBitSet.get());
+
+      		    DESERIALIZE_EXCEPTION_GUARD(
+    		        putBitSet->deserialize(payloadBuffer, transport.get());
+    		        request->getPVStructure()->deserialize(payloadBuffer, transport.get(), putBitSet.get());
+    		    );
+    			
 			}
 			channelPut->put(lastRequest);
 		}
@@ -1014,7 +1033,10 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 			ChannelPutGet::shared_pointer channelPutGet = request->getChannelPutGet();
 			{
     			ScopedLock lock(channelPutGet);  // TODO not necessary if read is done in putGet
-			    request->getPVPutStructure()->deserialize(payloadBuffer, transport.get());
+
+      		    DESERIALIZE_EXCEPTION_GUARD(
+ 			        request->getPVPutStructure()->deserialize(payloadBuffer, transport.get());
+ 			    );
 			}
 			channelPutGet->putGet(lastRequest);
 		}
@@ -1477,8 +1499,11 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
     	    PVArray::shared_pointer array = request->getPVArray();
 			{
     			ScopedLock lock(channelArray);   // TODO not needed if read by the same thread
-    			offset = SerializeHelper::readSize(payloadBuffer, transport.get());
-    			array->deserialize(payloadBuffer, transport.get());
+    			
+    			DESERIALIZE_EXCEPTION_GUARD(
+    			    offset = SerializeHelper::readSize(payloadBuffer, transport.get());
+    			    array->deserialize(payloadBuffer, transport.get());
+    			);
 			}
 			channelArray->putArray(lastRequest, offset, array->getLength());
 		}
@@ -1968,7 +1993,12 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 		// deserialize put data
 		ChannelRPC::shared_pointer channelRPC = request->getChannelRPC();
 		// pvArgument
-		PVStructure::shared_pointer pvArgument(SerializationHelper::deserializeStructureFull(payloadBuffer, transport.get()));
+		PVStructure::shared_pointer pvArgument;
+		
+        DESERIALIZE_EXCEPTION_GUARD(
+            pvArgument = SerializationHelper::deserializeStructureFull(payloadBuffer, transport.get());
+        );
+        
 		channelRPC->request(pvArgument, lastRequest);
 	}
 }

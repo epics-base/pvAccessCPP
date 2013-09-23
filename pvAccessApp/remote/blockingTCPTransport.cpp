@@ -934,8 +934,21 @@ namespace pvAccess {
                                 _responseHandler->handleResponse(&_socketAddress,
                                         thisPointer, _version, _command, _payloadSize,
                                         _socketBuffer);
+                            } catch (std::exception& ex) {
+                                 
+                                 LOG(
+                                    logLevelDebug,
+                                    "Unexpected exception in responseHandler: %s",
+                                    ex.what()
+                                    );
+                                    
                             } catch(...) {
-                                //noop      // TODO print?
+
+                                 LOG(
+                                    logLevelDebug,
+                                    "Unexpected exception in responseHandler!"
+                                    );
+                                    
                             }
 
                             _socketBuffer->setLimit(_storedLimit);
