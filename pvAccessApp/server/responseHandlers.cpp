@@ -147,10 +147,6 @@ ServerSearchHandler::ServerSearchHandler(ServerContextImpl::shared_pointer const
 {
 }
 
-ServerSearchHandler::~ServerSearchHandler()
-{
-}
-
 void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
 		size_t payloadSize, ByteBuffer* payloadBuffer)
@@ -1403,6 +1399,10 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 	else
 	{
 		Monitor::shared_pointer monitor = _channelMonitor;
+if(monitor==NULL) {
+std::cout << "ServerMonitorRequesterImpl::send monitor is NULL" << std::endl;
+return;
+}
 		MonitorElement::shared_pointer element = monitor->poll();
 		if (element != NULL)
 		{

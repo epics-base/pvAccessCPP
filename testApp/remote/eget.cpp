@@ -1653,7 +1653,7 @@ int main (int argc, char *argv[])
         }
 
         PVStructure::shared_pointer pvRequest =
-                getCreateRequest()->createRequest(request, requester);
+                CreateRequest::create()->createRequest(request);
         if(pvRequest.get()==0) {
             fprintf(stderr, "failed to parse request string\n");
             return 1;
@@ -1724,7 +1724,7 @@ int main (int argc, char *argv[])
                             {
                                 // fallback to structure
                                 mode = StructureMode;
-                                pvRequest = getCreateRequest()->createRequest("field()", requester);
+                                pvRequest = CreateRequest::create()->createRequest("field()");
                             }
                         }
     
@@ -1840,9 +1840,8 @@ int main (int argc, char *argv[])
 
         // simply empty
         PVStructure::shared_pointer pvRequest =
-                getCreateRequest()->createRequest(
-                    !pvRequestProvidedByUser ? DEFAULT_RPC_REQUEST : request,
-                    requester
+                CreateRequest::create()->createRequest(
+                    !pvRequestProvidedByUser ? DEFAULT_RPC_REQUEST : request
                  );
         if(pvRequest.get()==NULL) {
             fprintf(stderr, "failed to parse request string\n");

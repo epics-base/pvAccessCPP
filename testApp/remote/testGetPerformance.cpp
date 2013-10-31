@@ -465,7 +465,7 @@ int main (int argc, char *argv[])
     // typedef enum {logLevelInfo, logLevelDebug, logLevelError, errlogFatal} errlogSevEnum;
     SET_LOG_LEVEL(logLevelError);
 
-    pvRequest = getCreateRequest()->createRequest(request,requester);
+    pvRequest = CreateRequest::create()->createRequest(request);
     if (pvRequest.get() == 0) {
         printf("failed to parse request string\n");
         return 1;

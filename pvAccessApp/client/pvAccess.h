@@ -793,7 +793,7 @@ namespace pvAccess {
         class CreateRequest {
             public:
             POINTER_DEFINITIONS(CreateRequest);
-
+            static CreateRequest::shared_pointer create();
             virtual ~CreateRequest() {};
 
             /**
@@ -801,15 +801,22 @@ namespace pvAccess {
              * See the package overview documentation for details.
              * @param request The field request. See the package overview documentation for details.
              * @param requester The requester;
-             * @return The request structure if an invalid request was given. 
+             * @return The request PVStructure if a valid request was given. 
+             * If a NULL PVStructure is returned then getMessage will return
+             * the reason.
              */
              virtual epics::pvData::PVStructure::shared_pointer createRequest(
-                 epics::pvData::String const & request,
-                 epics::pvData::Requester::shared_pointer const & requester) = 0;
+                 epics::pvData::String const & request) = 0;
+             /**
+              * Get the error message of createRequest returns NULL;
+              * @return the error message
+              */
+             epics::pvData::String getMessage() {return message;}
+             protected:
+                   CreateRequest() {}
+                  epics::pvData::String message;
+             
         };
-
-        extern CreateRequest::shared_pointer getCreateRequest();
-
 
     }}
 

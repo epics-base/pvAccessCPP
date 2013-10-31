@@ -68,10 +68,9 @@ private:
     }
 
 
-    static bool createRequestOptions(
+    bool createRequestOptions(
         PVStructurePtr const & pvParent,
-        String request,
-        Requester::shared_pointer const & requester)
+        String request)
     {
         trim(request);
         if(request.length()<=1) return true;
@@ -85,8 +84,7 @@ private:
             String item = items[j];
             size_t equals = item.find('=');
             if(equals==String::npos || equals==0) {
-                requester->message(item + " illegal option", errorMessage);
-
+                message = item + " illegal option";
                 return false;
             }
             String name = item.substr(0,equals);
@@ -101,10 +99,9 @@ private:
         return true;
     }
 
-    static bool createFieldRequest(
+    bool createFieldRequest(
         PVStructurePtr const & pvParent,
-        String request,
-        Requester::shared_pointer const & requester)
+        String request)
     {
         static PVFieldPtrArray emptyFields;
         static StringArray emptyFieldNames;
@@ -113,7 +110,7 @@ private:
         if(request.length()<=0) return true;
         size_t comma = request.find(',');
         if(comma==0) {
-            return createFieldRequest(pvParent,request.substr(1),requester);
+            return createFieldRequest(pvParent,request.substr(1));
         }
         size_t openBrace = request.find('{');
         size_t openBracket = request.find('[');
@@ -124,7 +121,7 @@ private:
                 String fieldName = request.substr(0,period);
                 request = request.substr(period+1);
                 pvParent->appendPVField(fieldName, pvStructure);
-                return createFieldRequest(pvStructure,request,requester);
+                return createFieldRequest(pvStructure,request);
             }
             pvParent->appendPVField(request, pvStructure);
             return true;
@@ -139,18 +136,18 @@ private:
                 String fieldName = nextFieldName.substr(0,period);
                 PVStructurePtr xxx= pvDataCreate->createPVStructure(emptyFieldNames, emptyFields);
                 String rest = nextFieldName.substr(period+1);
-                createFieldRequest(xxx,rest,requester);
+                createFieldRequest(xxx,rest);
                 pvParent->appendPVField(fieldName, xxx);
             } else {
                 pvParent->appendPVField(nextFieldName, pvStructure);
             }
             request = request.substr(end+1);
-            return createFieldRequest(pvParent,request,requester);
+            return createFieldRequest(pvParent,request);
         }
         if(end==openBracket) {
             size_t closeBracket =  request.find(']');
             if(closeBracket==String::npos || closeBracket==0) {
-                requester->message(request + " does not have matching ]", errorMessage);
+                message = request + " does not have matching ]";
                 return false;
             }
             String options = request.substr(openBracket+1, closeBracket-openBracket-1);
@@ -158,30 +155,30 @@ private:
             if(period!=String::npos && period!=0) {
                 String fieldName = nextFieldName.substr(0,period);
                 PVStructurePtr xxx = pvDataCreate->createPVStructure(emptyFieldNames, emptyFields);
-                if(!createRequestOptions(xxx,options,requester)) return false;
+                if(!createRequestOptions(xxx,options)) return false;
                 String rest = nextFieldName.substr(period+1);
-                createFieldRequest(xxx,rest,requester);
+                createFieldRequest(xxx,rest);
                 pvParent->appendPVField(fieldName, xxx);
             } else {
-                if(!createRequestOptions(pvStructure,options,requester)) return false;
+                if(!createRequestOptions(pvStructure,options)) return false;
                 pvParent->appendPVField(nextFieldName, pvStructure);
             }
             request = request.substr(end+1);
-            return createFieldRequest(pvParent,request,requester);
+            return createFieldRequest(pvParent,request);
         }
         // end== openBrace
         size_t closeBrace = findMatchingBrace(request,openBrace+1,1);
         if(closeBrace==String::npos || closeBrace==0) {
-            requester->message(request + " does not have matching }", errorMessage);
+            message = request + " does not have matching }";
             return false;
         }
         String subFields = request.substr(openBrace+1, closeBrace-openBrace-1);
-        if(!createFieldRequest(pvStructure,subFields,requester)) return false;
+        if(!createFieldRequest(pvStructure,subFields)) return false;
         request = request.substr(closeBrace+1);
         size_t period = nextFieldName.find('.');
         if(period==String::npos) {
             pvParent->appendPVField(nextFieldName,pvStructure);
-            return createFieldRequest(pvParent,request,requester);
+            return createFieldRequest(pvParent,request);
         }
         PVStructure::shared_pointer yyy = pvParent;
         while(period!=String::npos && period!=0) {
@@ -196,14 +193,13 @@ private:
             }
             yyy = xxx;
         }
-        return createFieldRequest(pvParent,request,requester);
+        return createFieldRequest(pvParent,request);
     }
 
 public:
 
     virtual PVStructure::shared_pointer createRequest(
-        String const & crequest,
-        Requester::shared_pointer const &  requester)
+        String const & crequest)
     {
     	String request = crequest;
         PVFieldPtrArray pvFields;
@@ -225,11 +221,15 @@ public:
             size_t offsetBegin = request.find('[', offsetRecord);
             size_t offsetEnd = request.find(']', offsetBegin);
             if(offsetEnd == String::npos) {
-                requester->message(request.substr(offsetRecord) + " record[ does not have matching ]", errorMessage);
+                message = request.substr(offsetRecord)
+                    + " record[ does not have matching ]";
                 return nullStructure;
             }
             PVStructurePtr pvStruct =  pvDataCreate->createPVStructure(emptyPVStructure);
-            if(!createRequestOptions(pvStruct,request.substr(offsetBegin+1, offsetEnd-offsetBegin-1),requester)) {
+            if(!createRequestOptions(
+                pvStruct,request.substr(offsetBegin+1,
+                offsetEnd-offsetBegin-1)))
+            {
                  return nullStructure;
             }
             pvStructure->appendPVField("record", pvStruct);
@@ -238,11 +238,15 @@ public:
             size_t offsetBegin = request.find('(', offsetField);
             size_t offsetEnd = request.find(')', offsetBegin);
             if(offsetEnd == String::npos) {
-                requester->message(request.substr(offsetField) + " field( does not have matching )", errorMessage);
+                message = request.substr(offsetField)
+                    + " field( does not have matching )";
                 return nullStructure;
             }
             PVStructurePtr pvStruct =  pvDataCreate->createPVStructure(emptyPVStructure);
-            if(!createFieldRequest(pvStruct,request.substr(offsetBegin+1, offsetEnd-offsetBegin-1),requester)) {
+            if(!createFieldRequest(
+                pvStruct,request.substr(offsetBegin+1,
+                offsetEnd-offsetBegin-1)))
+            {
                 return nullStructure;
             }
             pvStructure->appendPVField("field", pvStruct);
@@ -251,11 +255,15 @@ public:
             size_t offsetBegin = request.find('(', offsetPutField);
             size_t offsetEnd = request.find(')', offsetBegin);
             if(offsetEnd == String::npos) {
-                requester->message(request.substr(offsetField) + " putField( does not have matching )", errorMessage);
+                message =  request.substr(offsetField)
+                    + " putField( does not have matching )";
                 return nullStructure;
             }
             PVStructurePtr pvStruct =  pvDataCreate->createPVStructure(emptyPVStructure);
-            if(!createFieldRequest(pvStruct,request.substr(offsetBegin+1, offsetEnd-offsetBegin-1),requester)) {
+            if(!createFieldRequest(
+                pvStruct,request.substr(offsetBegin+1,
+                offsetEnd-offsetBegin-1)))
+            {
                  return nullStructure;
             }
             pvStructure->appendPVField("putField", pvStruct);
@@ -264,32 +272,30 @@ public:
             size_t offsetBegin = request.find('(', offsetGetField);
             size_t offsetEnd = request.find(')', offsetBegin);
             if(offsetEnd == String::npos) {
-                requester->message(request.substr(offsetField) + " getField( does not have matching )", errorMessage);
+                message = request.substr(offsetField)
+                    + " getField( does not have matching )";
                 return nullStructure;
             }
             PVStructurePtr pvStruct =  pvDataCreate->createPVStructure(emptyPVStructure);
-            if(!createFieldRequest(pvStruct,request.substr(offsetBegin+1, offsetEnd-offsetBegin-1),requester)) {
+            if(!createFieldRequest(
+                pvStruct,request.substr(offsetBegin+1,
+                offsetEnd-offsetBegin-1)))
+            {
                 return nullStructure;
             }
             pvStructure->appendPVField("getField", pvStruct);
         }
         if (pvStructure.get()->getStructure()->getNumberFields()==0) {
-            if(!createFieldRequest(pvStructure,request,requester)) return nullStructure;
+            if(!createFieldRequest(pvStructure,request)) return nullStructure;
         }
         return pvStructure;
     }
 
 };
 
-static CreateRequest::shared_pointer createRequest;
-
-CreateRequest::shared_pointer getCreateRequest() {
-    static Mutex mutex;
-    Lock guard(mutex);
-
-    if(createRequest.get()==0){
-        createRequest.reset(new CreateRequestImpl());
-    }
+CreateRequest::shared_pointer CreateRequest::create()
+{
+    CreateRequest::shared_pointer createRequest(new CreateRequestImpl());
     return createRequest;
 }
 
