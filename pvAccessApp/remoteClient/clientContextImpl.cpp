@@ -1812,118 +1812,6 @@ namespace epics {
     	};
     	
 
-
-    	class SingleElementQueue :
-            public ElementQueue,
-            public std::tr1::enable_shared_from_this<SingleElementQueue>
-        {
-    	   private:
-    	   
-           MonitorRequester::shared_pointer m_callback;
-    	   
-    	   bool m_gotMonitor;
-           MonitorElement::shared_pointer m_monitorElement;
-    	   Mutex m_mutex;
-    	   
-    	   
-           PVStructurePtr m_pvStructure;
-           BitSetPtr m_responseChangeBitSet;
-           BitSetPtr m_responseOverrunBitSet;
-           BitSetPtr m_structureChangeBitSet;
-           BitSetPtr m_structureOverrunBitSet;
-    	   MonitorElementPtr m_nullMonitorElement;
-
-    	   public:
-    	   
-    	    SingleElementQueue(MonitorRequester::shared_pointer const & callback) :
-    	       m_callback(callback), m_gotMonitor(false),
-    	       m_monitorElement(new MonitorElement())
-    	    {
-    	    }
-    	   
-    	    virtual ~SingleElementQueue()
-    	    {
-    	    }
-    	    
-            virtual void init(StructureConstPtr const & structure) {
-                Lock guard(m_mutex);
-                m_pvStructure =  getPVDataCreate()->createPVStructure(structure);
-                int numberFields = m_pvStructure->getNumberFields();
-                m_monitorElement->pvStructurePtr = getPVDataCreate()->createPVStructure(structure);
-                m_monitorElement->changedBitSet.reset(new BitSet(numberFields));
-                m_monitorElement->overrunBitSet.reset(new BitSet(numberFields));
-                m_responseChangeBitSet.reset(new BitSet(numberFields));
-                m_responseOverrunBitSet.reset(new BitSet(numberFields));
-                m_structureChangeBitSet.reset(new BitSet(numberFields));
-                m_structureOverrunBitSet.reset(new BitSet(numberFields));
-            }
-    
-            virtual void response(Transport::shared_pointer const & transport, ByteBuffer* payloadBuffer) {
-                bool monitorEvent(false);
-                {
-                    Lock guard(m_mutex);
-                    // deserialize first
-                    m_responseChangeBitSet->deserialize(payloadBuffer, transport.get());
-                    m_pvStructure->deserialize(
-                         payloadBuffer,
-                         transport.get(),
-                         m_responseChangeBitSet.get());
-                    m_responseOverrunBitSet->deserialize(payloadBuffer, transport.get());
-                    // OR local overrun
-                    // OR new changes
-                    m_structureOverrunBitSet->or_and(
-                         *m_responseChangeBitSet.get(),*m_structureChangeBitSet.get());
-                    // OR new changes
-                    *(m_structureChangeBitSet) |= (*m_responseChangeBitSet);
-                    // OR remote overrun
-                    *(m_structureOverrunBitSet) |= (*m_responseOverrunBitSet);
-                    if (!m_gotMonitor)
-                    {
-                        m_gotMonitor = true;
-                        monitorEvent = true;
-                    }
-                }
-                if(monitorEvent) EXCEPTION_GUARD(m_callback->monitorEvent(shared_from_this()));
-            }
-    
-            virtual MonitorElement::shared_pointer poll() {
-                Lock guard(m_mutex);
-                if (!m_gotMonitor) return m_nullMonitorElement;
-                m_gotMonitor = false;
-                convert->copyStructure(m_pvStructure,m_monitorElement->pvStructurePtr);
-                BitSetUtil::compress(m_structureChangeBitSet,m_pvStructure);
-                BitSetUtil::compress(m_structureOverrunBitSet,m_pvStructure);
-                (*m_monitorElement->changedBitSet) = (*m_structureChangeBitSet);
-                (*m_monitorElement->overrunBitSet) = (*m_structureOverrunBitSet);
-                m_structureChangeBitSet->clear();
-                m_structureOverrunBitSet->clear();
-                return m_monitorElement;
-           }
-            	
-    	   virtual void release(MonitorElement::shared_pointer const & /*monitorElement*/) {
-    		// noop
-    	   }
-    
-    	   Status start() {
-    	        Lock guard(m_mutex);
-    		// TODO no such check in Java
-    		if (!m_monitorElement->changedBitSet.get())
-                    return Status(Status::STATUSTYPE_ERROR, "Monitor not connected.");
-                m_gotMonitor = false;
-                m_monitorElement->changedBitSet->clear();
-                m_monitorElement->overrunBitSet->clear();
-                return Status::Ok;
-    	   }
-    
-    	   Status stop() {
-    		return Status::Ok;
-    	   }
-    
-    	   void destroy() {
-    	   }
-    		
-    	};
-
        typedef Queue<MonitorElement> MonitorElementQueue;
        typedef std::tr1::shared_ptr<MonitorElementQueue> MonitorElementQueuePtr;
 
@@ -2070,9 +1958,13 @@ namespace epics {
 
             PVStructure::shared_pointer m_pvRequest;
             
-            std::tr1::shared_ptr<ElementQueue> m_monitorStrategy;
+            std::tr1::shared_ptr<ElementQueue> m_ElementQueue;
 
-            ChannelMonitorImpl(ChannelImpl::shared_pointer const & channel, MonitorRequester::shared_pointer const & monitorRequester, PVStructure::shared_pointer const & pvRequest) :
+            ChannelMonitorImpl(
+                ChannelImpl::shared_pointer const & channel,
+                MonitorRequester::shared_pointer const & monitorRequester,
+                PVStructure::shared_pointer const & pvRequest)
+                :
                     BaseRequestImpl(channel, monitorRequester),
                     m_monitorRequester(monitorRequester),
                     m_started(false),
@@ -2109,13 +2001,8 @@ namespace epics {
  
                 BaseRequestImpl::activate();
 
-                if(queueSize<1) queueSize = 1;
-                if (queueSize == 1) {
-                	m_monitorStrategy.reset(new SingleElementQueue(m_monitorRequester));
-                } else  {
-                        m_monitorStrategy.reset(new MultipleElementQueue(m_monitorRequester,queueSize));
-                }
-                
+               if(queueSize<2) queueSize = 2;
+               m_ElementQueue.reset(new MultipleElementQueue(m_monitorRequester,queueSize));
                 
                 // subscribe
                 try {
@@ -2128,9 +2015,16 @@ namespace epics {
             }
 
         public:
-            static Monitor::shared_pointer create(ChannelImpl::shared_pointer const & channel, MonitorRequester::shared_pointer const & monitorRequester, PVStructure::shared_pointer const & pvRequest)
+            static Monitor::shared_pointer create(
+               ChannelImpl::shared_pointer const & channel,
+               MonitorRequester::shared_pointer const & monitorRequester,
+               PVStructure::shared_pointer const & pvRequest)
             {
-                Monitor::shared_pointer thisPointer(new ChannelMonitorImpl(channel, monitorRequester, pvRequest), delayed_destroyable_deleter());
+                Monitor::shared_pointer thisPointer(
+                    new ChannelMonitorImpl(
+                        channel, monitorRequester,
+                        pvRequest),
+                        delayed_destroyable_deleter());
                 static_cast<ChannelMonitorImpl*>(thisPointer.get())->activate();
                 return thisPointer;
             }
@@ -2162,13 +2056,23 @@ namespace epics {
                 stopRequest();
             }
 
-            virtual bool destroyResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+            virtual bool destroyResponse(
+                Transport::shared_pointer const & transport,
+                int8 version, ByteBuffer* payloadBuffer,
+                int8 qos, const Status& status)
+            {
                 // data available
                 // TODO if (qos & QOS_GET)
                 return normalResponse(transport, version, payloadBuffer, qos, status);
             }
 
-            virtual bool initResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
+            virtual bool initResponse(
+                Transport::shared_pointer const & transport,
+                int8 /*version*/,
+                ByteBuffer* payloadBuffer,
+                int8 /*qos*/,
+                const Status& status)
+            {
                 if (!status.isSuccess())
                 {
                     Monitor::shared_pointer thisChannelMonitor = dynamic_pointer_cast<Monitor>(shared_from_this());
@@ -2180,7 +2084,7 @@ namespace epics {
                                 dynamic_pointer_cast<const Structure>(
                                         transport->cachedDeserialize(payloadBuffer)
                                             );
-                m_monitorStrategy->init(structure);
+                m_ElementQueue->init(structure);
                 
                 // notify
                 Monitor::shared_pointer thisChannelMonitor = dynamic_pointer_cast<Monitor>(shared_from_this());
@@ -2192,21 +2096,30 @@ namespace epics {
                 return true;
             }
 
-            virtual bool normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 qos, const Status& /*status*/) {
+            virtual bool normalResponse(
+                Transport::shared_pointer const & transport,
+                int8 /*version*/,
+                ByteBuffer* payloadBuffer,
+                int8 qos,
+                const Status& /*status*/)
+            {
                 if (qos & QOS_GET)
                 {
                     // TODO not supported by IF yet...
                 }
                 else
                 {
-        			m_monitorStrategy->response(transport, payloadBuffer);
+        			m_ElementQueue->response(transport, payloadBuffer);
                 }
                 return true;
             }
 
             // override, since we optimize status
-            virtual void response(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer) {
-
+            virtual void response(
+                Transport::shared_pointer const & transport,
+                int8 version,
+                ByteBuffer* payloadBuffer)
+            {
                 transport->ensureData(1);
                 int8 qos = payloadBuffer->getByte();
                 if (qos & QOS_INIT)
@@ -2249,7 +2162,7 @@ namespace epics {
                 if (!m_initialized)
                     return BaseRequestImpl::notInitializedStatus;
                     
-                m_monitorStrategy->start();
+                m_ElementQueue->start();
 
                 // start == process + get
                 if (!startRequest(QOS_PROCESS | QOS_GET))
@@ -2275,7 +2188,7 @@ namespace epics {
                 if (!m_initialized)
                     return BaseRequestImpl::notInitializedStatus;
 
-                m_monitorStrategy->stop();
+                m_ElementQueue->stop();
 
                 // stop == process + no get
                 if (!startRequest(QOS_PROCESS))
@@ -2300,12 +2213,12 @@ namespace epics {
 
             virtual MonitorElement::shared_pointer poll()
             {
-                return m_monitorStrategy->poll();
+                return m_ElementQueue->poll();
             }
 
             virtual void release(MonitorElement::shared_pointer const & monitorElement)
             {
-                m_monitorStrategy->release(monitorElement);
+                m_ElementQueue->release(monitorElement);
             }
 
             virtual void lock()
