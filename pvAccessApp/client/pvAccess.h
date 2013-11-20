@@ -805,7 +805,7 @@ namespace pvAccess {
         /**
          * Interface for creating request structure.
          */
-        class CreateRequest {
+        class epicsShareClass CreateRequest {
             public:
             POINTER_DEFINITIONS(CreateRequest);
             static CreateRequest::shared_pointer create();
