@@ -17,13 +17,15 @@
 #include <pv/beaconEmitter.h>
 #include <pv/logger.h>
 
+#include <shareLib.h>
+
 namespace epics {
 namespace pvAccess {
 
 /**
  * The class representing a PVA Server context.
  */
-class ServerContext
+class epicsShareClass ServerContext
 {
 public:
     typedef std::tr1::shared_ptr<ServerContext> shared_pointer;
@@ -96,7 +98,7 @@ public:
 };
 
 
-class ServerContextImpl :
+class epicsShareClass ServerContextImpl :
     public ServerContext,
     public Context,
     public ResponseHandlerFactory,
@@ -412,7 +414,7 @@ private:
 	Configuration::shared_pointer configuration;
 };
 
-extern ServerContext::shared_pointer startPVAServer(
+epicsShareExtern ServerContext::shared_pointer startPVAServer(
         epics::pvData::String const & providerNames = PVACCESS_ALL_PROVIDERS,
         int timeToRun = 0,
         bool runInSeparateThread = false,

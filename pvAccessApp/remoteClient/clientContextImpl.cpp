@@ -548,7 +548,7 @@ namespace epics {
 
             virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
                 int32 pendingRequest = getPendingRequest();
-                bool initStage = (pendingRequest & QOS_INIT);
+                bool initStage = ((pendingRequest & QOS_INIT) != 0);
 
                 MB_POINT_CONDITIONAL(channelGet, 1, "client channelGet->serialize (start)", !initStage); 
                 

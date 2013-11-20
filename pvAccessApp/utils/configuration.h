@@ -7,24 +7,34 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#include <pv/pvType.h>
-#include <pv/noDefaultMethods.h>
-#include <pv/lock.h>
-#include <pv/sharedPtr.h>
-
-#include <envDefs.h>
-
-
 #include <string.h>
 #include <iostream>
 #include <sstream>
 #include <fstream>
 #include <map>
 
+#ifdef epicsExportSharedSymbols
+#   define configurationEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
+#include <pv/pvType.h>
+#include <pv/noDefaultMethods.h>
+#include <pv/lock.h>
+#include <pv/sharedPtr.h>
+
+#include <envDefs.h>
+#ifdef configurationEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#   undef configurationEpicsExportSharedSymbols
+#endif
+
+#include <shareLib.h>
+
 namespace epics {
 namespace pvAccess {
 
-class Properties
+class epicsShareClass Properties
 {
 public:
 	Properties();
@@ -66,7 +76,7 @@ private:
 /**
  * Configuration
  */
-class Configuration : private epics::pvData::NoDefaultMethods
+class epicsShareClass Configuration : private epics::pvData::NoDefaultMethods
 {
 public:
      POINTER_DEFINITIONS(Configuration);
@@ -129,7 +139,7 @@ public:
     virtual bool hasProperty(const std::string &name) = 0;
 };
 
-class SystemConfigurationImpl: public Configuration
+class epicsShareClass SystemConfigurationImpl: public Configuration
 {
 public:
 	SystemConfigurationImpl();
@@ -151,7 +161,7 @@ private:
 /**
  * Configuration provider.
  */
-class ConfigurationProvider : private epics::pvData::NoDefaultMethods
+class epicsShareClass ConfigurationProvider : private epics::pvData::NoDefaultMethods
 {
 public:
 	POINTER_DEFINITIONS(ConfigurationProvider);
@@ -194,7 +204,7 @@ private:
 /**
  * Configuration factory.
  */
-class ConfigurationFactory : private epics::pvData::NoDefaultMethods
+class epicsShareClass ConfigurationFactory : private epics::pvData::NoDefaultMethods
 {
 public:
 	POINTER_DEFINITIONS(ConfigurationFactory);

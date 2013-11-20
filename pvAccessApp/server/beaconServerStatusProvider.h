@@ -7,9 +7,18 @@
 #ifndef BEACONSERVERSTATUSPROVIDER_H
 #define BEACONSERVERSTATUSPROVIDER_H
 
+#ifdef epicsExportSharedSymbols
+#   define beaconServerStatusProviderEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <pv/pvData.h>
-//#include <pv/serverContext.h>
 #include <pv/sharedPtr.h>
+
+#ifdef beaconServerStatusProviderEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#   undef beaconServerStatusProviderEpicsExportSharedSymbols
+#endif
 
 namespace epics {
 namespace pvAccess {
@@ -19,7 +28,7 @@ namespace pvAccess {
 	/**
 	 * BeaconServerStatusProvider
 	 */
-	class BeaconServerStatusProvider
+	class epicsShareClass BeaconServerStatusProvider
 	{
 	public:
         typedef std::tr1::shared_ptr<BeaconServerStatusProvider> shared_pointer;
@@ -36,7 +45,7 @@ namespace pvAccess {
 	/**
 	 * DefaultBeaconServerStatusProvider
 	 */
-	class DefaultBeaconServerStatusProvider : public BeaconServerStatusProvider
+	class epicsShareClass DefaultBeaconServerStatusProvider : public BeaconServerStatusProvider
 	{
 	public:
 		/**

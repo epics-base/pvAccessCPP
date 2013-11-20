@@ -1,3 +1,7 @@
+#ifdef _WIN32
+#define NOMINMAX
+#endif
+
 #include <iostream>
 #include <pv/clientFactory.h>
 #include <pv/pvAccess.h>
@@ -39,6 +43,15 @@ bool columnMajor = false;
 bool transpose = false;
 
 bool dumpStructure = false;
+
+#ifdef WIN32
+FILE *popen(const char *command, const char *mode) {
+	return _popen(command, mode);
+}
+int pclose(FILE *stream) {
+	return _pclose(stream);
+}
+#endif
 
 void formatNTAny(std::ostream& o, PVStructurePtr const & pvStruct)
 {

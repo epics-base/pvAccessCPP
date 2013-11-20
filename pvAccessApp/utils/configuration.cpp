@@ -4,10 +4,12 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#include <pv/configuration.h>
+#include <algorithm>
+
 #include <pv/epicsException.h>
 
-#include <algorithm>
+#define epicsExportSharedSymbols
+#include <pv/configuration.h>
 
 #if defined(__GNUC__) && __GNUC__ < 3
 #define OLDGCC

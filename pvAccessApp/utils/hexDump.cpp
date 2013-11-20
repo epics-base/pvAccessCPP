@@ -4,10 +4,11 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#include <pv/hexDump.h>
-
 #include <iostream>
 #include <sstream>
+
+#define epicsExportSharedSymbols
+#include <pv/hexDump.h>
 
 using namespace epics::pvData;
 using std::stringstream;
