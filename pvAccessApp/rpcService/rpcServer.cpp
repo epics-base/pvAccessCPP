@@ -5,10 +5,11 @@
  */
 
 #include <stdexcept>
+
+#define epicsExportSharedSymbols
 #include <pv/rpcServer.h>
 
 using namespace epics::pvData;
-
 
 namespace epics { namespace pvAccess {
 

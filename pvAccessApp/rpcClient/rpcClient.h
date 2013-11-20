@@ -9,8 +9,17 @@
 
 #include <string>
 
+#ifdef epicsExportSharedSymbols
+#   define rpcClientEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
 #include <pv/pvData.h>
+#ifdef rpcClientEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef rpcClientEpicsExportSharedSymbols
+#endif
 
+#include <shareLib.h>
 
 namespace epics
 {
@@ -21,7 +30,7 @@ namespace pvAccess
      * RPCClient is an interface class that is used by a service client.
      *
      */
-    class RPCClient
+    class epicsShareClass RPCClient
     {
     public:
         POINTER_DEFINITIONS(RPCClient);

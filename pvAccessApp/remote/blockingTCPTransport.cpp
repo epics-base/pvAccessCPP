@@ -533,7 +533,7 @@ namespace pvAccess {
             _socketBuffer->align(alignment);
         }
 
-        bool BlockingTCPTransport::directSerialize(ByteBuffer */*existingBuffer*/, const char* toSerialize,
+        bool BlockingTCPTransport::directSerialize(ByteBuffer* /*existingBuffer*/, const char* toSerialize,
                                                    std::size_t elementCount, std::size_t elementSize)
         {
             // TODO overflow check, size_t type, other is int32 for payloadSize header field !!!

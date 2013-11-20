@@ -7,15 +7,27 @@
 #ifndef RPCSERVER_H
 #define RPCSERVER_H
 
-#include <pv/sharedPtr.h>
-#include <pv/pvAccess.h>
+#ifdef epicsExportSharedSymbols
+#   define rpcServerEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
 
+#include <pv/sharedPtr.h>
+
+#ifdef rpcServerEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef rpcServerEpicsExportSharedSymbols
+#endif
+
+#include <pv/pvAccess.h>
 #include <pv/rpcService.h>
 #include <pv/serverContext.h>
 
+#include <shareLib.h>
+
 namespace epics { namespace pvAccess { 
 
-class RPCServer {
+class epicsShareClass RPCServer {
     private:
 
     ServerContextImpl::shared_pointer m_serverContext;

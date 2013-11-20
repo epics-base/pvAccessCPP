@@ -6,14 +6,15 @@
 
 #include <string>
 #include <sstream>
+
 #include <pv/pvData.h>
 #include <pv/lock.h>
+
+#define epicsExportSharedSymbols
 #include <pv/pvAccess.h>
 
 using namespace epics::pvData;
 using std::tr1::static_pointer_cast;
-
-
 
 namespace epics {
 namespace pvAccess {

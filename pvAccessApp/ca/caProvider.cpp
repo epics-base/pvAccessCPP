@@ -4,15 +4,18 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#include <pv/logger.h>
-#include <pv/caProvider.h>
-#include <pv/caChannel.h>
-
 #include <algorithm>
 
 /* for CA */
 #include <cadef.h>
 #include <epicsSignal.h>
+
+#include <pv/logger.h>
+
+#define epicsExportSharedSymbols
+
+#include <pv/caProvider.h>
+#include <pv/caChannel.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;

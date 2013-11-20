@@ -6,13 +6,28 @@
 
 #ifndef PVACCESS_H
 #define PVACCESS_H
+
+#include <vector>
+
+#ifdef epicsExportSharedSymbols
+#   define pvAccessEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <pv/pvData.h>
 #include <pv/status.h>
 #include <pv/destroyable.h>
 #include <pv/monitor.h>
-#include <pv/pvaVersion.h>
-#include <vector>
 #include <pv/bitSet.h>
+
+#ifdef pvAccessEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef pvAccessEpicsExportSharedSymbols
+#endif
+
+#include <pv/pvaVersion.h>
+
+#include <shareLib.h>
 
 namespace epics {
 namespace pvAccess { 
@@ -38,7 +53,7 @@ namespace pvAccess {
         /**
          * 
          */
-        class Lockable
+        class epicsShareClass Lockable
         {
             public:
             POINTER_DEFINITIONS(Lockable);
@@ -52,7 +67,7 @@ namespace pvAccess {
         /**
          * Scope lock.
          */
-        class ScopedLock : private epics::pvData::NoDefaultMethods {
+        class epicsShareClass ScopedLock : private epics::pvData::NoDefaultMethods {
             public:
             
             explicit ScopedLock(Lockable::shared_pointer const & li)
@@ -95,7 +110,7 @@ namespace pvAccess {
         /**
          * Base interface for all channel requests.
          */
-        class ChannelRequest : public epics::pvData::Destroyable, public Lockable, private epics::pvData::NoDefaultMethods {
+        class epicsShareClass ChannelRequest : public epics::pvData::Destroyable, public Lockable, private epics::pvData::NoDefaultMethods {
             public:
             POINTER_DEFINITIONS(ChannelRequest);
         };
@@ -104,7 +119,7 @@ namespace pvAccess {
          * Request to put and get Array Data.
          * The data is either taken from or put in the PVArray returned by ChannelArrayRequester.channelArrayConnect.
          */
-        class ChannelArray : public ChannelRequest{
+        class epicsShareClass ChannelArray : public ChannelRequest{
             public:
             POINTER_DEFINITIONS(ChannelArray);
 
@@ -136,7 +151,7 @@ namespace pvAccess {
         /**
          * The epics::pvData::Requester for a ChannelArray.
          */
-        class ChannelArrayRequester : virtual public epics::pvData::Requester {
+        class epicsShareClass ChannelArrayRequester : virtual public epics::pvData::Requester {
             public:
             POINTER_DEFINITIONS(ChannelArrayRequester);
 
@@ -174,7 +189,7 @@ namespace pvAccess {
         /**
          *
          */
-        class ChannelFind : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
+        class epicsShareClass ChannelFind : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
             public:
             POINTER_DEFINITIONS(ChannelFind);
 
@@ -185,7 +200,7 @@ namespace pvAccess {
         /**
          *
          */
-        class ChannelFindRequester {
+        class epicsShareClass ChannelFindRequester {
             public:
             POINTER_DEFINITIONS(ChannelFindRequester);
 
@@ -200,7 +215,7 @@ namespace pvAccess {
         /**
          * Request to get data from a channel.
          */
-        class ChannelGet : public ChannelRequest {
+        class epicsShareClass ChannelGet : public ChannelRequest {
             public:
             POINTER_DEFINITIONS(ChannelGet);
 
@@ -217,7 +232,7 @@ namespace pvAccess {
         /**
          * epics::pvData::Requester for channelGet.
          */
-        class ChannelGetRequester : virtual public epics::pvData::Requester {
+        class epicsShareClass ChannelGetRequester : virtual public epics::pvData::Requester {
             public:
             POINTER_DEFINITIONS(ChannelGetRequester);
 
@@ -242,7 +257,7 @@ namespace pvAccess {
         /**
          * ChannelProcess - request that a channel be processed..
          */
-        class ChannelProcess : public ChannelRequest {
+        class epicsShareClass ChannelProcess : public ChannelRequest {
             public:
             POINTER_DEFINITIONS(ChannelProcess);
 
@@ -259,7 +274,7 @@ namespace pvAccess {
         /**
          * epics::pvData::Requester for channelProcess.
          */
-        class ChannelProcessRequester : virtual public epics::pvData::Requester {
+        class epicsShareClass ChannelProcessRequester : virtual public epics::pvData::Requester {
             public:
             POINTER_DEFINITIONS(ChannelProcessRequester);
 
@@ -282,7 +297,7 @@ namespace pvAccess {
         /**
          * Interface for a channel access put request.
          */
-        class ChannelPut  : public ChannelRequest {
+        class epicsShareClass ChannelPut  : public ChannelRequest {
             public:
             POINTER_DEFINITIONS(ChannelPut);
 
@@ -304,7 +319,7 @@ namespace pvAccess {
         /**
          * epics::pvData::Requester for ChannelPut.
          */
-        class ChannelPutRequester : virtual public epics::pvData::Requester {
+        class epicsShareClass ChannelPutRequester : virtual public epics::pvData::Requester {
             public:
             POINTER_DEFINITIONS(ChannelPutRequester);
 
@@ -336,7 +351,7 @@ namespace pvAccess {
          * Channel access put/get request.
          * The put is performed first, followed optionally by a process request, and then by a get request.
          */
-        class ChannelPutGet : public ChannelRequest {
+        class epicsShareClass ChannelPutGet : public ChannelRequest {
             public:
             POINTER_DEFINITIONS(ChannelPutGet);
 
@@ -363,7 +378,7 @@ namespace pvAccess {
         /**
          * epics::pvData::Requester for ChannelPutGet.
          */
-        class ChannelPutGetRequester : virtual public epics::pvData::Requester
+        class epicsShareClass ChannelPutGetRequester : virtual public epics::pvData::Requester
         {
             public:
             POINTER_DEFINITIONS(ChannelPutGetRequester);
@@ -400,7 +415,7 @@ namespace pvAccess {
         /**
          * epics::pvData::Requester for channelGet.
          */
-        class ChannelRPC : public ChannelRequest {
+        class epicsShareClass ChannelRPC : public ChannelRequest {
             public:
             POINTER_DEFINITIONS(ChannelRPC);
 
@@ -417,7 +432,7 @@ namespace pvAccess {
         /**
          * epics::pvData::Requester for channelGet.
          */
-        class ChannelRPCRequester : virtual public epics::pvData::Requester {
+        class epicsShareClass ChannelRPCRequester : virtual public epics::pvData::Requester {
             public:
             POINTER_DEFINITIONS(ChannelRPCRequester);
 
@@ -440,7 +455,7 @@ namespace pvAccess {
         /**
          * epics::pvData::Requester for a getStructure request.
          */
-        class GetFieldRequester : virtual public epics::pvData::Requester {
+        class epicsShareClass GetFieldRequester : virtual public epics::pvData::Requester {
             public:
             POINTER_DEFINITIONS(GetFieldRequester);
 
@@ -460,7 +475,7 @@ namespace pvAccess {
          * Interface for accessing a channel.
          * A channel is created via a call to ChannelAccess.createChannel(String channelName).
          */
-        class Channel : 
+        class epicsShareClass Channel : 
                 public epics::pvData::Requester,
                 public epics::pvData::Destroyable,
                 private epics::pvData::NoDefaultMethods {
@@ -634,7 +649,7 @@ namespace pvAccess {
         /**
          * Listener for connect state changes.
          */
-        class ChannelRequester : public virtual epics::pvData::Requester {
+        class epicsShareClass ChannelRequester : public virtual epics::pvData::Requester {
             public:
             POINTER_DEFINITIONS(ChannelRequester);
 
@@ -664,7 +679,7 @@ namespace pvAccess {
          * Interface implemented by code that can provide access to the record
          * to which a channel connects.
          */
-        class ChannelProvider : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
+        class epicsShareClass ChannelProvider : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
         public:
             POINTER_DEFINITIONS(ChannelProvider);
 
@@ -726,7 +741,7 @@ namespace pvAccess {
         /**
          * <code>ChanneProvider</code> factory interface.
          */
-        class ChannelProviderFactory : private epics::pvData::NoDefaultMethods {
+        class epicsShareClass ChannelProviderFactory : private epics::pvData::NoDefaultMethods {
         public:
             POINTER_DEFINITIONS(ChannelProviderFactory);
 
@@ -754,7 +769,7 @@ namespace pvAccess {
         /**
          * Interface for locating channel providers.
          */
-        class ChannelAccess : private epics::pvData::NoDefaultMethods {
+        class epicsShareClass ChannelAccess : private epics::pvData::NoDefaultMethods {
         public:
             POINTER_DEFINITIONS(ChannelAccess);
 
@@ -783,9 +798,9 @@ namespace pvAccess {
             virtual std::auto_ptr<stringVector_t> getProviderNames() = 0;
         };
     
-        extern ChannelAccess::shared_pointer getChannelAccess();
-        extern void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
-        extern void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
+        epicsShareExtern ChannelAccess::shared_pointer getChannelAccess();
+        epicsShareExtern void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
+        epicsShareExtern void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
 
         /**
          * Interface for creating request structure.

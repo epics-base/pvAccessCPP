@@ -13,6 +13,8 @@
 #include <pv/channelSearchManager.h>
 #include <pv/inetAddressUtil.h>
 
+#include <shareLib.h>
+
 class ChannelSearchManager;
 
 namespace epics {
@@ -115,7 +117,7 @@ namespace epics {
             virtual void poll() = 0;
         };
 
-        extern ClientContextImpl::shared_pointer createClientContextImpl();
+        epicsShareExtern ClientContextImpl::shared_pointer createClientContextImpl();
 
     }
 }

@@ -7,8 +7,20 @@
 #ifndef VERSION_H_
 #define VERSION_H_
 
+#ifdef epicsExportSharedSymbols
+#   define pvaVersionEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <pv/pvType.h>
 #include <pv/noDefaultMethods.h>
+
+#ifdef pvaVersionEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef pvaVersionEpicsExportSharedSymbols
+#endif
+
+#include <shareLib.h>
 
 // module version
 // TODO to be generated, etc.
@@ -20,7 +32,7 @@
 namespace epics {
 namespace pvAccess {
 
-        class Version : public epics::pvData::NoDefaultMethods {
+        class epicsShareClass Version : public epics::pvData::NoDefaultMethods {
         public:
             /**
              * Default constructor.
@@ -104,7 +116,7 @@ namespace pvAccess {
             bool _developmentFlag;
         };
 
-        std::ostream& operator<<(std::ostream& o, const Version& v);
+        epicsShareExtern std::ostream& operator<<(std::ostream& o, const Version& v);
 }
 }
 

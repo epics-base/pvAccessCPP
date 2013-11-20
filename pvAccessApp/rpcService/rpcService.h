@@ -8,13 +8,27 @@
 #define RPCSERVICE_H
 
 #include <stdexcept>
+
+#ifdef epicsExportSharedSymbols
+#   define rpcServiceEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <pv/sharedPtr.h>
-#include <pv/pvAccess.h>
 #include <pv/status.h>
+
+#ifdef rpcServiceEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef rpcServiceEpicsExportSharedSymbols
+#endif
+
+#include <pv/pvAccess.h>
+
+#include <shareLib.h>
 
 namespace epics { namespace pvAccess { 
 
-class RPCRequestException : public std::runtime_error {
+class epicsShareClass RPCRequestException : public std::runtime_error {
 public:
     
     RPCRequestException(epics::pvData::Status::StatusType status, epics::pvData::String const & message) :
@@ -31,7 +45,7 @@ private:
 };
 
 
-class RPCService {
+class epicsShareClass RPCService {
     public:
     POINTER_DEFINITIONS(RPCService);
    

@@ -133,13 +133,13 @@ namespace epics {
                 _receiveBuffer->align(alignment);
             }
 
-            virtual bool directSerialize(epics::pvData::ByteBuffer */*existingBuffer*/, const char* /*toSerialize*/,
+            virtual bool directSerialize(epics::pvData::ByteBuffer* /*existingBuffer*/, const char* /*toSerialize*/,
                                          std::size_t /*elementCount*/, std::size_t /*elementSize*/)
             {
                 return false;
             }
 
-            virtual bool directDeserialize(epics::pvData::ByteBuffer */*existingBuffer*/, char* /*deserializeTo*/,
+            virtual bool directDeserialize(epics::pvData::ByteBuffer* /*existingBuffer*/, char* /*deserializeTo*/,
                                            std::size_t /*elementCount*/, std::size_t /*elementSize*/)
             {
                 return false;

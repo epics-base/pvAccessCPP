@@ -4,13 +4,14 @@
  * in file LICENSE that is included with this distribution.
  */
  
-
-#include <pv/clientFactory.h>
-#include <pv/clientContextImpl.h>
 #include <pv/lock.h>
 #include <pv/logger.h>
 
 #include <epicsSignal.h>
+
+#define epicsExportSharedSymbols
+#include <pv/clientFactory.h>
+#include <pv/clientContextImpl.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;

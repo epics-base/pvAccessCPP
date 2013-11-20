@@ -9,10 +9,11 @@
 
 #include <pv/pvData.h>
 #include <pv/convert.h>
+#include <pv/event.h>
 
+#define epicsExportSharedSymbols
 #include <pv/pvAccess.h>
 #include <pv/clientFactory.h>
-#include <pv/event.h>
 #include <pv/logger.h>
 #include <pv/rpcService.h>
 

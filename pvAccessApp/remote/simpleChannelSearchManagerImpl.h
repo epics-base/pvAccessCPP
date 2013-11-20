@@ -32,7 +32,7 @@ public:
         // no cache
         field->serialize(buffer, this);
     }
-    virtual bool directSerialize(epics::pvData::ByteBuffer */*existingBuffer*/, const char* /*toSerialize*/,
+    virtual bool directSerialize(epics::pvData::ByteBuffer* /*existingBuffer*/, const char* /*toSerialize*/,
                                  std::size_t /*elementCount*/, std::size_t /*elementSize*/)
     {
         return false;

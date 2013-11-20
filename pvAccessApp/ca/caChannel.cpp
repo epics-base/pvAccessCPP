@@ -5,8 +5,9 @@
  */
 
 #include <pv/logger.h>
-#include <pv/caChannel.h>
 #include <pv/standardField.h>
+
+#include <pv/caChannel.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;

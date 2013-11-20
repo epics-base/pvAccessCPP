@@ -7,7 +7,17 @@
 #ifndef PVACONSTANTS_H_
 #define PVACONSTANTS_H_
 
+#ifdef epicsExportSharedSymbols
+#   define pvaConstantsepicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <pv/pvType.h>
+
+#ifdef pvaConstantsepicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef pvaConstantsepicsExportSharedSymbols
+#endif
 
 namespace epics {
 namespace pvAccess {
