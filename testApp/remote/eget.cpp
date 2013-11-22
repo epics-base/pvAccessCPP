@@ -180,7 +180,7 @@ void formatNTEnum(std::ostream& o, PVStructurePtr const & pvStruct)
     }
 }
 
-size_t getLongestString(vector<String> const & array)
+size_t getLongestString(shared_vector<const String> const & array)
 {
     size_t max = 0;
     size_t len = array.size();
@@ -213,7 +213,7 @@ size_t getLongestString(PVScalarArrayPtr const & array)
 // labels are optional
 // if provided labels.size() must equals columnData.size()
 void formatTable(std::ostream& o,
-                 vector<String> const & labels,
+                 shared_vector<const String> const & labels,
                  vector<PVScalarArrayPtr> const & columnData,
                  bool showHeader, bool transpose)
 {
@@ -385,12 +385,8 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
         columnData.push_back(array);
     }
 
-    // get labels
-    StringArrayData labelsData;
-    labels->get(0, numColumns, labelsData);
-
     bool showHeader = (mode != TerseMode);
-    formatTable(o, labelsData.data, columnData, showHeader, transpose);
+    formatTable(o, labels->view(), columnData, showHeader, transpose);
 }    
 
 
@@ -416,10 +412,9 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
             return;
         }
 
-        IntArrayData data;
-        dim->get(0, dims, data);
-        rows = data.data[0];
-        cols = (dims == 2) ? data.data[1] : 1;
+        PVIntArray::const_svector data = dim->view();
+        rows = data[0];
+        cols = (dims == 2) ? data[1] : 1;
 
         if (rows <= 0 || cols <= 0)
         {
@@ -534,12 +529,11 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
     size_t numColumns = name->getLength();
 
     // get names
-    StringArrayData nameData;
-    name->get(0, name->getLength(), nameData);
+    PVStringArray::const_svector nameData = name->view();
 
     // get max column name size
     bool showHeader = (mode != TerseMode);
-    size_t maxLabelColumnLength = showHeader ? getLongestString(nameData.data) : 0;
+    size_t maxLabelColumnLength = showHeader ? getLongestString(nameData) : 0;
 
     size_t maxColumnLength = getLongestString(array);
 
@@ -569,7 +563,7 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
             {
                 if (separator == ' ')
                 {
-                    int width = std::max(nameData.data[i].size()+padding, maxColumnLength);
+                    int width = std::max(nameData[i].size()+padding, maxColumnLength);
                     o << std::setw(width) << std::right;
                     // non-compact o << std::setw(maxColumnLength) << std::right;
                 }
@@ -578,7 +572,7 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
                     o << separator;
                 }
 
-                o << nameData.data[i];
+                o << nameData[i];
             }
             o << std::endl;
         }
@@ -588,7 +582,7 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
         {
             if (separator == ' ')
             {
-                int width = std::max(nameData.data[i].size()+padding, maxColumnLength);
+                int width = std::max(nameData[i].size()+padding, maxColumnLength);
                 o << std::setw(width) << std::right;
                 // non-compact o << std::setw(maxColumnLength) << std::right;
             }
@@ -617,7 +611,7 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
                 {
                     o << std::setw(maxLabelColumnLength) << std::left;
                 }
-                o << nameData.data[i];
+                o << nameData[i];
             }
 
             if (separator == ' ')
@@ -718,20 +712,19 @@ void formatNTImage(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
     
     // dim[] = { rows, columns } or
     // dim[] = { 3, rows, columns }
-    IntArrayData data;
+    PVIntArray::const_svector data = dim->view();
     size_t dims = dim->getLength();
-    dim->get(0, dims, data);
     size_t imageSize;
     if ((cm == 0 || cm == 1) && dims == 2)
     {
-        cols = data.data[0];
-        rows = data.data[1];
+        cols = data[0];
+        rows = data[1];
         imageSize = cols * rows;
     }
     else if (cm == 2 && dims == 3)
     {
-        cols = data.data[1];
-        rows = data.data[2];
+        cols = data[1];
+        rows = data[2];
         imageSize = cols * rows * 3;
     }
     else
@@ -760,12 +753,11 @@ void formatNTImage(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
         return;
     }
 
-    ByteArrayData img;
-    array->get(0, array->getLength(), img);
+    PVByteArray::const_svector img = array->view();
     /*
     size_t len = static_cast<size_t>(rows*cols);
     for (size_t i = 0; i < len; i++)
-        o << img.data[i];
+        o << img[i];
     */
     //eget -s testImage | gnuplot  -e "set size ratio -1; set palette grey; set cbrange [0:255]; plot '-'  binary array=(512,384) flipy format='%uchar' with image"
 
@@ -793,7 +785,7 @@ void formatNTImage(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
         fprintf(gnuplotPipe, "plot '-'  binary array=(%u,%u) flipy format='%%uchar' with rgbimage\n", cols, rows);
 
         for (size_t i = 0; i < imageSize; i++)
-            fprintf(gnuplotPipe, "%c", img.data[i]);
+            fprintf(gnuplotPipe, "%c", img[i]);
     }
     else
     {
@@ -805,7 +797,7 @@ void formatNTImage(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
         fprintf(gnuplotPipe, "plot '-'  binary array=(%u,%u) flipy format='%%uchar' with image\n", cols, rows);
 
         for (size_t i = 0; i < imageSize; i++)
-            fprintf(gnuplotPipe, "%c", img.data[i]);
+            fprintf(gnuplotPipe, "%c", img[i]);
     }
 
     fflush(gnuplotPipe);
@@ -927,7 +919,7 @@ static String emptyString;
 
 // only in ValueOnlyMode
 // NOTE: names might be empty
-void printValues(vector<string> const & names, vector<PVStructure::shared_pointer> const & values)
+void printValues(shared_vector<const string> const & names, vector<PVStructure::shared_pointer> const & values)
 {
     size_t len = values.size();
 
@@ -950,10 +942,11 @@ void printValues(vector<string> const & names, vector<PVStructure::shared_pointe
                 // make an array, i.e. PVStringArray, out of a scalar (since scalar is an array w/ element count == 1)
                 PVStringArray::shared_pointer stringArray =
                         dynamic_pointer_cast<PVStringArray>(getPVDataCreate()->createPVScalarArray(pvString));
-                StringArray values;
-                values.reserve(1);
+                
+                PVStringArray::svector values;
                 values.push_back(getConvert()->toString(scalar));
-                stringArray->put(0, values.size(), values, 0);
+                stringArray->replace(freeze(values));
+                
                 scalarArrays.push_back(stringArray);
             }
         }
@@ -1690,7 +1683,7 @@ int main (int argc, char *argv[])
 
         vector<PVStructure::shared_pointer> collectedValues;
         collectedValues.reserve(nPvs);
-        vector<String> collectedNames;
+        shared_vector<String> collectedNames;
         collectedNames.reserve(nPvs);
 
         // for now a simple iterating sync implementation, guarantees order
@@ -1778,7 +1771,7 @@ int main (int argc, char *argv[])
         }
 
         if (collectValues)
-            printValues(collectedNames, collectedValues);
+            printValues(freeze(collectedNames), collectedValues);
 
         if (allOK && monitor)
         {

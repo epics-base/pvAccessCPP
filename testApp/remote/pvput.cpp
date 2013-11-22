@@ -26,414 +26,10 @@ using namespace std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-// TODO add >> operator support to PVField
-// code copied from Convert.cpp and added error handling, and more strict boolean convert
-
-void fromString(PVScalarPtr const & pvScalar, String const & from)
-{
-    ScalarConstPtr scalar = pvScalar->getScalar();
-    ScalarType scalarType = scalar->getScalarType();
-    switch(scalarType) {
-        case pvBoolean: {
-                PVBooleanPtr pv = static_pointer_cast<PVBoolean>(pvScalar);
-                bool isTrue  = (from.compare("true")==0  || from.compare("1")==0);
-                bool isFalse = (from.compare("false")==0 || from.compare("0")==0);
-                if (!(isTrue || isFalse))
-                	throw runtime_error("failed to parse field " + pvScalar->getFieldName() + " (boolean) from string value '" + from + "'");
-                pv->put(isTrue == true);
-                return;
-            }
-        case pvByte : {
-                PVBytePtr pv = static_pointer_cast<PVByte>(pvScalar);
-                int ival;
-                int result = sscanf(from.c_str(),"%d",&ival);
-                if (result != 1)
-                	throw runtime_error("failed to parse field " + pvScalar->getFieldName() + " (byte) from string value '" + from + "'");
-                int8 value = ival;
-                pv->put(value);
-                return;
-            }
-        case pvShort : {
-                PVShortPtr pv = static_pointer_cast<PVShort>(pvScalar);
-                int ival;
-                int result = sscanf(from.c_str(),"%d",&ival);
-                if (result != 1)
-                	throw runtime_error("failed to parse field " + pvScalar->getFieldName() + " (short) from string value '" + from + "'");
-                int16 value = ival;
-                pv->put(value);
-                return;
-            }
-        case pvInt : {
-                PVIntPtr pv = static_pointer_cast<PVInt>(pvScalar);
-                int ival;
-                int result = sscanf(from.c_str(),"%d",&ival);
-                if (result != 1)
-                	throw runtime_error("failed to parse field " + pvScalar->getFieldName() + " (int) from string value '" + from + "'");
-                int32 value = ival;
-                pv->put(value);
-                return;
-            }
-        case pvLong : {
-                PVLongPtr pv = static_pointer_cast<PVLong>(pvScalar);
-                int64 ival;
-                int result = sscanf(from.c_str(),"%lld",(long long *)&ival);
-                if (result != 1)
-                	throw runtime_error("failed to parse field " + pvScalar->getFieldName() + " (long) from string value '" + from + "'");
-                int64 value = ival;
-                pv->put(value);
-                return;
-            }
-        case pvUByte : {
-                PVUBytePtr pv = static_pointer_cast<PVUByte>(pvScalar);
-                unsigned int ival;
-                int result = sscanf(from.c_str(),"%u",&ival);
-                if (result != 1)
-                	throw runtime_error("failed to parse field " + pvScalar->getFieldName() + " (ubyte) from string value '" + from + "'");
-                uint8 value = ival;
-                pv->put(value);
-                return;
-            }
-        case pvUShort : {
-                PVUShortPtr pv = static_pointer_cast<PVUShort>(pvScalar);
-                unsigned int ival;
-                int result = sscanf(from.c_str(),"%u",&ival);
-                if (result != 1)
-                	throw runtime_error("failed to parse field " + pvScalar->getFieldName() + " (ushort) from string value '" + from + "'");
-                uint16 value = ival;
-                pv->put(value);
-                return;
-            }
-        case pvUInt : {
-                PVUIntPtr pv = static_pointer_cast<PVUInt>(pvScalar);
-                unsigned int ival;
-                int result = sscanf(from.c_str(),"%u",&ival);
-                if (result != 1)
-                	throw runtime_error("failed to parse field " + pvScalar->getFieldName() + " (uint) from string value '" + from + "'");
-                uint32 value = ival;
-                pv->put(value);
-                return;
-            }
-        case pvULong : {
-                PVULongPtr pv = static_pointer_cast<PVULong>(pvScalar);
-                unsigned long long ival;
-                int result = sscanf(from.c_str(),"%llu",(long long unsigned int *)&ival);
-                if (result != 1)
-                	throw runtime_error("failed to parse field " + pvScalar->getFieldName() + " (ulong) from string value '" + from + "'");
-                uint64 value = ival;
-                pv->put(value);
-                return;
-            }
-        case pvFloat : {
-                PVFloatPtr pv = static_pointer_cast<PVFloat>(pvScalar);
-                float value;
-                int result = sscanf(from.c_str(),"%f",&value);
-                if (result != 1)
-                	throw runtime_error("failed to parse field " + pvScalar->getFieldName() + " (float) from string value '" + from + "'");
-                pv->put(value);
-                return;
-            }
-        case pvDouble : {
-                PVDoublePtr pv = static_pointer_cast<PVDouble>(pvScalar);
-                double value;
-                int result = sscanf(from.c_str(),"%lf",&value);
-                if (result != 1)
-                	throw runtime_error("failed to parse field " + pvScalar->getFieldName() + " (double) from string value '" + from + "'");
-                pv->put(value);
-                return;
-            }
-        case pvString: {
-                PVStringPtr value = static_pointer_cast<PVString>(pvScalar);
-                value->put(from);
-                return;
-            }
-    }
-    String message("fromString unknown scalarType ");
-    ScalarTypeFunc::toString(&message,scalarType);
-    throw std::logic_error(message);
-}
-
-
-size_t convertFromStringArray(PVScalarArray *pv,
-    size_t offset, size_t len,const StringArray & from, size_t fromOffset)
-{
-    ScalarType elemType = pv->getScalarArray()->getElementType();
-    size_t ntransfered = 0;
-    switch (elemType) {
-    case pvBoolean: {
-        PVBooleanArray *pvdata = static_cast<PVBooleanArray*>(pv);
-        boolean data[1];
-        while (len > 0) {
-            String fromString = from[fromOffset];
-            bool isTrue  = (fromString.compare("true")==0  || fromString.compare("1")==0);
-            bool isFalse = (fromString.compare("false")==0 || fromString.compare("0")==0);
-            if (!(isTrue || isFalse))
-            {
-            	char soffset[64];
-            	sprintf(soffset, "%u", (unsigned int)offset);
-            	throw runtime_error("failed to parse field " + pv->getFieldName() + " (boolean array at index " + soffset + ") from string value '" + fromString + "'");
-            }
-            data[0] = isTrue == true;
-            if (pvdata->put(offset, 1, data, 0) == 0)
-                return ntransfered;
-            --len;
-            ++ntransfered;
-            ++offset;
-            ++fromOffset;
-        }
-        return ntransfered;
-    }
-    case pvByte: {
-        PVByteArray *pvdata = static_cast<PVByteArray*>(pv);
-        int8 data[1];
-        while (len > 0) {
-            String fromString = from[fromOffset];
-            int ival;
-            int result = sscanf(fromString.c_str(),"%d",&ival);
-            if (result != 1)
-            {
-            	char soffset[64];
-            	sprintf(soffset, "%u", (unsigned int)offset);
-            	throw runtime_error("failed to parse field " + pv->getFieldName() + " (byte array at index " + soffset + ") from string value '" + fromString + "'");
-            }
-            data[0] = ival;
-            if (pvdata->put(offset, 1, data, 0) == 0)
-                return ntransfered;
-            --len;
-            ++ntransfered;
-            ++offset;
-            ++fromOffset;
-        }
-        return ntransfered;
-    }
-    case pvShort: {
-        PVShortArray *pvdata = static_cast<PVShortArray*>(pv);
-        int16 data[1];
-        while (len > 0) {
-            String fromString = from[fromOffset];
-            int ival;
-            int result = sscanf(fromString.c_str(),"%d",&ival);
-            if (result != 1)
-            {
-            	char soffset[64];
-            	sprintf(soffset, "%u", (unsigned int)offset);
-            	throw runtime_error("failed to parse field " + pv->getFieldName() + " (short array at index " + soffset + ") from string value '" + fromString + "'");
-            }
-            data[0] = ival;
-            if (pvdata->put(offset, 1, data, 0) == 0)
-                return ntransfered;
-            --len;
-            ++ntransfered;
-            ++offset;
-            ++fromOffset;
-        }
-        return ntransfered;
-    }
-    case pvInt: {
-        PVIntArray *pvdata = static_cast<PVIntArray*>(pv);
-        int32 data[1];
-        while (len > 0) {
-            String fromString = from[fromOffset];
-            int ival;
-            int result = sscanf(fromString.c_str(),"%d",&ival);
-            if (result != 1)
-            {
-            	char soffset[64];
-            	sprintf(soffset, "%u", (unsigned int)offset);
-            	throw runtime_error("failed to parse field " + pv->getFieldName() + " (int array at index " + soffset + ") from string value '" + fromString + "'");
-            }
-            data[0] = ival;
-            if (pvdata->put(offset, 1, data, 0) == 0)
-                return ntransfered;
-            --len;
-            ++ntransfered;
-            ++offset;
-            ++fromOffset;
-        }
-        return ntransfered;
-    }
-    case pvLong: {
-        PVLongArray *pvdata = static_cast<PVLongArray*>(pv);
-        int64 data[1];
-        while (len > 0) {
-            String fromString = from[fromOffset];
-            int64 ival;
-            int result = sscanf(fromString.c_str(),"%lld",(long long int *)&ival);
-            if (result != 1)
-            {
-            	char soffset[64];
-            	sprintf(soffset, "%u", (unsigned int)offset);
-            	throw runtime_error("failed to parse field " + pv->getFieldName() + " (long array at index " + soffset + ") from string value '" + fromString + "'");
-            }
-            data[0] = ival;
-            if (pvdata->put(offset, 1, data, 0) == 0)
-                return ntransfered;
-            --len;
-            ++ntransfered;
-            ++offset;
-            ++fromOffset;
-        }
-        return ntransfered;
-    }
-    case pvUByte: {
-        PVUByteArray *pvdata = static_cast<PVUByteArray*>(pv);
-        uint8 data[1];
-        while (len > 0) {
-            String fromString = from[fromOffset];
-            unsigned int ival;
-            int result = sscanf(fromString.c_str(),"%u",&ival);
-            if (result != 1)
-            {
-            	char soffset[64];
-            	sprintf(soffset, "%u", (unsigned int)offset);
-            	throw runtime_error("failed to parse field " + pv->getFieldName() + " (ubyte array at index " + soffset + ") from string value '" + fromString + "'");
-            }
-            data[0] = ival;
-            if (pvdata->put(offset, 1, data, 0) == 0)
-                return ntransfered;
-            --len;
-            ++ntransfered;
-            ++offset;
-            ++fromOffset;
-        }
-        return ntransfered;
-    }
-    case pvUShort: {
-        PVUShortArray *pvdata = static_cast<PVUShortArray*>(pv);
-        uint16 data[1];
-        while (len > 0) {
-            String fromString = from[fromOffset];
-            unsigned int ival;
-            int result = sscanf(fromString.c_str(),"%u",&ival);
-            if (result != 1)
-            {
-            	char soffset[64];
-            	sprintf(soffset, "%u", (unsigned int)offset);
-            	throw runtime_error("failed to parse field " + pv->getFieldName() + " (ushort array at index " + soffset + ") from string value '" + fromString + "'");
-            }
-            data[0] = ival;
-            if (pvdata->put(offset, 1, data, 0) == 0)
-                return ntransfered;
-            --len;
-            ++ntransfered;
-            ++offset;
-            ++fromOffset;
-        }
-        return ntransfered;
-    }
-    case pvUInt: {
-        PVUIntArray *pvdata = static_cast<PVUIntArray*>(pv);
-        uint32 data[1];
-        while (len > 0) {
-            String fromString = from[fromOffset];
-            unsigned int ival;
-            int result = sscanf(fromString.c_str(),"%u",&ival);
-            if (result != 1)
-            {
-            	char soffset[64];
-            	sprintf(soffset, "%u", (unsigned int)offset);
-            	throw runtime_error("failed to parse field " + pv->getFieldName() + " (uint array at index " + soffset + ") from string value '" + fromString + "'");
-            }
-            data[0] = ival;
-            if (pvdata->put(offset, 1, data, 0) == 0)
-                return ntransfered;
-            --len;
-            ++ntransfered;
-            ++offset;
-            ++fromOffset;
-        }
-        return ntransfered;
-    }
-    case pvULong: {
-        PVULongArray *pvdata = static_cast<PVULongArray*>(pv);
-        uint64 data[1];
-        while (len > 0) {
-            String fromString = from[fromOffset];
-            uint64 ival;
-            int result = sscanf(fromString.c_str(),"%lld",(unsigned long long int *)&ival);
-            if (result != 1)
-            {
-            	char soffset[64];
-            	sprintf(soffset, "%u", (unsigned int)offset);
-            	throw runtime_error("failed to parse field " + pv->getFieldName() + " (ulong array at index " + soffset + ") from string value '" + fromString + "'");
-            }
-            data[0] = ival;
-            if (pvdata->put(offset, 1, data, 0) == 0)
-                return ntransfered;
-            --len;
-            ++ntransfered;
-            ++offset;
-            ++fromOffset;
-        }
-        return ntransfered;
-    }
-    case pvFloat: {
-        PVFloatArray *pvdata = static_cast<PVFloatArray*>(pv);
-        float data[1];
-        while (len > 0) {
-            String fromString = from[fromOffset];
-            float fval;
-            int result = sscanf(fromString.c_str(),"%f",&fval);
-            if (result != 1)
-            {
-            	char soffset[64];
-            	sprintf(soffset, "%u", (unsigned int)offset);
-            	throw runtime_error("failed to parse field " + pv->getFieldName() + " (float array at index " + soffset + ") from string value '" + fromString + "'");
-            }
-            data[0] = fval;
-            if (pvdata->put(offset, 1, data, 0) == 0)
-                return ntransfered;
-            --len;
-            ++ntransfered;
-            ++offset;
-            ++fromOffset;
-        }
-        return ntransfered;
-    }
-    case pvDouble: {
-        PVDoubleArray *pvdata = static_cast<PVDoubleArray*>(pv);
-        double data[1];
-        while (len > 0) {
-            String fromString = from[fromOffset];
-            double fval;
-            int result = sscanf(fromString.c_str(),"%lf",&fval);
-            if (result != 1)
-            {
-            	char soffset[64];
-            	sprintf(soffset, "%u", (unsigned int)offset);
-            	throw runtime_error("failed to parse field " + pv->getFieldName() + " (double array at index " + soffset + ") from string value '" + fromString + "'");
-            }
-            data[0] = fval;
-            if (pvdata->put(offset, 1, data, 0) == 0)
-                return ntransfered;
-            --len;
-            ++ntransfered;
-            ++offset;
-            ++fromOffset;
-        }
-        return ntransfered;
-    }
-    case pvString:
-        PVStringArray *pvdata = static_cast<PVStringArray*>(pv);
-        while (len > 0) {
-            String * xxx = const_cast<String *>(get(from));
-            size_t n = pvdata->put(offset, len, xxx, fromOffset);
-            if (n == 0)
-                break;
-            len -= n;
-            offset += n;
-            fromOffset += n;
-            ntransfered += n;
-        }
-        return ntransfered;
-    }
-    String message("convertFromStringArray should never get here");
-    throw std::logic_error(message);
-}
-
 size_t fromStringArray(PVScalarArrayPtr const &pv, size_t offset, size_t length,
     StringArray const & from, size_t fromOffset)
 {
-    return convertFromStringArray(pv.get(),offset,length,from,fromOffset);
+    return getConvert()->fromStringArray(pv,offset,length,from,fromOffset);
 }
 
 size_t fromString(PVScalarArrayPtr const &pv, StringArray const & from, size_t fromStartIndex = 0)
@@ -443,7 +39,7 @@ size_t fromString(PVScalarArrayPtr const &pv, StringArray const & from, size_t f
 
 	// first get count
 	if (fromStartIndex >= fromValueCount)
-		throw std::runtime_error("not enough values, stopped at field " + pv->getFieldName());
+		throw std::runtime_error("not enough of values");
 
 	size_t count;
 	istringstream iss(from[fromStartIndex]);
@@ -482,33 +78,44 @@ size_t fromString(PVStructurePtr const & pvStructure, StringArray const & from, 
         for(size_t i = 0; i < length; i++) {
             PVFieldPtr fieldField = fieldsData[i];
 
-            Type type = fieldField->getField()->getType();
-            if(type==structure) {
-                PVStructurePtr pv = static_pointer_cast<PVStructure>(fieldField);
-                size_t count = fromString(pv, from, fromStartIndex);
-                processed += count;
-                fromStartIndex += count;
-            }
-            else if(type==scalarArray) {
-                PVScalarArrayPtr pv = static_pointer_cast<PVScalarArray>(fieldField);
-                size_t count = fromString(pv, from, fromStartIndex);
-                processed += count;
-                fromStartIndex += count;
-            }
-            else if(type==scalar) {
+            try
+            {
+                Type type = fieldField->getField()->getType();
+                // TODO union/unionArray support
+                if(type==structure) {
+                    PVStructurePtr pv = static_pointer_cast<PVStructure>(fieldField);
+                    size_t count = fromString(pv, from, fromStartIndex);
+                    processed += count;
+                    fromStartIndex += count;
+                }
+                else if(type==scalarArray) {
+                    PVScalarArrayPtr pv = static_pointer_cast<PVScalarArray>(fieldField);
+                    size_t count = fromString(pv, from, fromStartIndex);
+                    processed += count;
+                    fromStartIndex += count;
+                }
+                else if(type==scalar) {
+    
+                	if (fromStartIndex >= fromValueCount)
+                		throw std::runtime_error("not enough of values");
 
-            	if (fromStartIndex >= fromValueCount)
-            		throw std::runtime_error("not enough values, stopped at field " + fieldField->getFieldName());
-
-            	PVScalarPtr pv = static_pointer_cast<PVScalar>(fieldField);
-                fromString(pv, from[fromStartIndex++]);
-                processed++;
+            	    PVScalarPtr pv = static_pointer_cast<PVScalar>(fieldField);
+                    getConvert()->fromString(pv, from[fromStartIndex++]);
+                    processed++;
+                }
+                else {
+                    // structureArray not supported
+                    String message("fromString unsupported fieldType ");
+                    TypeFunc::toString(&message,type);
+                    throw std::logic_error(message);
+                }
             }
-            else {
-                // structureArray not supported
-                String message("fromString unsupported fieldType ");
-                TypeFunc::toString(&message,type);
-                throw std::logic_error(message);
+            catch (std::exception &ex)
+            {
+                std::ostringstream os;
+                os << "failed to parse '" << fieldField->getField()->getID() << ' ' << fieldField->getFieldName() << "'";
+                os << ": " << ex.what();
+                throw std::runtime_error(os.str());
             }
         }
     }

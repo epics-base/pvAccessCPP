@@ -150,8 +150,7 @@ std::ostream& terseStructureArray(std::ostream& o, PVStructureArray::shared_poin
 		o << length << separator;
     }
 
-    StructureArrayData data = StructureArrayData();
-    pvArray->get(0, length, data);
+    PVStructureArray::const_svector data = pvArray->view();
     bool first = true;
     for (size_t i = 0; i < length; i++) {
 		if (first)
@@ -159,7 +158,7 @@ std::ostream& terseStructureArray(std::ostream& o, PVStructureArray::shared_poin
 		else
 			o << separator;
 
-		terseStructure(o, data.data[i]);
+		terseStructure(o, data[i]);
     }
     return o;
 }
