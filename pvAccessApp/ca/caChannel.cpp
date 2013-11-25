@@ -84,13 +84,11 @@ static void ca_get_labels_handler(struct event_handler_args args)
     {
         const dbr_gr_enum* dbr_enum_p = static_cast<const dbr_gr_enum*>(args.dbr);
 
-        StringArray labels;
-        labels.reserve(dbr_enum_p->no_str);
-        for (dbr_short_t i = 0; i < dbr_enum_p->no_str; i++)
-            labels.push_back(dbr_enum_p->strs[i]);
-
         PVStringArray* labelsArray = static_cast<PVStringArray*>(args.usr);
-        labelsArray->put(0, labels.size(), labels, 0);
+        PVStringArray::svector labels(labelsArray->reuse());
+        labels.resize(dbr_enum_p->no_str);
+        std::copy(dbr_enum_p->strs, dbr_enum_p->strs + dbr_enum_p->no_str, labels.begin());
+        labelsArray->replace(freeze(labels));
     }
     else
     {
@@ -558,7 +556,10 @@ void copy_DBR(const void * dbr, unsigned count, PVStructure::shared_pointer cons
     {
         std::tr1::shared_ptr<aF> value =
                 std::tr1::static_pointer_cast<aF>(pvStructure->getScalarArrayField("value", sT));
-        value->put(0, count, static_cast<const pT*>(dbr), 0);
+        typename aF::svector temp(value->reuse());
+        temp.resize(count);
+        std::copy(static_cast<const pT*>(dbr), static_cast<const pT*>(dbr) + count, temp.begin());
+        value->replace(freeze(temp));
     }
 }
 
@@ -596,11 +597,10 @@ void copy_DBR<String, pvString, PVString, PVStringArray>(const void * dbr, unsig
         std::tr1::shared_ptr<PVStringArray> value =
                 std::tr1::static_pointer_cast<PVStringArray>(pvStructure->getScalarArrayField("value", pvString));
         const dbr_string_t* dbrStrings = static_cast<const dbr_string_t*>(dbr);
-        StringArray sA;
-        sA.reserve(count);
-        for (unsigned i = 0; i < count; i++)
-            sA.push_back(dbrStrings[i]);
-        value->put(0, count, sA, 0);
+        PVStringArray::svector sA(value->reuse());
+        sA.resize(count);
+        std::copy(dbrStrings, dbrStrings + count, sA.begin());
+        value->replace(freeze(sA));
     }
 }
 
@@ -995,7 +995,7 @@ int doPut_pvStructure(CAChannel::shared_pointer const & channel, void *usrArg, P
         std::tr1::shared_ptr<aF> value =
                 std::tr1::static_pointer_cast<aF>(pvStructure->getScalarArrayField("value", sT));
 
-        const pT* val = value->get();
+        const pT* val = value->view().data();
         int result = ca_array_put_callback(channel->getNativeType(), value->getLength(),
                                            channel->getChannelID(), val,
                                            ca_put_handler, usrArg);
