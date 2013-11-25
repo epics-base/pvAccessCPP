@@ -138,9 +138,9 @@ public:
                 } catch (...) {
                     std::cerr << "Unhandled exception caught in ProcessAction::run()" << std::endl;
                 }
-
-                epicsThreadSleep(period);
             }
+            
+            epicsThreadSleep(period);
         }
     }
 };
