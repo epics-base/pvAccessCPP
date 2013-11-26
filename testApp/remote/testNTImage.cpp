@@ -86,17 +86,23 @@ void setImageArrayValues(
     String id = imagePV->getStructure()->getID();
     PVByteArrayPtr pvField = static_pointer_cast<PVByteArray>(imagePV->getSubField("value"));
 
-    size_t dataSize = raw_size;
-	pvField->setCapacity(dataSize);
     const int8_t *data = raw;
+    size_t dataSize = raw_size;
+
+    PVByteArray::svector temp(pvField->reuse());
+    temp.resize(dataSize);
     if (data)
-        pvField->put(0, dataSize, data, 0);
+        std::copy(data, data + dataSize, temp.begin());
+    pvField->replace(freeze(temp));
 
 	PVIntArrayPtr dimField = static_pointer_cast<PVIntArray>(
 	   imagePV->getScalarArrayField(String("dim"), pvInt));
-    dimField->setCapacity(raw_dim_size);
+
     const int32_t *dim = raw_dim;
-    dimField->put(0, raw_dim_size, dim, 0);
+    PVIntArray::svector temp2(dimField->reuse());
+	temp2.resize(raw_dim_size);
+	std::copy(dim, dim + raw_dim_size, temp2.begin());
+	dimField->replace(freeze(temp2));
 }
 
 
@@ -112,28 +118,36 @@ void setImageImageValues(
 
     PVIntArrayPtr offsetField = static_pointer_cast<PVIntArray>(
         imagePV->getScalarArrayField(String("offset"), pvInt));
-    offsetField->setCapacity(2);
+    PVIntArray::svector temp(offsetField->reuse());
+    temp.resize(2);
     int32_t offsets[] = { 0, 0 };
-	offsetField->put(0, 2, offsets, 0);
+    std::copy(offsets, offsets + 2, temp.begin());
+    offsetField->replace(freeze(temp));
 
     PVIntArrayPtr binningField = static_pointer_cast<PVIntArray>(
         imagePV->getScalarArrayField(String("binning"), pvInt));
-    binningField->setCapacity(2);
+    temp = binningField->reuse();
+    temp.resize(2);
     int32_t binnings[] = { 1, 1 };
-    binningField->put(0, 2, binnings, 0);
+    std::copy(binnings, binnings + 2, temp.begin());
+    binningField->replace(freeze(temp));
 
     PVIntArrayPtr reverseField = static_pointer_cast<PVIntArray>(
         imagePV->getScalarArrayField(String("reverse"), pvInt));
         reverseField->setCapacity(2);
+    temp = reverseField->reuse();
+    temp.resize(2);
     int32_t reverses[] = { 0, 0 };
-	reverseField->put(0, 2, reverses, 0);
+    std::copy(reverses, reverses + 2, temp.begin());
+    reverseField->replace(freeze(temp));
 
 	PVIntArrayPtr fullDimField = static_pointer_cast<PVIntArray>(
         imagePV->getScalarArrayField(String("fullDim"), pvInt));
-    fullDimField->setCapacity(raw_dim_size);
+    temp = fullDimField->reuse();
+    temp.resize(raw_dim_size);
     const int32_t *fullDim = raw_dim;
-    fullDimField->put(0, raw_dim_size, fullDim, 0);
-
+    std::copy(fullDim, fullDim + raw_dim_size, temp.begin());
+    fullDimField->replace(freeze(temp));
 }
 
 
@@ -174,14 +188,11 @@ void rotateImage(PVStructure::shared_pointer const & imagePV, const int8_t* orig
 {
     PVScalarArrayPtr value = static_pointer_cast<PVScalarArray>(imagePV->getSubField("value"));
     PVIntArrayPtr dim = static_pointer_cast<PVIntArray>(imagePV->getScalarArrayField("dim", pvInt));
-    // dim[] = { rows, columns }
-    int32 rows, cols;
-    size_t dims = dim->getLength();
 
-    IntArrayData data;
-    dim->get(0, dims, data);
-    cols = data.data[0];
-    rows = data.data[1];
+    PVIntArray::const_svector data = dim->view();
+    // dim[] = { rows, columns }
+    int32 cols = data[0];
+    int32 rows = data[1];
 
     PVByteArrayPtr array = static_pointer_cast<PVByteArray>(value);
 
@@ -195,7 +206,8 @@ void rotateImage(PVStructure::shared_pointer const & imagePV, const int8_t* orig
     int32 colsm2 = cols-2;
     int32 rowsm2 = rows-2;
 
-    int8_t* img = array->get();
+    PVByteArray::svector imgData(array->reuse());
+    int8_t* img = imgData.data();
 
     for (int32 y = 0; y < rows; y++)
     {
@@ -232,6 +244,7 @@ void rotateImage(PVStructure::shared_pointer const & imagePV, const int8_t* orig
             }
         }
     }
+    array->replace(freeze(imgData));
 
     PVIntPtr uniqueIdField = imagePV->getIntField(String("uniqueId"));
     uniqueIdField->put(uniqueIdField->get()+1);

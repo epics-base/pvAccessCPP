@@ -170,14 +170,20 @@ public:
 
                     epicsUInt32 len = adcSim->prev_nSamples;
                     double *val = adcSim->data.value.get();
-                    static_pointer_cast<PVDoubleArray>(adcMatrix->getScalarArrayField("value", pvDouble))->put(0, len, val, 0);
+                    PVDoubleArrayPtr adcSimArray = adcMatrix->getSubField<PVDoubleArray>("value");
+                    PVDoubleArray::svector temp(adcSimArray->reuse());
+                    temp.resize(len);
+                    std::copy(val, val + len, temp.begin());
+                    adcSimArray->replace(freeze(temp));
 
                     baseValue::shape_t* shape = &adcSim->data.shape;
                     size_t shapeLen = shape->size();
-                    vector<int> intVal(shapeLen);
-                    for (size_t i = 0; i < shapeLen; i++)
-                        intVal[i] = (*shape)[i];
-                    static_pointer_cast<PVIntArray>(adcMatrix->getScalarArrayField("dim", pvInt))->put(0, shapeLen, &intVal[0], 0);
+
+                    PVIntArrayPtr adcSimShape = adcMatrix->getSubField<PVIntArray>("dim");
+                    PVIntArray::svector temp2(adcSimShape->reuse());
+                    temp2.resize(shapeLen);
+                    std::copy(shape->begin(), shape->end(), temp2.begin());
+                    adcSimShape->replace(freeze(temp2));
 
                     PVStructure::shared_pointer ts = adcMatrix->getStructureField("timeStamp");
 
@@ -248,13 +254,13 @@ static epics::pvData::PVStructure::shared_pointer createNTTable(int columnsCount
     StringArray fieldNames(columnsCount);
     FieldConstPtrArray fields(columnsCount);
     char sbuf[16];
-    vector<String> labels;
+    PVStringArray::svector labels(columnsCount);
     for (int i = 0; i < columnsCount; i++)
     {
         sprintf(sbuf, "column%d", i);
         fieldNames[i] = sbuf;
         fields[i] = getFieldCreate()->createScalarArray(pvDouble);
-        labels.push_back(sbuf);
+        labels[i] = sbuf;
     }
 
     Structure::const_shared_pointer valueStructure(
@@ -274,17 +280,15 @@ static epics::pvData::PVStructure::shared_pointer createNTTable(int columnsCount
                         "uri:ev4:nt/2012/pwd:NTTable", tableFieldNames, tableFields)
                     )
                 );
-    static_pointer_cast<PVStringArray>(result->getScalarArrayField("labels", pvString))->put(0, labels.size(), &labels[0], 0);
+    result->getSubField<PVStringArray>("labels")->replace(freeze(labels));
 
     return result;
 }
 
 static void generateNTTableDoubleValues(epics::pvData::PVStructure::shared_pointer result)
 {
-    PVStringArray::shared_pointer pvLabels(static_pointer_cast<PVStringArray>(result->getScalarArrayField("labels", pvString)));
-    StringArrayData ld;
-    pvLabels->get(0, pvLabels->getLength(), ld);
-
+    PVStringArray::shared_pointer pvLabels = (static_pointer_cast<PVStringArray>(result->getScalarArrayField("labels", pvString)));
+    PVStringArray::const_svector ld(pvLabels->view());
 
     PVStructure::shared_pointer resultValue = result->getStructureField("value");
 
@@ -295,12 +299,16 @@ static void generateNTTableDoubleValues(epics::pvData::PVStructure::shared_point
     values[r] = rand()/((double)RAND_MAX+1) + OFFSET;
 
     int offset = 0;
-    for (vector<String>::iterator iter = ld.data.begin();
-         iter != ld.data.end();
+    for (PVStringArray::const_svector::const_iterator iter = ld.begin();
+         iter != ld.end();
          iter++, offset++)
     {
         FILL_VALUES(offset);
-        static_pointer_cast<PVDoubleArray>(resultValue->getScalarArrayField(*iter, pvDouble))->put(0, ROWS, values, 0);
+        PVDoubleArray::shared_pointer arr = resultValue->getSubField<PVDoubleArray>(*iter);
+        PVDoubleArray::svector temp(arr->reuse());
+        temp.resize(ROWS);
+        std::copy(values, values + ROWS, temp.begin());
+        arr->replace(freeze(temp));
     }
 }
 
@@ -1058,11 +1066,11 @@ public:
                 int columnsCount = atoi(columns->get().c_str());
 
                 char sbuf[16];
-                vector<String> labels;
+                PVStringArray::svector labels(columnsCount);
                 for (int i = 0; i < columnsCount; i++)
                 {
                     sprintf(sbuf, "name%d", i);
-                    labels.push_back(sbuf);
+                    labels[i] = sbuf;
                 }
 
                 StringArray tableFieldNames(2);
@@ -1078,13 +1086,13 @@ public:
                                     "uri:ev4:nt/2012/pwd:NTNameValue", tableFieldNames, tableFields)
                                 )
                             );
-                static_pointer_cast<PVStringArray>(result->getScalarArrayField("name", pvString))->put(0, labels.size(), &labels[0], 0);
+                result->getSubField<PVStringArray>("name")->replace(freeze(labels));
 
                 int32 len = columnsCount;
-                vector<double> mv(len);
+                PVDoubleArray::svector mv(len);
                 for (int r = 0; r < len; r++)
                     mv[r] = rand()/((double)RAND_MAX+1) + (int)(r);
-                static_pointer_cast<PVDoubleArray>(result->getScalarArrayField("value", pvDouble))->put(0, len, &mv[0], 0);
+                result->getSubField<PVDoubleArray>("value")->replace(freeze(mv));
 
                 m_channelRPCRequester->requestDone(Status::Ok, result);
             }
@@ -1134,20 +1142,22 @@ public:
 
                 int32 rowsVal = atoi(rows->get().c_str());
                 int32 colsVal = atoi(columns->get().c_str());
-                int32 dimValues[] = { rowsVal, colsVal };
-                static_pointer_cast<PVIntArray>(result->getScalarArrayField("dim", pvInt))->put(0, 2, &dimValues[0], 0);
+                PVIntArray::svector dimValues(2);
+                dimValues[0] = rowsVal;
+                dimValues[1] = colsVal;
+                result->getSubField<PVIntArray>("dim")->replace(freeze(dimValues));
 
                 PVStringPtr byColumns = static_pointer_cast<PVString>(args->getSubField("bycolumns"));
                 bool bycolumns = (byColumns.get() && byColumns->get() == "1");
 
                 int32 len = rowsVal * colsVal;
-                vector<double> mv(len);
+                PVDoubleArray::svector mv(len);
                 for (int r = 0; r < len; r++)
                     if (bycolumns)
                         mv[r] = rand()/((double)RAND_MAX+1) + (int)(r%rowsVal);
                     else
                         mv[r] = rand()/((double)RAND_MAX+1) + (int)(r/colsVal);
-                static_pointer_cast<PVDoubleArray>(result->getScalarArrayField("value", pvDouble))->put(0, len, &mv[0], 0);
+                result->getSubField<PVDoubleArray>("value")->replace(freeze(mv));
 
                 m_channelRPCRequester->requestDone(Status::Ok, result);
             }
@@ -1220,10 +1230,10 @@ public:
                         }
 
                         PVByteArrayPtr value = std::tr1::dynamic_pointer_cast<PVByteArray>(m_pvStructure->getSubField("value"));
-                        value->setCapacity(fileSize);
-
-                        value->setLength(fileSize);
-                        in.readsome((char*)value->get(), fileSize);
+                        PVByteArray::svector temp(value->reuse());
+                        temp.resize(fileSize);
+                        in.readsome((char*)temp.data(), fileSize);
+                        value->replace(freeze(temp));
 
                         m_channelRPCRequester->requestDone(Status::Ok, m_pvStructure);
 
@@ -1561,45 +1571,28 @@ protected:
 
                 if (done && specCount > 0)
                 {
-                    pvField->setCapacity(specCount);
-                    pvField->setLength(specCount);
+                    PVDoubleArray::svector temp(pvField->reuse());
+                    temp.resize(specCount);
 
                     double v = 0;
-                    int ix = 0;
-                    const int COUNT = 1024;
-
-                    int n = 0;
-                    while (n < specCount)
+                    for (int n = 0; n < specCount; n++)
                     {
-
-                        double array[COUNT];
-                        int i = 0;
-                        for (; i < COUNT && n < specCount; i++)
-                        {
-                            array[i] = v; v+=1; n++;
-                        }
-                        pvField->put(ix, i, array, 0);
-                        ix += i;
+                        temp[n] = v; v+=1;
                     }
+                    pvField->replace(freeze(temp));
                 }
                 else
                 {
+                    PVDoubleArray::svector temp(pvField->reuse());
+                    specCount = 1024*1024;
+                    temp.resize(specCount);
+
                     double v = 0;
-                    int ix = 0;
-                    const int COUNT = 1024;
-
-                    pvField->setCapacity(1024*COUNT);
-                    for (int n = 0; n < 1024; n++)
+                    for (int n = 0; n < specCount; n++)
                     {
-
-                        double array[COUNT];
-                        for (int i = 0; i < COUNT; i++)
-                        {
-                            array[i] = v; v+=1.1;
-                        }
-                        pvField->put(ix, COUNT, array, 0);
-                        ix += COUNT;
+                        temp[n] = v; v+=1.1;
                     }
+                    pvField->replace(freeze(temp));
                 }
                 /*
                 printf("array prepared------------------------------------!!!\n");
@@ -1645,8 +1638,9 @@ protected:
                             );
 
                 // fill with default values
-                int dimValue = 0;
-                static_pointer_cast<PVIntArray>(m_pvStructure->getScalarArrayField("dim", pvInt))->put(0, 1, &dimValue, 0);
+                PVIntArray::svector dimValue(1);
+                dimValue[0] = 0;
+                m_pvStructure->getSubField<PVIntArray>("dim")->replace(freeze(dimValue));
 
                 m_pvStructure->getStringField("descriptor")->put("Simulated ADC that provides NTMatrix value");
                 PVStructurePtr displayStructure = m_pvStructure->getStructureField("display");
