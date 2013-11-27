@@ -26,12 +26,6 @@ using namespace std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-size_t fromStringArray(PVScalarArrayPtr const &pv, size_t offset, size_t length,
-    StringArray const & from, size_t fromOffset)
-{
-    return getConvert()->fromStringArray(pv,offset,length,from,fromOffset);
-}
-
 size_t fromString(PVScalarArrayPtr const &pv, StringArray const & from, size_t fromStartIndex = 0)
 {
 	int processed = 0;
@@ -55,14 +49,11 @@ size_t fromString(PVScalarArrayPtr const &pv, StringArray const & from, size_t f
     	throw runtime_error("not enough array values for field " + pv->getFieldName());
 	}
 
-    StringArray valueList;
-    valueList.reserve(count);
-    for(size_t i=0; i<count; i++)
-    	valueList.push_back(from[fromStartIndex++]);
+    PVStringArray::svector valueList(count);
+    std::copy(from.begin() + fromStartIndex, from.begin() + fromStartIndex + count, valueList.begin());
     processed += count;
 
-    size_t num = fromStringArray(pv,0,count,valueList,0);
-    pv->setLength(num);
+    pv->putFrom<String>(freeze(valueList));
 
     return processed;
 }
