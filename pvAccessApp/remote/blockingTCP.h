@@ -7,12 +7,19 @@
 #ifndef BLOCKINGTCP_H_
 #define BLOCKINGTCP_H_
 
-#include <pv/pvaConstants.h>
-#include <pv/remote.h>
-#include <pv/transportRegistry.h>
-#include <pv/introspectionRegistry.h>
-#include <pv/namedLockPattern.h>
-#include <pv/inetAddressUtil.h>
+#include <set>
+#include <map>
+#include <deque>
+
+#ifdef epicsExportSharedSymbols
+#   define blockingTCPEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
+#include <osdSock.h>
+#include <osiSock.h>
+#include <epicsTime.h>
+#include <epicsThread.h>
 
 #include <pv/byteBuffer.h>
 #include <pv/pvType.h>
@@ -20,14 +27,17 @@
 #include <pv/timer.h>
 #include <pv/event.h>
 
-#include <osdSock.h>
-#include <osiSock.h>
-#include <epicsTime.h>
-#include <epicsThread.h>
+#ifdef blockingTCPEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef blockingTCPEpicsExportSharedSymbols
+#endif
 
-#include <set>
-#include <map>
-#include <deque>
+#include <pv/pvaConstants.h>
+#include <pv/remote.h>
+#include <pv/transportRegistry.h>
+#include <pv/introspectionRegistry.h>
+#include <pv/namedLockPattern.h>
+#include <pv/inetAddressUtil.h>
 
 // not implemented anyway
 #define FLOW_CONTROL 0

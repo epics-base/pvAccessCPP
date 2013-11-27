@@ -7,12 +7,23 @@
 #ifndef BEACONHANDLER_H
 #define BEACONHANDLER_H
 
-#include <pv/remote.h>
-#include <pv/pvAccess.h>
+#ifdef epicsExportSharedSymbols
+#   define beaconHandlerEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
+#include <osiSock.h>
 
 #include <pv/timeStamp.h>
-#include <osiSock.h>
 #include <pv/lock.h>
+
+#ifdef beaconHandlerEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef beaconHandlerEpicsExportSharedSymbols
+#endif
+
+#include <pv/remote.h>
+#include <pv/pvAccess.h>
 
 namespace epics {
 namespace pvAccess {

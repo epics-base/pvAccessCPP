@@ -10,9 +10,19 @@
 #include <map>
 #include <iostream>
 
+#ifdef epicsExportSharedSymbols
+#   define namedLockPatternEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <pv/lock.h>
 #include <pv/pvType.h>
 #include <pv/sharedPtr.h>
+
+#ifdef namedLockPatternEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef namedLockPatternEpicsExportSharedSymbols
+#endif
 
 #include <pv/referenceCountingLock.h>
 

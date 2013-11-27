@@ -7,10 +7,21 @@
 #ifndef SERVERCHANNEL_H_
 #define SERVERCHANNEL_H_
 
+#ifdef epicsExportSharedSymbols
+#   define serverChannelImplEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
+#include <pv/destroyable.h>
+
+#ifdef serverChannelImplEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef serverChannelImplEpicsExportSharedSymbols
+#endif
+
 #include <pv/remote.h>
 #include <pv/clientContextImpl.h>
 
-#include <pv/destroyable.h>
 
 namespace epics {
 namespace pvAccess {

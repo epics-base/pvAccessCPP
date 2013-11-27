@@ -7,19 +7,28 @@
 #ifndef REMOTE_H_
 #define REMOTE_H_
 
-#include <pv/pvaConstants.h>
-#include <pv/configuration.h>
+#ifdef epicsExportSharedSymbols
+#   define remoteEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
+#include <osiSock.h>
+#include <osdSock.h>
 
 #include <pv/serialize.h>
 #include <pv/pvType.h>
 #include <pv/byteBuffer.h>
 #include <pv/timer.h>
 #include <pv/pvData.h>
-
 #include <pv/sharedPtr.h>
 
-#include <osiSock.h>
-#include <osdSock.h>
+#ifdef remoteEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef remoteEpicsExportSharedSymbols
+#endif
+
+#include <pv/pvaConstants.h>
+#include <pv/configuration.h>
 
 /// TODO only here because of the Lockable
 #include <pv/pvAccess.h>

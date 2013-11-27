@@ -7,20 +7,29 @@
 #ifndef BLOCKINGUDP_H_
 #define BLOCKINGUDP_H_
 
-#include <pv/remote.h>
-#include <pv/pvaConstants.h>
-#include <pv/inetAddressUtil.h>
+#ifdef epicsExportSharedSymbols
+#   define blockingUDPEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
+#include <osdSock.h>
+#include <osiSock.h>
+#include <epicsThread.h>
 
 #include <pv/noDefaultMethods.h>
 #include <pv/byteBuffer.h>
 #include <pv/lock.h>
 #include <pv/event.h>
-
 #include <pv/pvIntrospect.h>
 
-#include <osdSock.h>
-#include <osiSock.h>
-#include <epicsThread.h>
+#ifdef blockingUDPEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef blockingUDPEpicsExportSharedSymbols
+#endif
+
+#include <pv/remote.h>
+#include <pv/pvaConstants.h>
+#include <pv/inetAddressUtil.h>
 
 namespace epics {
     namespace pvAccess {

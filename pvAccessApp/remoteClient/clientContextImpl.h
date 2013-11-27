@@ -7,9 +7,20 @@
 #ifndef CLIENTCONTEXTIMPL_H_
 #define CLIENTCONTEXTIMPL_H_
 
+#ifdef epicsExportSharedSymbols
+#   define clientContextImplEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
+#include <pv/sharedPtr.h>
+
+#ifdef clientContextImplEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef clientContextImplEpicsExportSharedSymbols
+#endif
+
 #include <pv/pvAccess.h>
 #include <pv/remote.h>
-#include <pv/sharedPtr.h>
 #include <pv/channelSearchManager.h>
 #include <pv/inetAddressUtil.h>
 

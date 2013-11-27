@@ -7,9 +7,19 @@
 #ifndef REFERENCECOUNTINGLOCK_H
 #define REFERENCECOUNTINGLOCK_H
 
+#ifdef epicsExportSharedSymbols
+#   define referenceCountingLockEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <pv/lock.h>
 #include <pv/pvType.h>
 #include <pv/sharedPtr.h>
+
+#ifdef referenceCountingLockEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef referenceCountingLockEpicsExportSharedSymbols
+#endif
 
 namespace epics {
 namespace pvAccess {

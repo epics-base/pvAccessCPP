@@ -11,6 +11,11 @@
 #include <vector>
 #include <iostream>
 
+#ifdef epicsExportSharedSymbols
+#   define transportRegistryEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <osiSock.h>
 
 #include <pv/lock.h>
@@ -19,6 +24,11 @@
 #include <pv/remote.h>
 #include <pv/inetAddressUtil.h>
 #include <pv/sharedPtr.h>
+
+#ifdef transportRegistryEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef transportRegistryEpicsExportSharedSymbols
+#endif
 
 namespace epics {
 namespace pvAccess {

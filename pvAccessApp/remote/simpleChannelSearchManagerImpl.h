@@ -7,11 +7,21 @@
 #ifndef SIMPLECHANNELSEARCHMANAGERIMPL_H
 #define SIMPLECHANNELSEARCHMANAGERIMPL_H
 
-#include <pv/channelSearchManager.h>
+#ifdef epicsExportSharedSymbols
+#   define simpleChannelSearchManagerEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
 
 #include <pv/lock.h>
 #include <pv/byteBuffer.h>
 #include <pv/timer.h>
+
+#ifdef simpleChannelSearchManagerEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef simpleChannelSearchManagerEpicsExportSharedSymbols
+#endif
+
+#include <pv/channelSearchManager.h>
 
 namespace epics {
 namespace pvAccess {

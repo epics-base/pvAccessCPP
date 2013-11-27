@@ -4,17 +4,22 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#include <pv/pvAccess.h>
 #include <iostream>
 #include <sstream>
-#include <pv/lock.h>
-#include <pv/standardPVField.h>
 #include <memory>
 #include <queue>
-
 #include <stdexcept>
-#include <pv/pvaConstants.h>
+
+#include <pv/lock.h>
 #include <pv/timer.h>
+#include <pv/bitSetUtil.h>
+#include <pv/serializationHelper.h>
+#include <pv/convert.h>
+#include <pv/queue.h>
+#include <pv/standardPVField.h>
+
+#include <pv/pvAccess.h>
+#include <pv/pvaConstants.h>
 #include <pv/blockingUDP.h>
 #include <pv/blockingTCP.h>
 #include <pv/namedLockPattern.h>
@@ -27,10 +32,6 @@
 #include <pv/configuration.h>
 #include <pv/beaconHandler.h>
 #include <pv/logger.h>
-#include <pv/bitSetUtil.h>
-#include <pv/serializationHelper.h>
-#include <pv/convert.h>
-#include <pv/queue.h>
 
 #include <pv/pvAccessMB.h>
 

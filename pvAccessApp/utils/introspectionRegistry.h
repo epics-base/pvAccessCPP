@@ -7,6 +7,14 @@
 #ifndef INTROSPECTIONREGISTRY_H
 #define INTROSPECTIONREGISTRY_H
 
+#include <map>
+#include <iostream>
+
+#ifdef epicsExportSharedSymbols
+#   define introspectionRegistryEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <pv/lock.h>
 #include <pv/pvIntrospect.h>
 #include <pv/pvData.h>
@@ -16,8 +24,10 @@
 #include <pv/status.h>
 #include <pv/standardField.h>
 
-#include <map>
-#include <iostream>
+#ifdef introspectionRegistryEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef introspectionRegistryEpicsExportSharedSymbols
+#endif
 
 // TODO check for memory leaks
 

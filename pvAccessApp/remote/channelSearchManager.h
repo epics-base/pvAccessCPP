@@ -7,8 +7,19 @@
 #ifndef CHANNELSEARCHMANAGER_H
 #define CHANNELSEARCHMANAGER_H
 
-#include <pv/remote.h>
+#ifdef epicsExportSharedSymbols
+#   define channelSearchManagerEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <osiSock.h>
+
+#include <pv/remote.h>
+
+#ifdef channelSearchManagerEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef channelSearchManagerEpicsExportSharedSymbols
+#endif
 
 namespace epics {
 namespace pvAccess {
