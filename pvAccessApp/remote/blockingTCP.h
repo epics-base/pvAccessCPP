@@ -16,6 +16,7 @@
 #   undef epicsExportSharedSymbols
 #endif
 
+#include <shareLib.h>
 #include <osdSock.h>
 #include <osiSock.h>
 #include <epicsTime.h>

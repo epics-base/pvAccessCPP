@@ -4,6 +4,12 @@
  * in file LICENSE that is included with this distribution.
  */
  
+#ifdef _WIN32
+#define NOMINMAX
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 #define __STDC_LIMIT_MACROS 1
 #include <pv/blockingTCP.h>
 #include <pv/inetAddressUtil.h>
@@ -24,11 +30,6 @@
 #include <sys/types.h>
 #include <algorithm>
 #include <sstream>
-
-#ifdef _WIN32
-#include <BaseTsd.h>
-typedef SSIZE_T ssize_t;
-#endif
 
 using namespace epics::pvData;
 

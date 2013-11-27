@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 #include <typeinfo>
-#include <tr1/memory>
+#include <pv/sharedPtr.h>
 
 struct baseValue {
     bool remoteWritable;
@@ -114,7 +114,7 @@ baseValue::baseValue()
 #ifndef SIM_H
 #define SIM_H
 
-#include <tr1/functional>
+//#include <tr1/functional>
 
 #include <epicsThread.h>
 #include <epicsEvent.h>

@@ -2,6 +2,10 @@
  * testServer.cpp
  */
 
+#ifdef _WIN32
+#define NOMINMAX
+#endif
+
 #include <pv/serverContext.h>
 #include <pv/clientContextImpl.h>
 #include <epicsExit.h>
