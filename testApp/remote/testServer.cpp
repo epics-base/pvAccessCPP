@@ -1330,14 +1330,19 @@ class MockChannelArray : public ChannelArray
 private:
     ChannelArrayRequester::shared_pointer m_channelArrayRequester;
     PVArray::shared_pointer m_pvArray;
+    PVArray::shared_pointer m_pvStructureArray;
 
 protected:
     MockChannelArray(ChannelArrayRequester::shared_pointer const & channelArrayRequester,
-                     PVStructure::shared_pointer const & /*pvStructure*/, PVStructure::shared_pointer const & /*pvRequest*/) :
-        m_channelArrayRequester(channelArrayRequester),
-        m_pvArray(getPVDataCreate()->createPVScalarArray(pvDouble))
+                     PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & /*pvRequest*/) :
+        m_channelArrayRequester(channelArrayRequester)
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelArray);
+
+        m_pvStructureArray = pvStructure->getSubField<PVArray>("value");
+        if (m_pvStructureArray != 0)
+            m_pvArray = std::tr1::dynamic_pointer_cast<PVArray>(
+                getPVDataCreate()->createPVField(m_pvStructureArray->getField()));
     }
 
 public:
@@ -1345,9 +1350,15 @@ public:
     {
         ChannelArray::shared_pointer thisPtr(new MockChannelArray(channelArrayRequester, pvStructure, pvRequest));
 
-        // TODO pvRequest
-        channelArrayRequester->channelArrayConnect(Status::Ok, thisPtr, static_cast<MockChannelArray*>(thisPtr.get())->m_pvArray);
-
+        PVArray::shared_pointer array(static_cast<MockChannelArray*>(thisPtr.get())->m_pvArray);
+        if (array.get())
+            channelArrayRequester->channelArrayConnect(Status::Ok, thisPtr, array);
+        else
+        {
+            Status errorStatus(Status::STATUSTYPE_ERROR, "no 'value' subfield of array type");
+            channelArrayRequester->channelArrayConnect(errorStatus, thisPtr, array);
+        }
+        
         return thisPtr;
     }
 
@@ -1356,25 +1367,116 @@ public:
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockChannelArray);
     }
 
-    virtual void putArray(bool lastRequest, int /*offset*/, int /*count*/)
+    template<typename APVF>
+    void put(PVArray::shared_pointer const & pvfrom,
+             PVArray::shared_pointer const & pvto,
+             size_t offset, size_t count)
     {
-        // TODO offset, count
+        typename APVF::shared_pointer from = std::tr1::static_pointer_cast<APVF>(pvfrom);
+        typename APVF::shared_pointer to = std::tr1::static_pointer_cast<APVF>(pvto);
+        
+        typename APVF::svector temp(to->reuse());
+        typename APVF::const_svector ref(from->view());
+        
+        // TODO range check
+                    
+        std::copy(ref.begin(), ref.begin() + count, temp.begin() + offset);
+
+        to->replace(freeze(temp));
+    }
+
+    virtual void putArray(bool lastRequest, int offset, int count)
+    {
+        size_t o = static_cast<size_t>(offset);
+        if (count == -1) count = static_cast<int>(m_pvArray->getLength());
+        size_t c = static_cast<size_t>(count); 
+
+        Field::const_shared_pointer field = m_pvArray->getField();
+        Type type = field->getType();
+        if (type == scalarArray)
+        {
+            switch (std::tr1::static_pointer_cast<const ScalarArray>(field)->getElementType())
+            {
+                case pvBoolean: put<PVBooleanArray>(m_pvArray, m_pvStructureArray, o, c); break;
+                case pvByte: put<PVByteArray>(m_pvArray, m_pvStructureArray, o, c); break;
+                case pvShort: put<PVShortArray>(m_pvArray, m_pvStructureArray, o, c); break;
+                case pvInt: put<PVIntArray>(m_pvArray, m_pvStructureArray, o, c); break;
+                case pvLong: put<PVLongArray>(m_pvArray, m_pvStructureArray, o, c); break;
+                case pvUByte: put<PVUByteArray>(m_pvArray, m_pvStructureArray, o, c); break;
+                case pvUShort: put<PVUShortArray>(m_pvArray, m_pvStructureArray, o, c); break;
+                case pvUInt: put<PVUIntArray>(m_pvArray, m_pvStructureArray, o, c); break;
+                case pvULong: put<PVULongArray>(m_pvArray, m_pvStructureArray, o, c); break;
+                case pvFloat: put<PVFloatArray>(m_pvArray, m_pvStructureArray, o, c); break;
+                case pvDouble: put<PVDoubleArray>(m_pvArray, m_pvStructureArray, o, c); break;
+                case pvString: put<PVStringArray>(m_pvArray, m_pvStructureArray, o, c); break;
+            }
+        }
+        else if (type == structureArray)
+            put<PVStructureArray>(m_pvArray, m_pvStructureArray, o, c);
+        else if (type == unionArray)
+            put<PVUnionArray>(m_pvArray, m_pvStructureArray, o, c);
+
         m_channelArrayRequester->putArrayDone(Status::Ok);
         if (lastRequest)
             destroy();
     }
 
-    virtual void getArray(bool lastRequest, int /*offset*/, int /*count*/)
+    template<typename APVF>
+    void get(PVArray::shared_pointer const & pvfrom,
+             PVArray::shared_pointer const & pvto,
+             size_t offset, size_t count)
     {
-        // TODO offset, count
+        typename APVF::shared_pointer from = std::tr1::static_pointer_cast<APVF>(pvfrom);
+        typename APVF::shared_pointer to = std::tr1::static_pointer_cast<APVF>(pvto);
+        
+        // TODO range check
+
+        typename APVF::const_svector temp(from->view());
+        temp.slice(offset, count);
+        to->replace(temp);
+    }
+    
+
+    virtual void getArray(bool lastRequest, int offset, int count)
+    {
+        size_t o = static_cast<size_t>(offset);
+        if (count == -1) count = static_cast<int>(m_pvStructureArray->getLength());
+        size_t c = static_cast<size_t>(count); 
+
+        Field::const_shared_pointer field = m_pvArray->getField();
+        Type type = field->getType();
+        if (type == scalarArray)
+        {
+            switch (std::tr1::static_pointer_cast<const ScalarArray>(field)->getElementType())
+            {
+                case pvBoolean: get<PVBooleanArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                case pvByte: get<PVByteArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                case pvShort: get<PVShortArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                case pvInt: get<PVIntArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                case pvLong: get<PVLongArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                case pvUByte: get<PVUByteArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                case pvUShort: get<PVUShortArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                case pvUInt: get<PVUIntArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                case pvULong: get<PVULongArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                case pvFloat: get<PVFloatArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                case pvDouble: get<PVDoubleArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                case pvString: get<PVStringArray>(m_pvStructureArray, m_pvArray, o, c); break;
+            }
+        }
+        else if (type == structureArray)
+            get<PVStructureArray>(m_pvStructureArray, m_pvArray, o, c);
+        else if (type == unionArray)
+            get<PVUnionArray>(m_pvStructureArray, m_pvArray, o, c);
+        
         m_channelArrayRequester->getArrayDone(Status::Ok);
         if (lastRequest)
             destroy();
     }
 
-    virtual void setLength(bool lastRequest, int /*length*/, int /*capacity*/)
+    virtual void setLength(bool lastRequest, int length, int capacity)
     {
-        // TODO offset, capacity
+        m_pvStructureArray->setCapacity(capacity);
+        m_pvStructureArray->setLength(length);
         m_channelArrayRequester->setLengthDone(Status::Ok);
         if (lastRequest)
             destroy();

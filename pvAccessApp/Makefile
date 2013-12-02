@@ -79,6 +79,7 @@ LIBSRCS += beaconServerStatusProvider.cpp
 SRC_DIRS += $(PVACCESS)/rpcService
 INC += rpcService.h
 INC += rpcServer.h
+LIBSRCS += rpcService.cpp
 LIBSRCS += rpcServer.cpp
 
 SRC_DIRS += $(PVACCESS)/rpcClient
@@ -99,5 +100,7 @@ LIBRARY = pvAccess
 pvAccess_LIBS += Com
 pvAccess_LIBS += pvData
 pvAccess_LIBS += ca
+# needed for 64-bit Windows
+pvAccess_SYS_LIBS_WIN32 += ws2_32
 
 include $(TOP)/configure/RULES
