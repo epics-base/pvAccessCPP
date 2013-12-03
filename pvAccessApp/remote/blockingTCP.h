@@ -315,12 +315,12 @@ namespace epics {
             /**
              * Remote side transport receive buffer size.
              */
-            int _remoteTransportReceiveBufferSize;
+            size_t _remoteTransportReceiveBufferSize;
 
             /**
              * Remote side transport socket receive buffer size.
              */
-            int _remoteTransportSocketReceiveBufferSize;
+            size_t _remoteTransportSocketReceiveBufferSize;
 
 
 

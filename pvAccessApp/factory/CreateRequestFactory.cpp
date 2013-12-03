@@ -35,7 +35,7 @@ private:
         else str.erase(str.begin(), str.end());
     }
 
-    static size_t findMatchingBrace(String& request, int index, int numOpen) {
+    static size_t findMatchingBrace(String& request, size_t index, int numOpen) {
         size_t openBrace = request.find('{', index+1);
         size_t closeBrace = request.find('}', index+1);
         if(openBrace == String::npos && closeBrace == std::string::npos) return std::string::npos;

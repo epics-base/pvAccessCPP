@@ -408,7 +408,7 @@ namespace pvAccess {
 
                 }
 
-                _sendBuffer->putInt(_lastMessageStartPosition+sizeof(int16)+2, payloadSize);
+                _sendBuffer->putInt(_lastMessageStartPosition+sizeof(int16)+2, (int32)payloadSize);
                                 
                 int flagsPosition = _lastMessageStartPosition+sizeof(int16);
                 // set segmented bit
@@ -552,7 +552,7 @@ namespace pvAccess {
             // append segmented message header
             startMessage(_lastSegmentedMessageCommand, 0);
             // set segmented message size
-            _sendBuffer->putInt(_lastMessageStartPosition+sizeof(int16)+2, count);
+            _sendBuffer->putInt(_lastMessageStartPosition+sizeof(int16)+2, (int32)count);
 
             // flush (TODO this is code is duplicated)
             bool moreToSend = true;
@@ -1203,7 +1203,7 @@ namespace pvAccess {
                             flush(true);
                         else
                             endMessage(false);// automatic end (to set payload)
-                    } catch(std::exception &e) {
+                    } catch(std::exception &) {
                         //LOG(logLevelError, "%s", e.what());
                         _sendBuffer->setPosition(_lastMessageStartPosition);
                     } catch(...) {

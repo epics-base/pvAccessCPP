@@ -163,7 +163,7 @@ namespace epics {
 
                     _namedLocker.releaseSynchronizationObject(&address);
                     return transport;
-                } catch(std::exception& ex) {
+                } catch(std::exception&) {
                     if(transport.get())
                         transport->close();
                     else if(socket!=INVALID_SOCKET) epicsSocketDestroy(socket);

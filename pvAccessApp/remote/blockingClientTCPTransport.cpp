@@ -127,7 +127,7 @@ namespace epics {
         void BlockingClientTCPTransport::closedNotifyClients() {
 
             // check if still acquired
-            int refs = _owners.size();
+            size_t refs = _owners.size();
             if(refs>0) {
                 char ipAddrStr[48];
                 ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
@@ -215,10 +215,10 @@ namespace epics {
                 control->startMessage(CMD_CONNECTION_VALIDATION, 2*sizeof(int32)+sizeof(int16));
 
                 // receive buffer size
-                buffer->putInt(getReceiveBufferSize());
+                buffer->putInt(static_cast<int32>(getReceiveBufferSize()));
 
                 // socket receive buffer size
-                buffer->putInt(getSocketReceiveBufferSize());
+                buffer->putInt(static_cast<int32>(getSocketReceiveBufferSize()));
 
                 // connection priority
                 buffer->putShort(getPriority());

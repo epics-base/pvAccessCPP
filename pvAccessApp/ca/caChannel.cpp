@@ -518,7 +518,7 @@ CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & _channel,
     channelGetRequester(_channelGetRequester),
     getType(getDBRType(pvRequest, _channel->getNativeType())),
     pvStructure(createPVStructure(_channel, getType)),
-    bitSet(new BitSet(pvStructure->getStructure()->getNumberFields()))
+    bitSet(new BitSet(static_cast<uint32>(pvStructure->getStructure()->getNumberFields())))
 {
     // TODO
     bitSet->set(0);
@@ -936,7 +936,7 @@ CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & _channel,
     channelPutRequester(_channelPutRequester),
     getType(getDBRType(pvRequest, _channel->getNativeType())),
     pvStructure(createPVStructure(_channel, getType)),
-    bitSet(new BitSet(pvStructure->getStructure()->getNumberFields()))
+    bitSet(new BitSet(static_cast<uint32>(pvStructure->getStructure()->getNumberFields())))
 {
     // NOTE: we require value type, we can only put value field
     bitSet->set(pvStructure->getSubField("value")->getFieldOffset());
@@ -996,7 +996,7 @@ int doPut_pvStructure(CAChannel::shared_pointer const & channel, void *usrArg, P
                 std::tr1::static_pointer_cast<aF>(pvStructure->getScalarArrayField("value", sT));
 
         const pT* val = value->view().data();
-        int result = ca_array_put_callback(channel->getNativeType(), value->getLength(),
+        int result = ca_array_put_callback(channel->getNativeType(), static_cast<unsigned long>(value->getLength()),
                                            channel->getChannelID(), val,
                                            ca_put_handler, usrArg);
 
@@ -1230,8 +1230,8 @@ CAChannelMonitor::CAChannelMonitor(CAChannel::shared_pointer const & _channel,
     monitorRequester(_monitorRequester),
     getType(getDBRType(pvRequest, _channel->getNativeType())),
     pvStructure(createPVStructure(_channel, getType)),
-    changedBitSet(new BitSet(pvStructure->getStructure()->getNumberFields())),
-    overrunBitSet(new BitSet(pvStructure->getStructure()->getNumberFields())),
+    changedBitSet(new BitSet(static_cast<uint32>(pvStructure->getStructure()->getNumberFields()))),
+    overrunBitSet(new BitSet(static_cast<uint32>(pvStructure->getStructure()->getNumberFields()))),
     count(0),
     element(new MonitorElement())
 {

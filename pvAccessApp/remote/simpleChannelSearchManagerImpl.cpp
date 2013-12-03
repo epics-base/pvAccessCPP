@@ -99,7 +99,7 @@ void SimpleChannelSearchManagerImpl::cancel()
 int32_t SimpleChannelSearchManagerImpl::registeredCount()
 {
 	Lock guard(m_channelMutex);
-	return m_channels.size();
+	return static_cast<int32_t>(m_channels.size());
 }
 
 void SimpleChannelSearchManagerImpl::registerSearchInstance(SearchInstance::shared_pointer const & channel)

@@ -34,7 +34,7 @@ namespace epics {
 
                 hexDump(prologue.str(), _description,
                         (const int8*)payloadBuffer->getArray(),
-                        payloadBuffer->getPosition(), payloadSize);
+                        payloadBuffer->getPosition(), static_cast<int>(payloadSize));
             }
         }
     }

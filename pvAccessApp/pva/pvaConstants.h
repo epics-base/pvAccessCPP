@@ -23,7 +23,7 @@ namespace epics {
 namespace pvAccess {
 
     /** PVA protocol magic number */
-    const epics::pvData::int8 PVA_MAGIC = 0xCA;
+    const epics::pvData::int8 PVA_MAGIC = static_cast<epics::pvData::int8>(0xCA);
     
     /** PVA protocol revision (implemented by this library). */
     const epics::pvData::int8 PVA_PROTOCOL_REVISION = 0;
@@ -70,7 +70,7 @@ namespace pvAccess {
     const epics::pvData::uint32 MAX_CHANNEL_NAME_LENGTH = 500;
     
     /** Invalid data type. */
-    const epics::pvData::int16 INVALID_DATA_TYPE = 0xFFFF;
+    const epics::pvData::int16 INVALID_DATA_TYPE = static_cast<epics::pvData::int16>(0xFFFF);
     
     /** Invalid IOID. */
     const epics::pvData::int32 INVALID_IOID = 0;

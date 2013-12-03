@@ -99,7 +99,7 @@ namespace pvAccess {
 
         int BlockingServerTCPTransport::getChannelCount() {
             Lock lock(_channelsMutex);
-            return _channels.size();
+            return static_cast<int>(_channels.size());
         }
 
         void BlockingServerTCPTransport::send(ByteBuffer* buffer,
@@ -123,10 +123,10 @@ namespace pvAccess {
             control->startMessage(CMD_CONNECTION_VALIDATION, 2*sizeof(int32));
 
             // receive buffer size
-            buffer->putInt(getReceiveBufferSize());
+            buffer->putInt(static_cast<int32>(getReceiveBufferSize()));
 
             // socket receive buffer size
-            buffer->putInt(getSocketReceiveBufferSize());
+            buffer->putInt(static_cast<int32>(getSocketReceiveBufferSize()));
 
             // send immediately
             control->flush(true);
