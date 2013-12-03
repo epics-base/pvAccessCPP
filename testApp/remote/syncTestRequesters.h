@@ -46,7 +46,7 @@ class SyncBaseRequester {
 
     const bool m_debug; 
 
-    SyncBaseRequester(bool debug = true):
+    SyncBaseRequester(bool debug = false):
       m_debug(debug), 
       m_connectedStatus(false), 
       m_getStatus(false),
@@ -162,7 +162,7 @@ class SyncChannelRequesterImpl : public epics::pvAccess::ChannelRequester, publi
 {
   public:
 
-    SyncChannelRequesterImpl(bool debug = true): SyncBaseRequester(debug),  
+    SyncChannelRequesterImpl(bool debug = false): SyncBaseRequester(debug),  
     m_createdCount(0), m_stateChangeCount(0) {}
 
 
@@ -251,7 +251,7 @@ class SyncChannelFindRequesterImpl : public ChannelFindRequester, public SyncBas
 {
   public:
 
-    SyncChannelFindRequesterImpl(bool debug = true): SyncBaseRequester(debug), m_isFound(false) {}
+    SyncChannelFindRequesterImpl(bool debug = false): SyncBaseRequester(debug), m_isFound(false) {}
 
 
     bool waitUntilFindResult(double timeOut) 
@@ -301,7 +301,7 @@ class SyncChannelGetRequesterImpl : public ChannelGetRequester, public SyncBaseR
     typedef std::tr1::shared_ptr<SyncChannelGetRequesterImpl> shared_pointer; 
 
 
-    SyncChannelGetRequesterImpl(string channelName, bool debug = true): 
+    SyncChannelGetRequesterImpl(string channelName, bool debug = false): 
       SyncBaseRequester(debug),
       m_channelName(channelName)  {}
 
@@ -401,7 +401,7 @@ class SyncChannelPutRequesterImpl : public ChannelPutRequester, public SyncBaseR
 
     typedef std::tr1::shared_ptr<SyncChannelPutRequesterImpl> shared_pointer; 
 
-    SyncChannelPutRequesterImpl(string const & channelName, bool debug = true): 
+    SyncChannelPutRequesterImpl(string const & channelName, bool debug = false): 
       SyncBaseRequester(debug), m_channelName(channelName) {}  
 
 
@@ -528,7 +528,7 @@ class SyncGetFieldRequesterImpl : public GetFieldRequester, public SyncBaseReque
     typedef std::tr1::shared_ptr<SyncChannelPutRequesterImpl> shared_pointer; 
 
 
-    SyncGetFieldRequesterImpl(bool debug = true): SyncBaseRequester(debug) {}
+    SyncGetFieldRequesterImpl(bool debug = false): SyncBaseRequester(debug) {}
 
 
     FieldConstPtr getField() {
@@ -584,7 +584,7 @@ class SyncChannelProcessRequesterImpl : public ChannelProcessRequester, public S
     typedef std::tr1::shared_ptr<SyncChannelPutRequesterImpl> shared_pointer; 
 
 
-    SyncChannelProcessRequesterImpl(bool debug = true): SyncBaseRequester(debug) {}
+    SyncChannelProcessRequesterImpl(bool debug = false): SyncBaseRequester(debug) {}
 
 
     bool syncProcess(bool lastRequest, double timeOut) {
@@ -663,7 +663,7 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
     typedef std::tr1::shared_ptr<SyncChannelPutGetRequesterImpl> shared_pointer; 
 
 
-    SyncChannelPutGetRequesterImpl(bool debug = true):
+    SyncChannelPutGetRequesterImpl(bool debug = false):
       SyncBaseRequester(debug),  
       m_putGetStatus(false),
       m_getPutStatus(false),
@@ -865,7 +865,7 @@ class SyncChannelRPCRequesterImpl : public ChannelRPCRequester, public SyncBaseR
     typedef std::tr1::shared_ptr<SyncChannelRPCRequesterImpl> shared_pointer; 
 
 
-    SyncChannelRPCRequesterImpl(bool debug = true) : SyncBaseRequester(debug),  m_done(false) {}
+    SyncChannelRPCRequesterImpl(bool debug = false) : SyncBaseRequester(debug),  m_done(false) {}
 
 
     bool syncRPC( epics::pvData::PVStructure::shared_pointer const & pvArguments, 
@@ -984,7 +984,7 @@ class SyncMonitorRequesterImpl: public MonitorRequester, public SyncBaseRequeste
     typedef std::tr1::shared_ptr<SyncMonitorRequesterImpl> shared_pointer; 
 
 
-    SyncMonitorRequesterImpl(bool debug = true): 
+    SyncMonitorRequesterImpl(bool debug = false): 
       SyncBaseRequester(debug),
       m_monitorCounter(0), 
       m_monitorStatus(false) {}
@@ -1127,7 +1127,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
 
     typedef std::tr1::shared_ptr<SyncChannelArrayRequesterImpl> shared_pointer; 
 
-    SyncChannelArrayRequesterImpl(bool debug = true) : 
+    SyncChannelArrayRequesterImpl(bool debug = false) : 
       SyncBaseRequester(debug), 
       m_getArrayStatus(false),
       m_putArrayStatus(false),

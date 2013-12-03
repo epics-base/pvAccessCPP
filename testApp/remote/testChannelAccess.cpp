@@ -62,7 +62,7 @@ class ChannelAccessIFRemoteTest: public ChannelAccessIFTest  {
 
 
     virtual long getTimeoutSec() {
-      return 10;
+      return 3;
     }
 
 

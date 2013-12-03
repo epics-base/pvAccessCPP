@@ -16,6 +16,7 @@ class ChannelAccessIFTest {
   protected:
     
     static std::string TEST_COUNTER_CHANNEL_NAME;
+    static std::string TEST_SIMPLECOUNTER_CHANNEL_NAME;
     static std::string TEST_CHANNEL_NAME;
     static std::string TEST_VALUEONLY_CHANNEL_NAME;
     static std::string TEST_SUMRPC_CHANNEL_NAME;
@@ -27,33 +28,33 @@ class ChannelAccessIFTest {
     virtual bool isLocal() = 0;
 
 
-    Channel::shared_pointer createChannel(std::string channelName, bool debug = true ); 
+    Channel::shared_pointer createChannel(std::string channelName, bool debug = false ); 
 
 
-    Channel::shared_pointer syncCreateChannel(std::string channelName, bool debug = true );
+    Channel::shared_pointer syncCreateChannel(std::string channelName, bool debug = false );
 
 
     SyncChannelGetRequesterImpl::shared_pointer syncCreateChannelGet(
-        Channel::shared_pointer const & channel, std::string const & request, bool debug = true ); 
+        Channel::shared_pointer const & channel, std::string const & request, bool debug = false ); 
 
 
     SyncChannelPutRequesterImpl::shared_pointer syncCreateChannelPut(
-        Channel::shared_pointer const & channel, std::string const & request, bool debug = true );
+        Channel::shared_pointer const & channel, std::string const & request, bool debug = false );
 
 
     SyncChannelPutGetRequesterImpl::shared_pointer syncCreateChannelPutGet(
-        Channel::shared_pointer const & channel, std::string const & request, bool debug = true ); 
+        Channel::shared_pointer const & channel, std::string const & request, bool debug = false ); 
 
 
     SyncChannelRPCRequesterImpl::shared_pointer syncCreateChannelRPC(
-        Channel::shared_pointer const & channel, bool debug = true); 
+        Channel::shared_pointer const & channel, bool debug = false); 
 
 
     SyncMonitorRequesterImpl::shared_pointer syncCreateChannelMonitor(
-        Channel::shared_pointer const & channel, std::string const & request, bool debug = true);
+        Channel::shared_pointer const & channel, std::string const & request, bool debug = false);
 
     SyncChannelArrayRequesterImpl::shared_pointer syncCreateChannelArray(
-        Channel::shared_pointer const & channel, PVStructure::shared_pointer pvRequest, bool debug = true); 
+        Channel::shared_pointer const & channel, PVStructure::shared_pointer pvRequest, bool debug = false); 
 
  
   private:
