@@ -1393,12 +1393,17 @@ public:
     {
         typename APVF::shared_pointer from = std::tr1::static_pointer_cast<APVF>(pvfrom);
         typename APVF::shared_pointer to = std::tr1::static_pointer_cast<APVF>(pvto);
-        
-        typename APVF::svector temp(to->reuse());
+       
         typename APVF::const_svector ref(from->view());
-        
-        // TODO range check
-                    
+	if (offset > ref.size())
+	    offset = ref.size();
+        if (count + offset > ref.size())
+	    count = ref.size() - offset;
+	 
+        typename APVF::svector temp(to->reuse());
+        if (offset + count > temp.size())
+            temp.resize(offset + count);
+ 
         std::copy(ref.begin(), ref.begin() + count, temp.begin() + offset);
 
         to->replace(freeze(temp));
@@ -1495,16 +1500,14 @@ public:
     virtual void setLength(bool lastRequest, int length, int capacity)
     {
         if (capacity > 0) {
-          m_pvArray->setCapacity(capacity);
+            m_pvStructureArray->setCapacity(capacity);
         }
         
         if (length > 0) {
-         m_pvArray->setLength(length);
+            m_pvStructureArray->setLength(length);
         }
         
         m_channelArrayRequester->setLengthDone(Status::Ok);
-
-        cout << "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD" << endl;
         if (lastRequest)
             destroy();
     }

@@ -28,7 +28,7 @@ std::string ChannelAccessIFTest::TEST_COUNTER_CHANNEL_NAME = "testCounter";
 std::string ChannelAccessIFTest::TEST_CHANNEL_NAME = "testValue";
 std::string ChannelAccessIFTest::TEST_VALUEONLY_CHANNEL_NAME = "testValueOnly";
 std::string ChannelAccessIFTest::TEST_SUMRPC_CHANNEL_NAME = "testSum";
-std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray";
+std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray1";
 
 
 int ChannelAccessIFTest::runAllTest() {
@@ -1790,7 +1790,7 @@ void ChannelAccessIFTest::test_channelArray() {
   testOk(data1[2] == 2.2 , "%s: check 2: %f", CURRENT_FUNCTION, data1[2]);
 
 
-  succStatus = arrayReq->syncSetLength(false, 4, 3, -1);
+  succStatus = arrayReq->syncSetLength(false, 3, -1, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: an array setLength failed ", CURRENT_FUNCTION);
     return;
