@@ -46,6 +46,11 @@ PROD_HOST += testServer
 testServer_SRCS += testServer.cpp
 testServer_LIBS += pvData pvAccess pvMB Com
 
+TESTPROD_HOST += testChannelAccess
+testChannelAccess_SRCS = testChannelAccess channelAccessIFTest
+testChannelAccess_LIBS += pvData pvAccess pvMB Com
+#TESTS += testChannelAccess
+
 PROD_HOST += pvget
 pvget_SRCS += pvget.cpp
 pvget_LIBS += pvData pvAccess pvMB Com
@@ -69,6 +74,8 @@ eget_LIBS += pvData pvAccess pvMB Com
 PROD_HOST += rpcServiceExample
 rpcServiceExample_SRCS += rpcServiceExample.cpp
 rpcServiceExample_LIBS += pvData pvAccess pvMB Com
+
+TESTSCRIPTS_HOST += $(TESTS:%=%.t)
 
 include $(TOP)/configure/RULES
 #----------------------------------------

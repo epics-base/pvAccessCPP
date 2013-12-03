@@ -1279,6 +1279,25 @@ public:
                 m_channelRPCRequester->requestDone(Status::Ok, pvArgument);
             }
         }
+        else if (m_channelName == "testSum") {
+
+          int a = pvArgument->getIntField("a")->get();
+          int b = pvArgument->getIntField("b")->get();
+
+          FieldCreatePtr fieldCreate = getFieldCreate();
+
+          StringArray fieldNames;
+          fieldNames.push_back("c");
+          FieldConstPtrArray fields;
+          fields.push_back(fieldCreate->createScalar(pvInt));
+          StructureConstPtr resultStructure = fieldCreate->createStructure(fieldNames, fields);
+
+          PVStructure::shared_pointer result = getPVDataCreate()->createPVStructure(resultStructure);
+          result->getIntField("c")->put(a+b);
+
+          m_channelRPCRequester->requestDone(Status::Ok, result);
+
+        }
         else if (m_channelName.find("testServerShutdown") == 0)
         {
             PVStructure::shared_pointer nullPtr;
@@ -1475,9 +1494,17 @@ public:
 
     virtual void setLength(bool lastRequest, int length, int capacity)
     {
-        m_pvStructureArray->setCapacity(capacity);
-        m_pvStructureArray->setLength(length);
+        if (capacity > 0) {
+          m_pvArray->setCapacity(capacity);
+        }
+        
+        if (length > 0) {
+         m_pvArray->setLength(length);
+        }
+        
         m_channelArrayRequester->setLengthDone(Status::Ok);
+
+        cout << "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD" << endl;
         if (lastRequest)
             destroy();
     }
@@ -2049,19 +2076,19 @@ public:
         process = c->createChannelProcess(cpr, PVStructure::shared_pointer());
         m_scan1Hz.toProcess.push_back(process);
 
-        m_scan1HzThread.reset(new Thread("process1hz", highPriority, &m_scan1Hz));
-        m_scan10HzThread.reset(new Thread("process10hz", highPriority, &m_scan10Hz));
+        m_scan1HzThread.reset(new epics::pvData::Thread("process1hz", highPriority, &m_scan1Hz));
+        m_scan10HzThread.reset(new epics::pvData::Thread("process10hz", highPriority, &m_scan10Hz));
 
         m_adcChannel = MockChannel::create(chProviderPtr, cr, "testADC", "local");
         m_adcAction.name = "testADC";
         m_adcAction.adcMatrix = static_pointer_cast<MockChannel>(m_adcChannel)->m_pvStructure;
         m_adcAction.adcSim = createSimADC("testADC");
-        m_adcThread.reset(new Thread("adcThread", highPriority, &m_adcAction));
+        m_adcThread.reset(new epics::pvData::Thread("adcThread", highPriority, &m_adcAction));
 
         m_mpChannel = MockChannel::create(chProviderPtr, cr, "testMP", "local");
         m_imgAction.name = "testMP";
         m_imgAction.pvImage = static_pointer_cast<MockChannel>(m_mpChannel)->m_pvStructure;
-        m_imgThread.reset(new Thread("imgThread", highPriority, &m_imgAction));
+        m_imgThread.reset(new epics::pvData::Thread("imgThread", highPriority, &m_imgAction));
     }
 
     virtual epics::pvData::String getProviderName()
@@ -2138,16 +2165,16 @@ private:
     Channel::shared_pointer m_mpChannel;
 
     ProcessAction m_scan1Hz;
-    auto_ptr<Thread> m_scan1HzThread;
+    auto_ptr<epics::pvData::Thread> m_scan1HzThread;
 
     ProcessAction m_scan10Hz;
-    auto_ptr<Thread> m_scan10HzThread;
+    auto_ptr<epics::pvData::Thread> m_scan10HzThread;
 
     ADCAction m_adcAction;
-    auto_ptr<Thread> m_adcThread;
+    auto_ptr<epics::pvData::Thread> m_adcThread;
 
     NTImageAction m_imgAction;
-    auto_ptr<Thread> m_imgThread;
+    auto_ptr<epics::pvData::Thread> m_imgThread;
 };
 
 String MockServerChannelProvider::PROVIDER_NAME = "local";
@@ -2226,6 +2253,7 @@ void usage (char *argv[])
 }
 
 
+#ifndef TESTSERVERNOMAIN 
 
 int main(int argc, char *argv[])
 {
@@ -2286,3 +2314,4 @@ int main(int argc, char *argv[])
 
     return (0);
 }
+#endif
