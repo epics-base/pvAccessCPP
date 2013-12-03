@@ -41,7 +41,7 @@ std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray1";
 
 int ChannelAccessIFTest::runAllTest() {
 
-  testPlan(142);
+  testPlan(148);
 
   test_implementation();
   test_providerName();
@@ -1891,7 +1891,7 @@ void ChannelAccessIFTest::test_stressConnectDisconnect() {
   for (int i = 0; i < count; i++) {
     Channel::shared_pointer channel = syncCreateChannel(TEST_VALUEONLY_CHANNEL_NAME, debug);
     if (!channel.get()) {
-      testFail("%s: channel not created ", CURRENT_FUNCTION);
+      testFail("%s: channel not created (%d) ", CURRENT_FUNCTION, i);
       return;
     }
     channel->destroy();
@@ -1916,20 +1916,20 @@ void ChannelAccessIFTest::test_stressConnectGetDisconnect() {
 
     Channel::shared_pointer channel = syncCreateChannel(TEST_VALUEONLY_CHANNEL_NAME, debug);
     if (!channel.get()) {
-      testFail("%s: channel not created ", CURRENT_FUNCTION);
+      testFail("%s: channel not created (%d) ", CURRENT_FUNCTION, i);
       return;
     }
 
 
     SyncChannelGetRequesterImpl::shared_pointer channelGetReq = syncCreateChannelGet(channel, request, debug);
     if (!channelGetReq.get()) {
-      testFail("%s: channel get not created ", CURRENT_FUNCTION);
+      testFail("%s: channel get not created (%d) ", CURRENT_FUNCTION, i);
       return;
     }
 
     bool succStatus = channelGetReq->syncGet(true, getTimeoutSec());
     if (!succStatus) {
-      testFail("%s: sync get failed ", CURRENT_FUNCTION);
+      testFail("%s: sync get failed (%d) ", CURRENT_FUNCTION, i);
       return;
     } 
 
@@ -1947,7 +1947,7 @@ void ChannelAccessIFTest::test_stressMonitorAndProcess() {
   string request = "record[queueSize=3]field(timeStamp,value,alarm.severity.choices)";
   bool debug = false;
 
-  Channel::shared_pointer channel = syncCreateChannel(TEST_COUNTER_CHANNEL_NAME, debug);
+  Channel::shared_pointer channel = syncCreateChannel(TEST_SIMPLECOUNTER_CHANNEL_NAME, debug);
   if (!channel.get()) {
     testFail("%s: channel not created ", CURRENT_FUNCTION);
     return;
@@ -1997,7 +1997,7 @@ void ChannelAccessIFTest::test_stressMonitorAndProcess() {
 
     succStatus = channelProcessReq->syncProcess(false, getTimeoutSec());
     if (!succStatus) {
-      testFail("%s: syncProcess failed ", CURRENT_FUNCTION);
+      testFail("%s: syncProcess failed (%d) ", CURRENT_FUNCTION, i);
       return;
     } 
 

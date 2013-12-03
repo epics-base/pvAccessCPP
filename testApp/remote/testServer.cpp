@@ -45,7 +45,8 @@ public:
     virtual void structureChanged() = 0;
 };
 
-map<String, vector<StructureChangedCallback::shared_pointer> > structureChangedListeners;
+typedef map<String, vector<StructureChangedCallback::shared_pointer> > StructureChangedListenersMap;
+StructureChangedListenersMap structureChangedListeners;
 
 static void notifyStructureChanged(String const & name)
 {
@@ -781,10 +782,13 @@ public:
                 PVStructure::shared_pointer const & pvRequest)
     {
         ChannelGet::shared_pointer thisPtr(new MockChannelGet(channel, channelGetRequester, pvStructure, pvRequest));
+
+        // register
+        structureChangedListeners[channel->getChannelName()].push_back(std::tr1::dynamic_pointer_cast<StructureChangedCallback>(thisPtr));
+
         channelGetRequester->channelGetConnect(Status::Ok, thisPtr,
                                                static_cast<MockChannelGet*>(thisPtr.get())->m_pvStructure,
                                                static_cast<MockChannelGet*>(thisPtr.get())->m_bitSet);
-        structureChangedListeners[channel->getChannelName()].push_back(std::tr1::dynamic_pointer_cast<StructureChangedCallback>(thisPtr));
         return thisPtr;
     }
 
@@ -824,8 +828,19 @@ public:
             m_channelProcess->destroy();
 
         // remove itself from listeners table
-        vector<StructureChangedCallback::shared_pointer> &vec = structureChangedListeners[m_channelName];
-        vec.erase(find(vec.begin(), vec.end(), std::tr1::dynamic_pointer_cast<StructureChangedCallback>(shared_from_this())));
+        if (structureChangedListeners.count(m_channelName))
+        {
+            vector<StructureChangedCallback::shared_pointer> &vec = structureChangedListeners[m_channelName];
+            for (vector<StructureChangedCallback::shared_pointer>::iterator i = vec.begin();
+                 i != vec.end(); i++)
+            {
+                if (i->get() == this)
+                {
+                    vec.erase(i);
+                    break;
+                }
+            }
+        }        
     }
 
     virtual void lock()
@@ -1650,10 +1665,13 @@ public:
                                           PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
     {
         Monitor::shared_pointer thisPtr(new MockMonitor(channelName, monitorRequester, pvStructure, pvRequest));
+
+        // register
+        structureChangedListeners[channelName].push_back(std::tr1::dynamic_pointer_cast<StructureChangedCallback>(thisPtr));
+
         StructureConstPtr structurePtr = static_cast<MockMonitor*>(thisPtr.get())->m_pvStructure->getStructure();
         monitorRequester->monitorConnect(Status::Ok, thisPtr, structurePtr);
 
-        structureChangedListeners[channelName].push_back(std::tr1::dynamic_pointer_cast<StructureChangedCallback>(thisPtr));
         return thisPtr;
     }
 
@@ -1717,8 +1735,19 @@ public:
         stop();
 
         // remove itself from listeners table
-        vector<StructureChangedCallback::shared_pointer> &vec = structureChangedListeners[m_channelName];
-        vec.erase(find(vec.begin(), vec.end(), std::tr1::dynamic_pointer_cast<StructureChangedCallback>(shared_from_this())));
+        if (structureChangedListeners.count(m_channelName))
+        {
+            vector<StructureChangedCallback::shared_pointer> &vec = structureChangedListeners[m_channelName];
+            for (vector<StructureChangedCallback::shared_pointer>::iterator i = vec.begin();
+                 i != vec.end(); i++)
+            {
+                if (i->get() == this)
+                {
+                    vec.erase(i);
+                    break;
+                }
+            }
+        }        
     }
 
     virtual void lock()
