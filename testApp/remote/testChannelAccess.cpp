@@ -9,7 +9,6 @@
 
 #include <pv/serverContext.h>
 #include <pv/clientFactory.h>
-#include <pv/clientContextImpl.h>
 
 #include "channelAccessIFTest.h"
 
@@ -58,7 +57,7 @@ class ChannelAccessIFRemoteTest: public ChannelAccessIFTest  {
 
     virtual ChannelProvider::shared_pointer getChannelProvider() {
       return getChannelAccess()->getProvider(
-          ClientContextImpl::PROVIDER_NAME);
+          "pva");
     }
 
 

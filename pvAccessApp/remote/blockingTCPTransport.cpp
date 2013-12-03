@@ -1039,8 +1039,8 @@ namespace pvAccess {
                 // poor throughput performances when transferring large amount of
                 // data. See Microsoft KB article KB823764.
                 // We do it also for other systems just to be safe.
-                int maxBytesToSend = min(_socketSendBufferSize,
-                        _remoteTransportSocketReceiveBufferSize)/2;
+                int maxBytesToSend = std::min(_socketSendBufferSize,
+                        static_cast<int>(_remoteTransportSocketReceiveBufferSize))/2;
 
                 int limit = buffer->getLimit();
                 int bytesToSend = limit-buffer->getPosition();
