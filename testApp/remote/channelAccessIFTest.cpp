@@ -41,7 +41,7 @@ std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray1";
 
 int ChannelAccessIFTest::runAllTest() {
 
-  testPlan(148);
+  testPlan(157);
 
   test_implementation();
   test_providerName();
@@ -90,6 +90,7 @@ int ChannelAccessIFTest::runAllTest() {
 
   test_channelArray();
   test_channelArray_destroy();
+  test_channelArrayTestNoConnection();
 
   test_stressConnectDisconnect();
   test_stressConnectGetDisconnect();
@@ -1715,24 +1716,14 @@ void ChannelAccessIFTest::test_channelArray() {
 
   testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
-  bool debug = false;
-
-  Channel::shared_pointer channel = syncCreateChannel(TEST_ARRAY_CHANNEL_NAME, debug);
+  Channel::shared_pointer channel = syncCreateChannel(TEST_ARRAY_CHANNEL_NAME);
   if (!channel.get()) {
     testFail("%s: channel not created ", CURRENT_FUNCTION);
     return;
   }
 
-  StringArray fieldNames; fieldNames.push_back("field");
-  FieldConstPtrArray fields; fields.push_back(getFieldCreate()->createScalar(pvString));
-  PVStructure::shared_pointer pvRequest(getPVDataCreate()->createPVStructure(
-        getFieldCreate()->createStructure(fieldNames, fields)));
-
-  PVString::shared_pointer pvFieldName = pvRequest->getStringField("field");
-  pvFieldName->put("value");
-
   SyncChannelArrayRequesterImpl::shared_pointer arrayReq =  
-    syncCreateChannelArray(channel, pvRequest);
+    syncCreateChannelArray(channel, createArrayPvRequest());
   if (!arrayReq.get()) {
     testFail("%s: creating a channel array failed ", CURRENT_FUNCTION);
     return;
@@ -1796,9 +1787,9 @@ void ChannelAccessIFTest::test_channelArray() {
 
   PVDoubleArrayPtr array1 = static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
   PVDoubleArray::const_svector data1(array1->view());
-  testOk(data1[0] == 4.4 , "%s: check 0: %f", CURRENT_FUNCTION, data1[0]);
-  testOk(data1[1] == 1.1 , "%s: check 1: %f", CURRENT_FUNCTION, data1[1]);
-  // TODO java put can aut-extend array, C++ implementadion does not
+  testOk(data1[0] == 4.4 , "%s: 1.check 0: %f", CURRENT_FUNCTION, data1[0]);
+  testOk(data1[1] == 1.1 , "%s: 1.check 1: %f", CURRENT_FUNCTION, data1[1]);
+  // TODO java put can aut-extend array, C++ implementation does not
   testOk(data1.size() == 2 , "%s: data1.size() == 2", CURRENT_FUNCTION);
   //testOk(data1[2] == 2.2 , "%s: check 2: %f", CURRENT_FUNCTION, data1[2]);
 
@@ -1815,17 +1806,122 @@ void ChannelAccessIFTest::test_channelArray() {
     return;
   }
 
+  //checking 1.1 2.2 3.3
   PVDoubleArrayPtr array2 = static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
   PVDoubleArray::const_svector data2(array2->view());
-  testOk(data2.size() == 3, "%s: data size after calling setLength should be 3", CURRENT_FUNCTION);
-  testOk(data2[0] == 1.1 , "%s: check 0: %f", CURRENT_FUNCTION, data2[0]);
-  testOk(data2[1] == 2.2 , "%s: check 1: %f", CURRENT_FUNCTION, data2[1]);
-  testOk(data2[2] == 3.3, "%s: check 2: %f", CURRENT_FUNCTION, data2[2]);
+  testOk(data2.size() == 3, "%s: data size after calling setLength should be 3 ", 
+      CURRENT_FUNCTION);
+  testOk(data2[0] == 1.1 , "%s:  2.check 0: %f", CURRENT_FUNCTION, data2[0]);
+  testOk(data2[1] == 2.2 , "%s:  2.check 1: %f", CURRENT_FUNCTION, data2[1]);
+  testOk(data2[2] == 3.3,  "%s:  2.check 2: %f", CURRENT_FUNCTION, data2[2]);
+
+  size_t newCap = 2;
+  succStatus = arrayReq->syncSetLength(false, -1, newCap, getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: an array setLength failed (2) ", CURRENT_FUNCTION);
+    return;
+  }
+
+  succStatus = arrayReq->syncGet(false, 0, -1, getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: an array syncGet failed (8) ", CURRENT_FUNCTION);
+    return;
+  }
+
+  //checking 1.1 2.2
+  PVDoubleArrayPtr array3 = static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
+  PVDoubleArray::const_svector data3(array3->view());
+  testOk(data3.size() == newCap, 
+      "%s: data size after calling setLength should be %zu", CURRENT_FUNCTION, newCap);
+  testOk(data3[0] == 1.1 , "%s: 3.check 0: %f", CURRENT_FUNCTION, data3[0]);
+  testOk(data3[1] == 2.2 , "%s: 3.check 1: %f", CURRENT_FUNCTION, data3[1]);
 
 
+  size_t bigCapacity = 10000;
+  succStatus = arrayReq->syncSetLength(false, bigCapacity, bigCapacity, getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: an array setLength failed (3) ", CURRENT_FUNCTION);
+    return;
+  }
+
+  succStatus = arrayReq->syncGet(false, 0, -1, getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: an array syncGet failed (9) ", CURRENT_FUNCTION);
+    return;
+  }
+  
+  PVDoubleArrayPtr array4 = static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
+  PVDoubleArray::const_svector data4(array4->view());
+  testOk(data4.size() == bigCapacity, "%s: data size after calling setLength should be %zu", 
+      CURRENT_FUNCTION, bigCapacity);
+  testOk(data4[0] == 1.1 , "%s: 4.check 0: %f", CURRENT_FUNCTION, data4[0]);
+  testOk(data4[1] == 2.2 , "%s: 4.check 1: %f", CURRENT_FUNCTION, data4[1]);
+  if (data4.size() == bigCapacity) {
+    for (size_t i = newCap; i < bigCapacity; i++) {
+      if (data4[i] != 0.0) {
+        testFail("%s: 4.check: data at %zu should be 0.0 but was %f", CURRENT_FUNCTION, i, data4[i]);
+        break;
+      }
+    }
+  }
+  else {
+    testFail("%s: will not check the rest of the array if the size is not correct", CURRENT_FUNCTION);
+  }
 
 
   channel->destroy();
+}
+
+
+void ChannelAccessIFTest::test_channelArrayTestNoConnection() {
+
+  testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
+
+  Channel::shared_pointer channel = syncCreateChannel(TEST_ARRAY_CHANNEL_NAME);
+  if (!channel.get()) {
+    testFail("%s: channel not created ", CURRENT_FUNCTION);
+    return;
+  }
+
+
+  SyncChannelArrayRequesterImpl::shared_pointer arrayReq =  
+    syncCreateChannelArray(channel, createArrayPvRequest());
+  if (!arrayReq.get()) {
+    testFail("%s: creating a channel array failed ", CURRENT_FUNCTION);
+    return;
+  }
+
+  testDiag("%s: Ok, let's destroy the channel", CURRENT_FUNCTION);
+
+  channel->destroy();
+
+  bool succStatus = arrayReq->syncGet(false, 1, 2, getTimeoutSec());
+  if (succStatus) {
+    testFail("%s: an array syncGet should fail after the channel had been destroyed ", CURRENT_FUNCTION);
+  }
+  else {
+    testOk(true, "%s: an array syncGet failed on the destroyed channel", CURRENT_FUNCTION);
+  }
+
+
+  succStatus = arrayReq->syncPut(false, 1, 2, getTimeoutSec());
+  if (succStatus) {
+    testFail("%s: an array syncPut should fail after the channel had been destroyed ", CURRENT_FUNCTION);
+  }
+  else {
+    testOk(true, "%s: an array syncPut failed on the destroyed channel", CURRENT_FUNCTION);
+  }
+  
+  
+  succStatus = arrayReq->syncSetLength(false, 1, 2, getTimeoutSec());
+  if (succStatus) {
+    testFail("%s: an array syncSetLength should fail after the channel had been destroyed ", CURRENT_FUNCTION);
+  }
+  else {
+    testOk(true, "%s: an array syncSetLength failed on the destroyed channel", CURRENT_FUNCTION);
+  }
+
+
 }
 
 
@@ -1841,16 +1937,8 @@ void ChannelAccessIFTest::test_channelArray_destroy() {
     return;
   }
 
-  StringArray fieldNames; fieldNames.push_back("field");
-  FieldConstPtrArray fields; fields.push_back(getFieldCreate()->createScalar(pvString));
-  PVStructure::shared_pointer pvRequest(getPVDataCreate()->createPVStructure(
-        getFieldCreate()->createStructure(fieldNames, fields)));
-
-  PVString::shared_pointer pvFieldName = pvRequest->getStringField("field");
-  pvFieldName->put("value");
-
   SyncChannelArrayRequesterImpl::shared_pointer arrayReq =  
-    syncCreateChannelArray(channel, pvRequest);
+    syncCreateChannelArray(channel, createArrayPvRequest());
   if (!arrayReq.get()) {
     testFail("%s: creating a channel array failed ", CURRENT_FUNCTION);
     return;
@@ -2038,3 +2126,15 @@ PVStructure::shared_pointer ChannelAccessIFTest::createSumArgumentStructure(int 
 
 }
 
+
+PVStructure::shared_pointer ChannelAccessIFTest::createArrayPvRequest() {
+  
+  StringArray fieldNames; fieldNames.push_back("field");
+  FieldConstPtrArray fields; fields.push_back(getFieldCreate()->createScalar(pvString));
+  PVStructure::shared_pointer pvRequest(getPVDataCreate()->createPVStructure(
+        getFieldCreate()->createStructure(fieldNames, fields)));
+
+  PVString::shared_pointer pvFieldName = pvRequest->getStringField("field");
+  pvFieldName->put("value");
+  return pvRequest;
+}

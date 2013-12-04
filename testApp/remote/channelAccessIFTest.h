@@ -11,7 +11,7 @@ class ChannelAccessIFTest {
 
     int runAllTest();
    
-   ~ChannelAccessIFTest() {} 
+   virtual ~ChannelAccessIFTest() {} 
 
   protected:
     
@@ -139,6 +139,8 @@ class ChannelAccessIFTest {
 
     void test_channelArray_destroy();
 
+    void test_channelArrayTestNoConnection();
+
     void test_stressConnectDisconnect();
 
     void test_stressConnectGetDisconnect();
@@ -147,6 +149,7 @@ class ChannelAccessIFTest {
   
     PVStructure::shared_pointer createSumArgumentStructure(int a, int b); 
 
+    PVStructure::shared_pointer createArrayPvRequest();
 };
 
 #endif
