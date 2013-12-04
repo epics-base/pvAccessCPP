@@ -49,7 +49,7 @@ testServer_LIBS += pvData pvAccess pvMB Com
 TESTPROD_HOST += testChannelAccess
 testChannelAccess_SRCS = testChannelAccess channelAccessIFTest
 testChannelAccess_LIBS += pvData pvAccess pvMB Com
-#TESTS += testChannelAccess
+TESTS += testChannelAccess
 
 PROD_HOST += pvget
 pvget_SRCS += pvget.cpp
