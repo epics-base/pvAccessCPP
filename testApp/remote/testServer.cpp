@@ -1700,8 +1700,11 @@ public:
     virtual void structureChanged()
     {
         if (m_active.get())
-        {
-            m_count = 0;
+        {   
+            {
+	        Lock xx(m_lock);
+                m_count = 0;
+            }
             Monitor::shared_pointer thisPtr = shared_from_this();
             m_monitorRequester->monitorEvent(thisPtr);
         }
