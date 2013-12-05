@@ -107,8 +107,11 @@ void IntrospectionRegistry::serialize(FieldConstPtr const & field, ByteBuffer* b
 	}
 	else
 	{
-		// only structures registry check
-		if (field->getType() == structure)
+        // do not cache scalars, scalarArrays
+        // ... and (array of) variant unions - not worth the complex condition,
+        // unless bool Field.cache() would exist
+        if (field->getType() != scalar &&
+            field->getType() != scalarArray)
 		{
 			bool existing;
 			const int16 key = registerIntrospectionInterface(field, existing);

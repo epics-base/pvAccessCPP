@@ -129,6 +129,39 @@ StructureArrayConstPtr getStructureArray(string name1, string name2)
 	return structureArray;
 }
 
+UnionConstPtr getUnion(string name)
+{
+	String properties("alarm");
+	FieldConstPtrArray powerSupply = new FieldConstPtr[3];
+	powerSupply[0] = standardField->scalar(
+			String("voltage"),pvDouble,properties);
+	powerSupply[1] = standardField->scalar(
+			String("power"),pvDouble,properties);
+	powerSupply[2] = standardField->scalar(
+			String("current"),pvDouble,properties);
+	UnionConstPtr punion =  getFieldCreate()->createUnion(name,3,powerSupply);
+	PVField *pvField = pvDataCreate->createPVField(0,punion);
+	pvFieldArray.push_back(pvField);
+	return punion;
+}
+
+UnionArrayConstPtr getUnionArray(string name1, string name2)
+{
+	String properties("alarm");
+	FieldConstPtrArray powerSupply = new FieldConstPtr[3];
+	powerSupply[0] = standardField->scalar(
+			String("voltage"),pvDouble,properties);
+	powerSupply[1] = standardField->scalar(
+			String("power"),pvDouble,properties);
+	powerSupply[2] = standardField->scalar(
+			String("current"),pvDouble,properties);
+	UnionConstPtr punion =  getFieldCreate()->createUnion(name1,3,powerSupply);
+	UnionArrayConstPtr unionArray = standardField->unionArray(name2,punion);
+	PVField *pvField = pvDataCreate->createPVField(0,unionArray);
+	pvFieldArray.push_back(pvField);
+	return unionArray;
+}
+
 //test methods
 void testRegistryPutGet()
 {
@@ -324,6 +357,33 @@ void testSerialize()
 		name3 = "structure" + ss.str();
 		name4 = "structureArray" + ss.str();
                 testSerializeCommon(static_pointer_cast<const Field>(getStructureArray(name1,name2)),static_pointer_cast<const Field>(getStructureArray(name3,name4)));
+                
+		name1.clear();
+		name2.clear();
+		ss.str("");
+		ss << j;
+		name1 = "union" + ss.str();
+		ss.str("");
+		j++;
+		ss << j;
+		name2 = "union" + ss.str();
+                testSerializeCommon(static_pointer_cast<const Field>(getUnion(name1)),static_pointer_cast<const Field>(getUnion(name2)));
+
+		name1.clear();
+		name2.clear();
+		name3.clear();
+		name4.clear();
+		ss.str("");
+		ss << j;
+		name1 = "union" + ss.str();
+		name2 = "unionArray" + ss.str();
+		ss.str("");
+		j++;
+		ss << j;
+		name3 = "union" + ss.str();
+		name4 = "unionArray" + ss.str();
+                testSerializeCommon(static_pointer_cast<const Field>(getUnionArray(name1,name2)),static_pointer_cast<const Field>(getUnionArray(name3,name4)));
+                
 	}
 
 	//serverRegistry->printKeysAndValues("server");

@@ -21,6 +21,7 @@
 
 #include "channelAccessIFTest.h"
 
+//#define ENABLE_STRESS_TESTS
 
 using namespace std::tr1;
 
@@ -41,7 +42,11 @@ std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray1";
 
 int ChannelAccessIFTest::runAllTest() {
 
+#ifdef ENABLE_STRESS_TESTS
   testPlan(157);
+#else
+  testPlan(152);
+#endif
 
   test_implementation();
   test_providerName();
@@ -92,9 +97,11 @@ int ChannelAccessIFTest::runAllTest() {
   test_channelArray_destroy();
   test_channelArrayTestNoConnection();
 
+#ifdef ENABLE_STRESS_TESTS
   test_stressConnectDisconnect();
   test_stressConnectGetDisconnect();
   test_stressMonitorAndProcess(); 
+#endif
 
   return testDone();
 }
