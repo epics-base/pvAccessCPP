@@ -851,7 +851,7 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
             }
             else
             {
-                std::cerr << "unsupported normative type" << std::endl;
+                std::cerr << "non-normative type" << std::endl;
                 o << *(pv.get()) << std::endl;
             }
 
