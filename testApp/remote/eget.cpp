@@ -285,7 +285,7 @@ void formatTable(std::ostream& o,
         {
             for (size_t i = 0; i < numColumns; i++)
             {
-                if (separator == ' ')
+                if (separator == ' ' && (showHeader || numColumns > 1))
                 {
                     int width = std::max(labels[i].size()+padding, maxColumnLength);
                     o << setw(width) << std::right;
@@ -328,7 +328,7 @@ void formatTable(std::ostream& o,
 
             for (size_t r = 0; r < maxValues; r++)
             {
-                if (separator == ' ')
+                if (separator == ' ' && (showHeader || numColumns > 1))
                 {
                     o << std::setw(maxColumnLength) << std::right;
                 }
@@ -455,7 +455,7 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
         {
             for (int32 c = 0; c < cols; c++)
             {
-                if (separator == ' ')
+                if (separator == ' ' && cols > 1)
                     o << std::setw(maxColumnLength) << std::right;
                 else if (c > 0)
                     o << separator;
@@ -481,7 +481,7 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
         {
             for (int32 r = 0; r < rows; r++)
             {
-                if (separator == ' ')
+                if (separator == ' ' && rows > 1)
                     o << std::setw(maxColumnLength) << std::right;
                 else if (r > 0)
                     o << separator;
@@ -497,6 +497,7 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
 }
 
 
+// TODO use formatNTTable
 void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
 {
     PVStringArrayPtr name = dynamic_pointer_cast<PVStringArray>(pvStruct->getScalarArrayField("name", pvString));
@@ -533,9 +534,9 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
 
     // get max column name size
     bool showHeader = (mode != TerseMode);
+    
     size_t maxLabelColumnLength = showHeader ? getLongestString(nameData) : 0;
-
-    size_t maxColumnLength = getLongestString(array);
+    size_t maxColumnLength = showHeader ? getLongestString(array) : 0;
 
     // add some space
     size_t padding = 2;
@@ -580,7 +581,7 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
         // then values
         for (size_t i = 0; i < numColumns; i++)
         {
-            if (separator == ' ')
+            if (separator == ' ' && showHeader)
             {
                 int width = std::max(nameData[i].size()+padding, maxColumnLength);
                 o << std::setw(width) << std::right;
@@ -614,7 +615,7 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
                 o << nameData[i];
             }
 
-            if (separator == ' ')
+            if (separator == ' ' && showHeader)
             {
                 o << std::setw(maxColumnLength) << std::right;
             }
