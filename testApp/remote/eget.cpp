@@ -1017,7 +1017,7 @@ void usage (void)
              "  -T:                  Transpose vector, table, matrix\n"
              "  -m:                  Monitor mode\n"
              "  -x:                  Use column-major order to decode matrix\n"
-             "  -p <provider>:       Ser default provider name, default is '%s'\n"
+             "  -p <provider>:       Set default provider name, default is '%s'\n"
              "  -q:                  Quiet mode, print only error messages\n"
              "  -d:                  Enable debug output\n"
              "  -F <ofs>:            Use <ofs> as an alternate output field separator\n"
