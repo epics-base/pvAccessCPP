@@ -996,6 +996,7 @@ void printValues(shared_vector<const string> const & names, vector<PVStructure::
 #define DEFAULT_TIMEOUT 3.0
 #define DEFAULT_REQUEST "field(value)"
 #define DEFAULT_RPC_REQUEST ""
+#define DEFAULT_PROVIDER "pva"
 
 double timeOut = DEFAULT_TIMEOUT;
 string request(DEFAULT_REQUEST);
@@ -1016,6 +1017,7 @@ void usage (void)
              "  -T:                  Transpose vector, table, matrix\n"
              "  -m:                  Monitor mode\n"
              "  -x:                  Use column-major order to decode matrix\n"
+             "  -p <provider>:       Ser default provider name, default is '%s'\n"
              "  -q:                  Quiet mode, print only error messages\n"
              "  -d:                  Enable debug output\n"
              "  -F <ofs>:            Use <ofs> as an alternate output field separator\n"
@@ -1030,8 +1032,12 @@ void usage (void)
              "#! Get the archive history of quad45:bdes;history between 2 times, from the archive service\n"
              "> eget -s archiveService -a entity=quad45:bdes;history -a starttime=2012-02-12T10:04:56 -a endtime=2012-02-01T10:04:56\n"
              "\n"
-             , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
+             "#! Get polynomials for bunch of quads using a stdin to give a list of PV names\n"
+             "> eget -s names -a pattern=QUAD:LTU1:8%%:POLYCOEF | eget -\n"
+             "\n"
+             , DEFAULT_REQUEST, DEFAULT_TIMEOUT, DEFAULT_PROVIDER);
 }
+
 
 
 class ChannelGetRequesterImpl : public ChannelGetRequester
@@ -1440,15 +1446,17 @@ int main (int argc, char *argv[])
     bool serviceRequest = false;
     bool pvRequestProvidedByUser = false;
     bool onlyQuery = false;
+    bool read_stdin = false;
     string service;
     //string urlEncodedRequest;
     vector< pair<string,string> > parameters;
     bool monitor = false;
     bool quiet = false;
+    string defaultProvider = DEFAULT_PROVIDER;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:s:a:w:zntTmxqdcF:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:s:a:w:zntTmxp:qdcF:-")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -1512,6 +1520,19 @@ int main (int argc, char *argv[])
         case 'x':               /* Column-major order mode */
             columnMajor = true;
             break;
+        case 'p':               /* Provider name */
+            defaultProvider = optarg;
+
+            // for now no only pva/ca schema is supported
+            // TODO
+            if (defaultProvider != "pva" && defaultProvider != "ca")
+            {
+                std::cerr << "invalid default provider '" << defaultProvider << "', only 'pva' and 'ca' are supported" << std::endl;
+                // TODO
+                return 1;
+            }
+            
+            break;
         case 'q':               /* Quiet mode */
             quiet = true;
             break;
@@ -1523,6 +1544,9 @@ int main (int argc, char *argv[])
             break;
         case 'F':               /* Store this for output formatting */
             fieldSeparator = (char) *optarg;
+            break;
+        case '-':               /* Store this for output formatting */
+            read_stdin = true;
             break;
         case '?':
             fprintf(stderr,
@@ -1541,7 +1565,12 @@ int main (int argc, char *argv[])
     }
 
     int nPvs = argc - optind;       /* Remaining arg list are PV names */
-    if (nPvs < 1 && !serviceRequest)
+    if (nPvs > 0) 
+    {
+        // do not allow (not supported) reading stdin and command line specified pvs 
+        read_stdin = false;
+    }
+    else if (nPvs < 1 && !serviceRequest && !read_stdin)
     {
         fprintf(stderr, "No PV name(s) specified. ('eget -h' for help.)\n");
         return 1;
@@ -1560,7 +1589,7 @@ int main (int argc, char *argv[])
         fprintf(stderr, "PV name(s) specified and service query requested. ('eget -h' for help.)\n");
         return 1;
     }
-
+    
     SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
 
     std::cout << std::boolalpha;
@@ -1600,7 +1629,7 @@ int main (int argc, char *argv[])
             // TODO
             if (uri.protocol != "pva" && uri.protocol != "ca")
             {
-                std::cerr << "invalid URI scheme '" << uri.protocol << "', only 'pva' and 'ca' is supported" << std::endl;
+                std::cerr << "invalid URI scheme '" << uri.protocol << "', only 'pva' and 'ca' are supported" << std::endl;
                 // TODO
                 return 1;
             }
@@ -1620,7 +1649,6 @@ int main (int argc, char *argv[])
         }
         else
         {
-            // TODO URI support
             for (int n = 0; optind < argc; n++, optind++)
             {
                 URI uri;
@@ -1632,7 +1660,7 @@ int main (int argc, char *argv[])
                     // TODO
                     if (uri.protocol != "pva" && uri.protocol != "ca")
                     {
-                        std::cerr << "invalid URI scheme '" << uri.protocol << "', only 'pva' and 'ca' is supported" << std::endl;
+                        std::cerr << "invalid URI scheme '" << uri.protocol << "', only 'pva' and 'ca' are supported" << std::endl;
                         // TODO
                         return 1;
                     }
@@ -1652,9 +1680,8 @@ int main (int argc, char *argv[])
                 }
                 else
                 {
-                    // defaults to "pva"
                     pvs.push_back(argv[optind]);
-                    providerNames.push_back("pva");
+                    providerNames.push_back(defaultProvider);
                 }
             }
         }
@@ -1675,24 +1702,83 @@ int main (int argc, char *argv[])
         for (int n = 0; n < nPvs; n++)
         {
             shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
-            // TODO no privder check
+            // TODO no provider check
             channels[n] = getChannelAccess()->getProvider(providerNames[n])->createChannel(pvs[n], channelRequesterImpl);
         }
 
         // TODO maybe unify for nPvs == 1?!
-        bool collectValues = (mode == ValueOnlyMode) && nPvs > 1;
+        bool collectValues = (mode == ValueOnlyMode) && nPvs > 1 && !read_stdin;
 
         vector<PVStructure::shared_pointer> collectedValues;
-        collectedValues.reserve(nPvs);
         shared_vector<String> collectedNames;
-        collectedNames.reserve(nPvs);
-
-        // for now a simple iterating sync implementation, guarantees order
-        for (int n = 0; n < nPvs; n++)
+        if (collectValues)
         {
+            collectedValues.reserve(nPvs);
+            collectedNames.reserve(nPvs);
+        }
+        
+        // for now a simple iterating sync implementation, guarantees order
+        int n = -1;
+        while (true)
+        {
+            Channel::shared_pointer channel;
+            
+            if (!read_stdin)
+            {
+                if (++n >= nPvs)
+                    break;
+                channel = channels[n];
+            }
+            else
+            {
+                string cn;
+                string cp;
+                std::cin >> cn;
+                if (!std::cin)
+                    break;
+                    
+                URI uri;
+                bool validURI = URI::parse(cn.c_str(), uri);
+                if (validURI)
+                {
+                    // TODO this is copy&pase code from above, clean it up
+                    // for now no only pva/ca schema is supported, without authority
+                    // TODO
+                    if (uri.protocol != "pva" && uri.protocol != "ca")
+                    {
+                        std::cerr << "invalid URI scheme '" << uri.protocol << "', only 'pva' and 'ca' are supported" << std::endl;
+                        // TODO
+                        return 1;
+                    }
+
+                    // authority = uri.host;
+
+                    if (uri.path.length() <= 1)
+                    {
+                        std::cerr << "invalid URI, empty path" << std::endl;
+                        // TODO
+                        return 1;
+                    }
+
+                    // skip trailing '/'
+                    cn = uri.path.substr(1);
+                    cp = uri.protocol;
+                }
+                else
+                {
+                    // leave cn as it is, use default provider
+                    cp = defaultProvider;
+                }
+
+                    
+                    
+                shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
+                // TODO no provider check
+                channel = getChannelAccess()->getProvider(cp)->createChannel(cn, channelRequesterImpl);
+            }
+
             if (monitor)
             {
-                Channel::shared_pointer channel = channels[n];
 				shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
 				channel->createMonitor(monitorRequesterImpl, pvRequest);
             }
@@ -1703,7 +1789,6 @@ int main (int argc, char *argv[])
                 Channel::shared_pointer channel = provider->createChannel(pvs[n], channelRequesterImpl);
                 */
                 
-                Channel::shared_pointer channel = channels[n];
                 shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
     
                 if (channelRequesterImpl->waitUntilConnected(timeOut))
