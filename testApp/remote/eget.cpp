@@ -1572,8 +1572,17 @@ int main (int argc, char *argv[])
     }
     else if (nPvs < 1 && !serviceRequest && !read_stdin)
     {
-        fprintf(stderr, "No PV name(s) specified. ('eget -h' for help.)\n");
-        return 1;
+        // 0 is fd for stdin
+        // if there is a pipe, automatically set read_stdin
+        if (!isatty(0))
+        {
+            read_stdin = true;
+        }
+        else
+        {
+            fprintf(stderr, "No PV name(s) specified. ('eget -h' for help.)\n");
+            return 1;
+        }
     }
     
     // only one pv, arguments provided without serviceRequest switch
