@@ -15,7 +15,10 @@ TESTS += testHexDump
 TESTPROD_HOST += testInetAddressUtils
 testInetAddressUtils = testInetAddressUtils.cpp
 # Avoid errors from inlined htonl() etc. used as template argument
+# TODO this is gcc only
 testInetAddressUtils_CXXFLAGS = -O0
+# needed for 64-bit Windows
+testInetAddressUtils_SYS_LIBS_WIN32 += ws2_32
 TESTS += testInetAddressUtils
 
 TESTSCRIPTS_HOST += $(TESTS:%=%.t)
