@@ -11,6 +11,8 @@
 
 #include <vector>
 #include <string>
+#include <istream>
+#include <fstream>
 #include <sstream>
 
 #include <pv/event.h>
@@ -137,8 +139,9 @@ void usage (void)
     "  -t:                Terse mode - print only successfully written value, without names\n"
     "  -q:                Quiet mode, print only error messages\n"
     "  -d:                Enable debug output\n"
-    "  -F <ofs>:          Use <ofs> as an alternate output field separator"
-    "\nExample: pvput double01 1.234\n\n"
+    "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
+    "  -f <input file>:   Use <input file> as an input that provides a list PV name(s) to be read, use '-' for stdin\n"
+    "\nexample: pvput double01 1.234\n\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
 
@@ -376,10 +379,14 @@ int main (int argc, char *argv[])
     bool debug = false;
     bool quiet = false;
 
+    istream* inputStream = 0;
+    ifstream ifs;
+    bool fromStream = false;
+
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
     putenv(const_cast<char*>("POSIXLY_CORRECT="));            /* Behave correct on GNU getopt systems; e.g. handle negative numbers */
 
-    while ((opt = getopt(argc, argv, ":hr:w:tqdF:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:tqdF:f:")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -409,6 +416,28 @@ int main (int argc, char *argv[])
         case 'F':               /* Store this for output formatting */
             fieldSeparator = (char) *optarg;
             break;
+        case 'f':               /* Use input stream as input */
+        {
+            string fileName = optarg;
+            if (fileName == "-")
+                inputStream = &cin;
+            else
+            {
+                ifs.open(fileName.c_str(), ifstream::in);
+                if (!ifs)
+                {
+                    fprintf(stderr,
+                            "Failed to open file '%s'.\n",
+                            fileName.c_str());
+                    return 1;
+                }
+                else
+                    inputStream = &ifs;
+            }
+
+            fromStream = true;
+            break;
+        }
         case '?':
             fprintf(stderr,
                     "Unrecognized option: '-%c'. ('pvput -h' for help.)\n",
@@ -434,15 +463,35 @@ int main (int argc, char *argv[])
     
 
     int nVals = argc - optind;       /* Remaining arg list are PV names */
-    if (nVals < 1)
+    if (nVals > 0)
+    {
+        // do not allow reading file and command line specified pvs
+        fromStream = false;
+    }
+    else if (nVals < 1 && !fromStream)
     {
         fprintf(stderr, "No value(s) specified. ('pvput -h' for help.)\n");
         return 1;
     }
 
-    vector<string> values;     /* Array of values */
-    for (int n = 0; optind < argc; n++, optind++)
-        values.push_back(argv[optind]);       /* Copy values from command line */
+    vector<string> values;
+    if (fromStream)
+    {
+        string cn;
+        while (true)
+        {
+            *inputStream >> cn;
+            if (!(*inputStream))
+                break;
+            values.push_back(cn);
+        }
+    }
+    else
+    {
+        // copy values from command line
+        for (int n = 0; optind < argc; n++, optind++)
+            values.push_back(argv[optind]);
+    }
 
     Requester::shared_pointer requester(new RequesterImpl("pvput"));
 

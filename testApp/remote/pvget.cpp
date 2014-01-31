@@ -11,6 +11,8 @@
 
 #include <vector>
 #include <string>
+#include <istream>
+#include <fstream>
 #include <sstream>
 
 #include <pv/event.h>
@@ -53,8 +55,9 @@ void usage (void)
     "  -q:                Quiet mode, print only error messages\n"
     "  -d:                Enable debug output\n"
     "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
-    "  -c:                Wait for clean shutdown and report used instance count (for expert users)"
-    "\nExample: pvget double01\n\n"
+    "  -f <input file>:   Use <input file> as an input that provides a list PV name(s) to be read, use '-' for stdin\n"
+    "  -c:                Wait for clean shutdown and report used instance count (for expert users)\n"
+    "\nexample: pvget double01\n\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
 
@@ -349,9 +352,13 @@ int main (int argc, char *argv[])
     bool monitor = false;
     bool quiet = false;
 
+    istream* inputStream = 0;
+    ifstream ifs;
+    bool fromStream = false;
+
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:w:tmqdcF:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:tmqdcF:f:")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -387,6 +394,28 @@ int main (int argc, char *argv[])
         case 'F':               /* Store this for output formatting */
             fieldSeparator = (char) *optarg;
             break;
+        case 'f':               /* Use input stream as input */
+        {
+            string fileName = optarg;
+            if (fileName == "-")
+                inputStream = &cin;
+            else
+            {
+                ifs.open(fileName.c_str(), ifstream::in);
+                if (!ifs)
+                {
+                    fprintf(stderr,
+                            "Failed to open file '%s'.\n",
+                            fileName.c_str());
+                    return 1;
+                }
+                else
+                    inputStream = &ifs;
+            }
+
+            fromStream = true;
+            break;
+        }
         case '?':
             fprintf(stderr,
                     "Unrecognized option: '-%c'. ('pvget -h' for help.)\n",
@@ -404,15 +433,38 @@ int main (int argc, char *argv[])
     }
 
     int nPvs = argc - optind;       /* Remaining arg list are PV names */
-    if (nPvs < 1)
+    if (nPvs > 0)
+    {
+        // do not allow reading file and command line specified pvs
+        fromStream = false;
+    }
+    else if (nPvs < 1 && !fromStream)
     {
         fprintf(stderr, "No pv name(s) specified. ('pvget -h' for help.)\n");
         return 1;
     }
 
     vector<string> pvs;     /* Array of PV structures */
-    for (int n = 0; optind < argc; n++, optind++)
-        pvs.push_back(argv[optind]);       /* Copy PV names from command line */
+    if (fromStream)
+    {
+        string cn;
+        while (true)
+        {
+            *inputStream >> cn;
+            if (!(*inputStream))
+                break;
+            pvs.push_back(cn);
+        }
+
+        // set nPvs
+        nPvs = pvs.size();
+    }
+    else
+    {
+        // copy PV names from command line
+        for (int n = 0; optind < argc; n++, optind++)
+            pvs.push_back(argv[optind]);
+    }
 
 
     SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);

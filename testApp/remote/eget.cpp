@@ -17,7 +17,9 @@
 
 #include <vector>
 #include <string>
+#include <istream>
 #include <ostream>
+#include <fstream>
 #include <sstream>
 #include <iomanip>
 #include <map>
@@ -1021,6 +1023,7 @@ void usage (void)
              "  -q:                  Quiet mode, print only error messages\n"
              "  -d:                  Enable debug output\n"
              "  -F <ofs>:            Use <ofs> as an alternate output field separator\n"
+             "  -f <input file>:     Use <input file> as an input that provides a list PV name(s) to be read, use '-' for stdin\n"
              "  -c:                  Wait for clean shutdown and report used instance count (for expert users)"
              "\n\nexamples:\n\n"
              "#! Get the value of the PV corr:li32:53:bdes\n"
@@ -1033,7 +1036,7 @@ void usage (void)
              "> eget -s archiveService -a entity=quad45:bdes;history -a starttime=2012-02-12T10:04:56 -a endtime=2012-02-01T10:04:56\n"
              "\n"
              "#! Get polynomials for bunch of quads using a stdin to give a list of PV names\n"
-             "> eget -s names -a pattern=QUAD:LTU1:8%%:POLYCOEF | eget -\n"
+             "> eget -s names -a pattern=QUAD:LTU1:8%%:POLYCOEF | eget -f -\n"
              "\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT, DEFAULT_PROVIDER);
 }
@@ -1446,7 +1449,11 @@ int main (int argc, char *argv[])
     bool serviceRequest = false;
     bool pvRequestProvidedByUser = false;
     bool onlyQuery = false;
-    bool read_stdin = false;
+
+    istream* inputStream = 0;
+    ifstream ifs;
+    bool fromStream = false;
+
     string service;
     //string urlEncodedRequest;
     vector< pair<string,string> > parameters;
@@ -1456,7 +1463,7 @@ int main (int argc, char *argv[])
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:s:a:w:zntTmxp:qdcF:-")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:s:a:w:zntTmxp:qdcF:f:")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -1545,9 +1552,28 @@ int main (int argc, char *argv[])
         case 'F':               /* Store this for output formatting */
             fieldSeparator = (char) *optarg;
             break;
-        case '-':               /* Store this for output formatting */
-            read_stdin = true;
+        case 'f':               /* Use input stream as input */
+        {
+            string fileName = optarg;
+            if (fileName == "-")
+                inputStream = &cin;
+            else
+            {
+                ifs.open(fileName.c_str(), ifstream::in);
+                if (!ifs)
+                {
+                    fprintf(stderr,
+                            "Failed to open file '%s'.\n",
+                            fileName.c_str());
+                    return 1;
+                }
+                else
+                    inputStream = &ifs;
+            }
+
+            fromStream = true;
             break;
+        }
         case '?':
             fprintf(stderr,
                     "Unrecognized option: '-%c'. ('eget -h' for help.)\n",
@@ -1567,22 +1593,13 @@ int main (int argc, char *argv[])
     int nPvs = argc - optind;       /* Remaining arg list are PV names */
     if (nPvs > 0) 
     {
-        // do not allow (not supported) reading stdin and command line specified pvs 
-        read_stdin = false;
+        // do not allow reading file and command line specified pvs
+        fromStream = false;
     }
-    else if (nPvs < 1 && !serviceRequest && !read_stdin)
+    else if (nPvs < 1 && !serviceRequest && !fromStream)
     {
-        // 0 is fd for stdin
-        // if there is a pipe, automatically set read_stdin
-        if (!isatty(0))
-        {
-            read_stdin = true;
-        }
-        else
-        {
-            fprintf(stderr, "No PV name(s) specified. ('eget -h' for help.)\n");
-            return 1;
-        }
+        fprintf(stderr, "No PV name(s) specified. ('eget -h' for help.)\n");
+        return 1;
     }
     
     // only one pv, arguments provided without serviceRequest switch
@@ -1716,7 +1733,8 @@ int main (int argc, char *argv[])
         }
 
         // TODO maybe unify for nPvs == 1?!
-        bool collectValues = (mode == ValueOnlyMode) && nPvs > 1 && !read_stdin;
+        // we cannot collect when fromStream is true, since we want to print value immediately
+        bool collectValues = (mode == ValueOnlyMode) && nPvs > 1 && !fromStream;
 
         vector<PVStructure::shared_pointer> collectedValues;
         shared_vector<String> collectedNames;
@@ -1732,7 +1750,7 @@ int main (int argc, char *argv[])
         {
             Channel::shared_pointer channel;
             
-            if (!read_stdin)
+            if (!fromStream)
             {
                 if (++n >= nPvs)
                     break;
@@ -1742,8 +1760,10 @@ int main (int argc, char *argv[])
             {
                 string cn;
                 string cp;
-                std::cin >> cn;
-                if (!std::cin)
+
+                // read next channel name from stream
+                *inputStream >> cn;
+                if (!(*inputStream))
                     break;
                     
                 URI uri;
@@ -1845,7 +1865,7 @@ int main (int argc, char *argv[])
                             else
                             {
                                 // print immediately
-                                printValue(channel->getChannelName(), getRequesterImpl->getPVStructure());
+                                printValue(channel->getChannelName(), getRequesterImpl->getPVStructure(), fromStream);
                             }
                         }
                     }
