@@ -869,7 +869,7 @@ class SyncChannelRPCRequesterImpl : public ChannelRPCRequester, public SyncBaseR
 
 
     bool syncRPC( epics::pvData::PVStructure::shared_pointer const & pvArguments, 
-        boolean lastRequest, long timeOut) {
+        bool lastRequest, long timeOut) {
 
       if(!getConnectedStatus()) {
         return false;

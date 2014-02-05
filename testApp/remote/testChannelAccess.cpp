@@ -1,6 +1,11 @@
 /*
  * testChannelAccess.cpp
  */
+
+#ifdef _WIN32
+#define NOMINMAX
+#endif
+
 #define TESTSERVERNOMAIN
 
 #include <epicsExit.h>
