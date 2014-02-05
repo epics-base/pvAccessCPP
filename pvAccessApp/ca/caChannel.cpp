@@ -578,7 +578,10 @@ void copy_DBR<dbr_long_t, pvInt, PVInt, PVIntArray>(const void * dbr, unsigned c
     {
         std::tr1::shared_ptr<PVIntArray> value =
                 std::tr1::static_pointer_cast<PVIntArray>(pvStructure->getScalarArrayField("value", pvInt));
-        value->put(0, count, static_cast<const int32*>(dbr), 0);
+        PVIntArray::svector temp(value->reuse());
+        temp.resize(count);
+        std::copy(static_cast<const int32*>(dbr), static_cast<const int32*>(dbr) + count, temp.begin());
+        value->replace(freeze(temp));
     }
 }
 #endif
