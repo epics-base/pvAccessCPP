@@ -16,6 +16,7 @@
 #include <time.h>
 #include <vector>
 #include <map>
+#include <cmath>
 
 #include <pv/logger.h>
 
@@ -254,7 +255,7 @@ public:
 
 
 
-static epics::pvData::PVStructure::shared_pointer createNTTable(int columnsCount)
+static epics::pvData::PVStructure::shared_pointer createNTTable(int columnsCount, bool timeStamp = false)
 {
     StringArray fieldNames(columnsCount);
     FieldConstPtrArray fields(columnsCount);
@@ -272,12 +273,18 @@ static epics::pvData::PVStructure::shared_pointer createNTTable(int columnsCount
                 getFieldCreate()->createStructure(fieldNames, fields)
                 );
 
-    StringArray tableFieldNames(2);
-    FieldConstPtrArray tableFields(2);
+    size_t nfields = timeStamp ? 3 : 2;
+    StringArray tableFieldNames(nfields);
+    FieldConstPtrArray tableFields(nfields);
     tableFieldNames[0] = "labels";
     tableFields[0] = getFieldCreate()->createScalarArray(pvString);
     tableFieldNames[1] = "value";
     tableFields[1] = valueStructure;
+    if (timeStamp)
+    {
+        tableFieldNames[2] = "timeStamp";
+        tableFields[2] = getStandardField()->timeStamp();
+    }
 
     PVStructure::shared_pointer result(
                 getPVDataCreate()->createPVStructure(
@@ -290,7 +297,7 @@ static epics::pvData::PVStructure::shared_pointer createNTTable(int columnsCount
     return result;
 }
 
-static epics::pvData::PVStructure::shared_pointer createNTNameValue(int columnsCount)
+static epics::pvData::PVStructure::shared_pointer createNTNameValue(int columnsCount, bool timeStamp = false)
 {
     StringArray fieldNames(columnsCount);
     FieldConstPtrArray fields(columnsCount);
@@ -304,12 +311,18 @@ static epics::pvData::PVStructure::shared_pointer createNTNameValue(int columnsC
         labels[i] = sbuf;
     }
 
-    StringArray tableFieldNames(2);
-    FieldConstPtrArray tableFields(2);
+    size_t nfields = timeStamp ? 3 : 2;
+    StringArray tableFieldNames(nfields);
+    FieldConstPtrArray tableFields(nfields);
     tableFieldNames[0] = "name";
     tableFields[0] = getFieldCreate()->createScalarArray(pvString);
     tableFieldNames[1] = "value";
     tableFields[1] = getFieldCreate()->createScalarArray(pvDouble);
+    if (timeStamp)
+    {
+        tableFieldNames[2] = "timeStamp";
+        tableFields[2] = getStandardField()->timeStamp();
+    }
 
     PVStructure::shared_pointer result(
                 getPVDataCreate()->createPVStructure(
@@ -381,17 +394,53 @@ static void generateNTNameValueDoubleValues(epics::pvData::PVStructure::shared_p
     arr->replace(freeze(temp));
 }
 
+static void setTimeStamp(PVStructure::shared_pointer const & ts)
+{
+    PVTimeStamp timeStamp;
+    timeStamp.attach(ts);
+    TimeStamp current;
+    current.getCurrent();
+    timeStamp.set(current);
+}
+
 static void generateNTAggregateValues(epics::pvData::PVStructure::shared_pointer result)
 {
-    double value = rand()/((double)RAND_MAX+1);
-    result->getSubField<PVDouble>("value")->put(value);
-    result->getSubField<PVDouble>("min")->put(value);
-    result->getSubField<PVDouble>("max")->put(value);
-    result->getSubField<PVDouble>("first")->put(value);
-    result->getSubField<PVDouble>("last")->put(value);
-    result->getSubField<PVDouble>("dispersion")->put(0.0);
-    result->getSubField<PVLong>("N")->put(1);
+    setTimeStamp(result->getStructureField("firstTimeStamp"));
 
+#define N 1024
+    double values[N];
+    for (int r = 0; r < N; r++)
+       values[r] = rand()/((double)RAND_MAX+1);
+    double sum = 0;
+    double min = 1;
+    double max = -1;
+    for (int r = 0; r < N; r++)
+    {
+        sum += values[r];
+        if (values[r] < min) min = values[r];
+        if (values[r] > max) max = values[r];
+    }
+    double avg = sum/N;
+
+    sum = 0.0;
+    for (int r = 0; r < N; r++)
+    {
+        double t = (values[r] - avg);
+        sum += t*t;
+    }
+    double stddev = sqrt(sum/N);
+    
+
+    result->getSubField<PVDouble>("value")->put(avg);
+    result->getSubField<PVDouble>("min")->put(min);
+    result->getSubField<PVDouble>("max")->put(max);
+    result->getSubField<PVDouble>("first")->put(values[0]);
+    result->getSubField<PVDouble>("last")->put(values[N-1]);
+    result->getSubField<PVDouble>("dispersion")->put(stddev);
+    result->getSubField<PVLong>("N")->put(N);
+#undef ROWS
+
+    setTimeStamp(result->getStructureField("lastTimeStamp"));
 }
 
 
@@ -640,6 +689,9 @@ protected:
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelProcess);
 
+        PVFieldPtr ts = pvStructure->getSubField("timeStamp");
+        if (ts) m_timeStamp.attach(ts);
+
         ChannelProcess::shared_pointer thisPtr; // we return null  = static_pointer_cast<ChannelProcess>(shared_from_this());
         PVFieldPtr field = pvStructure->getSubField("value");
         if (field.get() == 0)
@@ -661,9 +713,6 @@ protected:
         }
 
         m_valueField = dynamic_pointer_cast<PVScalar>(field);
-
-        PVFieldPtr ts = pvStructure->getSubField("timeStamp");
-        if (ts) m_timeStamp.attach(ts);
     }
 
 public:
@@ -777,13 +826,13 @@ public:
                     break;
                 }
             }
-    
-            if (m_timeStamp.isAttached())
-            {
-                TimeStamp current;
-                current.getCurrent();
-                m_timeStamp.set(current);
-            }
+   	}
+ 
+        if (m_timeStamp.isAttached())
+        {
+            TimeStamp current;
+            current.getCurrent();
+            m_timeStamp.set(current);
         }
         
         m_channelProcessRequester->processDone(Status::Ok);
@@ -1938,12 +1987,12 @@ protected:
             }
             else if (m_name.find("testTable") == 0)
             {
-                m_pvStructure = createNTTable(5);   // 5 columns
+                m_pvStructure = createNTTable(5, true);   // 5 columns w/ timeStamp
                 generateNTTableDoubleValues(m_pvStructure);
             }
             else if (m_name.find("testNameValue") == 0)
             {
-                m_pvStructure = createNTNameValue(5);   // 5 columns
+                m_pvStructure = createNTNameValue(5, true);   // 5 columns w/ timeStamp
                 generateNTNameValueDoubleValues(m_pvStructure);
             }
             else if (m_name.find("testAggregate") == 0)
