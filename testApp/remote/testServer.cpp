@@ -290,6 +290,38 @@ static epics::pvData::PVStructure::shared_pointer createNTTable(int columnsCount
     return result;
 }
 
+static epics::pvData::PVStructure::shared_pointer createNTNameValue(int columnsCount)
+{
+    StringArray fieldNames(columnsCount);
+    FieldConstPtrArray fields(columnsCount);
+    char sbuf[16];
+    PVStringArray::svector labels(columnsCount);
+    for (int i = 0; i < columnsCount; i++)
+    {
+        sprintf(sbuf, "name%d", i);
+        fieldNames[i] = sbuf;
+        fields[i] = getFieldCreate()->createScalarArray(pvDouble);
+        labels[i] = sbuf;
+    }
+
+    StringArray tableFieldNames(2);
+    FieldConstPtrArray tableFields(2);
+    tableFieldNames[0] = "name";
+    tableFields[0] = getFieldCreate()->createScalarArray(pvString);
+    tableFieldNames[1] = "value";
+    tableFields[1] = getFieldCreate()->createScalarArray(pvDouble);
+
+    PVStructure::shared_pointer result(
+                getPVDataCreate()->createPVStructure(
+                    getFieldCreate()->createStructure(
+                        "uri:ev4:nt/2012/pwd:NTNameValue", tableFieldNames, tableFields)
+                    )
+                );
+    result->getSubField<PVStringArray>("name")->replace(freeze(labels));
+
+    return result;
+}
+
 static void generateNTTableDoubleValues(epics::pvData::PVStructure::shared_pointer result)
 {
     PVStringArray::shared_pointer pvLabels = (static_pointer_cast<PVStringArray>(result->getScalarArrayField("labels", pvString)));
@@ -317,6 +349,17 @@ static void generateNTTableDoubleValues(epics::pvData::PVStructure::shared_point
     }
 }
 
+static void generateNTNameValueDoubleValues(epics::pvData::PVStructure::shared_pointer result)
+{
+    size_t len = result->getSubField<PVArray>("name")->getLength();
+
+    PVDoubleArray::shared_pointer arr = result->getSubField<PVDoubleArray>("value");
+    PVDoubleArray::svector temp(arr->reuse());
+    temp.resize(len);
+    for (size_t i = 0; i < len; i++)
+        temp[i] = rand()/((double)RAND_MAX+1) + i;
+    arr->replace(freeze(temp));
+}
 
 class ChannelFindRequesterImpl : public ChannelFindRequester
 {
@@ -617,6 +660,10 @@ public:
             if (m_pvStructure->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTTable")
             {
                 generateNTTableDoubleValues(m_pvStructure);
+            }
+            else if (m_pvStructure->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTNameValue")
+            {
+                generateNTNameValueDoubleValues(m_pvStructure);
             }
             else if (m_valueField.get())
             {
@@ -1856,6 +1903,11 @@ protected:
                 m_pvStructure = createNTTable(5);   // 5 columns
                 generateNTTableDoubleValues(m_pvStructure);
             }
+            else if (m_name.find("testNameValue") == 0)
+            {
+                m_pvStructure = createNTNameValue(5);   // 5 columns
+                generateNTNameValueDoubleValues(m_pvStructure);
+            }
             else if (m_name.find("testADC") == 0)
             {
                 int i = 0;
@@ -2183,6 +2235,10 @@ public:
         m_scan10Hz.toProcess.push_back(process);
 
         c = MockChannel::create(chProviderPtr, cr, "testTable", "local");
+        process = c->createChannelProcess(cpr, PVStructure::shared_pointer());
+        m_scan1Hz.toProcess.push_back(process);
+
+        c = MockChannel::create(chProviderPtr, cr, "testNameValue", "local");
         process = c->createChannelProcess(cpr, PVStructure::shared_pointer());
         m_scan1Hz.toProcess.push_back(process);
 
