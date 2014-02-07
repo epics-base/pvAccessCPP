@@ -322,6 +322,26 @@ static epics::pvData::PVStructure::shared_pointer createNTNameValue(int columnsC
     return result;
 }
 
+static epics::pvData::PVStructure::shared_pointer createNTAggregate()
+{
+    epics::pvData::StructureConstPtr s =
+        getFieldCreate()->createFieldBuilder()->
+            setId("uri:ev4:nt/2012/pwd:NTAggregate")->
+            add("value", pvDouble)->
+            add("N", pvLong)->
+            add("dispersion", pvDouble)->
+            add("first", pvDouble)->
+            add("firstTimeStamp", getStandardField()->timeStamp())->
+            add("last", pvDouble)->
+            add("lastTimeStamp", getStandardField()->timeStamp())->
+            add("max", pvDouble)->
+            add("min", pvDouble)->
+            createStructure();
+
+    return getPVDataCreate()->createPVStructure(s);
+}
+
+
 static void generateNTTableDoubleValues(epics::pvData::PVStructure::shared_pointer result)
 {
     PVStringArray::shared_pointer pvLabels = (static_pointer_cast<PVStringArray>(result->getScalarArrayField("labels", pvString)));
@@ -360,6 +380,20 @@ static void generateNTNameValueDoubleValues(epics::pvData::PVStructure::shared_p
         temp[i] = rand()/((double)RAND_MAX+1) + i;
     arr->replace(freeze(temp));
 }
+
+static void generateNTAggregateValues(epics::pvData::PVStructure::shared_pointer result)
+{
+    double value = rand()/((double)RAND_MAX+1);
+    result->getSubField<PVDouble>("value")->put(value);
+    result->getSubField<PVDouble>("min")->put(value);
+    result->getSubField<PVDouble>("max")->put(value);
+    result->getSubField<PVDouble>("first")->put(value);
+    result->getSubField<PVDouble>("last")->put(value);
+    result->getSubField<PVDouble>("dispersion")->put(0.0);
+    result->getSubField<PVLong>("N")->put(1);
+
+}
+
 
 class ChannelFindRequesterImpl : public ChannelFindRequester
 {
@@ -664,6 +698,10 @@ public:
             else if (m_pvStructure->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTNameValue")
             {
                 generateNTNameValueDoubleValues(m_pvStructure);
+            }
+            else if (m_pvStructure->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTAggregate")
+            {
+                generateNTAggregateValues(m_pvStructure);
             }
             else if (m_valueField.get())
             {
@@ -1908,6 +1946,11 @@ protected:
                 m_pvStructure = createNTNameValue(5);   // 5 columns
                 generateNTNameValueDoubleValues(m_pvStructure);
             }
+            else if (m_name.find("testAggregate") == 0)
+            {
+                m_pvStructure = createNTAggregate();
+                generateNTAggregateValues(m_pvStructure);
+            }
             else if (m_name.find("testADC") == 0)
             {
                 int i = 0;
@@ -2239,6 +2282,10 @@ public:
         m_scan1Hz.toProcess.push_back(process);
 
         c = MockChannel::create(chProviderPtr, cr, "testNameValue", "local");
+        process = c->createChannelProcess(cpr, PVStructure::shared_pointer());
+        m_scan1Hz.toProcess.push_back(process);
+
+        c = MockChannel::create(chProviderPtr, cr, "testAggregate", "local");
         process = c->createChannelProcess(cpr, PVStructure::shared_pointer());
         m_scan1Hz.toProcess.push_back(process);
 
