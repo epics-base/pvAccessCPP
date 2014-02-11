@@ -45,6 +45,7 @@ INC += channelSearchManager.h
 INC += simpleChannelSearchManagerImpl.h
 INC += transportRegistry.h
 INC += serializationHelper.h
+INC += codec.h
 LIBSRCS += blockingUDPTransport.cpp
 LIBSRCS += blockingUDPConnector.cpp
 LIBSRCS += beaconHandler.cpp
@@ -57,6 +58,7 @@ LIBSRCS += abstractResponseHandler.cpp
 LIBSRCS += blockingTCPAcceptor.cpp
 LIBSRCS += transportRegistry.cpp
 LIBSRCS += serializationHelper.cpp
+LIBSRCS += codec.cpp
 
 SRC_DIRS += $(PVACCESS)/remoteClient
 INC += clientContextImpl.h

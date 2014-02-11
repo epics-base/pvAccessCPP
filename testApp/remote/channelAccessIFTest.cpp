@@ -48,7 +48,7 @@ int ChannelAccessIFTest::runAllTest() {
   testPlan(152);
 #endif
 
-  test_implementation();
+/*  test_implementation();
   test_providerName();
 
   test_createEmptyChannel();
@@ -56,10 +56,10 @@ int ChannelAccessIFTest::runAllTest() {
   test_createChannel();
   test_recreateChannelOnDestroyedProvider();
   test_findEmptyChannel();
-  test_findChannel();
+  test_findChannel();*/
   test_channel();
 
-  test_channelGetWithInvalidChannelAndRequester();
+/*  test_channelGetWithInvalidChannelAndRequester();
   test_channelGetNoProcess();
   test_channelGetIntProcess();
   test_channelGetTestNoConnection();
@@ -95,7 +95,7 @@ int ChannelAccessIFTest::runAllTest() {
 
   test_channelArray();
   test_channelArray_destroy();
-  test_channelArrayTestNoConnection();
+  test_channelArrayTestNoConnection();*/
 
 #ifdef ENABLE_STRESS_TESTS
   test_stressConnectDisconnect();
@@ -415,7 +415,7 @@ void ChannelAccessIFTest::test_channel() {
   testOk(channel->getConnectionState() == Channel::DESTROYED , 
       "%s: channel connection state DESTROYED ", CURRENT_FUNCTION);
 
-  testDiag("%s: destroying the channel yet again", CURRENT_FUNCTION); 
+/*  testDiag("%s: destroying the channel yet again", CURRENT_FUNCTION); 
   channel->destroy();
 
   succStatus = channelReq->waitUntilStateChange(getTimeoutSec());
@@ -432,7 +432,7 @@ void ChannelAccessIFTest::test_channel() {
   testOk(!channel->isConnected(), "%s: yet again destroyed channel should not be connected ", CURRENT_FUNCTION);
   testOk(channel->getConnectionState() == Channel::DESTROYED , 
       "%s: yet again destroyed channel connection state DESTROYED ", CURRENT_FUNCTION);
-
+*/
 }
 
 

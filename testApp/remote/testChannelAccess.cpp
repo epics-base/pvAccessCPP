@@ -88,6 +88,7 @@ class ChannelAccessIFRemoteTest: public ChannelAccessIFTest  {
 
 MAIN(testChannelProvider)
 {
+  SET_LOG_LEVEL(logLevelTrace);
   ChannelAccessIFRemoteTest caRemoteTest;
   return caRemoteTest.runAllTest();
 }
