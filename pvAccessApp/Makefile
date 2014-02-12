@@ -96,6 +96,13 @@ SRC_DIRS += $(PVACCESS)/mb
 INC += pvAccessMB.h
 LIBSRCS += pvAccessMB.cpp
 
+SRC_DIRS += $(PVACCESS)/v3ioc
+INC += syncChannelFind.h
+DBD += PVAServerRegister.dbd
+DBD += PVAClientRegister.dbd
+LIBSRCS += PVAServerRegister.cpp
+LIBSRCS += PVAClientRegister.cpp
+
 LIBRARY = pvAccess
 pvAccess_LIBS += Com
 pvAccess_LIBS += pvData

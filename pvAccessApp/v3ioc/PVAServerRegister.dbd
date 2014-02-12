@@ -1,0 +1,2 @@
+registrar("startPVAServerRegister")
+registrar("stopPVAServerRegister")
