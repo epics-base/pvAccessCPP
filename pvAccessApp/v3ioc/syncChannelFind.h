@@ -12,14 +12,25 @@
  * This is an implementation of ChannelFind that is appropriate for all channel
  * providers that can synchronously determine if the provider has the channel.
  */
-#ifndef SYNCCHANNElFIND_H
-#define SYNCCHANNElFIND_H
+#ifndef SYNCCHANNELFIND_H
+#define SYNCCHANNELFIND_H
+
 #include <string>
 #include <cstring>
 #include <stdexcept>
 #include <memory>
 
+#ifdef epicsExportSharedSymbols
+#   define syncChannelFindEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
 #include <pv/pvData.h>
+#ifdef syncChannelFindEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#   undef syncChannelFindEpicsExportSharedSymbols
+#endif
+
+#include <shareLib.h>
 #include <pv/pvAccess.h>
 
 
@@ -53,4 +64,4 @@ private:
 
 
 }}
-#endif  /* SYNCCHANNElFIND_H */
+#endif  /* SYNCCHANNELFIND_H */
