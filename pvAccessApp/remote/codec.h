@@ -236,12 +236,6 @@ namespace epics {
     };
 
 
-    class simulate_finally_exception: public std::runtime_error {
-    public:
-      explicit simulate_finally_exception(
-        const std::string &s): std::runtime_error(s) {}
-    };
-
     class io_exception: public std::runtime_error {
     public:
       explicit io_exception(const std::string &s): std::runtime_error(s) {}
@@ -388,7 +382,8 @@ namespace epics {
 
     class BlockingAbstractCodec: 
       public AbstractCodec,
-      public std::tr1::enable_shared_from_this<BlockingAbstractCodec>   {
+      public std::tr1::enable_shared_from_this<BlockingAbstractCodec>
+    {
 
     public: 
 
@@ -425,7 +420,9 @@ namespace epics {
     };
 
 
-    class  BlockingSocketAbstractCodec: public BlockingAbstractCodec {
+    class  BlockingSocketAbstractCodec:
+        public BlockingAbstractCodec
+    {
 
     public: 
 
@@ -588,9 +585,9 @@ namespace epics {
 
 
       bool directSerialize(
-        epics::pvData::ByteBuffer *existingBuffer, 
-        const char* toSerialize,
-        std::size_t elementCount, std::size_t elementSize)  
+        epics::pvData::ByteBuffer * /*existingBuffer*/, 
+        const char* /*toSerialize*/,
+        std::size_t /*elementCount*/, std::size_t /*elementSize*/)  
       {
 
         LOG(logLevelTrace, 
@@ -601,9 +598,9 @@ namespace epics {
       }
 
 
-      bool directDeserialize(epics::pvData::ByteBuffer *existingBuffer, 
-        char* deserializeTo,
-        std::size_t elementCount, std::size_t elementSize)  { 
+      bool directDeserialize(epics::pvData::ByteBuffer * /*existingBuffer*/, 
+        char* /*deserializeTo*/,
+        std::size_t /*elementCount*/, std::size_t /*elementSize*/)  { 
 
           LOG(logLevelTrace, 
             "BlockingTCPTransportCodec::directDeserialize() enter:"
@@ -635,6 +632,8 @@ namespace epics {
 
         Transport::shared_pointer thisSharedPtr = shared_from_this();
         _context->getTransportRegistry()->put(thisSharedPtr);
+        
+        start();
       }
 
     protected:
@@ -684,6 +683,7 @@ namespace epics {
     public:
       POINTER_DEFINITIONS(BlockingServerTCPTransportCodec);
 
+    protected:
       BlockingServerTCPTransportCodec(
         Context::shared_pointer const & context, 
         SOCKET channel,
@@ -691,6 +691,7 @@ namespace epics {
         int32_t sendBufferSize, 
         int32_t receiveBufferSize );
 
+    public:
       static shared_pointer create(
         Context::shared_pointer const & context, 
         SOCKET channel,

@@ -1128,6 +1128,7 @@ namespace epics {
     }
 
 
+    // NOTE: must not be called from constructor (e.g. needs shared_from_this())
     void BlockingAbstractCodec::start() {
 
       LOG(logLevelTrace, "BlockingAbstractCodec::start enter: (threadId: %u)", 
@@ -1164,9 +1165,8 @@ namespace epics {
         "BlockingAbstractCodec::receiveThread enter: (threadId: %u)", 
         epicsThreadGetIdSelf());
 
-
       BlockingAbstractCodec *bac = static_cast<BlockingAbstractCodec *>(param);
-      Transport::shared_pointer ptr (bac->shared_from_this());
+      Transport::shared_pointer ptr = bac->shared_from_this();
 
       while (bac->isOpen())
       {
@@ -1194,8 +1194,7 @@ namespace epics {
         epicsThreadGetIdSelf());
 
       BlockingAbstractCodec *bac = static_cast<BlockingAbstractCodec *>(param);
-
-      Transport::shared_pointer ptr (bac->shared_from_this());
+      Transport::shared_pointer ptr = bac->shared_from_this();
       
       bac->setSenderThread();
 
@@ -1479,8 +1478,6 @@ namespace epics {
       //register/unregister
       // TODO implement priorities in Reactor... not that user will
       // change it.. still getPriority() must return "registered" priority!
-
-      start();
 
       LOG(logLevelTrace, 
         "BlockingServerTCPTransportCodec constructed  (threadId: %u)", 
