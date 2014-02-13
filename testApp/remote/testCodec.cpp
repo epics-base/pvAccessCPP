@@ -6,6 +6,7 @@
 #define NOMINMAX
 #endif
 
+//testing
 
 #include <epicsExit.h>
 #include <epicsUnitTest.h>
