@@ -397,7 +397,7 @@ namespace epics {
     public:
 
       int runAllTest() {
-        testPlan(5885);
+        testPlan(5884);
         testHeaderProcess(); 
         testInvalidHeaderMagic();
         testInvalidHeaderSegmentedInNormal();
@@ -518,9 +518,9 @@ namespace epics {
 
         testOk(header._version == PVA_VERSION, 
           "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(header._flags == 0x00, 
+        testOk(header._flags == (int8_t)0x00,
           "%s: header._flags == 0x00", CURRENT_FUNCTION);
-        testOk(header._command == 0x20, 
+        testOk(header._command == (int8_t)0x20,
           "%s: header._command == 0x20", CURRENT_FUNCTION);
         testOk(header._payloadSize == 0x00000000, 
           "%s: header._payloadSize == 0x00000000", CURRENT_FUNCTION);
@@ -530,11 +530,11 @@ namespace epics {
 
         testOk(header._version == PVA_VERSION, 
           "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(header._flags == 0x81, 
+        testOk(header._flags == (int8_t)0x81, 
           "%s: header._flags == 0x81", CURRENT_FUNCTION);
-        testOk(header._command == 0xEE, 
+        testOk(header._command == (int8_t)0xEE,
           "%s: header._command == 0xEE", CURRENT_FUNCTION);
-        testOk((std::size_t)header._payloadSize == 0xDDCCBBAA, 
+        testOk(header._payloadSize == (int32_t)0xDDCCBBAA,
           "%s: header._payloadSize == 0xDDCCBBAA", 
           CURRENT_FUNCTION);
       }
@@ -687,9 +687,9 @@ namespace epics {
 
         testOk(header._version == PVA_VERSION,
           "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(header._flags == 0x01,
+        testOk(header._flags == (int8_t)0x01,
           "%s: header._flags == 0x01", CURRENT_FUNCTION);
-        testOk(header._command == 0x23,
+        testOk(header._command == (int8_t)0x23,
           "%s: header._command == 0x23", CURRENT_FUNCTION);
         testOk(header._payloadSize == 0x456789AB,
           "%s: header._payloadSize == 0x456789AB", CURRENT_FUNCTION);
@@ -1118,11 +1118,11 @@ namespace epics {
 
         testOk(msg._version == PVA_VERSION,
           "%s: msg._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(msg._flags == 0x81, 
+        testOk(msg._flags == (int8_t)0x81,
           "%s: msg._flags == 0x81", CURRENT_FUNCTION);
-        testOk(msg._command == 0xEE, 
+        testOk(msg._command == (int8_t)0xEE,
           "%s: msg._command == 0xEE", CURRENT_FUNCTION);
-        testOk((std::size_t)msg._payloadSize == 0xDDCCBBAA, 
+        testOk(msg._payloadSize == (int32_t)0xDDCCBBAA,
           "%s: msg._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
       }
 
@@ -1606,9 +1606,9 @@ namespace epics {
 
         testOk(header._version == PVA_VERSION, 
           "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(header._flags == 0x81, 
-          "%s: header._flags == 0x81", CURRENT_FUNCTION);
-        testOk(header._command == 0x23, 
+        testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x01),
+          "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
+        testOk(header._command == (int8_t)0x23,
           "%s: header._command == 0x23", CURRENT_FUNCTION);
         testOk(header._payloadSize == 0x456789AB, 
           "%s: header._payloadSize == 0x456789AB", CURRENT_FUNCTION);
@@ -1644,9 +1644,9 @@ namespace epics {
 
         testOk(header._version == PVA_VERSION, 
           "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(header._flags == 0x00, 
+        testOk(header._flags == (int8_t)0x00,
           "%s: header._flags == 0x00", CURRENT_FUNCTION);
-        testOk(header._command == 0x20, 
+        testOk(header._command == (int8_t)0x20,
           "%s: header._command == 0x20", CURRENT_FUNCTION);
         testOk(header._payloadSize == 0x00000000, 
           "%s: header._payloadSize == 0x00000000", CURRENT_FUNCTION);
@@ -1656,11 +1656,11 @@ namespace epics {
 
         testOk(header._version == PVA_VERSION, 
           "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(header._flags == 0x81, 
+        testOk(header._flags == (int8_t)0x81,
           "%s: header._flags == 0x81", CURRENT_FUNCTION);
-        testOk(header._command == 0xEE, 
+        testOk(header._command == (int8_t)0xEE,
           "%s: header._command == 0xEE", CURRENT_FUNCTION);
-        testOk((std::size_t)header._payloadSize == 0xDDCCBBAA, 
+        testOk(header._payloadSize == (int32_t)0xDDCCBBAA,
           "%s: header._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
       }	
 
@@ -2297,9 +2297,9 @@ namespace epics {
 
         testOk(header._version == PVA_VERSION,
           "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(header._flags == 0x80, 
-          "%s: header._flags == 0x80", CURRENT_FUNCTION);
-        testOk(header._command == 0x20,
+        testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x00),
+          "%s: header._flags == 0x(0|8)0", CURRENT_FUNCTION);
+        testOk(header._command == (int8_t)0x20,
           "%s: header._command == 0x20", CURRENT_FUNCTION);
         testOk(header._payloadSize == 0x00000000, 
           "%s: header._payloadSize == 0x00000000", CURRENT_FUNCTION);
@@ -2309,11 +2309,11 @@ namespace epics {
 
         testOk(header._version == PVA_VERSION, 
           "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(header._flags == 0x81, 
-          "%s: header._flags == 0x81", CURRENT_FUNCTION);
-        testOk(header._command == 0xEE, 
+        testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x01),
+          "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
+        testOk(header._command == (int8_t)0xEE,
           "%s: header._command == 0xEE", CURRENT_FUNCTION);
-        testOk((std::size_t)header._payloadSize == 0xDDCCBBAA, 
+        testOk(header._payloadSize == (int32_t)0xDDCCBBAA,
           "%s: header._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
       }
 
@@ -2441,8 +2441,8 @@ namespace epics {
 
         testOk(header._version == PVA_VERSION, 
           "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(header._flags == 0x80,
-          "%s: header._flags == 0x80", CURRENT_FUNCTION);
+        testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x00),
+          "%s: header._flags == 0x(0|8)0", CURRENT_FUNCTION);
         testOk(header._command == 0x20,
           "%s: header._command == 0x20", CURRENT_FUNCTION);
         testOk(header._payloadSize == 0x00000000,
@@ -2454,11 +2454,11 @@ namespace epics {
 
         testOk(header._version == PVA_VERSION,
           "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(header._flags == 0x81,
-          "%s: header._flags == 0x81", CURRENT_FUNCTION);
-        testOk(header._command == 0xEE, 
+        testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x01),
+          "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
+        testOk(header._command == (int8_t)0xEE,
           "%s: header._command == 0xEE", CURRENT_FUNCTION);
-        testOk((std::size_t)header._payloadSize == 0xDDCCBBAA,
+        testOk(header._payloadSize == (int32_t)0xDDCCBBAA,
           "%s: header._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
 
 
@@ -2499,11 +2499,11 @@ namespace epics {
 
         testOk(header._version == PVA_VERSION, 
           "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(header._flags == 0x81, 
-          "%s: header._flags == 0x81", CURRENT_FUNCTION);
-        testOk(header._command == 0xEE, 
+        testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x01),
+          "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
+        testOk(header._command == (int8_t)0xEE,
           "%s: header._command == 0xEE", CURRENT_FUNCTION);
-        testOk((std::size_t)header._payloadSize == 0xDDCCBBAA, 
+        testOk(header._payloadSize == (int32_t)0xDDCCBBAA,
           "%s: header._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
       }
 
@@ -2582,11 +2582,11 @@ namespace epics {
 
         testOk(header._version == PVA_VERSION, 
           "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(header._flags == 0x80,
+        testOk(header._flags == (int8_t)0x80,
           "%s: header._flags == 0x80", CURRENT_FUNCTION);
-        testOk(header._command == 0x12,
+        testOk(header._command == (int8_t)0x12,
           "%s: header._command == 0x12", CURRENT_FUNCTION);
-        testOk((std::size_t)header._payloadSize == bytesToSent, 
+        testOk(header._payloadSize == (int32_t)bytesToSent,
           "%s: header._payloadSize == bytesToSent", 
           CURRENT_FUNCTION);
 
@@ -2789,8 +2789,8 @@ namespace epics {
 
         testOk(header._version == PVA_VERSION, 
           "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(header._flags == (int8_t)(0x80 | 0x10),
-          "%s: header._flags == (int8_t)(0x80 | 0x10)", 
+        testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x10),
+          "%s: header._flags == (int8_t)(0x(0|8)0 | 0x10)",
           CURRENT_FUNCTION);
         testOk(header._command == 0x12, 
           "%s: header._command == 0x12", CURRENT_FUNCTION);
@@ -2818,7 +2818,6 @@ namespace epics {
       void testRecipient() 
       {
         // nothing to test, depends on implementation
-        testSkip(1, " testRecipient()");
       }
 
 

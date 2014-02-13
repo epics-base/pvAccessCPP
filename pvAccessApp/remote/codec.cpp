@@ -39,8 +39,8 @@ namespace epics {
     const std::size_t AbstractCodec::MAX_ENSURE_DATA_BUFFER_SIZE = 1024;
 
     AbstractCodec::AbstractCodec(
-      std::tr1::shared_ptr<epics::pvData::ByteBuffer> receiveBuffer, 
-      std::tr1::shared_ptr<epics::pvData::ByteBuffer> sendBuffer,
+      std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
+      std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
       int32_t socketSendBufferSize, 
       bool blockingProcessQueue): 
     //PROTECTED
@@ -56,7 +56,8 @@ namespace epics {
       _maxSendPayloadSize(0), 
       _lastMessageStartPosition(0),_lastSegmentedMessageType(0), 
       _lastSegmentedMessageCommand(0), _nextMessagePayloadOffset(0), 
-      _byteOrderFlag(0x80),_socketSendBufferSize(0) 
+      _byteOrderFlag(EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00),
+      _socketSendBufferSize(0)
     {
       if (receiveBuffer->getSize() < 2*MAX_ENSURE_SIZE)
         throw std::invalid_argument(
@@ -109,7 +110,7 @@ namespace epics {
         processReadSegmented();
         break;
       case SPLIT:
-        throw std::logic_error("SPLIT NOT SUPPORTED");
+        throw std::logic_error("ReadMode == SPLIT not supported");
       }
 
     }
@@ -197,65 +198,16 @@ namespace epics {
             {
               // handle response	
               processApplicationMessage();
-              //TODO: MATEJ CHECK
-              throw simulate_finally_exception("go to finally block");
+
+              postProcessApplicationMessage();
             }
             catch(...)   //finally
             {
-              if (!isOpen())
-                return;
+                if (!isOpen())
+                  return;
 
-              // can be closed by now
-              // isOpen() should be efficiently implemented
-              while (true)
-                //while (isOpen())
-              {
-                // set position as whole message was read 
-                //(in case code haven't done so)
-                std::size_t newPosition = 
-                  alignedValue(
-                  _storedPosition + _storedPayloadSize, PVA_ALIGNMENT);
-
-                // aligned buffer size ensures that there is enough space 
-                //in buffer,
-                // however data might not be fully read
-
-                // discard the rest of the packet
-                if (newPosition > _storedLimit)
-                {
-                  // processApplicationMessage() did not read up 
-                  //quite some buffer
-
-                  // we only handle unused alignment bytes
-                  int bytesNotRead = 
-                    newPosition - _socketBuffer->getPosition(); 
-
-                  if (bytesNotRead < PVA_ALIGNMENT)
-                  {
-                    // make alignment bytes as real payload to enable SPLIT
-                    // no end-of-socket or segmented scenario can happen
-                    // due to aligned buffer size
-                    _storedPayloadSize += bytesNotRead;
-                    // reveal currently existing padding
-                    _socketBuffer->setLimit(_storedLimit);
-                    ensureData(bytesNotRead);
-                    _storedPayloadSize -= bytesNotRead;
-                    continue;
-                  }
-
-                  // TODO we do not handle this for now (maybe never)
-                  LOG(logLevelWarn, 
-                    "unprocessed read buffer from client at  %s:%d: %d,"
-                    " disconnecting...", 
-                    __FILE__, __LINE__, getLastReadBufferSocketAddress());  
-                  invalidDataStreamHandler();
-                  throw invalid_data_stream_exception(
-                    "unprocessed read buffer");
-                }
-                _socketBuffer->setLimit(_storedLimit);
-                _socketBuffer->setPosition(newPosition);
-                break;
-              }
+                postProcessApplicationMessage();
+                throw;
             }
           }
         }
@@ -271,6 +223,63 @@ namespace epics {
       }
     }
 
+    void AbstractCodec::postProcessApplicationMessage()
+    {
+        if (!isOpen())
+          return;
+
+        // can be closed by now
+        // isOpen() should be efficiently implemented
+        while (true)
+          //while (isOpen())
+        {
+          // set position as whole message was read
+          //(in case code haven't done so)
+          std::size_t newPosition =
+            alignedValue(
+            _storedPosition + _storedPayloadSize, PVA_ALIGNMENT);
+
+          // aligned buffer size ensures that there is enough space
+          //in buffer,
+          // however data might not be fully read
+
+          // discard the rest of the packet
+          if (newPosition > _storedLimit)
+          {
+            // processApplicationMessage() did not read up
+            //quite some buffer
+
+            // we only handle unused alignment bytes
+            int bytesNotRead =
+              newPosition - _socketBuffer->getPosition();
+
+            if (bytesNotRead < PVA_ALIGNMENT)
+            {
+              // make alignment bytes as real payload to enable SPLIT
+              // no end-of-socket or segmented scenario can happen
+              // due to aligned buffer size
+              _storedPayloadSize += bytesNotRead;
+              // reveal currently existing padding
+              _socketBuffer->setLimit(_storedLimit);
+              ensureData(bytesNotRead);
+              _storedPayloadSize -= bytesNotRead;
+              continue;
+            }
+
+            // TODO we do not handle this for now (maybe never)
+            LOG(logLevelWarn,
+              "unprocessed read buffer from client at  %s:%d: %d,"
+              " disconnecting...",
+              __FILE__, __LINE__, getLastReadBufferSocketAddress());
+            invalidDataStreamHandler();
+            throw invalid_data_stream_exception(
+              "unprocessed read buffer");
+          }
+          _socketBuffer->setLimit(_storedLimit);
+          _socketBuffer->setPosition(newPosition);
+          break;
+        }
+    }
 
     void AbstractCodec::processReadSegmented() {
 
@@ -1280,6 +1289,7 @@ namespace epics {
       timeout.tv_sec = 1;
       timeout.tv_usec = 0;
 
+      // TODO remove this and implement use epicsSocketSystemCallInterruptMechanismQuery
       if (unlikely(::setsockopt (_channel, SOL_SOCKET, SO_RCVTIMEO, 
         (char*)&timeout, sizeof(timeout)) < 0))
       {
@@ -1450,8 +1460,7 @@ namespace epics {
         return bytesRead;
       }
 
-      //TODO check what to return
-      return -1;
+      return 0;
     }
 
 

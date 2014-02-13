@@ -45,7 +45,7 @@
 namespace epics {
   namespace pvAccess {
 
-
+    // TODO replace mutex with atomic (CAS) operations
     template<typename T> 
     class AtomicValue
     {
@@ -280,8 +280,8 @@ namespace epics {
       static const std::size_t MAX_ENSURE_DATA_BUFFER_SIZE;
 
       AbstractCodec(
-        std::tr1::shared_ptr<epics::pvData::ByteBuffer> receiveBuffer, 
-        std::tr1::shared_ptr<epics::pvData::ByteBuffer> sendBuffer,
+        std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
+        std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
         int32_t socketSendBufferSize, 
         bool blockingProcessQueue); 
 
@@ -343,7 +343,7 @@ namespace epics {
       int8_t _version;
       int8_t _flags;
       int8_t _command;
-      int32_t _payloadSize;
+      int32_t _payloadSize; // TODO why not size_t?
       epics::pvData::int32 _remoteTransportSocketReceiveBufferSize;
       int64_t _totalBytesSent;
       bool _blockingProcessQueue;
@@ -357,13 +357,14 @@ namespace epics {
       std::tr1::shared_ptr<epics::pvData::ByteBuffer> _socketBuffer;
       std::tr1::shared_ptr<epics::pvData::ByteBuffer> _sendBuffer;
 
-      epics::pvAccess::queue<TransportSender::shared_pointer > _sendQueue;
+      epics::pvAccess::queue<TransportSender::shared_pointer> _sendQueue;
 
     private:
 
       void processHeader(); 
       void processReadNormal(); 
-      void processReadSegmented(); 
+      void postProcessApplicationMessage();
+      void processReadSegmented();
       bool readToBuffer(std::size_t requiredBytes, bool persistent);
       void endMessage(bool hasMoreSegments);
       void processSender(
@@ -394,8 +395,8 @@ namespace epics {
       POINTER_DEFINITIONS(BlockingAbstractCodec);
 
       BlockingAbstractCodec(
-        std::tr1::shared_ptr<epics::pvData::ByteBuffer> receiveBuffer,
-        std::tr1::shared_ptr<epics::pvData::ByteBuffer> sendBuffer,
+        std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
+        std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
         int32_t socketSendBufferSize): 
       AbstractCodec(receiveBuffer, sendBuffer, socketSendBufferSize, true), 
         _readThread(0), _sendThread(0) { _isOpen.getAndSet(true);}

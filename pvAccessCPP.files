@@ -40,6 +40,8 @@ pvAccessApp/remote/simpleChannelSearchManagerImpl.cpp
 pvAccessApp/remote/simpleChannelSearchManagerImpl.h
 pvAccessApp/remote/transportRegistry.cpp
 pvAccessApp/remote/transportRegistry.h
+pvAccessApp/remote/codec.cpp
+pvAccessApp/remote/codec.h
 pvAccessApp/remoteClient/clientContextImpl.cpp
 pvAccessApp/remoteClient/clientContextImpl.h
 pvAccessApp/remoteClient/clientContextImpl.h.orig
@@ -101,6 +103,8 @@ testApp/remote/testNTImage.cpp
 testApp/remote/testRemoteClientImpl.cpp
 testApp/remote/testServer.cpp
 testApp/remote/testServerContext.cpp
+testApp/remote/testChannelAccess.cpp
+testApp/remote/testCodec.cpp
 testApp/utils/testAtomicBoolean.cpp
 testApp/utils/configurationTest.cpp
 testApp/utils/testHexDump.cpp
