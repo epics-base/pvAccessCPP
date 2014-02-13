@@ -6,7 +6,6 @@
 #define NOMINMAX
 #endif
 
-//testing
 
 #include <epicsExit.h>
 #include <epicsUnitTest.h>
@@ -25,13 +24,7 @@ namespace epics {
     class PVAMessage {
 
     public:
-
-      int8_t _version;
-      int8_t _flags;
-      int8_t _command;
-      int32_t _payloadSize;  
-      std::tr1::shared_ptr<epics::pvData::ByteBuffer> _payload;
-
+     
       PVAMessage(int8_t version, 
         int8_t flags, 
         int8_t command, 
@@ -41,6 +34,12 @@ namespace epics {
           _command = command;
           _payloadSize = payloadSize;
       } 
+
+      int8_t _version;
+      int8_t _flags;
+      int8_t _command;
+      int32_t _payloadSize;  
+      std::tr1::shared_ptr<epics::pvData::ByteBuffer> _payload;
 
       //memberwise copy constructor/assigment operator 
       //provided by the compiler
@@ -67,7 +66,12 @@ namespace epics {
         std::size_t receiveBufferSize, 
         std::size_t sendBufferSize, 
         bool blocking = false):
-      _closedCount(0),
+        AbstractCodec(
+         std::tr1::shared_ptr<epics::pvData::ByteBuffer>(new ByteBuffer(receiveBufferSize)), 
+         std::tr1::shared_ptr<epics::pvData::ByteBuffer>(new ByteBuffer(sendBufferSize)), 
+          sendBufferSize/10, 
+          blocking ),
+        _closedCount(0),
         _invalidDataStreamCount(0),
         _scheduleSendCount(0),
         _sendCompletedCount(0),
@@ -79,12 +83,8 @@ namespace epics {
         _disconnected(false),
         _forcePayloadRead(-1),
         _readBuffer(new ByteBuffer(receiveBufferSize)),
-        _writeBuffer(sendBufferSize),
-        AbstractCodec(
-        new ByteBuffer(receiveBufferSize), 
-        new ByteBuffer(sendBufferSize), 
-        sendBufferSize/10, 
-        blocking ) {
+        _writeBuffer(sendBufferSize)
+       {
       }
 
 
@@ -253,6 +253,7 @@ namespace epics {
 
 
       void endBlockedProcessSendQueue() {
+        //TODO not thread safe  
         _blockingProcessQueue = false;
         _sendQueue.wakeup();
       }
@@ -266,14 +267,14 @@ namespace epics {
 
       WriteMode getWriteMode() { return _writeMode;}
 
-      std::auto_ptr<ByteBuffer> & getSendBuffer() 
+      std::tr1::shared_ptr<ByteBuffer>  getSendBuffer() 
       {
         return _sendBuffer;
       }
 
       osiSockAddr getLastReadBufferSocketAddress() 
       { 
-        osiSockAddr tmp = {0}; 
+        osiSockAddr tmp = {{0}}; 
         return tmp; 
       }
 

@@ -280,8 +280,8 @@ namespace epics {
       static const std::size_t MAX_ENSURE_DATA_BUFFER_SIZE;
 
       AbstractCodec(
-        epics::pvData::ByteBuffer *receiveBuffer, 
-        epics::pvData::ByteBuffer *sendBuffer,
+        std::tr1::shared_ptr<epics::pvData::ByteBuffer> receiveBuffer, 
+        std::tr1::shared_ptr<epics::pvData::ByteBuffer> sendBuffer,
         int32_t socketSendBufferSize, 
         bool blockingProcessQueue); 
 
@@ -354,8 +354,8 @@ namespace epics {
       bool _writeOpReady;
       bool _lowLatency;
 
-      std::auto_ptr<epics::pvData::ByteBuffer> _socketBuffer;
-      std::auto_ptr<epics::pvData::ByteBuffer> _sendBuffer;
+      std::tr1::shared_ptr<epics::pvData::ByteBuffer> _socketBuffer;
+      std::tr1::shared_ptr<epics::pvData::ByteBuffer> _sendBuffer;
 
       epics::pvAccess::queue<TransportSender::shared_pointer > _sendQueue;
 
@@ -385,15 +385,17 @@ namespace epics {
     };
 
 
-    class BlockingAbstractCodec: public AbstractCodec  {
+    class BlockingAbstractCodec: 
+      public AbstractCodec,
+      public std::tr1::enable_shared_from_this<BlockingAbstractCodec>   {
 
     public: 
 
       POINTER_DEFINITIONS(BlockingAbstractCodec);
 
-      BlockingAbstractCodec( 
-        epics::pvData::ByteBuffer  *receiveBuffer, 
-        epics::pvData::ByteBuffer  *sendBuffer,
+      BlockingAbstractCodec(
+        std::tr1::shared_ptr<epics::pvData::ByteBuffer> receiveBuffer,
+        std::tr1::shared_ptr<epics::pvData::ByteBuffer> sendBuffer,
         int32_t socketSendBufferSize): 
       AbstractCodec(receiveBuffer, sendBuffer, socketSendBufferSize, true), 
         _readThread(0), _sendThread(0) { _isOpen.getAndSet(true);}
@@ -448,8 +450,9 @@ namespace epics {
 
 
     class  BlockingTCPTransportCodec :
-      public BlockingSocketAbstractCodec,
-      public std::tr1::enable_shared_from_this<BlockingTCPTransportCodec> {
+      public BlockingSocketAbstractCodec
+    
+    {      
 
     public:
 
