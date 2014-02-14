@@ -58,7 +58,7 @@ kill $!
 ###########################################
 # Create distribution
 
-tar --exclude=test* -czf pvAccess.CB-dist.tar.gz bin lib include
+tar --exclude=test* -czf pvAccess.CB-dist.tar.gz bin lib include dbd
 
 ###########################################
 # Publish documentation
