@@ -194,19 +194,24 @@ namespace epics {
             _storedLimit = _socketBuffer->getLimit();
             _socketBuffer->setLimit(std::min<std::size_t>
               (_storedPosition + _storedPayloadSize, _storedLimit));
+            bool postProcess = true;
             try
             {
               // handle response	
               processApplicationMessage();
-
+              postProcess = false;  
               postProcessApplicationMessage();
             }
             catch(...)   //finally
             {
-                if (!isOpen())
-                  return;
-
-                postProcessApplicationMessage();
+                if (postProcess)
+                {
+                    if (!isOpen())
+                      return;
+                  
+                    postProcessApplicationMessage();
+                }
+                
                 throw;
             }
           }
@@ -891,7 +896,6 @@ namespace epics {
         "AbstractCodec::processSendQueue enter:  (threadId: %u)", 
         epicsThreadGetIdSelf());
 
-      try
       {
         std::size_t senderProcessed = 0;
         while (senderProcessed++ < MAX_MESSAGE_SEND)
@@ -919,11 +923,6 @@ namespace epics {
 
           processSender(sender);
         }
-      }
-      //TODO MATEJ CHECK
-      //InterruptedException ie
-      catch (...) {
-        // noop, allowed and expected in blocking
       }
 
       // flush

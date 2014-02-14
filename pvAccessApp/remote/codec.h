@@ -126,7 +126,7 @@ namespace epics {
 
         {
           epics::pvData::Lock lock(_queueMutex);
-          _queue.push_front(elem);
+          _queue.push_back(elem);
         }
 
         _queueEvent.signal();
