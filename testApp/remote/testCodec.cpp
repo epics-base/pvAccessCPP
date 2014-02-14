@@ -397,7 +397,7 @@ namespace epics {
     public:
 
       int runAllTest() {
-        testPlan(5884);
+        testPlan(5882);
         testHeaderProcess(); 
         testInvalidHeaderMagic();
         testInvalidHeaderSegmentedInNormal();

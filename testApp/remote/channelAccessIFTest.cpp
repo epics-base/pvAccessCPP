@@ -415,7 +415,7 @@ void ChannelAccessIFTest::test_channel() {
   testOk(channel->getConnectionState() == Channel::DESTROYED , 
       "%s: channel connection state DESTROYED ", CURRENT_FUNCTION);
 
-/*  testDiag("%s: destroying the channel yet again", CURRENT_FUNCTION); 
+  testDiag("%s: destroying the channel yet again", CURRENT_FUNCTION); 
   channel->destroy();
 
   succStatus = channelReq->waitUntilStateChange(getTimeoutSec());
@@ -432,7 +432,6 @@ void ChannelAccessIFTest::test_channel() {
   testOk(!channel->isConnected(), "%s: yet again destroyed channel should not be connected ", CURRENT_FUNCTION);
   testOk(channel->getConnectionState() == Channel::DESTROYED , 
       "%s: yet again destroyed channel connection state DESTROYED ", CURRENT_FUNCTION);
-*/
 }
 
 
