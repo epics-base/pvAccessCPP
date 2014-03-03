@@ -24,15 +24,13 @@ static PVDataCreatePtr pvDataCreate = getPVDataCreate();
 class CreateRequestImpl : public CreateRequest {
 private:
 
-    static void trim(String& str)
+    static void removeBlanks(String& str)
     {
-        String::size_type pos = str.find_last_not_of(' ');
-        if(pos != String::npos) {
-            str.erase(pos + 1);
-            pos = str.find_first_not_of(' ');
-            if(pos != String::npos) str.erase(0, pos);
+        while(true) {
+            String::size_type pos = str.find_first_of(' ');
+            if(pos==String::npos) return;
+            str.erase(pos,1);
         }
-        else str.erase(str.begin(), str.end());
     }
 
     static size_t findMatchingBrace(String& request, size_t index, int numOpen) {
@@ -73,7 +71,7 @@ private:
         PVStructurePtr const & pvParent,
         String request)
     {
-        trim(request);
+        removeBlanks(request);
         if(request.length()<=1) return true;
         std::vector<String> items = split(request);
         size_t nitems = items.size();
@@ -107,7 +105,7 @@ private:
         static PVFieldPtrArray emptyFields;
         static StringArray emptyFieldNames;
 
-        trim(request);
+        removeBlanks(request);
         if(request.length()<=0) return true;
         size_t comma = request.find(',');
         if(comma==0) {
@@ -208,7 +206,7 @@ public:
         PVStructurePtr emptyPVStructure = pvDataCreate->createPVStructure(fieldNames,pvFields);
         static PVStructure::shared_pointer nullStructure;
 
-        if (!request.empty()) trim(request);
+        if (!request.empty()) removeBlanks(request);
         if (request.empty())
         {
             return emptyPVStructure;
