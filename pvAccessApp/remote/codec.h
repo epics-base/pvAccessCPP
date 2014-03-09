@@ -648,7 +648,7 @@ namespace epics {
         ): 
       BlockingSocketAbstractCodec(channel, sendBufferSize, receiveBufferSize), 
         _context(context), _responseHandler(responseHandler), 
-        _verified(false), _remoteTransportReceiveBufferSize(MAX_TCP_RECV),
+        _remoteTransportReceiveBufferSize(MAX_TCP_RECV),
         _remoteTransportRevision(0), _priority(priority)  
       { 
         LOG(logLevelTrace, 
@@ -656,22 +656,18 @@ namespace epics {
           epicsThreadGetIdSelf());
       }
 
-
-    private:
-
       Context::shared_pointer _context;
-      std::auto_ptr<ResponseHandler> _responseHandler;
-      bool _verified;
-      size_t _remoteTransportReceiveBufferSize;
-      epics::pvData::int8 _remoteTransportRevision;
-      epics::pvData::int16 _priority;
 
       osiSockAddr _socketAddress;
-      epics::pvData::Mutex _verifiedMutex;
-      epics::pvData::Event _verifiedEvent;
       IntrospectionRegistry _incomingIR;
       IntrospectionRegistry _outgoingIR;
 
+    private:
+
+      std::auto_ptr<ResponseHandler> _responseHandler;
+      size_t _remoteTransportReceiveBufferSize;
+      epics::pvData::int8 _remoteTransportRevision;
+      epics::pvData::int16 _priority;
     };
 
 
@@ -757,14 +753,6 @@ namespace epics {
         // noop
       }
 
-      void acquire() {
-        // noop, since does not make sence on itself
-      }
-
-      void release() {
-        // noop, since does not make sence on itself
-      }
-
       bool verify(epics::pvData::int32 timeoutMs) {
 
         LOG(logLevelTrace, 
@@ -806,6 +794,140 @@ namespace epics {
       epics::pvData::Mutex _channelsMutex;
 
     };
+    
+    class BlockingClientTCPTransportCodec :
+      public BlockingTCPTransportCodec,
+      public TransportSender,
+      public epics::pvData::TimerCallback {
+
+    public:
+      POINTER_DEFINITIONS(BlockingClientTCPTransportCodec);
+
+    protected:
+      BlockingClientTCPTransportCodec(
+        Context::shared_pointer const & context,
+        SOCKET channel,
+        std::auto_ptr<ResponseHandler>& responseHandler,
+        int32_t sendBufferSize, 
+        int32_t receiveBufferSize,
+        TransportClient::shared_pointer const & client,
+        epics::pvData::int8 remoteTransportRevision,
+        float beaconInterval,
+        int16_t priority );
+
+    public:
+      static shared_pointer create(
+        Context::shared_pointer const & context,
+        SOCKET channel,
+        std::auto_ptr<ResponseHandler>& responseHandler,
+        int32_t sendBufferSize, 
+        int32_t receiveBufferSize,
+        TransportClient::shared_pointer const & client,
+        int8_t remoteTransportRevision,
+        float beaconInterval,
+        int16_t priority )
+      {
+        shared_pointer thisPointer(
+          new BlockingClientTCPTransportCodec(
+            context, channel, responseHandler,
+            sendBufferSize, receiveBufferSize,
+            client, remoteTransportRevision,
+            beaconInterval, priority)
+          );
+        thisPointer->activate();
+        return thisPointer;
+      }
+
+    public:
+
+      void start();
+    
+      virtual ~BlockingClientTCPTransportCodec();
+    
+      virtual void timerStopped() {
+        // noop
+      }
+    
+      virtual void callback();
+    
+      bool acquire(TransportClient::shared_pointer const & client);
+
+      void release(pvAccessID clientId);
+    
+      void changedTransport();
+    
+      void lock() {
+        // noop
+      }
+    
+      void unlock() {
+        // noop
+      }
+    
+      bool verify(epics::pvData::int32 timeoutMs);
+
+      void verified();
+
+      void aliveNotification();
+
+      void send(epics::pvData::ByteBuffer* buffer,
+        TransportSendControl* control);
+    
+    protected:
+    
+      virtual void internalClose(bool force);
+      virtual void internalPostClose(bool force);
+    
+    private:
+    
+      /**
+       * Owners (users) of the transport.
+       */
+      // TODO consider using TR1 hash map
+      typedef std::map<pvAccessID, TransportClient::weak_pointer> TransportClientMap_t;
+      TransportClientMap_t _owners;
+    
+      /**
+       * Connection timeout (no-traffic) flag.
+       */
+      double _connectionTimeout;
+    
+      /**
+       * Unresponsive transport flag.
+       */
+      bool _unresponsiveTransport;
+    
+      /**
+       * Timestamp of last "live" event on this transport.
+       */
+      epicsTimeStamp _aliveTimestamp;
+    
+      bool _verifyOrEcho;
+    
+      /**
+       * Unresponsive transport notify.
+       */
+      void unresponsiveTransport();
+    
+      /**
+       * Notifies clients about disconnect.
+       */
+      void closedNotifyClients();
+    
+      /**
+       * Responsive transport notify.
+       */
+      void responsiveTransport();
+      
+      
+      epics::pvData::Mutex _mutex;
+
+      bool _verified;   
+      epics::pvData::Mutex _verifiedMutex;
+      epics::pvData::Event _verifiedEvent;
+      
+    };
+    
   }
 }
 
