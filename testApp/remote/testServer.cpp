@@ -354,6 +354,18 @@ static epics::pvData::PVStructure::shared_pointer createNTAggregate()
     return getPVDataCreate()->createPVStructure(s);
 }
 
+static epics::pvData::PVStructure::shared_pointer createNTHistogram()
+{
+    epics::pvData::StructureConstPtr s =
+        getFieldCreate()->createFieldBuilder()->
+            setId("uri:ev4:nt/2012/pwd:NTHistogram")->
+            addArray("ranges", pvDouble)->
+            addArray("value", pvInt)->
+            add("timeStamp", getStandardField()->timeStamp())->
+            createStructure();
+
+    return getPVDataCreate()->createPVStructure(s);
+}
 
 static void generateNTTableDoubleValues(epics::pvData::PVStructure::shared_pointer result)
 {
@@ -438,11 +450,37 @@ static void generateNTAggregateValues(epics::pvData::PVStructure::shared_pointer
     result->getSubField<PVDouble>("last")->put(values[N-1]);
     result->getSubField<PVDouble>("dispersion")->put(stddev);
     result->getSubField<PVLong>("N")->put(N);
-#undef ROWS
+#undef N
 
     setTimeStamp(result->getStructureField("lastTimeStamp"));
 }
 
+
+static void generateNTHistogramValues(epics::pvData::PVStructure::shared_pointer result)
+{
+
+#define N 100
+    {
+        PVDoubleArray::shared_pointer arr = result->getSubField<PVDoubleArray>("ranges");
+        PVDoubleArray::svector temp(arr->reuse());
+        temp.resize(N+1);
+        for (size_t i = 0; i < (N+1); i++)
+            temp[i] = i*10;
+        arr->replace(freeze(temp));
+    }
+    
+    {
+        PVIntArray::shared_pointer arr = result->getSubField<PVIntArray>("value");
+        PVIntArray::svector temp(arr->reuse());
+        temp.resize(N);
+        for (size_t i = 0; i < N; i++)
+            temp[i] = (int32)((rand()/((double)RAND_MAX+1))*1000);
+        arr->replace(freeze(temp));
+    }
+#undef N
+
+    setTimeStamp(result->getStructureField("timeStamp"));
+}
 
 class ChannelFindRequesterImpl : public ChannelFindRequester
 {
@@ -751,6 +789,10 @@ public:
             else if (m_pvStructure->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTAggregate")
             {
                 generateNTAggregateValues(m_pvStructure);
+            }
+            else if (m_pvStructure->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTHistogram")
+            {
+                generateNTHistogramValues(m_pvStructure);
             }
             else if (m_valueField.get())
             {
@@ -2000,6 +2042,11 @@ protected:
                 m_pvStructure = createNTAggregate();
                 generateNTAggregateValues(m_pvStructure);
             }
+            else if (m_name.find("testHistogram") == 0)
+            {
+                m_pvStructure = createNTHistogram();
+                generateNTHistogramValues(m_pvStructure);
+            }
             else if (m_name.find("testADC") == 0)
             {
                 int i = 0;
@@ -2335,6 +2382,10 @@ public:
         m_scan1Hz.toProcess.push_back(process);
 
         c = MockChannel::create(chProviderPtr, cr, "testAggregate", "local");
+        process = c->createChannelProcess(cpr, PVStructure::shared_pointer());
+        m_scan1Hz.toProcess.push_back(process);
+
+        c = MockChannel::create(chProviderPtr, cr, "testHistogram", "local");
         process = c->createChannelProcess(cpr, PVStructure::shared_pointer());
         m_scan1Hz.toProcess.push_back(process);
 
