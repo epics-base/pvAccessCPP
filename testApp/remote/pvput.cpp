@@ -60,6 +60,44 @@ size_t fromString(PVScalarArrayPtr const &pv, StringArray const & from, size_t f
     return processed;
 }
 
+size_t fromString(PVStructurePtr const & pvStructure, StringArray const & from, size_t fromStartIndex);
+
+size_t fromString(PVStructureArrayPtr const &pv, StringArray const & from, size_t fromStartIndex = 0)
+{
+	int processed = 0;
+	size_t fromValueCount = from.size();
+
+	// first get count
+	if (fromStartIndex >= fromValueCount)
+		throw std::runtime_error("not enough of values");
+
+	size_t numberOfStructures;
+	istringstream iss(from[fromStartIndex]);
+	iss >> numberOfStructures;
+	// not fail and entire value is parsed (e.g. to detect 1.2 parsing to 1)
+	if (iss.fail() || !iss.eof())
+    	throw runtime_error("failed to parse element count value (uint) of field '" + pv->getFieldName() + "' from string value '" + from[fromStartIndex] + "'");
+	fromStartIndex++;
+	processed++;
+
+    PVStructureArray::svector pvStructures;
+    pvStructures.reserve(numberOfStructures);
+
+    PVDataCreatePtr pvDataCreate = getPVDataCreate();
+    for (size_t i = 0; i < numberOfStructures; ++i)
+    {
+        PVStructurePtr pvStructure = pvDataCreate->createPVStructure(pv->getStructureArray()->getStructure());
+        size_t count = fromString(pvStructure, from, fromStartIndex);
+        processed += count;
+        fromStartIndex += count;
+        pvStructures.push_back(pvStructure);
+    }
+
+    pv->replace(freeze(pvStructures));
+
+    return processed;
+}
+
 size_t fromString(PVStructurePtr const & pvStructure, StringArray const & from, size_t fromStartIndex = 0)
 {
     size_t processed = 0;
@@ -96,8 +134,14 @@ size_t fromString(PVStructurePtr const & pvStructure, StringArray const & from, 
                     getConvert()->fromString(pv, from[fromStartIndex++]);
                     processed++;
                 }
+                else if(type==structureArray) {
+                    PVStructureArrayPtr pv = static_pointer_cast<PVStructureArray>(fieldField);
+                    size_t count = fromString(pv, from, fromStartIndex);
+                    processed += count;
+                    fromStartIndex += count;
+                }
                 else {
-                    // structureArray not supported
+                    // union/unionArray not supported
                     String message("fromString unsupported fieldType ");
                     TypeFunc::toString(&message,type);
                     throw std::logic_error(message);
