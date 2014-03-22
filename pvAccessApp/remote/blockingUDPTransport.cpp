@@ -56,8 +56,8 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             // set receive timeout so that we do not have problems at shutdown (recvfrom would block)
             struct timeval timeout;
             memset(&timeout, 0, sizeof(struct timeval));
-            timeout.tv_sec = 0;
-            timeout.tv_usec = 100000; // 100ms TODO tune this
+            timeout.tv_sec = 1;
+            timeout.tv_usec = 0; 
 
             if (unlikely(::setsockopt (_channel, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0))
             {
@@ -106,11 +106,32 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 LOG(logLevelDebug,
                     "UDP socket %s closed.",
                     inetAddressToString(_bindAddress).c_str());
-    
-                // TODO should I wait thread to complete first and then destroy
-                // on some OSes (Darwin) this also exits rcvfrom() and speeds up shutdown
+
+        epicsSocketSystemCallInterruptMechanismQueryInfo info  =
+            epicsSocketSystemCallInterruptMechanismQuery ();
+        switch ( info ) {
+        case esscimqi_socketCloseRequired:
+            epicsSocketDestroy ( _channel );
+            break;
+        case esscimqi_socketBothShutdownRequired:
+            {
+                int status = ::shutdown ( _channel, SHUT_RDWR );
+                if ( status ) {
+                    char sockErrBuf[64];
+                    epicsSocketConvertErrnoToString (
+                        sockErrBuf, sizeof ( sockErrBuf ) );
+                LOG(logLevelDebug,
+                    "UDP socket %s failed to shutdown: %s.",
+                    inetAddressToString(_bindAddress).c_str(), sockErrBuf);
+                }
+            }
+            break;
+        case esscimqi_socketSigAlarmRequired:
+            // TODO (not supported anymore anyway)
+        default:
                 epicsSocketDestroy(_channel);
             }
+}
             
             // TODO send yourself a packet
             
