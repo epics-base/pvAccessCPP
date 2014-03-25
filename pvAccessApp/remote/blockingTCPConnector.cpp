@@ -8,6 +8,7 @@
 #include <pv/remote.h>
 #include <pv/namedLockPattern.h>
 #include <pv/logger.h>
+#include <pv/codec.h>
 
 #include <epicsThread.h>
 #include <osiSock.h>
@@ -78,8 +79,7 @@ namespace epics {
             Context::shared_pointer context = _context.lock();
 
             // first try to check cache w/o named lock...
-            Transport::shared_pointer tt = context->getTransportRegistry()->get("TCP", &address, priority);
-            BlockingClientTCPTransport::shared_pointer transport = std::tr1::static_pointer_cast<BlockingClientTCPTransport>(tt);
+            Transport::shared_pointer transport = context->getTransportRegistry()->get("TCP", &address, priority);
             if(transport.get()) {
                 LOG(logLevelDebug,
                     "Reusing existing connection to PVA server: %s",
@@ -92,8 +92,7 @@ namespace epics {
             if(lockAcquired) {
                 try {
                     // ... transport created during waiting in lock
-                    tt = context->getTransportRegistry()->get("TCP", &address, priority);
-                    transport = std::tr1::static_pointer_cast<BlockingClientTCPTransport>(tt);
+                    transport = context->getTransportRegistry()->get("TCP", &address, priority);
                     if(transport.get()) {
                         LOG(logLevelDebug,
                             "Reusing existing connection to PVA server: %s",
@@ -141,8 +140,18 @@ namespace epics {
 
                     // create transport
                     // TODO introduce factory
-                    transport = BlockingClientTCPTransport::create(
-                                            context, socket, responseHandler, _receiveBufferSize,
+                    // get TCP send buffer size
+                    osiSocklen_t intLen = sizeof(int);
+                    int _socketSendBufferSize;
+                    retval = getsockopt(socket, SOL_SOCKET, SO_SNDBUF, (char *)&_socketSendBufferSize, &intLen);
+                    if(retval<0) {
+                        char strBuffer[64];
+                        epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
+                        LOG(logLevelDebug, "Error getting SO_SNDBUF: %s", strBuffer);
+                    }
+
+                    transport = BlockingClientTCPTransportCodec::create(
+                                            context, socket, responseHandler, _receiveBufferSize, _socketSendBufferSize,
                                             client, transportRevision, _beaconInterval, priority);
 
                     // verify
