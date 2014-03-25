@@ -124,6 +124,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                     "UDP socket %s failed to shutdown: %s.",
                     inetAddressToString(_bindAddress).c_str(), sockErrBuf);
                 }
+                epicsSocketDestroy ( _channel );
             }
             break;
         case esscimqi_socketSigAlarmRequired:

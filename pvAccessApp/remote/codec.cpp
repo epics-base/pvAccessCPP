@@ -54,7 +54,7 @@ namespace epics {
       //PRIVATE
       _storedPayloadSize(0), _storedPosition(0), _startPosition(0), 
       _maxSendPayloadSize(0), 
-      _lastMessageStartPosition(0),_lastSegmentedMessageType(0), 
+      _lastMessageStartPosition(std::numeric_limits<size_t>::max()),_lastSegmentedMessageType(0),
       _lastSegmentedMessageCommand(0), _nextMessagePayloadOffset(0), 
       _byteOrderFlag(EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00),
       _socketSendBufferSize(0)
@@ -345,6 +345,10 @@ namespace epics {
         // do we already have requiredBytes available?
         std::size_t remainingBytes = _socketBuffer->getRemaining();
         if (remainingBytes >= requiredBytes) {
+            LOG(logLevelTrace,
+              "AbstractCodec::readToBuffer requiredBytes: %u"
+              " <= remainingBytes: %d (threadId: %u)",
+              requiredBytes, remainingBytes);
           return true;
         }
 
@@ -384,7 +388,7 @@ namespace epics {
           {
             
             LOG(logLevelTrace, 
-             "AbstractCodec::before close  (threadId: %u)", 
+             "AbstractCodec::before close on bytesRead < 0 condition (threadId: %u)",
              epicsThreadGetIdSelf());
 
             close();
@@ -689,6 +693,7 @@ namespace epics {
           if (_lastSegmentedMessageType == 0)
           {
             std::size_t flagsPosition = _lastMessageStartPosition + 2;
+            std::cout << "peek at " << flagsPosition << " " << _lastMessageStartPosition << std::endl;
             epics::pvData::int8 type = _sendBuffer->getByte(flagsPosition);
             // set first segment bit
             _sendBuffer->putByte(flagsPosition, (type | 0x10));
@@ -759,7 +764,7 @@ namespace epics {
         flush(false);
     }
 
-
+    // assumes startMessage was called (or header is in place), because endMessage(true) is later called that peeks and sets _lastSegmentedMessageType
     void AbstractCodec::flushSerializeBuffer() {
 
       LOG(logLevelTrace, 
@@ -1120,7 +1125,7 @@ namespace epics {
 
     bool BlockingAbstractCodec::isOpen() {
 
-      LOG(logLevelTrace, "BlockingAbstractCodec::isOpen enter: (threadId: %u)", 
+      LOG(logLevelTrace, "BlockingAbstractCodec::isOpen %d (threadId: %u)", _isOpen.get(),
         epicsThreadGetIdSelf());
 
       return _isOpen.get();
@@ -1182,6 +1187,8 @@ namespace epics {
         " EXIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIT:    (threadId: %u)", 
         epicsThreadGetIdSelf());
 
+      bac->_shutdownEvent.signal();
+
     }
 
 
@@ -1215,9 +1222,7 @@ namespace epics {
 
 
       // wait read thread to die
-      //TODO epics join thread
-      //readThread.join();		// TODO timeout
-      //bac->_shutdownEvent.signal();
+      bac->_shutdownEvent.wait();
 
       // call internal destroy
       LOG(logLevelTrace, "XXXXXXXXXXXXXXXXXXXXXXXXXXXX"

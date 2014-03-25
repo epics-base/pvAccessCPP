@@ -813,7 +813,7 @@ namespace epics {
         TransportClient::shared_pointer const & client,
         epics::pvData::int8 remoteTransportRevision,
         float beaconInterval,
-        int16_t priority );
+        int16_t priority);
 
     public:
       static shared_pointer create(

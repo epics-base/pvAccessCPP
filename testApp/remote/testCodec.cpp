@@ -3004,6 +3004,11 @@ namespace epics {
         void send(epics::pvData::ByteBuffer* buffer, 
           TransportSendControl* control)
         {
+          // after connection_closed_exception is thrown codec is no longer valid,
+          // however we want to do some tests and in order for memory checkers not to complain
+          // the following step is needed
+          memset((void*)buffer->getBuffer(), 0, buffer->getSize());
+
           throw connection_closed_exception(
             "expected test exception");
         }

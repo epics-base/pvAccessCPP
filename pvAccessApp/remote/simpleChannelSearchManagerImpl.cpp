@@ -107,13 +107,20 @@ void SimpleChannelSearchManagerImpl::registerSearchInstance(SearchInstance::shar
 	if (m_canceled.get())
 		return;
 
-	Lock guard(m_channelMutex);
-	//overrides if already registered
-	m_channels[channel->getSearchInstanceID()] = channel;
-	
-	Lock guard2(m_userValueMutex);
-	int32_t& userValue = channel->getUserValue();
-	userValue = 1;
+        bool immediateTrigger;
+        { 
+	    Lock guard(m_channelMutex);
+	    //overrides if already registered
+	    m_channels[channel->getSearchInstanceID()] = channel;
+	    immediateTrigger = m_channels.size() == 1;
+
+	    Lock guard2(m_userValueMutex);
+	    int32_t& userValue = channel->getUserValue();
+	    userValue = 1;
+        }
+
+       if (immediateTrigger)
+           callback(); 
 }
 
 void SimpleChannelSearchManagerImpl::unregisterSearchInstance(SearchInstance::shared_pointer const & channel)
