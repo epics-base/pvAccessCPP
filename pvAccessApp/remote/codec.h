@@ -441,7 +441,6 @@ namespace epics {
 
       void internalDestroy();
 
-    private:
       SOCKET _channel;
       osiSockAddr _socketAddress;
     };
@@ -658,7 +657,6 @@ namespace epics {
 
       Context::shared_pointer _context;
 
-      osiSockAddr _socketAddress;
       IntrospectionRegistry _incomingIR;
       IntrospectionRegistry _outgoingIR;
 

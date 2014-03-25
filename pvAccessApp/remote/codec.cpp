@@ -693,7 +693,6 @@ namespace epics {
           if (_lastSegmentedMessageType == 0)
           {
             std::size_t flagsPosition = _lastMessageStartPosition + 2;
-            std::cout << "peek at " << flagsPosition << " " << _lastMessageStartPosition << std::endl;
             epics::pvData::int8 type = _sendBuffer->getByte(flagsPosition);
             // set first segment bit
             _sendBuffer->putByte(flagsPosition, (type | 0x10));
@@ -1273,7 +1272,6 @@ namespace epics {
       & (~(PVA_ALIGNMENT - 1)))), sendBufferSize), 
       _channel(channel) 
     {
-
       // get remote address
       osiSocklen_t saSize = sizeof(sockaddr);
       int retval = getpeername(_channel, &(_socketAddress.sa), &saSize);
