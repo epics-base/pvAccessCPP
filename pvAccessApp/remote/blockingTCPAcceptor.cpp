@@ -191,15 +191,12 @@ namespace pvAccess {
                         LOG(logLevelDebug, "Error getting SO_SNDBUF: %s", strBuffer);
                     }
 
-
                     /**
                      * Create transport, it registers itself to the registry.
-                     * Each transport should have its own response handler since it is not "shareable"
                      */
-                     // TODO it is shareable?!!! but code is not adopted to it...
                     std::auto_ptr<ResponseHandler> responseHandler = _responseHandlerFactory->createResponseHandler();
-                    BlockingServerTCPTransportCodec::shared_pointer transport = 
-                                    BlockingServerTCPTransportCodec::create(
+                    detail::BlockingServerTCPTransportCodec::shared_pointer transport =
+                                    detail::BlockingServerTCPTransportCodec::create(
                                             _context,
                                             newClient,
                                             responseHandler,

@@ -150,7 +150,7 @@ namespace epics {
                         LOG(logLevelDebug, "Error getting SO_SNDBUF: %s", strBuffer);
                     }
 
-                    transport = BlockingClientTCPTransportCodec::create(
+                    transport = detail::BlockingClientTCPTransportCodec::create(
                                             context, socket, responseHandler, _receiveBufferSize, _socketSendBufferSize,
                                             client, transportRevision, _beaconInterval, priority);
 

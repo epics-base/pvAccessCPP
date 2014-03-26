@@ -28,7 +28,6 @@
 #include <pv/timer.h>
 #include <pv/event.h>
 #include <pv/likely.h>
-#include <pv/logger.h>
 
 #ifdef abstractCodecEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
@@ -44,6 +43,7 @@
 
 namespace epics {
   namespace pvAccess {
+    namespace detail {
 
     // TODO replace mutex with atomic (CAS) operations
     template<typename T> 
@@ -80,24 +80,17 @@ namespace epics {
       */
       ~queue(void) 
       {    
-        LOG(logLevelTrace, 
-          "queue::~queue DESTROY  (threadId: %u)", epicsThreadGetIdSelf());
       }
 
 
       bool empty(void) 
       { 
-        LOG(logLevelTrace, 
-          "queue::empty enter:  (threadId: %u)", epicsThreadGetIdSelf());
         epics::pvData::Lock lock(_queueMutex);
         return _queue.empty();
       }
 
       void clean()
       { 
-        LOG(logLevelTrace, "queue::clean enter:  (threadId: %u)", 
-          epicsThreadGetIdSelf());
-
         epics::pvData::Lock lock(_queueMutex);
         _queue.clear();
       }
@@ -105,15 +98,8 @@ namespace epics {
 
       void wakeup() 
       { 
-
-        LOG(logLevelTrace, "queue::wakeup enter:  (threadId: %u)", 
-          epicsThreadGetIdSelf());
-
         if (!_wakeup.getAndSet(true))
         {
-          LOG(logLevelTrace, 
-            "queue::wakeup signaling on _queueEvent:  (threadId: %u)", 
-            epicsThreadGetIdSelf());
           _queueEvent.signal();
         }
       }
@@ -121,9 +107,6 @@ namespace epics {
 
       void put(T const & elem) 
       { 
-        LOG(logLevelTrace, 
-          "queue::put enter  (threadId: %u)", epicsThreadGetIdSelf());
-
         {
           epics::pvData::Lock lock(_queueMutex);
           _queue.push_back(elem);
@@ -135,11 +118,6 @@ namespace epics {
 
       T take(int timeOut) 
       { 
-
-        LOG(logLevelTrace, 
-          "queue::take enter timeOut:%d  (threadId: %u)", 
-          timeOut, epicsThreadGetIdSelf());
-
         while (true)
         {
 
@@ -149,10 +127,6 @@ namespace epics {
           {
 
             if (timeOut < 0) {
-              epics::pvAccess::LOG(logLevelTrace, 
-                "queue::take exit timeOut:%d  (threadId: %u)", 
-                timeOut, epicsThreadGetIdSelf());
-
               return T();
             }
 
@@ -160,45 +134,21 @@ namespace epics {
             {
 
               if (timeOut == 0) {
-                
-                LOG(logLevelTrace, 
-                  "queue::take going to wait timeOut:%d  (threadId: %u)", 
-                  timeOut, epicsThreadGetIdSelf());
-
                 _queueEvent.wait();
               }
               else {
-                
-                LOG(logLevelTrace, 
-                  "queue::take going to wait timeOut:%d  (threadId: %u)", 
-                  timeOut, epicsThreadGetIdSelf());
-
                 _queueEvent.wait(timeOut);
               }
-
-              LOG(logLevelTrace, 
-                "queue::take waking up timeOut:%d  (threadId: %u)", 
-                timeOut, epicsThreadGetIdSelf());
 
               isEmpty = empty();
               if (isEmpty)
               {
                 if (timeOut > 0) {	// TODO spurious wakeup, but not critical
-                  LOG(logLevelTrace, 
-                    "queue::take exit after being woken up timeOut:%d"
-                    "  (threadId: %u)", 
-                    timeOut, epicsThreadGetIdSelf());
                   return T();
                 }
                 else // if (timeout == 0)	cannot be negative
                 {
                   if (_wakeup.getAndSet(false)) {
-                    
-                    LOG(logLevelTrace, 
-                      "queue::take exit after being woken up timeOut:%d"
-                      "  (threadId: %u)", 
-                      timeOut, epicsThreadGetIdSelf());
-
                     return T();
                   }
                 }
@@ -207,20 +157,9 @@ namespace epics {
           }
           else
           {
-            
-            LOG(logLevelTrace, 
-              "queue::take obtaining lock for front element timeOut:%d"
-              "  (threadId: %u)", 
-              timeOut, epicsThreadGetIdSelf());
-
             epics::pvData::Lock lock(_queueMutex);
             T sender = _queue.front();
             _queue.pop_front();
-            
-            LOG(logLevelTrace, 
-              "queue::take exit with sender timeOut:%d  (threadId: %u)", 
-              timeOut, epicsThreadGetIdSelf());
-
             return sender;
           }
         }
@@ -296,9 +235,6 @@ namespace epics {
 
       virtual ~AbstractCodec()
       { 
-        LOG(logLevelTrace, 
-          "AbstractCodec::~AbstractCodec DESTROY  (threadId: %u)", 
-          epicsThreadGetIdSelf());
       }
 
       void alignBuffer(std::size_t alignment);
@@ -351,7 +287,7 @@ namespace epics {
       std::tr1::shared_ptr<epics::pvData::ByteBuffer> _socketBuffer;
       std::tr1::shared_ptr<epics::pvData::ByteBuffer> _sendBuffer;
 
-      epics::pvAccess::queue<TransportSender::shared_pointer> _sendQueue;
+      queue<TransportSender::shared_pointer> _sendQueue;
 
     private:
 
@@ -473,11 +409,6 @@ namespace epics {
 
 
       void internalDestroy()  {
-
-        LOG(logLevelTrace, 
-          "BlockingTCPTransportCodec::internalDestroy() enter: (threadId: %u)", 
-          epicsThreadGetIdSelf());
-
         BlockingSocketAbstractCodec::internalDestroy();
         Transport::shared_pointer thisSharedPtr = this->shared_from_this();
         _context->getTransportRegistry()->remove(thisSharedPtr);
@@ -488,12 +419,6 @@ namespace epics {
 
 
       void processControlMessage()  { 
-
-        LOG(logLevelTrace, 
-          "BlockingTCPTransportCodec::processControlMessage()"
-          "enter: (threadId: %u)", 
-          epicsThreadGetIdSelf());
-
         if (_command == 2)
         {
           // check 7-th bit
@@ -503,12 +428,6 @@ namespace epics {
 
 
       void processApplicationMessage()  {
-
-        LOG(logLevelTrace, 
-            "BlockingTCPTransportCodec::processApplicationMessage() enter:"
-            " (threadId: %u)", 
-          epicsThreadGetIdSelf());
-
         _responseHandler->handleResponse(&_socketAddress, shared_from_this(), 
           _version, _command, _payloadSize, _socketBuffer.get());
       }
@@ -535,37 +454,18 @@ namespace epics {
 
 
       void setRemoteRevision(epics::pvData::int8 revision)  {
-
-        LOG(logLevelTrace, 
-          "BlockingTCPTransportCodec::setRemoteRevision() enter:"
-          " revision: %d (threadId: %u)", 
-          revision, epicsThreadGetIdSelf());
-
         _remoteTransportRevision = revision;
       }
 
 
       void setRemoteTransportReceiveBufferSize(
         std::size_t remoteTransportReceiveBufferSize)  {
-
-        LOG(logLevelTrace,    
-          "BlockingTCPTransportCodec::setRemoteTransportReceiveBufferSize()"
-          " enter: remoteTransportReceiveBufferSize:%u (threadId: %u)", 
-          remoteTransportReceiveBufferSize, epicsThreadGetIdSelf());
-
         _remoteTransportReceiveBufferSize = remoteTransportReceiveBufferSize;
       }
 
 
       void setRemoteTransportSocketReceiveBufferSize(
         std::size_t socketReceiveBufferSize)  {
-
-        LOG(logLevelTrace, 
-          "BlockingTCPTransportCodec::"
-          "setRemoteTransportSocketReceiveBufferSize()"
-          "enter: socketReceiveBufferSize:%u (threadId: %u)", 
-          socketReceiveBufferSize, epicsThreadGetIdSelf());
-
         _remoteTransportSocketReceiveBufferSize = socketReceiveBufferSize;
       }
 
@@ -573,12 +473,6 @@ namespace epics {
       std::tr1::shared_ptr<const epics::pvData::Field>
         cachedDeserialize(epics::pvData::ByteBuffer* buffer) 
       {
-
-        LOG(logLevelTrace, 
-          "BlockingTCPTransportCodec::cachedDeserialize() enter:"
-          "  (threadId: %u)", 
-          epicsThreadGetIdSelf());
-
         return _incomingIR.deserialize(buffer, this);
       }
 
@@ -587,12 +481,6 @@ namespace epics {
         const std::tr1::shared_ptr<const epics::pvData::Field>& field, 
         epics::pvData::ByteBuffer* buffer) 
       {
-
-        LOG(logLevelTrace, 
-          "BlockingTCPTransportCodec::cachedSerialize() enter:"
-          " (threadId: %u)", 
-          epicsThreadGetIdSelf());
-
         _outgoingIR.serialize(field, buffer, this);
       }
 
@@ -602,11 +490,7 @@ namespace epics {
         const char* /*toSerialize*/,
         std::size_t /*elementCount*/, std::size_t /*elementSize*/)  
       {
-
-        LOG(logLevelTrace, 
-          "BlockingTCPTransportCodec::directSerialize() enter: (threadId: %u)", 
-          epicsThreadGetIdSelf());
-
+          // TODO !!!!
         return false;
       }
 
@@ -614,12 +498,7 @@ namespace epics {
       bool directDeserialize(epics::pvData::ByteBuffer * /*existingBuffer*/, 
         char* /*deserializeTo*/,
         std::size_t /*elementCount*/, std::size_t /*elementSize*/)  { 
-
-          LOG(logLevelTrace, 
-            "BlockingTCPTransportCodec::directDeserialize() enter:"
-            "  (threadId: %u)", 
-            epicsThreadGetIdSelf());
-
+          // TODO !!!
           return false;
       }
 
@@ -628,21 +507,11 @@ namespace epics {
 
 
       bool isClosed()  {
-
-        LOG(logLevelTrace, 
-          "BlockingTCPTransportCodec::isClosed() enter:  (threadId: %u)", 
-          epicsThreadGetIdSelf());
-
         return !isOpen();
       }
 
 
       void activate() {
-
-        LOG(logLevelTrace, 
-          "BlockingTCPTransportCodec::activate() enter:  (threadId: %u)", 
-          epicsThreadGetIdSelf());
-
         Transport::shared_pointer thisSharedPtr = shared_from_this();
         _context->getTransportRegistry()->put(thisSharedPtr);
         
@@ -664,9 +533,6 @@ namespace epics {
         _remoteTransportReceiveBufferSize(MAX_TCP_RECV),
         _remoteTransportRevision(0), _priority(priority)  
       { 
-        LOG(logLevelTrace, 
-          "BlockingTCPTransportCodec constructed:  (threadId: %u)", 
-          epicsThreadGetIdSelf());
       }
 
       Context::shared_pointer _context;
@@ -720,12 +586,6 @@ namespace epics {
 
       bool acquire(std::tr1::shared_ptr<TransportClient> const & client)
       {
-
-        LOG(logLevelTrace, 
-          "BlockingServerTCPTransportCodec::acquire() enter:"
-          " client is set: %d  (threadId: %u)", 
-          (client.get() != 0), epicsThreadGetIdSelf());
-
         return false;
       }
 
@@ -748,12 +608,6 @@ namespace epics {
       int getChannelCount();
 
       epics::pvData::PVField::shared_pointer getSecurityToken() {
-
-        LOG(logLevelTrace, 
-          "BlockingServerTCPTransportCodec::getSecurityToken() enter:"
-          "  (threadId: %u)", 
-          epicsThreadGetIdSelf());
-
         return epics::pvData::PVField::shared_pointer();
       }
 
@@ -766,12 +620,6 @@ namespace epics {
       }
 
       bool verify(epics::pvData::int32 timeoutMs) {
-
-        LOG(logLevelTrace, 
-          "BlockingServerTCPTransportCodec::verify() enter: "
-          "timeoutMs:%d  (threadId: %u)", 
-          timeoutMs, epicsThreadGetIdSelf());
-
         TransportSender::shared_pointer transportSender = 
           std::tr1::dynamic_pointer_cast<TransportSender>(shared_from_this());
         enqueueSendRequest(transportSender);
@@ -944,7 +792,8 @@ namespace epics {
       epics::pvData::Event _verifiedEvent;
       
     };
-    
+
+    }
   }
 }
 

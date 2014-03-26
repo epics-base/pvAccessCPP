@@ -21,7 +21,6 @@
 #include <stdexcept>
 #include <limits>
 
-
 #include <pv/codec.h>
 
 using namespace epics::pvData;
@@ -30,6 +29,7 @@ using namespace epics::pvAccess;
 
 namespace epics {
   namespace pvAccess {
+    namespace detail {
 
     const std::size_t AbstractCodec::MAX_MESSAGE_PROCESS = 100;
     const std::size_t AbstractCodec::MAX_MESSAGE_SEND = 100;
@@ -91,16 +91,10 @@ namespace epics {
         _sendBuffer->getSize() - 2*PVA_MESSAGE_HEADER_SIZE;	
       _socketSendBufferSize = socketSendBufferSize;
       _blockingProcessQueue = blockingProcessQueue;
-      LOG(logLevelTrace, "AbstractCodec constructed (threadId: %u)",
-        epicsThreadGetIdSelf());
     }
 
 
     void AbstractCodec::processRead() {
-
-      LOG(logLevelTrace, "AbstractCodec::processRead: enter (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
       switch (_readMode)
       {
       case NORMAL:
@@ -117,10 +111,6 @@ namespace epics {
 
 
     void AbstractCodec::processHeader() {
-
-      LOG(logLevelTrace, "AbstractCodec::processHeader enter (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
 
       // magic code
       int8_t magicCode = _socketBuffer->getByte();
@@ -152,10 +142,6 @@ namespace epics {
 
 
     void AbstractCodec::processReadNormal()  {
-
-      LOG(logLevelTrace, 
-        "AbstractCodec::processReadNormal enter (threadId: %u)", 
-        epicsThreadGetIdSelf());
 
       try
       {
@@ -286,10 +272,6 @@ namespace epics {
 
     void AbstractCodec::processReadSegmented() {
 
-      LOG(logLevelTrace, 
-        "AbstractCodec::processReadSegmented enter (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
       while (true)
       {
         // read as much as available, but at least for a header
@@ -335,18 +317,9 @@ namespace epics {
       std::size_t requiredBytes, 
       bool persistent)  {
 
-        LOG(logLevelTrace,
-          "AbstractCodec::readToBuffer enter requiredBytes: %u,"
-          " persistant: %d (threadId: %u)", 
-          requiredBytes, persistent, epicsThreadGetIdSelf());
-
         // do we already have requiredBytes available?
         std::size_t remainingBytes = _socketBuffer->getRemaining();
         if (remainingBytes >= requiredBytes) {
-            LOG(logLevelTrace,
-              "AbstractCodec::readToBuffer requiredBytes: %u"
-              " <= remainingBytes: %d (threadId: %u)",
-              requiredBytes, remainingBytes);
           return true;
         }
 
@@ -378,17 +351,8 @@ namespace epics {
         {
           int bytesRead = read(_socketBuffer.get());
 
-          LOG(logLevelTrace, 
-            "AbstractCodec::readToBuffer READ BYTES: %d (threadId: %u)", 
-            bytesRead, epicsThreadGetIdSelf());
-
           if (bytesRead < 0)
           {
-            
-            LOG(logLevelTrace, 
-             "AbstractCodec::before close on bytesRead < 0 condition (threadId: %u)",
-             epicsThreadGetIdSelf());
-
             close();
             throw connection_closed_exception("bytesRead < 0");
           }
@@ -417,11 +381,6 @@ namespace epics {
 
 
     void AbstractCodec::ensureData(std::size_t size) {
-
-      LOG(logLevelTrace, 
-        "AbstractCodec::ensureData enter: size: %u (threadId: %u)", 
-        size, epicsThreadGetIdSelf());
-
 
       // enough of data?
       if (_socketBuffer->getRemaining() >= size)
@@ -553,21 +512,12 @@ namespace epics {
       std::size_t value, 
       std::size_t alignment) {
 
-        LOG(logLevelTrace, 
-          "AbstractCodec::alignedValue enter: value: %u, alignment:%u"
-          "  (threadId: %u)", 
-          value, alignment, epicsThreadGetIdSelf());
-
         std::size_t k = (alignment - 1);
         return (value + k) & (~k);
     }
 
 
     void AbstractCodec::alignData(std::size_t alignment) {
-
-      LOG(logLevelTrace, 
-        "AbstractCodec::alignData enter: alignment:%u  (threadId: %u)", 
-        alignment, epicsThreadGetIdSelf());
 
       std::size_t k = (alignment - 1);
       std::size_t pos = _socketBuffer->getPosition();
@@ -592,10 +542,6 @@ namespace epics {
 
     void AbstractCodec::alignBuffer(std::size_t alignment) {
 
-      LOG(logLevelTrace, "AbstractCodec::alignBuffer enter:"
-        " alignment:%u  (threadId: %u)",
-        alignment, epicsThreadGetIdSelf());
-
       std::size_t k = (alignment - 1);
       std::size_t pos = _sendBuffer->getPosition();
       std::size_t newpos = (pos + k) & (~k);
@@ -611,11 +557,6 @@ namespace epics {
     void AbstractCodec::startMessage(
       epics::pvData::int8 command, 
       std::size_t ensureCapacity) {
-
-        LOG(logLevelTrace, 
-          "AbstractCodec::startMessage enter: command:%x "
-          " ensureCapacity:%u (threadId: %u)", 
-          command, ensureCapacity, epicsThreadGetIdSelf());
 
         _lastMessageStartPosition = 
           std::numeric_limits<size_t>::max();		// TODO revise this
@@ -640,11 +581,6 @@ namespace epics {
       epics::pvData::int8 command,  
       epics::pvData::int32 data) {
 
-        LOG(logLevelTrace, 
-          "AbstractCodec::putControlMessage enter: command:%x  "
-          "data:%d (threadId: %u)", 
-          command, data, epicsThreadGetIdSelf());
-
         _lastMessageStartPosition = 
           std::numeric_limits<size_t>::max();		// TODO revise this
         ensureBuffer(PVA_MESSAGE_HEADER_SIZE);
@@ -657,19 +593,11 @@ namespace epics {
 
 
     void AbstractCodec::endMessage() {
-
-      LOG(logLevelTrace, "AbstractCodec::endMessage enter: (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
       endMessage(false);
     }
 
 
     void AbstractCodec::endMessage(bool hasMoreSegments) {
-
-      LOG(logLevelTrace, 
-        "AbstractCodec::endMessage enter: hasMoreSegments:%d (threadId: %u)", 
-        hasMoreSegments, epicsThreadGetIdSelf());
 
       if (_lastMessageStartPosition != std::numeric_limits<size_t>::max())
       {
@@ -739,10 +667,6 @@ namespace epics {
 
     void AbstractCodec::ensureBuffer(std::size_t size) {
 
-      LOG(logLevelTrace, 
-        "AbstractCodec::ensureBuffer enter: size:%u (threadId: %u)", 
-        size, epicsThreadGetIdSelf());
-
       if (_sendBuffer->getRemaining() >= size)
         return;
 
@@ -763,20 +687,11 @@ namespace epics {
 
     // assumes startMessage was called (or header is in place), because endMessage(true) is later called that peeks and sets _lastSegmentedMessageType
     void AbstractCodec::flushSerializeBuffer() {
-
-      LOG(logLevelTrace, 
-        "AbstractCodec::flushSerializeBuffer enter:  (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
       flush(false);
     }
 
 
     void AbstractCodec::flush(bool lastMessageCompleted) {
-
-      LOG(logLevelTrace, 
-        "AbstractCodec::flush enter: lastMessageCompleted:%d  (threadId: %u)", 
-        lastMessageCompleted, epicsThreadGetIdSelf());
 
       // automatic end
       endMessage(!lastMessageCompleted);
@@ -807,10 +722,6 @@ namespace epics {
 
     void AbstractCodec::processWrite() {
 
-      LOG(logLevelTrace, 
-        "AbstractCodec::processWrite enter:  (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
       // TODO catch ConnectionClosedException, InvalidStreamException?
       switch (_writeMode)
       {
@@ -826,10 +737,6 @@ namespace epics {
 
     void AbstractCodec::send(ByteBuffer *buffer) 
     {
-
-      LOG(logLevelTrace, "AbstractCodec::send enter:  (threadId: %u)",
-        epicsThreadGetIdSelf());
-
 
       // On Windows, limiting the buffer size is important to prevent
       // poor throughput performances when transferring large amount of
@@ -856,11 +763,13 @@ namespace epics {
         //int p = buffer.position();
         int bytesSent = write(buffer);
 
+        /*
         if (IS_LOGGABLE(logLevelTrace)) {
           hexDump(std::string("AbstractCodec::send WRITE"),
             (const int8 *)buffer->getArray(), 
             buffer->getPosition(), buffer->getRemaining());
         }
+        */
 
         if (bytesSent < 0)
         {
@@ -893,10 +802,6 @@ namespace epics {
 
     void AbstractCodec::processSendQueue()
     {
-
-      LOG(logLevelTrace, 
-        "AbstractCodec::processSendQueue enter:  (threadId: %u)", 
-        epicsThreadGetIdSelf());
 
       {
         std::size_t senderProcessed = 0;
@@ -935,22 +840,12 @@ namespace epics {
 
     void AbstractCodec::clearSendQueue()
     {
-      LOG(logLevelTrace, 
-        "AbstractCodec::clearSendQueue enter:  (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
       _sendQueue.clean();
     }
 
 
     void AbstractCodec::enqueueSendRequest(
       TransportSender::shared_pointer const & sender) {
-
-        LOG(logLevelTrace, 
-          "AbstractCodec::enqueueSendRequest enter: sender is set:%d"
-          "  (threadId: %u)", 
-          (sender.get() != 0), epicsThreadGetIdSelf());
-
         _sendQueue.put(sender);
         scheduleSend();
     }
@@ -958,10 +853,6 @@ namespace epics {
 
     void AbstractCodec::setSenderThread()
     {
-      LOG(logLevelTrace, 
-        "AbstractCodec::setSenderThread enter:  (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
       _senderThread = epicsThreadGetIdSelf();
     }
 
@@ -969,10 +860,6 @@ namespace epics {
     void AbstractCodec::processSender(
       TransportSender::shared_pointer const & sender)
     { 
-
-      LOG(logLevelTrace, 
-        "AbstractCodec::processSender enter: sender is set:%d  (threadId: %u)",
-        (sender.get() != 0), epicsThreadGetIdSelf);
 
       ScopedLock lock(sender);
 
@@ -1007,11 +894,6 @@ namespace epics {
       TransportSender::shared_pointer const & sender, 
       std::size_t requiredBufferSize) {
 
-        LOG(logLevelTrace, 
-          "AbstractCodec::enqueueSendRequest enter: sender is set:%d "
-          "requiredBufferSize:%u (threadId: %u)", 
-          (sender.get() != 0), requiredBufferSize, epicsThreadGetIdSelf);
-
         if (_senderThread == epicsThreadGetIdSelf() &&
           _sendQueue.empty() &&
           _sendBuffer->getRemaining() >= requiredBufferSize)
@@ -1031,22 +913,12 @@ namespace epics {
 
 
     void AbstractCodec::setRecipient(osiSockAddr const & sendTo) {
-
-      LOG(logLevelTrace, 
-        "AbstractCodec::setRecipient enter:   (threadId: %u)", 
-        epicsThreadGetIdSelf);
-
       _sendTo = sendTo;
     }
 
 
     void AbstractCodec::setByteOrder(int byteOrder)
     {
-
-      LOG(logLevelTrace, 
-        "AbstractCodec::setByteOrder enter: byteOrder:%x  (threadId: %u)", 
-        byteOrder, epicsThreadGetIdSelf());
-
       _socketBuffer->setEndianess(byteOrder);
       // TODO sync
       _sendBuffer->setEndianess(byteOrder);
@@ -1063,40 +935,21 @@ namespace epics {
     //
 
     void BlockingAbstractCodec::readPollOne() {
-
-      LOG(logLevelTrace, 
-        "BlockingAbstractCodec::readPollOne enter:  (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
       throw std::logic_error("should not be called for blocking IO");
     }
 
 
     void BlockingAbstractCodec::writePollOne() {
-
-      LOG(logLevelTrace, 
-        "BlockingAbstractCodec::writePollOne enter:  (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
       throw std::logic_error("should not be called for blocking IO");
     }
 
 
     void BlockingAbstractCodec::close() {
 
-      LOG(logLevelTrace, 
-        "BlockingAbstractCodec::close enter:  (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
-
       if (_isOpen.getAndSet(false))
       {
         // always close in the same thread, same way, etc.
         // wakeup processSendQueue
-        LOG(logLevelTrace, 
-          "BlockingAbstractCodec::close _sendQueue.waaaaakeup: "
-          " (threadId: %u)", 
-          epicsThreadGetIdSelf());
 
         // clean resources
         internalClose(true);
@@ -1105,12 +958,6 @@ namespace epics {
 
         // post close
         internalPostClose(true);
-      }
-      else {
-        LOG(logLevelTrace, 
-          "BlockingAbstractCodec::close NOT WAKING UP _sendQueue: "
-          " (threadId: %u)", 
-          epicsThreadGetIdSelf());
       }
     }
 
@@ -1121,29 +968,17 @@ namespace epics {
     }
 
     bool BlockingAbstractCodec::terminated() {
-
-      LOG(logLevelTrace, 
-        "BlockingAbstractCodec::terminated enter: (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
       return !isOpen();
     }
 
 
     bool BlockingAbstractCodec::isOpen() {
-
-      LOG(logLevelTrace, "BlockingAbstractCodec::isOpen %d (threadId: %u)", _isOpen.get(),
-        epicsThreadGetIdSelf());
-
       return _isOpen.get();
     }
 
 
     // NOTE: must not be called from constructor (e.g. needs shared_from_this())
     void BlockingAbstractCodec::start() {
-
-      LOG(logLevelTrace, "BlockingAbstractCodec::start enter: (threadId: %u)", 
-        epicsThreadGetIdSelf());
 
       _readThread = epicsThreadCreate(
         "BlockingAbstractCodec-readThread",
@@ -1161,20 +996,11 @@ namespace epics {
         BlockingAbstractCodec::sendThread,
         this);
 
-      LOG(logLevelTrace, 
-        "BlockingAbstractCodec::start exit WITH readThread: %u,"
-        " sendThread:%u (threadId: %u)", 
-        _readThread, _sendThread, epicsThreadGetIdSelf());
-
     }
 
 
     void BlockingAbstractCodec::receiveThread(void *param) 
     {
-
-      LOG(logLevelTrace, 
-        "BlockingAbstractCodec::receiveThread enter: (threadId: %u)", 
-        epicsThreadGetIdSelf());
 
       BlockingAbstractCodec *bac = static_cast<BlockingAbstractCodec *>(param);
       Transport::shared_pointer ptr = bac->shared_from_this();
@@ -1190,23 +1016,14 @@ namespace epics {
         }
       }
 
-      LOG(logLevelTrace, "BlockingAbstractCodec::receiveThread"
-        " EXIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIT:    (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
       bac->_shutdownEvent.signal();
-
     }
 
 
     void BlockingAbstractCodec::sendThread(void *param)
     {
 
-      LOG(logLevelTrace, 
-        "BlockingAbstractCodec::sendThread enter:  (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
-      BlockingAbstractCodec *bac = static_cast<BlockingAbstractCodec *>(param);
+        BlockingAbstractCodec *bac = static_cast<BlockingAbstractCodec *>(param);
       Transport::shared_pointer ptr = bac->shared_from_this();
 
       bac->setSenderThread();
@@ -1222,38 +1039,16 @@ namespace epics {
         }
       }
 
-      LOG(logLevelTrace, 
-        "BlockingAbstractCodec::sendThread EXIIIIIIIIIIIIIIT"
-        " while(bac->isOpen):    (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
-
       // wait read thread to die
       bac->_shutdownEvent.wait();
 
       // call internal destroy
-      LOG(logLevelTrace, "XXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-        "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   (threadId: %u)", 
-        epicsThreadGetIdSelf());
       bac->internalDestroy();
-      LOG(logLevelTrace, "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY"
-        "YYYYYYYYYYYYYYYYYYYYYYYYYYYY  (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
-      LOG(logLevelTrace,
-        "BlockingAbstractCodec::sendThread EXIIIIT   (threadId: %u)", 
-        epicsThreadGetIdSelf());
 
     }
 
 
     void BlockingAbstractCodec::sendBufferFull(int tries) {
-
-      LOG(logLevelTrace, 
-        "BlockingAbstractCodec::sendBufferFull enter: tries: %d   "
-        "(threadId: %u)", 
-        tries, epicsThreadGetIdSelf());
-
       // TODO constants
       epicsThreadSleep(std::max<double>(tries * 0.1, 1));
     }
@@ -1309,17 +1104,10 @@ namespace epics {
           inetAddressToString(_socketAddress).c_str(), errStr);
       }
 
-      LOG(logLevelTrace, 
-        "BlockingSocketAbstractCodec constructed  (threadId: %u)", 
-        epicsThreadGetIdSelf());
     }
 
     // must be called only once, when there will be no operation on socket (e.g. just before tx/rx thread exists)
     void BlockingSocketAbstractCodec::internalDestroy() {
-
-      LOG(logLevelTrace, 
-        "BlockingSocketAbstractCodec::internalDestroy enter:  (threadId: %u)", 
-        epicsThreadGetIdSelf());
 
       if(_channel != INVALID_SOCKET) {
         epicsSocketDestroy(_channel);
@@ -1330,12 +1118,6 @@ namespace epics {
 
 
     void BlockingSocketAbstractCodec::invalidDataStreamHandler() {
-
-      LOG(logLevelTrace, 
-        "BlockingSocketAbstractCodec::invalidDataStreamHandler enter:"
-        "  (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
       close();
     }
 
@@ -1343,29 +1125,14 @@ namespace epics {
     int BlockingSocketAbstractCodec::write(
       epics::pvData::ByteBuffer *src) {
 
-        LOG(logLevelTrace, 
-          "BlockingSocketAbstractCodec::write enter: position:%u, "
-          "remaining:%u  (threadId: %u)", 
-          src->getPosition(), src->getRemaining(), epicsThreadGetIdSelf());
-
         std::size_t remaining;
         while((remaining=src->getRemaining()) > 0) {
-
-          LOG(logLevelTrace, 
-            "BlockingSocketAbstractCodec::write before send"
-            " (threadId: %u)", 
-            epicsThreadGetIdSelf());
-
 
           int bytesSent = ::send(_channel,
             &src->getArray()[src->getPosition()],
             remaining, 0);
 
-          LOG(logLevelTrace, 
-            "BlockingSocketAbstractCodec::write afer send, read:%d"
-            " (threadId: %u)", 
-            bytesSent, epicsThreadGetIdSelf());
-
+          // NOTE: do not log here, you might override SOCKERRNO relevant to recv() operation above
 
           if(unlikely(bytesSent<0)) {
 
@@ -1384,17 +1151,12 @@ namespace epics {
 
         }
 
-        //TODO check what to return
-        return -1;
+        return 0;
     }
 
 
     std::size_t BlockingSocketAbstractCodec::getSocketReceiveBufferSize() 
       const  {
-
-      LOG(logLevelTrace, 
-        "BlockingSocketAbstractCodec::getSocketReceiveBufferSize"
-        " enter  (threadId: %u)", epicsThreadGetIdSelf());
 
       osiSocklen_t intLen = sizeof(int);
       char strBuffer[64];
@@ -1407,21 +1169,11 @@ namespace epics {
         //LOG(logLevelDebug, "Error getting SO_SNDBUF: %s", strBuffer);
       }
 
-      LOG(logLevelTrace, 
-        "BlockingSocketAbstractCodec::getSocketReceiveBufferSize"
-        " returning:%u  (threadId: %u)", socketRecvBufferSize, 
-        epicsThreadGetIdSelf());
-
       return socketRecvBufferSize;
     }
 
 
     int BlockingSocketAbstractCodec::read(epics::pvData::ByteBuffer* dst) {
-
-      LOG(logLevelTrace, 
-        "BlockingSocketAbstractCodec::read  enter: "
-        "read bytes:%u  (threadId: %u)", 
-        dst->getRemaining(), epicsThreadGetIdSelf());
 
       std::size_t remaining;
       while((remaining=dst->getRemaining()) > 0) {
@@ -1429,24 +1181,12 @@ namespace epics {
         // read
         std::size_t pos = dst->getPosition();
         
-        LOG(logLevelTrace, 
-        "BlockingSocketAbstractCodec::read before recv"
-        " (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
-
         int bytesRead = recv(_channel, 
           (char*)(dst->getArray()+pos), remaining, 0);
 
         // NOTE: do not log here, you might override SOCKERRNO relevant to recv() operation above
 
         /*
-        LOG(logLevelTrace, 
-        "BlockingSocketAbstractCodec::read after recv, read: %d",
-        bytesRead," (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
-
         if (IS_LOGGABLE(logLevelTrace)) {
           hexDump(std::string("READ"), 
             (const int8 *)(dst->getArray()+pos), bytesRead);
@@ -1458,11 +1198,6 @@ namespace epics {
           if (bytesRead<0)
           {
             int socketError = SOCKERRNO;
-
-            LOG(logLevelTrace,
-            "BlockingSocketAbstractCodec::read SOCKERRNO %d", socketError,
-                " (threadId: %u)",
-                epicsThreadGetIdSelf());
 
             // interrupted or timeout
             if (socketError == EINTR || 
@@ -1497,27 +1232,14 @@ namespace epics {
       //register/unregister
       // TODO implement priorities in Reactor... not that user will
       // change it.. still getPriority() must return "registered" priority!
-
-      LOG(logLevelTrace, 
-        "BlockingServerTCPTransportCodec constructed  (threadId: %u)", 
-        epicsThreadGetIdSelf());
-
     }
 
 
     BlockingServerTCPTransportCodec::~BlockingServerTCPTransportCodec() {
-      LOG(logLevelTrace, 
-        "BlockingServerTCPTransportCodec DESTRUCTED  (threadId: %u)", 
-        epicsThreadGetIdSelf());
     }
 
 
     pvAccessID BlockingServerTCPTransportCodec::preallocateChannelSID() {
-
-      LOG(logLevelTrace, 
-        "BlockingServerTCPTransportCodec::preallocateChannelSID enter:"
-        "  (threadId: %u)", 
-        epicsThreadGetIdSelf());
 
       Lock lock(_channelsMutex);
       // search first free (theoretically possible loop of death)
@@ -1532,11 +1254,6 @@ namespace epics {
       pvAccessID sid, 
       ServerChannel::shared_pointer const & channel) {
 
-      LOG(logLevelTrace, 
-        "BlockingServerTCPTransportCodec::registerChannel enter: sid:%d "
-        " (threadId: %u)", 
-        channel->getSID(), epicsThreadGetIdSelf());
-
       Lock lock(_channelsMutex);
       _channels[sid] = channel;
 
@@ -1545,11 +1262,6 @@ namespace epics {
 
     void BlockingServerTCPTransportCodec::unregisterChannel(pvAccessID sid) {
 
-      LOG(logLevelTrace, 
-        "BlockingServerTCPTransportCodec::unregisterChannel enter:"
-        " sid:%d  (threadId: %u)", 
-        sid, epicsThreadGetIdSelf());
-
       Lock lock(_channelsMutex);
       _channels.erase(sid);
     }
@@ -1557,11 +1269,6 @@ namespace epics {
 
     ServerChannel::shared_pointer 
       BlockingServerTCPTransportCodec::getChannel(pvAccessID sid) {
-
-      LOG(logLevelTrace, 
-        "BlockingServerTCPTransportCodec::getChannel enter:"
-        " sid:%d  (threadId: %u)", 
-        sid, epicsThreadGetIdSelf());
 
       Lock lock(_channelsMutex);
 
@@ -1576,11 +1283,6 @@ namespace epics {
 
     int BlockingServerTCPTransportCodec::getChannelCount() {
 
-      LOG(logLevelTrace, 
-        "BlockingServerTCPTransportCodec::getChannelCount enter: "
-        "(threadId: %u)", 
-        epicsThreadGetIdSelf());
-
       Lock lock(_channelsMutex);
       return static_cast<int>(_channels.size());
     }
@@ -1588,10 +1290,6 @@ namespace epics {
 
     void BlockingServerTCPTransportCodec::send(ByteBuffer* buffer,
       TransportSendControl* control) {
-
-        LOG(logLevelTrace, 
-          "BlockingServerTCPTransportCodec::send enter: (threadId: %u)", 
-          epicsThreadGetIdSelf());
 
         //
         // set byte order control message 
@@ -1893,7 +1591,6 @@ namespace epics {
         }
  
  
- 
+    }
   }
-
 }

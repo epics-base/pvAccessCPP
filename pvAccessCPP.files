@@ -23,12 +23,9 @@ pvAccessApp/mb/pvAccessMB.h
 pvAccessApp/remote/abstractResponseHandler.cpp
 pvAccessApp/remote/beaconHandler.cpp
 pvAccessApp/remote/beaconHandler.h
-pvAccessApp/remote/blockingClientTCPTransport.cpp
-pvAccessApp/remote/blockingServerTCPTransport.cpp
 pvAccessApp/remote/blockingTCP.h
 pvAccessApp/remote/blockingTCPAcceptor.cpp
 pvAccessApp/remote/blockingTCPConnector.cpp
-pvAccessApp/remote/blockingTCPTransport.cpp
 pvAccessApp/remote/blockingUDP.h
 pvAccessApp/remote/blockingUDPConnector.cpp
 pvAccessApp/remote/blockingUDPTransport.cpp

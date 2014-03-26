@@ -16,6 +16,7 @@
 #include <pv/current_function.h>
 
 using namespace epics::pvData;
+using namespace epics::pvAccess::detail;
 
 namespace epics {
 
