@@ -412,6 +412,20 @@ namespace epics {
       void sendBufferFull(int tries);
       virtual void internalDestroy() = 0;
 
+      /**
+       * Called to any resources just before closing transport
+       * @param[in] force   flag indicating if forced (e.g. forced
+       * disconnect) is required
+       */
+      virtual void internalClose(bool force);
+
+      /**
+       * Called to any resources just after closing transport and without any locks held on transport
+       * @param[in] force   flag indicating if forced (e.g. forced
+       * disconnect) is required
+       */
+      virtual void internalPostClose(bool force);
+
     private:
       AtomicValue<bool> _isOpen;
       volatile epicsThreadId _readThread;
@@ -776,6 +790,11 @@ namespace epics {
         TransportSendControl* control);
 
       virtual ~BlockingServerTCPTransportCodec();
+
+    protected:
+
+      void destroyAllChannels();
+      virtual void internalClose(bool force);
 
     private:
 

@@ -1098,7 +1098,13 @@ namespace epics {
           " (threadId: %u)", 
           epicsThreadGetIdSelf());
 
+        // clean resources
+        internalClose(true);
+
         _sendQueue.wakeup();
+
+        // post close
+        internalPostClose(true);
       }
       else {
         LOG(logLevelTrace, 
@@ -1108,6 +1114,11 @@ namespace epics {
       }
     }
 
+    void BlockingAbstractCodec::internalClose(bool /*force*/) {
+    }
+
+    void BlockingAbstractCodec::internalPostClose(bool /*force*/) {
+    }
 
     bool BlockingAbstractCodec::terminated() {
 
@@ -1115,7 +1126,6 @@ namespace epics {
         "BlockingAbstractCodec::terminated enter: (threadId: %u)", 
         epicsThreadGetIdSelf());
 
-      //TODO OPEN QUESTION TO MATEJ
       return !isOpen();
     }
 
@@ -1304,7 +1314,7 @@ namespace epics {
         epicsThreadGetIdSelf());
     }
 
-
+    // must be called only once, when there will be no operation on socket (e.g. just before tx/rx thread exists)
     void BlockingSocketAbstractCodec::internalDestroy() {
 
       LOG(logLevelTrace, 
@@ -1610,44 +1620,38 @@ namespace epics {
 
         // send immediately
         control->flush(true);
-    }
   }
   
-  
-  
-  // TODO
-  /*
+  void BlockingServerTCPTransportCodec::destroyAllChannels() {
+    Lock lock(_channelsMutex);
+    if(_channels.size()==0) return;
 
-        void BlockingServerTCPTransportCodec::destroyAllChannels() {
-            Lock lock(_channelsMutex);
-            if(_channels.size()==0) return;
+    char ipAddrStr[64];
+    ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
 
-            char ipAddrStr[64];
-            ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
+    LOG(
+      logLevelDebug,
+      "Transport to %s still has %zd channel(s) active and closing...",
+      ipAddrStr, _channels.size());
 
-            LOG(
-                    logLevelDebug,
-                    "Transport to %s still has %u channel(s) active and closing...",
-                    ipAddrStr, (unsigned int)_channels.size());
+    std::map<pvAccessID, ServerChannel::shared_pointer>::iterator it = _channels.begin();
+    for(; it!=_channels.end(); it++)
+        it->second->destroy();
 
-            map<pvAccessID, ServerChannel::shared_pointer>::iterator it = _channels.begin();
-            for(; it!=_channels.end(); it++)
-                it->second->destroy();
+    _channels.clear();
+  }
 
-            _channels.clear();
-        }
+  void BlockingServerTCPTransportCodec::internalClose(bool force) {
+    Transport::shared_pointer thisSharedPtr = shared_from_this();
+    BlockingTCPTransportCodec::internalClose(force);
+    destroyAllChannels();
+  }
 
-        void BlockingServerTCPTransportCodec::internalClose(bool force) {
-            Transport::shared_pointer thisSharedPtr = shared_from_this();
-            BlockingTCPTransport::internalClose(force);
-            destroyAllChannels();
-        }
 
-        void BlockingServerTCPTransportCodec::internalPostClose(bool forced) {
-            BlockingTCPTransport::internalPostClose(forced);
-        }
-*/  
-  
+
+
+
+
   
   BlockingClientTCPTransportCodec::BlockingClientTCPTransportCodec(
     Context::shared_pointer const & context,
@@ -1750,14 +1754,14 @@ namespace epics {
 
         // _mutex is held when this method is called
         void BlockingClientTCPTransportCodec::internalClose(bool forced) {
-// TODO !!!            BlockingTCPTransportCodec::internalClose(forced);
+            BlockingTCPTransportCodec::internalClose(forced);
 
             TimerCallbackPtr tcb = std::tr1::dynamic_pointer_cast<TimerCallback>(shared_from_this());
             _context->getTimer()->cancel(tcb);
         }
 
         void BlockingClientTCPTransportCodec::internalPostClose(bool forced) {
-// TODO !!!            BlockingTCPTransportCodec::internalPostClose(forced);
+            BlockingTCPTransportCodec::internalPostClose(forced);
 
             // _owners cannot change when transport is closed
             closedNotifyClients();
@@ -1890,5 +1894,6 @@ namespace epics {
  
  
  
-  
+  }
+
 }
