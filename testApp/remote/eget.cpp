@@ -764,7 +764,7 @@ void formatNTImage(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
     */
     //eget -s testImage | gnuplot  -e "set size ratio -1; set palette grey; set cbrange [0:255]; plot '-'  binary array=(512,384) flipy format='%uchar' with image"
 
-    FILE* gnuplotPipe = popen ("gnuplot -p", "w");
+    FILE* gnuplotPipe = popen ("gnuplot -persist", "w");   // use -persist for backward compatibility (to support older gnuplot versions)
 
     const char *prologue = getenv("EGET_GNUPLOT_PROLOGUE");
     if (prologue)
