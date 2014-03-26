@@ -220,7 +220,7 @@ namespace epics {
 
       virtual void processControlMessage() = 0;
       virtual void processApplicationMessage() = 0; 
-      virtual osiSockAddr getLastReadBufferSocketAddress() = 0;
+      virtual const osiSockAddr* getLastReadBufferSocketAddress() = 0;
       virtual void invalidDataStreamHandler() = 0;
       virtual void readPollOne()=0; 
       virtual void writePollOne() = 0; 
@@ -383,7 +383,7 @@ namespace epics {
 
       int read(epics::pvData::ByteBuffer* dst);
       int write(epics::pvData::ByteBuffer* src);
-      osiSockAddr getLastReadBufferSocketAddress()  { return _socketAddress;}
+      const osiSockAddr* getLastReadBufferSocketAddress()  { return &_socketAddress; }
       void invalidDataStreamHandler();
       std::size_t getSocketReceiveBufferSize() const;
 
@@ -488,7 +488,7 @@ namespace epics {
       bool directSerialize(
         epics::pvData::ByteBuffer * /*existingBuffer*/, 
         const char* /*toSerialize*/,
-        std::size_t /*elementCount*/, std::size_t /*elementSize*/)  
+        std::size_t /*elementCount*/, std::size_t /*elementSize*/)
       {
           // TODO !!!!
         return false;

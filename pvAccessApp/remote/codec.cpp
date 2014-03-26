@@ -131,9 +131,9 @@ namespace epics {
       if (magicCode != PVA_MAGIC)
       {
         LOG(logLevelError, 
-          "Invalid header received from the client at  %s:%d: %d,"
+          "Invalid header received from the client at %s:%d: %s,"
           " disconnecting...", 
-          __FILE__, __LINE__, getLastReadBufferSocketAddress());
+          __FILE__, __LINE__, inetAddressToString(*getLastReadBufferSocketAddress()).c_str());
         invalidDataStreamHandler();
         throw invalid_data_stream_exception("invalid header received");
       }
@@ -168,8 +168,8 @@ namespace epics {
             {
               LOG(logLevelWarn, 
                 "Not-a-frst segmented message received in normal mode"
-                " from the client at  %s:%d: %d, disconnecting...",
-                __FILE__, __LINE__, getLastReadBufferSocketAddress());
+                " from the client at %s:%d: %s, disconnecting...",
+                  __FILE__, __LINE__, inetAddressToString(*getLastReadBufferSocketAddress()).c_str());
               invalidDataStreamHandler();
               throw invalid_data_stream_exception(
                 "not-a-first segmented message received in normal mode");
@@ -260,9 +260,9 @@ namespace epics {
 
             // TODO we do not handle this for now (maybe never)
             LOG(logLevelWarn,
-              "unprocessed read buffer from client at  %s:%d: %d,"
+              "unprocessed read buffer from client at %s:%d: %s,"
               " disconnecting...",
-              __FILE__, __LINE__, getLastReadBufferSocketAddress());
+              __FILE__, __LINE__, inetAddressToString(*getLastReadBufferSocketAddress()).c_str());
             invalidDataStreamHandler();
             throw invalid_data_stream_exception(
               "unprocessed read buffer");
@@ -299,8 +299,8 @@ namespace epics {
           {
             LOG(logLevelWarn, 
               "Not-a-first segmented message expected from the client at"
-              "  %s:%d: %d, disconnecting...", 
-              __FILE__, __LINE__, getLastReadBufferSocketAddress());  
+              " %s:%d: %s, disconnecting...",
+              __FILE__, __LINE__, inetAddressToString(*getLastReadBufferSocketAddress()).c_str());
             invalidDataStreamHandler();
             throw new invalid_data_stream_exception(
               "not-a-first segmented message expected");
@@ -1162,14 +1162,17 @@ namespace epics {
       const  {
 
       osiSocklen_t intLen = sizeof(int);
-      char strBuffer[64];
       int socketRecvBufferSize;
       int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF, 
         (char *)&socketRecvBufferSize, &intLen);
       
       if(retval<0) {
-        epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-        //LOG(logLevelDebug, "Error getting SO_SNDBUF: %s", strBuffer);
+          if (IS_LOGGABLE(logLevelDebug))
+          {
+            char strBuffer[64];
+            epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
+            LOG(logLevelDebug, "Error getting SO_SNDBUF: %s", strBuffer);
+          }
       }
 
       return socketRecvBufferSize;
@@ -1327,13 +1330,15 @@ namespace epics {
     Lock lock(_channelsMutex);
     if(_channels.size()==0) return;
 
-    char ipAddrStr[64];
-    ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-
-    LOG(
-      logLevelDebug,
-      "Transport to %s still has %zd channel(s) active and closing...",
-      ipAddrStr, _channels.size());
+    if (IS_LOGGABLE(logLevelDebug))
+    {
+        char ipAddrStr[64];
+        ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
+        LOG(
+          logLevelDebug,
+          "Transport to %s still has %zd channel(s) active and closing...",
+          ipAddrStr, _channels.size());
+    }
 
     std::map<pvAccessID, ServerChannel::shared_pointer>::iterator it = _channels.begin();
     for(; it!=_channels.end(); it++)
@@ -1443,9 +1448,12 @@ namespace epics {
             Lock lock(_mutex);
             if(isClosed()) return false;
             
-            char ipAddrStr[48];
-            ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-            LOG(logLevelDebug, "Acquiring transport to %s.", ipAddrStr);
+            if (IS_LOGGABLE(logLevelDebug))
+            {
+                char ipAddrStr[48];
+                ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
+                LOG(logLevelDebug, "Acquiring transport to %s.", ipAddrStr);
+            }
 
             _owners[client->getID()] = TransportClient::weak_pointer(client);
             //_owners.insert(TransportClient::weak_pointer(client));
@@ -1476,12 +1484,16 @@ namespace epics {
             // check if still acquired
             size_t refs = _owners.size();
             if(refs>0) {
-                char ipAddrStr[48];
-                ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-                LOG(
-                        logLevelDebug,
-                        "Transport to %s still has %d client(s) active and closing...",
-                        ipAddrStr, refs);
+
+                if (IS_LOGGABLE(logLevelDebug))
+                {
+                    char ipAddrStr[48];
+                    ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
+                    LOG(
+                            logLevelDebug,
+                            "Transport to %s still has %d client(s) active and closing...",
+                            ipAddrStr, refs);
+                }
 
                 TransportClientMap_t::iterator it = _owners.begin();
                 for(; it!=_owners.end(); it++) {
@@ -1502,10 +1514,12 @@ namespace epics {
             Lock lock(_mutex);
             if(isClosed()) return;
             
-            char ipAddrStr[48];
-            ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-
-            LOG(logLevelDebug, "Releasing transport to %s.", ipAddrStr);
+            if (IS_LOGGABLE(logLevelDebug))
+            {
+                char ipAddrStr[48];
+                ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
+                LOG(logLevelDebug, "Releasing transport to %s.", ipAddrStr);
+            }
 
             _owners.erase(clientID);
             //_owners.erase(TransportClient::weak_pointer(client));

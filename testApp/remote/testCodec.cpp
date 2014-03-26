@@ -84,7 +84,8 @@ namespace epics {
         _disconnected(false),
         _forcePayloadRead(-1),
         _readBuffer(new ByteBuffer(receiveBufferSize)),
-        _writeBuffer(sendBufferSize)
+        _writeBuffer(sendBufferSize),
+        _dummyAddress()
        {
       }
 
@@ -273,10 +274,9 @@ namespace epics {
         return _sendBuffer;
       }
 
-      osiSockAddr getLastReadBufferSocketAddress() 
+      const osiSockAddr* getLastReadBufferSocketAddress()
       { 
-        osiSockAddr tmp = {{0}}; 
-        return tmp; 
+        return &_dummyAddress;
       }
 
       void invalidDataStreamHandler() { _invalidDataStreamCount++; }
@@ -380,6 +380,7 @@ namespace epics {
       std::auto_ptr<ReadPollOneCallback> _readPollOneCallback;
       std::auto_ptr<WritePollOneCallback> _writePollOneCallback;
 
+      osiSockAddr _dummyAddress;
 
     protected:
 
