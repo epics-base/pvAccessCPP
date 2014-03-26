@@ -194,6 +194,9 @@ namespace epics {
             }
             catch(...)
             {
+                if (!isOpen())
+                  return;
+
                 if (postProcess)
                 {
                     postProcessApplicationMessage();
