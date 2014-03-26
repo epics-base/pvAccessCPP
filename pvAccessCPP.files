@@ -23,12 +23,9 @@ pvAccessApp/mb/pvAccessMB.h
 pvAccessApp/remote/abstractResponseHandler.cpp
 pvAccessApp/remote/beaconHandler.cpp
 pvAccessApp/remote/beaconHandler.h
-pvAccessApp/remote/blockingClientTCPTransport.cpp
-pvAccessApp/remote/blockingServerTCPTransport.cpp
 pvAccessApp/remote/blockingTCP.h
 pvAccessApp/remote/blockingTCPAcceptor.cpp
 pvAccessApp/remote/blockingTCPConnector.cpp
-pvAccessApp/remote/blockingTCPTransport.cpp
 pvAccessApp/remote/blockingUDP.h
 pvAccessApp/remote/blockingUDPConnector.cpp
 pvAccessApp/remote/blockingUDPTransport.cpp
@@ -40,6 +37,8 @@ pvAccessApp/remote/simpleChannelSearchManagerImpl.cpp
 pvAccessApp/remote/simpleChannelSearchManagerImpl.h
 pvAccessApp/remote/transportRegistry.cpp
 pvAccessApp/remote/transportRegistry.h
+pvAccessApp/remote/codec.cpp
+pvAccessApp/remote/codec.h
 pvAccessApp/remoteClient/clientContextImpl.cpp
 pvAccessApp/remoteClient/clientContextImpl.h
 pvAccessApp/remoteClient/clientContextImpl.h.orig
@@ -101,6 +100,8 @@ testApp/remote/testNTImage.cpp
 testApp/remote/testRemoteClientImpl.cpp
 testApp/remote/testServer.cpp
 testApp/remote/testServerContext.cpp
+testApp/remote/testChannelAccess.cpp
+testApp/remote/testCodec.cpp
 testApp/utils/testAtomicBoolean.cpp
 testApp/utils/configurationTest.cpp
 testApp/utils/testHexDump.cpp

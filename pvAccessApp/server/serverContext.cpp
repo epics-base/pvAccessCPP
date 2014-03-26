@@ -204,15 +204,15 @@ void ServerContextImpl::internalInitialize()
 	_timer.reset(new Timer("pvAccess-server timer", lowerPriority));
 	_transportRegistry.reset(new TransportRegistry());
 
-	// setup broadcast UDP transport
-	initializeBroadcastTransport();
-
     ServerContextImpl::shared_pointer thisServerContext = shared_from_this();
 
 	_acceptor.reset(new BlockingTCPAcceptor(thisServerContext, thisServerContext, _serverPort, _receiveBufferSize));
 	_serverPort = ntohs(_acceptor->getBindAddress()->ia.sin_port);
 
-	_beaconEmitter.reset(new BeaconEmitter(_broadcastTransport, thisServerContext));
+    // setup broadcast UDP transport
+    initializeBroadcastTransport();
+
+    _beaconEmitter.reset(new BeaconEmitter(_broadcastTransport, thisServerContext));
 }
 
 void ServerContextImpl::initializeBroadcastTransport()

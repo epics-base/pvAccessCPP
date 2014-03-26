@@ -5,6 +5,7 @@
  */
 
 #include <pv/blockingTCP.h>
+#include "codec.h"
 #include <pv/remote.h>
 #include <pv/logger.h>
 
@@ -180,17 +181,26 @@ namespace pvAccess {
                     }
 
                     // TODO tune buffer sizes?!
+                      
+                    // get TCP send buffer size
+                    osiSocklen_t intLen = sizeof(int);
+                    int _socketSendBufferSize;
+                    retval = getsockopt(newClient, SOL_SOCKET, SO_SNDBUF, (char *)&_socketSendBufferSize, &intLen);
+                    if(retval<0) {
+                        epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
+                        LOG(logLevelDebug, "Error getting SO_SNDBUF: %s", strBuffer);
+                    }
 
                     /**
                      * Create transport, it registers itself to the registry.
-                     * Each transport should have its own response handler since it is not "shareable"
                      */
                     std::auto_ptr<ResponseHandler> responseHandler = _responseHandlerFactory->createResponseHandler();
-                    BlockingServerTCPTransport::shared_pointer transport = 
-                                    BlockingServerTCPTransport::create(
+                    detail::BlockingServerTCPTransportCodec::shared_pointer transport =
+                                    detail::BlockingServerTCPTransportCodec::create(
                                             _context,
                                             newClient,
                                             responseHandler,
+                                            _socketSendBufferSize,
                                             _receiveBufferSize);
 
                     // validate connection

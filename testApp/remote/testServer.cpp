@@ -1541,21 +1541,45 @@ public:
         }
         else if (m_channelName == "testSum") {
 
-          int a = pvArgument->getIntField("a")->get();
-          int b = pvArgument->getIntField("b")->get();
+            PVStructure::shared_pointer args(
+                        (pvArgument->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+                            pvArgument->getStructureField("query") :
+                            pvArgument
+                            );
 
-          FieldCreatePtr fieldCreate = getFieldCreate();
+            const String helpText =
+                    "Calculates a sum of two integer values.\n"
+                    "Arguments:\n"
+                    "\tint a\tfirst integer number\n"
+                    "\tint b\tsecond integer number\n";
+            if (handleHelp(args, m_channelRPCRequester, helpText))
+                return;
 
-          StringArray fieldNames;
-          fieldNames.push_back("c");
-          FieldConstPtrArray fields;
-          fields.push_back(fieldCreate->createScalar(pvInt));
-          StructureConstPtr resultStructure = fieldCreate->createStructure(fieldNames, fields);
+            PVInt::shared_pointer pa = args->getSubField<PVInt>("a");
+            PVInt::shared_pointer pb = args->getSubField<PVInt>("b");
+            if (!pa || !pb)
+            {
+                PVStructure::shared_pointer nullPtr;
+                Status errorStatus(Status::STATUSTYPE_ERROR, "int a and int b arguments are required");
+                m_channelRPCRequester->requestDone(errorStatus, nullPtr);
+                return;
+            }
 
-          PVStructure::shared_pointer result = getPVDataCreate()->createPVStructure(resultStructure);
-          result->getIntField("c")->put(a+b);
+            int a = pa->get();
+            int b = pb->get();
 
-          m_channelRPCRequester->requestDone(Status::Ok, result);
+            FieldCreatePtr fieldCreate = getFieldCreate();
+
+            StringArray fieldNames;
+            fieldNames.push_back("c");
+            FieldConstPtrArray fields;
+            fields.push_back(fieldCreate->createScalar(pvInt));
+            StructureConstPtr resultStructure = fieldCreate->createStructure(fieldNames, fields);
+
+            PVStructure::shared_pointer result = getPVDataCreate()->createPVStructure(resultStructure);
+            result->getIntField("c")->put(a+b);
+
+            m_channelRPCRequester->requestDone(Status::Ok, result);
 
         }
         else if (m_channelName.find("testServerShutdown") == 0)

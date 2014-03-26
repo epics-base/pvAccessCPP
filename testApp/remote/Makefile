@@ -51,6 +51,12 @@ testChannelAccess_SRCS = testChannelAccess channelAccessIFTest
 testChannelAccess_LIBS += pvAccess pvData pvMB Com
 TESTS += testChannelAccess
 
+TESTPROD_HOST += testCodec
+testCodec_SRCS = testCodec
+testCodec_LIBS += pvData pvAccess pvMB Com
+TESTS += testCodec 
+
+
 PROD_HOST += pvget
 pvget_SRCS += pvget.cpp
 pvget_LIBS += pvAccess pvData pvMB Com
