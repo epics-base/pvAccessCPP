@@ -199,16 +199,17 @@ namespace epics {
             {
               // handle response	
               processApplicationMessage();
-              postProcess = false;  
+
+              if (!isOpen())
+                return;
+
+              postProcess = false;
               postProcessApplicationMessage();
             }
-            catch(...)   //finally
+            catch(...)
             {
                 if (postProcess)
                 {
-                    if (!isOpen())
-                      return;
-                  
                     postProcessApplicationMessage();
                 }
                 
@@ -230,9 +231,6 @@ namespace epics {
 
     void AbstractCodec::postProcessApplicationMessage()
     {
-        if (!isOpen())
-          return;
-
         // can be closed by now
         // isOpen() should be efficiently implemented
         while (true)
@@ -1200,7 +1198,7 @@ namespace epics {
 
       BlockingAbstractCodec *bac = static_cast<BlockingAbstractCodec *>(param);
       Transport::shared_pointer ptr = bac->shared_from_this();
-      
+
       bac->setSenderThread();
 
       while (bac->isOpen())
@@ -1232,7 +1230,7 @@ namespace epics {
         "YYYYYYYYYYYYYYYYYYYYYYYYYYYY  (threadId: %u)", 
         epicsThreadGetIdSelf());
 
-      LOG(logLevelTrace, 
+      LOG(logLevelTrace,
         "BlockingAbstractCodec::sendThread EXIIIIT   (threadId: %u)", 
         epicsThreadGetIdSelf());
 
@@ -1429,7 +1427,10 @@ namespace epics {
 
         int bytesRead = recv(_channel, 
           (char*)(dst->getArray()+pos), remaining, 0);
-      
+
+        // NOTE: do not log here, you might override SOCKERRNO relevant to recv() operation above
+
+        /*
         LOG(logLevelTrace, 
         "BlockingSocketAbstractCodec::read after recv, read: %d",
         bytesRead," (threadId: %u)", 
@@ -1440,12 +1441,18 @@ namespace epics {
           hexDump(std::string("READ"), 
             (const int8 *)(dst->getArray()+pos), bytesRead);
         }
+        */
 
         if(unlikely(bytesRead<=0)) {
 
           if (bytesRead<0)
           {
             int socketError = SOCKERRNO;
+
+            LOG(logLevelTrace,
+            "BlockingSocketAbstractCodec::read SOCKERRNO %d", socketError,
+                " (threadId: %u)",
+                epicsThreadGetIdSelf());
 
             // interrupted or timeout
             if (socketError == EINTR || 

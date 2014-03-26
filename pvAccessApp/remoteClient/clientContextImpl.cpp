@@ -4117,7 +4117,7 @@ TODO
                     auto_ptr<ResponseHandler> handler(new ClientResponseHandler(shared_from_this()));
                     Transport::shared_pointer t = m_connector->connect(client, handler, *serverAddress, minorRevision, priority);
                     // TODO !!!
-                    static_pointer_cast<BlockingTCPTransport>(t)->setFlushStrategy(m_flushStrategy);
+                    //static_pointer_cast<BlockingTCPTransport>(t)->setFlushStrategy(m_flushStrategy);
                     return t;
                 }
                 catch (...)
