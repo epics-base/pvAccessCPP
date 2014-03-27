@@ -7,11 +7,6 @@
 #define NOMINMAX
 #endif
 
-#include <pv/blockingTCP.h>
-#include <pv/remote.h>
-#include <pv/namedLockPattern.h>
-#include <pv/hexDump.h>
-#include <pv/logger.h>
 
 #include <epicsThread.h>
 #include <osiSock.h>
@@ -21,6 +16,12 @@
 #include <stdexcept>
 #include <limits>
 
+#define epicsExportSharedSymbols
+#include <pv/blockingTCP.h>
+#include <pv/remote.h>
+#include <pv/namedLockPattern.h>
+#include <pv/hexDump.h>
+#include <pv/logger.h>
 #include <pv/codec.h>
 
 using namespace epics::pvData;

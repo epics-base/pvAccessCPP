@@ -41,6 +41,8 @@
 #include <pv/namedLockPattern.h>
 #include <pv/inetAddressUtil.h>
 
+#include <shareLib.h>
+
 namespace epics {
   namespace pvAccess {
     namespace detail {
