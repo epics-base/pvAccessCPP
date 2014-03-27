@@ -53,8 +53,8 @@ TESTS += testChannelAccess
 
 TESTPROD_HOST += testCodec
 testCodec_SRCS = testCodec
-testCodec_LIBS += pvData pvAccess pvMB Com
-TESTS += testCodec 
+testCodec_LIBS += pvAccess pvData pvMB Com
+TESTS += testCodec
 
 
 PROD_HOST += pvget
