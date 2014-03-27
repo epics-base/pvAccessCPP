@@ -589,13 +589,15 @@ namespace epics {
           codec._readBuffer->put(PVA_VERSION);
           codec._readBuffer->put(invalidFlagsValues[i]);
           codec._readBuffer->put((int8_t)0x23);
-          codec._readBuffer->putInt(0);
+          //codec._readBuffer->putInt(0);
+          codec._readBuffer->putInt(i);   // to check zero-payload
           codec._readBuffer->flip();
 
           codec.processRead();
 
-          testOk(codec._invalidDataStreamCount == 1, 
-            "%s: codec._invalidDataStreamCount == 1", 
+          testOk(codec._invalidDataStreamCount == (i != 0 ? 1 : 0),
+          //testOk(codec._invalidDataStreamCount == 1,
+            "%s: codec._invalidDataStreamCount == 1",
             CURRENT_FUNCTION);
           testOk(codec._closedCount == 0, 
             "%s: codec._closedCount == 0", CURRENT_FUNCTION);

@@ -121,3 +121,4 @@ pvAccessApp/ca/caProvider.cpp
 pvAccessApp/ca/caChannel.h
 pvAccessApp/ca/caChannel.cpp
 testApp/utils/Makefile
+testApp/remote/channelAccessIFTest.cpp

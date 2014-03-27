@@ -47,7 +47,8 @@ class SyncBaseRequester {
     const bool m_debug; 
 
     SyncBaseRequester(bool debug = false):
-      m_debug(debug), 
+      m_debug(debug),
+      m_event(new Event()),
       m_connectedStatus(false), 
       m_getStatus(false),
       m_putStatus(false) {}
@@ -124,15 +125,26 @@ class SyncBaseRequester {
       return m_processStatus;
     }
 
-
+    void resetEvent() {
+      Lock lock(m_eventMutex);
+      m_event.reset(new Event());
+    }
+    
     void signalEvent() {
-      m_event.signal();
+      Lock lock(m_eventMutex);
+      m_event->signal();
     }
 
 
     bool waitUntilEvent(double timeOut)
     {
-      bool signaled = m_event.wait(timeOut);
+      std::tr1::shared_ptr<epics::pvData::Event> event;
+      {
+         Lock lock(m_eventMutex);
+         event = m_event;
+      }
+      
+      bool signaled = event->wait(timeOut);
       if (!signaled)
       {
         if (m_debug)
@@ -146,7 +158,7 @@ class SyncBaseRequester {
 
   private:
 
-    epics::pvData::Event m_event;
+    std::tr1::shared_ptr<epics::pvData::Event> m_event;
     bool m_connectedStatus;
     bool m_getStatus;
     bool m_putStatus;
@@ -155,6 +167,7 @@ class SyncBaseRequester {
     Mutex m_getStatusMutex;
     Mutex m_putStatusMutex;
     Mutex m_processStatusMutex;
+    Mutex m_eventMutex;
 };
 
 
@@ -307,6 +320,7 @@ class SyncChannelGetRequesterImpl : public ChannelGetRequester, public SyncBaseR
 
 
     bool syncGet(bool lastRequest, long timeOut) {
+      resetEvent();
       m_channelGet->get(lastRequest);
       return waitUntilGetDone(timeOut);
     }
@@ -412,6 +426,7 @@ class SyncChannelPutRequesterImpl : public ChannelPutRequester, public SyncBaseR
         return false;
       }
 
+      resetEvent();
       m_channelPut->put(lastRequest);
       return waitUntilPutDone(timeOut);
     } 
@@ -424,6 +439,7 @@ class SyncChannelPutRequesterImpl : public ChannelPutRequester, public SyncBaseR
         return false;
       }
 
+      resetEvent();
       m_channelPut->get();
       return waitUntilGetDone(timeOut);
     } 
@@ -592,6 +608,7 @@ class SyncChannelProcessRequesterImpl : public ChannelProcessRequester, public S
         return false;
       }
 
+      resetEvent();
       m_channelProcess->process(lastRequest);
       return waitUntilProcessDone(timeOut);
     }
@@ -676,6 +693,7 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
         return false;
       }
 
+      resetEvent();
       m_channelPutGet->getPut();
       return waitUntilGetPutDone(timeOut);
     }
@@ -687,6 +705,7 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
         return false;
       }
 
+      resetEvent();
       m_channelPutGet->putGet(lastRequest);
       return waitUntilPutGetDone(timeOut);
     }
@@ -698,6 +717,7 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
         return false;
       }
 
+      resetEvent();
       m_channelPutGet->getGet();
       return waitUntilGetGetDone(timeOut);
     }
@@ -875,6 +895,7 @@ class SyncChannelRPCRequesterImpl : public ChannelRPCRequester, public SyncBaseR
         return false;
       }
 
+      resetEvent();
       m_channelRPC->request(pvArguments, lastRequest);
       return waitUntilRPC(timeOut);
     }   
@@ -1029,6 +1050,7 @@ class SyncMonitorRequesterImpl: public MonitorRequester, public SyncBaseRequeste
       }
 
 
+      resetEvent();
       bool signaled = waitUntilEvent(timeOut);
       if (!signaled) {
 
@@ -1141,6 +1163,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
         return false;
       }
 
+      resetEvent();
       m_channelArray->putArray(lastRequest, offset, count);
       return waitUntilPutArrayDone(timeOut);
     } 
@@ -1153,6 +1176,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
         return false;
       }
 
+      resetEvent();
       m_channelArray->getArray(lastRequest, offset, count);
       return waitUntilGetArrayDone(timeOut);
     } 
@@ -1165,6 +1189,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
         return false;
       }
 
+      resetEvent();
       m_channelArray->setLength(lastRequest, length, capacity);
       return waitUntilSetLengthDone(timeOut);
     } 

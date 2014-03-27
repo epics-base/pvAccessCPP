@@ -167,6 +167,11 @@ namespace epics {
             bool notFirstSegment = (_flags & 0x20) != 0;
             if (notFirstSegment)
             {
+              // not-first segmented message with zero payload is "kind of" valid
+              // TODO this should check if previous message was first- or middle-segmented message
+              if (_payloadSize == 0)
+                  continue;
+
               LOG(logLevelWarn, 
                 "Not-a-frst segmented message received in normal mode"
                 " from the client at %s:%d: %s, disconnecting...",
