@@ -175,20 +175,20 @@ namespace epics {
     };
 
 
-    class io_exception: public std::runtime_error {
+    class epicsShareClass io_exception: public std::runtime_error {
     public:
       explicit io_exception(const std::string &s): std::runtime_error(s) {}
     };
 
 
-    class invalid_data_stream_exception: public std::runtime_error {
+    class epicsShareClass invalid_data_stream_exception: public std::runtime_error {
     public:
       explicit invalid_data_stream_exception(
         const std::string &s): std::runtime_error(s) {}
     };
 
 
-    class connection_closed_exception: public std::runtime_error {
+    class epicsShareClass connection_closed_exception: public std::runtime_error {
     public:
       explicit connection_closed_exception(const std::string &s): std::runtime_error(s) {}
     };
@@ -199,7 +199,7 @@ namespace epics {
     enum WriteMode { PROCESS_SEND_QUEUE, WAIT_FOR_READY_SIGNAL };
 
 
-    class AbstractCodec :
+    class epicsShareClass AbstractCodec :
       public TransportSendControl,
       public Transport
     {
@@ -316,7 +316,7 @@ namespace epics {
     };
 
 
-    class BlockingAbstractCodec: 
+    class epicsShareClass BlockingAbstractCodec: 
       public AbstractCodec,
       public std::tr1::enable_shared_from_this<BlockingAbstractCodec>
     {
@@ -370,7 +370,7 @@ namespace epics {
     };
 
 
-    class  BlockingSocketAbstractCodec:
+    class epicsShareClass BlockingSocketAbstractCodec:
         public BlockingAbstractCodec
     {
 
@@ -549,7 +549,7 @@ namespace epics {
     };
 
 
-    class BlockingServerTCPTransportCodec : 
+    class epicsShareClass BlockingServerTCPTransportCodec : 
       public BlockingTCPTransportCodec,
       public ChannelHostingTransport,
       public TransportSender {
@@ -660,7 +660,7 @@ namespace epics {
 
     };
     
-    class BlockingClientTCPTransportCodec :
+    class epicsShareClass BlockingClientTCPTransportCodec :
       public BlockingTCPTransportCodec,
       public TransportSender,
       public epics::pvData::TimerCallback {
