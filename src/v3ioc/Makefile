@@ -1,6 +1,6 @@
 # This is a Makefile fragment, see ../Makefile
 
-SRC_DIRS += $(PVACCESSAPP)/v3ioc
+SRC_DIRS += $(PVACCESS_SRC)/v3ioc
 
 INC += syncChannelFind.h
 

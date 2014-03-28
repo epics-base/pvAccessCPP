@@ -1,6 +1,6 @@
 # This is a Makefile fragment, see ../Makefile
 
-SRC_DIRS += $(PVACCESSAPP)/pva
+SRC_DIRS += $(PVACCESS_SRC)/pva
 
 INC += pvaConstants.h
 INC += pvaVersion.h

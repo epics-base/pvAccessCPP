@@ -1,6 +1,6 @@
 # This is a Makefile fragment, see ../Makefile
 
-SRC_DIRS += $(PVACCESSAPP)/remoteClient
+SRC_DIRS += $(PVACCESS_SRC)/remoteClient
 
 INC += clientContextImpl.h
 

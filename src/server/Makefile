@@ -1,6 +1,6 @@
 # This is a Makefile fragment, see ../Makefile
 
-SRC_DIRS += $(PVACCESSAPP)/server
+SRC_DIRS += $(PVACCESS_SRC)/server
 
 INC += serverContext.h
 INC += responseHandlers.h

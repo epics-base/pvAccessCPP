@@ -1,6 +1,6 @@
 # This is a Makefile fragment, see ../Makefile
 
-SRC_DIRS += $(PVACCESSAPP)/client
+SRC_DIRS += $(PVACCESS_SRC)/client
 
 INC += pvAccess.h
 

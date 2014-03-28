@@ -1,6 +1,6 @@
 # This is a Makefile fragment, see ../Makefile
 
-SRC_DIRS += $(PVACCESSAPP)/remote
+SRC_DIRS += $(PVACCESS_SRC)/remote
 
 INC += remote.h
 INC += blockingUDP.h

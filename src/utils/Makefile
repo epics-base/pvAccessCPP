@@ -1,6 +1,6 @@
 # This is a Makefile fragment, see ../Makefile
 
-SRC_DIRS += $(PVACCESSAPP)/utils
+SRC_DIRS += $(PVACCESS_SRC)/utils
 
 INC += hexDump.h
 INC += inetAddressUtil.h
