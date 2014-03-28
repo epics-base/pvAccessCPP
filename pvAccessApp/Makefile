@@ -25,6 +25,4 @@ pvAccess_LIBS += Com
 # needed for Windows
 pvAccess_SYS_LIBS_WIN32 += ws2_32
 
-USR_CXXFLAGS_RTEMS = -D__rtems__
-
 include $(TOP)/configure/RULES
