@@ -11,6 +11,7 @@
 #include <epicsExit.h>
 #include <pv/standardPVField.h>
 #include <pv/pvTimeStamp.h>
+#include <pv/convert.h>
 
 #include <stdlib.h>
 #include <time.h>
@@ -1827,6 +1828,7 @@ private:
     String m_channelName;
     MonitorRequester::shared_pointer m_monitorRequester;
     PVStructure::shared_pointer m_pvStructure;
+    PVStructure::shared_pointer m_copy;
     BitSet::shared_pointer m_changedBitSet;
     BitSet::shared_pointer m_overrunBitSet;
     bool m_first;
@@ -1843,6 +1845,7 @@ protected:
                 PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
         m_channelName(channelName),
         m_monitorRequester(monitorRequester), m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
+        m_copy(getPVDataCreate()->createPVStructure(m_pvStructure->getStructure())),
         m_changedBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_overrunBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_first(true),
@@ -1854,7 +1857,7 @@ protected:
 
         m_changedBitSet->set(0);
 
-        m_thisPtr->pvStructurePtr = m_pvStructure;
+        m_thisPtr->pvStructurePtr = m_copy;
         m_thisPtr->changedBitSet = m_changedBitSet;
         m_thisPtr->overrunBitSet = m_overrunBitSet;
     }
@@ -1880,13 +1883,23 @@ public:
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockMonitor);
     }
 
+    void copy()
+    {
+        {
+            lock();
+            getConvert()->copyStructure(m_pvStructure, m_copy);
+            unlock();
+        }
+    }
     virtual Status start()
     {
-        m_active.set();
-        
+        copy();
+
         // first monitor
         Monitor::shared_pointer thisPtr = shared_from_this();
         m_monitorRequester->monitorEvent(thisPtr);
+
+        m_active.set();   // set here not to have race condition on first monitor
 
         return Status::Ok;
     }
@@ -1901,10 +1914,13 @@ public:
     {
         if (m_active.get())
         {   
+            copy();
+
             {
 	        Lock xx(m_lock);
                 m_count = 0;
             }
+ 
             Monitor::shared_pointer thisPtr = shared_from_this();
             m_monitorRequester->monitorEvent(thisPtr);
         }
