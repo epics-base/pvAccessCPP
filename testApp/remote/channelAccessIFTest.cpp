@@ -1700,10 +1700,11 @@ void ChannelAccessIFTest::test_channelMonitor(int queueSize) {
 
     valueField = monitorReq->getPVStructure()->getSubField("value");
 
-std::cout << *previousValue << std::endl;
-std::cout << *valueField << std::endl;
-std::cout << *monitorReq->getPVStructure() << std::endl;
-std::cout << std::endl;
+std::ostringstream oss;
+oss << *previousValue << std::endl;
+oss << *valueField << std::endl;
+oss << *monitorReq->getPVStructure();
+testDiag("%s:\n%s", CURRENT_FUNCTION, oss.str().c_str());
 
     testOk(valueField->equals(*previousValue.get()) == false , "%s: value field not equals to a previous value", 
         CURRENT_FUNCTION);
