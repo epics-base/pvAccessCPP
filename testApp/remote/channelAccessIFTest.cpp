@@ -1666,6 +1666,10 @@ void ChannelAccessIFTest::test_channelMonitor(int queueSize) {
   std::tr1::shared_ptr<PVField> valueField = monitorReq->getPVStructure()->getSubField("value");
   std::tr1::shared_ptr<PVField> previousValue = getPVDataCreate()->createPVField(valueField->getField());
 
+std::ostringstream oss;
+oss << *monitorReq->getPVStructure();
+testDiag("%s:\n%s", CURRENT_FUNCTION, oss.str().c_str());
+
   ConvertPtr convert = getConvert();
   convert->copy(valueField, previousValue);
 
@@ -1701,8 +1705,8 @@ void ChannelAccessIFTest::test_channelMonitor(int queueSize) {
     valueField = monitorReq->getPVStructure()->getSubField("value");
 
 std::ostringstream oss;
-oss << *previousValue << std::endl;
-oss << *valueField << std::endl;
+oss << "previous value : " << *previousValue << std::endl;
+oss << "current value  : " << *valueField << std::endl;
 oss << *monitorReq->getPVStructure();
 testDiag("%s:\n%s", CURRENT_FUNCTION, oss.str().c_str());
 
