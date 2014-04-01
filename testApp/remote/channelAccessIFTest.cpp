@@ -1667,6 +1667,7 @@ void ChannelAccessIFTest::test_channelMonitor(int queueSize) {
   std::tr1::shared_ptr<PVField> previousValue = getPVDataCreate()->createPVField(valueField->getField());
 
 std::ostringstream oss;
+//oss << *monitorReq->getChangedBitSet() << std::endl;
 oss << *monitorReq->getPVStructure();
 testDiag("%s:\n%s", CURRENT_FUNCTION, oss.str().c_str());
 
@@ -1707,6 +1708,7 @@ testDiag("%s:\n%s", CURRENT_FUNCTION, oss.str().c_str());
 std::ostringstream oss;
 oss << "previous value : " << *previousValue << std::endl;
 oss << "current value  : " << *valueField << std::endl;
+//oss << "changed        : " << *monitorReq->getChangedBitSet() << std::endl;
 oss << *monitorReq->getPVStructure();
 testDiag("%s:\n%s", CURRENT_FUNCTION, oss.str().c_str());
 
