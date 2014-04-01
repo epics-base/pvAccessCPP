@@ -15,6 +15,7 @@
 #endif
 
 #include <pv/pvData.h>
+#include <pv/createRequest.h>
 #include <pv/status.h>
 #include <pv/destroyable.h>
 #include <pv/monitor.h>
@@ -802,36 +803,6 @@ namespace pvAccess {
         epicsShareExtern void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
         epicsShareExtern void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
 
-        /**
-         * Interface for creating request structure.
-         */
-        class epicsShareClass CreateRequest {
-            public:
-            POINTER_DEFINITIONS(CreateRequest);
-            static CreateRequest::shared_pointer create();
-            virtual ~CreateRequest() {};
-
-            /**
-             * Create a request structure for the create calls in Channel.
-             * See the package overview documentation for details.
-             * @param request The field request. See the package overview documentation for details.
-             * @param requester The requester;
-             * @return The request PVStructure if a valid request was given. 
-             * If a NULL PVStructure is returned then getMessage will return
-             * the reason.
-             */
-             virtual epics::pvData::PVStructure::shared_pointer createRequest(
-                 epics::pvData::String const & request) = 0;
-             /**
-              * Get the error message of createRequest returns NULL;
-              * @return the error message
-              */
-             epics::pvData::String getMessage() {return message;}
-             protected:
-                   CreateRequest() {}
-                  epics::pvData::String message;
-             
-        };
 
     }}
 

@@ -34,7 +34,6 @@ LIBSRCS += pvAccess.cpp
 
 SRC_DIRS += $(PVACCESS)/factory
 LIBSRCS += ChannelAccessFactory.cpp
-LIBSRCS += CreateRequestFactory.cpp
 
 SRC_DIRS += $(PVACCESS)/remote
 INC += remote.h
