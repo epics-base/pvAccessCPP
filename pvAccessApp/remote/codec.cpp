@@ -1041,7 +1041,8 @@ namespace epics {
       {
         try {
           bac->processWrite();
-        } catch (io_exception &e) {
+//TODO revise        } catch (io_exception &e) {
+        } catch (std::exception &e) {
           LOG(logLevelWarn, 
             "an exception caught while in sendThread at %s:%d: %s",
             __FILE__, __LINE__, e.what());  
