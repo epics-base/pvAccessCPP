@@ -14,7 +14,7 @@
 # Set CHECK_RELEASE to NO to disable checking completely.
 # Set CHECK_RELEASE to WARN to perform consistency checking but
 #   continue building anyway if conflicts are found.
-CHECK_RELEASE = WARN
+CHECK_RELEASE = YES
 
 # To install files into a location other than $(TOP) define
 #   INSTALL_LOCATION here.
@@ -31,7 +31,4 @@ endif
 ifdef WITH_MICROBENCH
 USR_CPPFLAGS += -DPV_MB
 endif
-
-INSTALL_INCLUDE = $(INSTALL_LOCATION)/include/pv
-USR_INCLUDES += -I $(INSTALL_LOCATION)/include
 

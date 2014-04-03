@@ -1,5 +1,10 @@
+# Makefile for the pvAccess library
+
 TOP = ..
 include $(TOP)/configure/CONFIG
+
+INSTALL_INCLUDE = $(INSTALL_LOCATION)/include/pv
+USR_INCLUDES += -I$(INSTALL_LOCATION)/include
 
 PVACCESS_SRC = $(TOP)/src
 
@@ -26,3 +31,4 @@ pvAccess_LIBS += Com
 pvAccess_SYS_LIBS_WIN32 += ws2_32
 
 include $(TOP)/configure/RULES
+
