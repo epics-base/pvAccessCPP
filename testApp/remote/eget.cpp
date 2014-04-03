@@ -6,7 +6,7 @@
 #include <pv/clientFactory.h>
 #include <pv/pvAccess.h>
 
-#include <caProvider.h>
+#include <pv/caProvider.h>
 
 #include <stdio.h>
 #include <epicsStdlib.h>
