@@ -1812,8 +1812,24 @@ public:
     }
 };
 
+#include <pv/current_function.h>
 
+class TraceLog {
+    public:
+    
+    TraceLog(const std::string &method) : m_method(method) {
+        std::cout << "--> " << m_method << std::endl;
+    }
 
+    ~TraceLog() {
+        std::cout << "<-- " << m_method << std::endl;
+    }
+    
+    private:
+    std::string m_method;
+}
+
+#define TRACE_METHOD() TraceLog trace(CURRENT_FUNCTION);
 
 
 
@@ -1833,7 +1849,8 @@ private:
     BitSet::shared_pointer m_overrunBitSet;
     bool m_first;
     Mutex m_lock;
-    int m_count;
+    enum QueueState { MM_STATE_FULL, MM_STATE_TAKEN, MM_STATE_FREE };
+    QueueState m_state ;
     AtomicBoolean m_active;
 
 
@@ -1850,7 +1867,7 @@ protected:
         m_overrunBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_first(true),
         m_lock(),
-        m_count(0),
+        m_state(MM_STATE_FREE),
         m_thisPtr(new MonitorElement())
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockMonitor);
@@ -1892,8 +1909,14 @@ public:
         }
     }
     virtual Status start()
-    {
-        copy();
+    {   
+        //TRACE_METHOD();
+        
+        {
+            Lock xx(m_lock);
+            m_state = MM_STATE_FULL;
+            copy();
+        }
 
         // first monitor
         Monitor::shared_pointer thisPtr = shared_from_this();
@@ -1912,13 +1935,25 @@ public:
 
     virtual void structureChanged()
     {
+        //TRACE_METHOD();
+
         if (m_active.get())
         {   
-            copy();
-
             {
-	        Lock xx(m_lock);
-                m_count = 0;
+	            Lock xx(m_lock);
+	            
+	            if (m_state == MM_STATE_FULL || m_state == MM_STATE_TAKEN)      // "queue" full
+	            {
+	               m_overrunBitSet->set(0);
+	               copy();
+	               return;
+	            }
+	            else
+	            {
+	               m_overrunBitSet->clear(0);
+                   m_state = MM_STATE_FULL;
+                   copy();
+	            }
             }
  
             Monitor::shared_pointer thisPtr = shared_from_this();
@@ -1928,25 +1963,27 @@ public:
 
     virtual MonitorElement::shared_pointer poll()
     {
+        //TRACE_METHOD();
+
         Lock xx(m_lock);
-        if (m_count)
+        if (m_state != MM_STATE_FULL)
         {
             return m_nullMonitor;
         }
         else
         {
-            m_count++;
+            m_state = MM_STATE_TAKEN;
             return m_thisPtr;
         }
     }
 
     virtual void release(MonitorElement::shared_pointer const & /*monitorElement*/)
     {
+        //TRACE_METHOD();
+
         Lock xx(m_lock);
-        if (m_count)
-        {
-            m_count--;
-        }
+        if (m_state == MM_STATE_TAKEN)
+            m_state = MM_STATE_FREE;
     }
 
     virtual void destroy()
