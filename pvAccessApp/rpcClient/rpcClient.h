@@ -55,7 +55,7 @@ namespace pvAccess
 
 
 
-    class RPCClientFactory
+    class epicsShareClass RPCClientFactory
     {
     public:
 	    /**
@@ -76,7 +76,7 @@ namespace pvAccess
      * @return                     the result of the RPC call.
 	 * @throws RPCRequestException exception thrown on error on timeout.
      */
-    epics::pvData::PVStructure::shared_pointer sendRequest(const std::string & serviceName,
+    epicsShareExtern epics::pvData::PVStructure::shared_pointer sendRequest(const std::string & serviceName,
         epics::pvData::PVStructure::shared_pointer request, double timeOut);
 }
 
