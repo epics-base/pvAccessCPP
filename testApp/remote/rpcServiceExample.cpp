@@ -4,26 +4,16 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#include <pv/convert.h>
+#include <pv/pvData.h>
 #include <pv/rpcServer.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-
-
-static StructureConstPtr createResultField()
-{
-    FieldCreatePtr fieldCreate = getFieldCreate();
-    
-    StringArray fieldNames;
-    fieldNames.push_back("c");
-    FieldConstPtrArray fields;
-    fields.push_back(fieldCreate->createScalar(pvDouble));
-    return fieldCreate->createStructure(fieldNames, fields);
-}
-
-static StructureConstPtr resultStructure = createResultField();
+static StructureConstPtr resultStructure = 
+    getFieldCreate()->createFieldBuilder()->
+                    add("c", pvDouble)->
+                    createStructure();
 
 class SumServiceImpl :
     public RPCService
@@ -31,12 +21,16 @@ class SumServiceImpl :
     PVStructure::shared_pointer request(PVStructure::shared_pointer const & args)
         throw (RPCRequestException)
     {
-        // TODO error handling
-        double a = atof(args->getStringField("a")->get().c_str());
-        double b = atof(args->getStringField("b")->get().c_str());
+        PVString::shared_pointer fa = args->getSubField<PVString>("a");
+        PVString::shared_pointer fb = args->getSubField<PVString>("b");
+        if (!fa || !fb)
+            throw RPCRequestException(Status::STATUSTYPE_ERROR, "'string a' and 'string b' fields required"); 
+
+        double a = atof(fa->get().c_str());
+        double b = atof(fb->get().c_str());
 
         PVStructure::shared_pointer result = getPVDataCreate()->createPVStructure(resultStructure);
-        result->getDoubleField("c")->put(a+b);
+        result->getSubField<PVDouble>("c")->put(a+b);
         return result;
     }
 };
