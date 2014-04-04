@@ -1481,20 +1481,20 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 
 		if (get)
 		{
-			const int32 offset = SerializeHelper::readSize(payloadBuffer, transport.get());
-			const int32 count = SerializeHelper::readSize(payloadBuffer, transport.get());
+            size_t offset = SerializeHelper::readSize(payloadBuffer, transport.get());
+            size_t count = SerializeHelper::readSize(payloadBuffer, transport.get());
 			request->getChannelArray()->getArray(lastRequest, offset, count);
 		}
 		else if (setLength)
 		{
-			const int32 length = SerializeHelper::readSize(payloadBuffer, transport.get());
-			const int32 capacity = SerializeHelper::readSize(payloadBuffer, transport.get());
+            size_t length = SerializeHelper::readSize(payloadBuffer, transport.get());
+            size_t capacity = SerializeHelper::readSize(payloadBuffer, transport.get());
 			request->getChannelArray()->setLength(lastRequest, length, capacity);
 		}
 		else
 		{
 			// deserialize data to put
-			int32 offset;
+            size_t offset;
 			ChannelArray::shared_pointer channelArray = request->getChannelArray();
     	    PVArray::shared_pointer array = request->getPVArray();
 			{

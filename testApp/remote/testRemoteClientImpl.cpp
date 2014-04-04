@@ -539,9 +539,9 @@ int main()
 
     ChannelArray::shared_pointer channelArray = channel->createChannelArray(channelArrayRequesterImpl, pvRequest);
     epicsThreadSleep ( 1.0 );
-    channelArray->getArray(false,0,-1);
+    channelArray->getArray(false,0,0);
     epicsThreadSleep ( 1.0 );
-    channelArray->putArray(false,0,-1);
+    channelArray->putArray(false,0,0);
     epicsThreadSleep ( 1.0 );
     channelArray->setLength(false,3,4);
     epicsThreadSleep ( 1.0 );

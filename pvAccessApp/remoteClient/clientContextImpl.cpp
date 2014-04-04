@@ -1388,12 +1388,11 @@ namespace epics {
 
             PVArray::shared_pointer m_structure;
 
-            // TODO revise int32 !!!
-            int32 m_offset;
-            int32 m_count;
+            size_t m_offset;
+            size_t m_count;
 
-            int32 m_length;
-            int32 m_capacity;
+            size_t m_length;
+            size_t m_capacity;
             
             Mutex m_structureMutex;
 
@@ -1402,7 +1401,7 @@ namespace epics {
                     m_channelArrayRequester(channelArrayRequester),
                     m_pvRequest(pvRequest),
                     m_offset(0), m_count(0),
-                    m_length(-1), m_capacity(-1)
+                    m_length(0), m_capacity(0)
             {
                 PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelArray);
             }
@@ -1478,7 +1477,7 @@ namespace epics {
                         // no need to lock here, since it is already locked via TransportSender IF
                         //Lock lock(m_structureMutex);
                         SerializeHelper::writeSize(m_offset, buffer, control);
-                        m_structure->serialize(buffer, control, 0, m_count); // put from 0 offset; TODO count out-of-bounds check?!
+                        m_structure->serialize(buffer, control, 0, m_count ? m_count : m_structure->getLength()); // put from 0 offset (see API doc), m_count == 0 means entire array
                     }
                 }
 
@@ -1543,7 +1542,7 @@ namespace epics {
             }
 
 
-            virtual void getArray(bool lastRequest, int offset, int count) {
+            virtual void getArray(bool lastRequest, size_t offset, size_t count) {
 
                 {
                     Lock guard(m_mutex);
@@ -1575,7 +1574,7 @@ namespace epics {
                 }
             }
 
-            virtual void putArray(bool lastRequest, int offset, int count) {
+            virtual void putArray(bool lastRequest, size_t offset, size_t count) {
 
                 {
                     Lock guard(m_mutex);
@@ -1607,7 +1606,7 @@ namespace epics {
                 }
             }
 
-            virtual void setLength(bool lastRequest, int length, int capacity) {
+            virtual void setLength(bool lastRequest, size_t length, size_t capacity) {
 
                  {
                     Lock guard(m_mutex);

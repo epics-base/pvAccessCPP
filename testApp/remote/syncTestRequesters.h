@@ -1134,7 +1134,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
       m_lengthArrayStatus(false)  {}
     
     
-    bool syncPut(bool lastRequest, int offset, int count, long timeOut) 
+    bool syncPut(bool lastRequest, size_t offset, size_t count, long timeOut)
     {
 
       if (!getConnectedStatus()) {
@@ -1146,7 +1146,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
     } 
 
 
-    bool syncGet(bool lastRequest, int offset, int count, long timeOut) 
+    bool syncGet(bool lastRequest, size_t offset, size_t count, long timeOut)
     {
 
       if (!getConnectedStatus()) {
@@ -1158,7 +1158,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
     } 
 
 
-    bool syncSetLength(bool lastRequest, int length, int capacity, long timeOut) 
+    bool syncSetLength(bool lastRequest, size_t length, size_t capacity, long timeOut)
     {
 
       if (!getConnectedStatus()) {

@@ -1693,11 +1693,11 @@ public:
         to->replace(freeze(temp));
     }
 
-    virtual void putArray(bool lastRequest, int offset, int count)
+    virtual void putArray(bool lastRequest, size_t offset, size_t count)
     {
-        size_t o = static_cast<size_t>(offset);
-        if (count == -1) count = static_cast<int>(m_pvArray->getLength());
-        size_t c = static_cast<size_t>(count); 
+        size_t o = offset;
+        if (count == 0) count = m_pvArray->getLength();
+        size_t c = count;
 
         Field::const_shared_pointer field = m_pvArray->getField();
         Type type = field->getType();
@@ -1745,11 +1745,11 @@ public:
     }
     
 
-    virtual void getArray(bool lastRequest, int offset, int count)
+    virtual void getArray(bool lastRequest, size_t offset, size_t count)
     {
-        size_t o = static_cast<size_t>(offset);
-        if (count == -1) count = static_cast<int>(m_pvStructureArray->getLength());
-        size_t c = static_cast<size_t>(count); 
+        size_t o = offset;
+        if (count == 0) count = m_pvStructureArray->getLength();
+        size_t c = count;
 
         Field::const_shared_pointer field = m_pvArray->getField();
         Type type = field->getType();
@@ -1781,15 +1781,13 @@ public:
             destroy();
     }
 
-    virtual void setLength(bool lastRequest, int length, int capacity)
+    virtual void setLength(bool lastRequest, size_t length, size_t capacity)
     {
         if (capacity > 0) {
             m_pvStructureArray->setCapacity(capacity);
         }
         
-        if (length > 0) {
-            m_pvStructureArray->setLength(length);
-        }
+        m_pvStructureArray->setLength(length);
         
         m_channelArrayRequester->setLengthDone(Status::Ok);
         if (lastRequest)

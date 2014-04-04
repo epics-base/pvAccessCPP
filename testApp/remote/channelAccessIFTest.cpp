@@ -1754,13 +1754,13 @@ void ChannelAccessIFTest::test_channelArray() {
 
   array->replace(freeze(newdata));
 
-  succStatus = arrayReq->syncPut(false, 0, -1, getTimeoutSec());
+  succStatus = arrayReq->syncPut(false, 0, 0, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: an array syncPut failed (2) ", CURRENT_FUNCTION);
     return;
   }
 
-  succStatus = arrayReq->syncGet(false, 0, -1, getTimeoutSec());
+  succStatus = arrayReq->syncGet(false, 0, 0, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: an array syncGet failed (3) ", CURRENT_FUNCTION);
     return;
@@ -1800,13 +1800,13 @@ void ChannelAccessIFTest::test_channelArray() {
   //testOk(data1[2] == 2.2 , "%s: check 2: %f", CURRENT_FUNCTION, data1[2]);
 
 
-  succStatus = arrayReq->syncSetLength(false, 3, -1, getTimeoutSec());
+  succStatus = arrayReq->syncSetLength(false, 3, 0, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: an array setLength failed ", CURRENT_FUNCTION);
     return;
   }
 
-  succStatus = arrayReq->syncGet(false, 0, -1, getTimeoutSec());
+  succStatus = arrayReq->syncGet(false, 0, 0, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: an array syncGet failed (7) ", CURRENT_FUNCTION);
     return;
@@ -1821,14 +1821,15 @@ void ChannelAccessIFTest::test_channelArray() {
   testOk(data2[1] == 2.2 , "%s:  2.check 1: %f", CURRENT_FUNCTION, data2[1]);
   testOk(data2[2] == 3.3,  "%s:  2.check 2: %f", CURRENT_FUNCTION, data2[2]);
 
+  size_t currentLength = 3;
   size_t newCap = 2;
-  succStatus = arrayReq->syncSetLength(false, -1, newCap, getTimeoutSec());
+  succStatus = arrayReq->syncSetLength(false, currentLength, newCap, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: an array setLength failed (2) ", CURRENT_FUNCTION);
     return;
   }
 
-  succStatus = arrayReq->syncGet(false, 0, -1, getTimeoutSec());
+  succStatus = arrayReq->syncGet(false, 0, 0, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: an array syncGet failed (8) ", CURRENT_FUNCTION);
     return;
@@ -1850,7 +1851,7 @@ void ChannelAccessIFTest::test_channelArray() {
     return;
   }
 
-  succStatus = arrayReq->syncGet(false, 0, -1, getTimeoutSec());
+  succStatus = arrayReq->syncGet(false, 0, 0, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: an array syncGet failed (9) ", CURRENT_FUNCTION);
     return;

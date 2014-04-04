@@ -128,25 +128,25 @@ namespace pvAccess {
              * put to the remote array.
              * @param lastRequest Is this the last request.
              * @param offset The offset in the remote array, i.e. the PVArray returned by ChannelArrayRequester.channelArrayConnect.
-             * @param count The number of elements to put.
+             * @param count The number of elements to put, 0 means "enture array".
              */
-            virtual void putArray(bool lastRequest, int offset, int count) = 0;
+            virtual void putArray(bool lastRequest, size_t offset = 0, size_t count = 0) = 0;
 
             /**
              * get from the remote array.
              * @param lastRequest Is this the last request.
              * @param offset The offset in the remote array, i.e. the PVArray returned by ChannelArrayRequester.channelArrayConnect.
-             * @param count The number of elements to get.
+             * @param count The number of elements to get, 0 means "till the end of an array".
              */
-            virtual void getArray(bool lastRequest, int offset, int count) = 0;
+            virtual void getArray(bool lastRequest, size_t offset = 0, size_t count = 0) = 0;
 
             /**
              * Set the length and/or the capacity.
              * @param lastRequest Is this the last request.
-             * @param length The new length. -1 means do not change.
-             * @param capacity The new capacity. -1 means do not change.
+             * @param length The new length.
+             * @param capacity The new capacity, 0 means do "do not change the capacity".
              */
-            virtual void setLength(bool lastRequest, int length, int capacity) = 0;
+            virtual void setLength(bool lastRequest, size_t length, size_t capacity = 0) = 0;
         };
 
         /**
