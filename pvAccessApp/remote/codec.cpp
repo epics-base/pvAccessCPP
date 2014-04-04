@@ -1018,10 +1018,16 @@ namespace epics {
       {
         try {
           bac->processRead();
-        } catch (io_exception &e) {
+        } catch (connection_closed_exception &cce) {
+            // noop
+        } catch (std::exception &e) {
           LOG(logLevelWarn, 
-            "an exception caught while in receiveThread at %s:%d: %s",
+            "an exception caught while in sendThread at %s:%d: %s",
             __FILE__, __LINE__, e.what());  
+        } catch (...) {
+          LOG(logLevelError, 
+            "unknown exception caught while in sendThread at %s:%d",
+            __FILE__, __LINE__);  
         }
       }
 
@@ -1041,11 +1047,16 @@ namespace epics {
       {
         try {
           bac->processWrite();
-//TODO revise        } catch (io_exception &e) {
+        } catch (connection_closed_exception &cce) {
+            // noop
         } catch (std::exception &e) {
           LOG(logLevelWarn, 
             "an exception caught while in sendThread at %s:%d: %s",
             __FILE__, __LINE__, e.what());  
+        } catch (...) {
+          LOG(logLevelError, 
+            "unknown exception caught while in sendThread at %s:%d",
+            __FILE__, __LINE__);  
         }
       }
 
@@ -1373,7 +1384,7 @@ namespace epics {
     int32_t sendBufferSize, 
     int32_t receiveBufferSize,
     TransportClient::shared_pointer const & client,
-    epics::pvData::int8 remoteTransportRevision,
+    epics::pvData::int8 /*remoteTransportRevision*/,
     float beaconInterval,
     int16_t priority ) :
     BlockingTCPTransportCodec(context, channel, responseHandler, 

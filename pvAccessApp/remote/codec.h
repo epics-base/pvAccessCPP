@@ -586,7 +586,7 @@ namespace epics {
 
     public:
 
-      bool acquire(std::tr1::shared_ptr<TransportClient> const & client)
+      bool acquire(std::tr1::shared_ptr<TransportClient> const & /*client*/)
       {
         return false;
       }
@@ -621,7 +621,7 @@ namespace epics {
         // noop
       }
 
-      bool verify(epics::pvData::int32 timeoutMs) {
+      bool verify(epics::pvData::int32 /*timeoutMs*/) {
         TransportSender::shared_pointer transportSender = 
           std::tr1::dynamic_pointer_cast<TransportSender>(shared_from_this());
         enqueueSendRequest(transportSender);
