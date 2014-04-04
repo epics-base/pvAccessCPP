@@ -95,6 +95,7 @@ namespace epics {
     }
 
 
+    // thows io_exception, connection_closed_exception, invalid_stream_exception
     void AbstractCodec::processRead() {
       switch (_readMode)
       {
@@ -729,9 +730,9 @@ namespace epics {
     }
 
 
+    // thows io_exception, connection_closed_exception
     void AbstractCodec::processWrite() {
 
-      // TODO catch ConnectionClosedException, InvalidStreamException?
       switch (_writeMode)
       {
       case PROCESS_SEND_QUEUE:
@@ -885,7 +886,7 @@ namespace epics {
         std::ostringstream msg;
         msg << "an exception caught while processing a send message: " 
           << e.what();       
-        LOG(logLevelWarn, "%s at %s:%d", 
+        LOG(logLevelDebug, "%s at %s:%d",
           msg.str().c_str(), __FILE__, __LINE__);  
 
         try {
