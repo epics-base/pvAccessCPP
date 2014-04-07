@@ -573,15 +573,15 @@ namespace pvAccess {
 
         /****************************************************************************************/
         /**
-         * Cancel request handler.
+         * Destroy request handler.
          */
-        class ServerCancelRequestHandler : public AbstractServerResponseHandler
+        class ServerDestroyRequestHandler : public AbstractServerResponseHandler
         {
         public:
-        	ServerCancelRequestHandler(ServerContextImpl::shared_pointer const & context) :
-        		AbstractServerResponseHandler(context, "Cancel request") {
+            ServerDestroyRequestHandler(ServerContextImpl::shared_pointer const & context) :
+                AbstractServerResponseHandler(context, "Destroy request") {
         	}
-                virtual ~ServerCancelRequestHandler() {}
+                virtual ~ServerDestroyRequestHandler() {}
 
         	virtual void handleResponse(osiSockAddr* responseFrom,
         			Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
@@ -589,6 +589,27 @@ namespace pvAccess {
         private:
 
         	void failureResponse(Transport::shared_pointer const & transport, pvAccessID ioid, const epics::pvData::Status& errorStatus);
+        };
+
+
+        /****************************************************************************************/
+        /**
+         * Cancel request handler.
+         */
+        class ServerCancelRequestHandler : public AbstractServerResponseHandler
+        {
+        public:
+            ServerCancelRequestHandler(ServerContextImpl::shared_pointer const & context) :
+                AbstractServerResponseHandler(context, "Cancel request") {
+            }
+                virtual ~ServerCancelRequestHandler() {}
+
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                    Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
+                    std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+        private:
+
+            void failureResponse(Transport::shared_pointer const & transport, pvAccessID ioid, const epics::pvData::Status& errorStatus);
         };
 
 

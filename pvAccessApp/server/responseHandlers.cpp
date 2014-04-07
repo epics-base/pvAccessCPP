@@ -50,7 +50,7 @@ ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer c
     MB_INIT;                
 
     ResponseHandler::shared_pointer badResponse(new ServerBadResponse(context));
-    m_handlerTable.resize(CMD_RPC+1);
+    m_handlerTable.resize(CMD_CANCEL_REQUEST+1);
                 
     m_handlerTable[CMD_BEACON].reset(new ServerNoopResponse(context, "Beacon")); /*  0 */
     m_handlerTable[CMD_CONNECTION_VALIDATION].reset(new ServerConnectionValidationHandler(context)); /*  1 */
@@ -68,12 +68,13 @@ ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer c
     m_handlerTable[CMD_PUT_GET].reset(new ServerPutGetHandler(context)); /* 12 - put-get response */
     m_handlerTable[CMD_MONITOR].reset(new ServerMonitorHandler(context)); /* 13 - monitor response */
     m_handlerTable[CMD_ARRAY].reset(new ServerArrayHandler(context)); /* 14 - array response */
-    m_handlerTable[CMD_CANCEL_REQUEST].reset(new ServerCancelRequestHandler(context)); /* 15 - cancel request */
+    m_handlerTable[CMD_DESTROY_REQUEST].reset(new ServerDestroyRequestHandler(context)); /* 15 - destroy request */
     m_handlerTable[CMD_PROCESS].reset(new ServerProcessHandler(context)); /* 16 - process response */
     m_handlerTable[CMD_GET_FIELD].reset(new ServerGetFieldHandler(context)); /* 17 - get field response */
     m_handlerTable[CMD_MESSAGE] = badResponse; /* 18 - message to Requester */
     m_handlerTable[CMD_MULTIPLE_DATA] = badResponse; /* 19 - grouped monitors */
     m_handlerTable[CMD_RPC].reset(new ServerRPCHandler(context)); /* 20 - RPC response */
+    m_handlerTable[CMD_CANCEL_REQUEST].reset(new ServerCancelRequestHandler(context)); /* 21 - cancel request */
 }
 
 void ServerResponseHandler::handleResponse(osiSockAddr* responseFrom,
@@ -1659,7 +1660,7 @@ void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendCont
 }
 
 /****************************************************************************************/
-void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
+void ServerDestroyRequestHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
 		size_t payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
@@ -1693,9 +1694,54 @@ void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
 	channel->unregisterRequest(ioid);
 }
 
-void ServerCancelRequestHandler::failureResponse(Transport::shared_pointer const & transport, pvAccessID ioid, const Status& errorStatus)
+void ServerDestroyRequestHandler::failureResponse(Transport::shared_pointer const & transport, pvAccessID ioid, const Status& errorStatus)
 {
 	BaseChannelRequester::message(transport, ioid, errorStatus.getMessage(), warningMessage);
+}
+
+/****************************************************************************************/
+void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
+        Transport::shared_pointer const & transport, int8 version, int8 command,
+        size_t payloadSize, ByteBuffer* payloadBuffer) {
+    AbstractServerResponseHandler::handleResponse(responseFrom,
+            transport, version, command, payloadSize, payloadBuffer);
+
+    // NOTE: we do not explicitly check if transport is OK
+    ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
+
+    transport->ensureData(2*sizeof(int32)/sizeof(int8));
+    const pvAccessID sid = payloadBuffer->getInt();
+    const pvAccessID ioid = payloadBuffer->getInt();
+
+    ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+    if (channel == NULL)
+    {
+        failureResponse(transport, ioid, BaseChannelRequester::badCIDStatus);
+        return;
+    }
+
+    Destroyable::shared_pointer request = channel->getRequest(ioid);
+    if (request == NULL)
+    {
+        failureResponse(transport, ioid, BaseChannelRequester::badIOIDStatus);
+        return;
+    }
+
+    ChannelRequest::shared_pointer cr = dynamic_pointer_cast<ChannelRequest>(request);
+    if (cr == NULL)
+    {
+        failureResponse(transport, ioid, BaseChannelRequester::notAChannelRequestStatus);
+        return;
+    }
+
+    // cancel
+    cr->cancel();
+
+}
+
+void ServerCancelRequestHandler::failureResponse(Transport::shared_pointer const & transport, pvAccessID ioid, const Status& errorStatus)
+{
+    BaseChannelRequester::message(transport, ioid, errorStatus.getMessage(), warningMessage);
 }
 
 /****************************************************************************************/

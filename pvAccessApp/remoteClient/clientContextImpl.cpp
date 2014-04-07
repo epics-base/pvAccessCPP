@@ -120,6 +120,7 @@ namespace epics {
             /* negative... */
             static const int NULL_REQUEST = -1;
             static const int PURE_DESTROY_REQUEST = -2;
+            static const int PURE_CANCEL_REQUEST = -3;
 
             pvAccessID m_ioid;
 
@@ -160,7 +161,7 @@ namespace epics {
                 Lock guard(m_mutex);
 
                 // we allow pure destroy...
-                if (m_pendingRequest != NULL_REQUEST && qos != PURE_DESTROY_REQUEST)
+                if (m_pendingRequest != NULL_REQUEST && qos != PURE_DESTROY_REQUEST && qos != PURE_CANCEL_REQUEST)
                     return false;
 
                 m_pendingRequest = qos;
@@ -224,7 +225,7 @@ namespace epics {
                         m_mutex.unlock();
     
                         if (!destroyResponse(transport, version, payloadBuffer, qos, m_status))
-                            cancel();
+                            destroy();
                     }
                     else
                     {
@@ -239,7 +240,21 @@ namespace epics {
             }
 
             virtual void cancel() {
-                destroy();
+
+                {
+                    Lock guard(m_mutex);
+                    if (m_destroyed)
+                        return;
+                }
+
+                try
+                {
+                    startRequest(PURE_CANCEL_REQUEST);
+                    m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+                } catch (...) {
+                    // noop (do not complain if fails)
+                }
+
             }
 
             virtual void destroy() {
@@ -311,6 +326,12 @@ namespace epics {
                 if (qos == -1)
                     return;
                 else if (qos == PURE_DESTROY_REQUEST)
+                {
+                    control->startMessage((int8)CMD_DESTROY_REQUEST, 8);
+                    buffer->putInt(m_channel->getServerChannelID());
+                    buffer->putInt(m_ioid);
+                }
+                else if (qos == PURE_CANCEL_REQUEST)
                 {
                     control->startMessage((int8)CMD_CANCEL_REQUEST, 8);
                     buffer->putInt(m_channel->getServerChannelID());
@@ -465,6 +486,11 @@ namespace epics {
                     stopRequest();
                     EXCEPTION_GUARD(m_callback->processDone(channelNotConnected));
                 }
+            }
+
+            virtual void cancel()
+            {
+                BaseRequestImpl::cancel();
             }
 
             virtual void destroy()
@@ -667,6 +693,11 @@ namespace epics {
                     stopRequest();
                     EXCEPTION_GUARD(m_channelGetRequester->getDone(channelNotConnected));
                 }
+            }
+
+            virtual void cancel()
+            {
+                BaseRequestImpl::cancel();
             }
 
             virtual void destroy()
@@ -891,6 +922,11 @@ namespace epics {
                     stopRequest();
                     EXCEPTION_GUARD(m_channelPutRequester->putDone(channelNotConnected));
                 }
+            }
+
+            virtual void cancel()
+            {
+                BaseRequestImpl::cancel();
             }
 
             virtual void destroy()
@@ -1169,6 +1205,11 @@ namespace epics {
                 }
             }
 
+            virtual void cancel()
+            {
+                BaseRequestImpl::cancel();
+            }
+
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
@@ -1349,6 +1390,11 @@ namespace epics {
                     stopRequest();
                     EXCEPTION_GUARD(m_channelRPCRequester->requestDone(channelNotConnected, nullPVStructure));
                 }
+            }
+
+            virtual void cancel()
+            {
+                BaseRequestImpl::cancel();
             }
 
             virtual void destroy()
@@ -1638,6 +1684,11 @@ namespace epics {
                 }
             }
 
+            virtual void cancel()
+            {
+                BaseRequestImpl::cancel();
+            }
+
             virtual void destroy()
             {
                 BaseRequestImpl::destroy();
@@ -1746,8 +1797,8 @@ namespace epics {
 
 
             virtual void cancel() {
-                destroy();
-                // TODO notify?
+                // TODO
+                // noop
             }
 
             virtual void timeout() {
@@ -1796,7 +1847,7 @@ namespace epics {
                     EXCEPTION_GUARD(m_callback->getDone(status, FieldConstPtr()));
                 }
 
-                cancel();
+                destroy();
             }
 
 
@@ -2144,7 +2195,7 @@ namespace epics {
                     m_mutex.unlock();
 
                     if (!destroyResponse(transport, version, payloadBuffer, qos, status))
-                        cancel();
+                        destroy();
                 }
                 else
                 {
@@ -2580,7 +2631,7 @@ namespace epics {
                 ResponseHandler::shared_pointer badResponse(new BadResponse(context));
                 ResponseHandler::shared_pointer dataResponse(new DataResponseHandler(context));
                 
-                m_handlerTable.resize(CMD_RPC+1);
+                m_handlerTable.resize(CMD_CANCEL_REQUEST+1);
                 
                 m_handlerTable[CMD_BEACON].reset(new BeaconResponseHandler(context)); /*  0 */
                 m_handlerTable[CMD_CONNECTION_VALIDATION].reset(new ClientConnectionValidationHandler(context)); /*  1 */
@@ -2597,12 +2648,13 @@ namespace epics {
                 m_handlerTable[CMD_PUT_GET] = dataResponse; /* 12 - put-get response */
                 m_handlerTable[CMD_MONITOR] = dataResponse; /* 13 - monitor response */
                 m_handlerTable[CMD_ARRAY] = dataResponse; /* 14 - array response */
-                m_handlerTable[CMD_CANCEL_REQUEST] = badResponse; /* 15 - cancel request */
+                m_handlerTable[CMD_DESTROY_REQUEST] = badResponse; /* 15 - destroy request */
                 m_handlerTable[CMD_PROCESS] = dataResponse; /* 16 - process response */
                 m_handlerTable[CMD_GET_FIELD] = dataResponse; /* 17 - get field response */
                 m_handlerTable[CMD_MESSAGE].reset(new MessageHandler(context)); /* 18 - message to Requester */
                 m_handlerTable[CMD_MULTIPLE_DATA] = badResponse; // TODO new MultipleDataResponseHandler(context), /* 19 - grouped monitors */
                 m_handlerTable[CMD_RPC] = dataResponse; /* 20 - RPC response */
+                m_handlerTable[CMD_CANCEL_REQUEST] = badResponse; /* 21 - cancel request */
             }
 
             virtual void handleResponse(osiSockAddr* responseFrom,

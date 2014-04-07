@@ -78,6 +78,11 @@ class ChannelRPCServiceImpl : public ChannelRPC
         processRequest(pvArgument, lastRequest);
     }
 
+    virtual void cancel()
+    {
+        // noop
+    }
+
     virtual void destroy()
     {
         // noop

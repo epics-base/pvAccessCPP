@@ -881,6 +881,13 @@ void CAChannelGet::get(bool lastRequest)
 }
 
 
+/* --------------- epics::pvData::ChannelRequest --------------- */
+
+void CAChannelGet::cancel()
+{
+    // noop
+}
+
 /* --------------- epics::pvData::Destroyable --------------- */
 
 
@@ -1176,6 +1183,14 @@ void CAChannelPut::get()
 }
 
 
+
+/* --------------- epics::pvData::ChannelRequest --------------- */
+
+void CAChannelPut::cancel()
+{
+    // noop
+}
+
 /* --------------- epics::pvData::Destroyable --------------- */
 
 
@@ -1349,6 +1364,14 @@ void CAChannelMonitor::release(epics::pvData::MonitorElementPtr const & /*monito
     // noop
 }
 
+
+
+/* --------------- epics::pvData::ChannelRequest --------------- */
+
+void CAChannelMonitor::cancel()
+{
+    // noop
+}
 
 /* --------------- epics::pvData::Destroyable --------------- */
 

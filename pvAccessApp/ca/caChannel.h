@@ -144,6 +144,10 @@ public:
 
     virtual void get(bool lastRequest);
 
+    /* --------------- epics::pvData::ChannelRequest --------------- */
+
+    virtual void cancel();
+
     /* --------------- epics::pvData::Destroyable --------------- */
 
     virtual void destroy();
@@ -192,6 +196,10 @@ public:
     virtual void put(bool lastRequest);
     virtual void get();
 
+    /* --------------- epics::pvData::ChannelRequest --------------- */
+
+    virtual void cancel();
+
     /* --------------- epics::pvData::Destroyable --------------- */
 
     virtual void destroy();
@@ -239,6 +247,10 @@ public:
     virtual epics::pvData::Status stop();
     virtual epics::pvData::MonitorElementPtr poll();
     virtual void release(epics::pvData::MonitorElementPtr const & monitorElement);
+
+    /* --------------- epics::pvData::ChannelRequest --------------- */
+
+    virtual void cancel();
 
     /* --------------- epics::pvData::Destroyable --------------- */
 

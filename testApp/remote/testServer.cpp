@@ -885,6 +885,10 @@ public:
             destroy();
     }
 
+    virtual void cancel()
+    {
+    }
+
     virtual void destroy()
     {
     }
@@ -998,6 +1002,10 @@ public:
         m_changed.set();
     }
 
+    virtual void cancel()
+    {
+    }
+
     virtual void destroy()
     {
         if (m_channelProcess)
@@ -1097,6 +1105,10 @@ public:
         m_channelPutRequester->getDone(Status::Ok);
     }
 
+    virtual void cancel()
+    {
+    }
+
     virtual void destroy()
     {
         if (m_channelProcess)
@@ -1185,6 +1197,10 @@ public:
     virtual void getPut()
     {
         m_channelPutGetRequester->getPutDone(Status::Ok);
+    }
+
+    virtual void cancel()
+    {
     }
 
     virtual void destroy()
@@ -1602,6 +1618,10 @@ public:
             destroy();
     }
 
+    virtual void cancel()
+    {
+    }
+
     virtual void destroy()
     {
     }
@@ -1794,6 +1814,10 @@ public:
             destroy();
     }
 
+    virtual void cancel()
+    {
+    }
+
     virtual void destroy()
     {
     }
@@ -1929,6 +1953,10 @@ public:
         {
             m_count--;
         }
+    }
+
+    virtual void cancel()
+    {
     }
 
     virtual void destroy()

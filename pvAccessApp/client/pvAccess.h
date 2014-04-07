@@ -114,6 +114,12 @@ namespace pvAccess {
         class epicsShareClass ChannelRequest : public epics::pvData::Destroyable, public Lockable, private epics::pvData::NoDefaultMethods {
             public:
             POINTER_DEFINITIONS(ChannelRequest);
+
+            /**
+             * Cancel any currently pending request.
+             * No response callback should be called after the request has been canceled.
+             */
+            virtual void cancel() = 0;
         };
 
         /**

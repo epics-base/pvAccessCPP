@@ -18,6 +18,7 @@ const Status BaseChannelRequester::noReadACLStatus = Status(Status::STATUSTYPE_E
 const Status BaseChannelRequester::noWriteACLStatus = Status(Status::STATUSTYPE_ERROR, "no write access");
 const Status BaseChannelRequester::noProcessACLStatus = Status(Status::STATUSTYPE_ERROR, "no process access");
 const Status BaseChannelRequester::otherRequestPendingStatus = Status(Status::STATUSTYPE_ERROR, "other request pending");
+const Status BaseChannelRequester::notAChannelRequestStatus = Status(Status::STATUSTYPE_ERROR, "not a channel request");
 
 const int32 BaseChannelRequester::NULL_REQUEST = -1;
 

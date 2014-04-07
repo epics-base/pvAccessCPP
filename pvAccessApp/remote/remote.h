@@ -99,12 +99,13 @@ namespace epics {
             CMD_PUT_GET = 12,
             CMD_MONITOR = 13, 
             CMD_ARRAY = 14,
-            CMD_CANCEL_REQUEST = 15,
+            CMD_DESTROY_REQUEST = 15,
             CMD_PROCESS = 16,
             CMD_GET_FIELD = 17,
             CMD_MESSAGE = 18,
             CMD_MULTIPLE_DATA = 19,
-            CMD_RPC = 20
+            CMD_RPC = 20,
+            CMD_CANCEL_REQUEST = 21
         };
 
 		enum ControlCommands {
