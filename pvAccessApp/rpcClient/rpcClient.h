@@ -19,6 +19,8 @@
 #	undef rpcClientEpicsExportSharedSymbols
 #endif
 
+#include <pv/rpcService.h>
+
 #include <shareLib.h>
 
 namespace epics
@@ -43,6 +45,7 @@ namespace pvAccess
 	     * @param  pvArgument  the argument for the rpc
 	     * @param  timeout     the time in seconds to wait for the response
 	     * @return             request response.
+	     * @throws RPCRequestException exception thrown on error on timeout.
 	     */
         virtual epics::pvData::PVStructure::shared_pointer request(epics::pvData::PVStructure::shared_pointer pvRequest,
             double timeOut) = 0;
@@ -52,7 +55,7 @@ namespace pvAccess
 
 
 
-    class RPCClientFactory
+    class epicsShareClass RPCClientFactory
     {
     public:
 	    /**
@@ -67,13 +70,13 @@ namespace pvAccess
     /**
      * Performs complete blocking RPC call, opening a channel and connecting to the
      * service and sending the request.
-     * The PVStructure sent on connection is null.
      *
      * @param  serviceName         the name of the service to connect to
      * @param  request             the request sent to the service
      * @return                     the result of the RPC call.
+	 * @throws RPCRequestException exception thrown on error on timeout.
      */
-    epics::pvData::PVStructure::shared_pointer sendRequest(const std::string & serviceName,
+    epicsShareExtern epics::pvData::PVStructure::shared_pointer sendRequest(const std::string & serviceName,
         epics::pvData::PVStructure::shared_pointer request, double timeOut);
 }
 
