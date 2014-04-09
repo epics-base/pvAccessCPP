@@ -244,7 +244,8 @@ namespace epics {
       void alignData(std::size_t alignment);
       void startMessage(
         epics::pvData::int8 command, 
-        std::size_t ensureCapacity);
+        std::size_t ensureCapacity = 0,
+        epics::pvData::int32 payloadSize = 0);
       void putControlMessage(
         epics::pvData::int8 command,  
         epics::pvData::int32 data);
@@ -265,10 +266,21 @@ namespace epics {
 
       static std::size_t alignedValue(std::size_t value, std::size_t alignment);
 
+      bool directSerialize(
+        epics::pvData::ByteBuffer * /*existingBuffer*/,
+        const char* /*toSerialize*/,
+        std::size_t /*elementCount*/, std::size_t /*elementSize*/);
+
+
+      bool directDeserialize(epics::pvData::ByteBuffer * /*existingBuffer*/,
+        char* /*deserializeTo*/,
+        std::size_t /*elementCount*/, std::size_t /*elementSize*/);
+
     protected:
 
-      virtual void sendBufferFull(int tries)  = 0; 
-      void send(epics::pvData::ByteBuffer *buffer); 
+      virtual void sendBufferFull(int tries) = 0;
+      void send(epics::pvData::ByteBuffer *buffer);
+      void flushSendBuffer();
 
 
       ReadMode _readMode;
@@ -484,24 +496,6 @@ namespace epics {
         epics::pvData::ByteBuffer* buffer) 
       {
         _outgoingIR.serialize(field, buffer, this);
-      }
-
-
-      bool directSerialize(
-        epics::pvData::ByteBuffer * /*existingBuffer*/, 
-        const char* /*toSerialize*/,
-        std::size_t /*elementCount*/, std::size_t /*elementSize*/)
-      {
-          // TODO !!!!
-        return false;
-      }
-
-
-      bool directDeserialize(epics::pvData::ByteBuffer * /*existingBuffer*/, 
-        char* /*deserializeTo*/,
-        std::size_t /*elementCount*/, std::size_t /*elementSize*/)  { 
-          // TODO !!!
-          return false;
       }
 
 
