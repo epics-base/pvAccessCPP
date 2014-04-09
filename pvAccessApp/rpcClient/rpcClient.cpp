@@ -4,13 +4,18 @@
  * found in file LICENSE that is included with this distribution.
  */
 
+/**
+ * @authors mrk, mse 
+ */
+/* Author Marty Kraimer 2011.12 */
+
+
 #include <iostream>
 #include <string>
 
 #include <pv/pvData.h>
 #include <pv/convert.h>
 
-#include <pv/pvAccess.h>
 #include <pv/clientFactory.h>
 #include <pv/event.h>
 #include <pv/logger.h>
@@ -18,291 +23,191 @@
 
 #include "rpcClient.h"
 
-
 using namespace epics::pvData;
+using std::tr1::static_pointer_cast;
+using std::cout;
+using std::endl;
 
+namespace epics { namespace pvAccess { 
 
-namespace epics
+RPCClientPtr RPCClient::create(String const &channelName,PVStructurePtr const &pvRequest)
 {
+    return RPCClientPtr(new RPCClient(channelName,pvRequest));
+}
 
-namespace pvAccess
+PVStructurePtr RPCClient::request(
+    String const &channelName,
+    PVStructure::shared_pointer const & pvArgument,
+    double timeOut)
 {
+    ClientFactory::start();
+    RPCClientPtr client = RPCClient::create(channelName,PVStructurePtr());
+    if(!client->connect(timeOut)) throw std::runtime_error(client->getMessage());
+    PVStructurePtr pvResult = client->request(pvArgument,true);
+    if(pvResult==NULL) throw std::runtime_error(client->getMessage());
+    ClientFactory::stop();
+    return pvResult;
+}
 
-namespace 
+
+RPCClient::RPCClient(
+    String const &channelName,
+    PVStructure::shared_pointer const &pvRequest)
+: channelName(channelName),
+  pvRequest(pvRequest),
+  requesterName("RPCClient"),
+  isOK(true)
 {
+}
 
-// copied from eget/pvutils. This is a lot of boilerplate and needs refactoring to common code.
-
-class ChannelRequesterImpl :
-    public epics::pvAccess::ChannelRequester
+RPCClient::~RPCClient()
 {
-    private:
-        epics::pvData::Event m_event;
+//printf("RPCClient::~RPCClient()\n");
+}
+
+void RPCClient::destroy()
+{
+    Lock xx(mutex);
+    if(channel.get()!=0) {
+        channel->destroy();
+        channel.reset();
+        pvRequest.reset();
+        channelRPC.reset();
+        pvResponse.reset();
+    }
+}
+
+bool RPCClient::connect(double timeOut)
+{
+    if(pvRequest.get()==NULL) {
+        pvRequest = getCreateRequest()->createRequest(
+            "record[process=true]field()",getPtrSelf());
+    }
+    issueConnect();
+    return waitConnect(timeOut);
+}
+
+void RPCClient::issueConnect()
+{
+    event.tryWait(); // make sure event is empty
+    ChannelAccess::shared_pointer const &channelAccess = getChannelAccess();
+    ChannelProvider::shared_pointer const &channelProvider
+         = channelAccess->getProvider(String("pva"));
+    if(channelProvider==NULL) {
+        String message("Provider pva not active. Did You call ClientFactory::start()?");
+        throw std::runtime_error(message);
+    }
+    channel = channelProvider->createChannel(
+        channelName,
+        getPtrSelf(),
+        ChannelProvider::PRIORITY_DEFAULT);
+}
+
+bool RPCClient::waitConnect(double timeOut) {
+    // wait for channel to connect
+    bool ok = event.wait(timeOut);
+    if(!ok) return ok;
+    channelRPC = channel->createChannelRPC(getPtrSelf(),pvRequest);
+    event.wait();
+    return isOK;
+}
+
+epics::pvData::PVStructure::shared_pointer RPCClient::request(
+    PVStructure::shared_pointer const & pvArgument,
+    bool lastRequest)
+{
+//printf("RPCClient::request\n");
+    issueRequest(pvArgument,lastRequest);
+//printf("RPCClient::request calling waitRequest\n");
+    return waitRequest();
+}
+
+void RPCClient::issueRequest(
+    PVStructure::shared_pointer const & pvArgument,
+    bool lastRequest)
+{
+//printf("RPCClient::issueRequest\n");
+    event.tryWait(); // make sure event is empty
+//printf("RPCClient::issueRequest calling channelRPC->request\n");
+    channelRPC->request(pvArgument,lastRequest);
+}
+
+epics::pvData::PVStructure::shared_pointer RPCClient::waitRequest()
+{
+//printf("calling event.wait()\n");
+    bool ok = event.wait();
+//printf("wait returned %s\n",(ok==true ? "true" : "false"));
+    if(!ok) {
+        isOK = false;
+        lastMessage = "event.wait failed\n";
+        pvResponse = epics::pvData::PVStructure::shared_pointer();
+    }
+    return pvResponse;
+}
+
+String RPCClient::getMessage() { return lastMessage;}
+
+
+void RPCClient::channelCreated(
+    const Status& status,
+    Channel::shared_pointer const & channel)
+{
+//printf("RPCClient::channelCreate\n");
+    isOK = status.isOK();
+    this->channel = channel;
+    if(!isOK) {
+        String message = Status::StatusTypeName[status.getType()];
+        message += " " + status.getMessage();
+        lastMessage = message;
+        event.signal();
+    }
+}
+
+void RPCClient::channelStateChange(
+    Channel::shared_pointer const & channel,
+    Channel::ConnectionState connectionState)
+{
+    this->channel = channel;
+    this->connectionState = connectionState;
+    event.signal();
+}
+
+String RPCClient::getRequesterName(){ return requesterName;}
+
+void RPCClient::message(String const &message,MessageType messageType)
+{
+    lastMessage = getMessageTypeName(messageType);
+    lastMessage += " " + message;
+}
+
+void RPCClient::channelRPCConnect(
+    const Status& status,
+    ChannelRPC::shared_pointer const & channelRPC)
+{
+    this->channelRPC = channelRPC;
+    if(!status.isOK()) {
+        isOK = false;
+        String message = Status::StatusTypeName[status.getType()];
+        message += " " + status.getMessage();
+        lastMessage = message;
+    }
+    event.signal();
+}
+
+void RPCClient::requestDone(
+    const Status& status,
+    PVStructure::shared_pointer const & pvResponse)
+{
+//printf("RPCClient::requestDone\n");
+    this->pvResponse = pvResponse;
+    if(!status.isOK()) {
+        isOK = false;
+        String message = Status::StatusTypeName[status.getType()];
+        message += " " + status.getMessage();
+        lastMessage = message;
+    }
+    event.signal();
+}
     
-    public:
-        virtual epics::pvData::String getRequesterName();
-        virtual void message(epics::pvData::String const & message, epics::pvData::MessageType messageType);
-    
-        virtual void channelCreated(const epics::pvData::Status& status, epics::pvAccess::Channel::shared_pointer const & channel);
-        virtual void channelStateChange(epics::pvAccess::Channel::shared_pointer const & channel, epics::pvAccess::Channel::ConnectionState connectionState);
-    
-        bool waitUntilConnected(double timeOut);
-};
 
-class ChannelRPCRequesterImpl : public ChannelRPCRequester
-{
-    private:
-    ChannelRPC::shared_pointer m_channelRPC;
-    Mutex m_pointerMutex;
-    Event m_event;
-    Event m_connectionEvent;
-    String m_channelName;
-
-    public:
-    epics::pvData::PVStructure::shared_pointer response;   
-    ChannelRPCRequesterImpl(String channelName) : m_channelName(channelName) {}
-    
-    virtual String getRequesterName()
-    {
-        return "ChannelRPCRequesterImpl";
-    }
-
-    virtual void message(String const & message, MessageType messageType)
-    {
-        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
-    }
-
-    virtual void channelRPCConnect(const epics::pvData::Status& status,ChannelRPC::shared_pointer const & channelRPC)
-    {
-        if (status.isSuccess())
-        {
-            // show warning
-            if (!status.isOK())
-            {
-                std::cerr << "[" << m_channelName << "] channel RPC create: " << status.toString() << std::endl;
-            }
-            
-            // assign smart pointers
-            {
-                Lock lock(m_pointerMutex);
-                m_channelRPC = channelRPC;
-            }
-            
-            m_connectionEvent.signal();
-        }
-        else
-        {
-            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
-        }
-    }
-
-    virtual void requestDone (const epics::pvData::Status &status, epics::pvData::PVStructure::shared_pointer const &pvResponse)
-    {
-        if (status.isSuccess())
-        {
-            // show warning
-            if (!status.isOK())
-            {
-                std::cerr << "[" << m_channelName << "] channel RPC: " << status.toString() << std::endl;
-            }
-
-            // access smart pointers
-            {
-                Lock lock(m_pointerMutex);
-
-                response = pvResponse;
-                // this is OK since calle holds also owns it
-                m_channelRPC.reset();                
-            }
-            
-            m_event.signal();
-            
-        }
-        else
-        {
-            std::cerr << "[" << m_channelName << "] failed to RPC: " << status.toString() << std::endl;
-            {
-                Lock lock(m_pointerMutex);
-                // this is OK since caller holds also owns it
-                m_channelRPC.reset();
-            }
-        }
-        
-    }
-    
-    /*
-    void request(epics::pvData::PVStructure::shared_pointer const &pvRequest)
-    {
-        Lock lock(m_pointerMutex);
-        m_channelRPC->request(pvRequest, false);
-    }
-    */
-
-    bool waitUntilRPC(double timeOut)
-    {
-        return m_event.wait(timeOut);
-    }
-
-    bool waitUntilConnected(double timeOut)
-    {
-        return m_connectionEvent.wait(timeOut);
-    }
-};
-
-
-String ChannelRequesterImpl::getRequesterName()
-{
-	return "ChannelRequesterImpl";
-}
-
-void ChannelRequesterImpl::message(String const & message, MessageType messageType)
-{
-	std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
-}
-
-void ChannelRequesterImpl::channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel)
-{
-	if (status.isSuccess())
-	{
-		// show warning
-		if (!status.isOK())
-		{
-			std::cerr << "[" << channel->getChannelName() << "] channel create: " << status.toString() << std::endl;
-		}
-	}
-	else
-	{
-		std::cerr << "[" << channel->getChannelName() << "] failed to create a channel: " << status.toString() << std::endl;
-	}
-}
-
-void ChannelRequesterImpl::channelStateChange(Channel::shared_pointer const & /*channel*/, Channel::ConnectionState connectionState)
-{
-	if (connectionState == Channel::CONNECTED)
-	{
-		m_event.signal();
-	}
-	/*
-	else if (connectionState != Channel::DESTROYED)
-	{
-		std::cerr << "[" << channel->getChannelName() << "] channel state change: "  << Channel::ConnectionStateNames[connectionState] << std::endl;
-	}
-	*/
-}
-    
-bool ChannelRequesterImpl::waitUntilConnected(double timeOut)
-{
-	return m_event.wait(timeOut);
-}
-
-
-class RPCClientImpl: public RPCClient
-{
-
-public:
-    POINTER_DEFINITIONS(RPCClientImpl);
-
-    RPCClientImpl(const std::string & serviceName)
-        : m_serviceName(serviceName), m_connected(false)
-    {
-    }
-
-    virtual PVStructure::shared_pointer request(PVStructure::shared_pointer pvRequest, double timeOut);
-
-private:
-    void init()
-    {
-        using namespace std::tr1;
-        m_provider = getChannelAccess()->getProvider("pva");
-    
-        shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
-        m_channelRequesterImpl = channelRequesterImpl;
-        m_channel = m_provider->createChannel(m_serviceName, channelRequesterImpl);
-    }
-
-    bool connect(double timeOut)
-    {
-        init();
-        m_connected = m_channelRequesterImpl->waitUntilConnected(timeOut);             
-        return m_connected;      
-    }
-
-    std::string m_serviceName;
-    ChannelProvider::shared_pointer m_provider;
-    std::tr1::shared_ptr<ChannelRequesterImpl> m_channelRequesterImpl;
-    Channel::shared_pointer m_channel;
-    bool m_connected;
-};
-
-
-PVStructure::shared_pointer RPCClientImpl::request(PVStructure::shared_pointer pvRequest, double timeOut)
-{
-    using namespace std::tr1;
-
-    PVStructure::shared_pointer response;
-
-    bool allOK = true;
-
-    //ClientFactory::start();
-
-    if (m_connected || connect(timeOut))
-    {
-        shared_ptr<ChannelRPCRequesterImpl> rpcRequesterImpl(new ChannelRPCRequesterImpl(m_channel->getChannelName()));
-        ChannelRPC::shared_pointer channelRPC = m_channel->createChannelRPC(rpcRequesterImpl, pvRequest);
-
-        if (rpcRequesterImpl->waitUntilConnected(timeOut))
-        {
-            channelRPC->request(pvRequest, true);
-            allOK &= rpcRequesterImpl->waitUntilRPC(timeOut);
-            response = rpcRequesterImpl->response;
-        }
-        else
-        {
-            allOK = false;
-            m_channel->destroy();
-            m_connected =  false;
-            std::string errMsg = "[" + m_channel->getChannelName() + "] RPC create timeout";
-            throw epics::pvAccess::RPCRequestException(Status::STATUSTYPE_ERROR, errMsg);
-        }
-    }
-    else
-    {
-        allOK = false;
-        m_channel->destroy();
-        m_connected = false;
-        std::string errMsg = "[" + m_channel->getChannelName() + "] connection timeout";
-        throw epics::pvAccess::RPCRequestException(Status::STATUSTYPE_ERROR, errMsg);
-    }
-
-    //ClientFactory::stop();
-
-    if (!allOK)
-    {
-        throw epics::pvAccess::RPCRequestException(Status::STATUSTYPE_ERROR, "RPC request failed");
-    }
-
-    return response;
-}
-
-}
-
-RPCClient::shared_pointer RPCClientFactory::create(const std::string & serviceName)
-{
-    return RPCClient::shared_pointer(new RPCClientImpl(serviceName));
-}
-
-
-PVStructure::shared_pointer sendRequest(const std::string & serviceName,
-     PVStructure::shared_pointer queryRequest,
-     double timeOut)
-{
-    RPCClient::shared_pointer client = RPCClientFactory::create(serviceName);
-
-    return client->request(queryRequest, timeOut);
-}
-
-
-}
-
-}
-
+}}
