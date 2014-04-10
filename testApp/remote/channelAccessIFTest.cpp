@@ -43,7 +43,7 @@ std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray1";
 int ChannelAccessIFTest::runAllTest() {
 
 #ifdef ENABLE_STRESS_TESTS
-  testPlan(157);
+  testPlan(158);
 #else
   testPlan(152);
 #endif
@@ -98,6 +98,7 @@ int ChannelAccessIFTest::runAllTest() {
   test_channelArrayTestNoConnection();
 
 #ifdef ENABLE_STRESS_TESTS
+  test_stressPutAndGetLargeArray();
   test_stressConnectDisconnect();
   test_stressConnectGetDisconnect();
   test_stressMonitorAndProcess(); 
@@ -1988,6 +1989,85 @@ void ChannelAccessIFTest::test_channelArray_destroy() {
   }
 
 }
+
+
+void ChannelAccessIFTest::test_stressPutAndGetLargeArray() {
+
+  testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
+
+  string request = "field(value)";
+  size_t minSize = 1;
+  size_t step = 25471;
+  size_t maxSize = 8*1024*1024;  // 8MB
+  bool debug  = false;
+
+  Channel::shared_pointer channel = syncCreateChannel(TEST_ARRAY_CHANNEL_NAME);
+  if (!channel.get()) {
+    testFail("%s: channel not created ", CURRENT_FUNCTION);
+    return;
+  }
+
+  SyncChannelPutRequesterImpl::shared_pointer putReq =
+    syncCreateChannelPut(channel, request, debug);
+  if (!putReq.get()) {
+    testFail("%s: creating a channel put failed ", CURRENT_FUNCTION);
+    return;
+  }
+
+  PVDoubleArray::shared_pointer value = putReq->getPVStructure()->getSubField<PVDoubleArray>("value");
+  if (!value.get()) {
+    testFail("%s: getting double array value field failed ", CURRENT_FUNCTION);
+    return;
+  }
+
+  PVDoubleArray::svector newdata;
+
+  for (size_t len = minSize; len <= maxSize; len+=step) {
+
+      //testDiag("%s: array size %zd", CURRENT_FUNCTION, len);
+
+      // prepare data
+      newdata.resize(len);
+      for (size_t i = 0; i < len; i++)
+          newdata[i] = i;
+
+      value->replace(freeze(newdata));
+      putReq->getBitSet()->set(value->getFieldOffset());
+
+      bool succStatus = putReq->syncPut(false, getTimeoutSec());
+      if (!succStatus) {
+        testFail("%s: sync put failed at array size %zd", CURRENT_FUNCTION, len);
+        return;
+      }
+
+      succStatus = putReq->syncGet(getTimeoutSec());
+      if (!succStatus) {
+        testFail("%s: sync get failed at array size %zd", CURRENT_FUNCTION, len);
+        return;
+      }
+
+      // length check
+      if (value->getLength() != len) {
+          testFail("%s: length does not math %zd != %zd", CURRENT_FUNCTION, len, value->getLength());
+          return;
+      }
+
+      // value check
+      PVDoubleArray::const_svector data(value->view());
+      for (size_t i = 0; i < len; i++) {
+          if (i != data[i])        // NOTE: floating-point value comparison without delta
+              testFail("%s: data slot %zd does not match %f != %f at array size %zd", CURRENT_FUNCTION, i, (double)i, data[i], len);
+      }
+
+  }
+
+  channel->destroy();
+
+  testOk(true, "%s: stress test put-and-get large array successfull", CURRENT_FUNCTION);
+
+
+}
+
 
 
 void ChannelAccessIFTest::test_stressConnectDisconnect() {
