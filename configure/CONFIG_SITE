@@ -29,6 +29,6 @@ USR_LDFLAGS += --coverage
 endif
 
 ifdef WITH_MICROBENCH
-USR_CPPFLAGS += -DPV_MB
+USR_CPPFLAGS += -DWITH_MICROBENCH
 endif
 
