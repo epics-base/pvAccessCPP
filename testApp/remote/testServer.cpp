@@ -11,6 +11,7 @@
 #include <epicsExit.h>
 #include <pv/standardPVField.h>
 #include <pv/pvTimeStamp.h>
+#include <pv/convert.h>
 
 #include <stdlib.h>
 #include <time.h>
@@ -1811,8 +1812,24 @@ public:
     }
 };
 
+#include <pv/current_function.h>
 
+class TraceLog {
+    public:
+    
+    TraceLog(const std::string &method) : m_method(method) {
+        std::cout << "--> " << m_method << std::endl;
+    }
 
+    ~TraceLog() {
+        std::cout << "<-- " << m_method << std::endl;
+    }
+    
+    private:
+    std::string m_method;
+}
+
+#define TRACE_METHOD() TraceLog trace(CURRENT_FUNCTION);
 
 
 
@@ -1827,11 +1844,13 @@ private:
     String m_channelName;
     MonitorRequester::shared_pointer m_monitorRequester;
     PVStructure::shared_pointer m_pvStructure;
+    PVStructure::shared_pointer m_copy;
     BitSet::shared_pointer m_changedBitSet;
     BitSet::shared_pointer m_overrunBitSet;
     bool m_first;
     Mutex m_lock;
-    int m_count;
+    enum QueueState { MM_STATE_FULL, MM_STATE_TAKEN, MM_STATE_FREE };
+    QueueState m_state ;
     AtomicBoolean m_active;
 
 
@@ -1843,18 +1862,19 @@ protected:
                 PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
         m_channelName(channelName),
         m_monitorRequester(monitorRequester), m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
+        m_copy(getPVDataCreate()->createPVStructure(m_pvStructure->getStructure())),
         m_changedBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_overrunBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_first(true),
         m_lock(),
-        m_count(0),
+        m_state(MM_STATE_FREE),
         m_thisPtr(new MonitorElement())
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockMonitor);
 
         m_changedBitSet->set(0);
 
-        m_thisPtr->pvStructurePtr = m_pvStructure;
+        m_thisPtr->pvStructurePtr = m_copy;
         m_thisPtr->changedBitSet = m_changedBitSet;
         m_thisPtr->overrunBitSet = m_overrunBitSet;
     }
@@ -1880,13 +1900,29 @@ public:
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockMonitor);
     }
 
-    virtual Status start()
+    void copy()
     {
-        m_active.set();
+        {
+            lock();
+            getConvert()->copyStructure(m_pvStructure, m_copy);
+            unlock();
+        }
+    }
+    virtual Status start()
+    {   
+        //TRACE_METHOD();
         
+        {
+            Lock xx(m_lock);
+            m_state = MM_STATE_FULL;
+            copy();
+        }
+
         // first monitor
         Monitor::shared_pointer thisPtr = shared_from_this();
         m_monitorRequester->monitorEvent(thisPtr);
+
+        m_active.set();   // set here not to have race condition on first monitor
 
         return Status::Ok;
     }
@@ -1899,12 +1935,27 @@ public:
 
     virtual void structureChanged()
     {
+        //TRACE_METHOD();
+
         if (m_active.get())
         {   
             {
-	        Lock xx(m_lock);
-                m_count = 0;
+	            Lock xx(m_lock);
+	            
+	            if (m_state == MM_STATE_FULL || m_state == MM_STATE_TAKEN)      // "queue" full
+	            {
+	               m_overrunBitSet->set(0);
+	               copy();
+	               return;
+	            }
+	            else
+	            {
+	               m_overrunBitSet->clear(0);
+                   m_state = MM_STATE_FULL;
+                   copy();
+	            }
             }
+ 
             Monitor::shared_pointer thisPtr = shared_from_this();
             m_monitorRequester->monitorEvent(thisPtr);
         }
@@ -1912,25 +1963,27 @@ public:
 
     virtual MonitorElement::shared_pointer poll()
     {
+        //TRACE_METHOD();
+
         Lock xx(m_lock);
-        if (m_count)
+        if (m_state != MM_STATE_FULL)
         {
             return m_nullMonitor;
         }
         else
         {
-            m_count++;
+            m_state = MM_STATE_TAKEN;
             return m_thisPtr;
         }
     }
 
     virtual void release(MonitorElement::shared_pointer const & /*monitorElement*/)
     {
+        //TRACE_METHOD();
+
         Lock xx(m_lock);
-        if (m_count)
-        {
-            m_count--;
-        }
+        if (m_state == MM_STATE_TAKEN)
+            m_state = MM_STATE_FREE;
     }
 
     virtual void destroy()
