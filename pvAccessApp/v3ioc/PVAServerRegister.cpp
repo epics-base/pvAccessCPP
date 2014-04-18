@@ -125,5 +125,7 @@ static void stopPVAServerRegister(void)
     }
 }
 
-epicsExportRegistrar(startPVAServerRegister);
-epicsExportRegistrar(stopPVAServerRegister);
+extern "C" {
+    epicsExportRegistrar(startPVAServerRegister);
+    epicsExportRegistrar(stopPVAServerRegister);
+}
