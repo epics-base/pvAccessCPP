@@ -67,6 +67,7 @@ static void stopPVAClientRegister(void)
     }
 }
 
-
-epicsExportRegistrar(startPVAClientRegister);
-epicsExportRegistrar(stopPVAClientRegister);
+extern "C" {
+    epicsExportRegistrar(startPVAClientRegister);
+    epicsExportRegistrar(stopPVAClientRegister);
+}

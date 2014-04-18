@@ -77,8 +77,9 @@ class ChannelAccessIFRemoteTest: public ChannelAccessIFTest  {
     ~ChannelAccessIFRemoteTest() {
       m_serverContextAction.stop();   
       ClientFactory::stop();
-      structureChangedListeners.clear();
-      structureStore.clear();
+
+      // shutdown SIGSEG problems
+      epicsThreadSleep(2.0);
     }
 
   private:

@@ -318,7 +318,7 @@ void SimADC::run()
 
         cycle();
     }
-    printf("SimADC shutdown\n");
+    //printf("SimADC shutdown\n");
 }
 
 SimADC::smart_pointer_type createSimADC(const std::string& name)

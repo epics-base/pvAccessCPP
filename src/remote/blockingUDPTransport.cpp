@@ -173,13 +173,13 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             // noop (note different sent addresses are possible)
         }
 
-        void BlockingUDPTransport::startMessage(int8 command, size_t /*ensureCapacity*/) {
+        void BlockingUDPTransport::startMessage(int8 command, size_t /*ensureCapacity*/, int32 payloadSize) {
             _lastMessageStartPosition = _sendBuffer->getPosition();
             _sendBuffer->putByte(PVA_MAGIC);
             _sendBuffer->putByte(PVA_VERSION);
             _sendBuffer->putByte((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00); // data + 7-bit endianess
             _sendBuffer->putByte(command); // command
-            _sendBuffer->putInt(0); // temporary zero payload
+            _sendBuffer->putInt(payloadSize);
         }
 
         void BlockingUDPTransport::endMessage() {

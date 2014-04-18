@@ -97,7 +97,7 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
         }
     }
 
-    virtual void requestDone (const epics::pvData::Status &status, epics::pvData::PVStructure::shared_pointer const &pvResponse)
+    virtual void requestDone(const epics::pvData::Status &status, epics::pvData::PVStructure::shared_pointer const &pvResponse)
     {
         if (status.isSuccess())
         {
@@ -112,11 +112,9 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
                 Lock lock(m_pointerMutex);
 
                 response = pvResponse;
-                // this is OK since calle holds also owns it
+                // this is OK since calle holds reference to it
                 m_channelRPC.reset();                
             }
-            
-            m_event.signal();
             
         }
         else
@@ -124,11 +122,12 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
             std::cerr << "[" << m_channelName << "] failed to RPC: " << status.toString() << std::endl;
             {
                 Lock lock(m_pointerMutex);
-                // this is OK since caller holds also owns it
+                // this is OK since calle holds reference to it
                 m_channelRPC.reset();
             }
         }
         
+        m_event.signal();
     }
     
     /*
@@ -244,8 +243,6 @@ PVStructure::shared_pointer RPCClientImpl::request(PVStructure::shared_pointer p
 
     bool allOK = true;
 
-    //ClientFactory::start();
-
     if (m_connected || connect(timeOut))
     {
         shared_ptr<ChannelRPCRequesterImpl> rpcRequesterImpl(new ChannelRPCRequesterImpl(m_channel->getChannelName()));
@@ -275,8 +272,6 @@ PVStructure::shared_pointer RPCClientImpl::request(PVStructure::shared_pointer p
         throw epics::pvAccess::RPCRequestException(Status::STATUSTYPE_ERROR, errMsg);
     }
 
-    //ClientFactory::stop();
-
     if (!allOK)
     {
         throw epics::pvAccess::RPCRequestException(Status::STATUSTYPE_ERROR, "RPC request failed");
@@ -289,6 +284,8 @@ PVStructure::shared_pointer RPCClientImpl::request(PVStructure::shared_pointer p
 
 RPCClient::shared_pointer RPCClientFactory::create(const std::string & serviceName)
 {
+    ClientFactory::start();
+    
     return RPCClient::shared_pointer(new RPCClientImpl(serviceName));
 }
 

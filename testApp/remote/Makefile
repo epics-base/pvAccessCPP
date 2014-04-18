@@ -81,6 +81,10 @@ PROD_HOST += rpcServiceExample
 rpcServiceExample_SRCS += rpcServiceExample.cpp
 rpcServiceExample_LIBS += pvAccess pvData pvMB Com
 
+PROD_HOST += rpcClientExample
+rpcClientExample_SRCS += rpcClientExample.cpp
+rpcClientExample_LIBS += pvAccess pvData pvMB Com
+
 TESTSCRIPTS_HOST += $(TESTS:%=%.t)
 
 include $(TOP)/configure/RULES

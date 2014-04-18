@@ -141,6 +141,8 @@ class ChannelAccessIFTest {
 
     void test_channelArrayTestNoConnection();
 
+    void test_stressPutAndGetLargeArray();
+
     void test_stressConnectDisconnect();
 
     void test_stressConnectGetDisconnect();

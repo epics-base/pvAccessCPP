@@ -2617,9 +2617,16 @@ void testServer(int timeToRun)
     unregisterChannelProviderFactory(factory);
 
     structureChangedListeners.clear();
-    structureStore.clear();
-
+    {
+       Lock guard(structureStoreMutex);
+       structureStore.clear();
+    }
     ctx.reset();
+
+    unregisterChannelProviderFactory(factory);
+
+
+    shutdownSimADCs();
 }
 
 void testServerShutdown()
@@ -2689,8 +2696,6 @@ int main(int argc, char *argv[])
     srand ( time(NULL) );
 
     testServer(timeToRun);
-
-    shutdownSimADCs();
 
     cout << "Done" << endl;
 

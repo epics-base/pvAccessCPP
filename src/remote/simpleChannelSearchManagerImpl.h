@@ -33,7 +33,7 @@ public:
 	void endMessage() {}
 	void flush(bool /*lastMessageCompleted*/) {}
 	void setRecipient(const osiSockAddr& /*sendTo*/) {}
-	void startMessage(epics::pvData::int8 /*command*/, std::size_t /*ensureCapacity*/) {}
+    void startMessage(epics::pvData::int8 /*command*/, std::size_t /*ensureCapacity*/, epics::pvData::int32 /*payloadSize*/) {}
 	void ensureBuffer(std::size_t /*size*/) {}
 	void alignBuffer(std::size_t /*alignment*/) {}
 	void flushSerializeBuffer() {}

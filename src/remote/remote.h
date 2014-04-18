@@ -122,7 +122,7 @@ namespace epics {
             
             virtual ~TransportSendControl() {}
 
-            virtual void startMessage(epics::pvData::int8 command, std::size_t ensureCapacity) = 0;
+            virtual void startMessage(epics::pvData::int8 command, std::size_t ensureCapacity, epics::pvData::int32 payloadSize = 0) = 0;
             virtual void endMessage() = 0;
 
             virtual void flush(bool lastMessageCompleted) = 0;

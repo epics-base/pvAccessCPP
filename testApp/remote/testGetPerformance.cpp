@@ -199,16 +199,9 @@ public:
                 epicsTimeStamp endTime;
                 epicsTimeGetCurrent(&endTime);
 
-
-                long seconds, nseconds;
-                double duration;
-                seconds  = endTime.secPastEpoch - startTime.secPastEpoch;
-                nseconds = endTime.nsec - startTime.nsec;
-
-                duration = seconds + nseconds/1000000000.0;
-
+                double duration = epicsTime(endTime) - epicsTime(startTime);
                 double getPerSec = iterations*channels/duration;
-                double gbit = getPerSec*arraySize*sizeof(double)*8/(1000*1000*1000); // * bits / giga; NO, it's really 1000 and not 102:
+                double gbit = getPerSec*arraySize*sizeof(double)*8/(1000*1000*1000); // * bits / giga; NO, it's really 1000 and not 1024
                 if (verbose)
                     printf("%5.6f seconds, %.3f (x %d = %.3f) gets/s, data throughput %5.3f Gbits/s\n",
                            duration, iterations/duration, channels, getPerSec, gbit);

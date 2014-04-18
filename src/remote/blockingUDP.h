@@ -155,7 +155,7 @@ namespace epics {
                 return false;
             }
 
-            virtual void startMessage(epics::pvData::int8 command, std::size_t ensureCapacity);
+            virtual void startMessage(epics::pvData::int8 command, std::size_t ensureCapacity, epics::pvData::int32 payloadSize = 0);
             virtual void endMessage();
 
             virtual void flush(bool /*lastMessageCompleted*/) {
