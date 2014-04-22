@@ -56,26 +56,9 @@ testCodec_SRCS = testCodec
 testCodec_LIBS += pvAccess pvData pvMB Com
 TESTS += testCodec
 
-
-PROD_HOST += pvget
-pvget_SRCS += pvget.cpp
-pvget_LIBS += pvAccess pvData pvMB Com
-
-PROD_HOST += pvput
-pvput_SRCS += pvput.cpp
-pvput_LIBS += pvAccess pvData pvMB Com
-
-PROD_HOST += pvinfo
-pvinfo_SRCS += pvinfo.cpp
-pvinfo_LIBS += pvAccess pvData pvMB Com
-
 PROD_HOST += testGetPerformance
 testGetPerformance_SRCS += testGetPerformance.cpp
 testGetPerformance_LIBS += pvAccess pvData pvMB Com
-
-PROD_HOST += eget
-eget_SRCS += eget.cpp
-eget_LIBS += pvAccess pvData pvMB ca Com
 
 PROD_HOST += rpcServiceExample
 rpcServiceExample_SRCS += rpcServiceExample.cpp
