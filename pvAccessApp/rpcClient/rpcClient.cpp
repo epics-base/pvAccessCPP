@@ -40,12 +40,12 @@ PVStructurePtr RPCClient::request(
     PVStructure::shared_pointer const & pvArgument,
     double timeOut)
 {
-    ClientFactory::start();
+    //ClientFactory::start();
     RPCClientPtr client = RPCClient::create(channelName,PVStructurePtr());
     if(!client->connect(timeOut)) throw std::runtime_error(client->getMessage());
     PVStructurePtr pvResult = client->request(pvArgument,true);
     if(pvResult==NULL) throw std::runtime_error(client->getMessage());
-    ClientFactory::stop();
+    //ClientFactory::stop();
     return pvResult;
 }
 
