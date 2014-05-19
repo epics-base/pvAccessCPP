@@ -15,7 +15,9 @@
 
 namespace epics { namespace pvAccess { 
 
-class RPCServer {
+class epicsShareClass RPCServer : 
+    public std::tr1::enable_shared_from_this<RPCServer>
+{
     private:
 
     ServerContextImpl::shared_pointer m_serverContext;
@@ -36,6 +38,8 @@ class RPCServer {
     void unregisterService(epics::pvData::String const & serviceName);
 
     void run(int seconds = 0);
+    
+    void runInNewThread(int seconds = 0);
     
     void destroy();    
     

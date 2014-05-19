@@ -457,6 +457,35 @@ void RPCServer::run(int seconds)
     m_serverContext->run(seconds);
 }
 
+struct ThreadRunnerParam {
+    RPCServer::shared_pointer server;
+    int timeToRun;
+};
+
+static void threadRunner(void* usr)
+{
+    ThreadRunnerParam* pusr = static_cast<ThreadRunnerParam*>(usr);
+    ThreadRunnerParam param = *pusr;
+    delete pusr;
+
+    param.server->run(param.timeToRun);
+}
+
+void RPCServer::runInNewThread(int seconds)
+{
+    std::auto_ptr<ThreadRunnerParam> param(new ThreadRunnerParam());
+    param->server = shared_from_this();
+    param->timeToRun = seconds;
+
+    epicsThreadCreate("RPCServer thread",
+                      epicsThreadPriorityMedium,
+                      epicsThreadGetStackSize(epicsThreadStackSmall),
+                      threadRunner, param.get());
+
+    // let the thread delete 'param'
+    param.release();
+}
+
 void RPCServer::destroy()
 {
     m_serverContext->destroy();
