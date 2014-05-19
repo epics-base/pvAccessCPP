@@ -878,13 +878,13 @@ namespace pvAccess {
         /**
          * Interface for locating channel providers.
          */
-        class epicsShareClass ChannelAccess : private epics::pvData::NoDefaultMethods {
+        class epicsShareClass ChannelProviderRegistry : private epics::pvData::NoDefaultMethods {
         public:
-            POINTER_DEFINITIONS(ChannelAccess);
+            POINTER_DEFINITIONS(ChannelProviderRegistry);
 
             typedef std::vector<epics::pvData::String> stringVector_t;
             
-            virtual ~ChannelAccess() {};
+            virtual ~ChannelProviderRegistry() {};
             
             /**
              * Get a shared instance of the provider with the specified name.
@@ -907,7 +907,7 @@ namespace pvAccess {
             virtual std::auto_ptr<stringVector_t> getProviderNames() = 0;
         };
     
-        epicsShareExtern ChannelAccess::shared_pointer getChannelAccess();
+        epicsShareExtern ChannelProviderRegistry::shared_pointer getChannelProviderRegistry();
         epicsShareExtern void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
         epicsShareExtern void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
 

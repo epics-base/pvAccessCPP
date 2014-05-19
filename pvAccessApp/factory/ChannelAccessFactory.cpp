@@ -20,7 +20,7 @@ using namespace epics::pvData;
 namespace epics {
 namespace pvAccess {
 
-static ChannelAccess::shared_pointer channelAccess;
+static ChannelProviderRegistry::shared_pointer ChannelProviderRegistry;
 
 static Mutex channelProviderMutex;
 
@@ -28,7 +28,7 @@ typedef std::map<String, ChannelProviderFactory::shared_pointer> ChannelProvider
 static ChannelProviderFactoryMap channelProviders;
 
 
-class ChannelAccessImpl : public ChannelAccess {
+class ChannelProviderRegistryImpl : public ChannelProviderRegistry {
     public:
 
     ChannelProvider::shared_pointer getProvider(String const & _providerName) {
@@ -68,14 +68,14 @@ class ChannelAccessImpl : public ChannelAccess {
     }
 };
 
-ChannelAccess::shared_pointer getChannelAccess() {
+ChannelProviderRegistry::shared_pointer getChannelProviderRegistry() {
     static Mutex mutex;
     Lock guard(mutex);
 
-    if(channelAccess.get()==0){
-        channelAccess.reset(new ChannelAccessImpl());
+    if(ChannelProviderRegistry.get()==0){
+        ChannelProviderRegistry.reset(new ChannelProviderRegistryImpl());
     }
-    return channelAccess;
+    return ChannelProviderRegistry;
 }
 
 void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) {
