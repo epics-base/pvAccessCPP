@@ -269,7 +269,7 @@ namespace pvAccess {
             // already closed check
             if(_closed.get()) return;
             _closed.set();
-
+            
             // remove from registry
             Transport::shared_pointer thisSharedPtr = shared_from_this();
             _context->getTransportRegistry()->remove(thisSharedPtr).get();
@@ -292,7 +292,25 @@ namespace pvAccess {
         void BlockingTCPTransport::internalClose(bool /*force*/) {
             // close the socket
             if(_channel!=INVALID_SOCKET) {
+
+        epicsSocketSystemCallInterruptMechanismQueryInfo info  =
+            epicsSocketSystemCallInterruptMechanismQuery ();
+        switch ( info ) {
+        case esscimqi_socketCloseRequired:
+            epicsSocketDestroy ( _channel );
+            break;
+        case esscimqi_socketBothShutdownRequired:
+            {
+                ::shutdown ( _channel, SHUT_RDWR );
+                epicsSocketDestroy ( _channel );
+            }
+            break;
+        case esscimqi_socketSigAlarmRequired:
+            // TODO (not supported anymore anyway)
+        default:
                 epicsSocketDestroy(_channel);
+            }
+            
             }
         }
 
@@ -472,12 +490,8 @@ namespace pvAccess {
             // no more data and we have some payload left => read buffer
             if (likely(_storedPayloadSize>=size))
             {
-                //LOG(logLevelInfo,
-                //        "storedPayloadSize >= size, remaining: %d",
-                //        _socketBuffer->getRemaining());
-
-    			// just read up remaining payload, move current (<size) part of the buffer
-    			// to the beginning of the buffer
+    		// just read up remaining payload, move current (<size) part of the buffer
+    		// to the beginning of the buffer
                 processReadCached(true, PROCESS_PAYLOAD, size);
                 _storedPosition = _socketBuffer->getPosition();
                 _storedLimit = _socketBuffer->getLimit();
@@ -503,14 +517,12 @@ namespace pvAccess {
                         i>=0;
                         i--, j--)
                         _socketBuffer->putByte(j, _socketBuffer->getByte(i));
-                    _startPosition = _socketBuffer->getPosition()-remainingBytes;
-                    _socketBuffer->setPosition(_startPosition);
-                    _storedPosition = _startPosition;
                 }
-                else
-                {
-                    _storedPosition = _socketBuffer->getPosition();
-                }
+
+                _storedPayloadSize += remainingBytes;
+                _startPosition = _socketBuffer->getPosition()-remainingBytes;
+                _socketBuffer->setPosition(_startPosition);
+                _storedPosition = _startPosition;
 
                 _storedLimit = _socketBuffer->getLimit();
                 _socketBuffer->setLimit(min(_storedPosition+_storedPayloadSize,
@@ -693,7 +705,7 @@ namespace pvAccess {
             {
                 ssize_t bytesRead = recv(_channel, _directBuffer, bytesToRead, 0);
 
-       //     std::cout << "d: " << bytesRead << std::endl;
+            // std::cout << "d READ " << bytesRead << std::endl;
 
                 if(unlikely(bytesRead<=0))
                 {
@@ -762,7 +774,6 @@ namespace pvAccess {
 // TODO we assume that caller is smart and  requiredBytes >  remainingBytes
 // if in direct read mode, try to read only header so that rest can be read directly to direct buffers
 (_directPayloadRead > 0 && inStage == PROCESS_HEADER) ? (requiredBytes-remainingBytes) : _socketBuffer->getRemaining(), 0);
-//std::cout << "i: " << bytesRead << std::endl;
 
                             if(unlikely(bytesRead<=0)) {
 
@@ -817,6 +828,9 @@ namespace pvAccess {
                         // ensure PVAConstants.PVA_MESSAGE_HEADER_SIZE bytes of data
                         if(unlikely(((int)_socketBuffer->getRemaining())<PVA_MESSAGE_HEADER_SIZE))
                             processReadCached(true, PROCESS_HEADER, PVA_MESSAGE_HEADER_SIZE);
+
+			if (_closed.get())
+				return;
 
                         // first byte is PVA_MAGIC
                         // second byte version - major/minor nibble
