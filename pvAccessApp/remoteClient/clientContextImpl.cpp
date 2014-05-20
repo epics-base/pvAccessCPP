@@ -477,25 +477,28 @@ namespace epics {
             }
 
             virtual void normalResponse(Transport::shared_pointer const & /*transport*/, int8 /*version*/, ByteBuffer* /*payloadBuffer*/, int8 /*qos*/, const Status& status) {
-                EXCEPTION_GUARD(m_callback->processDone(status, shared_from_this()));
+                ChannelProcess::shared_pointer thisPtr = dynamic_pointer_cast<ChannelProcess>(shared_from_this());
+                EXCEPTION_GUARD(m_callback->processDone(status, thisPtr));
             }
 
             virtual void process()
             {
+                ChannelProcess::shared_pointer thisPtr = dynamic_pointer_cast<ChannelProcess>(shared_from_this());
+
                 {
                     Lock guard(m_mutex);
                     if (m_destroyed) {
-                        EXCEPTION_GUARD(m_callback->processDone(destroyedStatus, shared_from_this()));
+                        EXCEPTION_GUARD(m_callback->processDone(destroyedStatus, thisPtr));
                         return;
                     }
                     if (!m_initialized) {
-                        EXCEPTION_GUARD(m_callback->processDone(notInitializedStatus, shared_from_this()));
+                        EXCEPTION_GUARD(m_callback->processDone(notInitializedStatus, thisPtr));
                         return;
                     }
                 }
                 
                 if (!startRequest(m_lastRequest.get() ? QOS_DESTROY : QOS_DEFAULT)) {
-                    EXCEPTION_GUARD(m_callback->processDone(otherRequestPendingStatus, shared_from_this()));
+                    EXCEPTION_GUARD(m_callback->processDone(otherRequestPendingStatus, thisPtr));
                     return;
                 }
 
@@ -503,7 +506,7 @@ namespace epics {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
                     stopRequest();
-                    EXCEPTION_GUARD(m_callback->processDone(channelNotConnected, shared_from_this()));
+                    EXCEPTION_GUARD(m_callback->processDone(channelNotConnected, thisPtr));
                 }
             }
 
@@ -649,9 +652,11 @@ namespace epics {
                 
                 MB_POINT(channelGet, 8, "client channelGet->deserialize (start)");
                 
+                ChannelGet::shared_pointer thisPtr = dynamic_pointer_cast<ChannelGet>(shared_from_this());
+
                 if (!status.isSuccess())
                 {
-                    EXCEPTION_GUARD(m_channelGetRequester->getDone(status, shared_from_this(), nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelGetRequester->getDone(status, thisPtr, nullPVStructure, nullBitSet));
                     return;
                 }
 
@@ -664,22 +669,24 @@ namespace epics {
                 
                 MB_POINT(channelGet, 9, "client channelGet->deserialize (end), just before channelGet->getDone() is called");
                 
-                EXCEPTION_GUARD(m_channelGetRequester->getDone(status, shared_from_this(), m_structure, m_bitSet));
+                EXCEPTION_GUARD(m_channelGetRequester->getDone(status, thisPtr, m_structure, m_bitSet));
             }
 
             virtual void get() {
 
-                {
-                    MB_INC_AUTO_ID(channelGet);
-                    MB_POINT(channelGet, 0, "client channelGet->get()");
+                MB_INC_AUTO_ID(channelGet);
+                MB_POINT(channelGet, 0, "client channelGet->get()");
 
+                ChannelGet::shared_pointer thisPtr = dynamic_pointer_cast<ChannelGet>(shared_from_this());
+
+                {
                     Lock guard(m_mutex);
                     if (m_destroyed) {
-                        EXCEPTION_GUARD(m_channelGetRequester->getDone(destroyedStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                        EXCEPTION_GUARD(m_channelGetRequester->getDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet));
                         return;
                     }
                     if (!m_initialized) {
-                        EXCEPTION_GUARD(m_channelGetRequester->getDone(notInitializedStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                        EXCEPTION_GUARD(m_channelGetRequester->getDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
                         return;
                     }
                 }
@@ -691,13 +698,13 @@ namespace epics {
                     m_channel->checkAndGetTransport()->flushSendQueue();
                 } catch (std::runtime_error &rte) {
                     stopRequest();
-                    EXCEPTION_GUARD(m_channelGetRequester->getDone(channelNotConnected));
+                    EXCEPTION_GUARD(m_channelGetRequester->getDone(channelNotConnected, thisPtr));
                 }
                 return;
             }
   */          
                 if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_GET : QOS_DEFAULT)) {
-                    EXCEPTION_GUARD(m_channelGetRequester->getDone(otherRequestPendingStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelGetRequester->getDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet));
                     return;
                 }
 
@@ -706,7 +713,7 @@ namespace epics {
                     //TODO bulk hack m_channel->checkAndGetTransport()->enqueueOnlySendRequest(thisSender);
                 } catch (std::runtime_error &rte) {
                     stopRequest();
-                    EXCEPTION_GUARD(m_channelGetRequester->getDone(channelNotConnected, shared_from_this(), nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelGetRequester->getDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
                 }
             }
 
@@ -869,11 +876,14 @@ namespace epics {
             }
 
             virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+
+                ChannelPut::shared_pointer thisPtr = dynamic_pointer_cast<ChannelPut>(shared_from_this());
+
                 if (qos & QOS_GET)
                 {
                     if (!status.isSuccess())
                     {
-                        EXCEPTION_GUARD(m_channelPutRequester->getDone(status, shared_from_this(), nullPVStructure, nullBitSet));
+                        EXCEPTION_GUARD(m_channelPutRequester->getDone(status, thisPtr, nullPVStructure, nullBitSet));
                         return;
                     }
 
@@ -883,30 +893,32 @@ namespace epics {
                         m_structure->deserialize(payloadBuffer, transport.get(), m_bitSet.get());
                     }
                     
-                    EXCEPTION_GUARD(m_channelPutRequester->getDone(status, shared_from_this(), m_structure, m_bitSet));
+                    EXCEPTION_GUARD(m_channelPutRequester->getDone(status, thisPtr, m_structure, m_bitSet));
                 }
                 else
                 {
-                    EXCEPTION_GUARD(m_channelPutRequester->putDone(status, shared_from_this()));
+                    EXCEPTION_GUARD(m_channelPutRequester->putDone(status, thisPtr));
                 }
             }
 
             virtual void get() {
 
+                ChannelPut::shared_pointer thisPtr = dynamic_pointer_cast<ChannelPut>(shared_from_this());
+
                 {
                     Lock guard(m_mutex);
                     if (m_destroyed) {
-                        EXCEPTION_GUARD(m_channelPutRequester->getDone(destroyedStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                        EXCEPTION_GUARD(m_channelPutRequester->getDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet));
                         return;
                     }
                     if (!m_initialized) {
-                        EXCEPTION_GUARD(m_channelPutRequester->getDone(notInitializedStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                        EXCEPTION_GUARD(m_channelPutRequester->getDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
                         return;
                     }
                 }
                 
                 if (!startRequest(m_lastRequest.get() ? QOS_GET | QOS_DESTROY : QOS_GET)) {
-                    EXCEPTION_GUARD(m_channelPutRequester->getDone(otherRequestPendingStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelPutRequester->getDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet));
                     return;
                 }
 
@@ -915,38 +927,40 @@ namespace epics {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
                     stopRequest();
-                    EXCEPTION_GUARD(m_channelPutRequester->getDone(channelNotConnected, shared_from_this(), nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelPutRequester->getDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
                 }
             }
 
             virtual void put(PVStructure::shared_pointer const & pvPutStructure, BitSet::shared_pointer const & pvPutBitSet) {
 
+                ChannelPut::shared_pointer thisPtr = dynamic_pointer_cast<ChannelPut>(shared_from_this());
+
                 {
                     Lock guard(m_mutex);
                     if (m_destroyed) {
-                        m_channelPutRequester->putDone(destroyedStatus, shared_from_this());
+                        m_channelPutRequester->putDone(destroyedStatus, thisPtr);
                         return;
                     }
                     if (!m_initialized) {
-                        EXCEPTION_GUARD(m_channelPutRequester->putDone(notInitializedStatus, shared_from_this()));
+                        EXCEPTION_GUARD(m_channelPutRequester->putDone(notInitializedStatus, thisPtr));
                         return;
                     }
                 }
                 
                 if (!(*m_structure->getStructure() == *pvPutStructure->getStructure()))
                 {
-                    EXCEPTION_GUARD(m_channelPutRequester->putDone(invalidPutStructureStatus, shared_from_this()));
+                    EXCEPTION_GUARD(m_channelPutRequester->putDone(invalidPutStructureStatus, thisPtr));
                     return;
                 }
                 
                 if (pvPutBitSet->size() < m_bitSet->size())
                 {
-                    EXCEPTION_GUARD(m_channelPutRequester->putDone(invalidBitSetLengthStatus, shared_from_this()));
+                    EXCEPTION_GUARD(m_channelPutRequester->putDone(invalidBitSetLengthStatus, thisPtr));
                     return;
                 }
                 
                 if (!startRequest(m_lastRequest.get() ? QOS_DESTROY : QOS_DEFAULT)) {
-                    m_channelPutRequester->putDone(otherRequestPendingStatus, shared_from_this());
+                    m_channelPutRequester->putDone(otherRequestPendingStatus, thisPtr);
                     return;
                 }
 
@@ -958,7 +972,7 @@ namespace epics {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
                     stopRequest();
-                    EXCEPTION_GUARD(m_channelPutRequester->putDone(channelNotConnected, shared_from_this()));
+                    EXCEPTION_GUARD(m_channelPutRequester->putDone(channelNotConnected, thisPtr));
                 }
             }
 
@@ -1125,11 +1139,14 @@ namespace epics {
 
 
             virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+
+                ChannelPutGet::shared_pointer thisPtr = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
+
                 if (qos & QOS_GET)
                 {
                     if (!status.isSuccess())
                     {
-                        EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(status, shared_from_this(), nullPVStructure, nullBitSet));
+                        EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(status, thisPtr, nullPVStructure, nullBitSet));
                         return;
                     }
 
@@ -1140,13 +1157,13 @@ namespace epics {
                         m_getData->deserialize(payloadBuffer, transport.get(), m_getDataBitSet.get());
                     }
                     
-                    EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(status, shared_from_this(), m_getData, m_getDataBitSet));
+                    EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(status, thisPtr, m_getData, m_getDataBitSet));
                 }
                 else if (qos & QOS_GET_PUT)
                 {
                     if (!status.isSuccess())
                     {
-                        EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(status, shared_from_this(), nullPVStructure, nullBitSet));
+                        EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(status, thisPtr, nullPVStructure, nullBitSet));
                         return;
                     }
 
@@ -1157,13 +1174,13 @@ namespace epics {
                         m_putData->deserialize(payloadBuffer, transport.get(), m_putDataBitSet.get());
                     }
                     
-                    EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(status, shared_from_this(), m_putData, m_putDataBitSet));
+                    EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(status, thisPtr, m_putData, m_putDataBitSet));
                 }
                 else
                 {
                     if (!status.isSuccess())
                     {
-                        EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(status, shared_from_this(), nullPVStructure, nullBitSet));
+                        EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(status, thisPtr, nullPVStructure, nullBitSet));
                         return;
                     }
 
@@ -1174,38 +1191,41 @@ namespace epics {
                         m_getData->deserialize(payloadBuffer, transport.get(), m_getDataBitSet.get());
                     }
                     
-                    EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(status, shared_from_this(), m_getData, m_getDataBitSet));
+                    EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(status, thisPtr, m_getData, m_getDataBitSet));
                 }
             }
 
 
             virtual void putGet(PVStructure::shared_pointer const & pvPutStructure, BitSet::shared_pointer const & bitSet) {
+
+                ChannelPutGet::shared_pointer thisPtr = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
+
                 {
                     Lock guard(m_mutex);
                     if (m_destroyed) {
-                        EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(destroyedStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                        EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet));
                         return;
                     }
                     if (!m_initialized) {
-                        EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(notInitializedStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                        EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
                         return;
                     }
                 }
                 
                 if (!(*m_putData->getStructure() == *pvPutStructure->getStructure()))
                 {
-                    EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(invalidPutStructureStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(invalidPutStructureStatus, thisPtr, nullPVStructure, nullBitSet));
                     return;
                 }
                 
                 if (bitSet->size() < m_putDataBitSet->size())
                 {
-                    EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(invalidBitSetLengthStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(invalidBitSetLengthStatus, thisPtr, nullPVStructure, nullBitSet));
                     return;
                 }
                 
                 if (!startRequest(m_lastRequest.get() ? QOS_DESTROY : QOS_DEFAULT)) {
-                    EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(otherRequestPendingStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet));
                     return;
                 }
 
@@ -1217,25 +1237,28 @@ namespace epics {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
                     stopRequest();
-                    EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(channelNotConnected, shared_from_this(), nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
                 }
             }
 
             virtual void getGet() {
+
+                ChannelPutGet::shared_pointer thisPtr = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
+
                 {
                     Lock guard(m_mutex);
                     if (m_destroyed) {
-                        EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(destroyedStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                        EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet));
                         return;
                     }
                     if (!m_initialized) {
-                        EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(notInitializedStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                        EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
                         return;
                     }
                 }
                 
                 if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_GET : QOS_GET)) {
-                    EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(otherRequestPendingStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet));
                     return;
                 }
 
@@ -1243,25 +1266,28 @@ namespace epics {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
                     stopRequest();
-                    EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(channelNotConnected, shared_from_this(), nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
                 }
             }
 
             virtual void getPut() {
+
+                ChannelPutGet::shared_pointer thisPtr = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
+
                 {
                     Lock guard(m_mutex);
                     if (m_destroyed) {
-                        m_channelPutGetRequester->getPutDone(destroyedStatus, shared_from_this(), nullPVStructure, nullBitSet);
+                        m_channelPutGetRequester->getPutDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet);
                         return;
                     }
                     if (!m_initialized) {
-                        EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(notInitializedStatus, shared_from_this(), nullPVStructure, nullBitSet));
+                        EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
                         return;
                     }
                 }
                 
                 if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_GET_PUT : QOS_GET_PUT)) {
-                    m_channelPutGetRequester->getPutDone(otherRequestPendingStatus, shared_from_this(), nullPVStructure, nullBitSet);
+                    m_channelPutGetRequester->getPutDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet);
                     return;
                 }
 
@@ -1269,7 +1295,7 @@ namespace epics {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
                     stopRequest();
-                    EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(channelNotConnected, shared_from_this(), nullPVStructure, nullBitSet));
+                    EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
                 }
             }
 
@@ -1415,33 +1441,38 @@ namespace epics {
             }
 
             virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
+
+                ChannelRPC::shared_pointer thisPtr = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
+
                 if (!status.isSuccess())
                 {
-                    EXCEPTION_GUARD(m_channelRPCRequester->requestDone(status, shared_from_this(), nullPVStructure));
+                    EXCEPTION_GUARD(m_channelRPCRequester->requestDone(status, thisPtr, nullPVStructure));
                     return;
                 }
 
 
                 PVStructure::shared_pointer response(SerializationHelper::deserializeStructureFull(payloadBuffer, transport.get()));
-                EXCEPTION_GUARD(m_channelRPCRequester->requestDone(status, shared_from_this(), response));
+                EXCEPTION_GUARD(m_channelRPCRequester->requestDone(status, thisPtr, response));
             }
 
             virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument) {
 
+                ChannelRPC::shared_pointer thisPtr = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
+
                 {
                     Lock guard(m_mutex);
                     if (m_destroyed) {
-                        EXCEPTION_GUARD(m_channelRPCRequester->requestDone(destroyedStatus, shared_from_this(), nullPVStructure));
+                        EXCEPTION_GUARD(m_channelRPCRequester->requestDone(destroyedStatus, thisPtr, nullPVStructure));
                         return;
                     }
                     if (!m_initialized) {
-                        EXCEPTION_GUARD(m_channelRPCRequester->requestDone(notInitializedStatus, shared_from_this(), nullPVStructure));
+                        EXCEPTION_GUARD(m_channelRPCRequester->requestDone(notInitializedStatus, thisPtr, nullPVStructure));
                         return;
                     }
                 }
                 
                 if (!startRequest(m_lastRequest.get() ? QOS_DESTROY : QOS_DEFAULT)) {
-                    EXCEPTION_GUARD(m_channelRPCRequester->requestDone(otherRequestPendingStatus, shared_from_this(), nullPVStructure));
+                    EXCEPTION_GUARD(m_channelRPCRequester->requestDone(otherRequestPendingStatus, thisPtr, nullPVStructure));
                     return;
                 }
 
@@ -1453,7 +1484,7 @@ namespace epics {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
                     stopRequest();
-                    EXCEPTION_GUARD(m_channelRPCRequester->requestDone(channelNotConnected, shared_from_this(), nullPVStructure));
+                    EXCEPTION_GUARD(m_channelRPCRequester->requestDone(channelNotConnected, thisPtr, nullPVStructure));
                 }
             }
 
@@ -1618,7 +1649,7 @@ namespace epics {
                 if (!status.isSuccess())
                 {
                     ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
-                    EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(status, thisChannelArray, PVArray::shared_pointer()));
+                    EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(status, thisChannelArray, Array::shared_pointer()));
                     return;
                 }
 
@@ -1674,6 +1705,7 @@ namespace epics {
             virtual void getArray(size_t offset, size_t count, size_t stride) {
 
                 // TODO stride == 0 check
+
                 ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
                 
                 {
@@ -1711,26 +1743,28 @@ namespace epics {
 
                 // TODO stride == 0 check
 
+                ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
+
                 {
                     Lock guard(m_mutex);
                     if (m_destroyed) {
-                        EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(destroyedStatus, shared_from_this()));
+                        EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(destroyedStatus, thisChannelArray));
                         return;
                     }
                     if (!m_initialized) {
-                        EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(notInitializedStatus, shared_from_this()));
+                        EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(notInitializedStatus, thisChannelArray));
                         return;
                     }
                 }
                 
                 if (!(*m_data->getArray() == *putArray->getArray()))
                 {
-                    EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(invalidPutArrayStatus, shared_from_this()));
+                    EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(invalidPutArrayStatus, thisChannelArray));
                     return;
                 }
 
                 if (!startRequest(m_lastRequest.get() ? QOS_DESTROY : QOS_DEFAULT)) {
-                    EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(otherRequestPendingStatus, shared_from_this()));
+                    EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(otherRequestPendingStatus, thisChannelArray));
                     return;
                 }
 
@@ -1745,26 +1779,28 @@ namespace epics {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
                     stopRequest();
-                    EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(channelNotConnected, shared_from_this()));
+                    EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(channelNotConnected, thisChannelArray));
                 }
             }
 
             virtual void setLength(size_t length, size_t capacity) {
 
+                ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
+
                  {
                     Lock guard(m_mutex);
                    if (m_destroyed) {
-                        EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(destroyedStatus, shared_from_this()));
+                        EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(destroyedStatus, thisChannelArray));
                         return;
                     }
                     if (!m_initialized) {
-                        EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(notInitializedStatus, shared_from_this()));
+                        EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(notInitializedStatus, thisChannelArray));
                         return;
                     }
                  }
                  
                 if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_GET_PUT : QOS_GET_PUT)) {
-                    EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(otherRequestPendingStatus, shared_from_this()));
+                    EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(otherRequestPendingStatus, thisChannelArray));
                     return;
                 }
 
@@ -1777,27 +1813,29 @@ namespace epics {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
                     stopRequest();
-                    EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(channelNotConnected, shared_from_this()));
+                    EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(channelNotConnected, thisChannelArray));
                 }
             }
 
 
             virtual void getLength() {
 
+                ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
+
                  {
                     Lock guard(m_mutex);
                    if (m_destroyed) {
-                        EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(destroyedStatus, shared_from_this(), 0, 0));
+                        EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(destroyedStatus, thisChannelArray, 0, 0));
                         return;
                     }
                     if (!m_initialized) {
-                        EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(notInitializedStatus, shared_from_this(), 0, 0));
+                        EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(notInitializedStatus, thisChannelArray, 0, 0));
                         return;
                     }
                  }
                  
                 if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_PROCESS : QOS_PROCESS)) {
-                    EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(otherRequestPendingStatus, shared_from_this(), 0, 0));
+                    EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(otherRequestPendingStatus, thisChannelArray, 0, 0));
                     return;
                 }
 
@@ -1805,7 +1843,7 @@ namespace epics {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
                     stopRequest();
-                    EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(channelNotConnected, shared_from_this(), 0, 0));
+                    EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(channelNotConnected, thisChannelArray, 0, 0));
                 }
             }
 

@@ -188,7 +188,7 @@ namespace pvAccess {
             virtual void channelArrayConnect(
                     const epics::pvData::Status& status,
                     ChannelArray::shared_pointer const & channelArray,
-                    epics::pvData::Array::shared_pointer const & array) = 0;
+                    epics::pvData::Array::const_shared_pointer const & array) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
@@ -294,7 +294,7 @@ namespace pvAccess {
             virtual void channelGetConnect(
                     const epics::pvData::Status& status,
                     ChannelGet::shared_pointer const & channelGet,
-                    epics::pvData::Structure::shared_pointer const & structure) = 0;
+                    epics::pvData::Structure::const_shared_pointer const & structure) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
@@ -357,7 +357,7 @@ namespace pvAccess {
         /**
          * Interface for a channel access put request.
          */
-        class epicsShareClass ChannelPut  : public ChannelRequest {
+        class epicsShareClass ChannelPut : public ChannelRequest {
             public:
             POINTER_DEFINITIONS(ChannelPut);
 
@@ -394,7 +394,7 @@ namespace pvAccess {
             virtual void channelPutConnect(
                     const epics::pvData::Status& status,
                     ChannelPut::shared_pointer const & channelPut,
-                    epics::pvData::Structure::shared_pointer const & structure) = 0;
+                    epics::pvData::Structure::const_shared_pointer const & structure) = 0;
 
             /**
              * The request is done. This is always called with no locks held.
@@ -470,8 +470,8 @@ namespace pvAccess {
             virtual void channelPutGetConnect(
                     const epics::pvData::Status& status,
                     ChannelPutGet::shared_pointer const & channelPutGet,
-                    epics::pvData::Structure::shared_pointer const & putStructure,
-                    epics::pvData::Structure::shared_pointer const & getStructure) = 0;
+                    epics::pvData::Structure::const_shared_pointer const & putStructure,
+                    epics::pvData::Structure::const_shared_pointer const & getStructure) = 0;
                     
             /**
              * The putGet request is done. This is always called with no locks held.
