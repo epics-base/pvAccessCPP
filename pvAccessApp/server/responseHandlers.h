@@ -333,8 +333,10 @@ namespace pvAccess {
         	                              epics::pvData::PVStructure::shared_pointer const & pvRequest);
                 virtual ~ServerChannelGetRequesterImpl() {}
         	void channelGetConnect(const epics::pvData::Status& status, ChannelGet::shared_pointer const & channelGet,
-        	                       epics::pvData::PVStructure::shared_pointer const & pvStructure, epics::pvData::BitSet::shared_pointer const & bitSet);
-        	void getDone(const epics::pvData::Status& status);
+        	                       epics::pvData::Structure::const_shared_pointer const & structure);
+        	void getDone(const epics::pvData::Status& status, ChannelGet::shared_pointer const & channelGet,
+        	       epics::pvData::PVStructure::shared_pointer const & pvStructure, 
+        	       epics::pvData::BitSet::shared_pointer const & bitSet);
         	void destroy();
 
         	ChannelGet::shared_pointer getChannelGet();
@@ -344,8 +346,9 @@ namespace pvAccess {
 			void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
 			ChannelGet::shared_pointer _channelGet;
-			epics::pvData::BitSet::shared_pointer _bitSet;
+			epics::pvData::Structure::const_shared_pointer _structure;
 			epics::pvData::PVStructure::shared_pointer _pvStructure;
+			epics::pvData::BitSet::shared_pointer _bitSet;
 			epics::pvData::Status _status;
         };
 
@@ -387,21 +390,30 @@ namespace pvAccess {
         	       Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
         	       
                 virtual ~ServerChannelPutRequesterImpl() {}
-        	void channelPutConnect(const epics::pvData::Status& status, ChannelPut::shared_pointer const & channelPut, epics::pvData::PVStructure::shared_pointer const & pvStructure, epics::pvData::BitSet::shared_pointer const & bitSet);
-        	void putDone(const epics::pvData::Status& status);
-        	void getDone(const epics::pvData::Status& status);
+        	void channelPutConnect(const epics::pvData::Status& status, ChannelPut::shared_pointer const & channelPut, epics::pvData::Structure::const_shared_pointer const & structure);
+        	void putDone(const epics::pvData::Status& status, ChannelPut::shared_pointer const & channelPut);
+        	void getDone(const epics::pvData::Status& status, ChannelPut::shared_pointer const & channelPut, epics::pvData::PVStructure::shared_pointer const & pvStructure, epics::pvData::BitSet::shared_pointer const & bitSet);
         	void lock();
         	void unlock();
             void destroy();
 
             ChannelPut::shared_pointer getChannelPut();
-            epics::pvData::BitSet::shared_pointer getBitSet();
-            epics::pvData::PVStructure::shared_pointer getPVStructure();
+            epics::pvData::BitSet::shared_pointer getPutBitSet();
+            epics::pvData::PVStructure::shared_pointer getPutPVStructure();
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
         	ChannelPut::shared_pointer _channelPut;
+
+        	epics::pvData::Structure::const_shared_pointer _structure;
+
+        	// reference store (for get)
         	epics::pvData::BitSet::shared_pointer _bitSet;
         	epics::pvData::PVStructure::shared_pointer _pvStructure;
+
+        	// data store (for put)
+        	epics::pvData::BitSet::shared_pointer _putBitSet;
+        	epics::pvData::PVStructure::shared_pointer _putPVStructure;
+        	
         	epics::pvData::Status _status;
         };
 
@@ -442,21 +454,43 @@ namespace pvAccess {
         	       Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
                 virtual ~ServerChannelPutGetRequesterImpl() {}
         	
-        	void channelPutGetConnect(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet, epics::pvData::PVStructure::shared_pointer const & pvPutStructure, epics::pvData::PVStructure::shared_pointer const & pvGetStructure);
-        	void getGetDone(const epics::pvData::Status& status);
-        	void getPutDone(const epics::pvData::Status& status);
-        	void putGetDone(const epics::pvData::Status& status);
+        	void channelPutGetConnect(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
+        	   epics::pvData::Structure::const_shared_pointer const & putStructure,
+        	   epics::pvData::Structure::const_shared_pointer const & getStructure);
+        	void getGetDone(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
+        	   epics::pvData::PVStructure::shared_pointer const & pvStructure,
+        	   epics::pvData::BitSet::shared_pointer const & bitSet);
+        	void getPutDone(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
+        	   epics::pvData::PVStructure::shared_pointer const & pvStructure,
+        	   epics::pvData::BitSet::shared_pointer const & bitSet);
+        	void putGetDone(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
+        	   epics::pvData::PVStructure::shared_pointer const & pvStructure,
+        	   epics::pvData::BitSet::shared_pointer const & bitSet);
         	void lock();
         	void unlock();
             void destroy();
 
             ChannelPutGet::shared_pointer getChannelPutGet();
-            epics::pvData::PVStructure::shared_pointer getPVPutStructure();
+            
+            epics::pvData::PVStructure::shared_pointer getPutGetPVStructure();
+            epics::pvData::BitSet::shared_pointer getPutGetBitSet();
+
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
         	ChannelPutGet::shared_pointer _channelPutGet;
+        	epics::pvData::Structure::const_shared_pointer _putStructure;
+        	epics::pvData::Structure::const_shared_pointer _getStructure;
+        	
+        	// reference store
         	epics::pvData::PVStructure::shared_pointer _pvPutStructure;
+        	epics::pvData::BitSet::shared_pointer _pvPutBitSet;
         	epics::pvData::PVStructure::shared_pointer _pvGetStructure;
+        	epics::pvData::BitSet::shared_pointer _pvGetBitSet;
+        	
+        	// data container (for put-get)
+        	epics::pvData::PVStructure::shared_pointer _pvPutGetStructure;
+        	epics::pvData::BitSet::shared_pointer _pvPutGetBitSet;
+        	
         	epics::pvData::Status _status;
         };
 
@@ -552,10 +586,13 @@ namespace pvAccess {
         	       Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
                 virtual ~ServerChannelArrayRequesterImpl() {}
         	       
-        	void channelArrayConnect(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray, epics::pvData::PVArray::shared_pointer const & pvArray);
-        	void getArrayDone(const epics::pvData::Status& status);
-        	void putArrayDone(const epics::pvData::Status& status);
-        	void setLengthDone(const epics::pvData::Status& status);
+        	void channelArrayConnect(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray, epics::pvData::Array::const_shared_pointer const & array);
+        	void getArrayDone(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray,
+        	       epics::pvData::PVArray::shared_pointer const & pvArray);
+        	void putArrayDone(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray);
+        	void setLengthDone(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray);
+        	void getLengthDone(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray,
+        	       std::size_t length, std::size_t capacity);
         	void lock();
         	void unlock();
         	void destroy();
@@ -567,7 +604,10 @@ namespace pvAccess {
         	
         private:
         	 ChannelArray::shared_pointer _channelArray;
+        	 epics::pvData::Array::const_shared_pointer _array;
         	 epics::pvData::PVArray::shared_pointer _pvArray;
+        	 std::size_t _length;
+        	 std::size_t _capacity;
         	 epics::pvData::Status _status;
         };
 
@@ -651,7 +691,7 @@ namespace pvAccess {
                 virtual ~ServerChannelProcessRequesterImpl() {}
         	       
         	void channelProcessConnect(const epics::pvData::Status& status, ChannelProcess::shared_pointer const & channelProcess);
-        	void processDone(const epics::pvData::Status& status);
+        	void processDone(const epics::pvData::Status& status, ChannelProcess::shared_pointer const & channelProcess);
         	void lock();
         	void unlock();
         	void destroy();
@@ -777,7 +817,7 @@ namespace pvAccess {
                 virtual ~ServerChannelRPCRequesterImpl() {}
         	       
         	void channelRPCConnect(const epics::pvData::Status& status, ChannelRPC::shared_pointer const & channelRPC);
-        	void requestDone(const epics::pvData::Status& status, epics::pvData::PVStructure::shared_pointer const & pvResponse);
+        	void requestDone(const epics::pvData::Status& status, ChannelRPC::shared_pointer const & channelRPC, epics::pvData::PVStructure::shared_pointer const & pvResponse);
         	void lock();
         	void unlock();
         	void destroy();

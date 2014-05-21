@@ -36,7 +36,7 @@ ServerContextImpl::ServerContextImpl():
 				_beaconEmitter(),
 				_acceptor(),
 				_transportRegistry(),
-				_channelAccess(),
+				_channelProviderRegistry(),
 				_channelProviderNames(PVACCESS_DEFAULT_PROVIDER),
 				_channelProviders(),
 				_beaconServerStatusProvider()
@@ -126,12 +126,12 @@ bool ServerContextImpl::isChannelProviderNamePreconfigured()
     return config->hasProperty("EPICS_PVA_PROVIDER_NAMES") || config->hasProperty("EPICS_PVAS_PROVIDER_NAMES");
 }
 
-void ServerContextImpl::initialize(ChannelAccess::shared_pointer const & channelAccess)
+void ServerContextImpl::initialize(ChannelProviderRegistry::shared_pointer const & channelProviderRegistry)
 {
 	Lock guard(_mutex);
-	if (channelAccess == NULL)
+	if (channelProviderRegistry == NULL)
 	{
-		THROW_BASE_EXCEPTION("non null channelAccess expected");
+		THROW_BASE_EXCEPTION("non null channelProviderRegistry expected");
 	}
 
 	if (_state == DESTROYED)
@@ -143,7 +143,7 @@ void ServerContextImpl::initialize(ChannelAccess::shared_pointer const & channel
 		THROW_BASE_EXCEPTION("Context already initialized.");
 	}
 
-	_channelAccess = channelAccess;
+	_channelProviderRegistry = channelProviderRegistry;
 
 
     // user all providers
@@ -151,10 +151,10 @@ void ServerContextImpl::initialize(ChannelAccess::shared_pointer const & channel
     {
         _channelProviderNames.resize(0); // VxWorks 5.5 omits clear()
 
-        std::auto_ptr<ChannelAccess::stringVector_t> names = _channelAccess->getProviderNames();
-        for (ChannelAccess::stringVector_t::iterator iter = names->begin(); iter != names->end(); iter++)
+        std::auto_ptr<ChannelProviderRegistry::stringVector_t> names = _channelProviderRegistry->getProviderNames();
+        for (ChannelProviderRegistry::stringVector_t::iterator iter = names->begin(); iter != names->end(); iter++)
         {
-            ChannelProvider::shared_pointer channelProvider = _channelAccess->getProvider(*iter);
+            ChannelProvider::shared_pointer channelProvider = _channelProviderRegistry->getProvider(*iter);
             if (channelProvider)
             {
                 _channelProviders.push_back(channelProvider);
@@ -173,13 +173,13 @@ void ServerContextImpl::initialize(ChannelAccess::shared_pointer const & channel
         std::string providerName;
         while (std::getline(ss, providerName, ' '))
         {
-            ChannelProvider::shared_pointer channelProvider = _channelAccess->getProvider(providerName);
+            ChannelProvider::shared_pointer channelProvider = _channelProviderRegistry->getProvider(providerName);
             if (channelProvider)
                 _channelProviders.push_back(channelProvider);
         }
     }    
 
-	//_channelProvider = _channelAccess->getProvider(_channelProviderNames);
+	//_channelProvider = _channelProviderRegistry->getProvider(_channelProviderNames);
 	if (_channelProviders.size() == 0)
 	{
 		std::string msg = "None of the specified channel providers are available: " + _channelProviderNames + ".";
@@ -545,9 +545,9 @@ BlockingUDPTransport::shared_pointer ServerContextImpl::getBroadcastTransport()
 	return _broadcastTransport;
 }
 
-ChannelAccess::shared_pointer ServerContextImpl::getChannelAccess()
+ChannelProviderRegistry::shared_pointer ServerContextImpl::getChannelProviderRegistry()
 {
-	return _channelAccess;
+	return _channelProviderRegistry;
 }
 
 std::string ServerContextImpl::getChannelProviderName()
@@ -621,8 +621,8 @@ ServerContext::shared_pointer startPVAServer(String const & providerNames, int t
     if (!ctx->isChannelProviderNamePreconfigured())
         ctx->setChannelProviderName(providerNames);
     
-    ChannelAccess::shared_pointer channelAccess = getChannelAccess();
-    ctx->initialize(channelAccess);
+    ChannelProviderRegistry::shared_pointer channelProviderRegistry = getChannelProviderRegistry();
+    ctx->initialize(channelProviderRegistry);
 
     if (printInfo)
         ctx->printInfo();

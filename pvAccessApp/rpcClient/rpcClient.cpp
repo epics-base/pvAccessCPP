@@ -73,7 +73,7 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
         std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void channelRPCConnect(const epics::pvData::Status& status,ChannelRPC::shared_pointer const & channelRPC)
+    virtual void channelRPCConnect(const epics::pvData::Status& status, ChannelRPC::shared_pointer const & channelRPC)
     {
         if (status.isSuccess())
         {
@@ -97,7 +97,8 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
         }
     }
 
-    virtual void requestDone (const epics::pvData::Status &status, epics::pvData::PVStructure::shared_pointer const &pvResponse)
+    virtual void requestDone(const epics::pvData::Status &status, ChannelRPC::shared_pointer const & /*channelRPC*/,
+            epics::pvData::PVStructure::shared_pointer const &pvResponse)
     {
         if (status.isSuccess())
         {
@@ -214,7 +215,7 @@ private:
     void init()
     {
         using namespace std::tr1;
-        m_provider = getChannelAccess()->getProvider("pva");
+        m_provider = getChannelProviderRegistry()->getProvider("pva");
     
         shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
         m_channelRequesterImpl = channelRequesterImpl;
@@ -253,7 +254,8 @@ PVStructure::shared_pointer RPCClientImpl::request(PVStructure::shared_pointer p
 
         if (rpcRequesterImpl->waitUntilConnected(timeOut))
         {
-            channelRPC->request(pvRequest, true);
+            channelRPC->lastRequest();
+            channelRPC->request(pvRequest);
             allOK &= rpcRequesterImpl->waitUntilRPC(timeOut);
             response = rpcRequesterImpl->response;
         }

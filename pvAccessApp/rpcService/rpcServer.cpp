@@ -14,18 +14,22 @@ using namespace epics::pvData;
 namespace epics { namespace pvAccess {
 
 
-class ChannelRPCServiceImpl : public ChannelRPC
+class ChannelRPCServiceImpl :
+    public ChannelRPC,
+    public std::tr1::enable_shared_from_this<ChannelRPC>
 {
     private:
     ChannelRPCRequester::shared_pointer m_channelRPCRequester;
     RPCService::shared_pointer m_rpcService;
+    AtomicBoolean m_lastRequest;
 
     public:
     ChannelRPCServiceImpl(
         ChannelRPCRequester::shared_pointer const & channelRPCRequester,
         RPCService::shared_pointer const & rpcService) :
         m_channelRPCRequester(channelRPCRequester),
-        m_rpcService(rpcService)
+        m_rpcService(rpcService),
+        m_lastRequest()
     {
     }
 
@@ -34,7 +38,7 @@ class ChannelRPCServiceImpl : public ChannelRPC
         destroy();
     }
 
-    void processRequest(epics::pvData::PVStructure::shared_pointer const & pvArgument, bool lastRequest)
+    void processRequest(epics::pvData::PVStructure::shared_pointer const & pvArgument)
     {
         epics::pvData::PVStructure::shared_pointer result;
         Status status = Status::Ok;
@@ -66,18 +70,23 @@ class ChannelRPCServiceImpl : public ChannelRPC
             status = Status(Status::STATUSTYPE_FATAL, "RPCService.request(PVStructure) returned null.");
         }
         
-       m_channelRPCRequester->requestDone(status, result);
+       m_channelRPCRequester->requestDone(status, shared_from_this(), result);
         
-        if (lastRequest)
+        if (m_lastRequest.get())
             destroy();
 
     }
 
-    virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument, bool lastRequest)
+    virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument)
     {
-        processRequest(pvArgument, lastRequest);
+        processRequest(pvArgument);
     }
 
+    void lastRequest()
+    {
+        m_lastRequest.set();
+    }
+    
     virtual void cancel()
     {
         // noop
@@ -197,7 +206,7 @@ public:
     {
         ChannelGet::shared_pointer nullPtr;
         channelGetRequester->channelGetConnect(notSupportedStatus, nullPtr,
-            epics::pvData::PVStructure::shared_pointer(), epics::pvData::BitSet::shared_pointer());
+            epics::pvData::Structure::const_shared_pointer());
         return nullPtr; 
     }
             
@@ -207,7 +216,7 @@ public:
     {
         ChannelPut::shared_pointer nullPtr;
         channelPutRequester->channelPutConnect(notSupportedStatus, nullPtr,
-            epics::pvData::PVStructure::shared_pointer(), epics::pvData::BitSet::shared_pointer());
+            epics::pvData::Structure::const_shared_pointer());
         return nullPtr; 
     }
             
@@ -217,7 +226,7 @@ public:
             epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
     {
         ChannelPutGet::shared_pointer nullPtr;
-        epics::pvData::PVStructure::shared_pointer nullStructure;
+        epics::pvData::Structure::const_shared_pointer nullStructure;
         channelPutGetRequester->channelPutGetConnect(notSupportedStatus, nullPtr, nullStructure, nullStructure);
         return nullPtr; 
     }
@@ -257,7 +266,7 @@ public:
             epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
     {
         ChannelArray::shared_pointer nullPtr;
-        channelArrayRequester->channelArrayConnect(notSupportedStatus, nullPtr, epics::pvData::PVArray::shared_pointer());
+        channelArrayRequester->channelArrayConnect(notSupportedStatus, nullPtr, epics::pvData::Array::const_shared_pointer());
         return nullPtr; 
     }
             
@@ -443,7 +452,7 @@ RPCServer::RPCServer()
     m_serverContext = ServerContextImpl::create();
     m_serverContext->setChannelProviderName(m_channelProviderImpl->getProviderName());
  
-    m_serverContext->initialize(getChannelAccess());
+    m_serverContext->initialize(getChannelProviderRegistry());
 }
 
 RPCServer::~RPCServer()
@@ -482,7 +491,7 @@ static void threadRunner(void* usr)
 void RPCServer::runInNewThread(int seconds)
 {
     std::auto_ptr<ThreadRunnerParam> param(new ThreadRunnerParam());
-    param->server = rpcServer;
+    param->server = shared_from_this();
     param->timeToRun = seconds;
 
     epicsThreadCreate("RPCServer thread",
