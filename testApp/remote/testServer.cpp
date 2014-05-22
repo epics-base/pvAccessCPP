@@ -2364,7 +2364,7 @@ public:
         return m_provider.lock();
     };
 
-    virtual void cancelChannelFind()
+    virtual void cancel()
     {
         throw std::runtime_error("not supported");
     }
@@ -2578,7 +2578,7 @@ void testServer(int timeToRun)
 
     //ServerContextImpl::shared_pointer ctx = ServerContextImpl::create();
     ctx = ServerContextImpl::create();
-    ChannelAccess::shared_pointer channelAccess = getChannelAccess();
+    ChannelAccess::shared_pointer channelAccess = getChannelProviderRegistry();
     ctx->initialize(channelAccess);
 
     ctx->printInfo();

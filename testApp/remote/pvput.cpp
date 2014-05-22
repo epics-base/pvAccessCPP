@@ -551,10 +551,10 @@ int main (int argc, char *argv[])
     terseSeparator(fieldSeparator);
 
     ClientFactory::start();
-    ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pva");
+    ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");
 
     //epics::pvAccess::ca::CAClientFactory::start();
-    //ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("ca");
+    //ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("ca");
 
     bool allOK = true;
 

@@ -146,6 +146,7 @@ public:
 
     /* --------------- epics::pvData::ChannelRequest --------------- */
 
+    virtual Channel::shared_pointer getChannel();
     virtual void cancel();
     virtual void lastRequest();
 
@@ -205,6 +206,7 @@ public:
 
     /* --------------- epics::pvData::ChannelRequest --------------- */
 
+    virtual Channel::shared_pointer getChannel();
     virtual void cancel();
     virtual void lastRequest();
 

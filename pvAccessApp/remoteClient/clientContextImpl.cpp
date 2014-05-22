@@ -112,7 +112,7 @@ namespace epics {
             static Status pvRequestNull;
             
             static PVStructure::shared_pointer nullPVStructure;
-            static Structure::shared_pointer nullStructure;
+            static Structure::const_shared_pointer nullStructure;
             static BitSet::shared_pointer nullBitSet;
 
     		static BitSet::shared_pointer createBitSetFor(
@@ -291,6 +291,10 @@ namespace epics {
                 }
 
             }
+            
+            virtual Channel::shared_pointer getChannel() {
+                return m_channel;
+            }
 
             virtual void destroy() {
             	destroy(false);
@@ -396,6 +400,7 @@ namespace epics {
         Status BaseRequestImpl::pvRequestNull = Status(Status::STATUSTYPE_ERROR, "pvRequest == 0");
 
         PVStructure::shared_pointer BaseRequestImpl::nullPVStructure;
+        Structure::const_shared_pointer BaseRequestImpl::nullStructure;
         BitSet::shared_pointer BaseRequestImpl::nullBitSet;
 
         PVACCESS_REFCOUNT_MONITOR_DEFINE(channelProcess);
@@ -508,6 +513,11 @@ namespace epics {
                     stopRequest();
                     EXCEPTION_GUARD(m_callback->processDone(channelNotConnected, thisPtr));
                 }
+            }
+
+            virtual Channel::shared_pointer getChannel()
+            {
+                return BaseRequestImpl::getChannel();
             }
 
             virtual void cancel()
@@ -715,6 +725,11 @@ namespace epics {
                     stopRequest();
                     EXCEPTION_GUARD(m_channelGetRequester->getDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
                 }
+            }
+
+            virtual Channel::shared_pointer getChannel()
+            {
+                return BaseRequestImpl::getChannel();
             }
 
             virtual void cancel()
@@ -974,6 +989,11 @@ namespace epics {
                     stopRequest();
                     EXCEPTION_GUARD(m_channelPutRequester->putDone(channelNotConnected, thisPtr));
                 }
+            }
+
+            virtual Channel::shared_pointer getChannel()
+            {
+                return BaseRequestImpl::getChannel();
             }
 
             virtual void cancel()
@@ -1299,6 +1319,11 @@ namespace epics {
                 }
             }
 
+            virtual Channel::shared_pointer getChannel()
+            {
+                return BaseRequestImpl::getChannel();
+            }
+
             virtual void cancel()
             {
                 BaseRequestImpl::cancel();
@@ -1486,6 +1511,11 @@ namespace epics {
                     stopRequest();
                     EXCEPTION_GUARD(m_channelRPCRequester->requestDone(channelNotConnected, thisPtr, nullPVStructure));
                 }
+            }
+
+            virtual Channel::shared_pointer getChannel()
+            {
+                return BaseRequestImpl::getChannel();
             }
 
             virtual void cancel()
@@ -1847,6 +1877,11 @@ namespace epics {
                 }
             }
 
+            virtual Channel::shared_pointer getChannel()
+            {
+                return BaseRequestImpl::getChannel();
+            }
+
             virtual void cancel()
             {
                 BaseRequestImpl::cancel();
@@ -1963,6 +1998,11 @@ namespace epics {
                 SerializeHelper::serializeString(m_subField, buffer, control);
             }
 
+
+            virtual Channel::shared_pointer getChannel()
+            {
+                return m_channel;
+            }
 
             virtual void cancel() {
                 // TODO
@@ -2885,7 +2925,7 @@ namespace epics {
                     return m_provider;
                 };
 
-                virtual void cancelChannelFind()
+                virtual void cancel()
                 {
                     throw std::runtime_error("not supported");
                 }

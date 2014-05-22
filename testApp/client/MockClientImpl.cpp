@@ -556,7 +556,7 @@ class MockChannelFind : public ChannelFind
         return m_provider;
     };
     
-    virtual void cancelChannelFind()
+    virtual void cancel()
     {
         throw std::runtime_error("not supported");
     }

@@ -1729,7 +1729,7 @@ int main (int argc, char *argv[])
         {
             shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
             // TODO no provider check
-            channels[n] = getChannelAccess()->getProvider(providerNames[n])->createChannel(pvs[n], channelRequesterImpl);
+            channels[n] = getChannelProviderRegistry()->getProvider(providerNames[n])->createChannel(pvs[n], channelRequesterImpl);
         }
 
         // TODO maybe unify for nPvs == 1?!
@@ -1803,7 +1803,7 @@ int main (int argc, char *argv[])
                     
                 shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
                 // TODO no provider check
-                channel = getChannelAccess()->getProvider(cp)->createChannel(cn, channelRequesterImpl);
+                channel = getChannelProviderRegistry()->getProvider(cp)->createChannel(cn, channelRequesterImpl);
             }
 
             if (monitor)
@@ -2035,7 +2035,7 @@ int main (int argc, char *argv[])
 
 
         ClientFactory::start();
-        ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pva");
+        ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");
         
         shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
         Channel::shared_pointer channel =

@@ -883,6 +883,11 @@ void CAChannelGet::get()
 
 /* --------------- epics::pvData::ChannelRequest --------------- */
 
+Channel::shared_pointer CAChannelGet::getChannel()
+{
+    return channel;
+}
+
 void CAChannelGet::cancel()
 {
     // noop
@@ -1199,6 +1204,11 @@ void CAChannelPut::get()
 
 
 /* --------------- epics::pvData::ChannelRequest --------------- */
+
+Channel::shared_pointer CAChannelPut::getChannel()
+{
+    return channel;
+}
 
 void CAChannelPut::cancel()
 {

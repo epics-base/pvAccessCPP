@@ -116,6 +116,12 @@ namespace pvAccess {
             POINTER_DEFINITIONS(ChannelRequest);
 
             /**
+             * Get a channel instance this request belongs to.
+             * @return the channel instance.
+             */
+            virtual std::tr1::shared_ptr<Channel> getChannel() = 0;
+            
+            /**
              * Cancel any pending request.
              * Completion will be reported via request's response callback:
              * <ul>
@@ -241,7 +247,7 @@ namespace pvAccess {
             POINTER_DEFINITIONS(ChannelFind);
 
             virtual std::tr1::shared_ptr<ChannelProvider> getChannelProvider() = 0;
-            virtual void cancelChannelFind() = 0;
+            virtual void cancel() = 0;
         };
 
         /**

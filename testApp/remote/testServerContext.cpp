@@ -48,10 +48,10 @@ public:
 };
 
 
-class TestChannelAccess : public ChannelAccess {
+class TestChannelProviderRegistry : public ChannelProviderRegistry {
 public:
                 
-    virtual ~TestChannelAccess() {};
+    virtual ~TestChannelProviderRegistry() {};
             
     ChannelProvider::shared_pointer getProvider(epics::pvData::String const & providerName)
     {
@@ -81,7 +81,7 @@ void testServerContext()
 
 	ServerContextImpl::shared_pointer ctx = ServerContextImpl::create();
 
-	ChannelAccess::shared_pointer ca(new TestChannelAccess());
+	ChannelProviderRegistry::shared_pointer ca(new TestChannelProviderRegistry());
 	ctx->initialize(ca);
 
 	ctx->printInfo();

@@ -61,7 +61,7 @@ class ChannelAccessIFRemoteTest: public ChannelAccessIFTest  {
 
 
     virtual ChannelProvider::shared_pointer getChannelProvider() {
-      return getChannelAccess()->getProvider(
+      return getChannelProviderRegistry()->getProvider(
           "pva");
     }
 

@@ -477,7 +477,7 @@ int main (int argc, char *argv[])
     }
 
     ClientFactory::start();
-    provider = getChannelAccess()->getProvider("pva");
+    provider = getChannelProviderRegistry()->getProvider("pva");
 
     if (!testFile.empty())
     {

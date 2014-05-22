@@ -54,7 +54,7 @@ public:
         return m_provider.lock();
     };
 
-    virtual void cancelChannelFind() {}
+    virtual void cancel() {}
 
 private:
     ChannelProvider::weak_pointer m_provider;

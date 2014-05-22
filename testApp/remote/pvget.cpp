@@ -484,10 +484,10 @@ int main (int argc, char *argv[])
         }
         
         ClientFactory::start();
-        ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pva");
+        ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");
 
         //epics::pvAccess::ca::CAClientFactory::start();
-        //ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("ca");
+        //ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("ca");
 
         // first connect to all, this allows resource (e.g. TCP connection) sharing
         vector<Channel::shared_pointer> channels(nPvs);

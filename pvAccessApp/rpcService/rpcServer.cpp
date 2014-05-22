@@ -19,14 +19,17 @@ class ChannelRPCServiceImpl :
     public std::tr1::enable_shared_from_this<ChannelRPC>
 {
     private:
+    Channel::shared_pointer m_channel;
     ChannelRPCRequester::shared_pointer m_channelRPCRequester;
     RPCService::shared_pointer m_rpcService;
     AtomicBoolean m_lastRequest;
 
     public:
     ChannelRPCServiceImpl(
+        Channel::shared_pointer const & channel,
         ChannelRPCRequester::shared_pointer const & channelRPCRequester,
         RPCService::shared_pointer const & rpcService) :
+        m_channel(channel),
         m_channelRPCRequester(channelRPCRequester),
         m_rpcService(rpcService),
         m_lastRequest()
@@ -87,6 +90,11 @@ class ChannelRPCServiceImpl :
         m_lastRequest.set();
     }
     
+    virtual Channel::shared_pointer getChannel()
+    {
+        return m_channel;
+    }
+
     virtual void cancel()
     {
         // noop
@@ -112,7 +120,8 @@ class ChannelRPCServiceImpl :
 
 
 class RPCChannel :
-    public virtual Channel
+    public virtual Channel,
+    public std::tr1::enable_shared_from_this<Channel>
 {
 private:
 
@@ -247,7 +256,9 @@ public:
             return nullPtr;
         }
         
-        ChannelRPC::shared_pointer channelRPCImpl(new ChannelRPCServiceImpl(channelRPCRequester, m_rpcService));
+        ChannelRPC::shared_pointer channelRPCImpl(
+            new ChannelRPCServiceImpl(shared_from_this(), channelRPCRequester, m_rpcService)
+        );
         channelRPCRequester->channelRPCConnect(Status::Ok, channelRPCImpl);
         return channelRPCImpl;
     }
@@ -333,7 +344,7 @@ public:
         return shared_from_this();
     }
     
-    virtual void cancelChannelFind() {}
+    virtual void cancel() {}
 
     virtual void destroy() {}
     
