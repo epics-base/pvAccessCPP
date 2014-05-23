@@ -1113,6 +1113,7 @@ namespace epics {
     void BlockingSocketAbstractCodec::internalDestroy() {
 
       if(_channel != INVALID_SOCKET) {
+        // TODO ::shutdown for some OS??!!!
         epicsSocketDestroy(_channel);
         _channel = INVALID_SOCKET;
       }

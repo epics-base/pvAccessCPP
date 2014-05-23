@@ -898,9 +898,12 @@ void ServerChannelPutRequesterImpl::channelPutConnect(const Status& status, Chan
 		_structure = structure;
 	}
 	
-	_putPVStructure = std::tr1::static_pointer_cast<PVStructure>(reuseOrCreatePVField(_structure, _putPVStructure));
-	_putBitSet = createBitSetFor(_putPVStructure, _putBitSet);
-
+	if (status.isSuccess())
+	{
+	   _putPVStructure = std::tr1::static_pointer_cast<PVStructure>(reuseOrCreatePVField(_structure, _putPVStructure));
+	   _putBitSet = createBitSetFor(_putPVStructure, _putBitSet);
+	}
+	
 	TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);
 
@@ -1133,9 +1136,12 @@ void ServerChannelPutGetRequesterImpl::channelPutGetConnect(const Status& status
 		_getStructure = getStructure;
 	}
 	
-	_pvPutGetStructure = std::tr1::static_pointer_cast<PVStructure>(reuseOrCreatePVField(_putStructure, _pvPutGetStructure));
-	_pvPutGetBitSet = createBitSetFor(_pvPutGetStructure, _pvPutGetBitSet);
-
+	if (status.isSuccess())
+	{
+	   _pvPutGetStructure = std::tr1::static_pointer_cast<PVStructure>(reuseOrCreatePVField(_putStructure, _pvPutGetStructure));
+	   _pvPutGetBitSet = createBitSetFor(_pvPutGetStructure, _pvPutGetBitSet);
+	}
+	
 	TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);
 
@@ -1635,7 +1641,10 @@ void ServerChannelArrayRequesterImpl::channelArrayConnect(const Status& status, 
 		_array = array;
 	}
 	
-	_pvArray = std::tr1::static_pointer_cast<PVArray>(reuseOrCreatePVField(_array, _pvArray));
+	if (status.isSuccess())
+	{
+	   _pvArray = std::tr1::static_pointer_cast<PVArray>(reuseOrCreatePVField(_array, _pvArray));
+	}
 	
     TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);

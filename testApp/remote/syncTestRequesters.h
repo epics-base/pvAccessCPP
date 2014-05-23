@@ -307,7 +307,9 @@ class SyncChannelGetRequesterImpl : public ChannelGetRequester, public SyncBaseR
 
 
     bool syncGet(bool lastRequest, long timeOut) {
-      m_channelGet->get(lastRequest);
+      if (lastRequest)
+          m_channelGet->lastRequest();
+      m_channelGet->get();
       return waitUntilGetDone(timeOut);
     }
 
@@ -352,8 +354,7 @@ class SyncChannelGetRequesterImpl : public ChannelGetRequester, public SyncBaseR
 
     virtual void channelGetConnect(
         const epics::pvData::Status& status,ChannelGet::shared_pointer const & channelGet,
-        epics::pvData::PVStructure::shared_pointer const & pvStructure, 
-        epics::pvData::BitSet::shared_pointer const & bitSet)
+        epics::pvData::Structure::const_shared_pointer const & /*structure*/)
     {
       if (m_debug)
         std::cout << getRequesterName() << "." << "channelGetConnect(" << status.toString() << ")" << std::endl;
@@ -363,10 +364,8 @@ class SyncChannelGetRequesterImpl : public ChannelGetRequester, public SyncBaseR
         {
           Lock lock(m_pointerMutex);
           m_channelGet = channelGet;
-          m_pvStructure = pvStructure;
-          m_bitSet = bitSet;
         }
-        channelGet->get(false);
+        channelGet->get();
       }
       else
       {
@@ -375,10 +374,20 @@ class SyncChannelGetRequesterImpl : public ChannelGetRequester, public SyncBaseR
     }
 
 
-    virtual void getDone(const epics::pvData::Status& status)
+    virtual void getDone(const epics::pvData::Status& status,
+        ChannelGet::shared_pointer const & channelGet,
+        epics::pvData::PVStructure::shared_pointer const & pvStructure, 
+        epics::pvData::BitSet::shared_pointer const & bitSet)
     {
       if (m_debug)
         std::cout << getRequesterName() << "." << "getDone(" << status.toString() << ")" << std::endl;
+
+        {
+          Lock lock(m_pointerMutex);
+          m_channelGet = channelGet;
+          m_pvStructure = pvStructure;
+          m_bitSet = bitSet;
+        }
 
       setGetStatus(status.isSuccess());
       signalEvent();
@@ -405,6 +414,7 @@ class SyncChannelPutRequesterImpl : public ChannelPutRequester, public SyncBaseR
       SyncBaseRequester(debug), m_channelName(channelName) {}  
 
 
+    // requires to do a get first
     bool syncPut(bool lastRequest, long timeOut) 
     {
 
@@ -412,7 +422,9 @@ class SyncChannelPutRequesterImpl : public ChannelPutRequester, public SyncBaseR
         return false;
       }
 
-      m_channelPut->put(lastRequest);
+      if (lastRequest)
+          m_channelPut->lastRequest();
+      m_channelPut->put(getPVStructure(), getBitSet());
       return waitUntilPutDone(timeOut);
     } 
 
@@ -464,8 +476,7 @@ class SyncChannelPutRequesterImpl : public ChannelPutRequester, public SyncBaseR
 
     virtual void channelPutConnect(const epics::pvData::Status& status,
         ChannelPut::shared_pointer const & channelPut,
-        epics::pvData::PVStructure::shared_pointer const & pvStructure,
-        epics::pvData::BitSet::shared_pointer const & bitSet)
+        epics::pvData::Structure::const_shared_pointer const & /*structure*/)
     {
 
       if (m_debug)
@@ -477,8 +488,6 @@ class SyncChannelPutRequesterImpl : public ChannelPutRequester, public SyncBaseR
         {
           Lock lock(m_pointerMutex);
           m_channelPut = channelPut;
-          m_pvStructure = pvStructure;
-          m_bitSet = bitSet;
         }
         setConnectedStatus(true);
       }
@@ -491,20 +500,36 @@ class SyncChannelPutRequesterImpl : public ChannelPutRequester, public SyncBaseR
     }
 
 
-    virtual void getDone(const epics::pvData::Status& status)
+    virtual void getDone(const epics::pvData::Status& status,
+        ChannelPut::shared_pointer const & channelPut,
+        epics::pvData::PVStructure::shared_pointer const & pvStructure,
+        epics::pvData::BitSet::shared_pointer const & bitSet)
     {
       if (m_debug)
         std::cout << getRequesterName() << "." << "getDone(" << status.toString() << ")" << std::endl;
+
+      {
+        Lock lock(m_pointerMutex);
+        m_channelPut = channelPut;
+        m_pvStructure = pvStructure;
+        m_bitSet = bitSet;
+      }
 
       setGetStatus(status.isSuccess());
       signalEvent();      
     }
 
 
-    virtual void putDone(const epics::pvData::Status& status)
+    virtual void putDone(const epics::pvData::Status& status,
+        ChannelPut::shared_pointer const & channelPut)
     {
       if (m_debug)
         std::cout << getRequesterName() << "." << "putDone(" << status.toString() << ")" << std::endl;
+
+      {
+          Lock lock(m_pointerMutex);
+          m_channelPut = channelPut;
+      }
 
       setPutStatus(status.isSuccess()); 
       signalEvent();
@@ -592,7 +617,9 @@ class SyncChannelProcessRequesterImpl : public ChannelProcessRequester, public S
         return false;
       }
 
-      m_channelProcess->process(lastRequest);
+      if (lastRequest)
+          m_channelProcess->lastRequest();
+      m_channelProcess->process();
       return waitUntilProcessDone(timeOut);
     }
 
@@ -640,10 +667,16 @@ class SyncChannelProcessRequesterImpl : public ChannelProcessRequester, public S
     }
 
 
-    virtual void processDone(const epics::pvData::Status& status)
+    virtual void processDone(const epics::pvData::Status& status,
+                ChannelProcess::shared_pointer const & channelProcess)
     {
       if (m_debug)
         std::cout << getRequesterName() << "." << "processDone(" << status.toString() << ")" << std::endl;
+
+        {
+          Lock lock(m_pointerMutex);
+          m_channelProcess = channelProcess;
+        }
 
       setProcessStatus(status.isSuccess());
       signalEvent();
@@ -681,13 +714,16 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
     }
 
 
+    // requires getput is called first
     bool syncPutGet(bool lastRequest, double timeOut) {
 
       if(!getConnectedStatus()) {
         return false;
       }
 
-      m_channelPutGet->putGet(lastRequest);
+      if (lastRequest)
+          m_channelPutGet->lastRequest();
+      m_channelPutGet->putGet(getPVPutStructure(), getPVPutBitSet());
       return waitUntilPutGetDone(timeOut);
     }
 
@@ -709,6 +745,12 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
       return m_putData;
     }
 
+    BitSet::shared_pointer getPVPutBitSet()
+    {
+      Lock lock(m_pointerMutex);
+      return m_putBitSet;
+    }
+
 
     PVStructure::shared_pointer getPVGetStructure()
     {
@@ -716,6 +758,11 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
       return m_getData;
     }
 
+    BitSet::shared_pointer getPVGetBitSet()
+    {
+      Lock lock(m_pointerMutex);
+      return m_getBitSet;
+    }
 
     ChannelPutGet::shared_pointer getChannelPutGet()
     {
@@ -740,8 +787,8 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
 
     virtual void channelPutGetConnect(const epics::pvData::Status& status, 
         ChannelPutGet::shared_pointer const & channelPutGet,
-        epics::pvData::PVStructure::shared_pointer const & putData,
-        epics::pvData::PVStructure::shared_pointer const & getData)
+        epics::pvData::Structure::const_shared_pointer const & /*putStructure*/,
+        epics::pvData::Structure::const_shared_pointer const & /*getStructure*/)
     {
       if (m_debug)
         std::cout << getRequesterName() << "." << "channelGetPutConnect(" 
@@ -752,8 +799,8 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
         {
           Lock lock(m_pointerMutex);
           m_channelPutGet = channelPutGet;
-          m_putData = putData;
-          m_getData = getData;
+          //m_putStructure = putStructure;
+          //m_getStructure = getStructure;
         }
         setConnectedStatus(true);
       }
@@ -766,13 +813,21 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
     }
 
 
-    virtual void getGetDone(const epics::pvData::Status& status)
+    virtual void getGetDone(const epics::pvData::Status& status,
+        ChannelPutGet::shared_pointer const & channelPutGet,
+        epics::pvData::PVStructure::shared_pointer const & getData,
+        epics::pvData::BitSet::shared_pointer const & getBitSet)
     {
       if (m_debug)
         std::cout << getRequesterName() << "." << "getGetDone(" << status.toString() << ")" << std::endl;
 
       {
         Lock lock(m_pointerMutex);
+
+        m_channelPutGet = channelPutGet;
+        m_getData = getData;
+        m_getBitSet = getBitSet;
+        
         m_getGetStatus = status.isSuccess();
       }
 
@@ -780,13 +835,21 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
     }
 
 
-    virtual void getPutDone(const epics::pvData::Status& status)
+    virtual void getPutDone(const epics::pvData::Status& status,
+        ChannelPutGet::shared_pointer const & channelPutGet,
+        epics::pvData::PVStructure::shared_pointer const & putData,
+        epics::pvData::BitSet::shared_pointer const & putBitSet)
     {
       if (m_debug)
         std::cout << getRequesterName() << "." << "getPutDone(" << status.toString() << ")" << std::endl;
 
       {
         Lock lock(m_pointerMutex);
+
+        m_channelPutGet = channelPutGet;
+        m_putData = putData;
+        m_putBitSet = putBitSet;
+
         m_getPutStatus = status.isSuccess();
       }
 
@@ -794,13 +857,21 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
     }
 
 
-    virtual void putGetDone(const epics::pvData::Status& status)
+    virtual void putGetDone(const epics::pvData::Status& status,
+        ChannelPutGet::shared_pointer const & channelPutGet,
+        epics::pvData::PVStructure::shared_pointer const & getData,
+        epics::pvData::BitSet::shared_pointer const & getBitSet)
     {
       if (m_debug)
         std::cout << getRequesterName() << "." << "putGetDone(" << status.toString() << ")" << std::endl;
 
       {
         Lock lock(m_pointerMutex);
+
+        m_channelPutGet = channelPutGet;
+        m_getData = getData;
+        m_getBitSet = getBitSet;
+
         m_putGetStatus = status.isSuccess();
       }
 
@@ -853,7 +924,9 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
     Mutex m_pointerMutex;
     ChannelPutGet::shared_pointer m_channelPutGet;
     epics::pvData::PVStructure::shared_pointer m_putData;
+    epics::pvData::BitSet::shared_pointer m_putBitSet;
     epics::pvData::PVStructure::shared_pointer m_getData;
+    epics::pvData::BitSet::shared_pointer m_getBitSet;
 };
 
 
@@ -875,7 +948,9 @@ class SyncChannelRPCRequesterImpl : public ChannelRPCRequester, public SyncBaseR
         return false;
       }
 
-      m_channelRPC->request(pvArguments, lastRequest);
+      if (lastRequest)
+          m_channelRPC->lastRequest();
+      m_channelRPC->request(pvArguments);
       return waitUntilRPC(timeOut);
     }   
 
@@ -934,6 +1009,7 @@ class SyncChannelRPCRequesterImpl : public ChannelRPCRequester, public SyncBaseR
 
 
     virtual void requestDone (const epics::pvData::Status &status, 
+        ChannelRPC::shared_pointer const & channelRPC,
         epics::pvData::PVStructure::shared_pointer const &pvResponse)
     {
 
@@ -941,14 +1017,10 @@ class SyncChannelRPCRequesterImpl : public ChannelRPCRequester, public SyncBaseR
         std::cout << getRequesterName() << "." << "requestDone(" 
           << status.toString() << ")" << std::endl;
 
-      if (status.isSuccess())
       {
         Lock lock(m_pointerMutex);
+        m_channelRPC = channelRPC;
         m_lastResponse = pvResponse;
-      }
-
-      {
-        Lock lock(m_pointerMutex);
         m_done = status.isSuccess();
       }
 
@@ -1134,6 +1206,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
       m_lengthArrayStatus(false)  {}
     
     
+    // note you need to do a get first
     bool syncPut(bool lastRequest, size_t offset, size_t count, long timeOut)
     {
 
@@ -1141,7 +1214,10 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
         return false;
       }
 
-      m_channelArray->putArray(lastRequest, offset, count);
+      if (lastRequest)
+          m_channelArray->lastRequest();
+          // TODO stride !!!
+      m_channelArray->putArray(getArray(), offset, count, 1);
       return waitUntilPutArrayDone(timeOut);
     } 
 
@@ -1153,7 +1229,10 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
         return false;
       }
 
-      m_channelArray->getArray(lastRequest, offset, count);
+      if (lastRequest)
+          m_channelArray->lastRequest();
+          // TODO stride !!!
+      m_channelArray->getArray(offset, count, 1);
       return waitUntilGetArrayDone(timeOut);
     } 
 
@@ -1165,7 +1244,9 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
         return false;
       }
 
-      m_channelArray->setLength(lastRequest, length, capacity);
+      if (lastRequest)
+          m_channelArray->lastRequest();
+      m_channelArray->setLength(length, capacity);
       return waitUntilSetLengthDone(timeOut);
     } 
 
@@ -1200,7 +1281,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
 
     virtual void channelArrayConnect(const epics::pvData::Status& status,
         ChannelArray::shared_pointer const & channelArray,
-        epics::pvData::PVArray::shared_pointer const & pvArray)
+        epics::pvData::Array::const_shared_pointer const & /*array*/)
     {
       if (m_debug) 
         std::cout << getRequesterName() << ".channelArrayConnect(" << status.toString() << ")" << std::endl;
@@ -1209,7 +1290,6 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
         {
           Lock lock(m_pointerMutex);
           m_channelArray = channelArray;
-          m_pvArray = pvArray;
         }
 
         setConnectedStatus(true);
@@ -1223,38 +1303,69 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
     }
 
 
-    virtual void getArrayDone(const epics::pvData::Status& status)
+    virtual void getArrayDone(const epics::pvData::Status& status,
+        ChannelArray::shared_pointer const & channelArray,
+        epics::pvData::PVArray::shared_pointer const & pvArray)
     {
       if (m_debug)
         std::cout << getRequesterName()  << ".getArrayDone(" << status.toString() << ")" << std::endl;
       
       Lock lock(m_pointerMutex);
+      
+      m_channelArray = channelArray;
+      m_pvArray = pvArray;
+      
       m_getArrayStatus = status.isSuccess();
       signalEvent();
     }
 
 
-    virtual void putArrayDone(const epics::pvData::Status& status)
+    virtual void putArrayDone(const epics::pvData::Status& status,
+        ChannelArray::shared_pointer const & channelArray)
     {
       if (m_debug)
         std::cout << getRequesterName() << ".putArrayDone(" << status.toString() << ")" << std::endl;
 
       Lock lock(m_pointerMutex);
+
+      m_channelArray = channelArray;
+
       m_putArrayStatus = status.isSuccess();
       signalEvent();
     }
 
 
-    virtual void setLengthDone(const epics::pvData::Status& status)
+    virtual void setLengthDone(const epics::pvData::Status& status,
+        ChannelArray::shared_pointer const & channelArray)
     { 
       if (m_debug)
         std::cout << getRequesterName() << ".setLengthDone(" << status.toString() << ")" << std::endl;
       
       Lock lock(m_pointerMutex);
+
+      m_channelArray = channelArray;
+
       m_lengthArrayStatus = status.isSuccess();
       signalEvent();
     }
 
+    virtual void getLengthDone(const epics::pvData::Status& status,
+        ChannelArray::shared_pointer const & channelArray,
+        size_t length, size_t capacity)
+    { 
+      if (m_debug)
+        std::cout << getRequesterName() << ".getLengthDone(" << status.toString() << ")" << std::endl;
+      
+      Lock lock(m_pointerMutex);
+
+      m_channelArray = channelArray;
+      // TODO !!!
+      //m_length = length;
+      //m_capacity = capacity;
+
+      m_lengthArrayStatus = status.isSuccess();
+      signalEvent();
+    }
 
   private:
  
