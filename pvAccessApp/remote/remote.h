@@ -352,7 +352,7 @@ namespace epics {
              */
             AbstractResponseHandler(Context* context, epics::pvData::String description) :
                 _description(description), 
-                _debug(context->getConfiguration()->getPropertyAsBoolean(PVACCESS_DEBUG, false)) {
+                _debugLevel(context->getConfiguration()->getPropertyAsInteger(PVACCESS_DEBUG, 0)) {
             }
 
             virtual ~AbstractResponseHandler() {}
@@ -370,7 +370,7 @@ namespace epics {
             /**
              * Debug flag.
              */
-            bool _debug;
+            epics::pvData::int32 _debugLevel;
         };
 
         /**

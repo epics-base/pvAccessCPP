@@ -4037,6 +4037,12 @@ TODO
         private:
 
             void loadConfiguration() {
+                
+                // TODO for now just a simple switch
+                int32 debugLevel = m_configuration->getPropertyAsInteger(PVACCESS_DEBUG, 0);
+                if (debugLevel > 0)
+                    SET_LOG_LEVEL(logLevelDebug);
+                    
                 m_addressList = m_configuration->getPropertyAsString("EPICS_PVA_ADDR_LIST", m_addressList);
                 m_autoAddressList = m_configuration->getPropertyAsBoolean("EPICS_PVA_AUTO_ADDR_LIST", m_autoAddressList);
                 m_connectionTimeout = m_configuration->getPropertyAsFloat("EPICS_PVA_CONN_TMO", m_connectionTimeout);

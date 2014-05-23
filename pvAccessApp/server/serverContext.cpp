@@ -98,6 +98,11 @@ void ServerContextImpl::loadConfiguration()
 {
 	Configuration::shared_pointer config = getConfiguration();
 
+    // TODO for now just a simple switch
+    int32 debugLevel = config->getPropertyAsInteger(PVACCESS_DEBUG, 0);
+    if (debugLevel > 0)
+        SET_LOG_LEVEL(logLevelDebug);
+
     _beaconAddressList = config->getPropertyAsString("EPICS_PVA_ADDR_LIST", _beaconAddressList);
     _beaconAddressList = config->getPropertyAsString("EPICS_PVAS_BEACON_ADDR_LIST", _beaconAddressList);
 
