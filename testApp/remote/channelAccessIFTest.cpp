@@ -672,6 +672,13 @@ void ChannelAccessIFTest::test_channelPutNoProcess() {
     return;
   }
 
+  // first do a get to get pvStrcuture
+  bool succStatus = channelPutReq->syncGet(getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: sync get failed ", CURRENT_FUNCTION);
+    return;
+  } 
+
   std::tr1::shared_ptr<PVDouble> value = channelPutReq->getPVStructure()->getDoubleField("value");
   if (!value.get()) {
     testFail("%s: getting double value field failed ", CURRENT_FUNCTION);
@@ -683,7 +690,7 @@ void ChannelAccessIFTest::test_channelPutNoProcess() {
   value->put(initVal);
   channelPutReq->getBitSet()->set(value->getFieldOffset());
 
-  bool succStatus = channelPutReq->syncPut(false, getTimeoutSec());
+  /*bool*/ succStatus = channelPutReq->syncPut(false, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: sync put failed ", CURRENT_FUNCTION);
     return;
@@ -804,6 +811,13 @@ void ChannelAccessIFTest::test_channelPutIntProcessInternal(Channel::shared_poin
     return;
   }
 
+  // first do a get to get pvStructure
+  bool succStatus = channelPutReq->syncGet(getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: sync get failed ", testMethodName.c_str());
+    return;
+  } 
+
   std::tr1::shared_ptr<PVInt> value = channelPutReq->getPVStructure()->getIntField("value");
   if (!value.get()) {
     testFail("%s: getting int value field failed ", testMethodName.c_str());
@@ -815,7 +829,7 @@ void ChannelAccessIFTest::test_channelPutIntProcessInternal(Channel::shared_poin
   value->put(initVal);
   channelPutReq->getBitSet()->set(value->getFieldOffset());
 
-  bool succStatus = channelPutReq->syncPut(false, getTimeoutSec());
+  /*bool*/ succStatus = channelPutReq->syncPut(false, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: sync put failed ", testMethodName.c_str());
     return;
@@ -1184,6 +1198,20 @@ void ChannelAccessIFTest::test_channelPutGetNoProcess_putGet() {
     return;
   }
 
+  // first get a pvStructure
+  bool succStatus = channelPutGetReq->syncGetPut(getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: syncGetPut failed ", CURRENT_FUNCTION);
+    return;
+  } 
+  
+  // first get a pvStructure
+  succStatus = channelPutGetReq->syncGetGet(getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: syncGetGet failed ", CURRENT_FUNCTION);
+    return;
+  } 
+
 
   std::tr1::shared_ptr<PVDouble> putValue = channelPutGetReq->getPVPutStructure()->getDoubleField("value");
   if (!putValue.get()) {
@@ -1200,7 +1228,7 @@ void ChannelAccessIFTest::test_channelPutGetNoProcess_putGet() {
     return;
   }
 
-  bool succStatus = channelPutGetReq->syncPutGet(false, getTimeoutSec());
+  /*bool*/ succStatus = channelPutGetReq->syncPutGet(false, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: syncPutGet failed ", CURRENT_FUNCTION);
     return;
@@ -1249,6 +1277,20 @@ void ChannelAccessIFTest::test_channelPutGetNoProcess_getPut() {
     return;
   }
 
+  // first get a pvStructure
+  bool succStatus = channelPutGetReq->syncGetPut(getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: syncGetPut failed ", CURRENT_FUNCTION);
+    return;
+  } 
+  
+  // first get a pvStructure
+  succStatus = channelPutGetReq->syncGetGet(getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: syncGetGet failed ", CURRENT_FUNCTION);
+    return;
+  } 
+
 
   std::tr1::shared_ptr<PVDouble> putValue = channelPutGetReq->getPVPutStructure()->getDoubleField("value");
   if (!putValue.get()) {
@@ -1267,7 +1309,7 @@ void ChannelAccessIFTest::test_channelPutGetNoProcess_getPut() {
 
   testDiag("%s: first put the initial pvPutStructure into the record", CURRENT_FUNCTION);
 
-  bool succStatus = channelPutGetReq->syncPutGet(false, getTimeoutSec());
+  /*bool*/ succStatus = channelPutGetReq->syncPutGet(false, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: syncPutGet failed ", CURRENT_FUNCTION);
     return;
@@ -1312,6 +1354,20 @@ void ChannelAccessIFTest::test_channelPutGetNoProcess_getGet() {
     return;
   }
 
+  // first get a pvStructure
+  bool succStatus = channelPutGetReq->syncGetPut(getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: syncGetPut failed ", CURRENT_FUNCTION);
+    return;
+  } 
+  
+  // first get a pvStructure
+  succStatus = channelPutGetReq->syncGetGet(getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: syncGetGet failed ", CURRENT_FUNCTION);
+    return;
+  } 
+
 
   std::tr1::shared_ptr<PVDouble> putValue = channelPutGetReq->getPVPutStructure()->getDoubleField("value");
   if (!putValue.get()) {
@@ -1330,7 +1386,7 @@ void ChannelAccessIFTest::test_channelPutGetNoProcess_getGet() {
 
   testDiag("%s: first put the initial pvPutStructure into the record", CURRENT_FUNCTION);
 
-  bool succStatus = channelPutGetReq->syncPutGet(false, getTimeoutSec());
+  /*bool*/ succStatus = channelPutGetReq->syncPutGet(false, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: syncPutGet failed ", CURRENT_FUNCTION);
     return;
@@ -1374,8 +1430,23 @@ void ChannelAccessIFTest::test_channelPutGetNoProcess_destroy() {
     testFail("%s: creating a channel putget failed ", CURRENT_FUNCTION);
     return;
   }
+  
+  // first get a pvStructure
+  bool succStatus = channelPutGetReq->syncGetPut(getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: syncGetPut failed ", CURRENT_FUNCTION);
+    return;
+  } 
+  
+  // first get a pvStructure
+  succStatus = channelPutGetReq->syncGetGet(getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: syncGetGet failed ", CURRENT_FUNCTION);
+    return;
+  } 
+  
 
-  bool succStatus = channelPutGetReq->syncPutGet(true, getTimeoutSec());
+  /*bool*/ succStatus = channelPutGetReq->syncPutGet(true, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: syncPutGet failed ", CURRENT_FUNCTION);
     return;
@@ -1419,6 +1490,20 @@ void ChannelAccessIFTest::test_channelPutGetIntProcess() {
     return;
   }
 
+  // first get a pvStructure
+  bool succStatus = channelPutGetReq->syncGetPut(getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: syncGetPut failed ", CURRENT_FUNCTION);
+    return;
+  } 
+  
+  // first get a pvStructure
+  succStatus = channelPutGetReq->syncGetGet(getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: syncGetGet failed ", CURRENT_FUNCTION);
+    return;
+  } 
+
 
   std::tr1::shared_ptr<PVInt> putValue = channelPutGetReq->getPVPutStructure()->getIntField("value");
   if (!putValue.get()) {
@@ -1442,7 +1527,7 @@ void ChannelAccessIFTest::test_channelPutGetIntProcess() {
 
   TimeStamp timeStamp;
 
-  bool succStatus = channelPutGetReq->syncGetGet(getTimeoutSec());
+  /*bool*/ succStatus = channelPutGetReq->syncGetGet(getTimeoutSec());
   if (!succStatus) {
     testFail("%s: syncGetGet failed ", CURRENT_FUNCTION);
     return;
@@ -1735,9 +1820,16 @@ void ChannelAccessIFTest::test_channelArray() {
     return;
   }
 
+  // first get to get pvArray
+  bool succStatus = arrayReq->syncGet(false, 0, 0, getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: an array syncGet failed (3) ", CURRENT_FUNCTION);
+    return;
+  }
+
   PVDoubleArrayPtr array = static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
 
-  bool succStatus = arrayReq->syncGet(false, 0, 2, getTimeoutSec());
+  /*bool*/ succStatus = arrayReq->syncGet(false, 0, 2, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: an array syncGet failed (1) ", CURRENT_FUNCTION);
     return;
