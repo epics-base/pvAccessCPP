@@ -1610,7 +1610,7 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 ServerChannelArrayRequesterImpl::ServerChannelArrayRequesterImpl(
         ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
 		const pvAccessID ioid, Transport::shared_pointer const & transport):
-		BaseChannelRequester(context, channel, ioid, transport), _channelArray(), _pvArray()
+		BaseChannelRequester(context, channel, ioid, transport)
 {
 }
 
@@ -1643,7 +1643,7 @@ void ServerChannelArrayRequesterImpl::channelArrayConnect(const Status& status, 
 	
 	if (status.isSuccess())
 	{
-	   _pvArray = std::tr1::static_pointer_cast<PVArray>(reuseOrCreatePVField(_array, _pvArray));
+	   _pvPutArray = std::tr1::static_pointer_cast<PVArray>(reuseOrCreatePVField(_array, _pvPutArray));
 	}
 	
     TransportSender::shared_pointer thisSender = shared_from_this();
@@ -1738,7 +1738,7 @@ ChannelArray::shared_pointer ServerChannelArrayRequesterImpl::getChannelArray()
 PVArray::shared_pointer ServerChannelArrayRequesterImpl::getPVArray()
 {
 	//Lock guard(_mutex);
-	return _pvArray;
+	return _pvPutArray;
 }
 
 void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)

@@ -1823,7 +1823,7 @@ void ChannelAccessIFTest::test_channelArray() {
   // first get to get pvArray
   bool succStatus = arrayReq->syncGet(false, 0, 0, getTimeoutSec());
   if (!succStatus) {
-    testFail("%s: an array syncGet failed (3) ", CURRENT_FUNCTION);
+    testFail("%s: an array syncGet failed (0) ", CURRENT_FUNCTION);
     return;
   }
 

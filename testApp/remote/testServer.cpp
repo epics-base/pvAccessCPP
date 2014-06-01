@@ -19,6 +19,7 @@
 #include <cmath>
 
 #include <pv/logger.h>
+#include <pv/convert.h>
 
 // TODO temp
 #include "testADCSim.cpp"
@@ -921,7 +922,7 @@ static ChannelProcess::shared_pointer getChannelProcess(
     Channel::shared_pointer const & channel,
     PVStructure::shared_pointer const & pvRequest)
 {
-    PVScalar::shared_pointer pvScalar = pvRequest->getSubField<PVScalar>("record._options.process");
+    PVScalar::shared_pointer pvScalar = pvRequest->getSubField<PVScalar>("record.process");
     if (pvScalar && pvScalar->getAs<epics::pvData::boolean>())
     {
         std::tr1::shared_ptr<ChannelProcessRequesterImpl> cpr(new ChannelProcessRequesterImpl());
@@ -1089,6 +1090,7 @@ protected:
         m_channelProcess(getChannelProcess(channel, pvRequest))
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelPut);
+        m_bitSet->set(0); // TODO
     }
 
 public:
@@ -1112,7 +1114,14 @@ public:
 
     virtual void put(PVStructure::shared_pointer const & pvPutStructure, BitSet::shared_pointer const & putBitSet)
     {
-        // TODO data - do an actual put !!!
+        // TODO use putBitSet and do not copy all
+        // (note that server code has already not deserialized fields whose bits are not set)
+        if (putBitSet->cardinality())
+        {
+            lock();
+            getConvert()->copy(pvPutStructure, m_pvStructure);
+            unlock();
+        }
         
         if (m_channelProcess)
             m_channelProcess->process();
@@ -1127,6 +1136,7 @@ public:
 
     virtual void get()
     {
+        // NOTE: alwasy returns entire m_bitSet
         m_channelPutRequester->getDone(Status::Ok, shared_from_this(), m_pvStructure, m_bitSet);
 
         if (m_lastRequest.get())
@@ -1226,7 +1236,14 @@ public:
 
     virtual void putGet(PVStructure::shared_pointer const & pvPutStructure, BitSet::shared_pointer const & putBitSet)
     {
-        // TODO !!! copy what was put...
+        // TODO use putBitSet and do not copy all
+        // (note that server code has already not deserialized fields whose bits are not set)
+        if (putBitSet->cardinality())
+        {
+            lock();
+            getConvert()->copy(pvPutStructure, m_putStructure);
+            unlock();
+        }
         
         if (m_channelProcess)
             m_channelProcess->process();
@@ -1902,9 +1919,12 @@ public:
     {
         if (capacity > 0) {
             m_pvStructureArray->setCapacity(capacity);
+            m_pvStructureArray->setLength(length > capacity ? capacity : length);
         }
-        
-        m_pvStructureArray->setLength(length);
+        else
+        {
+            m_pvStructureArray->setLength(length);
+        }
         
         m_channelArrayRequester->setLengthDone(Status::Ok, shared_from_this());
 

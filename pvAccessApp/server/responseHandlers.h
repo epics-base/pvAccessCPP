@@ -605,7 +605,13 @@ namespace pvAccess {
         private:
         	 ChannelArray::shared_pointer _channelArray;
         	 epics::pvData::Array::const_shared_pointer _array;
+        	 
+        	 // reference store
         	 epics::pvData::PVArray::shared_pointer _pvArray;
+        	 
+        	 // data container
+        	 epics::pvData::PVArray::shared_pointer _pvPutArray;
+        	 
         	 std::size_t _length;
         	 std::size_t _capacity;
         	 epics::pvData::Status _status;

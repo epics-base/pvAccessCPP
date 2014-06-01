@@ -153,7 +153,13 @@ namespace epics {
           if (!readToBuffer(PVA_MESSAGE_HEADER_SIZE, false)) {
             return;
           }
-
+          
+          /*
+          hexDump("Header", (const int8*)_socketBuffer->getArray(),
+                  _socketBuffer->getPosition(), PVA_MESSAGE_HEADER_SIZE);
+          
+          */
+                        
           // read header fields
           processHeader();
           bool isControl = ((_flags & 0x01) == 0x01);
@@ -166,8 +172,13 @@ namespace epics {
             bool notFirstSegment = (_flags & 0x20) != 0;
             if (notFirstSegment)
             {
+              // not-first segmented message with zero payload is "kind of" valid
+              // TODO this should check if previous message was first- or middle-segmented message
+              if (_payloadSize == 0)
+                  continue;
+
               LOG(logLevelWarn, 
-                "Not-a-frst segmented message received in normal mode"
+                "Not-a-first segmented message received in normal mode"
                 " from the client at %s:%d: %s, disconnecting...",
                   __FILE__, __LINE__, inetAddressToString(*getLastReadBufferSocketAddress()).c_str());
               invalidDataStreamHandler();
