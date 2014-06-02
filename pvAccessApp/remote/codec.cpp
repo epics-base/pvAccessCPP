@@ -1023,10 +1023,14 @@ namespace epics {
       {
         try {
           bac->processRead();
-        } catch (io_exception &e) {
+        } catch (std::exception &e) {
           LOG(logLevelWarn, 
             "an exception caught while in receiveThread at %s:%d: %s",
             __FILE__, __LINE__, e.what());  
+        } catch (...) {
+          LOG(logLevelWarn, 
+            "unknown exception caught while in sendThread at %s:%d",
+            __FILE__, __LINE__);  
         }
       }
 
@@ -1046,10 +1050,21 @@ namespace epics {
       {
         try {
           bac->processWrite();
-        } catch (io_exception &e) {
+        } catch (connection_closed_exception &cce) {
+          // noop
+          /*
+          LOG(logLevelDebug, 
+            "connection closed by remote host while in sendThread at %s:%d: %s",
+            __FILE__, __LINE__, e.what()); 
+          */ 
+        } catch (std::exception &e) {
           LOG(logLevelWarn, 
             "an exception caught while in sendThread at %s:%d: %s",
             __FILE__, __LINE__, e.what());  
+        } catch (...) {
+          LOG(logLevelWarn, 
+            "unknown exception caught while in sendThread at %s:%d",
+            __FILE__, __LINE__);  
         }
       }
 
