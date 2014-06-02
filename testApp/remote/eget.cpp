@@ -1464,9 +1464,18 @@ int main (int argc, char *argv[])
         {
             string param = optarg;
             size_t eqPos = param.find('=');
+            if (eqPos==0)
+            {
+                // no name 
+
+                fprintf(stderr, "Parameter not specified in '-a name=value' form. ('eget -h' for help.)\n");
+                return 1;
+            }
             if (eqPos==string::npos)
             {
-                //fprintf(stderr, "Parameter not specified in name=value form. ('eget -h' for help.)\n");
+                // no value
+                
+                //fprintf(stderr, "Parameter not specified in '-a name=value' form. ('eget -h' for help.)\n");
                 //return 1;
                 parameters.push_back(pair<string,string>(param, ""));
             }
