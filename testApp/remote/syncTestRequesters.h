@@ -1250,6 +1250,19 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
       return waitUntilSetLengthDone(timeOut);
     } 
 
+    bool syncGetLength(bool lastRequest, long timeOut)
+    {
+
+      if (!getConnectedStatus()) {
+        return false;
+      }
+
+      if (lastRequest)
+          m_channelArray->lastRequest();
+      m_channelArray->getLength();
+      return waitUntilSetLengthDone(timeOut);
+    } 
+
 
     ChannelArray::shared_pointer getChannelArray() 
     {
@@ -1359,12 +1372,21 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
       Lock lock(m_pointerMutex);
 
       m_channelArray = channelArray;
-      // TODO !!!
-      //m_length = length;
-      //m_capacity = capacity;
+      m_length = length;
+      m_capacity = capacity;
 
       m_lengthArrayStatus = status.isSuccess();
       signalEvent();
+    }
+    
+    size_t getLength()
+    {
+        return m_length;
+    }
+    
+    size_t getCapacity()
+    {
+        return m_capacity;
     }
 
   private:
@@ -1429,6 +1451,8 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
     Mutex m_pointerMutex;
     ChannelArray::shared_pointer m_channelArray;
     epics::pvData::PVArray::shared_pointer m_pvArray;
+    size_t m_length;
+    size_t m_capacity;
 };
 
 #endif

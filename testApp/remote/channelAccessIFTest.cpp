@@ -43,9 +43,9 @@ std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray1";
 int ChannelAccessIFTest::runAllTest() {
 
 #ifdef ENABLE_STRESS_TESTS
-  testPlan(157);
+  testPlan(159);
 #else
-  testPlan(152);
+  testPlan(154);
 #endif
 
   test_implementation();
@@ -1972,6 +1972,21 @@ void ChannelAccessIFTest::test_channelArray() {
     testFail("%s: will not check the rest of the array if the size is not correct", CURRENT_FUNCTION);
   }
   */
+
+  // test setLength with capacity 0 (no change) and getLength
+  size_t newLen = bigCapacity/2;
+  succStatus = arrayReq->syncSetLength(false, newLen, bigCapacity, getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: an array setLength failed (4) ", CURRENT_FUNCTION);
+    return;
+  }
+  succStatus = arrayReq->syncGetLength(false, getTimeoutSec());
+  if (!succStatus) {
+    testFail("%s: an array getLength failed", CURRENT_FUNCTION);
+    return;
+  }
+  testOk(arrayReq->getLength() == newLen, "%s: retrieved length should be %zu", CURRENT_FUNCTION, newLen);
+  testOk(arrayReq->getCapacity() == bigCapacity, "%s: retrieved capacity should be %zu", CURRENT_FUNCTION, bigCapacity);
 
 
   channel->destroy();
