@@ -73,7 +73,7 @@ namespace pvAccess {
                     int retval = ::bind(_serverSocketChannel, &_bindAddress.sa, sizeof(sockaddr));
                     if(retval<0) {
                         epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                        LOG(logLevelDebug, "Socket bind error: %s", strBuffer);
+                        LOG(logLevelDebug, "Socket bind error: %s.", strBuffer);
                         if(_bindAddress.ia.sin_port!=0) {
                             // failed to bind to specified bind address,
                             // try to get port dynamically, but only once
@@ -163,21 +163,21 @@ namespace pvAccess {
                 if(newClient!=INVALID_SOCKET) {
                     // accept succeeded
                     ipAddrToDottedIP(&address.ia, ipAddrStr, sizeof(ipAddrStr));
-                    LOG(logLevelDebug, "Accepted connection from PVA client: %s", ipAddrStr);
+                    LOG(logLevelDebug, "Accepted connection from PVA client: %s.", ipAddrStr);
 
                     // enable TCP_NODELAY (disable Nagle's algorithm)
                     int optval = 1; // true
                     int retval = ::setsockopt(newClient, IPPROTO_TCP, TCP_NODELAY, (char *)&optval, sizeof(int));
                     if(retval<0) {
                         epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                        LOG(logLevelDebug, "Error setting TCP_NODELAY: %s", strBuffer);
+                        LOG(logLevelDebug, "Error setting TCP_NODELAY: %s.", strBuffer);
                     }
 
                     // enable TCP_KEEPALIVE
                     retval = ::setsockopt(newClient, SOL_SOCKET, SO_KEEPALIVE, (char *)&optval, sizeof(int));
                     if(retval<0) {
                         epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                        LOG(logLevelDebug, "Error setting SO_KEEPALIVE: %s", strBuffer);
+                        LOG(logLevelDebug, "Error setting SO_KEEPALIVE: %s.", strBuffer);
                     }
 
                     // TODO tune buffer sizes?!
@@ -188,7 +188,7 @@ namespace pvAccess {
                     retval = getsockopt(newClient, SOL_SOCKET, SO_SNDBUF, (char *)&_socketSendBufferSize, &intLen);
                     if(retval<0) {
                         epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                        LOG(logLevelDebug, "Error getting SO_SNDBUF: %s", strBuffer);
+                        LOG(logLevelDebug, "Error getting SO_SNDBUF: %s.", strBuffer);
                     }
 
                     /**
@@ -213,7 +213,7 @@ namespace pvAccess {
                         return;
                     }
 
-                    LOG(logLevelDebug, "Serving to PVA client: %s", ipAddrStr);
+                    LOG(logLevelDebug, "Serving to PVA client: %s.", ipAddrStr);
 
                 }// accept succeeded
                 else

@@ -131,7 +131,7 @@ namespace epics {
       if (magicCode != PVA_MAGIC)
       {
         LOG(logLevelError, 
-          "Invalid header received from the client at %s:%d: %s,"
+          "Invalid header received from the client at %s:%d: %s.,"
           " disconnecting...", 
           __FILE__, __LINE__, inetAddressToString(*getLastReadBufferSocketAddress()).c_str());
         invalidDataStreamHandler();
@@ -406,7 +406,7 @@ namespace epics {
         msg << "requested for buffer size " << size 
           << ", but maximum " << MAX_ENSURE_DATA_SIZE << " is allowed.";       
         LOG(logLevelWarn, 
-          "%s at %s:%d,", msg.str().c_str(), __FILE__, __LINE__);  
+          "%s at %s:%d.,", msg.str().c_str(), __FILE__, __LINE__);  
         std::string s = msg.str();
         throw std::invalid_argument(s);
       }
@@ -691,7 +691,7 @@ namespace epics {
           size << ", but only " << _maxSendPayloadSize << " available.";
         std::string s = msg.str();
         LOG(logLevelWarn, 
-          "%s at %s:%d,", msg.str().c_str(), __FILE__, __LINE__);  
+          "%s at %s:%d.,", msg.str().c_str(), __FILE__, __LINE__);  
         throw std::invalid_argument(s);
       }
 
@@ -890,7 +890,7 @@ namespace epics {
         std::ostringstream msg;
         msg << "an exception caught while processing a send message: " 
           << e.what();       
-        LOG(logLevelWarn, "%s at %s:%d", 
+        LOG(logLevelWarn, "%s at %s:%d.", 
           msg.str().c_str(), __FILE__, __LINE__);  
 
         try {
@@ -1029,7 +1029,7 @@ namespace epics {
             __FILE__, __LINE__, e.what());  
         } catch (...) {
           LOG(logLevelWarn, 
-            "unknown exception caught while in sendThread at %s:%d",
+            "unknown exception caught while in sendThread at %s:%d.",
             __FILE__, __LINE__);  
         }
       }
@@ -1063,7 +1063,7 @@ namespace epics {
             __FILE__, __LINE__, e.what());  
         } catch (...) {
           LOG(logLevelWarn, 
-            "unknown exception caught while in sendThread at %s:%d",
+            "unknown exception caught while in sendThread at %s:%d.",
             __FILE__, __LINE__);  
         }
       }
@@ -1111,38 +1111,47 @@ namespace epics {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
         LOG(logLevelError,
-          "Error fetching socket remote address: %s",
+          "Error fetching socket remote address: %s.",
           errStr);
       }
-
-      // set receive timeout so that we do not have problems at 
-      //shutdown (recvfrom would block)
-      struct timeval timeout;
-      memset(&timeout, 0, sizeof(struct timeval));
-      timeout.tv_sec = 1;
-      timeout.tv_usec = 0;
-
-      // TODO remove this and implement use epicsSocketSystemCallInterruptMechanismQuery
-      if (unlikely(::setsockopt (_channel, SOL_SOCKET, SO_RCVTIMEO, 
-        (char*)&timeout, sizeof(timeout)) < 0))
-      {
-        char errStr[64];
-        epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-        LOG(logLevelError,
-          "Failed to set SO_RCVTIMEO for TDP socket %s: %s.",
-          inetAddressToString(_socketAddress).c_str(), errStr);
-      }
-
     }
 
     // must be called only once, when there will be no operation on socket (e.g. just before tx/rx thread exists)
     void BlockingSocketAbstractCodec::internalDestroy() {
 
-      if(_channel != INVALID_SOCKET) {
-        // TODO ::shutdown for some OS??!!!
-        epicsSocketDestroy(_channel);
-        _channel = INVALID_SOCKET;
-      }
+        if(_channel != INVALID_SOCKET) {
+
+            epicsSocketSystemCallInterruptMechanismQueryInfo info  =
+                epicsSocketSystemCallInterruptMechanismQuery ();
+            switch ( info )
+            {
+                case esscimqi_socketCloseRequired:
+                    epicsSocketDestroy ( _channel );
+                    break;
+                case esscimqi_socketBothShutdownRequired:
+                    {
+                        /*int status =*/ ::shutdown ( _channel, SHUT_RDWR );
+                        /*
+                        if ( status ) {
+                            char sockErrBuf[64];
+                            epicsSocketConvertErrnoToString (
+                                sockErrBuf, sizeof ( sockErrBuf ) );
+                        LOG(logLevelDebug,
+                            "TCP socket to %s failed to shutdown: %s.",
+                            inetAddressToString(_socketAddress).c_str(), sockErrBuf);
+                        }
+                        */
+                        epicsSocketDestroy ( _channel );
+                    }
+                    break;
+                case esscimqi_socketSigAlarmRequired:
+                    // not supported anymore anyway
+                default:
+                    epicsSocketDestroy(_channel);
+            }
+
+            _channel = INVALID_SOCKET;
+        }
 
     }
 
@@ -1249,6 +1258,16 @@ namespace epics {
       return 0;
     }
 
+
+   void BlockingTCPTransportCodec::internalClose(bool force) {
+       BlockingSocketAbstractCodec::internalClose(force);
+       if (IS_LOGGABLE(logLevelDebug))
+       {
+           LOG(logLevelDebug,
+               "TCP socket to %s closed.",
+               inetAddressToString(_socketAddress).c_str());
+       }
+   }
 
     BlockingServerTCPTransportCodec::BlockingServerTCPTransportCodec(
       Context::shared_pointer const & context, 
@@ -1545,7 +1564,7 @@ namespace epics {
             {
                 char ipAddrStr[48];
                 ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-                LOG(logLevelDebug, "Releasing transport to %s.", ipAddrStr);
+                LOG(logLevelDebug, "Releasing TCP transport to %s.", ipAddrStr);
             }
 
             _owners.erase(clientID);

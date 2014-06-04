@@ -535,6 +535,8 @@ namespace epics {
       { 
       }
 
+      virtual void internalClose(bool force);
+
       Context::shared_pointer _context;
 
       IntrospectionRegistry _incomingIR;

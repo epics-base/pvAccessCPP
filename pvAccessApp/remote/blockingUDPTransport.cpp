@@ -52,23 +52,6 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                     _threadId(0)
         {
             PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(blockingUDPTransport);
-
-            // set receive timeout so that we do not have problems at shutdown (recvfrom would block)
-            struct timeval timeout;
-            memset(&timeout, 0, sizeof(struct timeval));
-            timeout.tv_sec = 1;
-            timeout.tv_usec = 0; 
-
-            if (unlikely(::setsockopt (_channel, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0))
-            {
-                char errStr[64];
-                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                LOG(logLevelError,
-                    "Failed to set SO_RCVTIMEO for UDP socket %s: %s.",
-                    inetAddressToString(_bindAddress).c_str(), errStr);
-            }
-
-
         }
 
         BlockingUDPTransport::~BlockingUDPTransport() {
@@ -84,9 +67,13 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
 
         void BlockingUDPTransport::start() {
 
-            String threadName = "UDP-receive "+inetAddressToString(_bindAddress);
-            LOG(logLevelDebug, "Starting thread: %s",threadName.c_str());
-
+            String threadName = "UDP-receive " + inetAddressToString(_bindAddress);
+            
+            if (IS_LOGGABLE(logLevelTrace))
+            {
+                LOG(logLevelTrace, "Starting thread: %s.", threadName.c_str());
+            }
+            
             _threadId = epicsThreadCreate(threadName.c_str(),
                     epicsThreadPriorityMedium,
                     epicsThreadGetStackSize(epicsThreadStackSmall),
@@ -102,39 +89,44 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 Lock guard(_mutex);
                 if(_closed.get()) return;
                 _closed.set();
-    
+            }
+
+            if (IS_LOGGABLE(logLevelDebug))
+            {
                 LOG(logLevelDebug,
                     "UDP socket %s closed.",
                     inetAddressToString(_bindAddress).c_str());
-
-        epicsSocketSystemCallInterruptMechanismQueryInfo info  =
-            epicsSocketSystemCallInterruptMechanismQuery ();
-        switch ( info ) {
-        case esscimqi_socketCloseRequired:
-            epicsSocketDestroy ( _channel );
-            break;
-        case esscimqi_socketBothShutdownRequired:
-            {
-                int status = ::shutdown ( _channel, SHUT_RDWR );
-                if ( status ) {
-                    char sockErrBuf[64];
-                    epicsSocketConvertErrnoToString (
-                        sockErrBuf, sizeof ( sockErrBuf ) );
-                LOG(logLevelDebug,
-                    "UDP socket %s failed to shutdown: %s.",
-                    inetAddressToString(_bindAddress).c_str(), sockErrBuf);
-                }
-                epicsSocketDestroy ( _channel );
             }
-            break;
-        case esscimqi_socketSigAlarmRequired:
-            // TODO (not supported anymore anyway)
-        default:
-                epicsSocketDestroy(_channel);
-            }
-}
             
-            // TODO send yourself a packet
+            epicsSocketSystemCallInterruptMechanismQueryInfo info  =
+                epicsSocketSystemCallInterruptMechanismQuery ();
+            switch ( info )
+            {
+                case esscimqi_socketCloseRequired:
+                    epicsSocketDestroy ( _channel );
+                    break;
+                case esscimqi_socketBothShutdownRequired:
+                    {
+                        /*int status =*/ ::shutdown ( _channel, SHUT_RDWR );
+                        /*
+                        if ( status ) {
+                            char sockErrBuf[64];
+                            epicsSocketConvertErrnoToString (
+                                sockErrBuf, sizeof ( sockErrBuf ) );
+                        LOG(logLevelDebug,
+                            "UDP socket %s failed to shutdown: %s.",
+                            inetAddressToString(_bindAddress).c_str(), sockErrBuf);
+                        }
+                        */
+                        epicsSocketDestroy ( _channel );
+                    }
+                    break;
+                case esscimqi_socketSigAlarmRequired:
+                    // not supported anymore anyway
+                default:
+                    epicsSocketDestroy(_channel);
+            }
+            
             
             // wait for send thread to exit cleanly            
             if (waitForThreadToComplete)
@@ -255,7 +247,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                         {
                             char errStr[64];
                             epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                            LOG(logLevelError, "Socket recvfrom error: %s", errStr);
+                            LOG(logLevelError, "Socket recvfrom error: %s.", errStr);
                         }
                                
                         close(false);
@@ -268,12 +260,11 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 close(false);
             }
 
-            String threadName = "UDP-receive "+inetAddressToString(_bindAddress);
-            /*
-            char threadName[40];
-            epicsThreadGetName(_threadId, threadName, 40);
-            */
-            LOG(logLevelDebug, "Thread '%s' exiting", threadName.c_str());
+            if (IS_LOGGABLE(logLevelTrace))
+            {
+                String threadName = "UDP-receive "+inetAddressToString(_bindAddress);
+                LOG(logLevelTrace, "Thread '%s' exiting.", threadName.c_str());
+            }
             
             _shutdownEvent.signal();
         }
@@ -337,7 +328,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                LOG(logLevelDebug, "Socket sendto error: %s", errStr);
+                LOG(logLevelDebug, "Socket sendto error: %s.", errStr);
                 return false;
             }
 
@@ -358,7 +349,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 {
                     char errStr[64];
                     epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                    LOG(logLevelDebug, "Socket sendto error: %s", errStr);
+                    LOG(logLevelDebug, "Socket sendto error: %s.", errStr);
                     allOK = false;
                 }
             }
@@ -379,7 +370,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                LOG(logLevelError, "Socket getsockopt SO_RCVBUF error: %s", errStr);
+                LOG(logLevelError, "Socket getsockopt SO_RCVBUF error: %s.", errStr);
             }
 
             return (size_t)sockBufSize;
