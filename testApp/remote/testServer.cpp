@@ -1823,39 +1823,47 @@ public:
 
     virtual void putArray(PVArray::shared_pointer const & pvArray, size_t offset, size_t count, size_t stride)
     {
-        // TODO stride support !!!
-        
-        size_t o = offset;
-        if (count == 0) count = pvArray->getLength();
-        size_t c = count;
-
-        Field::const_shared_pointer field = pvArray->getField();
-        Type type = field->getType();
-        if (type == scalarArray)
+        // TODO stride support
+        if (stride == 1)
         {
-            switch (std::tr1::static_pointer_cast<const ScalarArray>(field)->getElementType())
+        
+            size_t o = offset;
+            if (count == 0) count = pvArray->getLength();
+            size_t c = count;
+    
+            Field::const_shared_pointer field = pvArray->getField();
+            Type type = field->getType();
+            if (type == scalarArray)
             {
-                case pvBoolean: put<PVBooleanArray>(pvArray, m_pvStructureArray, o, c); break;
-                case pvByte: put<PVByteArray>(pvArray, m_pvStructureArray, o, c); break;
-                case pvShort: put<PVShortArray>(pvArray, m_pvStructureArray, o, c); break;
-                case pvInt: put<PVIntArray>(pvArray, m_pvStructureArray, o, c); break;
-                case pvLong: put<PVLongArray>(pvArray, m_pvStructureArray, o, c); break;
-                case pvUByte: put<PVUByteArray>(pvArray, m_pvStructureArray, o, c); break;
-                case pvUShort: put<PVUShortArray>(pvArray, m_pvStructureArray, o, c); break;
-                case pvUInt: put<PVUIntArray>(pvArray, m_pvStructureArray, o, c); break;
-                case pvULong: put<PVULongArray>(pvArray, m_pvStructureArray, o, c); break;
-                case pvFloat: put<PVFloatArray>(pvArray, m_pvStructureArray, o, c); break;
-                case pvDouble: put<PVDoubleArray>(pvArray, m_pvStructureArray, o, c); break;
-                case pvString: put<PVStringArray>(pvArray, m_pvStructureArray, o, c); break;
+                switch (std::tr1::static_pointer_cast<const ScalarArray>(field)->getElementType())
+                {
+                    case pvBoolean: put<PVBooleanArray>(pvArray, m_pvStructureArray, o, c); break;
+                    case pvByte: put<PVByteArray>(pvArray, m_pvStructureArray, o, c); break;
+                    case pvShort: put<PVShortArray>(pvArray, m_pvStructureArray, o, c); break;
+                    case pvInt: put<PVIntArray>(pvArray, m_pvStructureArray, o, c); break;
+                    case pvLong: put<PVLongArray>(pvArray, m_pvStructureArray, o, c); break;
+                    case pvUByte: put<PVUByteArray>(pvArray, m_pvStructureArray, o, c); break;
+                    case pvUShort: put<PVUShortArray>(pvArray, m_pvStructureArray, o, c); break;
+                    case pvUInt: put<PVUIntArray>(pvArray, m_pvStructureArray, o, c); break;
+                    case pvULong: put<PVULongArray>(pvArray, m_pvStructureArray, o, c); break;
+                    case pvFloat: put<PVFloatArray>(pvArray, m_pvStructureArray, o, c); break;
+                    case pvDouble: put<PVDoubleArray>(pvArray, m_pvStructureArray, o, c); break;
+                    case pvString: put<PVStringArray>(pvArray, m_pvStructureArray, o, c); break;
+                }
             }
+            else if (type == structureArray)
+                put<PVStructureArray>(pvArray, m_pvStructureArray, o, c);
+            else if (type == unionArray)
+                put<PVUnionArray>(pvArray, m_pvStructureArray, o, c);
+    
+            m_channelArrayRequester->putArrayDone(Status::Ok, shared_from_this());
         }
-        else if (type == structureArray)
-            put<PVStructureArray>(pvArray, m_pvStructureArray, o, c);
-        else if (type == unionArray)
-            put<PVUnionArray>(pvArray, m_pvStructureArray, o, c);
-
-        m_channelArrayRequester->putArrayDone(Status::Ok, shared_from_this());
-
+        else
+        {
+            Status notSupported(Status::STATUSTYPE_ERROR, "stride != 1 is not supported"); 
+            m_channelArrayRequester->putArrayDone(notSupported, shared_from_this());
+        }
+        
         if (m_lastRequest.get())
             destroy();
     }
@@ -1878,38 +1886,45 @@ public:
 
     virtual void getArray(size_t offset, size_t count, size_t stride)
     {
-        // TODO stride support !!!
-        
-        size_t o = offset;
-        if (count == 0) count = m_pvStructureArray->getLength();
-        size_t c = count;
-
-        Field::const_shared_pointer field = m_pvArray->getField();
-        Type type = field->getType();
-        if (type == scalarArray)
+        // TODO stride support
+        if (stride == 1)
         {
-            switch (std::tr1::static_pointer_cast<const ScalarArray>(field)->getElementType())
+            size_t o = offset;
+            if (count == 0) count = m_pvStructureArray->getLength();
+            size_t c = count;
+    
+            Field::const_shared_pointer field = m_pvArray->getField();
+            Type type = field->getType();
+            if (type == scalarArray)
             {
-                case pvBoolean: get<PVBooleanArray>(m_pvStructureArray, m_pvArray, o, c); break;
-                case pvByte: get<PVByteArray>(m_pvStructureArray, m_pvArray, o, c); break;
-                case pvShort: get<PVShortArray>(m_pvStructureArray, m_pvArray, o, c); break;
-                case pvInt: get<PVIntArray>(m_pvStructureArray, m_pvArray, o, c); break;
-                case pvLong: get<PVLongArray>(m_pvStructureArray, m_pvArray, o, c); break;
-                case pvUByte: get<PVUByteArray>(m_pvStructureArray, m_pvArray, o, c); break;
-                case pvUShort: get<PVUShortArray>(m_pvStructureArray, m_pvArray, o, c); break;
-                case pvUInt: get<PVUIntArray>(m_pvStructureArray, m_pvArray, o, c); break;
-                case pvULong: get<PVULongArray>(m_pvStructureArray, m_pvArray, o, c); break;
-                case pvFloat: get<PVFloatArray>(m_pvStructureArray, m_pvArray, o, c); break;
-                case pvDouble: get<PVDoubleArray>(m_pvStructureArray, m_pvArray, o, c); break;
-                case pvString: get<PVStringArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                switch (std::tr1::static_pointer_cast<const ScalarArray>(field)->getElementType())
+                {
+                    case pvBoolean: get<PVBooleanArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                    case pvByte: get<PVByteArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                    case pvShort: get<PVShortArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                    case pvInt: get<PVIntArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                    case pvLong: get<PVLongArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                    case pvUByte: get<PVUByteArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                    case pvUShort: get<PVUShortArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                    case pvUInt: get<PVUIntArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                    case pvULong: get<PVULongArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                    case pvFloat: get<PVFloatArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                    case pvDouble: get<PVDoubleArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                    case pvString: get<PVStringArray>(m_pvStructureArray, m_pvArray, o, c); break;
+                }
             }
+            else if (type == structureArray)
+                get<PVStructureArray>(m_pvStructureArray, m_pvArray, o, c);
+            else if (type == unionArray)
+                get<PVUnionArray>(m_pvStructureArray, m_pvArray, o, c);
+            
+            m_channelArrayRequester->getArrayDone(Status::Ok, shared_from_this(), m_pvArray);
         }
-        else if (type == structureArray)
-            get<PVStructureArray>(m_pvStructureArray, m_pvArray, o, c);
-        else if (type == unionArray)
-            get<PVUnionArray>(m_pvStructureArray, m_pvArray, o, c);
-        
-        m_channelArrayRequester->getArrayDone(Status::Ok, shared_from_this(), m_pvArray);
+        else
+        {
+            Status notSupported(Status::STATUSTYPE_ERROR, "stride != 1 is not supported"); 
+            m_channelArrayRequester->putArrayDone(notSupported, shared_from_this());
+        }
 
         if (m_lastRequest.get())
             destroy();
