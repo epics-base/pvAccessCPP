@@ -288,9 +288,6 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
                 std::cerr << "[" << m_channelName << "] channel put create: " << status << std::endl;
             }
 
-            // we always put all
-            m_bitSet->set(0);
-            
             // get immediately old value
             channelPut->get();
         }
@@ -318,6 +315,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
             {
                 Lock lock(m_pointerMutex);
                 m_pvStructure = pvStructure;
+                // we always put all, so current bitSet is OK
                 m_bitSet = bitSet;
             }
 
