@@ -70,7 +70,7 @@ namespace epics {
             }
 
             virtual epics::pvData::String getType() const {
-                return epics::pvData::String("UDP");
+                return epics::pvData::String("udp");
             }
 
             virtual std::size_t getReceiveBufferSize() const {
@@ -135,8 +135,9 @@ namespace epics {
 
             virtual void close();
 
-            virtual void ensureData(std::size_t /*size*/) {
-                // noop
+            virtual void ensureData(std::size_t size) {
+                if (_receiveBuffer->getRemaining() < size)
+                    throw std::underflow_error("no more data in UDP packet");
             }
 
             virtual void alignData(std::size_t alignment) {

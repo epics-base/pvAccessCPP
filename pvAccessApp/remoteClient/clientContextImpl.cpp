@@ -2988,7 +2988,7 @@ namespace epics {
                         epics::pvData::String const & channelName,
                         ChannelRequester::shared_pointer const & channelRequester,
                         short priority,
-                        epics::pvData::String const & /*address*/)
+                        epics::pvData::String const & addressesStr)
                 {
                 	std::tr1::shared_ptr<ClientContextImpl> context = m_context.lock();
                 	if (!context.get())
@@ -2999,8 +2999,12 @@ namespace epics {
                         return nullChannel;
                 	}
 
-                		// TODO support addressList
                     auto_ptr<InetAddrVector> addresses;
+                    if (!addressesStr.empty())
+                        addresses.reset(getSocketAddressList(addressesStr, PVA_SERVER_PORT));
+                    if (addresses->empty())
+                        addresses.reset();
+                        
                     Channel::shared_pointer channel = context->createChannelInternal(channelName, channelRequester, priority, addresses);
                     if (channel.get())
                         channelRequester->channelCreated(Status::Ok, channel);
@@ -3522,13 +3526,13 @@ namespace epics {
                     {
                         m_context->getChannelSearchManager()->registerSearchInstance(shared_from_this());
                     }
-                    /* TODO
-                     else
-                     // TODO not only first
-                     // TODO minor version
-                     // TODO what to do if there is no channel, do not search in a loop!!! do this in other thread...!
-                     searchResponse(CAConstants.PVA_MINOR_PROTOCOL_REVISION, addresses[0]);
-                     */
+                    else if (!m_addresses->empty())
+                    {
+                        // TODO not only first !!!
+                        // TODO minor version !!!
+                        // TODO what to do if there is no channel, do not search in a loop!!! do this in other thread...!
+                        searchResponse(PVA_PROTOCOL_REVISION, &((*m_addresses)[0]));
+                    }
                 }
                 
                 virtual void searchResponse(int8 minorRevision, osiSockAddr* serverAddress) {

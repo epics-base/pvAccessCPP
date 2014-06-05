@@ -404,7 +404,7 @@ namespace epics {
     public:
 
       epics::pvData::String getType() const  {
-        return epics::pvData::String("TCP");
+        return epics::pvData::String("tcp");
       }
 
 

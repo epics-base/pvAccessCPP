@@ -121,15 +121,15 @@ InetAddrVector* getSocketAddressList(String list, int defaultPort,
     while((subEnd = list.find(' ', subStart))!=String::npos) {
         String address = list.substr(subStart, (subEnd-subStart));
         osiSockAddr addr;
-        aToIPAddr(address.c_str(), defaultPort, &addr.ia);
-        iav->push_back(addr);
+        if (aToIPAddr(address.c_str(), defaultPort, &addr.ia) == 0)
+            iav->push_back(addr);
         subStart = list.find_first_not_of(" \t\r\n\v", subEnd);
     }
 
     if(subStart!=String::npos&&list.length()>0) {
         osiSockAddr addr;
-        aToIPAddr(list.substr(subStart).c_str(), defaultPort, &addr.ia);
-        iav->push_back(addr);
+        if (aToIPAddr(list.substr(subStart).c_str(), defaultPort, &addr.ia) == 0)
+            iav->push_back(addr);
     }
 
     if(appendList!=NULL) {
