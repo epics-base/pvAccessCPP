@@ -3001,10 +3001,12 @@ namespace epics {
 
                     auto_ptr<InetAddrVector> addresses;
                     if (!addressesStr.empty())
+                    {
                         addresses.reset(getSocketAddressList(addressesStr, PVA_SERVER_PORT));
-                    if (addresses->empty())
-                        addresses.reset();
-                        
+                        if (addresses->empty())
+                            addresses.reset();
+                    }
+                    
                     Channel::shared_pointer channel = context->createChannelInternal(channelName, channelRequester, priority, addresses);
                     if (channel.get())
                         channelRequester->channelCreated(Status::Ok, channel);
