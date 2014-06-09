@@ -518,6 +518,10 @@ namespace epics {
         start();
       }
 
+      bool verify(epics::pvData::int32 timeoutMs);
+
+      void verified(epics::pvData::Status const & status);
+
     protected:
 
       BlockingTCPTransportCodec(
@@ -531,7 +535,8 @@ namespace epics {
       BlockingSocketAbstractCodec(channel, sendBufferSize, receiveBufferSize), 
         _context(context), _responseHandler(responseHandler), 
         _remoteTransportReceiveBufferSize(MAX_TCP_RECV),
-        _remoteTransportRevision(0), _priority(priority)  
+        _remoteTransportRevision(0), _priority(priority),
+        _verified(false)
       { 
       }
 
@@ -548,6 +553,10 @@ namespace epics {
       size_t _remoteTransportReceiveBufferSize;
       epics::pvData::int8 _remoteTransportRevision;
       epics::pvData::int16 _priority;
+
+      bool _verified;
+      epics::pvData::Mutex _verifiedMutex;
+      epics::pvData::Event _verifiedEvent;
     };
 
 
@@ -622,14 +631,23 @@ namespace epics {
       }
 
       bool verify(epics::pvData::int32 timeoutMs) {
-        TransportSender::shared_pointer transportSender = 
+
+          TransportSender::shared_pointer transportSender =
           std::tr1::dynamic_pointer_cast<TransportSender>(shared_from_this());
         enqueueSendRequest(transportSender);
-        verified();
-        return true;
+
+        bool verifiedStatus = BlockingTCPTransportCodec::verify(timeoutMs);
+
+        enqueueSendRequest(transportSender);
+
+        return verifiedStatus;
       }
 
-      void verified() {
+      void verified(epics::pvData::Status const & status) {
+          _verificationStatusMutex.lock();
+          _verificationStatus = status;
+          _verificationStatusMutex.unlock();
+          BlockingTCPTransportCodec::verified(status);
       }
 
       void aliveNotification() {
@@ -659,6 +677,11 @@ namespace epics {
       std::map<pvAccessID, ServerChannel::shared_pointer> _channels;
 
       epics::pvData::Mutex _channelsMutex;
+
+      epics::pvData::Status _verificationStatus;
+      epics::pvData::Mutex _verificationStatusMutex;
+
+      bool _verifyOrVerified;
 
     };
     
@@ -731,10 +754,6 @@ namespace epics {
         // noop
       }
     
-      bool verify(epics::pvData::int32 timeoutMs);
-
-      void verified();
-
       void aliveNotification();
 
       void send(epics::pvData::ByteBuffer* buffer,
@@ -786,13 +805,7 @@ namespace epics {
        */
       void responsiveTransport();
       
-      
       epics::pvData::Mutex _mutex;
-
-      bool _verified;   
-      epics::pvData::Mutex _verifiedMutex;
-      epics::pvData::Event _verifiedEvent;
-      
     };
 
     }

@@ -133,22 +133,6 @@ namespace pvAccess {
         	osiSockAddr _echoFrom;
         };
 
-        /**
-         * Introspection search request handler.
-         */
-        class ServerIntrospectionSearchHandler : public AbstractServerResponseHandler
-        {
-        public:
-        	ServerIntrospectionSearchHandler(ServerContextImpl::shared_pointer const & context) :
-        		AbstractServerResponseHandler(context, "Search request") {
-        	}
-                virtual ~ServerIntrospectionSearchHandler() {}
-
-        	virtual void handleResponse(osiSockAddr* responseFrom,
-                    Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                    std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
-        };
-
         /****************************************************************************************/
         /**
          * Search channel request handler.

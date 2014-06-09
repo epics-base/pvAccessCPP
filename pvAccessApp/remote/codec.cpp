@@ -1269,6 +1269,35 @@ namespace epics {
        }
    }
 
+
+   bool BlockingTCPTransportCodec::verify(epics::pvData::int32 timeoutMs) {
+       return _verifiedEvent.wait(timeoutMs/1000.0);
+   }
+
+   void BlockingTCPTransportCodec::verified(epics::pvData::Status const & status) {
+       epics::pvData::Lock lock(_verifiedMutex);
+
+       if (IS_LOGGABLE(logLevelDebug) && !status.isOK())
+       {
+           char ipAddrStr[48];
+           ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
+           LOG(logLevelDebug, "Failed to verify connection to %s: %s.", ipAddrStr, status.getMessage().c_str());
+           // TODO stack dump
+       }
+
+       _verified = status.isSuccess();
+       _verifiedEvent.signal();
+   }
+
+
+
+
+
+
+
+
+
+
     BlockingServerTCPTransportCodec::BlockingServerTCPTransportCodec(
       Context::shared_pointer const & context, 
       SOCKET channel,
@@ -1277,7 +1306,7 @@ namespace epics {
       int32_t receiveBufferSize) :
     BlockingTCPTransportCodec(context, channel, responseHandler, 
       sendBufferSize, receiveBufferSize, PVA_DEFAULT_PRIORITY),
-      _lastChannelSID(0)
+      _lastChannelSID(0), _verifyOrVerified(false)
     {
 
       // NOTE: priority not yet known, default priority is used to 
@@ -1343,33 +1372,59 @@ namespace epics {
     void BlockingServerTCPTransportCodec::send(ByteBuffer* buffer,
       TransportSendControl* control) {
 
-        //
-        // set byte order control message 
-        //
+        if (!_verifyOrVerified)
+        {
+            _verifyOrVerified = true;
 
-        ensureBuffer(PVA_MESSAGE_HEADER_SIZE);
-        buffer->putByte(PVA_MAGIC);
-        buffer->putByte(PVA_VERSION);
-        buffer->putByte(
-          0x01 | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG)
-          ? 0x80 : 0x00));		// control + big endian
-        buffer->putByte(2);		// set byte order
-        buffer->putInt(0);		
+            //
+            // set byte order control message
+            //
+
+            ensureBuffer(PVA_MESSAGE_HEADER_SIZE);
+            buffer->putByte(PVA_MAGIC);
+            buffer->putByte(PVA_VERSION);
+            buffer->putByte(
+              0x01 | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG)
+              ? 0x80 : 0x00));		// control + big endian
+            buffer->putByte(2);		// set byte order
+            buffer->putInt(0);
 
 
-        //
-        // send verification message
-        //
-        control->startMessage(CMD_CONNECTION_VALIDATION, 2*sizeof(int32));
+            //
+            // send verification message
+            //
+            control->startMessage(CMD_CONNECTION_VALIDATION, 4+2);
 
-        // receive buffer size
-        buffer->putInt(static_cast<int32>(getReceiveBufferSize()));
+            // receive buffer size
+            buffer->putInt(static_cast<int32>(getReceiveBufferSize()));
 
-        // socket receive buffer size
-        buffer->putInt(static_cast<int32>(getSocketReceiveBufferSize()));
+            // server introspection registy max size
+            // TODO
+            buffer->putShort(0x7FFF);
 
-        // send immediately
-        control->flush(true);
+            // list of authNZ plugin names
+            // TODO
+            buffer->putByte(0);
+
+            // send immediately
+            control->flush(true);
+        }
+        else
+        {
+            //
+            // send verified message
+            //
+            control->startMessage(CMD_CONNECTION_VALIDATED, 0);
+
+            {
+                Lock lock(_verificationStatusMutex);
+                _verificationStatus.serialize(buffer, control);
+            }
+
+            // send immediately
+            control->flush(true);
+
+        }
   }
   
   void BlockingServerTCPTransportCodec::destroyAllChannels() {
@@ -1419,8 +1474,7 @@ namespace epics {
       sendBufferSize, receiveBufferSize, priority),
     _connectionTimeout(beaconInterval*1000),
     _unresponsiveTransport(false),
-    _verifyOrEcho(true),
-    _verified(false)
+    _verifyOrEcho(true)
   {
     // initialize owners list, send queue
     acquire(client);
@@ -1581,16 +1635,6 @@ namespace epics {
             if(_unresponsiveTransport) responsiveTransport();
         }
 
-            bool BlockingClientTCPTransportCodec::verify(epics::pvData::int32 timeoutMs) {
-                return _verifiedEvent.wait(timeoutMs/1000.0);
-            }
-
-            void BlockingClientTCPTransportCodec::verified() {
-                epics::pvData::Lock lock(_verifiedMutex);
-                _verified = true;
-                _verifiedEvent.signal();
-            }
-
         void BlockingClientTCPTransportCodec::responsiveTransport() {
             Lock lock(_mutex);
             if(_unresponsiveTransport) {
@@ -1625,25 +1669,30 @@ namespace epics {
         void BlockingClientTCPTransportCodec::send(ByteBuffer* buffer,
                 TransportSendControl* control) {
             if(_verifyOrEcho) {
+                _verifyOrEcho = false;
+
                 /*
                  * send verification response message
                  */
 
-                control->startMessage(CMD_CONNECTION_VALIDATION, 2*sizeof(int32)+sizeof(int16));
+                control->startMessage(CMD_CONNECTION_VALIDATION, 4+2+2);
 
                 // receive buffer size
                 buffer->putInt(static_cast<int32>(getReceiveBufferSize()));
 
-                // socket receive buffer size
-                buffer->putInt(static_cast<int32>(getSocketReceiveBufferSize()));
+                // max introspection registry size
+                // TODO
+                buffer->putShort(0x7FFF);
 
-                // connection priority
+                // QoS (aka connection priority)
                 buffer->putShort(getPriority());
+
+                // authNZ plugin name
+                // TODO
+                SerializeHelper::serializeString("", buffer, control);
 
                 // send immediately
                 control->flush(true);
-
-                _verifyOrEcho = false;
             }
             else {
                 control->startMessage(CMD_ECHO, 0);

@@ -180,7 +180,7 @@ namespace pvAccess {
                         LOG(logLevelDebug, "Error setting SO_KEEPALIVE: %s.", strBuffer);
                     }
 
-                    // TODO tune buffer sizes?!
+                    // do NOT tune socket buffer sizes, this will disable auto-tunning
                       
                     // get TCP send buffer size
                     osiSocklen_t intLen = sizeof(int);
@@ -223,7 +223,8 @@ namespace pvAccess {
 
         bool BlockingTCPAcceptor::validateConnection(Transport::shared_pointer const & transport, const char* address) {
             try {
-                transport->verify(0);
+                // TODO constant
+                transport->verify(5000);
                 return true;
             } catch(...) {
                 LOG(logLevelDebug, "Validation of %s failed.", address);

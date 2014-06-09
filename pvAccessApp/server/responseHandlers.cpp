@@ -90,11 +90,11 @@ ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer c
     m_handlerTable[CMD_ECHO].reset(new ServerEchoHandler(context)); /*  2 */
     m_handlerTable[CMD_SEARCH].reset(new ServerSearchHandler(context)); /*  3 */
     m_handlerTable[CMD_SEARCH_RESPONSE] = badResponse;
-    m_handlerTable[CMD_INTROSPECTION_SEARCH].reset(new ServerIntrospectionSearchHandler(context)); /*  5 */
-    m_handlerTable[CMD_INTROSPECTION_SEARCH_RESPONSE] = badResponse; /*  6 - introspection search */
+    m_handlerTable[CMD_AUTHNZ] = badResponse; /*  5 */
+    m_handlerTable[CMD_ACL_CHANGE] = badResponse; /*  6 - introspection search */
     m_handlerTable[CMD_CREATE_CHANNEL].reset(new ServerCreateChannelHandler(context)); /*  7 */
     m_handlerTable[CMD_DESTROY_CHANNEL].reset(new ServerDestroyChannelHandler(context)); /*  8 */ 
-    m_handlerTable[CMD_RESERVED0] = badResponse; /*  9 */
+    m_handlerTable[CMD_CONNECTION_VALIDATED] = badResponse; /*  9 */
     
     m_handlerTable[CMD_GET].reset(new ServerGetHandler(context)); /* 10 - get response */
     m_handlerTable[CMD_PUT].reset(new ServerPutHandler(context)); /* 11 - put response */
@@ -142,14 +142,19 @@ void ServerConnectionValidationHandler::handleResponse(
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
-	transport->ensureData(2*sizeof(int32)+sizeof(int16));
-	transport->setRemoteTransportReceiveBufferSize(
-			payloadBuffer->getInt());
-	transport->setRemoteTransportSocketReceiveBufferSize(
-			payloadBuffer->getInt());
-	transport->setRemoteRevision(version);
-	// TODO support priority  !!!
-	//transport.setPriority(payloadBuffer.getShort());
+    transport->setRemoteRevision(version);
+
+    transport->ensureData(4+2+2);
+	transport->setRemoteTransportReceiveBufferSize(payloadBuffer->getInt());
+    // TODO clientIntrospectionRegistryMaxSize
+    /* int clientIntrospectionRegistryMaxSize = */ payloadBuffer->getShort();
+    // TODO connectionQoS
+    /* int16 connectionQoS = */ payloadBuffer->getShort();
+    // TODO authNZ
+    /*std::string authNZ = */ SerializeHelper::deserializeString(payloadBuffer, transport.get());
+
+    // TODO call this after authNZ has done their work
+    transport->verified(Status::Ok);
 }
 
 void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
@@ -162,16 +167,6 @@ void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
     // send back
 	TransportSender::shared_pointer echoReply(new EchoTransportSender(responseFrom));
 	transport->enqueueSendRequest(echoReply);
-}
-
-void ServerIntrospectionSearchHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport::shared_pointer const & transport, int8 version, int8 command,
-		size_t payloadSize, ByteBuffer* payloadBuffer)
-{
-	AbstractServerResponseHandler::handleResponse(responseFrom,
-			transport, version, command, payloadSize, payloadBuffer);
-
-	THROW_BASE_EXCEPTION("not implemented");
 }
 
 /****************************************************************************************/

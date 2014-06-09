@@ -228,14 +228,14 @@ namespace epics {
                 transport->ensureData(1);
                 int8 qos = payloadBuffer->getByte();
                 
-                Status m_status;
-                m_status.deserialize(payloadBuffer, transport.get());
+                Status status;
+                status.deserialize(payloadBuffer, transport.get());
                 
                 try
                 {
                     if (qos & QOS_INIT)
                     {
-                        if (m_status.isSuccess())
+                        if (status.isSuccess())
                         {
                             // once created set destroy flag
                             m_mutex.lock();
@@ -247,7 +247,7 @@ namespace epics {
                         // this is safe since at least caller owns it
                         m_thisPointer.reset();
 
-                        initResponse(transport, version, payloadBuffer, qos, m_status);
+                        initResponse(transport, version, payloadBuffer, qos, status);
                     }
                     else
                     {
@@ -261,7 +261,7 @@ namespace epics {
                             m_mutex.unlock();
                         }
                         
-                        normalResponse(transport, version, payloadBuffer, qos, m_status);
+                        normalResponse(transport, version, payloadBuffer, qos, status);
                         
                         if (destroyReq)
                             destroy();
@@ -2719,16 +2719,44 @@ namespace epics {
             {
                 AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
-                transport->ensureData(8);
-                transport->setRemoteTransportReceiveBufferSize(payloadBuffer->getInt());
-                transport->setRemoteTransportSocketReceiveBufferSize(payloadBuffer->getInt());
-
                 transport->setRemoteRevision(version);
+
+                transport->ensureData(4+2);
+
+                transport->setRemoteTransportReceiveBufferSize(payloadBuffer->getInt());
+                // TODO
+                // TODO serverIntrospectionRegistryMaxSize
+                /*int serverIntrospectionRegistryMaxSize = */ payloadBuffer->getShort();
+                // TODO authNZ
+                size_t size = SerializeHelper::readSize(payloadBuffer, transport.get());
+                for (size_t i = 0; i < size; i++)
+                    SerializeHelper::deserializeString(payloadBuffer, transport.get());
+
                 TransportSender::shared_pointer sender = dynamic_pointer_cast<TransportSender>(transport);
-                if (sender.get()) {
+                if (sender.get())
                     transport->enqueueSendRequest(sender);
-                }
-                transport->verified();
+            }
+        };
+
+        class ClientConnectionValidatedHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+        public:
+            ClientConnectionValidatedHandler(ClientContextImpl::shared_pointer context) :
+                    AbstractClientResponseHandler(context, "Connection validated")
+            {
+            }
+
+            virtual ~ClientConnectionValidatedHandler() {
+            }
+
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                                        Transport::shared_pointer const & transport, int8 version, int8 command,
+                                        size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+            {
+                AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
+
+                Status status;
+                status.deserialize(payloadBuffer, transport.get());
+                transport->verified(status);
 
             }
         };
@@ -2843,11 +2871,11 @@ namespace epics {
                 m_handlerTable[CMD_ECHO].reset(new NoopResponse(context, "Echo")); /*  2 */
                 m_handlerTable[CMD_SEARCH].reset(new NoopResponse(context, "Search")); /*  3 */
                 m_handlerTable[CMD_SEARCH_RESPONSE].reset(new SearchResponseHandler(context)); /*  4 */
-                m_handlerTable[CMD_INTROSPECTION_SEARCH].reset(new NoopResponse(context, "Introspection search")); /*  5 */
-                m_handlerTable[CMD_INTROSPECTION_SEARCH_RESPONSE] = dataResponse; /*  6 - introspection search */
+                m_handlerTable[CMD_AUTHNZ].reset(new NoopResponse(context, "Introspection search")); /*  5 */
+                m_handlerTable[CMD_ACL_CHANGE] = dataResponse; /*  6 */
                 m_handlerTable[CMD_CREATE_CHANNEL].reset(new CreateChannelHandler(context)); /*  7 */
                 m_handlerTable[CMD_DESTROY_CHANNEL].reset(new NoopResponse(context, "Destroy channel")); /*  8 */ // TODO it might be useful to implement this...
-                m_handlerTable[CMD_RESERVED0] = badResponse; /*  9 */
+                m_handlerTable[CMD_CONNECTION_VALIDATED].reset(new ClientConnectionValidatedHandler(context)); /*  9 */
                 m_handlerTable[CMD_GET] = dataResponse; /* 10 - get response */
                 m_handlerTable[CMD_PUT] = dataResponse; /* 11 - put response */
                 m_handlerTable[CMD_PUT_GET] = dataResponse; /* 12 - put-get response */

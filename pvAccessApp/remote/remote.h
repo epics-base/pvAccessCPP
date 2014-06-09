@@ -94,11 +94,11 @@ namespace epics {
             CMD_ECHO = 2,
             CMD_SEARCH = 3,
             CMD_SEARCH_RESPONSE = 4,
-            CMD_INTROSPECTION_SEARCH = 5,
-            CMD_INTROSPECTION_SEARCH_RESPONSE = 6,
+            CMD_AUTHNZ = 5,
+            CMD_ACL_CHANGE = 6,
             CMD_CREATE_CHANNEL = 7,
             CMD_DESTROY_CHANNEL = 8,
-            CMD_RESERVED0 = 9,
+            CMD_CONNECTION_VALIDATED = 9,
             CMD_GET = 10,
             CMD_PUT = 11,
             CMD_PUT_GET = 12,
@@ -263,8 +263,9 @@ namespace epics {
 
             /**
              * Notify transport that it is has been verified.
+             * @param status vefification status;
              */
-            virtual void verified() = 0;
+            virtual void verified(epics::pvData::Status const & status) = 0;
 
         	/**
         	 * Waits (if needed) until transport is verified, i.e. verified() method is being called.

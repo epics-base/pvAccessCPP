@@ -115,7 +115,7 @@ namespace epics {
                 return true;
             }
 
-            virtual void verified() {
+            virtual void verified(epics::pvData::Status const & /*status*/) {
                 // noop
             }
 
