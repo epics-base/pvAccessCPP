@@ -2640,10 +2640,13 @@ namespace epics {
 
                 AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
-                transport->ensureData((2*sizeof(int16)+2*sizeof(int32)+128)/sizeof(int8));
+                transport->ensureData(12+2+2+16+2);
+                
+                GUID guid;
+                payloadBuffer->get(guid.value, 0, sizeof(guid.value));
 
                 int16 sequentalID = payloadBuffer->getShort();
-                TimeStamp startupTimestamp(payloadBuffer->getLong(),payloadBuffer->getInt());
+                int16 changeCount = payloadBuffer->getShort();
 
                 osiSockAddr serverAddress;
                 serverAddress.ia.sin_family = AF_INET;
@@ -2667,13 +2670,15 @@ namespace epics {
                     serverAddress.ia.sin_addr = responseFrom->ia.sin_addr;
 
                 serverAddress.ia.sin_port = htons(payloadBuffer->getShort());
+                
+                std::string protocol = SerializeHelper::deserializeString(payloadBuffer, transport.get());
 
                 // TODO optimize
                 ClientContextImpl::shared_pointer context = _context.lock();
                 if (!context)
                     return;
                 
-                std::tr1::shared_ptr<epics::pvAccess::BeaconHandler> beaconHandler = context->getBeaconHandler(responseFrom);
+                std::tr1::shared_ptr<epics::pvAccess::BeaconHandler> beaconHandler = context->getBeaconHandler(protocol, responseFrom);
                 // currently we care only for servers used by this context
                 if (beaconHandler == 0)
                     return;
@@ -2688,7 +2693,7 @@ namespace epics {
                 }
 
                 // notify beacon handler
-                beaconHandler->beaconNotify(responseFrom, version, &timestamp, &startupTimestamp, sequentalID, data);
+                beaconHandler->beaconNotify(responseFrom, version, &timestamp, guid, sequentalID, changeCount, data);
             }
         };
 
@@ -4342,17 +4347,22 @@ TODO
 
             /**
              * Get (and if necessary create) beacon handler.
+             * @param protocol the protocol. 
              * @param responseFrom remote source address of received beacon.    
              * @return beacon handler for particular server.
              */
-            BeaconHandler::shared_pointer getBeaconHandler(osiSockAddr* responseFrom)
+            BeaconHandler::shared_pointer getBeaconHandler(std::string const & protocol, osiSockAddr* responseFrom)
             {
+                // TODO !!! protocol !!!
+                if (protocol != "tcp")
+                    return BeaconHandler::shared_pointer();
+                
                 Lock guard(m_beaconMapMutex);
                 AddressBeaconHandlerMap::iterator it = m_beaconHandlers.find(*responseFrom);
                 BeaconHandler::shared_pointer handler;
                 if (it == m_beaconHandlers.end())
                 {
-                    handler.reset(new BeaconHandler(shared_from_this(), responseFrom));
+                    handler.reset(new BeaconHandler(shared_from_this(), protocol, responseFrom));
                     m_beaconHandlers[*responseFrom] = handler;
                 }
                 else

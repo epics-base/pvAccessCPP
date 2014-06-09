@@ -35,6 +35,13 @@ public:
 	 * Destructor
 	 */
 	virtual ~ServerContext() {};
+	
+	/**
+	 * Returns GUID (12-byte array).
+	 * @return GUID.
+	 */
+	virtual const GUID& getGUID() = 0;
+	
 	/**
 	 * Get context implementation version.
 	 * @return version of the context implementation.
@@ -115,6 +122,7 @@ public:
 	virtual ~ServerContextImpl();
 
 	//**************** derived from ServerContext ****************//
+	const GUID& getGUID();	
 	const Version& getVersion();
     void initialize(ChannelProviderRegistry::shared_pointer const & channelProviderRegistry);
 	void run(epics::pvData::int32 seconds);
@@ -283,6 +291,12 @@ public:
     bool isChannelProviderNamePreconfigured();
 
 private:
+
+    /**
+     * Server GUID.
+     */
+    GUID _guid;
+     
 	/**
 	 * Initialization status.
 	 */
@@ -381,6 +395,11 @@ private:
 	 */
 	BeaconServerStatusProvider::shared_pointer _beaconServerStatusProvider;
 
+    /**
+     * Generate GUID.
+     */
+    void generateGUID();
+    
 	/**
 	 * Initialize logger.
 	 */

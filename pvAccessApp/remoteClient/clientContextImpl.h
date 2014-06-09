@@ -121,7 +121,7 @@ namespace epics {
 
             virtual void newServerDetected() = 0;
 
-            virtual std::tr1::shared_ptr<BeaconHandler> getBeaconHandler(osiSockAddr* responseFrom) = 0;
+            virtual std::tr1::shared_ptr<BeaconHandler> getBeaconHandler(std::string const & protocol, osiSockAddr* responseFrom) = 0;
 
             virtual void configure(epics::pvData::PVStructure::shared_pointer configuration) = 0;
             virtual void flush() = 0;

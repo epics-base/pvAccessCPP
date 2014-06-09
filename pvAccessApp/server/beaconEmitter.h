@@ -47,18 +47,15 @@ namespace epics { namespace pvAccess {
 
 		/**
 		 * Constructor.
+		 * @param protocol a protocol (transport) name to report.
 		 * @param transport	transport to be used to send beacons.
 		 * @param context PVA context.
 		 */
-//		BeaconEmitter(Transport::shared_pointer const & transport, ServerContextImpl::shared_pointer const & context);
-		BeaconEmitter(Transport::shared_pointer const & transport, std::tr1::shared_ptr<ServerContextImpl>& context);
+//		BeaconEmitter(std::sting const & protocol,
+//          Transport::shared_pointer const & transport, ServerContextImpl::shared_pointer const & context);
+		BeaconEmitter(std::string const & protocol,
+		  Transport::shared_pointer const & transport, std::tr1::shared_ptr<ServerContextImpl>& context);
 		
-        /**
-		 * Test Constructor (ohne context)
-		 * @param transport	transport to be used to send beacons.
-		 */
-		BeaconEmitter(Transport::shared_pointer const & transport, const osiSockAddr& serverAddress);
-        
 		virtual ~BeaconEmitter();
 
 		void lock();
@@ -97,6 +94,11 @@ namespace epics { namespace pvAccess {
 		 */
 		static const float EPICS_PVA_MIN_BEACON_COUNT_LIMIT;
 
+        /**
+         * Protocol.
+         */
+        std::string _protocol;
+        
 		/**
 		 * Transport.
 		 */
@@ -108,9 +110,9 @@ namespace epics { namespace pvAccess {
 		epics::pvData::int16 _beaconSequenceID;
 
 		/**
-		 * Startup timestamp (when clients detect a change, they will consider server restarted).
+		 * Server GUID.
 		 */
-		epics::pvData::TimeStamp _startupTime;
+		GUID _guid;
 
 		/**
 		 * Fast (at startup) beacon period (in sec).

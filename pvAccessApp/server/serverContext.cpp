@@ -46,6 +46,7 @@ ServerContextImpl::ServerContextImpl():
     epicsSignalInstallSigAlarmIgnore ();
     epicsSignalInstallSigPipeIgnore ();
 
+    generateGUID();
 	initializeLogger();
 	loadConfiguration();
 }
@@ -61,9 +62,24 @@ ServerContextImpl::~ServerContextImpl()
     dispose();
 }
 
+const GUID& ServerContextImpl::getGUID()
+{
+    return _guid;
+}
+
 const Version& ServerContextImpl::getVersion()
 {
     return ServerContextImpl::VERSION;
+}
+
+void ServerContextImpl::generateGUID()
+{
+    epics::pvData::TimeStamp startupTime;
+ 	startupTime.getCurrent();
+
+ 	ByteBuffer buffer(_guid.value, sizeof(_guid.value));
+ 	buffer.putLong(startupTime.getSecondsPastEpoch());
+    buffer.putInt(startupTime.getNanoSeconds());
 }
 
 void ServerContextImpl::initializeLogger()
@@ -217,7 +233,8 @@ void ServerContextImpl::internalInitialize()
     // setup broadcast UDP transport
     initializeBroadcastTransport();
 
-    _beaconEmitter.reset(new BeaconEmitter(_broadcastTransport, thisServerContext));
+    // TODO introduce a constant
+    _beaconEmitter.reset(new BeaconEmitter("tcp", _broadcastTransport, thisServerContext));
 }
 
 void ServerContextImpl::initializeBroadcastTransport()

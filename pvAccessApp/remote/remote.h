@@ -41,6 +41,11 @@ namespace epics {
 #define PVACCESS_REFCOUNT_MONITOR_DESTRUCT(name)
 
         class TransportRegistry;
+        
+        /**
+         * Globally unique ID.
+         */
+        typedef struct { char value[12]; } GUID;
 
         enum QoS {
             /**
