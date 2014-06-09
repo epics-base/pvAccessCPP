@@ -2573,13 +2573,12 @@ namespace epics {
             {
                 AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
-                transport->ensureData(5);
-                int32 searchSequenceId = payloadBuffer->getInt();
-                bool found = payloadBuffer->getByte() != 0;
-                if (!found)
-                    return;
+                transport->ensureData(12+4+16+2);
 
-                transport->ensureData((128+2*16)/8);
+                GUID guid;
+                payloadBuffer->get(guid.value, 0, sizeof(guid.value));
+
+                int32 searchSequenceId = payloadBuffer->getInt();
 
                 osiSockAddr serverAddress;
                 serverAddress.ia.sin_family = AF_INET;
@@ -2603,7 +2602,14 @@ namespace epics {
                     serverAddress.ia.sin_addr = responseFrom->ia.sin_addr;
 
                 serverAddress.ia.sin_port = htons(payloadBuffer->getShort());
-                
+
+                /*String protocol =*/ SerializeHelper::deserializeString(payloadBuffer, transport.get());
+
+                transport->ensureData(1);
+                bool found = payloadBuffer->getByte() != 0;
+                if (!found)
+                    return;
+
                 // reads CIDs
                 // TODO optimize
                 std::tr1::shared_ptr<epics::pvAccess::ChannelSearchManager> csm = _context.lock()->getChannelSearchManager();
@@ -4070,13 +4076,13 @@ TODO
                 m_connector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_beaconPeriod));
                 m_transportRegistry.reset(new TransportRegistry());
 
-                // setup search manager
-                m_channelSearchManager = SimpleChannelSearchManagerImpl::create(thisPointer);
-
                 // TODO put memory barrier here... (if not already called withing a lock?)
 
                 // setup UDP transport
                 initializeUDPTransport();
+
+                // setup search manager
+                m_channelSearchManager = SimpleChannelSearchManagerImpl::create(thisPointer);
 
                 // TODO what if initialization failed!!!
             }
@@ -4129,7 +4135,7 @@ TODO
                         PVA_DEFAULT_PRIORITY));
                 if (!m_broadcastTransport.get())
                     return false;
-                m_broadcastTransport->setBroadcastAddresses(broadcastAddresses.get());
+                m_broadcastTransport->setSendAddresses(broadcastAddresses.get());
 
                 // undefined address
                 osiSockAddr undefinedAddress;
@@ -4145,7 +4151,7 @@ TODO
                         PVA_DEFAULT_PRIORITY));
                 if (!m_searchTransport.get())
                     return false;
-                m_searchTransport->setBroadcastAddresses(broadcastAddresses.get());
+                m_searchTransport->setSendAddresses(broadcastAddresses.get());
 
                 // become active
                 m_broadcastTransport->start();

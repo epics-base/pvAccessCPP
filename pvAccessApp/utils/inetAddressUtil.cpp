@@ -64,6 +64,12 @@ void encodeAsIPv6Address(ByteBuffer* buffer, const osiSockAddr* address) {
     buffer->putByte((int8)(ipv4Addr&0xFF));
 }
 
+bool isMulticastAddress(const osiSockAddr* address) {
+    uint32_t ipv4Addr = ntohl(address->ia.sin_addr.s_addr);
+    uint8_t msB = (uint8_t)((ipv4Addr>>24)&0xFF);
+    return msB >= 224 && msB <= 239;
+}
+
 osiSockAddr* intToIPv4Address(int32 addr) {
     osiSockAddr* ret = new osiSockAddr;
     ret->ia.sin_family = AF_INET;

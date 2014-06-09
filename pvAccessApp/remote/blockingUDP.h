@@ -35,6 +35,8 @@
 namespace epics {
     namespace pvAccess {
 
+        enum InetAddressType { inetAddressType_all, inetAddressType_unicast, inetAddressType_broadcast_multicast };
+
         class BlockingUDPTransport : public epics::pvData::NoDefaultMethods,
                 public Transport,
                 public TransportSendControl,
@@ -65,8 +67,7 @@ namespace epics {
             }
 
             virtual const osiSockAddr* getRemoteAddress() const {
-                // always connected
-                return &_bindAddress;
+                return &_remoteAddress;
             }
 
             virtual epics::pvData::String getType() const {
@@ -228,7 +229,7 @@ namespace epics {
 
             bool send(epics::pvData::ByteBuffer* buffer, const osiSockAddr& address);
 
-            bool send(epics::pvData::ByteBuffer* buffer);
+            bool send(epics::pvData::ByteBuffer* buffer, InetAddressType target = inetAddressType_all);
 
             /**
              * Get list of send addresses.
@@ -246,15 +247,31 @@ namespace epics {
                 return &_bindAddress;
             }
 
+            bool isBroadcastAddress(const osiSockAddr* address, InetAddrVector *broadcastAddresses)
+            {
+                if (broadcastAddresses)
+                    for (size_t i = 0; i < broadcastAddresses->size(); i++)
+                        if ((*broadcastAddresses)[i].ia.sin_addr.s_addr == address->ia.sin_addr.s_addr)
+                            return true;
+                return false;
+            }
+
             /**
              * Set list of send addresses.
              * @param addresses list of send addresses, non-<code>null</code>.
              */
-            void setBroadcastAddresses(InetAddrVector* addresses) {
+            void setSendAddresses(InetAddrVector* addresses) {
                 if (addresses)
                 {
                     if (!_sendAddresses) _sendAddresses = new InetAddrVector;
                     *_sendAddresses = *addresses;
+
+                    std::auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(_channel, 0));
+                    _isSendAddressUnicast.resize(_sendAddresses->size());
+                    for (std::size_t i = 0; i < _sendAddresses->size(); i++)
+                        _isSendAddressUnicast[i] =
+                                !isBroadcastAddress(&(*_sendAddresses)[i], broadcastAddresses.get()) &&
+                                !isMulticastAddress(&(*_sendAddresses)[i]);
                 }
                 else
                 {
@@ -292,9 +309,16 @@ namespace epics {
             osiSockAddr _bindAddress;
 
             /**
+             * Remote address.
+             */
+            osiSockAddr _remoteAddress;
+
+            /**
              * Send addresses.
              */
             InetAddrVector* _sendAddresses;
+
+            std::vector<bool> _isSendAddressUnicast;
 
             /**
              * Ignore addresses.

@@ -159,7 +159,9 @@ namespace pvAccess {
         public:
             // TODO
             static std::map<epics::pvData::String, std::tr1::weak_ptr<ChannelProvider> > s_channelNameToProvider;
-            
+
+            static std::string SUPPORTED_PROTOCOL;
+
         	ServerSearchHandler(ServerContextImpl::shared_pointer const & context);
         	virtual ~ServerSearchHandler(){}
 
@@ -168,7 +170,7 @@ namespace pvAccess {
                     std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
 
         private:
-        	std::vector<ChannelProvider::shared_pointer> _providers;
+            std::vector<ChannelProvider::shared_pointer> _providers;
         };
 
 
@@ -181,22 +183,25 @@ namespace pvAccess {
         	ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context, epics::pvData::int32 expectedResponseCount);
                 virtual ~ServerChannelFindRequesterImpl(){}
         	void clear();
-        	ServerChannelFindRequesterImpl* set(epics::pvData::String _name, epics::pvData::int32 searchSequenceId, epics::pvData::int32 cid, osiSockAddr* sendTo, bool responseRequired);
+            ServerChannelFindRequesterImpl* set(epics::pvData::String _name, epics::pvData::int32 searchSequenceId,
+                                                epics::pvData::int32 cid, osiSockAddr const & sendTo, bool responseRequired, bool serverSearch);
         	void channelFindResult(const epics::pvData::Status& status, ChannelFind::shared_pointer const & channelFind, bool wasFound);
         	void lock();
         	void unlock();
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
+            GUID _guid;
             epics::pvData::String _name;
         	epics::pvData::int32 _searchSequenceId;
         	epics::pvData::int32 _cid;
-        	osiSockAddr* _sendTo;
+            osiSockAddr _sendTo;
         	bool _responseRequired;
         	bool _wasFound;
         	ServerContextImpl::shared_pointer _context;
         	epics::pvData::Mutex _mutex;
         	epics::pvData::int32 _expectedResponseCount;
         	epics::pvData::int32 _responseCount;
+            bool _serverSearch;
         };
 
         /****************************************************************************************/

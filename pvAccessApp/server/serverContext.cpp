@@ -74,6 +74,7 @@ const Version& ServerContextImpl::getVersion()
 
 void ServerContextImpl::generateGUID()
 {
+    // TODO use UUID
     epics::pvData::TimeStamp startupTime;
  	startupTime.getCurrent();
 
@@ -84,7 +85,7 @@ void ServerContextImpl::generateGUID()
 
 void ServerContextImpl::initializeLogger()
 {
-	//createFileLogger("serverContextImpl.log");
+    //createFileLogger("serverContextImpl.log");
 }
 
 struct noop_deleter
@@ -265,7 +266,7 @@ void ServerContextImpl::initializeBroadcastTransport()
                 nullTransportClient, responseHandler,
                 listenLocalAddress, PVA_PROTOCOL_REVISION,
                 PVA_DEFAULT_PRIORITY));
-		_broadcastTransport->setBroadcastAddresses(broadcastAddresses.get());
+        _broadcastTransport->setSendAddresses(broadcastAddresses.get());
 
 		// set ignore address list
 		if (!_ignoreAddressList.empty())
@@ -290,7 +291,7 @@ void ServerContextImpl::initializeBroadcastTransport()
 			auto_ptr<InetAddrVector> list(getSocketAddressList(_beaconAddressList, _broadcastPort, appendList));
 			if (list.get() != NULL  && list->size() > 0)
 			{
-				_broadcastTransport->setBroadcastAddresses(list.get());
+                _broadcastTransport->setSendAddresses(list.get());
 			}
 		}
 

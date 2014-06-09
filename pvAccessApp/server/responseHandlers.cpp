@@ -176,6 +176,8 @@ void ServerIntrospectionSearchHandler::handleResponse(osiSockAddr* responseFrom,
 
 /****************************************************************************************/
 
+std::string ServerSearchHandler::SUPPORTED_PROTOCOL = "tcp";
+
 ServerSearchHandler::ServerSearchHandler(ServerContextImpl::shared_pointer const & context) :
         AbstractServerResponseHandler(context, "Search request"), _providers(context->getChannelProviders())
 {
@@ -188,48 +190,110 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
-	transport->ensureData((sizeof(int32)+sizeof(int16))/sizeof(int8)+1);
+    transport->ensureData(4+1+3+16+2);
 	const int32 searchSequenceId = payloadBuffer->getInt();
 	const int8 qosCode = payloadBuffer->getByte();
+
+    // reserved part
+    payloadBuffer->getByte();
+    payloadBuffer->getShort();
+
+    osiSockAddr responseAddress;
+    responseAddress.ia.sin_family = AF_INET;
+
+    // 128-bit IPv6 address
+    /*
+int8* byteAddress = new int8[16];
+for (int i = 0; i < 16; i++)
+byteAddress[i] = payloadBuffer->getByte(); };
+    */
+
+    // IPv4 compatible IPv6 address expected
+    // first 80-bit are 0
+    if (payloadBuffer->getLong() != 0) return;
+    if (payloadBuffer->getShort() != 0) return;
+    if (payloadBuffer->getShort() != (int16)0xFFFF) return;
+
+    // accept given address if explicitly specified by sender
+    responseAddress.ia.sin_addr.s_addr = htonl(payloadBuffer->getInt());
+    if (responseAddress.ia.sin_addr.s_addr == INADDR_ANY)
+        responseAddress.ia.sin_addr = responseFrom->ia.sin_addr;
+
+    responseAddress.ia.sin_port = htons(payloadBuffer->getShort());
+
+    size_t protocolsCount = SerializeHelper::readSize(payloadBuffer, transport.get());
+    bool allowed = (protocolsCount == 0);
+    for (size_t i = 0; i < protocolsCount; i++)
+    {
+        String protocol = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+        if (SUPPORTED_PROTOCOL == protocol)
+            allowed = true;
+    }
+
+    // NOTE: we do not stop reading the buffer
+
+    transport->ensureData(2);
 	const int32 count = payloadBuffer->getShort() & 0xFFFF;
+
 	const bool responseRequired = (QOS_REPLY_REQUIRED & qosCode) != 0;
 
-	for (int32 i = 0; i < count; i++)
-	{
-		transport->ensureData(sizeof(int32)/sizeof(int8));
-		const int32 cid = payloadBuffer->getInt();
-		const String name = SerializeHelper::deserializeString(payloadBuffer, transport.get());
-		// no name check here...
+    // TODO locally broadcast if qosCode & 0x80 == 0x80
 
-		// TODO object pool!!!
-		int providerCount = _providers.size();
-		ServerChannelFindRequesterImpl* pr = new ServerChannelFindRequesterImpl(_context, providerCount);
-		pr->set(name, searchSequenceId, cid, responseFrom, responseRequired);
-		ChannelFindRequester::shared_pointer spr(pr);
-		
-        for (int i = 0; i < providerCount; i++)		
-		  _providers[i]->channelFind(name, spr);
-	}
+    if (count > 0)
+    {
+        for (int32 i = 0; i < count; i++)
+        {
+            transport->ensureData(4);
+            const int32 cid = payloadBuffer->getInt();
+            const String name = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+            // no name check here...
+
+            if (allowed)
+            {
+                // TODO object pool!!!
+                int providerCount = _providers.size();
+                ServerChannelFindRequesterImpl* pr = new ServerChannelFindRequesterImpl(_context, providerCount);
+                pr->set(name, searchSequenceId, cid, responseAddress, responseRequired, false);
+                ChannelFindRequester::shared_pointer spr(pr);
+
+                for (int i = 0; i < providerCount; i++)
+                  _providers[i]->channelFind(name, spr);
+            }
+        }
+    }
+    else
+    {
+        if (allowed)
+        {
+            ServerChannelFindRequesterImpl* pr = new ServerChannelFindRequesterImpl(_context, 1);
+            pr->set("", searchSequenceId, 0, responseAddress, true, true);
+            ChannelFindRequester::shared_pointer spr(pr);
+            spr->channelFindResult(Status::Ok, ChannelFind::shared_pointer(), false);
+        }
+    }
 }
 
 ServerChannelFindRequesterImpl::ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context,
                                                                int32 expectedResponseCount) :
-												_sendTo(NULL),
+                                                _guid(context->getGUID()),
+                                                _sendTo(),
 												_wasFound(false),
 												_context(context),
 												_expectedResponseCount(expectedResponseCount),
-												_responseCount(0)
+                                                _responseCount(0),
+                                                _serverSearch(false)
 												{}
 
 void ServerChannelFindRequesterImpl::clear()
 {
 	Lock guard(_mutex);
-	_sendTo = NULL;
 	_wasFound = false;
 	_responseCount = 0;
+    _serverSearch = false;
 }
 
-ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(String name, int32 searchSequenceId, int32 cid, osiSockAddr* sendTo, bool responseRequired)
+ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(String name, int32 searchSequenceId, int32 cid, osiSockAddr const & sendTo,
+                                                                    bool responseRequired, bool serverSearch)
 {
 	Lock guard(_mutex);
 	_name = name;
@@ -237,6 +301,7 @@ ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(String name,
 	_cid = cid;
 	_sendTo = sendTo;
 	_responseRequired = responseRequired;
+    _serverSearch = serverSearch;
 	return this;
 }
 
@@ -288,20 +353,34 @@ void ServerChannelFindRequesterImpl::unlock()
 
 void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
-	int32 count = 1;
-	control->startMessage((int8)4, (sizeof(int32)+sizeof(int8)+128+2*sizeof(int16)+count*sizeof(int32))/sizeof(int8));
+    control->startMessage((int8)4, 12+4+16+2);
 
 	Lock guard(_mutex);
+    buffer->put(_guid.value, 0, sizeof(_guid.value));
 	buffer->putInt(_searchSequenceId);
-	buffer->putByte(_wasFound ? (int8)1 : (int8)0);
 
 	// NOTE: is it possible (very likely) that address is any local address ::ffff:0.0.0.0
 	encodeAsIPv6Address(buffer, _context->getServerInetAddress());
 	buffer->putShort((int16)_context->getServerPort());
-	buffer->putShort((int16)count);
-	buffer->putInt(_cid);
 
-	control->setRecipient(*_sendTo);
+    SerializeHelper::serializeString(ServerSearchHandler::SUPPORTED_PROTOCOL, buffer, control);
+
+    control->ensureBuffer(1);
+    buffer->putByte(_wasFound ? (int8)1 : (int8)0);
+
+    if (!_serverSearch)
+    {
+        // TODO for now we do not gather search responses
+        buffer->putShort((int16)1);
+        buffer->putInt(_cid);
+    }
+    else
+    {
+        buffer->putShort((int16)0);
+    }
+
+
+    control->setRecipient(_sendTo);
 }
 
 /****************************************************************************************/

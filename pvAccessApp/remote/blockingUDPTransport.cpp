@@ -52,6 +52,18 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                     _threadId(0)
         {
             PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(blockingUDPTransport);
+
+            osiSocklen_t sockLen = sizeof(sockaddr);
+            // read the actual socket info
+            int retval = ::getsockname(_channel, &_remoteAddress.sa, &sockLen);
+            if(retval<0) {
+                // error obtaining remote address, fallback to bindAddress
+                _remoteAddress = _bindAddress;
+
+                char strBuffer[64];
+                epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
+                LOG(logLevelDebug, "getsockname error: %s", strBuffer);
+            }
         }
 
         BlockingUDPTransport::~BlockingUDPTransport() {
@@ -332,16 +344,26 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 return false;
             }
 
+            // all sent
+            buffer->setPosition(buffer->getLimit());
+
             return true;
         }
         
-        bool BlockingUDPTransport::send(ByteBuffer* buffer) {
+        bool BlockingUDPTransport::send(ByteBuffer* buffer, InetAddressType target) {
             if(!_sendAddresses) return false;
 
             buffer->flip();
 
             bool allOK = true;
             for(size_t i = 0; i<_sendAddresses->size(); i++) {
+
+                // filter
+                if (target != inetAddressType_all)
+                    if ((target == inetAddressType_unicast && !_isSendAddressUnicast[i]) ||
+                        (target == inetAddressType_broadcast_multicast && _isSendAddressUnicast[i]))
+                        continue;
+
                 int retval = sendto(_channel, buffer->getArray(),
                         buffer->getLimit(), 0, &((*_sendAddresses)[i].sa),
                         sizeof(sockaddr));
@@ -353,6 +375,9 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                     allOK = false;
                 }
             }
+
+            // all sent
+            buffer->setPosition(buffer->getLimit());
 
             return allOK;
         }
