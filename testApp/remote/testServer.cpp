@@ -2626,6 +2626,25 @@ public:
         return m_mockChannelFind;
     }
 
+    virtual ChannelFind::shared_pointer channelList(
+            ChannelListRequester::shared_pointer const & channelListRequester)
+    {
+        if (!channelListRequester.get())
+            throw std::runtime_error("null requester");
+
+        // NOTE: this adds only active channels, not all (especially RPC ones)
+        std::set<epics::pvData::String> channelNames;
+        {
+            Lock guard(structureStoreMutex);
+            for (map<String, PVStructure::shared_pointer>::const_iterator iter = structureStore.begin();
+                 iter != structureStore.end();
+                 iter++)
+                channelNames.insert(iter->first);
+        }
+        channelListRequester->channelListResult(Status::Ok, m_mockChannelFind, channelNames, true);
+        return m_mockChannelFind;
+    }
+
     virtual Channel::shared_pointer createChannel(
             epics::pvData::String const & channelName,
             ChannelRequester::shared_pointer const & channelRequester,

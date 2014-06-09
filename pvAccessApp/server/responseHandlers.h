@@ -206,6 +206,8 @@ namespace pvAccess {
                     std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
 
         private:
+            static epics::pvData::String SERVER_CHANNEL_NAME;
+
         	void disconnect(Transport::shared_pointer const & transport);
 			std::vector<ChannelProvider::shared_pointer> _providers;
         };
@@ -215,13 +217,14 @@ namespace pvAccess {
             public TransportSender,
             public std::tr1::enable_shared_from_this<ServerChannelRequesterImpl>
         {
+        friend class ServerCreateChannelHandler;
         public:
             typedef std::tr1::shared_ptr<ServerChannelRequesterImpl> shared_pointer;
             typedef std::tr1::shared_ptr<const ServerChannelRequesterImpl> const_shared_pointer;
         protected:
         	 ServerChannelRequesterImpl(Transport::shared_pointer const & transport, const epics::pvData::String channelName, const pvAccessID cid);
         public:
-                 virtual ~ServerChannelRequesterImpl() {}
+             virtual ~ServerChannelRequesterImpl() {}
         	 static ChannelRequester::shared_pointer create(ChannelProvider::shared_pointer const & provider, Transport::shared_pointer const & transport, const epics::pvData::String channelName, const pvAccessID cid);
         	 void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel);
         	 void channelStateChange(Channel::shared_pointer const & c, const Channel::ConnectionState isConnected);

@@ -8,6 +8,7 @@
 #define PVACCESS_H
 
 #include <vector>
+#include <set>
 
 #ifdef epicsExportSharedSymbols
 #   define pvAccessEpicsExportSharedSymbols
@@ -268,6 +269,24 @@ namespace pvAccess {
                     bool wasFound) = 0;
         };
 
+        /**
+         *
+         */
+        class epicsShareClass ChannelListRequester {
+            public:
+            POINTER_DEFINITIONS(ChannelListRequester);
+
+            virtual ~ChannelListRequester() {};
+
+            /**
+             * @param status Completion status.
+             */
+            virtual void channelListResult(
+                    const epics::pvData::Status& status,
+                    ChannelFind::shared_pointer const & channelFind,
+                    std::set<epics::pvData::String> const & channelNames,
+                    bool hasDynamic) = 0;
+        };
 
         /**
          * Request to get data from a channel.
@@ -825,6 +844,13 @@ namespace pvAccess {
              */
             virtual ChannelFind::shared_pointer channelFind(epics::pvData::String const & channelName,
                                                      ChannelFindRequester::shared_pointer const & channelFindRequester) = 0;
+
+            /**
+             * Find channels.
+             * @param channelFindRequester The epics::pvData::Requester.
+             * @return An interface for the find.
+             */
+            virtual ChannelFind::shared_pointer channelList(ChannelListRequester::shared_pointer const & channelListRequester) = 0;
 
             /**
              * Create a channel.

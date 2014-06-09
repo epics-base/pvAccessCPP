@@ -316,6 +316,13 @@ public:
 Status RPCChannel::notSupportedStatus(Status::STATUSTYPE_ERROR, "only channelRPC requests are supported by this channel");
 Status RPCChannel::destroyedStatus(Status::STATUSTYPE_ERROR, "channel destroyed");
 
+Channel::shared_pointer createRPCChannel(ChannelProvider::shared_pointer const & provider,
+                                          epics::pvData::String const & channelName,
+                                          ChannelRequester::shared_pointer const & channelRequester,
+                                          RPCService::shared_pointer const & rpcService)
+{
+    return Channel::shared_pointer(new RPCChannel(provider, channelName, channelRequester, rpcService));
+}
 
 
 class RPCChannelProvider :
@@ -362,7 +369,27 @@ public:
     }
 
 
-     virtual Channel::shared_pointer createChannel(
+    virtual ChannelFind::shared_pointer channelList(
+            ChannelListRequester::shared_pointer const & channelListRequester)
+    {
+        if (!channelListRequester.get())
+            throw std::runtime_error("null requester");
+
+        std::set<epics::pvData::String> channelNames;
+        {
+            Lock guard(m_mutex);
+            for (RPCServiceMap::const_iterator iter = m_services.begin();
+                 iter != m_services.end();
+                 iter++)
+                channelNames.insert(iter->first);
+        }
+
+        ChannelFind::shared_pointer thisPtr(shared_from_this());
+        channelListRequester->channelListResult(Status::Ok, thisPtr, channelNames, false);
+        return thisPtr;
+    }
+
+    virtual Channel::shared_pointer createChannel(
             epics::pvData::String const & channelName,
             ChannelRequester::shared_pointer const & channelRequester,
             short /*priority*/)

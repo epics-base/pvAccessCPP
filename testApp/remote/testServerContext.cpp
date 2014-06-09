@@ -24,6 +24,14 @@ public:
         return nullCF;  
     }
 
+    ChannelFind::shared_pointer channelList(ChannelListRequester::shared_pointer const & channelListRequester)
+    {
+        ChannelFind::shared_pointer nullCF;
+        std::set<String> none;
+        channelListRequester->channelListResult(Status::Ok, nullCF, none, false);
+        return nullCF;
+    }
+
     Channel::shared_pointer createChannel(
                 epics::pvData::String const & channelName,
                 ChannelRequester::shared_pointer const & channelRequester,

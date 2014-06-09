@@ -3015,6 +3015,19 @@ namespace epics {
                     return nullChannelFind;
                 }
 
+                virtual ChannelFind::shared_pointer channelList(
+                        ChannelListRequester::shared_pointer const & channelListRequester)
+                {
+                    if (!channelListRequester.get())
+                        throw std::runtime_error("null requester");
+
+                    Status errorStatus(Status::STATUSTYPE_ERROR, "not implemented");
+                    ChannelFind::shared_pointer nullChannelFind;
+                    std::set<epics::pvData::String> none;
+                    EXCEPTION_GUARD(channelListRequester->channelListResult(errorStatus, nullChannelFind, none, false));
+                    return nullChannelFind;
+                }
+
                 virtual Channel::shared_pointer createChannel(
                         epics::pvData::String const & channelName,
                         ChannelRequester::shared_pointer const & channelRequester,

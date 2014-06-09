@@ -18,6 +18,7 @@
 #include <sstream>
 
 #include <pv/pvAccessMB.h>
+#include <pv/rpcServer.h>
 
 using std::ostringstream;
 using std::hex;
@@ -379,6 +380,145 @@ void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendContr
 }
 
 /****************************************************************************************/
+
+class ChannelListRequesterImpl :
+        public ChannelListRequester
+{
+public:
+    POINTER_DEFINITIONS(ChannelListRequesterImpl);
+
+    std::set<String> channelNames;
+    Status status;
+
+    virtual void channelListResult(
+            const epics::pvData::Status& status,
+            ChannelFind::shared_pointer const & channelFind,
+            std::set<epics::pvData::String> const & channelNames,
+            bool hasDynamic)
+    {
+        epics::pvData::Lock lock(_waitMutex);
+
+        this->status = status;
+        this->channelNames = channelNames;
+
+        _waitEvent.signal();
+    }
+
+    bool waitForCompletion(int32 timeoutSec) {
+        return _waitEvent.wait(timeoutSec);
+    }
+
+private:
+    epics::pvData::Mutex _waitMutex;
+    epics::pvData::Event _waitEvent;
+
+};
+
+// TODO move out to a separate class
+class ServerRPCService : public RPCService {
+
+private:
+    static int32 TIMEOUT_SEC;
+
+    static Structure::const_shared_pointer helpStructure;
+    static Structure::const_shared_pointer channelListStructure;
+
+    static std::string helpString;
+
+    ServerContextImpl::shared_pointer m_serverContext;
+
+public:
+
+    ServerRPCService(ServerContextImpl::shared_pointer const & context) :
+        m_serverContext(context)
+    {
+    }
+
+    virtual epics::pvData::PVStructure::shared_pointer request(
+        epics::pvData::PVStructure::shared_pointer const & arguments
+    ) throw (RPCRequestException)
+    {
+        // NTURI support
+        PVStructure::shared_pointer args(
+                    (arguments->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+                        arguments->getStructureField("query") :
+                        arguments
+                        );
+
+        // help support
+        if (args->getSubField("help"))
+        {
+            PVStructure::shared_pointer help = getPVDataCreate()->createPVStructure(helpStructure);
+            help->getSubField<PVString>("value")->put(helpString);
+            return help;
+        }
+
+        PVString::shared_pointer opField = args->getSubField<PVString>("op");
+        if (!opField)
+            throw RPCRequestException(Status::STATUSTYPE_ERROR, "unspecified 'string op' field");
+
+        String op = opField->get();
+        if (op == "channels")
+        {
+            ChannelListRequesterImpl::shared_pointer listListener(new ChannelListRequesterImpl());
+            m_serverContext->getChannelProviders()[0]->channelList(listListener);               // TODO multiple channel providers !!!!
+            if (!listListener->waitForCompletion(TIMEOUT_SEC))
+                throw RPCRequestException(Status::STATUSTYPE_ERROR, "failed to fetch channel list due to timeout");
+
+            Status& status = listListener->status;
+            if (!status.isSuccess())
+            {
+                String errorMessage = "failed to fetch channel list: " + status.getMessage();
+                if (!status.getStackDump().empty())
+                     errorMessage += "\n" + status.getStackDump();
+                throw RPCRequestException(Status::STATUSTYPE_ERROR, errorMessage);
+            }
+
+            std::set<String>& channelNames = listListener->channelNames;
+
+            PVStructure::shared_pointer result =
+                getPVDataCreate()->createPVStructure(channelListStructure);
+            PVStringArray::shared_pointer pvArray = result->getSubField<PVStringArray>("value");
+            PVStringArray::svector newdata(channelNames.size());
+            size_t i = 0;
+            for (std::set<String>::const_iterator iter = channelNames.begin();
+                 iter != channelNames.end();
+                 iter++)
+                newdata[i++] = *iter;
+            pvArray->replace(freeze(newdata));
+
+            return result;
+        }
+        else
+            throw RPCRequestException(Status::STATUSTYPE_ERROR, "unsupported operation '" + op + "'.");
+    }
+};
+
+int32 ServerRPCService::TIMEOUT_SEC = 3;
+Structure::const_shared_pointer ServerRPCService::helpStructure =
+        getFieldCreate()->createFieldBuilder()->
+            setId("uri:ev4:nt/2012/pwd:NTScalar")->
+            add("value", pvString)->
+            createStructure();
+
+Structure::const_shared_pointer ServerRPCService::channelListStructure =
+        getFieldCreate()->createFieldBuilder()->
+            setId("uri:ev4:nt/2012/pwd:NTScalarArray")->
+            addArray("value", pvString)->
+            createStructure();
+
+std::string ServerRPCService::helpString =
+        "pvAccess server RPC service.\n"
+        "arguments:\n"
+        "\tstring op\toperation to execute\n"
+        "\n"
+        "\toperations:\n"
+        "\t\tchannels\treturns a list of 'static' channels the server can provide\n"
+        "\t\t\t (no arguments)\n"
+        "\n";
+
+epics::pvData::String ServerCreateChannelHandler::SERVER_CHANNEL_NAME = "server";
+
 void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
 		size_t payloadSize, ByteBuffer* payloadBuffer)
@@ -414,14 +554,22 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 		return;
 	}
 
-    // TODO !!!
-	//ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid);
-	
-	
-	if (_providers.size() == 1)
-    	ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid);
-	else
-    	ServerChannelRequesterImpl::create(ServerSearchHandler::s_channelNameToProvider[channelName].lock(), transport, channelName, cid);     // TODO !!!!
+    if (channelName == SERVER_CHANNEL_NAME)
+    {
+        // TODO singleton!!!
+        ServerRPCService::shared_pointer serverRPCService(new ServerRPCService(_context));
+
+        ChannelRequester::shared_pointer cr(new ServerChannelRequesterImpl(transport, channelName, cid));
+        Channel::shared_pointer serverChannel = createRPCChannel(ChannelProvider::shared_pointer(), channelName, cr, serverRPCService);
+        cr->channelCreated(Status::Ok, serverChannel);
+    }
+    else
+    {
+        if (_providers.size() == 1)
+            ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid);
+        else
+            ServerChannelRequesterImpl::create(ServerSearchHandler::s_channelNameToProvider[channelName].lock(), transport, channelName, cid);     // TODO !!!!
+    }
 }
 
 void ServerCreateChannelHandler::disconnect(Transport::shared_pointer const & transport)

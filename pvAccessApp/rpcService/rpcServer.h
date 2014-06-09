@@ -64,6 +64,10 @@ class epicsShareClass RPCServer :
 
 };
 
+epicsShareExtern Channel::shared_pointer createRPCChannel(ChannelProvider::shared_pointer const & provider,
+                                                          epics::pvData::String const & channelName,
+                                                          ChannelRequester::shared_pointer const & channelRequester,
+                                                          RPCService::shared_pointer const & rpcService);
 
 }}
 
