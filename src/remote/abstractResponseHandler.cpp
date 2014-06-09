@@ -24,7 +24,7 @@ namespace epics {
         void AbstractResponseHandler::handleResponse(osiSockAddr* responseFrom,
                 Transport::shared_pointer const & /*transport*/, int8 version, int8 command,
                 size_t payloadSize, ByteBuffer* payloadBuffer) {
-            if(_debug) {
+            if(_debugLevel >= 3) {   // TODO make a constant of sth (0 - off, 1 - debug, 2 - more/trace, 3 - messages)
                 char ipAddrStr[48];
                 ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
 

@@ -1049,7 +1049,6 @@ private:
     String m_channelName;
     bool m_printValue;
 
-    ChannelGet::shared_pointer m_channelGet;
     PVStructure::shared_pointer m_pvStructure;
     BitSet::shared_pointer m_bitSet;
     Mutex m_pointerMutex;
@@ -1076,9 +1075,9 @@ public:
         std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void channelGetConnect(const epics::pvData::Status& status,ChannelGet::shared_pointer const & channelGet,
-                                   epics::pvData::PVStructure::shared_pointer const & pvStructure,
-                                   epics::pvData::BitSet::shared_pointer const & bitSet)
+    virtual void channelGetConnect(const epics::pvData::Status& status,
+                                   ChannelGet::shared_pointer const & channelGet,
+                                   epics::pvData::Structure::const_shared_pointer const & /*structure*/)
     {
         if (status.isSuccess())
         {
@@ -1088,15 +1087,8 @@ public:
                 std::cerr << "[" << m_channelName << "] channel get create: " << status << std::endl;
             }
             
-            // assign smart pointers
-            {
-                Lock lock(m_pointerMutex);
-                m_channelGet = channelGet;
-                m_pvStructure = pvStructure;
-                m_bitSet = bitSet;
-            }
-            
-            channelGet->get(true);
+            channelGet->lastRequest();
+            channelGet->get();
         }
         else
         {
@@ -1105,7 +1097,10 @@ public:
         }
     }
 
-    virtual void getDone(const epics::pvData::Status& status)
+    virtual void getDone(const epics::pvData::Status& status,
+                         ChannelGet::shared_pointer const & /*channelGet*/,
+                         epics::pvData::PVStructure::shared_pointer const & pvStructure,
+                         epics::pvData::BitSet::shared_pointer const & bitSet)
     {
         if (status.isSuccess())
         {
@@ -1118,30 +1113,19 @@ public:
             // access smart pointers
             {
                 Lock lock(m_pointerMutex);
+                m_pvStructure = pvStructure;
+                m_bitSet = bitSet;
+                m_done = true;
+
+                if (m_printValue)
                 {
-                    m_done = true;
-
-                    if (m_printValue)
-                    {
-                        // needed since we access the data
-                        ScopedLock dataLock(m_channelGet);
-
-                        printValue(m_channelName, m_pvStructure);
-                    }
+                    printValue(m_channelName, m_pvStructure);
                 }
-
-                // this is OK since callee holds also owns it
-                m_channelGet.reset();
             }
         }
         else
         {
             std::cerr << "[" << m_channelName << "] failed to get: " << status << std::endl;
-            {
-                Lock lock(m_pointerMutex);
-                // this is OK since caller holds also owns it
-                m_channelGet.reset();
-            }
         }
 
         m_event.signal();
@@ -1171,10 +1155,10 @@ public:
 class ChannelRPCRequesterImpl : public ChannelRPCRequester
 {
 private:
-    ChannelRPC::shared_pointer m_channelRPC;
     Mutex m_pointerMutex;
     Event m_event;
     Event m_connectionEvent;
+    bool m_successfullyConnected;
     String m_channelName;
 
     PVStructure::shared_pointer m_lastResponse;
@@ -1182,7 +1166,12 @@ private:
 
 public:
     
-    ChannelRPCRequesterImpl(String channelName) : m_channelName(channelName), m_done(false) {}
+    ChannelRPCRequesterImpl(String channelName) : 
+        m_successfullyConnected(false),
+        m_channelName(channelName),
+        m_done(false)
+    {
+    }
     
     virtual String getRequesterName()
     {
@@ -1194,7 +1183,7 @@ public:
         std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void channelRPCConnect(const epics::pvData::Status& status,ChannelRPC::shared_pointer const & channelRPC)
+    virtual void channelRPCConnect(const epics::pvData::Status& status, ChannelRPC::shared_pointer const & /*channelRPC*/)
     {
         if (status.isSuccess())
         {
@@ -1204,10 +1193,9 @@ public:
                 std::cerr << "[" << m_channelName << "] channel RPC create: " << status << std::endl;
             }
             
-            // assign smart pointers
-            {
+            {   
                 Lock lock(m_pointerMutex);
-                m_channelRPC = channelRPC;
+                m_successfullyConnected = status.isSuccess();
             }
             
             m_connectionEvent.signal();
@@ -1219,7 +1207,9 @@ public:
         }
     }
 
-    virtual void requestDone (const epics::pvData::Status &status, epics::pvData::PVStructure::shared_pointer const &pvResponse)
+    virtual void requestDone (const epics::pvData::Status &status,
+                              ChannelRPC::shared_pointer const & /*channelRPC*/,
+                              epics::pvData::PVStructure::shared_pointer const &pvResponse)
     {
         if (status.isSuccess())
         {
@@ -1240,19 +1230,11 @@ public:
                 formatNT(std::cout, pvResponse);
                 std::cout << std::endl;
                  */
-
-                // this is OK since calle holds also owns it
-                m_channelRPC.reset();
             }
         }
         else
         {
             std::cerr << "[" << m_channelName << "] failed to RPC: " << status << std::endl;
-            {
-                Lock lock(m_pointerMutex);
-                // this is OK since caller holds also owns it
-                m_channelRPC.reset();
-            }
         }
         
         m_event.signal();
@@ -1294,12 +1276,8 @@ public:
             return false;
         }
 
-        bool connected;
-        {
-            Lock lock(m_pointerMutex);
-            connected = (m_channelRPC.get() != 0);
-        }
-        return connected ? true : false;
+        Lock lock(m_pointerMutex);
+        return m_successfullyConnected;
     }
 };
 
@@ -1486,9 +1464,18 @@ int main (int argc, char *argv[])
         {
             string param = optarg;
             size_t eqPos = param.find('=');
+            if (eqPos==0)
+            {
+                // no name 
+
+                fprintf(stderr, "Parameter not specified in '-a name=value' form. ('eget -h' for help.)\n");
+                return 1;
+            }
             if (eqPos==string::npos)
             {
-                //fprintf(stderr, "Parameter not specified in name=value form. ('eget -h' for help.)\n");
+                // no value
+                
+                //fprintf(stderr, "Parameter not specified in '-a name=value' form. ('eget -h' for help.)\n");
                 //return 1;
                 parameters.push_back(pair<string,string>(param, ""));
             }
@@ -1729,7 +1716,7 @@ int main (int argc, char *argv[])
         {
             shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
             // TODO no provider check
-            channels[n] = getChannelAccess()->getProvider(providerNames[n])->createChannel(pvs[n], channelRequesterImpl);
+            channels[n] = getChannelProviderRegistry()->getProvider(providerNames[n])->createChannel(pvs[n], channelRequesterImpl);
         }
 
         // TODO maybe unify for nPvs == 1?!
@@ -1803,7 +1790,7 @@ int main (int argc, char *argv[])
                     
                 shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
                 // TODO no provider check
-                channel = getChannelAccess()->getProvider(cp)->createChannel(cn, channelRequesterImpl);
+                channel = getChannelProviderRegistry()->getProvider(cp)->createChannel(cn, channelRequesterImpl);
             }
 
             if (monitor)
@@ -2035,7 +2022,7 @@ int main (int argc, char *argv[])
 
 
         ClientFactory::start();
-        ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pva");
+        ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");
         
         shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
         Channel::shared_pointer channel =
@@ -2051,7 +2038,8 @@ int main (int argc, char *argv[])
 
             if (rpcRequesterImpl->waitUntilConnected(timeOut))
             {
-                channelRPC->request(arg, true);
+                channelRPC->lastRequest();
+                channelRPC->request(arg);
                 allOK &= rpcRequesterImpl->waitUntilRPC(timeOut);
                 if (allOK)
                 {

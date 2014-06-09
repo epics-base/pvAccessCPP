@@ -48,6 +48,7 @@ public:
 	static const epics::pvData::Status noWriteACLStatus;
 	static const epics::pvData::Status noProcessACLStatus;
 	static const epics::pvData::Status otherRequestPendingStatus;
+    static const epics::pvData::Status notAChannelRequestStatus;
 protected:
 	const pvAccessID _ioid;
 	Transport::shared_pointer _transport;

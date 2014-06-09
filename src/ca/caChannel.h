@@ -142,7 +142,13 @@ public:
 
     /* --------------- epics::pvAccess::ChannelGet --------------- */
 
-    virtual void get(bool lastRequest);
+    virtual void get();
+
+    /* --------------- epics::pvData::ChannelRequest --------------- */
+
+    virtual Channel::shared_pointer getChannel();
+    virtual void cancel();
+    virtual void lastRequest();
 
     /* --------------- epics::pvData::Destroyable --------------- */
 
@@ -166,6 +172,9 @@ private:
 
     epics::pvData::PVStructure::shared_pointer pvStructure;
     epics::pvData::BitSet::shared_pointer bitSet;
+    
+    // TODO AtomicBoolean !!!
+    bool lastRequestFlag;
 };
 
 
@@ -189,8 +198,17 @@ public:
 
     /* --------------- epics::pvAccess::ChannelPut --------------- */
 
-    virtual void put(bool lastRequest);
+    virtual void put(
+            epics::pvData::PVStructure::shared_pointer const & pvPutStructure,
+            epics::pvData::BitSet::shared_pointer const & putBitSet
+            );
     virtual void get();
+
+    /* --------------- epics::pvData::ChannelRequest --------------- */
+
+    virtual Channel::shared_pointer getChannel();
+    virtual void cancel();
+    virtual void lastRequest();
 
     /* --------------- epics::pvData::Destroyable --------------- */
 
@@ -214,6 +232,9 @@ private:
 
     epics::pvData::PVStructure::shared_pointer pvStructure;
     epics::pvData::BitSet::shared_pointer bitSet;
+
+    // TODO AtomicBoolean !!!
+    bool lastRequestFlag;
 };
 
 
@@ -239,6 +260,10 @@ public:
     virtual epics::pvData::Status stop();
     virtual epics::pvData::MonitorElementPtr poll();
     virtual void release(epics::pvData::MonitorElementPtr const & monitorElement);
+
+    /* --------------- epics::pvData::ChannelRequest --------------- */
+
+    virtual void cancel();
 
     /* --------------- epics::pvData::Destroyable --------------- */
 

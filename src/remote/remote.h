@@ -41,6 +41,11 @@ namespace epics {
 #define PVACCESS_REFCOUNT_MONITOR_DESTRUCT(name)
 
         class TransportRegistry;
+        
+        /**
+         * Globally unique ID.
+         */
+        typedef struct { char value[12]; } GUID;
 
         enum QoS {
             /**
@@ -89,22 +94,23 @@ namespace epics {
             CMD_ECHO = 2,
             CMD_SEARCH = 3,
             CMD_SEARCH_RESPONSE = 4,
-            CMD_INTROSPECTION_SEARCH = 5,
-            CMD_INTROSPECTION_SEARCH_RESPONSE = 6,
+            CMD_AUTHNZ = 5,
+            CMD_ACL_CHANGE = 6,
             CMD_CREATE_CHANNEL = 7,
             CMD_DESTROY_CHANNEL = 8,
-            CMD_RESERVED0 = 9,
+            CMD_CONNECTION_VALIDATED = 9,
             CMD_GET = 10,
             CMD_PUT = 11,
             CMD_PUT_GET = 12,
             CMD_MONITOR = 13, 
             CMD_ARRAY = 14,
-            CMD_CANCEL_REQUEST = 15,
+            CMD_DESTROY_REQUEST = 15,
             CMD_PROCESS = 16,
             CMD_GET_FIELD = 17,
             CMD_MESSAGE = 18,
             CMD_MULTIPLE_DATA = 19,
-            CMD_RPC = 20
+            CMD_RPC = 20,
+            CMD_CANCEL_REQUEST = 21
         };
 
 		enum ControlCommands {
@@ -257,8 +263,9 @@ namespace epics {
 
             /**
              * Notify transport that it is has been verified.
+             * @param status vefification status;
              */
-            virtual void verified() = 0;
+            virtual void verified(epics::pvData::Status const & status) = 0;
 
         	/**
         	 * Waits (if needed) until transport is verified, i.e. verified() method is being called.
@@ -351,7 +358,7 @@ namespace epics {
              */
             AbstractResponseHandler(Context* context, epics::pvData::String description) :
                 _description(description), 
-                _debug(context->getConfiguration()->getPropertyAsBoolean(PVACCESS_DEBUG, false)) {
+                _debugLevel(context->getConfiguration()->getPropertyAsInteger(PVACCESS_DEBUG, 0)) {
             }
 
             virtual ~AbstractResponseHandler() {}
@@ -369,7 +376,7 @@ namespace epics {
             /**
              * Debug flag.
              */
-            bool _debug;
+            epics::pvData::int32 _debugLevel;
         };
 
         /**

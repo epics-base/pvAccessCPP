@@ -24,6 +24,14 @@ public:
         return nullCF;  
     }
 
+    ChannelFind::shared_pointer channelList(ChannelListRequester::shared_pointer const & channelListRequester)
+    {
+        ChannelFind::shared_pointer nullCF;
+        PVStringArray::const_svector none;
+        channelListRequester->channelListResult(Status::Ok, nullCF, none, false);
+        return nullCF;
+    }
+
     Channel::shared_pointer createChannel(
                 epics::pvData::String const & channelName,
                 ChannelRequester::shared_pointer const & channelRequester,
@@ -48,10 +56,10 @@ public:
 };
 
 
-class TestChannelAccess : public ChannelAccess {
+class TestChannelProviderRegistry : public ChannelProviderRegistry {
 public:
                 
-    virtual ~TestChannelAccess() {};
+    virtual ~TestChannelProviderRegistry() {};
             
     ChannelProvider::shared_pointer getProvider(epics::pvData::String const & providerName)
     {
@@ -81,7 +89,7 @@ void testServerContext()
 
 	ServerContextImpl::shared_pointer ctx = ServerContextImpl::create();
 
-	ChannelAccess::shared_pointer ca(new TestChannelAccess());
+	ChannelProviderRegistry::shared_pointer ca(new TestChannelProviderRegistry());
 	ctx->initialize(ca);
 
 	ctx->printInfo();

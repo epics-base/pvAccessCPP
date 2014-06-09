@@ -102,7 +102,6 @@ void printValue(String const & channelName, PVStructure::shared_pointer const & 
 class ChannelGetRequesterImpl : public ChannelGetRequester
 {
     private:
-    ChannelGet::shared_pointer m_channelGet;
     PVStructure::shared_pointer m_pvStructure;
     BitSet::shared_pointer m_bitSet;
     Mutex m_pointerMutex;
@@ -125,9 +124,8 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void channelGetConnect(const epics::pvData::Status& status,ChannelGet::shared_pointer const & channelGet,
-                                   epics::pvData::PVStructure::shared_pointer const & pvStructure, 
-                                   epics::pvData::BitSet::shared_pointer const & bitSet)
+    virtual void channelGetConnect(const epics::pvData::Status& status, ChannelGet::shared_pointer const & channelGet,
+                                   epics::pvData::Structure::const_shared_pointer const & /*structure*/)
     {
         if (status.isSuccess())
         {
@@ -137,15 +135,8 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
                 std::cerr << "[" << m_channelName << "] channel get create: " << status << std::endl;
             }
             
-            // assign smart pointers
-            {
-                Lock lock(m_pointerMutex);
-                m_channelGet = channelGet;
-                m_pvStructure = pvStructure;
-                m_bitSet = bitSet;
-            }
-            
-            channelGet->get(true);
+            channelGet->lastRequest();
+            channelGet->get();
         }
         else
         {
@@ -154,7 +145,10 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
         }
     }
 
-    virtual void getDone(const epics::pvData::Status& status)
+    virtual void getDone(const epics::pvData::Status& status, 
+            ChannelGet::shared_pointer const & /*channelGet*/,
+            epics::pvData::PVStructure::shared_pointer const & pvStructure, 
+            epics::pvData::BitSet::shared_pointer const & bitSet)
     {
         if (status.isSuccess())
         {
@@ -167,30 +161,17 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
             // access smart pointers
             {
                 Lock lock(m_pointerMutex);
+                
+                m_pvStructure = pvStructure;
+                m_bitSet = bitSet;
 
                 m_done = true;
 
-                /*
-                {
-                    // needed since we access the data
-                    ScopedLock dataLock(m_channelGet);
-
-                    printValue(m_channelName, m_pvStructure);
-    
-                }
-                */
-                // this is OK since callee holds also owns it
-                m_channelGet.reset();
             }
         }
         else
         {
             std::cerr << "[" << m_channelName << "] failed to get: " << status << std::endl;
-            {
-                Lock lock(m_pointerMutex);
-                // this is OK since caller holds also owns it
-                m_channelGet.reset();
-            }
         }
         
         m_event.signal();
@@ -484,10 +465,10 @@ int main (int argc, char *argv[])
         }
         
         ClientFactory::start();
-        ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pva");
+        ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");
 
         //epics::pvAccess::ca::CAClientFactory::start();
-        //ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("ca");
+        //ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("ca");
 
         // first connect to all, this allows resource (e.g. TCP connection) sharing
         vector<Channel::shared_pointer> channels(nPvs);

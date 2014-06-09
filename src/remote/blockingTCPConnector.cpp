@@ -50,7 +50,7 @@ namespace epics {
                 if (socket == INVALID_SOCKET)
                 {
                     epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                    LOG(logLevelWarn, "Socket create error: %s", strBuffer);
+                    LOG(logLevelWarn, "Socket create error: %s.", strBuffer);
                     return INVALID_SOCKET;
                 }
                 else {
@@ -60,7 +60,7 @@ namespace epics {
                     else {
                         epicsSocketDestroy (socket);
                         epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                        LOG(logLevelDebug, "Socket connect error: %s", strBuffer);
+                        LOG(logLevelDebug, "Socket connect error: %s.", strBuffer);
                     }
                 }
             }
@@ -82,7 +82,7 @@ namespace epics {
             Transport::shared_pointer transport = context->getTransportRegistry()->get("TCP", &address, priority);
             if(transport.get()) {
                 LOG(logLevelDebug,
-                    "Reusing existing connection to PVA server: %s",
+                    "Reusing existing connection to PVA server: %s.",
                     ipAddrStr);
                 if (transport->acquire(client))
                     return transport;
@@ -95,13 +95,13 @@ namespace epics {
                     transport = context->getTransportRegistry()->get("TCP", &address, priority);
                     if(transport.get()) {
                         LOG(logLevelDebug,
-                            "Reusing existing connection to PVA server: %s",
+                            "Reusing existing connection to PVA server: %s.",
                             ipAddrStr);
                         if (transport->acquire(client))
                             return transport;
                     }
 
-                    LOG(logLevelDebug, "Connecting to PVA server: %s", ipAddrStr);
+                    LOG(logLevelDebug, "Connecting to PVA server: %s.", ipAddrStr);
 
                     socket = tryConnect(address, 3);
                     
@@ -123,7 +123,7 @@ namespace epics {
                     if(retval<0) {
                         char errStr[64];
                         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                        LOG(logLevelWarn, "Error setting TCP_NODELAY: %s", errStr);
+                        LOG(logLevelWarn, "Error setting TCP_NODELAY: %s.", errStr);
                     }
                     
                     // enable TCP_KEEPALIVE
@@ -133,7 +133,7 @@ namespace epics {
                     {
                         char errStr[64];
                         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                        LOG(logLevelWarn, "Error setting SO_KEEPALIVE: %s", errStr);
+                        LOG(logLevelWarn, "Error setting SO_KEEPALIVE: %s.", errStr);
                     }
                     
                     // TODO tune buffer sizes?! Win32 defaults are 8k, which is OK
@@ -147,7 +147,7 @@ namespace epics {
                     if(retval<0) {
                         char strBuffer[64];
                         epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                        LOG(logLevelDebug, "Error getting SO_SNDBUF: %s", strBuffer);
+                        LOG(logLevelDebug, "Error getting SO_SNDBUF: %s.", strBuffer);
                     }
 
                     transport = detail::BlockingClientTCPTransportCodec::create(
@@ -168,7 +168,7 @@ namespace epics {
 
                     // TODO send security token
 
-                    LOG(logLevelDebug, "Connected to PVA server: %s", ipAddrStr);
+                    LOG(logLevelDebug, "Connected to PVA server: %s.", ipAddrStr);
 
                     _namedLocker.releaseSynchronizationObject(&address);
                     return transport;

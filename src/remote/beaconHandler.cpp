@@ -15,45 +15,43 @@ namespace epics {
 namespace pvAccess {
 
 BeaconHandler::BeaconHandler(Context::shared_pointer const & context,
+                             std::string const & protocol,
                              const osiSockAddr* responseFrom) :
     _context(Context::weak_pointer(context)),
+    _protocol(protocol),
     _responseFrom(*responseFrom),
     _mutex(),
-    _serverStartupTime(0)
-{
-
-}
-
-BeaconHandler::BeaconHandler(const osiSockAddr* responseFrom) :
-    _responseFrom(*responseFrom),
-    _mutex(),
-    _serverStartupTime(0)
+    _serverGUID(),
+    _serverChangeCount(-1),
+    _first(true)
 {
 
 }
 
 BeaconHandler::~BeaconHandler()
 {
-
 }
 
 void BeaconHandler::beaconNotify(osiSockAddr* /*from*/, int8 remoteTransportRevision,
-							 TimeStamp* timestamp, TimeStamp* startupTime, int16 sequentalID,
+							 TimeStamp* timestamp, GUID const & guid, int16 sequentalID,
+							 int16 changeCount,
 							 PVFieldPtr /*data*/)
 {
-	bool networkChanged = updateBeacon(remoteTransportRevision, timestamp, startupTime, sequentalID);
+	bool networkChanged = updateBeacon(remoteTransportRevision, timestamp, guid, sequentalID, changeCount);
 	if (networkChanged)
 		changedTransport();
 }
 
 bool BeaconHandler::updateBeacon(int8 /*remoteTransportRevision*/, TimeStamp* /*timestamp*/,
-			                     TimeStamp* startupTime, int16 /*sequentalID*/)
+			                     GUID const & guid, int16 /*sequentalID*/, int16 changeCount)
 {
-	Lock guard(_mutex);
-	// first beacon notification check
-	if (_serverStartupTime.getSecondsPastEpoch() == 0)
-	{
-		_serverStartupTime = *startupTime;
+    Lock guard(_mutex);
+    // first beacon notification check
+    if (_first)
+    {
+	    _first = false;
+		_serverGUID = guid;
+		_serverChangeCount = changeCount;
 
 		// new server up..
 		_context.lock()->newServerDetected();
@@ -61,12 +59,23 @@ bool BeaconHandler::updateBeacon(int8 /*remoteTransportRevision*/, TimeStamp* /*
 		return false;
 	}
 
-	bool networkChange = !(_serverStartupTime == *startupTime);
+	bool networkChange = (memcmp(_serverGUID.value, guid.value, sizeof(guid.value)) != 0);
 	if (networkChange)
 	{
-		// update startup time
-		_serverStartupTime = *startupTime;
+		// update startup time and change count
+		_serverGUID = guid;
+		_serverChangeCount = changeCount;
 
+		_context.lock()->newServerDetected();
+
+		return true;
+	}
+	else if (_serverChangeCount != changeCount)
+	{
+		// update change count
+		_serverChangeCount = changeCount;
+
+        // TODO be more specific (possible optimizations)
 		_context.lock()->newServerDetected();
 
 		return true;
@@ -77,9 +86,8 @@ bool BeaconHandler::updateBeacon(int8 /*remoteTransportRevision*/, TimeStamp* /*
 
 void BeaconHandler::changedTransport()
 {
-	// TODO why only TCP, actually TCP does not need this
     auto_ptr<TransportRegistry::transportVector_t> transports =
-        _context.lock()->getTransportRegistry()->get("TCP", &_responseFrom);
+        _context.lock()->getTransportRegistry()->get(_protocol, &_responseFrom);
 	if (!transports.get())
 		return;
     

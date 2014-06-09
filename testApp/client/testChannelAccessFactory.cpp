@@ -37,7 +37,7 @@ public:
 void testChannelAccessFactory() {
     printf("testChannelAccessFactory... ");
 
-    ChannelAccess* ca = getChannelAccess();
+    ChannelAccess* ca = getChannelProviderRegistry();
     assert(ca);
 
     // empty

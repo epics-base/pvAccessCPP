@@ -27,7 +27,9 @@
 
 namespace epics { namespace pvAccess { 
 
-class epicsShareClass RPCServer {
+class epicsShareClass RPCServer : 
+    public std::tr1::enable_shared_from_this<RPCServer>
+{
     private:
 
     ServerContextImpl::shared_pointer m_serverContext;
@@ -49,6 +51,10 @@ class epicsShareClass RPCServer {
 
     void run(int seconds = 0);
     
+    /// Method requires usage of std::tr1::shared_ptr<RPCServer>. This instance must be 
+    /// owned by a shared_ptr instance.
+    void runInNewThread(int seconds = 0);
+    
     void destroy();    
     
     /**
@@ -58,6 +64,10 @@ class epicsShareClass RPCServer {
 
 };
 
+epicsShareExtern Channel::shared_pointer createRPCChannel(ChannelProvider::shared_pointer const & provider,
+                                                          epics::pvData::String const & channelName,
+                                                          ChannelRequester::shared_pointer const & channelRequester,
+                                                          RPCService::shared_pointer const & rpcService);
 
 }}
 

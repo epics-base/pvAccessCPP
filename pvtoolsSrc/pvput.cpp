@@ -251,7 +251,6 @@ class AtomicBoolean
 class ChannelPutRequesterImpl : public ChannelPutRequester
 {
     private:
-    ChannelPut::shared_pointer m_channelPut;
     PVStructure::shared_pointer m_pvStructure;
     BitSet::shared_pointer m_bitSet;
     Mutex m_pointerMutex;
@@ -279,8 +278,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
 
     virtual void channelPutConnect(const epics::pvData::Status& status,
     							   ChannelPut::shared_pointer const & channelPut,
-                                   epics::pvData::PVStructure::shared_pointer const & pvStructure, 
-                                   epics::pvData::BitSet::shared_pointer const & bitSet)
+                                   epics::pvData::Structure::const_shared_pointer const & /*structure*/)
     {
         if (status.isSuccess())
         {
@@ -290,17 +288,6 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
                 std::cerr << "[" << m_channelName << "] channel put create: " << status << std::endl;
             }
 
-            // assign smart pointers
-            {
-                Lock lock(m_pointerMutex);
-                m_channelPut = channelPut;
-                m_pvStructure = pvStructure;
-            	m_bitSet = bitSet;
-            }
-            
-            // we always put all
-            m_bitSet->set(0);
-            
             // get immediately old value
             channelPut->get();
         }
@@ -311,7 +298,9 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         }
     }
 
-    virtual void getDone(const epics::pvData::Status& status)
+    virtual void getDone(const epics::pvData::Status& status, ChannelPut::shared_pointer const & /*channelPut*/,
+                         epics::pvData::PVStructure::shared_pointer const & pvStructure, 
+                         epics::pvData::BitSet::shared_pointer const & bitSet)
     {
         if (status.isSuccess())
         {
@@ -323,21 +312,12 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
 
         	m_done.set();
 
-        	/*
-            // access smart pointers
-            // do not print old value in terseMode
-            if (!m_supressGetValue.get())
             {
                 Lock lock(m_pointerMutex);
-                {
-
-                    // needed since we access the data
-                    ScopedLock dataLock(m_channelPut);
-
-                    printValue(m_channelName, m_pvStructure);
-                }
+                m_pvStructure = pvStructure;
+                // we always put all, so current bitSet is OK
+                m_bitSet = bitSet;
             }
-            */
 
         }
         else
@@ -348,7 +328,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         m_event->signal();
     }
 
-    virtual void putDone(const epics::pvData::Status& status)
+    virtual void putDone(const epics::pvData::Status& status, ChannelPut::shared_pointer const & /*channelPut*/)
     {
         if (status.isSuccess())
         {
@@ -372,6 +352,12 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     {
         Lock lock(m_pointerMutex);
         return m_pvStructure;
+    }
+
+    BitSet::shared_pointer getBitSet()
+    {
+        Lock lock(m_pointerMutex);
+        return m_bitSet;
     }
 
     void resetEvent()
@@ -551,10 +537,10 @@ int main (int argc, char *argv[])
     terseSeparator(fieldSeparator);
 
     ClientFactory::start();
-    ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("pva");
+    ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");
 
     //epics::pvAccess::ca::CAClientFactory::start();
-    //ChannelProvider::shared_pointer provider = getChannelAccess()->getProvider("ca");
+    //ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("ca");
 
     bool allOK = true;
 
@@ -587,7 +573,8 @@ int main (int argc, char *argv[])
 
                     // we do a put
                     putRequesterImpl->resetEvent();
-                    channelPut->put(false);
+                    // note on bitSet: we get all, we set all
+                    channelPut->put(putRequesterImpl->getStructure(), putRequesterImpl->getBitSet());
                     allOK &= putRequesterImpl->waitUntilDone(timeOut);
         
                     if (allOK)

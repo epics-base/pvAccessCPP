@@ -26,7 +26,7 @@ namespace pvAccess {
     const epics::pvData::int8 PVA_MAGIC = static_cast<epics::pvData::int8>(0xCA);
     
     /** PVA protocol revision (implemented by this library). */
-    const epics::pvData::int8 PVA_PROTOCOL_REVISION = 0;
+    const epics::pvData::int8 PVA_PROTOCOL_REVISION = 1;
     
     /** PVA version signature used to report this implementation version in header. */
     const epics::pvData::int8 PVA_VERSION = PVA_PROTOCOL_REVISION;

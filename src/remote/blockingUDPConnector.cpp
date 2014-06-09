@@ -45,7 +45,13 @@ namespace epics {
             }
             
             /*
-            IPv4 multicast addresses are defined by the leading address bits of 1110, originating from the classful network design of the early Internet when this group of addresses was designated as Class D. The Classless Inter-Domain Routing (CIDR) prefix of this group is 224.0.0.0/4. The group includes the addresses from 224.0.0.0 to 239.255.255.255. Address assignments from within this range are specified in RFC 5771, an Internet Engineering Task Force (IETF) Best Current Practice document (BCP 51).*/
+            IPv4 multicast addresses are defined by the leading address bits of 1110,
+            originating from the classful network design of the early Internet when this
+            group of addresses was designated as Class D. The Classless Inter-Domain Routing (CIDR)
+            prefix of this group is 224.0.0.0/4.
+            The group includes the addresses from 224.0.0.0 to 239.255.255.255.
+            Address assignments from within this range are specified in RFC 5771,
+            an Internet Engineering Task Force (IETF) Best Current Practice document (BCP 51).*/
             
             
             // set SO_REUSEADDR or SO_REUSEPORT, OS dependant

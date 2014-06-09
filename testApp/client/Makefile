@@ -6,10 +6,6 @@ include $(TOP)/configure/CONFIG
 testChannelAccessFactory_SRCS = testChannelAccessFactory.cpp
 testChannelAccessFactory_LIBS = pvAccess pvData Com
 
-PROD_HOST += testCreateRequest
-testCreateRequest_SRCS = testCreateRequest.cpp
-testCreateRequest_LIBS = pvAccess pvData pvMB Com
-
 #PROD_HOST += testMockClient
 testMockClient_SRCS = testMockClient.cpp MockClientImpl.cpp
 testMockClient_LIBS = pvAccess pvData Com

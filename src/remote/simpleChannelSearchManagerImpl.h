@@ -133,6 +133,11 @@ class SimpleChannelSearchManagerImpl :
 	 */
 	Context::weak_pointer m_context;
 
+    /**
+     * Response address.
+     */
+    osiSockAddr m_responseAddress;
+
 	/**
 	 * Canceled flag.
 	 */
@@ -179,6 +184,7 @@ class SimpleChannelSearchManagerImpl :
 	epics::pvData::Mutex m_mutex;
 
     static const int DATA_COUNT_POSITION;
+    static const int CAST_POSITION;
     static const int PAYLOAD_POSITION;
 
     static const double ATOMIC_PERIOD;

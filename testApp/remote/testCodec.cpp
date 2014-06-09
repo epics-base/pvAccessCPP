@@ -352,7 +352,7 @@ namespace epics {
 
       bool verify(epics::pvData::int32 timeoutMs) { return true;}
 
-      void verified() {}
+      void verified(epics::pvData::Status const &) {}
 
       void aliveNotification() {}
 

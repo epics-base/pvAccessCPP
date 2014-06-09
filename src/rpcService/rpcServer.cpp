@@ -14,18 +14,25 @@ using namespace epics::pvData;
 namespace epics { namespace pvAccess {
 
 
-class ChannelRPCServiceImpl : public ChannelRPC
+class ChannelRPCServiceImpl :
+    public ChannelRPC,
+    public std::tr1::enable_shared_from_this<ChannelRPC>
 {
     private:
+    Channel::shared_pointer m_channel;
     ChannelRPCRequester::shared_pointer m_channelRPCRequester;
     RPCService::shared_pointer m_rpcService;
+    AtomicBoolean m_lastRequest;
 
     public:
     ChannelRPCServiceImpl(
+        Channel::shared_pointer const & channel,
         ChannelRPCRequester::shared_pointer const & channelRPCRequester,
         RPCService::shared_pointer const & rpcService) :
+        m_channel(channel),
         m_channelRPCRequester(channelRPCRequester),
-        m_rpcService(rpcService)
+        m_rpcService(rpcService),
+        m_lastRequest()
     {
     }
 
@@ -34,7 +41,7 @@ class ChannelRPCServiceImpl : public ChannelRPC
         destroy();
     }
 
-    void processRequest(epics::pvData::PVStructure::shared_pointer const & pvArgument, bool lastRequest)
+    void processRequest(epics::pvData::PVStructure::shared_pointer const & pvArgument)
     {
         epics::pvData::PVStructure::shared_pointer result;
         Status status = Status::Ok;
@@ -66,16 +73,31 @@ class ChannelRPCServiceImpl : public ChannelRPC
             status = Status(Status::STATUSTYPE_FATAL, "RPCService.request(PVStructure) returned null.");
         }
         
-       m_channelRPCRequester->requestDone(status, result);
+       m_channelRPCRequester->requestDone(status, shared_from_this(), result);
         
-        if (lastRequest)
+        if (m_lastRequest.get())
             destroy();
 
     }
 
-    virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument, bool lastRequest)
+    virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument)
     {
-        processRequest(pvArgument, lastRequest);
+        processRequest(pvArgument);
+    }
+
+    void lastRequest()
+    {
+        m_lastRequest.set();
+    }
+    
+    virtual Channel::shared_pointer getChannel()
+    {
+        return m_channel;
+    }
+
+    virtual void cancel()
+    {
+        // noop
     }
 
     virtual void destroy()
@@ -98,7 +120,8 @@ class ChannelRPCServiceImpl : public ChannelRPC
 
 
 class RPCChannel :
-    public virtual Channel
+    public virtual Channel,
+    public std::tr1::enable_shared_from_this<Channel>
 {
 private:
 
@@ -192,7 +215,7 @@ public:
     {
         ChannelGet::shared_pointer nullPtr;
         channelGetRequester->channelGetConnect(notSupportedStatus, nullPtr,
-            epics::pvData::PVStructure::shared_pointer(), epics::pvData::BitSet::shared_pointer());
+            epics::pvData::Structure::const_shared_pointer());
         return nullPtr; 
     }
             
@@ -202,7 +225,7 @@ public:
     {
         ChannelPut::shared_pointer nullPtr;
         channelPutRequester->channelPutConnect(notSupportedStatus, nullPtr,
-            epics::pvData::PVStructure::shared_pointer(), epics::pvData::BitSet::shared_pointer());
+            epics::pvData::Structure::const_shared_pointer());
         return nullPtr; 
     }
             
@@ -212,7 +235,7 @@ public:
             epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
     {
         ChannelPutGet::shared_pointer nullPtr;
-        epics::pvData::PVStructure::shared_pointer nullStructure;
+        epics::pvData::Structure::const_shared_pointer nullStructure;
         channelPutGetRequester->channelPutGetConnect(notSupportedStatus, nullPtr, nullStructure, nullStructure);
         return nullPtr; 
     }
@@ -233,7 +256,9 @@ public:
             return nullPtr;
         }
         
-        ChannelRPC::shared_pointer channelRPCImpl(new ChannelRPCServiceImpl(channelRPCRequester, m_rpcService));
+        ChannelRPC::shared_pointer channelRPCImpl(
+            new ChannelRPCServiceImpl(shared_from_this(), channelRPCRequester, m_rpcService)
+        );
         channelRPCRequester->channelRPCConnect(Status::Ok, channelRPCImpl);
         return channelRPCImpl;
     }
@@ -252,7 +277,7 @@ public:
             epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
     {
         ChannelArray::shared_pointer nullPtr;
-        channelArrayRequester->channelArrayConnect(notSupportedStatus, nullPtr, epics::pvData::PVArray::shared_pointer());
+        channelArrayRequester->channelArrayConnect(notSupportedStatus, nullPtr, epics::pvData::Array::const_shared_pointer());
         return nullPtr; 
     }
             
@@ -291,6 +316,13 @@ public:
 Status RPCChannel::notSupportedStatus(Status::STATUSTYPE_ERROR, "only channelRPC requests are supported by this channel");
 Status RPCChannel::destroyedStatus(Status::STATUSTYPE_ERROR, "channel destroyed");
 
+Channel::shared_pointer createRPCChannel(ChannelProvider::shared_pointer const & provider,
+                                          epics::pvData::String const & channelName,
+                                          ChannelRequester::shared_pointer const & channelRequester,
+                                          RPCService::shared_pointer const & rpcService)
+{
+    return Channel::shared_pointer(new RPCChannel(provider, channelName, channelRequester, rpcService));
+}
 
 
 class RPCChannelProvider :
@@ -319,7 +351,7 @@ public:
         return shared_from_this();
     }
     
-    virtual void cancelChannelFind() {}
+    virtual void cancel() {}
 
     virtual void destroy() {}
     
@@ -337,7 +369,28 @@ public:
     }
 
 
-     virtual Channel::shared_pointer createChannel(
+    virtual ChannelFind::shared_pointer channelList(
+            ChannelListRequester::shared_pointer const & channelListRequester)
+    {
+        if (!channelListRequester.get())
+            throw std::runtime_error("null requester");
+
+        PVStringArray::svector channelNames;
+        {
+            Lock guard(m_mutex);
+            channelNames.reserve(m_services.size());
+            for (RPCServiceMap::const_iterator iter = m_services.begin();
+                 iter != m_services.end();
+                 iter++)
+                channelNames.push_back(iter->first);
+        }
+
+        ChannelFind::shared_pointer thisPtr(shared_from_this());
+        channelListRequester->channelListResult(Status::Ok, thisPtr, freeze(channelNames), false);
+        return thisPtr;
+    }
+
+    virtual Channel::shared_pointer createChannel(
             epics::pvData::String const & channelName,
             ChannelRequester::shared_pointer const & channelRequester,
             short /*priority*/)
@@ -438,7 +491,7 @@ RPCServer::RPCServer()
     m_serverContext = ServerContextImpl::create();
     m_serverContext->setChannelProviderName(m_channelProviderImpl->getProviderName());
  
-    m_serverContext->initialize(getChannelAccess());
+    m_serverContext->initialize(getChannelProviderRegistry());
 }
 
 RPCServer::~RPCServer()
@@ -456,6 +509,37 @@ void RPCServer::printInfo()
 void RPCServer::run(int seconds)
 {
     m_serverContext->run(seconds);
+}
+
+struct ThreadRunnerParam {
+    RPCServer::shared_pointer server;
+    int timeToRun;
+};
+
+static void threadRunner(void* usr)
+{
+    ThreadRunnerParam* pusr = static_cast<ThreadRunnerParam*>(usr);
+    ThreadRunnerParam param = *pusr;
+    delete pusr;
+
+    param.server->run(param.timeToRun);
+}
+
+/// Method requires usage of std::tr1::shared_ptr<RPCServer>. This instance must be 
+/// owned by a shared_ptr instance.
+void RPCServer::runInNewThread(int seconds)
+{
+    std::auto_ptr<ThreadRunnerParam> param(new ThreadRunnerParam());
+    param->server = shared_from_this();
+    param->timeToRun = seconds;
+
+    epicsThreadCreate("RPCServer thread",
+                      epicsThreadPriorityMedium,
+                      epicsThreadGetStackSize(epicsThreadStackSmall),
+                      threadRunner, param.get());
+
+    // let the thread delete 'param'
+    param.release();
 }
 
 void RPCServer::destroy()

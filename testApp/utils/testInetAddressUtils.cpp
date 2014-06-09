@@ -125,6 +125,22 @@ void test_encodeAsIPv6Address()
     testOk1(strncmp(buff->getArray(), src, 16) == 0);
 }
 
+void test_isMulticastAddress()
+{
+    testDiag("Test test_isMulticastAddress()");
+
+    auto_ptr<InetAddrVector> vec(getSocketAddressList("127.0.0.1 255.255.255.255 0.0.0.0 224.0.0.0 239.255.255.255 235.3.6.3", 0));
+
+    testOk1(static_cast<size_t>(6) == vec->size());
+
+    testOk1(!isMulticastAddress(&vec->at(0)));
+    testOk1(!isMulticastAddress(&vec->at(1)));
+    testOk1(!isMulticastAddress(&vec->at(2)));
+    testOk1(isMulticastAddress(&vec->at(3)));
+    testOk1(isMulticastAddress(&vec->at(4)));
+    testOk1(isMulticastAddress(&vec->at(5)));
+}
+
 void test_getBroadcastAddresses()
 {
     testDiag("Test getBroadcastAddresses()");
@@ -146,13 +162,14 @@ void test_getBroadcastAddresses()
 
 MAIN(testInetAddressUtils)
 {
-    testPlan(44);
+    testPlan(51);
     testDiag("Tests for InetAddress utils");
 
     test_getSocketAddressList();
     test_ipv4AddressToInt();
     test_intToIPv4Address();
     test_encodeAsIPv6Address();
+    test_isMulticastAddress();
     test_getBroadcastAddresses();
 
     return testDone();

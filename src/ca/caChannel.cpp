@@ -343,7 +343,7 @@ ChannelPutGet::shared_pointer CAChannel::createChannelPutGet(
     Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
     ChannelPutGet::shared_pointer nullChannelPutGet;
     EXCEPTION_GUARD(channelPutGetRequester->channelPutGetConnect(errorStatus, nullChannelPutGet,
-                                                                 PVStructure::shared_pointer(), PVStructure::shared_pointer()));
+                                                                 Structure::const_shared_pointer(), Structure::const_shared_pointer()));
     return nullChannelPutGet;
 }
 
@@ -374,7 +374,7 @@ ChannelArray::shared_pointer CAChannel::createChannelArray(
     Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
     ChannelArray::shared_pointer nullChannelArray;
     EXCEPTION_GUARD(channelArrayRequester->channelArrayConnect(errorStatus, nullChannelArray,
-                                                               PVArray::shared_pointer()));
+                                                               Array::const_shared_pointer()));
     return nullChannelArray;
 }
 
@@ -527,7 +527,7 @@ CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & _channel,
 void CAChannelGet::activate()
 {
     EXCEPTION_GUARD(channelGetRequester->channelGetConnect(Status::Ok, shared_from_this(),
-                                                           pvStructure, bitSet));
+                                                           pvStructure->getStructure()));
 }
 
 
@@ -852,17 +852,17 @@ void CAChannelGet::getDone(struct event_handler_args &args)
             std::cout << "no copy func implemented" << std::endl;
         }
 
-        EXCEPTION_GUARD(channelGetRequester->getDone(Status::Ok));
+        EXCEPTION_GUARD(channelGetRequester->getDone(Status::Ok, shared_from_this(), pvStructure, bitSet));
     }
     else
     {
         Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(args.status)));
-        EXCEPTION_GUARD(channelGetRequester->getDone(errorStatus));
+        EXCEPTION_GUARD(channelGetRequester->getDone(errorStatus, shared_from_this(), PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
 }
 
 
-void CAChannelGet::get(bool lastRequest)
+void CAChannelGet::get()
 {
     int result = ca_array_get_callback(getType, channel->getElementCount(),
                                        channel->getChannelID(), ca_get_handler, this);
@@ -873,13 +873,31 @@ void CAChannelGet::get(bool lastRequest)
     else
     {
         Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(result)));
-        EXCEPTION_GUARD(channelGetRequester->getDone(errorStatus));
+        EXCEPTION_GUARD(channelGetRequester->getDone(errorStatus, shared_from_this(), PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
 
-    if (lastRequest)
+    if (lastRequestFlag)
         destroy();
 }
 
+
+/* --------------- epics::pvData::ChannelRequest --------------- */
+
+Channel::shared_pointer CAChannelGet::getChannel()
+{
+    return channel;
+}
+
+void CAChannelGet::cancel()
+{
+    // noop
+}
+
+void CAChannelGet::lastRequest()
+{
+    // TODO sync !!!
+    lastRequestFlag = true;
+}
 
 /* --------------- epics::pvData::Destroyable --------------- */
 
@@ -948,7 +966,7 @@ CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & _channel,
 void CAChannelPut::activate()
 {
     EXCEPTION_GUARD(channelPutRequester->channelPutConnect(Status::Ok, shared_from_this(),
-                                                           pvStructure, bitSet));
+                                                           pvStructure->getStructure()));
 }
 
 
@@ -1103,26 +1121,28 @@ void CAChannelPut::putDone(struct event_handler_args &args)
 {
     if (args.status == ECA_NORMAL)
     {
-        EXCEPTION_GUARD(channelPutRequester->putDone(Status::Ok));
+        EXCEPTION_GUARD(channelPutRequester->putDone(Status::Ok, shared_from_this()));
     }
     else
     {
         Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(args.status)));
-        EXCEPTION_GUARD(channelPutRequester->putDone(errorStatus));
+        EXCEPTION_GUARD(channelPutRequester->putDone(errorStatus, shared_from_this()));
     }
 }
 
 
-void CAChannelPut::put(bool lastRequest)
+void CAChannelPut::put(PVStructure::shared_pointer const & pvPutStructure,
+                       BitSet::shared_pointer const & /*putBitSet*/)
 {
     doPut putFunc = doPutFuncTable[channel->getNativeType()];
     if (putFunc)
     {
-        int result = putFunc(channel, this, pvStructure);
+        // TODO now we always put all
+        int result = putFunc(channel, this, pvPutStructure);
         if (result != ECA_NORMAL)
         {
             Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(result)));
-            EXCEPTION_GUARD(channelPutRequester->getDone(errorStatus));
+            EXCEPTION_GUARD(channelPutRequester->putDone(errorStatus, shared_from_this()));
         }
     }
     else
@@ -1132,7 +1152,7 @@ void CAChannelPut::put(bool lastRequest)
     }
 
     // TODO here???!!!
-    if (lastRequest)
+    if (lastRequestFlag)
         destroy();
 }
 
@@ -1150,13 +1170,18 @@ void CAChannelPut::getDone(struct event_handler_args &args)
             std::cout << "no copy func implemented" << std::endl;
         }
 
-        EXCEPTION_GUARD(channelPutRequester->getDone(Status::Ok));
+        EXCEPTION_GUARD(channelPutRequester->getDone(Status::Ok, shared_from_this(), pvStructure, bitSet));
     }
     else
     {
         Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(args.status)));
-        EXCEPTION_GUARD(channelPutRequester->getDone(errorStatus));
+        EXCEPTION_GUARD(channelPutRequester->getDone(errorStatus, shared_from_this(),
+                                                     PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
+
+    // TODO here???!!!
+    if (lastRequestFlag)
+        destroy();
 }
 
 
@@ -1171,10 +1196,30 @@ void CAChannelPut::get()
     else
     {
         Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(result)));
-        EXCEPTION_GUARD(channelPutRequester->getDone(errorStatus));
+        EXCEPTION_GUARD(channelPutRequester->getDone(errorStatus, shared_from_this(),
+                                                     PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
 }
 
+
+
+/* --------------- epics::pvData::ChannelRequest --------------- */
+
+Channel::shared_pointer CAChannelPut::getChannel()
+{
+    return channel;
+}
+
+void CAChannelPut::cancel()
+{
+    // noop
+}
+
+void CAChannelPut::lastRequest()
+{
+    // TODO sync !!!
+    lastRequestFlag = true;
+}
 
 /* --------------- epics::pvData::Destroyable --------------- */
 
@@ -1349,6 +1394,14 @@ void CAChannelMonitor::release(epics::pvData::MonitorElementPtr const & /*monito
     // noop
 }
 
+
+
+/* --------------- epics::pvData::ChannelRequest --------------- */
+
+void CAChannelMonitor::cancel()
+{
+    // noop
+}
 
 /* --------------- epics::pvData::Destroyable --------------- */
 

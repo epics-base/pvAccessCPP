@@ -1,5 +1,3 @@
-redefine size encoding to be able to carry negative values (to handle negative offsets), i.e. -128 means take larger integer size (same pattern for 32-bit integer). This also bings symmetric integer range (-value ... value).
-
 opt) connection validation message sends max paylaod size
 readSize checks if size is in limits of size_t?
 
@@ -19,5 +17,3 @@ readSize checks if size is in limits of size_t?
 
 void transportUnresponsive() { not implemented (also in Java)
 
-socket termination - usage of epicsSocketSystemCallInterruptMechanismQuery() API
- 

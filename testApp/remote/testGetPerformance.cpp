@@ -114,7 +114,7 @@ void get_all()
     for (vector<ChannelGet::shared_pointer>::const_iterator i = channelGetList.begin();
          i != channelGetList.end();
          i++)
-        (*i)->get(false);
+        (*i)->get();
 
     // we assume all channels are from the same provider
     if (bulkMode) provider->flush();
@@ -125,9 +125,6 @@ void get_all()
 class ChannelGetRequesterImpl : public ChannelGetRequester
 {
 private:
-    ChannelGet::shared_pointer m_channelGet;
-    PVStructure::shared_pointer m_pvStructure;
-    BitSet::shared_pointer m_bitSet;
     Event m_event;
     Event m_connectionEvent;
     String m_channelName;
@@ -153,9 +150,8 @@ public:
     }
 
     virtual void channelGetConnect(const epics::pvData::Status& status,
-                                   ChannelGet::shared_pointer const & channelGet,
-                                   epics::pvData::PVStructure::shared_pointer const & pvStructure,
-                                   epics::pvData::BitSet::shared_pointer const & bitSet)
+                                   ChannelGet::shared_pointer const & /*channelGet*/,
+                                   epics::pvData::Structure::const_shared_pointer const & /*structure*/)
     {
         if (status.isSuccess())
         {
@@ -165,10 +161,6 @@ public:
                 std::cout << "[" << m_channelName << "] channel get create: " << status.toString() << std::endl;
             }
 
-            m_channelGet = channelGet;
-            m_pvStructure = pvStructure;
-            m_bitSet = bitSet;
-
             m_connectionEvent.signal();
         }
         else
@@ -177,7 +169,10 @@ public:
         }
     }
 
-    virtual void getDone(const epics::pvData::Status& status)
+    virtual void getDone(const epics::pvData::Status& status,
+                         ChannelGet::shared_pointer const & /*channelGet*/,
+                         epics::pvData::PVStructure::shared_pointer const & /*pvStructure*/,
+                         epics::pvData::BitSet::shared_pointer const & /*bitSet*/)
     {
         if (status.isSuccess())
         {
@@ -470,7 +465,7 @@ int main (int argc, char *argv[])
     }
 
     ClientFactory::start();
-    provider = getChannelAccess()->getProvider("pva");
+    provider = getChannelProviderRegistry()->getProvider("pva");
 
     if (!testFile.empty())
     {

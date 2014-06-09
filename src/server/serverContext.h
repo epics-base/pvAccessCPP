@@ -35,6 +35,13 @@ public:
 	 * Destructor
 	 */
 	virtual ~ServerContext() {};
+	
+	/**
+	 * Returns GUID (12-byte array).
+	 * @return GUID.
+	 */
+	virtual const GUID& getGUID() = 0;
+	
 	/**
 	 * Get context implementation version.
 	 * @return version of the context implementation.
@@ -42,10 +49,10 @@ public:
 	virtual const Version& getVersion() = 0;
 
     /**
-	 * Set <code>ChannelAccess</code> implementation and initialize server.
-	 * @param channelAccess implementation of channel access to be served.
+	 * Set <code>ChannelProviderRegistry</code> implementation and initialize server.
+	 * @param channelProviderRegistry channel providers registry to be used.
 	 */
-	virtual void initialize(ChannelAccess::shared_pointer const & channelAccess) = 0;
+	virtual void initialize(ChannelProviderRegistry::shared_pointer const & channelProviderRegistry) = 0;
 
 	/**
 	 * Run server (process events).
@@ -115,8 +122,9 @@ public:
 	virtual ~ServerContextImpl();
 
 	//**************** derived from ServerContext ****************//
+	const GUID& getGUID();	
 	const Version& getVersion();
-    void initialize(ChannelAccess::shared_pointer const & channelAccess);
+    void initialize(ChannelProviderRegistry::shared_pointer const & channelProviderRegistry);
 	void run(epics::pvData::int32 seconds);
 	void shutdown();
 	void destroy();
@@ -253,10 +261,10 @@ public:
 	BlockingUDPTransport::shared_pointer getBroadcastTransport();
 
 	/**
-	 * Get channel access implementation.
-	 * @return channel access implementation.
+	 * Get channel provider registry implementation used by this instance.
+	 * @return channel provider registry used by this instance.
 	 */
-	ChannelAccess::shared_pointer getChannelAccess();
+	ChannelProviderRegistry::shared_pointer getChannelProviderRegistry();
 
 	/**
 	 * Get channel provider name.
@@ -283,6 +291,12 @@ public:
     bool isChannelProviderNamePreconfigured();
 
 private:
+
+    /**
+     * Server GUID.
+     */
+    GUID _guid;
+     
 	/**
 	 * Initialization status.
 	 */
@@ -354,7 +368,7 @@ private:
 	/**
 	 * Channel access.
 	 */
-	ChannelAccess::shared_pointer _channelAccess;
+	ChannelProviderRegistry::shared_pointer _channelProviderRegistry;
 
 	/**
 	 * Channel provider name.
@@ -381,6 +395,11 @@ private:
 	 */
 	BeaconServerStatusProvider::shared_pointer _beaconServerStatusProvider;
 
+    /**
+     * Generate GUID.
+     */
+    void generateGUID();
+    
 	/**
 	 * Initialize logger.
 	 */

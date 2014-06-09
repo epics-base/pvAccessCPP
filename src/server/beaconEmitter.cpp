@@ -25,10 +25,12 @@ const float BeaconEmitter::EPICS_PVA_MIN_BEACON_PERIOD = 1.0;
 const float BeaconEmitter::EPICS_PVA_MIN_BEACON_COUNT_LIMIT = 3.0;
 
 //BeaconEmitter::BeaconEmitter(Transport::shared_pointer const & transport, ServerContextImpl::shared_pointer const & context) :
-BeaconEmitter::BeaconEmitter(Transport::shared_pointer const & transport, std::tr1::shared_ptr<ServerContextImpl>& context) :
+BeaconEmitter::BeaconEmitter(std::string const & protocol,
+    Transport::shared_pointer const & transport, std::tr1::shared_ptr<ServerContextImpl>& context) :
+    _protocol(protocol),
     _transport(transport),
     _beaconSequenceID(0),
-    _startupTime(),
+    _guid(context->getGUID()),
     _fastBeaconPeriod(std::max(context->getBeaconPeriod(), EPICS_PVA_MIN_BEACON_PERIOD)),
     _slowBeaconPeriod(std::max(180.0, _fastBeaconPeriod)), // TODO configurable
     _beaconCountLimit((int16)std::max(10.0f, EPICS_PVA_MIN_BEACON_COUNT_LIMIT)), // TODO configurable
@@ -37,22 +39,6 @@ BeaconEmitter::BeaconEmitter(Transport::shared_pointer const & transport, std::t
     _serverStatusProvider(context->getBeaconServerStatusProvider()),
     _timer(context->getTimer())
 {
-	_startupTime.getCurrent();
-}
-
-BeaconEmitter::BeaconEmitter(Transport::shared_pointer const & transport, const osiSockAddr& serverAddress) :
-    _transport(transport),
-    _beaconSequenceID(0),
-    _startupTime(),
-    _fastBeaconPeriod(EPICS_PVA_MIN_BEACON_PERIOD),
-    _slowBeaconPeriod(180.0),
-    _beaconCountLimit(10),
-    _serverAddress(serverAddress),
-    _serverPort(serverAddress.ia.sin_port),
-    _serverStatusProvider(),
-    _timer(new Timer("pvAccess-server timer", lowPriority))
-{
- 	_startupTime.getCurrent();
 }
 
 BeaconEmitter::~BeaconEmitter()
@@ -89,15 +75,19 @@ void BeaconEmitter::send(ByteBuffer* buffer, TransportSendControl* control)
 	}
 
 	// send beacon
-	control->startMessage((int8)0, (sizeof(int16)+2*sizeof(int32)+128+sizeof(int16))/sizeof(int8));
+	control->startMessage((int8)0, 12+2+2+16+2);
 
+    buffer->put(_guid.value, 0, sizeof(_guid.value));
 	buffer->putShort(_beaconSequenceID);
-	buffer->putLong((int64)_startupTime.getSecondsPastEpoch());
-	buffer->putInt((int32)_startupTime.getNanoSeconds());
+	
+	// TODO for now fixed changeCount
+	buffer->putShort(0);
 
 	// NOTE: is it possible (very likely) that address is any local address ::ffff:0.0.0.0
 	encodeAsIPv6Address(buffer, &_serverAddress);
 	buffer->putShort((int16)_serverPort);
+
+    SerializeHelper::serializeString(_protocol, buffer, control);
 
 	if (serverStatus)
 	{

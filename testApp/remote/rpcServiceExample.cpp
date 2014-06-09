@@ -10,25 +10,44 @@
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-static StructureConstPtr resultStructure = 
-    getFieldCreate()->createFieldBuilder()->
-                    add("c", pvDouble)->
-                    createStructure();
+static Structure::const_shared_pointer resultStructure =
+        getFieldCreate()->createFieldBuilder()->
+               add("c", pvDouble)->
+               createStructure();
 
 class SumServiceImpl :
     public RPCService
 {
-    PVStructure::shared_pointer request(PVStructure::shared_pointer const & args)
+    PVStructure::shared_pointer request(PVStructure::shared_pointer const & pvArguments)
         throw (RPCRequestException)
     {
-        PVString::shared_pointer fa = args->getSubField<PVString>("a");
-        PVString::shared_pointer fb = args->getSubField<PVString>("b");
-        if (!fa || !fb)
-            throw RPCRequestException(Status::STATUSTYPE_ERROR, "'string a' and 'string b' fields required"); 
+        // NTURI support
+        PVStructure::shared_pointer args(
+                    (pvArguments->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+                        pvArguments->getStructureField("query") :
+                        pvArguments
+                        );
 
-        double a = atof(fa->get().c_str());
-        double b = atof(fb->get().c_str());
-
+        // get fields and check their existence
+        PVScalar::shared_pointer af = args->getSubField<PVScalar>("a");
+        PVScalar::shared_pointer bf = args->getSubField<PVScalar>("b");
+        if (!af || !bf)
+            throw RPCRequestException(Status::STATUSTYPE_ERROR, "scalar 'a' and 'b' fields are required");
+        
+        // get the numbers (and convert if neccessary)
+        double a, b;
+        try
+        {
+            a = af->getAs<double>();
+            b = bf->getAs<double>();
+        }
+        catch (std::exception &e)
+        {
+            throw RPCRequestException(Status::STATUSTYPE_ERROR,
+                std::string("failed to convert arguments to double: ") + e.what());
+        }
+        
+        // create return structure and set data
         PVStructure::shared_pointer result = getPVDataCreate()->createPVStructure(resultStructure);
         result->getSubField<PVDouble>("c")->put(a+b);
         return result;

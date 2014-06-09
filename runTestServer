@@ -16,4 +16,4 @@ fi
 
 # testServer
 echo "Starting pvAccess C++ test server..."
-./bin/$EPICS_HOST_ARCH/testServer
+./bin/$EPICS_HOST_ARCH/testServer $*

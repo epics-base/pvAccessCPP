@@ -64,6 +64,12 @@ void encodeAsIPv6Address(ByteBuffer* buffer, const osiSockAddr* address) {
     buffer->putByte((int8)(ipv4Addr&0xFF));
 }
 
+bool isMulticastAddress(const osiSockAddr* address) {
+    uint32_t ipv4Addr = ntohl(address->ia.sin_addr.s_addr);
+    uint8_t msB = (uint8_t)((ipv4Addr>>24)&0xFF);
+    return msB >= 224 && msB <= 239;
+}
+
 osiSockAddr* intToIPv4Address(int32 addr) {
     osiSockAddr* ret = new osiSockAddr;
     ret->ia.sin_family = AF_INET;
@@ -121,15 +127,15 @@ InetAddrVector* getSocketAddressList(String list, int defaultPort,
     while((subEnd = list.find(' ', subStart))!=String::npos) {
         String address = list.substr(subStart, (subEnd-subStart));
         osiSockAddr addr;
-        aToIPAddr(address.c_str(), defaultPort, &addr.ia);
-        iav->push_back(addr);
+        if (aToIPAddr(address.c_str(), defaultPort, &addr.ia) == 0)
+            iav->push_back(addr);
         subStart = list.find_first_not_of(" \t\r\n\v", subEnd);
     }
 
     if(subStart!=String::npos&&list.length()>0) {
         osiSockAddr addr;
-        aToIPAddr(list.substr(subStart).c_str(), defaultPort, &addr.ia);
-        iav->push_back(addr);
+        if (aToIPAddr(list.substr(subStart).c_str(), defaultPort, &addr.ia) == 0)
+            iav->push_back(addr);
     }
 
     if(appendList!=NULL) {

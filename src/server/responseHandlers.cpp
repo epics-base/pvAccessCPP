@@ -8,6 +8,7 @@
 #include <pv/remote.h>
 #include <pv/hexDump.h>
 #include <pv/serializationHelper.h>
+#include <pv/convert.h>
 
 #include <pv/byteBuffer.h>
 
@@ -17,6 +18,7 @@
 #include <sstream>
 
 #include <pv/pvAccessMB.h>
+#include <pv/rpcServer.h>
 
 using std::ostringstream;
 using std::hex;
@@ -28,6 +30,38 @@ using namespace epics::pvData;
 
 namespace epics {
 namespace pvAccess {
+
+// TODO this is a copy from clientContextImpl.cpp
+            static PVDataCreatePtr pvDataCreate = getPVDataCreate();
+
+
+    		static BitSet::shared_pointer createBitSetFor(
+    		          PVStructure::shared_pointer const & pvStructure,
+    		          BitSet::shared_pointer const & existingBitSet)
+    		{
+    			int pvStructureSize = pvStructure->getNumberFields();
+    			if (existingBitSet.get() && static_cast<int32>(existingBitSet->size()) >= pvStructureSize)
+    			{
+    				// clear existing BitSet
+    				// also necessary if larger BitSet is reused
+    				existingBitSet->clear();
+    				return existingBitSet;
+    			}
+    			else
+    				return BitSet::shared_pointer(new BitSet(pvStructureSize));
+    		}
+    
+    		static PVField::shared_pointer reuseOrCreatePVField(
+    		          Field::const_shared_pointer const & field,
+    		          PVField::shared_pointer const & existingPVField)
+    		{
+    			if (existingPVField.get() && *field == *existingPVField->getField())
+    			     return existingPVField;
+    		    else
+    		         return pvDataCreate->createPVField(field);
+    		}
+
+
 
 void ServerBadResponse::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
@@ -50,30 +84,31 @@ ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer c
     MB_INIT;                
 
     ResponseHandler::shared_pointer badResponse(new ServerBadResponse(context));
-    m_handlerTable.resize(CMD_RPC+1);
+    m_handlerTable.resize(CMD_CANCEL_REQUEST+1);
                 
     m_handlerTable[CMD_BEACON].reset(new ServerNoopResponse(context, "Beacon")); /*  0 */
     m_handlerTable[CMD_CONNECTION_VALIDATION].reset(new ServerConnectionValidationHandler(context)); /*  1 */
     m_handlerTable[CMD_ECHO].reset(new ServerEchoHandler(context)); /*  2 */
     m_handlerTable[CMD_SEARCH].reset(new ServerSearchHandler(context)); /*  3 */
     m_handlerTable[CMD_SEARCH_RESPONSE] = badResponse;
-    m_handlerTable[CMD_INTROSPECTION_SEARCH].reset(new ServerIntrospectionSearchHandler(context)); /*  5 */
-    m_handlerTable[CMD_INTROSPECTION_SEARCH_RESPONSE] = badResponse; /*  6 - introspection search */
+    m_handlerTable[CMD_AUTHNZ] = badResponse; /*  5 */
+    m_handlerTable[CMD_ACL_CHANGE] = badResponse; /*  6 - introspection search */
     m_handlerTable[CMD_CREATE_CHANNEL].reset(new ServerCreateChannelHandler(context)); /*  7 */
     m_handlerTable[CMD_DESTROY_CHANNEL].reset(new ServerDestroyChannelHandler(context)); /*  8 */ 
-    m_handlerTable[CMD_RESERVED0] = badResponse; /*  9 */
+    m_handlerTable[CMD_CONNECTION_VALIDATED] = badResponse; /*  9 */
     
     m_handlerTable[CMD_GET].reset(new ServerGetHandler(context)); /* 10 - get response */
     m_handlerTable[CMD_PUT].reset(new ServerPutHandler(context)); /* 11 - put response */
     m_handlerTable[CMD_PUT_GET].reset(new ServerPutGetHandler(context)); /* 12 - put-get response */
     m_handlerTable[CMD_MONITOR].reset(new ServerMonitorHandler(context)); /* 13 - monitor response */
     m_handlerTable[CMD_ARRAY].reset(new ServerArrayHandler(context)); /* 14 - array response */
-    m_handlerTable[CMD_CANCEL_REQUEST].reset(new ServerCancelRequestHandler(context)); /* 15 - cancel request */
+    m_handlerTable[CMD_DESTROY_REQUEST].reset(new ServerDestroyRequestHandler(context)); /* 15 - destroy request */
     m_handlerTable[CMD_PROCESS].reset(new ServerProcessHandler(context)); /* 16 - process response */
     m_handlerTable[CMD_GET_FIELD].reset(new ServerGetFieldHandler(context)); /* 17 - get field response */
     m_handlerTable[CMD_MESSAGE] = badResponse; /* 18 - message to Requester */
     m_handlerTable[CMD_MULTIPLE_DATA] = badResponse; /* 19 - grouped monitors */
     m_handlerTable[CMD_RPC].reset(new ServerRPCHandler(context)); /* 20 - RPC response */
+    m_handlerTable[CMD_CANCEL_REQUEST].reset(new ServerCancelRequestHandler(context)); /* 21 - cancel request */
 }
 
 void ServerResponseHandler::handleResponse(osiSockAddr* responseFrom,
@@ -108,14 +143,19 @@ void ServerConnectionValidationHandler::handleResponse(
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
-	transport->ensureData(2*sizeof(int32)+sizeof(int16));
-	transport->setRemoteTransportReceiveBufferSize(
-			payloadBuffer->getInt());
-	transport->setRemoteTransportSocketReceiveBufferSize(
-			payloadBuffer->getInt());
-	transport->setRemoteRevision(version);
-	// TODO support priority  !!!
-	//transport.setPriority(payloadBuffer.getShort());
+    transport->setRemoteRevision(version);
+
+    transport->ensureData(4+2+2);
+	transport->setRemoteTransportReceiveBufferSize(payloadBuffer->getInt());
+    // TODO clientIntrospectionRegistryMaxSize
+    /* int clientIntrospectionRegistryMaxSize = */ payloadBuffer->getShort();
+    // TODO connectionQoS
+    /* int16 connectionQoS = */ payloadBuffer->getShort();
+    // TODO authNZ
+    /*std::string authNZ = */ SerializeHelper::deserializeString(payloadBuffer, transport.get());
+
+    // TODO call this after authNZ has done their work
+    transport->verified(Status::Ok);
 }
 
 void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
@@ -130,17 +170,9 @@ void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
 	transport->enqueueSendRequest(echoReply);
 }
 
-void ServerIntrospectionSearchHandler::handleResponse(osiSockAddr* responseFrom,
-		Transport::shared_pointer const & transport, int8 version, int8 command,
-		size_t payloadSize, ByteBuffer* payloadBuffer)
-{
-	AbstractServerResponseHandler::handleResponse(responseFrom,
-			transport, version, command, payloadSize, payloadBuffer);
-
-	THROW_BASE_EXCEPTION("not implemented");
-}
-
 /****************************************************************************************/
+
+std::string ServerSearchHandler::SUPPORTED_PROTOCOL = "tcp";
 
 ServerSearchHandler::ServerSearchHandler(ServerContextImpl::shared_pointer const & context) :
         AbstractServerResponseHandler(context, "Search request"), _providers(context->getChannelProviders())
@@ -154,48 +186,110 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 	AbstractServerResponseHandler::handleResponse(responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
-	transport->ensureData((sizeof(int32)+sizeof(int16))/sizeof(int8)+1);
+    transport->ensureData(4+1+3+16+2);
 	const int32 searchSequenceId = payloadBuffer->getInt();
 	const int8 qosCode = payloadBuffer->getByte();
+
+    // reserved part
+    payloadBuffer->getByte();
+    payloadBuffer->getShort();
+
+    osiSockAddr responseAddress;
+    responseAddress.ia.sin_family = AF_INET;
+
+    // 128-bit IPv6 address
+    /*
+int8* byteAddress = new int8[16];
+for (int i = 0; i < 16; i++)
+byteAddress[i] = payloadBuffer->getByte(); };
+    */
+
+    // IPv4 compatible IPv6 address expected
+    // first 80-bit are 0
+    if (payloadBuffer->getLong() != 0) return;
+    if (payloadBuffer->getShort() != 0) return;
+    if (payloadBuffer->getShort() != (int16)0xFFFF) return;
+
+    // accept given address if explicitly specified by sender
+    responseAddress.ia.sin_addr.s_addr = htonl(payloadBuffer->getInt());
+    if (responseAddress.ia.sin_addr.s_addr == INADDR_ANY)
+        responseAddress.ia.sin_addr = responseFrom->ia.sin_addr;
+
+    responseAddress.ia.sin_port = htons(payloadBuffer->getShort());
+
+    size_t protocolsCount = SerializeHelper::readSize(payloadBuffer, transport.get());
+    bool allowed = (protocolsCount == 0);
+    for (size_t i = 0; i < protocolsCount; i++)
+    {
+        String protocol = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+        if (SUPPORTED_PROTOCOL == protocol)
+            allowed = true;
+    }
+
+    // NOTE: we do not stop reading the buffer
+
+    transport->ensureData(2);
 	const int32 count = payloadBuffer->getShort() & 0xFFFF;
+
 	const bool responseRequired = (QOS_REPLY_REQUIRED & qosCode) != 0;
 
-	for (int32 i = 0; i < count; i++)
-	{
-		transport->ensureData(sizeof(int32)/sizeof(int8));
-		const int32 cid = payloadBuffer->getInt();
-		const String name = SerializeHelper::deserializeString(payloadBuffer, transport.get());
-		// no name check here...
+    // TODO locally broadcast if qosCode & 0x80 == 0x80
 
-		// TODO object pool!!!
-		int providerCount = _providers.size();
-		ServerChannelFindRequesterImpl* pr = new ServerChannelFindRequesterImpl(_context, providerCount);
-		pr->set(name, searchSequenceId, cid, responseFrom, responseRequired);
-		ChannelFindRequester::shared_pointer spr(pr);
-		
-        for (int i = 0; i < providerCount; i++)		
-		  _providers[i]->channelFind(name, spr);
-	}
+    if (count > 0)
+    {
+        for (int32 i = 0; i < count; i++)
+        {
+            transport->ensureData(4);
+            const int32 cid = payloadBuffer->getInt();
+            const String name = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+            // no name check here...
+
+            if (allowed)
+            {
+                // TODO object pool!!!
+                int providerCount = _providers.size();
+                ServerChannelFindRequesterImpl* pr = new ServerChannelFindRequesterImpl(_context, providerCount);
+                pr->set(name, searchSequenceId, cid, responseAddress, responseRequired, false);
+                ChannelFindRequester::shared_pointer spr(pr);
+
+                for (int i = 0; i < providerCount; i++)
+                  _providers[i]->channelFind(name, spr);
+            }
+        }
+    }
+    else
+    {
+        if (allowed)
+        {
+            ServerChannelFindRequesterImpl* pr = new ServerChannelFindRequesterImpl(_context, 1);
+            pr->set("", searchSequenceId, 0, responseAddress, true, true);
+            ChannelFindRequester::shared_pointer spr(pr);
+            spr->channelFindResult(Status::Ok, ChannelFind::shared_pointer(), false);
+        }
+    }
 }
 
 ServerChannelFindRequesterImpl::ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context,
                                                                int32 expectedResponseCount) :
-												_sendTo(NULL),
+                                                _guid(context->getGUID()),
+                                                _sendTo(),
 												_wasFound(false),
 												_context(context),
 												_expectedResponseCount(expectedResponseCount),
-												_responseCount(0)
+                                                _responseCount(0),
+                                                _serverSearch(false)
 												{}
 
 void ServerChannelFindRequesterImpl::clear()
 {
 	Lock guard(_mutex);
-	_sendTo = NULL;
 	_wasFound = false;
 	_responseCount = 0;
+    _serverSearch = false;
 }
 
-ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(String name, int32 searchSequenceId, int32 cid, osiSockAddr* sendTo, bool responseRequired)
+ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(String name, int32 searchSequenceId, int32 cid, osiSockAddr const & sendTo,
+                                                                    bool responseRequired, bool serverSearch)
 {
 	Lock guard(_mutex);
 	_name = name;
@@ -203,6 +297,7 @@ ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(String name,
 	_cid = cid;
 	_sendTo = sendTo;
 	_responseRequired = responseRequired;
+    _serverSearch = serverSearch;
 	return this;
 }
 
@@ -254,23 +349,168 @@ void ServerChannelFindRequesterImpl::unlock()
 
 void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
-	int32 count = 1;
-	control->startMessage((int8)4, (sizeof(int32)+sizeof(int8)+128+2*sizeof(int16)+count*sizeof(int32))/sizeof(int8));
+    control->startMessage((int8)4, 12+4+16+2);
 
 	Lock guard(_mutex);
+    buffer->put(_guid.value, 0, sizeof(_guid.value));
 	buffer->putInt(_searchSequenceId);
-	buffer->putByte(_wasFound ? (int8)1 : (int8)0);
 
 	// NOTE: is it possible (very likely) that address is any local address ::ffff:0.0.0.0
 	encodeAsIPv6Address(buffer, _context->getServerInetAddress());
 	buffer->putShort((int16)_context->getServerPort());
-	buffer->putShort((int16)count);
-	buffer->putInt(_cid);
 
-	control->setRecipient(*_sendTo);
+    SerializeHelper::serializeString(ServerSearchHandler::SUPPORTED_PROTOCOL, buffer, control);
+
+    control->ensureBuffer(1);
+    buffer->putByte(_wasFound ? (int8)1 : (int8)0);
+
+    if (!_serverSearch)
+    {
+        // TODO for now we do not gather search responses
+        buffer->putShort((int16)1);
+        buffer->putInt(_cid);
+    }
+    else
+    {
+        buffer->putShort((int16)0);
+    }
+
+
+    control->setRecipient(_sendTo);
 }
 
 /****************************************************************************************/
+
+class ChannelListRequesterImpl :
+        public ChannelListRequester
+{
+public:
+    POINTER_DEFINITIONS(ChannelListRequesterImpl);
+
+    PVStringArray::const_svector channelNames;
+    Status status;
+
+    virtual void channelListResult(
+            const epics::pvData::Status& status,
+            ChannelFind::shared_pointer const & channelFind,
+            PVStringArray::const_svector const & channelNames,
+            bool hasDynamic)
+    {
+        epics::pvData::Lock lock(_waitMutex);
+
+        this->status = status;
+        this->channelNames = channelNames;
+
+        _waitEvent.signal();
+    }
+
+    bool waitForCompletion(int32 timeoutSec) {
+        return _waitEvent.wait(timeoutSec);
+    }
+
+private:
+    epics::pvData::Mutex _waitMutex;
+    epics::pvData::Event _waitEvent;
+
+};
+
+// TODO move out to a separate class
+class ServerRPCService : public RPCService {
+
+private:
+    static int32 TIMEOUT_SEC;
+
+    static Structure::const_shared_pointer helpStructure;
+    static Structure::const_shared_pointer channelListStructure;
+
+    static std::string helpString;
+
+    ServerContextImpl::shared_pointer m_serverContext;
+
+public:
+
+    ServerRPCService(ServerContextImpl::shared_pointer const & context) :
+        m_serverContext(context)
+    {
+    }
+
+    virtual epics::pvData::PVStructure::shared_pointer request(
+        epics::pvData::PVStructure::shared_pointer const & arguments
+    ) throw (RPCRequestException)
+    {
+        // NTURI support
+        PVStructure::shared_pointer args(
+                    (arguments->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+                        arguments->getStructureField("query") :
+                        arguments
+                        );
+
+        // help support
+        if (args->getSubField("help"))
+        {
+            PVStructure::shared_pointer help = getPVDataCreate()->createPVStructure(helpStructure);
+            help->getSubField<PVString>("value")->put(helpString);
+            return help;
+        }
+
+        PVString::shared_pointer opField = args->getSubField<PVString>("op");
+        if (!opField)
+            throw RPCRequestException(Status::STATUSTYPE_ERROR, "unspecified 'string op' field");
+
+        String op = opField->get();
+        if (op == "channels")
+        {
+            ChannelListRequesterImpl::shared_pointer listListener(new ChannelListRequesterImpl());
+            m_serverContext->getChannelProviders()[0]->channelList(listListener);               // TODO multiple channel providers !!!!
+            if (!listListener->waitForCompletion(TIMEOUT_SEC))
+                throw RPCRequestException(Status::STATUSTYPE_ERROR, "failed to fetch channel list due to timeout");
+
+            Status& status = listListener->status;
+            if (!status.isSuccess())
+            {
+                String errorMessage = "failed to fetch channel list: " + status.getMessage();
+                if (!status.getStackDump().empty())
+                     errorMessage += "\n" + status.getStackDump();
+                throw RPCRequestException(Status::STATUSTYPE_ERROR, errorMessage);
+            }
+
+            PVStructure::shared_pointer result =
+                getPVDataCreate()->createPVStructure(channelListStructure);
+            PVStringArray::shared_pointer pvArray = result->getSubField<PVStringArray>("value");
+            pvArray->replace(listListener->channelNames);
+
+            return result;
+        }
+        else
+            throw RPCRequestException(Status::STATUSTYPE_ERROR, "unsupported operation '" + op + "'.");
+    }
+};
+
+int32 ServerRPCService::TIMEOUT_SEC = 3;
+Structure::const_shared_pointer ServerRPCService::helpStructure =
+        getFieldCreate()->createFieldBuilder()->
+            setId("uri:ev4:nt/2012/pwd:NTScalar")->
+            add("value", pvString)->
+            createStructure();
+
+Structure::const_shared_pointer ServerRPCService::channelListStructure =
+        getFieldCreate()->createFieldBuilder()->
+            setId("uri:ev4:nt/2012/pwd:NTScalarArray")->
+            addArray("value", pvString)->
+            createStructure();
+
+std::string ServerRPCService::helpString =
+        "pvAccess server RPC service.\n"
+        "arguments:\n"
+        "\tstring op\toperation to execute\n"
+        "\n"
+        "\toperations:\n"
+        "\t\tchannels\treturns a list of 'static' channels the server can provide\n"
+        "\t\t\t (no arguments)\n"
+        "\n";
+
+epics::pvData::String ServerCreateChannelHandler::SERVER_CHANNEL_NAME = "server";
+
 void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
 		size_t payloadSize, ByteBuffer* payloadBuffer)
@@ -306,14 +546,22 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 		return;
 	}
 
-    // TODO !!!
-	//ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid);
-	
-	
-	if (_providers.size() == 1)
-    	ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid);
-	else
-    	ServerChannelRequesterImpl::create(ServerSearchHandler::s_channelNameToProvider[channelName].lock(), transport, channelName, cid);     // TODO !!!!
+    if (channelName == SERVER_CHANNEL_NAME)
+    {
+        // TODO singleton!!!
+        ServerRPCService::shared_pointer serverRPCService(new ServerRPCService(_context));
+
+        ChannelRequester::shared_pointer cr(new ServerChannelRequesterImpl(transport, channelName, cid));
+        Channel::shared_pointer serverChannel = createRPCChannel(ChannelProvider::shared_pointer(), channelName, cr, serverRPCService);
+        cr->channelCreated(Status::Ok, serverChannel);
+    }
+    else
+    {
+        if (_providers.size() == 1)
+            ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid);
+        else
+            ServerChannelRequesterImpl::create(ServerSearchHandler::s_channelNameToProvider[channelName].lock(), transport, channelName, cid);     // TODO !!!!
+    }
 }
 
 void ServerCreateChannelHandler::disconnect(Transport::shared_pointer const & transport)
@@ -573,7 +821,9 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 
         MB_POINT(channelGet, 4, "server channelGet->deserialize request (end)");
         
-		request->getChannelGet()->get(lastRequest);
+        if (lastRequest)
+            request->getChannelGet()->lastRequest();
+		request->getChannelGet()->get();
 	}
 }
 
@@ -608,7 +858,7 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
     }
 
 ServerChannelGetRequesterImpl::ServerChannelGetRequesterImpl(ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid, Transport::shared_pointer const & transport) :
-		BaseChannelRequester(context, channel, ioid, transport), _channelGet(), _bitSet(), _pvStructure()
+		BaseChannelRequester(context, channel, ioid, transport)
 
 {
 }
@@ -630,14 +880,13 @@ void ServerChannelGetRequesterImpl::activate(PVStructure::shared_pointer const &
     INIT_EXCEPTION_GUARD(CMD_GET, _channelGet = _channel->getChannel()->createChannelGet(thisPointer, pvRequest));
 }
 
-void ServerChannelGetRequesterImpl::channelGetConnect(const Status& status, ChannelGet::shared_pointer const & channelGet, PVStructure::shared_pointer const & pvStructure, BitSet::shared_pointer const & bitSet)
+void ServerChannelGetRequesterImpl::channelGetConnect(const Status& status, ChannelGet::shared_pointer const & channelGet, Structure::const_shared_pointer const & structure)
 {
 	{
 		Lock guard(_mutex);
-		_bitSet = bitSet;
-		_pvStructure = pvStructure;
 		_status = status;
 		_channelGet = channelGet;
+		_structure = structure;
 	}
 	TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);
@@ -649,12 +898,15 @@ void ServerChannelGetRequesterImpl::channelGetConnect(const Status& status, Chan
 	}
 }
 
-void ServerChannelGetRequesterImpl::getDone(const Status& status)
+void ServerChannelGetRequesterImpl::getDone(const Status& status, ChannelGet::shared_pointer const & /*channelGet*/,
+    PVStructure::shared_pointer const & pvStructure, BitSet::shared_pointer const & bitSet)
 {
     MB_POINT(channelGet, 5, "server channelGet->getDone()");
 	{
 		Lock guard(_mutex);
 		_status = status;
+		_pvStructure = pvStructure;
+		_bitSet = bitSet;
 	}
 	TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);
@@ -686,12 +938,12 @@ ChannelGet::shared_pointer ServerChannelGetRequesterImpl::getChannelGet()
 
 void ServerChannelGetRequesterImpl::lock()
 {
-	//noop
+	// noop
 }
 
 void ServerChannelGetRequesterImpl::unlock()
 {
-	//noop
+	// noop
 }
 
 void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
@@ -718,18 +970,20 @@ void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 		if (request & QOS_INIT)
 		{
 			Lock guard(_mutex);
-            control->cachedSerialize(_pvStructure != NULL ? _pvStructure->getField() : FieldConstPtr(), buffer);
-
+            control->cachedSerialize(_structure, buffer);
 		}
 		else
 		{
             MB_POINT(channelGet, 6, "server channelGet->serialize response (start)");
             {
-		    // we locked _mutex above, so _channelGet is valid
-		    ScopedLock lock(_channelGet);
-		    
-			_bitSet->serialize(buffer, control);
-			_pvStructure->serialize(buffer, control, _bitSet.get());
+    		    // we locked _mutex above, so _channelGet is valid
+    		    ScopedLock lock(_channelGet);
+    		    
+    			_bitSet->serialize(buffer, control);
+    			_pvStructure->serialize(buffer, control, _bitSet.get());
+    			
+    			_pvStructure.reset();
+    			_bitSet.reset();
             }
             MB_POINT(channelGet, 7, "server channelGet->serialize response (end)");
 		}
@@ -795,33 +1049,40 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 			return;
 		}
 
+	    ChannelPut::shared_pointer channelPut = request->getChannelPut();
+
+        if (lastRequest)
+            channelPut->lastRequest();
+
 		if (get)
 		{
 			// no destroy w/ get
-			request->getChannelPut()->get();
+			channelPut->get();
 		}
 		else
 		{
 			// deserialize bitSet and do a put
-			ChannelPut::shared_pointer channelPut = request->getChannelPut();
+			
 			{
     			ScopedLock lock(channelPut);     // TODO not needed if put is processed by the same thread
-    			BitSet::shared_pointer putBitSet = request->getBitSet();
+    			BitSet::shared_pointer putBitSet = request->getPutBitSet();
+    			PVStructure::shared_pointer putPVStructure = request->getPutPVStructure();
 
       		    DESERIALIZE_EXCEPTION_GUARD(
     		        putBitSet->deserialize(payloadBuffer, transport.get());
-    		        request->getPVStructure()->deserialize(payloadBuffer, transport.get(), putBitSet.get());
+    		        putPVStructure->deserialize(payloadBuffer, transport.get(), putBitSet.get());
     		    );
-    			
+    		    
+    		    lock.unlock();
+    			channelPut->put(putPVStructure, putBitSet);
 			}
-			channelPut->put(lastRequest);
 		}
 	}
 }
 
 ServerChannelPutRequesterImpl::ServerChannelPutRequesterImpl(ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
 		const pvAccessID ioid, Transport::shared_pointer const & transport):
-		BaseChannelRequester(context, channel, ioid, transport), _channelPut(), _bitSet(), _pvStructure()
+		BaseChannelRequester(context, channel, ioid, transport)
 {
 }
 
@@ -842,16 +1103,21 @@ void ServerChannelPutRequesterImpl::activate(PVStructure::shared_pointer const &
     INIT_EXCEPTION_GUARD(CMD_PUT, _channelPut = _channel->getChannel()->createChannelPut(thisPointer, pvRequest));
 }
 
-void ServerChannelPutRequesterImpl::channelPutConnect(const Status& status, ChannelPut::shared_pointer const & channelPut, PVStructure::shared_pointer const & pvStructure, BitSet::shared_pointer const & bitSet)
+void ServerChannelPutRequesterImpl::channelPutConnect(const Status& status, ChannelPut::shared_pointer const & channelPut, Structure::const_shared_pointer const & structure)
 {
 	{
 		Lock guard(_mutex);
-		_bitSet = bitSet;
-		_pvStructure = pvStructure;
 		_status = status;
 		_channelPut = channelPut;
+		_structure = structure;
 	}
-
+	
+	if (status.isSuccess())
+	{
+	   _putPVStructure = std::tr1::static_pointer_cast<PVStructure>(reuseOrCreatePVField(_structure, _putPVStructure));
+	   _putBitSet = createBitSetFor(_putPVStructure, _putBitSet);
+	}
+	
 	TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);
 
@@ -862,7 +1128,7 @@ void ServerChannelPutRequesterImpl::channelPutConnect(const Status& status, Chan
 	}
 }
 
-void ServerChannelPutRequesterImpl::putDone(const Status& status)
+void ServerChannelPutRequesterImpl::putDone(const Status& status, ChannelPut::shared_pointer const & /*channelPut*/)
 {
 	{
 		Lock guard(_mutex);
@@ -872,11 +1138,13 @@ void ServerChannelPutRequesterImpl::putDone(const Status& status)
 	_transport->enqueueSendRequest(thisSender);
 }
 
-void ServerChannelPutRequesterImpl::getDone(const Status& status)
+void ServerChannelPutRequesterImpl::getDone(const Status& status, ChannelPut::shared_pointer const & /*channelPut*/, PVStructure::shared_pointer const & pvStructure, BitSet::shared_pointer const & bitSet)
 {
 	{
 		Lock guard(_mutex);
 		_status = status;
+		_pvStructure = pvStructure;
+		_bitSet = bitSet;
 	}
 	TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);
@@ -917,16 +1185,16 @@ ChannelPut::shared_pointer ServerChannelPutRequesterImpl::getChannelPut()
 	return _channelPut;
 }
 
-BitSet::shared_pointer ServerChannelPutRequesterImpl::getBitSet()
+BitSet::shared_pointer ServerChannelPutRequesterImpl::getPutBitSet()
 {
 	//Lock guard(_mutex);
-	return _bitSet;
+	return _putBitSet;
 }
 
-PVStructure::shared_pointer ServerChannelPutRequesterImpl::getPVStructure()
+PVStructure::shared_pointer ServerChannelPutRequesterImpl::getPutPVStructure()
 {
 	//Lock guard(_mutex);
-	return _pvStructure;
+	return _putPVStructure;
 }
 
 void ServerChannelPutRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
@@ -946,12 +1214,13 @@ void ServerChannelPutRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
 		if ((QOS_INIT & request) != 0)
 		{
 			Lock guard(_mutex);
-            control->cachedSerialize(_pvStructure != NULL ? _pvStructure->getField() : FieldConstPtr(), buffer);
+            control->cachedSerialize(_structure, buffer);
 		}
 		else if ((QOS_GET & request) != 0)
 		{
     		ScopedLock lock(_channelPut); // _channelPut is valid because we required _mutex above
-			_pvStructure->serialize(buffer, control);
+    		_bitSet->serialize(buffer, control);
+			_pvStructure->serialize(buffer, control, _bitSet.get());
 		}
 	}
 
@@ -1015,26 +1284,34 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 			return;
 		}
 
+    	ChannelPutGet::shared_pointer channelPutGet = request->getChannelPutGet();
+        if (lastRequest)
+            channelPutGet->lastRequest();
+
 		if (getGet)
 		{
-			request->getChannelPutGet()->getGet();
+			channelPutGet->getGet();
 		}
 		else if(getPut)
 		{
-			request->getChannelPutGet()->getPut();
+			channelPutGet->getPut();
 		}
 		else
 		{
 			// deserialize bitSet and do a put
-			ChannelPutGet::shared_pointer channelPutGet = request->getChannelPutGet();
 			{
     			ScopedLock lock(channelPutGet);  // TODO not necessary if read is done in putGet
+    			BitSet::shared_pointer putBitSet = request->getPutGetBitSet();
+    			PVStructure::shared_pointer putPVStructure = request->getPutGetPVStructure();
 
       		    DESERIALIZE_EXCEPTION_GUARD(
- 			        request->getPVPutStructure()->deserialize(payloadBuffer, transport.get());
- 			    );
+    		        putBitSet->deserialize(payloadBuffer, transport.get());
+    		        putPVStructure->deserialize(payloadBuffer, transport.get(), putBitSet.get());
+    		    );
+    		    
+    		    lock.unlock();
+    			channelPutGet->putGet(putPVStructure, putBitSet);
 			}
-			channelPutGet->putGet(lastRequest);
 		}
 	}
 }
@@ -1063,16 +1340,22 @@ void ServerChannelPutGetRequesterImpl::activate(PVStructure::shared_pointer cons
 }
 
 void ServerChannelPutGetRequesterImpl::channelPutGetConnect(const Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
-		PVStructure::shared_pointer const & pvPutStructure, PVStructure::shared_pointer const & pvGetStructure)
+		Structure::const_shared_pointer const & putStructure, Structure::const_shared_pointer const & getStructure)
 {
 	{
 		Lock guard(_mutex);
-		_pvPutStructure = pvPutStructure;
-		_pvGetStructure = pvGetStructure;
 		_status = status;
 		_channelPutGet = channelPutGet;
+		_putStructure = putStructure;
+		_getStructure = getStructure;
 	}
-
+	
+	if (status.isSuccess())
+	{
+	   _pvPutGetStructure = std::tr1::static_pointer_cast<PVStructure>(reuseOrCreatePVField(_putStructure, _pvPutGetStructure));
+	   _pvPutGetBitSet = createBitSetFor(_pvPutGetStructure, _pvPutGetBitSet);
+	}
+	
 	TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);
 
@@ -1083,31 +1366,40 @@ void ServerChannelPutGetRequesterImpl::channelPutGetConnect(const Status& status
 	}
 }
 
-void ServerChannelPutGetRequesterImpl::getGetDone(const Status& status)
+void ServerChannelPutGetRequesterImpl::getGetDone(const Status& status, ChannelPutGet::shared_pointer const & /*channelPutGet*/,
+    PVStructure::shared_pointer const & pvStructure, BitSet::shared_pointer const & bitSet)
 {
 	{
 		Lock guard(_mutex);
 		_status = status;
+		_pvGetStructure = pvStructure;
+		_pvGetBitSet = bitSet;
 	}
 	TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);
 }
 
-void ServerChannelPutGetRequesterImpl::getPutDone(const Status& status)
+void ServerChannelPutGetRequesterImpl::getPutDone(const Status& status, ChannelPutGet::shared_pointer const & /*channelPutGet*/,
+    PVStructure::shared_pointer const & pvStructure, BitSet::shared_pointer const & bitSet)
 {
 	{
 		Lock guard(_mutex);
 		_status = status;
+		_pvPutStructure = pvStructure;
+		_pvPutBitSet = bitSet;
 	}
 	TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);
 }
 
-void ServerChannelPutGetRequesterImpl::putGetDone(const Status& status)
+void ServerChannelPutGetRequesterImpl::putGetDone(const Status& status, ChannelPutGet::shared_pointer const & /*channelPutGet*/,
+    PVStructure::shared_pointer const & pvStructure, BitSet::shared_pointer const & bitSet)
 {
 	{
 		Lock guard(_mutex);
 		_status = status;
+		_pvGetStructure = pvStructure;
+		_pvGetBitSet = bitSet;
 	}
 	TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);
@@ -1115,12 +1407,12 @@ void ServerChannelPutGetRequesterImpl::putGetDone(const Status& status)
 
 void ServerChannelPutGetRequesterImpl::lock()
 {
-	//noop
+	// noop
 }
 
 void ServerChannelPutGetRequesterImpl::unlock()
 {
-	//noop
+	// noop
 }
 
 void ServerChannelPutGetRequesterImpl::destroy()
@@ -1148,10 +1440,16 @@ ChannelPutGet::shared_pointer ServerChannelPutGetRequesterImpl::getChannelPutGet
 	return _channelPutGet;
 }
 
-PVStructure::shared_pointer ServerChannelPutGetRequesterImpl::getPVPutStructure()
+PVStructure::shared_pointer ServerChannelPutGetRequesterImpl::getPutGetPVStructure()
 {
 	//Lock guard(_mutex);
-	return _pvPutStructure;
+	return _pvPutGetStructure;
+}
+
+BitSet::shared_pointer ServerChannelPutGetRequesterImpl::getPutGetBitSet()
+{
+	//Lock guard(_mutex);
+	return _pvPutGetBitSet;
 }
 
 void ServerChannelPutGetRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
@@ -1171,25 +1469,28 @@ void ServerChannelPutGetRequesterImpl::send(ByteBuffer* buffer, TransportSendCon
 		if ((QOS_INIT & request) != 0)
 		{
 			Lock guard(_mutex);
-            control->cachedSerialize(_pvPutStructure != NULL ? _pvPutStructure->getField() : FieldConstPtr(), buffer);
-            control->cachedSerialize(_pvGetStructure != NULL ? _pvGetStructure->getField() : FieldConstPtr(), buffer);
+            control->cachedSerialize(_putStructure, buffer);
+            control->cachedSerialize(_getStructure, buffer);
 		}
 		else if ((QOS_GET & request) != 0)
 		{
 			Lock guard(_mutex);
-			_pvGetStructure->serialize(buffer, control);
+			_pvGetBitSet->serialize(buffer, control);
+			_pvGetStructure->serialize(buffer, control, _pvGetBitSet.get());
 		}
 		else if ((QOS_GET_PUT & request) != 0)
 		{
 		    ScopedLock lock(_channelPutGet);  // valid due to _mutex lock above
 			//Lock guard(_mutex);
-			_pvPutStructure->serialize(buffer, control);
+			_pvPutBitSet->serialize(buffer, control);
+			_pvPutStructure->serialize(buffer, control, _pvPutBitSet.get());
 		}
 		else
 		{
 		    ScopedLock lock(_channelPutGet);  // valid due to _mutex lock above
 			//Lock guard(_mutex);
-			_pvGetStructure->serialize(buffer, control);
+			_pvGetBitSet->serialize(buffer, control);
+			_pvGetStructure->serialize(buffer, control, _pvGetBitSet.get());
 		}
 	}
 
@@ -1464,6 +1765,7 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
 		const bool get = (QOS_GET & qosCode) != 0;
 		const bool setLength = (QOS_GET_PUT & qosCode) != 0;
+		const bool getLength = (QOS_PROCESS & qosCode) != 0;
 
 		ServerChannelArrayRequesterImpl::shared_pointer request = static_pointer_cast<ServerChannelArrayRequesterImpl>(channel->getRequest(ioid));
 		if (request == NULL)
@@ -1478,34 +1780,43 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 			return;
 		}
 
-
+   	    ChannelArray::shared_pointer channelArray = request->getChannelArray();
+        if (lastRequest)
+            channelArray->lastRequest();
+            
 		if (get)
 		{
-			const int32 offset = SerializeHelper::readSize(payloadBuffer, transport.get());
-			const int32 count = SerializeHelper::readSize(payloadBuffer, transport.get());
-			request->getChannelArray()->getArray(lastRequest, offset, count);
+            size_t offset = SerializeHelper::readSize(payloadBuffer, transport.get());
+            size_t count = SerializeHelper::readSize(payloadBuffer, transport.get());
+            size_t stride = SerializeHelper::readSize(payloadBuffer, transport.get());
+			request->getChannelArray()->getArray(offset, count, stride);
 		}
 		else if (setLength)
 		{
-			const int32 length = SerializeHelper::readSize(payloadBuffer, transport.get());
-			const int32 capacity = SerializeHelper::readSize(payloadBuffer, transport.get());
-			request->getChannelArray()->setLength(lastRequest, length, capacity);
+            size_t length = SerializeHelper::readSize(payloadBuffer, transport.get());
+            size_t capacity = SerializeHelper::readSize(payloadBuffer, transport.get());
+			request->getChannelArray()->setLength(length, capacity);
+		}
+		else if (getLength)
+		{
+			request->getChannelArray()->getLength();
 		}
 		else
 		{
 			// deserialize data to put
-			int32 offset;
-			ChannelArray::shared_pointer channelArray = request->getChannelArray();
+            size_t offset;
+            size_t stride;
     	    PVArray::shared_pointer array = request->getPVArray();
 			{
     			ScopedLock lock(channelArray);   // TODO not needed if read by the same thread
     			
     			DESERIALIZE_EXCEPTION_GUARD(
     			    offset = SerializeHelper::readSize(payloadBuffer, transport.get());
+    			    stride = SerializeHelper::readSize(payloadBuffer, transport.get());
     			    array->deserialize(payloadBuffer, transport.get());
     			);
 			}
-			channelArray->putArray(lastRequest, offset, array->getLength());
+			channelArray->putArray(array, offset, array->getLength(), stride);
 		}
 	}
 }
@@ -1513,7 +1824,7 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 ServerChannelArrayRequesterImpl::ServerChannelArrayRequesterImpl(
         ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
 		const pvAccessID ioid, Transport::shared_pointer const & transport):
-		BaseChannelRequester(context, channel, ioid, transport), _channelArray(), _pvArray()
+		BaseChannelRequester(context, channel, ioid, transport)
 {
 }
 
@@ -1535,14 +1846,20 @@ void ServerChannelArrayRequesterImpl::activate(PVStructure::shared_pointer const
     INIT_EXCEPTION_GUARD(CMD_ARRAY, _channelArray = _channel->getChannel()->createChannelArray(thisPointer, pvRequest));
 }
 
-void ServerChannelArrayRequesterImpl::channelArrayConnect(const Status& status, ChannelArray::shared_pointer const & channelArray, PVArray::shared_pointer const & pvArray)
+void ServerChannelArrayRequesterImpl::channelArrayConnect(const Status& status, ChannelArray::shared_pointer const & channelArray, Array::const_shared_pointer const & array)
 {
 	{
 		Lock guard(_mutex);
 		_status = status;
-		_pvArray = pvArray;
 		_channelArray = channelArray;
+		_array = array;
 	}
+	
+	if (status.isSuccess())
+	{
+	   _pvPutArray = std::tr1::static_pointer_cast<PVArray>(reuseOrCreatePVField(_array, _pvPutArray));
+	}
+	
     TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);
 
@@ -1553,7 +1870,18 @@ void ServerChannelArrayRequesterImpl::channelArrayConnect(const Status& status, 
 	}
 }
 
-void ServerChannelArrayRequesterImpl::getArrayDone(const Status& status)
+void ServerChannelArrayRequesterImpl::getArrayDone(const Status& status, ChannelArray::shared_pointer const & /*channelArray*/, PVArray::shared_pointer const & pvArray)
+{
+	{
+		Lock guard(_mutex);
+		_status = status;
+		_pvArray = pvArray;
+	}
+    TransportSender::shared_pointer thisSender = shared_from_this();
+	_transport->enqueueSendRequest(thisSender);
+}
+
+void ServerChannelArrayRequesterImpl::putArrayDone(const Status& status, ChannelArray::shared_pointer const & /*channelArray*/)
 {
 	{
 		Lock guard(_mutex);
@@ -1563,7 +1891,7 @@ void ServerChannelArrayRequesterImpl::getArrayDone(const Status& status)
 	_transport->enqueueSendRequest(thisSender);
 }
 
-void ServerChannelArrayRequesterImpl::putArrayDone(const Status& status)
+void ServerChannelArrayRequesterImpl::setLengthDone(const Status& status, ChannelArray::shared_pointer const & /*channelArray*/)
 {
 	{
 		Lock guard(_mutex);
@@ -1573,11 +1901,14 @@ void ServerChannelArrayRequesterImpl::putArrayDone(const Status& status)
 	_transport->enqueueSendRequest(thisSender);
 }
 
-void ServerChannelArrayRequesterImpl::setLengthDone(const Status& status)
+void ServerChannelArrayRequesterImpl::getLengthDone(const Status& status, ChannelArray::shared_pointer const & /*channelArray*/,
+    size_t length, size_t capacity)
 {
 	{
 		Lock guard(_mutex);
 		_status = status;
+		_length = length;
+		_capacity = capacity;
 	}
     TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);
@@ -1585,12 +1916,12 @@ void ServerChannelArrayRequesterImpl::setLengthDone(const Status& status)
 
 void ServerChannelArrayRequesterImpl::lock()
 {
-	//noop
+	// noop
 }
 
 void ServerChannelArrayRequesterImpl::unlock()
 {
-	//noop
+	// noop
 }
 
 void ServerChannelArrayRequesterImpl::destroy()
@@ -1621,7 +1952,7 @@ ChannelArray::shared_pointer ServerChannelArrayRequesterImpl::getChannelArray()
 PVArray::shared_pointer ServerChannelArrayRequesterImpl::getPVArray()
 {
 	//Lock guard(_mutex);
-	return _pvArray;
+	return _pvPutArray;
 }
 
 void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
@@ -1643,11 +1974,18 @@ void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendCont
 			//Lock guard(_mutex);
 			ScopedLock lock(_channelArray);  // valid due to _mutex lock above
 			_pvArray->serialize(buffer, control, 0, _pvArray->getLength());
+			_pvArray.reset();
+		}
+		else if ((QOS_PROCESS & request) != 0)
+		{
+			//Lock guard(_mutex);
+            SerializeHelper::writeSize(_length, buffer, control);
+            SerializeHelper::writeSize(_capacity, buffer, control);
 		}
 		else if ((QOS_INIT & request) != 0)
 		{
 			Lock guard(_mutex);
-            control->cachedSerialize(_pvArray != NULL ? _pvArray->getField() : FieldConstPtr(), buffer);
+            control->cachedSerialize(_array, buffer);
 		}
 	}
 
@@ -1659,7 +1997,7 @@ void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendCont
 }
 
 /****************************************************************************************/
-void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
+void ServerDestroyRequestHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
 		size_t payloadSize, ByteBuffer* payloadBuffer) {
 	AbstractServerResponseHandler::handleResponse(responseFrom,
@@ -1693,9 +2031,54 @@ void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
 	channel->unregisterRequest(ioid);
 }
 
-void ServerCancelRequestHandler::failureResponse(Transport::shared_pointer const & transport, pvAccessID ioid, const Status& errorStatus)
+void ServerDestroyRequestHandler::failureResponse(Transport::shared_pointer const & transport, pvAccessID ioid, const Status& errorStatus)
 {
 	BaseChannelRequester::message(transport, ioid, errorStatus.getMessage(), warningMessage);
+}
+
+/****************************************************************************************/
+void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
+        Transport::shared_pointer const & transport, int8 version, int8 command,
+        size_t payloadSize, ByteBuffer* payloadBuffer) {
+    AbstractServerResponseHandler::handleResponse(responseFrom,
+            transport, version, command, payloadSize, payloadBuffer);
+
+    // NOTE: we do not explicitly check if transport is OK
+    ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
+
+    transport->ensureData(2*sizeof(int32)/sizeof(int8));
+    const pvAccessID sid = payloadBuffer->getInt();
+    const pvAccessID ioid = payloadBuffer->getInt();
+
+    ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+    if (channel == NULL)
+    {
+        failureResponse(transport, ioid, BaseChannelRequester::badCIDStatus);
+        return;
+    }
+
+    Destroyable::shared_pointer request = channel->getRequest(ioid);
+    if (request == NULL)
+    {
+        failureResponse(transport, ioid, BaseChannelRequester::badIOIDStatus);
+        return;
+    }
+
+    ChannelRequest::shared_pointer cr = dynamic_pointer_cast<ChannelRequest>(request);
+    if (cr == NULL)
+    {
+        failureResponse(transport, ioid, BaseChannelRequester::notAChannelRequestStatus);
+        return;
+    }
+
+    // cancel
+    cr->cancel();
+
+}
+
+void ServerCancelRequestHandler::failureResponse(Transport::shared_pointer const & transport, pvAccessID ioid, const Status& errorStatus)
+{
+    BaseChannelRequester::message(transport, ioid, errorStatus.getMessage(), warningMessage);
 }
 
 /****************************************************************************************/
@@ -1748,7 +2131,9 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
 			return;
 		}
 
-		request->getChannelProcess()->process(lastRequest);
+        if (lastRequest)
+            request->getChannelProcess()->lastRequest();
+		request->getChannelProcess()->process();
 	}
 }
 
@@ -1794,7 +2179,7 @@ void ServerChannelProcessRequesterImpl::channelProcessConnect(const Status& stat
 	}
 }
 
-void ServerChannelProcessRequesterImpl::processDone(const Status& status)
+void ServerChannelProcessRequesterImpl::processDone(const Status& status, ChannelProcess::shared_pointer const & /*channelProcess*/)
 {
 	{
 		Lock guard(_mutex);
@@ -1806,12 +2191,12 @@ void ServerChannelProcessRequesterImpl::processDone(const Status& status)
 
 void ServerChannelProcessRequesterImpl::lock()
 {
-	//noop
+	// noop
 }
 
 void ServerChannelProcessRequesterImpl::unlock()
 {
-	//noop
+	// noop
 }
 
 void ServerChannelProcessRequesterImpl::destroy()
@@ -1999,7 +2384,9 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
             pvArgument = SerializationHelper::deserializeStructureFull(payloadBuffer, transport.get());
         );
         
-		channelRPC->request(pvArgument, lastRequest);
+        if (lastRequest)
+            channelRPC->lastRequest();
+		channelRPC->request(pvArgument);
 	}
 }
 
@@ -2047,7 +2434,7 @@ void ServerChannelRPCRequesterImpl::channelRPCConnect(const Status& status, Chan
 	}
 }
 
-void ServerChannelRPCRequesterImpl::requestDone(const Status& status, PVStructure::shared_pointer const & pvResponse)
+void ServerChannelRPCRequesterImpl::requestDone(const Status& status, ChannelRPC::shared_pointer const & /*channelRPC*/, PVStructure::shared_pointer const & pvResponse)
 {
 	{
 		Lock guard(_mutex);
@@ -2060,12 +2447,12 @@ void ServerChannelRPCRequesterImpl::requestDone(const Status& status, PVStructur
 
 void ServerChannelRPCRequesterImpl::lock()
 {
-	//noop
+	// noop
 }
 
 void ServerChannelRPCRequesterImpl::unlock()
 {
-	//noop
+	// noop
 }
 
 void ServerChannelRPCRequesterImpl::destroy()
