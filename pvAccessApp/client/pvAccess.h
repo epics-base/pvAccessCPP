@@ -8,7 +8,6 @@
 #define PVACCESS_H
 
 #include <vector>
-#include <set>
 
 #ifdef epicsExportSharedSymbols
 #   define pvAccessEpicsExportSharedSymbols
@@ -284,7 +283,7 @@ namespace pvAccess {
             virtual void channelListResult(
                     const epics::pvData::Status& status,
                     ChannelFind::shared_pointer const & channelFind,
-                    std::set<epics::pvData::String> const & channelNames,
+                    epics::pvData::PVStringArray::const_svector const & channelNames,
                     bool hasDynamic) = 0;
         };
 

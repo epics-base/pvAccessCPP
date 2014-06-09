@@ -27,7 +27,7 @@ public:
     ChannelFind::shared_pointer channelList(ChannelListRequester::shared_pointer const & channelListRequester)
     {
         ChannelFind::shared_pointer nullCF;
-        std::set<String> none;
+        PVStringArray::const_svector none;
         channelListRequester->channelListResult(Status::Ok, nullCF, none, false);
         return nullCF;
     }

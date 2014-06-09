@@ -375,17 +375,18 @@ public:
         if (!channelListRequester.get())
             throw std::runtime_error("null requester");
 
-        std::set<epics::pvData::String> channelNames;
+        PVStringArray::svector channelNames;
         {
             Lock guard(m_mutex);
+            channelNames.reserve(m_services.size());
             for (RPCServiceMap::const_iterator iter = m_services.begin();
                  iter != m_services.end();
                  iter++)
-                channelNames.insert(iter->first);
+                channelNames.push_back(iter->first);
         }
 
         ChannelFind::shared_pointer thisPtr(shared_from_this());
-        channelListRequester->channelListResult(Status::Ok, thisPtr, channelNames, false);
+        channelListRequester->channelListResult(Status::Ok, thisPtr, freeze(channelNames), false);
         return thisPtr;
     }
 

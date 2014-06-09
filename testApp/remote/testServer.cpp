@@ -2633,15 +2633,16 @@ public:
             throw std::runtime_error("null requester");
 
         // NOTE: this adds only active channels, not all (especially RPC ones)
-        std::set<epics::pvData::String> channelNames;
+        PVStringArray::svector channelNames;
         {
             Lock guard(structureStoreMutex);
+            channelNames.reserve(structureStore.size());
             for (map<String, PVStructure::shared_pointer>::const_iterator iter = structureStore.begin();
                  iter != structureStore.end();
                  iter++)
-                channelNames.insert(iter->first);
+                channelNames.push_back(iter->first);
         }
-        channelListRequester->channelListResult(Status::Ok, m_mockChannelFind, channelNames, true);
+        channelListRequester->channelListResult(Status::Ok, m_mockChannelFind, freeze(channelNames), true);
         return m_mockChannelFind;
     }
 

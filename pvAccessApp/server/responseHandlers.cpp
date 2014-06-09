@@ -387,13 +387,13 @@ class ChannelListRequesterImpl :
 public:
     POINTER_DEFINITIONS(ChannelListRequesterImpl);
 
-    std::set<String> channelNames;
+    PVStringArray::const_svector channelNames;
     Status status;
 
     virtual void channelListResult(
             const epics::pvData::Status& status,
             ChannelFind::shared_pointer const & channelFind,
-            std::set<epics::pvData::String> const & channelNames,
+            PVStringArray::const_svector const & channelNames,
             bool hasDynamic)
     {
         epics::pvData::Lock lock(_waitMutex);
@@ -474,18 +474,10 @@ public:
                 throw RPCRequestException(Status::STATUSTYPE_ERROR, errorMessage);
             }
 
-            std::set<String>& channelNames = listListener->channelNames;
-
             PVStructure::shared_pointer result =
                 getPVDataCreate()->createPVStructure(channelListStructure);
             PVStringArray::shared_pointer pvArray = result->getSubField<PVStringArray>("value");
-            PVStringArray::svector newdata(channelNames.size());
-            size_t i = 0;
-            for (std::set<String>::const_iterator iter = channelNames.begin();
-                 iter != channelNames.end();
-                 iter++)
-                newdata[i++] = *iter;
-            pvArray->replace(freeze(newdata));
+            pvArray->replace(listListener->channelNames);
 
             return result;
         }

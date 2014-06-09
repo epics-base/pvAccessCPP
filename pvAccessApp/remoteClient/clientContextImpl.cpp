@@ -3023,7 +3023,7 @@ namespace epics {
 
                     Status errorStatus(Status::STATUSTYPE_ERROR, "not implemented");
                     ChannelFind::shared_pointer nullChannelFind;
-                    std::set<epics::pvData::String> none;
+                    PVStringArray::const_svector none;
                     EXCEPTION_GUARD(channelListRequester->channelListResult(errorStatus, nullChannelFind, none, false));
                     return nullChannelFind;
                 }
