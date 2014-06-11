@@ -1564,7 +1564,7 @@ namespace epics {
             PVStructure::shared_pointer m_pvRequest;
 
             // data container (for get)
-            PVArray::shared_pointer m_data;
+            PVArray::shared_pointer m_arrayData;
 
             // reference store (for put
             PVArray::shared_pointer m_putData;
@@ -1687,12 +1687,12 @@ namespace epics {
                 FieldConstPtr field = transport->cachedDeserialize(payloadBuffer);
                 {
                     Lock lock(m_structureMutex);
-                    m_data = dynamic_pointer_cast<PVArray>(getPVDataCreate()->createPVField(field));
+                    m_arrayData = dynamic_pointer_cast<PVArray>(getPVDataCreate()->createPVField(field));
                 }
                 
                 // notify
                 ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
-                EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(status, thisChannelArray, m_data->getArray()));
+                EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(status, thisChannelArray, m_arrayData->getArray()));
             }
 
             virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
@@ -1709,10 +1709,10 @@ namespace epics {
 
                     {
                         Lock lock(m_structureMutex);
-                        m_data->deserialize(payloadBuffer, transport.get());
+                        m_arrayData->deserialize(payloadBuffer, transport.get());
                     }
                     
-                    EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(status, thisChannelArray, m_data));
+                    EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(status, thisChannelArray, m_arrayData));
                 }
                 else if (qos & QOS_GET_PUT)
                 {
@@ -1787,7 +1787,7 @@ namespace epics {
                     }
                 }
                 
-                if (!(*m_data->getArray() == *putArray->getArray()))
+                if (!(*m_arrayData->getArray() == *putArray->getArray()))
                 {
                     EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(invalidPutArrayStatus, thisChannelArray));
                     return;
