@@ -1,19 +1,11 @@
-opt) connection validation message sends max paylaod size
-readSize checks if size is in limits of size_t?
-
-
-
+- opt) connection validation message sends max paylaod size
+- readSize checks if size is in limits of size_t?
 
         // should be called without any lock hold
         // TODO in Java as in C++ ? reportChannelStateChange();
 
+- searching of channel with server address specified
 
-                     else
-                     // TODO not only first
-                     // TODO minor version
-                     // TODO what to do if there is no channel, do not search in a loop!!! do this in other thread...!
-                     searchResponse(PVAConstants.PVA_MINOR_PROTOCOL_REVISION, addresses[0]);
-
-
-void transportUnresponsive() { not implemented (also in Java)
-
+- void transportUnresponsive() { not implemented (also in Java)
+- complete authNZ
+- improve RPCClient (as it is in Java)
