@@ -73,7 +73,8 @@ class ChannelRPCServiceImpl :
             status = Status(Status::STATUSTYPE_FATAL, "RPCService.request(PVStructure) returned null.");
         }
         
-       m_channelRPCRequester->requestDone(status, shared_from_this(), result);
+        ChannelRPC::shared_pointer thisPtr(shared_from_this());
+        m_channelRPCRequester->requestDone(status, thisPtr, result);
         
         if (m_lastRequest.get())
             destroy();
@@ -256,8 +257,9 @@ public:
             return nullPtr;
         }
         
+        Channel::shared_pointer thisPtr(shared_from_this());
         ChannelRPC::shared_pointer channelRPCImpl(
-            new ChannelRPCServiceImpl(shared_from_this(), channelRPCRequester, m_rpcService)
+            new ChannelRPCServiceImpl(thisPtr, channelRPCRequester, m_rpcService)
         );
         channelRPCRequester->channelRPCConnect(Status::Ok, channelRPCImpl);
         return channelRPCImpl;
