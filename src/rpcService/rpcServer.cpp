@@ -16,7 +16,7 @@ namespace epics { namespace pvAccess {
 
 class ChannelRPCServiceImpl :
     public ChannelRPC,
-    public std::tr1::enable_shared_from_this<ChannelRPC>
+    public std::tr1::enable_shared_from_this<ChannelRPCServiceImpl>
 {
     private:
     Channel::shared_pointer m_channel;
@@ -73,8 +73,7 @@ class ChannelRPCServiceImpl :
             status = Status(Status::STATUSTYPE_FATAL, "RPCService.request(PVStructure) returned null.");
         }
         
-        ChannelRPC::shared_pointer thisPtr(shared_from_this());
-        m_channelRPCRequester->requestDone(status, thisPtr, result);
+        m_channelRPCRequester->requestDone(status, shared_from_this(), result);
         
         if (m_lastRequest.get())
             destroy();
@@ -121,8 +120,8 @@ class ChannelRPCServiceImpl :
 
 
 class RPCChannel :
-    public virtual Channel,
-    public std::tr1::enable_shared_from_this<Channel>
+    public Channel,
+    public std::tr1::enable_shared_from_this<RPCChannel>
 {
 private:
 
@@ -257,9 +256,8 @@ public:
             return nullPtr;
         }
         
-        Channel::shared_pointer thisPtr(shared_from_this());
         ChannelRPC::shared_pointer channelRPCImpl(
-            new ChannelRPCServiceImpl(thisPtr, channelRPCRequester, m_rpcService)
+            new ChannelRPCServiceImpl(shared_from_this(), channelRPCRequester, m_rpcService)
         );
         channelRPCRequester->channelRPCConnect(Status::Ok, channelRPCImpl);
         return channelRPCImpl;
