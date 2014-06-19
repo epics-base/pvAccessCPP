@@ -68,19 +68,6 @@ int16 IntrospectionRegistry::registerIntrospectionInterface(FieldConstPtr const 
 	return key;
 }
 
-void IntrospectionRegistry::printKeysAndValues(string name)
-{
-	cout << "############## print of all key/values of " << name.c_str() << " registry : ###################" << endl;
-	for(registryMap_t::iterator registryIter = _registry.begin(); registryIter != _registry.end(); registryIter++)
-	{
-		cout << "\t" << "Key: "<< registryIter->first << endl;
-		cout << "\t" << "Value: " << registryIter->second << endl;
-
-		cout << "\t" << "References: " << registryIter->second << endl;
-		cout << "\t" << "Value: " << *(registryIter->second) << endl;
-	}
-}
-
 // TODO slow !!!!
 bool IntrospectionRegistry::registryContainsValue(FieldConstPtr const & field, int16& key)
 {

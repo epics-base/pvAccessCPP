@@ -47,7 +47,6 @@ typedef std::map<const short,epics::pvData::FieldConstPtr> registryMap_t;
 		IntrospectionRegistry();
 		virtual ~IntrospectionRegistry();
 
-		void printKeysAndValues(std::string name);
 		/**
 		 * Resets registry, i.e. must be done when transport is changed (server restarted).
 		 */
