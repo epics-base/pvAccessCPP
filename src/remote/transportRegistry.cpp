@@ -24,7 +24,7 @@ TransportRegistry::~TransportRegistry()
 void TransportRegistry::put(Transport::shared_pointer const & transport)
 {
 	Lock guard(_mutex);
-	//const String type = transport.getType();
+	//const string type = transport.getType();
 	const int16 priority = transport->getPriority();
 	const osiSockAddr* address = transport->getRemoteAddress();
 
@@ -48,7 +48,7 @@ void TransportRegistry::put(Transport::shared_pointer const & transport)
 	(*priorities)[priority] = transport;
 }
 
-Transport::shared_pointer TransportRegistry::get(String const & /*type*/, const osiSockAddr* address, const int16 priority)
+Transport::shared_pointer TransportRegistry::get(std::string const & /*type*/, const osiSockAddr* address, const int16 priority)
 {
 	Lock guard(_mutex);
 	transportsMap_t::iterator transportsIter = _transports.find(address);
@@ -64,7 +64,7 @@ Transport::shared_pointer TransportRegistry::get(String const & /*type*/, const 
 	return Transport::shared_pointer();
 }
 
-auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::get(String const & /*type*/, const osiSockAddr* address)
+auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::get(std::string const & /*type*/, const osiSockAddr* address)
 {
 	Lock guard(_mutex);
 	transportsMap_t::iterator transportsIter = _transports.find(address);
@@ -123,7 +123,7 @@ int32 TransportRegistry::numberOfActiveTransports()
 }
 
 
-auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::toArray(String const & /*type*/)
+auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::toArray(std::string const & /*type*/)
 {
 	// TODO support type
     return toArray();

@@ -39,7 +39,7 @@ void testServerShutdown();
 #include "testNTImage.cpp"
 
 Mutex structureStoreMutex;
-map<String, PVStructure::shared_pointer> structureStore;
+map<string, PVStructure::shared_pointer> structureStore;
 
 class StructureChangedCallback {
 public:
@@ -48,10 +48,10 @@ public:
     virtual void structureChanged() = 0;
 };
 
-typedef map<String, vector<StructureChangedCallback::shared_pointer> > StructureChangedListenersMap;
+typedef map<string, vector<StructureChangedCallback::shared_pointer> > StructureChangedListenersMap;
 StructureChangedListenersMap structureChangedListeners;
 
-static void notifyStructureChanged(String const & name)
+static void notifyStructureChanged(std::string const & name)
 {
     // NOTE: not thread-safe
     if (structureChangedListeners.find(name) != structureChangedListeners.end())
@@ -69,7 +69,7 @@ static void notifyStructureChanged(String const & name)
 static PVStructure::shared_pointer getRequestedStructure(
         PVStructure::shared_pointer const & pvStructure,
         PVStructure::shared_pointer const & pvRequest,
-        String subfieldName = "field")
+        string subfieldName = "field")
 {
     // if pvRequest is empty, just use pvStructure
     if (pvRequest.get() && pvRequest->getPVFields().size() > 0)
@@ -156,7 +156,7 @@ public:
 // ADC
 class ADCAction : public Runnable {
 public:
-    String name;
+    string name;
     epics::pvData::PVStructure::shared_pointer adcMatrix;
     SimADC::smart_pointer_type adcSim;
 
@@ -218,7 +218,7 @@ public:
 // testNTImage
 class NTImageAction : public Runnable {
 public:
-    String name;
+    string name;
     PVStructure::shared_pointer pvImage;
     float angle;
     double period;
@@ -490,25 +490,25 @@ class ChannelFindRequesterImpl : public ChannelFindRequester
                                    ChannelFind::shared_pointer const & /*channelFind*/, bool wasFound)
     {
         std::cout << "[ChannelFindRequesterImpl] channelFindResult("
-                  << status.toString() << ", ..., " << wasFound << ")" << std::endl;
+                  << status << ", ..., " << wasFound << ")" << std::endl;
     }
 };
 
 class ChannelRequesterImpl : public ChannelRequester
 {
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ChannelRequesterImpl";
     };
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelCreated(epics::pvData::Status const & /*status*/, Channel::shared_pointer const & /*channel*/)
     {
-        //std::cout << "channelCreated(" << status.toString() << ", "
+        //std::cout << "channelCreated(" << status << ", "
         //          << (channel ? channel->getChannelName() : "(null)") << ")" << std::endl;
     }
 
@@ -520,24 +520,22 @@ class ChannelRequesterImpl : public ChannelRequester
 
 class GetFieldRequesterImpl : public GetFieldRequester
 {
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "GetFieldRequesterImpl";
     };
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void getDone(const epics::pvData::Status& status,epics::pvData::FieldConstPtr field)
     {
-        std::cout << "getDone(" << status.toString() << ", ";
+        std::cout << "getDone(" << status << ", ";
         if (field)
         {
-            String str;
-            field->toString(&str);
-            std::cout << str;
+            std::cout << *field;
         }
         else
             std::cout << "(null)";
@@ -551,12 +549,12 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
     epics::pvData::PVStructure::shared_pointer m_pvStructure;
     epics::pvData::BitSet::shared_pointer m_bitSet;
 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ChannelGetRequesterImpl";
     };
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -566,7 +564,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
                                    epics::pvData::PVStructure::shared_pointer const & pvStructure,
                                    epics::pvData::BitSet::shared_pointer const & bitSet)
     {
-        std::cout << "channelGetConnect(" << status.toString() << ")" << std::endl;
+        std::cout << "channelGetConnect(" << status << ")" << std::endl;
 
         //m_channelGet = channelGet;
         m_pvStructure = pvStructure;
@@ -575,10 +573,8 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 
     virtual void getDone(const epics::pvData::Status& status)
     {
-        std::cout << "getDone(" << status.toString() << ")" << std::endl;
-        String str;
-        m_pvStructure->toString(&str);
-        std::cout << str;
+        std::cout << "getDone(" << status << ")" << std::endl;
+        std::cout << *m_pvStructure;
         std::cout << std::endl;
     }
 };
@@ -589,12 +585,12 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     epics::pvData::PVStructure::shared_pointer m_pvStructure;
     epics::pvData::BitSet::shared_pointer m_bitSet;
 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ChannelPutRequesterImpl";
     };
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -604,7 +600,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
                                    epics::pvData::PVStructure::shared_pointer const & pvStructure,
                                    epics::pvData::BitSet::shared_pointer const & bitSet)
     {
-        std::cout << "channelPutConnect(" << status.toString() << ")" << std::endl;
+        std::cout << "channelPutConnect(" << status << ")" << std::endl;
 
         //m_channelPut = channelPut;
         m_pvStructure = pvStructure;
@@ -613,19 +609,15 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
 
     virtual void getDone(const epics::pvData::Status& status)
     {
-        std::cout << "getDone(" << status.toString() << ")" << std::endl;
-        String str;
-        m_pvStructure->toString(&str);
-        std::cout << str;
+        std::cout << "getDone(" << status << ")" << std::endl;
+        std::cout << *m_pvStructure;
         std::cout << std::endl;
     }
 
     virtual void putDone(const epics::pvData::Status& status)
     {
-        std::cout << "putDone(" << status.toString() << ")" << std::endl;
-        String str;
-        m_pvStructure->toString(&str);
-        std::cout << str;
+        std::cout << "putDone(" << status << ")" << std::endl;
+        std::cout << *m_pvStructure;
         std::cout << std::endl;
     }
 
@@ -634,12 +626,12 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
 
 class MonitorRequesterImpl : public MonitorRequester
 {
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "MonitorRequesterImpl";
     };
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -647,12 +639,10 @@ class MonitorRequesterImpl : public MonitorRequester
     virtual void monitorConnect(const Status& status, Monitor::shared_pointer const & /*monitor*/,
                                 StructureConstPtr& structure)
     {
-        std::cout << "monitorConnect(" << status.toString() << ")" << std::endl;
+        std::cout << "monitorConnect(" << status << ")" << std::endl;
         if (structure)
         {
-            String str;
-            structure->toString(&str);
-            std::cout << str << std::endl;
+            std::cout << *structure << std::endl;
         }
     }
 
@@ -662,13 +652,8 @@ class MonitorRequesterImpl : public MonitorRequester
 
         MonitorElement::shared_pointer  element = monitor->poll();
 
-        String str("changed/overrun ");
-        element->changedBitSet->toString(&str);
-        str += '/';
-        element->overrunBitSet->toString(&str);
-        str += '\n';
-        element->pvStructurePtr->toString(&str);
-        std::cout << str << std::endl;
+        std::cout << "changed/overrun " << *element->changedBitSet << '/' <<
+                     *element->overrunBitSet << std::endl << *element->pvStructurePtr << std::endl;
 
         monitor->release(element);
     }
@@ -684,12 +669,12 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
 {
     //TODO weak ChannelProcess::shared_pointer m_channelProcess;
 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ProcessRequesterImpl";
     };
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -697,7 +682,7 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
     virtual void channelProcessConnect(const epics::pvData::Status& /*status*/,
                                        ChannelProcess::shared_pointer const & /*channelProcess*/)
     {
-        //std::cout << "channelProcessConnect(" << status.toString() << ")" << std::endl;
+        //std::cout << "channelProcessConnect(" << status << ")" << std::endl;
 
         //m_channelProcess = channelProcess;
     }
@@ -705,7 +690,7 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
     virtual void processDone(const epics::pvData::Status& /*status*/,
                              ChannelProcess::shared_pointer const &)
     {
-        //std::cout << "processDone(" << status.toString() << ")" << std::endl;
+        //std::cout << "processDone(" << status << ")" << std::endl;
     }
 
 };
@@ -856,7 +841,7 @@ public:
                 {
                     // increment by one
                     PVStringPtr pvString = static_pointer_cast<PVString>(m_valueField);
-                    String val = pvString->get();
+                    string val = pvString->get();
                     if (val.empty())
                         pvString->put("gen0");
                     else
@@ -1314,7 +1299,7 @@ static bool handleHelp(
         epics::pvData::PVStructure::shared_pointer const & args,
         ChannelRPC::shared_pointer const & channelRPC,
         ChannelRPCRequester::shared_pointer const & channelRPCRequester,
-        String const & helpText
+        string const & helpText
         )
 {
     if (args->getSubField("help"))
@@ -1382,7 +1367,7 @@ public:
 
     virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument)
     {
-        String channelName = m_channel->getChannelName();
+        string channelName = m_channel->getChannelName();
         if (channelName == "testNTTable")
         {
             PVStructure::shared_pointer args(
@@ -1391,7 +1376,7 @@ public:
                             pvArgument
                             );
 
-            const String helpText =
+            const string helpText =
                     "Generates a NTTable structure response with 10 rows and a specified number of columns.\n"
                     "Columns are labeled 'column<num>' and values are '<num> + random [0..1)'.\n"
                     "Arguments:\n\tstring columns\tnumber of table columns\n";
@@ -1421,7 +1406,7 @@ public:
                             pvArgument
                             );
 
-            const String helpText =
+            const string helpText =
                     "Generates a NTNameValue structure response with a specified number of columns.\n"
                     "Columns are labeled 'name<num>' and values are '<num> + random [0..1)'.\n"
                     "Arguments:\n\tstring columns\tnumber of columns\n";
@@ -1480,7 +1465,7 @@ public:
                             pvArgument
                             );
 
-            const String helpText =
+            const string helpText =
                     "Generates a NTMatrix structure response with a specified number of rows and columns.\n"
                     "Matrix values are '<row> + random [0..1)'.\n"
                     "Arguments:\n"
@@ -1545,7 +1530,7 @@ public:
                             pvArgument
                             );
 
-            const String helpText =
+            const string helpText =
                     "Generates a NTImage structure response that has encoded a specified image.\n"
                     "Arguments:\n"
                     "\tstring file\tfile path (relative to a location where the server was started) of a raw encoded image.\n"
@@ -1572,7 +1557,7 @@ public:
             {
                 int32 wv = atoi(w->get().c_str());
                 int32 hv = atoi(h->get().c_str());
-                String filev = file->get();
+                string filev = file->get();
 
                 // ImageMagick conversion
                 // RGB888:    convert img.png img.rgb
@@ -1632,7 +1617,7 @@ public:
         }
         else if (channelName == "testNTURI")
         {
-            const String helpText =
+            const string helpText =
                     "Returns the NTURI structure response identical the NTURI request.\n"
                     "Arguments: (none)\n";
             if (handleHelp(pvArgument, shared_from_this(), m_channelRPCRequester, helpText))
@@ -1658,7 +1643,7 @@ public:
                             pvArgument
                             );
 
-            const String helpText =
+            const string helpText =
                     "Calculates a sum of two integer values.\n"
                     "Arguments:\n"
                     "\tint a\tfirst integer number\n"
@@ -2016,7 +2001,7 @@ class MockMonitor :
     public std::tr1::enable_shared_from_this<MockMonitor>
 {
 private:
-    String m_channelName;
+    string m_channelName;
     MonitorRequester::shared_pointer m_monitorRequester;
     PVStructure::shared_pointer m_pvStructure;
     PVStructure::shared_pointer m_copy;
@@ -2033,7 +2018,7 @@ private:
     MonitorElement::shared_pointer m_nullMonitor;
 
 protected:
-    MockMonitor(String const & channelName, MonitorRequester::shared_pointer const & monitorRequester,
+    MockMonitor(std::string const & channelName, MonitorRequester::shared_pointer const & monitorRequester,
                 PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
         m_channelName(channelName),
         m_monitorRequester(monitorRequester), m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
@@ -2055,7 +2040,7 @@ protected:
     }
 
 public:
-    static Monitor::shared_pointer create(String const & channelName,
+    static Monitor::shared_pointer create(std::string const & channelName,
                                           MonitorRequester::shared_pointer const & monitorRequester,
                                           PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest)
     {
@@ -2207,8 +2192,8 @@ class MockChannel :
 private:
     ChannelProvider::weak_pointer  m_provider;
     ChannelRequester::shared_pointer m_requester;
-    String m_name;
-    String m_remoteAddress;
+    string m_name;
+    string m_remoteAddress;
 public: // TODO
     PVStructure::shared_pointer m_pvStructure;
 
@@ -2217,8 +2202,8 @@ protected:
     MockChannel(
             ChannelProvider::shared_pointer provider,
             ChannelRequester::shared_pointer requester,
-            String name,
-            String remoteAddress) :
+            string name,
+            string remoteAddress) :
         m_provider(provider),
         m_requester(requester),
         m_name(name),
@@ -2236,10 +2221,10 @@ protected:
 
             if (m_name.find("testArray") == 0)
             {
-                String allProperties("");
-                //            String allProperties("alarm,timeStamp,display,control");
+                string allProperties("");
+                //            string allProperties("alarm,timeStamp,display,control");
                 m_pvStructure = getStandardPVField()->scalarArray(pvDouble,allProperties);
-                PVDoubleArrayPtr pvField = static_pointer_cast<PVDoubleArray>(m_pvStructure->getScalarArrayField(String("value"), pvDouble));
+                PVDoubleArrayPtr pvField = static_pointer_cast<PVDoubleArray>(m_pvStructure->getScalarArrayField(std::string("value"), pvDouble));
 
                 int specCount = 0; char postfix[64];
                 int done = sscanf(m_name.c_str(), "testArray%d%s", &specCount, postfix);
@@ -2271,7 +2256,7 @@ protected:
                 }
                 /*
                 printf("array prepared------------------------------------!!!\n");
-                String str;
+                string str;
                 pvField->toString(&str);
                 printf("%s\n", str.c_str());
                 printf("=============------------------------------------!!!\n");
@@ -2348,12 +2333,12 @@ protected:
             }
             else if (m_name.find("testValueOnly") == 0)
             {
-                String allProperties("");
+                string allProperties("");
                 m_pvStructure = getStandardPVField()->scalar(pvDouble,allProperties);
             }
             else if (m_name == "testCounter" || m_name == "testSimpleCounter")
             {
-                String allProperties("timeStamp");
+                string allProperties("timeStamp");
                 m_pvStructure = getStandardPVField()->scalar(pvInt,allProperties);
             }
             else if (m_name == "testEnum")
@@ -2367,14 +2352,14 @@ protected:
                 choices.push_back("fiveValue");
                 choices.push_back("sixValue");
                 choices.push_back("sevenValue");
-                String allProperties("timeStamp");
+                string allProperties("timeStamp");
                 m_pvStructure = getStandardPVField()->enumerated(choices,allProperties);
             }
             else
             {
-                String allProperties("alarm,timeStamp,display,control,valueAlarm");
+                string allProperties("alarm,timeStamp,display,control,valueAlarm");
                 m_pvStructure = getStandardPVField()->scalar(pvDouble,allProperties);
-                //PVDoublePtr pvField = m_pvStructure->getDoubleField(String("value"));
+                //PVDoublePtr pvField = m_pvStructure->getDoubleField(std::string("value"));
                 //pvField->put(1.123);
             }
 
@@ -2387,8 +2372,8 @@ public:
     static Channel::shared_pointer create(
             ChannelProvider::shared_pointer provider,
             ChannelRequester::shared_pointer requester,
-            String name,
-            String remoteAddress)
+            string name,
+            string remoteAddress)
     {
         Channel::shared_pointer channelPtr(new MockChannel(provider, requester, name, remoteAddress));
 
@@ -2407,12 +2392,12 @@ public:
     {
     };
 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return getChannelName();
     };
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -2422,12 +2407,12 @@ public:
         return m_provider.lock();
     }
 
-    virtual epics::pvData::String getRemoteAddress()
+    virtual std::string getRemoteAddress()
     {
         return m_remoteAddress;
     }
 
-    virtual epics::pvData::String getChannelName()
+    virtual std::string getChannelName()
     {
         return m_name;
     }
@@ -2452,7 +2437,7 @@ public:
         return readWrite;
     }
 
-    virtual void getField(GetFieldRequester::shared_pointer const & requester,epics::pvData::String const & subField)
+    virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField)
     {
         PVFieldPtr pvField;
         if(subField == "")
@@ -2525,23 +2510,19 @@ public:
     }
 
     virtual void printInfo() {
-        String info;
-        printInfo(&info);
-        std::cout << info.c_str() << std::endl;
+        printInfo(std::cout);
     }
 
-    virtual void printInfo(epics::pvData::StringBuilder out) {
-        //std::ostringstream ostr;
-        //static String emptyString;
-
-        out->append(  "CHANNEL  : "); out->append(m_name);
-        out->append("\nSTATE    : "); out->append(ConnectionStateNames[getConnectionState()]);
-        if (isConnected())
+    virtual void printInfo(std::ostream& out) {
+        out << "CHANNEL  : " << getChannelName() << std::endl;
+        
+        ConnectionState state = getConnectionState();
+        out << "STATE    : " << ConnectionStateNames[state] << std::endl;
+        if (state == CONNECTED)
         {
-            out->append("\nADDRESS  : "); out->append(getRemoteAddress());
-            //out->append("\nRIGHTS   : "); out->append(getAccessRights());
+            out << "ADDRESS  : " << getRemoteAddress() << std::endl;
+            //out << "RIGHTS   : " << getAccessRights() << std::endl;
         }
-        out->append("\n");
     }
 };
 
@@ -2587,7 +2568,7 @@ public:
     typedef std::tr1::shared_ptr<MockServerChannelProvider> shared_pointer;
     typedef std::tr1::shared_ptr<const MockServerChannelProvider> const_shared_pointer;
 
-    static String PROVIDER_NAME;
+    static string PROVIDER_NAME;
 
     MockServerChannelProvider() :
         m_mockChannelFind(),
@@ -2660,7 +2641,7 @@ public:
         m_imgThread.reset(new epics::pvData::Thread("imgThread", highPriority, &m_imgAction));
     }
 
-    virtual epics::pvData::String getProviderName()
+    virtual std::string getProviderName()
     {
         return PROVIDER_NAME;
     }
@@ -2670,7 +2651,7 @@ public:
     }
 
     virtual ChannelFind::shared_pointer channelFind(
-            epics::pvData::String const & channelName,
+            std::string const & channelName,
             ChannelFindRequester::shared_pointer const & channelFindRequester)
     {
         // channel that starts with "test" always exists
@@ -2690,7 +2671,7 @@ public:
         {
             Lock guard(structureStoreMutex);
             channelNames.reserve(structureStore.size());
-            for (map<String, PVStructure::shared_pointer>::const_iterator iter = structureStore.begin();
+            for (map<string, PVStructure::shared_pointer>::const_iterator iter = structureStore.begin();
                  iter != structureStore.end();
                  iter++)
                 channelNames.push_back(iter->first);
@@ -2700,7 +2681,7 @@ public:
     }
 
     virtual Channel::shared_pointer createChannel(
-            epics::pvData::String const & channelName,
+            std::string const & channelName,
             ChannelRequester::shared_pointer const & channelRequester,
             short priority)
     {
@@ -2708,10 +2689,10 @@ public:
     }
 
     virtual Channel::shared_pointer createChannel(
-            epics::pvData::String const & channelName,
+            std::string const & channelName,
             ChannelRequester::shared_pointer const & channelRequester,
             short /*priority*/,
-            epics::pvData::String const & address)
+            std::string const & address)
     {
         if (address == "local")
         {
@@ -2766,14 +2747,14 @@ private:
     auto_ptr<epics::pvData::Thread> m_imgThread;
 };
 
-String MockServerChannelProvider::PROVIDER_NAME = "local";
+string MockServerChannelProvider::PROVIDER_NAME = "local";
 
 class MockChannelProviderFactory : public ChannelProviderFactory
 {
 public:
     POINTER_DEFINITIONS(MockChannelProviderFactory);
 
-    virtual epics::pvData::String getFactoryName()
+    virtual std::string getFactoryName()
     {
         return MockServerChannelProvider::PROVIDER_NAME;
     }

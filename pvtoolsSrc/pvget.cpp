@@ -61,7 +61,7 @@ void usage (void)
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
 
-void printValue(String const & channelName, PVStructure::shared_pointer const & pv)
+void printValue(std::string const & channelName, PVStructure::shared_pointer const & pv)
 {
     if (mode == ValueOnlyMode)
     {
@@ -106,20 +106,20 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
     BitSet::shared_pointer m_bitSet;
     Mutex m_pointerMutex;
     Event m_event;
-    String m_channelName;
+    string m_channelName;
 
     bool m_done;
 
     public:
     
-    ChannelGetRequesterImpl(String channelName) : m_channelName(channelName), m_done(false) {}
+    ChannelGetRequesterImpl(std::string channelName) : m_channelName(channelName), m_done(false) {}
     
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ChannelGetRequesterImpl";
     }
 
-    virtual void message(String const & message, MessageType messageType)
+    virtual void message(std::string const & message, MessageType messageType)
     {
         std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -201,18 +201,18 @@ class MonitorRequesterImpl : public MonitorRequester
 {
 	private:
 
-    String m_channelName;
+    string m_channelName;
 
     public:
 
-    MonitorRequesterImpl(String channelName) : m_channelName(channelName) {};
+    MonitorRequesterImpl(std::string channelName) : m_channelName(channelName) {};
 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "MonitorRequesterImpl";
     };
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
         std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -222,7 +222,7 @@ class MonitorRequesterImpl : public MonitorRequester
         if (status.isSuccess())
         {
         	/*
-            String str;
+            string str;
             structure->toString(&str);
             std::cout << str << std::endl;
         	*/

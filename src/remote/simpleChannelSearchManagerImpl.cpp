@@ -231,7 +231,7 @@ bool SimpleChannelSearchManagerImpl::generateSearchRequestMessage(SearchInstance
         return false;
     */
 
-    const epics::pvData::String name = channel->getSearchInstanceName();
+    const std::string name = channel->getSearchInstanceName();
     // not nice...
     const int addedPayloadSize = sizeof(int32)/sizeof(int8) + (1 + sizeof(int32)/sizeof(int8) + name.length());
     if(((int)requestMessage->getRemaining()) < addedPayloadSize)

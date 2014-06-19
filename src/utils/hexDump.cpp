@@ -6,11 +6,13 @@
 
 #include <iostream>
 #include <sstream>
+#include <string>
 
 #define epicsExportSharedSymbols
 #include <pv/hexDump.h>
 
 using namespace epics::pvData;
+using std::string;
 using std::stringstream;
 using std::endl;
 using std::cout;
@@ -24,8 +26,8 @@ static const char lookup[] = {
         '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
 /// Get hex representation of byte.
-String toHex(int8 b) {
-    String sb;
+string toHex(int8 b) {
+    string sb;
 
     int upper = (b>>4)&0x0F;
     sb += lookup[upper];
@@ -46,24 +48,24 @@ char toAscii(int8 b) {
         return '.';
 }
 
-void hexDump(String const & name, const int8 *bs, int len) {
+void hexDump(std::string const & name, const int8 *bs, int len) {
     hexDump(name, bs, 0, len);
 }
 
-void hexDump(String const & name, const int8 *bs, int start, int len) {
+void hexDump(std::string const & name, const int8 *bs, int start, int len) {
     hexDump("", name, bs, start, len);
 }
 
-void hexDump(String const & prologue, String const & name, const int8 *bs,
+void hexDump(std::string const & prologue, string const & name, const int8 *bs,
         int start, int len) {
 
     stringstream header;
 
     header<<prologue<<endl<<"Hexdump ["<<name<<"] size = "<<len;
 
-    String out(header.str());
+    string out(header.str());
 
-    String chars;
+    string chars;
 
     for(int i = start; i<(start+len); i++) {
         if(((i-start)%16)==0) {

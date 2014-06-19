@@ -83,7 +83,7 @@ void setImageArrayValues(
         const int8_t* raw
         )
 {
-    String id = imagePV->getStructure()->getID();
+    string id = imagePV->getStructure()->getID();
     PVByteArrayPtr pvField = static_pointer_cast<PVByteArray>(imagePV->getSubField("value"));
 
     const int8_t *data = raw;
@@ -96,7 +96,7 @@ void setImageArrayValues(
     pvField->replace(freeze(temp));
 
 	PVIntArrayPtr dimField = static_pointer_cast<PVIntArray>(
-	   imagePV->getScalarArrayField(String("dim"), pvInt));
+	   imagePV->getScalarArrayField(std::string("dim"), pvInt));
 
     const int32_t *dim = raw_dim;
     PVIntArray::svector temp2(dimField->reuse());
@@ -113,11 +113,11 @@ void setImageImageValues(
         const int32_t* raw_dim
         )
 {
-    PVIntPtr colorModeField = imagePV->getIntField(String("colorMode"));
+    PVIntPtr colorModeField = imagePV->getIntField(std::string("colorMode"));
     colorModeField->put(colorMode);
 
     PVIntArrayPtr offsetField = static_pointer_cast<PVIntArray>(
-        imagePV->getScalarArrayField(String("offset"), pvInt));
+        imagePV->getScalarArrayField(std::string("offset"), pvInt));
     PVIntArray::svector temp(offsetField->reuse());
     temp.resize(2);
     int32_t offsets[] = { 0, 0 };
@@ -125,7 +125,7 @@ void setImageImageValues(
     offsetField->replace(freeze(temp));
 
     PVIntArrayPtr binningField = static_pointer_cast<PVIntArray>(
-        imagePV->getScalarArrayField(String("binning"), pvInt));
+        imagePV->getScalarArrayField(std::string("binning"), pvInt));
     temp = binningField->reuse();
     temp.resize(2);
     int32_t binnings[] = { 1, 1 };
@@ -133,7 +133,7 @@ void setImageImageValues(
     binningField->replace(freeze(temp));
 
     PVIntArrayPtr reverseField = static_pointer_cast<PVIntArray>(
-        imagePV->getScalarArrayField(String("reverse"), pvInt));
+        imagePV->getScalarArrayField(std::string("reverse"), pvInt));
         reverseField->setCapacity(2);
     temp = reverseField->reuse();
     temp.resize(2);
@@ -142,7 +142,7 @@ void setImageImageValues(
     reverseField->replace(freeze(temp));
 
 	PVIntArrayPtr fullDimField = static_pointer_cast<PVIntArray>(
-        imagePV->getScalarArrayField(String("fullDim"), pvInt));
+        imagePV->getScalarArrayField(std::string("fullDim"), pvInt));
     temp = fullDimField->reuse();
     temp.resize(raw_dim_size);
     const int32_t *fullDim = raw_dim;
@@ -153,7 +153,7 @@ void setImageImageValues(
 
 void setImageUniqueId(PVStructure::shared_pointer const & imagePV)
 {
-	PVIntPtr uniqueIdField = imagePV->getIntField(String("uniqueId"));
+	PVIntPtr uniqueIdField = imagePV->getIntField(std::string("uniqueId"));
 	uniqueIdField->put(0);
 }
 
@@ -246,7 +246,7 @@ void rotateImage(PVStructure::shared_pointer const & imagePV, const int8_t* orig
     }
     array->replace(freeze(imgData));
 
-    PVIntPtr uniqueIdField = imagePV->getIntField(String("uniqueId"));
+    PVIntPtr uniqueIdField = imagePV->getIntField(std::string("uniqueId"));
     uniqueIdField->put(uniqueIdField->get()+1);
 
 }

@@ -43,17 +43,17 @@ namespace pvAccess {
              * @param maintenanceVersion	maintenance version.
              * @param developmentFlag	development indicator flag.
              */
-            Version(epics::pvData::String const & productName,
-            		epics::pvData::String const & implementationLangugage,
+            Version(std::string const & productName,
+            		std::string const & implementationLangugage,
                     int majorVersion, int minorVersion,
                     int maintenanceVersion, bool developmentFlag);
 
             /** The name of the product */
-            const epics::pvData::String getProductName() const;
+            const std::string getProductName() const;
 
             /** Implementation Language: C++
              */
-            const epics::pvData::String getImplementationLanguage() const;
+            const std::string getImplementationLanguage() const;
 
             /**
              * Major version number. This changes only when there is a
@@ -97,19 +97,19 @@ namespace pvAccess {
 
             /**
              * Get the long version string.
-             * @return epics::pvData::String denoting current version
+             * @return std::string denoting current version
              */
-            const epics::pvData::String getLongVersionString() const;
+            const std::string getLongVersionString() const;
 
             /**
              * Get the basic version string.
-             * @return epics::pvData::String denoting current version
+             * @return std::string denoting current version
              */
-            const epics::pvData::String getVersionString() const;
+            const std::string getVersionString() const;
 
         private:
-            epics::pvData::String _productName;
-            epics::pvData::String _implementationLanguage;
+            std::string _productName;
+            std::string _implementationLanguage;
             int _majorVersion;
             int _minorVersion;
             int _maintenanceVersion;

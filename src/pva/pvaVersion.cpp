@@ -10,13 +10,13 @@
 #include <pv/pvaVersion.h>
 
 using std::stringstream;
-using epics::pvData::String;
+using std::string;
 
 namespace epics {
 namespace pvAccess {
 
-Version::Version(epics::pvData::String const & productName,
-		epics::pvData::String const & implementationLangugage,
+Version::Version(std::string const & productName,
+		std::string const & implementationLangugage,
         int majorVersion, int minorVersion,
         int maintenanceVersion, bool developmentFlag) :
     _productName(productName),
@@ -28,11 +28,11 @@ Version::Version(epics::pvData::String const & productName,
 {
 }
 
-const epics::pvData::String Version::getProductName() const {
+const std::string Version::getProductName() const {
     return _productName;
 }
 
-const epics::pvData::String Version::getImplementationLanguage() const {
+const std::string Version::getImplementationLanguage() const {
     return _implementationLanguage;
 }
 
@@ -52,7 +52,7 @@ bool Version::isDevelopmentVersion() const {
     return _developmentFlag;
 }
 
-const String Version::getVersionString() const {
+const string Version::getVersionString() const {
     stringstream ret;
     ret<<getProductName()<<" v"<<getMajorVersion()<<"."<<getMinorVersion()<<'.'<<getMaintenanceVersion();
     if (isDevelopmentVersion())

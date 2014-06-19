@@ -606,7 +606,7 @@ namespace pvAccess {
         
         /**
          * Interface for accessing a channel.
-         * A channel is created via a call to ChannelAccess.createChannel(String channelName).
+         * A channel is created via a call to ChannelAccess.createChannel(std::string channelName).
          */
         class epicsShareClass Channel : 
                 public epics::pvData::Requester,
@@ -635,7 +635,7 @@ namespace pvAccess {
              * Returns the channel's remote address, e.g. "/192.168.1.101:5064" or "#C0 S1".
              * @return the channel's remote address.
              **/
-            virtual epics::pvData::String getRemoteAddress() = 0;
+            virtual std::string getRemoteAddress() = 0;
 
             /**
              * Returns the connection state of this channel.
@@ -647,7 +647,7 @@ namespace pvAccess {
              * Get the channel name.
              * @return The name.
              */
-            virtual epics::pvData::String getChannelName() = 0;
+            virtual std::string getChannelName() = 0;
 
             /**
              * Get the channel epics::pvData::Requester.
@@ -668,9 +668,9 @@ namespace pvAccess {
              * This is for clients that want to introspect a PVRecord via channel access.
              * @param epics::pvData::Requester The epics::pvData::Requester.
              * @param subField The name of the subField.
-             * If this is null or an empty epics::pvData::String the returned Field is for the entire record.
+             * If this is null or an empty std::string the returned Field is for the entire record.
              */
-            virtual void getField(GetFieldRequester::shared_pointer const & requester,epics::pvData::String const & subField) = 0;
+            virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField) = 0;
 
             /**
              * Get the access rights for a field of a PVStructure created via a call to createPVStructure.
@@ -775,7 +775,7 @@ namespace pvAccess {
              * Prints detailed information about the context to the specified output stream.
              * @param out the output stream.
              */
-            virtual void printInfo(epics::pvData::StringBuilder out) = 0;
+            virtual void printInfo(std::ostream& out) = 0;
         };
 
 
@@ -833,7 +833,7 @@ namespace pvAccess {
              * Get the provider name.
              * @return The name.
              */
-            virtual epics::pvData::String getProviderName() = 0;
+            virtual std::string getProviderName() = 0;
 
             /**
              * Find a channel.
@@ -841,7 +841,7 @@ namespace pvAccess {
              * @param channelFindRequester The epics::pvData::Requester.
              * @return An interface for the find.
              */
-            virtual ChannelFind::shared_pointer channelFind(epics::pvData::String const & channelName,
+            virtual ChannelFind::shared_pointer channelFind(std::string const & channelName,
                                                      ChannelFindRequester::shared_pointer const & channelFindRequester) = 0;
 
             /**
@@ -858,7 +858,7 @@ namespace pvAccess {
              * @param priority channel priority, must be <code>PRIORITY_MIN</code> <= priority <= <code>PRIORITY_MAX</code>.
              * @return <code>Channel</code> instance. If channel does not exist <code>null</code> is returned and <code>channelRequester</code> notified.
              */
-            virtual Channel::shared_pointer createChannel(epics::pvData::String const & channelName,ChannelRequester::shared_pointer const & channelRequester,
+            virtual Channel::shared_pointer createChannel(std::string const & channelName,ChannelRequester::shared_pointer const & channelRequester,
                                                    short priority = PRIORITY_DEFAULT) = 0;
 
             /**
@@ -866,11 +866,11 @@ namespace pvAccess {
              * @param channelName The name of the channel.
              * @param channelRequester The epics::pvData::Requester.
              * @param priority channel priority, must be <code>PRIORITY_MIN</code> <= priority <= <code>PRIORITY_MAX</code>.
-             * @param address address (or list of addresses) where to look for a channel. Implementation independed epics::pvData::String.
+             * @param address address (or list of addresses) where to look for a channel. Implementation independed std::string.
              * @return <code>Channel</code> instance. If channel does not exist <code>null</code> is returned and <code>channelRequester</code> notified.
              */
-            virtual Channel::shared_pointer createChannel(epics::pvData::String const & channelName,ChannelRequester::shared_pointer const & channelRequester,
-                                                   short priority, epics::pvData::String const & address) = 0;
+            virtual Channel::shared_pointer createChannel(std::string const & channelName,ChannelRequester::shared_pointer const & channelRequester,
+                                                   short priority, std::string const & address) = 0;
 
             virtual void configure(epics::pvData::PVStructure::shared_pointer /*configuration*/) {};
             virtual void flush() {};
@@ -891,7 +891,7 @@ namespace pvAccess {
              * Get factory name (i.e. name of the provider).
              * @return the factory name.
              */
-            virtual epics::pvData::String getFactoryName() = 0;
+            virtual std::string getFactoryName() = 0;
 
             /**
              * Get a shared instance.
@@ -913,7 +913,7 @@ namespace pvAccess {
         public:
             POINTER_DEFINITIONS(ChannelProviderRegistry);
 
-            typedef std::vector<epics::pvData::String> stringVector_t;
+            typedef std::vector<std::string> stringVector_t;
             
             virtual ~ChannelProviderRegistry() {};
             
@@ -922,14 +922,14 @@ namespace pvAccess {
              * @param providerName The name of the provider.
              * @return The interface for the provider or null if the provider is not known.
              */
-            virtual ChannelProvider::shared_pointer getProvider(epics::pvData::String const & providerName) = 0;
+            virtual ChannelProvider::shared_pointer getProvider(std::string const & providerName) = 0;
             
             /**
              * Creates a new instanceof the provider with the specified name.
              * @param providerName The name of the provider.
              * @return The interface for the provider or null if the provider is not known.
              */
-            virtual ChannelProvider::shared_pointer createProvider(epics::pvData::String const & providerName) = 0;
+            virtual ChannelProvider::shared_pointer createProvider(std::string const & providerName) = 0;
 
             /**
              * Get a array of the names of all the known providers.

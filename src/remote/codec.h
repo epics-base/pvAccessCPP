@@ -417,8 +417,8 @@ namespace epics {
 
     public:
 
-      epics::pvData::String getType() const  {
-        return epics::pvData::String("tcp");
+      std::string getType() const  {
+        return std::string("tcp");
       }
 
 

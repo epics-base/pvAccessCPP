@@ -10,6 +10,7 @@
 #include <pv/rpcServer.h>
 
 using namespace epics::pvData;
+using std::string;
 
 namespace epics { namespace pvAccess {
 
@@ -131,7 +132,7 @@ private:
     AtomicBoolean m_destroyed;
     
     ChannelProvider::shared_pointer m_provider;
-    String m_channelName;
+    string m_channelName;
     ChannelRequester::shared_pointer m_channelRequester;
     
     RPCService::shared_pointer m_rpcService;
@@ -141,7 +142,7 @@ public:
     
     RPCChannel(
            ChannelProvider::shared_pointer const & provider,
-           String const & channelName,
+           string const & channelName,
            ChannelRequester::shared_pointer const & channelRequester,
            RPCService::shared_pointer const & rpcService) :
            m_provider(provider),
@@ -161,7 +162,7 @@ public:
         return m_provider;
     }
     
-    virtual epics::pvData::String getRemoteAddress()
+    virtual std::string getRemoteAddress()
     {
         // local
         return getChannelName();
@@ -174,7 +175,7 @@ public:
                 Channel::DESTROYED;
     }
 
-    virtual epics::pvData::String getChannelName()
+    virtual std::string getChannelName()
     {
         return m_channelName;
     }
@@ -195,7 +196,7 @@ public:
         return none;
     }
 
-    virtual void getField(GetFieldRequester::shared_pointer const & requester,epics::pvData::String const & /*subField*/)
+    virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & /*subField*/)
     {
         requester->getDone(notSupportedStatus, epics::pvData::Field::shared_pointer());    
     }
@@ -284,24 +285,24 @@ public:
 
     virtual void printInfo()
     {
-        std::cout << "RPCChannel: " << getChannelName() << " [" << Channel::ConnectionStateNames[getConnectionState()] << "]" << std::endl;
+        printInfo(std::cout);
     }
 
-    virtual void printInfo(epics::pvData::StringBuilder out)
+    virtual void printInfo(std::ostream& out)
     {
-        *out += "RPCChannel: ";
-        *out += getChannelName();
-        *out += " [";
-        *out += Channel::ConnectionStateNames[getConnectionState()];
-        *out += "]";
+        out << "RPCChannel: ";
+        out << getChannelName();
+        out << " [";
+        out << Channel::ConnectionStateNames[getConnectionState()];
+        out << "]";
     }
 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return getChannelName();
     }
     
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
         // just delegate
         m_channelRequester->message(message, messageType);
@@ -317,7 +318,7 @@ Status RPCChannel::notSupportedStatus(Status::STATUSTYPE_ERROR, "only channelRPC
 Status RPCChannel::destroyedStatus(Status::STATUSTYPE_ERROR, "channel destroyed");
 
 Channel::shared_pointer createRPCChannel(ChannelProvider::shared_pointer const & provider,
-                                          epics::pvData::String const & channelName,
+                                          std::string const & channelName,
                                           ChannelRequester::shared_pointer const & channelRequester,
                                           RPCService::shared_pointer const & rpcService)
 {
@@ -333,7 +334,7 @@ class RPCChannelProvider :
 public:
     POINTER_DEFINITIONS(RPCChannelProvider);
     
-    static String PROVIDER_NAME;
+    static string PROVIDER_NAME;
 
     static Status noSuchChannelStatus;
     
@@ -342,7 +343,7 @@ public:
     RPCChannelProvider() {
     }
 
-    virtual String getProviderName() {
+    virtual string getProviderName() {
         return PROVIDER_NAME;
     }
 
@@ -355,7 +356,7 @@ public:
 
     virtual void destroy() {}
     
-    virtual ChannelFind::shared_pointer channelFind(epics::pvData::String const & channelName,
+    virtual ChannelFind::shared_pointer channelFind(std::string const & channelName,
                         ChannelFindRequester::shared_pointer const & channelFindRequester)
     {
         bool found;
@@ -391,7 +392,7 @@ public:
     }
 
     virtual Channel::shared_pointer createChannel(
-            epics::pvData::String const & channelName,
+            std::string const & channelName,
             ChannelRequester::shared_pointer const & channelRequester,
             short /*priority*/)
     {
@@ -418,34 +419,34 @@ public:
     }
 
     virtual Channel::shared_pointer createChannel(
-        epics::pvData::String const & /*channelName*/,
+        std::string const & /*channelName*/,
         ChannelRequester::shared_pointer const & /*channelRequester*/,
         short /*priority*/,
-        epics::pvData::String const & /*address*/)
+        std::string const & /*address*/)
     {
         // this will never get called by the pvAccess server
         throw std::runtime_error("not supported");
     }
 
-    void registerService(String const & serviceName, RPCService::shared_pointer const & service)
+    void registerService(std::string const & serviceName, RPCService::shared_pointer const & service)
     {
         Lock guard(m_mutex);
         m_services[serviceName] = service;
     }
     
-    void unregisterService(String const & serviceName)
+    void unregisterService(std::string const & serviceName)
     {
         Lock guard(m_mutex);
         m_services.erase(serviceName);
     }
 
 private:    
-    typedef std::map<String, RPCService::shared_pointer> RPCServiceMap;
+    typedef std::map<string, RPCService::shared_pointer> RPCServiceMap;
     RPCServiceMap m_services;
     epics::pvData::Mutex m_mutex;
 };
 
-String RPCChannelProvider::PROVIDER_NAME("rpcService");
+string RPCChannelProvider::PROVIDER_NAME("rpcService");
 Status RPCChannelProvider::noSuchChannelStatus(Status::STATUSTYPE_ERROR, "no such channel");
 
 
@@ -460,7 +461,7 @@ public:
     {
     }
 
-    virtual epics::pvData::String getFactoryName()
+    virtual std::string getFactoryName()
     {
         return RPCChannelProvider::PROVIDER_NAME;
     }
@@ -547,12 +548,12 @@ void RPCServer::destroy()
     m_serverContext->destroy();
 }
 
-void RPCServer::registerService(String const & serviceName, RPCService::shared_pointer const & service)
+void RPCServer::registerService(std::string const & serviceName, RPCService::shared_pointer const & service)
 {
     std::tr1::dynamic_pointer_cast<RPCChannelProvider>(m_channelProviderImpl)->registerService(serviceName, service);
 }
 
-void RPCServer::unregisterService(String const & serviceName)
+void RPCServer::unregisterService(std::string const & serviceName)
 {
     std::tr1::dynamic_pointer_cast<RPCChannelProvider>(m_channelProviderImpl)->unregisterService(serviceName);
 }

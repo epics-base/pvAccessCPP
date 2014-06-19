@@ -25,7 +25,7 @@ using namespace epics::pvAccess::ca;
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
 
-String CAChannelProvider::PROVIDER_NAME = "ca";
+std::string CAChannelProvider::PROVIDER_NAME = "ca";
 
 CAChannelProvider::CAChannelProvider()
 {
@@ -36,13 +36,13 @@ CAChannelProvider::~CAChannelProvider()
 {
 }
 
-epics::pvData::String CAChannelProvider::getProviderName()
+std::string CAChannelProvider::getProviderName()
 {
     return PROVIDER_NAME;
 }
 
 ChannelFind::shared_pointer CAChannelProvider::channelFind(
-        epics::pvData::String const & channelName,
+        std::string const & channelName,
         ChannelFindRequester::shared_pointer const & channelFindRequester)
 {
     if (channelName.empty())
@@ -71,19 +71,19 @@ ChannelFind::shared_pointer CAChannelProvider::channelList(
 }
 
 Channel::shared_pointer CAChannelProvider::createChannel(
-        epics::pvData::String const & channelName,
+        std::string const & channelName,
         ChannelRequester::shared_pointer const & channelRequester,
         short priority)
 {
-    static String emptyString;
+    static std::string emptyString;
     return createChannel(channelName, channelRequester, priority, emptyString);
 }
 
 Channel::shared_pointer CAChannelProvider::createChannel(
-        epics::pvData::String const & channelName,
+        std::string const & channelName,
         ChannelRequester::shared_pointer const & channelRequester,
         short priority,
-        epics::pvData::String const & address)
+        std::string const & address)
 {
     if (!address.empty())
         throw std::invalid_argument("CA does not support 'address' parameter");
@@ -162,7 +162,7 @@ class CAChannelProviderFactoryImpl : public ChannelProviderFactory
 public:
     POINTER_DEFINITIONS(CAChannelProviderFactoryImpl);
 
-    virtual epics::pvData::String getFactoryName()
+    virtual std::string getFactoryName()
     {
         return CAChannelProvider::PROVIDER_NAME;
     }

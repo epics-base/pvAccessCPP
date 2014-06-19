@@ -25,7 +25,7 @@ class ChannelProviderFactoryImpl : public ChannelProviderFactory
 public:
     POINTER_DEFINITIONS(ChannelProviderFactoryImpl);
 
-    virtual epics::pvData::String getFactoryName()
+    virtual std::string getFactoryName()
     {
         return ClientContextImpl::PROVIDER_NAME;
     }

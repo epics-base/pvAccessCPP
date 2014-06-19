@@ -7,6 +7,7 @@
 #include <pv/baseChannelRequester.h>
 
 using namespace epics::pvData;
+using std::string;
 
 namespace epics {
 namespace pvAccess {
@@ -59,19 +60,19 @@ int32 BaseChannelRequester::getPendingRequest()
 	return _pendingRequest;
 }
 
-String BaseChannelRequester::getRequesterName()
+string BaseChannelRequester::getRequesterName()
 {
 	std::stringstream name;
 	name << typeid(*_transport).name() << "/" << _ioid;
 	return name.str();
 }
 
-void BaseChannelRequester::message(String const & message, epics::pvData::MessageType messageType)
+void BaseChannelRequester::message(std::string const & message, epics::pvData::MessageType messageType)
 {
 	BaseChannelRequester::message(_transport, _ioid, message, messageType);
 }
 
-void BaseChannelRequester::message(Transport::shared_pointer const & transport, const pvAccessID ioid, const String message, const MessageType messageType)
+void BaseChannelRequester::message(Transport::shared_pointer const & transport, const pvAccessID ioid, const string message, const MessageType messageType)
 {
     TransportSender::shared_pointer sender(new BaseChannelRequesterMessageTransportSender(ioid, message, messageType));
 	transport->enqueueSendRequest(sender);
@@ -83,7 +84,7 @@ void BaseChannelRequester::sendFailureMessage(const int8 command, Transport::sha
 	transport->enqueueSendRequest(sender);
 }
 
-BaseChannelRequesterMessageTransportSender::BaseChannelRequesterMessageTransportSender(const pvAccessID ioid, const String message,const epics::pvData::MessageType messageType):
+BaseChannelRequesterMessageTransportSender::BaseChannelRequesterMessageTransportSender(const pvAccessID ioid, const string message,const epics::pvData::MessageType messageType):
 		_ioid(ioid),
 		_message(message),
 		_messageType(messageType)

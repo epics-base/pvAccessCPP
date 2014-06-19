@@ -21,7 +21,7 @@ namespace pvAccess {
         protected:
             ServerContextImpl::shared_pointer _context;
         public:
-            AbstractServerResponseHandler(ServerContextImpl::shared_pointer const & context, epics::pvData::String description) : 
+            AbstractServerResponseHandler(ServerContextImpl::shared_pointer const & context, std::string description) : 
                 AbstractResponseHandler(context.get(), description), _context(context) {
             }
 
@@ -87,7 +87,7 @@ namespace pvAccess {
          */
         class ServerNoopResponse : public AbstractServerResponseHandler {
         public:
-            ServerNoopResponse(ServerContextImpl::shared_pointer const & context, epics::pvData::String description) :
+            ServerNoopResponse(ServerContextImpl::shared_pointer const & context, std::string description) :
                 AbstractServerResponseHandler(context, description) {
             }
             virtual ~ServerNoopResponse(){}
@@ -142,7 +142,7 @@ namespace pvAccess {
         {
         public:
             // TODO
-            static std::map<epics::pvData::String, std::tr1::weak_ptr<ChannelProvider> > s_channelNameToProvider;
+            static std::map<std::string, std::tr1::weak_ptr<ChannelProvider> > s_channelNameToProvider;
 
             static std::string SUPPORTED_PROTOCOL;
 
@@ -167,7 +167,7 @@ namespace pvAccess {
         	ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context, epics::pvData::int32 expectedResponseCount);
                 virtual ~ServerChannelFindRequesterImpl(){}
         	void clear();
-            ServerChannelFindRequesterImpl* set(epics::pvData::String _name, epics::pvData::int32 searchSequenceId,
+            ServerChannelFindRequesterImpl* set(std::string _name, epics::pvData::int32 searchSequenceId,
                                                 epics::pvData::int32 cid, osiSockAddr const & sendTo, bool responseRequired, bool serverSearch);
         	void channelFindResult(const epics::pvData::Status& status, ChannelFind::shared_pointer const & channelFind, bool wasFound);
         	void lock();
@@ -175,7 +175,7 @@ namespace pvAccess {
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
             GUID _guid;
-            epics::pvData::String _name;
+            std::string _name;
         	epics::pvData::int32 _searchSequenceId;
         	epics::pvData::int32 _cid;
             osiSockAddr _sendTo;
@@ -206,7 +206,7 @@ namespace pvAccess {
                     std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
 
         private:
-            static epics::pvData::String SERVER_CHANNEL_NAME;
+            static std::string SERVER_CHANNEL_NAME;
 
         	void disconnect(Transport::shared_pointer const & transport);
 			std::vector<ChannelProvider::shared_pointer> _providers;
@@ -222,21 +222,21 @@ namespace pvAccess {
             typedef std::tr1::shared_ptr<ServerChannelRequesterImpl> shared_pointer;
             typedef std::tr1::shared_ptr<const ServerChannelRequesterImpl> const_shared_pointer;
         protected:
-        	 ServerChannelRequesterImpl(Transport::shared_pointer const & transport, const epics::pvData::String channelName, const pvAccessID cid);
+        	 ServerChannelRequesterImpl(Transport::shared_pointer const & transport, const std::string channelName, const pvAccessID cid);
         public:
              virtual ~ServerChannelRequesterImpl() {}
-        	 static ChannelRequester::shared_pointer create(ChannelProvider::shared_pointer const & provider, Transport::shared_pointer const & transport, const epics::pvData::String channelName, const pvAccessID cid);
+        	 static ChannelRequester::shared_pointer create(ChannelProvider::shared_pointer const & provider, Transport::shared_pointer const & transport, const std::string channelName, const pvAccessID cid);
         	 void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel);
         	 void channelStateChange(Channel::shared_pointer const & c, const Channel::ConnectionState isConnected);
-        	 epics::pvData::String getRequesterName();
-        	 void message(epics::pvData::String const & message, epics::pvData::MessageType messageType);
+        	 std::string getRequesterName();
+        	 void message(std::string const & message, epics::pvData::MessageType messageType);
         	 void lock();
         	 void unlock();
         	 void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
         	 ServerChannel::weak_pointer _serverChannel;
         	 Transport::weak_pointer _transport;
-        	 const epics::pvData::String _channelName;
+        	 const std::string _channelName;
         	 const pvAccessID _cid;
         	 epics::pvData::Status _status;
         	 epics::pvData::Mutex _mutex;

@@ -275,7 +275,7 @@ void ChannelAccessIFTest::test_createEmptyChannel() {
   std::tr1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl());
 
   try {
-    Channel::shared_pointer channel = getChannelProvider()->createChannel(String(), channelReq);
+    Channel::shared_pointer channel = getChannelProvider()->createChannel(std::string(), channelReq);
     testFail("%s: empty channel name should not be allowed", CURRENT_FUNCTION);
     return;
   } catch(std::runtime_error &) {
@@ -293,7 +293,7 @@ void ChannelAccessIFTest::test_createChannelWithInvalidPriority() {
   std::tr1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl());
 
   try {
-    Channel::shared_pointer channel = getChannelProvider()->createChannel(String(), channelReq,
+    Channel::shared_pointer channel = getChannelProvider()->createChannel(std::string(), channelReq,
         ChannelProvider::PRIORITY_MIN - 1 );
     testFail("%s: invalid priority should not be allowed when creating a channel",CURRENT_FUNCTION);
     return;
@@ -344,7 +344,7 @@ void ChannelAccessIFTest::test_findEmptyChannel() {
 
   try {
     std::tr1::shared_ptr<SyncChannelFindRequesterImpl> channelFindReq(new SyncChannelFindRequesterImpl());
-    getChannelProvider()->channelFind(String(), channelFindReq);
+    getChannelProvider()->channelFind(std::string(), channelFindReq);
     testFail("%s: empty channel name shoud never be allowed when searching for channels", CURRENT_FUNCTION);
     return;
 
@@ -935,7 +935,7 @@ void ChannelAccessIFTest::test_channelGetFieldAll() {
   shared_ptr<SyncGetFieldRequesterImpl> 
     channelGetFieldReq(new SyncGetFieldRequesterImpl());
 
-  channel->getField(channelGetFieldReq, String());
+  channel->getField(channelGetFieldReq, string());
 
   bool succStatus = channelGetFieldReq->waitUntilGetDone(getTimeoutSec()); 
   if (!succStatus) {

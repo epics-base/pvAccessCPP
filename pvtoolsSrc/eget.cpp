@@ -80,7 +80,7 @@ void formatNTScalar(std::ostream& o, PVStructurePtr const & pvStruct)
 }
 
 std::ostream& formatVector(std::ostream& o,
-                           String label,
+                           string label,
                            PVScalarArrayPtr const & pvScalarArray,
                            bool transpose)
 {
@@ -182,7 +182,7 @@ void formatNTEnum(std::ostream& o, PVStructurePtr const & pvStruct)
     }
 }
 
-size_t getLongestString(shared_vector<const String> const & array)
+size_t getLongestString(shared_vector<const string> const & array)
 {
     size_t max = 0;
     size_t len = array.size();
@@ -215,7 +215,7 @@ size_t getLongestString(PVScalarArrayPtr const & array)
 // labels are optional
 // if provided labels.size() must equals columnData.size()
 void formatTable(std::ostream& o,
-                 shared_vector<const String> const & labels,
+                 shared_vector<const string> const & labels,
                  vector<PVScalarArrayPtr> const & columnData,
                  bool showHeader, bool transpose)
 {
@@ -809,7 +809,7 @@ void formatNTImage(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
 }
 
 typedef void(*NTFormatterFunc)(std::ostream& o, PVStructurePtr const & pvStruct);
-typedef map<String, NTFormatterFunc> NTFormatterLUTMap;
+typedef map<string, NTFormatterFunc> NTFormatterLUTMap;
 NTFormatterLUTMap ntFormatterLUT;
 
 void initializeNTFormatterLUT()
@@ -845,7 +845,7 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
     {
         PVStructurePtr pvStruct = static_pointer_cast<PVStructure>(pv);
         {
-            String id = pvStruct->getField()->getID();
+            string id = pvStruct->getField()->getID();
 
             NTFormatterLUTMap::const_iterator formatter = ntFormatterLUT.find(id);
             if (formatter != ntFormatterLUT.end())
@@ -866,14 +866,14 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
     o << *(pv.get()) << std::endl;
 }
 
-void dumpValue(String const & channelName, PVField::shared_pointer const & pv)
+void dumpValue(std::string const & channelName, PVField::shared_pointer const & pv)
 {
     if (!channelName.empty())
         std::cout << channelName << std::endl;
     std::cout << *(pv.get()) << std::endl << std::endl;
 }
 
-void printValue(String const & channelName, PVStructure::shared_pointer const & pv, bool forceTerseWithName = false)
+void printValue(std::string const & channelName, PVStructure::shared_pointer const & pv, bool forceTerseWithName = false)
 {
     if (forceTerseWithName)
     {
@@ -918,7 +918,7 @@ void printValue(String const & channelName, PVStructure::shared_pointer const & 
         dumpValue(channelName, pv);
 }
 
-static String emptyString;
+static string emptyString;
 
 // only in ValueOnlyMode
 // NOTE: names might be empty
@@ -943,14 +943,14 @@ void printValues(shared_vector<const string> const & names, vector<PVStructure::
                 scalars.push_back(scalar);
 
                 // make an array, i.e. PVStringArray, out of a scalar (since scalar is an array w/ element count == 1)
-                PVStringArray::shared_pointer stringArray =
+                PVStringArray::shared_pointer StringArray =
                         dynamic_pointer_cast<PVStringArray>(getPVDataCreate()->createPVScalarArray(pvString));
                 
                 PVStringArray::svector values;
                 values.push_back(getConvert()->toString(scalar));
-                stringArray->replace(freeze(values));
+                StringArray->replace(freeze(values));
                 
-                scalarArrays.push_back(stringArray);
+                scalarArrays.push_back(StringArray);
             }
         }
         else
@@ -1046,7 +1046,7 @@ void usage (void)
 class ChannelGetRequesterImpl : public ChannelGetRequester
 {
 private:
-    String m_channelName;
+    string m_channelName;
     bool m_printValue;
 
     PVStructure::shared_pointer m_pvStructure;
@@ -1058,19 +1058,19 @@ private:
 
 public:
     
-    ChannelGetRequesterImpl(String channelName, bool printValue) :
+    ChannelGetRequesterImpl(std::string channelName, bool printValue) :
         m_channelName(channelName),
         m_printValue(printValue),
         m_done(false)
     {
     }
     
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ChannelGetRequesterImpl";
     }
 
-    virtual void message(String const & message, MessageType messageType)
+    virtual void message(std::string const & message, MessageType messageType)
     {
         std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -1084,7 +1084,7 @@ public:
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel get create: " << status << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get create: " << dump_stack_only_on_debug(status) << std::endl;
             }
             
             channelGet->lastRequest();
@@ -1092,7 +1092,7 @@ public:
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to create channel get: " << dump_stack_only_on_debug(status) << std::endl;
             m_event.signal();
         }
     }
@@ -1107,7 +1107,7 @@ public:
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel get: " << status << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get: " << dump_stack_only_on_debug(status) << std::endl;
             }
 
             // access smart pointers
@@ -1125,7 +1125,7 @@ public:
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to get: " << status << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to get: " << dump_stack_only_on_debug(status) << std::endl;
         }
 
         m_event.signal();
@@ -1159,26 +1159,26 @@ private:
     Event m_event;
     Event m_connectionEvent;
     bool m_successfullyConnected;
-    String m_channelName;
+    string m_channelName;
 
     PVStructure::shared_pointer m_lastResponse;
     bool m_done;
 
 public:
     
-    ChannelRPCRequesterImpl(String channelName) : 
+    ChannelRPCRequesterImpl(std::string channelName) : 
         m_successfullyConnected(false),
         m_channelName(channelName),
         m_done(false)
     {
     }
     
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ChannelRPCRequesterImpl";
     }
 
-    virtual void message(String const & message, MessageType messageType)
+    virtual void message(std::string const & message, MessageType messageType)
     {
         std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -1190,7 +1190,7 @@ public:
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel RPC create: " << status << std::endl;
+                std::cerr << "[" << m_channelName << "] channel RPC create: " << dump_stack_only_on_debug(status) << std::endl;
             }
             
             {   
@@ -1202,7 +1202,7 @@ public:
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to create channel RPC: " << status << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to create channel RPC: " << dump_stack_only_on_debug(status) << std::endl;
             m_connectionEvent.signal();
         }
     }
@@ -1216,7 +1216,7 @@ public:
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel RPC: " << status << std::endl;
+                std::cerr << "[" << m_channelName << "] channel RPC: " << dump_stack_only_on_debug(status) << std::endl;
             }
 
             // access smart pointers
@@ -1234,7 +1234,7 @@ public:
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to RPC: " << status << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to RPC: " << dump_stack_only_on_debug(status) << std::endl;
         }
         
         m_event.signal();
@@ -1288,18 +1288,18 @@ class MonitorRequesterImpl : public MonitorRequester
 {
 	private:
 
-    String m_channelName;
+    string m_channelName;
 
     public:
 
-    MonitorRequesterImpl(String channelName) : m_channelName(channelName) {};
+    MonitorRequesterImpl(std::string channelName) : m_channelName(channelName) {};
 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "MonitorRequesterImpl";
     };
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
         std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -1309,7 +1309,7 @@ class MonitorRequesterImpl : public MonitorRequester
         if (status.isSuccess())
         {
         	/*
-            String str;
+            string str;
             structure->toString(&str);
             std::cout << str << std::endl;
         	*/
@@ -1325,7 +1325,7 @@ class MonitorRequesterImpl : public MonitorRequester
         }
         else
         {
-            std::cerr << "monitorConnect(" << status << ")" << std::endl;
+            std::cerr << "monitorConnect(" << dump_stack_only_on_debug(status) << ")" << std::endl;
         }
     }
 
@@ -1724,7 +1724,7 @@ int main (int argc, char *argv[])
         bool collectValues = (mode == ValueOnlyMode) && nPvs > 1 && !fromStream;
 
         vector<PVStructure::shared_pointer> collectedValues;
-        shared_vector<String> collectedNames;
+        shared_vector<string> collectedNames;
         if (collectValues)
         {
             collectedValues.reserve(nPvs);
@@ -1886,7 +1886,7 @@ int main (int argc, char *argv[])
     // service RPC mode
     else
     {
-        String authority;
+        string authority;
 
         if (validURI)
         {

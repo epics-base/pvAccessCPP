@@ -76,13 +76,13 @@ namespace pvAccess {
     const epics::pvData::int32 INVALID_IOID = 0;
     
     /** Default PVA provider name. */
-    const epics::pvData::String PVACCESS_DEFAULT_PROVIDER = "local";
+    const std::string PVACCESS_DEFAULT_PROVIDER = "local";
 
     /** "All-providers registered" PVA provider name. */
-    const epics::pvData::String PVACCESS_ALL_PROVIDERS = "<all>";
+    const std::string PVACCESS_ALL_PROVIDERS = "<all>";
 
     /** Name of the system env. variable to turn on debugging. */
-    const epics::pvData::String PVACCESS_DEBUG = "EPICS_PVA_DEBUG";
+    const std::string PVACCESS_DEBUG = "EPICS_PVA_DEBUG";
 }
 }
 

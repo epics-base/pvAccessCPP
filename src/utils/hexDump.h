@@ -30,7 +30,7 @@ namespace pvAccess {
      * @param bs    buffer to dump
      * @param len   first bytes (length) to dump.
      */
-    epicsShareFunc void hexDump(epics::pvData::String const & name, const epics::pvData::int8 *bs, int len);
+    epicsShareFunc void hexDump(std::string const & name, const epics::pvData::int8 *bs, int len);
 
     /**
      * Output a buffer in hex format.
@@ -39,7 +39,7 @@ namespace pvAccess {
      * @param[in] start dump message using given offset.
      * @param[in] len   first bytes (length) to dump.
      */
-    epicsShareFunc void hexDump(epics::pvData::String const & name, const epics::pvData::int8 *bs, int start, int len);
+    epicsShareFunc void hexDump(std::string const & name, const epics::pvData::int8 *bs, int start, int len);
 
     /**
      * Output a buffer in hex format.
@@ -49,7 +49,7 @@ namespace pvAccess {
      * @param[in] start dump message using given offset.
      * @param[in] len   first bytes (length) to dump.
      */
-    epicsShareFunc void hexDump(epics::pvData::String const & prologue, epics::pvData::String const & name,
+    epicsShareFunc void hexDump(std::string const & prologue, std::string const & name,
                  const epics::pvData::int8 *bs, int start, int len);
 
 }

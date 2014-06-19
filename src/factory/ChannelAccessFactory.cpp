@@ -16,6 +16,7 @@
 #include <pv/factory.h>
 
 using namespace epics::pvData;
+using std::string;
 
 namespace epics {
 namespace pvAccess {
@@ -24,17 +25,17 @@ static ChannelProviderRegistry::shared_pointer ChannelProviderRegistry;
 
 static Mutex channelProviderMutex;
 
-typedef std::map<String, ChannelProviderFactory::shared_pointer> ChannelProviderFactoryMap;
+typedef std::map<string, ChannelProviderFactory::shared_pointer> ChannelProviderFactoryMap;
 static ChannelProviderFactoryMap channelProviders;
 
 
 class ChannelProviderRegistryImpl : public ChannelProviderRegistry {
     public:
 
-    ChannelProvider::shared_pointer getProvider(String const & _providerName) {
+    ChannelProvider::shared_pointer getProvider(std::string const & _providerName) {
         
         // TODO remove, here for backward compatibility 
-        const String providerName = (_providerName == "pvAccess") ? "pva" : _providerName;
+        const string providerName = (_providerName == "pvAccess") ? "pva" : _providerName;
             
         Lock guard(channelProviderMutex);
         ChannelProviderFactoryMap::const_iterator iter = channelProviders.find(providerName);
@@ -44,10 +45,10 @@ class ChannelProviderRegistryImpl : public ChannelProviderRegistry {
             return ChannelProvider::shared_pointer();
     }
 
-    ChannelProvider::shared_pointer createProvider(String const & _providerName) {
+    ChannelProvider::shared_pointer createProvider(std::string const & _providerName) {
 
         // TODO remove, here for backward compatibility 
-        const String providerName = (_providerName == "pvAccess") ? "pva" : _providerName;
+        const string providerName = (_providerName == "pvAccess") ? "pva" : _providerName;
             
         Lock guard(channelProviderMutex);
         ChannelProviderFactoryMap::const_iterator iter = channelProviders.find(providerName);

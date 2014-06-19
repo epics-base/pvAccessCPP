@@ -25,7 +25,7 @@ public:
     POINTER_DEFINITIONS(CAChannel);
 
     static shared_pointer create(ChannelProvider::shared_pointer const & channelProvider,
-                                            epics::pvData::String const & channelName,
+                                            std::string const & channelName,
                                             short priority,
                                             ChannelRequester::shared_pointer const & channelRequester);
 
@@ -41,13 +41,13 @@ public:
     /* --------------- epics::pvAccess::Channel --------------- */
 
     virtual std::tr1::shared_ptr<ChannelProvider> getProvider();
-    virtual epics::pvData::String getRemoteAddress();
+    virtual std::string getRemoteAddress();
     virtual ConnectionState getConnectionState();
-    virtual epics::pvData::String getChannelName();
+    virtual std::string getChannelName();
     virtual std::tr1::shared_ptr<ChannelRequester> getChannelRequester();
     virtual bool isConnected();
 
-    virtual void getField(GetFieldRequester::shared_pointer const & requester,epics::pvData::String const & subField);
+    virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField);
 
     virtual AccessRights getAccessRights(epics::pvData::PVField::shared_pointer const & pvField);
 
@@ -81,13 +81,13 @@ public:
 
     virtual void printInfo();
 
-    virtual void printInfo(epics::pvData::StringBuilder out);
+    virtual void printInfo(std::ostream& out);
 
     /* --------------- epics::pvData::Requester --------------- */
 
-    virtual epics::pvData::String getRequesterName();
+    virtual std::string getRequesterName();
 
-    virtual void message(epics::pvData::String const & message, epics::pvData::MessageType messageType);
+    virtual void message(std::string const & message, epics::pvData::MessageType messageType);
 
     /* --------------- epics::pvData::Destroyable --------------- */
 
@@ -100,12 +100,12 @@ public:
 
 private:
 
-    CAChannel(epics::pvData::String const & channelName,
+    CAChannel(std::string const & channelName,
               ChannelProvider::shared_pointer const & channelProvider,
               ChannelRequester::shared_pointer const & channelRequester);
     void activate(short priority);
 
-    epics::pvData::String channelName;
+    std::string channelName;
     
     ChannelProvider::shared_pointer channelProvider;
     ChannelRequester::shared_pointer channelRequester;

@@ -79,7 +79,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
 
         void BlockingUDPTransport::start() {
 
-            String threadName = "UDP-receive " + inetAddressToString(_bindAddress);
+            string threadName = "UDP-receive " + inetAddressToString(_bindAddress);
             
             if (IS_LOGGABLE(logLevelTrace))
             {
@@ -274,7 +274,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
 
             if (IS_LOGGABLE(logLevelTrace))
             {
-                String threadName = "UDP-receive "+inetAddressToString(_bindAddress);
+                string threadName = "UDP-receive "+inetAddressToString(_bindAddress);
                 LOG(logLevelTrace, "Thread '%s' exiting.", threadName.c_str());
             }
             

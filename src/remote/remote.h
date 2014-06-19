@@ -186,7 +186,7 @@ namespace epics {
              * Get protocol type (tcp, udp, ssl, etc.).
              * @return protocol type.
              */
-            virtual epics::pvData::String getType() const = 0;
+            virtual std::string getType() const = 0;
 
             /**
              * Get remote address.
@@ -356,7 +356,7 @@ namespace epics {
             /**
              * @param description
              */
-            AbstractResponseHandler(Context* context, epics::pvData::String description) :
+            AbstractResponseHandler(Context* context, std::string description) :
                 _description(description), 
                 _debugLevel(context->getConfiguration()->getPropertyAsInteger(PVACCESS_DEBUG, 0)) {
             }
@@ -371,7 +371,7 @@ namespace epics {
             /**
              * Response hanlder description.
              */
-            epics::pvData::String _description;
+            std::string _description;
 
             /**
              * Debug flag.

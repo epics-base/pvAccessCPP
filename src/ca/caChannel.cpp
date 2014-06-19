@@ -13,6 +13,8 @@ using namespace epics::pvData;
 using namespace epics::pvAccess;
 using namespace epics::pvAccess::ca;
 
+using std::string;
+
 #define EXCEPTION_GUARD(code) try { code; } \
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
@@ -24,7 +26,7 @@ using namespace epics::pvAccess::ca;
 PVACCESS_REFCOUNT_MONITOR_DEFINE(caChannel);
 
 CAChannel::shared_pointer CAChannel::create(ChannelProvider::shared_pointer const & channelProvider,
-                                            epics::pvData::String const & channelName,
+                                            std::string const & channelName,
                                             short priority,
                                             ChannelRequester::shared_pointer const & channelRequester)
 {
@@ -55,7 +57,7 @@ static ScalarType dbr2ST[] =
     pvDouble    // DBR_DOUBLE = 6
 };
 
-static Structure::const_shared_pointer createStructure(CAChannel::shared_pointer const & channel, String const & properties)
+static Structure::const_shared_pointer createStructure(CAChannel::shared_pointer const & channel, string const & properties)
 {
     StandardFieldPtr standardField = getStandardField();
     Structure::const_shared_pointer structure;
@@ -97,7 +99,7 @@ static void ca_get_labels_handler(struct event_handler_args args)
     }
 }
 
-static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer const & channel, String const & properties)
+static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer const & channel, string const & properties)
 {
     PVStructure::shared_pointer pvStructure = getPVDataCreate()->createPVStructure(createStructure(channel, properties));
     if (channel->getNativeType() == DBR_ENUM)
@@ -127,7 +129,7 @@ static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer c
 static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer const & channel, chtype dbrType)
 {
     // NOTE: value is always there
-    String properties;
+    string properties;
     if (dbrType >= DBR_CTRL_STRING)      // 28
     {
         if (dbrType != DBR_CTRL_STRING && dbrType != DBR_CTRL_ENUM)
@@ -161,7 +163,7 @@ void CAChannel::connected()
     channelType = ca_field_type(channelID);
 
     // no valueAlarm and control,display for non-numeric type
-    String allProperties =
+    string allProperties =
             (channelType != DBR_STRING && channelType != DBR_ENUM) ?
                 "value,timeStamp,alarm,display,valueAlarm,control" :
                 "value,timeStamp,alarm";
@@ -180,7 +182,7 @@ void CAChannel::disconnected()
     EXCEPTION_GUARD(channelRequester->channelStateChange(shared_from_this(), Channel::DISCONNECTED));
 }
 
-CAChannel::CAChannel(epics::pvData::String const & _channelName,
+CAChannel::CAChannel(std::string const & _channelName,
                      ChannelProvider::shared_pointer const & _channelProvider,
                      ChannelRequester::shared_pointer const & _channelRequester) :
     channelName(_channelName),
@@ -207,7 +209,7 @@ void CAChannel::activate(short priority)
     }
     else
     {
-        Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(result)));
+        Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
         EXCEPTION_GUARD(channelRequester->channelCreated(errorStatus, shared_from_this()));
     }
 }
@@ -242,9 +244,9 @@ std::tr1::shared_ptr<ChannelProvider> CAChannel::getProvider()
 }
 
 
-epics::pvData::String CAChannel::getRemoteAddress()
+std::string CAChannel::getRemoteAddress()
 {
-    return epics::pvData::String(ca_host_name(channelID));
+    return std::string(ca_host_name(channelID));
 }
 
 
@@ -262,7 +264,7 @@ Channel::ConnectionState CAChannel::getConnectionState()
 }
 
 
-epics::pvData::String CAChannel::getChannelName()
+std::string CAChannel::getChannelName()
 {
     return channelName;
 }
@@ -281,7 +283,7 @@ bool CAChannel::isConnected()
 
 
 void CAChannel::getField(GetFieldRequester::shared_pointer const & requester,
-                         epics::pvData::String const & subField)
+                         std::string const & subField)
 {
     Field::const_shared_pointer field =
                 subField.empty() ?
@@ -381,36 +383,34 @@ ChannelArray::shared_pointer CAChannel::createChannelArray(
 
 void CAChannel::printInfo()
 {
-    String info;
-    printInfo(&info);
-    std::cout << info.c_str() << std::endl;
+    printInfo(std::cout);
 }
 
 
-void CAChannel::printInfo(epics::pvData::StringBuilder out)
+void CAChannel::printInfo(std::ostream& out)
 {
-    out->append(  "CHANNEL  : "); out->append(getChannelName());
+    out << "CHANNEL  : " << getChannelName() << std::endl;
+    
     ConnectionState state = getConnectionState();
-    out->append("\nSTATE    : "); out->append(ConnectionStateNames[state]);
+    out << "STATE    : " << ConnectionStateNames[state] << std::endl;
     if (state == CONNECTED)
     {
-        out->append("\nADDRESS  : "); out->append(getRemoteAddress());
-        //out->append("\nRIGHTS   : "); out->append(getAccessRights());
+        out << "ADDRESS  : " << getRemoteAddress() << std::endl;
+        //out << "RIGHTS   : " << getAccessRights() << std::endl;
     }
-    out->append("\n");
 }
 
 
 /* --------------- epics::pvData::Requester --------------- */
 
 
-String CAChannel::getRequesterName()
+string CAChannel::getRequesterName()
 {
     return getChannelName();
 }
 
 
-void CAChannel::message(String const & message,MessageType messageType)
+void CAChannel::message(std::string const & message,MessageType messageType)
 {
     std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
 }
@@ -588,12 +588,12 @@ void copy_DBR<dbr_long_t, pvInt, PVInt, PVIntArray>(const void * dbr, unsigned c
 
 // string specialization
 template<>
-void copy_DBR<String, pvString, PVString, PVStringArray>(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+void copy_DBR<string, pvString, PVString, PVStringArray>(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
     if (count == 1)
     {
         std::tr1::shared_ptr<PVString> value = std::tr1::static_pointer_cast<PVString>(pvStructure->getSubField("value"));
-        value->put(String(static_cast<const char*>(dbr)));
+        value->put(std::string(static_cast<const char*>(dbr)));
     }
     else
     {
@@ -623,7 +623,7 @@ void copy_DBR<dbr_enum_t, pvString, PVString, PVStringArray>(const void * dbr, u
     }
 }
 
-static String dbrStatus2alarmMessage[] = {
+static string dbrStatus2alarmMessage[] = {
     "NO_ALARM",     // 0 ..
     "READ_ALARM",
     "WRITE_ALARM",
@@ -701,7 +701,7 @@ void copy_format<T>(const void * dbr, PVStructure::shared_pointer const & pvDisp
     { \
         char fmt[16]; \
         sprintf(fmt, "%%.%df", data->precision); \
-        pvDisplayStructure->getStringField("format")->put(String(fmt)); \
+        pvDisplayStructure->getStringField("format")->put(std::string(fmt)); \
     } \
     else \
     { \
@@ -728,7 +728,7 @@ void copy_DBR_GR(const void * dbr, unsigned count, PVStructure::shared_pointer c
     alarm->getStringField("message")->put(dbrStatus2alarmMessage[data->status]);
 
     PVStructure::shared_pointer disp = pvStructure->getStructureField("display");
-    disp->getStringField("units")->put(String(data->units));
+    disp->getStringField("units")->put(std::string(data->units));
     disp->getDoubleField("limitHigh")->put(data->upper_disp_limit);
     disp->getDoubleField("limitLow")->put(data->lower_disp_limit);
 
@@ -766,7 +766,7 @@ void copy_DBR_CTRL(const void * dbr, unsigned count, PVStructure::shared_pointer
     alarm->getStringField("message")->put(dbrStatus2alarmMessage[data->status]);
 
     PVStructure::shared_pointer disp = pvStructure->getStructureField("display");
-    disp->getStringField("units")->put(String(data->units));
+    disp->getStringField("units")->put(std::string(data->units));
     disp->getDoubleField("limitHigh")->put(data->upper_disp_limit);
     disp->getDoubleField("limitLow")->put(data->lower_disp_limit);
 
@@ -798,7 +798,7 @@ void copy_DBR_CTRL<dbr_ctrl_enum, dbr_enum_t, pvString, PVString, PVStringArray>
 
 static copyDBRtoPVStructure copyFuncTable[] =
 {
-    copy_DBR<String, pvString, PVString, PVStringArray>,          // DBR_STRING
+    copy_DBR<string, pvString, PVString, PVStringArray>,          // DBR_STRING
     copy_DBR<dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_INT, DBR_SHORT
     copy_DBR<dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_FLOAT
     copy_DBR<dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_ENUM
@@ -806,7 +806,7 @@ static copyDBRtoPVStructure copyFuncTable[] =
     copy_DBR<dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_LONG
     copy_DBR<dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_DOUBLE
 
-    copy_DBR_STS<dbr_sts_string, String, pvString, PVString, PVStringArray>,          // DBR_STS_STRING
+    copy_DBR_STS<dbr_sts_string, string, pvString, PVString, PVStringArray>,          // DBR_STS_STRING
     copy_DBR_STS<dbr_sts_short, dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_STS_INT, DBR_STS_SHORT
     copy_DBR_STS<dbr_sts_float, dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_STS_FLOAT
     copy_DBR_STS<dbr_sts_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_STS_ENUM
@@ -814,7 +814,7 @@ static copyDBRtoPVStructure copyFuncTable[] =
     copy_DBR_STS<dbr_sts_long, dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_STS_LONG
     copy_DBR_STS<dbr_sts_double, dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_STS_DOUBLE
 
-    copy_DBR_TIME<dbr_time_string, String, pvString, PVString, PVStringArray>,          // DBR_TIME_STRING
+    copy_DBR_TIME<dbr_time_string, string, pvString, PVString, PVStringArray>,          // DBR_TIME_STRING
     copy_DBR_TIME<dbr_time_short, dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_TIME_INT, DBR_TIME_SHORT
     copy_DBR_TIME<dbr_time_float, dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_TIME_FLOAT
     copy_DBR_TIME<dbr_time_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_TIME_ENUM
@@ -822,7 +822,7 @@ static copyDBRtoPVStructure copyFuncTable[] =
     copy_DBR_TIME<dbr_time_long, dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_TIME_LONG
     copy_DBR_TIME<dbr_time_double, dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_TIME_DOUBLE
 
-    copy_DBR_STS<dbr_sts_string, String, pvString, PVString, PVStringArray>,          // DBR_GR_STRING -> DBR_STS_STRING
+    copy_DBR_STS<dbr_sts_string, string, pvString, PVString, PVStringArray>,          // DBR_GR_STRING -> DBR_STS_STRING
     copy_DBR_GR<dbr_gr_short, dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_GR_INT, DBR_GR_SHORT
     copy_DBR_GR<dbr_gr_float, dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_GR_FLOAT
     copy_DBR_GR<dbr_gr_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_GR_ENUM
@@ -830,7 +830,7 @@ static copyDBRtoPVStructure copyFuncTable[] =
     copy_DBR_GR<dbr_gr_long, dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_GR_LONG
     copy_DBR_GR<dbr_gr_double, dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_GR_DOUBLE
 
-    copy_DBR_STS<dbr_sts_string, String, pvString, PVString, PVStringArray>,          // DBR_CTRL_STRING -> DBR_STS_STRING
+    copy_DBR_STS<dbr_sts_string, string, pvString, PVString, PVStringArray>,          // DBR_CTRL_STRING -> DBR_STS_STRING
     copy_DBR_CTRL<dbr_ctrl_short, dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_CTRL_INT, DBR_CTRL_SHORT
     copy_DBR_CTRL<dbr_ctrl_float, dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_CTRL_FLOAT
     copy_DBR_CTRL<dbr_ctrl_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_CTRL_ENUM
@@ -856,7 +856,7 @@ void CAChannelGet::getDone(struct event_handler_args &args)
     }
     else
     {
-        Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(args.status)));
+        Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(args.status)));
         EXCEPTION_GUARD(channelGetRequester->getDone(errorStatus, shared_from_this(), PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
 }
@@ -872,7 +872,7 @@ void CAChannelGet::get()
     }
     else
     {
-        Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(result)));
+        Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
         EXCEPTION_GUARD(channelGetRequester->getDone(errorStatus, shared_from_this(), PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
 
@@ -1032,7 +1032,7 @@ int doPut_pvStructure(CAChannel::shared_pointer const & channel, void *usrArg, P
 
 // string specialization
 template<>
-int doPut_pvStructure<String, pvString, PVString, PVStringArray>(CAChannel::shared_pointer const & channel, void *usrArg, PVStructure::shared_pointer const & pvStructure)
+int doPut_pvStructure<string, pvString, PVString, PVStringArray>(CAChannel::shared_pointer const & channel, void *usrArg, PVStructure::shared_pointer const & pvStructure)
 {
     bool isScalarValue = pvStructure->getStructure()->getField("value")->getType() == scalar;
 
@@ -1040,7 +1040,7 @@ int doPut_pvStructure<String, pvString, PVString, PVStringArray>(CAChannel::shar
     {
         std::tr1::shared_ptr<PVString> value = std::tr1::static_pointer_cast<PVString>(pvStructure->getSubField("value"));
 
-        String val = value->get();
+        string val = value->get();
         int result = ca_array_put_callback(channel->getNativeType(), 1,
                                            channel->getChannelID(), val.c_str(),
                                            ca_put_handler, usrArg);
@@ -1057,7 +1057,7 @@ int doPut_pvStructure<String, pvString, PVString, PVStringArray>(CAChannel::shar
         std::tr1::shared_ptr<PVStringArray> value =
                 std::tr1::static_pointer_cast<PVStringArray>(pvStructure->getScalarArrayField("value", pvString));
 
-        //const String* val = value->get();
+        //const string* val = value->get();
         int result = ECA_NOSUPPORT; // TODO
         /*
         int result = ca_array_put_callback(channel->getNativeType(), value->getLength(),
@@ -1104,7 +1104,7 @@ int doPut_pvStructure<dbr_enum_t, pvString, PVString, PVStringArray>(CAChannel::
 
 static doPut doPutFuncTable[] =
 {
-    doPut_pvStructure<String, pvString, PVString, PVStringArray>,          // DBR_STRING
+    doPut_pvStructure<string, pvString, PVString, PVStringArray>,          // DBR_STRING
     doPut_pvStructure<dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_INT, DBR_SHORT
     doPut_pvStructure<dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_FLOAT
     doPut_pvStructure<dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_ENUM
@@ -1125,7 +1125,7 @@ void CAChannelPut::putDone(struct event_handler_args &args)
     }
     else
     {
-        Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(args.status)));
+        Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(args.status)));
         EXCEPTION_GUARD(channelPutRequester->putDone(errorStatus, shared_from_this()));
     }
 }
@@ -1141,7 +1141,7 @@ void CAChannelPut::put(PVStructure::shared_pointer const & pvPutStructure,
         int result = putFunc(channel, this, pvPutStructure);
         if (result != ECA_NORMAL)
         {
-            Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(result)));
+            Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
             EXCEPTION_GUARD(channelPutRequester->putDone(errorStatus, shared_from_this()));
         }
     }
@@ -1174,7 +1174,7 @@ void CAChannelPut::getDone(struct event_handler_args &args)
     }
     else
     {
-        Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(args.status)));
+        Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(args.status)));
         EXCEPTION_GUARD(channelPutRequester->getDone(errorStatus, shared_from_this(),
                                                      PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
@@ -1195,7 +1195,7 @@ void CAChannelPut::get()
     }
     else
     {
-        Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(result)));
+        Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
         EXCEPTION_GUARD(channelPutRequester->getDone(errorStatus, shared_from_this(),
                                                      PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
@@ -1334,7 +1334,7 @@ void CAChannelMonitor::subscriptionEvent(struct event_handler_args &args)
     }
     else
     {
-        //Status errorStatus(Status::STATUSTYPE_ERROR, String(ca_message(args.status)));
+        //Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(args.status)));
         //EXCEPTION_GUARD(channelMonitorRequester->MonitorDone(errorStatus));
     }
 }
@@ -1354,7 +1354,7 @@ epics::pvData::Status CAChannelMonitor::start()
     }
     else
     {
-        return Status(Status::STATUSTYPE_ERROR, String(ca_message(result)));
+        return Status(Status::STATUSTYPE_ERROR, string(ca_message(result)));
     }
 }
 
@@ -1369,7 +1369,7 @@ epics::pvData::Status CAChannelMonitor::stop()
     }
     else
     {
-        return Status(Status::STATUSTYPE_ERROR, String(ca_message(result)));
+        return Status(Status::STATUSTYPE_ERROR, string(ca_message(result)));
     }
 }
 

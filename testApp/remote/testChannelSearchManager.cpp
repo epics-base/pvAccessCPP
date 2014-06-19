@@ -74,7 +74,7 @@ private:
 	void initializeUDPTransport() { }
 	void internalDestroy() { }
 	void destroyAllChannels() { }
-	void checkChannelName(String const & name) {}
+	void checkChannelName(std::string const & name) {}
 	void checkState() {	}
 	pvAccessID generateCID()
 	{
@@ -87,7 +87,7 @@ private:
     {
 		return NULL;
    	}
-	Channel* createChannelInternal(String name, ChannelRequester* requester, short priority,
+	Channel* createChannelInternal(std::string name, ChannelRequester* requester, short priority,
 			InetAddrVector* addresses)
 	{
 		return NULL;

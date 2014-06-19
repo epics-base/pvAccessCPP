@@ -46,12 +46,12 @@ using namespace epics::pvData;
 namespace epics {
     namespace pvAccess {
 
-        String ClientContextImpl::PROVIDER_NAME = "pva";
+        string ClientContextImpl::PROVIDER_NAME = "pva";
         Status ChannelImpl::channelDestroyed = Status(
             Status::STATUSTYPE_WARNING, "channel destroyed");
         Status ChannelImpl::channelDisconnected = Status(
             Status::STATUSTYPE_WARNING, "channel disconnected");
-        String emptyString;
+        string emptyString;
         ConvertPtr convert = getConvert();
 
         // TODO consider std::unordered_map
@@ -1932,7 +1932,7 @@ namespace epics {
             ChannelImpl::shared_pointer m_channel;
             
             GetFieldRequester::shared_pointer m_callback;
-            String m_subField;
+            string m_subField;
             
             pvAccessID m_ioid;
 
@@ -1941,7 +1941,7 @@ namespace epics {
             
             ResponseRequest::shared_pointer m_thisPointer;
             
-            ChannelGetFieldRequestImpl(ChannelImpl::shared_pointer const & channel, GetFieldRequester::shared_pointer const & callback, String const & subField) :
+            ChannelGetFieldRequestImpl(ChannelImpl::shared_pointer const & channel, GetFieldRequester::shared_pointer const & callback, string const & subField) :
                     m_channel(channel),
                     m_callback(callback),
                     m_subField(subField),
@@ -1967,7 +1967,7 @@ namespace epics {
             }
 
         public:
-            static shared_pointer create(ChannelImpl::shared_pointer const & channel, GetFieldRequester::shared_pointer const & callback, String const & subField)
+            static shared_pointer create(ChannelImpl::shared_pointer const & channel, GetFieldRequester::shared_pointer const & callback, string const & subField)
             {
                 shared_pointer thisPointer(new ChannelGetFieldRequestImpl(channel, callback, subField), delayed_destroyable_deleter());
                 thisPointer->activate();
@@ -2140,7 +2140,7 @@ namespace epics {
                     }
                      MonitorElementPtr monitorElement = queue->getFree();
                      if(monitorElement==NULL) {
-                         throw  std::logic_error(String("RealQueue::dataChanged() logic error"));
+                         throw  std::logic_error(std::string("RealQueue::dataChanged() logic error"));
                      }
                      if(queue->getNumberFree()==0){
                          queueIsFull = true;
@@ -2484,7 +2484,7 @@ namespace epics {
         protected:
             ClientContextImpl::weak_pointer _context;
         public:
-            AbstractClientResponseHandler(ClientContextImpl::shared_pointer const & context, String const & description) :
+            AbstractClientResponseHandler(ClientContextImpl::shared_pointer const & context, string const & description) :
                     AbstractResponseHandler(context.get(), description), _context(ClientContextImpl::weak_pointer(context)) {
             }
 
@@ -2494,7 +2494,7 @@ namespace epics {
 
         class NoopResponse : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
         public:
-            NoopResponse(ClientContextImpl::shared_pointer const & context, String const & description) :
+            NoopResponse(ClientContextImpl::shared_pointer const & context, string const & description) :
                     AbstractClientResponseHandler(context, description)
             {
             }
@@ -2603,7 +2603,7 @@ namespace epics {
 
                 serverAddress.ia.sin_port = htons(payloadBuffer->getShort());
 
-                /*String protocol =*/ SerializeHelper::deserializeString(payloadBuffer, transport.get());
+                /*string protocol =*/ SerializeHelper::deserializeString(payloadBuffer, transport.get());
 
                 transport->ensureData(1);
                 bool found = payloadBuffer->getByte() != 0;
@@ -2677,7 +2677,7 @@ namespace epics {
 
                 serverAddress.ia.sin_port = htons(payloadBuffer->getShort());
                 
-                std::string protocol = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+                string protocol = SerializeHelper::deserializeString(payloadBuffer, transport.get());
 
                 // TODO optimize
                 ClientContextImpl::shared_pointer context = _context.lock();
@@ -2789,7 +2789,7 @@ namespace epics {
                         Requester::shared_pointer requester = nrr->getRequester();
                         if (requester.get()) {
                             MessageType type = (MessageType)payloadBuffer->getByte();
-                            String message = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+                            string message = SerializeHelper::deserializeString(payloadBuffer, transport.get());
                             requester->message(message, type);
                         }
                     }
@@ -2987,7 +2987,7 @@ namespace epics {
                     MB_INIT;
                 }
 
-                virtual epics::pvData::String getProviderName()
+                virtual std::string getProviderName()
                 {
                     return PROVIDER_NAME;
                 }
@@ -2997,7 +2997,7 @@ namespace epics {
                 }
 
                 virtual ChannelFind::shared_pointer channelFind(
-                        epics::pvData::String const & channelName,
+                        std::string const & channelName,
                         ChannelFindRequester::shared_pointer const & channelFindRequester)
                 {
                     // TODO not implemented
@@ -3029,7 +3029,7 @@ namespace epics {
                 }
 
                 virtual Channel::shared_pointer createChannel(
-                        epics::pvData::String const & channelName,
+                        std::string const & channelName,
                         ChannelRequester::shared_pointer const & channelRequester,
                         short priority)
                 {
@@ -3037,10 +3037,10 @@ namespace epics {
                 }
 
                 virtual Channel::shared_pointer createChannel(
-                        epics::pvData::String const & channelName,
+                        std::string const & channelName,
                         ChannelRequester::shared_pointer const & channelRequester,
                         short priority,
-                        epics::pvData::String const & addressesStr)
+                        std::string const & addressesStr)
                 {
                 	std::tr1::shared_ptr<ClientContextImpl> context = m_context.lock();
                 	if (!context.get())
@@ -3122,7 +3122,7 @@ namespace epics {
                 /**
                  * Channel name.
                  */
-                String m_name;
+                string m_name;
                 
                 /**
                  * Channel requester.
@@ -3204,7 +3204,7 @@ namespace epics {
                 InternalChannelImpl(
                                     ClientContextImpl::shared_pointer const & context,
                                     pvAccessID channelID,
-                                    String const & name,
+                                    string const & name,
                                     ChannelRequester::shared_pointer const & requester,
                                     short priority,
                                     auto_ptr<InetAddrVector>& addresses) :
@@ -3237,7 +3237,7 @@ namespace epics {
                 
                 static ChannelImpl::shared_pointer create(ClientContextImpl::shared_pointer context,
                                                    pvAccessID channelID,
-                                                   String const & name,
+                                                   string const & name,
                                                    ChannelRequester::shared_pointer requester,
                                                    short priority,
                                                    auto_ptr<InetAddrVector>& addresses)
@@ -3257,12 +3257,12 @@ namespace epics {
                   destroy(false);
                 };
                 
-                virtual String getRequesterName()
+                virtual string getRequesterName()
                 {
                     return getChannelName();
                 };
                 
-                virtual void message(String const & message,MessageType messageType)
+                virtual void message(std::string const & message,MessageType messageType)
                 {
                     std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
                 }
@@ -3275,11 +3275,11 @@ namespace epics {
                 }
                 
                 // NOTE: synchronization guarantees that <code>transport</code> is non-<code>0</code> and <code>state == CONNECTED</code>.
-                virtual epics::pvData::String getRemoteAddress()
+                virtual std::string getRemoteAddress()
                 {
                     Lock guard(m_channelMutex);
                     if (m_connectionState != CONNECTED) {
-                        static String emptyString;
+                        static string emptyString;
                         return emptyString;
                     }
                     else
@@ -3288,7 +3288,7 @@ namespace epics {
                     }
                 }
                 
-                virtual epics::pvData::String getChannelName()
+                virtual std::string getChannelName()
                 {
                     return m_name;
                 }
@@ -3330,7 +3330,7 @@ namespace epics {
                     return m_channelID;
                 }
                 
-                virtual String getSearchInstanceName() {
+                virtual string getSearchInstanceName() {
                     return m_name;
                 }
                 
@@ -3862,7 +3862,7 @@ namespace epics {
                     }
                 }
                 
-                virtual void getField(GetFieldRequester::shared_pointer const & requester,epics::pvData::String const & subField)
+                virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField)
                 {
                     ChannelGetFieldRequestImpl::create(shared_from_this(), requester, subField);
                 }
@@ -3919,24 +3919,19 @@ namespace epics {
                 
                 
                 virtual void printInfo() {
-                    String info;
-                    printInfo(&info);
-                    std::cout << info.c_str() << std::endl;
+                    printInfo(std::cout);
                 }
                 
-                virtual void printInfo(epics::pvData::StringBuilder out) {
+                virtual void printInfo(std::ostream& out) {
                     //Lock lock(m_channelMutex);
-                    //std::ostringstream ostr;
-                    //static String emptyString;
                     
-                    out->append(  "CHANNEL  : "); out->append(m_name);
-                    out->append("\nSTATE    : "); out->append(ConnectionStateNames[m_connectionState]);
+                    out << "CHANNEL  : " << m_name << std::endl;
+                    out << "STATE    : " << ConnectionStateNames[m_connectionState] << std::endl;
                     if (m_connectionState == CONNECTED)
                     {
-                        out->append("\nADDRESS  : "); out->append(getRemoteAddress());
-                        //out->append("\nRIGHTS   : "); out->append(getAccessRights());
+                        out << "ADDRESS  : " << getRemoteAddress() << std::endl;
+                        //out << "RIGHTS   : " << getAccessRights() << std::endl;
                     }
-                    out->append("\n");
                 }
             };
             
@@ -4028,40 +4023,35 @@ TODO
             }
 
             virtual void printInfo() {
-                String info;
-                printInfo(&info);
-                std::cout << info.c_str() << std::endl;
+                printInfo(std::cout);
             }
 
-            virtual void printInfo(epics::pvData::StringBuilder out) {
+            virtual void printInfo(std::ostream& out) {
                 Lock lock(m_contextMutex);
-                std::ostringstream ostr;
-                static String emptyString;
 
-                out->append(  "CLASS : ::epics::pvAccess::ClientContextImpl");
-                out->append("\nVERSION : "); out->append(m_version.getVersionString());
-                out->append("\nADDR_LIST : "); ostr << m_addressList; out->append(ostr.str()); ostr.str(emptyString);
-                out->append("\nAUTO_ADDR_LIST : ");  out->append(m_autoAddressList ? "true" : "false");
-                out->append("\nCONNECTION_TIMEOUT : "); ostr << m_connectionTimeout; out->append(ostr.str()); ostr.str(emptyString);
-                out->append("\nBEACON_PERIOD : "); ostr << m_beaconPeriod; out->append(ostr.str()); ostr.str(emptyString);
-                out->append("\nBROADCAST_PORT : "); ostr << m_broadcastPort; out->append(ostr.str()); ostr.str(emptyString);
-                out->append("\nRCV_BUFFER_SIZE : "); ostr << m_receiveBufferSize; out->append(ostr.str()); ostr.str(emptyString);
-                out->append("\nSTATE : ");
+                out << "CLASS              : ::epics::pvAccess::ClientContextImpl" << std::endl;
+                out << "VERSION            : " << m_version.getVersionString() << std::endl;
+                out << "ADDR_LIST          : " << m_addressList << std::endl;
+                out << "AUTO_ADDR_LIST     : " << (m_autoAddressList ? "true" : "false") << std::endl;
+                out << "CONNECTION_TIMEOUT : " << m_connectionTimeout << std::endl;
+                out << "BEACON_PERIOD      : " << m_beaconPeriod << std::endl;
+                out << "BROADCAST_PORT     : " << m_broadcastPort << std::endl;;
+                out << "RCV_BUFFER_SIZE    : " << m_receiveBufferSize << std::endl;
+                out << "STATE              : ";
                 switch (m_contextState)
                 {
                 case CONTEXT_NOT_INITIALIZED:
-                    out->append("CONTEXT_NOT_INITIALIZED");
+                    out << "CONTEXT_NOT_INITIALIZED" << std::endl;
                     break;
                 case CONTEXT_INITIALIZED:
-                    out->append("CONTEXT_INITIALIZED");
+                    out << "CONTEXT_INITIALIZED" << std::endl;
                     break;
                 case CONTEXT_DESTROYED:
-                    out->append("CONTEXT_DESTROYED");
+                    out << "CONTEXT_DESTROYED" << std::endl;
                     break;
                 default:
-                    out->append("UNKNOWN");
+                    out << "UNKNOWN" << std::endl;
                 }
-                out->append("\n");
             }
 
             virtual void destroy()
@@ -4244,7 +4234,7 @@ TODO
             /**
              * Check channel name.
              */
-            void checkChannelName(String const & name) {
+            void checkChannelName(std::string const & name) {
                 if (name.empty())
                     throw std::runtime_error("0 or empty channel name");
                 else if (name.length() > MAX_CHANNEL_NAME_LENGTH)
@@ -4447,7 +4437,7 @@ TODO
              */
             // TODO no minor version with the addresses
             // TODO what if there is an channel with the same name, but on different host!
-            ChannelImpl::shared_pointer createChannelInternal(String const & name, ChannelRequester::shared_pointer const & requester, short priority,
+            ChannelImpl::shared_pointer createChannelInternal(std::string const & name, ChannelRequester::shared_pointer const & requester, short priority,
                                                auto_ptr<InetAddrVector>& addresses) { // TODO addresses
 
                 checkState();
@@ -4489,7 +4479,7 @@ TODO
              */
             void destroyChannel(ChannelImpl::shared_pointer const & channel, bool force) {
 
-                String name = channel->getChannelName();
+                string name = channel->getChannelName();
                 bool lockAcquired = true; //namedLocker->acquireSynchronizationObject(name, LOCK_TIMEOUT);
                 if (lockAcquired)
                 {
@@ -4559,7 +4549,7 @@ TODO
              * A space-separated list of broadcast address for process variable name resolution.
              * Each address must be of the form: ip.number:port or host.name:port
              */
-            String m_addressList;
+            string m_addressList;
 
             /**
              * Define whether or not the network interfaces should be discovered at runtime.
@@ -4618,7 +4608,7 @@ TODO
             /**
              * Context instance.
              */
-            NamedLockPattern<String> m_namedLocker;
+            NamedLockPattern<string> m_namedLocker;
 
             /**
              * Context instance.

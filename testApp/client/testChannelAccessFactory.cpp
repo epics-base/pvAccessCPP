@@ -16,19 +16,19 @@ using namespace epics::pvAccess;
 
 class DummyChannelProvider : public ChannelProvider {
 private:
-    String m_name;
+    string m_name;
 public:
-    DummyChannelProvider(String name) : m_name(name) {};
+    DummyChannelProvider(std::string name) : m_name(name) {};
     void destroy() {};
-    String getProviderName() { return m_name; };
+    string getProviderName() { return m_name; };
 
-    ChannelFind* channelFind(String channelName,ChannelFindRequester *channelFindRequester)
+    ChannelFind* channelFind(std::string channelName,ChannelFindRequester *channelFindRequester)
     { return 0; }
 
-    Channel* createChannel(String channelName,ChannelRequester *channelRequester,short priority)
+    Channel* createChannel(std::string channelName,ChannelRequester *channelRequester,short priority)
     { return 0; }
 
-    Channel* createChannel(String channelName,ChannelRequester *channelRequester,short priority,String address)
+    Channel* createChannel(std::string channelName,ChannelRequester *channelRequester,short priority,String address)
     { return 0; }
 };
 

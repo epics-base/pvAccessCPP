@@ -20,6 +20,7 @@
 #include <pv/pvAccessMB.h>
 #include <pv/rpcServer.h>
 
+using std::string;
 using std::ostringstream;
 using std::hex;
 
@@ -221,7 +222,7 @@ byteAddress[i] = payloadBuffer->getByte(); };
     bool allowed = (protocolsCount == 0);
     for (size_t i = 0; i < protocolsCount; i++)
     {
-        String protocol = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+        string protocol = SerializeHelper::deserializeString(payloadBuffer, transport.get());
         if (SUPPORTED_PROTOCOL == protocol)
             allowed = true;
     }
@@ -241,7 +242,7 @@ byteAddress[i] = payloadBuffer->getByte(); };
         {
             transport->ensureData(4);
             const int32 cid = payloadBuffer->getInt();
-            const String name = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+            const string name = SerializeHelper::deserializeString(payloadBuffer, transport.get());
             // no name check here...
 
             if (allowed)
@@ -288,7 +289,7 @@ void ServerChannelFindRequesterImpl::clear()
     _serverSearch = false;
 }
 
-ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(String name, int32 searchSequenceId, int32 cid, osiSockAddr const & sendTo,
+ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(std::string name, int32 searchSequenceId, int32 cid, osiSockAddr const & sendTo,
                                                                     bool responseRequired, bool serverSearch)
 {
 	Lock guard(_mutex);
@@ -301,7 +302,7 @@ ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(String name,
 	return this;
 }
 
-std::map<String, std::tr1::weak_ptr<ChannelProvider> > ServerSearchHandler::s_channelNameToProvider;
+std::map<string, std::tr1::weak_ptr<ChannelProvider> > ServerSearchHandler::s_channelNameToProvider;
 
 void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/, ChannelFind::shared_pointer const & channelFind, bool wasFound)
 {
@@ -457,7 +458,7 @@ public:
         if (!opField)
             throw RPCRequestException(Status::STATUSTYPE_ERROR, "unspecified 'string op' field");
 
-        String op = opField->get();
+        string op = opField->get();
         if (op == "channels")
         {
             ChannelListRequesterImpl::shared_pointer listListener(new ChannelListRequesterImpl());
@@ -468,7 +469,7 @@ public:
             Status& status = listListener->status;
             if (!status.isSuccess())
             {
-                String errorMessage = "failed to fetch channel list: " + status.getMessage();
+                string errorMessage = "failed to fetch channel list: " + status.getMessage();
                 if (!status.getStackDump().empty())
                      errorMessage += "\n" + status.getStackDump();
                 throw RPCRequestException(Status::STATUSTYPE_ERROR, errorMessage);
@@ -509,7 +510,7 @@ std::string ServerRPCService::helpString =
         "\t\t\t (no arguments)\n"
         "\n";
 
-epics::pvData::String ServerCreateChannelHandler::SERVER_CHANNEL_NAME = "server";
+std::string ServerCreateChannelHandler::SERVER_CHANNEL_NAME = "server";
 
 void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
@@ -527,7 +528,7 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 	}
 	const pvAccessID cid = payloadBuffer->getInt();
 
-	String channelName = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+	string channelName = SerializeHelper::deserializeString(payloadBuffer, transport.get());
 	if (channelName.size() == 0)
 	{
 
@@ -570,7 +571,7 @@ void ServerCreateChannelHandler::disconnect(Transport::shared_pointer const & tr
 }
 
 ServerChannelRequesterImpl::ServerChannelRequesterImpl(Transport::shared_pointer const & transport,
-    const String channelName, const pvAccessID cid) :
+    const string channelName, const pvAccessID cid) :
     _serverChannel(),
     _transport(transport),
     _channelName(channelName),
@@ -582,7 +583,7 @@ ServerChannelRequesterImpl::ServerChannelRequesterImpl(Transport::shared_pointer
 
 ChannelRequester::shared_pointer ServerChannelRequesterImpl::create(
     ChannelProvider::shared_pointer const & provider, Transport::shared_pointer const & transport,
-    const String channelName, const pvAccessID cid)
+    const string channelName, const pvAccessID cid)
 {
 	ChannelRequester::shared_pointer cr(new ServerChannelRequesterImpl(transport, channelName, cid));
     // TODO exception guard and report error back
@@ -663,14 +664,14 @@ void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer cons
 	// TODO should we notify remote side?
 }
 
-String ServerChannelRequesterImpl::getRequesterName()
+string ServerChannelRequesterImpl::getRequesterName()
 {
 	std::stringstream name;
 	name << "ServerChannelRequesterImpl/" << _channelName << "[" << _cid << "]"; 
 	return name.str();
 }
 
-void ServerChannelRequesterImpl::message(String const & message, MessageType messageType)
+void ServerChannelRequesterImpl::message(std::string const & message, MessageType messageType)
 {
 	LOG(logLevelDebug, "[%s] %s", getMessageTypeName(messageType).c_str(), message.c_str());
 }
@@ -2267,7 +2268,7 @@ void ServerGetFieldHandler::handleResponse(osiSockAddr* responseFrom,
 		return;
 	}
 
-	String subField = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+	string subField = SerializeHelper::deserializeString(payloadBuffer, transport.get());
 
 	// issue request
 	GetFieldRequester::shared_pointer gfr(new ServerGetFieldRequesterImpl(_context, channel, ioid, transport));

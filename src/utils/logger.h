@@ -75,7 +75,7 @@ namespace pvAccess {
         * @param[in] fname The file to write to. If the file exists, it
         * is opened for append.
         */
-    epicsShareExtern void createFileLogger( epics::pvData::String const & fname );
+    epicsShareExtern void createFileLogger( std::string const & fname );
 
 }
 }

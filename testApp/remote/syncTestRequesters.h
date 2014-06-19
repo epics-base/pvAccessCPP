@@ -219,7 +219,7 @@ class SyncChannelRequesterImpl : public epics::pvAccess::ChannelRequester, publi
         epics::pvAccess::Channel::shared_pointer const & channel) 
     {
       if (m_debug)
-        std::cout << getRequesterName() << "." << "channelCreated(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << "." << "channelCreated(" << status << ")" << std::endl;
 
       Lock lock(m_pointerMutex);
       m_status = status;
@@ -289,7 +289,7 @@ class SyncChannelFindRequesterImpl : public ChannelFindRequester, public SyncBas
         const epics::pvAccess::ChannelFind::shared_pointer&, bool wasFound)
     {
       if (m_debug)
-        std::cout << "channelFindResult(" << status.toString() << ")" << std::endl;
+        std::cout << "channelFindResult(" << status << ")" << std::endl;
 
       {
         Lock lock(m_pointerMutex);
@@ -371,7 +371,7 @@ class SyncChannelGetRequesterImpl : public ChannelGetRequester, public SyncBaseR
         epics::pvData::Structure::const_shared_pointer const & /*structure*/)
     {
       if (m_debug)
-        std::cout << getRequesterName() << "." << "channelGetConnect(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << "." << "channelGetConnect(" << status << ")" << std::endl;
 
       if (status.isSuccess())
       {
@@ -394,7 +394,7 @@ class SyncChannelGetRequesterImpl : public ChannelGetRequester, public SyncBaseR
         epics::pvData::BitSet::shared_pointer const & bitSet)
     {
       if (m_debug)
-        std::cout << getRequesterName() << "." << "getDone(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << "." << "getDone(" << status << ")" << std::endl;
 
         {
           Lock lock(m_pointerMutex);
@@ -496,7 +496,7 @@ class SyncChannelPutRequesterImpl : public ChannelPutRequester, public SyncBaseR
     {
 
       if (m_debug)
-        std::cout << getRequesterName() << "." << "channelPutConnect(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << "." << "channelPutConnect(" << status << ")" << std::endl;
 
       if (status.isSuccess())
       {
@@ -522,7 +522,7 @@ class SyncChannelPutRequesterImpl : public ChannelPutRequester, public SyncBaseR
         epics::pvData::BitSet::shared_pointer const & bitSet)
     {
       if (m_debug)
-        std::cout << getRequesterName() << "." << "getDone(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << "." << "getDone(" << status << ")" << std::endl;
 
       {
         Lock lock(m_pointerMutex);
@@ -540,7 +540,7 @@ class SyncChannelPutRequesterImpl : public ChannelPutRequester, public SyncBaseR
         ChannelPut::shared_pointer const & channelPut)
     {
       if (m_debug)
-        std::cout << getRequesterName() << "." << "putDone(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << "." << "putDone(" << status << ")" << std::endl;
 
       {
           Lock lock(m_pointerMutex);
@@ -595,7 +595,7 @@ class SyncGetFieldRequesterImpl : public GetFieldRequester, public SyncBaseReque
     {
 
       if (m_debug)
-        std::cout << getRequesterName() << "." << "getDone(" << status.toString() << endl;
+        std::cout << getRequesterName() << "." << "getDone(" << status << endl;
 
       if (status.isSuccess() && field)
       {
@@ -665,7 +665,7 @@ class SyncChannelProcessRequesterImpl : public ChannelProcessRequester, public S
     {
 
       if (m_debug)
-        std::cout << getRequesterName() << "." << "channelProcessConnect(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << "." << "channelProcessConnect(" << status << ")" << std::endl;
 
       if (status.isSuccess())
       {
@@ -688,7 +688,7 @@ class SyncChannelProcessRequesterImpl : public ChannelProcessRequester, public S
                 ChannelProcess::shared_pointer const & channelProcess)
     {
       if (m_debug)
-        std::cout << getRequesterName() << "." << "processDone(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << "." << "processDone(" << status << ")" << std::endl;
 
         {
           Lock lock(m_pointerMutex);
@@ -812,7 +812,7 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
     {
       if (m_debug)
         std::cout << getRequesterName() << "." << "channelGetPutConnect(" 
-          << status.toString() << ")" << std::endl;
+          << status << ")" << std::endl;
 
       if (status.isSuccess())
       {
@@ -839,7 +839,7 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
         epics::pvData::BitSet::shared_pointer const & getBitSet)
     {
       if (m_debug)
-        std::cout << getRequesterName() << "." << "getGetDone(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << "." << "getGetDone(" << status << ")" << std::endl;
 
       {
         Lock lock(m_pointerMutex);
@@ -861,7 +861,7 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
         epics::pvData::BitSet::shared_pointer const & putBitSet)
     {
       if (m_debug)
-        std::cout << getRequesterName() << "." << "getPutDone(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << "." << "getPutDone(" << status << ")" << std::endl;
 
       {
         Lock lock(m_pointerMutex);
@@ -883,7 +883,7 @@ class SyncChannelPutGetRequesterImpl : public ChannelPutGetRequester, public Syn
         epics::pvData::BitSet::shared_pointer const & getBitSet)
     {
       if (m_debug)
-        std::cout << getRequesterName() << "." << "putGetDone(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << "." << "putGetDone(" << status << ")" << std::endl;
 
       {
         Lock lock(m_pointerMutex);
@@ -1009,7 +1009,7 @@ class SyncChannelRPCRequesterImpl : public ChannelRPCRequester, public SyncBaseR
 
       if (m_debug)
         std::cout << getRequesterName() << "." << "channelRPCConnect(" 
-          << status.toString() << ")" << std::endl;
+          << status << ")" << std::endl;
 
       if (status.isSuccess())
       {
@@ -1036,7 +1036,7 @@ class SyncChannelRPCRequesterImpl : public ChannelRPCRequester, public SyncBaseR
 
       if (m_debug)
         std::cout << getRequesterName() << "." << "requestDone(" 
-          << status.toString() << ")" << std::endl;
+          << status << ")" << std::endl;
 
       {
         Lock lock(m_pointerMutex);
@@ -1155,7 +1155,7 @@ class SyncMonitorRequesterImpl: public MonitorRequester, public SyncBaseRequeste
         StructureConstPtr const & /*structure*/)
     {
       if (m_debug)
-        std::cout << getRequesterName() << "." << "monitorConnect(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << "." << "monitorConnect(" << status << ")" << std::endl;
 
       if (status.isSuccess())
       {
@@ -1304,13 +1304,13 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
     }
 
 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
       return "SynChannelArrayRequesterImpl";
     } 
 
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
       if (m_debug)
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " 
@@ -1323,7 +1323,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
         epics::pvData::Array::const_shared_pointer const & /*array*/)
     {
       if (m_debug) 
-        std::cout << getRequesterName() << ".channelArrayConnect(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << ".channelArrayConnect(" << status << ")" << std::endl;
       if (status.isSuccess())
       {
         {
@@ -1347,7 +1347,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
         epics::pvData::PVArray::shared_pointer const & pvArray)
     {
       if (m_debug)
-        std::cout << getRequesterName()  << ".getArrayDone(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName()  << ".getArrayDone(" << status << ")" << std::endl;
       
       Lock lock(m_pointerMutex);
       
@@ -1363,7 +1363,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
         ChannelArray::shared_pointer const & channelArray)
     {
       if (m_debug)
-        std::cout << getRequesterName() << ".putArrayDone(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << ".putArrayDone(" << status << ")" << std::endl;
 
       Lock lock(m_pointerMutex);
 
@@ -1378,7 +1378,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
         ChannelArray::shared_pointer const & channelArray)
     { 
       if (m_debug)
-        std::cout << getRequesterName() << ".setLengthDone(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << ".setLengthDone(" << status << ")" << std::endl;
       
       Lock lock(m_pointerMutex);
 
@@ -1393,7 +1393,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
         size_t length, size_t capacity)
     { 
       if (m_debug)
-        std::cout << getRequesterName() << ".getLengthDone(" << status.toString() << ")" << std::endl;
+        std::cout << getRequesterName() << ".getLengthDone(" << status << ")" << std::endl;
       
       Lock lock(m_pointerMutex);
 

@@ -317,9 +317,9 @@ namespace epics {
 
       void release(pvAccessID clientId) {}
 
-      epics::pvData::String getType() const  
+      std::string getType() const  
       { 
-        return epics::pvData::String("TCP"); 
+        return std::string("TCP"); 
       }
 
       const osiSockAddr* getRemoteAddress() const  { return 0; }

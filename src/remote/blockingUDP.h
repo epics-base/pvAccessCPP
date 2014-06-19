@@ -70,8 +70,8 @@ namespace epics {
                 return &_remoteAddress;
             }
 
-            virtual epics::pvData::String getType() const {
-                return epics::pvData::String("udp");
+            virtual std::string getType() const {
+                return std::string("udp");
             }
 
             virtual std::size_t getReceiveBufferSize() const {

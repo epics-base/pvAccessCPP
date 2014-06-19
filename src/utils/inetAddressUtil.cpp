@@ -83,18 +83,18 @@ int32 ipv4AddressToInt(const osiSockAddr& addr) {
     return (int32)ntohl(addr.ia.sin_addr.s_addr);
 }
 
-int32 parseInetAddress(const String addr) {
+int32 parseInetAddress(const string addr) {
     int32 retAddr;
 
     size_t dot = addr.find('.');
-    if(dot==String::npos) THROW_BASE_EXCEPTION("Not an IPv4 address.");
+    if(dot==std::string::npos) THROW_BASE_EXCEPTION("Not an IPv4 address.");
     int byte = atoi(addr.substr(0, dot).c_str());
     if(byte<0||byte>255) THROW_BASE_EXCEPTION("Not an IPv4 address.");
     retAddr = byte;
 
     int num = dot+1;
     dot = addr.find('.', num);
-    if(dot==String::npos) THROW_BASE_EXCEPTION("Not an IPv4 address.");
+    if(dot==std::string::npos) THROW_BASE_EXCEPTION("Not an IPv4 address.");
     byte = atoi(addr.substr(num, dot-num).c_str());
     if(byte<0||byte>255) THROW_BASE_EXCEPTION("Not an IPv4 address.");
     retAddr <<= 8;
@@ -102,7 +102,7 @@ int32 parseInetAddress(const String addr) {
 
     num = dot+1;
     dot = addr.find('.', num);
-    if(dot==String::npos) THROW_BASE_EXCEPTION("Not an IPv4 address.");
+    if(dot==std::string::npos) THROW_BASE_EXCEPTION("Not an IPv4 address.");
     byte = atoi(addr.substr(num, dot-num).c_str());
     if(byte<0||byte>255) THROW_BASE_EXCEPTION("Not an IPv4 address.");
     retAddr <<= 8;
@@ -117,22 +117,22 @@ int32 parseInetAddress(const String addr) {
     return htonl(retAddr);
 }
 
-InetAddrVector* getSocketAddressList(String list, int defaultPort,
+InetAddrVector* getSocketAddressList(std::string list, int defaultPort,
         const InetAddrVector* appendList) {
     InetAddrVector* iav = new InetAddrVector();
 
     // parse string
     size_t subStart = 0;
     size_t subEnd;
-    while((subEnd = list.find(' ', subStart))!=String::npos) {
-        String address = list.substr(subStart, (subEnd-subStart));
+    while((subEnd = list.find(' ', subStart))!=std::string::npos) {
+        string address = list.substr(subStart, (subEnd-subStart));
         osiSockAddr addr;
         if (aToIPAddr(address.c_str(), defaultPort, &addr.ia) == 0)
             iav->push_back(addr);
         subStart = list.find_first_not_of(" \t\r\n\v", subEnd);
     }
 
-    if(subStart!=String::npos&&list.length()>0) {
+    if(subStart!=std::string::npos&&list.length()>0) {
         osiSockAddr addr;
         if (aToIPAddr(list.substr(subStart).c_str(), defaultPort, &addr.ia) == 0)
             iav->push_back(addr);
@@ -145,7 +145,7 @@ InetAddrVector* getSocketAddressList(String list, int defaultPort,
     return iav;
 }
 
-const String inetAddressToString(const osiSockAddr &addr,
+const string inetAddressToString(const osiSockAddr &addr,
         bool displayPort, bool displayHex) {
     stringstream saddr;
 

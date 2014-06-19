@@ -151,9 +151,7 @@ int main (int argc, char *argv[])
                     channel->printInfo();
                     if (structure)
                     {
-                        String s;
-                        structure->toString(&s);
-                        std::cout << s << std::endl << std::endl;
+                        std::cout << *structure << std::endl << std::endl;
                     }
                     else
                     {

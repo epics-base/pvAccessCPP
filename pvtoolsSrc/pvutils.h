@@ -3,9 +3,9 @@
 #include <pv/pvAccess.h>
 
 /// terse mode functions
-void convertStructure(epics::pvData::StringBuilder buffer, epics::pvData::PVStructure *data, int notFirst);
-void convertArray(epics::pvData::StringBuilder buffer, epics::pvData::PVScalarArray * pv, int notFirst);
-void convertStructureArray(epics::pvData::StringBuilder buffer, epics::pvData::PVStructureArray * pvdata, int notFirst);
+void convertStructure(std::string* buffer, epics::pvData::PVStructure *data, int notFirst);
+void convertArray(std::string*, epics::pvData::PVScalarArray * pv, int notFirst);
+void convertStructureArray(std::string*, epics::pvData::PVStructureArray * pvdata, int notFirst);
 
 void terseSeparator(char c);
 void terseArrayCount(bool flag);
@@ -39,12 +39,12 @@ class RequesterImpl :
 	public epics::pvData::Requester
 {
     public:
-	    RequesterImpl(epics::pvData::String const & requesterName);
-        virtual epics::pvData::String getRequesterName();
-        virtual void message(epics::pvData::String const & message, epics::pvData::MessageType messageType);
+	    RequesterImpl(std::string const & requesterName);
+        virtual std::string getRequesterName();
+        virtual void message(std::string const & message, epics::pvData::MessageType messageType);
 
     private:
-        epics::pvData::String m_requesterName;
+        std::string m_requesterName;
 };
 
 class ChannelRequesterImpl :
@@ -58,8 +58,8 @@ class ChannelRequesterImpl :
 
         ChannelRequesterImpl(bool printOnlyErrors = false);
 
-        virtual epics::pvData::String getRequesterName();
-        virtual void message(epics::pvData::String const & message, epics::pvData::MessageType messageType);
+        virtual std::string getRequesterName();
+        virtual void message(std::string const & message, epics::pvData::MessageType messageType);
     
         virtual void channelCreated(const epics::pvData::Status& status, epics::pvAccess::Channel::shared_pointer const & channel);
         virtual void channelStateChange(epics::pvAccess::Channel::shared_pointer const & channel, epics::pvAccess::Channel::ConnectionState connectionState);
@@ -80,8 +80,8 @@ class GetFieldRequesterImpl :
 
         GetFieldRequesterImpl(epics::pvAccess::Channel::shared_pointer channel);
 
-        virtual epics::pvData::String getRequesterName();
-        virtual void message(epics::pvData::String const & message, epics::pvData::MessageType messageType);
+        virtual std::string getRequesterName();
+        virtual void message(std::string const & message, epics::pvData::MessageType messageType);
 
         virtual void getDone(const epics::pvData::Status& status, epics::pvData::FieldConstPtr const & field);
 
@@ -90,4 +90,12 @@ class GetFieldRequesterImpl :
         bool waitUntilFieldGet(double timeOut);
 };
 
-std::ostream& operator<<(std::ostream& o, const epics::pvData::Status& s);
+
+struct dump_stack_only_on_debug
+{
+    const epics::pvData::Status &status;
+
+    dump_stack_only_on_debug(const epics::pvData::Status &s) : status(s) {}
+};
+
+std::ostream& operator<<(std::ostream& os, const dump_stack_only_on_debug& d);

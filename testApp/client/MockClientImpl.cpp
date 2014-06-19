@@ -34,7 +34,7 @@ class MockChannelProcess : public ChannelProcess
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelProcess);
 
-        PVField* field = pvStructure->getSubField(String("value"));
+        PVField* field = pvStructure->getSubField(std::string("value"));
         if (field == 0)
         {
             Status noValueFieldStatus(Status::STATUSTYPE_ERROR, "no 'value' field");
@@ -118,7 +118,7 @@ class MockChannelProcess : public ChannelProcess
             {
                 // increment by one
                 PVString *pvString = static_cast<PVString*>(m_valueField);
-                String val = pvString->get();
+                string val = pvString->get();
                 if (val.empty())
                     pvString->put("gen0");
                 else
@@ -370,8 +370,8 @@ class MockChannel : public Channel {
     private:
         ChannelProvider* m_provider;
         ChannelRequester* m_requester;
-        String m_name;
-        String m_remoteAddress;
+        string m_name;
+        string m_remoteAddress;
         
         PVStructure* m_pvStructure;
         
@@ -386,8 +386,8 @@ class MockChannel : public Channel {
     MockChannel(
         ChannelProvider* provider,
         ChannelRequester* requester,
-        String name,
-        String remoteAddress) :
+        string name,
+        string remoteAddress) :
         m_provider(provider),
         m_requester(requester),
         m_name(name),
@@ -397,11 +397,11 @@ class MockChannel : public Channel {
      
      
         ScalarType stype = pvDouble;
-        String allProperties("alarm,timeStamp,display,control,valueAlarm");
+        string allProperties("alarm,timeStamp,display,control,valueAlarm");
 
         m_pvStructure = getStandardPVField()->scalar(
             0,name,stype,allProperties);
-        PVDouble *pvField = m_pvStructure->getDoubleField(String("value"));
+        PVDouble *pvField = m_pvStructure->getDoubleField(std::string("value"));
         pvField->put(1.123);
 
         
@@ -415,12 +415,12 @@ class MockChannel : public Channel {
         delete this;
     };
 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return getChannelName();
     };
     
-    virtual void message(String const & message,MessageType messageType) 
+    virtual void message(std::string const & message,MessageType messageType) 
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
     }
@@ -430,12 +430,12 @@ class MockChannel : public Channel {
         return m_provider;
     }
 
-    virtual epics::pvData::String getRemoteAddress()
+    virtual std::string getRemoteAddress()
     {
         return m_remoteAddress;
     }
 
-    virtual epics::pvData::String getChannelName()
+    virtual std::string getChannelName()
     {
         return m_name;
     }
@@ -460,7 +460,7 @@ class MockChannel : public Channel {
         return readWrite;
     }
 
-    virtual void getField(GetFieldRequester *requester,epics::pvData::String subField)
+    virtual void getField(GetFieldRequester *requester,std::string subField)
     {
         requester->getDone(Status::OK,m_pvStructure->getSubField(subField)->getField());
     }
@@ -517,14 +517,14 @@ class MockChannel : public Channel {
     }
 
     virtual void printInfo() {
-        String info;
+        string info;
         printInfo(&info);
         std::cout << info.c_str() << std::endl;
     }
     
     virtual void printInfo(epics::pvData::StringBuilder out) {
         //std::ostringstream ostr;
-        //static String emptyString;
+        //static string emptyString;
         
 		out->append(  "CHANNEL  : "); out->append(m_name);
 		out->append("\nSTATE    : "); out->append(ConnectionStateNames[getConnectionState()]);
@@ -576,7 +576,7 @@ class MockChannelProvider : public ChannelProvider {
     MockChannelProvider() : m_mockChannelFind(new MockChannelFind(this)) {
     }
 
-    virtual epics::pvData::String getProviderName()
+    virtual std::string getProviderName()
     {
         return "MockChannelProvider";
     }
@@ -588,7 +588,7 @@ class MockChannelProvider : public ChannelProvider {
     }
     
     virtual ChannelFind* channelFind(
-        epics::pvData::String channelName,
+        std::string channelName,
         ChannelFindRequester *channelFindRequester)
     {
         channelFindRequester->channelFindResult(Status::OK, m_mockChannelFind, true);
@@ -596,7 +596,7 @@ class MockChannelProvider : public ChannelProvider {
     }
 
     virtual Channel* createChannel(
-        epics::pvData::String channelName,
+        std::string channelName,
         ChannelRequester *channelRequester,
         short priority)
     {
@@ -604,10 +604,10 @@ class MockChannelProvider : public ChannelProvider {
     }
 
     virtual Channel* createChannel(
-        epics::pvData::String channelName,
+        std::string channelName,
         ChannelRequester *channelRequester,
         short priority,
-        epics::pvData::String address)
+        std::string address)
     {
         if (address == "local")
         {
@@ -655,7 +655,7 @@ class MockClientContext : public ClientContext
     }
         
     virtual void printInfo() {
-        String info;
+        string info;
         printInfo(&info);
         std::cout << info.c_str() << std::endl;
     }
@@ -695,12 +695,12 @@ class ChannelFindRequesterImpl : public ChannelFindRequester
 
 class ChannelRequesterImpl : public ChannelRequester
 {
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ChannelRequesterImpl";
     };
     
-    virtual void message(String const & message,MessageType messageType) 
+    virtual void message(std::string const & message,MessageType messageType) 
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
     }
@@ -719,12 +719,12 @@ class ChannelRequesterImpl : public ChannelRequester
 
 class GetFieldRequesterImpl : public GetFieldRequester
 {
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "GetFieldRequesterImpl";
     };
     
-    virtual void message(String const & message,MessageType messageType) 
+    virtual void message(std::string const & message,MessageType messageType) 
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
     }
@@ -734,7 +734,7 @@ class GetFieldRequesterImpl : public GetFieldRequester
         std::cout << "getDone(" << status.toString() << ", ";
         if (field)
         {
-            String str;
+            string str;
             field->toString(&str);
             std::cout << str;
         }
@@ -750,12 +750,12 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
     epics::pvData::PVStructure *m_pvStructure;
     epics::pvData::BitSet *m_bitSet;
                 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ChannelGetRequesterImpl";
     };
     
-    virtual void message(String const & message,MessageType messageType) 
+    virtual void message(std::string const & message,MessageType messageType) 
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
     }
@@ -774,7 +774,7 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
     virtual void getDone(const epics::pvData::Status& status)
     {
         std::cout << "getDone(" << status.toString() << ")" << std::endl;
-        String str;
+        string str;
         m_pvStructure->toString(&str);
         std::cout << str;
         std::cout << std::endl;
@@ -787,12 +787,12 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     epics::pvData::PVStructure *m_pvStructure;
     epics::pvData::BitSet *m_bitSet;
                 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ChannelPutRequesterImpl";
     };
     
-    virtual void message(String const & message,MessageType messageType) 
+    virtual void message(std::string const & message,MessageType messageType) 
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
     }
@@ -811,7 +811,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     virtual void getDone(const epics::pvData::Status& status)
     {
         std::cout << "getDone(" << status.toString() << ")" << std::endl;
-        String str;
+        string str;
         m_pvStructure->toString(&str);
         std::cout << str;
         std::cout << std::endl;
@@ -820,7 +820,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     virtual void putDone(const epics::pvData::Status& status)
     {
         std::cout << "putDone(" << status.toString() << ")" << std::endl;
-        String str;
+        string str;
         m_pvStructure->toString(&str);
         std::cout << str;
         std::cout << std::endl;
@@ -831,12 +831,12 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
  
 class MonitorRequesterImpl : public MonitorRequester
 {
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "MonitorRequesterImpl";
     };
     
-    virtual void message(String const & message,MessageType messageType) 
+    virtual void message(std::string const & message,MessageType messageType) 
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
     }
@@ -846,7 +846,7 @@ class MonitorRequesterImpl : public MonitorRequester
         std::cout << "monitorConnect(" << status.toString() << ")" << std::endl;
         if (structure)
         {
-            String str;
+            string str;
             structure->toString(&str);
             std::cout << str << std::endl;
         }
@@ -858,7 +858,7 @@ class MonitorRequesterImpl : public MonitorRequester
 
         MonitorElement* element = monitor->poll();
         
-        String str("changed/overrun ");
+        string str("changed/overrun ");
         element->getChangedBitSet()->toString(&str);
         str += '/';
         element->getOverrunBitSet()->toString(&str);
@@ -880,12 +880,12 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
 {
     ChannelProcess *m_channelProcess;
                 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ProcessRequesterImpl";
     };
     
-    virtual void message(String const & message,MessageType messageType) 
+    virtual void message(std::string const & message,MessageType messageType) 
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << messageTypeName[messageType] << ")" << std::endl; 
     }

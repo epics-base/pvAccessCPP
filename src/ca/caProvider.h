@@ -22,32 +22,32 @@ class epicsShareClass CAChannelProvider :
 {
 public:
 
-    static epics::pvData::String PROVIDER_NAME;
+    static std::string PROVIDER_NAME;
 
     CAChannelProvider();
     virtual ~CAChannelProvider();
 
     /* --------------- epics::pvAccess::ChannelProvider --------------- */
 
-    virtual epics::pvData::String getProviderName();
+    virtual std::string getProviderName();
 
     virtual ChannelFind::shared_pointer channelFind(
-            epics::pvData::String const & channelName,
+            std::string const & channelName,
             ChannelFindRequester::shared_pointer const & channelFindRequester);
 
     virtual ChannelFind::shared_pointer channelList(
             ChannelListRequester::shared_pointer const & channelListRequester);
 
     virtual Channel::shared_pointer createChannel(
-            epics::pvData::String const & channelName,
+            std::string const & channelName,
             ChannelRequester::shared_pointer const & channelRequester,
             short priority);
 
     virtual Channel::shared_pointer createChannel(
-            epics::pvData::String const & channelName,
+            std::string const & channelName,
             ChannelRequester::shared_pointer const & channelRequester,
             short priority,
-            epics::pvData::String const & address);
+            std::string const & address);
 
     virtual void configure(epics::pvData::PVStructure::shared_pointer configuration);
     virtual void flush();

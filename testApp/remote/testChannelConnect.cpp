@@ -31,12 +31,12 @@ private:
     int count;
     Event& g_event;
     
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ChannelRequesterImpl";
     };
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -45,7 +45,7 @@ private:
     {
         if (!status.isSuccess())
         {
-            std::cout << "channelCreated(" << status.toString() << ", "
+            std::cout << "channelCreated(" << status << ", "
                       << (channel ? channel->getChannelName() : "(0)") << ")" << std::endl;
         }
     }

@@ -55,7 +55,7 @@ size_t fromString(PVScalarArrayPtr const &pv, StringArray const & from, size_t f
     std::copy(from.begin() + fromStartIndex, from.begin() + fromStartIndex + count, valueList.begin());
     processed += count;
 
-    pv->putFrom<String>(freeze(valueList));
+    pv->putFrom<string>(freeze(valueList));
 
     return processed;
 }
@@ -142,9 +142,9 @@ size_t fromString(PVStructurePtr const & pvStructure, StringArray const & from, 
                 }
                 else {
                     // union/unionArray not supported
-                    String message("fromString unsupported fieldType ");
-                    TypeFunc::toString(&message,type);
-                    throw std::logic_error(message);
+                    std::ostringstream oss;
+                    oss << "fromString unsupported fieldType " << type;
+                    throw std::logic_error(oss.str());
                 }
             }
             catch (std::exception &ex)
@@ -189,7 +189,7 @@ void usage (void)
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
 
-void printValue(String const & channelName, PVStructure::shared_pointer const & pv)
+void printValue(std::string const & channelName, PVStructure::shared_pointer const & pv)
 {
     if (mode == ValueOnlyMode)
     {
@@ -256,22 +256,22 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     Mutex m_pointerMutex;
     Mutex m_eventMutex;
     auto_ptr<Event> m_event;
-    String m_channelName;
+    string m_channelName;
     AtomicBoolean m_done;
 
     public:
     
-    ChannelPutRequesterImpl(String channelName) : m_channelName(channelName)
+    ChannelPutRequesterImpl(std::string channelName) : m_channelName(channelName)
     {
     	resetEvent();
     }
     
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ChannelPutRequesterImpl";
     }
 
-    virtual void message(String const & message, MessageType messageType)
+    virtual void message(std::string const & message, MessageType messageType)
     {
         std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -285,7 +285,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel put create: " << status << std::endl;
+                std::cerr << "[" << m_channelName << "] channel put create: " << dump_stack_only_on_debug(status) << std::endl;
             }
 
             // get immediately old value
@@ -293,7 +293,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to create channel put: " << status << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to create channel put: " << dump_stack_only_on_debug(status) << std::endl;
             m_event->signal();
         }
     }
@@ -307,7 +307,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel get: " << status << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get: " << dump_stack_only_on_debug(status) << std::endl;
             }
 
         	m_done.set();
@@ -322,7 +322,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to get: " << status << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to get: " << dump_stack_only_on_debug(status) << std::endl;
         }
         
         m_event->signal();
@@ -335,14 +335,14 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel put: " << status << std::endl;
+                std::cerr << "[" << m_channelName << "] channel put: " << dump_stack_only_on_debug(status) << std::endl;
             }
   
             m_done.set();
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to put: " << status << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to put: " << dump_stack_only_on_debug(status) << std::endl;
         }
         
         m_event->signal();

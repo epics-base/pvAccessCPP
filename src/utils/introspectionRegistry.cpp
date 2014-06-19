@@ -70,18 +70,14 @@ int16 IntrospectionRegistry::registerIntrospectionInterface(FieldConstPtr const 
 
 void IntrospectionRegistry::printKeysAndValues(string name)
 {
-	string buffer;
 	cout << "############## print of all key/values of " << name.c_str() << " registry : ###################" << endl;
 	for(registryMap_t::iterator registryIter = _registry.begin(); registryIter != _registry.end(); registryIter++)
 	{
-		buffer.erase();
 		cout << "\t" << "Key: "<< registryIter->first << endl;
 		cout << "\t" << "Value: " << registryIter->second << endl;
 
-		cout << "\t" << "References: " << buffer.c_str() << endl;
-		buffer.erase();
-		registryIter->second->toString(&buffer);
-		cout << "\t" << "Value toString: " << buffer.c_str() << endl;
+		cout << "\t" << "References: " << registryIter->second << endl;
+		cout << "\t" << "Value: " << *(registryIter->second) << endl;
 	}
 }
 

@@ -31,7 +31,7 @@ namespace epics { namespace pvAccess {
 class epicsShareClass RPCRequestException : public std::runtime_error {
 public:
     
-    RPCRequestException(epics::pvData::Status::StatusType status, epics::pvData::String const & message) :
+    RPCRequestException(epics::pvData::Status::StatusType status, std::string const & message) :
        std::runtime_error(message), m_status(status)
     {
     }

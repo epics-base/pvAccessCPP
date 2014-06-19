@@ -16,25 +16,26 @@ using namespace std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-RequesterImpl::RequesterImpl(String const & requesterName) :
+RequesterImpl::RequesterImpl(std::string const & requesterName) :
 		m_requesterName(requesterName)
 {
 }
 
-String RequesterImpl::getRequesterName()
+string RequesterImpl::getRequesterName()
 {
 	return "RequesterImpl";
 }
 
-void RequesterImpl::message(String const & message, MessageType messageType)
+void RequesterImpl::message(std::string const & message, MessageType messageType)
 {
 	std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
 }
 
-std::ostream& operator<<(std::ostream& o, const Status& s)
+std::ostream& operator<<(std::ostream& o, const dump_stack_only_on_debug& d)
 {
+    const Status &s = d.status;
     o << '[' << Status::StatusTypeName[s.getType()] << "] ";
-    String msg = s.getMessage();
+    string msg = s.getMessage();
     if (!msg.empty())
     {
         o << msg;
@@ -46,7 +47,7 @@ std::ostream& operator<<(std::ostream& o, const Status& s)
     // dump stack trace only if on debug mode
     if (IS_LOGGABLE(logLevelDebug))
     {
-        String sd = s.getStackDump();
+        string sd = s.getStackDump();
         if (!sd.empty())
         {
             o << std::endl << sd;
@@ -215,12 +216,12 @@ ChannelRequesterImpl::ChannelRequesterImpl(bool _printOnlyErrors) :
 {
 }
 
-String ChannelRequesterImpl::getRequesterName()
+string ChannelRequesterImpl::getRequesterName()
 {
 	return "ChannelRequesterImpl";
 }
 
-void ChannelRequesterImpl::message(String const & message, MessageType messageType)
+void ChannelRequesterImpl::message(std::string const & message, MessageType messageType)
 {
     if (!printOnlyErrors || messageType > warningMessage)
         std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
@@ -233,12 +234,12 @@ void ChannelRequesterImpl::channelCreated(const epics::pvData::Status& status, C
 		// show warning
 		if (!status.isOK())
 		{
-            std::cerr << "[" << channel->getChannelName() << "] channel create: " << status << std::endl;
+            std::cerr << "[" << channel->getChannelName() << "] channel create: " << dump_stack_only_on_debug(status) << std::endl;
 		}
 	}
 	else
 	{
-        std::cerr << "[" << channel->getChannelName() << "] failed to create a channel: " << status << std::endl;
+        std::cerr << "[" << channel->getChannelName() << "] failed to create a channel: " << dump_stack_only_on_debug(status) << std::endl;
 	}
 }
 
@@ -269,12 +270,12 @@ GetFieldRequesterImpl::GetFieldRequesterImpl(epics::pvAccess::Channel::shared_po
 
 }
 
-String GetFieldRequesterImpl::getRequesterName()
+string GetFieldRequesterImpl::getRequesterName()
 {
 	return "GetFieldRequesterImpl";
 }
 
-void GetFieldRequesterImpl::message(String const & message, MessageType messageType)
+void GetFieldRequesterImpl::message(std::string const & message, MessageType messageType)
 {
 	std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
 }
@@ -286,7 +287,7 @@ void GetFieldRequesterImpl::getDone(const epics::pvData::Status& status, epics::
 		// show warning
 		if (!status.isOK())
 		{
-            std::cerr << "[" << m_channel->getChannelName() << "] getField: " << status << std::endl;
+            std::cerr << "[" << m_channel->getChannelName() << "] getField: " << dump_stack_only_on_debug(status) << std::endl;
 		}
 
 		// assign smart pointers
@@ -298,7 +299,7 @@ void GetFieldRequesterImpl::getDone(const epics::pvData::Status& status, epics::
 	else
 	{
 		// do not complain about missing field
-        //std::cerr << "[" << m_channel->getChannelName() << "] failed to get channel introspection data: " << status << std::endl;
+        //std::cerr << "[" << m_channel->getChannelName() << "] failed to get channel introspection data: " << dump_stack_only_on_debug(status) << std::endl;
 	}
 
 	m_event.signal();

@@ -45,9 +45,9 @@ class epicsShareClass RPCServer :
 
     virtual ~RPCServer();
     
-    void registerService(epics::pvData::String const & serviceName, RPCService::shared_pointer const & service);
+    void registerService(std::string const & serviceName, RPCService::shared_pointer const & service);
     
-    void unregisterService(epics::pvData::String const & serviceName);
+    void unregisterService(std::string const & serviceName);
 
     void run(int seconds = 0);
     
@@ -65,7 +65,7 @@ class epicsShareClass RPCServer :
 };
 
 epicsShareExtern Channel::shared_pointer createRPCChannel(ChannelProvider::shared_pointer const & provider,
-                                                          epics::pvData::String const & channelName,
+                                                          std::string const & channelName,
                                                           ChannelRequester::shared_pointer const & channelRequester,
                                                           RPCService::shared_pointer const & rpcService);
 

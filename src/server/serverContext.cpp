@@ -636,7 +636,7 @@ static void threadRunner(void* usr)
 
 
 
-ServerContext::shared_pointer startPVAServer(String const & providerNames, int timeToRun, bool runInSeparateThread, bool printInfo)
+ServerContext::shared_pointer startPVAServer(std::string const & providerNames, int timeToRun, bool runInSeparateThread, bool printInfo)
 {
     ServerContextImpl::shared_pointer ctx = ServerContextImpl::create();
 

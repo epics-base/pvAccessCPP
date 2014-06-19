@@ -60,12 +60,12 @@ class RequesterImpl : public Requester,
 {
 public:
 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "RequesterImpl";
     };
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -127,24 +127,24 @@ class ChannelGetRequesterImpl : public ChannelGetRequester
 private:
     Event m_event;
     Event m_connectionEvent;
-    String m_channelName;
+    string m_channelName;
     int m_count;
 
     timeval m_startTime;
 
 public:
 
-    ChannelGetRequesterImpl(String channelName) :
+    ChannelGetRequesterImpl(std::string channelName) :
         m_channelName(channelName)
     {
     }
 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ChannelGetRequesterImpl";
     }
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -158,14 +158,14 @@ public:
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << m_channelName << "] channel get create: " << status.toString() << std::endl;
+                std::cout << "[" << m_channelName << "] channel get create: " << status << std::endl;
             }
 
             m_connectionEvent.signal();
         }
         else
         {
-            std::cout << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
+            std::cout << "[" << m_channelName << "] failed to create channel get: " << status << std::endl;
         }
     }
 
@@ -179,7 +179,7 @@ public:
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << m_channelName << "] channel get: " << status.toString() << std::endl;
+                std::cout << "[" << m_channelName << "] channel get: " << status << std::endl;
             }
 
             channelCount++;
@@ -223,7 +223,7 @@ public:
         }
         else
         {
-            std::cout << "[" << m_channelName << "] failed to get: " << status.toString() << std::endl;
+            std::cout << "[" << m_channelName << "] failed to get: " << status << std::endl;
         }
     }
 
@@ -240,12 +240,12 @@ private:
 
 public:
 
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ChannelRequesterImpl";
     };
 
-    virtual void message(String const & message,MessageType messageType)
+    virtual void message(std::string const & message,MessageType messageType)
     {
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -258,12 +258,12 @@ public:
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << channel->getChannelName() << "] channel create: " << status.toString() << std::endl;
+                std::cout << "[" << channel->getChannelName() << "] channel create: " << status << std::endl;
             }
         }
         else
         {
-            std::cout << "[" << channel->getChannelName() << "] failed to create a channel: " << status.toString() << std::endl;
+            std::cout << "[" << channel->getChannelName() << "] failed to create a channel: " << status << std::endl;
         }
     }
 
@@ -330,7 +330,7 @@ void runTest()
     if (bulkMode) provider->flush();
 
     bool differentConnectionsWarningIssued = false;
-    String theRemoteAddress;
+    string theRemoteAddress;
     for (vector<Channel::shared_pointer>::iterator i = channels.begin();
          i != channels.end();
          i++)
@@ -340,7 +340,7 @@ void runTest()
                 dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
         if (channelRequesterImpl->waitUntilConnected(5.0))
         {
-            String remoteAddress = channel->getRemoteAddress();
+            string remoteAddress = channel->getRemoteAddress();
             if (theRemoteAddress.empty())
             {
                 theRemoteAddress = remoteAddress;

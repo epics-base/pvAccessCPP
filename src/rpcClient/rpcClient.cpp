@@ -21,7 +21,7 @@
 
 
 using namespace epics::pvData;
-
+using std::string;
 
 namespace epics
 {
@@ -41,8 +41,8 @@ class ChannelRequesterImpl :
         epics::pvData::Event m_event;
     
     public:
-        virtual epics::pvData::String getRequesterName();
-        virtual void message(epics::pvData::String const & message, epics::pvData::MessageType messageType);
+        virtual std::string getRequesterName();
+        virtual void message(std::string const & message, epics::pvData::MessageType messageType);
     
         virtual void channelCreated(const epics::pvData::Status& status, epics::pvAccess::Channel::shared_pointer const & channel);
         virtual void channelStateChange(epics::pvAccess::Channel::shared_pointer const & channel, epics::pvAccess::Channel::ConnectionState connectionState);
@@ -57,18 +57,18 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
     Mutex m_pointerMutex;
     Event m_event;
     Event m_connectionEvent;
-    String m_channelName;
+    string m_channelName;
 
     public:
     epics::pvData::PVStructure::shared_pointer response;   
-    ChannelRPCRequesterImpl(String channelName) : m_channelName(channelName) {}
+    ChannelRPCRequesterImpl(std::string channelName) : m_channelName(channelName) {}
     
-    virtual String getRequesterName()
+    virtual string getRequesterName()
     {
         return "ChannelRPCRequesterImpl";
     }
 
-    virtual void message(String const & message, MessageType messageType)
+    virtual void message(std::string const & message, MessageType messageType)
     {
         std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
@@ -80,7 +80,7 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel RPC create: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel RPC create: " << status << std::endl;
             }
             
             // assign smart pointers
@@ -93,7 +93,7 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status << std::endl;
         }
     }
 
@@ -105,7 +105,7 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
             // show warning
             if (!status.isOK())
             {
-                std::cerr << "[" << m_channelName << "] channel RPC: " << status.toString() << std::endl;
+                std::cerr << "[" << m_channelName << "] channel RPC: " << status << std::endl;
             }
 
             // access smart pointers
@@ -120,7 +120,7 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to RPC: " << status.toString() << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to RPC: " << status << std::endl;
             {
                 Lock lock(m_pointerMutex);
                 // this is OK since calle holds reference to it
@@ -151,12 +151,12 @@ class ChannelRPCRequesterImpl : public ChannelRPCRequester
 };
 
 
-String ChannelRequesterImpl::getRequesterName()
+string ChannelRequesterImpl::getRequesterName()
 {
 	return "ChannelRequesterImpl";
 }
 
-void ChannelRequesterImpl::message(String const & message, MessageType messageType)
+void ChannelRequesterImpl::message(std::string const & message, MessageType messageType)
 {
 	std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
 }
@@ -168,12 +168,12 @@ void ChannelRequesterImpl::channelCreated(const epics::pvData::Status& status, C
 		// show warning
 		if (!status.isOK())
 		{
-			std::cerr << "[" << channel->getChannelName() << "] channel create: " << status.toString() << std::endl;
+			std::cerr << "[" << channel->getChannelName() << "] channel create: " << status << std::endl;
 		}
 	}
 	else
 	{
-		std::cerr << "[" << channel->getChannelName() << "] failed to create a channel: " << status.toString() << std::endl;
+		std::cerr << "[" << channel->getChannelName() << "] failed to create a channel: " << status << std::endl;
 	}
 }
 

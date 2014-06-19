@@ -68,7 +68,7 @@ namespace epics {
 
         class FileLogger : public NoDefaultMethods {
         public:
-            FileLogger(String const & name) {
+            FileLogger(std::string const & name) {
                 logFile.open(name.data(), ios::app);
             }
 
@@ -100,7 +100,7 @@ namespace epics {
             delete fileLogger;
         }
 
-        void createFileLogger(String const & fname) {
+        void createFileLogger(std::string const & fname) {
             static Mutex mutex;
             Lock xx(mutex);
 

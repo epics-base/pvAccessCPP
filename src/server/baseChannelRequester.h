@@ -36,9 +36,9 @@ public:
 	bool startRequest(epics::pvData::int32 qos);
 	void stopRequest();
 	epics::pvData::int32 getPendingRequest();
-	epics::pvData::String getRequesterName();
-	void message(epics::pvData::String const & message, epics::pvData::MessageType messageType);
-	static void message(Transport::shared_pointer const & transport, const pvAccessID ioid, const epics::pvData::String message, const epics::pvData::MessageType messageType);
+	std::string getRequesterName();
+	void message(std::string const & message, epics::pvData::MessageType messageType);
+	static void message(Transport::shared_pointer const & transport, const pvAccessID ioid, const std::string message, const epics::pvData::MessageType messageType);
 	static void sendFailureMessage(const epics::pvData::int8 command, Transport::shared_pointer const & transport, const pvAccessID ioid, const epics::pvData::int8 qos, const epics::pvData::Status status);
 
 	static const epics::pvData::Status okStatus;
@@ -63,13 +63,13 @@ private:
 class BaseChannelRequesterMessageTransportSender : public TransportSender
 {
 public:
-	BaseChannelRequesterMessageTransportSender(const pvAccessID _ioid, const epics::pvData::String message,const epics::pvData::MessageType messageType);
+	BaseChannelRequesterMessageTransportSender(const pvAccessID _ioid, const std::string message,const epics::pvData::MessageType messageType);
 	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 	void lock();
 	void unlock();
 private:
 	const pvAccessID _ioid;
-	const epics::pvData::String _message;
+	const std::string _message;
 	const epics::pvData::MessageType _messageType;
 };
 

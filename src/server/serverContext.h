@@ -434,7 +434,7 @@ private:
 };
 
 epicsShareExtern ServerContext::shared_pointer startPVAServer(
-        epics::pvData::String const & providerNames = PVACCESS_ALL_PROVIDERS,
+        std::string const & providerNames = PVACCESS_ALL_PROVIDERS,
         int timeToRun = 0,
         bool runInSeparateThread = false,
         bool printInfo = false);

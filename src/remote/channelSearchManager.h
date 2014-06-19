@@ -35,7 +35,7 @@ class SearchInstance {
 
 	virtual pvAccessID getSearchInstanceID() = 0;
 	
-	virtual epics::pvData::String getSearchInstanceName() = 0;
+	virtual std::string getSearchInstanceName() = 0;
 	
 	virtual int32_t& getUserValue() = 0;
 

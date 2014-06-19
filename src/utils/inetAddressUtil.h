@@ -77,10 +77,10 @@ namespace pvAccess {
      * @param appendList    list to be appended.
      * @return  array of <code>InetSocketAddress</code>.
      */
-    epicsShareFunc InetAddrVector* getSocketAddressList(epics::pvData::String list, int defaultPort,
+    epicsShareFunc InetAddrVector* getSocketAddressList(std::string list, int defaultPort,
             const InetAddrVector* appendList = NULL);
 
-    epicsShareFunc const epics::pvData::String inetAddressToString(const osiSockAddr &addr,
+    epicsShareFunc const std::string inetAddressToString(const osiSockAddr &addr,
             bool displayPort = true, bool displayHex = false);
 
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
