@@ -1010,7 +1010,7 @@ void usage (void)
              "  -h: Help: Print this message\n"
              "\noptions:\n"
              "  -s <service name>:   Service API compliant based RPC service name (accepts NTURI request argument)\n"
-             "  -a <service arg>:    Service argument in form 'name[=value]'\n"
+             "  -a <service arg>:    Service argument in 'name[=value]' or 'name value' form\n"
              "  -r <pv request>:     Get request string, specifies what fields to return and options, default is '%s'\n"
              "  -w <sec>:            Wait time, specifies timeout, default is %f second(s)\n"
              "  -z:                  Pure pvAccess RPC based service (send NTURI.query as request argument)\n"
@@ -1468,16 +1468,25 @@ int main (int argc, char *argv[])
             {
                 // no name 
 
-                fprintf(stderr, "Parameter not specified in '-a name=value' form. ('eget -h' for help.)\n");
+                fprintf(stderr, "Parameter not specified in '-a name=value' or '-a name value' form. ('eget -h' for help.)\n");
                 return 1;
             }
-            if (eqPos==string::npos)
+            else if (eqPos==string::npos)
             {
-                // no value
+                // is next argument actually a value, i.e. "-a name value" form
+                if (optind < argc && *argv[optind] != '-')
+                {
+                    parameters.push_back(pair<string,string>(param, argv[optind]));
+                    optind++;
+                }
+                else
+                {
+                    // no value
                 
-                //fprintf(stderr, "Parameter not specified in '-a name=value' form. ('eget -h' for help.)\n");
-                //return 1;
-                parameters.push_back(pair<string,string>(param, ""));
+                    //fprintf(stderr, "Parameter not specified in '-a name=value' or '-a name value' form. ('eget -h' for help.)\n");
+                    //return 1;
+                    parameters.push_back(pair<string,string>(param, ""));
+                }
             }
             else
             {
