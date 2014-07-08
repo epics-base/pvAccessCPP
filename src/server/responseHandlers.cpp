@@ -1724,7 +1724,13 @@ return;
 			}
 
 			monitor->release(element);
+			
+			// TODO if we try to proces several monitors at once, then fairness suffers
+			// TODO compbine several monitors into one message (reduces payload)
+        	TransportSender::shared_pointer thisSender = shared_from_this();
+        	_transport->enqueueSendRequest(thisSender);
 		}
+		
 	}
 }
 
