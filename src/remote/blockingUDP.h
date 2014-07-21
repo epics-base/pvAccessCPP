@@ -46,16 +46,18 @@ namespace epics {
         	POINTER_DEFINITIONS(BlockingUDPTransport);
 
         private:
-            BlockingUDPTransport(std::auto_ptr<ResponseHandler>& responseHandler,
-                                 SOCKET channel, osiSockAddr& bindAddress,
+            BlockingUDPTransport(bool serverFlag,
+                                 std::auto_ptr<ResponseHandler> &responseHandler,
+                                 SOCKET channel, osiSockAddr &bindAddress,
                                  short remoteTransportRevision);
         public:
-            static shared_pointer create(std::auto_ptr<ResponseHandler>& responseHandler,
+            static shared_pointer create(bool serverFlag,
+                    std::auto_ptr<ResponseHandler>& responseHandler,
                     SOCKET channel, osiSockAddr& bindAddress,
                     short remoteTransportRevision)
             {
                 shared_pointer thisPointer(
-                            new BlockingUDPTransport(responseHandler, channel, bindAddress, remoteTransportRevision)
+                            new BlockingUDPTransport(serverFlag, responseHandler, channel, bindAddress, remoteTransportRevision)
                 );
                 return thisPointer;
             }
@@ -358,6 +360,8 @@ namespace epics {
              */
             epicsThreadId _threadId;
 
+            epics::pvData::int8 _clientServerWithEndianFlag;
+
         };
 
         class BlockingUDPConnector :
@@ -367,8 +371,10 @@ namespace epics {
             POINTER_DEFINITIONS(BlockingUDPConnector);
 
             BlockingUDPConnector(
+                    bool serverFlag,
                     bool reuseSocket,
                     bool broadcast) :
+                _serverFlag(serverFlag),
                 _reuseSocket(reuseSocket),
                 _broadcast(broadcast) {
             }
@@ -384,6 +390,11 @@ namespace epics {
                     epics::pvData::int8 transportRevision, epics::pvData::int16 priority);
 
         private:
+
+            /**
+             * Client/server flag.
+             */
+            bool _serverFlag;
 
             /**
              * Reuse socket flag.

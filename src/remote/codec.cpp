@@ -40,6 +40,7 @@ namespace epics {
     const std::size_t AbstractCodec::MAX_ENSURE_DATA_BUFFER_SIZE = 1024;
 
     AbstractCodec::AbstractCodec(
+      bool serverFlag,
       std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
       std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
       int32_t socketSendBufferSize, 
@@ -58,6 +59,7 @@ namespace epics {
       _lastMessageStartPosition(std::numeric_limits<size_t>::max()),_lastSegmentedMessageType(0),
       _lastSegmentedMessageCommand(0), _nextMessagePayloadOffset(0), 
       _byteOrderFlag(EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00),
+      _clientServerFlag(serverFlag ? 0x40 : 0x00),
       _socketSendBufferSize(0)
     {
       if (receiveBuffer->getSize() < 2*MAX_ENSURE_SIZE)
@@ -574,7 +576,6 @@ namespace epics {
       epics::pvData::int8 command, 
       std::size_t ensureCapacity,
       epics::pvData::int32 payloadSize) {
-
         _lastMessageStartPosition = 
           std::numeric_limits<size_t>::max();		// TODO revise this
         ensureBuffer(
@@ -583,7 +584,7 @@ namespace epics {
         _sendBuffer->putByte(PVA_MAGIC);
         _sendBuffer->putByte(PVA_VERSION);
         _sendBuffer->putByte(
-          (_lastSegmentedMessageType | _byteOrderFlag));	// data + endian
+          (_lastSegmentedMessageType | _byteOrderFlag | _clientServerFlag));	// data message
         _sendBuffer->putByte(command);	// command
         _sendBuffer->putInt(payloadSize);
 
@@ -603,7 +604,7 @@ namespace epics {
         ensureBuffer(PVA_MESSAGE_HEADER_SIZE);
         _sendBuffer->putByte(PVA_MAGIC);
         _sendBuffer->putByte(PVA_VERSION);
-        _sendBuffer->putByte((0x01 | _byteOrderFlag));	// control + endian
+        _sendBuffer->putByte((0x01 | _byteOrderFlag | _clientServerFlag));	// control message
         _sendBuffer->putByte(command);	// command
         _sendBuffer->putInt(data);		// data
     }
@@ -649,8 +650,7 @@ namespace epics {
         else
         {
           // last segment
-          if (_lastSegmentedMessageType != 
-            std::numeric_limits<size_t>::max())
+          if (_lastSegmentedMessageType != 0)
           {
             std::size_t flagsPosition = _lastMessageStartPosition + 2;
             // set last segment bit (by clearing first segment bit)
@@ -1240,10 +1240,12 @@ namespace epics {
 
 
     BlockingSocketAbstractCodec::BlockingSocketAbstractCodec(
+      bool serverFlag,
       SOCKET channel,
       int32_t sendBufferSize,
       int32_t receiveBufferSize): 
     BlockingAbstractCodec(
+      serverFlag,
       std::tr1::shared_ptr<epics::pvData::ByteBuffer>(new ByteBuffer((std::max<std::size_t>((std::size_t)(
       MAX_TCP_RECV + MAX_ENSURE_DATA_BUFFER_SIZE), receiveBufferSize) + 
       (PVA_ALIGNMENT - 1)) & (~(PVA_ALIGNMENT - 1)))), 
@@ -1456,7 +1458,7 @@ namespace epics {
       std::auto_ptr<ResponseHandler>& responseHandler, 
       int32_t sendBufferSize, 
       int32_t receiveBufferSize) :
-    BlockingTCPTransportCodec(context, channel, responseHandler, 
+    BlockingTCPTransportCodec(true, context, channel, responseHandler,
       sendBufferSize, receiveBufferSize, PVA_DEFAULT_PRIORITY),
       _lastChannelSID(0), _verifyOrVerified(false)
     {
@@ -1622,7 +1624,7 @@ namespace epics {
     epics::pvData::int8 /*remoteTransportRevision*/,
     float beaconInterval,
     int16_t priority ) :
-    BlockingTCPTransportCodec(context, channel, responseHandler, 
+    BlockingTCPTransportCodec(false, context, channel, responseHandler,
       sendBufferSize, receiveBufferSize, priority),
     _connectionTimeout(beaconInterval*1000),
     _unresponsiveTransport(false),

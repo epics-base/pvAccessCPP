@@ -4159,7 +4159,7 @@ TODO
                 TransportClient::shared_pointer nullTransportClient;
 
                 auto_ptr<ResponseHandler> clientResponseHandler(new ClientResponseHandler(thisPointer));
-                auto_ptr<BlockingUDPConnector> broadcastConnector(new BlockingUDPConnector(true, true));
+                auto_ptr<BlockingUDPConnector> broadcastConnector(new BlockingUDPConnector(false, true, true));
                 m_broadcastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
                         nullTransportClient, clientResponseHandler,
                         listenLocalAddress, PVA_PROTOCOL_REVISION,
@@ -4175,7 +4175,7 @@ TODO
                 undefinedAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
                 clientResponseHandler.reset(new ClientResponseHandler(thisPointer));
-                auto_ptr<BlockingUDPConnector> searchConnector(new BlockingUDPConnector(false, true));
+                auto_ptr<BlockingUDPConnector> searchConnector(new BlockingUDPConnector(false, false, true));
                 m_searchTransport = static_pointer_cast<BlockingUDPTransport>(searchConnector->connect(
                         nullTransportClient, clientResponseHandler,
                         undefinedAddress, PVA_PROTOCOL_REVISION,

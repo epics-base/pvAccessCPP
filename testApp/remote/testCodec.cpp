@@ -68,10 +68,11 @@ namespace epics {
         std::size_t sendBufferSize, 
         bool blocking = false):
         AbstractCodec(
+         false,
          std::tr1::shared_ptr<epics::pvData::ByteBuffer>(new ByteBuffer(receiveBufferSize)), 
          std::tr1::shared_ptr<epics::pvData::ByteBuffer>(new ByteBuffer(sendBufferSize)), 
           sendBufferSize/10, 
-          blocking ),
+          blocking),
         _closedCount(0),
         _invalidDataStreamCount(0),
         _scheduleSendCount(0),

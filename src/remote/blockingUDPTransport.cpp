@@ -36,6 +36,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
         PVACCESS_REFCOUNT_MONITOR_DEFINE(blockingUDPTransport);
 
         BlockingUDPTransport::BlockingUDPTransport(
+                bool serverFlag,
                 auto_ptr<ResponseHandler>& responseHandler, SOCKET channel,
                 osiSockAddr& bindAddress,
                 short /*remoteTransportRevision*/) :
@@ -49,7 +50,9 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                     _receiveBuffer(new ByteBuffer(MAX_UDP_RECV)),
                     _sendBuffer(new ByteBuffer(MAX_UDP_RECV)),
                     _lastMessageStartPosition(0),
-                    _threadId(0)
+                    _threadId(0),
+                    _clientServerWithEndianFlag(
+                        (serverFlag ? 0x40 : 0x00) | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00))
         {
             PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(blockingUDPTransport);
 
@@ -181,7 +184,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             _lastMessageStartPosition = _sendBuffer->getPosition();
             _sendBuffer->putByte(PVA_MAGIC);
             _sendBuffer->putByte(PVA_VERSION);
-            _sendBuffer->putByte((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00); // data + 7-bit endianess
+            _sendBuffer->putByte(_clientServerWithEndianFlag);
             _sendBuffer->putByte(command); // command
             _sendBuffer->putInt(payloadSize);
         }

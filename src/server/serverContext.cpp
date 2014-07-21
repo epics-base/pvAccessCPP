@@ -260,7 +260,7 @@ void ServerContextImpl::initializeBroadcastTransport()
 
         TransportClient::shared_pointer nullTransportClient;
 
-	    auto_ptr<BlockingUDPConnector> broadcastConnector(new BlockingUDPConnector(true, true));
+        auto_ptr<BlockingUDPConnector> broadcastConnector(new BlockingUDPConnector(true, true, true));
 	    auto_ptr<epics::pvAccess::ResponseHandler> responseHandler = createResponseHandler();
         _broadcastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
                 nullTransportClient, responseHandler,

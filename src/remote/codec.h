@@ -215,6 +215,7 @@ namespace epics {
       static const std::size_t MAX_ENSURE_DATA_BUFFER_SIZE;
 
       AbstractCodec(
+        bool serverFlag,
         std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
         std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
         int32_t socketSendBufferSize, 
@@ -326,7 +327,8 @@ namespace epics {
       std::size_t _nextMessagePayloadOffset;
 
       epics::pvData::int8 _byteOrderFlag;
-      int32_t _socketSendBufferSize; 
+      epics::pvData::int8 _clientServerFlag;
+      int32_t _socketSendBufferSize;
     };
 
 
@@ -340,10 +342,11 @@ namespace epics {
       POINTER_DEFINITIONS(BlockingAbstractCodec);
 
       BlockingAbstractCodec(
+        bool serverFlag,
         std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
         std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
         int32_t socketSendBufferSize): 
-      AbstractCodec(receiveBuffer, sendBuffer, socketSendBufferSize, true), 
+      AbstractCodec(serverFlag, receiveBuffer, sendBuffer, socketSendBufferSize, true),
         _readThread(0), _sendThread(0) { _isOpen.getAndSet(true);}
 
       void readPollOne();
@@ -391,6 +394,7 @@ namespace epics {
     public: 
 
       BlockingSocketAbstractCodec(
+        bool serverFlag,
         SOCKET channel,
         int32_t sendBufferSize,
         int32_t receiveBufferSize);
@@ -521,6 +525,7 @@ namespace epics {
     protected:
 
       BlockingTCPTransportCodec(
+        bool serverFlag,
         Context::shared_pointer const & context, 
         SOCKET channel,
         std::auto_ptr<ResponseHandler>& responseHandler, 
@@ -528,7 +533,7 @@ namespace epics {
         int32_t receiveBufferSize,
         epics::pvData::int16 priority
         ): 
-      BlockingSocketAbstractCodec(channel, sendBufferSize, receiveBufferSize), 
+      BlockingSocketAbstractCodec(serverFlag, channel, sendBufferSize, receiveBufferSize),
         _context(context), _responseHandler(responseHandler), 
         _remoteTransportReceiveBufferSize(MAX_TCP_RECV),
         _remoteTransportRevision(0), _priority(priority),
