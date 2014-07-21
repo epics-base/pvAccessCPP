@@ -212,7 +212,7 @@ char *url_encode(const char *str) {
 
 
 ChannelRequesterImpl::ChannelRequesterImpl(bool _printOnlyErrors) :
-    printOnlyErrors(_printOnlyErrors)
+    printOnlyErrors(_printOnlyErrors), showDisconnectMsg(false)
 {
 }
 
@@ -243,13 +243,18 @@ void ChannelRequesterImpl::channelCreated(const epics::pvData::Status& status, C
 	}
 }
 
-void ChannelRequesterImpl::channelStateChange(Channel::shared_pointer const & /*channel*/, Channel::ConnectionState connectionState)
+void ChannelRequesterImpl::channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState)
 {
 	if (connectionState == Channel::CONNECTED)
 	{
 		m_event.signal();
 	}
-	/*
+    else if (showDisconnectMsg && connectionState == Channel::DISCONNECTED)
+    {
+        std::cerr << std::setw(30) << std::left << channel->getChannelName()
+                  << ' ' << "*** disconnected" << std::endl;
+    }
+    /*
 	else if (connectionState != Channel::DESTROYED)
 	{
 		std::cerr << "[" << channel->getChannelName() << "] channel state change: "  << Channel::ConnectionStateNames[connectionState] << std::endl;
@@ -262,6 +267,10 @@ bool ChannelRequesterImpl::waitUntilConnected(double timeOut)
 	return m_event.wait(timeOut);
 }
 
+void ChannelRequesterImpl::showDisconnectMessage(bool show)
+{
+    showDisconnectMsg = show;
+}
 
 
 GetFieldRequesterImpl::GetFieldRequesterImpl(epics::pvAccess::Channel::shared_pointer channel) :

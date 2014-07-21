@@ -527,7 +527,10 @@ int main (int argc, char *argv[])
 					}
 					else
 					{
-						shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
+                        shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+                        channelRequesterImpl->showDisconnectMessage();
+
+                        shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
 						Monitor::shared_pointer monitorGet = channel->createMonitor(monitorRequesterImpl, pvRequest);
 						allOK &= true;
 					}

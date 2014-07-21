@@ -1804,7 +1804,10 @@ int main (int argc, char *argv[])
 
             if (monitor)
             {
-				shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
+                shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+                channelRequesterImpl->showDisconnectMessage();
+
+                shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
 				channel->createMonitor(monitorRequesterImpl, pvRequest);
             }
             else

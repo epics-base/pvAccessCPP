@@ -53,7 +53,8 @@ class ChannelRequesterImpl :
     private:
         epics::pvData::Event m_event;
         bool printOnlyErrors;
-    
+        bool showDisconnectMsg;
+
     public:
 
         ChannelRequesterImpl(bool printOnlyErrors = false);
@@ -65,6 +66,7 @@ class ChannelRequesterImpl :
         virtual void channelStateChange(epics::pvAccess::Channel::shared_pointer const & channel, epics::pvAccess::Channel::ConnectionState connectionState);
     
         bool waitUntilConnected(double timeOut);
+        void showDisconnectMessage(bool show = true);
 };
 
 class GetFieldRequesterImpl :
