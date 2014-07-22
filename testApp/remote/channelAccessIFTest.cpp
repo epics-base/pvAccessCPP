@@ -43,9 +43,9 @@ std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray1";
 int ChannelAccessIFTest::runAllTest() {
 
 #ifdef ENABLE_STRESS_TESTS
-  testPlan(159);
+  testPlan(158);
 #else
-  testPlan(154);
+  testPlan(153);
 #endif
 
   test_implementation();
@@ -1904,7 +1904,7 @@ void ChannelAccessIFTest::test_channelArray() {
   //testOk(data1[2] == 2.2 , "%s: check 2: %f", CURRENT_FUNCTION, data1[2]);
 
 
-  succStatus = arrayReq->syncSetLength(false, 3, 0, getTimeoutSec());
+  succStatus = arrayReq->syncSetLength(false, 3, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: an array setLength failed ", CURRENT_FUNCTION);
     return;
@@ -1925,9 +1925,8 @@ void ChannelAccessIFTest::test_channelArray() {
   testOk(data2[1] == 2.2 , "%s:  2.check 1: %f", CURRENT_FUNCTION, data2[1]);
   testOk(data2[2] == 3.3,  "%s:  2.check 2: %f", CURRENT_FUNCTION, data2[2]);
 
-  size_t currentLength = 3;
-  size_t newCap = 2;
-  succStatus = arrayReq->syncSetLength(false, currentLength, newCap, getTimeoutSec());
+  size_t newLength = 2;
+  succStatus = arrayReq->syncSetLength(false, newLength, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: an array setLength failed (2) ", CURRENT_FUNCTION);
     return;
@@ -1942,14 +1941,14 @@ void ChannelAccessIFTest::test_channelArray() {
   //checking 1.1 2.2
   PVDoubleArrayPtr array3 = static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
   PVDoubleArray::const_svector data3(array3->view());
-  testOk(data3.size() == newCap, 
-      "%s: data size after calling setLength should be %zu", CURRENT_FUNCTION, newCap);
+  testOk(data3.size() == newLength,
+      "%s: data size after calling setLength should be %zu", CURRENT_FUNCTION, newLength);
   testOk(data3[0] == 1.1 , "%s: 3.check 0: %f", CURRENT_FUNCTION, data3[0]);
   testOk(data3[1] == 2.2 , "%s: 3.check 1: %f", CURRENT_FUNCTION, data3[1]);
 
 
   size_t bigCapacity = 10000;
-  succStatus = arrayReq->syncSetLength(false, bigCapacity, bigCapacity, getTimeoutSec());
+  succStatus = arrayReq->syncSetLength(false, bigCapacity, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: an array setLength failed (3) ", CURRENT_FUNCTION);
     return;
@@ -1985,9 +1984,8 @@ void ChannelAccessIFTest::test_channelArray() {
   }
   */
 
-  // test setLength with capacity 0 (no change) and getLength
   size_t newLen = bigCapacity/2;
-  succStatus = arrayReq->syncSetLength(false, newLen, bigCapacity, getTimeoutSec());
+  succStatus = arrayReq->syncSetLength(false, newLen, getTimeoutSec());
   if (!succStatus) {
     testFail("%s: an array setLength failed (4) ", CURRENT_FUNCTION);
     return;
@@ -1998,7 +1996,6 @@ void ChannelAccessIFTest::test_channelArray() {
     return;
   }
   testOk(arrayReq->getLength() == newLen, "%s: retrieved length should be %zu", CURRENT_FUNCTION, newLen);
-  testOk(arrayReq->getCapacity() == bigCapacity, "%s: retrieved capacity should be %zu", CURRENT_FUNCTION, bigCapacity);
 
 
   channel->destroy();
@@ -2045,7 +2042,7 @@ void ChannelAccessIFTest::test_channelArrayTestNoConnection() {
   }
   
   
-  succStatus = arrayReq->syncSetLength(false, 1, 2, getTimeoutSec());
+  succStatus = arrayReq->syncSetLength(false, 1, getTimeoutSec());
   if (succStatus) {
     testFail("%s: an array syncSetLength should fail after the channel had been destroyed ", CURRENT_FUNCTION);
   }

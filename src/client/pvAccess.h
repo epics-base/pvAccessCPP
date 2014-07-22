@@ -166,16 +166,15 @@ namespace pvAccess {
             virtual void getArray(size_t offset = 0, size_t count = 0, size_t stride = 1) = 0;
 
             /**
-             * Get the length and the capacity.
+             * Get the length.
              */
             virtual void getLength() = 0;
 
             /**
              * Set the length and/or the capacity.
              * @param length The new length.
-             * @param capacity The new capacity, 0 means do "do not change the capacity".
              */
-            virtual void setLength(size_t length, size_t capacity = 0) = 0;
+            virtual void setLength(size_t length) = 0;
         };
 
         /**
@@ -221,12 +220,11 @@ namespace pvAccess {
              * @param status Completion status.
              * @param channelArray The channelArray interface.
              * @param length The length of the array, 0 if the request failed. 
-             * @param capacity The capacity of the array, 0 if the request failed. 
              */
             virtual void getLengthDone(
                     const epics::pvData::Status& status,
                     ChannelArray::shared_pointer const & channelArray,
-                    size_t length, size_t capacity) = 0;
+                    size_t length) = 0;
 
             /**
              * The request is done. This is always called with no locks held.

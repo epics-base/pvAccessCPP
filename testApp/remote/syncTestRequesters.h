@@ -1261,7 +1261,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
     } 
 
 
-    bool syncSetLength(bool lastRequest, size_t length, size_t capacity, long timeOut)
+    bool syncSetLength(bool lastRequest, size_t length, long timeOut)
     {
 
       if (!getConnectedStatus()) {
@@ -1271,7 +1271,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
       resetEvent();
       if (lastRequest)
           m_channelArray->lastRequest();
-      m_channelArray->setLength(length, capacity);
+      m_channelArray->setLength(length);
       return waitUntilSetLengthDone(timeOut);
     } 
 
@@ -1390,7 +1390,7 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
 
     virtual void getLengthDone(const epics::pvData::Status& status,
         ChannelArray::shared_pointer const & channelArray,
-        size_t length, size_t capacity)
+        size_t length)
     { 
       if (m_debug)
         std::cout << getRequesterName() << ".getLengthDone(" << status << ")" << std::endl;
@@ -1399,7 +1399,6 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
 
       m_channelArray = channelArray;
       m_length = length;
-      m_capacity = capacity;
 
       m_lengthArrayStatus = status.isSuccess();
       signalEvent();
@@ -1410,11 +1409,6 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
         return m_length;
     }
     
-    size_t getCapacity()
-    {
-        return m_capacity;
-    }
-
   private:
  
     bool waitUntilGetArrayDone(double timeOut)
@@ -1478,7 +1472,6 @@ class SyncChannelArrayRequesterImpl : public ChannelArrayRequester, public SyncB
     ChannelArray::shared_pointer m_channelArray;
     epics::pvData::PVArray::shared_pointer m_pvArray;
     size_t m_length;
-    size_t m_capacity;
 };
 
 #endif

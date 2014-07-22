@@ -1574,7 +1574,6 @@ namespace epics {
             size_t m_stride;
 
             size_t m_length;
-            size_t m_capacity;
             
             Mutex m_structureMutex;
 
@@ -1583,7 +1582,7 @@ namespace epics {
                     m_channelArrayRequester(channelArrayRequester),
                     m_pvRequest(pvRequest),
                     m_offset(0), m_count(0),
-                    m_length(0), m_capacity(0)
+                    m_length(0)
             {
                 PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelArray);
             }
@@ -1651,7 +1650,6 @@ namespace epics {
                 {
                 	// lock... see comment below
                     SerializeHelper::writeSize(m_length, buffer, control);
-                    SerializeHelper::writeSize(m_capacity, buffer, control);
                 }
                 else if (pendingRequest & QOS_PROCESS) // i.e. getLength
                 {
@@ -1721,9 +1719,8 @@ namespace epics {
                 else if (qos & QOS_PROCESS)
                 {
                     size_t length = SerializeHelper::readSize(payloadBuffer, transport.get());
-                    size_t capacity = SerializeHelper::readSize(payloadBuffer, transport.get());
                     
-                    EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(status, thisChannelArray, length, capacity));
+                    EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(status, thisChannelArray, length));
                 }
                 else
                 {
@@ -1813,7 +1810,7 @@ namespace epics {
                 }
             }
 
-            virtual void setLength(size_t length, size_t capacity) {
+            virtual void setLength(size_t length) {
 
                 ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
 
@@ -1838,7 +1835,6 @@ namespace epics {
                     {
                         Lock lock(m_structureMutex);
 						m_length = length;
-						m_capacity = capacity;
                     }
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
@@ -1855,17 +1851,17 @@ namespace epics {
                  {
                     Lock guard(m_mutex);
                    if (m_destroyed) {
-                        EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(destroyedStatus, thisChannelArray, 0, 0));
+                        EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(destroyedStatus, thisChannelArray, 0));
                         return;
                     }
                     if (!m_initialized) {
-                        EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(notInitializedStatus, thisChannelArray, 0, 0));
+                        EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(notInitializedStatus, thisChannelArray, 0));
                         return;
                     }
                  }
                  
                 if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_PROCESS : QOS_PROCESS)) {
-                    EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(otherRequestPendingStatus, thisChannelArray, 0, 0));
+                    EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(otherRequestPendingStatus, thisChannelArray, 0));
                     return;
                 }
 
@@ -1873,7 +1869,7 @@ namespace epics {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
                     stopRequest();
-                    EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(channelNotConnected, thisChannelArray, 0, 0));
+                    EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(channelNotConnected, thisChannelArray, 0));
                 }
             }
 

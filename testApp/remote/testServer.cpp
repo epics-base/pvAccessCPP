@@ -1812,10 +1812,12 @@ public:
         // TODO stride support
         if (stride == 1)
         {
-        
-            size_t o = offset;
-            if (count == 0) count = pvArray->getLength();
+
+            size_t len = pvArray->getLength();
+
+            size_t o = offset < len ? offset : len;
             size_t c = count;
+            if (c == 0 || ((o + c) > len)) c = len - o;
     
             Field::const_shared_pointer field = pvArray->getField();
             Type type = field->getType();
@@ -1916,16 +1918,9 @@ public:
             destroy();
     }
 
-    virtual void setLength(size_t length, size_t capacity)
+    virtual void setLength(size_t length)
     {
-        if (capacity > 0) {
-            m_pvStructureArray->setCapacity(capacity);
-            m_pvStructureArray->setLength(length > capacity ? capacity : length);
-        }
-        else
-        {
-            m_pvStructureArray->setLength(length);
-        }
+        m_pvStructureArray->setLength(length);
         
         m_channelArrayRequester->setLengthDone(Status::Ok, shared_from_this());
 
@@ -1937,7 +1932,7 @@ public:
     {
         
         m_channelArrayRequester->getLengthDone(Status::Ok, shared_from_this(), 
-                m_pvStructureArray->getLength(), m_pvStructureArray->getCapacity());
+                m_pvStructureArray->getLength());
                 
         if (m_lastRequest.get())
             destroy();

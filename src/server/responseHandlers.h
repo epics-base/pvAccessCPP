@@ -584,7 +584,7 @@ namespace pvAccess {
         	void putArrayDone(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray);
         	void setLengthDone(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray);
         	void getLengthDone(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray,
-        	       std::size_t length, std::size_t capacity);
+                   std::size_t length);
         	void lock();
         	void unlock();
         	void destroy();
@@ -605,7 +605,6 @@ namespace pvAccess {
         	 epics::pvData::PVArray::shared_pointer _pvPutArray;
         	 
         	 std::size_t _length;
-        	 std::size_t _capacity;
         	 epics::pvData::Status _status;
         };
 

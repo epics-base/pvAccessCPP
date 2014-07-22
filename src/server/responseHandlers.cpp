@@ -1801,8 +1801,7 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 		else if (setLength)
 		{
             size_t length = SerializeHelper::readSize(payloadBuffer, transport.get());
-            size_t capacity = SerializeHelper::readSize(payloadBuffer, transport.get());
-			request->getChannelArray()->setLength(length, capacity);
+            request->getChannelArray()->setLength(length);
 		}
 		else if (getLength)
 		{
@@ -1909,13 +1908,12 @@ void ServerChannelArrayRequesterImpl::setLengthDone(const Status& status, Channe
 }
 
 void ServerChannelArrayRequesterImpl::getLengthDone(const Status& status, ChannelArray::shared_pointer const & /*channelArray*/,
-    size_t length, size_t capacity)
+    size_t length)
 {
 	{
 		Lock guard(_mutex);
 		_status = status;
 		_length = length;
-		_capacity = capacity;
 	}
     TransportSender::shared_pointer thisSender = shared_from_this();
 	_transport->enqueueSendRequest(thisSender);
@@ -1987,7 +1985,6 @@ void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendCont
 		{
 			//Lock guard(_mutex);
             SerializeHelper::writeSize(_length, buffer, control);
-            SerializeHelper::writeSize(_capacity, buffer, control);
 		}
 		else if ((QOS_INIT & request) != 0)
 		{

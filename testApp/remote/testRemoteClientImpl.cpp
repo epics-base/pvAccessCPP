@@ -290,9 +290,9 @@ class ChannelArrayRequesterImpl : public ChannelArrayRequester
     }
 
     virtual void getLengthDone(const epics::pvData::Status& status, ChannelArray::shared_pointer const &,
-        size_t length, size_t capacity)
+        size_t length)
     {
-        std::cout << "getLengthDone(" << status << "," << length << "," << capacity << ")" << std::endl;
+        std::cout << "getLengthDone(" << status << "," << length << ")" << std::endl;
     }
 };
 
@@ -475,7 +475,7 @@ int main()
     // TODO !!!
     //channelArray->putArray(0,0,1);
     //epicsThreadSleep ( SLEEP_TIME );
-    channelArray->setLength(3,4);
+    channelArray->setLength(3);
     epicsThreadSleep ( SLEEP_TIME );
     channelArray->getLength();
     epicsThreadSleep ( SLEEP_TIME );
