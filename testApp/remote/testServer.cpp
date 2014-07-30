@@ -933,6 +933,7 @@ class MockChannelGet :
 private:
     Channel::shared_pointer m_channel;
     ChannelGetRequester::shared_pointer m_channelGetRequester;
+    bool m_alwaysSendAll;
     PVStructure::shared_pointer m_pvStructure;
     BitSet::shared_pointer m_bitSet;
     ChannelProcess::shared_pointer m_channelProcess;
@@ -946,11 +947,17 @@ protected:
                    PVStructure::shared_pointer const & pvRequest) :
         m_channel(channel),
         m_channelGetRequester(channelGetRequester),
+        m_alwaysSendAll(false),
         m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
         m_bitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_channelProcess(getChannelProcess(channel, pvRequest))
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelGet);
+
+        PVScalar::shared_pointer pvScalar = pvRequest->getSubField<PVScalar>("record.alwaysSendAll");
+        if (pvScalar)
+            m_alwaysSendAll = pvScalar->getAs<epics::pvData::boolean>();
+
         m_changed.set();    // initial value
     }
 
@@ -982,7 +989,7 @@ public:
             m_channelProcess->process();
 
         // TODO far from being thread-safe
-        if (m_changed.get())
+        if (m_alwaysSendAll || m_changed.get())
         {
             m_bitSet->set(0);
             m_changed.clear();
@@ -1998,6 +2005,7 @@ class MockMonitor :
 private:
     string m_channelName;
     MonitorRequester::shared_pointer m_monitorRequester;
+    bool m_continuous;
     PVStructure::shared_pointer m_pvStructure;
     PVStructure::shared_pointer m_copy;
     BitSet::shared_pointer m_changedBitSet;
@@ -2016,7 +2024,9 @@ protected:
     MockMonitor(std::string const & channelName, MonitorRequester::shared_pointer const & monitorRequester,
                 PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & pvRequest) :
         m_channelName(channelName),
-        m_monitorRequester(monitorRequester), m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
+        m_monitorRequester(monitorRequester),
+        m_continuous(false),
+        m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
         m_copy(getPVDataCreate()->createPVStructure(m_pvStructure->getStructure())),
         m_changedBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_overrunBitSet(new BitSet(m_pvStructure->getNumberFields())),
@@ -2027,6 +2037,11 @@ protected:
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockMonitor);
 
+        PVScalar::shared_pointer pvScalar = pvRequest->getSubField<PVScalar>("record.velocious");
+        if (pvScalar)
+            m_continuous = pvScalar->getAs<epics::pvData::boolean>();
+
+        // we always send all
         m_changedBitSet->set(0);
 
         m_thisPtr->pvStructurePtr = m_copy;
@@ -2138,7 +2153,12 @@ public:
 
         Lock xx(m_lock);
         if (m_state == MM_STATE_TAKEN)
-            m_state = MM_STATE_FREE;
+        {
+            if (m_continuous)
+                m_state = MM_STATE_FULL;
+            else
+                m_state = MM_STATE_FREE;
+        }
     }
 
     virtual void cancel()

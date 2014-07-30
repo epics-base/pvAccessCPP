@@ -30,19 +30,17 @@ using namespace epics::pvData;
 using namespace epics::pvAccess;
 
 #define DEFAULT_TIMEOUT 600.0
-#define DEFAULT_REQUEST "record[alwaysSendAll=true]field(value)"
+#define DEFAULT_REQUEST "record[velocious=true]field(value)"
 #define DEFAULT_ITERATIONS 10000
 #define DEFAULT_CHANNELS 1
 #define DEFAULT_ARRAY_SIZE 0
 #define DEFAULT_RUNS 1
-#define DEFAULT_BULK false
 
 bool verbose = false;
 
 int iterations = DEFAULT_ITERATIONS;
 int channels = DEFAULT_CHANNELS;
 int runs = DEFAULT_RUNS;
-bool bulkMode = DEFAULT_BULK;
 int arraySize = DEFAULT_ARRAY_SIZE;          // 0 means scalar
 Mutex waitLoopPtrMutex;
 std::tr1::shared_ptr<Event> waitLoopEvent;
@@ -70,7 +68,7 @@ public:
 
 void usage (void)
 {
-    fprintf (stderr, "\nUsage: testGetPerformance [options] <PV name>...\n\n"
+    fprintf (stderr, "\nUsage: testMonitorPerformance [options] <PV name>...\n\n"
              "  -h: Help: Print this message\n"
              "options:\n"
              "  -r <pv request>:   pvRequest string, specifies what fields to return and options, default is '%s'\n"
@@ -78,18 +76,17 @@ void usage (void)
              "  -c <channels>:     number of channels, default is '%d'\n"
              "  -s <array size>:   number of array elements (0 means scalar), default is '%d'\n"
              "  -l <runs>:         number of runs (0 means execute runs continuously), default is '%d'\n"
-             //"  -b:                bulk mode (send request messages in bulks), default is %d\n"
              "  -f <filename>:     read configuration file that contains list of tests to be performed\n"
              "                         each test is defined by a \"<c> <s> <i> <l>\" line\n"
              "                         output is a space separated list of get operations per second for each run, one line per test\n"
              "  -v                 enable verbose output when configuration is read from the file\n"
              "  -w <sec>:          wait time, specifies timeout, default is %f second(s)\n\n"
-             , DEFAULT_REQUEST, DEFAULT_ITERATIONS, DEFAULT_CHANNELS, DEFAULT_ARRAY_SIZE, DEFAULT_RUNS, /*DEFAULT_BULK,*/ DEFAULT_TIMEOUT);
+             , DEFAULT_REQUEST, DEFAULT_ITERATIONS, DEFAULT_CHANNELS, DEFAULT_ARRAY_SIZE, DEFAULT_RUNS, DEFAULT_TIMEOUT);
 }
 
 // TODO thread-safety
 ChannelProvider::shared_pointer provider;
-vector<ChannelGet::shared_pointer> channelGetList;
+vector<Monitor::shared_pointer> channelMonitorList;
 int channelCount = 0;
 int iterationCount = 0;
 int runCount = 0;
@@ -97,7 +94,7 @@ double sum = 0;
 
 void reset()
 {
-    channelGetList.clear();
+    channelMonitorList.clear();
     channelCount = 0;
     iterationCount = 0;
     runCount = 0;
@@ -106,20 +103,17 @@ void reset()
 
 epicsTimeStamp startTime;
 
-void get_all()
+void monitor_all()
 {
-    for (vector<ChannelGet::shared_pointer>::const_iterator i = channelGetList.begin();
-         i != channelGetList.end();
+    for (vector<Monitor::shared_pointer>::const_iterator i = channelMonitorList.begin();
+         i != channelMonitorList.end();
          i++)
-        (*i)->get();
-
-    // we assume all channels are from the same provider
-    if (bulkMode) provider->flush();
+        (*i)->start();
 }
 
 
 // NOTE: it is assumed that all the callbacks are called from the same thread, i.e. same TCP connection
-class ChannelGetRequesterImpl : public ChannelGetRequester
+class ChannelMonitorRequesterImpl : public MonitorRequester
 {
 private:
     Event m_event;
@@ -131,14 +125,14 @@ private:
 
 public:
 
-    ChannelGetRequesterImpl(std::string channelName) :
+    ChannelMonitorRequesterImpl(std::string channelName) :
         m_channelName(channelName)
     {
     }
 
     virtual string getRequesterName()
     {
-        return "ChannelGetRequesterImpl";
+        return "ChannelMonitorRequesterImpl";
     }
 
     virtual void message(std::string const & message,MessageType messageType)
@@ -146,8 +140,8 @@ public:
         std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
-    virtual void channelGetConnect(const epics::pvData::Status& status,
-                                   ChannelGet::shared_pointer const & /*channelGet*/,
+    virtual void monitorConnect(const epics::pvData::Status& status,
+                                   Monitor::shared_pointer const & /*monitor*/,
                                    epics::pvData::Structure::const_shared_pointer const & /*structure*/)
     {
         if (status.isSuccess())
@@ -155,30 +149,23 @@ public:
             // show warning
             if (!status.isOK())
             {
-                std::cout << "[" << m_channelName << "] channel get create: " << status << std::endl;
+                std::cout << "[" << m_channelName << "] channel monitor create: " << status << std::endl;
             }
 
             m_connectionEvent.signal();
         }
         else
         {
-            std::cout << "[" << m_channelName << "] failed to create channel get: " << status << std::endl;
+            std::cout << "[" << m_channelName << "] failed to create channel monitor: " << status << std::endl;
         }
     }
 
-    virtual void getDone(const epics::pvData::Status& status,
-                         ChannelGet::shared_pointer const & /*channelGet*/,
-                         epics::pvData::PVStructure::shared_pointer const & /*pvStructure*/,
-                         epics::pvData::BitSet::shared_pointer const & /*bitSet*/)
+    virtual void monitorEvent(Monitor::shared_pointer const & monitor)
     {
-        if (status.isSuccess())
-        {
-            // show warning
-            if (!status.isOK())
-            {
-                std::cout << "[" << m_channelName << "] channel get: " << status << std::endl;
-            }
 
+        MonitorElement::shared_pointer element;
+        while (element = monitor->poll())
+        {
             channelCount++;
             if (channelCount == channels)
             {
@@ -195,7 +182,7 @@ public:
                 double getPerSec = iterations*channels/duration;
                 double gbit = getPerSec*arraySize*sizeof(double)*8/(1000*1000*1000); // * bits / giga; NO, it's really 1000 and not 1024
                 if (verbose)
-                    printf("%5.6f seconds, %.3f (x %d = %.3f) gets/s, data throughput %5.3f Gbits/s\n",
+                    printf("%5.6f seconds, %.3f (x %d = %.3f) monitors/s, data throughput %5.3f Gbits/s\n",
                            duration, iterations/duration, channels, getPerSec, gbit);
                 sum += getPerSec;
 
@@ -204,24 +191,30 @@ public:
 
                 runCount++;
                 if (runs == 0 || runCount < runs)
-                    get_all();
+                {
+                    // noop
+                }
                 else
                 {
                     printf("%d %d %d %d %.3f\n", channels, arraySize, iterations, runs, sum/runs);
-        
+
                     Lock guard(waitLoopPtrMutex);
                     waitLoopEvent->signal();	// all done
                 }
             }
             else if (channelCount == 0)
             {
-                get_all();
+                // noop
             }
+
+            monitor->release(element);
         }
-        else
-        {
-            std::cout << "[" << m_channelName << "] failed to get: " << status << std::endl;
-        }
+
+    }
+
+    virtual void unlisten(Monitor::shared_pointer const & /*monitor*/)
+    {
+        std::cerr << "unlisten" << std::endl;
     }
 
     bool waitUntilConnected(double timeOut)
@@ -291,17 +284,6 @@ void runTest()
     if (verbose)
         printf("%d channel(s) of double array size of %d element(s) (0==scalar), %d iteration(s) per run, %d run(s) (0==forever)\n", channels, arraySize, iterations, runs);
 
-    /*
-    StringArray fieldNames;
-    fieldNames.push_back("strategy");
-    FieldConstPtrArray fields;
-    fields.push_back(getFieldCreate()->createScalar(pvInt));
-    PVStructure::shared_pointer configuration =
-        getPVDataCreate()->createPVStructure(getFieldCreate()->createStructure(fieldNames, fields));
-    configuration->getIntField("strategy")->put(bulkMode ? USER_CONTROLED : DELAYED);
-    provider->configure(configuration);
-    */
-
     vector<string> channelNames;
     char buf[64];
     for (int i = 0; i < channels; i++)
@@ -324,7 +306,6 @@ void runTest()
         Channel::shared_pointer channel = provider->createChannel(*i, channelRequesterImpl);
         channels.push_back(channel);
     }
-    if (bulkMode) provider->flush();
 
     bool differentConnectionsWarningIssued = false;
     string theRemoteAddress;
@@ -354,21 +335,20 @@ void runTest()
                 }
             }
 
-            shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(
-                            new ChannelGetRequesterImpl(channel->getChannelName())
+            shared_ptr<ChannelMonitorRequesterImpl> getRequesterImpl(
+                            new ChannelMonitorRequesterImpl(channel->getChannelName())
                         );
-            ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
-            if (bulkMode) provider->flush();
+            Monitor::shared_pointer monitor = channel->createMonitor(getRequesterImpl, pvRequest);
 
             bool allOK = getRequesterImpl->waitUntilConnected(timeOut);
 
             if (!allOK)
             {
-                std::cout << "[" << channel->getChannelName() << "] failed to get all the gets" << std::endl;
+                std::cout << "[" << channel->getChannelName() << "] failed to get all the monitors" << std::endl;
                 exit(1);
             }
 
-            channelGetList.push_back(channelGet);
+            channelMonitorList.push_back(monitor);
 
         }
         else
@@ -385,7 +365,7 @@ void runTest()
         waitLoopEvent.reset(new Event());
     }
     epicsTimeGetCurrent(&startTime);
-    get_all();
+    monitor_all();
     
     waitLoopEvent->wait();
 }
@@ -399,7 +379,7 @@ int main (int argc, char *argv[])
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    // Set stdout to line buffering
 
-    while ((opt = getopt(argc, argv, ":hr:w:i:c:s:l:bf:v")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:i:c:s:l:f:v")) != -1) {
         switch (opt) {
         case 'h':               // Print usage
             usage();
@@ -426,9 +406,6 @@ int main (int argc, char *argv[])
             break;
         case 'l':               // runs
             runs = atoi(optarg);
-            break;
-        case 'b':               // bulk mode
-            bulkMode = true;
             break;
         case 'f':               // testFile
             testFile = optarg;

@@ -60,6 +60,10 @@ PROD_HOST += testGetPerformance
 testGetPerformance_SRCS += testGetPerformance.cpp
 testGetPerformance_LIBS += pvAccess pvData pvMB Com
 
+PROD_HOST += testMonitorPerformance
+testMonitorPerformance_SRCS += testMonitorPerformance.cpp
+testMonitorPerformance_LIBS += pvAccess pvData pvMB Com
+
 PROD_HOST += rpcServiceExample
 rpcServiceExample_SRCS += rpcServiceExample.cpp
 rpcServiceExample_LIBS += pvAccess pvData pvMB Com
