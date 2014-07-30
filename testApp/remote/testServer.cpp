@@ -908,7 +908,7 @@ static ChannelProcess::shared_pointer getChannelProcess(
     Channel::shared_pointer const & channel,
     PVStructure::shared_pointer const & pvRequest)
 {
-    PVScalar::shared_pointer pvScalar = pvRequest->getSubField<PVScalar>("record.process");
+    PVScalar::shared_pointer pvScalar = pvRequest->getSubField<PVScalar>("record._options.process");
     if (pvScalar && pvScalar->getAs<epics::pvData::boolean>())
     {
         std::tr1::shared_ptr<ChannelProcessRequesterImpl> cpr(new ChannelProcessRequesterImpl());
@@ -954,7 +954,7 @@ protected:
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelGet);
 
-        PVScalar::shared_pointer pvScalar = pvRequest->getSubField<PVScalar>("record.alwaysSendAll");
+        PVScalar::shared_pointer pvScalar = pvRequest->getSubField<PVScalar>("record._options.alwaysSendAll");
         if (pvScalar)
             m_alwaysSendAll = pvScalar->getAs<epics::pvData::boolean>();
 
@@ -2037,7 +2037,7 @@ protected:
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockMonitor);
 
-        PVScalar::shared_pointer pvScalar = pvRequest->getSubField<PVScalar>("record.velocious");
+        PVScalar::shared_pointer pvScalar = pvRequest->getSubField<PVScalar>("record._options.velocious");
         if (pvScalar)
             m_continuous = pvScalar->getAs<epics::pvData::boolean>();
 
