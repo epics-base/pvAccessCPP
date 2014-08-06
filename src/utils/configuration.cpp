@@ -274,13 +274,15 @@ bool SystemConfigurationImpl::getPropertyAsBoolean(const string &name, const boo
 	std::transform(value.begin(), value.end(), value.begin(), ::tolower);
 
 	bool isTrue = (value == "1") || (value == "true") || (value == "yes");
+    if (isTrue)
+        return true;
+
 	bool isFalse = (value == "0") || (value == "false") || (value == "no");
+    if (isFalse)
+        return false;
 
 	// invalid value
-	if (!(isTrue || isFalse))
-		return defaultValue;
-	else
-		return isTrue == true;
+    return defaultValue;
 }
 
 int32 SystemConfigurationImpl::getPropertyAsInteger(const string &name, const int32 defaultValue)

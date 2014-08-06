@@ -82,9 +82,9 @@ namespace epics {
             int _receiveBufferSize;
 
             /**
-             * Beacon interval.
+             * Heartbeat interval.
              */
-            float _beaconInterval;
+            float _heartbeatInterval;
 
             /**
              * Tries to connect to the given address.

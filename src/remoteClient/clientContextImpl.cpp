@@ -4100,7 +4100,7 @@ TODO
                 osiSockAttach();
                 m_timer.reset(new Timer("pvAccess-client timer", lowPriority));
                 Context::shared_pointer thisPointer = shared_from_this();
-                m_connector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_beaconPeriod));
+                m_connector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_connectionTimeout));
                 m_transportRegistry.reset(new TransportRegistry());
 
                 // TODO put memory barrier here... (if not already called withing a lock?)

@@ -24,11 +24,11 @@ namespace epics {
         BlockingTCPConnector::BlockingTCPConnector(
                 Context::shared_pointer const & context,
                 int receiveBufferSize,
-                float beaconInterval) :
+                float heartbeatInterval) :
             _context(context),
             _namedLocker(),
             _receiveBufferSize(receiveBufferSize),
-            _beaconInterval(beaconInterval)
+            _heartbeatInterval(heartbeatInterval)
         {
         }
 
@@ -152,7 +152,7 @@ namespace epics {
 
                     transport = detail::BlockingClientTCPTransportCodec::create(
                                             context, socket, responseHandler, _receiveBufferSize, _socketSendBufferSize,
-                                            client, transportRevision, _beaconInterval, priority);
+                                            client, transportRevision, _heartbeatInterval, priority);
 
                     // verify
                     if(!transport->verify(3000)) {

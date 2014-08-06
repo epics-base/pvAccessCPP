@@ -1622,11 +1622,11 @@ namespace epics {
     int32_t receiveBufferSize,
     TransportClient::shared_pointer const & client,
     epics::pvData::int8 /*remoteTransportRevision*/,
-    float beaconInterval,
+    float heartbeatInterval,
     int16_t priority ) :
     BlockingTCPTransportCodec(false, context, channel, responseHandler,
       sendBufferSize, receiveBufferSize, priority),
-    _connectionTimeout(beaconInterval*1000),
+    _connectionTimeout(heartbeatInterval*1000),
     _unresponsiveTransport(false),
     _verifyOrEcho(true)
   {
@@ -1667,7 +1667,7 @@ namespace epics {
             double diff = epicsTimeDiffInSeconds(&currentTime, &_aliveTimestamp);
             _mutex.unlock();
             
-            if(diff>2*_connectionTimeout) {
+            if(diff>((3*_connectionTimeout)/2)) {
                 unresponsiveTransport();
             }
             // use some k (3/4) to handle "jitter"

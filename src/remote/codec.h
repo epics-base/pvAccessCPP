@@ -703,7 +703,7 @@ namespace epics {
         int32_t receiveBufferSize,
         TransportClient::shared_pointer const & client,
         epics::pvData::int8 remoteTransportRevision,
-        float beaconInterval,
+        float heartbeatInterval,
         int16_t priority);
 
     public:
@@ -715,7 +715,7 @@ namespace epics {
         int32_t receiveBufferSize,
         TransportClient::shared_pointer const & client,
         int8_t remoteTransportRevision,
-        float beaconInterval,
+        float heartbeatInterval,
         int16_t priority )
       {
         shared_pointer thisPointer(
@@ -723,7 +723,7 @@ namespace epics {
             context, channel, responseHandler,
             sendBufferSize, receiveBufferSize,
             client, remoteTransportRevision,
-            beaconInterval, priority)
+            heartbeatInterval, priority)
           );
         thisPointer->activate();
         return thisPointer;
