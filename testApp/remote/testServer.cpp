@@ -783,6 +783,21 @@ public:
             {
                 generateNTHistogramValues(m_pvStructure);
             }
+            else if (m_pvStructure->getStructure()->getID() == "uri:ev4:test/2014/binaryCounter")
+            {
+                PVBytePtr pvByte = static_pointer_cast<PVByte>(m_valueField);
+                int8 val = pvByte->get() + 1;
+                pvByte->put(val);
+
+                m_pvStructure->getSubField<PVBoolean>("bit0")->put(val & (1 << 0));
+                m_pvStructure->getSubField<PVBoolean>("bit1")->put(val & (1 << 1));
+                m_pvStructure->getSubField<PVBoolean>("bit2")->put(val & (1 << 2));
+                m_pvStructure->getSubField<PVBoolean>("bit3")->put(val & (1 << 3));
+                m_pvStructure->getSubField<PVBoolean>("bit4")->put(val & (1 << 4));
+                m_pvStructure->getSubField<PVBoolean>("bit5")->put(val & (1 << 5));
+                m_pvStructure->getSubField<PVBoolean>("bit6")->put(val & (1 << 6));
+                m_pvStructure->getSubField<PVBoolean>("bit7")->put(val & (1 << 7));
+            }
             else if (m_valueField.get())
             {
                 switch (m_valueField->getScalar()->getScalarType())
@@ -2356,6 +2371,24 @@ protected:
                 string allProperties("timeStamp");
                 m_pvStructure = getStandardPVField()->scalar(pvInt,allProperties);
             }
+            else if (m_name == "testBinaryCounter" )
+            {
+                epics::pvData::StructureConstPtr s =
+                    getFieldCreate()->createFieldBuilder()->
+                        setId("uri:ev4:test/2014/binaryCounter")->
+                        add("value", pvByte)->
+                        add("bit0", pvBoolean)->
+                        add("bit1", pvBoolean)->
+                        add("bit2", pvBoolean)->
+                        add("bit3", pvBoolean)->
+                        add("bit4", pvBoolean)->
+                        add("bit5", pvBoolean)->
+                        add("bit6", pvBoolean)->
+                        add("bit7", pvBoolean)->
+                        add("timeStamp", getStandardField()->timeStamp())->
+                        createStructure();
+                m_pvStructure = getPVDataCreate()->createPVStructure(s);
+            }
             else if (m_name == "testEnum")
             {
                 StringArray choices;
@@ -2638,6 +2671,10 @@ public:
         m_scan1Hz.toProcess.push_back(process);
 
         c = MockChannel::create(chProviderPtr, cr, "testHistogram", "local");
+        process = c->createChannelProcess(cpr, PVStructure::shared_pointer());
+        m_scan1Hz.toProcess.push_back(process);
+
+        c = MockChannel::create(chProviderPtr, cr, "testBinaryCounter", "local");
         process = c->createChannelProcess(cpr, PVStructure::shared_pointer());
         m_scan1Hz.toProcess.push_back(process);
 
