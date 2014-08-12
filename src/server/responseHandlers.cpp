@@ -1889,7 +1889,15 @@ void ServerChannelArrayRequesterImpl::activate(PVStructure::shared_pointer const
 
 void ServerChannelArrayRequesterImpl::channelArrayConnect(const Status& status, ChannelArray::shared_pointer const & channelArray, Array::const_shared_pointer const & array)
 {
-	{
+    if (status.isSuccess() && array->getArraySizeType() == Array::fixed)
+    {
+        Lock guard(_mutex);
+        _status = Status(Status::STATUSTYPE_ERROR, "fixed sized array returned as a ChannelArray array instance");
+        _channelArray.reset();
+        _array.reset();
+    }
+    else
+    {
 		Lock guard(_mutex);
 		_status = status;
 		_channelArray = channelArray;
