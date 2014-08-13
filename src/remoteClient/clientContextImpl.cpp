@@ -441,10 +441,12 @@ namespace epics {
         public:
             static ChannelProcess::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelProcessRequester::shared_pointer const & callback, PVStructure::shared_pointer const & pvRequest)
             {
-                ChannelProcess::shared_pointer thisPointer(
+                // TODO use std::make_shared
+                std::tr1::shared_ptr<ChannelProcessRequestImpl> tp(
                             new ChannelProcessRequestImpl(channel, callback, pvRequest),
                             delayed_destroyable_deleter()
                         );
+                ChannelProcess::shared_pointer thisPointer = tp;
                 static_cast<ChannelProcessRequestImpl*>(thisPointer.get())->activate();
                 return thisPointer;
             }
@@ -576,7 +578,7 @@ namespace epics {
             
             void activate()
             {
-                if (m_pvRequest == 0)
+                if (!m_pvRequest)
                 {
                     ChannelGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelGet>(shared_from_this());
                     EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(pvRequestNull, thisPointer, nullStructure));
@@ -600,7 +602,11 @@ namespace epics {
         public:
             static ChannelGet::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelGetRequester::shared_pointer const & channelGetRequester, PVStructure::shared_pointer const & pvRequest)
             {
-                ChannelGet::shared_pointer thisPointer(new ChannelGetImpl(channel, channelGetRequester, pvRequest), delayed_destroyable_deleter());
+                // TODO use std::make_shared
+                std::tr1::shared_ptr<ChannelGetImpl> tp(
+                            new ChannelGetImpl(channel, channelGetRequester, pvRequest),
+                            delayed_destroyable_deleter());
+                ChannelGet::shared_pointer thisPointer = tp;
                 static_cast<ChannelGetImpl*>(thisPointer.get())->activate();
                 return thisPointer;
             }
@@ -799,7 +805,7 @@ namespace epics {
             
             void activate()
             {
-                if (m_pvRequest == 0)
+                if (!m_pvRequest)
                 {
                     ChannelPut::shared_pointer thisPointer = dynamic_pointer_cast<ChannelPut>(shared_from_this());
                     EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(pvRequestNull, thisPointer, nullStructure));
@@ -823,7 +829,11 @@ namespace epics {
         public:
             static ChannelPut::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelPutRequester::shared_pointer const & channelPutRequester, PVStructure::shared_pointer const & pvRequest)
             {
-                ChannelPut::shared_pointer thisPointer(new ChannelPutImpl(channel, channelPutRequester, pvRequest), delayed_destroyable_deleter());
+                // TODO use std::make_shared
+                std::tr1::shared_ptr<ChannelPutImpl> tp(
+                            new ChannelPutImpl(channel, channelPutRequester, pvRequest),
+                            delayed_destroyable_deleter());
+                ChannelPut::shared_pointer thisPointer = tp;
                 static_cast<ChannelPutImpl*>(thisPointer.get())->activate();
                 return thisPointer;
             }
@@ -1064,7 +1074,7 @@ namespace epics {
 
             void activate()
             {
-                if (m_pvRequest == 0)
+                if (!m_pvRequest)
                 {
                     ChannelPutGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
                     EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(pvRequestNull, thisPointer, nullStructure, nullStructure));
@@ -1085,7 +1095,11 @@ namespace epics {
         public:
             static ChannelPutGet::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelPutGetRequester::shared_pointer const & channelPutGetRequester, PVStructure::shared_pointer const & pvRequest)
             {
-                ChannelPutGet::shared_pointer thisPointer(new ChannelPutGetImpl(channel, channelPutGetRequester, pvRequest), delayed_destroyable_deleter());
+                // TODO use std::make_shared
+                std::tr1::shared_ptr<ChannelPutGetImpl> tp(
+                            new ChannelPutGetImpl(channel, channelPutGetRequester, pvRequest),
+                            delayed_destroyable_deleter());
+                ChannelPutGet::shared_pointer thisPointer = tp;
                 static_cast<ChannelPutGetImpl*>(thisPointer.get())->activate();
                 return thisPointer;
             }
@@ -1385,7 +1399,7 @@ namespace epics {
             
             void activate()
             {
-                if (m_pvRequest == 0)
+                if (!m_pvRequest)
                 {
                     ChannelRPC::shared_pointer thisPointer = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
                     EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(pvRequestNull, thisPointer));
@@ -1407,7 +1421,11 @@ namespace epics {
         public:
             static ChannelRPC::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelRPCRequester::shared_pointer const & channelRPCRequester, PVStructure::shared_pointer const & pvRequest)
             {
-                ChannelRPC::shared_pointer thisPointer(new ChannelRPCImpl(channel, channelRPCRequester, pvRequest), delayed_destroyable_deleter());
+                // TODO use std::make_shared
+                std::tr1::shared_ptr<ChannelRPCImpl> tp(
+                            new ChannelRPCImpl(channel, channelRPCRequester, pvRequest),
+                            delayed_destroyable_deleter());
+                ChannelRPC::shared_pointer thisPointer = tp;
                 static_cast<ChannelRPCImpl*>(thisPointer.get())->activate();
                 return thisPointer;
             }
@@ -1589,7 +1607,7 @@ namespace epics {
             
             void activate()
             {
-                if (m_pvRequest == 0)
+                if (!m_pvRequest)
                 {
                     ChannelArray::shared_pointer thisPointer = dynamic_pointer_cast<ChannelArray>(shared_from_this());
                     EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(pvRequestNull, thisPointer, Array::shared_pointer()));
@@ -1611,7 +1629,11 @@ namespace epics {
         public:
             static ChannelArray::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelArrayRequester::shared_pointer const & channelArrayRequester, PVStructure::shared_pointer const & pvRequest)
             {
-                ChannelArray::shared_pointer thisPointer(new ChannelArrayImpl(channel, channelArrayRequester, pvRequest), delayed_destroyable_deleter());
+                // TODO use std::make_shared
+                std::tr1::shared_ptr<ChannelArrayImpl> tp(
+                            new ChannelArrayImpl(channel, channelArrayRequester, pvRequest),
+                            delayed_destroyable_deleter());
+                ChannelArray::shared_pointer thisPointer = tp;
                 static_cast<ChannelArrayImpl*>(thisPointer.get())->activate();
                 return thisPointer;
             }
@@ -2325,7 +2347,7 @@ namespace epics {
             
             void activate()
             {
-                if (m_pvRequest == 0)
+                if (!m_pvRequest)
                 {
                     Monitor::shared_pointer thisPointer = dynamic_pointer_cast<Monitor>(shared_from_this());
                     EXCEPTION_GUARD(m_monitorRequester->monitorConnect(pvRequestNull, thisPointer, StructureConstPtr()));
@@ -2339,7 +2361,7 @@ namespace epics {
                    pvField = pvOptions->getSubField("queueSize");
                    if (pvField.get()) {
                        PVStringPtr pvString = pvOptions->getStringField("queueSize");
-                       if(pvString.get()!=NULL) {
+                       if(pvString) {
                            int32 size;
                            std::stringstream ss;
                            ss << pvString->get();
@@ -2352,7 +2374,8 @@ namespace epics {
                 BaseRequestImpl::activate();
 
                if (queueSize<2) queueSize = 2;
-               m_monitorStrategy.reset(new MonitorStrategyQueue(m_monitorRequester, queueSize));
+               std::tr1::shared_ptr<MonitorStrategyQueue> tp(new MonitorStrategyQueue(m_monitorRequester, queueSize));
+               m_monitorStrategy = tp;
                 
                 // subscribe
                 try {
@@ -2370,11 +2393,13 @@ namespace epics {
                MonitorRequester::shared_pointer const & monitorRequester,
                PVStructure::shared_pointer const & pvRequest)
             {
-                Monitor::shared_pointer thisPointer(
+                // TODO use std::make_shared
+                std::tr1::shared_ptr<ChannelMonitorImpl> tp(
                     new ChannelMonitorImpl(
                         channel, monitorRequester,
                         pvRequest),
                         delayed_destroyable_deleter());
+                Monitor::shared_pointer thisPointer = tp;
                 static_cast<ChannelMonitorImpl*>(thisPointer.get())->activate();
                 return thisPointer;
             }
@@ -2777,13 +2802,13 @@ namespace epics {
                 
                 std::tr1::shared_ptr<epics::pvAccess::BeaconHandler> beaconHandler = context->getBeaconHandler(protocol, responseFrom);
                 // currently we care only for servers used by this context
-                if (beaconHandler == 0)
+                if (!beaconHandler)
                     return;
 
                 // extra data
                 PVFieldPtr data;
                 const FieldConstPtr field = getFieldCreate()->deserialize(payloadBuffer, transport.get());
-                if (field != 0)
+                if (field)
                 {
                     data = getPVDataCreate()->createPVField(field);
                     data->deserialize(payloadBuffer, transport.get());
@@ -3252,12 +3277,6 @@ namespace epics {
                  */
                 bool m_allowCreation;
                 
-                /**
-                 * Reference counting.
-                 * NOTE: synced on <code>m_channelMutex</code>.
-                 */
-                int m_references;
-                
                 /* ****************** */
                 /* PVA protocol fields */
                 /* ****************** */
@@ -3333,7 +3352,11 @@ namespace epics {
                                                    short priority,
                                                    auto_ptr<InetAddrVector>& addresses)
                 {
-                    ChannelImpl::shared_pointer thisPointer(new InternalChannelImpl(context, channelID, name, requester, priority, addresses), delayed_destroyable_deleter());
+                    // TODO use std::make_shared
+                    std::tr1::shared_ptr<InternalChannelImpl> tp(
+                                new InternalChannelImpl(context, channelID, name, requester, priority, addresses),
+                                delayed_destroyable_deleter());
+                    ChannelImpl::shared_pointer thisPointer = tp;
                     static_cast<InternalChannelImpl*>(thisPointer.get())->activate();
                     return thisPointer;
                 }
@@ -3893,7 +3916,7 @@ namespace epics {
                     ResponseRequest::shared_pointer ptr;
                     for (int i = 0; i< count; i++)
                     {
-                        if(ptr = rrs[i].lock())
+                        if((ptr = rrs[i].lock()))
                         {
                             EXCEPTION_GUARD(ptr->reportStatus(status));
                         }
@@ -4055,7 +4078,9 @@ namespace epics {
             
             static shared_pointer create()
             {
-                shared_pointer thisPointer(new InternalClientContextImpl(), delayed_destroyable_deleter());
+                // TODO use std::make_shared
+                std::tr1::shared_ptr<InternalClientContextImpl> tp(new InternalClientContextImpl(), delayed_destroyable_deleter());
+                shared_pointer thisPointer = tp;
                 static_cast<InternalClientContextImpl*>(thisPointer.get())->activate();
                 return thisPointer;
             }
@@ -4070,7 +4095,7 @@ namespace epics {
 TODO
         final ConfigurationProvider configurationProvider = ConfigurationFactory.getProvider();
         Configuration config = configurationProvider.getConfiguration("pvAccess-client");
-        if (config == 0)
+        if (!config)
             config = configurationProvider.getConfiguration("system");
         return config;
 */
@@ -4534,7 +4559,7 @@ TODO
                 checkState();
                 checkChannelName(name);
 
-                if (requester == 0)
+                if (!requester)
                     throw std::runtime_error("0 requester");
 
                 if (priority < ChannelProvider::PRIORITY_MIN || priority > ChannelProvider::PRIORITY_MAX)

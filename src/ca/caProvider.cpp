@@ -173,7 +173,9 @@ public:
         if (!sharedProvider.get())
         {
             try {
-                sharedProvider.reset(new CAChannelProvider());
+                // TODO use std::make_shared
+                std::tr1::shared_ptr<CAChannelProvider> tp(new CAChannelProvider());
+                sharedProvider = tp;
             } catch (std::exception &e) {
                 LOG(logLevelError, "Unhandled exception caught at %s:%d: %s", __FILE__, __LINE__, e.what());
             } catch (...) {
@@ -186,7 +188,10 @@ public:
     virtual ChannelProvider::shared_pointer newInstance()
     {
         try {
-            return ChannelProvider::shared_pointer(new CAChannelProvider());
+            // TODO use std::make_shared
+            std::tr1::shared_ptr<CAChannelProvider> tp(new CAChannelProvider());
+            ChannelProvider::shared_pointer ni = tp;
+            return ni;
         } catch (std::exception &e) {
             LOG(logLevelError, "Unhandled exception caught at %s:%d: %s", __FILE__, __LINE__, e.what());
             return ChannelProvider::shared_pointer();

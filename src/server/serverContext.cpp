@@ -151,7 +151,7 @@ bool ServerContextImpl::isChannelProviderNamePreconfigured()
 void ServerContextImpl::initialize(ChannelProviderRegistry::shared_pointer const & channelProviderRegistry)
 {
 	Lock guard(_mutex);
-	if (channelProviderRegistry == NULL)
+    if (!channelProviderRegistry.get())
 	{
 		THROW_BASE_EXCEPTION("non null channelProviderRegistry expected");
 	}
@@ -393,21 +393,21 @@ void ServerContextImpl::destroy()
 void ServerContextImpl::internalDestroy()
 {
 	// stop responding to search requests
-	if (_broadcastTransport != NULL)
+    if (_broadcastTransport.get())
 	{
 		_broadcastTransport->close();
 		_broadcastTransport.reset();
 	}
 
 	// stop accepting connections
-	if (_acceptor != NULL)
+    if (_acceptor.get())
 	{
 		_acceptor->destroy();
 		_acceptor.reset();
 	}
 
 	// stop emitting beacons
-	if (_beaconEmitter != NULL)
+    if (_beaconEmitter.get())
 	{
 		_beaconEmitter->destroy();
 		_beaconEmitter.reset();
@@ -421,7 +421,7 @@ void ServerContextImpl::destroyAllTransports()
 {
 
 	// not initialized yet
-	if (_transportRegistry == NULL)
+    if (!_transportRegistry.get())
 	{
 		return;
 	}
@@ -556,7 +556,7 @@ BeaconServerStatusProvider::shared_pointer ServerContextImpl::getBeaconServerSta
 
 osiSockAddr* ServerContextImpl::getServerInetAddress()
 {
-	if(_acceptor != NULL)
+    if(_acceptor.get())
 	{
 		return const_cast<osiSockAddr*>(_acceptor->getBindAddress());
 	}

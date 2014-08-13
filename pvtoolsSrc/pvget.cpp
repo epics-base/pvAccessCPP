@@ -246,7 +246,7 @@ class MonitorRequesterImpl : public MonitorRequester
     {
 
 		MonitorElement::shared_pointer element;
-		while (element = monitor->poll())
+        while ((element = monitor->poll()))
 		{
             if (mode == ValueOnlyMode)
             {

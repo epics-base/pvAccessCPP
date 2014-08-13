@@ -126,6 +126,8 @@ namespace epics {
             virtual void configure(epics::pvData::PVStructure::shared_pointer configuration) = 0;
             virtual void flush() = 0;
             virtual void poll() = 0;
+
+            virtual void destroy() = 0;
         };
 
         epicsShareExtern ClientContextImpl::shared_pointer createClientContextImpl();

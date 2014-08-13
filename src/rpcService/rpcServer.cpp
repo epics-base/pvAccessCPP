@@ -257,9 +257,11 @@ public:
             return nullPtr;
         }
         
-        ChannelRPC::shared_pointer channelRPCImpl(
+        // TODO use std::make_shared
+        std::tr1::shared_ptr<ChannelRPCServiceImpl> tp(
             new ChannelRPCServiceImpl(shared_from_this(), channelRPCRequester, m_rpcService)
         );
+        ChannelRPC::shared_pointer channelRPCImpl = tp;
         channelRPCRequester->channelRPCConnect(Status::Ok, channelRPCImpl);
         return channelRPCImpl;
     }
@@ -322,7 +324,12 @@ Channel::shared_pointer createRPCChannel(ChannelProvider::shared_pointer const &
                                           ChannelRequester::shared_pointer const & channelRequester,
                                           RPCService::shared_pointer const & rpcService)
 {
-    return Channel::shared_pointer(new RPCChannel(provider, channelName, channelRequester, rpcService));
+    // TODO use std::make_shared
+    std::tr1::shared_ptr<RPCChannel> tp(
+                new RPCChannel(provider, channelName, channelRequester, rpcService)
+                );
+    Channel::shared_pointer channel = tp;
+    return channel;
 }
 
 
@@ -409,11 +416,14 @@ public:
             return nullChannel;
         }
                
-        Channel::shared_pointer rpcChannel(new RPCChannel(
+        // TODO use std::make_shared
+        std::tr1::shared_ptr<RPCChannel> tp(
+            new RPCChannel(
                 shared_from_this(),
                 channelName,
                 channelRequester,
                 iter->second));
+        Channel::shared_pointer rpcChannel = tp;
         channelRequester->channelCreated(Status::Ok, rpcChannel);
         return rpcChannel;
     }
@@ -473,7 +483,10 @@ public:
 
     virtual ChannelProvider::shared_pointer newInstance()
     {
-        return ChannelProvider::shared_pointer(new RPCChannelProvider());
+        // TODO use std::make_shared
+        std::tr1::shared_ptr<RPCChannelProvider> tp(new RPCChannelProvider());
+        ChannelProvider::shared_pointer channelProvider = tp;
+        return channelProvider;
     }
 
 private:

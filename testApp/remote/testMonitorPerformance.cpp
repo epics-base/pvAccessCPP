@@ -119,9 +119,6 @@ private:
     Event m_event;
     Event m_connectionEvent;
     string m_channelName;
-    int m_count;
-
-    timeval m_startTime;
 
 public:
 
@@ -164,7 +161,7 @@ public:
     {
 
         MonitorElement::shared_pointer element;
-        while (element = monitor->poll())
+        while ((element = monitor->poll()))
         {
             channelCount++;
             if (channelCount == channels)
@@ -374,8 +371,6 @@ int main (int argc, char *argv[])
 {
     int opt;                    // getopt() current option
     std::string testFile;
-
-    Requester::shared_pointer requester(new RequesterImpl());
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    // Set stdout to line buffering
 

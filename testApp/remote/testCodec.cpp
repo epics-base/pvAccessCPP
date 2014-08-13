@@ -2998,7 +2998,7 @@ namespace epics {
       public:
 
         TransportSenderForTestEnqueueSendRequestExceptionThrown(
-          TestCodec & codec): _codec(codec) {}
+          TestCodec & /*codec*/)/*: _codec(codec)*/ {}
 
         void unlock() {
         }
@@ -3019,7 +3019,7 @@ namespace epics {
         }
 
       private:
-        TestCodec &_codec;
+        //TestCodec &_codec;
       };
 
 

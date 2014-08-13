@@ -467,7 +467,11 @@ ChannelGet::shared_pointer CAChannelGet::create(
         ChannelGetRequester::shared_pointer const & channelGetRequester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
-    ChannelGet::shared_pointer thisPtr(new CAChannelGet(channel, channelGetRequester, pvRequest));
+    // TODO use std::make_shared
+    std::tr1::shared_ptr<CAChannelGet> tp(
+                    new CAChannelGet(channel, channelGetRequester, pvRequest)
+                );
+    ChannelGet::shared_pointer thisPtr = tp;
     static_cast<CAChannelGet*>(thisPtr.get())->activate();
     return thisPtr;
 }
@@ -938,7 +942,11 @@ ChannelPut::shared_pointer CAChannelPut::create(
         ChannelPutRequester::shared_pointer const & channelPutRequester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
-    ChannelPut::shared_pointer thisPtr(new CAChannelPut(channel, channelPutRequester, pvRequest));
+    // TODO use std::make_shared
+    std::tr1::shared_ptr<CAChannelPut> tp(
+                    new CAChannelPut(channel, channelPutRequester, pvRequest)
+                );
+    ChannelPut::shared_pointer thisPtr = tp;
     static_cast<CAChannelPut*>(thisPtr.get())->activate();
     return thisPtr;
 }
@@ -1259,7 +1267,11 @@ Monitor::shared_pointer CAChannelMonitor::create(
         epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
-    Monitor::shared_pointer thisPtr(new CAChannelMonitor(channel, monitorRequester, pvRequest));
+    // TODO use std::make_shared
+    std::tr1::shared_ptr<CAChannelMonitor> tp(
+                new CAChannelMonitor(channel, monitorRequester, pvRequest)
+                );
+    Monitor::shared_pointer thisPtr = tp;
     static_cast<CAChannelMonitor*>(thisPtr.get())->activate();
     return thisPtr;
 }

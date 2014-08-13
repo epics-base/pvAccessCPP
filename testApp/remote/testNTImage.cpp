@@ -20,7 +20,7 @@ epics::pvData::StructureConstPtr makeImageStruc()
 {
     static epics::pvData::StructureConstPtr imageStruc;
 
-    if (imageStruc == NULL)
+    if (!imageStruc.get())
     {
         FieldConstPtrArray fields;
         StringArray names;

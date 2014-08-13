@@ -748,8 +748,8 @@ namespace pvAccess {
         class ServerGetFieldHandlerTransportSender : public TransportSender
         {
         public:
-        	ServerGetFieldHandlerTransportSender(const pvAccessID ioid,const epics::pvData::Status& status, Transport::shared_pointer const & transport):
-        		_ioid(ioid), _status(status), _transport(transport) {
+            ServerGetFieldHandlerTransportSender(const pvAccessID ioid,const epics::pvData::Status& status, Transport::shared_pointer const & /*transport*/):
+                _ioid(ioid), _status(status) {
 
         	}
                 virtual ~ServerGetFieldHandlerTransportSender() {}
@@ -771,7 +771,6 @@ namespace pvAccess {
         private:
         	const pvAccessID _ioid;
         	const epics::pvData::Status _status;
-        	Transport::shared_pointer const & _transport;
         };
 
 

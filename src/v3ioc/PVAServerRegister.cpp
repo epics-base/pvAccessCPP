@@ -59,7 +59,7 @@ private:
 
 void PVAServerCTX::start()
 {
-   if(ctx!=NULL) {
+   if(ctx.get()) {
         cout<< "PVAServer already started" << endl;
         return;
    }
@@ -68,7 +68,7 @@ void PVAServerCTX::start()
 
 void PVAServerCTX::stop()
 {
-   if(ctx==NULL) {
+   if(!ctx.get()) {
         cout<< "PVAServer already stopped" << endl;
         return;
    }
@@ -83,7 +83,7 @@ PVAServerCTXPtr PVAServerCTX::getPVAServerCTX()
     static Mutex mutex;
     Lock xx(mutex);
 
-   if(pvPVAServerCTX==NULL) {
+   if(!pvPVAServerCTX.get()) {
       pvPVAServerCTX = PVAServerCTXPtr(new PVAServerCTX());
    }
    return pvPVAServerCTX;

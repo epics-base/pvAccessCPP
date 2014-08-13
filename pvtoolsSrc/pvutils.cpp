@@ -87,7 +87,9 @@ std::ostream& terse(std::ostream& o, PVField::shared_pointer const & pv)
     	return terseStructureArray(o, static_pointer_cast<PVStructureArray>(pv));
     	break;
     default:
-    	throw logic_error("unknown Field type: " + type);
+        std::ostringstream msg("unknown Field type: ");
+        msg << type;
+        throw std::logic_error(msg.str());
     }
 }
 
