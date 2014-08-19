@@ -142,6 +142,9 @@ public:
     std::auto_ptr<ResponseHandler> createResponseHandler();
     virtual void newServerDetected();
 
+
+    BlockingUDPTransport::shared_pointer getLocalMulticastTransport();
+
     /**
      * Version.
      */
@@ -349,7 +352,12 @@ private:
 	 */
 	BlockingUDPTransport::shared_pointer _broadcastTransport;
 
-	/**
+    /**
+     * Local broadcast transport needed for local fan-out.
+     */
+    BlockingUDPTransport::shared_pointer _localMulticastTransport;
+
+    /**
 	 * Beacon emitter.
 	 */
 	BeaconEmitter::shared_pointer _beaconEmitter;

@@ -188,6 +188,9 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 			transport, version, command, payloadSize, payloadBuffer);
 
     transport->ensureData(4+1+3+16+2);
+
+    size_t startPosition = payloadBuffer->getPosition();
+
 	const int32 searchSequenceId = payloadBuffer->getInt();
 	const int8 qosCode = payloadBuffer->getByte();
 
@@ -200,9 +203,9 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 
     // 128-bit IPv6 address
     /*
-int8* byteAddress = new int8[16];
+int8 byteAddress[16];
 for (int i = 0; i < 16; i++)
-byteAddress[i] = payloadBuffer->getByte(); };
+byteAddress[i] = payloadBuffer->getByte();
     */
 
     // IPv4 compatible IPv6 address expected
@@ -234,7 +237,27 @@ byteAddress[i] = payloadBuffer->getByte(); };
 
 	const bool responseRequired = (QOS_REPLY_REQUIRED & qosCode) != 0;
 
-    // TODO locally broadcast if qosCode & 0x80 == 0x80
+    //
+    // locally broadcast if unicast (qosCode & 0x80 == 0x80)
+    //
+    if ((qosCode & 0x80) == 0x80)
+    {
+        BlockingUDPTransport::shared_pointer bt = _context->getLocalMulticastTransport();
+        if (bt)
+        {
+            // clear unicast flag
+            payloadBuffer->put(startPosition+4, (int8)(qosCode & ~0x80));
+
+            // update response address
+            payloadBuffer->setPosition(startPosition+8);
+            encodeAsIPv6Address(payloadBuffer, &responseAddress);
+
+            payloadBuffer->setPosition(payloadBuffer->getLimit());		// send will call flip()
+
+            bt->send(payloadBuffer);
+            return;
+        }
+    }
 
     if (count > 0)
     {

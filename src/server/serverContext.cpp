@@ -295,6 +295,42 @@ void ServerContextImpl::initializeBroadcastTransport()
 			}
 		}
 
+        // TODO
+        /*
+        // TODO configurable local NIF, address
+        // setup local broadcasting
+        NetworkInterface localNIF = InetAddressUtil.getLoopbackNIF();
+        if (localNIF != null)
+        {
+            try
+            {
+                InetAddress group = InetAddress.getByName("224.0.0.128");
+                broadcastTransport.join(group, localNIF);
+
+                logger.config("Local multicast enabled on " + group + ":" + broadcastPort + " using " + localNIF.getDisplayName() + ".");
+
+                localMulticastTransport = (BlockingUDPTransport)broadcastConnector.connect(
+//					localMulticastTransport = (UDPTransport)broadcastConnector.connect(
+                                                    null, serverResponseHandler,
+                                                    listenLocalAddress, PVAConstants.PVA_PROTOCOL_REVISION,
+                                                    PVAConstants.PVA_DEFAULT_PRIORITY);
+                localMulticastTransport.setMutlicastNIF(localNIF, true);
+                localMulticastTransport.setSendAddresses(new InetSocketAddress[] {
+                        new InetSocketAddress(group, broadcastPort)
+                });
+            }
+            catch (Throwable th)
+            {
+                logger.log(Level.CONFIG, "Failed to join to a multicast group, local multicast disabled.", th);
+            }
+        }
+        else
+        {
+            logger.config("Failed to detect a loopback network interface, local multicast disabled.");
+        }
+
+        */
+
 		_broadcastTransport->start();
 	}
 	catch (std::exception& e)
@@ -398,6 +434,12 @@ void ServerContextImpl::internalDestroy()
 		_broadcastTransport->close();
 		_broadcastTransport.reset();
 	}
+    // and close local multicast transport
+    if (_localMulticastTransport.get())
+    {
+        _localMulticastTransport->close();
+        _localMulticastTransport.reset();
+    }
 
 	// stop accepting connections
     if (_acceptor.get())
@@ -566,6 +608,11 @@ osiSockAddr* ServerContextImpl::getServerInetAddress()
 BlockingUDPTransport::shared_pointer ServerContextImpl::getBroadcastTransport()
 {
 	return _broadcastTransport;
+}
+
+BlockingUDPTransport::shared_pointer ServerContextImpl::getLocalMulticastTransport()
+{
+    return _localMulticastTransport;
 }
 
 ChannelProviderRegistry::shared_pointer ServerContextImpl::getChannelProviderRegistry()

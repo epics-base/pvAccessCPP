@@ -160,9 +160,80 @@ void test_getBroadcastAddresses()
 
 }
 
+void test_getLoopbackNIF()
+{
+    testDiag("Test getLoopbackNIF()");
+
+    osiSockAddr addr;
+    unsigned short port = 5555;
+
+    int defaultValue = getLoopbackNIF(addr, "", port);
+
+    testOk1(defaultValue);
+    testOk1(AF_INET == addr.ia.sin_family);
+    testOk1(htons(port) == addr.ia.sin_port);
+    testOk1(htonl(INADDR_LOOPBACK) == addr.ia.sin_addr.s_addr);
+
+    defaultValue = getLoopbackNIF(addr, "10.0.0.1:7777", port);
+
+    testOk1(!defaultValue);
+    testOk1(AF_INET == addr.ia.sin_family);
+    testOk1(htons(7777) == addr.ia.sin_port);
+    testOk1(htonl(0x0A000001) == addr.ia.sin_addr.s_addr);
+}
+
+void test_multicast()
+{
+    testDiag("Test test_multicast()");
+
+    osiSockAttach();
+
+    SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    testOk1(socket != INVALID_SOCKET);
+    if (socket != INVALID_SOCKET)
+        return;
+/*
+    // set SO_REUSEADDR or SO_REUSEPORT, OS dependant
+    epicsSocketEnableAddressUseForDatagramFanout(socket);
+
+    osiSockAddr bindAddr;
+    bindAddr.ia.sin_family = AF_INET;
+    bindAddr.ia.sin_port = ntohs(5555);
+    bindAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    int status = ::bind(socket, (sockaddr*)&(bindAddr.sa), sizeof(sockaddr));
+    if (status)
+    {
+        char errStr[64];
+        epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+        fprintf(stderr, "Failed to bind: %s", errStr);
+        epicsSocketDestroy(socket);
+        return;
+    }
+*/
+    struct ip_mreq imreq;
+    memset(&imreq, 0, sizeof(struct ip_mreq));
+
+    imreq.imr_multiaddr.s_addr = inet_addr("224.0.0.1");
+    imreq.imr_interface.s_addr = INADDR_ANY;
+
+       // join multicast group on default interface
+    int status = ::setsockopt(socket, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+                    (const void *)&imreq, sizeof(struct ip_mreq));
+    if (status)
+    {
+        char errStr[64];
+        epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+        fprintf(stderr, "Error setting IP_ADD_MEMBERSHIP: %s", errStr);
+    }
+    testOk1(status == 0);
+
+    epicsSocketDestroy(socket);
+}
+
 MAIN(testInetAddressUtils)
 {
-    testPlan(51);
+    testPlan(60);
     testDiag("Tests for InetAddress utils");
 
     test_getSocketAddressList();
@@ -171,6 +242,9 @@ MAIN(testInetAddressUtils)
     test_encodeAsIPv6Address();
     test_isMulticastAddress();
     test_getBroadcastAddresses();
+    test_getLoopbackNIF();
+
+    test_multicast();
 
     return testDone();
 }

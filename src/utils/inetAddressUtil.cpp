@@ -83,7 +83,7 @@ int32 ipv4AddressToInt(const osiSockAddr& addr) {
     return (int32)ntohl(addr.ia.sin_addr.s_addr);
 }
 
-int32 parseInetAddress(const string addr) {
+int32 parseInetAddress(const string & addr) {
     int32 retAddr;
 
     size_t dot = addr.find('.');
@@ -117,7 +117,7 @@ int32 parseInetAddress(const string addr) {
     return htonl(retAddr);
 }
 
-InetAddrVector* getSocketAddressList(std::string list, int defaultPort,
+InetAddrVector* getSocketAddressList(const std::string & list, int defaultPort,
         const InetAddrVector* appendList) {
     InetAddrVector* iav = new InetAddrVector();
 
@@ -145,7 +145,7 @@ InetAddrVector* getSocketAddressList(std::string list, int defaultPort,
     return iav;
 }
 
-const string inetAddressToString(const osiSockAddr &addr,
+string inetAddressToString(const osiSockAddr &addr,
         bool displayPort, bool displayHex) {
     stringstream saddr;
 
@@ -160,6 +160,22 @@ const string inetAddressToString(const osiSockAddr &addr,
             <<")";
 
     return saddr.str();
+}
+
+int getLoopbackNIF(osiSockAddr &loAddr, string const & localNIF, unsigned short port)
+{
+    if (!localNIF.empty())
+    {
+        if (aToIPAddr(localNIF.c_str(), port, &loAddr.ia) == 0)
+            return 0;
+        // else TODO log error
+    }
+
+    // fallback
+    loAddr.ia.sin_family = AF_INET;
+    loAddr.ia.sin_port = ntohs(port);
+    loAddr.ia.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    return 1;
 }
 
 }
