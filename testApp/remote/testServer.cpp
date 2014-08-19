@@ -2269,6 +2269,34 @@ protected:
                 string allProperties("timeStamp");
                 m_pvStructure = getStandardPVField()->enumerated(choices,allProperties);
             }
+            else if (m_name == "testBoundedString" )
+            {
+                epics::pvData::StructureConstPtr s =
+                    getFieldCreate()->createFieldBuilder()->
+                        addBoundedString("value", 8)->
+                        add("timeStamp", getStandardField()->timeStamp())->
+                        createStructure();
+                m_pvStructure = getPVDataCreate()->createPVStructure(s);
+            }
+            else if (m_name == "testBoundedArray" )
+            {
+                epics::pvData::StructureConstPtr s =
+                    getFieldCreate()->createFieldBuilder()->
+                        addBoundedArray("value", pvDouble, 8)->
+                        add("timeStamp", getStandardField()->timeStamp())->
+                        createStructure();
+                m_pvStructure = getPVDataCreate()->createPVStructure(s);
+            }
+            else if (m_name == "testFixedArray" )
+            {
+                epics::pvData::StructureConstPtr s =
+                    getFieldCreate()->createFieldBuilder()->
+                        addFixedArray("value", pvDouble, 8)->
+                        add("timeStamp", getStandardField()->timeStamp())->
+                        createStructure();
+                m_pvStructure = getPVDataCreate()->createPVStructure(s);
+                m_pvStructure->getSubField<PVArray>("value")->setLength(8);
+            }
             else
             {
                 string allProperties("alarm,timeStamp,display,control,valueAlarm");
