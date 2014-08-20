@@ -80,7 +80,7 @@ void ServerContextImpl::generateGUID()
 
  	ByteBuffer buffer(_guid.value, sizeof(_guid.value));
  	buffer.putLong(startupTime.getSecondsPastEpoch());
-    buffer.putInt(startupTime.getNanoSeconds());
+    buffer.putInt(startupTime.getNanoseconds());
 }
 
 void ServerContextImpl::initializeLogger()

@@ -677,7 +677,7 @@ void copy_DBR_TIME(const void * dbr, unsigned count, PVStructure::shared_pointer
     epics::pvData::int64 spe = data->stamp.secPastEpoch;
     spe += 7305*86400;
     ts->getLongField("secondsPastEpoch")->put(spe);
-    ts->getIntField("nanoSeconds")->put(data->stamp.nsec);
+    ts->getIntField("nanoseconds")->put(data->stamp.nsec);
 
     copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
 }

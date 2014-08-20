@@ -42,7 +42,7 @@ uri:ev4:nt/2012/pwd:NTScalar
         string message 
     time_t timeStamp
         long secondsPastEpoch 0
-        int nanoSeconds 0
+        int nanoseconds 0
         int userTag 0
     display_t display
         double limitLow 0
@@ -64,7 +64,7 @@ uri:ev4:nt/2012/pwd:NTScalar
         int lowWarningSeverity 0
         int highWarningSeverity 0
         int highAlarmSeverity 0
-        double hystersis 0
+        double hysteresis 0
 
 
 6. Get the values of some fields of V4 record (-r is pvAccess request string)
@@ -75,7 +75,7 @@ structure
     double value 1.23
     time_t timeStamp
         long secondsPastEpoch 0
-        int nanoSeconds 0
+        int nanoseconds 0
         int userTag 0
     alarm_t alarm
         int severity 0
