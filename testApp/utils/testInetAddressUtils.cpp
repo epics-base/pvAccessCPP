@@ -288,6 +288,23 @@ void test_multicastLoopback()
     }
     testOk((size_t)status == len, "Multicast send");
 
+
+    // set timeout in case message is not sent
+    struct timeval timeout;
+    memset(&timeout, 0, sizeof(struct timeval));
+    timeout.tv_sec = 1;
+    timeout.tv_usec = 0;
+
+    status = ::setsockopt (socket, SOL_SOCKET, SO_RCVTIMEO,
+                           (char*)&timeout, sizeof(timeout));
+    if (status)
+    {
+        char errStr[64];
+        epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+        fprintf(stderr, "Error setting SO_RCVTIMEO: %s\n", errStr);
+    }
+    testOk(status == 0, "SO_RCVTIMEO set");
+
     char rxbuff[MAX_BUFFER_SIZE];
 
     osiSockAddr fromAddress;
@@ -312,7 +329,7 @@ void test_multicastLoopback()
 
 MAIN(testInetAddressUtils)
 {
-    testPlan(60);
+    testPlan(68);
     testDiag("Tests for InetAddress utils");
 
     test_getSocketAddressList();
