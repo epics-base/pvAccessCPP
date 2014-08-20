@@ -187,7 +187,7 @@ void test_getLoopbackNIF()
 #include <Ws2tcpip.h>
 #endif
 
-void test_multicast()
+void test_multicastLoopback()
 {
     testDiag("Test test_multicast()");
 
@@ -195,15 +195,17 @@ void test_multicast()
 
     SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     testOk1(socket != INVALID_SOCKET);
-    if (socket != INVALID_SOCKET)
+    if (socket == INVALID_SOCKET)
         return;
-/*
+
+    unsigned short port = 5555;
+
     // set SO_REUSEADDR or SO_REUSEPORT, OS dependant
     epicsSocketEnableAddressUseForDatagramFanout(socket);
 
     osiSockAddr bindAddr;
     bindAddr.ia.sin_family = AF_INET;
-    bindAddr.ia.sin_port = ntohs(5555);
+    bindAddr.ia.sin_port = ntohs(port);
     bindAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
     int status = ::bind(socket, (sockaddr*)&(bindAddr.sa), sizeof(sockaddr));
@@ -211,28 +213,100 @@ void test_multicast()
     {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-        fprintf(stderr, "Failed to bind: %s", errStr);
+        fprintf(stderr, "Failed to bind: %s\n", errStr);
         epicsSocketDestroy(socket);
         return;
     }
-*/
+
+    osiSockAddr loAddr;
+    getLoopbackNIF(loAddr, "", port);
+
+    osiSockAddr mcastAddr;
+    aToIPAddr("224.0.0.128", port, &mcastAddr.ia);
+
     struct ip_mreq imreq;
     memset(&imreq, 0, sizeof(struct ip_mreq));
 
-    imreq.imr_multiaddr.s_addr = inet_addr("224.0.0.1");
-    imreq.imr_interface.s_addr = INADDR_ANY;
+    imreq.imr_multiaddr.s_addr = mcastAddr.ia.sin_addr.s_addr;
+    imreq.imr_interface.s_addr = loAddr.ia.sin_addr.s_addr;
 
        // join multicast group on default interface
-    int status = ::setsockopt(socket, IPPROTO_IP, IP_ADD_MEMBERSHIP,
-                    (const void *)&imreq, sizeof(struct ip_mreq));
+    status = ::setsockopt(socket, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+                    (char*)&imreq, sizeof(struct ip_mreq));
     if (status)
     {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-        fprintf(stderr, "Error setting IP_ADD_MEMBERSHIP: %s", errStr);
+        fprintf(stderr, "Error setting IP_ADD_MEMBERSHIP: %s\n", errStr);
     }
-    testOk1(status == 0);
+    testOk(status == 0, "IP_ADD_MEMBERSHIP set");
 
+
+
+    SOCKET sendSocket = epicsSocketCreate(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    testOk1(sendSocket != INVALID_SOCKET);
+    if (sendSocket == INVALID_SOCKET)
+        return;
+
+    // set the multicast outgoing interface
+    status = ::setsockopt(sendSocket, IPPROTO_IP, IP_MULTICAST_IF,
+                          (char*)&loAddr.ia.sin_addr, sizeof(struct in_addr));
+    if (status)
+    {
+        char errStr[64];
+        epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+        fprintf(stderr, "Error setting IP_MULTICAST_IF: %s\n", errStr);
+    }
+    testOk(status == 0, "IP_MULTICAST_IF set");
+
+    // send multicast traffic to myself too
+    unsigned char mcast_loop = 1;
+    status = ::setsockopt(sendSocket, IPPROTO_IP, IP_MULTICAST_LOOP,
+                        (char*)&mcast_loop, sizeof(unsigned char));
+    if (status)
+    {
+        char errStr[64];
+        epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+        fprintf(stderr, "Error setting IP_MULTICAST_LOOP: %s\n", errStr);
+    }
+    testOk(status == 0, "IP_MULTICAST_LOOP set");
+
+    // put some data in buffer
+#define MAX_BUFFER_SIZE 1024
+    char txbuff[MAX_BUFFER_SIZE];
+    strcpy(txbuff, "mcastTest");
+
+    // send multicast packet
+    size_t len = strlen(txbuff);
+    status = ::sendto(sendSocket, txbuff, len, 0,
+                      &(mcastAddr.sa), sizeof(sockaddr));
+    if (status < 0)
+    {
+        char errStr[64];
+        epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+        fprintf(stderr, "Multicast send error: %s\n", errStr);
+    }
+    testOk((size_t)status == len, "Multicast send");
+
+    char rxbuff[MAX_BUFFER_SIZE];
+
+    osiSockAddr fromAddress;
+    osiSocklen_t addrStructSize = sizeof(sockaddr);
+
+    // receive packet from socket
+    status = ::recvfrom(socket, rxbuff, MAX_BUFFER_SIZE, 0,
+                        (sockaddr*)&fromAddress, &addrStructSize);
+    if (status < 0)
+    {
+        char errStr[64];
+        epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+        fprintf(stderr, "Multicast recv error: %s\n", errStr);
+    }
+    testOk((size_t)status == len, "Multicast recv");
+    testOk(strncmp(rxbuff, txbuff, len) == 0, "Multicast content matches");
+
+    // shutdown sockets?
+    epicsSocketDestroy(sendSocket);
     epicsSocketDestroy(socket);
 }
 
@@ -249,7 +323,8 @@ MAIN(testInetAddressUtils)
     test_getBroadcastAddresses();
     test_getLoopbackNIF();
 
-    test_multicast();
+    test_multicastLoopback();
 
     return testDone();
 }
+
