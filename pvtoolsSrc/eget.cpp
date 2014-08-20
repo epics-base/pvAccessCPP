@@ -46,7 +46,7 @@ bool transpose = false;
 
 bool dumpStructure = false;
 
-#ifdef WIN32
+#ifdef _WIN32
 FILE *popen(const char *command, const char *mode) {
 	return _popen(command, mode);
 }

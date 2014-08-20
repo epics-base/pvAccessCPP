@@ -182,6 +182,11 @@ void test_getLoopbackNIF()
     testOk1(htonl(0x0A000001) == addr.ia.sin_addr.s_addr);
 }
 
+#ifdef _WIN32
+// needed for ip_mreq
+#include <Ws2tcpip.h>
+#endif
+
 void test_multicast()
 {
     testDiag("Test test_multicast()");
