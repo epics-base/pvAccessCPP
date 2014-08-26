@@ -522,7 +522,8 @@ CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & _channel,
     channelGetRequester(_channelGetRequester),
     getType(getDBRType(pvRequest, _channel->getNativeType())),
     pvStructure(createPVStructure(_channel, getType)),
-    bitSet(new BitSet(static_cast<uint32>(pvStructure->getStructure()->getNumberFields())))
+    bitSet(new BitSet(static_cast<uint32>(pvStructure->getStructure()->getNumberFields()))),
+    lastRequestFlag(false)
 {
     // TODO
     bitSet->set(0);
@@ -965,7 +966,8 @@ CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & _channel,
     channelPutRequester(_channelPutRequester),
     getType(getDBRType(pvRequest, _channel->getNativeType())),
     pvStructure(createPVStructure(_channel, getType)),
-    bitSet(new BitSet(static_cast<uint32>(pvStructure->getStructure()->getNumberFields())))
+    bitSet(new BitSet(static_cast<uint32>(pvStructure->getStructure()->getNumberFields()))),
+    lastRequestFlag(false)
 {
     // NOTE: we require value type, we can only put value field
     bitSet->set(pvStructure->getSubField("value")->getFieldOffset());
