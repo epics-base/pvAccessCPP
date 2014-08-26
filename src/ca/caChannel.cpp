@@ -1065,13 +1065,30 @@ int doPut_pvStructure<string, pvString, PVString, PVStringArray>(CAChannel::shar
         std::tr1::shared_ptr<PVStringArray> value =
                 std::tr1::static_pointer_cast<PVStringArray>(pvStructure->getScalarArrayField("value", pvString));
 
-        //const string* val = value->get();
-        int result = ECA_NOSUPPORT; // TODO
-        /*
-        int result = ca_array_put_callback(channel->getNativeType(), value->getLength(),
-                                           channel->getChannelID(), val,
+        PVStringArray::const_svector stringArray(value->view());
+
+        size_t arraySize = stringArray.size();
+        size_t ca_stringBufferSize = arraySize * MAX_STRING_SIZE;
+        char* ca_stringBuffer = new char[ca_stringBufferSize];
+        memset(ca_stringBuffer, 0, ca_stringBufferSize);
+
+        char *p = ca_stringBuffer;
+        for(size_t i = 0; i < arraySize; i++)
+        {
+            string value = stringArray[i];
+            size_t len = value.length();
+            if (len >= MAX_STRING_SIZE)
+                len = MAX_STRING_SIZE - 1;
+            memcpy(p, value.c_str(), len);
+            p += MAX_STRING_SIZE;
+        }
+
+
+        int result = ca_array_put_callback(channel->getNativeType(), arraySize,
+                                           channel->getChannelID(), ca_stringBuffer,
                                            ca_put_handler, usrArg);
-*/
+        delete[] ca_stringBuffer;
+
         if (result == ECA_NORMAL)
         {
             ca_flush_io();
