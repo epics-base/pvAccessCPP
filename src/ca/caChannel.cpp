@@ -145,7 +145,7 @@ static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer c
             properties = "value,alarm";
     }
     else if (dbrType >= DBR_TIME_STRING) // 14
-        properties = "value,timeStamp";
+        properties = "value,alarm,timeStamp";
     else if (dbrType >= DBR_STS_STRING)  // 7
         properties = "value,alarm";
     else
@@ -501,15 +501,15 @@ static chtype getDBRType(PVStructure::shared_pointer const & pvRequest, chtype n
     if (fieldStructure->getField("display") || fieldStructure->getField("valueAlarm"))
         return static_cast<chtype>(static_cast<int>(nativeType) + DBR_GR_STRING);
 
-    // alarm -> DBR_STS_<type>
-    if (fieldStructure->getField("alarm"))
-        return static_cast<chtype>(static_cast<int>(nativeType) + DBR_STS_STRING);
-
     // timeStamp -> DBR_TIME_<type>
     // NOTE: that only DBR_TIME_<type> type holds timestamp, therefore if you request for
     // the fields above, you will never get timestamp
     if (fieldStructure->getField("timeStamp"))
         return static_cast<chtype>(static_cast<int>(nativeType) + DBR_TIME_STRING);
+
+    // alarm -> DBR_STS_<type>
+    if (fieldStructure->getField("alarm"))
+        return static_cast<chtype>(static_cast<int>(nativeType) + DBR_STS_STRING);
 
     return nativeType;
 }
@@ -679,7 +679,7 @@ void copy_DBR_TIME(const void * dbr, unsigned count, PVStructure::shared_pointer
     ts->getLongField("secondsPastEpoch")->put(spe);
     ts->getIntField("nanoseconds")->put(data->stamp.nsec);
 
-    copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
+    copy_DBR_STS<T, pT, sT, sF, aF>(dbr, count, pvStructure);
 }
 
 
