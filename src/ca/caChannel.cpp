@@ -4,6 +4,8 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#include <epicsVersion.h>
+
 #include <pv/logger.h>
 #include <pv/standardField.h>
 
@@ -869,7 +871,20 @@ void CAChannelGet::getDone(struct event_handler_args &args)
 
 void CAChannelGet::get()
 {
-    int result = ca_array_get_callback(getType, channel->getElementCount(),
+    /*
+    From R3.14.12 onwards ca_array_get_callback() replies will give a CA client application the current number
+    of elements in an array field, provided they specified an element count of zero in their original request.
+    The element count is passed in the callback argument structure.
+    Prior to R3.14.12 requesting zero elements in a ca_array_get_callback() call was illegal and would fail
+    immediately.
+    */
+
+    int result = ca_array_get_callback(getType,
+#if (((EPICS_VERSION * 256 + EPICS_REVISION) * 256 + EPICS_MODIFICATION) >= ((3*256+14)*256+12))
+                                       0,
+#else
+                                       channel->getElementCount(),
+#endif
                                        channel->getChannelID(), ca_get_handler, this);
     if (result == ECA_NORMAL)
     {
@@ -1373,8 +1388,20 @@ void CAChannelMonitor::subscriptionEvent(struct event_handler_args &args)
 
 epics::pvData::Status CAChannelMonitor::start()
 {
+    /*
+    From R3.14.12 onwards when using the IOC server and the C++ client libraries monitor callbacks
+    replies will give a CA client application the current number of elements in an array field,
+    provided they specified an element count of zero in their original request.
+    The element count is passed in the callback argument structure.
+    Prior to R3.14.12 you could request a zero-length subscription and the zero would mean
+    “use the value of chid->element_count() for this particular channel”,
+    but the length of the data you got in your callbacks would never change
+    (the server would zero-fill everything after the current length of the field).
+     */
+
     // TODO DBE_PROPERTY support
-    int result = ca_create_subscription(getType, channel->getElementCount(),
+    int result = ca_create_subscription(getType,
+                                        0 /*channel->getElementCount()*/,
                                         channel->getChannelID(), DBE_VALUE,
                                         ca_subscription_handler, this,
                                         &eventID);

@@ -1807,8 +1807,19 @@ int main (int argc, char *argv[])
                 shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
                 channelRequesterImpl->showDisconnectMessage();
 
-                shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
-				channel->createMonitor(monitorRequesterImpl, pvRequest);
+                // TODO remove this line, when CA provider will allow creation of monitors
+                // when channels is yet not connected
+                if (channelRequesterImpl->waitUntilConnected(timeOut))
+                {
+                    shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
+                    channel->createMonitor(monitorRequesterImpl, pvRequest);
+                }
+                else
+                {
+                    allOK = false;
+                    channel->destroy();
+                    std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
+                }
             }
             else
             {
