@@ -215,8 +215,8 @@ public:
 };
 
 
-// testNTImage
-class NTImageAction : public Runnable {
+// testNTNDArray
+class NTNDArrayAction : public Runnable {
 public:
     string name;
     PVStructure::shared_pointer pvImage;
@@ -225,7 +225,7 @@ public:
 
     AtomicBoolean stopped;
 
-    NTImageAction(double periodHz) :
+    NTNDArrayAction(double periodHz) :
         angle(0),
         period(periodHz)
     {
@@ -244,9 +244,9 @@ public:
                     angle += 1;
                     notifyStructureChanged(name);
                 } catch (std::exception &ex) {
-                    std::cerr << "Unhandled exception caught in NTImageAction::run(): " << ex.what() << std::endl;
+                    std::cerr << "Unhandled exception caught in NTNDArrayAction::run(): " << ex.what() << std::endl;
                 } catch (...) {
-                    std::cerr << "Unhandled exception caught in NTImageAction::run()" << std::endl;
+                    std::cerr << "Unhandled exception caught in NTNDArrayAction::run()" << std::endl;
                 }
 
                 epicsThreadSleep(period);
@@ -1417,7 +1417,7 @@ public:
                             );
 
             const string helpText =
-                    "Generates a NTImage structure response that has encoded a specified image.\n"
+                    "Generates a NTNDArray structure response that has encoded a specified image.\n"
                     "Arguments:\n"
                     "\tstring file\tfile path (relative to a location where the server was started) of a raw encoded image.\n"
                     "\t\t\tTwo image types are supported:\n"
@@ -1467,12 +1467,12 @@ public:
                         if (isRGB)
                         {
                             const int32_t dim[] = { 3, wv, hv };
-                            initImage(m_pvStructure, 2 /* RGB */, 3, dim, fileSize, 0);
+                            initImage(m_pvStructure, "RGB", 3, dim, fileSize, 0);
                         }
                         else
                         {
                             const int32_t dim[] = { wv, hv };
-                            initImage(m_pvStructure, 0 /* grayscale */, 2, dim, fileSize, 0);
+                            initImage(m_pvStructure, "grayscale", 2, dim, fileSize, 0);
                         }
 
                         PVByteArrayPtr value = std::tr1::dynamic_pointer_cast<PVByteArray>(m_pvStructure->getSubField("value"));
@@ -2161,7 +2161,7 @@ protected:
             else if (m_name.find("testMP") == 0
                      || m_name.find("testImage") == 0)
             {
-                m_pvStructure = getPVDataCreate()->createPVStructure(makeImageStruc());
+                m_pvStructure = getPVDataCreate()->createPVStructure(createNTNDArrayStructure());
                 initImageEPICSv4GrayscaleLogo(m_pvStructure);
             }
             else if (m_name.find("testTable") == 0)
@@ -2692,7 +2692,7 @@ private:
     ADCAction m_adcAction;
     auto_ptr<epics::pvData::Thread> m_adcThread;
 
-    NTImageAction m_imgAction;
+    NTNDArrayAction m_imgAction;
     auto_ptr<epics::pvData::Thread> m_imgThread;
 };
 

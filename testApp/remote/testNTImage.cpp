@@ -1,81 +1,63 @@
 #include "epicsv4Grayscale.h"
 
-epics::pvData::StructureConstPtr makeVariantArrayStruc()
+epics::pvData::StructureConstPtr createNTNDArrayStructure()
 {
-    FieldConstPtrArray vaFields;
-    StringArray vaNames;
+    static epics::pvData::StructureConstPtr ntndArrayStructure;
 
-    vaFields.push_back(getFieldCreate()->createScalar(epics::pvData::pvInt));
-    vaNames.push_back("dataType");
-
-    vaFields.push_back(getFieldCreate()->createScalarArray(epics::pvData::pvInt));
-    vaNames.push_back("value");
-
-    epics::pvData::StructureConstPtr varrayStruc = getFieldCreate()->createStructure("uri:ev4:nt/2012/pwd:NTVariantArray", vaNames, vaFields);
-
-    return varrayStruc;
-}
-
-epics::pvData::StructureConstPtr makeImageStruc()
-{
-    static epics::pvData::StructureConstPtr imageStruc;
-
-    if (!imageStruc.get())
+    if (!ntndArrayStructure.get())
     {
-        FieldConstPtrArray fields;
-        StringArray names;
+        StandardFieldPtr standardField = getStandardField();
+        FieldBuilderPtr fb = getFieldCreate()->createFieldBuilder();
 
-        // Array part
-        fields.push_back(getFieldCreate()->createScalarArray(epics::pvData::pvByte));
-        names.push_back("value");
+        for (int i = pvBoolean; i < pvString; ++i)
+        {
+            ScalarType st = static_cast<ScalarType>(i);
+            fb->addArray(std::string(ScalarTypeFunc::name(st)) + "Value", st);
+        }
+        UnionConstPtr valueType = fb->createUnion();
 
-        fields.push_back(getFieldCreate()->createScalarArray(epics::pvData::pvInt));
-        names.push_back("dim");
+        StructureConstPtr codecStruc = fb->setId("codec_t")->
+            add("name", pvString)->
+            add("parameters", getFieldCreate()->createVariantUnion())->
+            createStructure();
 
-        // Image part
-        fields.push_back(getFieldCreate()->createScalar(epics::pvData::pvInt));
-        names.push_back("colorMode");
+        StructureConstPtr dimensionStruc = fb->setId("dimension_t")->
+            add("size", pvInt)->
+            add("offset",  pvInt)->
+            add("fullSize",  pvInt)->
+            add("binning",  pvInt)->
+            add("reverse",  pvBoolean)->
+            createStructure();
 
-        fields.push_back(getFieldCreate()->createScalar(epics::pvData::pvInt));
-        names.push_back("bayerPattern");
-
-        fields.push_back(getFieldCreate()->createScalar(epics::pvData::pvString));
-        names.push_back("fourcc");
-
-        fields.push_back(getFieldCreate()->createScalarArray(epics::pvData::pvInt));
-        names.push_back("offset");
-
-        fields.push_back(getFieldCreate()->createScalarArray(epics::pvData::pvInt));
-        names.push_back("binning");
-
-        fields.push_back(getFieldCreate()->createScalarArray(epics::pvData::pvInt));
-        names.push_back("reverse");
-
-        fields.push_back(getFieldCreate()->createScalarArray(epics::pvData::pvInt));
-        names.push_back("fullDim");
+        StructureConstPtr attributeStruc = fb->setId("uri:ev4:nt/2012/pwd:NTAttribute")->
+            add("name", pvString)->
+            add("value", getFieldCreate()->createVariantUnion())->
+            add("description", pvString)->
+            add("sourceType", pvInt)->
+            add("source", pvString)->
+            createStructure();
 
 
-        // Metadata part
-        fields.push_back(getFieldCreate()->createScalar(epics::pvData::pvInt));
-        names.push_back("uniqueId");
-
-        fields.push_back(getFieldCreate()->createScalarArray(epics::pvData::pvInt));
-        names.push_back("attributeSourceTypes");
-
-        fields.push_back(getFieldCreate()->createScalarArray(epics::pvData::pvString));
-        names.push_back("attributeSources");
-
-        fields.push_back(getFieldCreate()->createStructureArray(makeVariantArrayStruc()));
-        names.push_back("attributes");
-
-        imageStruc = getFieldCreate()->createStructure("uri:ev4:nt/2012/pwd:NTImage", names, fields);
+        ntndArrayStructure = fb->setId("uri:ev4:nt/2012/pwd:NTNDArray")->
+            add("value", valueType)->
+            add("compressedSize", pvLong)->
+            add("uncompressedSize", pvLong)->
+            add("codec", codecStruc)->
+            addArray("dimension", dimensionStruc)->
+            add("uniqueId", pvInt)->
+            add("dataTimeStamp", standardField->timeStamp())->
+            addArray("attribute", attributeStruc)->
+            //add("descriptor", pvString)->
+            //add("timeStamp", standardField->timeStamp())->
+            //add("alarm", standardField->alarm())->
+            //add("display", standardField->display())->
+            createStructure();
     }
 
-
-    return imageStruc;
+    return ntndArrayStructure;
 }
 
-void setImageArrayValues(
+void setNTNDArrayValue(
         PVStructure::shared_pointer const & imagePV,
         const size_t raw_dim_size,
         const int32_t* raw_dim,
@@ -83,8 +65,9 @@ void setImageArrayValues(
         const int8_t* raw
         )
 {
-    string id = imagePV->getStructure()->getID();
-    PVByteArrayPtr pvField = static_pointer_cast<PVByteArray>(imagePV->getSubField("value"));
+    PVUnionPtr unionValue = imagePV->getSubField<PVUnion>("value");
+    // assumes byteArray
+    PVByteArrayPtr pvField = unionValue->select<PVByteArray>("byteValue");
 
     const int8_t *data = raw;
     size_t dataSize = raw_size;
@@ -95,106 +78,86 @@ void setImageArrayValues(
         std::copy(data, data + dataSize, temp.begin());
     pvField->replace(freeze(temp));
 
-	PVIntArrayPtr dimField = static_pointer_cast<PVIntArray>(
-	   imagePV->getScalarArrayField(std::string("dim"), pvInt));
+    PVStructureArrayPtr dimField = imagePV->getSubField<PVStructureArray>("dimension");
 
-    const int32_t *dim = raw_dim;
-    PVIntArray::svector temp2(dimField->reuse());
-	temp2.resize(raw_dim_size);
-	std::copy(dim, dim + raw_dim_size, temp2.begin());
-	dimField->replace(freeze(temp2));
+    PVStructureArray::svector dimVector(dimField->reuse());
+    dimVector.resize(raw_dim_size);
+    for (size_t i = 0; i < raw_dim_size; i++)
+    {
+        PVStructurePtr d = dimVector[i];
+        if (!d)
+            d = dimVector[i] = getPVDataCreate()->createPVStructure(dimField->getStructureArray()->getStructure());
+        d->getSubField<PVInt>("size")->put(raw_dim[i]);
+        d->getSubField<PVInt>("offset")->put(0);
+        d->getSubField<PVInt>("fullSize")->put(raw_dim[i]);
+        d->getSubField<PVInt>("binning")->put(1);
+        d->getSubField<PVBoolean>("reverse")->put(false);
+    }
+    dimField->replace(freeze(dimVector));
+
+    imagePV->getSubField<PVLong>("uncompressedSize")->put(static_cast<int64>(raw_size));
+
+    PVTimeStamp timeStamp;
+    timeStamp.attach(imagePV->getSubField<PVStructure>("dataTimeStamp"));
+    TimeStamp current;
+    current.getCurrent();
+    timeStamp.set(current);
 }
 
 
-void setImageImageValues(
+
+void setNTNDArrayData(
         PVStructure::shared_pointer const & imagePV,
-        const int32_t colorMode,
-        const size_t raw_dim_size,
-        const int32_t* raw_dim
+        const string & codec
         )
 {
-    PVIntPtr colorModeField = imagePV->getIntField(std::string("colorMode"));
-    colorModeField->put(colorMode);
+    imagePV->getSubField<PVString>("codec.name")->put(codec);
 
-    PVIntArrayPtr offsetField = static_pointer_cast<PVIntArray>(
-        imagePV->getScalarArrayField(std::string("offset"), pvInt));
-    PVIntArray::svector temp(offsetField->reuse());
-    temp.resize(2);
-    int32_t offsets[] = { 0, 0 };
-    std::copy(offsets, offsets + 2, temp.begin());
-    offsetField->replace(freeze(temp));
-
-    PVIntArrayPtr binningField = static_pointer_cast<PVIntArray>(
-        imagePV->getScalarArrayField(std::string("binning"), pvInt));
-    temp = binningField->reuse();
-    temp.resize(2);
-    int32_t binnings[] = { 1, 1 };
-    std::copy(binnings, binnings + 2, temp.begin());
-    binningField->replace(freeze(temp));
-
-    PVIntArrayPtr reverseField = static_pointer_cast<PVIntArray>(
-        imagePV->getScalarArrayField(std::string("reverse"), pvInt));
-        reverseField->setCapacity(2);
-    temp = reverseField->reuse();
-    temp.resize(2);
-    int32_t reverses[] = { 0, 0 };
-    std::copy(reverses, reverses + 2, temp.begin());
-    reverseField->replace(freeze(temp));
-
-	PVIntArrayPtr fullDimField = static_pointer_cast<PVIntArray>(
-        imagePV->getScalarArrayField(std::string("fullDim"), pvInt));
-    temp = fullDimField->reuse();
-    temp.resize(raw_dim_size);
-    const int32_t *fullDim = raw_dim;
-    std::copy(fullDim, fullDim + raw_dim_size, temp.begin());
-    fullDimField->replace(freeze(temp));
+    imagePV->getSubField<PVInt>("uniqueId")->put(0);
 }
-
-
-void setImageUniqueId(PVStructure::shared_pointer const & imagePV)
-{
-	PVIntPtr uniqueIdField = imagePV->getIntField(std::string("uniqueId"));
-	uniqueIdField->put(0);
-}
-
-void setImageMetadataValues(PVStructure::shared_pointer const & imagePV)
-{
-    setImageUniqueId(imagePV);
-}
+/*
+//d) Attributes
+    structure[] attribute
+        structure NTAttribute
+            string  name
+            any     value
+            string  description
+            int     sourceType
+            string  source
+*/
 
 
 void initImage(
         PVStructure::shared_pointer const & imagePV,
-        const int32_t colorMode,
+        const string & codec,
         const size_t raw_dim_size,
         const int32_t* raw_dim,
         const size_t raw_size,
         const int8_t* raw
         )
 {
-    setImageArrayValues(imagePV, raw_dim_size, raw_dim, raw_size, raw);
-    setImageImageValues(imagePV, colorMode, raw_dim_size, raw_dim);
-    setImageMetadataValues(imagePV);
+    setNTNDArrayValue(imagePV, raw_dim_size, raw_dim, raw_size, raw);
+    setNTNDArrayData(imagePV, codec);
 }
 
 void initImageEPICSv4GrayscaleLogo(PVStructure::shared_pointer const & imagePV)
 {
-    setImageArrayValues(imagePV, 2, epicsv4_raw_dim, epicsv4_raw_size, epicsv4_raw);
-    setImageImageValues(imagePV, 0 /* monochrome */, 2 /* 2d image */, epicsv4_raw_dim);
-    setImageMetadataValues(imagePV);
+    setNTNDArrayValue(imagePV, 2, epicsv4_raw_dim, epicsv4_raw_size, epicsv4_raw);
+    setNTNDArrayData(imagePV, "grayscale");
 }
 
 void rotateImage(PVStructure::shared_pointer const & imagePV, const int8_t* originalImage, float deg)
 {
-    PVScalarArrayPtr value = static_pointer_cast<PVScalarArray>(imagePV->getSubField("value"));
-    PVIntArrayPtr dim = static_pointer_cast<PVIntArray>(imagePV->getScalarArrayField("dim", pvInt));
+    PVUnionPtr unionValue = imagePV->getSubField<PVUnion>("value");
+    PVStructureArrayPtr dim = imagePV->getSubField<PVStructureArray>("dimension");
 
-    PVIntArray::const_svector data = dim->view();
-    // dim[] = { rows, columns }
-    int32 cols = data[0];
-    int32 rows = data[1];
+    PVStructureArray::const_svector data = dim->view();
+    // { x, y }
+    int32 cols = data[0]->getSubField<PVInt>("size")->get();
+    int32 rows = data[1]->getSubField<PVInt>("size")->get();
 
-    PVByteArrayPtr array = static_pointer_cast<PVByteArray>(value);
+    // assumes byteArray
+    PVByteArrayPtr array = unionValue->get<PVByteArray>();
 
     double fi = 3.141592653589793238462 * deg / 180.0;
     double cosFi = 16.0 * cos(fi);
@@ -246,7 +209,7 @@ void rotateImage(PVStructure::shared_pointer const & imagePV, const int8_t* orig
     }
     array->replace(freeze(imgData));
 
-    PVIntPtr uniqueIdField = imagePV->getIntField(std::string("uniqueId"));
+    PVIntPtr uniqueIdField = imagePV->getSubField<PVInt>("uniqueId");
     uniqueIdField->put(uniqueIdField->get()+1);
 
 }
