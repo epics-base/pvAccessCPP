@@ -308,27 +308,27 @@ void ServerContextImpl::initializeBroadcastTransport()
                 aToIPAddr("224.0.0.128", _broadcastPort, &group.ia);
                 _broadcastTransport->join(group, loAddr);
 
-                LOG(logLevelDebug, "Local multicast enabled on %s using network interface %s.",
-                    inetAddressToString(group).c_str(), inetAddressToString(loAddr, false).c_str());
+                osiSockAddr anyAddress;
+                anyAddress.ia.sin_family = AF_INET;
+                anyAddress.ia.sin_port = htons(0);
+                anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
-                // TODO use different port for this socket
+                // NOTE: localMulticastTransport is not started (no read is called on a socket)
                 auto_ptr<epics::pvAccess::ResponseHandler> responseHandler2 = createResponseHandler();
                 _localMulticastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
                         nullTransportClient, responseHandler2,
-                        listenLocalAddress, PVA_PROTOCOL_REVISION,
+                        anyAddress, PVA_PROTOCOL_REVISION,
                         PVA_DEFAULT_PRIORITY));
                 _localMulticastTransport->setMutlicastNIF(loAddr, true);
                 InetAddrVector sendAddressList;
                 sendAddressList.push_back(group);
                 _localMulticastTransport->setSendAddresses(&sendAddressList);
+
+                LOG(logLevelDebug, "Local multicast enabled on %s using network interface %s.",
+                    inetAddressToString(group).c_str(), inetAddressToString(loAddr, false).c_str());
             }
             catch (std::exception& ex)
             {
-                if (_localMulticastTransport)
-                {
-                    _localMulticastTransport->close();
-                    _localMulticastTransport.reset();
-                }
                 LOG(logLevelDebug, "Failed to initialize local multicast, funcionality disabled. Reason: %s.", ex.what());
             }
         }
