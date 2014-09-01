@@ -311,8 +311,10 @@ void ServerContextImpl::initializeBroadcastTransport()
                 LOG(logLevelDebug, "Local multicast enabled on %s using network interface %s.",
                     inetAddressToString(group).c_str(), inetAddressToString(loAddr, false).c_str());
 
+                // TODO use different port for this socket
+                auto_ptr<epics::pvAccess::ResponseHandler> responseHandler2 = createResponseHandler();
                 _localMulticastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
-                        nullTransportClient, responseHandler,
+                        nullTransportClient, responseHandler2,
                         listenLocalAddress, PVA_PROTOCOL_REVISION,
                         PVA_DEFAULT_PRIORITY));
                 _localMulticastTransport->setMutlicastNIF(loAddr, true);
@@ -335,7 +337,9 @@ void ServerContextImpl::initializeBroadcastTransport()
             LOG(logLevelDebug, "Failed to detect a loopback network interface, local multicast disabled.");
         }
 
-		_broadcastTransport->start();
+        _broadcastTransport->start();
+        if (_localMulticastTransport)
+            _localMulticastTransport->start();
 	}
 	catch (std::exception& e)
 	{
