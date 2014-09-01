@@ -17,23 +17,6 @@ using namespace epics::pvAccess;
 using namespace epics::pvData;
 using namespace std;
 
-void decodeFromIPv6Address(ByteBuffer* buffer, osiSockAddr* address)
-{
-    // IPv4 compatible IPv6 address
-    // first 80-bit are 0
-    buffer->getLong();
-    buffer->getShort();
-    // next 16-bits are 1
-    buffer->getShort();
-    // following IPv4 address in big-endian (network) byte order
-    in_addr_t ipv4Addr = 0;
-    ipv4Addr |= (uint32)buffer->getByte() << 24;
-    ipv4Addr |= (uint32)buffer->getByte() << 16;
-    ipv4Addr |= (uint32)buffer->getByte() << 8;
-    ipv4Addr |= (uint32)buffer->getByte() << 0;
-    address->ia.sin_addr.s_addr = ipv4Addr;
-}
-
 class BeaconResponseHandler : public ResponseHandler
 {
 public:

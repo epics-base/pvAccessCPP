@@ -64,6 +64,25 @@ void encodeAsIPv6Address(ByteBuffer* buffer, const osiSockAddr* address) {
     buffer->putByte((int8)(ipv4Addr&0xFF));
 }
 
+bool decodeAsIPv6Address(ByteBuffer* buffer, osiSockAddr* address) {
+
+    // IPv4 compatible IPv6 address expected
+    // first 80-bit are 0
+    if (buffer->getLong() != 0) return false;
+    if (buffer->getShort() != 0) return false;
+    if (buffer->getShort() != (int16)0xFFFF) return false;
+
+    uint32_t ipv4Addr =
+        ((uint32_t)(buffer->getByte()&0xFF))<<24 |
+        ((uint32_t)(buffer->getByte()&0xFF))<<16 |
+        ((uint32_t)(buffer->getByte()&0xFF))<<8  |
+        ((uint32_t)(buffer->getByte()&0xFF));
+
+    address->ia.sin_addr.s_addr = htonl(ipv4Addr);
+
+    return true;
+}
+
 bool isMulticastAddress(const osiSockAddr* address) {
     uint32_t ipv4Addr = ntohl(address->ia.sin_addr.s_addr);
     uint8_t msB = (uint8_t)((ipv4Addr>>24)&0xFF);

@@ -202,20 +202,9 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     responseAddress.ia.sin_family = AF_INET;
 
     // 128-bit IPv6 address
-    /*
-int8 byteAddress[16];
-for (int i = 0; i < 16; i++)
-byteAddress[i] = payloadBuffer->getByte();
-    */
-
-    // IPv4 compatible IPv6 address expected
-    // first 80-bit are 0
-    if (payloadBuffer->getLong() != 0) return;
-    if (payloadBuffer->getShort() != 0) return;
-    if (payloadBuffer->getShort() != (int16)0xFFFF) return;
+    if (!decodeAsIPv6Address(payloadBuffer, &responseAddress)) return;
 
     // accept given address if explicitly specified by sender
-    responseAddress.ia.sin_addr.s_addr = payloadBuffer->getInt();
     if (responseAddress.ia.sin_addr.s_addr == INADDR_ANY)
         responseAddress.ia.sin_addr = responseFrom->ia.sin_addr;
 

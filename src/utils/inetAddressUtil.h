@@ -50,6 +50,14 @@ namespace pvAccess {
     epicsShareFunc void encodeAsIPv6Address(epics::pvData::ByteBuffer* buffer, const osiSockAddr* address);
 
     /**
+     * Decode IPv6 address (as IPv4 address).
+     * @param buffer byte-buffer where to get encoded data.
+     * @param address address where to decode.
+     * @return success status (true on success).
+     */
+    epicsShareFunc bool decodeAsIPv6Address(epics::pvData::ByteBuffer* buffer, osiSockAddr* address);
+
+    /**
      * Check if an IPv4 address is a multicast address.
      * @param address IPv4 address to check.
      * @return true if the adress is a multicast address.

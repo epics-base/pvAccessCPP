@@ -2700,20 +2700,9 @@ namespace epics {
                 serverAddress.ia.sin_family = AF_INET;
 
                 // 128-bit IPv6 address
-                /*
-        int8* byteAddress = new int8[16];
-        for (int i = 0; i < 16; i++) 
-          byteAddress[i] = payloadBuffer->getByte(); };
-                */
-
-                // IPv4 compatible IPv6 address expected
-                // first 80-bit are 0
-                if (payloadBuffer->getLong() != 0) return;
-                if (payloadBuffer->getShort() != 0) return;
-                if (payloadBuffer->getShort() != (int16)0xFFFF) return;
+                if (!decodeAsIPv6Address(payloadBuffer, &serverAddress)) return;
 
                 // accept given address if explicitly specified by sender
-                serverAddress.ia.sin_addr.s_addr = htonl(payloadBuffer->getInt());
                 if (serverAddress.ia.sin_addr.s_addr == INADDR_ANY)
                     serverAddress.ia.sin_addr = responseFrom->ia.sin_addr;
 
@@ -2774,20 +2763,9 @@ namespace epics {
                 serverAddress.ia.sin_family = AF_INET;
 
                 // 128-bit IPv6 address
-                /*
-        int8* byteAddress = new int8[16];
-        for (int i = 0; i < 16; i++) 
-          byteAddress[i] = payloadBuffer->getByte(); };
-                */
-
-                // IPv4 compatible IPv6 address expected
-                // first 80-bit are 0
-                if (payloadBuffer->getLong() != 0) return;
-                if (payloadBuffer->getShort() != 0) return;
-                if (payloadBuffer->getShort() != (int16)0xFFFF) return;
+                if (!decodeAsIPv6Address(payloadBuffer, &serverAddress)) return;
 
                 // accept given address if explicitly specified by sender
-                serverAddress.ia.sin_addr.s_addr = htonl(payloadBuffer->getInt());
                 if (serverAddress.ia.sin_addr.s_addr == INADDR_ANY)
                     serverAddress.ia.sin_addr = responseFrom->ia.sin_addr;
 
