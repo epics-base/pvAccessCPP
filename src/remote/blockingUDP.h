@@ -281,6 +281,10 @@ namespace epics {
                 }
             }
 
+            void join(const osiSockAddr & mcastAddr, const osiSockAddr & nifAddr);
+
+            void setMutlicastNIF(const osiSockAddr & nifAddr, bool loopback);
+
         protected:
             AtomicBoolean _closed;
 

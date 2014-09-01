@@ -4,6 +4,11 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#ifdef _WIN32
+// needed for ip_mreq
+#include <Ws2tcpip.h>
+#endif
+
 #include <pv/blockingUDP.h>
 #include <pv/pvaConstants.h>
 #include <pv/inetAddressUtil.h>
@@ -407,6 +412,59 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
         void BlockingUDPTransport::threadRunner(void* param) {
             ((BlockingUDPTransport*)param)->processRead();
         }
+
+
+        void BlockingUDPTransport::join(const osiSockAddr & mcastAddr, const osiSockAddr & nifAddr)
+        {
+            struct ip_mreq imreq;
+            memset(&imreq, 0, sizeof(struct ip_mreq));
+
+            imreq.imr_multiaddr.s_addr = mcastAddr.ia.sin_addr.s_addr;
+            imreq.imr_interface.s_addr = nifAddr.ia.sin_addr.s_addr;
+
+            // join multicast group on default interface
+            int status = ::setsockopt(_channel, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+                            (char*)&imreq, sizeof(struct ip_mreq));
+            if (status)
+            {
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                throw std::runtime_error(
+                            string("Failed to join to the multicast group '") +
+                            inetAddressToString(mcastAddr) + "' on network interface '" +
+                            inetAddressToString(nifAddr, false) + "': " + errStr);
+            }
+        }
+
+        void BlockingUDPTransport::setMutlicastNIF(const osiSockAddr & nifAddr, bool loopback)
+        {
+            // set the multicast outgoing interface
+            int status = ::setsockopt(_channel, IPPROTO_IP, IP_MULTICAST_IF,
+                                  (char*)&nifAddr.ia.sin_addr, sizeof(struct in_addr));
+            if (status)
+            {
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                throw std::runtime_error(
+                            string("Failed to set multicast network inteface '") +
+                            inetAddressToString(nifAddr, false) + "': " + errStr);
+            }
+
+            // send multicast traffic to myself too
+            unsigned char mcast_loop = (loopback ? 1 : 0);
+            status = ::setsockopt(_channel, IPPROTO_IP, IP_MULTICAST_LOOP,
+                                (char*)&mcast_loop, sizeof(unsigned char));
+            if (status)
+            {
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                throw std::runtime_error(
+                            string("Failed to enable multicast loopback on network inteface '") +
+                            inetAddressToString(nifAddr, false) + "': " + errStr);
+            }
+
+        }
+
 
     }
 }

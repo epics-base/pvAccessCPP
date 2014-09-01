@@ -215,7 +215,7 @@ byteAddress[i] = payloadBuffer->getByte();
     if (payloadBuffer->getShort() != (int16)0xFFFF) return;
 
     // accept given address if explicitly specified by sender
-    responseAddress.ia.sin_addr.s_addr = htonl(payloadBuffer->getInt());
+    responseAddress.ia.sin_addr.s_addr = payloadBuffer->getInt();
     if (responseAddress.ia.sin_addr.s_addr == INADDR_ANY)
         responseAddress.ia.sin_addr = responseFrom->ia.sin_addr;
 
@@ -358,7 +358,7 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/,
 	   {
         ServerSearchHandler::s_channelNameToProvider[_name] = channelFind->getChannelProvider();
 	   }
-	   
+
 		_wasFound = wasFound;
 		TransportSender::shared_pointer thisSender = shared_from_this();
 		_context->getBroadcastTransport()->enqueueSendRequest(thisSender);
@@ -402,7 +402,6 @@ void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendContr
     {
         buffer->putShort((int16)0);
     }
-
 
     control->setRecipient(_sendTo);
 }

@@ -295,41 +295,45 @@ void ServerContextImpl::initializeBroadcastTransport()
 			}
 		}
 
-        // TODO
-        /*
-        // TODO configurable local NIF, address
+
         // setup local broadcasting
-        NetworkInterface localNIF = InetAddressUtil.getLoopbackNIF();
-        if (localNIF != null)
+        // TODO configurable local NIF, address
+        osiSockAddr loAddr;
+        getLoopbackNIF(loAddr, "", 0);
+        if (true)
         {
             try
             {
-                InetAddress group = InetAddress.getByName("224.0.0.128");
-                broadcastTransport.join(group, localNIF);
+                osiSockAddr group;
+                aToIPAddr("224.0.0.128", _broadcastPort, &group.ia);
+                _broadcastTransport->join(group, loAddr);
 
-                logger.config("Local multicast enabled on " + group + ":" + broadcastPort + " using " + localNIF.getDisplayName() + ".");
+                LOG(logLevelDebug, "Local multicast enabled on %s using network interface %s.",
+                    inetAddressToString(group).c_str(), inetAddressToString(loAddr, false).c_str());
 
-                localMulticastTransport = (BlockingUDPTransport)broadcastConnector.connect(
-//					localMulticastTransport = (UDPTransport)broadcastConnector.connect(
-                                                    null, serverResponseHandler,
-                                                    listenLocalAddress, PVAConstants.PVA_PROTOCOL_REVISION,
-                                                    PVAConstants.PVA_DEFAULT_PRIORITY);
-                localMulticastTransport.setMutlicastNIF(localNIF, true);
-                localMulticastTransport.setSendAddresses(new InetSocketAddress[] {
-                        new InetSocketAddress(group, broadcastPort)
-                });
+                _localMulticastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
+                        nullTransportClient, responseHandler,
+                        listenLocalAddress, PVA_PROTOCOL_REVISION,
+                        PVA_DEFAULT_PRIORITY));
+                _localMulticastTransport->setMutlicastNIF(loAddr, true);
+                InetAddrVector sendAddressList;
+                sendAddressList.push_back(group);
+                _localMulticastTransport->setSendAddresses(&sendAddressList);
             }
-            catch (Throwable th)
+            catch (std::exception& ex)
             {
-                logger.log(Level.CONFIG, "Failed to join to a multicast group, local multicast disabled.", th);
+                if (_localMulticastTransport)
+                {
+                    _localMulticastTransport->close();
+                    _localMulticastTransport.reset();
+                }
+                LOG(logLevelDebug, "Failed to initialize local multicast, funcionality disabled. Reason: %s.", ex.what());
             }
         }
         else
         {
-            logger.config("Failed to detect a loopback network interface, local multicast disabled.");
+            LOG(logLevelDebug, "Failed to detect a loopback network interface, local multicast disabled.");
         }
-
-        */
 
 		_broadcastTransport->start();
 	}
