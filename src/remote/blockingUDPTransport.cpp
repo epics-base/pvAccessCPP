@@ -70,7 +70,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
 
                 char strBuffer[64];
                 epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                LOG(logLevelDebug, "getsockname error: %s", strBuffer);
+                LOG(logLevelDebug, "getsockname error: %s.", strBuffer);
             }
         }
 

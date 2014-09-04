@@ -205,12 +205,17 @@ namespace pvAccess {
 
                     // validate connection
                     if(!validateConnection(transport, ipAddrStr)) {
+                        // TODO
+                        // wait for negative response to be sent back and
+                        // hold off the client for retrying at very high rate
+                        epicsThreadSleep(1.0);
+
                         transport->close();
                         LOG(
                                 logLevelDebug,
                                 "Connection to PVA client %s failed to be validated, closing it.",
                                 ipAddrStr);
-                        return;
+                        continue;
                     }
 
                     LOG(logLevelDebug, "Serving to PVA client: %s.", ipAddrStr);
@@ -223,9 +228,7 @@ namespace pvAccess {
 
         bool BlockingTCPAcceptor::validateConnection(Transport::shared_pointer const & transport, const char* address) {
             try {
-                // TODO constant
-                transport->verify(5000);
-                return true;
+                return transport->verify(5000);
             } catch(...) {
                 LOG(logLevelDebug, "Validation of %s failed.", address);
                 return false;

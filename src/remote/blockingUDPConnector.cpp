@@ -22,14 +22,14 @@ namespace epics {
                 auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& bindAddress,
                 int8 transportRevision, int16 /*priority*/) {
                     
-            LOG(logLevelDebug, "Creating datagram socket to: %s",
+            LOG(logLevelDebug, "Creating datagram socket to: %s.",
                     inetAddressToString(bindAddress).c_str());
 
             SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
             if(socket==INVALID_SOCKET) {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                LOG(logLevelError, "Error creating socket: %s", errStr);
+                LOG(logLevelError, "Error creating socket: %s.", errStr);
                 return Transport::shared_pointer();
             }
 
@@ -39,7 +39,7 @@ namespace epics {
             {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                LOG(logLevelError, "Error setting SO_BROADCAST: %s", errStr);
+                LOG(logLevelError, "Error setting SO_BROADCAST: %s.", errStr);
                 epicsSocketDestroy (socket);
                 return Transport::shared_pointer();
             }
@@ -62,7 +62,7 @@ namespace epics {
             if(retval<0) {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                LOG(logLevelError, "Error binding socket: %s", errStr);
+                LOG(logLevelError, "Error binding socket: %s.", errStr);
                 epicsSocketDestroy (socket);
                 return Transport::shared_pointer();
             }

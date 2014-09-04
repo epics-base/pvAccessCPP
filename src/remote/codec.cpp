@@ -557,6 +557,17 @@ namespace epics {
       _socketBuffer->setPosition(newpos);
     }
 
+    static const char PADDING_BYTES[] =
+    {
+        static_cast<char>(0xFF),
+        static_cast<char>(0xFF),
+        static_cast<char>(0xFF),
+        static_cast<char>(0xFF),
+        static_cast<char>(0xFF),
+        static_cast<char>(0xFF),
+        static_cast<char>(0xFF),
+        static_cast<char>(0xFF)
+    };
 
     void AbstractCodec::alignBuffer(std::size_t alignment) {
 
@@ -566,9 +577,15 @@ namespace epics {
       if (pos == newpos)
         return;
 
+      /*
       // there is always enough of space
       // since sendBuffer capacity % PVA_ALIGNMENT == 0
       _sendBuffer->setPosition(newpos);
+      */
+
+      // for safety reasons we really pad (override previous message data)
+      std::size_t padCount = newpos - pos;
+      _sendBuffer->put(PADDING_BYTES, 0, padCount);
     }
 
 
@@ -1426,7 +1443,7 @@ namespace epics {
 
 
    bool BlockingTCPTransportCodec::verify(epics::pvData::int32 timeoutMs) {
-       return _verifiedEvent.wait(timeoutMs/1000.0);
+       return _verifiedEvent.wait(timeoutMs/1000.0) && _verified;
    }
 
    void BlockingTCPTransportCodec::verified(epics::pvData::Status const & status) {

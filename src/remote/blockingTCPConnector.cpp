@@ -155,7 +155,7 @@ namespace epics {
                                             client, transportRevision, _heartbeatInterval, priority);
 
                     // verify
-                    if(!transport->verify(3000)) {
+                    if(!transport->verify(5000)) {
                         LOG(
                                 logLevelDebug,
                                 "Connection to PVA server %s failed to be validated, closing it.",
