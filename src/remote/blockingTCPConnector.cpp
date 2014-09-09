@@ -166,8 +166,6 @@ namespace epics {
                         THROW_BASE_EXCEPTION(temp.str().c_str());
                     }
 
-                    // TODO send security token
-
                     LOG(logLevelDebug, "Connected to PVA server: %s.", ipAddrStr);
 
                     _namedLocker.releaseSynchronizationObject(&address);

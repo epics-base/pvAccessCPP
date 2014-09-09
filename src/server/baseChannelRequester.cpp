@@ -13,13 +13,13 @@ namespace epics {
 namespace pvAccess {
 
 const Status BaseChannelRequester::okStatus = Status();
-const Status BaseChannelRequester::badCIDStatus = Status(Status::STATUSTYPE_ERROR, "bad channel id");
-const Status BaseChannelRequester::badIOIDStatus = Status(Status::STATUSTYPE_ERROR, "bad request id");
-const Status BaseChannelRequester::noReadACLStatus = Status(Status::STATUSTYPE_ERROR, "no read access");
-const Status BaseChannelRequester::noWriteACLStatus = Status(Status::STATUSTYPE_ERROR, "no write access");
-const Status BaseChannelRequester::noProcessACLStatus = Status(Status::STATUSTYPE_ERROR, "no process access");
-const Status BaseChannelRequester::otherRequestPendingStatus = Status(Status::STATUSTYPE_ERROR, "other request pending");
-const Status BaseChannelRequester::notAChannelRequestStatus = Status(Status::STATUSTYPE_ERROR, "not a channel request");
+const Status BaseChannelRequester::badCIDStatus(Status::STATUSTYPE_ERROR, "bad channel id");
+const Status BaseChannelRequester::badIOIDStatus(Status::STATUSTYPE_ERROR, "bad request id");
+const Status BaseChannelRequester::noReadACLStatus(Status::STATUSTYPE_ERROR, "no read access");
+const Status BaseChannelRequester::noWriteACLStatus(Status::STATUSTYPE_ERROR, "no write access");
+const Status BaseChannelRequester::noProcessACLStatus(Status::STATUSTYPE_ERROR, "no process access");
+const Status BaseChannelRequester::otherRequestPendingStatus(Status::STATUSTYPE_ERROR, "other request pending");
+const Status BaseChannelRequester::notAChannelRequestStatus(Status::STATUSTYPE_ERROR, "not a channel request");
 
 const int32 BaseChannelRequester::NULL_REQUEST = -1;
 

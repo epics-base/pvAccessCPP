@@ -32,6 +32,7 @@
 #include <pv/configuration.h>
 #include <pv/beaconHandler.h>
 #include <pv/logger.h>
+#include <pv/security.h>
 
 #include <pv/pvAccessMB.h>
 
@@ -47,9 +48,9 @@ namespace epics {
     namespace pvAccess {
 
         string ClientContextImpl::PROVIDER_NAME = "pva";
-        Status ChannelImpl::channelDestroyed = Status(
+        Status ChannelImpl::channelDestroyed(
             Status::STATUSTYPE_WARNING, "channel destroyed");
-        Status ChannelImpl::channelDisconnected = Status(
+        Status ChannelImpl::channelDisconnected(
             Status::STATUSTYPE_WARNING, "channel disconnected");
         string emptyString;
         ConvertPtr convert = getConvert();
@@ -389,15 +390,15 @@ namespace epics {
 
         PVDataCreatePtr BaseRequestImpl::pvDataCreate = getPVDataCreate();
 
-        Status BaseRequestImpl::notInitializedStatus = Status(Status::STATUSTYPE_ERROR, "request not initialized");
-        Status BaseRequestImpl::destroyedStatus = Status(Status::STATUSTYPE_ERROR, "request destroyed");
-        Status BaseRequestImpl::channelNotConnected = Status(Status::STATUSTYPE_ERROR, "channel not connected");
-        Status BaseRequestImpl::channelDestroyed = Status(Status::STATUSTYPE_ERROR, "channel destroyed");
-        Status BaseRequestImpl::otherRequestPendingStatus = Status(Status::STATUSTYPE_ERROR, "other request pending");
-        Status BaseRequestImpl::invalidPutStructureStatus = Status(Status::STATUSTYPE_ERROR, "incompatible put structure");
-        Status BaseRequestImpl::invalidPutArrayStatus = Status(Status::STATUSTYPE_ERROR, "incompatible put array");
-        Status BaseRequestImpl::invalidBitSetLengthStatus = Status(Status::STATUSTYPE_ERROR, "invalid bit-set length");
-        Status BaseRequestImpl::pvRequestNull = Status(Status::STATUSTYPE_ERROR, "pvRequest == 0");
+        Status BaseRequestImpl::notInitializedStatus(Status::STATUSTYPE_ERROR, "request not initialized");
+        Status BaseRequestImpl::destroyedStatus(Status::STATUSTYPE_ERROR, "request destroyed");
+        Status BaseRequestImpl::channelNotConnected(Status::STATUSTYPE_ERROR, "channel not connected");
+        Status BaseRequestImpl::channelDestroyed(Status::STATUSTYPE_ERROR, "channel destroyed");
+        Status BaseRequestImpl::otherRequestPendingStatus(Status::STATUSTYPE_ERROR, "other request pending");
+        Status BaseRequestImpl::invalidPutStructureStatus(Status::STATUSTYPE_ERROR, "incompatible put structure");
+        Status BaseRequestImpl::invalidPutArrayStatus(Status::STATUSTYPE_ERROR, "incompatible put array");
+        Status BaseRequestImpl::invalidBitSetLengthStatus(Status::STATUSTYPE_ERROR, "invalid bit-set length");
+        Status BaseRequestImpl::pvRequestNull(Status::STATUSTYPE_ERROR, "pvRequest == 0");
 
         PVStructure::shared_pointer BaseRequestImpl::nullPVStructure;
         Structure::const_shared_pointer BaseRequestImpl::nullStructure;
@@ -2821,14 +2822,17 @@ namespace epics {
                 // TODO
                 // TODO serverIntrospectionRegistryMaxSize
                 /*int serverIntrospectionRegistryMaxSize = */ payloadBuffer->getShort();
-                // TODO authNZ
-                size_t size = SerializeHelper::readSize(payloadBuffer, transport.get());
-                for (size_t i = 0; i < size; i++)
-                    SerializeHelper::deserializeString(payloadBuffer, transport.get());
 
-                TransportSender::shared_pointer sender = dynamic_pointer_cast<TransportSender>(transport);
-                if (sender.get())
-                    transport->enqueueSendRequest(sender);
+                // authNZ
+                size_t size = SerializeHelper::readSize(payloadBuffer, transport.get());
+                vector<string> offeredSecurityPlugins;
+                offeredSecurityPlugins.reserve(size);
+                for (size_t i = 0; i < size; i++)
+                    offeredSecurityPlugins.push_back(
+                        SerializeHelper::deserializeString(payloadBuffer, transport.get())
+                    );
+
+                transport->authNZInitialize(&offeredSecurityPlugins);
             }
         };
 
@@ -2965,8 +2969,8 @@ namespace epics {
                 m_handlerTable[CMD_ECHO].reset(new NoopResponse(context, "Echo")); /*  2 */
                 m_handlerTable[CMD_SEARCH].reset(new NoopResponse(context, "Search")); /*  3 */
                 m_handlerTable[CMD_SEARCH_RESPONSE].reset(new SearchResponseHandler(context)); /*  4 */
-                m_handlerTable[CMD_AUTHNZ].reset(new NoopResponse(context, "Introspection search")); /*  5 */
-                m_handlerTable[CMD_ACL_CHANGE] = dataResponse; /*  6 */
+                m_handlerTable[CMD_AUTHNZ].reset(new AuthNZHandler(context.get())); /*  5 */
+                m_handlerTable[CMD_ACL_CHANGE].reset(new NoopResponse(context, "Access rights change")); /*  6 */
                 m_handlerTable[CMD_CREATE_CHANNEL].reset(new CreateChannelHandler(context)); /*  7 */
                 m_handlerTable[CMD_DESTROY_CHANNEL].reset(new NoopResponse(context, "Destroy channel")); /*  8 */ // TODO it might be useful to implement this...
                 m_handlerTable[CMD_CONNECTION_VALIDATED].reset(new ClientConnectionValidatedHandler(context)); /*  9 */
@@ -4629,6 +4633,11 @@ TODO
             virtual void poll()
             {
                 // TODO
+            }
+
+            std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins()
+            {
+                return SecurityPluginRegistry::instance().getClientSecurityPlugins();
             }
 
             /**

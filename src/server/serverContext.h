@@ -138,6 +138,7 @@ public:
 	Transport::shared_pointer getSearchTransport();
 	Configuration::shared_pointer getConfiguration();
 	TransportRegistry::shared_pointer getTransportRegistry();
+    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins();
 
     std::auto_ptr<ResponseHandler> createResponseHandler();
     virtual void newServerDetected();

@@ -121,6 +121,18 @@ namespace epics {
                 // noop
             }
 
+            virtual void authNZInitialize(void*) {
+                // noop
+            }
+
+            virtual void authNZMessage(epics::pvData::PVField::shared_pointer const & data) {
+                // noop
+            }
+
+            virtual std::tr1::shared_ptr<SecuritySession> getSecuritySession() const {
+                return std::tr1::shared_ptr<SecuritySession>();
+            }
+
             // NOTE: this is not yet used for UDP
             virtual void setByteOrder(int byteOrder)  {
         		// called from receive thread... or before processing

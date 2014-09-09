@@ -19,6 +19,7 @@
 
 #include <pv/pvAccessMB.h>
 #include <pv/rpcServer.h>
+#include <pv/security.h>
 
 using std::string;
 using std::ostringstream;
@@ -92,8 +93,8 @@ ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer c
     m_handlerTable[CMD_ECHO].reset(new ServerEchoHandler(context)); /*  2 */
     m_handlerTable[CMD_SEARCH].reset(new ServerSearchHandler(context)); /*  3 */
     m_handlerTable[CMD_SEARCH_RESPONSE] = badResponse;
-    m_handlerTable[CMD_AUTHNZ] = badResponse; /*  5 */
-    m_handlerTable[CMD_ACL_CHANGE] = badResponse; /*  6 - introspection search */
+    m_handlerTable[CMD_AUTHNZ].reset(new AuthNZHandler(context.get())); /*  5 */
+    m_handlerTable[CMD_ACL_CHANGE] = badResponse; /*  6 - access right change */
     m_handlerTable[CMD_CREATE_CHANNEL].reset(new ServerCreateChannelHandler(context)); /*  7 */
     m_handlerTable[CMD_DESTROY_CHANNEL].reset(new ServerDestroyChannelHandler(context)); /*  8 */ 
     m_handlerTable[CMD_CONNECTION_VALIDATED] = badResponse; /*  9 */
@@ -152,12 +153,27 @@ void ServerConnectionValidationHandler::handleResponse(
     /* int clientIntrospectionRegistryMaxSize = */ payloadBuffer->getShort();
     // TODO connectionQoS
     /* int16 connectionQoS = */ payloadBuffer->getShort();
-    // TODO authNZ
-    /*std::string authNZ = */ SerializeHelper::deserializeString(payloadBuffer, transport.get());
 
-    // TODO call this after authNZ has done their work
-    transport->verified(Status::Ok);
+    // authNZ
+    std::string securityPluginName = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+
+    // optional authNZ plug-in initialization data
+    PVField::shared_pointer data;
+    if (payloadBuffer->getRemaining())
+        SerializationHelper::deserializeFull(payloadBuffer, transport.get());
+
+    struct {
+        std::string securityPluginName;
+        PVField::shared_pointer data;
+    } initData = { securityPluginName, data };
+
+    transport->authNZInitialize(&initData);
 }
+
+
+
+
+
 
 void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
 		Transport::shared_pointer const & transport, int8 version, int8 command,
@@ -630,7 +646,7 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
     			pvAccessID sid = casTransport->preallocateChannelSID();
     			try
     			{
-    			    epics::pvData::PVField::shared_pointer securityToken = casTransport->getSecurityToken();
+                    epics::pvData::PVField::shared_pointer securityToken; // TODO replace with security session
     				serverChannel.reset(new ServerChannelImpl(channel, _cid, sid, securityToken));
     
     				// ack allocation and register

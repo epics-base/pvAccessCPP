@@ -67,7 +67,19 @@ namespace epics {
 			 */
 			static epics::pvData::PVStructure::shared_pointer deserializeStructureFull(epics::pvData::ByteBuffer* payloadBuffer, epics::pvData::DeserializableControl* control);
 
-			static void serializeNullField(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control);
+            /**
+             * Deserialize optional PVField.
+             * @param payloadBuffer data buffer.
+             * @return deserialized PVField, can be <code>null</code>.
+             */
+            static epics::pvData::PVField::shared_pointer deserializeFull(epics::pvData::ByteBuffer* payloadBuffer, epics::pvData::DeserializableControl* control);
+
+            /**
+             * Serialize <code>null</code> PVField.
+             * @param buffer
+             * @param control
+             */
+            static void serializeNullField(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control);
 
 			/**
 			 * Serialize PVRequest.
@@ -81,6 +93,11 @@ namespace epics {
 			 */
 			static void serializeStructureFull(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control, epics::pvData::PVStructure::shared_pointer const & pvStructure);
 
+            /**
+             * Serialize optional PVField.
+             * @param buffer data buffer.
+             */
+            static void serializeFull(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control, epics::pvData::PVField::shared_pointer const & pvField);
 };
 
 }

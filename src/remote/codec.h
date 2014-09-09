@@ -36,6 +36,7 @@
 
 #include <pv/pvaConstants.h>
 #include <pv/remote.h>
+#include <pv/security.h>
 #include <pv/transportRegistry.h>
 #include <pv/introspectionRegistry.h>
 #include <pv/namedLockPattern.h>
@@ -415,7 +416,8 @@ namespace epics {
 
 
     class  BlockingTCPTransportCodec :
-      public BlockingSocketAbstractCodec
+      public BlockingSocketAbstractCodec,
+      public SecurityPluginControl
     
     {      
 
@@ -522,6 +524,17 @@ namespace epics {
 
       void verified(epics::pvData::Status const & status);
 
+      bool isVerified() const { return _verified; }  // TODO sync
+
+      std::tr1::shared_ptr<SecuritySession> getSecuritySession() const {
+          // TODO sync
+          return _securitySession;
+      }
+
+      void authNZMessage(epics::pvData::PVField::shared_pointer const & data);
+
+      void sendSecurityPluginMessage(epics::pvData::PVField::shared_pointer const & data);
+
     protected:
 
       BlockingTCPTransportCodec(
@@ -548,6 +561,8 @@ namespace epics {
       IntrospectionRegistry _incomingIR;
       IntrospectionRegistry _outgoingIR;
 
+      SecuritySession::shared_pointer _securitySession;
+
     private:
 
       std::auto_ptr<ResponseHandler> _responseHandler;
@@ -558,6 +573,7 @@ namespace epics {
       bool _verified;
       epics::pvData::Mutex _verifiedMutex;
       epics::pvData::Event _verifiedEvent;
+
     };
 
 
@@ -619,10 +635,6 @@ namespace epics {
 
       int getChannelCount();
 
-      epics::pvData::PVField::shared_pointer getSecurityToken() {
-        return epics::pvData::PVField::shared_pointer();
-      }
-
       void lock() {
         // noop
       }
@@ -655,6 +667,10 @@ namespace epics {
         // noop on server-side
       }
 
+      void authNZInitialize(void *);
+
+      void authenticationCompleted(epics::pvData::Status const & status);
+
       void send(epics::pvData::ByteBuffer* buffer,
         TransportSendControl* control);
 
@@ -683,6 +699,10 @@ namespace epics {
       epics::pvData::Mutex _verificationStatusMutex;
 
       bool _verifyOrVerified;
+
+      bool _securityRequired;
+
+      static epics::pvData::Status invalidSecurityPluginNameStatus;
 
     };
     
@@ -759,7 +779,11 @@ namespace epics {
 
       void send(epics::pvData::ByteBuffer* buffer,
         TransportSendControl* control);
-    
+
+      void authNZInitialize(void *);
+
+      void authenticationCompleted(epics::pvData::Status const & status);
+
     protected:
     
       virtual void internalClose(bool force);

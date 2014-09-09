@@ -12,6 +12,9 @@
 #   undef epicsExportSharedSymbols
 #endif
 
+#include <map>
+#include <string>
+
 #include <osiSock.h>
 #include <osdSock.h>
 
@@ -157,6 +160,7 @@ namespace epics {
         };
 
         class TransportClient;
+        class SecuritySession;
 
         /**
          * Interface defining transport (connection).
@@ -288,9 +292,24 @@ namespace epics {
              * @return <code>true</code> if connected.
              */
             virtual bool isClosed() = 0;
+
+            /**
+             * Used to initialize authNZ (select security plug-in).
+             * @param data
+             */
+            virtual void authNZInitialize(void*) = 0;
+
+            /**
+             * Pass data to the active security plug-in session.
+             * @param data the data (any data), can be <code>null</code>.
+             */
+            virtual void authNZMessage(epics::pvData::PVField::shared_pointer const & data) = 0;
+
+            virtual std::tr1::shared_ptr<SecuritySession> getSecuritySession() const = 0;
         };
 
         class Channel;
+        class SecurityPlugin;
 
         /**
          * Not public IF, used by Transports, etc.
@@ -311,6 +330,11 @@ namespace epics {
 
             virtual Configuration::shared_pointer getConfiguration() = 0;
 
+            /**
+             * Get map of available security plug-ins.
+             * @return the map of available security plug-ins
+             */
+            virtual std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins() = 0;
 
 
             ///
@@ -464,12 +488,6 @@ namespace epics {
         	POINTER_DEFINITIONS(ChannelHostingTransport);
 
             virtual ~ChannelHostingTransport() {}
-
-            /**
-             * Get security token.
-             * @return security token, can be <code>null</code>.
-             */
-            virtual epics::pvData::PVField::shared_pointer getSecurityToken() = 0;
 
             /**
              * Preallocate new channel SID.

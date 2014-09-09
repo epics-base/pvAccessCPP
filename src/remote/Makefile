@@ -3,6 +3,7 @@
 SRC_DIRS += $(PVACCESS_SRC)/remote
 
 INC += remote.h
+INC += security.h
 INC += blockingUDP.h
 INC += beaconHandler.h
 INC += blockingTCP.h
@@ -22,3 +23,4 @@ LIBSRCS += blockingTCPAcceptor.cpp
 LIBSRCS += transportRegistry.cpp
 LIBSRCS += serializationHelper.cpp
 LIBSRCS += codec.cpp
+LIBSRCS += security.cpp

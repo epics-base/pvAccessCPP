@@ -40,14 +40,19 @@ PVStructure::shared_pointer SerializationHelper::deserializeStructureAndCreatePV
 
 PVStructure::shared_pointer SerializationHelper::deserializeStructureFull(ByteBuffer* buffer, DeserializableControl* control)
 {
-    PVStructure::shared_pointer pvStructure;
-	FieldConstPtr structureField = control->cachedDeserialize(buffer);
-    if (structureField.get() != 0)
+    return std::tr1::static_pointer_cast<PVStructure>(deserializeFull(buffer, control));
+}
+
+PVField::shared_pointer SerializationHelper::deserializeFull(ByteBuffer* buffer, DeserializableControl* control)
+{
+    PVField::shared_pointer pvField;
+    FieldConstPtr field = control->cachedDeserialize(buffer);
+    if (field.get() != 0)
     {
-    	pvStructure = _pvDataCreate->createPVStructure(std::tr1::static_pointer_cast<const Structure>(structureField));
-    	pvStructure->deserialize(buffer, control);
+        pvField = _pvDataCreate->createPVField(field);
+        pvField->deserialize(buffer, control);
     }
-    return pvStructure;
+    return pvField;
 }
 
 void SerializationHelper::serializeNullField(ByteBuffer* buffer, SerializableControl* control)
@@ -64,15 +69,20 @@ void SerializationHelper::serializePVRequest(ByteBuffer* buffer, SerializableCon
 
 void SerializationHelper::serializeStructureFull(ByteBuffer* buffer, SerializableControl* control, PVStructure::shared_pointer const & pvStructure)
 {
-	if (pvStructure.get() == 0)
-	{
-    	serializeNullField(buffer, control);
-	}
-	else
-	{
-		control->cachedSerialize(pvStructure->getField(), buffer);
-		pvStructure->serialize(buffer, control);
-	}
+    serializeFull(buffer, control, pvStructure);
+}
+
+void SerializationHelper::serializeFull(ByteBuffer* buffer, SerializableControl* control, PVField::shared_pointer const & pvField)
+{
+    if (pvField.get() == 0)
+    {
+        serializeNullField(buffer, control);
+    }
+    else
+    {
+        control->cachedSerialize(pvField->getField(), buffer);
+        pvField->serialize(buffer, control);
+    }
 }
 
 }}

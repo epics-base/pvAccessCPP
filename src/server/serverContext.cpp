@@ -10,6 +10,7 @@
 #include <pv/responseHandlers.h>
 #include <pv/logger.h>
 #include <pv/serverContext.h>
+#include <pv/security.h>
 
 using namespace std;
 using namespace epics::pvData;
@@ -671,6 +672,11 @@ Transport::shared_pointer ServerContextImpl::getSearchTransport()
 void ServerContextImpl::newServerDetected()
 {
     // not used
+}
+
+std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& ServerContextImpl::getSecurityPlugins()
+{
+    return SecurityPluginRegistry::instance().getServerSecurityPlugins();
 }
 
 
