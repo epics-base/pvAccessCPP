@@ -121,6 +121,8 @@ namespace epics {
     public:
         POINTER_DEFINITIONS(SecuritySession);
 
+        virtual ~SecuritySession() {}
+
         // optional (can be null) initialization data for the remote party
         // client to server
         virtual epics::pvData::PVField::shared_pointer initializationData() = 0;
@@ -203,7 +205,7 @@ namespace epics {
         public SecurityPlugin,
         public SecuritySession,
         public ChannelSecuritySession,
-        public std::tr1::enable_shared_from_this<ChannelSecuritySession> {
+        public std::tr1::enable_shared_from_this<NoSecurityPlugin> {
     protected:
         NoSecurityPlugin() {}
 
@@ -222,7 +224,7 @@ namespace epics {
 
         // get parent
         virtual std::tr1::shared_ptr<SecurityPlugin> getSecurityPlugin() {
-            return std::tr1::dynamic_pointer_cast<SecurityPlugin>(shared_from_this());
+            return shared_from_this();
         }
 
         // can be called any time, for any reason
@@ -283,7 +285,7 @@ namespace epics {
                 SecurityPluginControl::shared_pointer const & control,
                 epics::pvData::PVField::shared_pointer const & /*data*/) throw (SecurityException) {
             control->authenticationCompleted(epics::pvData::Status::Ok);
-            return std::tr1::dynamic_pointer_cast<SecuritySession>(shared_from_this());
+            return shared_from_this();
         }
 
         // for every authroizeCreate... a release() must be called
