@@ -1603,8 +1603,8 @@ namespace epics {
             buffer->putByte(PVA_MAGIC);
             buffer->putByte(PVA_VERSION);
             buffer->putByte(
-              0x01 | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG)
-              ? 0x80 : 0x00));		// control + big endian
+              0x01 | 0x40 | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG)
+              ? 0x80 : 0x00));		// control + server + endian
             buffer->putByte(2);		// set byte order
             buffer->putInt(0);
 
