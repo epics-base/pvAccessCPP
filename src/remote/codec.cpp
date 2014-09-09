@@ -1489,13 +1489,13 @@ namespace epics {
        POINTER_DEFINITIONS(SecurityPluginMessageTransportSender);
 
        SecurityPluginMessageTransportSender(PVField::shared_pointer const & data) :
-           m_data(data)
+           _data(data)
        {
        }
 
        void send(ByteBuffer* buffer, TransportSendControl* control) {
            control->startMessage((int8)5, 0);
-           SerializationHelper::serializeFull(buffer, control, m_data);
+           SerializationHelper::serializeFull(buffer, control, _data);
            // send immediately
            control->flush(true);
        }
@@ -1504,7 +1504,7 @@ namespace epics {
        void unlock() {}
 
     private:
-        PVField::shared_pointer m_data;
+        PVField::shared_pointer _data;
     };
 
    void BlockingTCPTransportCodec::sendSecurityPluginMessage(epics::pvData::PVField::shared_pointer const & data) {
