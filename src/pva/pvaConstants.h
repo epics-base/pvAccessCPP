@@ -40,8 +40,12 @@ namespace pvAccess {
     /** PVA protocol message header size. */
     const epics::pvData::int16 PVA_MESSAGE_HEADER_SIZE = 8;
     
-    /** All messages must be aligned to 8-bytes (64-bit). */
-    const epics::pvData::int32 PVA_ALIGNMENT = 1; //8;
+    /**
+     * All messages must be aligned to 8-bytes (64-bit).
+     * MUST be 1. Code does not handle well alignment in some situations (e.g. direct deserialize).
+     * Alignment is not worth additional code complexity.
+     */
+    const epics::pvData::int32 PVA_ALIGNMENT = 1;
 
     /**
      * UDP maximum send message size.
