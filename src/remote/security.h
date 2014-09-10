@@ -387,6 +387,32 @@ namespace epics {
 
     };
 
+    class epicsShareClass CAClientSecurityPlugin :
+        public NoSecurityPlugin {
+    protected:
+        epics::pvData::PVStructure::shared_pointer m_userAndHost;
+
+        CAClientSecurityPlugin();
+
+
+    public:
+        POINTER_DEFINITIONS(CAClientSecurityPlugin);
+
+        static CAClientSecurityPlugin::shared_pointer INSTANCE;
+
+        virtual epics::pvData::PVField::shared_pointer initializationData() {
+            return m_userAndHost;
+        }
+
+        virtual std::string getId() const {
+            return "ca";
+        }
+
+        virtual std::string getDescription() const {
+            return "CA client security plug-in";
+        }
+    };
+
     class epicsShareClass AuthNZHandler :
             public AbstractResponseHandler,
             private epics::pvData::NoDefaultMethods
@@ -447,7 +473,10 @@ namespace epics {
         }
 
     private:
-        SecurityPluginRegistry() {}
+        SecurityPluginRegistry() {
+            // install CA client secutiry plugin by default
+            installClientSecurityPlugin(CAClientSecurityPlugin::INSTANCE);
+        }
 
         std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > m_clientSecurityPlugins;
         std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > m_serverSecurityPlugins;
