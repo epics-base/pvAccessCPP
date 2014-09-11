@@ -4247,7 +4247,10 @@ TODO
                 m_connector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_connectionTimeout));
                 m_transportRegistry.reset(new TransportRegistry());
 
-                // TODO put memory barrier here... (if not already called withing a lock?)
+                // preinitialize security plugins
+                SecurityPluginRegistry::instance();
+
+                // TODO put memory barrier here... (if not already called within a lock?)
 
                 // setup UDP transport
                 initializeUDPTransport();

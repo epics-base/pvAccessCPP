@@ -1622,7 +1622,7 @@ namespace epics {
             buffer->putShort(0x7FFF);
 
             // list of authNZ plugin names
-            map<string, SecurityPlugin::shared_pointer> securityPlugins;
+            map<string, SecurityPlugin::shared_pointer>& securityPlugins = _context->getSecurityPlugins();
             vector<string> validSPNames;
             validSPNames.reserve(securityPlugins.size());
 
@@ -1764,11 +1764,22 @@ namespace epics {
         LOG(logLevelDebug, "Accepted security plug-in '%s' for PVA client: %s.", initData->securityPluginName.c_str(), ipAddrStr);
     }
 
-    // create session
-    SecurityPluginControl::shared_pointer spc = std::tr1::dynamic_pointer_cast<SecurityPluginControl>(shared_from_this());
-
-    // TODO sync
-    _securitySession = securityPlugin->createSession(_socketAddress, spc, initData->data);
+    try
+    {
+        // create session
+        SecurityPluginControl::shared_pointer spc = std::tr1::dynamic_pointer_cast<SecurityPluginControl>(shared_from_this());
+        // TODO sync
+        _securitySession = securityPlugin->createSession(_socketAddress, spc, initData->data);
+    } catch (SecurityException &se) {
+        if (IS_LOGGABLE(logLevelDebug))
+        {
+            char ipAddrStr[48];
+            ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
+            LOG(logLevelDebug, "Security plug-in '%s' failed to create a session for PVA client: %s.", initData->securityPluginName.c_str(), ipAddrStr);
+        }
+        Status status(Status::STATUSTYPE_ERROR, se.what());
+        verified(status);
+    }
   }
 
 

@@ -27,6 +27,7 @@
 
 #include <pv/remote.h>
 #include <pv/serializationHelper.h>
+#include <pv/logger.h>
 
 #include <shareLib.h>
 
@@ -465,23 +466,24 @@ namespace epics {
         void installClientSecurityPlugin(std::tr1::shared_ptr<SecurityPlugin> plugin)
         {
             m_clientSecurityPlugins[plugin->getId()] = plugin;
+            LOG(epics::pvAccess::logLevelDebug, "Client security plug-in '%s' installed.", plugin->getId().c_str());
         }
 
         void installServerSecurityPlugin(std::tr1::shared_ptr<SecurityPlugin> plugin)
         {
             m_serverSecurityPlugins[plugin->getId()] = plugin;
+            LOG(epics::pvAccess::logLevelDebug, "Server security plug-in '%s' installed.", plugin->getId().c_str());
         }
 
     private:
         SecurityPluginRegistry() {
-            // install CA client secutiry plugin by default
+            // install CA client security plugin by default
             installClientSecurityPlugin(CAClientSecurityPlugin::INSTANCE);
         }
 
         std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > m_clientSecurityPlugins;
         std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > m_serverSecurityPlugins;
     };
-
 
     }
 }

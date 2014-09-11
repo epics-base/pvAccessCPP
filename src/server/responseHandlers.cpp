@@ -160,7 +160,7 @@ void ServerConnectionValidationHandler::handleResponse(
     // optional authNZ plug-in initialization data
     PVField::shared_pointer data;
     if (payloadBuffer->getRemaining())
-        SerializationHelper::deserializeFull(payloadBuffer, transport.get());
+        data = SerializationHelper::deserializeFull(payloadBuffer, transport.get());
 
     struct {
         std::string securityPluginName;

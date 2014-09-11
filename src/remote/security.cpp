@@ -50,4 +50,3 @@ CAClientSecurityPlugin::CAClientSecurityPlugin()
 
     m_userAndHost->getSubField<PVString>("host")->put(buffer);
 }
-
