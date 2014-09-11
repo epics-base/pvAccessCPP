@@ -895,6 +895,8 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
         if (!asStatus.isSuccess())
         {
             BaseChannelRequester::sendFailureMessage((int8)CMD_GET, transport, ioid, qosCode, asStatus);
+            if (lastRequest)
+                request->destroy();
             return;
         }
 
@@ -1166,6 +1168,8 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
             if (!asStatus.isSuccess())
             {
                 BaseChannelRequester::sendFailureMessage((int8)CMD_PUT, transport, ioid, qosCode, asStatus);
+                if (lastRequest)
+                    request->destroy();
                 return;
             }
 
@@ -1192,6 +1196,8 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
                 if (!asStatus.isSuccess())
                 {
                     BaseChannelRequester::sendFailureMessage((int8)CMD_PUT, transport, ioid, qosCode, asStatus);
+                    if (lastRequest)
+                        request->destroy();
                     return;
                 }
 
@@ -1297,6 +1303,7 @@ void ServerChannelPutRequesterImpl::destroy()
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
 
+        // asCheck
         _channel->getChannelSecuritySession()->release(_ioid);
 
         if (_channelPut)
@@ -1399,7 +1406,15 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 		// pvRequest
 		PVStructure::shared_pointer pvRequest(SerializationHelper::deserializePVRequest(payloadBuffer, transport.get()));
 
-		// create...
+        // asCheck
+        Status asStatus = channel->getChannelSecuritySession()->authorizeCreateChannelPutGet(ioid, pvRequest);
+        if (!asStatus.isSuccess())
+        {
+            BaseChannelRequester::sendFailureMessage((int8)CMD_PUT_GET, transport, ioid, qosCode, asStatus);
+            return;
+        }
+
+        // create...
 		ServerChannelPutGetRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
 	}
 	else
@@ -1427,11 +1442,31 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
 
 		if (getGet)
 		{
-			channelPutGet->getGet();
+            // asCheck
+            Status asStatus = channel->getChannelSecuritySession()->authorizeGet(ioid);
+            if (!asStatus.isSuccess())
+            {
+                BaseChannelRequester::sendFailureMessage((int8)CMD_PUT_GET, transport, ioid, qosCode, asStatus);
+                if (lastRequest)
+                    request->destroy();
+                return;
+            }
+
+            channelPutGet->getGet();
 		}
 		else if(getPut)
 		{
-			channelPutGet->getPut();
+            // asCheck
+            Status asStatus = channel->getChannelSecuritySession()->authorizeGet(ioid);
+            if (!asStatus.isSuccess())
+            {
+                BaseChannelRequester::sendFailureMessage((int8)CMD_PUT_GET, transport, ioid, qosCode, asStatus);
+                if (lastRequest)
+                    request->destroy();
+                return;
+            }
+
+            channelPutGet->getPut();
 		}
 		else
 		{
@@ -1447,7 +1482,18 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
     		    );
     		    
     		    lock.unlock();
-    			channelPutGet->putGet(putPVStructure, putBitSet);
+
+                // asCheck
+                Status asStatus = channel->getChannelSecuritySession()->authorizePutGet(ioid, putPVStructure, putBitSet);
+                if (!asStatus.isSuccess())
+                {
+                    BaseChannelRequester::sendFailureMessage((int8)CMD_PUT_GET, transport, ioid, qosCode, asStatus);
+                    if (lastRequest)
+                        request->destroy();
+                    return;
+                }
+
+                channelPutGet->putGet(putPVStructure, putBitSet);
 			}
 		}
 	}
@@ -1567,6 +1613,10 @@ void ServerChannelPutGetRequesterImpl::destroy()
     {
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
+
+        // asCheck
+        _channel->getChannelSecuritySession()->release(_ioid);
+
         if (_channelPutGet)
 		{
 			_channelPutGet->destroy();
@@ -1681,7 +1731,15 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 		// pvRequest
 		PVStructure::shared_pointer pvRequest(SerializationHelper::deserializePVRequest(payloadBuffer, transport.get()));
 
-		// create...
+        // asCheck
+        Status asStatus = channel->getChannelSecuritySession()->authorizeCreateMonitor(ioid, pvRequest);
+        if (!asStatus.isSuccess())
+        {
+            BaseChannelRequester::sendFailureMessage((int8)CMD_MONITOR, transport, ioid, qosCode, asStatus);
+            return;
+        }
+
+        // create...
 		ServerMonitorRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
 	}
 	else
@@ -1704,6 +1762,17 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 			return;
 		}
 		*/
+
+        // TODO for now we do a get check
+        // asCheck
+        Status asStatus = channel->getChannelSecuritySession()->authorizeGet(ioid);
+        if (!asStatus.isSuccess())
+        {
+            BaseChannelRequester::sendFailureMessage((int8)CMD_MONITOR, transport, ioid, qosCode, asStatus);
+            if (lastRequest)
+                request->destroy();
+            return;
+        }
 
 		if (process)
 		{
@@ -1814,6 +1883,10 @@ void ServerMonitorRequesterImpl::destroy()
     {
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
+
+        // asCheck
+        _channel->getChannelSecuritySession()->release(_ioid);
+
         if (_channelMonitor)
 		{
 			_channelMonitor->destroy();
@@ -1856,6 +1929,8 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 		Monitor::shared_pointer monitor = _channelMonitor;
         if (!monitor)
             return;
+
+        // TODO asCheck ?
 
 		MonitorElement::shared_pointer element = monitor->poll();
         if (element.get())
@@ -1916,7 +1991,15 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 		// pvRequest
 		PVStructure::shared_pointer pvRequest(SerializationHelper::deserializePVRequest(payloadBuffer, transport.get()));
 
-		// create...
+        // asCheck
+        Status asStatus = channel->getChannelSecuritySession()->authorizeCreateChannelArray(ioid, pvRequest);
+        if (!asStatus.isSuccess())
+        {
+            BaseChannelRequester::sendFailureMessage((int8)CMD_ARRAY, transport, ioid, qosCode, asStatus);
+            return;
+        }
+
+        // create...
 		ServerChannelArrayRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
 	}
 	else
@@ -1948,16 +2031,48 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
             size_t offset = SerializeHelper::readSize(payloadBuffer, transport.get());
             size_t count = SerializeHelper::readSize(payloadBuffer, transport.get());
             size_t stride = SerializeHelper::readSize(payloadBuffer, transport.get());
+
+            // asCheck
+            Status asStatus = channel->getChannelSecuritySession()->authorizeGet(ioid);
+            if (!asStatus.isSuccess())
+            {
+                BaseChannelRequester::sendFailureMessage((int8)CMD_ARRAY, transport, ioid, qosCode, asStatus);
+                if (lastRequest)
+                    request->destroy();
+                return;
+            }
+
 			request->getChannelArray()->getArray(offset, count, stride);
 		}
 		else if (setLength)
 		{
             size_t length = SerializeHelper::readSize(payloadBuffer, transport.get());
+
+            // asCheck
+            Status asStatus = channel->getChannelSecuritySession()->authorizeSetLength(ioid);
+            if (!asStatus.isSuccess())
+            {
+                BaseChannelRequester::sendFailureMessage((int8)CMD_ARRAY, transport, ioid, qosCode, asStatus);
+                if (lastRequest)
+                    request->destroy();
+                return;
+            }
+
             request->getChannelArray()->setLength(length);
 		}
 		else if (getLength)
 		{
-			request->getChannelArray()->getLength();
+            // asCheck
+            Status asStatus = channel->getChannelSecuritySession()->authorizeGet(ioid);
+            if (!asStatus.isSuccess())
+            {
+                BaseChannelRequester::sendFailureMessage((int8)CMD_ARRAY, transport, ioid, qosCode, asStatus);
+                if (lastRequest)
+                    request->destroy();
+                return;
+            }
+
+            request->getChannelArray()->getLength();
 		}
 		else
 		{
@@ -1974,6 +2089,17 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
     			    array->deserialize(payloadBuffer, transport.get());
     			);
 			}
+
+            // asCheck
+            Status asStatus = channel->getChannelSecuritySession()->authorizePut(ioid, array);
+            if (!asStatus.isSuccess())
+            {
+                BaseChannelRequester::sendFailureMessage((int8)CMD_ARRAY, transport, ioid, qosCode, asStatus);
+                if (lastRequest)
+                    request->destroy();
+                return;
+            }
+
 			channelArray->putArray(array, offset, array->getLength(), stride);
 		}
 	}
@@ -2104,6 +2230,10 @@ void ServerChannelArrayRequesterImpl::destroy()
     {
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
+
+        // asCheck
+        _channel->getChannelSecuritySession()->release(_ioid);
+
         if (_channelArray)
 		{
 			_channelArray->destroy();
@@ -2288,7 +2418,15 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
 		// pvRequest
 		PVStructure::shared_pointer pvRequest(SerializationHelper::deserializePVRequest(payloadBuffer, transport.get()));
 
-		// create...
+        // asCheck
+        Status asStatus = channel->getChannelSecuritySession()->authorizeCreateChannelProcess(ioid, pvRequest);
+        if (!asStatus.isSuccess())
+        {
+            BaseChannelRequester::sendFailureMessage((int8)CMD_PROCESS, transport, ioid, qosCode, asStatus);
+            return;
+        }
+
+        // create...
 		ServerChannelProcessRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
 	}
 	else
@@ -2310,6 +2448,17 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
 
         if (lastRequest)
             request->getChannelProcess()->lastRequest();
+
+        // asCheck
+        Status asStatus = channel->getChannelSecuritySession()->authorizeProcess(ioid);
+        if (!asStatus.isSuccess())
+        {
+            BaseChannelRequester::sendFailureMessage((int8)CMD_PROCESS, transport, ioid, qosCode, asStatus);
+            if (lastRequest)
+                request->destroy();
+            return;
+        }
+
 		request->getChannelProcess()->process();
 	}
 }
@@ -2388,6 +2537,10 @@ void ServerChannelProcessRequesterImpl::destroy()
 	{
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
+
+        // asCheck
+        _channel->getChannelSecuritySession()->release(_ioid);
+
         if (_channelProcess.get())
 		{
 			_channelProcess->destroy();
@@ -2452,7 +2605,16 @@ void ServerGetFieldHandler::handleResponse(osiSockAddr* responseFrom,
     // TODO use std::make_shared
     std::tr1::shared_ptr<ServerGetFieldRequesterImpl> tp(new ServerGetFieldRequesterImpl(_context, channel, ioid, transport));
     GetFieldRequester::shared_pointer gfr = tp;
-	// TODO exception check
+
+    // asCheck
+    Status asStatus = channel->getChannelSecuritySession()->authorizeGetField(ioid, subField);
+    if (!asStatus.isSuccess())
+    {
+        gfr->getDone(asStatus, FieldConstPtr());
+        return;
+    }
+
+    // TODO exception check
 	channel->getChannel()->getField(gfr, subField);
 }
 
@@ -2536,7 +2698,15 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 		// pvRequest
 		PVStructure::shared_pointer pvRequest(SerializationHelper::deserializePVRequest(payloadBuffer, transport.get()));
 
-		// create...
+        // asCheck
+        Status asStatus = channel->getChannelSecuritySession()->authorizeCreateChannelRPC(ioid, pvRequest);
+        if (!asStatus.isSuccess())
+        {
+            BaseChannelRequester::sendFailureMessage((int8)CMD_RPC, transport, ioid, qosCode, asStatus);
+            return;
+        }
+
+        // create...
 		ServerChannelRPCRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
 	}
 	else
@@ -2567,7 +2737,18 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
         
         if (lastRequest)
             channelRPC->lastRequest();
-		channelRPC->request(pvArgument);
+
+        // asCheck
+        Status asStatus = channel->getChannelSecuritySession()->authorizeRPC(ioid, pvArgument);
+        if (!asStatus.isSuccess())
+        {
+            BaseChannelRequester::sendFailureMessage((int8)CMD_RPC, transport, ioid, qosCode, asStatus);
+            if (lastRequest)
+                request->destroy();
+            return;
+        }
+
+        channelRPC->request(pvArgument);
 	}
 }
 
@@ -2648,6 +2829,10 @@ void ServerChannelRPCRequesterImpl::destroy()
 	{
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
+
+        // asCheck
+        _channel->getChannelSecuritySession()->release(_ioid);
+
         if (_channelRPC.get())
 		{
 			_channelRPC->destroy();
