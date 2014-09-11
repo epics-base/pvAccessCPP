@@ -11,11 +11,14 @@ using namespace epics::pvData;
 namespace epics {
 namespace pvAccess {
 
-ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer const & channel, pvAccessID cid, pvAccessID sid, epics::pvData::PVField::shared_pointer const & /*securityToken*/):
+ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer const & channel,
+                                     pvAccessID cid, pvAccessID sid,
+                                     ChannelSecuritySession::shared_pointer const & css):
 			_channel(channel),
 			_cid(cid),
 			_sid(sid),
-			_destroyed(false)
+            _destroyed(false),
+            _channelSecuritySession(css)
 {
 	if (!channel.get())
 	{
@@ -38,10 +41,9 @@ pvAccessID ServerChannelImpl::getSID() const
 	return _sid;
 }
 
-int16 ServerChannelImpl::getAccessRights()
+ChannelSecuritySession::shared_pointer ServerChannelImpl::getChannelSecuritySession() const
 {
-	//TODO implement
-	return 0;
+    return _channelSecuritySession;
 }
 
 void ServerChannelImpl::registerRequest(const pvAccessID id, Destroyable::shared_pointer const & request)
@@ -79,6 +81,10 @@ void ServerChannelImpl::destroy()
 
 	// destroy all requests
 	destroyAllRequests();
+
+    // close channel security session
+    // TODO try catch
+    _channelSecuritySession->close();
 
     // ... and the channel
     // TODO try catch

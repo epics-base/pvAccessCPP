@@ -21,7 +21,7 @@
 
 #include <pv/remote.h>
 #include <pv/clientContextImpl.h>
-
+#include <pv/security.h>
 
 namespace epics {
 namespace pvAccess {
@@ -36,9 +36,9 @@ public:
 	 * @param channel local channel.
 	 * @param cid channel CID.
 	 * @param sid channel SID.
-	 * @param securityToken security token.
+     * @param css channel security session.
 	 */
-	ServerChannelImpl(Channel::shared_pointer const & channel, pvAccessID cid, pvAccessID sid, epics::pvData::PVField::shared_pointer const & securityToken);
+    ServerChannelImpl(Channel::shared_pointer const & channel, pvAccessID cid, pvAccessID sid, ChannelSecuritySession::shared_pointer const & css);
 	/*
 	 * Destructor.
 	 */
@@ -62,12 +62,11 @@ public:
 	 */
 	pvAccessID getSID() const;
 
-	/**
-	 * Get access rights (bit-mask encoded).
-	 * @see AccessRights
-	 * @return bit-mask encoded access rights.
-	 */
-	epics::pvData::int16 getAccessRights();
+    /**
+     * Get ChannelSecuritySession instance.
+     * @return the ChannelSecuritySession instance.
+     */
+    ChannelSecuritySession::shared_pointer getChannelSecuritySession() const;
 
 	/**
 	 * Register request
@@ -135,6 +134,11 @@ private:
 	 * Mutex
 	 */
 	epics::pvData::Mutex _mutex;
+
+    /**
+     * Channel security session.
+     */
+    ChannelSecuritySession::shared_pointer _channelSecuritySession;
 
 	/**
 	 * Destroy all registered requests.

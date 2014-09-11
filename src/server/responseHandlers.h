@@ -222,10 +222,14 @@ namespace pvAccess {
             typedef std::tr1::shared_ptr<ServerChannelRequesterImpl> shared_pointer;
             typedef std::tr1::shared_ptr<const ServerChannelRequesterImpl> const_shared_pointer;
         protected:
-        	 ServerChannelRequesterImpl(Transport::shared_pointer const & transport, const std::string channelName, const pvAccessID cid);
+             ServerChannelRequesterImpl(Transport::shared_pointer const & transport,
+                                        const std::string channelName,
+                                        const pvAccessID cid, ChannelSecuritySession::shared_pointer const & css);
         public:
              virtual ~ServerChannelRequesterImpl() {}
-        	 static ChannelRequester::shared_pointer create(ChannelProvider::shared_pointer const & provider, Transport::shared_pointer const & transport, const std::string channelName, const pvAccessID cid);
+             static ChannelRequester::shared_pointer create(ChannelProvider::shared_pointer const & provider,
+                                                            Transport::shared_pointer const & transport, const std::string channelName,
+                                                            const pvAccessID cid, ChannelSecuritySession::shared_pointer const & css);
         	 void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel);
         	 void channelStateChange(Channel::shared_pointer const & c, const Channel::ConnectionState isConnected);
         	 std::string getRequesterName();
@@ -238,6 +242,7 @@ namespace pvAccess {
         	 Transport::weak_pointer _transport;
         	 const std::string _channelName;
         	 const pvAccessID _cid;
+             ChannelSecuritySession::shared_pointer const & _css;
         	 epics::pvData::Status _status;
         	 epics::pvData::Mutex _mutex;
         	 void createChannelFailedResponse(epics::pvData::ByteBuffer* buffer, TransportSendControl* control, const epics::pvData::Status& status);

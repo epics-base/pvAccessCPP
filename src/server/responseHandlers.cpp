@@ -578,13 +578,30 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
 		return;
 	}
 
+    SecuritySession::shared_pointer securitySession = transport->getSecuritySession();
+    ChannelSecuritySession::shared_pointer css;
+    try {
+        css = securitySession->createChannelSession(channelName);
+        if (!css)
+            throw SecurityException("null channelSecuritySession");
+    } catch (SecurityException& se) {
+        // TODO use std::make_shared
+        std::tr1::shared_ptr<ServerChannelRequesterImpl> tp(new ServerChannelRequesterImpl(transport, channelName, cid, css));
+        ChannelRequester::shared_pointer cr = tp;
+
+        Status asStatus(Status::STATUSTYPE_ERROR,
+                        string("Insufficient rights to create a channel: ") + se.what());
+        cr->channelCreated(asStatus, Channel::shared_pointer());
+        return;
+    }
+
     if (channelName == SERVER_CHANNEL_NAME)
     {
         // TODO singleton!!!
         ServerRPCService::shared_pointer serverRPCService(new ServerRPCService(_context));
 
         // TODO use std::make_shared
-        std::tr1::shared_ptr<ServerChannelRequesterImpl> tp(new ServerChannelRequesterImpl(transport, channelName, cid));
+        std::tr1::shared_ptr<ServerChannelRequesterImpl> tp(new ServerChannelRequesterImpl(transport, channelName, cid, css));
         ChannelRequester::shared_pointer cr = tp;
         Channel::shared_pointer serverChannel = createRPCChannel(ChannelProvider::shared_pointer(), channelName, cr, serverRPCService);
         cr->channelCreated(Status::Ok, serverChannel);
@@ -592,9 +609,9 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
     else
     {
         if (_providers.size() == 1)
-            ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid);
+            ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid, css);
         else
-            ServerChannelRequesterImpl::create(ServerSearchHandler::s_channelNameToProvider[channelName].lock(), transport, channelName, cid);     // TODO !!!!
+            ServerChannelRequesterImpl::create(ServerSearchHandler::s_channelNameToProvider[channelName].lock(), transport, channelName, cid, css);     // TODO !!!!
     }
 }
 
@@ -604,11 +621,12 @@ void ServerCreateChannelHandler::disconnect(Transport::shared_pointer const & tr
 }
 
 ServerChannelRequesterImpl::ServerChannelRequesterImpl(Transport::shared_pointer const & transport,
-    const string channelName, const pvAccessID cid) :
+    const string channelName, const pvAccessID cid, ChannelSecuritySession::shared_pointer const & css) :
     _serverChannel(),
     _transport(transport),
     _channelName(channelName),
     _cid(cid),
+    _css(css),
     _status(),
     _mutex()
 {
@@ -616,10 +634,10 @@ ServerChannelRequesterImpl::ServerChannelRequesterImpl(Transport::shared_pointer
 
 ChannelRequester::shared_pointer ServerChannelRequesterImpl::create(
     ChannelProvider::shared_pointer const & provider, Transport::shared_pointer const & transport,
-    const string channelName, const pvAccessID cid)
+    const string channelName, const pvAccessID cid, ChannelSecuritySession::shared_pointer const & css)
 {
     // TODO use std::make_shared
-    std::tr1::shared_ptr<ServerChannelRequesterImpl> tp(new ServerChannelRequesterImpl(transport, channelName, cid));
+    std::tr1::shared_ptr<ServerChannelRequesterImpl> tp(new ServerChannelRequesterImpl(transport, channelName, cid, css));
     ChannelRequester::shared_pointer cr = tp;
     // TODO exception guard and report error back
 	provider->createChannel(channelName, cr, transport->getPriority());
@@ -646,8 +664,7 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
     			pvAccessID sid = casTransport->preallocateChannelSID();
     			try
     			{
-                    epics::pvData::PVField::shared_pointer securityToken; // TODO replace with security session
-    				serverChannel.reset(new ServerChannelImpl(channel, _cid, sid, securityToken));
+                    serverChannel.reset(new ServerChannelImpl(channel, _cid, sid, _css));
     
     				// ack allocation and register
     				casTransport->registerChannel(sid, serverChannel);
@@ -659,6 +676,12 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
     				throw;
     			}
 		    }
+            else
+            {
+                if (_css)
+                    _css->close();
+            }
+
 				
 			{
         	Lock guard(_mutex);
@@ -679,7 +702,9 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
         	TransportSender::shared_pointer thisSender = shared_from_this();
         	transport->enqueueSendRequest(thisSender);
 			// TODO make sure that serverChannel gets destroyed
-		}
+            if (_css)
+                _css->close();
+        }
 		catch (...)
 		{
 			LOG(logLevelDebug, "Exception caught when creating channel: %s", _channelName.c_str());
@@ -690,7 +715,9 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
         	TransportSender::shared_pointer thisSender = shared_from_this();
         	transport->enqueueSendRequest(thisSender);
 			// TODO make sure that serverChannel gets destroyed
-		}
+            if (_css)
+                _css->close();
+        }
     }
 }
 
@@ -832,7 +859,15 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 		// pvRequest
 		PVStructure::shared_pointer pvRequest(SerializationHelper::deserializePVRequest(payloadBuffer, transport.get()));
 
-		// create...
+        // asCheck
+        Status asStatus = channel->getChannelSecuritySession()->authorizeCreateChannelGet(ioid, pvRequest);
+        if (!asStatus.isSuccess())
+        {
+            BaseChannelRequester::sendFailureMessage((int8)CMD_GET, transport, ioid, qosCode, asStatus);
+            return;
+        }
+
+        // create...
 		ServerChannelGetRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
 	}
 	else
@@ -854,6 +889,14 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 			BaseChannelRequester::sendFailureMessage((int8)CMD_GET, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
 			return;
 		}
+
+        // asCheck
+        Status asStatus = channel->getChannelSecuritySession()->authorizeGet(ioid);
+        if (!asStatus.isSuccess())
+        {
+            BaseChannelRequester::sendFailureMessage((int8)CMD_GET, transport, ioid, qosCode, asStatus);
+            return;
+        }
 
         MB_POINT(channelGet, 4, "server channelGet->deserialize request (end)");
         
@@ -964,6 +1007,10 @@ void ServerChannelGetRequesterImpl::destroy()
 	{
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
+
+        // asCheck
+        _channel->getChannelSecuritySession()->release(_ioid);
+
         if (_channelGet)
 		{
 			_channelGet->destroy();
@@ -1078,7 +1125,15 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 		// pvRequest
 		PVStructure::shared_pointer pvRequest(SerializationHelper::deserializePVRequest(payloadBuffer, transport.get()));
 
-		// create...
+        // asCheck
+        Status asStatus = channel->getChannelSecuritySession()->authorizeCreateChannelPut(ioid, pvRequest);
+        if (!asStatus.isSuccess())
+        {
+            BaseChannelRequester::sendFailureMessage((int8)CMD_PUT, transport, ioid, qosCode, asStatus);
+            return;
+        }
+
+        // create...
 		ServerChannelPutRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
 	}
 	else
@@ -1106,8 +1161,15 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 
 		if (get)
 		{
-			// no destroy w/ get
-			channelPut->get();
+            // asCheck
+            Status asStatus = channel->getChannelSecuritySession()->authorizeGet(ioid);
+            if (!asStatus.isSuccess())
+            {
+                BaseChannelRequester::sendFailureMessage((int8)CMD_PUT, transport, ioid, qosCode, asStatus);
+                return;
+            }
+
+            channelPut->get();
 		}
 		else
 		{
@@ -1124,7 +1186,16 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
     		    );
     		    
     		    lock.unlock();
-    			channelPut->put(putPVStructure, putBitSet);
+
+                // asCheck
+                Status asStatus = channel->getChannelSecuritySession()->authorizePut(ioid, putPVStructure, putBitSet);
+                if (!asStatus.isSuccess())
+                {
+                    BaseChannelRequester::sendFailureMessage((int8)CMD_PUT, transport, ioid, qosCode, asStatus);
+                    return;
+                }
+
+                channelPut->put(putPVStructure, putBitSet);
 			}
 		}
 	}
@@ -1225,6 +1296,9 @@ void ServerChannelPutRequesterImpl::destroy()
     {
 		Lock guard(_mutex);
 		_channel->unregisterRequest(_ioid);
+
+        _channel->getChannelSecuritySession()->release(_ioid);
+
         if (_channelPut)
 		{
 			_channelPut->destroy();
