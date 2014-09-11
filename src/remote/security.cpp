@@ -50,3 +50,26 @@ CAClientSecurityPlugin::CAClientSecurityPlugin()
 
     m_userAndHost->getSubField<PVString>("host")->put(buffer);
 }
+
+
+void AuthNZHandler::handleResponse(osiSockAddr* responseFrom,
+                                    Transport::shared_pointer const & transport,
+                                    epics::pvData::int8 version,
+                                    epics::pvData::int8 command,
+                                    size_t payloadSize,
+                                    epics::pvData::ByteBuffer* payloadBuffer)
+{
+    AbstractResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
+
+    epics::pvData::PVField::shared_pointer data =
+            SerializationHelper::deserializeFull(payloadBuffer, transport.get());
+
+    transport->authNZMessage(data);
+}
+
+SecurityPluginRegistry::SecurityPluginRegistry() {
+    // install CA client security plugin by default
+    installClientSecurityPlugin(CAClientSecurityPlugin::INSTANCE);
+}
+
+

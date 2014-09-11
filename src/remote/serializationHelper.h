@@ -30,7 +30,7 @@
 namespace epics {
     namespace pvAccess {
 
-        class SerializationHelper : public epics::pvData::NoDefaultMethods {
+        class epicsShareClass SerializationHelper : public epics::pvData::NoDefaultMethods {
         public:
 
     		static epics::pvData::PVDataCreatePtr _pvDataCreate;

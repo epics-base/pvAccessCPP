@@ -4,9 +4,11 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#include <pv/convert.h>
+
+#define epicsExportSharedSymbols
 #include <pv/serializationHelper.h>
 #include <pv/introspectionRegistry.h>
-#include <pv/convert.h>
 
 using namespace epics::pvData;
 

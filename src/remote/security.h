@@ -46,7 +46,7 @@ namespace epics {
     // when clients gets initial credentialsChanged call before create is called
     // and then on each change
 
-    class ChannelSecuritySession {
+    class epicsShareClass ChannelSecuritySession {
     public:
         POINTER_DEFINITIONS(ChannelSecuritySession);
 
@@ -431,15 +431,7 @@ namespace epics {
                                     epics::pvData::int8 version,
                                     epics::pvData::int8 command,
                                     size_t payloadSize,
-                                    epics::pvData::ByteBuffer* payloadBuffer)
-        {
-            AbstractResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
-
-            epics::pvData::PVField::shared_pointer data =
-                    SerializationHelper::deserializeFull(payloadBuffer, transport.get());
-
-            transport->authNZMessage(data);
-        }
+                                    epics::pvData::ByteBuffer* payloadBuffer);
     };
 
     class epicsShareClass SecurityPluginRegistry :
@@ -476,10 +468,7 @@ namespace epics {
         }
 
     private:
-        SecurityPluginRegistry() {
-            // install CA client security plugin by default
-            installClientSecurityPlugin(CAClientSecurityPlugin::INSTANCE);
-        }
+        SecurityPluginRegistry();
 
         std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > m_clientSecurityPlugins;
         std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > m_serverSecurityPlugins;
