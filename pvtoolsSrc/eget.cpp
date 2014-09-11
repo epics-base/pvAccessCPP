@@ -1632,7 +1632,7 @@ int main (int argc, char *argv[])
 
     // if there is only one nPvs and it's a valid URI that has ? character,
     // then it's an service (RPC) request
-    if (validURI && uri.query_indicated)
+    if (!serviceRequest && validURI && uri.query_indicated)
     {
         service = argv[optind];
         serviceRequest = true;
