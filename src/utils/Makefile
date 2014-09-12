@@ -10,6 +10,7 @@ INC += namedLockPattern.h
 INC += referenceCountingLock.h
 INC += configuration.h
 INC += likely.h
+INC += wildcard.h
 
 LIBSRCS += hexDump.cpp
 LIBSRCS += inetAddressUtil.cpp
@@ -17,3 +18,4 @@ LIBSRCS += logger.cpp
 LIBSRCS += introspectionRegistry.cpp
 LIBSRCS += configuration.cpp
 LIBSRCS += referenceCountingLock.cpp
+LIBSRCS += wildcard.cpp

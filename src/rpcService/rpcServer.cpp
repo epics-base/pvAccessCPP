@@ -5,9 +5,12 @@
  */
 
 #include <stdexcept>
+#include <vector>
+#include <utility>
 
 #define epicsExportSharedSymbols
 #include <pv/rpcServer.h>
+#include <pv/wildcard.h>
 
 using namespace epics::pvData;
 using std::string;
@@ -362,14 +365,15 @@ public:
     virtual void cancel() {}
 
     virtual void destroy() {}
-    
+
     virtual ChannelFind::shared_pointer channelFind(std::string const & channelName,
                         ChannelFindRequester::shared_pointer const & channelFindRequester)
     {
         bool found;
         {
             Lock guard(m_mutex);
-            found = (m_services.find(channelName) != m_services.end());
+            found = (m_services.find(channelName) != m_services.end()) ||
+                     findWildService(channelName);
         }
         ChannelFind::shared_pointer thisPtr(shared_from_this());
         channelFindRequester->channelFindResult(Status::Ok, thisPtr, found);
@@ -403,13 +407,21 @@ public:
             ChannelRequester::shared_pointer const & channelRequester,
             short /*priority*/)
     {
+        RPCService::shared_pointer service;
+
         RPCServiceMap::const_iterator iter;
         {
             Lock guard(m_mutex);
             iter = m_services.find(channelName);
         }
-        
-        if (iter == m_services.end())
+        if (iter != m_services.end())
+            service = iter->second;
+
+        // check for wild services
+        if (!service)
+            service = findWildService(channelName);
+
+        if (!service)
         {
             Channel::shared_pointer nullChannel;
             channelRequester->channelCreated(noSuchChannelStatus, nullChannel);
@@ -422,7 +434,7 @@ public:
                 shared_from_this(),
                 channelName,
                 channelRequester,
-                iter->second));
+                service));
         Channel::shared_pointer rpcChannel = tp;
         channelRequester->channelCreated(Status::Ok, rpcChannel);
         return rpcChannel;
@@ -442,17 +454,58 @@ public:
     {
         Lock guard(m_mutex);
         m_services[serviceName] = service;
+
+        if (isWildcardPattern(serviceName))
+            m_wildServices.push_back(std::make_pair(serviceName, service));
     }
     
     void unregisterService(std::string const & serviceName)
     {
         Lock guard(m_mutex);
         m_services.erase(serviceName);
+
+        if (isWildcardPattern(serviceName))
+        {
+            for (RPCWildServiceList::iterator iter = m_wildServices.begin();
+                 iter != m_wildServices.end();
+                 iter++)
+                if (iter->first == serviceName)
+                {
+                    m_wildServices.erase(iter);
+                    break;
+                }
+        }
     }
 
 private:    
+    // assumes sync on services
+    RPCService::shared_pointer findWildService(string const & wildcard)
+    {
+        if (!m_wildServices.empty())
+            for (RPCWildServiceList::iterator iter = m_wildServices.begin();
+                 iter != m_wildServices.end();
+                 iter++)
+                if (Wildcard::wildcardfit(iter->first.c_str(), wildcard.c_str()))
+                    return iter->second;
+
+        return RPCService::shared_pointer();
+    }
+
+    // (too) simple check
+    bool isWildcardPattern(string const & pattern)
+    {
+        return
+            (pattern.find('*') != string::npos ||
+             pattern.find('?') != string::npos ||
+             (pattern.find('[') != string::npos && pattern.find(']') != string::npos));
+    }
+
     typedef std::map<string, RPCService::shared_pointer> RPCServiceMap;
     RPCServiceMap m_services;
+
+    typedef std::vector<std::pair<string, RPCService::shared_pointer> > RPCWildServiceList;
+    RPCWildServiceList m_wildServices;
+
     epics::pvData::Mutex m_mutex;
 };
 

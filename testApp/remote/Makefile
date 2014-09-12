@@ -68,6 +68,10 @@ PROD_HOST += rpcServiceExample
 rpcServiceExample_SRCS += rpcServiceExample.cpp
 rpcServiceExample_LIBS += pvAccess pvData pvMB Com
 
+PROD_HOST += rpcWildServiceExample
+rpcWildServiceExample_SRCS += rpcWildServiceExample.cpp
+rpcWildServiceExample_LIBS += pvAccess pvData pvMB Com
+
 PROD_HOST += rpcClientExample
 rpcClientExample_SRCS += rpcClientExample.cpp
 rpcClientExample_LIBS += pvAccess pvData pvMB Com
