@@ -414,7 +414,7 @@ namespace epics {
         }
     };
 
-    class epicsShareClass AuthNZHandler :
+    class AuthNZHandler :
             public AbstractResponseHandler,
             private epics::pvData::NoDefaultMethods
     {
