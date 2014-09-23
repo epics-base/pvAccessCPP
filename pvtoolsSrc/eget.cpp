@@ -682,76 +682,107 @@ void formatNTURI(std::ostream& o, PVStructurePtr const & pvStruct)
 }
 
 
-void formatNTImage(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
+void formatNTNDArray(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
 {
-    PVIntPtr colorMode = pvStruct->getIntField("colorMode");
-    if (colorMode.get() == 0)
+
+    PVUnion::shared_pointer pvUnion = pvStruct->getSubField<PVUnion>("value");
+    if (pvUnion.get() == 0)
     {
-        std::cerr << "no int 'colorMode' field in NTImage" << std::endl;
-        return;
-    }
-    int32 cm = colorMode->get();
-    if (cm != 0 && cm != 1 && cm != 2)
-    {
-        std::cerr << "unsupported image 'colorMode', only {0,1,2} modes are supported" << std::endl;
+        std::cerr << "no 'value' union field in NTNDArray" << std::endl;
         return;
     }
 
-    PVScalarArrayPtr value = dynamic_pointer_cast<PVScalarArray>(pvStruct->getSubField("value"));
+    PVScalarArray::shared_pointer value = pvUnion->get<PVScalarArray>();
     if (value.get() == 0)
     {
-        std::cerr << "no scalar array 'value' field in NTImage" << std::endl;
+        std::cerr << "'value' union field in given NTNDArray does not hold scalar array value" << std::endl;
         return;
     }
+
+    // undefined
+    int32 cm = -1;
+
+    PVStructureArray::shared_pointer pvAttributes = pvStruct->getSubField<PVStructureArray>("attribute");
+    PVStructureArray::const_svector attributes(pvAttributes->view());
+
+    for (PVStructureArray::const_svector::const_iterator iter = attributes.begin();
+         iter != attributes.end();
+         iter++)
+    {
+        PVStructure::shared_pointer attribute = *iter;
+        PVString::shared_pointer pvName = attribute->getSubField<PVString>("name");
+        if (pvName && pvName->get() == "ColorMode")
+        {
+            PVInt::shared_pointer pvCM = attribute->getSubField<PVUnion>("value")->get<PVInt>();
+            if (!pvCM)
+                break;
+
+            cm = pvCM->get();
+            break;
+        }
+    }
+
+    if (cm == -1)
+    {
+        std::cerr << "no PVInt 'ColorMode' attribute in NTNDArray" << std::endl;
+        return;
+    }
+
+    if (cm != 0 && cm != 1 && cm != 2)
+    {
+        std::cerr << "unsupported 'ColorMode', only {0,1,2} modes are supported" << std::endl;
+        return;
+    }
+
 
     int32 rows, cols;
 
-    PVIntArrayPtr dim = dynamic_pointer_cast<PVIntArray>(pvStruct->getScalarArrayField("dim", pvInt));
+    PVStructureArray::shared_pointer dim = pvStruct->getSubField<PVStructureArray>("dimension");
     if (dim.get() == 0)
     {
-        std::cerr << "no int[] 'dim' field in NTImage" << std::endl;
+        std::cerr << "no 'dimension' structure array field in NTNDArray" << std::endl;
         return;
     }
-    
+
     // dim[] = { rows, columns } or
     // dim[] = { 3, rows, columns }
-    PVIntArray::const_svector data = dim->view();
+    PVStructureArray::const_svector data = dim->view();
     size_t dims = dim->getLength();
     size_t imageSize;
     if ((cm == 0 || cm == 1) && dims == 2)
     {
-        cols = data[0];
-        rows = data[1];
+        cols = data[0]->getSubField<PVInt>("size")->get();
+        rows = data[1]->getSubField<PVInt>("size")->get();
         imageSize = cols * rows;
     }
     else if (cm == 2 && dims == 3)
     {
-        cols = data[1];
-        rows = data[2];
+        cols = data[0]->getSubField<PVInt>("size")->get();
+        rows = data[1]->getSubField<PVInt>("size")->get();
         imageSize = cols * rows * 3;
     }
     else
     {
-        std::cerr << "malformed NTImage, dim[] is invalid for specified color mode" << std::endl;
+        std::cerr << "malformed NTNDArray, dimension[] is invalid for specified color mode" << std::endl;
         return;
     }
 
     if (rows <= 0 || cols <= 0)
     {
-        std::cerr << "malformed NTImage, dim[] must contain elements > 0" << std::endl;
+        std::cerr << "malformed NTNDArray, dimension[] gives negative size" << std::endl;
         return;
     }
 
     PVByteArrayPtr array = dynamic_pointer_cast<PVByteArray>(value);
     if (array.get() == 0)
     {
-        std::cerr << "currently only byte[] value field is supported" << std::endl;
+        std::cerr << "currently only byte[] value is supported" << std::endl;
         return;
     }
 
     if (array->getLength() != imageSize)
     {
-        std::cerr << "byte[] length does not match expected image size (" <<
+        std::cerr << "value array length does not match expected image size (" <<
                      array->getLength() << " != " << imageSize << ")" << std::endl;
         return;
     }
@@ -792,7 +823,7 @@ void formatNTImage(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
     }
     else
     {
-        // grayscale
+        // monochrome
 
         fprintf(gnuplotPipe, "set palette grey\n");
         fprintf(gnuplotPipe, "set cbrange [0:255]\n");
@@ -822,7 +853,7 @@ void initializeNTFormatterLUT()
     ntFormatterLUT["uri:ev4:nt/2012/pwd:NTAny"] = formatNTAny;
     ntFormatterLUT["uri:ev4:nt/2012/pwd:NTNameValue"] = formatNTNameValue;
     ntFormatterLUT["uri:ev4:nt/2012/pwd:NTURI"] = formatNTURI;
-    ntFormatterLUT["uri:ev4:nt/2012/pwd:NTImage"] = formatNTImage;
+    ntFormatterLUT["uri:ev4:nt/2012/pwd:NTNDArray"] = formatNTNDArray;
 }
 
 void formatNT(std::ostream& o, PVFieldPtr const & pv)

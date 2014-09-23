@@ -32,7 +32,7 @@ epics::pvData::StructureConstPtr createNTNDArrayStructure()
         StructureConstPtr attributeStruc = fb->setId("uri:ev4:nt/2012/pwd:NTAttribute")->
             add("name", pvString)->
             add("value", getFieldCreate()->createVariantUnion())->
-            add("description", pvString)->
+            add("descriptor", pvString)->
             add("sourceType", pvInt)->
             add("source", pvString)->
             createStructure();
@@ -40,9 +40,9 @@ epics::pvData::StructureConstPtr createNTNDArrayStructure()
 
         ntndArrayStructure = fb->setId("uri:ev4:nt/2012/pwd:NTNDArray")->
             add("value", valueType)->
+            add("codec", codecStruc)->
             add("compressedSize", pvLong)->
             add("uncompressedSize", pvLong)->
-            add("codec", codecStruc)->
             addArray("dimension", dimensionStruc)->
             add("uniqueId", pvInt)->
             add("dataTimeStamp", standardField->timeStamp())->
@@ -108,28 +108,36 @@ void setNTNDArrayValue(
 
 void setNTNDArrayData(
         PVStructure::shared_pointer const & imagePV,
-        const string & codec
+        const string & codec,
+        int32 colorMode
         )
 {
     imagePV->getSubField<PVString>("codec.name")->put(codec);
 
     imagePV->getSubField<PVInt>("uniqueId")->put(0);
-}
-/*
-//d) Attributes
-    structure[] attribute
-        structure NTAttribute
-            string  name
-            any     value
-            string  description
-            int     sourceType
-            string  source
-*/
 
+    PVStructureArray::shared_pointer pvAttributes = imagePV->getSubField<PVStructureArray>("attribute");
+    PVStructureArray::svector attributes(pvAttributes->reuse());
+
+    PVStructure::shared_pointer attribute =
+            getPVDataCreate()->createPVStructure(pvAttributes->getStructureArray()->getStructure());
+    attribute->getSubField<PVString>("name")->put("ColorMode");
+    PVInt::shared_pointer pvColorMode = getPVDataCreate()->createPVScalar<PVInt>();
+    pvColorMode->put(colorMode);
+    attributes.push_back(attribute);
+    pvAttributes->replace(freeze(attributes));
+    attribute->getSubField<PVUnion>("value")->set(pvColorMode);
+    attribute->getSubField<PVString>("descriptor")->put("Color mode");
+    attribute->getSubField<PVInt>("sourceType")->put(0);
+    attribute->getSubField<PVString>("source")->put("");
+
+
+}
 
 void initImage(
         PVStructure::shared_pointer const & imagePV,
         const string & codec,
+        int32 colorMode,
         const size_t raw_dim_size,
         const int32_t* raw_dim,
         const size_t raw_size,
@@ -137,13 +145,13 @@ void initImage(
         )
 {
     setNTNDArrayValue(imagePV, raw_dim_size, raw_dim, raw_size, raw);
-    setNTNDArrayData(imagePV, codec);
+    setNTNDArrayData(imagePV, codec, colorMode);
 }
 
 void initImageEPICSv4GrayscaleLogo(PVStructure::shared_pointer const & imagePV)
 {
     setNTNDArrayValue(imagePV, 2, epicsv4_raw_dim, epicsv4_raw_size, epicsv4_raw);
-    setNTNDArrayData(imagePV, "grayscale");
+    setNTNDArrayData(imagePV, "", 0 /* NDColorModeMono=0 */);
 }
 
 void rotateImage(PVStructure::shared_pointer const & imagePV, const int8_t* originalImage, float deg)
@@ -152,7 +160,7 @@ void rotateImage(PVStructure::shared_pointer const & imagePV, const int8_t* orig
     PVStructureArrayPtr dim = imagePV->getSubField<PVStructureArray>("dimension");
 
     PVStructureArray::const_svector data = dim->view();
-    // { x, y }
+    // 2d NTNDArray - { x, y }
     int32 cols = data[0]->getSubField<PVInt>("size")->get();
     int32 rows = data[1]->getSubField<PVInt>("size")->get();
 

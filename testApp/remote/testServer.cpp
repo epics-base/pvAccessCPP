@@ -1467,12 +1467,12 @@ public:
                         if (isRGB)
                         {
                             const int32_t dim[] = { 3, wv, hv };
-                            initImage(m_pvStructure, "RGB", 3, dim, fileSize, 0);
+                            initImage(m_pvStructure, "", 2 /* NDColorModeRGB1=2 */, 3, dim, fileSize, 0);
                         }
                         else
                         {
                             const int32_t dim[] = { wv, hv };
-                            initImage(m_pvStructure, "grayscale", 2, dim, fileSize, 0);
+                            initImage(m_pvStructure, "", 0 /* NDColorModeMono=0 */, 2, dim, fileSize, 0);
                         }
 
                         PVByteArrayPtr value = std::tr1::dynamic_pointer_cast<PVByteArray>(m_pvStructure->getSubField("value"));
