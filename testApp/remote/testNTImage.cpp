@@ -117,21 +117,46 @@ void setNTNDArrayData(
     imagePV->getSubField<PVInt>("uniqueId")->put(0);
 
     PVStructureArray::shared_pointer pvAttributes = imagePV->getSubField<PVStructureArray>("attribute");
+
     PVStructureArray::svector attributes(pvAttributes->reuse());
 
-    PVStructure::shared_pointer attribute =
-            getPVDataCreate()->createPVStructure(pvAttributes->getStructureArray()->getStructure());
+    bool addNew = false;
+
+    PVStructure::shared_pointer attribute;
+
+    // find ColorMode
+    for (PVStructureArray::const_svector::const_iterator iter = attributes.begin();
+         iter != attributes.end();
+         iter++)
+    {
+        PVStructure::shared_pointer fattribute = *iter;
+        PVString::shared_pointer pvName = fattribute->getSubField<PVString>("name");
+        if (pvName && pvName->get() == "ColorMode")
+        {
+            attribute = fattribute;
+            break;
+        }
+    }
+
+    if (!attribute)
+    {
+        attribute = getPVDataCreate()->createPVStructure(pvAttributes->getStructureArray()->getStructure());
+        addNew = true;
+    }
+
     attribute->getSubField<PVString>("name")->put("ColorMode");
     PVInt::shared_pointer pvColorMode = getPVDataCreate()->createPVScalar<PVInt>();
     pvColorMode->put(colorMode);
-    attributes.push_back(attribute);
-    pvAttributes->replace(freeze(attributes));
+
+    if (addNew)
+        attributes.push_back(attribute);
+
     attribute->getSubField<PVUnion>("value")->set(pvColorMode);
     attribute->getSubField<PVString>("descriptor")->put("Color mode");
     attribute->getSubField<PVInt>("sourceType")->put(0);
     attribute->getSubField<PVString>("source")->put("");
 
-
+    pvAttributes->replace(freeze(attributes));
 }
 
 void initImage(

@@ -757,8 +757,8 @@ void formatNTNDArray(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
     }
     else if (cm == 2 && dims == 3)
     {
-        cols = data[0]->getSubField<PVInt>("size")->get();
-        rows = data[1]->getSubField<PVInt>("size")->get();
+        cols = data[1]->getSubField<PVInt>("size")->get();
+        rows = data[2]->getSubField<PVInt>("size")->get();
         imageSize = cols * rows * 3;
     }
     else

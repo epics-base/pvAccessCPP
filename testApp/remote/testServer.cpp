@@ -1475,7 +1475,8 @@ public:
                             initImage(m_pvStructure, "", 0 /* NDColorModeMono=0 */, 2, dim, fileSize, 0);
                         }
 
-                        PVByteArrayPtr value = std::tr1::dynamic_pointer_cast<PVByteArray>(m_pvStructure->getSubField("value"));
+                        PVUnionPtr unionValue = m_pvStructure->getSubField<PVUnion>("value");
+                        PVByteArrayPtr value = unionValue->select<PVByteArray>("byteValue");
                         PVByteArray::svector temp(value->reuse());
                         temp.resize(fileSize);
                         in.readsome((char*)temp.data(), fileSize);
