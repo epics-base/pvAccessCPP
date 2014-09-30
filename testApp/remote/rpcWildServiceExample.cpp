@@ -22,7 +22,7 @@ class WildServiceImpl :
         throw (RPCRequestException)
     {
         // requires NTURI as argument
-        if (pvArguments->getStructure()->getID() != "uri:ev4:nt/2012/pwd:NTURI")
+        if (pvArguments->getStructure()->getID() != "ev4:nt/NTURI:1.0")
             throw RPCRequestException(Status::STATUSTYPE_ERROR, "RPC argument must be a NTURI normative type");
 
         std::string channelName = pvArguments->getSubField<PVString>("path")->get();

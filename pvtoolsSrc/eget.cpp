@@ -845,15 +845,15 @@ NTFormatterLUTMap ntFormatterLUT;
 
 void initializeNTFormatterLUT()
 {
-    ntFormatterLUT["uri:ev4:nt/2012/pwd:NTScalar"] = formatNTScalar;
-    ntFormatterLUT["uri:ev4:nt/2012/pwd:NTScalarArray"] = formatNTScalarArray;
-    ntFormatterLUT["uri:ev4:nt/2012/pwd:NTEnum"] = formatNTEnum;
-    ntFormatterLUT["uri:ev4:nt/2012/pwd:NTTable"] = formatNTTable;
-    ntFormatterLUT["uri:ev4:nt/2012/pwd:NTMatrix"] = formatNTMatrix;
-    ntFormatterLUT["uri:ev4:nt/2012/pwd:NTAny"] = formatNTAny;
-    ntFormatterLUT["uri:ev4:nt/2012/pwd:NTNameValue"] = formatNTNameValue;
-    ntFormatterLUT["uri:ev4:nt/2012/pwd:NTURI"] = formatNTURI;
-    ntFormatterLUT["uri:ev4:nt/2012/pwd:NTNDArray"] = formatNTNDArray;
+    ntFormatterLUT["ev4:nt/NTScalar:1.0"] = formatNTScalar;
+    ntFormatterLUT["ev4:nt/NTScalarArray:1.0"] = formatNTScalarArray;
+    ntFormatterLUT["ev4:nt/NTEnum:1.0"] = formatNTEnum;
+    ntFormatterLUT["ev4:nt/NTTable:1.0"] = formatNTTable;
+    ntFormatterLUT["ev4:nt/NTMatrix:1.0"] = formatNTMatrix;
+    ntFormatterLUT["ev4:nt/NTAny:1.0"] = formatNTAny;
+    ntFormatterLUT["ev4:nt/NTNameValue:1.0"] = formatNTNameValue;
+    ntFormatterLUT["ev4:nt/NTURI:1.0"] = formatNTURI;
+    ntFormatterLUT["ev4:nt/NTNDArray:1.0"] = formatNTNDArray;
 }
 
 void formatNT(std::ostream& o, PVFieldPtr const & pv)
@@ -2044,7 +2044,7 @@ int main (int argc, char *argv[])
 
         Structure::const_shared_pointer uriStructure(
                     getFieldCreate()->createStructure(
-                        "uri:ev4:nt/2012/pwd:NTURI",
+                        "ev4:nt/NTURI:1.0",
                         uriFieldNames,
                         uriFields
                         )

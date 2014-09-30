@@ -29,7 +29,7 @@ epics::pvData::StructureConstPtr createNTNDArrayStructure()
             add("reverse",  pvBoolean)->
             createStructure();
 
-        StructureConstPtr attributeStruc = fb->setId("uri:ev4:nt/2012/pwd:NTAttribute")->
+        StructureConstPtr attributeStruc = fb->setId("ev4:nt/NTAttribute:1.0")->
             add("name", pvString)->
             add("value", getFieldCreate()->createVariantUnion())->
             add("descriptor", pvString)->
@@ -38,7 +38,7 @@ epics::pvData::StructureConstPtr createNTNDArrayStructure()
             createStructure();
 
 
-        ntndArrayStructure = fb->setId("uri:ev4:nt/2012/pwd:NTNDArray")->
+        ntndArrayStructure = fb->setId("ev4:nt/NTNDArray:1.0")->
             add("value", valueType)->
             add("codec", codecStruc)->
             add("compressedSize", pvLong)->

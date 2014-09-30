@@ -472,7 +472,7 @@ public:
     {
         // NTURI support
         PVStructure::shared_pointer args(
-                    (arguments->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+                    (arguments->getStructure()->getID() == "ev4:nt/NTURI:1.0") ?
                         arguments->getStructureField("query") :
                         arguments
                         );
@@ -521,13 +521,13 @@ public:
 int32 ServerRPCService::TIMEOUT_SEC = 3;
 Structure::const_shared_pointer ServerRPCService::helpStructure =
         getFieldCreate()->createFieldBuilder()->
-            setId("uri:ev4:nt/2012/pwd:NTScalar")->
+            setId("ev4:nt/NTScalar:1.0")->
             add("value", pvString)->
             createStructure();
 
 Structure::const_shared_pointer ServerRPCService::channelListStructure =
         getFieldCreate()->createFieldBuilder()->
-            setId("uri:ev4:nt/2012/pwd:NTScalarArray")->
+            setId("ev4:nt/NTScalarArray:1.0")->
             addArray("value", pvString)->
             createStructure();
 

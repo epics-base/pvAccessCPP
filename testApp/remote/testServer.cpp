@@ -291,7 +291,7 @@ static epics::pvData::PVStructure::shared_pointer createNTTable(int columnsCount
     PVStructure::shared_pointer result(
                 getPVDataCreate()->createPVStructure(
                     getFieldCreate()->createStructure(
-                        "uri:ev4:nt/2012/pwd:NTTable", tableFieldNames, tableFields)
+                        "ev4:nt/NTTable:1.0", tableFieldNames, tableFields)
                     )
                 );
     result->getSubField<PVStringArray>("labels")->replace(freeze(labels));
@@ -329,7 +329,7 @@ static epics::pvData::PVStructure::shared_pointer createNTNameValue(int columnsC
     PVStructure::shared_pointer result(
                 getPVDataCreate()->createPVStructure(
                     getFieldCreate()->createStructure(
-                        "uri:ev4:nt/2012/pwd:NTNameValue", tableFieldNames, tableFields)
+                        "ev4:nt/NTNameValue:1.0", tableFieldNames, tableFields)
                     )
                 );
     result->getSubField<PVStringArray>("name")->replace(freeze(labels));
@@ -341,7 +341,7 @@ static epics::pvData::PVStructure::shared_pointer createNTAggregate()
 {
     epics::pvData::StructureConstPtr s =
         getFieldCreate()->createFieldBuilder()->
-            setId("uri:ev4:nt/2012/pwd:NTAggregate")->
+            setId("ev4:nt/NTAggregate:1.0")->
             add("value", pvDouble)->
             add("N", pvLong)->
             add("dispersion", pvDouble)->
@@ -360,7 +360,7 @@ static epics::pvData::PVStructure::shared_pointer createNTHistogram()
 {
     epics::pvData::StructureConstPtr s =
         getFieldCreate()->createFieldBuilder()->
-            setId("uri:ev4:nt/2012/pwd:NTHistogram")->
+            setId("ev4:nt/NTHistogram:1.0")->
             addArray("ranges", pvDouble)->
             addArray("value", pvInt)->
             add("timeStamp", getStandardField()->timeStamp())->
@@ -623,23 +623,23 @@ public:
         {
             ScopedLock lock(shared_from_this());
                 
-            if (m_pvStructure->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTTable")
+            if (m_pvStructure->getStructure()->getID() == "ev4:nt/NTTable:1.0")
             {
                 generateNTTableDoubleValues(m_pvStructure);
             }
-            else if (m_pvStructure->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTNameValue")
+            else if (m_pvStructure->getStructure()->getID() == "ev4:nt/NTNameValue:1.0")
             {
                 generateNTNameValueDoubleValues(m_pvStructure);
             }
-            else if (m_pvStructure->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTAggregate")
+            else if (m_pvStructure->getStructure()->getID() == "ev4:nt/NTAggregate:1.0")
             {
                 generateNTAggregateValues(m_pvStructure);
             }
-            else if (m_pvStructure->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTHistogram")
+            else if (m_pvStructure->getStructure()->getID() == "ev4:nt/NTHistogram:1.0")
             {
                 generateNTHistogramValues(m_pvStructure);
             }
-            else if (m_pvStructure->getStructure()->getID() == "uri:ev4:test/2014/binaryCounter")
+            else if (m_pvStructure->getStructure()->getID() == "ev4:test/binaryCounter:1.0")
             {
                 PVBytePtr pvByte = static_pointer_cast<PVByte>(m_valueField);
                 int8 val = pvByte->get() + 1;
@@ -1199,7 +1199,7 @@ static bool handleHelp(
         PVStructure::shared_pointer result(
                     getPVDataCreate()->createPVStructure(
                         getFieldCreate()->createStructure(
-                            "uri:ev4:nt/2012/pwd:NTScalar", fieldNames, fields)
+                            "ev4:nt/NTScalar:1.0", fieldNames, fields)
                         )
                     );
 
@@ -1257,7 +1257,7 @@ public:
         if (channelName == "testNTTable")
         {
             PVStructure::shared_pointer args(
-                        (pvArgument->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+                        (pvArgument->getStructure()->getID() == "ev4:nt/NTURI:1.0") ?
                             pvArgument->getStructureField("query") :
                             pvArgument
                             );
@@ -1287,7 +1287,7 @@ public:
         else if (channelName == "testNTNameValue")
         {
             PVStructure::shared_pointer args(
-                        (pvArgument->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+                        (pvArgument->getStructure()->getID() == "ev4:nt/NTURI:1.0") ?
                             pvArgument->getStructureField("query") :
                             pvArgument
                             );
@@ -1329,7 +1329,7 @@ public:
                 PVStructure::shared_pointer result(
                             getPVDataCreate()->createPVStructure(
                                 getFieldCreate()->createStructure(
-                                    "uri:ev4:nt/2012/pwd:NTNameValue", tableFieldNames, tableFields)
+                                    "ev4:nt/NTNameValue:1.0", tableFieldNames, tableFields)
                                 )
                             );
                 result->getSubField<PVStringArray>("name")->replace(freeze(labels));
@@ -1346,7 +1346,7 @@ public:
         else if (channelName == "testNTMatrix")
         {
             PVStructure::shared_pointer args(
-                        (pvArgument->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+                        (pvArgument->getStructure()->getID() == "ev4:nt/NTURI:1.0") ?
                             pvArgument->getStructureField("query") :
                             pvArgument
                             );
@@ -1382,7 +1382,7 @@ public:
 
                 PVStructure::shared_pointer result(
                             getPVDataCreate()->createPVStructure(
-                                getFieldCreate()->createStructure("uri:ev4:nt/2012/pwd:NTMatrix", fieldNames, fields)
+                                getFieldCreate()->createStructure("ev4:nt/NTMatrix:1.0", fieldNames, fields)
                                 )
                             );
 
@@ -1411,7 +1411,7 @@ public:
         else if (channelName.find("testImage") == 0)
         {
             PVStructure::shared_pointer args(
-                        (pvArgument->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+                        (pvArgument->getStructure()->getID() == "ev4:nt/NTURI:1.0") ?
                             pvArgument->getStructureField("query") :
                             pvArgument
                             );
@@ -1510,7 +1510,7 @@ public:
             if (handleHelp(pvArgument, shared_from_this(), m_channelRPCRequester, helpText))
                 return;
 
-            if (pvArgument->getStructure()->getID() != "uri:ev4:nt/2012/pwd:NTURI")
+            if (pvArgument->getStructure()->getID() != "ev4:nt/NTURI:1.0")
             {
                 PVStructure::shared_pointer nullPtr;
                 Status errorStatus(Status::STATUSTYPE_ERROR, "argument is not a NTURI structure");
@@ -1525,7 +1525,7 @@ public:
         else if (channelName == "testSum") {
 
             PVStructure::shared_pointer args(
-                        (pvArgument->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+                        (pvArgument->getStructure()->getID() == "ev4:nt/NTURI:1.0") ?
                             pvArgument->getStructureField("query") :
                             pvArgument
                             );
@@ -2206,7 +2206,7 @@ protected:
 
                 m_pvStructure =
                         getPVDataCreate()->createPVStructure(
-                            getFieldCreate()->createStructure("uri:ev4:nt/2012/pwd:NTMatrix", fieldNames, fields)
+                            getFieldCreate()->createStructure("ev4:nt/NTMatrix:1.0", fieldNames, fields)
                             );
 
                 // fill with default values
@@ -2242,7 +2242,7 @@ protected:
             {
                 epics::pvData::StructureConstPtr s =
                     getFieldCreate()->createFieldBuilder()->
-                        setId("uri:ev4:test/2014/binaryCounter")->
+                        setId("ev4:test/binaryCounter:1.0")->
                         add("value", pvByte)->
                         add("bit0", pvBoolean)->
                         add("bit1", pvBoolean)->

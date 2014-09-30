@@ -23,7 +23,7 @@ class SumServiceImpl :
     {
         // NTURI support
         PVStructure::shared_pointer args(
-                    (pvArguments->getStructure()->getID() == "uri:ev4:nt/2012/pwd:NTURI") ?
+                    (pvArguments->getStructure()->getID() == "ev4:nt/NTURI:1.0") ?
                         pvArguments->getStructureField("query") :
                         pvArguments
                         );
