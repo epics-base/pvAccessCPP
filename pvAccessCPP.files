@@ -542,3 +542,4 @@ testApp/utils/testAtomicBoolean.cpp
 testApp/utils/testHexDump.cpp
 testApp/utils/testInetAddressUtils.cpp
 testApp/utils/transportRegistryTest.cpp
+pvtoolsSrc/pvlist.cpp
