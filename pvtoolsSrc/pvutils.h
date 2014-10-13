@@ -10,9 +10,11 @@ void convertStructureArray(std::string*, epics::pvData::PVStructureArray * pvdat
 void terseSeparator(char c);
 void terseArrayCount(bool flag);
 std::ostream& terse(std::ostream& o, epics::pvData::PVField::shared_pointer const & pv);
+std::ostream& terseUnion(std::ostream& o, epics::pvData::PVUnion::shared_pointer const & pvUnion);
 std::ostream& terseStructure(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvStructure);
 std::ostream& terseScalarArray(std::ostream& o, epics::pvData::PVScalarArray::shared_pointer const & pvArray);
 std::ostream& terseStructureArray(std::ostream& o, epics::pvData::PVStructureArray::shared_pointer const & pvArray);
+std::ostream& terseUnionArray(std::ostream& o, epics::pvData::PVUnionArray::shared_pointer const & pvArray);
 
 
 /* Converts a hex character to its integer value */

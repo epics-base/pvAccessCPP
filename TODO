@@ -4,8 +4,8 @@
         // should be called without any lock hold
         // TODO in Java as in C++ ? reportChannelStateChange();
 
-- searching of channel with server address specified
+- improve searching of channel with server address specified
 
 - void transportUnresponsive() { not implemented (also in Java)
-- complete authNZ
-- improve RPCClient (as it is in Java)
+- complete authNZ (callback on right change)
+- request event on disconnect/destroy, etc.?

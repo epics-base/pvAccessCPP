@@ -4,6 +4,12 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#ifdef __vxworks
+#include <taskLib.h>
+#endif
+
+#include <sstream>
+
 #include <pv/responseHandlers.h>
 #include <pv/remote.h>
 #include <pv/hexDump.h>
@@ -13,6 +19,7 @@
 #include <pv/byteBuffer.h>
 
 #include <osiSock.h>
+#include <osiProcess.h>
 #include <pv/logger.h>
 
 #include <sstream>
@@ -454,6 +461,7 @@ private:
 
     static Structure::const_shared_pointer helpStructure;
     static Structure::const_shared_pointer channelListStructure;
+    static Structure::const_shared_pointer infoStructure;
 
     static std::string helpString;
 
@@ -513,6 +521,44 @@ public:
 
             return result;
         }
+        else if (op == "info")
+        {
+            PVStructure::shared_pointer result =
+                getPVDataCreate()->createPVStructure(infoStructure);
+
+            // TODO cache hostname in InetAddressUtil
+            char buffer[256];
+            std::string hostName("localhost");
+            if (gethostname(buffer, sizeof(buffer)) == 0)
+                hostName = buffer;
+
+            std::stringstream ret;
+            ret << EPICS_PVA_MAJOR_VERSION << '.' <<
+                   EPICS_PVA_MINOR_VERSION << '.' <<
+                   EPICS_PVA_MAINTENANCE_VERSION;
+            if (EPICS_PVA_DEVELOPMENT_FLAG)
+                ret << "-SNAPSHOT";
+
+            result->getSubField<PVString>("version")->put(ret.str());
+            result->getSubField<PVString>("implLang")->put("cpp");
+            result->getSubField<PVString>("host")->put(hostName);
+
+            std::stringstream sspid;
+#ifdef __vxworks
+            sspid << taskIdSelf();
+#else
+            sspid << getpid();
+#endif
+            result->getSubField<PVString>("process")->put(sspid.str());
+
+            char timeText[64];
+            epicsTimeToStrftime(timeText, 64, "%Y-%m-%dT%H:%M:%S.%03f", &m_serverContext->getStartTime());
+
+            result->getSubField<PVString>("startTime")->put(timeText);
+
+
+            return result;
+        }
         else
             throw RPCRequestException(Status::STATUSTYPE_ERROR, "unsupported operation '" + op + "'.");
     }
@@ -531,14 +577,28 @@ Structure::const_shared_pointer ServerRPCService::channelListStructure =
             addArray("value", pvString)->
             createStructure();
 
+Structure::const_shared_pointer ServerRPCService::infoStructure =
+        getFieldCreate()->createFieldBuilder()->
+                add("process", pvString)->
+                add("startTime", pvString)->
+                add("version", pvString)->
+                add("implLang", pvString)->
+                add("host", pvString)->
+//                add("os", pvString)->
+//                add("arch", pvString)->
+//                add("CPUs", pvInt)->
+                createStructure();
+
+
 std::string ServerRPCService::helpString =
         "pvAccess server RPC service.\n"
         "arguments:\n"
         "\tstring op\toperation to execute\n"
         "\n"
         "\toperations:\n"
+        "\t\tinfo\t\treturns some information about the server\n"
         "\t\tchannels\treturns a list of 'static' channels the server can provide\n"
-        "\t\t\t (no arguments)\n"
+//        "\t\t\t (no arguments)\n"
         "\n";
 
 std::string ServerCreateChannelHandler::SERVER_CHANNEL_NAME = "server";

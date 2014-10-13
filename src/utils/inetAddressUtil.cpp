@@ -70,13 +70,18 @@ bool decodeAsIPv6Address(ByteBuffer* buffer, osiSockAddr* address) {
     // first 80-bit are 0
     if (buffer->getLong() != 0) return false;
     if (buffer->getShort() != 0) return false;
-    if (buffer->getShort() != (int16)0xFFFF) return false;
+    int16 ffff = buffer->getShort();
+    // allow all zeros address
+    //if (ffff != (int16)0xFFFF) return false;
 
     uint32_t ipv4Addr =
         ((uint32_t)(buffer->getByte()&0xFF))<<24 |
         ((uint32_t)(buffer->getByte()&0xFF))<<16 |
         ((uint32_t)(buffer->getByte()&0xFF))<<8  |
         ((uint32_t)(buffer->getByte()&0xFF));
+
+    if (ffff != (int16)0xFFFF && ipv4Addr != (uint32_t)0)
+        return false;
 
     address->ia.sin_addr.s_addr = htonl(ipv4Addr);
 

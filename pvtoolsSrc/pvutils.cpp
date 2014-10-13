@@ -86,6 +86,12 @@ std::ostream& terse(std::ostream& o, PVField::shared_pointer const & pv)
     case structureArray:
     	return terseStructureArray(o, static_pointer_cast<PVStructureArray>(pv));
     	break;
+    case union_:
+        return terseUnion(o, static_pointer_cast<PVUnion>(pv));
+        break;
+    case unionArray:
+        return terseUnionArray(o, static_pointer_cast<PVUnionArray>(pv));
+        break;
     default:
         std::ostringstream msg("unknown Field type: ");
         msg << type;
@@ -95,6 +101,12 @@ std::ostream& terse(std::ostream& o, PVField::shared_pointer const & pv)
 
 std::ostream& terseStructure(std::ostream& o, PVStructure::shared_pointer const & pvStructure)
 {
+    if (!pvStructure)
+    {
+        o << "(null)";
+        return o;
+    }
+
     PVFieldPtrArray fieldsData = pvStructure->getPVFields();
 	size_t length = pvStructure->getStructure()->getNumberFields();
 	bool first = true;
@@ -107,6 +119,17 @@ std::ostream& terseStructure(std::ostream& o, PVStructure::shared_pointer const 
 		terse(o, fieldsData[i]);
 	}
 	return o;
+}
+
+std::ostream& terseUnion(std::ostream& o, PVUnion::shared_pointer const & pvUnion)
+{
+    if (!pvUnion || !pvUnion->get())
+    {
+        o << "(null)";
+        return o;
+    }
+
+    return terse(o, pvUnion->get());
 }
 
 std::ostream& terseScalarArray(std::ostream& o, PVScalarArray::shared_pointer const & pvArray)
@@ -166,6 +189,31 @@ std::ostream& terseStructureArray(std::ostream& o, PVStructureArray::shared_poin
     return o;
 }
 
+std::ostream& terseUnionArray(std::ostream& o, PVUnionArray::shared_pointer const & pvArray)
+{
+    size_t length = pvArray->getLength();
+    if (arrayCountFlag)
+    {
+        if (length<=0)
+        {
+            o << '0';
+            return o;
+        }
+        o << length << separator;
+    }
+
+    PVUnionArray::const_svector data = pvArray->view();
+    bool first = true;
+    for (size_t i = 0; i < length; i++) {
+        if (first)
+            first = false;
+        else
+            o << separator;
+
+        terseUnion(o, data[i]);
+    }
+    return o;
+}
 
 
 

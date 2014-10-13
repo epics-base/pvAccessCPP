@@ -40,9 +40,12 @@ ServerContextImpl::ServerContextImpl():
 				_channelProviderRegistry(),
 				_channelProviderNames(PVACCESS_DEFAULT_PROVIDER),
 				_channelProviders(),
-				_beaconServerStatusProvider()
+                _beaconServerStatusProvider(),
+                _startTime()
 
 {
+    epicsTimeGetCurrent(&_startTime);
+
     // TODO maybe there is a better place for this (when there will be some factory)
     epicsSignalInstallSigAlarmIgnore ();
     epicsSignalInstallSigPipeIgnore ();
@@ -673,6 +676,12 @@ void ServerContextImpl::newServerDetected()
 {
     // not used
 }
+
+epicsTimeStamp& ServerContextImpl::getStartTime()
+{
+    return _startTime;
+}
+
 
 std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& ServerContextImpl::getSecurityPlugins()
 {

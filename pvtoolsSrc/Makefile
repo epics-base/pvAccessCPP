@@ -14,6 +14,10 @@ PROD_HOST += pvinfo
 pvinfo_SRCS += pvinfo.cpp
 pvinfo_LIBS += pvAccess pvData pvMB Com
 
+PROD_HOST += pvlist
+pvlist_SRCS += pvlist.cpp
+pvlist_LIBS += pvAccess pvData pvMB Com
+
 PROD_HOST += eget
 eget_SRCS += eget.cpp
 eget_LIBS += pvAccess pvData pvMB ca Com
