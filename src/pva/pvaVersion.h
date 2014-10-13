@@ -25,7 +25,7 @@
 // module version
 // TODO to be generated, etc.
 #define EPICS_PVA_MAJOR_VERSION 4
-#define EPICS_PVA_MINOR_VERSION 0
+#define EPICS_PVA_MINOR_VERSION 1 
 #define EPICS_PVA_MAINTENANCE_VERSION 0
 #define EPICS_PVA_DEVELOPMENT_FLAG 1
 
