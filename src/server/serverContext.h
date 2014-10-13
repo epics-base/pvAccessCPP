@@ -92,6 +92,8 @@ public:
 	 */
 	virtual void dispose() = 0;
 
+    virtual epicsTimeStamp& getStartTime() = 0;
+
 	// ************************************************************************** //
 	// **************************** [ Plugins ] ********************************* //
 	// ************************************************************************** //
@@ -145,6 +147,9 @@ public:
 
 
     BlockingUDPTransport::shared_pointer getLocalMulticastTransport();
+
+    epicsTimeStamp& getStartTime();
+
 
     /**
      * Version.
@@ -440,6 +445,9 @@ private:
 	void destroyAllTransports();
 
 	Configuration::shared_pointer configuration;
+
+    epicsTimeStamp _startTime;
+
 };
 
 epicsShareExtern ServerContext::shared_pointer startPVAServer(
