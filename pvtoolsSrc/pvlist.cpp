@@ -526,6 +526,8 @@ int main (int argc, char *argv[])
         }
     }
 
+    bool allOK = true;
+
     //if (!quiet)
     //    fprintf(stderr, "Searching...\n");
 
@@ -568,6 +570,7 @@ int main (int argc, char *argv[])
                 serverAddress[0] == '0' &&
                 serverAddress[1] == 'x')
             {
+                bool resolved = false;
                 for (ServerMap::const_iterator iter = serverMap.begin();
                      iter != serverMap.end();
                      iter++)
@@ -580,8 +583,16 @@ int main (int argc, char *argv[])
 
                         // TODO for now we take only first server address
                         serverAddress = inetAddressToString(entry.addresses[0]);
+                        resolved = true;
                         break;
                     }
+                }
+
+                if (!resolved)
+                {
+                    fprintf(stderr, "Failed to resolve GUID '%s'!\n", serverAddress.c_str());
+                    allOK = false;
+                    continue;
                 }
             }
 
@@ -606,7 +617,7 @@ int main (int argc, char *argv[])
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
                 fprintf(stderr, "Failed to exec 'eget': %s\n", errStr);
-                return 1;
+                allOK = false;
             }
 
             pclose(egetpipe);
@@ -614,5 +625,5 @@ int main (int argc, char *argv[])
         }
     }
 
-    return 0;
+    return allOK ? 0 : 1;
 }
