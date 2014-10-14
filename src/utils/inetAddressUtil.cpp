@@ -43,6 +43,7 @@ InetAddrVector* getBroadcastAddresses(SOCKET sock,
     {
         osiSockAddrNode * sn = (osiSockAddrNode *)n;
         sn->addr.ia.sin_port = htons(defaultPort);
+        // TODO discover possible duplicates
         v->push_back(sn->addr);
     }
     ellFree(&as);
