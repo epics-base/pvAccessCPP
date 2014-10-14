@@ -13,6 +13,7 @@ pvput_LIBS += pvAccess pvData pvMB Com
 PROD_HOST += pvinfo
 pvinfo_SRCS += pvinfo.cpp
 pvinfo_LIBS += pvAccess pvData pvMB Com
+pvinfo_SYS_LIBS_WIN32 += ws2_32
 
 PROD_HOST += pvlist
 pvlist_SRCS += pvlist.cpp
