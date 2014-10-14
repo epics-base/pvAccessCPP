@@ -17,6 +17,7 @@ pvinfo_LIBS += pvAccess pvData pvMB Com
 PROD_HOST += pvlist
 pvlist_SRCS += pvlist.cpp
 pvlist_LIBS += pvAccess pvData pvMB Com
+pvlist_SYS_LIBS_WIN32 += ws2_32
 
 PROD_HOST += eget
 eget_SRCS += eget.cpp

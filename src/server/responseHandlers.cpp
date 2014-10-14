@@ -8,6 +8,10 @@
 #include <taskLib.h>
 #endif
 
+#ifdef _WIN32
+#include <process.h>
+#endif
+
 #include <sstream>
 
 #include <pv/responseHandlers.h>
@@ -546,6 +550,8 @@ public:
             std::stringstream sspid;
 #ifdef __vxworks
             sspid << taskIdSelf();
+#elif defined(_WIN32)
+            sspid << _getpid();
 #else
             sspid << getpid();
 #endif

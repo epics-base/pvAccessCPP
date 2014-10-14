@@ -23,6 +23,16 @@
 #include <pv/inetAddressUtil.h>
 #include <pv/configuration.h>
 #include <pv/remote.h>
+#include <pv/rpcClient.h>
+
+#ifdef _WIN32
+FILE *popen(const char *command, const char *mode) {
+    return _popen(command, mode);
+}
+int pclose(FILE *stream) {
+    return _pclose(stream);
+}
+#endif
 
 using namespace std;
 using namespace std::tr1;
@@ -127,7 +137,7 @@ void processSearchResponse(osiSockAddr const & responseFrom, ByteBuffer & receiv
         return;
 
 
-    GUID guid;
+    epics::pvAccess::GUID guid;
     receiveBuffer.get(guid.value, 0, sizeof(guid.value));
 
     /*int32 searchSequenceId = */receiveBuffer.getInt();
@@ -372,26 +382,6 @@ bool discoverServers(double timeOut)
 
     }
 
-
-    for (ServerMap::const_iterator iter = serverMap.begin();
-         iter != serverMap.end();
-         iter++)
-    {
-        const ServerEntry& entry = iter->second;
-
-        cout << "GUID 0x" << entry.guid << ", version " << entry.version << ": "
-             << entry.protocol << "@[";
-
-        size_t count = entry.addresses.size();
-        for (size_t i = 0; i < count; i++)
-        {
-            cout << inetAddressToString(entry.addresses[i]);
-            if (i < (count-1))
-                cout << ", ";
-        }
-        cout << ']' << endl;
-    }
-
     // TODO shutdown sockets?
     // TODO this resouce is not released on failure
     epicsSocketDestroy(socket);
@@ -404,15 +394,20 @@ bool discoverServers(double timeOut)
 
 void usage (void)
 {
-    fprintf (stderr, "\nUsage: pvlist [options] <names>...\n\n"
+    fprintf (stderr, "\nUsage: pvlist [options] [<server address or GUID starting with '0x'>]...\n\n"
     "  -h: Help: Print this message\n"
     "options:\n"
+    "  -i                 Print server info (when server address list/GUID is given)\n"
     "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
     "  -q:                Quiet mode, print only error messages\n"
     "  -d:                Enable debug output\n"
-    "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
+//    "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
 //    "  -f <input file>:   Use <input file> as an input that provides a list input parameters(s) to be read, use '-' for stdin\n"
-    "\nexample: pvinfo ...\n\n"
+    "\nexamples:\n"
+             "\tpvinfo\n"
+             "\tpvinfo ioc0001\n"
+             "\tpvinfo 10.5.1.205:10000\n"
+             "\tpvinfo 0x83DE3C540000000000BF351F\n\n"
              , DEFAULT_TIMEOUT);
 }
 
@@ -439,6 +434,7 @@ int main (int argc, char *argv[])
     bool quiet = false;
     double timeOut = DEFAULT_TIMEOUT;
    // char fieldSeparator = ' ';
+    bool printInfo = false;
 
     /*
     istream* inputStream = 0;
@@ -447,7 +443,7 @@ int main (int argc, char *argv[])
     */
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hw:qdF:f:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hw:qdF:f:i")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -465,6 +461,9 @@ int main (int argc, char *argv[])
             break;
         case 'd':               /* Debug log level */
             debug = true;
+            break;
+        case 'i':               /* Print server info */
+            printInfo = true;
             break;
             /*
         case 'F':               // Store this for output formatting
@@ -510,13 +509,121 @@ int main (int argc, char *argv[])
 
     SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
 
-    if (!quiet)
-        fprintf(stderr, "Searching...\n");
+    bool noArgs = (optind == argc);
 
-    discoverServers(timeOut);
+    bool byGUIDSearch = false;
+    for (int i = optind; i < argc; i++)
+    {
+        string serverAddress = argv[i];
 
-    if (!quiet)
-        fprintf(stderr, "done.\n");
+        // by GUID search
+        if (serverAddress.length() == 26 &&
+            serverAddress[0] == '0' &&
+            serverAddress[1] == 'x')
+        {
+            byGUIDSearch = true;
+            break;
+        }
+    }
 
-    return 0;
+    bool allOK = true;
+
+    //if (!quiet)
+    //    fprintf(stderr, "Searching...\n");
+
+    if (noArgs || byGUIDSearch)
+        discoverServers(timeOut);
+
+    //if (!quiet)
+    //    fprintf(stderr, "done.\n");
+
+    // just list all the discovered servers
+    if (noArgs)
+    {
+        for (ServerMap::const_iterator iter = serverMap.begin();
+             iter != serverMap.end();
+             iter++)
+        {
+            const ServerEntry& entry = iter->second;
+
+            cout << "GUID 0x" << entry.guid << ", version " << (int)entry.version << ": "
+                 << entry.protocol << "@[";
+
+            size_t count = entry.addresses.size();
+            for (size_t i = 0; i < count; i++)
+            {
+                cout << inetAddressToString(entry.addresses[i]);
+                if (i < (count-1))
+                    cout << ", ";
+            }
+            cout << ']' << endl;
+        }
+    }
+    else
+    {
+        for (int i = optind; i < argc; i++)
+        {
+            string serverAddress = argv[i];
+
+            // by GUID search
+            if (serverAddress.length() == 26 &&
+                serverAddress[0] == '0' &&
+                serverAddress[1] == 'x')
+            {
+                bool resolved = false;
+                for (ServerMap::const_iterator iter = serverMap.begin();
+                     iter != serverMap.end();
+                     iter++)
+                {
+                    const ServerEntry& entry = iter->second;
+
+                    if (strncmp(entry.guid.c_str(), &(serverAddress[2]), 24) == 0)
+                    {
+                        // found match
+
+                        // TODO for now we take only first server address
+                        serverAddress = inetAddressToString(entry.addresses[0]);
+                        resolved = true;
+                        break;
+                    }
+                }
+
+                if (!resolved)
+                {
+                    fprintf(stderr, "Failed to resolve GUID '%s'!\n", serverAddress.c_str());
+                    allOK = false;
+                    continue;
+                }
+            }
+
+            // TODO for now we call eget utility
+            // TODO timeOut
+            string cmd = "eget -";
+            if (debug)
+                cmd =+ 'd';
+            if (quiet)
+                cmd += 'q';
+            if (printInfo)
+                cmd += 'n';
+            cmd += "s pva://" + serverAddress + "/server?op=";
+            if (printInfo)
+                cmd += "info";
+            else
+                cmd += "channels";
+
+            FILE* egetpipe = popen (cmd.c_str(), "w");
+            if (!egetpipe)
+            {
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                fprintf(stderr, "Failed to exec 'eget': %s\n", errStr);
+                allOK = false;
+            }
+
+            pclose(egetpipe);
+
+        }
+    }
+
+    return allOK ? 0 : 1;
 }
