@@ -28,6 +28,9 @@ using namespace std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
+enum EnumMode { AutoEnum, NumberEnum, StringEnum };
+EnumMode enumMode = AutoEnum;
+
 size_t fromString(PVScalarArrayPtr const &pv, StringArray const & from, size_t fromStartIndex = 0)
 {
 	int processed = 0;
@@ -98,8 +101,155 @@ size_t fromString(PVStructureArrayPtr const &pv, StringArray const & from, size_
     return processed;
 }
 
+size_t fromString(PVUnionArrayPtr const & pvUnionArray, StringArray const & from, size_t fromStartIndex);
+
+size_t fromString(PVUnionPtr const & pvUnion, StringArray const & from, size_t fromStartIndex = 0)
+{
+    if (pvUnion->getUnion()->isVariant())
+        throw std::runtime_error("cannot handle variant unions");
+
+    size_t fromValueCount = from.size();
+
+    if (fromStartIndex >= fromValueCount)
+        throw std::runtime_error("not enough of values");
+
+    string selector = from[fromStartIndex++];
+    PVFieldPtr fieldField = pvUnion->select(selector);
+    if (!fieldField)
+        throw std::runtime_error("invalid union selector value '" + selector + "'");
+
+    size_t processed = 1;
+
+    try
+    {
+        Type type = fieldField->getField()->getType();
+        if(type==structure) {
+            PVStructurePtr pv = static_pointer_cast<PVStructure>(fieldField);
+            size_t count = fromString(pv, from, fromStartIndex);
+            processed += count;
+        }
+        else if(type==scalarArray) {
+            PVScalarArrayPtr pv = static_pointer_cast<PVScalarArray>(fieldField);
+            size_t count = fromString(pv, from, fromStartIndex);
+            processed += count;
+        }
+        else if(type==scalar) {
+
+            if (fromStartIndex >= fromValueCount)
+                throw std::runtime_error("not enough of values");
+
+            PVScalarPtr pv = static_pointer_cast<PVScalar>(fieldField);
+            getConvert()->fromString(pv, from[fromStartIndex]);
+            processed++;
+        }
+        else if(type==structureArray) {
+            PVStructureArrayPtr pv = static_pointer_cast<PVStructureArray>(fieldField);
+            size_t count = fromString(pv, from, fromStartIndex);
+            processed += count;
+        }
+        else if(type==union_) {
+            PVUnionPtr pv = static_pointer_cast<PVUnion>(fieldField);
+            size_t count = fromString(pv, from, fromStartIndex);
+            processed += count;
+        }
+        else if(type==unionArray) {
+            PVUnionArrayPtr pv = static_pointer_cast<PVUnionArray>(fieldField);
+            size_t count = fromString(pv, from, fromStartIndex);
+            processed += count;
+        }
+        else {
+            std::ostringstream oss;
+            oss << "fromString unsupported fieldType " << type;
+            throw std::logic_error(oss.str());
+        }
+    }
+    catch (std::exception &ex)
+    {
+        std::ostringstream os;
+        os << "failed to parse '" << fieldField->getField()->getID() << ' ' << fieldField->getFieldName() << "'";
+        os << ": " << ex.what();
+        throw std::runtime_error(os.str());
+    }
+
+    return processed;
+}
+
+size_t fromString(PVUnionArrayPtr const &pv, StringArray const & from, size_t fromStartIndex = 0)
+{
+    int processed = 0;
+    size_t fromValueCount = from.size();
+
+    // first get count
+    if (fromStartIndex >= fromValueCount)
+        throw std::runtime_error("not enough of values");
+
+    size_t numberOfUnions;
+    istringstream iss(from[fromStartIndex]);
+    iss >> numberOfUnions;
+    // not fail and entire value is parsed (e.g. to detect 1.2 parsing to 1)
+    if (iss.fail() || !iss.eof())
+        throw runtime_error("failed to parse element count value (uint) of field '" + pv->getFieldName() + "' from string value '" + from[fromStartIndex] + "'");
+    fromStartIndex++;
+    processed++;
+
+    PVUnionArray::svector pvUnions;
+    pvUnions.reserve(numberOfUnions);
+
+    PVDataCreatePtr pvDataCreate = getPVDataCreate();
+    for (size_t i = 0; i < numberOfUnions; ++i)
+    {
+        PVUnionPtr pvUnion = pvDataCreate->createPVUnion(pv->getUnionArray()->getUnion());
+        size_t count = fromString(pvUnion, from, fromStartIndex);
+        processed += count;
+        fromStartIndex += count;
+        pvUnions.push_back(pvUnion);
+    }
+
+    pv->replace(freeze(pvUnions));
+
+    return processed;
+}
+
 size_t fromString(PVStructurePtr const & pvStructure, StringArray const & from, size_t fromStartIndex = 0)
 {
+    // handle enum in a special way
+    if (pvStructure->getStructure()->getID() == "enum_t")
+    {
+        int32 index = -1;
+        PVInt::shared_pointer pvIndex = pvStructure->getSubField<PVInt>("index");
+        if (!pvIndex)
+            throw std::runtime_error("enum_t structure does not have 'int index' field");
+
+        PVStringArray::shared_pointer pvChoices = pvStructure->getSubField<PVStringArray>("choices");
+        if (!pvChoices)
+            throw std::runtime_error("enum_t structure does not have 'string choices[]' field");
+        PVStringArray::const_svector choices(pvChoices->view());
+
+        if (enumMode == AutoEnum || enumMode == StringEnum)
+        {
+            shared_vector<string>::const_iterator it = std::find(choices.begin(), choices.end(), from[fromStartIndex]);
+            if (it != choices.end())
+                index = static_cast<int32>(it - choices.begin());
+            else if (enumMode == StringEnum)
+                throw runtime_error("enum string value '" + from[fromStartIndex] + "' invalid");
+        }
+
+        if ((enumMode == AutoEnum && index == -1) || enumMode == NumberEnum)
+        {
+            istringstream iss(from[fromStartIndex]);
+            iss >> index;
+            // not fail and entire value is parsed (e.g. to detect 1.2 parsing to 1)
+            if (iss.fail() || !iss.eof())
+                throw runtime_error("enum value '" + from[fromStartIndex] + "' invalid");
+
+            if (index < 0 || index >= static_cast<int32>(choices.size()))
+                throw runtime_error("index '" + from[fromStartIndex] + "' out of bounds");
+        }
+
+        pvIndex->put(index);
+        return 1;
+    }
+
     size_t processed = 0;
     size_t fromValueCount = from.size();
 
@@ -112,7 +262,6 @@ size_t fromString(PVStructurePtr const & pvStructure, StringArray const & from, 
             try
             {
                 Type type = fieldField->getField()->getType();
-                // TODO union/unionArray support
                 if(type==structure) {
                     PVStructurePtr pv = static_pointer_cast<PVStructure>(fieldField);
                     size_t count = fromString(pv, from, fromStartIndex);
@@ -131,8 +280,9 @@ size_t fromString(PVStructurePtr const & pvStructure, StringArray const & from, 
                 		throw std::runtime_error("not enough of values");
 
             	    PVScalarPtr pv = static_pointer_cast<PVScalar>(fieldField);
-                    getConvert()->fromString(pv, from[fromStartIndex++]);
+                    getConvert()->fromString(pv, from[fromStartIndex]);
                     processed++;
+                    fromStartIndex++;
                 }
                 else if(type==structureArray) {
                     PVStructureArrayPtr pv = static_pointer_cast<PVStructureArray>(fieldField);
@@ -140,8 +290,19 @@ size_t fromString(PVStructurePtr const & pvStructure, StringArray const & from, 
                     processed += count;
                     fromStartIndex += count;
                 }
+                else if(type==union_) {
+                    PVUnionPtr pv = static_pointer_cast<PVUnion>(fieldField);
+                    size_t count = fromString(pv, from, fromStartIndex);
+                    processed += count;
+                    fromStartIndex += count;
+                }
+                else if(type==unionArray) {
+                    PVUnionArrayPtr pv = static_pointer_cast<PVUnionArray>(fieldField);
+                    size_t count = fromString(pv, from, fromStartIndex);
+                    processed += count;
+                    fromStartIndex += count;
+                }
                 else {
-                    // union/unionArray not supported
                     std::ostringstream oss;
                     oss << "fromString unsupported fieldType " << type;
                     throw std::logic_error(oss.str());
@@ -159,8 +320,6 @@ size_t fromString(PVStructurePtr const & pvStructure, StringArray const & from, 
 
     return processed;
 }
-
-
 
 #define DEFAULT_TIMEOUT 3.0
 #define DEFAULT_REQUEST "field(value)"
@@ -185,9 +344,14 @@ void usage (void)
     "  -d:                Enable debug output\n"
     "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
     "  -f <input file>:   Use <input file> as an input that provides a list PV name(s) to be read, use '-' for stdin\n"
+    " enum format:\n"
+    "  default: Auto - try value as enum string, then as index number\n"
+    "  -n: Force enum interpretation of values as numbers\n"
+    "  -s: Force enum interpretation of values as strings\n"
     "\nexample: pvput double01 1.234\n\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
+
 
 void printValue(std::string const & channelName, PVStructure::shared_pointer const & pv)
 {
@@ -416,7 +580,7 @@ int main (int argc, char *argv[])
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
     putenv(const_cast<char*>("POSIXLY_CORRECT="));            /* Behave correct on GNU getopt systems; e.g. handle negative numbers */
 
-    while ((opt = getopt(argc, argv, ":hr:w:tqdF:f:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:tqdF:f:ns")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -468,6 +632,12 @@ int main (int argc, char *argv[])
             fromStream = true;
             break;
         }
+        case 'n':
+            enumMode = NumberEnum;
+            break;
+        case 's':
+            enumMode = StringEnum;
+            break;
         case '?':
             fprintf(stderr,
                     "Unrecognized option: '-%c'. ('pvput -h' for help.)\n",
