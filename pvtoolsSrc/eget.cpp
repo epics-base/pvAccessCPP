@@ -864,7 +864,9 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
             else
             {
                 std::cerr << "non-normative type" << std::endl;
-                o << *(pv.get()) << std::endl;
+                //o << *(pv.get()) << std::endl;
+                pvutil_ostream myos(std::cout.rdbuf());
+                myos << *(pv.get()) << std::endl;
             }
 
             return;
@@ -872,14 +874,21 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
     }
     
     // no ID, just dump
-    o << *(pv.get()) << std::endl;
+    pvutil_ostream myos(std::cout.rdbuf());
+    myos << *(pv.get()) << std::endl;
 }
 
 void dumpValue(std::string const & channelName, PVField::shared_pointer const & pv)
 {
     if (!channelName.empty())
         std::cout << channelName << std::endl;
-    std::cout << *(pv.get()) << std::endl << std::endl;
+    //std::cout << *(pv.get()) << std::endl << std::endl;
+
+    pvutil_ostream myos(std::cout.rdbuf());
+    if (pv->getField()->getType() == structure)
+        myos << *(static_pointer_cast<PVStructure>(pv).get()) << std::endl << std::endl;
+    else
+        myos << *(pv.get()) << std::endl << std::endl;
 }
 
 void printValue(std::string const & channelName, PVStructure::shared_pointer const & pv, bool forceTerseWithName = false)
@@ -2085,7 +2094,11 @@ int main (int argc, char *argv[])
                         if (rpcRequesterImpl->getLastResponse().get() == 0)
                             std::cout << "(null)" << std::endl;
                         else
-                            std::cout << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
+                        {
+                            //std::cout << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
+                            pvutil_ostream myos(std::cout.rdbuf());
+                            myos << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
+                        }
                     }
                     else
                         formatNT(std::cout, rpcRequesterImpl->getLastResponse());

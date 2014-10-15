@@ -71,16 +71,30 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
         if (value.get() == 0)
         {
         	std::cerr << "no 'value' field" << std::endl;
-            std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+            //std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+            pvutil_ostream myos(std::cout.rdbuf());
+            myos << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
         }
         else
         {
 			Type valueType = value->getField()->getType();
 			if (valueType != scalar && valueType != scalarArray)
 			{
-				// switch to structure mode
-				std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
-			}
+                // switch to structure mode, unless it's NTEnum
+                if (value->getField()->getID() == "enum_t")
+                {
+                    std::cout << std::setw(30) << std::left << channelName;
+                    std::cout << fieldSeparator;
+                    printEnumT(std::cout, static_pointer_cast<PVStructure>(value));
+                    std::cout << std::endl;
+                }
+                else
+                {
+                    //std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+                    pvutil_ostream myos(std::cout.rdbuf());
+                    myos << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+                }
+            }
 			else
 			{
 				if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
@@ -98,10 +112,9 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
         terseStructure(std::cout, pv) << std::endl;
     else
     {
-        std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
-
-        //pvutil_ostream myos(std::cout.rdbuf());
-        //myos << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+        //std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+        pvutil_ostream myos(std::cout.rdbuf());
+        myos << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
     }
 }
 
@@ -262,17 +275,31 @@ class MonitorRequesterImpl : public MonitorRequester
                 {
                 	std::cerr << "no 'value' field" << std::endl;
                 	std::cout << m_channelName << std::endl;
-                    std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                    //std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                    pvutil_ostream myos(std::cout.rdbuf());
+                    myos << *(element->pvStructurePtr.get()) << std::endl << std::endl;
                 }
                 else
                 {
 					Type valueType = value->getField()->getType();
 					if (valueType != scalar && valueType != scalarArray)
 					{
-						// switch to structure mode
-						std::cout << m_channelName << std::endl;
-						std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
-					}
+                        // switch to structure mode, unless it's NTEnum
+                        if (value->getField()->getID() == "enum_t")
+                        {
+                            std::cout << std::setw(30) << std::left << m_channelName;
+                            std::cout << fieldSeparator;
+                            printEnumT(std::cout, static_pointer_cast<PVStructure>(value));
+                            std::cout << std::endl;
+                        }
+                        else
+                        {
+                            std::cout << m_channelName << std::endl;
+                            //std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                            pvutil_ostream myos(std::cout.rdbuf());
+                            myos << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                        }
+                    }
 					else
 					{
 						if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
@@ -300,7 +327,9 @@ class MonitorRequesterImpl : public MonitorRequester
             else
             {
             	std::cout << m_channelName << std::endl;
-                std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                //std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                pvutil_ostream myos(std::cout.rdbuf());
+                myos << *(element->pvStructurePtr.get()) << std::endl << std::endl;
             }
 
 			monitor->release(element);
