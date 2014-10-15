@@ -28,8 +28,9 @@ using namespace std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-enum EnumMode { AutoEnum, NumberEnum, StringEnum };
-EnumMode enumMode = AutoEnum;
+//EnumMode enumMode = AutoEnum;
+
+size_t fromString(PVFieldPtr const & pv, StringArray const & from, size_t fromStartIndex);
 
 size_t fromString(PVScalarArrayPtr const &pv, StringArray const & from, size_t fromStartIndex = 0)
 {
@@ -114,64 +115,12 @@ size_t fromString(PVUnionPtr const & pvUnion, StringArray const & from, size_t f
         throw std::runtime_error("not enough of values");
 
     string selector = from[fromStartIndex++];
-    PVFieldPtr fieldField = pvUnion->select(selector);
-    if (!fieldField)
+    PVFieldPtr pv = pvUnion->select(selector);
+    if (!pv)
         throw std::runtime_error("invalid union selector value '" + selector + "'");
 
-    size_t processed = 1;
-
-    try
-    {
-        Type type = fieldField->getField()->getType();
-        if(type==structure) {
-            PVStructurePtr pv = static_pointer_cast<PVStructure>(fieldField);
-            size_t count = fromString(pv, from, fromStartIndex);
-            processed += count;
-        }
-        else if(type==scalarArray) {
-            PVScalarArrayPtr pv = static_pointer_cast<PVScalarArray>(fieldField);
-            size_t count = fromString(pv, from, fromStartIndex);
-            processed += count;
-        }
-        else if(type==scalar) {
-
-            if (fromStartIndex >= fromValueCount)
-                throw std::runtime_error("not enough of values");
-
-            PVScalarPtr pv = static_pointer_cast<PVScalar>(fieldField);
-            getConvert()->fromString(pv, from[fromStartIndex]);
-            processed++;
-        }
-        else if(type==structureArray) {
-            PVStructureArrayPtr pv = static_pointer_cast<PVStructureArray>(fieldField);
-            size_t count = fromString(pv, from, fromStartIndex);
-            processed += count;
-        }
-        else if(type==union_) {
-            PVUnionPtr pv = static_pointer_cast<PVUnion>(fieldField);
-            size_t count = fromString(pv, from, fromStartIndex);
-            processed += count;
-        }
-        else if(type==unionArray) {
-            PVUnionArrayPtr pv = static_pointer_cast<PVUnionArray>(fieldField);
-            size_t count = fromString(pv, from, fromStartIndex);
-            processed += count;
-        }
-        else {
-            std::ostringstream oss;
-            oss << "fromString unsupported fieldType " << type;
-            throw std::logic_error(oss.str());
-        }
-    }
-    catch (std::exception &ex)
-    {
-        std::ostringstream os;
-        os << "failed to parse '" << fieldField->getField()->getID() << ' ' << fieldField->getFieldName() << "'";
-        os << ": " << ex.what();
-        throw std::runtime_error(os.str());
-    }
-
-    return processed;
+    size_t processed = fromString(pv, from, fromStartIndex);
+    return processed + 1;
 }
 
 size_t fromString(PVUnionArrayPtr const &pv, StringArray const & from, size_t fromStartIndex = 0)
@@ -251,75 +200,67 @@ size_t fromString(PVStructurePtr const & pvStructure, StringArray const & from, 
     }
 
     size_t processed = 0;
-    size_t fromValueCount = from.size();
 
     PVFieldPtrArray const & fieldsData = pvStructure->getPVFields();
     if (fieldsData.size() != 0) {
         size_t length = pvStructure->getStructure()->getNumberFields();
         for(size_t i = 0; i < length; i++) {
-            PVFieldPtr fieldField = fieldsData[i];
-
-            try
-            {
-                Type type = fieldField->getField()->getType();
-                if(type==structure) {
-                    PVStructurePtr pv = static_pointer_cast<PVStructure>(fieldField);
-                    size_t count = fromString(pv, from, fromStartIndex);
-                    processed += count;
-                    fromStartIndex += count;
-                }
-                else if(type==scalarArray) {
-                    PVScalarArrayPtr pv = static_pointer_cast<PVScalarArray>(fieldField);
-                    size_t count = fromString(pv, from, fromStartIndex);
-                    processed += count;
-                    fromStartIndex += count;
-                }
-                else if(type==scalar) {
-    
-                	if (fromStartIndex >= fromValueCount)
-                		throw std::runtime_error("not enough of values");
-
-            	    PVScalarPtr pv = static_pointer_cast<PVScalar>(fieldField);
-                    getConvert()->fromString(pv, from[fromStartIndex]);
-                    processed++;
-                    fromStartIndex++;
-                }
-                else if(type==structureArray) {
-                    PVStructureArrayPtr pv = static_pointer_cast<PVStructureArray>(fieldField);
-                    size_t count = fromString(pv, from, fromStartIndex);
-                    processed += count;
-                    fromStartIndex += count;
-                }
-                else if(type==union_) {
-                    PVUnionPtr pv = static_pointer_cast<PVUnion>(fieldField);
-                    size_t count = fromString(pv, from, fromStartIndex);
-                    processed += count;
-                    fromStartIndex += count;
-                }
-                else if(type==unionArray) {
-                    PVUnionArrayPtr pv = static_pointer_cast<PVUnionArray>(fieldField);
-                    size_t count = fromString(pv, from, fromStartIndex);
-                    processed += count;
-                    fromStartIndex += count;
-                }
-                else {
-                    std::ostringstream oss;
-                    oss << "fromString unsupported fieldType " << type;
-                    throw std::logic_error(oss.str());
-                }
-            }
-            catch (std::exception &ex)
-            {
-                std::ostringstream os;
-                os << "failed to parse '" << fieldField->getField()->getID() << ' ' << fieldField->getFieldName() << "'";
-                os << ": " << ex.what();
-                throw std::runtime_error(os.str());
-            }
+            size_t count = fromString(fieldsData[i], from, fromStartIndex);
+            processed += count;
+            fromStartIndex += count;
         }
     }
 
     return processed;
 }
+
+size_t fromString(PVFieldPtr const & fieldField, StringArray const & from, size_t fromStartIndex)
+{
+    try
+    {
+        switch (fieldField->getField()->getType())
+        {
+            case scalar:
+            {
+                if (fromStartIndex >= from.size())
+                    throw std::runtime_error("not enough of values");
+
+                PVScalarPtr pv = static_pointer_cast<PVScalar>(fieldField);
+                getConvert()->fromString(pv, from[fromStartIndex]);
+                return 1;
+            }
+
+            case scalarArray:
+                return fromString(static_pointer_cast<PVScalarArray>(fieldField), from, fromStartIndex);
+
+            case structure:
+                return fromString(static_pointer_cast<PVStructure>(fieldField), from, fromStartIndex);
+
+            case structureArray:
+                return fromString(static_pointer_cast<PVStructureArray>(fieldField), from, fromStartIndex);
+
+            case union_:
+                return fromString(static_pointer_cast<PVUnion>(fieldField), from, fromStartIndex);
+
+            case unionArray:
+                return fromString(static_pointer_cast<PVUnionArray>(fieldField), from, fromStartIndex);
+
+            default:
+                std::ostringstream oss;
+                oss << "fromString unsupported fieldType " << fieldField->getField()->getType();
+                throw std::logic_error(oss.str());
+        }
+    }
+    catch (std::exception &ex)
+    {
+        std::ostringstream os;
+        os << "failed to parse '" << fieldField->getField()->getID() << ' '
+           << fieldField->getFieldName() << "'";
+        os << ": " << ex.what();
+        throw std::runtime_error(os.str());
+    }
+}
+
 
 #define DEFAULT_TIMEOUT 3.0
 #define DEFAULT_REQUEST "field(value)"
@@ -368,6 +309,27 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
 			Type valueType = value->getField()->getType();
 			if (valueType != scalar && valueType != scalarArray)
 			{
+                // special case for enum
+                if (valueType == structure)
+                {
+                    PVStructurePtr pvStructure = static_pointer_cast<PVStructure>(value);
+                    if (pvStructure->getStructure()->getID() == "enum_t")
+                    {
+                        if (fieldSeparator == ' ')
+                            std::cout << std::setw(30) << std::left << channelName;
+                        else
+                            std::cout << channelName;
+
+                        std::cout << fieldSeparator;
+
+                        printEnumT(std::cout, pvStructure);
+
+                        std::cout << std::endl;
+
+                        return;
+                    }
+                }
+
 				// switch to structure mode
 				std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
 			}
@@ -705,6 +667,7 @@ int main (int argc, char *argv[])
 
     std::cout << std::boolalpha;
     terseSeparator(fieldSeparator);
+    setEnumPrintMode(enumMode);
 
     ClientFactory::start();
     ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");

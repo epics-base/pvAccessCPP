@@ -16,6 +16,13 @@ std::ostream& terseScalarArray(std::ostream& o, epics::pvData::PVScalarArray::sh
 std::ostream& terseStructureArray(std::ostream& o, epics::pvData::PVStructureArray::shared_pointer const & pvArray);
 std::ostream& terseUnionArray(std::ostream& o, epics::pvData::PVUnionArray::shared_pointer const & pvArray);
 
+enum EnumMode { AutoEnum, NumberEnum, StringEnum };
+void setEnumPrintMode(EnumMode mode);
+
+void formatTTypes(bool flag);
+
+std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvEnumT);
+std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvTimeT);
 
 /* Converts a hex character to its integer value */
 char from_hex(char ch);
@@ -103,3 +110,69 @@ struct dump_stack_only_on_debug
 };
 
 std::ostream& operator<<(std::ostream& os, const dump_stack_only_on_debug& d);
+
+
+
+/*
+#include <ostream>
+#include <iostream>
+
+// usage: pvutil_ostream myos(std::cout.rdbuf());
+
+class pvutil_ostream : private std::ostream
+{
+public:
+    pvutil_ostream(std::streambuf* sb)
+        : std::ostream(sb)
+    {}
+
+    template <typename T>
+    friend pvutil_ostream& operator<<(pvutil_ostream&, const T&);
+
+    // Additional overload to handle ostream specific io manipulators
+    friend pvutil_ostream& operator<<(pvutil_ostream&, std::ostream& (*)(std::ostream&));
+
+    // Accessor function to get a reference to the ostream
+    std::ostream& get_ostream() { return *this; }
+};
+
+
+template <typename T>
+inline pvutil_ostream&
+operator<<(pvutil_ostream& out, const T& value)
+{
+    static_cast<std::ostream&>(out) << '.';
+    static_cast<std::ostream&>(out) << value;
+    return out;
+}
+
+//  overload for std::ostream specific io manipulators
+inline pvutil_ostream&
+operator<<(pvutil_ostream& out, std::ostream& (*func)(std::ostream&))
+{
+    static_cast<std::ostream&>(out) << '#';
+    static_cast<std::ostream&>(out) << func;
+    return out;
+}
+
+//  overload for PVField
+template <>
+inline pvutil_ostream&
+operator<<(pvutil_ostream& out, const epics::pvData::PVField& value)
+{
+    static_cast<std::ostream&>(out) << '?';
+//    static_cast<std::ostream&>(out) << value;
+    value.dumpValue(out);
+    return out;
+}
+
+template <>
+inline pvutil_ostream&
+operator<<(pvutil_ostream& out, const epics::pvData::PVStructure& value)
+{
+    static_cast<std::ostream&>(out) << '!';
+//    static_cast<std::ostream&>(out) << value;
+    value.dumpValue(out);
+    return out;
+}
+*/

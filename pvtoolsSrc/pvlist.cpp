@@ -604,7 +604,7 @@ int main (int argc, char *argv[])
             if (quiet)
                 cmd += 'q';
             if (printInfo)
-                cmd += 'n';
+                cmd += 'N';
             cmd += "s pva://" + serverAddress + "/server?op=";
             if (printInfo)
                 cmd += "info";
