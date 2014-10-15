@@ -57,6 +57,8 @@ void usage (void)
     "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
     "  -f <input file>:   Use <input file> as an input that provides a list PV name(s) to be read, use '-' for stdin\n"
     "  -c:                Wait for clean shutdown and report used instance count (for expert users)\n"
+    " enum format:\n"
+    "  -n: Force enum interpretation of values as numbers (default is enum string)\n"
     "\nexample: pvget double01\n\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
@@ -69,16 +71,30 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
         if (value.get() == 0)
         {
         	std::cerr << "no 'value' field" << std::endl;
-            std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+            //std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+            pvutil_ostream myos(std::cout.rdbuf());
+            myos << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
         }
         else
         {
 			Type valueType = value->getField()->getType();
 			if (valueType != scalar && valueType != scalarArray)
 			{
-				// switch to structure mode
-				std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
-			}
+                // switch to structure mode, unless it's NTEnum
+                if (value->getField()->getID() == "enum_t")
+                {
+                    std::cout << std::setw(30) << std::left << channelName;
+                    std::cout << fieldSeparator;
+                    printEnumT(std::cout, static_pointer_cast<PVStructure>(value));
+                    std::cout << std::endl;
+                }
+                else
+                {
+                    //std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+                    pvutil_ostream myos(std::cout.rdbuf());
+                    myos << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+                }
+            }
 			else
 			{
 				if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
@@ -95,7 +111,11 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
     else if (mode == TerseMode)
         terseStructure(std::cout, pv) << std::endl;
     else
-        std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+    {
+        //std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+        pvutil_ostream myos(std::cout.rdbuf());
+        myos << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+    }
 }
 
 
@@ -255,17 +275,31 @@ class MonitorRequesterImpl : public MonitorRequester
                 {
                 	std::cerr << "no 'value' field" << std::endl;
                 	std::cout << m_channelName << std::endl;
-                    std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                    //std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                    pvutil_ostream myos(std::cout.rdbuf());
+                    myos << *(element->pvStructurePtr.get()) << std::endl << std::endl;
                 }
                 else
                 {
 					Type valueType = value->getField()->getType();
 					if (valueType != scalar && valueType != scalarArray)
 					{
-						// switch to structure mode
-						std::cout << m_channelName << std::endl;
-						std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
-					}
+                        // switch to structure mode, unless it's NTEnum
+                        if (value->getField()->getID() == "enum_t")
+                        {
+                            std::cout << std::setw(30) << std::left << m_channelName;
+                            std::cout << fieldSeparator;
+                            printEnumT(std::cout, static_pointer_cast<PVStructure>(value));
+                            std::cout << std::endl;
+                        }
+                        else
+                        {
+                            std::cout << m_channelName << std::endl;
+                            //std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                            pvutil_ostream myos(std::cout.rdbuf());
+                            myos << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                        }
+                    }
 					else
 					{
 						if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
@@ -293,7 +327,9 @@ class MonitorRequesterImpl : public MonitorRequester
             else
             {
             	std::cout << m_channelName << std::endl;
-                std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                //std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                pvutil_ostream myos(std::cout.rdbuf());
+                myos << *(element->pvStructurePtr.get()) << std::endl << std::endl;
             }
 
 			monitor->release(element);
@@ -339,7 +375,7 @@ int main (int argc, char *argv[])
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:w:tmqdcF:f:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:tmqdcF:f:n")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -397,6 +433,9 @@ int main (int argc, char *argv[])
             fromStream = true;
             break;
         }
+        case 'n':
+            setEnumPrintMode(NumberEnum);
+            break;
         case '?':
             fprintf(stderr,
                     "Unrecognized option: '-%c'. ('pvget -h' for help.)\n",

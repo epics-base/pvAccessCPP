@@ -157,29 +157,7 @@ void formatNTEnum(std::ostream& o, PVStructurePtr const & pvStruct)
         return;
     }
 
-    PVIntPtr index = dynamic_pointer_cast<PVInt>(enumt->getSubField("index"));
-    if (index.get() == 0)
-    {
-        std::cerr << "no int 'value.index' field in NTEnum" << std::endl;
-        return;
-    }
-
-    PVStringArrayPtr choices = dynamic_pointer_cast<PVStringArray>(enumt->getSubField("choices"));
-    if (choices.get() == 0)
-    {
-        std::cerr << "no string[] 'value.choices' field in NTEnum" << std::endl;
-        return;
-    }
-    
-    int32 ix = index->get();
-    if (ix < 0 || ix > static_cast<int32>(choices->getLength()))
-    {
-        o << ix;
-    }
-    else
-    {
-        choices->dumpValue(o, ix);
-    }
+    printEnumT(o, enumt);
 }
 
 size_t getLongestString(shared_vector<const string> const & array)
@@ -886,7 +864,9 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
             else
             {
                 std::cerr << "non-normative type" << std::endl;
-                o << *(pv.get()) << std::endl;
+                //o << *(pv.get()) << std::endl;
+                pvutil_ostream myos(std::cout.rdbuf());
+                myos << *(pv.get()) << std::endl;
             }
 
             return;
@@ -894,14 +874,21 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
     }
     
     // no ID, just dump
-    o << *(pv.get()) << std::endl;
+    pvutil_ostream myos(std::cout.rdbuf());
+    myos << *(pv.get()) << std::endl;
 }
 
 void dumpValue(std::string const & channelName, PVField::shared_pointer const & pv)
 {
     if (!channelName.empty())
         std::cout << channelName << std::endl;
-    std::cout << *(pv.get()) << std::endl << std::endl;
+    //std::cout << *(pv.get()) << std::endl << std::endl;
+
+    pvutil_ostream myos(std::cout.rdbuf());
+    if (pv->getField()->getType() == structure)
+        myos << *(static_pointer_cast<PVStructure>(pv).get()) << std::endl << std::endl;
+    else
+        myos << *(pv.get()) << std::endl << std::endl;
 }
 
 void printValue(std::string const & channelName, PVStructure::shared_pointer const & pv, bool forceTerseWithName = false)
@@ -1045,7 +1032,7 @@ void usage (void)
              "  -r <pv request>:     Get request string, specifies what fields to return and options, default is '%s'\n"
              "  -w <sec>:            Wait time, specifies timeout, default is %f second(s)\n"
              "  -z:                  Pure pvAccess RPC based service (send NTURI.query as request argument)\n"
-             "  -n:                  Do not format NT types, dump structure instead\n"
+             "  -N:                  Do not format NT types, dump structure instead\n"
              "  -t:                  Terse mode\n"
              "  -T:                  Transpose vector, table, matrix\n"
              "  -m:                  Monitor mode\n"
@@ -1056,6 +1043,8 @@ void usage (void)
              "  -F <ofs>:            Use <ofs> as an alternate output field separator\n"
              "  -f <input file>:     Use <input file> as an input that provides a list PV name(s) to be read, use '-' for stdin\n"
              "  -c:                  Wait for clean shutdown and report used instance count (for expert users)"
+             " enum format:\n"
+             "  -n: Force enum interpretation of values as numbers (default is enum string)\n"
              "\n\nexamples:\n\n"
              "#! Get the value of the PV corr:li32:53:bdes\n"
              "> eget corr:li32:53:bdes\n"
@@ -1472,7 +1461,7 @@ int main (int argc, char *argv[])
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:s:a:w:zntTmxp:qdcF:f:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:s:a:w:zNtTmxp:qdcF:f:n")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -1539,7 +1528,7 @@ int main (int argc, char *argv[])
         case 'z':               /* pvAccess RPC mode */
             onlyQuery = true;
             break;
-        case 'n':               /* Do not format NT types */
+        case 'N':               /* Do not format NT types */
             dumpStructure = true;
             break;
         case 't':               /* Terse mode */
@@ -1601,6 +1590,9 @@ int main (int argc, char *argv[])
             fromStream = true;
             break;
         }
+        case 'n':
+            setEnumPrintMode(NumberEnum);
+            break;
         case '?':
             fprintf(stderr,
                     "Unrecognized option: '-%c'. ('eget -h' for help.)\n",
@@ -2102,7 +2094,11 @@ int main (int argc, char *argv[])
                         if (rpcRequesterImpl->getLastResponse().get() == 0)
                             std::cout << "(null)" << std::endl;
                         else
-                            std::cout << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
+                        {
+                            //std::cout << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
+                            pvutil_ostream myos(std::cout.rdbuf());
+                            myos << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
+                        }
                     }
                     else
                         formatNT(std::cout, rpcRequesterImpl->getLastResponse());

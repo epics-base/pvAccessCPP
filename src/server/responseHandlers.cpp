@@ -451,6 +451,10 @@ public:
         return _waitEvent.wait(timeoutSec);
     }
 
+    void resetEvent() {
+        _waitEvent.tryWait();
+    }
+
 private:
     epics::pvData::Mutex _waitMutex;
     epics::pvData::Event _waitEvent;
@@ -504,24 +508,44 @@ public:
         string op = opField->get();
         if (op == "channels")
         {
-            ChannelListRequesterImpl::shared_pointer listListener(new ChannelListRequesterImpl());
-            m_serverContext->getChannelProviders()[0]->channelList(listListener);               // TODO multiple channel providers !!!!
-            if (!listListener->waitForCompletion(TIMEOUT_SEC))
-                throw RPCRequestException(Status::STATUSTYPE_ERROR, "failed to fetch channel list due to timeout");
-
-            Status& status = listListener->status;
-            if (!status.isSuccess())
-            {
-                string errorMessage = "failed to fetch channel list: " + status.getMessage();
-                if (!status.getStackDump().empty())
-                     errorMessage += "\n" + status.getStackDump();
-                throw RPCRequestException(Status::STATUSTYPE_ERROR, errorMessage);
-            }
-
             PVStructure::shared_pointer result =
                 getPVDataCreate()->createPVStructure(channelListStructure);
-            PVStringArray::shared_pointer pvArray = result->getSubField<PVStringArray>("value");
-            pvArray->replace(listListener->channelNames);
+            PVStringArray::shared_pointer allChannelNames = result->getSubField<PVStringArray>("value");
+
+            ChannelListRequesterImpl::shared_pointer listListener(new ChannelListRequesterImpl());
+            std::vector<ChannelProvider::shared_pointer> providers = m_serverContext->getChannelProviders();
+
+            size_t providerCount = providers.size();
+            for (size_t i = 0; i < providerCount; i++)
+            {
+                providers[i]->channelList(listListener);
+                if (!listListener->waitForCompletion(TIMEOUT_SEC))
+                    throw RPCRequestException(Status::STATUSTYPE_ERROR, "failed to fetch channel list due to timeout");
+
+                Status& status = listListener->status;
+                if (!status.isSuccess())
+                {
+                    string errorMessage = "failed to fetch channel list: " + status.getMessage();
+                    if (!status.getStackDump().empty())
+                         errorMessage += "\n" + status.getStackDump();
+                    throw RPCRequestException(Status::STATUSTYPE_ERROR, errorMessage);
+                }
+
+                // optimization
+                if (providerCount == 1)
+                {
+                    allChannelNames->replace(listListener->channelNames);
+                }
+                else
+                {
+                    PVStringArray::svector list(allChannelNames->reuse());
+                    std::copy(listListener->channelNames.begin(), listListener->channelNames.end(),
+                              back_inserter(list));
+                    allChannelNames->replace(freeze(list));
+                }
+
+                listListener->resetEvent();
+            }
 
             return result;
         }

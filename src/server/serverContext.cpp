@@ -645,7 +645,7 @@ void ServerContextImpl::setChannelProviderName(std::string channelProviderName)
     _channelProviderNames = channelProviderName;
 }
 
-std::vector<ChannelProvider::shared_pointer> ServerContextImpl::getChannelProviders()
+std::vector<ChannelProvider::shared_pointer>& ServerContextImpl::getChannelProviders()
 {
 	return _channelProviders;
 }

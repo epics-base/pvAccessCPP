@@ -291,7 +291,7 @@ public:
 	 * Get channel providers.
 	 * @return channel providers.
 	 */
-	std::vector<ChannelProvider::shared_pointer> getChannelProviders();
+    std::vector<ChannelProvider::shared_pointer>& getChannelProviders();
 
     /**
      * Return <code>true</code> if channel provider name is provided by configuration (e.g. system env. var.).

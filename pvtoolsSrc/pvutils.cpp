@@ -10,6 +10,7 @@
 #include <algorithm>
 
 #include <pv/logger.h>
+#include <pv/pvTimeStamp.h>
 
 using namespace std;
 using namespace std::tr1;
@@ -68,6 +69,18 @@ void terseArrayCount(bool flag)
 	arrayCountFlag = flag;
 }
 
+EnumMode enumMode = AutoEnum;
+void setEnumPrintMode(EnumMode mode)
+{
+    enumMode = mode;
+}
+
+bool formatTTypesFlag = true;
+void formatTTypes(bool flag)
+{
+    formatTTypesFlag = flag;
+}
+
 
 std::ostream& terse(std::ostream& o, PVField::shared_pointer const & pv)
 {
@@ -99,12 +112,81 @@ std::ostream& terse(std::ostream& o, PVField::shared_pointer const & pv)
     }
 }
 
+std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure const & pvEnumT)
+{
+    PVInt::shared_pointer pvIndex = pvEnumT.getSubField<PVInt>("index");
+    if (!pvIndex)
+        throw std::runtime_error("enum_t structure does not have 'int index' field");
+
+    PVStringArray::shared_pointer pvChoices = pvEnumT.getSubField<PVStringArray>("choices");
+    if (!pvChoices)
+        throw std::runtime_error("enum_t structure does not have 'string choices[]' field");
+
+    if (enumMode == AutoEnum || enumMode == StringEnum)
+    {
+        int32 ix = pvIndex->get();
+        if (ix < 0 || ix > static_cast<int32>(pvChoices->getLength()))
+            o << ix;
+        else
+            pvChoices->dumpValue(o, ix);
+    }
+    else
+        o << pvIndex->get();
+
+    return o;
+}
+
+std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvEnumT)
+{
+    return printEnumT(o, *pvEnumT);
+}
+
+std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvTimeT)
+{
+    #define TIMETEXTLEN 32
+    char timeText[TIMETEXTLEN];
+    epicsTimeStamp epicsTS;
+
+    PVTimeStamp pvTimeStamp;
+    if (pvTimeStamp.attach(pvTimeT))
+    {
+        TimeStamp ts;
+        pvTimeStamp.get(ts);
+
+        epicsTS.secPastEpoch = ts.getEpicsSecondsPastEpoch();
+        epicsTS.nsec = ts.getNanoseconds();
+    }
+    else
+        throw std::runtime_error("invalid time_t structure");
+
+    epicsTimeToStrftime(timeText, TIMETEXTLEN, "%Y-%m-%dT%H:%M:%S.%03f", &epicsTS);
+    o << timeText;
+
+    return o;
+}
+
 std::ostream& terseStructure(std::ostream& o, PVStructure::shared_pointer const & pvStructure)
 {
     if (!pvStructure)
     {
         o << "(null)";
         return o;
+    }
+
+    // special t-types support (enum_t and time_t, etc.)
+    if (formatTTypesFlag)
+    {
+        string id = pvStructure->getStructure()->getID();
+        if (id == "enum_t")
+        {
+            printEnumT(o, pvStructure);
+            return o;
+        }
+        else if (id == "time_t")
+        {
+            printTimeT(o, pvStructure);
+            return o;
+        }
     }
 
     PVFieldPtrArray fieldsData = pvStructure->getPVFields();
