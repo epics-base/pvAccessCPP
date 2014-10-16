@@ -1138,6 +1138,9 @@ namespace epics {
         // clean resources
         internalClose(true);
 
+        // this is important to avoid cyclic refs (memory leak)
+        clearSendQueue();
+
         _sendQueue.wakeup();
 
         // post close

@@ -168,6 +168,11 @@ namespace epics {
         }
       }
 
+      size_t size() {
+          epics::pvData::Lock lock(_queueMutex);
+          return _queue.size();
+      }
+
     private:
 
       std::deque<T> _queue;
