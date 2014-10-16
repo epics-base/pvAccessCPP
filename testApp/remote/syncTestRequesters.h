@@ -48,7 +48,7 @@ class SyncBaseRequester {
 
     SyncBaseRequester(bool debug = false):
       m_debug(debug),
-      m_event(new Event()),
+      m_event(),
       m_connectedStatus(false), 
       m_getStatus(false),
       m_putStatus(false) {}
@@ -126,25 +126,17 @@ class SyncBaseRequester {
     }
 
     void resetEvent() {
-      Lock lock(m_eventMutex);
-      m_event.reset(new Event());
+        m_event.tryWait();
     }
     
     void signalEvent() {
-      Lock lock(m_eventMutex);
-      m_event->signal();
+      m_event.signal();
     }
 
 
     bool waitUntilEvent(double timeOut)
     {
-      std::tr1::shared_ptr<epics::pvData::Event> event;
-      {
-         Lock lock(m_eventMutex);
-         event = m_event;
-      }
-      
-      bool signaled = event->wait(timeOut);
+      bool signaled = m_event.wait(timeOut);
       if (!signaled)
       {
         if (m_debug)
@@ -158,7 +150,7 @@ class SyncBaseRequester {
 
   private:
 
-    std::tr1::shared_ptr<epics::pvData::Event> m_event;
+    epics::pvData::Event m_event;
     bool m_connectedStatus;
     bool m_getStatus;
     bool m_putStatus;
@@ -167,7 +159,6 @@ class SyncBaseRequester {
     Mutex m_getStatusMutex;
     Mutex m_putStatusMutex;
     Mutex m_processStatusMutex;
-    Mutex m_eventMutex;
 };
 
 
@@ -1136,6 +1127,31 @@ class SyncMonitorRequesterImpl: public MonitorRequester, public SyncBaseRequeste
       return m_monitorStatus;
     }
 
+    bool waitUntilMonitor(int expectedCount, double timeOut)
+    {
+
+      resetEvent();
+
+      {
+        Lock lock(m_pointerMutex);
+        m_monitorStatus = false;
+        if (m_monitorCounter >= expectedCount)
+            return true;
+      }
+
+
+      bool signaled = waitUntilEvent(timeOut);
+      if (!signaled) {
+
+        if (m_debug)
+          std::cerr << getRequesterName() << ".waitUntilMonitor:" << " timeout occurred" << endl;
+
+        return false;
+      }
+
+      Lock lock(m_pointerMutex);
+      return m_monitorStatus;
+    }
 
     virtual string getRequesterName()
     {

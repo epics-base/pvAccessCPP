@@ -2119,6 +2119,12 @@ void ChannelAccessIFTest::test_stressPutAndGetLargeArray() {
     return;
   }
 
+  bool s = putReq->syncGet(getTimeoutSec());
+  if (!s) {
+    testFail("%s: sync get failed", CURRENT_FUNCTION);
+    return;
+  }
+
   PVDoubleArray::shared_pointer value = putReq->getPVStructure()->getSubField<PVDoubleArray>("value");
   if (!value.get()) {
     testFail("%s: getting double array value field failed ", CURRENT_FUNCTION);
@@ -2297,9 +2303,7 @@ void ChannelAccessIFTest::test_stressMonitorAndProcess() {
       return;
     } 
 
-    while(monitorReq->getMonitorCounter() < i) {
-      monitorReq->waitUntilMonitor(getTimeoutSec());
-    }        
+    monitorReq->waitUntilMonitor(i, getTimeoutSec());
 
     int counter = monitorReq->getMonitorCounter();
 
