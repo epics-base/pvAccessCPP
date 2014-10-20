@@ -20,9 +20,12 @@ enum EnumMode { AutoEnum, NumberEnum, StringEnum };
 void setEnumPrintMode(EnumMode mode);
 
 void formatTTypes(bool flag);
+bool isTType(epics::pvData::PVStructure::shared_pointer const & pvStructure);
+bool formatTType(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvStructure);
+
+void printUserTag(bool flag);
 
 std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure const & pvEnumT);
-//std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure const & pvTimeT);
 std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvEnumT);
 std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvTimeT);
 
@@ -173,21 +176,13 @@ template <>
 inline pvutil_ostream&
 operator<<(pvutil_ostream& o, const epics::pvData::PVStructure::shared_pointer & value)
 {
-    std::string id = value->getStructure()->getID();
-    if (id == "enum_t")
+    if (isTType(value))
     {
-        o << epics::pvData::format::indent() << id << ' ' << value->getFieldName() << " # ";
-        printEnumT(o, value);
+        o << epics::pvData::format::indent() << value->getStructure()->getID()
+          << ' ' << value->getFieldName() << ' '; //" # ";
+        formatTType(o, value);
         o << std::endl;
-        dumpPVStructure(o, *value, false);
-        return o;
-    }
-    else if (id == "time_t")
-    {
-        o << epics::pvData::format::indent() << id << ' ' << value->getFieldName() << " # ";
-        printTimeT(o, value);
-        o << std::endl;
-        dumpPVStructure(o, *value, false);
+        //dumpPVStructure(o, *value, false);
         return o;
     }
 

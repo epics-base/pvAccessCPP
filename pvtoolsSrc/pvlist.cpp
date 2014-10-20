@@ -600,7 +600,7 @@ int main (int argc, char *argv[])
             // TODO timeOut
             string cmd = "eget -";
             if (debug)
-                cmd =+ 'd';
+                cmd += 'd';
             if (quiet)
                 cmd += 'q';
             if (printInfo)

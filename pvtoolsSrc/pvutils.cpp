@@ -81,6 +81,11 @@ void formatTTypes(bool flag)
     formatTTypesFlag = flag;
 }
 
+bool printUserTagFlag = true;
+void printUserTag(bool flag)
+{
+    printUserTagFlag = flag;
+}
 
 std::ostream& terse(std::ostream& o, PVField::shared_pointer const & pv)
 {
@@ -146,12 +151,24 @@ std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::shared_poi
     #define TIMETEXTLEN 32
     char timeText[TIMETEXTLEN];
     epicsTimeStamp epicsTS;
+    int32 userTag;
 
     PVTimeStamp pvTimeStamp;
     if (pvTimeStamp.attach(pvTimeT))
     {
         TimeStamp ts;
         pvTimeStamp.get(ts);
+
+        userTag = ts.getUserTag();
+
+        if (ts.getSecondsPastEpoch() == 0 &&
+            ts.getNanoseconds() == 0)
+        {
+            o << "<undefined>";
+            if (printUserTagFlag)
+                o << separator << userTag;
+            return o;
+        }
 
         epicsTS.secPastEpoch = ts.getEpicsSecondsPastEpoch();
         epicsTS.nsec = ts.getNanoseconds();
@@ -161,9 +178,44 @@ std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::shared_poi
 
     epicsTimeToStrftime(timeText, TIMETEXTLEN, "%Y-%m-%dT%H:%M:%S.%03f", &epicsTS);
     o << timeText;
+    if (printUserTagFlag)
+        o << separator << userTag;
 
     return o;
 }
+
+bool isTType(epics::pvData::PVStructure::shared_pointer const & pvStructure)
+{
+    // "forget" about Ttype if disabled
+    if (!formatTTypesFlag)
+        return false;
+
+    string id = pvStructure->getStructure()->getID();
+    return (id == "enum_t" ||
+            id == "time_t");
+}
+
+bool formatTType(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvStructure)
+{
+    // special t-types support (enum_t and time_t, etc.)
+    if (formatTTypesFlag)
+    {
+        string id = pvStructure->getStructure()->getID();
+        if (id == "enum_t")
+        {
+            printEnumT(o, pvStructure);
+            return true;
+        }
+        else if (id == "time_t")
+        {
+            printTimeT(o, pvStructure);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 
 std::ostream& terseStructure(std::ostream& o, PVStructure::shared_pointer const & pvStructure)
 {
@@ -174,20 +226,8 @@ std::ostream& terseStructure(std::ostream& o, PVStructure::shared_pointer const 
     }
 
     // special t-types support (enum_t and time_t, etc.)
-    if (formatTTypesFlag)
-    {
-        string id = pvStructure->getStructure()->getID();
-        if (id == "enum_t")
-        {
-            printEnumT(o, pvStructure);
-            return o;
-        }
-        else if (id == "time_t")
-        {
-            printTimeT(o, pvStructure);
-            return o;
-        }
-    }
+    if (formatTType(o, pvStructure))
+        return o;
 
     PVFieldPtrArray fieldsData = pvStructure->getPVFields();
 	size_t length = pvStructure->getStructure()->getNumberFields();

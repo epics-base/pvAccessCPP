@@ -919,10 +919,10 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
             }
             else
             {
-                // switch to structure mode, unless it's NTEnum
-                if (!dumpStructure && value->getField()->getID() == "enum_t")
+                // switch to structure mode, unless it's T-type
+                if (valueType == structure && isTType(static_pointer_cast<PVStructure>(value)))
                 {
-                    formatNTEnum(std::cout, pv);
+                    formatTType(std::cout, static_pointer_cast<PVStructure>(value));
                     std::cout << std::endl;
                 }
                 else                 
@@ -1033,6 +1033,7 @@ void usage (void)
              "  -w <sec>:            Wait time, specifies timeout, default is %f second(s)\n"
              "  -z:                  Pure pvAccess RPC based service (send NTURI.query as request argument)\n"
              "  -N:                  Do not format NT types, dump structure instead\n"
+             "  -i:                  Do not format standard types (enum_t, time_t, ...)\n"
              "  -t:                  Terse mode\n"
              "  -T:                  Transpose vector, table, matrix\n"
              "  -m:                  Monitor mode\n"
@@ -1042,7 +1043,7 @@ void usage (void)
              "  -d:                  Enable debug output\n"
              "  -F <ofs>:            Use <ofs> as an alternate output field separator\n"
              "  -f <input file>:     Use <input file> as an input that provides a list PV name(s) to be read, use '-' for stdin\n"
-             "  -c:                  Wait for clean shutdown and report used instance count (for expert users)"
+             "  -c:                  Wait for clean shutdown and report used instance count (for expert users)\n"
              " enum format:\n"
              "  -n: Force enum interpretation of values as numbers (default is enum string)\n"
              "\n\nexamples:\n\n"
@@ -1368,8 +1369,8 @@ class MonitorRequesterImpl : public MonitorRequester
 					Type valueType = value->getField()->getType();
 					if (valueType != scalar && valueType != scalarArray)
 					{
-                        // switch to structure mode, unless it's NTEnum
-                        if (!dumpStructure && value->getField()->getID() == "enum_t")
+                        // switch to structure mode, unless it's T-type
+                        if (valueType == structure && isTType(static_pointer_cast<PVStructure>(value)))
                         {
         					if (fieldSeparator == ' ')
         						std::cout << std::setw(30) << std::left << m_channelName;
@@ -1377,7 +1378,7 @@ class MonitorRequesterImpl : public MonitorRequester
         						std::cout << m_channelName;
         					std::cout << fieldSeparator;
 
-                            formatNTEnum(std::cout, element->pvStructurePtr);
+                            formatTType(std::cout, static_pointer_cast<PVStructure>(value));
                             std::cout << std::endl;
                         }
                         else                 
@@ -1461,7 +1462,7 @@ int main (int argc, char *argv[])
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:s:a:w:zNtTmxp:qdcF:f:n")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:s:a:w:zNtTmxp:qdcF:f:ni")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -1530,6 +1531,9 @@ int main (int argc, char *argv[])
             break;
         case 'N':               /* Do not format NT types */
             dumpStructure = true;
+            break;
+        case 'i':               /* T-types format mode */
+            formatTTypes(false);
             break;
         case 't':               /* Terse mode */
             mode = TerseMode;

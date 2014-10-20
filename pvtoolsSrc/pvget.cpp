@@ -51,6 +51,7 @@ void usage (void)
     "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
     "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
     "  -t:                Terse mode - print only value, without names\n"
+    "  -i:                Do not format standard types (enum_t, time_t, ...)\n"
     "  -m:                Monitor mode\n"
     "  -q:                Quiet mode, print only error messages\n"
     "  -d:                Enable debug output\n"
@@ -59,6 +60,8 @@ void usage (void)
     "  -c:                Wait for clean shutdown and report used instance count (for expert users)\n"
     " enum format:\n"
     "  -n: Force enum interpretation of values as numbers (default is enum string)\n"
+//    " time format:\n"
+//    "  -u: print userTag\n"
     "\nexample: pvget double01\n\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT);
 }
@@ -80,12 +83,12 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
 			Type valueType = value->getField()->getType();
 			if (valueType != scalar && valueType != scalarArray)
 			{
-                // switch to structure mode, unless it's NTEnum
-                if (value->getField()->getID() == "enum_t")
+                // switch to structure mode, unless it's T-type
+                if (valueType == structure && isTType(static_pointer_cast<PVStructure>(value)))
                 {
                     std::cout << std::setw(30) << std::left << channelName;
                     std::cout << fieldSeparator;
-                    printEnumT(std::cout, static_pointer_cast<PVStructure>(value));
+                    formatTType(std::cout, static_pointer_cast<PVStructure>(value));
                     std::cout << std::endl;
                 }
                 else
@@ -284,12 +287,12 @@ class MonitorRequesterImpl : public MonitorRequester
 					Type valueType = value->getField()->getType();
 					if (valueType != scalar && valueType != scalarArray)
 					{
-                        // switch to structure mode, unless it's NTEnum
-                        if (value->getField()->getID() == "enum_t")
+                        // switch to structure mode, unless it's T-type
+                        if (valueType == structure && isTType(static_pointer_cast<PVStructure>(value)))
                         {
                             std::cout << std::setw(30) << std::left << m_channelName;
                             std::cout << fieldSeparator;
-                            printEnumT(std::cout, static_pointer_cast<PVStructure>(value));
+                            formatTType(std::cout, static_pointer_cast<PVStructure>(value));
                             std::cout << std::endl;
                         }
                         else
@@ -375,7 +378,7 @@ int main (int argc, char *argv[])
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:w:tmqdcF:f:n")) != -1) {
+    while ((opt = getopt(argc, argv, ":hr:w:tmqdcF:f:ni")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -395,6 +398,9 @@ int main (int argc, char *argv[])
             break;
         case 't':               /* Terse mode */
             mode = TerseMode;
+            break;
+        case 'i':               /* T-types format mode */
+            formatTTypes(false);
             break;
         case 'm':               /* Monitor mode */
             monitor = true;
