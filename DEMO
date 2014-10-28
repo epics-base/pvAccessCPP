@@ -34,7 +34,7 @@ New : testArray10_1 3 11 22 33
 --------------------------------------------------------------------------------
 > pvget -r 'field()' testValue
 testValue
-uri:ev4:nt/2012/pwd:NTScalar 
+epics:nt/NTScalar:1.0
     double value 1.23
     alarm_t alarm
         int severity 0

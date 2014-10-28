@@ -15,6 +15,11 @@ static Structure::const_shared_pointer resultStructure =
                add("c", pvDouble)->
                createStructure();
 
+// s1 starts with s2 check
+static bool starts_with(const std::string& s1, const std::string& s2) {
+    return s2.size() <= s1.size() && s1.compare(0, s2.size(), s2) == 0;
+}
+
 class SumServiceImpl :
     public RPCService
 {
@@ -23,7 +28,7 @@ class SumServiceImpl :
     {
         // NTURI support
         PVStructure::shared_pointer args(
-                    (pvArguments->getStructure()->getID() == "ev4:nt/NTURI:1.0") ?
+                    (starts_with(pvArguments->getStructure()->getID(), "epics:nt/NTURI:1.")) ?
                         pvArguments->getStructureField("query") :
                         pvArguments
                         );

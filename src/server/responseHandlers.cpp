@@ -476,6 +476,11 @@ private:
 
     ServerContextImpl::shared_pointer m_serverContext;
 
+    // s1 starts with s2 check
+    static bool starts_with(const string& s1, const string& s2) {
+        return s2.size() <= s1.size() && s1.compare(0, s2.size(), s2) == 0;
+    }
+
 public:
 
     ServerRPCService(ServerContextImpl::shared_pointer const & context) :
@@ -489,7 +494,7 @@ public:
     {
         // NTURI support
         PVStructure::shared_pointer args(
-                    (arguments->getStructure()->getID() == "ev4:nt/NTURI:1.0") ?
+                    (starts_with(arguments->getStructure()->getID(), "epics:nt/NTURI:1.")) ?
                         arguments->getStructureField("query") :
                         arguments
                         );
@@ -598,13 +603,13 @@ public:
 int32 ServerRPCService::TIMEOUT_SEC = 3;
 Structure::const_shared_pointer ServerRPCService::helpStructure =
         getFieldCreate()->createFieldBuilder()->
-            setId("ev4:nt/NTScalar:1.0")->
+            setId("epics:nt/NTScalar:1.0")->
             add("value", pvString)->
             createStructure();
 
 Structure::const_shared_pointer ServerRPCService::channelListStructure =
         getFieldCreate()->createFieldBuilder()->
-            setId("ev4:nt/NTScalarArray:1.0")->
+            setId("epics:nt/NTScalarArray:1.0")->
             addArray("value", pvString)->
             createStructure();
 

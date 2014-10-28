@@ -29,6 +29,7 @@ std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure const & pvE
 std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvEnumT);
 std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvTimeT);
 
+bool starts_with(const std::string& str, const std::string& part);
 
 /* Converts a hex character to its integer value */
 char from_hex(char ch);

@@ -823,15 +823,15 @@ NTFormatterLUTMap ntFormatterLUT;
 
 void initializeNTFormatterLUT()
 {
-    ntFormatterLUT["ev4:nt/NTScalar:1.0"] = formatNTScalar;
-    ntFormatterLUT["ev4:nt/NTScalarArray:1.0"] = formatNTScalarArray;
-    ntFormatterLUT["ev4:nt/NTEnum:1.0"] = formatNTEnum;
-    ntFormatterLUT["ev4:nt/NTTable:1.0"] = formatNTTable;
-    ntFormatterLUT["ev4:nt/NTMatrix:1.0"] = formatNTMatrix;
-    ntFormatterLUT["ev4:nt/NTAny:1.0"] = formatNTAny;
-    ntFormatterLUT["ev4:nt/NTNameValue:1.0"] = formatNTNameValue;
-    ntFormatterLUT["ev4:nt/NTURI:1.0"] = formatNTURI;
-    ntFormatterLUT["ev4:nt/NTNDArray:1.0"] = formatNTNDArray;
+    ntFormatterLUT["epics:nt/NTScalar:1"] = formatNTScalar;
+    ntFormatterLUT["epics:nt/NTScalarArray:1"] = formatNTScalarArray;
+    ntFormatterLUT["epics:nt/NTEnum:1"] = formatNTEnum;
+    ntFormatterLUT["epics:nt/NTTable:1"] = formatNTTable;
+    ntFormatterLUT["epics:nt/NTMatrix:1"] = formatNTMatrix;
+    ntFormatterLUT["epics:nt/NTAny:1"] = formatNTAny;
+    ntFormatterLUT["epics:nt/NTNameValue:1"] = formatNTNameValue;
+    ntFormatterLUT["epics:nt/NTURI:1"] = formatNTURI;
+    ntFormatterLUT["epics:nt/NTNDArray:1"] = formatNTNDArray;
 }
 
 void formatNT(std::ostream& o, PVFieldPtr const & pv)
@@ -855,6 +855,11 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
         PVStructurePtr pvStruct = static_pointer_cast<PVStructure>(pv);
         {
             string id = pvStruct->getField()->getID();
+
+            // remove minor
+            size_t pos = id.find_last_of('.');
+            if (pos != string::npos)
+                id = id.substr(0, pos);
 
             NTFormatterLUTMap::const_iterator formatter = ntFormatterLUT.find(id);
             if (formatter != ntFormatterLUT.end())
@@ -2040,7 +2045,7 @@ int main (int argc, char *argv[])
 
         Structure::const_shared_pointer uriStructure(
                     getFieldCreate()->createStructure(
-                        "ev4:nt/NTURI:1.0",
+                        "epics:nt/NTURI:1.0",
                         uriFieldNames,
                         uriFields
                         )
