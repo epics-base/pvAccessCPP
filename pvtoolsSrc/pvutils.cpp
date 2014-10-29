@@ -184,6 +184,60 @@ std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::shared_poi
     return o;
 }
 
+const char* severityNames[] = {
+    "NO_ALARM",    // 0
+    "MINOR",
+    "MAJOR",
+    "INVALID",
+    "UNDEFINED" // 4
+};
+
+const char* statusNames[] = {
+    "NO_STATUS",  // 0
+    "DEVICE",
+    "DRIVER",
+    "RECORD",
+    "DB",
+    "CONF",
+    "UNDEFINED",
+    "CLIENT"  // 7
+};
+
+std::ostream& printAlarmT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvAlarmT)
+{
+    PVInt::shared_pointer pvSeverity = pvAlarmT->getSubField<PVInt>("severity");
+    if (!pvSeverity)
+        throw std::runtime_error("alarm_t structure does not have 'int severity' field");
+
+    PVInt::shared_pointer pvStatus = pvAlarmT->getSubField<PVInt>("status");
+    if (!pvStatus)
+        throw std::runtime_error("alarm_t structure does not have 'int status' field");
+
+    PVString::shared_pointer pvMessage = pvAlarmT->getSubField<PVString>("message");
+    if (!pvMessage)
+        throw std::runtime_error("alarm_t structure does not have 'string message' field");
+
+    int32 v = pvSeverity->get();
+    if (v < 0 || v > 4)
+        o << v;
+    else
+        o << severityNames[v];
+    o << separator;
+
+    v = pvStatus->get();
+    if (v < 0 || v > 7)
+        o << v;
+    else
+        o << statusNames[v];
+    o << separator;
+    if (pvMessage->get().empty())
+        o << "<no message>";
+    else
+        o << pvMessage->get();
+    return o;
+}
+
+
 bool isTType(epics::pvData::PVStructure::shared_pointer const & pvStructure)
 {
     // "forget" about Ttype if disabled
@@ -192,7 +246,8 @@ bool isTType(epics::pvData::PVStructure::shared_pointer const & pvStructure)
 
     string id = pvStructure->getStructure()->getID();
     return (id == "enum_t" ||
-            id == "time_t");
+            id == "time_t" ||
+            id == "alarm_t");
 }
 
 bool formatTType(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvStructure)
@@ -209,6 +264,11 @@ bool formatTType(std::ostream& o, epics::pvData::PVStructure::shared_pointer con
         else if (id == "time_t")
         {
             printTimeT(o, pvStructure);
+            return true;
+        }
+        else if (id == "alarm_t")
+        {
+            printAlarmT(o, pvStructure);
             return true;
         }
     }
@@ -533,3 +593,6 @@ bool URI::parse(const string& uri, URI& result)
     return true;
 }
 
+bool starts_with(const string& s1, const string& s2) {
+    return s2.size() <= s1.size() && s1.compare(0, s2.size(), s2) == 0;
+}

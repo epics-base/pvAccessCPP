@@ -48,7 +48,7 @@ class SyncBaseRequester {
 
     SyncBaseRequester(bool debug = false):
       m_debug(debug),
-      m_event(),
+      m_event(new Event()),
       m_connectedStatus(false), 
       m_getStatus(false),
       m_putStatus(false) {}
@@ -126,17 +126,25 @@ class SyncBaseRequester {
     }
 
     void resetEvent() {
-        m_event.tryWait();
+      Lock lock(m_eventMutex);
+      m_event.reset(new Event());
     }
-    
+
     void signalEvent() {
-      m_event.signal();
+      Lock lock(m_eventMutex);
+      m_event->signal();
     }
 
 
     bool waitUntilEvent(double timeOut)
     {
-      bool signaled = m_event.wait(timeOut);
+      std::tr1::shared_ptr<epics::pvData::Event> event;
+      {
+         Lock lock(m_eventMutex);
+         event = m_event;
+      }
+
+      bool signaled = event->wait(timeOut);
       if (!signaled)
       {
         if (m_debug)
@@ -150,7 +158,7 @@ class SyncBaseRequester {
 
   private:
 
-    epics::pvData::Event m_event;
+    std::tr1::shared_ptr<epics::pvData::Event> m_event;
     bool m_connectedStatus;
     bool m_getStatus;
     bool m_putStatus;
@@ -159,6 +167,7 @@ class SyncBaseRequester {
     Mutex m_getStatusMutex;
     Mutex m_putStatusMutex;
     Mutex m_processStatusMutex;
+    Mutex m_eventMutex;
 };
 
 

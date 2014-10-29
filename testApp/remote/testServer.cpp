@@ -38,6 +38,12 @@ void testServerShutdown();
 // TODO temp
 #include "testNTImage.cpp"
 
+// s1 starts with s2 check
+bool starts_with(const string& s1, const string& s2) {
+    return s2.size() <= s1.size() && s1.compare(0, s2.size(), s2) == 0;
+}
+
+
 Mutex structureStoreMutex;
 map<string, PVStructure::shared_pointer> structureStore;
 
@@ -291,7 +297,7 @@ static epics::pvData::PVStructure::shared_pointer createNTTable(int columnsCount
     PVStructure::shared_pointer result(
                 getPVDataCreate()->createPVStructure(
                     getFieldCreate()->createStructure(
-                        "ev4:nt/NTTable:1.0", tableFieldNames, tableFields)
+                        "epics:nt/NTTable:1.0", tableFieldNames, tableFields)
                     )
                 );
     result->getSubField<PVStringArray>("labels")->replace(freeze(labels));
@@ -329,7 +335,7 @@ static epics::pvData::PVStructure::shared_pointer createNTNameValue(int columnsC
     PVStructure::shared_pointer result(
                 getPVDataCreate()->createPVStructure(
                     getFieldCreate()->createStructure(
-                        "ev4:nt/NTNameValue:1.0", tableFieldNames, tableFields)
+                        "epics:nt/NTNameValue:1.0", tableFieldNames, tableFields)
                     )
                 );
     result->getSubField<PVStringArray>("name")->replace(freeze(labels));
@@ -341,7 +347,7 @@ static epics::pvData::PVStructure::shared_pointer createNTAggregate()
 {
     epics::pvData::StructureConstPtr s =
         getFieldCreate()->createFieldBuilder()->
-            setId("ev4:nt/NTAggregate:1.0")->
+            setId("epics:nt/NTAggregate:1.0")->
             add("value", pvDouble)->
             add("N", pvLong)->
             add("dispersion", pvDouble)->
@@ -360,7 +366,7 @@ static epics::pvData::PVStructure::shared_pointer createNTHistogram()
 {
     epics::pvData::StructureConstPtr s =
         getFieldCreate()->createFieldBuilder()->
-            setId("ev4:nt/NTHistogram:1.0")->
+            setId("epics:nt/NTHistogram:1.0")->
             addArray("ranges", pvDouble)->
             addArray("value", pvInt)->
             add("timeStamp", getStandardField()->timeStamp())->
@@ -623,23 +629,23 @@ public:
         {
             ScopedLock lock(shared_from_this());
                 
-            if (m_pvStructure->getStructure()->getID() == "ev4:nt/NTTable:1.0")
+            if (starts_with(m_pvStructure->getStructure()->getID(), "epics:nt/NTTable:1."))
             {
                 generateNTTableDoubleValues(m_pvStructure);
             }
-            else if (m_pvStructure->getStructure()->getID() == "ev4:nt/NTNameValue:1.0")
+            else if (starts_with(m_pvStructure->getStructure()->getID(), "epics:nt/NTNameValue:1."))
             {
                 generateNTNameValueDoubleValues(m_pvStructure);
             }
-            else if (m_pvStructure->getStructure()->getID() == "ev4:nt/NTAggregate:1.0")
+            else if (starts_with(m_pvStructure->getStructure()->getID(), "epics:nt/NTAggregate:1."))
             {
                 generateNTAggregateValues(m_pvStructure);
             }
-            else if (m_pvStructure->getStructure()->getID() == "ev4:nt/NTHistogram:1.0")
+            else if (starts_with(m_pvStructure->getStructure()->getID(), "epics:nt/NTHistogram:1."))
             {
                 generateNTHistogramValues(m_pvStructure);
             }
-            else if (m_pvStructure->getStructure()->getID() == "ev4:test/binaryCounter:1.0")
+            else if (starts_with(m_pvStructure->getStructure()->getID(), "epics:test/binaryCounter:1."))
             {
                 PVBytePtr pvByte = static_pointer_cast<PVByte>(m_valueField);
                 int8 val = pvByte->get() + 1;
@@ -1199,7 +1205,7 @@ static bool handleHelp(
         PVStructure::shared_pointer result(
                     getPVDataCreate()->createPVStructure(
                         getFieldCreate()->createStructure(
-                            "ev4:nt/NTScalar:1.0", fieldNames, fields)
+                            "epics:nt/NTScalar:1.0", fieldNames, fields)
                         )
                     );
 
@@ -1254,14 +1260,37 @@ public:
     virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument)
     {
         string channelName = m_channel->getChannelName();
+
+        if (channelName == "testNTURI")
+        {
+            const string helpText =
+                    "Returns the NTURI structure response identical the NTURI request.\n"
+                    "Arguments: (none)\n";
+            if (handleHelp(pvArgument, shared_from_this(), m_channelRPCRequester, helpText))
+                return;
+
+            if (!starts_with(pvArgument->getStructure()->getID(), "epics:nt/NTURI:1."))
+            {
+                PVStructure::shared_pointer nullPtr;
+                Status errorStatus(Status::STATUSTYPE_ERROR, "argument is not a NTURI structure");
+                m_channelRPCRequester->requestDone(errorStatus, shared_from_this(), nullPtr);
+            }
+            else
+            {
+                // return argument as result
+                m_channelRPCRequester->requestDone(Status::Ok, shared_from_this(), pvArgument);
+            }
+        }
+
+        // handle NTURI request
+        PVStructure::shared_pointer args(
+                    (starts_with(pvArgument->getStructure()->getID(), "epics:nt/NTURI:1.")) ?
+                        pvArgument->getStructureField("query") :
+                        pvArgument
+                        );
+
         if (channelName == "testNTTable")
         {
-            PVStructure::shared_pointer args(
-                        (pvArgument->getStructure()->getID() == "ev4:nt/NTURI:1.0") ?
-                            pvArgument->getStructureField("query") :
-                            pvArgument
-                            );
-
             const string helpText =
                     "Generates a NTTable structure response with 10 rows and a specified number of columns.\n"
                     "Columns are labeled 'column<num>' and values are '<num> + random [0..1)'.\n"
@@ -1286,12 +1315,6 @@ public:
         }
         else if (channelName == "testNTNameValue")
         {
-            PVStructure::shared_pointer args(
-                        (pvArgument->getStructure()->getID() == "ev4:nt/NTURI:1.0") ?
-                            pvArgument->getStructureField("query") :
-                            pvArgument
-                            );
-
             const string helpText =
                     "Generates a NTNameValue structure response with a specified number of columns.\n"
                     "Columns are labeled 'name<num>' and values are '<num> + random [0..1)'.\n"
@@ -1329,7 +1352,7 @@ public:
                 PVStructure::shared_pointer result(
                             getPVDataCreate()->createPVStructure(
                                 getFieldCreate()->createStructure(
-                                    "ev4:nt/NTNameValue:1.0", tableFieldNames, tableFields)
+                                    "epics:nt/NTNameValue:1.0", tableFieldNames, tableFields)
                                 )
                             );
                 result->getSubField<PVStringArray>("name")->replace(freeze(labels));
@@ -1345,12 +1368,6 @@ public:
         }
         else if (channelName == "testNTMatrix")
         {
-            PVStructure::shared_pointer args(
-                        (pvArgument->getStructure()->getID() == "ev4:nt/NTURI:1.0") ?
-                            pvArgument->getStructureField("query") :
-                            pvArgument
-                            );
-
             const string helpText =
                     "Generates a NTMatrix structure response with a specified number of rows and columns.\n"
                     "Matrix values are '<row> + random [0..1)'.\n"
@@ -1382,7 +1399,7 @@ public:
 
                 PVStructure::shared_pointer result(
                             getPVDataCreate()->createPVStructure(
-                                getFieldCreate()->createStructure("ev4:nt/NTMatrix:1.0", fieldNames, fields)
+                                getFieldCreate()->createStructure("epics:nt/NTMatrix:1.0", fieldNames, fields)
                                 )
                             );
 
@@ -1410,12 +1427,6 @@ public:
         }
         else if (channelName.find("testImage") == 0)
         {
-            PVStructure::shared_pointer args(
-                        (pvArgument->getStructure()->getID() == "ev4:nt/NTURI:1.0") ?
-                            pvArgument->getStructureField("query") :
-                            pvArgument
-                            );
-
             const string helpText =
                     "Generates a NTNDArray structure response that has encoded a specified image.\n"
                     "Arguments:\n"
@@ -1502,33 +1513,7 @@ public:
                 }
             }
         }
-        else if (channelName == "testNTURI")
-        {
-            const string helpText =
-                    "Returns the NTURI structure response identical the NTURI request.\n"
-                    "Arguments: (none)\n";
-            if (handleHelp(pvArgument, shared_from_this(), m_channelRPCRequester, helpText))
-                return;
-
-            if (pvArgument->getStructure()->getID() != "ev4:nt/NTURI:1.0")
-            {
-                PVStructure::shared_pointer nullPtr;
-                Status errorStatus(Status::STATUSTYPE_ERROR, "argument is not a NTURI structure");
-                m_channelRPCRequester->requestDone(errorStatus, shared_from_this(), nullPtr);
-            }
-            else
-            {
-                // return argument as result
-                m_channelRPCRequester->requestDone(Status::Ok, shared_from_this(), pvArgument);
-            }
-        }
         else if (channelName == "testSum") {
-
-            PVStructure::shared_pointer args(
-                        (pvArgument->getStructure()->getID() == "ev4:nt/NTURI:1.0") ?
-                            pvArgument->getStructureField("query") :
-                            pvArgument
-                            );
 
             const string helpText =
                     "Calculates a sum of two integer values.\n"
@@ -2206,7 +2191,7 @@ protected:
 
                 m_pvStructure =
                         getPVDataCreate()->createPVStructure(
-                            getFieldCreate()->createStructure("ev4:nt/NTMatrix:1.0", fieldNames, fields)
+                            getFieldCreate()->createStructure("epics:nt/NTMatrix:1.0", fieldNames, fields)
                             );
 
                 // fill with default values
@@ -2242,7 +2227,7 @@ protected:
             {
                 epics::pvData::StructureConstPtr s =
                     getFieldCreate()->createFieldBuilder()->
-                        setId("ev4:test/binaryCounter:1.0")->
+                        setId("epics:test/binaryCounter:1.0")->
                         add("value", pvByte)->
                         add("bit0", pvBoolean)->
                         add("bit1", pvBoolean)->
