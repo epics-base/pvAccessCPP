@@ -1872,7 +1872,7 @@ private:
     MonitorRequester::shared_pointer m_monitorRequester;
     bool m_continuous;
     PVStructure::shared_pointer m_pvStructure;
-    PVStructure::shared_pointer m_copy;
+    PVStructure::shared_pointer m_ccopy;
     BitSet::shared_pointer m_changedBitSet;
     BitSet::shared_pointer m_overrunBitSet;
     Mutex m_lock;
@@ -1891,7 +1891,7 @@ protected:
         m_monitorRequester(monitorRequester),
         m_continuous(false),
         m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
-        m_copy(getPVDataCreate()->createPVStructure(m_pvStructure->getStructure())),
+        m_ccopy(getPVDataCreate()->createPVStructure(m_pvStructure->getStructure())),
         m_changedBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_overrunBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_lock(),
@@ -1907,7 +1907,7 @@ protected:
         // we always send all
         m_changedBitSet->set(0);
 
-        m_thisPtr->pvStructurePtr = m_copy;
+        m_thisPtr->pvStructurePtr = m_ccopy;
         m_thisPtr->changedBitSet = m_changedBitSet;
         m_thisPtr->overrunBitSet = m_overrunBitSet;
     }
@@ -1941,7 +1941,7 @@ public:
     {
         {
             lock();
-            getConvert()->copyStructure(m_pvStructure, m_copy);
+            getConvert()->copyStructure(m_pvStructure, m_ccopy);
             unlock();
         }
     }
