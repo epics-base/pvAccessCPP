@@ -1,1 +1,0 @@
-/* testMockClient.cpp */

@@ -87,7 +87,7 @@ class ChannelAccessIFRemoteTest: public ChannelAccessIFTest  {
 };
 
 
-MAIN(testChannelProvider)
+MAIN(testChannelAccess)
 {
   SET_LOG_LEVEL(logLevelError);
   ChannelAccessIFRemoteTest caRemoteTest;
