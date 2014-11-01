@@ -6,6 +6,10 @@
 #define NOMINMAX
 #endif
 
+// TODO not nice
+// disable buggy boost enable_shared_from_this assert code
+#define BOOST_DISABLE_ASSERTS
+
 #define TESTSERVERNOMAIN
 
 #include <epicsExit.h>

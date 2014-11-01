@@ -6,6 +6,10 @@
 #define NOMINMAX
 #endif
 
+// TODO not nice
+// disable buggy boost enable_shared_from_this assert code
+#define BOOST_DISABLE_ASSERTS
+
 #include <pv/serverContext.h>
 #include <pv/clientContextImpl.h>
 #include <epicsExit.h>
@@ -24,7 +28,6 @@
 
 // TODO temp
 #include "testADCSim.cpp"
-
 
 using namespace epics::pvAccess;
 using namespace epics::pvData;
