@@ -206,8 +206,18 @@ extern int if_index;
 #else
 
 #if defined(RTEMS_BSP_NETWORK_DRIVER_NAME)  /* Use NIC provided by BSP */
+
+/* force ne2k_isa on i386 for qemu */
+#if defined(__i386__)
 # define NIC_NAME  BSP_NE2000_NETWORK_DRIVER_NAME
 # define NIC_ATTACH BSP_NE2000_NETWORK_DRIVER_ATTACH
+
+#else
+
+# define NIC_NAME  RTEMS_BSP_NETWORK_DRIVER_NAME
+# define NIC_ATTACH RTEMS_BSP_NETWORK_DRIVER_ATTACH
+#endif
+
 #endif
 
 #endif /* ifdef MULTI_NETDRIVER */
@@ -218,16 +228,22 @@ extern int if_index;
 
 extern int NIC_ATTACH();
 
+#if RTEMS_BSP_NETWORK_DRIVER_ATTACH == BSP_NE2000_NETWORK_DRIVER_ATTACH
 static char ethernet_address[6] = { 0x00, 0xab, 0xcd, 0xef, 0x12, 0x34 };
+#endif
+
 static struct rtems_bsdnet_ifconfig netdriver_config[1] = {{
   NIC_NAME,  /* name */
   (int (*)(struct rtems_bsdnet_ifconfig*,int))NIC_ATTACH,  /* attach function */
   0,  		/* link to next interface */
   FIXED_IP_ADDR,
-  FIXED_NETMASK,
+  FIXED_NETMASK
+#if RTEMS_BSP_NETWORK_DRIVER_ATTACH == BSP_NE2000_NETWORK_DRIVER_ATTACH
+  ,
   ethernet_address,
   irno:9,
   port:0xc100
+#endif
 }};
 #else
 #warning "NO KNOWN NETWORK DRIVER FOR THIS BSP -- YOU MAY HAVE TO EDIT networkconfig.h"
