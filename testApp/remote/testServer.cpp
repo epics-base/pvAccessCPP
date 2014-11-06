@@ -2283,6 +2283,20 @@ protected:
                 m_pvStructure = getPVDataCreate()->createPVStructure(s);
                 m_pvStructure->getSubField<PVArray>("value")->setLength(8);
             }
+            else if (m_name == "testStructureArray" )
+            {
+                epics::pvData::StructureConstPtr s =
+                    getFieldCreate()->createFieldBuilder()->
+                        add("value", getFieldCreate()->createStructureArray(getStandardField()->alarm()))->
+                        createStructure();
+                m_pvStructure = getPVDataCreate()->createPVStructure(s);
+
+                PVStructureArray::svector data(5);
+                data[1] = getPVDataCreate()->createPVStructure(getStandardField()->alarm());
+                data[4] = getPVDataCreate()->createPVStructure(getStandardField()->alarm());
+
+                m_pvStructure->getSubField<PVStructureArray>("value")->replace(freeze(data));
+            }
             else
             {
                 string allProperties("alarm,timeStamp,display,control,valueAlarm");
