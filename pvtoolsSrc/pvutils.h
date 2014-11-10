@@ -204,7 +204,10 @@ operator<<(pvutil_ostream& o, const epics::pvData::PVStructureArray::shared_poin
 
         epics::pvData::PVStructureArray::const_svector data(value->view());
         for (size_t i = 0; i < length; i++)
-            o << data[i];
+            if (data[i].get() == NULL)
+                o << epics::pvData::format::indent() << "(none)" << std::endl;
+            else
+                o << data[i];
     }
 
     return o;
@@ -223,7 +226,10 @@ operator<<(pvutil_ostream& o, const epics::pvData::PVUnionArray::shared_pointer 
 
         epics::pvData::PVUnionArray::const_svector data(value->view());
         for (size_t i = 0; i < length; i++)
-            o << data[i];
+            if (data[i].get() == NULL)
+                o << epics::pvData::format::indent() << "(none)" << std::endl;
+            else
+                o << data[i];
     }
 
     return o;

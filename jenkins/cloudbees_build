@@ -48,12 +48,6 @@ doxygen
 
 make runtests
 
-./bin/${EPICS_HOST_ARCH}/testServer &
-./bin/${EPICS_HOST_ARCH}/testRemoteClientImpl
-
-# Clean up testServer
-kill $!
-
 ###########################################
 # Create distribution
 

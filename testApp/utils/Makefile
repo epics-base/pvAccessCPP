@@ -1,15 +1,15 @@
-TOP=../..
+# This is a Makefile fragment, see ../Makefile
 
-include $(TOP)/configure/CONFIG
-
-PROD_LIBS += pvAccess pvData pvMB Com
+SRC_DIRS += $(PVACCESS_TEST)/utils
 
 TESTPROD_HOST += testAtomicBoolean
 testAtomicBoolean_SRCS = testAtomicBoolean.cpp
+testHarness_SRCS += testAtomicBoolean.cpp
 TESTS += testAtomicBoolean
 
 TESTPROD_HOST += testHexDump
 testHexDump = testHexDump.cpp
+testHarness_SRCS += testHexDump.cpp
 TESTS += testHexDump
 
 TESTPROD_HOST += testInetAddressUtils
@@ -19,30 +19,32 @@ testInetAddressUtils = testInetAddressUtils.cpp
 testInetAddressUtils_CXXFLAGS = -O0
 # needed for 64-bit Windows
 testInetAddressUtils_SYS_LIBS_WIN32 += ws2_32
+testHarness_SRCS += testInetAddressUtils.cpp
 TESTS += testInetAddressUtils
 
 TESTSCRIPTS_HOST += $(TESTS:%=%.t)
 
-#PROD_HOST += loggerTest
+#TESTPROD_HOST += loggerTest
 #loggerTest_SRCS += loggerTest.cpp
-#loggerTest_LIBS += pvAccess pvData Com
+#testHarness_SRCS += loggerTest.cpp
+#TESTS += loggerTest
 
-#PROD_HOST += introspectionRegisterTest
+#TESTPROD_HOST += introspectionRegisterTest
 #introspectionRegisterTest_SRCS += introspectionRegistryTest.cpp
-#introspectionRegisterTest_LIBS += pvAccess Com pvData
+#testHarness_SRCS += introspectionRegistryTest.cpp
+#TESTS += introspectionRegistryTest
 
-#PROD_HOST += transportRegisterTest
+#TESTPROD_HOST += transportRegisterTest
 #transportRegisterTest_SRCS += transportRegistryTest.cpp
-#transportRegisterTest_LIBS += pvAccess Com pvData
+#testHarness_SRCS += transportRegistryTest.cpp
+#TESTS += transportRegistryTest
 
-#PROD_HOST += namedLockPatternTest
+#TESTPROD_HOST += namedLockPatternTest
 #namedLockPatternTest_SRCS += namedLockPatternTest.cpp
-#namedLockPatternTest_LIBS += pvAccess Com pvData
+#testHarness_SRCS += namedLockPatternTest.cpp
+#TESTS += namedLockPatternTest
 
-#PROD_HOST += configurationTest
+#TESTPROD_HOST += configurationTest
 #configurationTest_SRCS += configurationTest.cpp
-#configurationTest_LIBS += pvAccess Com pvData
-
-include $(TOP)/configure/RULES
-#----------------------------------------
-#  ADD RULES AFTER THIS LINE
+#testHarness_SRCS += configurationTest.cpp
+#TESTS += configurationTest

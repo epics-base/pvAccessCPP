@@ -6,6 +6,10 @@
 #define NOMINMAX
 #endif
 
+// TODO not nice
+// disable buggy boost enable_shared_from_this assert code
+#define BOOST_DISABLE_ASSERTS
+
 #include <pv/serverContext.h>
 #include <pv/clientContextImpl.h>
 #include <epicsExit.h>
@@ -24,7 +28,6 @@
 
 // TODO temp
 #include "testADCSim.cpp"
-
 
 using namespace epics::pvAccess;
 using namespace epics::pvData;
@@ -1872,7 +1875,7 @@ private:
     MonitorRequester::shared_pointer m_monitorRequester;
     bool m_continuous;
     PVStructure::shared_pointer m_pvStructure;
-    PVStructure::shared_pointer m_copy;
+    PVStructure::shared_pointer m_ccopy;
     BitSet::shared_pointer m_changedBitSet;
     BitSet::shared_pointer m_overrunBitSet;
     Mutex m_lock;
@@ -1891,7 +1894,7 @@ protected:
         m_monitorRequester(monitorRequester),
         m_continuous(false),
         m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
-        m_copy(getPVDataCreate()->createPVStructure(m_pvStructure->getStructure())),
+        m_ccopy(getPVDataCreate()->createPVStructure(m_pvStructure->getStructure())),
         m_changedBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_overrunBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_lock(),
@@ -1907,7 +1910,7 @@ protected:
         // we always send all
         m_changedBitSet->set(0);
 
-        m_thisPtr->pvStructurePtr = m_copy;
+        m_thisPtr->pvStructurePtr = m_ccopy;
         m_thisPtr->changedBitSet = m_changedBitSet;
         m_thisPtr->overrunBitSet = m_overrunBitSet;
     }
@@ -1941,7 +1944,7 @@ public:
     {
         {
             lock();
-            getConvert()->copyStructure(m_pvStructure, m_copy);
+            getConvert()->copyStructure(m_pvStructure, m_ccopy);
             unlock();
         }
     }
@@ -2282,6 +2285,20 @@ protected:
                         createStructure();
                 m_pvStructure = getPVDataCreate()->createPVStructure(s);
                 m_pvStructure->getSubField<PVArray>("value")->setLength(8);
+            }
+            else if (m_name == "testStructureArray" )
+            {
+                epics::pvData::StructureConstPtr s =
+                    getFieldCreate()->createFieldBuilder()->
+                        add("value", getFieldCreate()->createStructureArray(getStandardField()->alarm()))->
+                        createStructure();
+                m_pvStructure = getPVDataCreate()->createPVStructure(s);
+
+                PVStructureArray::svector data(5);
+                data[1] = getPVDataCreate()->createPVStructure(getStandardField()->alarm());
+                data[4] = getPVDataCreate()->createPVStructure(getStandardField()->alarm());
+
+                m_pvStructure->getSubField<PVStructureArray>("value")->replace(freeze(data));
             }
             else
             {
