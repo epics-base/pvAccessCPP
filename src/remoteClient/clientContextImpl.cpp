@@ -2749,7 +2749,9 @@ namespace epics {
                 if (serverAddress.ia.sin_addr.s_addr == INADDR_ANY)
                     serverAddress.ia.sin_addr = responseFrom->ia.sin_addr;
 
-                serverAddress.ia.sin_port = htons(payloadBuffer->getShort());
+                // NOTE: htons might be a macro (e.g. vxWorks)
+                int16 port = payloadBuffer->getShort();
+                serverAddress.ia.sin_port = htons(port);
 
                 /*string protocol =*/ SerializeHelper::deserializeString(payloadBuffer, transport.get());
 
@@ -2812,7 +2814,9 @@ namespace epics {
                 if (serverAddress.ia.sin_addr.s_addr == INADDR_ANY)
                     serverAddress.ia.sin_addr = responseFrom->ia.sin_addr;
 
-                serverAddress.ia.sin_port = htons(payloadBuffer->getShort());
+                // NOTE: htons might be a macro (e.g. vxWorks)
+                int16 port = payloadBuffer->getShort();
+                serverAddress.ia.sin_port = htons(port);
                 
                 string protocol = SerializeHelper::deserializeString(payloadBuffer, transport.get());
 
