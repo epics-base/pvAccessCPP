@@ -152,7 +152,9 @@ void processSearchResponse(osiSockAddr const & responseFrom, ByteBuffer & receiv
     if (serverAddress.ia.sin_addr.s_addr == INADDR_ANY)
         serverAddress.ia.sin_addr = responseFrom.ia.sin_addr;
 
-    serverAddress.ia.sin_port = htons(receiveBuffer.getShort());
+    // NOTE: htons might be a macro (e.g. vxWorks)
+    int16 port = receiveBuffer.getShort();
+    serverAddress.ia.sin_port = htons(port);
 
     string protocol = /*SerializeHelper::*/deserializeString(&receiveBuffer);
 
@@ -283,7 +285,7 @@ bool discoverServers(double timeOut)
     sendBuffer.putByte(PVA_VERSION);
     sendBuffer.putByte((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00); // data + 7-bit endianess
     sendBuffer.putByte((int8_t)3);	// search
-    sendBuffer.putInt(4+1+3+16+2+1);		// "zero" payload
+    sendBuffer.putInt(4+1+3+16+2+1+2);		// "zero" payload
 
     sendBuffer.putInt(0);   // sequenceId
     sendBuffer.putByte((int8_t)0x81);    // reply required // TODO unicast vs multicast; for now we mark ourselves as unicast

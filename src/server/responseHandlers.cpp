@@ -236,7 +236,9 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     if (responseAddress.ia.sin_addr.s_addr == INADDR_ANY)
         responseAddress.ia.sin_addr = responseFrom->ia.sin_addr;
 
-    responseAddress.ia.sin_port = htons(payloadBuffer->getShort());
+    // NOTE: htons might be a macro (e.g. vxWorks)
+    int16 port = payloadBuffer->getShort();
+    responseAddress.ia.sin_port = htons(port);
 
     size_t protocolsCount = SerializeHelper::readSize(payloadBuffer, transport.get());
     bool allowed = (protocolsCount == 0);
