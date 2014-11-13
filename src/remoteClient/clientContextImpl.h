@@ -128,6 +128,8 @@ namespace epics {
             virtual void poll() = 0;
 
             virtual void destroy() = 0;
+
+            virtual const osiSockAddr& getLocalBroadcastAddress() const = 0;
         };
 
         epicsShareExtern ClientContextImpl::shared_pointer createClientContextImpl();
