@@ -12,6 +12,7 @@
 
 #define TESTSERVERNOMAIN
 
+#include <envDefs.h>
 #include <epicsExit.h>
 #include <epicsUnitTest.h>
 #include <testMain.h>
@@ -93,6 +94,10 @@ class ChannelAccessIFRemoteTest: public ChannelAccessIFTest  {
 
 MAIN(testChannelAccess)
 {
+  // note: this leaks memory (uses putenv)
+  epicsEnvSet("EPICS_PVA_ADDR_LIST", "127.0.0.1");
+  epicsEnvSet("EPICS_PVA_AUTO_ADDR_LIST", "0");
+
   SET_LOG_LEVEL(logLevelError);
   ChannelAccessIFRemoteTest caRemoteTest;
   return caRemoteTest.runAllTest();

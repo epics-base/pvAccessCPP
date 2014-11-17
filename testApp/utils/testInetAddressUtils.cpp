@@ -74,7 +74,38 @@ void test_getSocketAddressList()
     testOk1(htons(555) == addr.ia.sin_port);
     testOk1(htonl(0xC0A80304) == addr.ia.sin_addr.s_addr);
     testOk1("192.168.3.4:555" == inetAddressToString(addr));
-    
+
+
+    // empty
+    auto_ptr<InetAddrVector> vec2(getSocketAddressList("", 1111));
+    testOk1(static_cast<size_t>(0) == vec2->size());
+
+    // just spaces
+    auto_ptr<InetAddrVector> vec3(getSocketAddressList("   ", 1111));
+    testOk1(static_cast<size_t>(0) == vec3->size());
+
+    // leading spaces
+    auto_ptr<InetAddrVector> vec4(getSocketAddressList("     127.0.0.1   10.10.12.11:1234 192.168.3.4", 555));
+
+    testOk1(static_cast<size_t>(3) == vec4->size());
+
+    addr = vec4->at(0);
+    testOk1(AF_INET == addr.ia.sin_family);
+    testOk1(htons(555) == addr.ia.sin_port);
+    testOk1(htonl(0x7F000001) == addr.ia.sin_addr.s_addr);
+    testOk1("127.0.0.1:555" == inetAddressToString(addr));
+
+    addr = vec4->at(1);
+    testOk1(AF_INET == addr.ia.sin_family);
+    testOk1(htons(1234) == addr.ia.sin_port);
+    testOk1(htonl(0x0A0A0C0B) == addr.ia.sin_addr.s_addr);
+    testOk1("10.10.12.11:1234" == inetAddressToString(addr));
+
+    addr = vec4->at(2);
+    testOk1(AF_INET == addr.ia.sin_family);
+    testOk1(htons(555) == addr.ia.sin_port);
+    testOk1(htonl(0xC0A80304) == addr.ia.sin_addr.s_addr);
+    testOk1("192.168.3.4:555" == inetAddressToString(addr));
 }
 
 void test_ipv4AddressToInt()
@@ -329,7 +360,7 @@ void test_multicastLoopback()
 
 MAIN(testInetAddressUtils)
 {
-    testPlan(68);
+    testPlan(83);
     testDiag("Tests for InetAddress utils");
 
     test_getSocketAddressList();

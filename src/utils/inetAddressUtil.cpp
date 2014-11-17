@@ -146,8 +146,13 @@ InetAddrVector* getSocketAddressList(const std::string & list, int defaultPort,
         const InetAddrVector* appendList) {
     InetAddrVector* iav = new InetAddrVector();
 
-    // parse string
+    // skip leading spaces
+    size_t len = list.length();
     size_t subStart = 0;
+    while (subStart < len && isspace(list[subStart]))
+        subStart++;
+
+    // parse string
     size_t subEnd;
     while((subEnd = list.find(' ', subStart))!=std::string::npos) {
         string address = list.substr(subStart, (subEnd-subStart));
@@ -157,7 +162,7 @@ InetAddrVector* getSocketAddressList(const std::string & list, int defaultPort,
         subStart = list.find_first_not_of(" \t\r\n\v", subEnd);
     }
 
-    if(subStart!=std::string::npos&&list.length()>0) {
+    if(subStart!=std::string::npos && subStart<len) {
         osiSockAddr addr;
         if (aToIPAddr(list.substr(subStart).c_str(), defaultPort, &addr.ia) == 0)
             iav->push_back(addr);
