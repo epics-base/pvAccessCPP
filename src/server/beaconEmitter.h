@@ -107,7 +107,7 @@ namespace epics { namespace pvAccess {
 		/**
 		 * Beacon sequence ID.
 		 */
-		epics::pvData::int16 _beaconSequenceID;
+        epics::pvData::int8 _beaconSequenceID;
 
 		/**
 		 * Server GUID.

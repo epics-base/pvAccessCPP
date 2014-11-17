@@ -78,8 +78,12 @@ void BeaconEmitter::send(ByteBuffer* buffer, TransportSendControl* control)
 	control->startMessage((int8)0, 12+2+2+16+2);
 
     buffer->put(_guid.value, 0, sizeof(_guid.value));
-	buffer->putShort(_beaconSequenceID);
-	
+
+    // TODO qos/flags (e.g. multicast/unicast)
+    buffer->putByte(0);
+
+    buffer->putByte(_beaconSequenceID);
+
 	// TODO for now fixed changeCount
 	buffer->putShort(0);
 
@@ -124,7 +128,7 @@ void BeaconEmitter::start()
 
 void BeaconEmitter::reschedule()
 {
-	const double period = (_beaconSequenceID >= _beaconCountLimit) ? _slowBeaconPeriod : _fastBeaconPeriod;
+    const double period = (_beaconSequenceID >= _beaconCountLimit) ? _slowBeaconPeriod : _fastBeaconPeriod;
 	if (period > 0)
 	{
         _timer->scheduleAfterDelay(shared_from_this(), period);

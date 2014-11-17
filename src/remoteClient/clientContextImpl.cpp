@@ -2877,7 +2877,8 @@ namespace epics {
                 GUID guid;
                 payloadBuffer->get(guid.value, 0, sizeof(guid.value));
 
-                int16 sequentalID = payloadBuffer->getShort();
+                /*int8 qosCode =*/ payloadBuffer->getByte();
+                int8 sequentalID = payloadBuffer->getByte();
                 int16 changeCount = payloadBuffer->getShort();
 
                 osiSockAddr serverAddress;
