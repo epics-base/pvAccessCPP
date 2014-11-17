@@ -3326,7 +3326,8 @@ namespace epics {
              */
             class InternalChannelImpl :
                 public ChannelImpl,
-                public std::tr1::enable_shared_from_this<InternalChannelImpl>
+                public std::tr1::enable_shared_from_this<InternalChannelImpl>,
+                public TimerCallback
             {
             private:
                 
@@ -3359,7 +3360,12 @@ namespace epics {
                  * List of fixed addresses, if <code<0</code> name resolution will be used.
                  */
                 auto_ptr<InetAddrVector> m_addresses;
-                
+
+                /**
+                 * @brief m_addressIndex Index of currently used address (rollover pointer in a list).
+                 */
+                int m_addressIndex;
+
                 /**
                  * Connection status.
                  */
@@ -3429,6 +3435,7 @@ namespace epics {
                 m_requester(requester),
                 m_priority(priority),
                 m_addresses(addresses),
+                m_addressIndex(0),
                 m_connectionState(NEVER_CONNECTED),
                 m_needSubscriptionUpdate(false),
                 m_allowCreation(true),
@@ -3670,6 +3677,8 @@ namespace epics {
                             m_serverChannelID = sid;
                             //setAccessRights(rights);
                             
+                            m_addressIndex = 0; // reset
+
                             // user might create monitors in listeners, so this has to be done before this can happen
                             // however, it would not be nice if events would come before connection event is fired
                             // but this cannot happen since transport (TCP) is serving in this thread
@@ -3786,6 +3795,9 @@ namespace epics {
                     
                 }
                 
+                #define STATIC_SEARCH_BASE_DELAY_SEC 5
+                #define STATIC_SEARCH_MAX_MULTIPLIER 10
+
                 /**
                  * Initiate search (connect) procedure.
                  */
@@ -3801,13 +3813,29 @@ namespace epics {
                     }
                     else if (!m_addresses->empty())
                     {
-                        // TODO not only first !!!
-                        // TODO minor version !!!
-                        // TODO what to do if there is no channel, do not search in a loop!!! do this in other thread...!
-                        searchResponse(PVA_PROTOCOL_REVISION, &((*m_addresses)[0]));
+                        TimerCallback::shared_pointer tc = std::tr1::dynamic_pointer_cast<TimerCallback>(shared_from_this());
+                        m_context->getTimer()->scheduleAfterDelay(tc,
+                                        (m_addressIndex / m_addresses->size())*STATIC_SEARCH_BASE_DELAY_SEC);
                     }
                 }
-                
+
+                virtual void callback() {
+                    // TODO cancellaction?!
+                    // TODO not in this timer thread !!!
+                    // TODO boost when a server (from address list) is started!!! IP vs address !!!
+                    int ix = m_addressIndex % m_addresses->size();
+                    m_addressIndex++;
+                    if (m_addressIndex >= (m_addresses->size()*(STATIC_SEARCH_MAX_MULTIPLIER+1)))
+                        m_addressIndex = m_addresses->size()*STATIC_SEARCH_MAX_MULTIPLIER;
+
+                    // NOTE: calls channelConnectFailed() on failure
+                    searchResponse(PVA_PROTOCOL_REVISION, &((*m_addresses)[ix]));
+                }
+
+                virtual void timerStopped() {
+                    // noop
+                }
+
                 virtual void searchResponse(int8 minorRevision, osiSockAddr* serverAddress) {
                     Lock guard(m_channelMutex);
                     Transport::shared_pointer transport = m_transport;
