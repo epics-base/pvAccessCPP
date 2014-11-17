@@ -3825,7 +3825,7 @@ namespace epics {
                     // TODO boost when a server (from address list) is started!!! IP vs address !!!
                     int ix = m_addressIndex % m_addresses->size();
                     m_addressIndex++;
-                    if (m_addressIndex >= (m_addresses->size()*(STATIC_SEARCH_MAX_MULTIPLIER+1)))
+                    if (m_addressIndex >= static_cast<int>(m_addresses->size()*(STATIC_SEARCH_MAX_MULTIPLIER+1)))
                         m_addressIndex = m_addresses->size()*STATIC_SEARCH_MAX_MULTIPLIER;
 
                     // NOTE: calls channelConnectFailed() on failure
