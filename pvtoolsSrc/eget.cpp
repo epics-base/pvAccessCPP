@@ -1670,10 +1670,13 @@ int main (int argc, char *argv[])
         serviceRequest = true;
     }
 
+    static string noAddress;
+
     // PVs mode
     if (!serviceRequest)
     {
         vector<string> pvs;
+        vector<string> pvsAddress;
         vector<string> providerNames;
 
         if (validURI)
@@ -1688,8 +1691,6 @@ int main (int argc, char *argv[])
                 return 1;
             }
 
-            // authority = uri.host;
-
             if (uri.path.length() <= 1)
             {
                 std::cerr << "invalid URI, empty path" << std::endl;
@@ -1699,6 +1700,7 @@ int main (int argc, char *argv[])
 
             // skip trailing '/'
             pvs.push_back(uri.path.substr(1));
+            pvsAddress.push_back(uri.host);
             providerNames.push_back(uri.protocol);
         }
         else
@@ -1719,8 +1721,6 @@ int main (int argc, char *argv[])
                         return 1;
                     }
 
-                    // authority = uri.host;
-
                     if (uri.path.length() <= 1)
                     {
                         std::cerr << "invalid URI, empty path" << std::endl;
@@ -1730,11 +1730,13 @@ int main (int argc, char *argv[])
 
                     // skip trailing '/'
                     pvs.push_back(uri.path.substr(1));
+                    pvsAddress.push_back(uri.host);
                     providerNames.push_back(uri.protocol);
                 }
                 else
                 {
                     pvs.push_back(argv[optind]);
+                    pvsAddress.push_back(noAddress);
                     providerNames.push_back(defaultProvider);
                 }
             }
@@ -1756,8 +1758,11 @@ int main (int argc, char *argv[])
         for (int n = 0; n < nPvs; n++)
         {
             shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
-            // TODO no provider check
-            channels[n] = getChannelProviderRegistry()->getProvider(providerNames[n])->createChannel(pvs[n], channelRequesterImpl);
+            if (pvsAddress[n].empty())
+                channels[n] = getChannelProviderRegistry()->getProvider(providerNames[n])->createChannel(pvs[n], channelRequesterImpl);
+            else
+                channels[n] = getChannelProviderRegistry()->getProvider(providerNames[n])->createChannel(pvs[n], channelRequesterImpl,
+                                                                                                         ChannelProvider::PRIORITY_DEFAULT, pvsAddress[n]);
         }
 
         // TODO maybe unify for nPvs == 1?!
@@ -1787,6 +1792,7 @@ int main (int argc, char *argv[])
             else
             {
                 string cn;
+                string ca;
                 string cp;
 
                 // read next channel name from stream
@@ -1808,8 +1814,6 @@ int main (int argc, char *argv[])
                         return 1;
                     }
 
-                    // authority = uri.host;
-
                     if (uri.path.length() <= 1)
                     {
                         std::cerr << "invalid URI, empty path" << std::endl;
@@ -1819,19 +1823,24 @@ int main (int argc, char *argv[])
 
                     // skip trailing '/'
                     cn = uri.path.substr(1);
+                    ca = uri.host;
                     cp = uri.protocol;
                 }
                 else
                 {
                     // leave cn as it is, use default provider
+                    ca = noAddress;
                     cp = defaultProvider;
                 }
 
                     
                     
                 shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
-                // TODO no provider check
-                channel = getChannelProviderRegistry()->getProvider(cp)->createChannel(cn, channelRequesterImpl);
+                if (ca.empty())
+                    channel = getChannelProviderRegistry()->getProvider(cp)->createChannel(cn, channelRequesterImpl);
+                else
+                    channel = getChannelProviderRegistry()->getProvider(cp)->createChannel(cn, channelRequesterImpl,
+                                                                                           ChannelProvider::PRIORITY_DEFAULT, ca);
             }
 
             if (monitor)
