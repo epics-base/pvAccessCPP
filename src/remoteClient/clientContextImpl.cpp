@@ -4425,11 +4425,6 @@ TODO
                         aToIPAddr("224.0.0.128", m_broadcastPort, &m_localBroadcastAddress.ia);
                         m_broadcastTransport->join(m_localBroadcastAddress, loAddr);
 
-                        osiSockAddr anyAddress;
-                        anyAddress.ia.sin_family = AF_INET;
-                        anyAddress.ia.sin_port = htons(0);
-                        anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-
                         // NOTE: this disables usage of multicast addresses in EPICS_PVA_ADDR_LIST
                         m_searchTransport->setMutlicastNIF(loAddr, true);
 
