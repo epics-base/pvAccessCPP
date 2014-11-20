@@ -12,6 +12,8 @@
 /* for CA */
 #include <cadef.h>
 
+#include <caProvider.h>
+
 namespace epics {
 namespace pvAccess {
 namespace ca {
@@ -24,7 +26,7 @@ class CAChannel :
 public:
     POINTER_DEFINITIONS(CAChannel);
 
-    static shared_pointer create(ChannelProvider::shared_pointer const & channelProvider,
+    static shared_pointer create(CAChannelProvider::shared_pointer const & channelProvider,
                                             std::string const & channelName,
                                             short priority,
                                             ChannelRequester::shared_pointer const & channelRequester);
@@ -95,19 +97,21 @@ public:
 
     /* ---------------------------------------------------------------- */
 
+    void threadAttach();
+
     void registerRequest(ChannelRequest::shared_pointer const & request);
     void unregisterRequest(ChannelRequest::shared_pointer const & request);
 
 private:
 
     CAChannel(std::string const & channelName,
-              ChannelProvider::shared_pointer const & channelProvider,
+              CAChannelProvider::shared_pointer const & channelProvider,
               ChannelRequester::shared_pointer const & channelRequester);
     void activate(short priority);
 
     std::string channelName;
     
-    ChannelProvider::shared_pointer channelProvider;
+    CAChannelProvider::shared_pointer channelProvider;
     ChannelRequester::shared_pointer channelRequester;
 
     chid channelID;
