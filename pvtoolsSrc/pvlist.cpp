@@ -275,11 +275,15 @@ bool discoverServers(double timeOut)
     }
 
     // set timeout
+#ifdef _WIN32
+    // ms
+    DWORD timeout = 250;
+#else
     struct timeval timeout;
     memset(&timeout, 0, sizeof(struct timeval));
     timeout.tv_sec = 0;
     timeout.tv_usec = 250000;
-
+#endif
     status = ::setsockopt (socket, SOL_SOCKET, SO_RCVTIMEO,
                            (char*)&timeout, sizeof(timeout));
     if (status)
@@ -377,7 +381,7 @@ bool discoverServers(double timeOut)
                 if (socketError == SOCK_EINTR ||
                     socketError == EAGAIN ||        // no alias in libCom
                     // windows times out with this
-                    //socketError == SOCK_ETIMEDOUT ||
+                    socketError == SOCK_ETIMEDOUT ||
                     socketError == SOCK_EWOULDBLOCK)
                 {
                     // OK
