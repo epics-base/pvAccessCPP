@@ -27,7 +27,7 @@ using std::string;
 
 PVACCESS_REFCOUNT_MONITOR_DEFINE(caChannel);
 
-CAChannel::shared_pointer CAChannel::create(ChannelProvider::shared_pointer const & channelProvider,
+CAChannel::shared_pointer CAChannel::create(CAChannelProvider::shared_pointer const & channelProvider,
                                             std::string const & channelName,
                                             short priority,
                                             ChannelRequester::shared_pointer const & channelRequester)
@@ -185,7 +185,7 @@ void CAChannel::disconnected()
 }
 
 CAChannel::CAChannel(std::string const & _channelName,
-                     ChannelProvider::shared_pointer const & _channelProvider,
+                     CAChannelProvider::shared_pointer const & _channelProvider,
                      ChannelRequester::shared_pointer const & _channelRequester) :
     channelName(_channelName),
     channelProvider(_channelProvider),
@@ -423,6 +423,8 @@ void CAChannel::message(std::string const & message,MessageType messageType)
 
 void CAChannel::destroy()
 {
+    threadAttach();
+
     Lock lock(requestsMutex);
     {
         while (!requests.empty())
@@ -438,6 +440,11 @@ void CAChannel::destroy()
 }
 
 /* ---------------------------------------------------------- */
+
+void CAChannel::threadAttach()
+{
+    std::tr1::static_pointer_cast<CAChannelProvider>(channelProvider)->threadAttach();
+}
 
 void CAChannel::registerRequest(ChannelRequest::shared_pointer const & request)
 {
@@ -871,6 +878,8 @@ void CAChannelGet::getDone(struct event_handler_args &args)
 
 void CAChannelGet::get()
 {
+    channel->threadAttach();
+
     /*
     From R3.14.12 onwards ca_array_get_callback() replies will give a CA client application the current number
     of elements in an array field, provided they specified an element count of zero in their original request.
@@ -1176,6 +1185,8 @@ void CAChannelPut::putDone(struct event_handler_args &args)
 void CAChannelPut::put(PVStructure::shared_pointer const & pvPutStructure,
                        BitSet::shared_pointer const & /*putBitSet*/)
 {
+    channel->threadAttach();
+
     doPut putFunc = doPutFuncTable[channel->getNativeType()];
     if (putFunc)
     {
@@ -1229,6 +1240,8 @@ void CAChannelPut::getDone(struct event_handler_args &args)
 
 void CAChannelPut::get()
 {
+    channel->threadAttach();
+
     int result = ca_array_get_callback(getType, channel->getElementCount(),
                                        channel->getChannelID(), ca_put_get_handler, this);
     if (result == ECA_NORMAL)
@@ -1388,6 +1401,8 @@ void CAChannelMonitor::subscriptionEvent(struct event_handler_args &args)
 
 epics::pvData::Status CAChannelMonitor::start()
 {
+    channel->threadAttach();
+
     /*
     From R3.14.12 onwards when using the IOC server and the C++ client libraries monitor callbacks
     replies will give a CA client application the current number of elements in an array field,
@@ -1419,6 +1434,8 @@ epics::pvData::Status CAChannelMonitor::start()
 
 epics::pvData::Status CAChannelMonitor::stop()
 {
+    channel->threadAttach();
+
     int result = ca_clear_subscription(eventID);
 
     if (result == ECA_NORMAL)
@@ -1466,6 +1483,8 @@ void CAChannelMonitor::cancel()
 
 void CAChannelMonitor::destroy()
 {
+    channel->threadAttach();
+
     ca_clear_subscription(eventID);
 
     // TODO

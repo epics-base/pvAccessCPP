@@ -14,6 +14,8 @@
 #endif
 
 #include <sstream>
+#include <time.h>
+#include <stdlib.h>
 
 #include <pv/responseHandlers.h>
 #include <pv/remote.h>
@@ -26,8 +28,6 @@
 #include <osiSock.h>
 #include <osiProcess.h>
 #include <pv/logger.h>
-
-#include <sstream>
 
 #include <pv/pvAccessMB.h>
 #include <pv/rpcServer.h>
@@ -206,6 +206,8 @@ std::string ServerSearchHandler::SUPPORTED_PROTOCOL = "tcp";
 ServerSearchHandler::ServerSearchHandler(ServerContextImpl::shared_pointer const & context) :
         AbstractServerResponseHandler(context, "Search request"), _providers(context->getChannelProviders())
 {
+    // initialize random seed with some random value
+    srand ( time(NULL) );
 }
 
 void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
@@ -254,7 +256,10 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     transport->ensureData(2);
 	const int32 count = payloadBuffer->getShort() & 0xFFFF;
 
+    // TODO DoS attack?
 	const bool responseRequired = (QOS_REPLY_REQUIRED & qosCode) != 0;
+
+    // TODO bloom filter or similar server selection (by GUID)
 
     //
     // locally broadcast if unicast (qosCode & 0x80 == 0x80)
@@ -306,12 +311,17 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     {
         if (allowed)
         {
+            // TODO constant
+            #define MAX_SERVER_SEARCH_RESPONSE_DELAY_MS 100
+            double period = (rand() % MAX_SERVER_SEARCH_RESPONSE_DELAY_MS)/(double)1000;
+
             ServerChannelFindRequesterImpl* pr = new ServerChannelFindRequesterImpl(_context, 1);
             pr->set("", searchSequenceId, 0, responseAddress, true, true);
+
             // TODO use std::make_shared
             std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(pr);
-            ChannelFindRequester::shared_pointer spr = tp;
-            spr->channelFindResult(Status::Ok, ChannelFind::shared_pointer(), false);
+            TimerCallback::shared_pointer tc = tp;
+            _context->getTimer()->scheduleAfterDelay(tc, period);
         }
     }
 }
@@ -333,6 +343,16 @@ void ServerChannelFindRequesterImpl::clear()
 	_wasFound = false;
 	_responseCount = 0;
     _serverSearch = false;
+}
+
+void ServerChannelFindRequesterImpl::callback()
+{
+    channelFindResult(Status::Ok, ChannelFind::shared_pointer(), false);
+}
+
+void ServerChannelFindRequesterImpl::timerStopped()
+{
+    // noop
 }
 
 ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(std::string name, int32 searchSequenceId, int32 cid, osiSockAddr const & sendTo,

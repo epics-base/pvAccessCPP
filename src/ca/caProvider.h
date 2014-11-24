@@ -7,6 +7,8 @@
 #ifndef CAPROVIDER_H
 #define CAPROVIDER_H
 
+#include <cadef.h>
+
 #include <pv/pvAccess.h>
 #include <map>
 
@@ -57,12 +59,16 @@ public:
 
     /* ---------------------------------------------------------------- */
 
+    void threadAttach();
+
     void registerChannel(Channel::shared_pointer const & channel);
     void unregisterChannel(Channel::shared_pointer const & channel);
 
 private:
 
     void initialize();
+
+    ca_client_context* current_context;
 
     epics::pvData::Mutex channelsMutex;
     // TODO std::unordered_map

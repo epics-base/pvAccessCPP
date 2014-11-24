@@ -27,7 +27,7 @@ using namespace epics::pvAccess::ca;
 
 std::string CAChannelProvider::PROVIDER_NAME = "ca";
 
-CAChannelProvider::CAChannelProvider()
+CAChannelProvider::CAChannelProvider() : current_context(0)
 {
     initialize();
 }
@@ -75,6 +75,8 @@ Channel::shared_pointer CAChannelProvider::createChannel(
         ChannelRequester::shared_pointer const & channelRequester,
         short priority)
 {
+    threadAttach();
+
     static std::string emptyString;
     return createChannel(channelName, channelRequester, priority, emptyString);
 }
@@ -119,6 +121,11 @@ void CAChannelProvider::destroy()
     ca_context_destroy();
 }
 
+void CAChannelProvider::threadAttach()
+{
+    ca_attach_context(current_context);
+}
+
 void CAChannelProvider::registerChannel(Channel::shared_pointer const & channel)
 {
     Lock lock(channelsMutex);
@@ -139,6 +146,8 @@ void CAChannelProvider::initialize()
         throw std::runtime_error(std::string("CA error %s occurred while trying "
                 "to start channel access:") + ca_message(result));
     }
+
+    current_context = ca_current_context();
 
     // TODO create a ca_poll thread, if ca_disable_preemptive_callback
 }

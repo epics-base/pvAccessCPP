@@ -76,6 +76,16 @@ const Version& ServerContextImpl::getVersion()
     return ServerContextImpl::VERSION;
 }
 
+/*
+#ifdef WIN32
+  UUID uuid;
+  UuidCreate ( &uuid );
+#else
+  uuid_t uuid;
+  uuid_generate_random ( uuid );
+#endif
+*/
+
 void ServerContextImpl::generateGUID()
 {
     // TODO use UUID
