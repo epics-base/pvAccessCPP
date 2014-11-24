@@ -130,7 +130,7 @@ std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure const & pvE
     if (enumMode == AutoEnum || enumMode == StringEnum)
     {
         int32 ix = pvIndex->get();
-        if (ix < 0 || ix > static_cast<int32>(pvChoices->getLength()))
+        if (ix < 0 || ix >= static_cast<int32>(pvChoices->getLength()))
             o << ix;
         else
             pvChoices->dumpValue(o, ix);
