@@ -53,6 +53,9 @@ map<string, PVStructure::shared_pointer> structureStore;
 class StructureChangedCallback {
 public:
     POINTER_DEFINITIONS(StructureChangedCallback);
+
+    ~StructureChangedCallback() {}
+
     // TODO for now no BitSets, etc.
     virtual void structureChanged() = 0;
 };

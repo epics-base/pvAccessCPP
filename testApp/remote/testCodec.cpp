@@ -49,12 +49,14 @@ namespace epics {
 
     class ReadPollOneCallback {
     public:
+      ~ReadPollOneCallback() {}
       virtual void readPollOne() = 0;
     };
 
 
     class WritePollOneCallback {
     public:
+      ~WritePollOneCallback() {}
       virtual void writePollOne() = 0 ;
     };
 
@@ -2618,7 +2620,7 @@ namespace epics {
         for (int32_t i = 0; i < header._payloadSize; i++) {
           if ((int8_t)i != header._payload->getByte()) {
             testFail("%s: (int8_t)%d == header._payload->getByte()", 
-              CURRENT_FUNCTION, i);
+              CURRENT_FUNCTION, (int)i);
           }
         }
       }	
@@ -2823,7 +2825,7 @@ namespace epics {
         for (int32_t i = 0; i < header._payloadSize; i++) {
           if ((int8_t)i != header._payload->getByte()) {
             testFail("%s: (int8_t)%d == header._payload->getByte()", 
-              CURRENT_FUNCTION, i);
+              CURRENT_FUNCTION, (int)i);
           }
         }
 

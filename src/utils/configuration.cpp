@@ -287,7 +287,7 @@ bool SystemConfigurationImpl::getPropertyAsBoolean(const string &name, const boo
 
 int32 SystemConfigurationImpl::getPropertyAsInteger(const string &name, const int32 defaultValue)
 {
-	int32 retval;
+    int32 retval = defaultValue;
 	_ibuffer.clear();
 	_obuffer.clear();
 	_obuffer.str("");
