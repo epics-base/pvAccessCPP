@@ -498,7 +498,7 @@ int main (int argc, char *argv[])
             usage();
             return 0;
         case 'w':               /* Set PVA timeout value */
-            if(epicsScanDouble(optarg, &timeOut) != 1 || timeOut <= 0.0)
+            if((epicsScanDouble(optarg, &timeOut)) != 1 || timeOut <= 0.0)
             {
                 fprintf(stderr, "'%s' is not a valid timeout value "
                         "- ignored. ('pvlist -h' for help.)\n", optarg);
