@@ -54,7 +54,7 @@ class StructureChangedCallback {
 public:
     POINTER_DEFINITIONS(StructureChangedCallback);
 
-    ~StructureChangedCallback() {}
+    virtual ~StructureChangedCallback() {}
 
     // TODO for now no BitSets, etc.
     virtual void structureChanged() = 0;

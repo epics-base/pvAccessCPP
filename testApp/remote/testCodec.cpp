@@ -49,14 +49,14 @@ namespace epics {
 
     class ReadPollOneCallback {
     public:
-      ~ReadPollOneCallback() {}
+      virtual ~ReadPollOneCallback() {}
       virtual void readPollOne() = 0;
     };
 
 
     class WritePollOneCallback {
     public:
-      ~WritePollOneCallback() {}
+      virtual ~WritePollOneCallback() {}
       virtual void writePollOne() = 0 ;
     };
 
