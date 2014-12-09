@@ -1242,7 +1242,11 @@ namespace epics {
       }
 
       // wait read thread to die
-      bac->_shutdownEvent.wait();
+      // TODO rewise
+      // this timeout is needed where close() is initiated from the send thread,
+      // and not from the read thread as usualy - recv() does not exit until socket is not destroyed,
+      // which is done the internalDestroy() call below
+      bac->_shutdownEvent.wait(3.0);
 
       // call internal destroy
       bac->internalDestroy();
@@ -1449,7 +1453,7 @@ namespace epics {
        if (IS_LOGGABLE(logLevelDebug))
        {
            LOG(logLevelDebug,
-               "TCP socket to %s closed.",
+               "TCP socket to %s is to be closed.",
                inetAddressToString(_socketAddress).c_str());
        }
    }
