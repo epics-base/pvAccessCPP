@@ -2452,11 +2452,13 @@ namespace epics {
                                             );
                 m_monitorStrategy->init(structure);
                 
+                bool restoreStartedState = m_started;
+
                 // notify
                 Monitor::shared_pointer thisChannelMonitor = dynamic_pointer_cast<Monitor>(shared_from_this());
                 EXCEPTION_GUARD(m_monitorRequester->monitorConnect(status, thisChannelMonitor, structure));
 
-                if (m_started)
+                if (restoreStartedState)
                     start();
             }
 
