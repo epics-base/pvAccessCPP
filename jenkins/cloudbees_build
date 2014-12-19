@@ -12,7 +12,10 @@
 ###########################################
 # Determine EPICS Base version
 
-BASE=${1:-3.14.12.4}
+DEFAULT_BASE=3.14.12.4
+
+BASE=${1:-${DEFAULT_BASE}}
+[ "${1}" = ${DEFAULT_BASE} -o -z "${1}" ] && BUILD_DOCS=YES
 
 ###########################################
 # Fetch and unpack dependencies
@@ -47,7 +50,7 @@ EPICS_BASE=${EPICS_BASE}
 EOF
 
 make distclean all
-doxygen
+[ "${BUILD_DOCS}" ] && doxygen
 
 ###########################################
 # Test
@@ -62,4 +65,4 @@ tar --exclude=test* -czf pvAccess.CB-dist.tar.gz bin lib include dbd
 ###########################################
 # Publish documentation
 
-rsync -aP --delete -e ssh documentation epics-jenkins@web.sourceforge.net:/home/project-web/epics-pvdata/htdocs/docbuild/pvAccessCPP/tip
+[ "${BUILD_DOCS}" ] && rsync -aqP --delete -e ssh documentation epics-jenkins@web.sourceforge.net:/home/project-web/epics-pvdata/htdocs/docbuild/pvAccessCPP/tip
