@@ -20,8 +20,8 @@ CHECK_RELEASE = YES
 #   INSTALL_LOCATION here.
 #INSTALL_LOCATION=</path/name/to/install/top>
 
+-include $(TOP)/../CONFIG_SITE.local
 -include $(TOP)/configure/CONFIG_SITE.local
--include $(TOP)/../CONFIG.local
 
 ifdef WITH_COVERAGE
 USR_CPPFLAGS += --coverage

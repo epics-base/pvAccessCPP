@@ -453,10 +453,10 @@ void usage (void)
 //    "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
 //    "  -f <input file>:   Use <input file> as an input that provides a list input parameters(s) to be read, use '-' for stdin\n"
     "\nexamples:\n"
-             "\tpvinfo\n"
-             "\tpvinfo ioc0001\n"
-             "\tpvinfo 10.5.1.205:10000\n"
-             "\tpvinfo 0x83DE3C540000000000BF351F\n\n"
+             "\tpvlist\n"
+             "\tpvlist ioc0001\n"
+             "\tpvlist 10.5.1.205:10000\n"
+             "\tpvlist 0x83DE3C540000000000BF351F\n\n"
              , DEFAULT_TIMEOUT);
 }
 
