@@ -19,7 +19,7 @@ include $(PVACCESS_SRC)/rpcService/Makefile
 include $(PVACCESS_SRC)/rpcClient/Makefile
 include $(PVACCESS_SRC)/ca/Makefile
 include $(PVACCESS_SRC)/mb/Makefile
-include $(PVACCESS_SRC)/v3ioc/Makefile
+include $(PVACCESS_SRC)/ioc/Makefile
 
 LIBRARY = pvAccess
 
