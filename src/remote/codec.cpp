@@ -915,12 +915,15 @@ namespace epics {
         // automatic end (to set payload size)
         endMessage(false);
       }
+      catch (connection_closed_exception & ) {
+          throw;
+      }
       catch (std::exception &e ) {
 
         std::ostringstream msg;
         msg << "an exception caught while processing a send message: " 
           << e.what();       
-        LOG(logLevelWarn, "%s at %s:%d.", 
+        LOG(logLevelWarn, "%s at %s:%d.",
           msg.str().c_str(), __FILE__, __LINE__);  
 
         try {
