@@ -915,6 +915,9 @@ namespace epics {
         // automatic end (to set payload size)
         endMessage(false);
       }
+      catch (connection_closed_exception & ) {
+          throw;
+      }
       catch (std::exception &e ) {
 
         std::ostringstream msg;
