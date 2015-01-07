@@ -161,6 +161,8 @@ namespace epics {
           else
           {
             epics::pvData::Lock lock(_queueMutex);
+            if (_queue.empty())
+                return T();
             T sender = _queue.front();
             _queue.pop_front();
             return sender;
