@@ -28,10 +28,11 @@ const int SimpleChannelSearchManagerImpl::PAYLOAD_POSITION = 4;
 const double SimpleChannelSearchManagerImpl::ATOMIC_PERIOD = 0.225;
 const int SimpleChannelSearchManagerImpl::PERIOD_JITTER_MS = 25;
 
+const int SimpleChannelSearchManagerImpl::DEFAULT_USER_VALUE = 1;
 const int SimpleChannelSearchManagerImpl::BOOST_VALUE = 1;
 // must be power of two (so that search is done)
-const int SimpleChannelSearchManagerImpl::MAX_COUNT_VALUE = 1 << 7;
-const int SimpleChannelSearchManagerImpl::MAX_FALLBACK_COUNT_VALUE = (1 << 6) + 1;
+const int SimpleChannelSearchManagerImpl::MAX_COUNT_VALUE = 1 << 8;
+const int SimpleChannelSearchManagerImpl::MAX_FALLBACK_COUNT_VALUE = (1 << 7) + 1;
 
 const int SimpleChannelSearchManagerImpl::MAX_FRAMES_AT_ONCE = 10;
 const int SimpleChannelSearchManagerImpl::DELAY_BETWEEN_FRAMES_MS = 50;
@@ -105,25 +106,26 @@ int32_t SimpleChannelSearchManagerImpl::registeredCount()
 	return static_cast<int32_t>(m_channels.size());
 }
 
-void SimpleChannelSearchManagerImpl::registerSearchInstance(SearchInstance::shared_pointer const & channel)
+void SimpleChannelSearchManagerImpl::registerSearchInstance(SearchInstance::shared_pointer const & channel, bool penalize)
 {
 	if (m_canceled.get())
 		return;
 
-        bool immediateTrigger;
-        { 
-	    Lock guard(m_channelMutex);
-	    //overrides if already registered
-	    m_channels[channel->getSearchInstanceID()] = channel;
-	    immediateTrigger = m_channels.size() == 1;
+    bool immediateTrigger;
+    {
+        Lock guard(m_channelMutex);
 
-	    Lock guard2(m_userValueMutex);
-	    int32_t& userValue = channel->getUserValue();
-	    userValue = 1;
-        }
+        // overrides if already registered
+        m_channels[channel->getSearchInstanceID()] = channel;
+        immediateTrigger = (m_channels.size() == 1);
 
-       if (immediateTrigger)
-           callback(); 
+        Lock guard2(m_userValueMutex);
+        int32_t& userValue = channel->getUserValue();
+        userValue = (penalize ? MAX_FALLBACK_COUNT_VALUE : DEFAULT_USER_VALUE);
+    }
+
+    if (immediateTrigger)
+       callback();
 }
 
 void SimpleChannelSearchManagerImpl::unregisterSearchInstance(SearchInstance::shared_pointer const & channel)
@@ -314,7 +316,7 @@ void SimpleChannelSearchManagerImpl::callback()
         int32_t& countValue = (*siter)->getUserValue();
 		bool skip = !isPowerOfTwo(countValue);
 		
-		if (countValue == MAX_COUNT_VALUE)
+        if (countValue >= MAX_COUNT_VALUE)
 			countValue = MAX_FALLBACK_COUNT_VALUE;
 		else 
 			countValue++;

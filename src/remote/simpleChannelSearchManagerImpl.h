@@ -81,7 +81,7 @@ class SimpleChannelSearchManagerImpl :
 	 * Register channel.
 	 * @param channel to register.
 	 */
-	void registerSearchInstance(SearchInstance::shared_pointer const & channel);
+    void registerSearchInstance(SearchInstance::shared_pointer const & channel, bool penalize = false);
 	/**
 	 * Unregister channel.
 	 * @param channel to unregister.
@@ -190,11 +190,12 @@ class SimpleChannelSearchManagerImpl :
     static const double ATOMIC_PERIOD;
     static const int PERIOD_JITTER_MS;
     
-	static const int BOOST_VALUE;
-	static const int MAX_COUNT_VALUE;
-	static const int MAX_FALLBACK_COUNT_VALUE;
+    static const int DEFAULT_USER_VALUE;
+    static const int BOOST_VALUE;
+    static const int MAX_COUNT_VALUE;
+    static const int MAX_FALLBACK_COUNT_VALUE;
 
-	static const int MAX_FRAMES_AT_ONCE;
+    static const int MAX_FRAMES_AT_ONCE;
 	static const int DELAY_BETWEEN_FRAMES_MS;
 
 };

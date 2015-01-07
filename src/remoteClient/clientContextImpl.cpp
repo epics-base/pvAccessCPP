@@ -3622,12 +3622,12 @@ namespace epics {
                 void createChannel(Transport::shared_pointer const & transport)
                 {
                     Lock guard(m_channelMutex);
-                    
+
                     // do not allow duplicate creation to the same transport
                     if (!m_allowCreation)
                         return;
                     m_allowCreation = false;
-                    
+
                     // check existing transport
                     if (m_transport.get() && m_transport.get() != transport.get())
                     {
@@ -3660,10 +3660,18 @@ namespace epics {
                 virtual void createChannelFailed()
                 {
                     Lock guard(m_channelMutex);
-                    
+
                     cancel();
-                    // ... and search again
-                    initiateSearch();
+
+                    // release transport if active
+                    if (m_transport)
+                    {
+                        m_transport->release(getID());
+                        m_transport.reset();
+                    }
+                    
+                    // ... and search again, with penalty
+                    initiateSearch(true);
                 }
                 
                 /**
@@ -3814,7 +3822,7 @@ namespace epics {
                 /**
                  * Initiate search (connect) procedure.
                  */
-                void initiateSearch()
+                void initiateSearch(bool penalize = false)
                 {
                     Lock guard(m_channelMutex);
                     
@@ -3822,7 +3830,7 @@ namespace epics {
                     
                     if (!m_addresses.get())
                     {
-                        m_context->getChannelSearchManager()->registerSearchInstance(shared_from_this());
+                        m_context->getChannelSearchManager()->registerSearchInstance(shared_from_this(), penalize);
                     }
                     else if (!m_addresses->empty())
                     {
@@ -3854,11 +3862,12 @@ namespace epics {
                     Transport::shared_pointer transport = m_transport;
                     if (transport.get())
                     {
+                        // TODO use GUID to determine whether there are multiple servers with the same channel
                         // multiple defined PV or reconnect request (same server address)
                         if (!sockAddrAreIdentical(transport->getRemoteAddress(), serverAddress))
                         {
                             EXCEPTION_GUARD(m_requester->message("More than one channel with name '" + m_name +
-                                                                 "' detected, additional response from: " + inetAddressToString(*serverAddress), warningMessage));
+                                                                 "' detected, connected to: " + inetAddressToString(*transport->getRemoteAddress()) + ", ignored: " + inetAddressToString(*serverAddress), warningMessage));
                             return;
                         }
                     }

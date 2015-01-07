@@ -67,7 +67,7 @@ class ChannelSearchManager {
 	 * Register channel.
 	 * @param channel
 	 */
-	virtual void registerSearchInstance(SearchInstance::shared_pointer const & channel) = 0;
+    virtual void registerSearchInstance(SearchInstance::shared_pointer const & channel, bool penalize = false) = 0;
 
 
 	/**
