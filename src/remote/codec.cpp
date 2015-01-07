@@ -1214,7 +1214,7 @@ namespace epics {
     void BlockingAbstractCodec::sendThread(void *param)
     {
 
-        BlockingAbstractCodec *bac = static_cast<BlockingAbstractCodec *>(param);
+      BlockingAbstractCodec *bac = static_cast<BlockingAbstractCodec *>(param);
       Transport::shared_pointer ptr = bac->shared_from_this();
 
       bac->setSenderThread();
@@ -1241,16 +1241,17 @@ namespace epics {
         }
       }
 
+      /*
       // wait read thread to die
-      // TODO rewise
+      // TODO rewise if this is really needed
       // this timeout is needed where close() is initiated from the send thread,
       // and not from the read thread as usualy - recv() does not exit until socket is not destroyed,
       // which is done the internalDestroy() call below
       bac->_shutdownEvent.wait(3.0);
+      */
 
       // call internal destroy
       bac->internalDestroy();
-
     }
 
 

@@ -71,6 +71,7 @@ namespace epics {
     };
 
 
+    // TODO replace this queue with lock-free implementation
     template<typename T> 
     class queue {
     public:
@@ -119,6 +120,7 @@ namespace epics {
       }
 
 
+      // TODO very sub-optimal (locks and empty() - pop() sequence; at least 2 locks!)
       T take(int timeOut) 
       { 
         while (true)
@@ -161,6 +163,8 @@ namespace epics {
           else
           {
             epics::pvData::Lock lock(_queueMutex);
+            if (_queue.empty())
+                return T();
             T sender = _queue.front();
             _queue.pop_front();
             return sender;
@@ -179,7 +183,6 @@ namespace epics {
       epics::pvData::Event _queueEvent;
       epics::pvData::Mutex _queueMutex;
       AtomicValue<bool> _wakeup;
-      epics::pvData::Mutex _stdMutex;
     };
 
 

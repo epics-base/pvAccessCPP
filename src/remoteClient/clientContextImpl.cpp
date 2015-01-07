@@ -4515,6 +4515,15 @@ TODO
                 // stop UDPs
                 m_searchTransport->close();
                 m_broadcastTransport->close();
+
+                // wait for all transports to cleanly exit
+                int tries = 40;
+                epics::pvData::int32 transportCount;
+                while ((transportCount = m_transportRegistry->numberOfActiveTransports()) && tries--)
+                    epicsThreadSleep(0.025);
+
+                if (transportCount)
+                    LOG(logLevelDebug, "PVA client context destroyed with %d transport(s) active.", transportCount);
             }
 
             void destroyAllChannels() {
