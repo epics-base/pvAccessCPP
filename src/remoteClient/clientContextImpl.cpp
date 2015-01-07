@@ -3050,6 +3050,17 @@ namespace epics {
                 {
                     // failed check
                     if (!status.isSuccess()) {
+
+                        if (IS_LOGGABLE(logLevelDebug))
+                        {
+                            std::stringstream ss;
+                            ss << "Failed to create channel '" << channel->getChannelName() << "': ";
+                            ss << status.getMessage();
+                            if (!status.getStackDump().empty())
+                                ss << std::endl << status.getStackDump();
+                            LOG(logLevelDebug, "%s", ss.str().c_str());
+                        }
+
                         channel->createChannelFailed();
                         return;
                     }
@@ -4346,7 +4357,7 @@ TODO
                 int32 debugLevel = m_configuration->getPropertyAsInteger(PVACCESS_DEBUG, 0);
                 if (debugLevel > 0)
                     SET_LOG_LEVEL(logLevelDebug);
-                    
+
                 m_addressList = m_configuration->getPropertyAsString("EPICS_PVA_ADDR_LIST", m_addressList);
                 m_autoAddressList = m_configuration->getPropertyAsBoolean("EPICS_PVA_AUTO_ADDR_LIST", m_autoAddressList);
                 m_connectionTimeout = m_configuration->getPropertyAsFloat("EPICS_PVA_CONN_TMO", m_connectionTimeout);
