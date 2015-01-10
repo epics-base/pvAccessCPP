@@ -97,6 +97,8 @@ void setNTNDArrayValue(
 
     imagePV->getSubField<PVLong>("uncompressedSize")->put(static_cast<int64>(raw_size));
 
+    imagePV->getSubField<PVLong>("compressedSize")->put(static_cast<int64>(raw_size));
+
     PVTimeStamp timeStamp;
     timeStamp.attach(imagePV->getSubField<PVStructure>("dataTimeStamp"));
     TimeStamp current;
