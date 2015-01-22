@@ -921,3 +921,5 @@ testApp/pvAccessAllTests.c
 testApp/rtemsConfig.c
 testApp/rtemsNetworking.h
 testApp/rtemsTestHarness.c
+src/ca/caStatus.cpp
+src/ca/caStatus.h

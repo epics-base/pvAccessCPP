@@ -10,6 +10,7 @@
 #include <pv/standardField.h>
 
 #include <pv/caChannel.h>
+#include <pv/caStatus.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
@@ -637,31 +638,6 @@ void copy_DBR<dbr_enum_t, pvString, PVString, PVStringArray>(const void * dbr, u
     }
 }
 
-static string dbrStatus2alarmMessage[] = {
-    "NO_ALARM",     // 0 ..
-    "READ_ALARM",
-    "WRITE_ALARM",
-    "HIHI_ALARM",
-    "HIGH_ALARM",
-    "LOLO_ALARM",
-    "LOW_ALARM",
-    "STATE_ALARM",
-    "COS_ALARM",
-    "COMM_ALARM",
-    "TIMEOUT_ALARM",
-    "HW_LIMIT_ALARM",
-    "CALC_ALARM",
-    "SCAN_ALARM",
-    "LINK_ALARM",
-    "SOFT_ALARM",
-    "BAD_SUB_ALARM",
-    "UDF_ALARM",
-    "DISABLE_ALARM",
-    "SIMM_ALARM",
-    "READ_ACCESS_ALARM",
-    "WRITE_ACCESS_ALARM"        // .. 21
-};
-
 // template<DBR type, primitive type, ScalarType, scalar Field, array Field>
 template<typename T, typename pT, epics::pvData::ScalarType sT, typename sF, typename aF>
 void copy_DBR_STS(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
@@ -669,8 +645,7 @@ void copy_DBR_STS(const void * dbr, unsigned count, PVStructure::shared_pointer 
     const T* data = static_cast<const T*>(dbr);
 
     PVStructure::shared_pointer alarm = pvStructure->getStructureField("alarm");
-    // no mapping needed
-    alarm->getIntField("status")->put(0);
+    alarm->getIntField("status")->put(dbrStatus2alarmStatus[data->status]);
     alarm->getIntField("severity")->put(data->severity);
     alarm->getStringField("message")->put(dbrStatus2alarmMessage[data->status]);
 
