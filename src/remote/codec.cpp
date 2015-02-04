@@ -784,11 +784,11 @@ namespace epics {
 
       // On Windows, limiting the buffer size is important to prevent
       // poor throughput performances when transferring large amount of
-      // data. See Microsoft KB article KB823764.
+      // data over non-blocking socket. See Microsoft KB article KB823764.
       // We do it also for other systems just to be safe.
-      std::size_t maxBytesToSend = 
-        std::min<int32_t>(
-        _socketSendBufferSize, _remoteTransportSocketReceiveBufferSize) / 2;
+      std::size_t maxBytesToSend = (size_t)-1; 
+      //  std::min<int32_t>(
+      //  _socketSendBufferSize, _remoteTransportSocketReceiveBufferSize) / 2;
 
       std::size_t limit = buffer->getLimit();
       std::size_t bytesToSend = limit - buffer->getPosition();
