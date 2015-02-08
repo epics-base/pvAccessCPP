@@ -36,6 +36,9 @@ testMonitorPerformance_SRCS += testMonitorPerformance.cpp
 PROD_HOST += rpcServiceExample
 rpcServiceExample_SRCS += rpcServiceExample.cpp
 
+PROD_HOST += rpcServiceAsyncExample
+rpcServiceAsyncExample_SRCS += rpcServiceAsyncExample.cpp
+
 PROD_HOST += rpcWildServiceExample
 rpcWildServiceExample_SRCS += rpcWildServiceExample.cpp
 

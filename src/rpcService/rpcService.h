@@ -44,9 +44,18 @@ private:
     epics::pvData::Status::StatusType m_status;
 };
 
+class epicsShareClass Service
+{
+public:
+    POINTER_DEFINITIONS(Service);
 
-class epicsShareClass RPCService {
-    public:
+    virtual ~Service() {};
+};
+
+class epicsShareClass RPCService :
+    public virtual Service
+{
+public:
     POINTER_DEFINITIONS(RPCService);
    
     virtual ~RPCService() {};
@@ -54,6 +63,35 @@ class epicsShareClass RPCService {
     virtual epics::pvData::PVStructure::shared_pointer request(
         epics::pvData::PVStructure::shared_pointer const & args
     ) throw (RPCRequestException) = 0;
+};
+
+
+
+class epicsShareClass RPCResponseCallback
+{
+public:
+    POINTER_DEFINITIONS(RPCResponseCallback);
+
+    virtual ~RPCResponseCallback() {};
+
+    virtual void requestDone(
+        epics::pvData::Status const & status,
+        epics::pvData::PVStructure::shared_pointer const & result
+    ) = 0;
+};
+
+class epicsShareClass RPCServiceAsync :
+        public virtual Service
+{
+public:
+    POINTER_DEFINITIONS(RPCServiceAsync);
+
+    virtual ~RPCServiceAsync() {};
+
+    virtual void request(
+        epics::pvData::PVStructure::shared_pointer const & args,
+        RPCResponseCallback::shared_pointer const & callback
+    ) = 0;
 };
 
 }}
