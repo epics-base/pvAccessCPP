@@ -98,6 +98,14 @@ namespace epics {
              * @param buffer data buffer.
              */
             static void serializeFull(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control, epics::pvData::PVField::shared_pointer const & pvField);
+
+            // TODO move somewhere else, to pvData?
+            static void partialCopy(
+                             epics::pvData::PVStructure::shared_pointer const & from,
+                             epics::pvData::PVStructure::shared_pointer const & to,
+                             epics::pvData::BitSet::shared_pointer const & maskBitSet,
+                             bool inverse = false);
+
 };
 
 }

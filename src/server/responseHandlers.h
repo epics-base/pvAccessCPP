@@ -361,8 +361,7 @@ namespace pvAccess {
 			void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
 			ChannelGet::shared_pointer _channelGet;
-			epics::pvData::Structure::const_shared_pointer _structure;
-			epics::pvData::PVStructure::shared_pointer _pvStructure;
+            epics::pvData::PVStructure::shared_pointer _pvStructure;
 			epics::pvData::BitSet::shared_pointer _bitSet;
 			epics::pvData::Status _status;
         };
@@ -418,17 +417,8 @@ namespace pvAccess {
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
         	ChannelPut::shared_pointer _channelPut;
-
-        	epics::pvData::Structure::const_shared_pointer _structure;
-
-        	// reference store (for get)
         	epics::pvData::BitSet::shared_pointer _bitSet;
         	epics::pvData::PVStructure::shared_pointer _pvStructure;
-
-        	// data store (for put)
-        	epics::pvData::BitSet::shared_pointer _putBitSet;
-        	epics::pvData::PVStructure::shared_pointer _putPVStructure;
-        	
         	epics::pvData::Status _status;
         };
 
@@ -493,20 +483,11 @@ namespace pvAccess {
         	void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
         private:
         	ChannelPutGet::shared_pointer _channelPutGet;
-        	epics::pvData::Structure::const_shared_pointer _putStructure;
-        	epics::pvData::Structure::const_shared_pointer _getStructure;
-        	
-        	// reference store
-        	epics::pvData::PVStructure::shared_pointer _pvPutStructure;
-        	epics::pvData::BitSet::shared_pointer _pvPutBitSet;
-        	epics::pvData::PVStructure::shared_pointer _pvGetStructure;
-        	epics::pvData::BitSet::shared_pointer _pvGetBitSet;
-        	
-        	// data container (for put-get)
-        	epics::pvData::PVStructure::shared_pointer _pvPutGetStructure;
-        	epics::pvData::BitSet::shared_pointer _pvPutGetBitSet;
-        	
-        	epics::pvData::Status _status;
+            epics::pvData::PVStructure::shared_pointer _pvPutStructure;
+            epics::pvData::BitSet::shared_pointer _pvPutBitSet;
+            epics::pvData::PVStructure::shared_pointer _pvGetStructure;
+            epics::pvData::BitSet::shared_pointer _pvGetBitSet;
+            epics::pvData::Status _status;
         };
 
 
@@ -619,13 +600,7 @@ namespace pvAccess {
         	
         private:
         	 ChannelArray::shared_pointer _channelArray;
-        	 epics::pvData::Array::const_shared_pointer _array;
-        	 
-        	 // reference store
         	 epics::pvData::PVArray::shared_pointer _pvArray;
-        	 
-        	 // data container
-        	 epics::pvData::PVArray::shared_pointer _pvPutArray;
         	 
         	 std::size_t _length;
         	 epics::pvData::Status _status;

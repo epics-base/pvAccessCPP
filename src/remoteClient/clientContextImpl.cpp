@@ -786,14 +786,9 @@ namespace epics {
 
             PVStructure::shared_pointer m_pvRequest;
 
-            // get structure container
             PVStructure::shared_pointer m_structure;
             BitSet::shared_pointer m_bitSet;
             
-            // put reference store
-            PVStructure::shared_pointer m_pvPutStructure;
-            BitSet::shared_pointer m_pvPutBitSet;
-
             Mutex m_structureMutex;
 
             ChannelPutImpl(ChannelImpl::shared_pointer const & channel, ChannelPutRequester::shared_pointer const & channelPutRequester, PVStructure::shared_pointer const & pvRequest) :
@@ -869,12 +864,8 @@ namespace epics {
                     {
                         // no need to lock here, since it is already locked via TransportSender IF
                         //Lock lock(m_structureMutex);
-                        m_pvPutBitSet->serialize(buffer, control);
-                        m_pvPutStructure->serialize(buffer, control, m_pvPutBitSet.get());
-                        
-                        // release references
-                        m_pvPutBitSet.reset();
-                        m_pvPutStructure.reset();
+                        m_bitSet->serialize(buffer, control);
+                        m_structure->serialize(buffer, control, m_bitSet.get());
                     }
                 }
 
@@ -992,8 +983,8 @@ namespace epics {
 
                 try {
                     lock();
-                    m_pvPutStructure = pvPutStructure;
-                    m_pvPutBitSet = pvPutBitSet;
+                    *m_bitSet = *pvPutBitSet;
+                    SerializationHelper::partialCopy(pvPutStructure, m_structure, m_bitSet);
                     unlock();
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
@@ -1059,10 +1050,6 @@ namespace epics {
             PVStructure::shared_pointer m_getData;
             BitSet::shared_pointer m_getDataBitSet;
 
-            // putGet reference store
-            PVStructure::shared_pointer m_putPutData;
-            BitSet::shared_pointer m_putPutDataBitSet;
-            
             Mutex m_structureMutex;
             
             ChannelPutGetImpl(ChannelImpl::shared_pointer const & channel, ChannelPutGetRequester::shared_pointer const & channelPutGetRequester, PVStructure::shared_pointer const & pvRequest) :
@@ -1139,12 +1126,8 @@ namespace epics {
                     {
                         // no need to lock here, since it is already locked via TransportSender IF
                         //Lock lock(m_structureMutex);
-                        m_putPutDataBitSet->serialize(buffer, control);
-                        m_putPutData->serialize(buffer, control, m_putPutDataBitSet.get());
-                        
-                        // release references
-                        m_putPutDataBitSet.reset();
-                        m_putPutData.reset();
+                        m_putDataBitSet->serialize(buffer, control);
+                        m_putData->serialize(buffer, control, m_putDataBitSet.get());
                     }
                 }
 
@@ -1266,8 +1249,8 @@ namespace epics {
 
                 try {
                     lock();
-                    m_putPutData = pvPutStructure;
-                    m_putPutDataBitSet = bitSet;
+                    *m_putDataBitSet = *bitSet;
+                    SerializationHelper::partialCopy(pvPutStructure, m_putData, m_putDataBitSet);
                     unlock();
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
@@ -1582,12 +1565,9 @@ namespace epics {
 
             PVStructure::shared_pointer m_pvRequest;
 
-            // data container (for get)
+            // data container
             PVArray::shared_pointer m_arrayData;
 
-            // reference store (for put
-            PVArray::shared_pointer m_putData;
-            
             size_t m_offset;
             size_t m_count;
             size_t m_stride;
@@ -1687,9 +1667,7 @@ namespace epics {
                         SerializeHelper::writeSize(m_offset, buffer, control);
                         SerializeHelper::writeSize(m_stride, buffer, control);
                         // TODO what about count sanity check?
-                        m_putData->serialize(buffer, control, 0, m_count ? m_count : m_putData->getLength()); // put from 0 offset (see API doc), m_count == 0 means entire array
-                        // release reference
-                        m_putData.reset();
+                        m_arrayData->serialize(buffer, control, 0, m_count ? m_count : m_arrayData->getLength()); // put from 0 offset (see API doc), m_count == 0 means entire array
                     }
                 }
 
@@ -1821,7 +1799,7 @@ namespace epics {
                 try {
                     {
                         Lock lock(m_structureMutex);
-                        m_putData = putArray;
+                        convert->copy(putArray, m_arrayData);  // TODO avoid isComptabile checks
                         m_offset = offset;
                         m_count = count;
                         m_stride = stride;
@@ -2159,56 +2137,6 @@ namespace epics {
                 }
             }
 
-
-
-           void partialCopy(PVStructure::shared_pointer const & from,
-                            PVStructure::shared_pointer const & to,
-                            BitSet::shared_pointer const & maskBitSet,
-                            bool inverse = false) {
-
-               size_t numberFields = from->getNumberFields();
-               size_t offset = from->getFieldOffset();
-               int32 next = inverse ?
-                           maskBitSet->nextClearBit(static_cast<uint32>(offset)) :
-                           maskBitSet->nextSetBit(static_cast<uint32>(offset));
-
-               // no more changes or no changes in this structure
-               if(next<0||next>=static_cast<int32>(offset+numberFields)) return;
-
-               // entire structure
-               if(static_cast<int32>(offset)==next) {
-                   getConvert()->copy(from, to);
-                   return;
-               }
-
-               PVFieldPtrArray const & fromPVFields = from->getPVFields();
-               PVFieldPtrArray const & toPVFields = to->getPVFields();
-
-               size_t fieldsSize = fromPVFields.size();
-               for(size_t i = 0; i<fieldsSize; i++) {
-                   PVFieldPtr pvField = fromPVFields[i];
-                   offset = pvField->getFieldOffset();
-                   int32 inumberFields = static_cast<int32>(pvField->getNumberFields());
-                   next = inverse ?
-                               maskBitSet->nextClearBit(static_cast<uint32>(offset)) :
-                               maskBitSet->nextSetBit(static_cast<uint32>(offset));
-
-                   // no more changes
-                   if(next<0) return;
-                   //  no change in this pvField
-                   if(next>=static_cast<int32>(offset+inumberFields)) continue;
-
-                   // serialize field or fields
-                   if(inumberFields==1) {
-                       getConvert()->copy(pvField, toPVFields[i]);
-                   } else {
-                       PVStructure::shared_pointer fromPVStructure = std::tr1::static_pointer_cast<PVStructure>(pvField);
-                       PVStructure::shared_pointer toPVStructure = std::tr1::static_pointer_cast<PVStructure>(toPVFields[i]);
-                       partialCopy(fromPVStructure, toPVStructure, maskBitSet);
-                  }
-               }
-           }
-
            /*
             virtual void response(Transport::shared_pointer const & transport, ByteBuffer* payloadBuffer) {
 
@@ -2225,7 +2153,7 @@ namespace epics {
                         {
                             // take new, put current in use
                             PVStructurePtr pvStructure = m_monitorElement->pvStructurePtr;
-                            getConvert()->copy(pvStructure, newElement->pvStructurePtr);
+                            convert->copy(pvStructure, newElement->pvStructurePtr);
 
                             BitSetUtil::compress(m_monitorElement->changedBitSet, pvStructure);
                             BitSetUtil::compress(m_monitorElement->overrunBitSet, pvStructure);
@@ -2297,7 +2225,7 @@ namespace epics {
                         m_overrunInProgress = false;
                     }
 
-                    getConvert()->copy(pvStructure, newElement->pvStructurePtr);
+                    convert->copy(pvStructure, newElement->pvStructurePtr);
 
                     m_monitorQueue.setUsed(m_monitorElement);
 
@@ -2363,7 +2291,7 @@ namespace epics {
                    // deserialize changedBitSet and data, and overrun bit set
                    changedBitSet->deserialize(payloadBuffer, transport.get());
                    if (m_up2datePVStructure && m_up2datePVStructure.get() != pvStructure.get())
-                       partialCopy(m_up2datePVStructure, pvStructure, changedBitSet, true);
+                       SerializationHelper::partialCopy(m_up2datePVStructure, pvStructure, changedBitSet, true);
                    pvStructure->deserialize(payloadBuffer, transport.get(), changedBitSet.get());
                    overrunBitSet->deserialize(payloadBuffer, transport.get());
 

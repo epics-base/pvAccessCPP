@@ -87,6 +87,55 @@ void SerializationHelper::serializeFull(ByteBuffer* buffer, SerializableControl*
     }
 }
 
+void SerializationHelper::partialCopy(PVStructure::shared_pointer const & from,
+                 PVStructure::shared_pointer const & to,
+                 BitSet::shared_pointer const & maskBitSet,
+                 bool inverse) {
+
+    size_t numberFields = from->getNumberFields();
+    size_t offset = from->getFieldOffset();
+    int32 next = inverse ?
+                maskBitSet->nextClearBit(static_cast<uint32>(offset)) :
+                maskBitSet->nextSetBit(static_cast<uint32>(offset));
+
+    // no more changes or no changes in this structure
+    if(next<0||next>=static_cast<int32>(offset+numberFields)) return;
+
+    // entire structure
+    if(static_cast<int32>(offset)==next) {
+        getConvert()->copy(from, to);
+        return;
+    }
+
+    PVFieldPtrArray const & fromPVFields = from->getPVFields();
+    PVFieldPtrArray const & toPVFields = to->getPVFields();
+
+    size_t fieldsSize = fromPVFields.size();
+    for(size_t i = 0; i<fieldsSize; i++) {
+        PVFieldPtr pvField = fromPVFields[i];
+        offset = pvField->getFieldOffset();
+        int32 inumberFields = static_cast<int32>(pvField->getNumberFields());
+        next = inverse ?
+                    maskBitSet->nextClearBit(static_cast<uint32>(offset)) :
+                    maskBitSet->nextSetBit(static_cast<uint32>(offset));
+
+        // no more changes
+        if(next<0) return;
+        //  no change in this pvField
+        if(next>=static_cast<int32>(offset+inumberFields)) continue;
+
+        // serialize field or fields
+        if(inumberFields==1) {
+            getConvert()->copy(pvField, toPVFields[i]);
+        } else {
+            PVStructure::shared_pointer fromPVStructure = std::tr1::static_pointer_cast<PVStructure>(pvField);
+            PVStructure::shared_pointer toPVStructure = std::tr1::static_pointer_cast<PVStructure>(toPVFields[i]);
+            partialCopy(fromPVStructure, toPVStructure, maskBitSet);
+       }
+    }
+}
+
+
 }}
 
 
