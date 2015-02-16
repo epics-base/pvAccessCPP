@@ -1799,7 +1799,7 @@ namespace epics {
                 try {
                     {
                         Lock lock(m_structureMutex);
-                        convert->copy(putArray, m_arrayData);  // TODO avoid isComptabile checks
+                        SerializationHelper::copyUnchecked(putArray, m_arrayData);
                         m_offset = offset;
                         m_count = count;
                         m_stride = stride;
@@ -2153,7 +2153,7 @@ namespace epics {
                         {
                             // take new, put current in use
                             PVStructurePtr pvStructure = m_monitorElement->pvStructurePtr;
-                            convert->copy(pvStructure, newElement->pvStructurePtr);
+                            copyUnchecked(pvStructure, newElement->pvStructurePtr);
 
                             BitSetUtil::compress(m_monitorElement->changedBitSet, pvStructure);
                             BitSetUtil::compress(m_monitorElement->overrunBitSet, pvStructure);
@@ -2225,7 +2225,7 @@ namespace epics {
                         m_overrunInProgress = false;
                     }
 
-                    convert->copy(pvStructure, newElement->pvStructurePtr);
+                    copyUnchecked(pvStructure, newElement->pvStructurePtr);
 
                     m_monitorQueue.setUsed(m_monitorElement);
 

@@ -15,6 +15,7 @@
 
 #include <pv/serialize.h>
 #include <pv/pvData.h>
+#include <pv/convert.h>
 #include <pv/noDefaultMethods.h>
 #include <pv/pvIntrospect.h>
 #include <pv/byteBuffer.h>
@@ -34,6 +35,7 @@ namespace epics {
         public:
 
     		static epics::pvData::PVDataCreatePtr _pvDataCreate;
+            static epics::pvData::ConvertPtr _convert;
 
 			/**
 			 * Deserialize PVRequest.
@@ -98,6 +100,14 @@ namespace epics {
              * @param buffer data buffer.
              */
             static void serializeFull(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control, epics::pvData::PVField::shared_pointer const & pvField);
+
+            static void copyUnchecked(
+                             epics::pvData::PVField::shared_pointer const & from,
+                             epics::pvData::PVField::shared_pointer const & to);
+
+            static void copyStructureUnchecked(
+                             epics::pvData::PVStructure::shared_pointer const & from,
+                             epics::pvData::PVStructure::shared_pointer const & to);
 
             // TODO move somewhere else, to pvData?
             static void partialCopy(
