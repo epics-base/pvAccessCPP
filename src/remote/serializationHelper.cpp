@@ -130,8 +130,8 @@ void SerializationHelper::copyUnchecked(
         }
     case unionArray:
         {
-             PVUnionArray::shared_pointer fromS = std::static_pointer_cast<PVUnionArray>(from);
-             PVUnionArray::shared_pointer  toS = std::static_pointer_cast<PVUnionArray>(to);
+             PVUnionArray::shared_pointer fromS = std::tr1::static_pointer_cast<PVUnionArray>(from);
+             PVUnionArray::shared_pointer  toS = std::tr1::static_pointer_cast<PVUnionArray>(to);
              toS->replace(fromS->view());
              break;
         }
