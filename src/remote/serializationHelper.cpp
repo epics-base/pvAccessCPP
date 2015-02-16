@@ -216,7 +216,7 @@ void SerializationHelper::partialCopy(PVStructure::shared_pointer const & from,
         } else {
             PVStructure::shared_pointer fromPVStructure = std::tr1::static_pointer_cast<PVStructure>(pvField);
             PVStructure::shared_pointer toPVStructure = std::tr1::static_pointer_cast<PVStructure>(toPVFields[i]);
-            partialCopy(fromPVStructure, toPVStructure, maskBitSet);
+            partialCopy(fromPVStructure, toPVStructure, maskBitSet, inverse);
        }
     }
 }
