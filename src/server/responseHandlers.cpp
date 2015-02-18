@@ -21,7 +21,6 @@
 #include <pv/remote.h>
 #include <pv/hexDump.h>
 #include <pv/serializationHelper.h>
-#include <pv/convert.h>
 
 #include <pv/byteBuffer.h>
 
@@ -1116,7 +1115,7 @@ void ServerChannelGetRequesterImpl::getDone(const Status& status, ChannelGet::sh
         if (_status.isSuccess())
         {
             *_bitSet = *bitSet;
-            SerializationHelper::partialCopy(pvStructure, _pvStructure, _bitSet);
+            _pvStructure->copyUnchecked(*pvStructure, *_bitSet);
         }
 	}
 
@@ -1398,7 +1397,7 @@ void ServerChannelPutRequesterImpl::getDone(const Status& status, ChannelPut::sh
         if (_status.isSuccess())
         {
             *_bitSet = *bitSet;
-            SerializationHelper::partialCopy(pvStructure, _pvStructure, _bitSet);
+            _pvStructure->copyUnchecked(*pvStructure, *_bitSet);
         }
     }
 	TransportSender::shared_pointer thisSender = shared_from_this();
@@ -1686,7 +1685,7 @@ void ServerChannelPutGetRequesterImpl::getGetDone(const Status& status, ChannelP
         if (_status.isSuccess())
         {
             *_pvGetBitSet = *bitSet;
-            SerializationHelper::partialCopy(pvStructure, _pvGetStructure, _pvGetBitSet);
+            _pvGetStructure->copyUnchecked(*pvStructure, *_pvGetBitSet);
         }
 	}
 	TransportSender::shared_pointer thisSender = shared_from_this();
@@ -1702,7 +1701,7 @@ void ServerChannelPutGetRequesterImpl::getPutDone(const Status& status, ChannelP
         if (_status.isSuccess())
         {
             *_pvPutBitSet = *bitSet;
-            SerializationHelper::partialCopy(pvStructure, _pvPutStructure, _pvPutBitSet);
+            _pvPutStructure->copyUnchecked(*pvStructure, *_pvPutBitSet);
         }
     }
 	TransportSender::shared_pointer thisSender = shared_from_this();
@@ -1718,7 +1717,7 @@ void ServerChannelPutGetRequesterImpl::putGetDone(const Status& status, ChannelP
         if (_status.isSuccess())
         {
             *_pvGetBitSet = *bitSet;
-            SerializationHelper::partialCopy(pvStructure, _pvGetStructure, _pvGetBitSet);
+            _pvGetStructure->copyUnchecked(*pvStructure, *_pvGetBitSet);
         }
     }
 	TransportSender::shared_pointer thisSender = shared_from_this();
@@ -2304,8 +2303,7 @@ void ServerChannelArrayRequesterImpl::getArrayDone(const Status& status, Channel
 		_status = status;
         if (_status.isSuccess())
         {
-            // TODO cache convert
-            getConvert()->copy(pvArray, _pvArray);
+            _pvArray->copyUnchecked(*pvArray);
         }
 	}
     TransportSender::shared_pointer thisSender = shared_from_this();

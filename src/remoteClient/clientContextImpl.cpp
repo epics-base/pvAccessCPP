@@ -14,7 +14,6 @@
 #include <pv/timer.h>
 #include <pv/bitSetUtil.h>
 #include <pv/serializationHelper.h>
-#include <pv/convert.h>
 #include <pv/queue.h>
 #include <pv/standardPVField.h>
 
@@ -53,7 +52,6 @@ namespace epics {
         Status ChannelImpl::channelDisconnected(
             Status::STATUSTYPE_WARNING, "channel disconnected");
         string emptyString;
-        ConvertPtr convert = getConvert();
 
         // TODO consider std::unordered_map
         //typedef std::tr1::unordered_map<pvAccessID, ResponseRequest::weak_pointer> IOIDResponseRequestMap;
@@ -984,7 +982,7 @@ namespace epics {
                 try {
                     lock();
                     *m_bitSet = *pvPutBitSet;
-                    SerializationHelper::partialCopy(pvPutStructure, m_structure, m_bitSet);
+                    m_structure->copyUnchecked(*pvPutStructure, *m_bitSet);
                     unlock();
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
@@ -1250,7 +1248,7 @@ namespace epics {
                 try {
                     lock();
                     *m_putDataBitSet = *bitSet;
-                    SerializationHelper::partialCopy(pvPutStructure, m_putData, m_putDataBitSet);
+                    m_putData->copyUnchecked(*pvPutStructure, *m_putDataBitSet);
                     unlock();
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error &rte) {
@@ -1799,7 +1797,7 @@ namespace epics {
                 try {
                     {
                         Lock lock(m_structureMutex);
-                        SerializationHelper::copyUnchecked(putArray, m_arrayData);
+                        m_arrayData->copyUnchecked(*putArray);
                         m_offset = offset;
                         m_count = count;
                         m_stride = stride;
@@ -2291,7 +2289,7 @@ namespace epics {
                    // deserialize changedBitSet and data, and overrun bit set
                    changedBitSet->deserialize(payloadBuffer, transport.get());
                    if (m_up2datePVStructure && m_up2datePVStructure.get() != pvStructure.get())
-                       SerializationHelper::partialCopy(m_up2datePVStructure, pvStructure, changedBitSet, true);
+                       pvStructure->copyUnchecked(*m_up2datePVStructure, *changedBitSet, true);
                    pvStructure->deserialize(payloadBuffer, transport.get(), changedBitSet.get());
                    overrunBitSet->deserialize(payloadBuffer, transport.get());
 

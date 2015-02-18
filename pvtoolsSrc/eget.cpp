@@ -24,7 +24,6 @@
 #include <iomanip>
 #include <map>
 
-#include <pv/convert.h>
 #include <pv/event.h>
 #include <epicsExit.h>
 
@@ -970,7 +969,7 @@ void printValues(shared_vector<const string> const & names, vector<PVStructure::
                         dynamic_pointer_cast<PVStringArray>(getPVDataCreate()->createPVScalarArray(pvString));
                 
                 PVStringArray::svector values;
-                values.push_back(getConvert()->toString(scalar));
+                values.push_back(scalar->getAs<std::string>());
                 StringArray->replace(freeze(values));
                 
                 scalarArrays.push_back(StringArray);

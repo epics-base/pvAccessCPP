@@ -5,7 +5,6 @@
  */
 
 #include <pv/introspectionRegistry.h>
-#include <pv/convert.h>
 #include <pv/serializationHelper.h>
 
 using namespace epics::pvData;

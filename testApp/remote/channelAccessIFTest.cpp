@@ -10,7 +10,6 @@
 
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
-#include <pv/convert.h>
 #include <pv/serverContext.h>
 #include <pv/clientFactory.h>
 #include <pv/clientContextImpl.h>
@@ -1757,8 +1756,7 @@ std::ostringstream oss;
 oss << *monitorReq->getPVStructure();
 testDiag("%s:\n%s", CURRENT_FUNCTION, oss.str().c_str());
 
-  ConvertPtr convert = getConvert();
-  convert->copy(valueField, previousValue);
+  previousValue->copyUnchecked(*valueField);
 
   testOk(valueField->equals(*previousValue.get()) == true , "%s: value field equals to a previous value", 
       CURRENT_FUNCTION);
@@ -1801,7 +1799,7 @@ testDiag("%s:\n%s", CURRENT_FUNCTION, oss.str().c_str());
     testOk(valueField->equals(*previousValue.get()) == false , "%s: value field not equals to a previous value", 
         CURRENT_FUNCTION);
 
-    convert->copy(valueField, previousValue);
+    previousValue->copyUnchecked(*valueField);
   } 
 
 

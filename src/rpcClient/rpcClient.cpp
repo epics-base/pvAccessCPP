@@ -8,7 +8,6 @@
 #include <string>
 
 #include <pv/pvData.h>
-#include <pv/convert.h>
 #include <pv/event.h>
 
 #define epicsExportSharedSymbols

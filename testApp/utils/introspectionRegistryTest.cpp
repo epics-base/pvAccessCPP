@@ -14,7 +14,6 @@
 #include <sstream>
 #include <vector>
 #include <pv/CDRMonitor.h>
-#include <pv/convert.h>
 
 using std::tr1::static_pointer_cast;
 using namespace epics::pvData;

@@ -15,7 +15,6 @@
 #include <epicsExit.h>
 #include <pv/standardPVField.h>
 #include <pv/pvTimeStamp.h>
-#include <pv/convert.h>
 
 #include <stdlib.h>
 #include <time.h>
@@ -24,7 +23,6 @@
 #include <cmath>
 
 #include <pv/logger.h>
-#include <pv/convert.h>
 
 // TODO temp
 #include "testADCSim.cpp"
@@ -1003,7 +1001,7 @@ public:
         if (putBitSet->cardinality())
         {
             lock();
-            getConvert()->copy(pvPutStructure, m_pvStructure);
+            m_pvStructure->copyUnchecked(*pvPutStructure);
             unlock();
         }
         
@@ -1125,7 +1123,7 @@ public:
         if (putBitSet->cardinality())
         {
             lock();
-            getConvert()->copy(pvPutStructure, m_putStructure);
+            m_putStructure->copyUnchecked(*pvPutStructure);
             unlock();
         }
         
@@ -1947,7 +1945,7 @@ public:
     {
         {
             lock();
-            getConvert()->copyStructure(m_pvStructure, m_ccopy);
+            m_ccopy->copyUnchecked(*m_pvStructure);
             unlock();
         }
     }

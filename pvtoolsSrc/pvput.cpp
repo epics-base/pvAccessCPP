@@ -8,6 +8,7 @@
 #include <epicsThread.h>
 #include <pv/logger.h>
 #include <pv/lock.h>
+#include <pv/convert.h>
 
 #include <vector>
 #include <string>
@@ -19,7 +20,6 @@
 #include <epicsExit.h>
 
 #include "pvutils.cpp"
-#include <pv/convert.h>
 
 #include <pv/caProvider.h>
 
