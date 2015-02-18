@@ -3098,8 +3098,10 @@ namespace epics {
         testOk(codec._invalidDataStreamCount == 0, 
           "%s: codec._invalidDataStreamCount == 0", 
           CURRENT_FUNCTION);
-        testOk(codec._closedCount == 1, 
-          "%s: codec._closedCount == 1", CURRENT_FUNCTION);
+        // _closedCount is not incremented since CCE exception is being thrown manually
+        // w/o calling close()
+        testOk(codec._closedCount == 0 /*1*/,
+          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
         testOk(codec._receivedControlMessages.size() == 0, 
           "%s: codec._receivedControlMessages.size() == 0 ",
           CURRENT_FUNCTION);
