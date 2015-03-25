@@ -212,6 +212,7 @@ public:
 
     void destroySharedInstance()
     {
+        if(!sharedProvider) return;
         sharedProvider->destroy();
         sharedProvider.reset();
     }
