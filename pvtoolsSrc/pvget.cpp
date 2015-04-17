@@ -534,7 +534,7 @@ int main (int argc, char *argv[])
             std::string providerName(defaultProvider);
             std::string pvName(pvs[n]);
             std::string address(noAddress);
-            boolean usingDefaultProvider = true;
+            bool usingDefaultProvider = true;
             if (validURI)
             {
                 if (uri.path.length() <= 1)
