@@ -39,7 +39,7 @@ size_t fromString(PVScalarArrayPtr const &pv, StringArray const & from, size_t f
 
 	// first get count
 	if (fromStartIndex >= fromValueCount)
-		throw std::runtime_error("not enough of values");
+		throw std::runtime_error("not enough values");
 
 	size_t count;
 	istringstream iss(from[fromStartIndex]);
@@ -73,7 +73,7 @@ size_t fromString(PVStructureArrayPtr const &pv, StringArray const & from, size_
 
 	// first get count
 	if (fromStartIndex >= fromValueCount)
-		throw std::runtime_error("not enough of values");
+		throw std::runtime_error("not enough values");
 
 	size_t numberOfStructures;
 	istringstream iss(from[fromStartIndex]);
@@ -112,7 +112,7 @@ size_t fromString(PVUnionPtr const & pvUnion, StringArray const & from, size_t f
     size_t fromValueCount = from.size();
 
     if (fromStartIndex >= fromValueCount)
-        throw std::runtime_error("not enough of values");
+        throw std::runtime_error("not enough values");
 
     string selector = from[fromStartIndex++];
     PVFieldPtr pv = pvUnion->select(selector);
@@ -130,7 +130,7 @@ size_t fromString(PVUnionArrayPtr const &pv, StringArray const & from, size_t fr
 
     // first get count
     if (fromStartIndex >= fromValueCount)
-        throw std::runtime_error("not enough of values");
+        throw std::runtime_error("not enough values");
 
     size_t numberOfUnions;
     istringstream iss(from[fromStartIndex]);
@@ -223,7 +223,7 @@ size_t fromString(PVFieldPtr const & fieldField, StringArray const & from, size_
             case scalar:
             {
                 if (fromStartIndex >= from.size())
-                    throw std::runtime_error("not enough of values");
+                    throw std::runtime_error("not enough values");
 
                 PVScalarPtr pv = static_pointer_cast<PVScalar>(fieldField);
                 getConvert()->fromString(pv, from[fromStartIndex]);
@@ -774,7 +774,7 @@ int main (int argc, char *argv[])
         while (false);
     } catch (std::out_of_range& oor) {
         allOK = false;
-        std::cerr << "parse error: not enough of values" << std::endl;
+        std::cerr << "parse error: not enough values" << std::endl;
     } catch (std::exception& ex) {
         allOK = false;
         std::cerr << ex.what() << std::endl;

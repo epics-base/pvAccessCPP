@@ -529,8 +529,6 @@ int main (int argc, char *argv[])
             URI uri;
             bool validURI = URI::parse(pvs[n], uri);
 
-            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
-
             std::string providerName(defaultProvider);
             std::string pvName(pvs[n]);
             std::string address(noAddress);
