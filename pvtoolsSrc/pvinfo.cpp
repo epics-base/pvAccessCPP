@@ -1,6 +1,7 @@
 #include <iostream>
 #include <pv/clientFactory.h>
 #include <pv/pvAccess.h>
+#include <pv/caProvider.h>
 
 #include <stdio.h>
 #include <epicsStdlib.h>
@@ -25,8 +26,11 @@ using namespace epics::pvAccess;
 
 
 #define DEFAULT_TIMEOUT 3.0
+#define DEFAULT_PROVIDER "pva"
 
 double timeOut = DEFAULT_TIMEOUT;
+string defaultProvider(DEFAULT_PROVIDER);
+const string noAddress;
 
 void usage (void)
 {
@@ -34,10 +38,11 @@ void usage (void)
     "  -h: Help: Print this message\n"
     "options:\n"
     "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
+    "  -p <provider>:     Set default provider name, default is '%s'\n"
     "  -d:                Enable debug output\n"
     "  -c:                Wait for clean shutdown and report used instance count (for expert users)"
     "\nExample: pvinfo double01\n\n"
-             , DEFAULT_TIMEOUT);
+             , DEFAULT_TIMEOUT, DEFAULT_PROVIDER);
 }
 
 
@@ -65,7 +70,7 @@ int main (int argc, char *argv[])
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hw:dc")) != -1) {
+    while ((opt = getopt(argc, argv, ":hw:p:dc")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -77,6 +82,9 @@ int main (int argc, char *argv[])
                         "- ignored. ('pvget -h' for help.)\n", optarg);
                 timeOut = DEFAULT_TIMEOUT;
             }
+            break;
+        case 'p':               /* Set default provider */
+            defaultProvider = optarg;
             break;
         case 'd':               /* Debug log level */
             debug = true;
@@ -119,17 +127,66 @@ int main (int argc, char *argv[])
     bool allOK = true;
 
     {
-        Requester::shared_pointer requester(new RequesterImpl("pvinfo"));
-    
+        std::vector<std::string> pvNames;
+        std::vector<std::string> pvAddresses;
+        std::vector<std::string> providerNames;
+
+        pvNames.reserve(nPvs);
+        pvAddresses.reserve(nPvs);
+        providerNames.reserve(nPvs);
+
+        for (int n = 0; n < nPvs; n++)
+        {
+            URI uri;
+            bool validURI = URI::parse(pvs[n], uri);
+
+            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
+
+            std::string providerName(defaultProvider);
+            std::string pvName(pvs[n]);
+            std::string address(noAddress);
+            bool usingDefaultProvider = true;
+            if (validURI)
+            {
+                if (uri.path.length() <= 1)
+                {
+                    std::cerr << "invalid URI '" << pvs[n] << "', empty path" << std::endl;
+                    return 1;
+                }
+                providerName = uri.protocol;
+                pvName = uri.path.substr(1);
+                address = uri.host;
+                usingDefaultProvider = false;
+            }
+
+            if ((providerName != "pva") && (providerName != "ca"))
+            {
+                std::cerr << "invalid "
+                          << (usingDefaultProvider ? "default provider" : "URI scheme")
+                          << " '" << providerName 
+                          << "', only 'pva' and 'ca' are supported" << std::endl;
+                return 1;
+            }
+            pvNames.push_back(pvName);
+            pvAddresses.push_back(address);
+            providerNames.push_back(providerName);
+        }
+
         ClientFactory::start();
-        ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");
-    
+        epics::pvAccess::ca::CAClientFactory::start();
+
         // first connect to all, this allows resource (e.g. TCP connection) sharing
         vector<Channel::shared_pointer> channels(nPvs);
         for (int n = 0; n < nPvs; n++)
         {
-            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl()); 
-            channels[n] = provider->createChannel(pvs[n], channelRequesterImpl);
+            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
+            if (pvAddresses[n].empty())
+                channels[n] = getChannelProviderRegistry()->getProvider(
+                    providerNames[n])->createChannel(pvNames[n], channelRequesterImpl);
+            else
+                channels[n] = getChannelProviderRegistry()->getProvider(
+                    providerNames[n])->createChannel(pvNames[n], channelRequesterImpl,
+                    ChannelProvider::PRIORITY_DEFAULT, pvAddresses[n]);
         }
         
         // for now a simple iterating sync implementation, guarantees order
@@ -173,6 +230,7 @@ int main (int argc, char *argv[])
             }
         }    
 
+        epics::pvAccess::ca::CAClientFactory::stop();
         ClientFactory::stop();
     }
 
