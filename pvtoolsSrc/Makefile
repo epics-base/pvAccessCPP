@@ -12,7 +12,7 @@ pvput_LIBS += pvAccess pvData pvMB ca Com
 
 PROD_HOST += pvinfo
 pvinfo_SRCS += pvinfo.cpp
-pvinfo_LIBS += pvAccess pvData pvMB Com
+pvinfo_LIBS += pvAccess pvData pvMB ca Com
 
 PROD_HOST += pvlist
 pvlist_SRCS += pvlist.cpp
