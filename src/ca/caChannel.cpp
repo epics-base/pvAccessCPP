@@ -1444,6 +1444,10 @@ void CAChannelMonitor::release(epics::pvData::MonitorElementPtr const & /*monito
     // noop
 }
 
+void CAChannelMonitor::reportRemoteQueueStatus(int32 /*freeElements*/)
+{
+    // noop
+}
 
 
 /* --------------- epics::pvData::ChannelRequest --------------- */

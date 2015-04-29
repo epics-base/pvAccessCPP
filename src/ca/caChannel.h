@@ -264,6 +264,7 @@ public:
     virtual epics::pvData::Status stop();
     virtual epics::pvData::MonitorElementPtr poll();
     virtual void release(epics::pvData::MonitorElementPtr const & monitorElement);
+    virtual void reportRemoteQueueStatus(epics::pvData::int32 freeElements);
 
     /* --------------- epics::pvData::ChannelRequest --------------- */
 

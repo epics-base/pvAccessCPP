@@ -1875,19 +1875,38 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 
         // create...
 		ServerMonitorRequesterImpl::create(_context, channel, ioid, transport, pvRequest);
+
+        // pipelining monitor (i.e. w/ flow control)
+        const bool ack = (QOS_GET_PUT & qosCode) != 0;
+        if (ack)
+        {
+            int32 nfree = payloadBuffer->getInt();
+            ServerMonitorRequesterImpl::shared_pointer request = static_pointer_cast<ServerMonitorRequesterImpl>(channel->getRequest(ioid));
+            request->getChannelMonitor()->reportRemoteQueueStatus(nfree);
+        }
+
 	}
 	else
 	{
-		const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
-		const bool get = (QOS_GET & qosCode) != 0;
-		const bool process = (QOS_PROCESS & qosCode) != 0;
+        const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
+        const bool get = (QOS_GET & qosCode) != 0;
+        const bool process = (QOS_PROCESS & qosCode) != 0;
+        const bool ack = (QOS_GET_PUT & qosCode) != 0;
 
-		ServerMonitorRequesterImpl::shared_pointer request = static_pointer_cast<ServerMonitorRequesterImpl>(channel->getRequest(ioid));
+        ServerMonitorRequesterImpl::shared_pointer request = static_pointer_cast<ServerMonitorRequesterImpl>(channel->getRequest(ioid));
         if (!request.get())
 		{
 			BaseChannelRequester::sendFailureMessage((int8)CMD_MONITOR, transport, ioid, qosCode, BaseChannelRequester::badIOIDStatus);
 			return;
 		}
+
+        if (ack)
+        {
+            int32 nfree = payloadBuffer->getInt();
+            request->getChannelMonitor()->reportRemoteQueueStatus(nfree);
+            return;
+            // note: not possible to ack and destroy
+        }
 
         /*
 		if (!request->startRequest(qosCode))
@@ -1946,7 +1965,7 @@ MonitorRequester::shared_pointer ServerMonitorRequesterImpl::create(
 
 void ServerMonitorRequesterImpl::activate(PVStructure::shared_pointer const & pvRequest)
 {
-	startRequest(QOS_INIT);
+    startRequest(QOS_INIT);
 	MonitorRequester::shared_pointer thisPointer = shared_from_this();
 	Destroyable::shared_pointer thisDestroyable = shared_from_this();
 	_channel->registerRequest(_ioid, thisDestroyable);
