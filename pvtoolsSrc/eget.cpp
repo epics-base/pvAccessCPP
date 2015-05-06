@@ -1422,7 +1422,9 @@ class MonitorRequesterImpl : public MonitorRequester
 
     virtual void unlisten(Monitor::shared_pointer const & /*monitor*/)
     {
-        std::cerr << "unlisten" << std::endl;
+        //std::cerr << "unlisten" << std::endl;
+        // TODO
+        epicsExit(0);
     }
 };
 
@@ -1747,7 +1749,7 @@ int main (int argc, char *argv[])
             fprintf(stderr, "failed to parse request string\n");
             return 1;
         }
-        
+
         // register "pva" and "ca" providers
         ClientFactory::start();
         epics::pvAccess::ca::CAClientFactory::start();

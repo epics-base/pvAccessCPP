@@ -542,6 +542,7 @@ namespace pvAccess {
         	 epics::pvData::Monitor::shared_pointer _channelMonitor;
 		     epics::pvData::StructureConstPtr _structure;
         	 epics::pvData::Status _status;
+             bool _unlisten;
         };
 
 

@@ -40,10 +40,16 @@ class ChannelPipelineMonitorImpl :
     Mutex m_freeQueueLock;
     Mutex m_monitorQueueLock;
 
-    AtomicBoolean m_active;
+    bool m_active;
     MonitorElement::shared_pointer m_nullMonitorElement;
 
     size_t m_requestedCount;
+
+    bool m_pipeline;
+
+    bool m_done;
+
+    bool m_unlistenReported;
 
     public:
     ChannelPipelineMonitorImpl(
@@ -56,28 +62,30 @@ class ChannelPipelineMonitorImpl :
         m_queueSize(2),
         m_freeQueueLock(),
         m_monitorQueueLock(),
-        m_active(),
-        m_requestedCount(0)
+        m_active(false),
+        m_requestedCount(0),
+        m_pipeline(false),
+        m_done(false),
+        m_unlistenReported(false)
     {
 
         m_pipelineSession = pipelineService->createPipeline(pvRequest);
 
-        // extract queueSize parameter
-        PVFieldPtr pvField = pvRequest->getSubField("record._options");
-        if (pvField.get()) {
-            PVStructurePtr pvOptions = static_pointer_cast<PVStructure>(pvField);
-            pvField = pvOptions->getSubField("queueSize");
-            if (pvField.get()) {
-                PVStringPtr pvString = pvOptions->getStringField("queueSize");
-                if(pvString) {
-                    int32 size;
-                    std::stringstream ss;
-                    ss << pvString->get();
-                    ss >> size;
-                    if (size < 2) size = 2;
+        // extract queueSize and pipeline parameter
+        PVStructurePtr pvOptions = pvRequest->getSubField<PVStructure>("record._options");
+        if (pvOptions) {
+            PVStringPtr pvString = pvOptions->getSubField<PVString>("queueSize");
+            if (pvString) {
+                int32 size;
+                std::stringstream ss;
+                ss << pvString->get();
+                ss >> size;
+                if (size > 1)
                     m_queueSize = static_cast<size_t>(size);
-                }
             }
+            pvString = pvOptions->getSubField<PVString>("pipeline");
+            if (pvString)
+                m_pipeline = (pvString->get() == "true");
         }
 
         // server queue size must be >= client queue size
@@ -106,6 +114,10 @@ class ChannelPipelineMonitorImpl :
         return m_pipelineSession;
     }
 
+    bool isPipelineEnabled() const {
+        return m_pipeline;
+    }
+
     virtual ~ChannelPipelineMonitorImpl()
     {
         destroy();
@@ -113,15 +125,17 @@ class ChannelPipelineMonitorImpl :
 
     virtual Status start()
     {
-        // already started
-        if (m_active.get())
-            return Status::Ok;
+        bool notify = false;
+        {
+            Lock guard(m_monitorQueueLock);
 
-        m_active.set();
+            // already started
+            if (m_active)
+                return Status::Ok;
+            m_active = true;
 
-        m_monitorQueueLock.lock();
-        bool notify = (m_monitorQueue.size() != 0);
-        m_monitorQueueLock.unlock();
+            notify = (m_monitorQueue.size() != 0);
+        }
 
         if (notify)
         {
@@ -134,7 +148,8 @@ class ChannelPipelineMonitorImpl :
 
     virtual Status stop()
     {
-        m_active.clear();
+        Lock guard(m_monitorQueueLock);
+        m_active = false;
         return Status::Ok;
     }
 
@@ -145,8 +160,19 @@ class ChannelPipelineMonitorImpl :
 
         // do not give send more elements than m_requestedCount
         // even if m_monitorQueue is not empty
-        if (m_monitorQueue.empty() || m_requestedCount == 0)
+        bool emptyQueue = m_monitorQueue.empty();
+        if (emptyQueue || m_requestedCount == 0 || !m_active)
+        {
+            // report "unlisten" event if queue empty and done, release lock first
+            if (!m_unlistenReported && m_done && emptyQueue)
+            {
+                m_unlistenReported = true;
+                guard.unlock();
+                m_monitorRequester->unlisten(shared_from_this());
+            }
+
             return m_nullMonitorElement;
+        }
 
         MonitorElement::shared_pointer element = m_monitorQueue.front();
         m_monitorQueue.pop();
@@ -173,7 +199,7 @@ class ChannelPipelineMonitorImpl :
         {
             Lock guard(m_monitorQueueLock);
             m_requestedCount += count;
-            notify = (m_monitorQueue.size() != 0);
+            notify = m_active && (m_monitorQueue.size() != 0);
         }
 
         // notify
@@ -189,7 +215,17 @@ class ChannelPipelineMonitorImpl :
 
     virtual void destroy()
     {
-        stop();
+        bool notifyCancel = false;
+
+        {
+            Lock guard(m_monitorQueueLock);
+            m_active = false;
+            notifyCancel = !m_done;
+            m_done = true;
+        }
+
+        if (notifyCancel)
+            m_pipelineSession->cancel();
     }
 
     virtual void lock()
@@ -229,6 +265,10 @@ class ChannelPipelineMonitorImpl :
         bool notify = false;
         {
             Lock guard(m_monitorQueueLock);
+            if (m_done)
+                return;
+                // throw std::logic_error("putElement called after done");
+
             m_monitorQueue.push(element);
             // TODO there is way to much of notification, per each putElement
             notify = (m_requestedCount != 0);
@@ -243,7 +283,17 @@ class ChannelPipelineMonitorImpl :
     }
 
     virtual void done() {
-        // TODO
+        Lock guard(m_monitorQueueLock);
+        m_done = true;
+
+        bool report = !m_unlistenReported && m_monitorQueue.empty();
+        if (report)
+            m_unlistenReported = true;
+
+        guard.unlock();
+
+        if (report)
+            m_monitorRequester->unlisten(shared_from_this());
     }
 
 };
@@ -398,9 +448,21 @@ public:
         std::tr1::shared_ptr<ChannelPipelineMonitorImpl> tp(
             new ChannelPipelineMonitorImpl(shared_from_this(), monitorRequester, pvRequest, m_pipelineService)
         );
-        Monitor::shared_pointer ChannelPipelineMonitorImpl = tp;
-        monitorRequester->monitorConnect(Status::Ok, ChannelPipelineMonitorImpl, tp->getPipelineSession()->getStructure());
-        return ChannelPipelineMonitorImpl;
+        Monitor::shared_pointer channelPipelineMonitorImpl = tp;
+
+        if (tp->isPipelineEnabled())
+        {
+            monitorRequester->monitorConnect(Status::Ok, channelPipelineMonitorImpl, tp->getPipelineSession()->getStructure());
+            return channelPipelineMonitorImpl;
+        }
+        else
+        {
+            Monitor::shared_pointer nullPtr;
+            epics::pvData::Structure::const_shared_pointer nullStructure;
+            Status noPipelineEnabledStatus(Status::STATUSTYPE_ERROR, "pipeline option not enabled, use e.g. 'record[queueSize=16,pipeline=true]field(value)' pvRequest to enable pipelining");
+            monitorRequester->monitorConnect(noPipelineEnabledStatus, nullPtr, nullStructure);
+            return nullPtr;
+        }
     }
 
     virtual ChannelArray::shared_pointer createChannelArray(

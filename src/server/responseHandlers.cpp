@@ -1948,7 +1948,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 ServerMonitorRequesterImpl::ServerMonitorRequesterImpl(
         ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
 		const pvAccessID ioid, Transport::shared_pointer const & transport):
-		BaseChannelRequester(context, channel, ioid, transport), _channelMonitor(), _structure()
+        BaseChannelRequester(context, channel, ioid, transport), _channelMonitor(), _structure(), _unlisten(false)
 {
 }
 
@@ -1992,7 +1992,12 @@ void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor::s
 
 void ServerMonitorRequesterImpl::unlisten(Monitor::shared_pointer const & /*monitor*/)
 {
-	//TODO
+    {
+        Lock guard(_mutex);
+        _unlisten = true;
+    }
+    TransportSender::shared_pointer thisSender = shared_from_this();
+    _transport->enqueueSendRequest(thisSender);
 }
 
 void ServerMonitorRequesterImpl::monitorEvent(Monitor::shared_pointer const & /*monitor*/)
@@ -2110,6 +2115,23 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
         	TransportSender::shared_pointer thisSender = shared_from_this();
         	_transport->enqueueSendRequest(thisSender);
 		}
+        else
+        {
+            // TODO CAS
+            bool unlisten;
+            Lock guard(_mutex);
+            unlisten = _unlisten;
+            _unlisten = false;
+            guard.unlock();
+
+            if (unlisten)
+            {
+                control->startMessage((int8)CMD_MONITOR, sizeof(int32)/sizeof(int8) + 1);
+                buffer->putInt(_ioid);
+                buffer->putByte((int8)QOS_DESTROY);
+                Status::Ok.serialize(buffer, control);
+            }
+        }
 		
 	}
 }

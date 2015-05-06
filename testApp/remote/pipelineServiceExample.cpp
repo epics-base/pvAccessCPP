@@ -21,10 +21,21 @@ class PipelineSessionImpl :
 public:
 
     PipelineSessionImpl(
-            epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/
+            epics::pvData::PVStructure::shared_pointer const & pvRequest
             ) :
-        m_counter(0)
+        m_counter(0),
+        m_max(0)
     {
+        PVStructure::shared_pointer pvOptions = pvRequest->getSubField<PVStructure>("record._options");
+        if (pvOptions) {
+            PVString::shared_pointer pvString = pvOptions->getSubField<PVString>("limit");
+            if (pvString)
+            {
+                // note: this throws an exception if conversion fails
+                m_max = pvString->getAs<int32>();
+            }
+        }
+
     }
 
     size_t getMinQueueSize() const {
@@ -44,6 +55,13 @@ public:
             MonitorElement::shared_pointer element = control->getFreeElement();
             element->pvStructurePtr->getSubField<PVInt>(1 /*"count"*/)->put(m_counter++);
             control->putElement(element);
+
+            // we reached the limit, no more data
+            if (m_max != 0 && m_counter == m_max)
+            {
+                control->done();
+                break;
+            }
         }
     }
 
@@ -54,6 +72,7 @@ public:
 private:
     // NOTE: all the request calls will be made from the same thread, so we do not need sync m_counter
     int32 m_counter;
+    int32 m_max;
 };
 
 class PipelineServiceImpl :

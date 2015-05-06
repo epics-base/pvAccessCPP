@@ -2063,6 +2063,7 @@ namespace epics {
             virtual ~MonitorStrategy() {};
             virtual void init(StructureConstPtr const & structure) = 0;
             virtual void response(Transport::shared_pointer const & transport, ByteBuffer* payloadBuffer) = 0;
+            virtual void unlisten() = 0;
         };
 
         typedef vector<MonitorElement::shared_pointer> FreeElementQueue;
@@ -2103,10 +2104,18 @@ namespace epics {
            // TODO check for cyclic-ref
            ChannelImpl::shared_pointer m_channel;
            pvAccessID m_ioid;
+
+           bool m_pipeline;
+           int32 m_ackAny;
+
+           bool m_unlisten;
+
         public:
 
            MonitorStrategyQueue(ChannelImpl::shared_pointer channel, pvAccessID ioid,
-                                MonitorRequester::shared_pointer const & callback, int32 queueSize) :
+                                MonitorRequester::shared_pointer const & callback,
+                                int32 queueSize,
+                                bool pipeline, int32 ackAny) :
                m_queueSize(queueSize), m_lastStructure(),
                m_freeQueue(),
                m_monitorQueue(),
@@ -2115,7 +2124,9 @@ namespace epics {
                m_nullMonitorElement(),
                m_releasedCount(0),
                m_reportQueueStateInProgress(false),
-               m_channel(channel), m_ioid(ioid)
+               m_channel(channel), m_ioid(ioid),
+               m_pipeline(pipeline), m_ackAny(ackAny),
+               m_unlisten(false)
            {
                 if (queueSize <= 1)
                     throw std::invalid_argument("queueSize <= 1");
@@ -2318,12 +2329,33 @@ namespace epics {
                }
            }
 
+            virtual void unlisten()
+            {
+                bool notifyUnlisten = false;
+                {
+                    Lock guard(m_mutex);
+                    notifyUnlisten = m_monitorQueue.empty();
+                    m_unlisten = !notifyUnlisten;
+                }
+
+                if (notifyUnlisten)
+                {
+                    EXCEPTION_GUARD(m_callback->unlisten(shared_from_this()));
+                }
+            }
 
             virtual MonitorElement::shared_pointer poll() {
                 Lock guard(m_mutex);
 
-                if (m_monitorQueue.empty())
+                if (m_monitorQueue.empty()) {
+
+                    if (m_unlisten) {
+                        m_unlisten = false;
+                        guard.unlock();
+                        EXCEPTION_GUARD(m_callback->unlisten(shared_from_this()));
+                    }
                     return m_nullMonitorElement;
+                }
 
                 MonitorElement::shared_pointer retVal = m_monitorQueue.front();
                 m_monitorQueue.pop();
@@ -2351,25 +2383,27 @@ namespace epics {
                     m_overrunInProgress = false;
                 }
 
-                m_releasedCount++;
-                // TODO limit reporting back?
-                if (!m_reportQueueStateInProgress)
+                if (m_pipeline)
                 {
-                    sendAck = true;
-                    m_reportQueueStateInProgress = true;
-                }
-               }
-
-               if (sendAck)
-               {
-                   try
-                   {
-                       m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
-                   } catch (...) {
-                       // noop (do not complain if fails)
-                       m_reportQueueStateInProgress = false;
+                    m_releasedCount++;
+                    if (!m_reportQueueStateInProgress && m_releasedCount >= m_ackAny)
+                    {
+                        sendAck = true;
+                        m_reportQueueStateInProgress = true;
+                    }
                    }
-                }
+
+                   if (sendAck)
+                   {
+                       try
+                       {
+                           m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+                       } catch (...) {
+                           // noop (do not complain if fails)
+                           m_reportQueueStateInProgress = false;
+                       }
+                    }
+               }
             }
 
             virtual void reportRemoteQueueStatus(int32 /*freeElements*/)
@@ -2447,6 +2481,7 @@ namespace epics {
 
             int32 m_queueSize;
             bool m_pipeline;
+            int32 m_ackAny;
 
             ChannelMonitorImpl(
                 ChannelImpl::shared_pointer const & channel,
@@ -2457,8 +2492,9 @@ namespace epics {
                     m_monitorRequester(monitorRequester),
                     m_started(false),
                     m_pvRequest(pvRequest),
-                    m_queueSize(0),
-                    m_pipeline(false)
+                    m_queueSize(2),
+                    m_pipeline(false),
+                    m_ackAny(0)
             {
                 PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelMonitor);
             }
@@ -2472,30 +2508,45 @@ namespace epics {
                     return;
                 }
                 
-               m_queueSize = 2;
-               PVFieldPtr pvField = m_pvRequest->getSubField("record._options");
-               if (pvField.get()) {
-                   PVStructurePtr pvOptions = static_pointer_cast<PVStructure>(pvField);
-                   pvField = pvOptions->getSubField("queueSize");
-                   if (pvField.get()) {
-                       PVStringPtr pvString = pvOptions->getStringField("queueSize");
-                       if(pvString) {
+               PVStructurePtr pvOptions = m_pvRequest->getSubField<PVStructure>("record._options");
+               if (pvOptions) {
+                   PVStringPtr pvString = pvOptions->getSubField<PVString>("queueSize");
+                   if (pvString) {
+                       int32 size;
+                       std::stringstream ss;
+                       ss << pvString->get();
+                       ss >> size;
+                       if (size > 1)
+                        m_queueSize = size;
+                   }
+                   pvString = pvOptions->getSubField<PVString>("pipeline");
+                   if (pvString)
+                       m_pipeline = (pvString->get() == "true");
+
+                   // pipeline options
+                   if (m_pipeline)
+                   {
+                       // defaults to queueSize/2
+                       m_ackAny = m_queueSize/2;
+
+                       pvString = pvOptions->getSubField<PVString>("ackAny");
+                       if (pvString) {
                            int32 size;
                            std::stringstream ss;
                            ss << pvString->get();
                            ss >> size;
-                           m_queueSize = size;
+                           if (size > 0)
+                            m_ackAny = size;
                        }
                    }
-                   PVStringPtr pvString = pvOptions->getSubField<PVString>("pipeline");
-                   if (pvString)
-                       m_pipeline = (pvString->get() == "true");
                }
 
                BaseRequestImpl::activate();
 
-               if (m_queueSize < 2) m_queueSize = 2;
-               std::tr1::shared_ptr<MonitorStrategyQueue> tp(new MonitorStrategyQueue(m_channel, m_ioid, m_monitorRequester, m_queueSize));
+               std::tr1::shared_ptr<MonitorStrategyQueue> tp(
+                           new MonitorStrategyQueue(m_channel, m_ioid, m_monitorRequester, m_queueSize,
+                                                    m_pipeline, m_ackAny)
+                           );
                m_monitorStrategy = tp;
                 
                 // subscribe
@@ -2608,6 +2659,16 @@ namespace epics {
                 if (qos & QOS_GET)
                 {
                     // TODO not supported by IF yet...
+                }
+                else if (qos & QOS_DESTROY)
+                {
+                    // TODO for now status is ignored
+
+                    if (payloadBuffer->getRemaining())
+                        m_monitorStrategy->response(transport, payloadBuffer);
+
+                    // unlisten will be called when all the elements in the queue gets processed
+                    m_monitorStrategy->unlisten();
                 }
                 else
                 {
