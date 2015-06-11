@@ -2,16 +2,25 @@
 
 TOP = .
 include $(TOP)/configure/CONFIG
+DIRS := $(DIRS) $(filter-out $(DIRS), configure)
+DIRS := $(DIRS) $(filter-out $(DIRS), src)
+DIRS := $(DIRS) $(filter-out $(DIRS), pvaSrc)
+DIRS := $(DIRS) $(filter-out $(DIRS), pvtoolsSrc)
+DIRS := $(DIRS) $(filter-out $(DIRS), testApp)
+DIRS := $(DIRS) $(filter-out $(DIRS), pvaExample)
+DIRS := $(DIRS) $(filter-out $(DIRS), pvaTest)
 
-DIRS := configure
+EMBEDDED_TOPS := $(EMBEDDED_TOPS) $(filter-out $(EMBEDDED_TOPS), pvaExample)
+EMBEDDED_TOPS := $(EMBEDDED_TOPS) $(filter-out $(EMBEDDED_TOPS), pvaTest)
 
-DIRS += src
-src_DEPEND_DIRS = configure
+define DIR_template
+ $(1)_DEPEND_DIRS = configure
+endef
+$(foreach dir, $(filter-out configure,$(DIRS)),$(eval $(call DIR_template,$(dir))))
 
-DIRS += pvtoolsSrc
-pvtoolsSrc_DEPEND_DIRS = src
-
-DIRS += testApp
-testApp_DEPEND_DIRS = src
+define EMB_template
+ $(1)_DEPEND_DIRS = src pvaSrc
+endef
+$(foreach dir, $(EMBEDDED_TOPS),$(eval $(call EMB_template,$(dir))))
 
 include $(TOP)/configure/RULES_TOP

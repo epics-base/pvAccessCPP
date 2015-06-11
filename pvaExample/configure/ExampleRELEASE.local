@@ -1,0 +1,6 @@
+EPICS_BASE=/home/install/epics/base
+TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
+EPICSV4HOME=/home/epicsv4
+PVCOMMON=${EPICSV4HOME}/pvCommonCPP
+PVDATA=${EPICSV4HOME}/pvDataCPP
+PVACCESS=${EPICSV4HOME}/pvAccessCPP

@@ -1,0 +1,41 @@
+# pvDatabaseCPP/example RELEASE - Location of external support modules
+#
+# IF YOU CHANGE this file or any file it includes you must
+# subsequently do a "gnumake rebuild" in the application's
+# top level directory.
+#
+# The build process does not check dependencies against files
+# that are outside this application, thus you should also do a
+# "gnumake rebuild" in the top level directory after EPICS_BASE
+# or any other external module pointed to below is rebuilt.
+#
+# Host- or target-specific settings can be given in files named
+#  RELEASE.$(EPICS_HOST_ARCH).Common
+#  RELEASE.Common.$(T_A)
+#  RELEASE.$(EPICS_HOST_ARCH).$(T_A)
+
+# EPICS V4 Developers: Do not edit the locations in this file!
+#
+# Create a file RELEASE.local pointing to your PVASRV, PVACCESS,
+# PVDATA, PVCOMMON and EPICS_BASE build directories, e.g.
+#   PVASRV   = /path/to/epics/pvaSrvCPP
+#   PVACCESS = /path/to/epics/pvAccessCPP
+#   PVDATA   = /path/to/epics/pvDataCPP
+#   PVCOMMON = /path/to/epics/pvCommonCPP
+#   EPICS_BASE = /path/to/epics/base
+
+# If this example is built in a directory under pvDatabaseCPP,
+# use the following definitions:
+
+EASYPVA = $(TOP)/..
+
+-include $(TOP)/../configure/RELEASE.local
+-include $(TOP)/../../RELEASE.local
+
+# If you copied this example from pvDatabaseCPP to be built as a
+# standalone TOP, adjust and use the following definitions:
+
+#EASYPVA = /path/to/epics/easyPVACPP
+
+#-include $(TOP)/../RELEASE.local
+#-include $(TOP)/configure/RELEASE.local
