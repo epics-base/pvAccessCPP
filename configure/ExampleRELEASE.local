@@ -1,7 +1,0 @@
-EPICS_BASE=/home/install/epics/base
-
-EPICS4_DIR=/home/epicsv4
-PVCOMMON=${EPICS4_DIR}/pvCommonCPP
-PVDATA=${EPICS4_DIR}/pvDataCPP
-
-
