@@ -38,7 +38,7 @@
 <h1>EPICS pvAccessCPP</h1>
 <!-- Maturity: Working Draft or Request for Comments, or Recommendation, and date.  -->
 
-<h2 class="nocount" id="L50">EPICS v4 Working Group, Working Draft, 09-July-2011</h2>
+<h2 class="nocount">EPICS v4 Working Group, Working Draft, 16-June-2015</h2>
 <dl>
   <dt>Latest version:</dt>
     <dd><a
@@ -46,11 +46,11 @@
      </a></dd>
   <dt>This version:</dt>
     <dd><a
-      href="pvAccessCPP_20140709.html">pvAccessCPP_20140709.html
+      href="pvAccessCPP_20150616.html">pvAccessCPP_20150616.html
      </a></dd>
   <dt>Previous version:</dt>
     <dd><a
-      href="pvAccessCPP_20111220.html">pvAccessCPP_20111220.html
+      href="pvAccessCPP_20140709.html">pvAccessCPP_20140709.html
      </a></dd>
   <dt>Editors:</dt>
     <dd>Marty Kraimer, BNL<br />
@@ -59,40 +59,77 @@
 <hr />
 
 <h2 class="nocount">Abstract</h2>
-<p>pvAccessCPP is the C++ implementation of pvAccess, which is one of a related
-set of products:</br >
+<p>pvAccessCPP is the C++ implementation of pvAccess,
+which is network support for transporting structured data as defined by pvData.
+</p>
+<p>
+pvAccess is one of a related
+set of products:
 <a href="http://epics-pvdata.sourceforge.net/relatedDocumentsV4.html">relatedDocumentsV4.html</a>
 </p>
 
 
+
 <h2 class="nocount">Status of this Document</h2>
 
-<p>This is the 09-July-2011 version of the C++ implementation of pvAccess. The
-code is a complete implementation of pvAccess as currently defined. This
-overview is NOT written.</p>
+<p>This is the 16-June-2015 version of the C++ implementation of pvAccess. The
+code is a complete implementation of pvAccess.</p>
 
 </div>
 
 <div id="toc">
-<h2 class="nocount" style="page-break-before: always">Table of Contents</h2>
+  <h2 class="nocount">Table of Contents</h2>
 </div>
 
+<!-- Place what you would like in the Table of Contents, inside the contents div -->
 <div id="contents" class="contents">
-
-
-
-<h2 id="L88">Introduction</h2>
 <hr />
 
-<p>This product is available via an <a
-href="http://epics-pvdata.sourceforge.net/LICENSE.html">open source
-license</a></p>
+<h2>Preface</h2>
+<p>This document describes the pvAccess Application Program Interface (API).
+The reader is assumed to have a basic understanding of EPICS V4 as described in:</p>
+<a
+href="http://epics-pvdata.sourceforge.net/informative/developerGuide/developerGuide.html">
+EPICS V4 Developer's Guide
+</a>
+<p>The pvAccess API is callback based and uses Status to report problem to the
+client, which means that it can be complex to use.
+If your primary interest is client access then, instead of reading this document,
+read:</p>
+<a
+href="http://epics-pvdata.sourceforge.net/docbuild/pvaClientCPP/tip/documentation/pvaClientCPP.html">
+pvaClientCPP
+</a>
+<p>If your primary interest is implementing pvAccess services then,
+before reading this documement read:</p>
+<a
+href="http://epics-pvdata.sourceforge.net/docbuild/pvDatabaseCPP/tip/documentation/pvDatabaseCPP.html">
+pvDatabaseCPP
+</a>
 
-<p>This overview for pvAccessCPP. Doxygen documentation is available at <a
-href="./html/index.html">doxygenDoc</a></p>
 
-<p><b>THIS IS NOT WRITTEN</b> For now please consult pvAccessJava.html.
-In addition look at the Doxygen documentation for this project.</p>
+
+
+<h2>Introduction</h2>
+<p>This product is available via an
+<a
+href="http://epics-pvdata.sourceforge.net/LICENSE.html">open source license
+</a>
+</p>
+<p>
+A user overview is available via
+<a
+href="./pvAccessOverview.html">pvAccessOverview.html
+</a>
+</p>
+<p>
+Doxygen documentation is available at
+<a
+href="./html/index.html">doxygenDoc
+</a>
+
+<h2>???</h2>
+<p>Matej decide what else should go in this document</p>
 
 </div>
 </body>
