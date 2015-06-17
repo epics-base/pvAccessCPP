@@ -1,0 +1,1108 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+  <title>pvAccess C++ Overview</title>
+  <link rel="stylesheet" type="text/css"
+  href="http://epics-pvdata.sourceforge.net/base.css" />
+  <link rel="stylesheet" type="text/css"
+  href="http://epics-pvdata.sourceforge.net/epicsv4.css" />
+  <style type="text/css">
+  /*<![CDATA[*/
+     .about { margin-left: 3em; margin-right: 3em; font-size: .83em}
+     table { margin-left: auto; margin-right: auto }
+     .diagram { text-align: center; margin: 2.5em 0 }
+     span.opt { color: grey }
+     span.nterm { font-style:italic }
+     span.term { font-family:courier }
+     span.user { font-family:courier }
+     span.user:before { content:"<" }
+     span.user:after { content:">" }
+     .nonnorm { font-style:italic }
+     p.ed { color: #AA0000 }
+     span.ed { color: #AA0000 }
+     p.ed.priv { display: inline; }
+     span.ed.priv { display: inline; }
+  /*]]>*/</style>
+  <!-- Script that generates the Table of Contents -->
+  <script type="text/javascript"
+  src="http://epics-pvdata.sourceforge.net/script/tocgen.js">
+ </script>
+</head>
+
+<body>
+
+<div class="head">
+<h1>pvAccess C++ Overview</h1>
+</div>
+
+<div id="toc">
+  <h2 class="nocount">Table of Contents</h2>
+</div>
+
+<!-- Place what you would like in the Table of Contents, inside the contents div -->
+<div id="contents" class="contents">
+<hr />
+
+<h2>Preface</h2>
+<p>This document describes the pvAccess Application Program Interface (API).
+The reader is assumed to have a basic understanding of EPICS V4 as described in:<br />
+<a
+href="http://epics-pvdata.sourceforge.net/informative/developerGuide/developerGuide.html">
+EPICS V4 Developer's Guide
+</a>
+</p>
+<p>The pvAccess API is callback based and uses Status to report problems to the
+client, which means that it can be complex to use.
+If your primary interest is client access then, instead of reading this document,
+read:<br />
+<a
+href="http://epics-pvdata.sourceforge.net/docbuild/pvaClientCPP/tip/documentation/pvaClientCPP.html">
+pvaClientCPP
+</a>
+</p>
+<p>If your primary interest is implementing pvAccess services then,
+before reading this documement read:<br />
+<a
+href="http://epics-pvdata.sourceforge.net/docbuild/pvDatabaseCPP/tip/documentation/pvDatabaseCPP.html">
+pvDatabaseCPP
+</a>
+</p>
+
+<h2>Introduction</h2>
+<p>This section briefly describes the most important classes,
+class methods, and global methods used by client and/or service code.
+Not all classes and methods are described.
+When source code from include files is shown it
+is often a simplified version.
+<b>Ptr</b> is shorthand for <b>::shared_pointer</b>
+For example:
+</p>
+<pre>
+ChannelFindPtr
+</pre>
+instead of
+<pre>
+ChannelFind::shared_pointer
+</pre>
+<p>pvAccess provides network support for structured data as described by
+pvData.
+</p>
+<p>The main concepts of pvAccess are:</p>
+<dl>
+  <dt>ChannelProvider</dt>
+    <dd>A channelProvider creates channels,
+      where a channel instance is a connection between a client and a server.
+   </dd>
+      
+  <dt>Channel</dt>
+     <dd>A channel has a number of create methods: createChannelGet,
+      createChannelPut, etc. Each of ChannelGet, ChannelPut, etc
+      provides methods to pass data between client and server.
+     </dd>
+</dl>
+<p>An arbitrary number of channelProviders can be implemented
+on both the client and server side.
+A ChannelProviderRegistry allows clients to connect to
+servers and for Providers to register with the registry.
+</p>
+<h3>ChannelProviderRegistry Overview</h3>
+<p>Three global methods are available:</p>
+<dl>
+   <dt>getChannelProviderRegistry</dt>
+      <dd>Get the single instance of ChannelProviderRegistry.</dd>
+   <dt>registerChannelProviderFactory</dt>
+       <dd>Register a ChannelProvider</dd>
+   <dt>unregisterChannelProviderFactory</dt>
+       <dd>Remove a ChannelProvider</dd>
+</dl>
+<p>ChannelProviderRegistry provides the method:</p>
+<dl>
+   <dt>getProvider</dt>
+</dl>
+
+<h3>ChannelProvider Overview</h3>
+<p>Provides the following methods:</p>
+<dl>
+   <dt>createChannel</dt>
+      <dd>Create a channel.</dd>
+</dl>
+<h3>Channel Overview</h3>
+<p>Channel provides methods to create the following:</p>
+<dl>
+   <dt>ChannelProcess</dt>
+      <dd>Client can make requests to process the channel.</dd>
+   <dt>ChannelGet</dt>
+      <dd>Client can make requests to get data from a channel.</dd>
+   <dt>ChannelPut</dt>
+      <dd>Client can make requests to put data to a channel.</dd>
+   <dt>ChannelPutGet</dt>
+      <dd>Client can make requests to put data to a channel,
+        process the channel, and get data from the channel.
+      </dd>
+   <dt>Monitor</dt>
+      <dd>Monitor data changes in the channel.</dd>
+   <dt>ChannelArray</dt>
+       <dd>Get or put data to a sub-array.</dd>
+   <dt>ChannelRPC</dt>
+      <dd>Similar to ChannelPutGet but data types can change for each request.</dd>
+</dl>
+<h3>ChannelProviders implemented by pvAccessCPP</h3>
+<h4>Client Side</h4>
+<dl>
+   <dt>pva network protocal</dt>
+     <dd>
+      This connects the client to a server via the <b>pva</b> network protocol,
+      which is a protocol for passing pvData objects.
+      The protocol is described in:<br />
+      
+<a
+href="http://epics-pvdata.sourceforge.net/pvAccess_Protocol_Specification.html">
+pvAccess Protocol Specification
+</a>
+      </dd>
+   <dt>ca network protocol</dt>
+    <dd>This connects the client to a server via the <b>ca</b> network protocal,
+    i. e. it connects to an existing V3 IOC.
+    This is client side only code.
+    It transforms data between pvData and ca DBR data,
+    The ca protocol is described in:<br />
+<a
+href="http://www.aps.anl.gov/epics/base/R3-14/12-docs/CAref.html">
+Channel Access Reference Manual
+</a>
+    </dd>
+    <dt>codec</dt>
+     <dd>Matej please explain</dd>
+</dl>
+<p>The client side of pva also allows an arbitrary number of additional providers to register with it.</p>
+
+<h4>Server Side</h4>
+<dl>
+  <dt>pva network protocal</dt>
+     <dd>The server side for pva network protocol.
+      It connects the server side of the network to ChannelProviders.
+     </dd>
+   <dt>RPC Server</dt>
+      <dd>This is the "glue" code for implementing a ChannelRPC service.
+     An actual service must implement method request.</dd>
+    <dt>codec</dt>
+     <dd>Matej please explain</dd>
+</dl>
+<p>The server side of the pva network protocal.
+allows an arbitrary number of providers to register with it.
+Existing examples are:</p>
+<dl>
+  <dt>local provider</dt>
+    <dd>pvDatabase implements a PVDatabase, which is a memory resident
+     database of PVRecords. Each PVRecord has a name, which is the channel name,
+     and a top level PVStructure. A record is "smart" because each record has
+    an associated method named process.
+    </dd>
+  <dt>pvaSrv</dt>
+     <dd>This is a ChannelProvider for accessing V3 IOC DBRecords.
+      It transforms the data in a V3 DBRecord to a top level PVStructure.
+     </dd>
+</dl>
+
+<h2>Command Line Utilities</h2>
+<p>pvAccessCPP provides the following command line utilities:<br /> pvlist, pvinfo, pvget, pvput, and eget.</p>
+<p>In order to use these commands a path to the pvAccessCPP bin directory must exists.
+For example, on my linux workstation <b>.bash_profile</b> includes the statements:</p>
+<pre>
+export EPICSV4=/home/epicsv4
+export PATH=$PATH:${EPICSV4}/pvAccessCPP/bin/${EPICS_HOST_ARCH}
+</pre>
+<p>
+This document gives a VERY brief explaination if each command but each provides a -help option.
+For example:</p>
+<pre>
+mrk&gt; pvlist -help
+
+Usage: pvlist [options] [server address or GUID starting with '0x']...
+
+  -h: Help: Print this message
+options:
+  -i                 Print server info (when server address list/GUID is given)
+  -w &lt;sec&gt;:          Wait time, specifies timeout, default is 3.000000 second(s)
+  -q:                Quiet mode, print only error messages
+  -d:                Enable debug output
+
+examples:
+	pvlist
+	pvlist ioc0001
+	pvlist 10.5.1.205:10000
+	pvlist 0x83DE3C540000000000BF351F
+</pre>
+<p>
+A longer explanation of the commands is in:</p>
+<a
+href="http://epics-pvdata.sourceforge.net/informative/developerGuide/developerGuide.html">
+EPICS V4 Developer's Guide
+</a>
+<h3>pvlist</h3>
+<p>Shows all servers avaliable via the pva network protocal and also a list
+of all channels for a particular server.
+</p>
+<h3>pvinfo</h3>
+<p>Shows the connection status and introspection interface for channels.</p>
+<h3>pvget</h3>
+<p>Returns data for a channel via channelGet or monitor.
+</p>
+<h3>pvput</h3>
+<p>Puts data to a channel via channelPut.</p>
+<h3>eget</h3>
+<p>pvget on steroids.
+Also has support for channelRPC and some of the normative types.</p>
+<h2>Include Files</h2>
+<p>The following are the include files that are of most interest to clients:</p>
+<dl>
+   <dt>pvAccess.h</dt>
+     <dd>This document discusses most of the clases described in pvAccess.h.
+      The following are not discussed in this document:
+<pre>
+enum AccessRights {none,read,readWrite};
+class Lockable...
+class ScopedLock...
+</pre>
+     </dd>
+   <dt>clientFactory.h</dt>
+     <dd>Static methods to start and stop the pva provider.</dd>
+   <dt>rpcClient.h</dt>
+     <dd>Code for implementing the client side of a channelRPC request.
+     </dd>
+   <dt>caProvider.h</dt>
+      <dd>Needed to start the provider for the ca network protocol.
+      </dd>
+</dl>
+<p>The following are of interest to service code:</p>
+<dl>
+   <dt>serverContext.h</dt>
+     <dd>Needed to start pvAccess Server Context.</dd>
+   <dt>rpcServer.h</dt>
+     <dd>Code for implementing the server side of a channelRPC request.
+     </dd>
+   <dt>rpcService.h</dt>
+     <dd>Matej please explain.</dd>
+</dl>
+<p>Matej are any others of interest to client or service code?</p>
+
+<h2>Starting PVAccess Clients</h2>
+<p>To start both the pva and ca client providers issue the commands:</p>
+<pre>
+ClientFactory::start();
+CAClientFactory::start();
+</pre>
+
+<h2>Starting pvAccess Server Context</h2>
+<p>To see examples of how to start a pvAccess server look at the examples provided
+in <b>exampleDatabasePVA.zip</b>.
+It shows examples for both a standalone main server and a V4 server that runs as part of
+a V3 IOC.
+The following is taken from <b>exampleDatabaseMain.cpp</b> that is in the example:</p>
+<pre>
+int main(int argc,char *argv[])
+{
+
+...
+    ContextLocal::shared_pointer contextLocal = ContextLocal::create();
+    contextLocal-&gt;start();
+
+...
+    contextLocal-&gt;waitForExit();
+    return 0;
+}
+</pre>
+
+
+<h2>ChannelProvider</h2>
+<h3>class ChannelProviderRegistry</h3>
+<pre>
+class ChannelProviderRegistry
+{
+public:
+   virtual ~ChannelProviderRegistry();
+   virtual ChannelProviderPtr getProvider(string const &amp; providerName);
+   virtual ChannelProviderPtr createProvider(string const &amp; providerName);
+   virtual std::auto_ptr&lt;vector&lt;string&gt; &gt; getProviderNames();
+};
+epicsShareExtern ChannelProviderRegistryPtr getChannelProviderRegistry();
+epicsShareExtern void registerChannelProviderFactory(ChannelProviderFactoryPtr const &amp; channelProviderFactory);
+epicsShareExtern void unregisterChannelProviderFactory(ChannelProviderFactoryPtr const &amp; channelProviderFactor
+</pre>
+<p>The global methods are:</p>
+<dl>
+   <dt>getChannelProviderRegistry</dt>
+     <dd>Called by both client and services to get the single instance of <b>ChannelProviderRegistry</b>.
+     </dd>
+   <dt>registerChannelProviderFactory</dt>
+      <dd>Called by a service that implements ChannelProvider.
+       Note that implementing a ChannelProvider is a big task,
+       which is why pvDatabaseCPP exists.
+      </dd>
+   <dt>unregisterChannelProviderFactory</dt>
+      <dd>Called by a service if it no longer wants the provider to be used.</dd>
+</dl>
+<p>The methods for <b>ChannelProviderRegistry</b> are:</p>
+<dl>
+    <dt>getProvider</dt>
+     <dd>Called by both client and services to get the channelProvider.<br />
+      The providerName must be the name of a registered provider.<br />
+       Most clients will use either <b>pva</b> or <b>ca</b>.<br />
+       Most services will use pvDatabaseCPP, which implements provider <b>local</b>.
+       A service that is also a client can also use <b>local</b> or <b>pvaSrv</b>.
+     </dd>
+    <dt>createProvider</dt>
+      <dd>Called by a service to start the provider.</dd>
+    <dt>getProviderNames</dt>
+       <dd>Gets the names of all registered providers.</dd>
+</dl>
+<h3>class ChannelProvider</h3>
+<pre>
+class ChannelProvider
+{
+public:
+    static const short PRIORITY_MIN = 0;
+    static const short PRIORITY_MAX = 99;
+    static const short PRIORITY_DEFAULT = PRIORITY_MIN;
+    static const short PRIORITY_LINKS_DB = PRIORITY_MAX;
+    static const short PRIORITY_ARCHIVE = (PRIORITY_MAX + PRIORITY_MIN) / 2;
+    static const short PRIORITY_OPI = PRIORITY_MIN;
+
+    virtual destroy() {}
+    virtual std::string getProviderName() = 0;
+    virtual ChannelFindPtr channelFind(
+        std::string const &amp; channelName,
+        ChannelFindRequesterPtr const &amp; channelFindRequester) = 0;
+    virtual ChannelFindPtr channelList(
+        ChannelListRequesterPtr const &amp; channelListRequester) = 0;
+    virtual ChannelPtr createChannel(
+        std::string const &amp; channelName,
+        ChannelRequesterPtr const &amp; channelRequester,
+    virtual ChannelPtr createChannel(
+        std::string const &amp; channelName,
+        ChannelRequesterPtr const &amp; channelRequester,
+        short priority,
+        std::string const &amp; address);
+    virtual void configure(PVStructurePtr /*configuration*/) {};
+    virtual void flush() {};
+    virtual void poll() {};
+
+};
+
+class ChannelFind
+{
+public:
+    virtual ChannelProviderPtr getChannelProvider();
+    virtual void cancel();
+};
+
+class ChannelFindRequester
+{
+public:
+    virtual ~ChannelFindRequester() {}
+    virtual void channelFindResult(
+        const Status&amp; status,
+        ChannelFindPtr const &amp; channelFind,
+        bool wasFound) = 0;
+};
+
+class ChannelListRequester
+{
+public:
+    virtual ~ChannelListRequester() {};
+    virtual void channelListResult(
+        const Status&amp; status,
+        ChannelFindPtr const &amp; channelFind,
+        PVStringArray::const_svector const &amp; channelNames,
+        bool hasDynamic) = 0;
+};
+</pre>
+<p>The methods of <b>ChannelProvider</b> are:</p>
+<dl>
+   <dt>getProviderName</dt>
+      <dd>Returns the name of the channel provider.</dd>
+   <dt>channelFind</dt>
+      <dd>Determines if the channel exists.
+       The result is passed by calling the channelFindResult of channelFindRequester.
+       The caller must implement channelFindRequester, which is described below.
+       The return value is ChannelFindPtr, which the caller can use to cancel a request.
+      </dd>
+   <dt>channelList</dt>
+      <dd>Gets a list of all the channels served by this provider.
+       The result is passed by calling the channelListResult of channelListRequester.
+       The caller must implement channelListRequester, which is described below.
+       The return value is ChannelFindPtr, which the caller can use to cancel a request.
+      </dd>
+   <dt>createChannel</dt>
+       <dd>Creates a connection to a channel.
+      The result passed by calling methods of ChannelRequester.
+       The caller must implememt ChannelRequester, which is described along with Channel below.
+        </dd>
+   <dt>configure</dt>
+       <dd>Not called by client,
+         Matej please explain
+       </dd>
+   <dt>flush</dt>
+       <dd>Not called by client,
+         Matej please explain
+       </dd>
+   <dt>poll</dt>
+       <dd>Not called by client,
+         Matej please explain
+       </dd>
+</dl>
+<p>The methods of <b>ChannelFind</b> are:</p>
+<dl>
+   <dt>getChannelProvider</dt>
+      <dd>Returns the provider.</dd>
+   <dt>cancel</dt>
+     <dd>Cancel the current channelFind or channelList request.</dd>
+</dl>
+<p>The method of <b>ChannelFindRequester are:</b></p>
+<dl>
+   <dt>channelFindResult</dt>
+     <dd>If wasFound is true then status is OK.
+      If not found then status provides reason for failure.
+     </dd>
+</dl>
+<p>The method of <b>ChannelListRequester are:</b></p>
+<dl>
+   <dt>channelListResult</dt>
+      <dd>If there is a problem with the channelList request status provides the reason.
+       channelNames provides the list of channels the provider is
+       currently providing.<br />
+         Matej please explain hasDynamic.
+      </dd>
+</dl>
+<h2>Channel</h2>
+<h3>class ChannelRequester</h3>
+<p>This must be implemented by a client.
+It shows the result of a <b>ChannelProvider::createChannel</b> request
+and also the connection state of the channel.
+</p>
+<pre>
+class ChannelRequester : Requester
+{
+public:
+    virtual void channelCreated(
+        const Status&amp; status, ChannelPtr const &amp; channel) = 0;
+    virtual void channelStateChange(
+        ChannelPtr const &amp; channel,
+        Channel::ConnectionState connectionState) = 0;
+};
+</pre>
+<p>The methods of <b>ChannelRequester are:</b></p>
+<dl>
+  <dt>channelCreated</dt>
+     <dd>This is called as a result of a <b>ChannelProvider::createChannel</b> request.
+      It shows if the request was successful.
+      If not successful then channel is null and status shows why the request failed.
+      </dd>
+  <dt>channelStateChange</dt>
+      <dd>When the client successfuly connects to a channel this is called with ConnectionState=CONNECTED.
+       After successfuly connecting the client can call the channel methods.
+       <br />
+      This method is also called whenever the channel disconnects or re-connects.
+      When a reconnect occurs the implementaion automatically reconnects any 
+      channelGet, channelPut, etc that the client has created.
+      </dd>
+</dl>
+<h3>class Channel</h3>
+<pre>
+class Channel : Requester ...
+{
+public:
+    POINTER_DEFINITIONS(Channel);
+
+    enum ConnectionState {
+        NEVER_CONNECTED, CONNECTED, DISCONNECTED, DESTROYED
+    };
+
+    static const char* ConnectionStateNames[];
+
+    virtual destroy() {}
+    virtual ChannelProviderPtr getProvider() = 0;
+    virtual std::string getRemoteAddress() = 0;
+    virtual ConnectionState getConnectionState() = 0;
+    virtual std::string getChannelName() = 0;
+    virtual ChannelRequesterPtr getChannelRequester() = 0;
+    virtual bool isConnected() = 0;
+    virtual void getField(
+        GetFieldRequesterPtr const &amp; requester,
+        std::string const &amp; subField) = 0;
+    virtual AccessRights getAccessRights(PVFieldPtr const &amp; pvField) = 0;
+    virtual ChannelProcessPtr createChannelProcess(
+            ChannelProcessRequesterPtr const &amp; channelProcessRequester,
+            PVStructurePtr const &amp; pvRequest) = 0;
+    virtual ChannelGetPtr createChannelGet(
+            ChannelGetRequesterPtr const &amp; channelGetRequester,
+            PVStructurePtr const &amp; pvRequest) = 0;
+    virtual ChannelPutPtr createChannelPut(
+            ChannelPutRequesterPtr const &amp; channelPutRequester,
+            PVStructurePtr const &amp; pvRequest) = 0;
+    virtual ChannelPutGetPtr createChannelPutGet(
+            ChannelPutGetRequesterPtr const &amp; channelPutGetRequester,
+            PVStructurePtr const &amp; pvRequest) = 0;
+    virtual ChannelRPCPtr createChannelRPC(
+            ChannelRPCRequesterPtr const &amp; channelRPCRequester,
+            PVStructurePtr const &amp; pvRequest) = 0;
+    virtual MonitorPtr createMonitor(
+            MonitorRequesterPtr const &amp; monitorRequester,
+            PVStructurePtr const &amp; pvRequest) = 0;
+    virtual ChannelArrayPtr createChannelArray(
+            ChannelArrayRequesterPtr const &amp; channelArrayRequester,
+            PVStructurePtr const &amp; pvRequest) = 0;
+    virtual void printInfo() = 0;
+    virtual void printInfo(std::ostream&amp; out) = 0;
+};
+</pre>
+where:
+<dl>
+   <dt>destroy</dt>
+      <dd>
+      Destroy all resources belonging to the channel.
+     This includes all channelPuts, channelGets, etc and any remote connections.
+      </dd>
+   <dt>getProvider</dt>
+      <dd>
+       Get the name of the provider.
+      </dd>
+   <dt>getRemoteAddress</dt>
+      <dd>
+       Get the remote address of the channel.
+      </dd>
+   <dt>getConnectionState</dt>
+      <dd>
+        Get the connection state.
+      </dd>
+   <dt>getChannelName</dt>
+      <dd>
+        Get the channel name.
+      </dd>
+   <dt>getChannelRequester</dt>
+      <dd>
+       Get the interface to the code that created the channel.
+      </dd>
+   <dt>isConnected</dt>
+      <dd>
+       Is the channel connected?
+      </dd>
+   <dt>getField</dt>
+      <dd>
+       Get the introspection interface for the subfield of the PVStructure attached to the channel.
+       The result is returned via the GetFieldRequester, which must be implemented by the caller.
+      </dd>
+   <dt>getAccessRights</dt>
+      <dd>
+        Get the access rights for the caller.
+        The access rights are one of <b>none</b>, <b>read</b> , or <b>readWrite</b>.
+      </dd>
+   <dt>createChannelProcess</dt>
+      <dd>
+       Create a ChannelProcess, which is described below.
+      </dd>
+   <dt>createChannelGet</dt>
+      <dd>
+       Create a ChannelGet, which is described below.
+      </dd>
+   <dt>createChannelPut</dt>
+      <dd>
+       Create a ChannelPut, which is described below.
+      </dd>
+   <dt>createChannelPutGet</dt>
+      <dd>
+       Create a ChannelPutGet, which is described below.
+      </dd>
+   <dt>createChannelRPC</dt>
+      <dd>
+       Create a ChannelRPC, which is described below.
+      </dd>
+   <dt>createMonitor</dt>
+      <dd>
+       Create a Monitor, which is described below.
+      </dd>
+   <dt>createChannelArray</dt>
+      <dd>
+       Create a ChannelArray, which is described below.
+      </dd>
+   <dt>printInfo</dt>
+      <dd>
+       Print information about the channel.
+      </dd>
+</dl>
+
+<h3>class GetFieldRequester</h3>
+<pre>
+class GetFieldRequester : virtual public Requester {
+public:
+    virtual void getDone(
+        const Status&amp; status,
+        FieldConstPtr const &amp; field) = 0;
+};
+</pre>
+where:
+<dl>
+   <dt>getDone</dt>
+     <dd>This is called as a result of a call to Channel::getField.
+      status shows the result.
+      if status is OK then field is the introspection interface for the requested field.
+     </dd>
+</dl>
+<h3>class ChannelRequest</h3>
+<p>This is a base class for ChannelGet, ChannelPut, etc.</p>
+<pre>
+class ChannelRequest
+{
+public:
+    virtual ChannelPtr getChannel() = 0;
+    virtual void cancel() = 0;
+    virtual void lastRequest() = 0;
+};
+</pre>
+where:
+<dl>
+   <dt>getChannel</dt>
+     <dd>Get the Channel interface.</dd>
+   <dt>cancel</dt>
+      <dd>Cancel any outstanding request</dd>
+   <dt>lastRequest</dt>
+       <dd>The current request is the last request.
+      Allows the implementation to release resources
+       </dd>
+</dl>
+<h2>ChannelGet</h2>
+<p>This is used to get data from a server.</p>
+<h3>class ChannelGet</h3>
+<pre>
+class ChannelGet : public ChannelRequest {
+public:
+    virtual void get() = 0;
+};
+</pre>
+where
+<dl>
+   <dt>get</dt>
+     <dd>Issue a get request to the server.
+      The result is returned via a call to ChannelGetRequester::getDone.
+      Only one get request at a time can be outstanding, i. e.
+      a new get can not be issued until the callback for the first is called.
+     </dd>
+</dl>
+<h3>class ChannelGetRequester</h3>
+<pre>
+class ChannelGetRequester : virtual public Requester {
+    public:
+    virtual void channelGetConnect(
+            const Status&amp; status,
+            ChannelGetPtr const &amp; channelGet,
+            Structure::const_shared_pointer const &amp; structure) = 0;
+    virtual void getDone(
+            const Status&amp; status,
+            ChannelGetPtr const &amp; channelGet,
+            PVStructurePtr const &amp; pvStructure,
+            BitSetPtr const &amp; bitSet) = 0;
+};
+</pre>
+where:
+<dl>
+   <dt>channelGetConnect</dt>
+     <dd>This is called as a result of calling Channel::createChannelGet.
+       If status is OK, then channelGet is the interface to ChannelGet and
+       structure is the introspection interface that will be used for
+       the data returned by every call to ChannelGet::get.
+       If status shows a failure then the client should NOT use either channelGet
+       or structure.
+      </dd>
+   <dt>getDone</dt>
+     <dd>This is called as a result of a call to ChannelGet::get.
+      status shows the result.
+      if status is OK then pvStructure has the data and bitSet shows which fields
+      have changed since the previous call.
+     The data and bitSet "belong" to the client until the next get is issued.
+     After that the data may change.
+     </dd>
+</dl>
+<h2>ChannelPut</h2>
+<p>This is used to put data to a server.</p>
+<h3>class ChannelPut</h3>
+<pre>
+class ChannelPut : public ChannelRequest {
+public:
+    virtual void put(
+            PVStructurePtr const &amp; pvPutStructure,
+            BitSetPtr const &amp; putBitSet) = 0;
+    virtual void get() = 0;
+
+};
+</pre>
+where:
+<dl>
+   <dt>put</dt>
+     <dd>Put all changed fields of pvPutStructure to the server.
+      putBitSet shows which fields are to be sent.
+      When the put completes (an ack is received from the server)
+      ChannelPutRequester::putDone is called.
+      Only one put or get request at a time can be outstanding, i. e.
+      a new put or get can not be issued until the callback for the first is called.
+     </dd>
+   <dt>get</dt>
+     <dd>Get the current data from the server.
+      The result is returned via a call to ChannelPutRequester::getDone.
+     </dd>
+</dl>
+<h3>class ChannelPutRequester</h3>
+<pre>
+class ChannelPutRequester : virtual public Requester {
+public:
+    virtual void channelPutConnect(
+            const Status&amp; status,
+            ChannelPutPtr const &amp; channelPut,
+            Structure::const_shared_pointer const &amp; structure) = 0;
+    virtual void putDone(
+            Status &amp; status,
+            ChannelPutPtr const &amp; channelPut) = 0;
+    virtual void getDone(
+            const Status&amp; status,
+            ChannelPutPtr const &amp; channelPut,
+            PVStructurePtr const &amp; pvStructure,
+            BitSetPtr const &amp; bitSet) = 0;
+};
+</pre>
+where:
+<dl>
+   <dt>channelPutConnect</dt>
+     <dd>This is called as a result of calling Channel::createChannelPut.
+       If status is OK, then channelPut is the interface to ChannelPut and
+       structure is the introspection interface that
+       must be used for the pvStructure passed to each ChannelPut::put
+       and will be used for
+       the data returned by every call to ChannelPut::get.
+       If status shows a failure then the client should NOT use either channelPut
+       or structure.
+      </dd>
+   <dt>putDone</dt>
+     <dd>Called when ChannelPut::put is acknowledged by the server.
+      status shows the result.
+      </dd>
+     
+   <dt>getDone</dt>
+     <dd>This is called as a result of a call to ChannelPut::get.
+      status shows the result.
+      if status is OK then pvStructure has the data and bitSet shows which fields
+      have changed since the previous call.
+     The data and bitSet "belong" to the client until the next get is issued.
+     After that the data may change.
+     </dd>
+</dl>
+<h2>ChannelPutGet</h2>
+<p>This is used to:</p>
+<pre>
+put data to a server
+process
+get data from the server
+</pre>
+<h3>class ChannelPutGet</h3>
+<pre>
+class ChannelPutGet : public ChannelRequest {
+public:
+    virtual void putGet(
+            PVStructurePtr const &amp; pvPutStructure,
+            BitSetPtr const &amp; putBitSet) = 0;
+    virtual void getPut() = 0;
+    virtual void getGet() = 0;
+};
+</pre>
+where:
+<dl>
+   <dt>putGet</dt>
+     <dd>Put all changed fields of pvPutStructure to the server.
+      putBitSet shows which fields are to be sent.
+      <br />
+      The server processes and returns data to the client.
+      <br />
+      When the putGet completes
+      ChannelPutGetRequester::putDone is called with the result.
+      <br />
+      Only one putGet or getGet or getPut request at a time can be outstanding, i. e.
+      a new request can not be issued until the callback for the first is called.
+     </dd>
+   <dt>getPut</dt>
+     <dd>Get the current put data from the server.
+      <br />
+      The result is returned via a call to ChannelPutGetRequester::getPutDone.
+     </dd>
+   <dt>getGet</dt>
+     <dd>Get the current get data from the server.
+      <br />
+      The result is returned via a call to ChannelPutGetRequester::getGet.
+     </dd>
+</dl>
+<h3>class ChannelPutGetRequester</h3>
+<pre>
+class ChannelPutGetRequester : virtual public Requester
+{
+    public:
+    virtual void channelPutGetConnect(
+            const Status&amp; status,
+            ChannelPutGetPtr const &amp; channelPutGet,
+            Structure::const_shared_pointer const &amp; putStructure,
+            Structure::const_shared_pointer const &amp; getStructure) = 0;
+
+    virtual void putGetDone(
+            const Status&amp; status,
+            ChannelPutGetPtr const &amp; channelPutGet,
+            PVStructurePtr const &amp; pvGetStructure,
+            BitSetPtr const &amp; getBitSet) = 0;
+
+    virtual void getPutDone(
+            const Status&amp; status,
+            ChannelPutGetPtr const &amp; channelPutGet,
+            PVStructurePtr const &amp; pvPutStructure,
+            BitSetPtr const &amp; putBitSet) = 0;
+
+    virtual void getGetDone(
+            const Status&amp; status,
+            ChannelPutGetPtr const &amp; channelPutGet,
+            PVStructurePtr const &amp; pvGetStructure,
+            BitSetPtr const &amp; getBitSet) = 0;
+};
+</pre>
+where:
+<dl>
+   <dt>channelPutGetConnect</dt>
+     <dd>This is called as a result of calling Channel::createChannelPutGet.
+      <br />
+       If status is OK, then 
+       putStructure is the introspection interface that 1)
+       must be used for the pvStructure passed to each ChannelPutGet::putGet
+       and 2) will be used for
+       the data returned by every call to ChannelPutGet::getPut.
+      <br />
+       getStructure is the introspection interface that will be used for
+       the data returned by every call to ChannelPutGet::getGet and ChannelPut::putGet.
+      <br />
+       If status shows a failure then the client should NOT use either channelPut
+       or putStructure or getStructure.
+      </dd>
+   <dt>putGetDone</dt>
+     <dd>Called when ChannelPutGet::putGet is acknowledged by the server.
+      status shows the result.
+      If status is OK then pvGetStructure has the data and getBitSet shows which fields
+      have changed since the previous call.
+     The data and bitSet "belong" to the client until the next putGet or getGet is issued.
+     After that the data may change.
+      </dd>
+     
+   <dt>getPutDone</dt>
+     <dd>This is called as a result of a call to ChannelPutGet::getPut.
+      status shows the result.
+      If status is OK then pvPutStructure has the data and putBitSet shows which fields
+      have changed since the previous call.
+     The data and bitSet "belong" to the client until the next get is issued.
+     After that the data may change.
+     </dd>
+   <dt>getGetDone</dt>
+     <dd>Called when ChannelPutGet::getGet is acknowledged by the server.
+      status shows the result.
+      If status is OK then pvGetStructure has the data and getBitSet shows which fields
+      have changed since the previous call.
+     The data and bitSet "belong" to the client until the next putGet or getGet is issued.
+     After that the data may change.
+      </dd>
+     
+   <dt>getPutDone</dt>
+     <dd>This is called as a result of a call to ChannelPutGet::getPut.
+      status shows the result.
+      If status is OK then pvPutStructure has the data and putBitSet shows which fields
+      have changed since the previous call.
+     The data and bitSet "belong" to the client until the next get is issued.
+     After that the data may change.
+     </dd>
+</dl>
+<h2>ChannelArray</h2>
+<h3>class ChannelArray</h3>
+<p>Get/Put a subset of an array.
+This works for all of scalarArray, unionArray, and structureArray.</p>
+<pre>
+class ChannelArray : public ChannelRequest
+{
+public:
+    virtual void putArray(
+            PVArrayPtr const &amp; putArray,
+            size_t offset = 0,
+            size_t count = 0,
+            size_t stride = 1) = 0;
+    virtual void getArray(
+            size_t offset = 0,
+            size_t count = 0,
+            size_t stride = 1) = 0;
+    virtual void getLength() = 0;
+    virtual void setLength(size_t length) = 0;
+};
+</pre>
+where:
+<dl>
+   <dt>putArray</dt>
+     <dd>The putArray is sent to the server, which changes to specified
+      elements of the server array.</dd>
+   <dt>getArray</dt>
+      <dd>The server selects the specified set of elements in the
+      server array and returns the result to the client,
+   <dt>getLength</dt>
+      <dd>Get the current length of the server array.</dd>
+   <dt>setLength</dt>
+      <dd>Set the length of the server array.</dd>
+</dl>
+<h3>class ChannelArrayRequester</h3>
+<pre>
+class ChannelArrayRequester : virtual public Requester {
+public:
+    virtual void channelArrayConnect(
+            const Status&amp; status,
+            ChannelArrayPtr const &amp; channelArray,
+            Array::const_shared_pointer const &amp; array) = 0;
+    virtual void putArrayDone(
+            const Status&amp; status,
+            ChannelArrayPtr const &amp; channelArray) = 0;
+    virtual void getArrayDone(
+            const Status&amp; status,
+            ChannelArrayPtr const &amp; channelArray,
+            PVArrayPtr const &amp; pvArray) = 0;
+    virtual void getLengthDone(
+            const Status&amp; status,
+            ChannelArrayPtr const &amp; channelArray,
+            size_t length) = 0;
+    virtual void setLengthDone(
+            const Status&amp; status,
+            ChannelArrayPtr const &amp; channelArray) = 0;
+};
+</pre>
+where:
+<dl>
+   <dt>channelArrayConnect</dt>
+     <dd>This is called as a result of calling Channel::createChannelArray.
+      <br />
+       If status is OK, then array is the introspection interface
+       that 1) must be used for creating the putArray for ChannelArray::putArray,
+       and 2) will be the interface for the result passed to getArrayDone.
+      </dd>
+    <dt>putArrayDone</dt>
+      <dd>The result of calling ChannelArray::putArray.
+         status shows the result.
+       </dd>
+    <dt>getArrayDone</dt>
+      <dd>The result of calling ChannelArray::getArray.
+         status shows the result.
+         <br />
+         If status is OK, pvArray has the result.
+       </dd>
+    <dt>getLengthDone</dt>
+      <dd>The result of calling ChannelArray::getLength.
+         status shows the result.
+         <br />
+        If status is OK length is the length of the server array.
+       </dd>
+    <dt>setLengthDone</dt>
+      <dd>The result of calling ChannelArray::setLength.
+         status shows the result.
+       </dd>
+</dl>
+
+<h2>Monitor</h2>
+<p>Described in pvDataCPP.
+See:<br />
+<a
+href=http://epics-pvdata.sourceforge.net/docbuild/pvDataCPP/tip/documentation/pvDataCPP.html>
+EPICS pvDataCPP
+</a>
+</p>
+<p>For convenience the classes are shown here.</p>
+<h3>class MonitorElement</h3>
+<pre>
+class MonitorElement {
+public:
+    MonitorElement(){}
+    MonitorElement(PVStructurePtr const &amp; pvStructurePtr);
+    PVStructurePtr pvStructurePtr;
+    BitSetPtr changedBitSet;
+    BitSetPtr overrunBitSet;
+};
+</pre>
+<h3>class Monitor</h3>
+<pre>
+class Monitor : public Destroyable{
+public:
+    virtual ~Monitor(){}
+    virtual Status start() = 0;
+    virtual Status stop() = 0;
+    virtual MonitorElementPtr poll() = 0;
+    virtual void release(MonitorElementPtr const &amp; monitorElement) = 0;
+};
+</pre>
+<h3>class MonitorRequester</h3>
+<pre>
+class MonitorRequester : public virtual Requester {
+public:
+    virtual ~MonitorRequester(){}
+    virtual void monitorConnect(Status const &amp; status,
+        MonitorPtr const &amp; monitor, StructureConstPtr const &amp; structure) = 0;
+    virtual void monitorEvent(MonitorPtr const &amp; monitor) = 0;
+    virtual void unlisten(MonitorPtr const &amp; monitor) = 0;
+};
+</pre>
+<h2>ChannelRPC</h2>
+<h3>class ChannelRPC</h3>
+<pre>
+class ChannelRPC : public ChannelRequest {
+public:
+    virtual void request(PVStructurePtr const &amp; pvArgument) = 0;
+};
+</pre>
+where:
+<dl>
+  <dt>request</dt>
+    <dd>Issue a request to the server.
+     <br />
+     pvArgument is sent to the server.
+     The server processes the request and returns the result by calling ChannelRPCRequester::requestDone.
+    </dd>
+</dl>
+<h3>class ChannelRPCRequester</h3>
+<pre>
+class ChannelRPCRequester : virtual public Requester {
+public:
+    virtual void channelRPCConnect(
+            const Status&amp; status,
+            ChannelRPCPtr const &amp; channelRPC) = 0;
+
+    virtual void requestDone(
+            const Status&amp; status,
+            ChannelRPCPtr const &amp; channelRPC,
+            PVStructurePtr const &amp; pvResponse) = 0;
+};
+</pre>
+where:
+<dl>
+   <dt>channelRPCConnect</dt>
+      <dd>Called as a result of Channel::createChannelRPC.
+      <br />
+       status shows the result.
+      </dd>
+   <dt>requestDone</dt>
+      <dd>Called as a result of ChannelRPC::request.
+      <br />
+       status shows the result.
+      <br />
+      If status is OK pvResponse is the result.
+      </dd>
+</dl>
+<h2>RPC Server and Service</h2>
+<p>Matej please explain</p>
+
+
+</div>
+</body>
+</html>

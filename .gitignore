@@ -1,8 +1,13 @@
+QtC-
 bin/
 lib/
-dbd/
-db/
+doc/
 include/
+db/
+dbd/
+documentation/html
+documentation/*.tag
+envPaths
 configure/*.local
-html/
+!configure/ExampleRELEASE.local
 **/O.*
