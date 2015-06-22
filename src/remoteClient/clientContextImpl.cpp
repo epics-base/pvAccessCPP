@@ -2400,13 +2400,11 @@ namespace epics {
                 }
                 
                int queueSize = 2;
-               PVFieldPtr pvField = m_pvRequest->getSubField("record._options");
-               if (pvField.get()) {
-                   PVStructurePtr pvOptions = static_pointer_cast<PVStructure>(pvField);
-                   pvField = pvOptions->getSubField("queueSize");
-                   if (pvField.get()) {
-                       PVStringPtr pvString = pvOptions->getStringField("queueSize");
-                       if(pvString) {
+               {
+                   PVStructurePtr pvOptions = m_pvRequest->getSubField<PVStructure>("record._options");
+                   if(pvOptions.get()) {
+                       PVStringPtr pvString = pvOptions->getSubField<PVString>("queueSize");
+                       if(pvString.get()) {
                            int32 size;
                            std::stringstream ss;
                            ss << pvString->get();
