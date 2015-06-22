@@ -516,7 +516,7 @@ public:
         // NTURI support
         PVStructure::shared_pointer args(
                     (starts_with(arguments->getStructure()->getID(), "epics:nt/NTURI:1.")) ?
-                        arguments->getStructureField("query") :
+                        arguments->getSubField<PVStructure>("query") :
                         arguments
                         );
 
