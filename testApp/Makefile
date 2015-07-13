@@ -5,7 +5,7 @@ include $(TOP)/configure/CONFIG
 
 PVACCESS_TEST = $(TOP)/testApp
 
-PROD_LIBS += pvAccess pvData pvMB Com
+PROD_LIBS += pvAccess pvData $(MBLIB) Com
 
 include $(PVACCESS_TEST)/utils/Makefile
 include $(PVACCESS_TEST)/remote/Makefile

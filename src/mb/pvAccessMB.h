@@ -6,7 +6,38 @@
 #   undef epicsExportSharedSymbols
 #endif
 
+#ifdef WITH_MICROBENCH
+
 #include <pv/mb.h>
+
+#else
+
+#define MB_DECLARE(NAME, SIZE)
+#define MB_DECLARE_EXTERN(NAME)
+
+#define MB_POINT_ID(NAME, STAGE, STAGE_DESC, ID)
+
+#define MB_INC_AUTO_ID(NAME)
+#define MB_POINT(NAME, STAGE, STAGE_DESC)
+
+#define MB_POINT_CONDITIONAL(NAME, STAGE, STAGE_DESC, COND)
+
+#define MB_NORMALIZE(NAME)
+
+#define MB_STATS(NAME, STREAM)
+#define MB_STATS_OPT(NAME, STAGE_ONLY, SKIP_FIRST_N_SAMPLES, STREAM)
+
+#define MB_CSV_EXPORT(NAME, STREAM)
+#define MB_CSV_EXPORT_OPT(NAME, STAGE_ONLY, SKIP_FIRST_N_SAMPLES, STREAM)
+#define MB_CSV_IMPORT(NAME, STREAM)
+
+#define MB_PRINT(NAME, STREAM)
+#define MB_PRINT_OPT(NAME, STAGE_ONLY, SKIP_FIRST_N_SAMPLES, STREAM)
+
+#define MB_INIT
+
+#endif
+
 
 #ifdef pvAccessMBEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
