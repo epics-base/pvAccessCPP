@@ -30,5 +30,6 @@ endif
 
 ifdef WITH_MICROBENCH
 USR_CPPFLAGS += -DWITH_MICROBENCH
+MBLIB = pvMB
 endif
 
