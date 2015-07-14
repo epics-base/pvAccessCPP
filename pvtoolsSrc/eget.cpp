@@ -335,7 +335,7 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
         return;
     }
 
-    PVStructurePtr value = pvStruct->getStructureField("value");
+    PVStructurePtr value = pvStruct->getSubField<PVStructure>("value");
     if (value.get() == 0)
     {
         std::cerr << "no 'value' structure in NTTable" << std::endl;
@@ -613,7 +613,7 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
 
 void formatNTURI(std::ostream& o, PVStructurePtr const & pvStruct)
 {
-    PVStringPtr scheme = dynamic_pointer_cast<PVString>(pvStruct->getStringField("scheme"));
+    PVStringPtr scheme = dynamic_pointer_cast<PVString>(pvStruct->getSubField<PVString>("scheme"));
     if (scheme.get() == 0)
     {
         std::cerr << "no string 'scheme' field in NTURI" << std::endl;
@@ -621,7 +621,7 @@ void formatNTURI(std::ostream& o, PVStructurePtr const & pvStruct)
 
     PVStringPtr authority = dynamic_pointer_cast<PVString>(pvStruct->getSubField("authority"));
 
-    PVStringPtr path = dynamic_pointer_cast<PVString>(pvStruct->getStringField("path"));
+    PVStringPtr path = dynamic_pointer_cast<PVString>(pvStruct->getSubField<PVString>("path"));
     if (path.get() == 0)
     {
         std::cerr << "no string 'path' field in NTURI" << std::endl;
@@ -2065,15 +2065,15 @@ int main (int argc, char *argv[])
                     getPVDataCreate()->createPVStructure(uriStructure)
                     );
 
-        request->getStringField("scheme")->put("pva");
-        if (!authority.empty()) request->getStringField("authority")->put(authority);
-        request->getStringField("path")->put(service);
-        PVStructure::shared_pointer query = request->getStructureField("query");
+        request->getSubField<PVString>("scheme")->put("pva");
+        if (!authority.empty()) request->getSubField<PVString>("authority")->put(authority);
+        request->getSubField<PVString>("path")->put(service);
+        PVStructure::shared_pointer query = request->getSubField<PVStructure>("query");
         for (vector< pair<string, string> >::iterator iter = parameters.begin();
              iter != parameters.end();
              iter++)
         {
-            query->getStringField(iter->first)->put(iter->second);
+            query->getSubField<PVString>(iter->first)->put(iter->second);
         }
 
 

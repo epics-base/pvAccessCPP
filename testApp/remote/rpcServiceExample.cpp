@@ -29,7 +29,7 @@ class SumServiceImpl :
         // NTURI support
         PVStructure::shared_pointer args(
                     (starts_with(pvArguments->getStructure()->getID(), "epics:nt/NTURI:1.")) ?
-                        pvArguments->getStructureField("query") :
+                        pvArguments->getSubField<PVStructure>("query") :
                         pvArguments
                         );
 

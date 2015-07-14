@@ -644,10 +644,10 @@ void copy_DBR_STS(const void * dbr, unsigned count, PVStructure::shared_pointer 
 {
     const T* data = static_cast<const T*>(dbr);
 
-    PVStructure::shared_pointer alarm = pvStructure->getStructureField("alarm");
-    alarm->getIntField("status")->put(dbrStatus2alarmStatus[data->status]);
-    alarm->getIntField("severity")->put(data->severity);
-    alarm->getStringField("message")->put(dbrStatus2alarmMessage[data->status]);
+    PVStructure::shared_pointer alarm = pvStructure->getSubField<PVStructure>("alarm");
+    alarm->getSubField<PVInt>("status")->put(dbrStatus2alarmStatus[data->status]);
+    alarm->getSubField<PVInt>("severity")->put(data->severity);
+    alarm->getSubField<PVString>("message")->put(dbrStatus2alarmMessage[data->status]);
 
     copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
 }
@@ -658,11 +658,11 @@ void copy_DBR_TIME(const void * dbr, unsigned count, PVStructure::shared_pointer
 {
     const T* data = static_cast<const T*>(dbr);
 
-    PVStructure::shared_pointer ts = pvStructure->getStructureField("timeStamp");
+    PVStructure::shared_pointer ts = pvStructure->getSubField<PVStructure>("timeStamp");
     epics::pvData::int64 spe = data->stamp.secPastEpoch;
     spe += 7305*86400;
-    ts->getLongField("secondsPastEpoch")->put(spe);
-    ts->getIntField("nanoseconds")->put(data->stamp.nsec);
+    ts->getSubField<PVLong>("secondsPastEpoch")->put(spe);
+    ts->getSubField<PVInt>("nanoseconds")->put(data->stamp.nsec);
 
     copy_DBR_STS<T, pT, sT, sF, aF>(dbr, count, pvStructure);
 }
@@ -671,13 +671,13 @@ void copy_DBR_TIME(const void * dbr, unsigned count, PVStructure::shared_pointer
 template <typename T>
 void copy_format(const void * /*dbr*/, PVStructure::shared_pointer const & pvDisplayStructure)
 {
-    pvDisplayStructure->getStringField("format")->put("%d");
+    pvDisplayStructure->getSubField<PVString>("format")->put("%d");
 }
 
 template <>
 void copy_format<dbr_time_string>(const void * /*dbr*/, PVStructure::shared_pointer const & pvDisplayStructure)
 {
-    pvDisplayStructure->getStringField("format")->put("%s");
+    pvDisplayStructure->getSubField<PVString>("format")->put("%s");
 }
 
 #define COPY_FORMAT_FOR(T) \
@@ -690,11 +690,11 @@ void copy_format<T>(const void * dbr, PVStructure::shared_pointer const & pvDisp
     { \
         char fmt[16]; \
         sprintf(fmt, "%%.%df", data->precision); \
-        pvDisplayStructure->getStringField("format")->put(std::string(fmt)); \
+        pvDisplayStructure->getSubField<PVString>("format")->put(std::string(fmt)); \
     } \
     else \
     { \
-        pvDisplayStructure->getStringField("format")->put("%f"); \
+        pvDisplayStructure->getSubField<PVString>("format")->put("%f"); \
     } \
 }
 
@@ -711,23 +711,23 @@ void copy_DBR_GR(const void * dbr, unsigned count, PVStructure::shared_pointer c
 {
     const T* data = static_cast<const T*>(dbr);
 
-    PVStructure::shared_pointer alarm = pvStructure->getStructureField("alarm");
-    alarm->getIntField("status")->put(0);
-    alarm->getIntField("severity")->put(data->severity);
-    alarm->getStringField("message")->put(dbrStatus2alarmMessage[data->status]);
+    PVStructure::shared_pointer alarm = pvStructure->getSubField<PVStructure>("alarm");
+    alarm->getSubField<PVInt>("status")->put(0);
+    alarm->getSubField<PVInt>("severity")->put(data->severity);
+    alarm->getSubField<PVString>("message")->put(dbrStatus2alarmMessage[data->status]);
 
-    PVStructure::shared_pointer disp = pvStructure->getStructureField("display");
-    disp->getStringField("units")->put(std::string(data->units));
-    disp->getDoubleField("limitHigh")->put(data->upper_disp_limit);
-    disp->getDoubleField("limitLow")->put(data->lower_disp_limit);
+    PVStructure::shared_pointer disp = pvStructure->getSubField<PVStructure>("display");
+    disp->getSubField<PVString>("units")->put(std::string(data->units));
+    disp->getSubField<PVDouble>("limitHigh")->put(data->upper_disp_limit);
+    disp->getSubField<PVDouble>("limitLow")->put(data->lower_disp_limit);
 
     copy_format<T>(dbr, disp);
 
-    PVStructure::shared_pointer va = pvStructure->getStructureField("valueAlarm");
-    va->getDoubleField("highAlarmLimit")->put(data->upper_alarm_limit);
-    va->getDoubleField("highWarningLimit")->put(data->upper_warning_limit);
-    va->getDoubleField("lowWarningLimit")->put(data->lower_warning_limit);
-    va->getDoubleField("lowAlarmLimit")->put(data->lower_alarm_limit);
+    PVStructure::shared_pointer va = pvStructure->getSubField<PVStructure>("valueAlarm");
+    va->getSubField<PVDouble>("highAlarmLimit")->put(data->upper_alarm_limit);
+    va->getSubField<PVDouble>("highWarningLimit")->put(data->upper_warning_limit);
+    va->getSubField<PVDouble>("lowWarningLimit")->put(data->lower_warning_limit);
+    va->getSubField<PVDouble>("lowAlarmLimit")->put(data->lower_alarm_limit);
 
     copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
 }
@@ -749,27 +749,27 @@ void copy_DBR_CTRL(const void * dbr, unsigned count, PVStructure::shared_pointer
 {
     const T* data = static_cast<const T*>(dbr);
 
-    PVStructure::shared_pointer alarm = pvStructure->getStructureField("alarm");
-    alarm->getIntField("status")->put(0);
-    alarm->getIntField("severity")->put(data->severity);
-    alarm->getStringField("message")->put(dbrStatus2alarmMessage[data->status]);
+    PVStructure::shared_pointer alarm = pvStructure->getSubField<PVStructure>("alarm");
+    alarm->getSubField<PVInt>("status")->put(0);
+    alarm->getSubField<PVInt>("severity")->put(data->severity);
+    alarm->getSubField<PVString>("message")->put(dbrStatus2alarmMessage[data->status]);
 
-    PVStructure::shared_pointer disp = pvStructure->getStructureField("display");
-    disp->getStringField("units")->put(std::string(data->units));
-    disp->getDoubleField("limitHigh")->put(data->upper_disp_limit);
-    disp->getDoubleField("limitLow")->put(data->lower_disp_limit);
+    PVStructure::shared_pointer disp = pvStructure->getSubField<PVStructure>("display");
+    disp->getSubField<PVString>("units")->put(std::string(data->units));
+    disp->getSubField<PVDouble>("limitHigh")->put(data->upper_disp_limit);
+    disp->getSubField<PVDouble>("limitLow")->put(data->lower_disp_limit);
 
     copy_format<T>(dbr, disp);
 
-    PVStructure::shared_pointer va = pvStructure->getStructureField("valueAlarm");
+    PVStructure::shared_pointer va = pvStructure->getSubField<PVStructure>("valueAlarm");
     std::tr1::static_pointer_cast<sF>(va->getSubField("highAlarmLimit"))->put(data->upper_alarm_limit);
     std::tr1::static_pointer_cast<sF>(va->getSubField("highWarningLimit"))->put(data->upper_warning_limit);
     std::tr1::static_pointer_cast<sF>(va->getSubField("lowWarningLimit"))->put(data->lower_warning_limit);
     std::tr1::static_pointer_cast<sF>(va->getSubField("lowAlarmLimit"))->put(data->lower_alarm_limit);
 
-    PVStructure::shared_pointer ctrl = pvStructure->getStructureField("control");
-    ctrl->getDoubleField("limitHigh")->put(data->upper_ctrl_limit);
-    ctrl->getDoubleField("limitLow")->put(data->lower_ctrl_limit);
+    PVStructure::shared_pointer ctrl = pvStructure->getSubField<PVStructure>("control");
+    ctrl->getSubField<PVDouble>("limitHigh")->put(data->upper_ctrl_limit);
+    ctrl->getSubField<PVDouble>("limitLow")->put(data->lower_ctrl_limit);
 
     copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
 }

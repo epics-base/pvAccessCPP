@@ -295,7 +295,7 @@ void runTest()
     fields.push_back(getFieldCreate()->createScalar(pvInt));
     PVStructure::shared_pointer configuration =
         getPVDataCreate()->createPVStructure(getFieldCreate()->createStructure(fieldNames, fields));
-    configuration->getIntField("strategy")->put(bulkMode ? USER_CONTROLED : DELAYED);
+    configuration->getSubField<PVInt>("strategy")->put(bulkMode ? USER_CONTROLED : DELAYED);
     provider->configure(configuration);
     */
 
