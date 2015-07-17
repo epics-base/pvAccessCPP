@@ -1,5 +1,5 @@
 # pvAccess C++ implementation
-# Jenkins @ Cloudbees doxygen script
+# Jenkins @ Cloudbees documentation generation and deployment
 #
 # Jenkins invokes scripts with the "-ex" option. So the build is considered a failure
 # if any of the commands exits with a non-zero exit code.
@@ -8,6 +8,13 @@
 # Copyright (C) 2013 Helmholtz-Zentrum Berlin für Materialien und Energie GmbH
 # Copyright (C) 2014-2015 ITER Organization.
 # All rights reserved. Use is subject to license terms.
+
+###########################################
+# Determine EPICS Base version
+
+DEFAULT_BASE=3.14.12.5
+
+BASE=${1:-${DEFAULT_BASE}}
 
 ###########################################
 # Fetch and unpack dependencies
@@ -25,6 +32,9 @@ tar -xzf doxygen-1.8.3.CB-dist.tar.gz
 # Generate
 
 cd ${WORKSPACE}
+
+wget -nv https://openepics.ci.cloudbees.com/job/pvAccessCPP_Build/BASE=${BASE}/lastSuccessfulBuild/artifact/pvAccess.CB-dist.tar.gz
+tar -xzf pvAccess.CB-dist.tar.gz
 
 export PATH=${STUFF}/bin:${PATH}
 
