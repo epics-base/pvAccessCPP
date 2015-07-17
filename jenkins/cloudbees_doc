@@ -1,0 +1,36 @@
+# pvAccess C++ implementation
+# Jenkins @ Cloudbees doxygen script
+#
+# Jenkins invokes scripts with the "-ex" option. So the build is considered a failure
+# if any of the commands exits with a non-zero exit code.
+#
+# Author: Ralph Lange <Ralph.Lange@gmx.de>
+# Copyright (C) 2013 Helmholtz-Zentrum Berlin für Materialien und Energie GmbH
+# Copyright (C) 2014-2015 ITER Organization.
+# All rights reserved. Use is subject to license terms.
+
+###########################################
+# Fetch and unpack dependencies
+
+export STUFF=/tmp/stuff
+
+rm -fr ${STUFF}
+mkdir -p ${STUFF}
+cd ${STUFF}
+
+wget -nv https://openepics.ci.cloudbees.com/job/Doxygen-1.8.3_Build/lastSuccessfulBuild/artifact/doxygen-1.8.3.CB-dist.tar.gz
+tar -xzf doxygen-1.8.3.CB-dist.tar.gz
+
+###########################################
+# Generate
+
+cd ${WORKSPACE}
+
+export PATH=${STUFF}/bin:${PATH}
+
+doxygen
+
+###########################################
+# Publish
+
+rsync -aqP --delete -e ssh documentation epics-jenkins@web.sourceforge.net:/home/project-web/epics-pvdata/htdocs/docbuild/pvAccessCPP/tip

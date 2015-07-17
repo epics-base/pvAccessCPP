@@ -6,7 +6,7 @@
 #
 # Author: Ralph Lange <Ralph.Lange@gmx.de>
 # Copyright (C) 2013 Helmholtz-Zentrum Berlin für Materialien und Energie GmbH
-# Copyright (C) 2014 ITER Organization.
+# Copyright (C) 2014-2015 ITER Organization.
 # All rights reserved. Use is subject to license terms.
 
 ###########################################
@@ -15,9 +15,6 @@
 DEFAULT_BASE=3.14.12.5
 
 BASE=${1:-${DEFAULT_BASE}}
-if [ "${1}" = "${DEFAULT_BASE}" -o -z "${1}" ]; then
-    BUILD_DOCS=YES
-fi
 
 ###########################################
 # Fetch and unpack dependencies
@@ -29,11 +26,9 @@ mkdir -p ${STUFF}
 cd ${STUFF}
 
 wget -nv https://openepics.ci.cloudbees.com/job/Base-${BASE}_Build/lastSuccessfulBuild/artifact/base-${BASE}.CB-dist.tar.gz
-wget -nv https://openepics.ci.cloudbees.com/job/Doxygen-1.8.3_Build/lastSuccessfulBuild/artifact/doxygen-1.8.3.CB-dist.tar.gz
 wget -nv https://openepics.ci.cloudbees.com/job/pvCommonCPP_Build/BASE=${BASE}/lastSuccessfulBuild/artifact/pvCommon.CB-dist.tar.gz
 wget -nv https://openepics.ci.cloudbees.com/job/pvDataCPP_Build/BASE=${BASE}/lastSuccessfulBuild/artifact/pvData.CB-dist.tar.gz
 tar -xzf base-${BASE}.CB-dist.tar.gz
-tar -xzf doxygen-1.8.3.CB-dist.tar.gz
 tar -xzf pvCommon.CB-dist.tar.gz
 tar -xzf pvData.CB-dist.tar.gz
 
@@ -52,9 +47,6 @@ EPICS_BASE=${EPICS_BASE}
 EOF
 
 make distclean all
-if [ "${BUILD_DOCS}" ]; then
-    doxygen
-fi
 
 ###########################################
 # Test
@@ -65,10 +57,3 @@ make runtests
 # Create distribution
 
 tar --exclude=test* -czf pvAccess.CB-dist.tar.gz bin lib include dbd
-
-###########################################
-# Publish documentation
-
-if [ "${BUILD_DOCS}" ]; then
-    rsync -aqP --delete -e ssh documentation epics-jenkins@web.sourceforge.net:/home/project-web/epics-pvdata/htdocs/docbuild/pvAccessCPP/tip
-fi
