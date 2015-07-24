@@ -107,8 +107,7 @@ static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer c
     PVStructure::shared_pointer pvStructure = getPVDataCreate()->createPVStructure(createStructure(channel, properties));
     if (channel->getNativeType() == DBR_ENUM)
     {
-
-        PVScalarArrayPtr pvScalarArray = pvStructure->getScalarArrayField("value.choices", pvString);
+        PVScalarArrayPtr pvScalarArray = pvStructure->getSubField<PVStringArray>("value.choices");
 
         // TODO avoid getting labels if DBR_GR_ENUM or DBR_CTRL_ENUM is used in subsequent get
         int result = ca_array_get_callback(DBR_GR_ENUM, 1, channel->getChannelID(), ca_get_labels_handler, pvScalarArray.get());
@@ -569,8 +568,7 @@ void copy_DBR(const void * dbr, unsigned count, PVStructure::shared_pointer cons
     }
     else
     {
-        std::tr1::shared_ptr<aF> value =
-                std::tr1::static_pointer_cast<aF>(pvStructure->getScalarArrayField("value", sT));
+        std::tr1::shared_ptr<aF> value = pvStructure->getSubField<aF>("value");
         typename aF::svector temp(value->reuse());
         temp.resize(count);
         std::copy(static_cast<const pT*>(dbr), static_cast<const pT*>(dbr) + count, temp.begin());
@@ -591,8 +589,7 @@ void copy_DBR<dbr_long_t, pvInt, PVInt, PVIntArray>(const void * dbr, unsigned c
     }
     else
     {
-        std::tr1::shared_ptr<PVIntArray> value =
-                std::tr1::static_pointer_cast<PVIntArray>(pvStructure->getScalarArrayField("value", pvInt));
+        std::tr1::shared_ptr<PVIntArray> value = pvStructure->getSubField<PVIntArray>("value");
         PVIntArray::svector temp(value->reuse());
         temp.resize(count);
         std::copy(static_cast<const int32*>(dbr), static_cast<const int32*>(dbr) + count, temp.begin());
@@ -612,8 +609,7 @@ void copy_DBR<string, pvString, PVString, PVStringArray>(const void * dbr, unsig
     }
     else
     {
-        std::tr1::shared_ptr<PVStringArray> value =
-                std::tr1::static_pointer_cast<PVStringArray>(pvStructure->getScalarArrayField("value", pvString));
+        std::tr1::shared_ptr<PVStringArray> value = pvStructure->getSubField<PVStringArray>("value");
         const dbr_string_t* dbrStrings = static_cast<const dbr_string_t*>(dbr);
         PVStringArray::svector sA(value->reuse());
         sA.resize(count);
@@ -1022,8 +1018,7 @@ int doPut_pvStructure(CAChannel::shared_pointer const & channel, void *usrArg, P
     }
     else
     {
-        std::tr1::shared_ptr<aF> value =
-                std::tr1::static_pointer_cast<aF>(pvStructure->getScalarArrayField("value", sT));
+        std::tr1::shared_ptr<aF> value = pvStructure->getSubField<aF>("value");
 
         const pT* val = value->view().data();
         int result = ca_array_put_callback(channel->getNativeType(), static_cast<unsigned long>(value->getLength()),
@@ -1063,8 +1058,7 @@ int doPut_pvStructure<string, pvString, PVString, PVStringArray>(CAChannel::shar
     }
     else
     {
-        std::tr1::shared_ptr<PVStringArray> value =
-                std::tr1::static_pointer_cast<PVStringArray>(pvStructure->getScalarArrayField("value", pvString));
+        std::tr1::shared_ptr<PVStringArray> value = pvStructure->getSubField<PVStringArray>("value");
 
         PVStringArray::const_svector stringArray(value->view());
 
