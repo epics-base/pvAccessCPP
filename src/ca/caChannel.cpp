@@ -557,8 +557,8 @@ static void ca_get_handler(struct event_handler_args args)
 typedef void (*copyDBRtoPVStructure)(const void * from, unsigned count, PVStructure::shared_pointer const & to);
 
 
-// template<primitive type, ScalarType, scalar Field, array Field>
-template<typename pT, epics::pvData::ScalarType sT, typename sF, typename aF>
+// template<primitive type, scalar Field, array Field>
+template<typename pT, typename sF, typename aF>
 void copy_DBR(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
     if (count == 1)
@@ -578,9 +578,9 @@ void copy_DBR(const void * dbr, unsigned count, PVStructure::shared_pointer cons
 
 #if defined(__vxworks) || defined(__rtems__)
 // dbr_long_t is defined as "int", pvData uses int32 which can be defined as "long int" (32-bit)
-// template<primitive type, ScalarType, scalar Field, array Field>
+// template<primitive type, scalar Field, array Field>
 template<>
-void copy_DBR<dbr_long_t, pvInt, PVInt, PVIntArray>(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+void copy_DBR<dbr_long_t, PVInt, PVIntArray>(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
     if (count == 1)
     {
@@ -600,7 +600,7 @@ void copy_DBR<dbr_long_t, pvInt, PVInt, PVIntArray>(const void * dbr, unsigned c
 
 // string specialization
 template<>
-void copy_DBR<string, pvString, PVString, PVStringArray>(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+void copy_DBR<string, PVString, PVStringArray>(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
     if (count == 1)
     {
@@ -620,7 +620,7 @@ void copy_DBR<string, pvString, PVString, PVStringArray>(const void * dbr, unsig
 
 // enum specialization
 template<>
-void copy_DBR<dbr_enum_t, pvString, PVString, PVStringArray>(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+void copy_DBR<dbr_enum_t,  PVString, PVStringArray>(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
     if (count == 1)
     {
@@ -634,8 +634,8 @@ void copy_DBR<dbr_enum_t, pvString, PVString, PVStringArray>(const void * dbr, u
     }
 }
 
-// template<DBR type, primitive type, ScalarType, scalar Field, array Field>
-template<typename T, typename pT, epics::pvData::ScalarType sT, typename sF, typename aF>
+// template<DBR type, primitive type, scalar Field, array Field>
+template<typename T, typename pT, typename sF, typename aF>
 void copy_DBR_STS(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
     const T* data = static_cast<const T*>(dbr);
@@ -645,11 +645,11 @@ void copy_DBR_STS(const void * dbr, unsigned count, PVStructure::shared_pointer 
     alarm->getSubField<PVInt>("severity")->put(data->severity);
     alarm->getSubField<PVString>("message")->put(dbrStatus2alarmMessage[data->status]);
 
-    copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
+    copy_DBR<pT, sF, aF>(&data->value, count, pvStructure);
 }
 
-// template<DBR type, primitive type, ScalarType, scalar Field, array Field>
-template<typename T, typename pT, epics::pvData::ScalarType sT, typename sF, typename aF>
+// template<DBR type, primitive type, scalar Field, array Field>
+template<typename T, typename pT, typename sF, typename aF>
 void copy_DBR_TIME(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
     const T* data = static_cast<const T*>(dbr);
@@ -660,7 +660,7 @@ void copy_DBR_TIME(const void * dbr, unsigned count, PVStructure::shared_pointer
     ts->getSubField<PVLong>("secondsPastEpoch")->put(spe);
     ts->getSubField<PVInt>("nanoseconds")->put(data->stamp.nsec);
 
-    copy_DBR_STS<T, pT, sT, sF, aF>(dbr, count, pvStructure);
+    copy_DBR_STS<T, pT, sF, aF>(dbr, count, pvStructure);
 }
 
 
@@ -701,8 +701,8 @@ COPY_FORMAT_FOR(dbr_ctrl_double)
 
 #undef COPY_FORMAT_FOR
 
-// template<DBR type, primitive type, ScalarType, scalar Field, array Field>
-template<typename T, typename pT, epics::pvData::ScalarType sT, typename sF, typename aF>
+// template<DBR type, primitive type, scalar Field, array Field>
+template<typename T, typename pT, typename sF, typename aF>
 void copy_DBR_GR(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
     const T* data = static_cast<const T*>(dbr);
@@ -725,22 +725,22 @@ void copy_DBR_GR(const void * dbr, unsigned count, PVStructure::shared_pointer c
     va->getSubField<PVDouble>("lowWarningLimit")->put(data->lower_warning_limit);
     va->getSubField<PVDouble>("lowAlarmLimit")->put(data->lower_alarm_limit);
 
-    copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
+    copy_DBR<pT, sF, aF>(&data->value, count, pvStructure);
 }
 
 // enum specialization
 template<>
-void copy_DBR_GR<dbr_gr_enum, dbr_enum_t, pvString, PVString, PVStringArray>
+void copy_DBR_GR<dbr_gr_enum, dbr_enum_t, PVString, PVStringArray>
         (const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
     const dbr_gr_enum* data = static_cast<const dbr_gr_enum*>(dbr);
 
-    copy_DBR_STS<dbr_gr_enum, dbr_enum_t, pvString, PVString, PVStringArray>(data, count, pvStructure);
+    copy_DBR_STS<dbr_gr_enum, dbr_enum_t, PVString, PVStringArray>(data, count, pvStructure);
 }
 
 
-// template<DBR type, primitive type, ScalarType, scalar Field, array Field>
-template<typename T, typename pT, epics::pvData::ScalarType sT, typename sF, typename aF>
+// template<DBR type, primitive type, scalar Field, array Field>
+template<typename T, typename pT, typename sF, typename aF>
 void copy_DBR_CTRL(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
     const T* data = static_cast<const T*>(dbr);
@@ -767,61 +767,61 @@ void copy_DBR_CTRL(const void * dbr, unsigned count, PVStructure::shared_pointer
     ctrl->getSubField<PVDouble>("limitHigh")->put(data->upper_ctrl_limit);
     ctrl->getSubField<PVDouble>("limitLow")->put(data->lower_ctrl_limit);
 
-    copy_DBR<pT, sT, sF, aF>(&data->value, count, pvStructure);
+    copy_DBR<pT, sF, aF>(&data->value, count, pvStructure);
 }
 
 // enum specialization
 template<>
-void copy_DBR_CTRL<dbr_ctrl_enum, dbr_enum_t, pvString, PVString, PVStringArray>
+void copy_DBR_CTRL<dbr_ctrl_enum, dbr_enum_t, PVString, PVStringArray>
         (const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
     const dbr_ctrl_enum* data = static_cast<const dbr_ctrl_enum*>(dbr);
 
-    copy_DBR_STS<dbr_ctrl_enum, dbr_enum_t, pvString, PVString, PVStringArray>(data, count, pvStructure);
+    copy_DBR_STS<dbr_ctrl_enum, dbr_enum_t, PVString, PVStringArray>(data, count, pvStructure);
 }
 
 
 static copyDBRtoPVStructure copyFuncTable[] =
 {
-    copy_DBR<string, pvString, PVString, PVStringArray>,          // DBR_STRING
-    copy_DBR<dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_INT, DBR_SHORT
-    copy_DBR<dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_FLOAT
-    copy_DBR<dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_ENUM
-    copy_DBR<int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_CHAR
-    copy_DBR<dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_LONG
-    copy_DBR<dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_DOUBLE
+    copy_DBR<string, PVString, PVStringArray>,          // DBR_STRING
+    copy_DBR<dbr_short_t, PVShort, PVShortArray>,          // DBR_INT, DBR_SHORT
+    copy_DBR<dbr_float_t, PVFloat, PVFloatArray>,          // DBR_FLOAT
+    copy_DBR<dbr_enum_t, PVString, PVStringArray>,          // DBR_ENUM
+    copy_DBR<int8 /*dbr_char_t*/, PVByte, PVByteArray>,          // DBR_CHAR
+    copy_DBR<dbr_long_t, PVInt, PVIntArray>,          // DBR_LONG
+    copy_DBR<dbr_double_t, PVDouble, PVDoubleArray>,          // DBR_DOUBLE
 
-    copy_DBR_STS<dbr_sts_string, string, pvString, PVString, PVStringArray>,          // DBR_STS_STRING
-    copy_DBR_STS<dbr_sts_short, dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_STS_INT, DBR_STS_SHORT
-    copy_DBR_STS<dbr_sts_float, dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_STS_FLOAT
-    copy_DBR_STS<dbr_sts_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_STS_ENUM
-    copy_DBR_STS<dbr_sts_char, int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_STS_CHAR
-    copy_DBR_STS<dbr_sts_long, dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_STS_LONG
-    copy_DBR_STS<dbr_sts_double, dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_STS_DOUBLE
+    copy_DBR_STS<dbr_sts_string, string, PVString, PVStringArray>,          // DBR_STS_STRING
+    copy_DBR_STS<dbr_sts_short, dbr_short_t, PVShort, PVShortArray>,          // DBR_STS_INT, DBR_STS_SHORT
+    copy_DBR_STS<dbr_sts_float, dbr_float_t, PVFloat, PVFloatArray>,          // DBR_STS_FLOAT
+    copy_DBR_STS<dbr_sts_enum, dbr_enum_t, PVString, PVStringArray>,          // DBR_STS_ENUM
+    copy_DBR_STS<dbr_sts_char, int8 /*dbr_char_t*/, PVByte, PVByteArray>,          // DBR_STS_CHAR
+    copy_DBR_STS<dbr_sts_long, dbr_long_t, PVInt, PVIntArray>,          // DBR_STS_LONG
+    copy_DBR_STS<dbr_sts_double, dbr_double_t, PVDouble, PVDoubleArray>,          // DBR_STS_DOUBLE
 
-    copy_DBR_TIME<dbr_time_string, string, pvString, PVString, PVStringArray>,          // DBR_TIME_STRING
-    copy_DBR_TIME<dbr_time_short, dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_TIME_INT, DBR_TIME_SHORT
-    copy_DBR_TIME<dbr_time_float, dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_TIME_FLOAT
-    copy_DBR_TIME<dbr_time_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_TIME_ENUM
-    copy_DBR_TIME<dbr_time_char, int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_TIME_CHAR
-    copy_DBR_TIME<dbr_time_long, dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_TIME_LONG
-    copy_DBR_TIME<dbr_time_double, dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_TIME_DOUBLE
+    copy_DBR_TIME<dbr_time_string, string, PVString, PVStringArray>,          // DBR_TIME_STRING
+    copy_DBR_TIME<dbr_time_short, dbr_short_t, PVShort, PVShortArray>,          // DBR_TIME_INT, DBR_TIME_SHORT
+    copy_DBR_TIME<dbr_time_float, dbr_float_t, PVFloat, PVFloatArray>,          // DBR_TIME_FLOAT
+    copy_DBR_TIME<dbr_time_enum, dbr_enum_t, PVString, PVStringArray>,          // DBR_TIME_ENUM
+    copy_DBR_TIME<dbr_time_char, int8 /*dbr_char_t*/, PVByte, PVByteArray>,          // DBR_TIME_CHAR
+    copy_DBR_TIME<dbr_time_long, dbr_long_t, PVInt, PVIntArray>,          // DBR_TIME_LONG
+    copy_DBR_TIME<dbr_time_double, dbr_double_t, PVDouble, PVDoubleArray>,          // DBR_TIME_DOUBLE
 
-    copy_DBR_STS<dbr_sts_string, string, pvString, PVString, PVStringArray>,          // DBR_GR_STRING -> DBR_STS_STRING
-    copy_DBR_GR<dbr_gr_short, dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_GR_INT, DBR_GR_SHORT
-    copy_DBR_GR<dbr_gr_float, dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_GR_FLOAT
-    copy_DBR_GR<dbr_gr_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_GR_ENUM
-    copy_DBR_GR<dbr_gr_char, int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_GR_CHAR
-    copy_DBR_GR<dbr_gr_long, dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_GR_LONG
-    copy_DBR_GR<dbr_gr_double, dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_GR_DOUBLE
+    copy_DBR_STS<dbr_sts_string, string, PVString, PVStringArray>,          // DBR_GR_STRING -> DBR_STS_STRING
+    copy_DBR_GR<dbr_gr_short, dbr_short_t, PVShort, PVShortArray>,          // DBR_GR_INT, DBR_GR_SHORT
+    copy_DBR_GR<dbr_gr_float, dbr_float_t, PVFloat, PVFloatArray>,          // DBR_GR_FLOAT
+    copy_DBR_GR<dbr_gr_enum, dbr_enum_t, PVString, PVStringArray>,          // DBR_GR_ENUM
+    copy_DBR_GR<dbr_gr_char, int8 /*dbr_char_t*/, PVByte, PVByteArray>,          // DBR_GR_CHAR
+    copy_DBR_GR<dbr_gr_long, dbr_long_t, PVInt, PVIntArray>,          // DBR_GR_LONG
+    copy_DBR_GR<dbr_gr_double, dbr_double_t, PVDouble, PVDoubleArray>,          // DBR_GR_DOUBLE
 
-    copy_DBR_STS<dbr_sts_string, string, pvString, PVString, PVStringArray>,          // DBR_CTRL_STRING -> DBR_STS_STRING
-    copy_DBR_CTRL<dbr_ctrl_short, dbr_short_t, pvShort, PVShort, PVShortArray>,          // DBR_CTRL_INT, DBR_CTRL_SHORT
-    copy_DBR_CTRL<dbr_ctrl_float, dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_CTRL_FLOAT
-    copy_DBR_CTRL<dbr_ctrl_enum, dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_CTRL_ENUM
-    copy_DBR_CTRL<dbr_ctrl_char, int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_CTRL_CHAR
-    copy_DBR_CTRL<dbr_ctrl_long, dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_CTRL_LONG
-    copy_DBR_CTRL<dbr_ctrl_double, dbr_double_t, pvDouble, PVDouble, PVDoubleArray>          // DBR_CTRL_DOUBLE
+    copy_DBR_STS<dbr_sts_string, string, PVString, PVStringArray>,          // DBR_CTRL_STRING -> DBR_STS_STRING
+    copy_DBR_CTRL<dbr_ctrl_short, dbr_short_t, PVShort, PVShortArray>,          // DBR_CTRL_INT, DBR_CTRL_SHORT
+    copy_DBR_CTRL<dbr_ctrl_float, dbr_float_t, PVFloat, PVFloatArray>,          // DBR_CTRL_FLOAT
+    copy_DBR_CTRL<dbr_ctrl_enum, dbr_enum_t, PVString, PVStringArray>,          // DBR_CTRL_ENUM
+    copy_DBR_CTRL<dbr_ctrl_char, int8 /*dbr_char_t*/, PVByte, PVByteArray>,          // DBR_CTRL_CHAR
+    copy_DBR_CTRL<dbr_ctrl_long, dbr_long_t, PVInt, PVIntArray>,          // DBR_CTRL_LONG
+    copy_DBR_CTRL<dbr_ctrl_double, dbr_double_t, PVDouble, PVDoubleArray>          // DBR_CTRL_DOUBLE
 };
 
 void CAChannelGet::getDone(struct event_handler_args &args)
