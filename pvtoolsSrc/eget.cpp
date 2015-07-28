@@ -328,7 +328,7 @@ void formatTable(std::ostream& o,
 
 void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
 {
-    PVStringArrayPtr labels = dynamic_pointer_cast<PVStringArray>(pvStruct->getScalarArrayField("labels", pvString));
+    PVStringArrayPtr labels = pvStruct->getSubField<PVStringArray>("labels");
     if (labels.get() == 0)
     {
         std::cerr << "no string[] 'labels' field in NTTable" << std::endl;
@@ -371,7 +371,7 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
 
 void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
 {
-    PVDoubleArrayPtr value = dynamic_pointer_cast<PVDoubleArray>(pvStruct->getScalarArrayField("value", pvDouble));
+    PVDoubleArrayPtr value = pvStruct->getSubField<PVDoubleArray>("value");
     if (value.get() == 0)
     {
         std::cerr << "no double[] 'value' field in NTMatrix" << std::endl;
@@ -380,7 +380,7 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
 
     int32 rows, cols;
 
-    PVIntArrayPtr dim = dynamic_pointer_cast<PVIntArray>(pvStruct->getScalarArrayField("dim", pvInt));
+    PVIntArrayPtr dim = pvStruct->getSubField<PVIntArray>("dim");
     if (dim.get() != 0)
     {
         // dim[] = { rows, columns }
@@ -479,7 +479,7 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
 // TODO use formatNTTable
 void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
 {
-    PVStringArrayPtr name = dynamic_pointer_cast<PVStringArray>(pvStruct->getScalarArrayField("name", pvString));
+    PVStringArrayPtr name = pvStruct->getSubField<PVStringArray>("name");
     if (name.get() == 0)
     {
         std::cerr << "no string[] 'name' field in NTNameValue" << std::endl;

@@ -381,7 +381,7 @@ static epics::pvData::PVStructure::shared_pointer createNTHistogram()
 
 static void generateNTTableDoubleValues(epics::pvData::PVStructure::shared_pointer result)
 {
-    PVStringArray::shared_pointer pvLabels = (static_pointer_cast<PVStringArray>(result->getScalarArrayField("labels", pvString)));
+    PVStringArray::shared_pointer pvLabels = result->getSubField<PVStringArray>("labels");
     PVStringArray::const_svector ld(pvLabels->view());
 
     PVStructure::shared_pointer resultValue = result->getSubField<PVStructure>("value");
@@ -2110,7 +2110,7 @@ protected:
                 string allProperties("");
                 //            string allProperties("alarm,timeStamp,display,control");
                 m_pvStructure = getStandardPVField()->scalarArray(pvDouble,allProperties);
-                PVDoubleArrayPtr pvField = static_pointer_cast<PVDoubleArray>(m_pvStructure->getScalarArrayField(std::string("value"), pvDouble));
+                PVDoubleArrayPtr pvField = m_pvStructure->getSubField<PVDoubleArray>("value");
 
                 int specCount = 0; char postfix[64];
                 int done = sscanf(m_name.c_str(), "testArray%d%s", &specCount, postfix);
