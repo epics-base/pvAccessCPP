@@ -1,4 +1,3 @@
-QtC-
 bin/
 lib/
 doc/
@@ -11,3 +10,4 @@ envPaths
 configure/*.local
 !configure/ExampleRELEASE.local
 **/O.*
+QtC-*
