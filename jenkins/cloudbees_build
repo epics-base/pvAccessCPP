@@ -4,7 +4,7 @@
 # Jenkins invokes scripts with the "-ex" option. So the build is considered a failure
 # if any of the commands exits with a non-zero exit code.
 #
-# Author: Ralph Lange <Ralph.Lange@gmx.de>
+# Author: Ralph Lange <ralph.lange@gmx.de>
 # Copyright (C) 2013 Helmholtz-Zentrum Berlin für Materialien und Energie GmbH
 # Copyright (C) 2014-2015 ITER Organization.
 # All rights reserved. Use is subject to license terms.
@@ -27,12 +27,12 @@ mkdir -p ${STUFF}
 cd ${STUFF}
 
 wget -nv https://openepics.ci.cloudbees.com/job/Base-${BASE}_Build/lastSuccessfulBuild/artifact/base-${BASE}.CB-dist.tar.gz
-wget -nv https://openepics.ci.cloudbees.com/job/pvDataCPP_Build/BASE=${BASE}/lastSuccessfulBuild/artifact/pvData.CB-dist.tar.gz
+wget -nv https://openepics.ci.cloudbees.com/job/pvDataCPP_Build/BASE=${BASE},USE_MB=MB_NO/lastSuccessfulBuild/artifact/pvData.CB-dist.tar.gz
 tar -xzf base-${BASE}.CB-dist.tar.gz
 tar -xzf pvData.CB-dist.tar.gz
 
 if [ "${USE_MB}" = "MB_YES" ]; then
-    wget -nv https://openepics.ci.cloudbees.com/job/pvCommonCPP_Build/BASE=${BASE}/lastSuccessfulBuild/artifact/pvCommon.CB-dist.tar.gz
+    wget -nv https://openepics.ci.cloudbees.com/job/pvCommonCPP_Build/BASE=${BASE},USE_MB=MB_YES/lastSuccessfulBuild/artifact/pvCommon.CB-dist.tar.gz
     tar -xzf pvCommon.CB-dist.tar.gz
 fi
 
