@@ -6,7 +6,18 @@
 #
 # Author: Ralph Lange <Ralph.Lange@gmx.de>
 # Copyright (C) 2013 Helmholtz-Zentrum Berlin für Materialien und Energie GmbH
+# Copyright (C) 2014 ITER Organization.
 # All rights reserved. Use is subject to license terms.
+
+###########################################
+# Determine EPICS Base version
+
+DEFAULT_BASE=3.14.12.5
+
+BASE=${1:-${DEFAULT_BASE}}
+if [ "${1}" = "${DEFAULT_BASE}" -o -z "${1}" ]; then
+    BUILD_DOCS=YES
+fi
 
 ###########################################
 # Fetch and unpack dependencies
@@ -17,11 +28,11 @@ rm -fr ${STUFF}
 mkdir -p ${STUFF}
 cd ${STUFF}
 
-wget -nv https://openepics.ci.cloudbees.com/job/Base-3.14.12.3_Build/lastSuccessfulBuild/artifact/baseR3.14.12.3.CB-dist.tar.gz
+wget -nv https://openepics.ci.cloudbees.com/job/Base-${BASE}_Build/lastSuccessfulBuild/artifact/base-${BASE}.CB-dist.tar.gz
 wget -nv https://openepics.ci.cloudbees.com/job/Doxygen-1.8.3_Build/lastSuccessfulBuild/artifact/doxygen-1.8.3.CB-dist.tar.gz
-wget -nv https://openepics.ci.cloudbees.com/job/pvCommon_CPP_Build/lastSuccessfulBuild/artifact/pvCommon.CB-dist.tar.gz
-wget -nv https://openepics.ci.cloudbees.com/job/pvData_CPP_Build/lastSuccessfulBuild/artifact/pvData.CB-dist.tar.gz
-tar -xzf baseR3.14.12.3.CB-dist.tar.gz
+wget -nv https://openepics.ci.cloudbees.com/job/pvCommonCPP_Build/BASE=${BASE}/lastSuccessfulBuild/artifact/pvCommon.CB-dist.tar.gz
+wget -nv https://openepics.ci.cloudbees.com/job/pvDataCPP_Build/BASE=${BASE}/lastSuccessfulBuild/artifact/pvData.CB-dist.tar.gz
+tar -xzf base-${BASE}.CB-dist.tar.gz
 tar -xzf doxygen-1.8.3.CB-dist.tar.gz
 tar -xzf pvCommon.CB-dist.tar.gz
 tar -xzf pvData.CB-dist.tar.gz
@@ -41,7 +52,9 @@ EPICS_BASE=${EPICS_BASE}
 EOF
 
 make distclean all
-doxygen
+if [ "${BUILD_DOCS}" ]; then
+    doxygen
+fi
 
 ###########################################
 # Test
@@ -56,4 +69,6 @@ tar --exclude=test* -czf pvAccess.CB-dist.tar.gz bin lib include dbd
 ###########################################
 # Publish documentation
 
-rsync -aP --delete -e ssh documentation epics-jenkins@web.sourceforge.net:/home/project-web/epics-pvdata/htdocs/docbuild/pvAccessCPP/tip
+if [ "${BUILD_DOCS}" ]; then
+    rsync -aqP --delete -e ssh documentation epics-jenkins@web.sourceforge.net:/home/project-web/epics-pvdata/htdocs/docbuild/pvAccessCPP/tip
+fi
