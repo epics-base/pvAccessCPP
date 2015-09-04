@@ -19,7 +19,7 @@ USE_MB=${2:-"MB_NO"}
 
 # Dependent module branches (empty = master)
 PVCOMMON_BRANCH="Release-4.1-"
-PVDATA_BRANCH=""
+PVDATA_BRANCH="Release-5.0-"
 
 ###########################################
 # Fetch and unpack dependencies
