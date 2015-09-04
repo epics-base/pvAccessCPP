@@ -38,25 +38,42 @@ namespace pvAccess {
                             epicsThreadStackMedium),
                     epicsThreadPriorityMedium)
         {
-            initialize(port);
+            _bindAddress.ia.sin_family = AF_INET;
+            _bindAddress.ia.sin_port = htons(port);
+            _bindAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+            initialize();
+        }
+
+        BlockingTCPAcceptor::BlockingTCPAcceptor(Context::shared_pointer const & context,
+                                                 ResponseHandlerFactory::shared_pointer const & responseHandlerFactory,
+                                                 const osiSockAddr& addr, int receiveBufferSize) :
+            _context(context),
+            _responseHandlerFactory(responseHandlerFactory),
+            _bindAddress(),
+            _serverSocketChannel(INVALID_SOCKET),
+            _receiveBufferSize(receiveBufferSize),
+            _destroyed(false),
+            _thread(*this, "TCP-acceptor",
+                    epicsThreadGetStackSize(
+                            epicsThreadStackMedium),
+                    epicsThreadPriorityMedium)
+        {
+            _bindAddress = addr;
+            initialize();
         }
 
         BlockingTCPAcceptor::~BlockingTCPAcceptor() {
             destroy();
         }
 
-        int BlockingTCPAcceptor::initialize(unsigned short port) {
-            // specified bind address
-            _bindAddress.ia.sin_family = AF_INET;
-            _bindAddress.ia.sin_port = htons(port);
-            _bindAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+        int BlockingTCPAcceptor::initialize() {
 
-            char strBuffer[64];
             char ipAddrStr[48];
             ipAddrToDottedIP(&_bindAddress.ia, ipAddrStr, sizeof(ipAddrStr));
 
             int tryCount = 0;
             while(tryCount<2) {
+                char strBuffer[64];
 
                 LOG(logLevelDebug, "Creating acceptor to %s.", ipAddrStr);
 
@@ -83,7 +100,7 @@ namespace pvAccess {
                             LOG(
                                     logLevelDebug,
                                     "Configured TCP port %d is unavailable, trying to assign it dynamically.",
-                                    port);
+                                    ntohs(_bindAddress.ia.sin_port));
                             _bindAddress.ia.sin_port = htons(0);
                         }
                         else {

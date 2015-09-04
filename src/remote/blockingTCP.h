@@ -125,6 +125,9 @@ namespace epics {
             BlockingTCPAcceptor(Context::shared_pointer const & context,
                                 ResponseHandlerFactory::shared_pointer const & responseHandlerFactory,
                                 int port, int receiveBufferSize);
+            BlockingTCPAcceptor(Context::shared_pointer const & context,
+                                ResponseHandlerFactory::shared_pointer const & responseHandlerFactory,
+                                const osiSockAddr& addr, int receiveBufferSize);
 
             virtual ~BlockingTCPAcceptor();
 
@@ -182,7 +185,7 @@ namespace epics {
              * Initialize connection acception.
              * @return port where server is listening
              */
-            int initialize(unsigned short port);
+            int initialize();
 
             /**
              * Validate connection by sending a validation message request.
