@@ -8,6 +8,8 @@
 
 #include <pv/epicsException.h>
 
+#include <osiSock.h>
+
 #define epicsExportSharedSymbols
 #include <pv/configuration.h>
 
@@ -335,6 +337,22 @@ string SystemConfigurationImpl::getPropertyAsString(const string &name, const st
 		return _properties->getProperty(name, string(val));
 	}
 	return _properties->getProperty(name, defaultValue);
+}
+
+bool SystemConfigurationImpl::getPropertyAsAddress(const std::string& name, osiSockAddr* addr)
+{
+    unsigned short dftport=0;
+    if(addr->sa.sa_family==AF_INET)
+        dftport = ntohs(addr->ia.sin_port);
+
+    std::string val(getPropertyAsString(name, ""));
+
+    if(val.empty()) return false;
+
+    addr->ia.sin_family = AF_INET;
+    if(aToIPAddr(val.c_str(), dftport, &addr->ia))
+        return false;
+    return true;
 }
 
 bool SystemConfigurationImpl::hasProperty(const string &key)

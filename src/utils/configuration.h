@@ -31,6 +31,8 @@
 
 #include <shareLib.h>
 
+union osiSockAddr; // defined in osiSock;
+
 namespace epics {
 namespace pvAccess {
 
@@ -135,6 +137,17 @@ public:
 	 * @return environment variable value as std::string or default value if it does not exist.
 	 */
 	virtual std::string getPropertyAsString(const std::string &name, const std::string &defaultValue) = 0;
+     /**
+     * Fetch and parse as a socket address and port number (address family set accordingly).
+     * At present only numeric addresses are parsed (eg. "127.0.0.1:4242").
+     *
+     * The storage pointed to be addr should be initialized with a default value, or zeroed.
+     *
+     * @param name name of the environment variable to return.
+     * @pram addr pointer to the address struct to be filled in
+     * @return true if addr now contains an address, false otherwise
+     */
+    virtual bool getPropertyAsAddress(const std::string& name, osiSockAddr* addr) = 0;
 
     virtual bool hasProperty(const std::string &name) = 0;
 };
@@ -149,6 +162,7 @@ public:
 	float getPropertyAsFloat(const std::string &name, const float defaultValue);
 	float getPropertyAsDouble(const std::string &name, const double defaultValue);
 	std::string getPropertyAsString(const std::string &name, const std::string &defaultValue);
+    bool getPropertyAsAddress(const std::string& name, osiSockAddr* addr);
     bool hasProperty(const std::string &name);
     std::auto_ptr<Properties> _properties;
 private:
