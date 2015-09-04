@@ -242,8 +242,6 @@ void Properties::list()
 SystemConfigurationImpl::SystemConfigurationImpl() :
 		_properties(new Properties())
 {
-	_envParam.name = new char[256];
-	_envParam.pdflt = NULL;
 	// no exception, default value is taken
 	//_ibuffer.exceptions ( ifstream::failbit | ifstream::badbit );
 	//_obuffer.exceptions ( ifstream::failbit | ifstream::badbit );
@@ -251,7 +249,6 @@ SystemConfigurationImpl::SystemConfigurationImpl() :
 
 SystemConfigurationImpl::~SystemConfigurationImpl()
 {
-	if(_envParam.name) delete[] _envParam.name;
 }
 
 bool SystemConfigurationImpl::getPropertyAsBoolean(const string &name, const bool defaultValue)
@@ -332,8 +329,7 @@ float SystemConfigurationImpl::getPropertyAsDouble(const string &name, const dou
 
 string SystemConfigurationImpl::getPropertyAsString(const string &name, const string &defaultValue)
 {
-	strncpy(_envParam.name,name.c_str(),name.length() + 1);
-	const char* val = envGetConfigParamPtr(&_envParam);
+    const char* val = getenv(name.c_str());
 	if(val != NULL)
 	{
 		return _properties->getProperty(name, string(val));
@@ -343,8 +339,7 @@ string SystemConfigurationImpl::getPropertyAsString(const string &name, const st
 
 bool SystemConfigurationImpl::hasProperty(const string &key)
 {
-	strncpy(_envParam.name,key.c_str(),key.length() + 1);
-	const char* val = envGetConfigParamPtr(&_envParam);
+    const char* val = getenv(key.c_str());
     return (val != NULL) || _properties->hasProperty(key);
 }
 

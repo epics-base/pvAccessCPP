@@ -152,7 +152,6 @@ public:
     bool hasProperty(const std::string &name);
     std::auto_ptr<Properties> _properties;
 private:
-	ENV_PARAM _envParam;
 	std::istringstream _ibuffer;
 	std::ostringstream _obuffer;
 
