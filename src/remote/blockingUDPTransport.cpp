@@ -243,7 +243,17 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
 
                             _receiveBuffer->flip();
 
-                            processBuffer(thisTransport, fromAddress, _receiveBuffer.get());
+                            try{
+                                processBuffer(thisTransport, fromAddress, _receiveBuffer.get());
+                            }catch(std::exception& e){
+                                LOG(logLevelError,
+                                  "an exception caught while in UDP receiveThread at %s:%d: %s",
+                                  __FILE__, __LINE__, e.what());
+                            } catch (...) {
+                                LOG(logLevelError,
+                                    "unknown exception caught while in UDP receiveThread at %s:%d.",
+                                    __FILE__, __LINE__);
+                            }
                         }
                     }
                     else if (unlikely(bytesRead == -1)) {

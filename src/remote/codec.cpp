@@ -1106,11 +1106,11 @@ namespace epics {
         try {
           bac->processRead();
         } catch (std::exception &e) {
-          LOG(logLevelWarn, 
+          LOG(logLevelError,
             "an exception caught while in receiveThread at %s:%d: %s",
             __FILE__, __LINE__, e.what());  
         } catch (...) {
-          LOG(logLevelWarn, 
+          LOG(logLevelError,
             "unknown exception caught while in receiveThread at %s:%d.",
             __FILE__, __LINE__);  
         }
