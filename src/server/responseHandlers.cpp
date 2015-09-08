@@ -540,7 +540,7 @@ public:
             PVStringArray::shared_pointer allChannelNames = result->getSubField<PVStringArray>("value");
 
             ChannelListRequesterImpl::shared_pointer listListener(new ChannelListRequesterImpl());
-            std::vector<ChannelProvider::shared_pointer> providers = m_serverContext->getChannelProviders();
+            std::vector<ChannelProvider::shared_pointer>& providers = m_serverContext->getChannelProviders();
 
             size_t providerCount = providers.size();
             for (size_t i = 0; i < providerCount; i++)
