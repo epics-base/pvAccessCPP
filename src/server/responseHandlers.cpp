@@ -844,6 +844,8 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
 void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer const & /*channel*/, const Channel::ConnectionState /*isConnected*/)
 {
 	// TODO should we notify remote side?
+
+    // YES :)
 }
 
 string ServerChannelRequesterImpl::getRequesterName()
