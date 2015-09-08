@@ -33,7 +33,10 @@ namespace pvAccess {
             _serverSocketChannel(INVALID_SOCKET),
             _receiveBufferSize(receiveBufferSize),
             _destroyed(false),
-            _threadId(0)
+            _thread(*this, "TCP-acceptor",
+                    epicsThreadGetStackSize(
+                            epicsThreadStackMedium),
+                    epicsThreadPriorityMedium)
         {
             initialize(port);
         }
@@ -118,14 +121,7 @@ namespace pvAccess {
                             THROW_BASE_EXCEPTION(temp.str().c_str());
                         }
 
-                        _threadId
-                                = epicsThreadCreate(
-                                        "TCP-acceptor",
-                                        epicsThreadPriorityMedium,
-                                        epicsThreadGetStackSize(
-                                                epicsThreadStackMedium),
-                                        BlockingTCPAcceptor::handleEventsRunner,
-                                        this);
+                        _thread.start();
 
                         // all OK, return
                         return ntohs(_bindAddress.ia.sin_port);
@@ -139,7 +135,7 @@ namespace pvAccess {
             THROW_BASE_EXCEPTION(temp.str().c_str());
         }
 
-        void BlockingTCPAcceptor::handleEvents() {
+        void BlockingTCPAcceptor::run() {
             // rise level if port is assigned dynamically
             char ipAddrStr[48];
             ipAddrToDottedIP(&_bindAddress.ia, ipAddrStr, sizeof(ipAddrStr));
@@ -233,10 +229,6 @@ namespace pvAccess {
                 LOG(logLevelDebug, "Validation of %s failed.", address);
                 return false;
             }
-        }
-
-        void BlockingTCPAcceptor::handleEventsRunner(void* param) {
-            ((BlockingTCPAcceptor*)param)->handleEvents();
         }
 
         void BlockingTCPAcceptor::destroy() {

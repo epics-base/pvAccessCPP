@@ -395,9 +395,7 @@ namespace epics {
         bool serverFlag,
         std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
         std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
-        int32_t socketSendBufferSize): 
-      AbstractCodec(serverFlag, receiveBuffer, sendBuffer, socketSendBufferSize, true),
-        _readThread(0), _sendThread(0) { _isOpen.getAndSet(true);}
+        int32_t socketSendBufferSize);
 
       void readPollOne();
       void writePollOne();
@@ -408,8 +406,9 @@ namespace epics {
       bool isOpen();
       void start();
 
-      static void receiveThread(void* param);
-      static void sendThread(void* param);
+    private:
+      void receiveThread();
+      void sendThread();
 
     protected:
       void sendBufferFull(int tries);
@@ -431,8 +430,7 @@ namespace epics {
 
     private:
       AtomicValue<bool> _isOpen;
-      volatile epicsThreadId _readThread;
-      volatile epicsThreadId _sendThread;
+      epics::pvData::Thread _readThread, _sendThread;
       epics::pvData::Event _shutdownEvent;
     };
 

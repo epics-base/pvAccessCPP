@@ -40,7 +40,8 @@ namespace epics {
         class BlockingUDPTransport : public epics::pvData::NoDefaultMethods,
                 public Transport,
                 public TransportSendControl,
-                public std::tr1::enable_shared_from_this<BlockingUDPTransport>
+                public std::tr1::enable_shared_from_this<BlockingUDPTransport>,
+                public epicsThreadRunable
         {
         public:
         	POINTER_DEFINITIONS(BlockingUDPTransport);
@@ -305,11 +306,9 @@ namespace epics {
              */
             const std::auto_ptr<ResponseHandler> _responseHandler;
 
-            virtual void processRead();
+            virtual void run();
             
         private:
-            static void threadRunner(void* param);
-
             bool processBuffer(Transport::shared_pointer const & transport, osiSockAddr& fromAddress, epics::pvData::ByteBuffer* receiveBuffer);
 
             void close(bool waitForThreadToComplete);
@@ -374,7 +373,7 @@ namespace epics {
             /**
              * Thread ID
              */
-            epicsThreadId _threadId;
+            std::auto_ptr<epicsThread> _thread;
 
             epics::pvData::int8 _clientServerWithEndianFlag;
 

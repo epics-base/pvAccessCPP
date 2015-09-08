@@ -55,7 +55,6 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                     _receiveBuffer(new ByteBuffer(MAX_UDP_RECV)),
                     _sendBuffer(new ByteBuffer(MAX_UDP_RECV)),
                     _lastMessageStartPosition(0),
-                    _threadId(0),
                     _clientServerWithEndianFlag(
                         (serverFlag ? 0x40 : 0x00) | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00))
         {
@@ -95,10 +94,10 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 LOG(logLevelTrace, "Starting thread: %s.", threadName.c_str());
             }
             
-            _threadId = epicsThreadCreate(threadName.c_str(),
-                    epicsThreadPriorityMedium,
-                    epicsThreadGetStackSize(epicsThreadStackSmall),
-                    BlockingUDPTransport::threadRunner, this);
+            _thread.reset(new epicsThread(*this, threadName.c_str(),
+                                          epicsThreadGetStackSize(epicsThreadStackSmall),
+                                          epicsThreadPriorityMedium));
+            _thread->start();
         }
 
         void BlockingUDPTransport::close() {
@@ -203,7 +202,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                     _sendBuffer->getPosition()-_lastMessageStartPosition-PVA_MESSAGE_HEADER_SIZE);
         }
 
-        void BlockingUDPTransport::processRead() {
+        void BlockingUDPTransport::run() {
             // This function is always called from only one thread - this
             // object's own thread.
 
@@ -418,10 +417,6 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             }
 
             return (size_t)sockBufSize;
-        }
-
-        void BlockingUDPTransport::threadRunner(void* param) {
-            ((BlockingUDPTransport*)param)->processRead();
         }
 
 

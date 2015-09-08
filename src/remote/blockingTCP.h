@@ -112,7 +112,7 @@ namespace epics {
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          * @version $Id: BlockingTCPAcceptor.java,v 1.1 2010/05/03 14:45:42 mrkraimer Exp $
          */
-        class BlockingTCPAcceptor {
+        class BlockingTCPAcceptor : public epicsThreadRunable {
         public:
         	POINTER_DEFINITIONS(BlockingTCPAcceptor);
 
@@ -128,8 +128,6 @@ namespace epics {
 
             virtual ~BlockingTCPAcceptor();
 
-            void handleEvents();
-
             /**
              * Bind socket address.
              * @return bind socket address, <code>null</code> if not binded.
@@ -144,6 +142,8 @@ namespace epics {
             void destroy();
 
         private:
+            virtual void run();
+
             /**
              * Context instance.
              */
@@ -176,7 +176,7 @@ namespace epics {
             
             epics::pvData::Mutex _mutex;
 
-            epicsThreadId _threadId;
+            epicsThread _thread;
 
             /**
              * Initialize connection acception.
@@ -189,8 +189,6 @@ namespace epics {
              * @return <code>true</code> on success.
              */
             bool validateConnection(Transport::shared_pointer const & transport, const char* address);
-
-            static void handleEventsRunner(void* param);
         };
 
     }

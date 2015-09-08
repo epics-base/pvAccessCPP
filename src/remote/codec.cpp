@@ -1027,6 +1027,22 @@ namespace epics {
     //
     //
 
+    BlockingAbstractCodec::BlockingAbstractCodec(
+            bool serverFlag,
+            std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
+            std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
+            int32_t socketSendBufferSize)
+        :AbstractCodec(serverFlag, receiveBuffer, sendBuffer, socketSendBufferSize, true)
+        ,_readThread(Thread::Config(this, &BlockingAbstractCodec::receiveThread)
+                     .prio(epicsThreadPriorityCAServerLow)
+                     .name("TCP-rx")
+                     .autostart(false))
+        ,_sendThread(Thread::Config(this, &BlockingAbstractCodec::sendThread)
+                     .prio(epicsThreadPriorityCAServerLow)
+                     .name("TCP-tx")
+                     .autostart(false))
+    { _isOpen.getAndSet(true);}
+
     void BlockingAbstractCodec::readPollOne() {
       throw std::logic_error("should not be called for blocking IO");
     }
@@ -1076,35 +1092,21 @@ namespace epics {
     // NOTE: must not be called from constructor (e.g. needs shared_from_this())
     void BlockingAbstractCodec::start() {
 
-      _readThread = epicsThreadCreate(
-        "BlockingAbstractCodec-readThread",
-        epicsThreadPriorityMedium,
-        epicsThreadGetStackSize(
-        epicsThreadStackMedium),
-        BlockingAbstractCodec::receiveThread,
-        this);
+      _readThread.start();
 
-      _sendThread = epicsThreadCreate(
-        "BlockingAbstractCodec-_sendThread",
-        epicsThreadPriorityMedium,
-        epicsThreadGetStackSize(
-        epicsThreadStackMedium),
-        BlockingAbstractCodec::sendThread,
-        this);
+      _sendThread.start();
 
     }
 
 
-    void BlockingAbstractCodec::receiveThread(void *param) 
+    void BlockingAbstractCodec::receiveThread()
     {
+      Transport::shared_pointer ptr = this->shared_from_this();
 
-      BlockingAbstractCodec *bac = static_cast<BlockingAbstractCodec *>(param);
-      Transport::shared_pointer ptr = bac->shared_from_this();
-
-      while (bac->isOpen())
+      while (this->isOpen())
       {
         try {
-          bac->processRead();
+          this->processRead();
         } catch (std::exception &e) {
           LOG(logLevelError,
             "an exception caught while in receiveThread at %s:%d: %s",
@@ -1116,22 +1118,20 @@ namespace epics {
         }
       }
 
-      bac->_shutdownEvent.signal();
+      this->_shutdownEvent.signal();
     }
 
 
-    void BlockingAbstractCodec::sendThread(void *param)
+    void BlockingAbstractCodec::sendThread()
     {
+      Transport::shared_pointer ptr = this->shared_from_this();
 
-      BlockingAbstractCodec *bac = static_cast<BlockingAbstractCodec *>(param);
-      Transport::shared_pointer ptr = bac->shared_from_this();
+      this->setSenderThread();
 
-      bac->setSenderThread();
-
-      while (bac->isOpen())
+      while (this->isOpen())
       {
         try {
-          bac->processWrite();
+          this->processWrite();
         } catch (connection_closed_exception &cce) {
           // noop
         } catch (std::exception &e) {
@@ -1155,7 +1155,7 @@ namespace epics {
       */
 
       // call internal destroy
-      bac->internalDestroy();
+      this->internalDestroy();
     }
 
 
