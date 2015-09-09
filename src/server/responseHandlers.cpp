@@ -295,10 +295,9 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
             {
                 // TODO object pool!!!
                 int providerCount = _providers.size();
-                ServerChannelFindRequesterImpl* pr = new ServerChannelFindRequesterImpl(_context, providerCount);
-                pr->set(name, searchSequenceId, cid, responseAddress, responseRequired, false);
+                std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(new ServerChannelFindRequesterImpl(_context, providerCount));
+                tp->set(name, searchSequenceId, cid, responseAddress, responseRequired, false);
                 // TODO use std::make_shared
-                std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(pr);
                 ChannelFindRequester::shared_pointer spr = tp;
 
                 for (int i = 0; i < providerCount; i++)
@@ -314,11 +313,10 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
             #define MAX_SERVER_SEARCH_RESPONSE_DELAY_MS 100
             double period = (rand() % MAX_SERVER_SEARCH_RESPONSE_DELAY_MS)/(double)1000;
 
-            ServerChannelFindRequesterImpl* pr = new ServerChannelFindRequesterImpl(_context, 1);
-            pr->set("", searchSequenceId, 0, responseAddress, true, true);
+            std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(new ServerChannelFindRequesterImpl(_context, 1));
+            tp->set("", searchSequenceId, 0, responseAddress, true, true);
 
             // TODO use std::make_shared
-            std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(pr);
             TimerCallback::shared_pointer tc = tp;
             _context->getTimer()->scheduleAfterDelay(tc, period);
         }
