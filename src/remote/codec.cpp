@@ -1019,101 +1019,7 @@ namespace epics {
                                                  std::size_t elementCount, std::size_t elementSize)
     {
         return false;
-        // _socketBuffer == existingBuffer
-/*
-        std::size_t bytesToBeDeserialized = elementCount*elementSize;
-
-        // TODO check if bytesToDeserialized < threshold that direct pays off?
-
-        _directPayloadRead = bytesToBeDeserialized;
-        _directBuffer = deserializeTo;
-
-        while (true)
-        {
-            // retrieve what's already in buffers
-            size_t availableBytes = min(_directPayloadRead, _socketBuffer->getRemaining());
-            existingBuffer->getArray(_directBuffer, availableBytes);
-            _directPayloadRead -= availableBytes;
-
-            if (_directPayloadRead == 0)
-                return true;
-
-            _directBuffer += availableBytes;
-
-            // subtract what was already processed
-            size_t pos = _socketBuffer->getPosition();
-            _storedPayloadSize -= pos -_storedPosition;
-            _storedPosition = pos;
-
-            // no more data and we have some payload left => read buffer
-            if (likely(_storedPayloadSize > 0))
-            {
-                size_t bytesToRead = std::min(_directPayloadRead, _storedPayloadSize);
-                processReadIntoDirectBuffer(bytesToRead);
-//  std::cout << "d: " << bytesToRead << std::endl;
-                _storedPayloadSize -= bytesToRead;
-                _directPayloadRead -= bytesToRead;
-            }
-
-            if (_directPayloadRead == 0)
-                return true;
-
-            _stage = PROCESS_HEADER;
-            processReadCached(true, UNDEFINED_STAGE, _directPayloadRead);
-
-            _storedPosition = _socketBuffer->getPosition();
-            _storedLimit = _socketBuffer->getLimit();
-            _socketBuffer->setLimit(
-                    min(_storedPosition + _storedPayloadSize, _storedLimit)
-            );
-
-        }
-
-        return true;
-*/
     }
-/*
-    void AbstractCodec::processReadIntoDirectBuffer(size_t bytesToRead)
-    {
-        while (bytesToRead > 0)
-        {
-            ssize_t bytesRead = recv(_channel, _directBuffer, bytesToRead, 0);
-
-   //     std::cout << "d: " << bytesRead << std::endl;
-
-            if(unlikely(bytesRead<=0))
-            {
-
-                if (bytesRead<0)
-                {
-                    int socketError = SOCKERRNO;
-
-                    // interrupted or timeout
-                    if (socketError == EINTR ||
-                        socketError == EAGAIN ||
-                        socketError == EWOULDBLOCK)
-                        continue;
-                }
-
-                // error (disconnect, end-of-stream) detected
-                close();
-
-                THROW_BASE_EXCEPTION("bytesRead < 0");
-
-                return;
-            }
-
-            bytesToRead -= bytesRead;
-            _directBuffer += bytesRead;
-
-        }
-    }
-*/
-
-
-
-
-
     // 
     //
     //  BlockingAbstractCodec
@@ -1228,11 +1134,6 @@ namespace epics {
           bac->processWrite();
         } catch (connection_closed_exception &cce) {
           // noop
-          /*
-          LOG(logLevelDebug, 
-            "connection closed by remote host while in sendThread at %s:%d: %s",
-            __FILE__, __LINE__, e.what()); 
-          */ 
         } catch (std::exception &e) {
           LOG(logLevelWarn, 
             "an exception caught while in sendThread at %s:%d: %s",
