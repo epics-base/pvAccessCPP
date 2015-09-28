@@ -9,8 +9,6 @@
 
 #include <string>
 
-#include <cadef.h>
-
 #include <shareLib.h>
 
 namespace epics {
