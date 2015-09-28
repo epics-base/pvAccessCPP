@@ -45,10 +45,7 @@ doxygen
 if [ "${PUBLISH}" != "DONT" ]; then
     # Upload explicit dummy to ensure target directory exists
     echo "Created by CloudBees Jenkins upload job. Should be deleted as part of the job." > DUMMY
-    rsync -q -e ssh DUMMY epics-jenkins@web.sourceforge.net:/home/project-web/epics-pvdata/htdocs/docbuild/pvAccessCPP/${PUBLISH}/DUMMY
+    rsync -q -e ssh DUMMY epics-jenkins@web.sourceforge.net:/home/project-web/epics-pvdata/htdocs/docbuild/pvAccessCPP/${PUBLISH}/
 
     rsync -aqP --delete -e ssh documentation epics-jenkins@web.sourceforge.net:/home/project-web/epics-pvdata/htdocs/docbuild/pvAccessCPP/${PUBLISH}/
 fi
-###########################################
-# Publish
-
