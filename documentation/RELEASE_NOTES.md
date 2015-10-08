@@ -1,18 +1,17 @@
-Release release/3.1 IN DEVELOPMENT
-===========
-
-The main changes since release 3.0.2 are:
-
-* pvAccess API is changed.
-
-
-pvAccess API is changed.
-------------
-
-Instead of data (PVStructure) appearing in connect callback (for example channelGetConnect)
-it now is present in method called by whoever delivers the data.
-See pvAccessJava.html for details.
-
-Release 3.0.4
+Release 4.1.2 
 ==========
-This was the starting point for RELEASE_NOTES
+
+* Improved Jenkins build support
+* Removed QtCreated IDE configuration files
+* Use of getSubField<> instead of e.g. getDoubleField()
+* CA support for pvget, pvput and pvinfo.
+* vxWorks/RTEMS compiler warnings resolved.
+* Transport shutdown improved.
+* CA DBR status fix.
+* Monitor queue handling improved.
+* Fixed bad performance on 10Gbit or faster networks.
+* Async RPC service.
+
+Release 4.0.5 
+==========
+(Starting point for release notes.)
