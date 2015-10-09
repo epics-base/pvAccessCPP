@@ -11,6 +11,7 @@ INC += referenceCountingLock.h
 INC += configuration.h
 INC += likely.h
 INC += wildcard.h
+INC += fairQueue.h
 
 LIBSRCS += hexDump.cpp
 LIBSRCS += inetAddressUtil.cpp
