@@ -53,7 +53,7 @@ namespace epics {
     //PROTECTED
     _readMode(NORMAL), _version(0), _flags(0), _command(0), _payloadSize(0),
       _remoteTransportSocketReceiveBufferSize(MAX_TCP_RECV), _totalBytesSent(0),
-      _blockingProcessQueue(false), _senderThread(0),
+      _senderThread(0),
       _writeMode(PROCESS_SEND_QUEUE),
       _writeOpReady(false),_lowLatency(false),
       _socketBuffer(receiveBuffer),
@@ -98,7 +98,6 @@ namespace epics {
       _maxSendPayloadSize = 
         _sendBuffer->getSize() - 2*PVA_MESSAGE_HEADER_SIZE;	
       _socketSendBufferSize = socketSendBufferSize;
-      _blockingProcessQueue = blockingProcessQueue;
     }
 
 
@@ -851,7 +850,8 @@ namespace epics {
         std::size_t senderProcessed = 0;
         while (senderProcessed++ < MAX_MESSAGE_SEND)
         {
-          TransportSender::shared_pointer sender = _sendQueue.take(-1);
+          TransportSender::shared_pointer sender;
+          _sendQueue.pop_front_try(sender);
           if (sender.get() == 0)
           {
             // flush
@@ -860,19 +860,20 @@ namespace epics {
 
             sendCompleted();	// do not schedule sending
 
-            if (_blockingProcessQueue) {
-              if (terminated())			// termination
+            if (terminated())			// termination
                 break;
-              sender = _sendQueue.take(0);
-              // termination (we want to process even if shutdown)
-              if (sender.get() == 0)		
-                break;
-            }
-            else
-              return;
+            // termination (we want to process even if shutdown)
+            _sendQueue.pop_front(sender);
           }
 
-          processSender(sender);
+          try{
+              processSender(sender);
+          }catch(...){
+              if (_sendBuffer->getPosition() > 0)
+                flush(true);
+              sendCompleted();
+              throw;
+          }
         }
       }
 
@@ -884,13 +885,13 @@ namespace epics {
 
     void AbstractCodec::clearSendQueue()
     {
-      _sendQueue.clean();
+      _sendQueue.clear();
     }
 
 
     void AbstractCodec::enqueueSendRequest(
       TransportSender::shared_pointer const & sender) {
-        _sendQueue.put(sender);
+        _sendQueue.push_back(sender);
         scheduleSend();
     }
 
@@ -1065,8 +1066,6 @@ namespace epics {
 
         // this is important to avoid cyclic refs (memory leak)
         clearSendQueue();
-
-        _sendQueue.wakeup();
 
         // post close
         internalPostClose(true);

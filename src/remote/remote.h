@@ -24,6 +24,7 @@
 #include <pv/timer.h>
 #include <pv/pvData.h>
 #include <pv/sharedPtr.h>
+#include <pv/fairQueue.h>
 
 #ifdef remoteEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
@@ -142,7 +143,7 @@ namespace epics {
         /**
          * Interface defining transport sender (instance sending data over transport).
          */
-        class TransportSender : public Lockable {
+        class TransportSender : public Lockable, public fair_queue<TransportSender>::entry {
         public:
         	POINTER_DEFINITIONS(TransportSender);
 
