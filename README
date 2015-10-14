@@ -100,8 +100,8 @@ testValue                     0
 REFERENCES
 ==========
 [1] http://epics-pvdata.sourceforge.net
-[2] http://sourceforge.net/p/epics-pvdata/pvAccessCPP/ci/default/tree/
-[3] http://sourceforge.net/p/epics-pvdata/pvAccessJava/ci/default/tree/
-[4] http://sourceforge.net/p/epics-pvdata/pvDataCPP/ci/default/tree/
-[5] http://sourceforge.net/p/epics-pvdata/pvCommonCPP/ci/default/tree/
+[2] https://github.com/epics-base/pvAccessCPP
+[3] https://github.com/epics-base/pvAccessJava
+[4] https://github.com/epics-base/pvDataCPP
+[5] https://github.com/epics-base/pvCommonCPP
 
