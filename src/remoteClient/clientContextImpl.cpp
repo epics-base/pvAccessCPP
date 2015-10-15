@@ -2406,11 +2406,6 @@ namespace epics {
                }
             }
 
-            virtual void reportRemoteQueueStatus(int32 /*freeElements*/)
-            {
-                // noop for the client
-            }
-
             virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
                 control->startMessage((int8)CMD_MONITOR, 9);
                 buffer->putInt(m_channel->getServerChannelID());
@@ -2780,11 +2775,6 @@ namespace epics {
             virtual void release(MonitorElement::shared_pointer const & monitorElement)
             {
                 m_monitorStrategy->release(monitorElement);
-            }
-
-            virtual void reportRemoteQueueStatus(int32 freeElements)
-            {
-                m_monitorStrategy->reportRemoteQueueStatus(freeElements);
             }
 
             virtual void lock()

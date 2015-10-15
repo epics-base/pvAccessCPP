@@ -19,7 +19,7 @@ using namespace std;
 namespace epics { namespace pvAccess {
 
 class ChannelPipelineMonitorImpl :
-    public Monitor,
+    public PipelineMonitor,
     public PipelineControl,
     public std::tr1::enable_shared_from_this<ChannelPipelineMonitorImpl>
 {
