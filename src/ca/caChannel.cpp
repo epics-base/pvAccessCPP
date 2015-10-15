@@ -1438,8 +1438,6 @@ void CAChannelMonitor::release(epics::pvData::MonitorElementPtr const & /*monito
     // noop
 }
 
-
-
 /* --------------- epics::pvData::ChannelRequest --------------- */
 
 void CAChannelMonitor::cancel()
