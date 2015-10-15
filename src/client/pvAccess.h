@@ -941,6 +941,23 @@ namespace pvAccess {
         epicsShareExtern void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
 
 
+        /**
+         * @brief Pipeline (streaming) support API (optional).
+         * This is used by pvAccess to implement pipeline (streaming) monitors.
+         */
+        class epicsShareClass PipelineMonitor : public virtual epics::pvData::Monitor {
+            public:
+            POINTER_DEFINITIONS(PipelineMonitor);
+            virtual ~PipelineMonitor(){}
+
+            /**
+             * Report remote queue status.
+             * @param freeElements number of free elements.
+             */
+            virtual void reportRemoteQueueStatus(epics::pvData::int32 freeElements) = 0;
+        };
+
+
     }}
 
 #endif  /* PVACCESS_H */

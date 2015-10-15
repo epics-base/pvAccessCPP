@@ -44,3 +44,7 @@ rpcWildServiceExample_SRCS += rpcWildServiceExample.cpp
 
 PROD_HOST += rpcClientExample
 rpcClientExample_SRCS += rpcClientExample.cpp
+
+PROD_HOST += pipelineServiceExample
+pipelineServiceExample_SRCS += pipelineServiceExample.cpp
+
