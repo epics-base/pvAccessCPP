@@ -555,7 +555,12 @@ public:
                     string errorMessage = "failed to fetch channel list: " + status.getMessage();
                     if (!status.getStackDump().empty())
                          errorMessage += "\n" + status.getStackDump();
-                    throw RPCRequestException(Status::STATUSTYPE_ERROR, errorMessage);
+                    if (providerCount == 1)
+                        throw RPCRequestException(Status::STATUSTYPE_ERROR, errorMessage);
+                    else
+                    {
+                        LOG(logLevelDebug, "%s: %s", providers[i]->getProviderName().c_str(), errorMessage.c_str());
+                    }
                 }
 
                 // optimization
