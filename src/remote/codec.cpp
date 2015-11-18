@@ -32,6 +32,18 @@ using namespace std;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
+namespace {
+struct BreakTransport : TransportSender
+{
+    virtual ~BreakTransport() {}
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control)
+    {
+        throw epics::pvAccess::detail::connection_closed_exception("Break");
+    }
+    virtual void lock() {}
+    virtual void unlock() {}
+};
+} // namespace
 
 namespace epics {
   namespace pvAccess {
@@ -883,12 +895,6 @@ namespace epics {
     }
 
 
-    void AbstractCodec::clearSendQueue()
-    {
-      _sendQueue.clear();
-    }
-
-
     void AbstractCodec::enqueueSendRequest(
       TransportSender::shared_pointer const & sender) {
         _sendQueue.push_back(sender);
@@ -1044,6 +1050,13 @@ namespace epics {
                      .autostart(false))
     { _isOpen.getAndSet(true);}
 
+    BlockingAbstractCodec::~BlockingAbstractCodec()
+    {
+        assert(!_isOpen.get());
+        _sendThread.exitWait();
+        _readThread.exitWait();
+    }
+
     void BlockingAbstractCodec::readPollOne() {
       throw std::logic_error("should not be called for blocking IO");
     }
@@ -1061,18 +1074,21 @@ namespace epics {
         // always close in the same thread, same way, etc.
         // wakeup processSendQueue
 
-        // clean resources
+        // clean resources (close socket)
         internalClose(true);
 
-        // this is important to avoid cyclic refs (memory leak)
-        clearSendQueue();
+        // Break sender from queue wait
+        BreakTransport::shared_pointer B(new BreakTransport);
+        enqueueSendRequest(B);
 
         // post close
         internalPostClose(true);
       }
     }
 
-    void BlockingAbstractCodec::internalClose(bool /*force*/) {
+    void BlockingAbstractCodec::internalClose(bool /*force*/)
+    {
+        this->internalDestroy();
     }
 
     void BlockingAbstractCodec::internalPostClose(bool /*force*/) {
@@ -1143,18 +1159,7 @@ namespace epics {
             __FILE__, __LINE__);  
         }
       }
-
-      /*
-      // wait read thread to die
-      // TODO rewise if this is really needed
-      // this timeout is needed where close() is initiated from the send thread,
-      // and not from the read thread as usualy - recv() does not exit until socket is not destroyed,
-      // which is done the internalDestroy() call below
-      bac->_shutdownEvent.wait(3.0);
-      */
-
-      // call internal destroy
-      this->internalDestroy();
+      _sendQueue.clear();
     }
 
 
@@ -1233,7 +1238,7 @@ namespace epics {
                     epicsSocketDestroy(_channel);
             }
 
-            _channel = INVALID_SOCKET;
+            _channel = INVALID_SOCKET; //TODO: mutex to guard _channel
         }
 
     }
@@ -1863,7 +1868,10 @@ namespace epics {
             
             // not used anymore, close it
             // TODO consider delayed destruction (can improve performance!!!)
-            if(_owners.size()==0) close();		// TODO close(false)
+            if(_owners.size()==0) {
+                lock.unlock();
+                close();
+            }
         }
 
         void BlockingClientTCPTransportCodec::aliveNotification() {

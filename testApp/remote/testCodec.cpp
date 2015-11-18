@@ -436,7 +436,7 @@ namespace epics {
     public:
 
       int runAllTest() {
-        testPlan(5885);
+        testPlan(5883);
         testHeaderProcess(); 
         testInvalidHeaderMagic();
         testInvalidHeaderSegmentedInNormal();
@@ -462,7 +462,6 @@ namespace epics {
         testSendException();
         testSendHugeMessagePartes();
         testRecipient();
-        testClearSendQueue();
         testInvalidArguments();
         testDefaultModes();
         testEnqueueSendRequestExceptionThrown();
@@ -2934,40 +2933,6 @@ namespace epics {
       private:
         TestCodec &_codec;
       };
-
-
-      void testClearSendQueue() 
-      {
-        testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
-        TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
-
-        std::tr1::shared_ptr<TransportSender> sender = 
-          std::tr1::shared_ptr<TransportSender>(
-          new TransportSenderForTestClearSendQueue(codec));
-
-        std::tr1::shared_ptr<TransportSender> sender2 = 
-          std::tr1::shared_ptr<TransportSender>(
-          new TransportSender2ForTestClearSendQueue(codec));
-
-
-        codec.enqueueSendRequest(sender);
-        codec.enqueueSendRequest(sender2);
-
-        codec.clearSendQueue();
-
-        codec.breakSender();
-        try{
-            codec.processSendQueue();
-        }catch(sender_break&) {}
-
-        testOk(0 == codec.getSendBuffer()->getPosition(), 
-          "%s: 0 == codec.getSendBuffer()->getPosition()", 
-          CURRENT_FUNCTION);
-        testOk(0 == codec._writeBuffer.getPosition(), 
-          "%s: 0 == codec._writeBuffer.getPosition()", 
-          CURRENT_FUNCTION);
-      }
-
 
       void testInvalidArguments()
       {

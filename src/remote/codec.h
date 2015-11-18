@@ -193,7 +193,6 @@ namespace epics {
       void processWrite(); 
       void processRead(); 
       void processSendQueue();
-      void clearSendQueue();
       void enqueueSendRequest(TransportSender::shared_pointer const & sender);
       void enqueueSendRequest(TransportSender::shared_pointer const & sender, 
         std::size_t requiredBufferSize);
@@ -285,6 +284,7 @@ namespace epics {
         std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
         std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
         int32_t socketSendBufferSize);
+      virtual ~BlockingAbstractCodec();
 
       void readPollOne();
       void writePollOne();

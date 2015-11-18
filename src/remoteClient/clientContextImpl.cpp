@@ -3877,6 +3877,9 @@ namespace epics {
                  * @param remoteDestroy        issue channel destroy request.
                  */
                 void disconnect(bool initiateSearch, bool remoteDestroy) {
+                    // order of oldchan and guard is important to ensure
+                    // oldchan is destoryed after unlock
+                    Transport::shared_pointer oldchan;
                     Lock guard(m_channelMutex);
                     
                     if (m_connectionState != CONNECTED)
@@ -3900,7 +3903,7 @@ namespace epics {
                         }
 
                         m_transport->release(getID());
-                        m_transport.reset();
+                        oldchan.swap(m_transport);
                     }
                     
                     if (initiateSearch)
