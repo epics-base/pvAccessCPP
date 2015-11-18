@@ -232,16 +232,35 @@ namespace pvAccess {
         }
 
         void BlockingTCPAcceptor::destroy() {
-            Lock guard(_mutex);
-            if(_destroyed) return;
-            _destroyed = true;
+            SOCKET sock;
+            {
+                Lock guard(_mutex);
+                if(_destroyed) return;
+                _destroyed = true;
 
-            if(_serverSocketChannel!=INVALID_SOCKET) {
+                sock = _serverSocketChannel;
+                _serverSocketChannel = INVALID_SOCKET;
+            }
+
+            if(sock!=INVALID_SOCKET) {
                 char ipAddrStr[48];
                 ipAddrToDottedIP(&_bindAddress.ia, ipAddrStr, sizeof(ipAddrStr));
                 LOG(logLevelDebug, "Stopped accepting connections at %s.", ipAddrStr);
 
-                epicsSocketDestroy(_serverSocketChannel);
+                switch(epicsSocketSystemCallInterruptMechanismQuery())
+                {
+                case esscimqi_socketBothShutdownRequired:
+                    shutdown(sock, SHUT_RDWR);
+                    _thread.exitWait();
+                    epicsSocketDestroy(sock);
+                    break;
+                case esscimqi_socketSigAlarmRequired:
+                    LOG(logLevelError, "SigAlarm close not implemented for this target\n");
+                case esscimqi_socketCloseRequired:
+                    epicsSocketDestroy(sock);
+                    _thread.exitWait();
+                    break;
+                }
             }
         }
 

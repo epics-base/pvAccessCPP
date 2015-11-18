@@ -545,6 +545,10 @@ void ServerContextImpl::dispose()
 	{
 		destroy();
 	}
+    catch(std::exception& e)
+    {
+        std::cerr<<"Error in: ServerContextImpl::dispose: "<<e.what()<<"\n";
+    }
 	catch(...)
 	{
         std::cerr<<"Oh no, something when wrong in ServerContextImpl::dispose!\n";
