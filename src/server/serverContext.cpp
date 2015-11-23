@@ -51,13 +51,22 @@ ServerContextImpl::ServerContextImpl():
     epicsSignalInstallSigPipeIgnore ();
 
     generateGUID();
-	initializeLogger();
-	loadConfiguration();
+    initializeLogger();
 }
 
 ServerContextImpl::shared_pointer ServerContextImpl::create()
 {
     ServerContextImpl::shared_pointer thisPointer(new ServerContextImpl());
+    thisPointer->loadConfiguration();
+    return thisPointer;
+}
+
+ServerContextImpl::shared_pointer ServerContextImpl::create(
+        const Configuration::shared_pointer& conf)
+{
+    ServerContextImpl::shared_pointer thisPointer(new ServerContextImpl());
+    thisPointer->configuration = conf;
+    thisPointer->loadConfiguration();
     return thisPointer;
 }
 

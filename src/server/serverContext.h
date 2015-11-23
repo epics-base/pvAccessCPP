@@ -116,10 +116,11 @@ class epicsShareClass ServerContextImpl :
 public:
     typedef std::tr1::shared_ptr<ServerContextImpl> shared_pointer;
     typedef std::tr1::shared_ptr<const ServerContextImpl> const_shared_pointer;
-protected:
+private:
 	ServerContextImpl();
 public:
     static shared_pointer create();
+    static shared_pointer create(const Configuration::shared_pointer& conf);
     
 	virtual ~ServerContextImpl();
 
