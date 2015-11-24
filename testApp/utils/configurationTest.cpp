@@ -4,13 +4,20 @@
  */
 
 #include <pv/configuration.h>
-#include <pv/CDRMonitor.h>
+
+#include <iostream>
+#include <string>
+#include <memory>
+
+#include <stdlib.h>
 
 #include <epicsAssert.h>
 #include <epicsExit.h>
-#include <iostream>
-#include <string>
-#include <stdlib.h>
+#include <envDefs.h>
+#include <osiSock.h>
+
+#include <epicsUnitTest.h>
+#include <testMain.h>
 
 #ifdef _WIN32
 void setenv(char * a, char * b, int c)
@@ -25,62 +32,102 @@ using namespace epics::pvAccess;
 using namespace epics::pvData;
 using namespace std;
 
-int main(int argc, char *argv[])
+static void showEnv(const char *name)
 {
-	SystemConfigurationImpl* configuration = new SystemConfigurationImpl();
-	bool boolProperty = configuration->getPropertyAsBoolean("boolProperty", true);
-	assert(boolProperty == true);
+    testDiag("%s = \"%s\"", name, getenv(name));
+}
 
-	int32 intProperty = configuration->getPropertyAsInteger("intProperty", 1);
-	assert(intProperty == 1);
+static void setEnv(const char *name, const char *val)
+{
+    epicsEnvSet(name, val);
+    testDiag("%s = \"%s\"", name, getenv(name));
+}
 
-	float floatProperty = configuration->getPropertyAsFloat("floatProperty", 3);
-	assert(floatProperty == 3);
+static void showAddr(const osiSockAddr& addr)
+{
+    char buf[40];
+    sockAddrToDottedIP(&addr.sa, buf, sizeof(buf));
+    testDiag("%s", buf);
+}
 
-	double doubleProperty = configuration->getPropertyAsDouble("doubleProperty", -3);
-	assert(doubleProperty == -3);
+#define TESTVAL(TYPE, VAL1, VAL2, VAL1S) do {\
+    showEnv(#TYPE "Property"); \
+    testOk1(configuration->getPropertyAs##TYPE(#TYPE "Property", VAL1) == VAL1); \
+    testOk1(configuration->getPropertyAs##TYPE(#TYPE "Property", VAL2) == VAL2); \
+    setEnv(#TYPE "Property", VAL1S); \
+    testOk1(configuration->getPropertyAs##TYPE(#TYPE "Property", VAL1) == VAL1); \
+    testOk1(configuration->getPropertyAs##TYPE(#TYPE "Property", VAL2) == VAL1); \
+    } while(0)
 
-	string stringProperty = configuration->getPropertyAsString("stringProperty", "string");
-	assert(stringProperty == string("string"));
 
-	ConfigurationProviderImpl* configProvider = ConfigurationFactory::getProvider();
-	configProvider->registerConfiguration("conf1",static_cast<Configuration*>(configuration));
+MAIN(configurationTest)
+{
+    testPlan(35);
+    testDiag("Default configuration");
+    Configuration::shared_pointer configuration(new SystemConfigurationImpl());
 
-	SystemConfigurationImpl* configurationOut = static_cast<SystemConfigurationImpl*>(configProvider->getConfiguration("conf1"));
-	assert(configurationOut == configuration);
+    TESTVAL(String, "one", "two", "one");
+    TESTVAL(Boolean, true, false, "true");
+    TESTVAL(Integer, 100, 321, "100");
+    TESTVAL(Float, 42.0e3, 44.0e3, "42.0e3");
+    TESTVAL(Double, 42.0e3, 44.0e3, "42.0e3");
 
-	intProperty = configuration->getPropertyAsInteger("intProperty", 2);
-	assert(intProperty == 1);
+    testDiag("IP Address w/o default or explicit port");
 
-	floatProperty = configuration->getPropertyAsFloat("floatProperty", 4);
-	assert(floatProperty == 3);
+    showEnv("AddressProperty");
+    osiSockAddr addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.ia.sin_family = AF_INET+1; // something not IPv4
+    addr.ia.sin_port = htons(42);
 
-	doubleProperty = configuration->getPropertyAsDouble("doubleProperty", -4);
-	assert(doubleProperty == -3);
+    testOk1(configuration->getPropertyAsAddress("AddressProperty", &addr)==false);
+    setEnv("AddressProperty", "127.0.0.1"); // no port
+    testOk1(configuration->getPropertyAsAddress("AddressProperty", &addr)==true);
+    showAddr(addr);
 
-	stringProperty = configuration->getPropertyAsString("stringProperty", "string1");
-	assert(stringProperty == string("string"));
+    testOk1(addr.ia.sin_family==AF_INET);
+    testOk1(ntohl(addr.ia.sin_addr.s_addr)==INADDR_LOOPBACK);
+    testOk1(ntohs(addr.ia.sin_port)==0);
 
-	setenv("boolProperty1", "1", 1);
-	boolProperty = configuration->getPropertyAsInteger("boolProperty1", 0);
-	assert(boolProperty == true);
+    testDiag("IP Address w/ default port");
 
-	setenv("intProperty1", "45", 1);
-	intProperty = configuration->getPropertyAsInteger("intProperty1", 2);
-	assert(intProperty == 45);
+    memset(&addr, 0, sizeof(addr));
+    addr.ia.sin_family = AF_INET;
+    addr.ia.sin_port = htons(42);
 
-	setenv("floatProperty1", "22", 1);
-	floatProperty = configuration->getPropertyAsFloat("floatProperty1", 3);
-	assert(floatProperty == 22);
+    testOk1(configuration->getPropertyAsAddress("AddressProperty", &addr)==true);
+    showAddr(addr);
 
-	setenv("dobuleProperty1", "42", 1);
-	doubleProperty = configuration->getPropertyAsDouble("dobuleProperty1", -3);
-	assert(doubleProperty == 42);
+    testOk1(addr.ia.sin_family==AF_INET);
+    testOk1(ntohl(addr.ia.sin_addr.s_addr)==INADDR_LOOPBACK);
+    testOk1(ntohs(addr.ia.sin_port)==42);
 
-	if(configProvider) delete configProvider;
-        epicsExitCallAtExits();
-        CDRMonitor::get().show(stdout, true);
-	return 0;
+    testDiag("IP Address w/ default and explicit port");
+
+    setEnv("AddressProperty", "127.0.0.1:43"); // no port
+    testOk1(configuration->getPropertyAsAddress("AddressProperty", &addr)==true);
+    showAddr(addr);
+
+    memset(&addr, 0, sizeof(addr));
+    addr.ia.sin_family = AF_INET;
+    addr.ia.sin_port = htons(42);
+
+    testOk1(configuration->getPropertyAsAddress("AddressProperty", &addr)==true);
+    showAddr(addr);
+
+    testOk1(addr.ia.sin_family==AF_INET);
+    testOk1(ntohl(addr.ia.sin_addr.s_addr)==INADDR_LOOPBACK);
+    testOk1(ntohs(addr.ia.sin_port)==43);
+
+    testDiag("register with global configuration listings");
+
+    ConfigurationProvider::shared_pointer configProvider(ConfigurationFactory::getProvider());
+    configProvider->registerConfiguration("conf1", configuration);
+
+    Configuration::shared_pointer configurationOut(configProvider->getConfiguration("conf1"));
+    testOk1(configurationOut.get() == configuration.get());
+
+    return testDone();
 }
 
 

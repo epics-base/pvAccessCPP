@@ -181,7 +181,7 @@ void SimpleChannelSearchManagerImpl::initializeSendBuffer()
     m_sendBuffer.putByte(PVA_MAGIC);
     m_sendBuffer.putByte(PVA_VERSION);
     m_sendBuffer.putByte((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00); // data + 7-bit endianess
-	m_sendBuffer.putByte((int8_t)3);	// search
+    m_sendBuffer.putByte(CMD_SEARCH);
     m_sendBuffer.putInt(4+1+3+16+2+1);		// "zero" payload
 	m_sendBuffer.putInt(m_sequenceNumber);
 

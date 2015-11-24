@@ -8,6 +8,8 @@
 
 #include <pv/epicsException.h>
 
+#include <osiSock.h>
+
 #define epicsExportSharedSymbols
 #include <pv/configuration.h>
 
@@ -242,8 +244,6 @@ void Properties::list()
 SystemConfigurationImpl::SystemConfigurationImpl() :
 		_properties(new Properties())
 {
-	_envParam.name = new char[256];
-	_envParam.pdflt = NULL;
 	// no exception, default value is taken
 	//_ibuffer.exceptions ( ifstream::failbit | ifstream::badbit );
 	//_obuffer.exceptions ( ifstream::failbit | ifstream::badbit );
@@ -251,7 +251,6 @@ SystemConfigurationImpl::SystemConfigurationImpl() :
 
 SystemConfigurationImpl::~SystemConfigurationImpl()
 {
-	if(_envParam.name) delete[] _envParam.name;
 }
 
 bool SystemConfigurationImpl::getPropertyAsBoolean(const string &name, const bool defaultValue)
@@ -332,8 +331,7 @@ float SystemConfigurationImpl::getPropertyAsDouble(const string &name, const dou
 
 string SystemConfigurationImpl::getPropertyAsString(const string &name, const string &defaultValue)
 {
-	strncpy(_envParam.name,name.c_str(),name.length() + 1);
-	const char* val = envGetConfigParamPtr(&_envParam);
+    const char* val = getenv(name.c_str());
 	if(val != NULL)
 	{
 		return _properties->getProperty(name, string(val));
@@ -341,10 +339,25 @@ string SystemConfigurationImpl::getPropertyAsString(const string &name, const st
 	return _properties->getProperty(name, defaultValue);
 }
 
+bool SystemConfigurationImpl::getPropertyAsAddress(const std::string& name, osiSockAddr* addr)
+{
+    unsigned short dftport=0;
+    if(addr->sa.sa_family==AF_INET)
+        dftport = ntohs(addr->ia.sin_port);
+
+    std::string val(getPropertyAsString(name, ""));
+
+    if(val.empty()) return false;
+
+    addr->ia.sin_family = AF_INET;
+    if(aToIPAddr(val.c_str(), dftport, &addr->ia))
+        return false;
+    return true;
+}
+
 bool SystemConfigurationImpl::hasProperty(const string &key)
 {
-	strncpy(_envParam.name,key.c_str(),key.length() + 1);
-	const char* val = envGetConfigParamPtr(&_envParam);
+    const char* val = getenv(key.c_str());
     return (val != NULL) || _properties->hasProperty(key);
 }
 

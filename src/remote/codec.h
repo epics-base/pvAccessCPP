@@ -21,6 +21,14 @@
 #include <osiSock.h>
 #include <epicsTime.h>
 #include <epicsThread.h>
+#include <epicsVersion.h>
+
+#ifdef EPICS_VERSION_INT
+#if EPICS_VERSION_INT>=VERSION_INT(3,15,1,0)
+#include <epicsAtomic.h>
+#define PVA_CODEC_USE_ATOMIC
+#endif
+#endif
 
 #include <pv/byteBuffer.h>
 #include <pv/pvType.h>
@@ -48,8 +56,40 @@ namespace epics {
   namespace pvAccess {
     namespace detail {
 
-    // TODO replace mutex with atomic (CAS) operations
-    template<typename T> 
+#ifdef PVA_CODEC_USE_ATOMIC
+#undef PVA_CODEC_USE_ATOMIC
+    template<typename T>
+    class AtomicValue
+    {
+        T val;
+    public:
+        AtomicValue() :val(0) {}
+        inline T getAndSet(T newval)
+        {
+            int oldval;
+            // epicsAtomic doesn't have unconditional swap
+            do {
+                oldval = epics::atomic::get(val);
+            }while(epics::atomic::compareAndSwap(val, oldval, newval)!=oldval);
+            return oldval;
+        }
+        inline T get() { return epics::atomic::get(val); }
+    };
+    // treat bool as int
+    template<>
+    class AtomicValue<bool>
+    {
+        AtomicValue<int> realval;
+    public:
+        inline bool getAndSet(bool newval)
+        {
+            return this->realval.getAndSet(newval?1:0)!=0;
+        }
+        inline bool get() { return !!this->realval.get(); }
+    };
+
+#else
+    template<typename T>
     class AtomicValue
     {
     public:
@@ -69,6 +109,7 @@ namespace epics {
       T _value;
       epics::pvData::Mutex mutex;
     };
+#endif
 
 
     // TODO replace this queue with lock-free implementation

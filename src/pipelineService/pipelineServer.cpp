@@ -99,7 +99,7 @@ class ChannelPipelineMonitorImpl :
         {
             Lock guard(m_freeQueueLock);
             m_freeQueue.reserve(m_queueSize);
-            for (int32 i = 0; i < m_queueSize; i++)
+            for (size_t i = 0; i < m_queueSize; i++)
             {
                 PVStructure::shared_pointer pvStructure = getPVDataCreate()->createPVStructure(structure);
                 MonitorElement::shared_pointer monitorElement(new MonitorElement(pvStructure));

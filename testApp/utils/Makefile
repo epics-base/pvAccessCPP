@@ -44,7 +44,7 @@ TESTSCRIPTS_HOST += $(TESTS:%=%.t)
 #testHarness_SRCS += namedLockPatternTest.cpp
 #TESTS += namedLockPatternTest
 
-#TESTPROD_HOST += configurationTest
-#configurationTest_SRCS += configurationTest.cpp
+TESTPROD_HOST += configurationTest
+configurationTest_SRCS += configurationTest.cpp
 #testHarness_SRCS += configurationTest.cpp
-#TESTS += configurationTest
+TESTS += configurationTest

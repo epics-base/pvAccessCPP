@@ -552,7 +552,7 @@ void ServerContextImpl::dispose()
 	}
 	catch(...)
 	{
-		// noop
+        std::cerr<<"Oh no, something when wrong in ServerContextImpl::dispose!\n";
 	}
 }
 
