@@ -23,8 +23,11 @@
 #include <epicsThread.h>
 #include <epicsVersion.h>
 
-#if defined(EPICS_VERSION_INT) && EPICS_VERSION_INT>=VERSION_INT(3,15,1,0)
+#ifdef EPICS_VERSION_INT
+#if EPICS_VERSION_INT>=VERSION_INT(3,15,1,0)
 #include <epicsAtomic.h>
+#define PVA_CODEC_USE_ATOMIC
+#endif
 #endif
 
 #include <pv/byteBuffer.h>
@@ -53,7 +56,8 @@ namespace epics {
   namespace pvAccess {
     namespace detail {
 
-#if defined(EPICS_VERSION_INT) && EPICS_VERSION_INT>=VERSION_INT(3,15,1,0)
+#ifdef PVA_CODEC_USE_ATOMIC
+#undef PVA_CODEC_USE_ATOMIC
     template<typename T>
     class AtomicValue
     {
