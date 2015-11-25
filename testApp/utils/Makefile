@@ -46,5 +46,6 @@ TESTSCRIPTS_HOST += $(TESTS:%=%.t)
 
 TESTPROD_HOST += configurationTest
 configurationTest_SRCS += configurationTest.cpp
+configurationTest_SYS_LIBS_WIN32 += ws2_32
 #testHarness_SRCS += configurationTest.cpp
 TESTS += configurationTest
