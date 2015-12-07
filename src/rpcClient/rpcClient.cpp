@@ -322,7 +322,7 @@ RPCClient::shared_pointer RPCClient::create(const std::string & serviceName)
 
 
 PVStructure::shared_pointer RPCClient::sendRequest(const std::string & serviceName,
-     PVStructure::shared_pointer queryRequest,
+     PVStructure::shared_pointer const & queryRequest,
      double timeOut)
 {
     RPCClient::shared_pointer client = RPCClient::create(serviceName);

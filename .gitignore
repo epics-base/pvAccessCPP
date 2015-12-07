@@ -4,6 +4,7 @@ doc/
 include/
 db/
 dbd/
+html/
 documentation/html
 documentation/*.tag
 envPaths
