@@ -1,2 +1,1 @@
-registrar("startPVAServerRegister")
-registrar("stopPVAServerRegister")
+registrar("registerStartPVAServer")

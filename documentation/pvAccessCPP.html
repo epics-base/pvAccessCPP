@@ -201,7 +201,7 @@ pvData.
 <h3>ChannelProviders implemented by pvAccessCPP</h3>
 <h4>Client Side</h4>
 <dl>
-   <dt>pva network protocal</dt>
+   <dt>pva network protocol</dt>
      <dd>
       This connects the client to a server via the <b>pva</b> network protocol,
       which is a protocol for passing pvData objects.
@@ -223,8 +223,6 @@ href="http://www.aps.anl.gov/epics/base/R3-14/12-docs/CAref.html">
 Channel Access Reference Manual
 </a>
     </dd>
-    <dt>codec</dt>
-     <dd>Matej please explain</dd>
 </dl>
 <p>Since both the client and server side of pvAccess use the same ChannelProviderRegistry an an arbitrary number of providers can register. Note in particular that both the client and server sides of <b>pva</b> can both register.
 This allows server code to also use <b>pva</b> client to communicate with other servers.
@@ -232,15 +230,16 @@ This allows server code to also use <b>pva</b> client to communicate with other 
 
 <h4>Server Side</h4>
 <dl>
-  <dt>pva network protocal</dt>
+  <dt>pva network protocol</dt>
      <dd>The server side for pva network protocol.
       It connects the server side of the network to ChannelProviders.
      </dd>
-   <dt>RPC Server</dt>
+   <dt>rpcService</dt>
       <dd>This is the "glue" code for implementing the server side of a ChannelRPC service.
      An actual service must implement method request.</dd>
-    <dt>codec</dt>
-     <dd>Matej please explain</dd>
+   <dt>PipelineService</dt>
+       <dd>This is the "glue" code for implementing the server side pipeline service (reliable monitors using flow control).
+       </dd>
 </dl>
 <p>The server side of the pva network protocal.
 allows an arbitrary number of providers to register with it.
@@ -336,9 +335,13 @@ class ScopedLock...
      <dd>Code for implementing the context for server side of a channelRPC request.
      </dd>
    <dt>rpcService.h</dt>
-     <dd>Each channelRpc service must implememnt this interface.</dd>
+     <dd>Each channelRpc service must implement RPCService or RPCServiceAsync interface.</dd>
+   <dt>pipelineServer.h</dt>
+     <dd>Code for implementing the context for server side pipeline service.
+     </dd>
+   <dt>pipelineService.h</dt>
+     <dd>Each pipeline service must implement PipelineService interface.</dd>
 </dl>
-<p>Matej are any others of interest to client or service code?</p>
 
 <h2>Starting PVAccess Clients</h2>
 <p>To start both the pva and ca client providers issue the commands:</p>
@@ -364,7 +367,7 @@ int main(int argc,char *argv[])
         startPVAServer(PVACCESS_ALL_PROVIDERS,0,true,true);
 
 ...
-    ctx-&gt;destroy;
+    ctx-&gt;destroy();
     return 0;
 }
 </pre>
@@ -400,14 +403,15 @@ epicsShareExtern void unregisterChannelProviderFactory(ChannelProviderFactoryPtr
 <p>The methods for <b>ChannelProviderRegistry</b> are:</p>
 <dl>
     <dt>getProvider</dt>
-     <dd>Called by both client and services to get the channelProvider.<br />
+     <dd>Called by both client and services to get the shared instance of channelProvider.<br />
       The providerName must be the name of a registered provider.<br />
        Most clients will use either <b>pva</b> or <b>ca</b>.<br />
        Most services will use pvDatabaseCPP, which implements provider <b>local</b>.
        A service that is also a client can also use <b>local</b> or <b>pvaSrv</b>.
      </dd>
     <dt>createProvider</dt>
-      <dd>Called by a service to start the provider.</dd>
+      <dd>Same as getProvider just that this call creates a new instance of the provider (i.e. this instance is not shared).
+      <br />Most clients will use getProvider method.</dd>
     <dt>getProviderNames</dt>
        <dd>Gets the names of all registered providers.</dd>
 </dl>
@@ -438,6 +442,8 @@ public:
         ChannelRequesterPtr const &amp; channelRequester,
         short priority,
         std::string const &amp; address);
+
+    /// experimental methods
     virtual void configure(PVStructurePtr /*configuration*/) {};
     virtual void flush() {};
     virtual void poll() {};
@@ -493,18 +499,6 @@ public:
       The result passed by calling methods of ChannelRequester.
        The caller must implememt ChannelRequester, which is described along with Channel below.
         </dd>
-   <dt>configure</dt>
-       <dd>Not called by client,
-         Matej please explain
-       </dd>
-   <dt>flush</dt>
-       <dd>Not called by client,
-         Matej please explain
-       </dd>
-   <dt>poll</dt>
-       <dd>Not called by client,
-         Matej please explain
-       </dd>
 </dl>
 <p>The methods of <b>ChannelFind</b> are:</p>
 <dl>
@@ -525,8 +519,8 @@ public:
    <dt>channelListResult</dt>
       <dd>If there is a problem with the channelList request status provides the reason.
        channelNames provides the list of channels the provider is
-       currently providing.<br />
-         Matej please explain hasDynamic.
+       currently providing. hasDynamic indicates that the set of channels is not static, i.e. might
+       change during runtime.<br />
       </dd>
 </dl>
 <h2>Channel</h2>
@@ -1327,6 +1321,7 @@ class RPCServer :
     void printInfo();
 };
 
+// private helper method, will (can) be removed in the future
 ChannelPtr createRPCChannel(ChannelProviderPtr const &amp; provider,
     string const &amp; channelName,
     ChannelRequesterPtr const &amp; channelRequester,
@@ -1359,13 +1354,9 @@ where
      <dd>
       Shows the channel and connection status.
      </dd>
-   <dt>createRPCChannel</dt>
-     <dd>
-      Matej!!! What is this for?
-     </dd>
 </dl>
 <h3>rpcService</h3>
-<p>Base class for channelRPC services.</p>
+<p>Base class for channelRPC services. To implement a rpcService you need to implement RPCService or RPCServiceAsync interface.</p>
 <pre>
 class  RPCRequestException
 {
@@ -1437,11 +1428,166 @@ where
        <dl>
           <dt>request</dt>
           <dd>
-           The client has issued a request.
+           The client has issued a request. A service must call callback->requestDone() method to notify completion.
           </dd>
        </dl>
      </dd>
 </dl>
+
+<h2>pipeLineServer</h2>
+<p>A pipeline server supports reliable monitor support.
+This is implemented by allowing the client to make the server delay when the client can not keep up with the server.
+</p>
+<p>The server implememts Channel::createMonitor but none of the other create methods.
+When the client creates a monitor the following request options must be specified:</p>
+<pre>
+"record[queueSize=size,pipeline=true]" 
+</pre>
+<p>Each time the client calls <b>Monitor::release</b> the client sends an <b>ack</b> message to the server.
+The server uses this to delay sending new monitors if the monitor queue is full.</p>
+<p><b>pvAccessCPP/testApp/remote/pipelineServiceExample.cpp</b> Is an example.</p>
+<h3>pipelineServer</h3>
+<p>This is a class used by a pipeline service.
+It implements channelProvider for the service and provides a context for running the service.
+</p>
+<pre>
+class PipelineServer 
+{
+    void registerService(string const &amp; serviceName, PipelineServicePtr const &amp; service);
+    void unregisterService(string const &amp; serviceName);
+    void run(int seconds = 0);
+    /// Method requires usage of std::tr1::shared_ptr&amp;lt;PipelineServer&amp;gt;. This instance must be
+    /// owned by a shared_ptr instance.
+    void runInNewThread(int seconds = 0);
+    void destroy();    
+    void printInfo();
+};
+
+// private helper method, will (can) be removed in the future
+ChannelPtr createPipelineChannel(ChannelProviderPtr const &amp; provider,
+    string const &amp; channelName,
+    ChannelRequesterPtr const &amp; channelRequester,
+    PipelineServicePtr const &amp; pipelineService);
+</pre>
+where
+<dl>
+   <dt>registerService</dt>
+     <dd>
+       Register a new service.
+     </dd>
+   <dt>unregisterService</dt>
+     <dd>
+       Unregister the service.
+     </dd>
+   <dt>run</dt>
+     <dd>
+        Calls server context run.
+     </dd>
+   <dt>runInNewThread</dt>
+     <dd>
+       Starts a new thread.
+     </dd>
+   <dt>destroy</dt>
+     <dd>
+      Calls server context destroy.
+     </dd>
+   <dt>printInfo</dt>
+     <dd>
+      Shows the channel and connection status.
+     </dd>
+</dl>
+<h3>pipelineService</h3>
+<h4>PipelineControl</h4>
+<p>An instance of <b>PipelineControl</b> is created by PipelineServer and passed to PipelineService::request.</p>
+<pre>
+class PipelineControl
+{
+    virtual size_t getFreeElementCount() = 0;
+    virtual size_t getRequestedCount() = 0;
+    virtual epics::pvData::MonitorElement::shared_pointer getFreeElement() = 0;
+    virtual void putElement(epics::pvData::MonitorElement::shared_pointer const &amp; element) = 0;
+    virtual void done() = 0;
+};
+</pre>
+where
+<dl>
+   <dt>getFreeElementCount</dt>
+     <dd>
+      The number of free elements in the local queue.<br />
+      A service can (should) full up the entire queue.
+     </dd>
+   <dt>getRequestedCount</dt>
+     <dd>
+      The total count of requested elements.<br />
+      This is the minimum element count that a service should provide.
+     </dd>
+   <dt>getFreeElement</dt>
+     <dd>
+       Grab next free element.<br />
+       A service should take this element, populate it with the data
+       and return it back by calling putElement().
+     </dd>
+   <dt>putElement</dt>
+     <dd>
+      Put element on the local queue (an element to be sent to a client).
+     </dd>
+   <dt>done</dt>
+     <dd>
+      Call to notify that there is no more data to pipelined.<br />
+      This call destroys the pipeline session, i. e. the current monitor.
+       The client will have to create a new monitor in order to access the service again.
+     </dd>
+</dl>
+<h4>PipelineSession</h4>
+<p>An instance of <b>PipelineSession</b> is created <b>PipelineService</b> for each instance of the service.</p>
+<pre>
+class  PipelineSession
+{
+    virtual size_t getMinQueueSize() const = 0;
+    virtual epics::pvData::Structure::const_shared_pointer getStructure() const = 0;
+    virtual void request(PipelineControl::shared_pointer const &amp; control, size_t elementCount) = 0;
+    virtual void cancel() = 0;
+};
+</pre>
+where
+<dl>
+   <dt>getMinQueueSize</dt>
+     <dd>
+       Returns (minimum) local queue size.<br />
+       The actual local queue size = max( getMinQueueSize(), client queue size );
+     </dd>
+   <dt>getStructure</dt>
+     <dd>
+       Description of the structure used by this session.
+     </dd>
+   <dt>request</dt>
+     <dd>
+         Request for additional (!) elementCount elements<br />
+         The service should eventually call PipelineControl.getFreeElement() and PipelineControl.putElement()
+          to provide [PipelineControl.getRequestedCount(), PipelineControl.getFreeElementCount()] elements.
+     </dd>
+   <dt>cancel</dt>
+     <dd>
+       Cancel the session (called by the client).
+     </dd>
+</dl>
+<h4>PipelineService</h4>
+<p>This is called to create an instance of a service.
+Note that it returns an instance of <b>PipelineSession</b>, which must be implemented by the service.
+</p>
+<pre>
+class PipelineService
+{
+    virtual PipelineSessionPtr createPipeline(PVStructurePtr const &amp; pvRequest) = 0;
+};
+</pre>
+where
+<dl>
+   <dt>createPipeline</dt>
+     <dd>Called to create a new instance of the service.<br />
+     </dd>
+</dl>
+
 </div>
 </body>
 </html>
