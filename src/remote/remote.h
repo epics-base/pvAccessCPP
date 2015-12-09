@@ -199,6 +199,8 @@ namespace epics {
              */
             virtual const osiSockAddr* getRemoteAddress() const = 0;
 
+            virtual const std::string& getRemoteName() const = 0;
+
             // TODO getContext?
 
             /**

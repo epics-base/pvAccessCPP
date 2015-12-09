@@ -348,6 +348,7 @@ namespace epics {
 
       SOCKET _channel;
       osiSockAddr _socketAddress;
+      std::string _socketName;
     };
 
 
@@ -393,6 +394,9 @@ namespace epics {
         return &_socketAddress;
       }
 
+      const std::string& getRemoteName() const {
+          return _socketName;
+      }
 
       epics::pvData::int8 getRevision() const  {
         return PVA_PROTOCOL_REVISION;

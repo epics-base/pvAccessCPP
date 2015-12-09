@@ -350,6 +350,8 @@ namespace epics {
       }
 
       const osiSockAddr* getRemoteAddress() const  { return 0; }
+      std::string dummyRemoteName;
+      const std::string& getRemoteName() const {return dummyRemoteName;}
 
       epics::pvData::int8 getRevision() const  
       { 

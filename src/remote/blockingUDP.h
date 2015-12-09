@@ -73,6 +73,10 @@ namespace epics {
                 return &_remoteAddress;
             }
 
+            virtual const std::string& getRemoteName() const {
+                return _remoteName;
+            }
+
             virtual std::string getType() const {
                 return std::string("udp");
             }
@@ -329,6 +333,7 @@ namespace epics {
              * Remote address.
              */
             osiSockAddr _remoteAddress;
+            std::string _remoteName;
 
             /**
              * Send addresses.

@@ -760,7 +760,7 @@ ChannelRequester::shared_pointer ServerChannelRequesterImpl::create(
     std::tr1::shared_ptr<ServerChannelRequesterImpl> tp(new ServerChannelRequesterImpl(transport, channelName, cid, css));
     ChannelRequester::shared_pointer cr = tp;
     // TODO exception guard and report error back
-	provider->createChannel(channelName, cr, transport->getPriority());
+    provider->createChannel(channelName, cr, transport->getPriority(), transport->getRemoteName());
 	return cr;
 }
 

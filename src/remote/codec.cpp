@@ -1201,7 +1201,13 @@ namespace epics {
         LOG(logLevelError,
           "Error fetching socket remote address: %s.",
           errStr);
+        _socketName = "<unknown>:0";
+      } else {
+          char ipAddrStr[64];
+          ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
+          _socketName = ipAddrStr;
       }
+
     }
 
     // must be called only once, when there will be no operation on socket (e.g. just before tx/rx thread exists)
@@ -1443,7 +1449,6 @@ namespace epics {
       sendBufferSize, receiveBufferSize, PVA_DEFAULT_PRIORITY),
       _lastChannelSID(0), _verifyOrVerified(false), _securityRequired(false)
     {
-
       // NOTE: priority not yet known, default priority is used to 
       //register/unregister
       // TODO implement priorities in Reactor... not that user will
@@ -1589,12 +1594,10 @@ namespace epics {
 
     if (IS_LOGGABLE(logLevelDebug))
     {
-        char ipAddrStr[64];
-        ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
         LOG(
           logLevelDebug,
           "Transport to %s still has %zd channel(s) active and closing...",
-          ipAddrStr, _channels.size());
+          _socketName.c_str(), _channels.size());
     }
 
     std::map<pvAccessID, ServerChannel::shared_pointer>::iterator it = _channels.begin();
@@ -1614,9 +1617,7 @@ namespace epics {
   {
       if (IS_LOGGABLE(logLevelDebug))
       {
-          char ipAddrStr[48];
-          ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-          LOG(logLevelDebug, "Authentication completed with status '%s' for PVA client: %s.", Status::StatusTypeName[status.getType()], ipAddrStr);
+          LOG(logLevelDebug, "Authentication completed with status '%s' for PVA client: %s.", Status::StatusTypeName[status.getType()], _socketName.c_str());
       }
 
       if (!isVerified()) // TODO sync
@@ -1663,9 +1664,7 @@ namespace epics {
 
             if (IS_LOGGABLE(logLevelDebug))
             {
-                char ipAddrStr[48];
-                ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-                LOG(logLevelDebug, "No security plug-in installed, selecting default plug-in '%s' for PVA client: %s.", securityPlugin->getId().c_str(), ipAddrStr);
+                LOG(logLevelDebug, "No security plug-in installed, selecting default plug-in '%s' for PVA client: %s.", securityPlugin->getId().c_str(), _socketName.c_str());
             }
         }
     }
@@ -1689,9 +1688,7 @@ namespace epics {
     } catch (SecurityException &se) {
         if (IS_LOGGABLE(logLevelDebug))
         {
-            char ipAddrStr[48];
-            ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-            LOG(logLevelDebug, "Security plug-in '%s' failed to create a session for PVA client: %s.", initData->securityPluginName.c_str(), ipAddrStr);
+            LOG(logLevelDebug, "Security plug-in '%s' failed to create a session for PVA client: %s.", initData->securityPluginName.c_str(), _socketName.c_str());
         }
         Status status(Status::STATUSTYPE_ERROR, se.what());
         verified(status);
@@ -1792,9 +1789,7 @@ namespace epics {
             
             if (IS_LOGGABLE(logLevelDebug))
             {
-                char ipAddrStr[48];
-                ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-                LOG(logLevelDebug, "Acquiring transport to %s.", ipAddrStr);
+                LOG(logLevelDebug, "Acquiring transport to %s.", _socketName.c_str());
             }
 
             _owners[client->getID()] = TransportClient::weak_pointer(client);
@@ -1829,12 +1824,10 @@ namespace epics {
 
                 if (IS_LOGGABLE(logLevelDebug))
                 {
-                    char ipAddrStr[48];
-                    ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
                     LOG(
                             logLevelDebug,
                             "Transport to %s still has %d client(s) active and closing...",
-                            ipAddrStr, refs);
+                            _socketName.c_str(), refs);
                 }
 
                 TransportClientMap_t::iterator it = _owners.begin();
@@ -1858,9 +1851,7 @@ namespace epics {
             
             if (IS_LOGGABLE(logLevelDebug))
             {
-                char ipAddrStr[48];
-                ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-                LOG(logLevelDebug, "Releasing TCP transport to %s.", ipAddrStr);
+                LOG(logLevelDebug, "Releasing TCP transport to %s.", _socketName.c_str());
             }
 
             _owners.erase(clientID);
