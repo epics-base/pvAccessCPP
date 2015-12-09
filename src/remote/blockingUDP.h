@@ -46,19 +46,20 @@ namespace epics {
         public:
         	POINTER_DEFINITIONS(BlockingUDPTransport);
 
-        private:
             BlockingUDPTransport(bool serverFlag,
                                  std::auto_ptr<ResponseHandler> &responseHandler,
                                  SOCKET channel, osiSockAddr &bindAddress,
                                  short remoteTransportRevision);
-        public:
+
             static shared_pointer create(bool serverFlag,
                     std::auto_ptr<ResponseHandler>& responseHandler,
                     SOCKET channel, osiSockAddr& bindAddress,
-                    short remoteTransportRevision)
+                    short remoteTransportRevision) EPICS_DEPRECATED
             {
                 shared_pointer thisPointer(
-                            new BlockingUDPTransport(serverFlag, responseHandler, channel, bindAddress, remoteTransportRevision)
+                            new BlockingUDPTransport(serverFlag, responseHandler,
+                                                     channel, bindAddress,
+                                                     remoteTransportRevision)
                 );
                 return thisPointer;
             }
@@ -67,6 +68,11 @@ namespace epics {
 
             virtual bool isClosed() {
                 return _closed.get();
+            }
+
+            void setReplyTransport(const Transport::shared_pointer& T)
+            {
+                _replyTransport = T;
             }
 
             virtual const osiSockAddr* getRemoteAddress() const {
@@ -323,6 +329,13 @@ namespace epics {
              * Corresponding channel.
              */
             SOCKET _channel;
+
+            /** When provided, this transport is used for replies (passed to handler)
+             * instead of *this.  This feature is used in the situation where broadcast
+             * traffic is received on one socket, but a different socket must be used
+             * for unicast replies.
+             */
+            Transport::shared_pointer _replyTransport;
 
             /**
              * Bind address.

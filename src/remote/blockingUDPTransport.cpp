@@ -40,8 +40,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
 
         PVACCESS_REFCOUNT_MONITOR_DEFINE(blockingUDPTransport);
 
-        BlockingUDPTransport::BlockingUDPTransport(
-                bool serverFlag,
+        BlockingUDPTransport::BlockingUDPTransport(bool serverFlag,
                 auto_ptr<ResponseHandler>& responseHandler, SOCKET channel,
                 osiSockAddr& bindAddress,
                 short /*remoteTransportRevision*/) :
@@ -213,7 +212,8 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
 
             osiSockAddr fromAddress;
             osiSocklen_t addrStructSize = sizeof(sockaddr);
-            Transport::shared_pointer thisTransport = shared_from_this();
+            Transport::shared_pointer thisTransport = shared_from_this(),
+                                      replyTo(_replyTransport ? _replyTransport : thisTransport);
 
             try {
 
@@ -249,7 +249,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                             _receiveBuffer->flip();
 
                             try{
-                                processBuffer(thisTransport, fromAddress, _receiveBuffer.get());
+                                processBuffer(replyTo, fromAddress, _receiveBuffer.get());
                             }catch(std::exception& e){
                                 LOG(logLevelError,
                                   "an exception caught while in UDP receiveThread at %s:%d: %s",
@@ -304,7 +304,8 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             _shutdownEvent.signal();
         }
 
-        bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & thisTransport, osiSockAddr& fromAddress, ByteBuffer* receiveBuffer) {
+        bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & replyTransport,
+                                                 osiSockAddr& fromAddress, ByteBuffer* receiveBuffer) {
 
             // handle response(s)
             while(likely((int)receiveBuffer->getRemaining()>=PVA_MESSAGE_HEADER_SIZE)) {
@@ -342,7 +343,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 if(unlikely(nextRequestPosition>receiveBuffer->getLimit())) return false;
 
                 // handle
-                _responseHandler->handleResponse(&fromAddress, thisTransport,
+                _responseHandler->handleResponse(&fromAddress, replyTransport,
                         version, command, payloadSize,
                         _receiveBuffer.get());
 
