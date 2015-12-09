@@ -112,7 +112,7 @@ namespace pvAccess {
                             }
                         }
 
-                        retval = ::listen(_serverSocketChannel, 1024);
+                        retval = ::listen(_serverSocketChannel, 4);
                         if(retval<0) {
                             epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
                             ostringstream temp;
