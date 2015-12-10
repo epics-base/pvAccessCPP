@@ -1987,7 +1987,7 @@ void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor::s
 	{
 		Lock guard(_mutex);
 		_status = status;
-		_channelMonitor = monitor;
+        _channelMonitor = monitor; //TODO inconsistent locking for _channelMonitor
 		_structure = structure;
 	}
 	TransportSender::shared_pointer thisSender = shared_from_this();
