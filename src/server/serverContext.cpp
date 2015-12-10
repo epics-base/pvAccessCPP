@@ -138,6 +138,11 @@ void ServerContextImpl::loadConfiguration()
     if (debugLevel > 0)
         SET_LOG_LEVEL(logLevelDebug);
 
+    _ifaceAddr.ia.sin_family = AF_INET;
+    _ifaceAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+    _ifaceAddr.ia.sin_port = 0;
+    config->getPropertyAsAddress("EPICS_PVAS_INTF_ADDR_LIST", &_ifaceAddr);
+
     _beaconAddressList = config->getPropertyAsString("EPICS_PVA_ADDR_LIST", _beaconAddressList);
     _beaconAddressList = config->getPropertyAsString("EPICS_PVAS_BEACON_ADDR_LIST", _beaconAddressList);
 
@@ -149,6 +154,7 @@ void ServerContextImpl::loadConfiguration()
 
     _serverPort = config->getPropertyAsInteger("EPICS_PVA_SERVER_PORT", _serverPort);
     _serverPort = config->getPropertyAsInteger("EPICS_PVAS_SERVER_PORT", _serverPort);
+    _ifaceAddr.ia.sin_port = htons(_serverPort);
 
     _broadcastPort = config->getPropertyAsInteger("EPICS_PVA_BROADCAST_PORT", _broadcastPort);
     _broadcastPort = config->getPropertyAsInteger("EPICS_PVAS_BROADCAST_PORT", _broadcastPort);
@@ -158,6 +164,21 @@ void ServerContextImpl::loadConfiguration()
 
     _channelProviderNames = config->getPropertyAsString("EPICS_PVA_PROVIDER_NAMES", _channelProviderNames);
     _channelProviderNames = config->getPropertyAsString("EPICS_PVAS_PROVIDER_NAMES", _channelProviderNames);
+
+    _ifaceBCast.ia.sin_family = AF_UNSPEC;
+    if(_ifaceAddr.ia.sin_addr.s_addr != htonl(INADDR_ANY)) {
+        ELLLIST alist = ELLLIST_INIT;
+        SOCKET sock = epicsSocketCreate(AF_INET, SOCK_STREAM, 0);
+        if(sock) {
+            osiSockDiscoverBroadcastAddresses(&alist, sock, &_ifaceAddr);
+            epicsSocketDestroy(sock);
+        }
+        if(ellCount(&alist)>0) {
+            osiSockAddrNode *node = (osiSockAddrNode*)ellFirst(&alist);
+            _ifaceBCast = node->addr;
+        }
+        ellFree(&alist);
+    }
 }
 
 bool ServerContextImpl::isChannelProviderNamePreconfigured()
@@ -246,7 +267,7 @@ void ServerContextImpl::internalInitialize()
 
     ServerContextImpl::shared_pointer thisServerContext = shared_from_this();
 
-	_acceptor.reset(new BlockingTCPAcceptor(thisServerContext, thisServerContext, _serverPort, _receiveBufferSize));
+    _acceptor.reset(new BlockingTCPAcceptor(thisServerContext, thisServerContext, _ifaceAddr, _receiveBufferSize));
 	_serverPort = ntohs(_acceptor->getBindAddress()->ia.sin_port);
 
     // setup broadcast UDP transport
@@ -265,7 +286,7 @@ void ServerContextImpl::initializeBroadcastTransport()
 	    osiSockAddr listenLocalAddress;
 	    listenLocalAddress.ia.sin_family = AF_INET;
 	    listenLocalAddress.ia.sin_port = htons(_broadcastPort);
-	    listenLocalAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+        listenLocalAddress.ia.sin_addr.s_addr = _ifaceAddr.ia.sin_addr.s_addr;
 
 		// where to send addresses
 	    SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -284,7 +305,36 @@ void ServerContextImpl::initializeBroadcastTransport()
                 nullTransportClient, responseHandler,
                 listenLocalAddress, PVA_PROTOCOL_REVISION,
                 PVA_DEFAULT_PRIORITY));
+        listenLocalAddress = *_broadcastTransport->getRemoteAddress();
         _broadcastTransport->setSendAddresses(broadcastAddresses.get());
+        _broadcastPort = ntohs(listenLocalAddress.ia.sin_port);
+
+#if !defined(_WIN32)
+        if(_ifaceAddr.ia.sin_addr.s_addr != htonl(INADDR_ANY)) {
+            if(_ifaceBCast.ia.sin_family == AF_UNSPEC ||
+                    _ifaceBCast.ia.sin_addr.s_addr == listenLocalAddress.ia.sin_addr.s_addr) {
+                LOG(logLevelWarn, "Unable to find broadcast address of interface\n");
+            } else {
+                /* An oddness of BSD sockets (not winsock) is that binding to
+                 * INADDR_ANY will receive unicast and broadcast, but binding to
+                 * a specific interface address receives only unicast.  The trick
+                 * is to bind a second socket to the interface broadcast address,
+                 * which will then receive only broadcasts.
+                 */
+                _ifaceBCast.ia.sin_port = listenLocalAddress.ia.sin_port;
+
+                responseHandler = createResponseHandler();
+                _broadcastTransport2 = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
+                                                    nullTransportClient, responseHandler,
+                                                    _ifaceBCast, PVA_PROTOCOL_REVISION,
+                                                    PVA_DEFAULT_PRIORITY));
+                /* The other wrinkle is that nothing should be sent from this second
+                 * socket.  So replies are made through the unicast socket.
+                 */
+                _broadcastTransport2->setReplyTransport(_broadcastTransport);
+            }
+        }
+#endif
 
 		// set ignore address list
 		if (!_ignoreAddressList.empty())
@@ -324,7 +374,7 @@ void ServerContextImpl::initializeBroadcastTransport()
             {
                 osiSockAddr group;
                 aToIPAddr("224.0.0.128", _broadcastPort, &group.ia);
-                _broadcastTransport->join(group, loAddr);
+                _broadcastTransport->join(group, _ifaceAddr);
 
                 osiSockAddr anyAddress;
                 anyAddress.ia.sin_family = AF_INET;
@@ -356,6 +406,8 @@ void ServerContextImpl::initializeBroadcastTransport()
         }
 
         _broadcastTransport->start();
+        if(_broadcastTransport2)
+            _broadcastTransport2->start();
         if (_localMulticastTransport)
             _localMulticastTransport->start();
 	}
@@ -455,11 +507,13 @@ void ServerContextImpl::destroy()
 void ServerContextImpl::internalDestroy()
 {
 	// stop responding to search requests
-    if (_broadcastTransport.get())
-	{
-		_broadcastTransport->close();
-		_broadcastTransport.reset();
-	}
+    if (_broadcastTransport)
+        _broadcastTransport->close();
+    if (_broadcastTransport2)
+        _broadcastTransport2->close();
+    _broadcastTransport.reset();
+    _broadcastTransport2.reset();
+
     // and close local multicast transport
     if (_localMulticastTransport.get())
     {

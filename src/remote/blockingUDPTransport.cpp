@@ -434,7 +434,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             imreq.imr_multiaddr.s_addr = mcastAddr.ia.sin_addr.s_addr;
             imreq.imr_interface.s_addr = nifAddr.ia.sin_addr.s_addr;
 
-            // join multicast group on default interface
+            // join multicast group on the given interface
             int status = ::setsockopt(_channel, IPPROTO_IP, IP_ADD_MEMBERSHIP,
                             (char*)&imreq, sizeof(struct ip_mreq));
             if (status)

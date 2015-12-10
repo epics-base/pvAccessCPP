@@ -312,6 +312,8 @@ private:
 	 */
 	std::string _beaconAddressList;
 
+    osiSockAddr _ifaceAddr, _ifaceBCast;
+
 	/**
 	 * A space-separated list of address from which to ignore name resolution requests.
 	 * Each address must be of the form: ip.number:port or host.name:port
@@ -351,7 +353,7 @@ private:
 	/**
 	 * Broadcast transport needed for channel searches.
 	 */
-	BlockingUDPTransport::shared_pointer _broadcastTransport;
+    BlockingUDPTransport::shared_pointer _broadcastTransport, _broadcastTransport2;
 
     /**
      * Local broadcast transport needed for local fan-out.
