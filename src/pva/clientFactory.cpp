@@ -16,9 +16,8 @@
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-// TODO global static variable (de/initialization order not guaranteed)
-static Mutex mutex;
-static ClientContextImpl::shared_pointer context;
+static Mutex cfact_mutex;
+static ChannelProvider::shared_pointer cfact_shared_provider;
 
 class ChannelProviderFactoryImpl : public ChannelProviderFactory
 {
@@ -32,70 +31,47 @@ public:
 
     virtual ChannelProvider::shared_pointer sharedInstance()
     {
-        Lock guard(mutex);
-        if (!context.get())
+        Lock guard(cfact_mutex);
+        if (!cfact_shared_provider)
         {
-            try {
-                ClientContextImpl::shared_pointer lcontext = createClientContextImpl();
-                lcontext->initialize();
-                context = lcontext;
-            } catch (std::exception &e) {
-                LOG(logLevelError, "Unhandled exception caught at %s:%d: %s", __FILE__, __LINE__, e.what());
-            } catch (...) {
-                LOG(logLevelError, "Unhandled exception caught at %s:%d.", __FILE__, __LINE__);
-            }
+            Configuration::shared_pointer def;
+            cfact_shared_provider = createClientProvider(def);
         }
-        return context->getProvider();
+        return cfact_shared_provider;
     }
 
-    virtual ChannelProvider::shared_pointer newInstance()
+    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf)
     {
-        Lock guard(mutex);
-        try {
-            ClientContextImpl::shared_pointer lcontext = createClientContextImpl();
-            lcontext->initialize();
-            return lcontext->getProvider();
-        } catch (std::exception &e) {
-            LOG(logLevelError, "Unhandled exception caught at %s:%d: %s", __FILE__, __LINE__, e.what());
-            return ChannelProvider::shared_pointer();
-        } catch (...) {
-            LOG(logLevelError, "Unhandled exception caught at %s:%d.", __FILE__, __LINE__);
-            return ChannelProvider::shared_pointer();
-        }
-    }
-
-    void destroySharedInstance()
-    {
-        Lock guard(mutex);
-        if (context.get())
-        {
-            context->dispose();
-            context.reset();
-        }
+        Lock guard(cfact_mutex);
+        return createClientProvider(conf);
     }
 };
 
-static ChannelProviderFactoryImpl::shared_pointer factory;
+static ChannelProviderFactoryImpl::shared_pointer pva_factory;
 
 void ClientFactory::start()
 {
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
 
-    Lock guard(mutex);
-    if (!factory.get())
-        factory.reset(new ChannelProviderFactoryImpl());
+    Lock guard(cfact_mutex);
+    if (!pva_factory)
+        pva_factory.reset(new ChannelProviderFactoryImpl());
 
-    registerChannelProviderFactory(factory);
+    registerChannelProviderFactory(pva_factory);
 }
 
 void ClientFactory::stop()
 {
-    Lock guard(mutex);
+    Lock guard(cfact_mutex);
 
-    if (factory.get())
+    if (pva_factory)
     {
-        unregisterChannelProviderFactory(factory);
-        factory->destroySharedInstance();
+        unregisterChannelProviderFactory(pva_factory);
+        if(!pva_factory.unique()) {
+            LOG(logLevelWarn, "ClientFactory::stop() finds shared client context with %u remaining users",
+                (unsigned)pva_factory.use_count());
+        }
+        pva_factory.reset();
     }
 }

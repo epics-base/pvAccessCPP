@@ -32,6 +32,7 @@
 
 namespace epics {
 namespace pvAccess { 
+        class Configuration;
 
         // TODO add write-only?
         // change names
@@ -870,7 +871,7 @@ namespace pvAccess {
             virtual Channel::shared_pointer createChannel(std::string const & channelName,ChannelRequester::shared_pointer const & channelRequester,
                                                    short priority, std::string const & address) = 0;
 
-            virtual void configure(epics::pvData::PVStructure::shared_pointer /*configuration*/) {};
+            virtual void configure(epics::pvData::PVStructure::shared_pointer /*configuration*/) EPICS_DEPRECATED {};
             virtual void flush() {};
             virtual void poll() {};
 
@@ -892,16 +893,26 @@ namespace pvAccess {
             virtual std::string getFactoryName() = 0;
 
             /**
-             * Get a shared instance.
+             * Get a shared instance using the default Configuration.
              * @return a shared instance.
              */
             virtual ChannelProvider::shared_pointer sharedInstance() = 0;
 
             /**
-             * Create a new instance.
+             * Create a new instance using the default Configuration.
              * @return a new instance.
              */
-            virtual ChannelProvider::shared_pointer newInstance() = 0;
+            virtual ChannelProvider::shared_pointer newInstance() {
+                return newInstance(std::tr1::shared_ptr<Configuration>());
+            }
+
+            /**
+             * Create a new instance using a specific Configuration.
+             * @return a new instance.
+             */
+            virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>&) {
+                throw std::logic_error("This ChannelProviderFactory does not support non-default configurations");
+            }
         };
 
         /**

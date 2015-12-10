@@ -77,13 +77,13 @@ namespace epics {
             /**
              * Initialize client context. This method is called immediately after instance construction (call of constructor).
              */
-            virtual void initialize() = 0;
+            virtual void initialize() = 0; // public?
 
             /**
              * Get channel provider implementation.
              * @return the channel provider.
              */
-            virtual ChannelProvider::shared_pointer const & getProvider() = 0;
+            //virtual ChannelProvider::shared_pointer const & getProvider() = 0;
 
             /**
              * Prints detailed information about the context to the standard output stream.
@@ -132,7 +132,7 @@ namespace epics {
             virtual const osiSockAddr& getLocalBroadcastAddress() const = 0;
         };
 
-        epicsShareExtern ClientContextImpl::shared_pointer createClientContextImpl();
+        epicsShareExtern ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf);
 
     }
 }
