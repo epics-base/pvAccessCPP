@@ -614,6 +614,8 @@ namespace pvAccess {
             public:
             POINTER_DEFINITIONS(Channel);
 
+            virtual ~Channel() {}
+
         	/**
         	 * Channel connection status.
         	 */
