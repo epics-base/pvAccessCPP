@@ -234,12 +234,6 @@ public:
 	epics::pvData::int32 getServerPort();
 
 	/**
-	 * Set server port number.
-	 * @param port new server port number.
-	 */
-	void setServerPort(epics::pvData::int32 port);
-
-	/**
 	 * Get broadcast port.
 	 * @return broadcast port.
 	 */

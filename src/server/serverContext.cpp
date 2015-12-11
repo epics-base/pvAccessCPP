@@ -593,11 +593,6 @@ int32 ServerContextImpl::getServerPort()
 	return _serverPort;
 }
 
-void ServerContextImpl::setServerPort(int32 port)
-{
-	_serverPort = port;
-}
-
 int32 ServerContextImpl::getBroadcastPort()
 {
 	return _broadcastPort;
