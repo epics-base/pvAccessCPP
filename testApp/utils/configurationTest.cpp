@@ -62,7 +62,6 @@ void testProp()
     {
         std::istringstream input(indata);
         plist.load(input);
-        plist.list();
         testOk1(!input.bad());
         testOk1(input.eof());
     }
@@ -94,6 +93,25 @@ static void setEnv(const char *name, const char *val)
 {
     epicsEnvSet(name, val);
     testDiag("%s = \"%s\"", name, getenv(name));
+}
+
+static void testBuilder()
+{
+    Configuration::shared_pointer C(ConfigurationBuilder()
+                                    .add("TESTKEY","value1")
+                                    .push_map()
+                                    .push_env()
+                                    .add("OTHERKEY","value3")
+                                    .push_map()
+                                    .build());
+
+    testOk1(C->getPropertyAsString("key", "X")=="X");
+    testOk1(C->getPropertyAsString("TESTKEY", "X")=="value1");
+    testOk1(C->getPropertyAsString("OTHERKEY", "X")=="value3");
+    setEnv("TESTKEY", "value2");
+    setEnv("OTHERKEY","value2");
+    testOk1(C->getPropertyAsString("TESTKEY", "X")=="value2");
+    testOk1(C->getPropertyAsString("OTHERKEY", "X")=="value3");
 }
 
 static void showAddr(const osiSockAddr& addr)
@@ -183,8 +201,9 @@ void testConfig()
 
 MAIN(configurationTest)
 {
-    testPlan(44);
+    testPlan(49);
     testProp();
+    testBuilder();
     testConfig();
     return testDone();
 }

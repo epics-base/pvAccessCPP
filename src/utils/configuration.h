@@ -155,6 +155,8 @@ class epicsShareClass ConfigurationMap: public Configuration
 public:
     typedef std::map<std::string, std::string> properties_t;
     properties_t properties;
+    ConfigurationMap() {}
+    ConfigurationMap(const properties_t& p) :properties(p) {}
 private:
     virtual bool tryGetPropertyAsString(const std::string& name, std::string* val) const;
 };
@@ -187,6 +189,27 @@ public:
         return ret;
     }
     inline size_t size() const {return confs.size();}
+};
+
+struct ConfigurationBuilder
+{
+    ConfigurationBuilder();
+    ConfigurationBuilder& push_env();
+    ConfigurationBuilder& push_map();
+    ConfigurationBuilder& push_config(const Configuration::shared_pointer&);
+    template<typename V>
+    ConfigurationBuilder& add(const std::string& name, const V& val)
+    {
+        std::ostringstream strm;
+        strm<<val;
+        return _add(name, strm.str());
+    }
+    Configuration::shared_pointer build();
+private:
+    ConfigurationBuilder& _add(const std::string& name, const std::string& val);
+    ConfigurationMap::properties_t mymap;
+    std::tr1::shared_ptr<ConfigurationStack> stack;
+    friend ConfigurationBuilder& operator<<(ConfigurationBuilder&, const std::string& s);
 };
 
 /**
@@ -249,6 +272,14 @@ public:
 	 * @return configuration provider
 	 */
 	static ConfigurationProvider::shared_pointer getProvider();
+    static void registerConfiguration(const std::string &name, Configuration::shared_pointer const & configuration)
+    {
+        getProvider()->registerConfiguration(name, configuration);
+    }
+    static Configuration::shared_pointer getConfiguration(const std::string& name)
+    {
+        return getProvider()->getConfiguration(name);
+    }
 
 private:
 	ConfigurationFactory() {};

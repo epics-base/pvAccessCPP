@@ -249,6 +249,52 @@ bool ConfigurationStack::tryGetPropertyAsString(const std::string& name, std::st
     return false;
 }
 
+ConfigurationBuilder::ConfigurationBuilder() :stack(new ConfigurationStack) {}
+
+ConfigurationBuilder& ConfigurationBuilder::push_env()
+{
+    Configuration::shared_pointer env(new ConfigurationEnviron);
+    stack->push_back(env);
+    return *this;
+}
+
+ConfigurationBuilder& ConfigurationBuilder::push_map()
+{
+    Configuration::shared_pointer env(new ConfigurationMap(mymap));
+    stack->push_back(env);
+    mymap.clear();
+    return *this;
+}
+
+ConfigurationBuilder&
+ConfigurationBuilder::push_config(const Configuration::shared_pointer& conf)
+{
+    stack->push_back(conf);
+    return *this;
+}
+
+ConfigurationBuilder&
+ConfigurationBuilder::_add(const std::string& name, const std::string& val)
+{
+    if(name.find_first_of(" \t\r\n")!=name.npos)
+        THROW_EXCEPTION2(std::invalid_argument, "Key name may not contain whitespace");
+    mymap[name] = val;
+    return *this;
+}
+
+Configuration::shared_pointer ConfigurationBuilder::build()
+{
+    if(!mymap.empty())
+        THROW_EXCEPTION2(std::logic_error, "Missing call to .push_map()");
+    if(stack->size()==0) {
+        return Configuration::shared_pointer(new ConfigurationMap); // empty map
+    } else if(stack->size()==1) {
+        return stack->pop_back();
+    } else {
+        return stack;
+    }
+}
+
 void ConfigurationProviderImpl::registerConfiguration(const string &name, Configuration::shared_pointer const & configuration)
 {
 	Lock guard(_mutex);
@@ -263,12 +309,15 @@ void ConfigurationProviderImpl::registerConfiguration(const string &name, Config
 
 Configuration::shared_pointer ConfigurationProviderImpl::getConfiguration(const string &name)
 {
-	std::map<std::string,Configuration::shared_pointer>::iterator configsIter = _configs.find(name);
+    Lock guard(_mutex);
+    std::map<std::string,Configuration::shared_pointer>::iterator configsIter = _configs.find(name);
 	if(configsIter != _configs.end())
 	{
 		return configsIter->second;
 	}
-	return Configuration::shared_pointer();
+    Configuration::shared_pointer env(new ConfigurationEnviron); // default to environment only
+    _configs[name] = env; // ensure that a later attempt to define this config will fail
+    return env;
 }
 
 ConfigurationProvider::shared_pointer configurationProvider;
@@ -280,8 +329,7 @@ ConfigurationProvider::shared_pointer ConfigurationFactory::getProvider()
 	if(configurationProvider.get() == NULL)
 	{
 		configurationProvider.reset(new ConfigurationProviderImpl());
-		// default
-		Configuration::shared_pointer systemConfig(new SystemConfigurationImpl());
+        Configuration::shared_pointer systemConfig(new ConfigurationEnviron);
 		configurationProvider->registerConfiguration("system", systemConfig);
 	}
 	return configurationProvider;
