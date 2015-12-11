@@ -60,6 +60,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                         (serverFlag ? 0x40 : 0x00) | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00))
         {
             PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(blockingUDPTransport);
+            assert(_responseHandler.get());
 
             osiSocklen_t sockLen = sizeof(sockaddr);
             // read the actual socket info

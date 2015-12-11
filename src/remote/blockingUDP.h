@@ -303,7 +303,7 @@ namespace epics {
             /**
              * Response handler.
              */
-            std::auto_ptr<ResponseHandler> _responseHandler;
+            const std::auto_ptr<ResponseHandler> _responseHandler;
 
             virtual void processRead();
             
