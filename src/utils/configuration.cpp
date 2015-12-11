@@ -9,6 +9,7 @@
 #include <pv/epicsException.h>
 
 #include <osiSock.h>
+#include <epicsStdlib.h>
 
 #define epicsExportSharedSymbols
 #include <pv/configuration.h>
@@ -139,105 +140,63 @@ void Properties::list()
 	}
 }
 
-SystemConfigurationImpl::SystemConfigurationImpl() :
-		_properties(new Properties())
+bool Configuration::getPropertyAsBoolean(const std::string &name, const bool defaultValue) const
 {
-	// no exception, default value is taken
-	//_ibuffer.exceptions ( ifstream::failbit | ifstream::badbit );
-	//_obuffer.exceptions ( ifstream::failbit | ifstream::badbit );
-}
+    string value = getPropertyAsString(name, defaultValue ? "1" : "0");
+    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
 
-SystemConfigurationImpl::~SystemConfigurationImpl()
-{
-}
-
-bool SystemConfigurationImpl::getPropertyAsBoolean(const string &name, const bool defaultValue)
-{
-	/*
-	bool retval;
-	_ibuffer.clear();
-	_obuffer.clear();
-	_obuffer.str("");
-	_obuffer << defaultValue;
-	_ibuffer.str(getPropertyAsString(name,_obuffer.str()));
-	_ibuffer >> retval;
-	if (_ibuffer.fail() || _ibuffer.bad())
-        return defaultValue;
-    else
-        return retval;
-        */
-
-	string value = getPropertyAsString(name, defaultValue ? "1" : "0");
-	std::transform(value.begin(), value.end(), value.begin(), ::tolower);
-
-	bool isTrue = (value == "1") || (value == "true") || (value == "yes");
+    bool isTrue = (value == "1") || (value == "true") || (value == "yes");
     if (isTrue)
         return true;
 
-	bool isFalse = (value == "0") || (value == "false") || (value == "no");
+    bool isFalse = (value == "0") || (value == "false") || (value == "no");
     if (isFalse)
         return false;
 
-	// invalid value
+    // invalid value
     return defaultValue;
 }
 
-int32 SystemConfigurationImpl::getPropertyAsInteger(const string &name, const int32 defaultValue)
+epics::pvData::int32 Configuration::getPropertyAsInteger(const std::string &name, const epics::pvData::int32 defaultValue) const
 {
-    int32 retval = defaultValue;
-	_ibuffer.clear();
-	_obuffer.clear();
-	_obuffer.str("");
-	_obuffer << defaultValue;
-	_ibuffer.str(getPropertyAsString(name, _obuffer.str()));
-	_ibuffer >> retval;
-	if (_ibuffer.fail() || _ibuffer.bad())
+    epicsInt32 ret;
+    std::string val(getPropertyAsString(name, ""));
+
+    if(epicsParseInt32(val.c_str(), &ret, 0, NULL))
         return defaultValue;
-    else
-        return retval;
+    return ret;
 }
 
-float SystemConfigurationImpl::getPropertyAsFloat(const string &name, const float defaultValue)
+float Configuration::getPropertyAsFloat(const std::string &name, const float defaultValue) const
 {
-	float retval;
-	_ibuffer.clear();
-	_obuffer.clear();
-	_obuffer.str("");
-	_obuffer << defaultValue;
-	_ibuffer.str(getPropertyAsString(name, _obuffer.str()));
-	_ibuffer >> retval;
-	if (_ibuffer.fail() || _ibuffer.bad())
+    float ret;
+    std::string val(getPropertyAsString(name, ""));
+
+    if(epicsParseFloat(val.c_str(), &ret, NULL))
         return defaultValue;
-    else
-        return retval;
+    return ret;
 }
 
-float SystemConfigurationImpl::getPropertyAsDouble(const string &name, const double defaultValue)
+double Configuration::getPropertyAsDouble(const std::string &name, const double defaultValue) const
 {
-	float retval;
-	_ibuffer.clear();
-	_obuffer.clear();
-	_obuffer.str("");
-	_obuffer << defaultValue;
-	_ibuffer.str(getPropertyAsString(name, _obuffer.str()));
-	_ibuffer >> retval;
-	if (_ibuffer.fail() || _ibuffer.bad())
+    double ret;
+    std::string val(getPropertyAsString(name, ""));
+
+    if(epicsParseDouble(val.c_str(), &ret, NULL))
         return defaultValue;
-    else
-        return retval;
+    return ret;
 }
 
-string SystemConfigurationImpl::getPropertyAsString(const string &name, const string &defaultValue)
+std::string Configuration::getPropertyAsString(const std::string &name, const std::string &defaultValue) const
 {
-    const char* val = getenv(name.c_str());
-	if(val != NULL)
-	{
-		return _properties->getProperty(name, string(val));
-	}
-	return _properties->getProperty(name, defaultValue);
+    std::string val;
+    if(tryGetPropertyAsString(name, &val))
+        return val;
+    else
+        return defaultValue;
 }
 
-bool SystemConfigurationImpl::getPropertyAsAddress(const std::string& name, osiSockAddr* addr)
+bool Configuration::getPropertyAsAddress(const std::string& name, osiSockAddr* addr) const
 {
     unsigned short dftport=0;
     if(addr->sa.sa_family==AF_INET)
@@ -253,19 +212,41 @@ bool SystemConfigurationImpl::getPropertyAsAddress(const std::string& name, osiS
     return true;
 }
 
-bool SystemConfigurationImpl::hasProperty(const string &key)
+bool Configuration::hasProperty(const std::string &name) const
 {
-    const char* val = getenv(key.c_str());
-    return (val != NULL) || _properties->hasProperty(key);
+    return tryGetPropertyAsString(name, NULL);
 }
 
-ConfigurationProviderImpl::ConfigurationProviderImpl()
+bool ConfigurationMap::tryGetPropertyAsString(const std::string& name, std::string* val) const
 {
-
+    properties_t::const_iterator it = properties.find(name);
+    if(it==properties.end())
+        return false;
+    if(val)
+        *val = it->second;
+    return true;
 }
 
-ConfigurationProviderImpl::~ConfigurationProviderImpl()
+bool ConfigurationEnviron::tryGetPropertyAsString(const std::string& name, std::string* val) const
 {
+    const char *env = getenv(name.c_str());
+    if(!env || !*env)
+        return false;
+    if(val)
+        *val = env;
+    return true;
+}
+
+bool ConfigurationStack::tryGetPropertyAsString(const std::string& name, std::string* val) const
+{
+    for(confs_t::const_reverse_iterator it = confs.rbegin(), end = confs.rend();
+        it!=end; ++it)
+    {
+        Configuration& conf = **it;
+        if(conf.tryGetPropertyAsString(name, val))
+            return true;
+    }
+    return false;
 }
 
 void ConfigurationProviderImpl::registerConfiguration(const string &name, Configuration::shared_pointer const & configuration)
