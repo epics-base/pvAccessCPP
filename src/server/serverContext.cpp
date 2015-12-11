@@ -102,11 +102,6 @@ void ServerContextImpl::initializeLogger()
     //createFileLogger("serverContextImpl.log");
 }
 
-struct noop_deleter
-{
-    template<class T> void operator()(T * p) {}
-};
-
 Configuration::shared_pointer ServerContextImpl::getConfiguration()
 {
 	Lock guard(_mutex);
