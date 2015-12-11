@@ -24,211 +24,109 @@ namespace pvAccess {
 using namespace epics::pvData;
 using namespace std;
 
-Properties::Properties()
-{
-	_fileName = "";
-	_infile.reset(new ifstream());
-	_infile->exceptions (ifstream::failbit | ifstream::badbit );
-	_outfile.reset(new ofstream());
-	_outfile->exceptions (ofstream::failbit | ofstream::badbit );
-}
+Properties::Properties() {}
 
-Properties::Properties(const string &fileName)
-{
-	_fileName = fileName;
-	_infile.reset(new ifstream());
-	_infile->exceptions (ifstream::failbit | ifstream::badbit );
-	_outfile.reset(new ofstream());
-	_outfile->exceptions (ofstream::failbit | ofstream::badbit );
-}
+Properties::Properties(const string &fileName) : _fileName(fileName) {}
 
-Properties::~Properties()
+const std::string &Properties::getProperty(const string &key) const
 {
-}
-
-void Properties::setProperty(const string &key, const string &value)
-{
-	string oldValue;
-	std::map<std::string,std::string>::iterator propertiesIterator = _properties.find(key);
-
-	if(propertiesIterator != _properties.end()) //found in map
-	{
-		_properties.erase(propertiesIterator);
-	}
-	_properties[key] = value;
-}
-
-string Properties::getProperty(const string &key)
-{
-	std::map<std::string,std::string>::iterator propertiesIterator = _properties.find(key);
-	if(propertiesIterator != _properties.end()) //found in map
-	{
-		return string(propertiesIterator->second);
-	}
-	else
-	{
-		string errMsg = "Property not found in the map: " + key;
-		THROW_BASE_EXCEPTION(errMsg.c_str());
+    _properties_t::const_iterator propertiesIterator = _properties.find(key);
+    if(propertiesIterator != _properties.end()) {
+        return propertiesIterator->second;
+    } else {
+        THROW_BASE_EXCEPTION(string("Property not found in the map: ") + key);
 	}
 }
 
-string Properties::getProperty(const string &key, const string &defaultValue)
+const std::string &Properties::getProperty(const string &key, const string &defaultValue) const
 {
-	std::map<std::string,std::string>::iterator propertiesIterator = _properties.find(key);
-	if(propertiesIterator != _properties.end()) //found in map
-	{
-		return string(propertiesIterator->second);
-	}
-
-	return defaultValue;
+    _properties_t::const_iterator propertiesIterator = _properties.find(key);
+    if(propertiesIterator != _properties.end()) {
+        return propertiesIterator->second;
+    } else {
+        return defaultValue;
+    }
 }
 
-bool Properties::hasProperty(const string &key)
+void Properties::Properties::load()
 {
-    return (_properties.find(key) != _properties.end());
-}
-
-void Properties::load()
-{
-	_properties.clear();
-
-#ifdef NO_STREAM_EXCEPTIONS
-	_infile->open(_fileName.c_str(),ifstream::in);
-	if (_infile->fail())
-#else
-	try
-	{
-		_infile->open(_fileName.c_str(),ifstream::in);
-	}
-	catch (ifstream::failure& e)
-#endif
-	{
-		string errMsg = "Error opening file: " + string(_fileName.c_str());
-		THROW_BASE_EXCEPTION(errMsg.c_str());
-	}
-
-	string line;
-	string property;
-	string key;
-#ifndef NO_STREAM_EXCEPTIONS
-	try
-	{
-#endif
-		while(!_infile->eof())
-		{
-			line.erase();
-			std::getline(*_infile,line);
-
-#ifdef NO_STREAM_EXCEPTIONS
-			if (_infile->fail())
-			{
-				_infile->close();
-				if(_infile->eof())
-				{
-					return; //end of file
-				}
-				string errMsg = "Error reading file: " + _fileName;
-				THROW_BASE_EXCEPTION(errMsg.c_str());
-			}
-#endif
-
-			//remove trailing spaces
-			truncate(line);
-
-			//empty line
-			if(line.length() == 0)
-			{
-				continue;
-			}
-			// comment
-			if(line[0] == '#')
-			{
-				continue;
-			}
-
-			//line is in format: propertyName=propertyValue
-			size_t pos = line.find_first_of('=',0);
-			if(pos == string::npos) //bad value (= not found)
-			{
-				string errMsg = "Bad property line found: " + line;
-				THROW_BASE_EXCEPTION(errMsg.c_str());
-			}
-
-			key = line.substr(0,pos);
-			truncate(key);
-			property = line.substr(pos + 1,line.length());
-			truncate(property);
-			_properties[key] = property;
-		}
-#ifndef NO_STREAM_EXCEPTIONS
-	}
-	catch (ifstream::failure& e)
-	{
-		_infile->close();
-		if(_infile->eof())
-		{
-			return; //end of file
-		}
-		string errMsg = "Error reading file: " + _fileName;
-		THROW_BASE_EXCEPTION(errMsg.c_str());
-	}
-#endif
-	_infile->close();
+    load(_fileName);
 }
 
 void Properties::load(const string &fileName)
 {
-	_fileName = fileName;
-	load();
+    ifstream strm(fileName.c_str());
+    load(strm);
 }
 
-void Properties::store()
+namespace {
+string trim(const string& in)
 {
-#ifdef NO_STREAM_EXCEPTIONS
-	_outfile->open(_fileName.c_str(),ifstream::trunc);
-	if (_outfile->fail())
-#else
-	try
-	{
-		_outfile->open(_fileName.c_str(),ifstream::trunc);
-	}
-	catch (ofstream::failure& e)
-#endif
-	{
-		string errMsg = "Error opening file: " + string(_fileName.c_str());
-		THROW_BASE_EXCEPTION(errMsg.c_str());
-	}
-
-
-	for (std::map<std::string,std::string>::iterator propertiesIterator = _properties.begin();
-			propertiesIterator != _properties.end();
-			propertiesIterator++ )
-	{
-#ifndef NO_STREAM_EXCEPTIONS
-		try
-		{
-#endif
-			string line = string(propertiesIterator->first) + string("=") + string(propertiesIterator->second) + string("\n");
-			_outfile->write(line.c_str(),line.length());
-#ifdef NO_STREAM_EXCEPTIONS
-			if(_outfile->fail())
-#else
-		}
-		catch (ofstream::failure& e)
-#endif
-		{
-			_outfile->close();
-			string errMsg = "Error writing to file: " + string(_fileName.c_str());
-			THROW_BASE_EXCEPTION(errMsg.c_str());
-		}
-	}
-	_outfile->close();
+    size_t A = in.find_first_not_of(" \t\r"),
+           B = in.find_last_not_of(" \t\r");
+    if(A==B)
+        return string();
+    else
+        return in.substr(A, B-A+1);
+}
 }
 
-void Properties::store(const string &fileName)
+void Properties::load(std::istream& strm)
 {
-	_fileName = fileName;
-	store();
+    _properties_t newmap;
+
+    std::string line;
+    unsigned lineno = 0;
+    while(getline(strm, line).good()) {
+        lineno++;
+        size_t idx = line.find_first_not_of(" \t\r");
+        if(idx==line.npos || line[idx]=='#')
+            continue;
+
+        idx = line.find_first_of('=');
+        if(idx==line.npos) {
+            ostringstream msg;
+            msg<<"Malformed line "<<lineno<<" expected '='";
+            throw runtime_error(msg.str());
+        }
+
+        string key(trim(line.substr(0, idx))),
+               value(trim(line.substr(idx+1)));
+
+        if(key.empty()) {
+            ostringstream msg;
+            msg<<"Malformed line "<<lineno<<" expected name before '='";
+            throw runtime_error(msg.str());
+        }
+
+        newmap[key] = value;
+    }
+    if(strm.bad()) {
+        ostringstream msg;
+        msg<<"Malformed line "<<lineno<<" I/O error";
+        throw runtime_error(msg.str());
+    }
+    _properties.swap(newmap);
+}
+
+void Properties::store() const
+{
+    store(_fileName);
+}
+
+void Properties::store(const std::string& fname) const
+{
+    ofstream strm(fname.c_str());
+    store(strm);
+}
+
+void Properties::store(std::ostream& strm) const
+{
+    for(_properties_t::const_iterator it=_properties.begin(), end=_properties.end();
+        it!=end && strm.good(); ++it)
+    {
+        strm << it->first << " = " << it->second << "\n";
+    }
 }
 
 void Properties::list()

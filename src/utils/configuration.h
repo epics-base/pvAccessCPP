@@ -41,36 +41,27 @@ class epicsShareClass Properties
 public:
 	Properties();
 	Properties(const std::string &fileName);
-	virtual ~Properties();
 
-	void setProperty(const std::string &key,const std::string &value);
-	std::string getProperty(const std::string &key);
-	std::string getProperty(const std::string &key, const std::string &defaultValue);
-    bool hasProperty(const std::string &key);
+    inline void setProperty(const std::string &key,const std::string &value)
+    { _properties[key] = value; }
+    const std::string& getProperty(const std::string &key) const;
+    const std::string& getProperty(const std::string &key, const std::string &defaultValue) const;
+    inline bool hasProperty(const std::string &key) const
+    { return _properties.find(key) != _properties.end(); }
 
-	void store();
-	void store(const std::string &fileName);
-	void load();
+    void store() const;
+    void store(const std::string &fileName) const;
+    void store(std::ostream& strm) const;
+    void load();
 	void load(const std::string &fileName);
+    void load(std::istream& strm);
 	void list();
 
+    size_t size() const {return _properties.size();}
 private:
-	std::map<std::string,std::string> _properties;
-	std::auto_ptr<std::ifstream> _infile;
-	std::auto_ptr<std::ofstream> _outfile;
-	std::string _fileName;
-
-	inline void	truncate(std::string& str)
-	{
-		while(str.length() != 0 && (str.at(0) == ' ' || str.at(0) == '\t'))
-		{
-			str.erase(0,1);
-		}
-		while(str.length() != 0 && (str.at(str.length()-1) == ' ' || str.at(str.length()-1) == '\t'))
-		{
-			str.erase(str.length()-1,1);
-		}
-	}
+    typedef std::map<std::string,std::string> _properties_t;
+    _properties_t _properties;
+    std::string _fileName;
 };
 
 

@@ -14,6 +14,7 @@
 #include <epicsAssert.h>
 #include <epicsExit.h>
 #include <envDefs.h>
+#include <epicsString.h>
 #include <osiSock.h>
 
 #include <epicsUnitTest.h>
@@ -30,7 +31,59 @@ void setenv(char * a, char * b, int c)
 
 using namespace epics::pvAccess;
 using namespace epics::pvData;
-using namespace std;
+
+static const char indata[] =
+        "hello =    world  \n"
+        "  # oops\n"
+        " #dd=da\n"
+        " empty =  \n"
+        " this   =   is a test\n\n"
+        ;
+
+static const char expectdata[] =
+        "empty = \n"
+        "hello = world\n"
+        "this = is a test\n"
+        ;
+
+static
+void showEscaped(const char *msg, const std::string& s)
+{
+    std::vector<char> chars(epicsStrnEscapedFromRawSize(s.c_str(), s.size())+1);
+    epicsStrnEscapedFromRaw(&chars[0], chars.size(), s.c_str(), s.size());
+    testDiag("%s: '%s", msg, &chars[0]);
+}
+
+static
+void testProp()
+{
+    Properties plist;
+
+    {
+        std::istringstream input(indata);
+        plist.load(input);
+        plist.list();
+        testOk1(!input.bad());
+        testOk1(input.eof());
+    }
+
+    testOk1(plist.size()==3);
+    testOk1(plist.getProperty("hello")=="world");
+    testOk1(plist.getProperty("this")=="is a test");
+    testOk1(!plist.hasProperty("foobar"));
+
+    {
+        std::ostringstream output;
+        plist.store(output);
+        std::string expect(expectdata), actual(output.str());
+
+        testOk1(!output.bad());
+        testOk(expect.size()==actual.size(), "%u == %u", (unsigned)expect.size(), (unsigned)actual.size());
+        testOk1(actual==expectdata);
+        showEscaped("actual", actual);
+        showEscaped("expect", expect);
+    }
+}
 
 static void showEnv(const char *name)
 {
@@ -60,9 +113,9 @@ static void showAddr(const osiSockAddr& addr)
     } while(0)
 
 
-MAIN(configurationTest)
+static
+void testConfig()
 {
-    testPlan(35);
     testDiag("Default configuration");
     Configuration::shared_pointer configuration(new SystemConfigurationImpl());
 
@@ -126,7 +179,13 @@ MAIN(configurationTest)
 
     Configuration::shared_pointer configurationOut(configProvider->getConfiguration("conf1"));
     testOk1(configurationOut.get() == configuration.get());
+}
 
+MAIN(configurationTest)
+{
+    testPlan(44);
+    testProp();
+    testConfig();
     return testDone();
 }
 
