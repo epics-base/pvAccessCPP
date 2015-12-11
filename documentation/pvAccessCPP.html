@@ -1454,7 +1454,9 @@ where
 </dl>
 <p>Each time the client calls <b>Monitor::release</b> the client sends an <b>ack</b> message to the server every <b>ackAny</b> events.
 The server uses this to delay sending new monitors if the monitor queue is full.</p>
-<p><b>pvAccessCPP/testApp/remote/pipelineServiceExample.cpp</b> Is an example.</p>
+<p><b>pvAccessCPP/testApp/remote/pipelineServiceExample.cpp</b> Is an example.
+It has an additional record option <b>record[limit=n]</b> which makes the server call unlisten aften <b>n</b> events.
+</p>
 <h3>pipelineServer</h3>
 <p>This is a class used by a pipeline service.
 It implements channelProvider for the service and provides a context for running the service.
