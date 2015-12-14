@@ -263,7 +263,7 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     //
     // locally broadcast if unicast (qosCode & 0x80 == 0x80)
     //
-    if ((qosCode & 0x80) == 0x80)
+    if (0)
     {
         BlockingUDPTransport::shared_pointer bt = _context->getLocalMulticastTransport();
         if (bt)
