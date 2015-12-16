@@ -268,8 +268,8 @@ namespace pvAccess {
                 {
                 case esscimqi_socketBothShutdownRequired:
                     shutdown(sock, SHUT_RDWR);
-                    _thread.exitWait();
                     epicsSocketDestroy(sock);
+                    _thread.exitWait();
                     break;
                 case esscimqi_socketSigAlarmRequired:
                     LOG(logLevelError, "SigAlarm close not implemented for this target\n");

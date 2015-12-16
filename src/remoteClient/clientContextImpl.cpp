@@ -5060,7 +5060,9 @@ namespace epics {
              * So we compose the provider within the context and use a nested shared_ptr
              * to the context for the provider.
              */
-            ClientContextImpl::shared_pointer ctxt(new InternalClientContextImpl(conf));
+            // TODO use make::shared
+            InternalClientContextImpl::shared_pointer t(new InternalClientContextImpl(conf));
+            ClientContextImpl::shared_pointer ctxt(t);
 
             InternalClientContextImpl *self = static_cast<InternalClientContextImpl*>(ctxt.get());
 

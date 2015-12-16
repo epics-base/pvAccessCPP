@@ -68,9 +68,10 @@ namespace epics {
             }
 
             // sockets are blocking by default
-            Transport::shared_pointer transport(new BlockingUDPTransport(_serverFlag, responseHandler,
+            BlockingUDPTransport::shared_pointer transport(new BlockingUDPTransport(_serverFlag, responseHandler,
                                                                          socket, bindAddress, transportRevision));
-            return transport;
+
+            return Transport::shared_pointer(transport);
         }
 
     }
