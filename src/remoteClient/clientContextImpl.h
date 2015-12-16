@@ -48,6 +48,7 @@ namespace epics {
             virtual void connectionCompleted(pvAccessID sid/*,  rights*/) = 0;
             virtual void createChannelFailed() = 0;
             virtual std::tr1::shared_ptr<ClientContextImpl> getContext() = 0;
+            virtual void channelDestroyedOnServer() = 0;
 
             virtual pvAccessID getServerChannelID() = 0;
             virtual void registerResponseRequest(ResponseRequest::shared_pointer const & responseRequest) = 0;

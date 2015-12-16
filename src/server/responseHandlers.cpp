@@ -843,9 +843,31 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
 
 void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer const & /*channel*/, const Channel::ConnectionState /*isConnected*/)
 {
-	// TODO should we notify remote side?
+    if(Transport::shared_pointer transport = _transport.lock())
+    {
+        ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
+        if (!casTransport)
+            return;
 
-    // YES :)
+        ServerChannelImpl::shared_pointer channel;
+        {
+            Lock guard(_mutex);
+            channel= dynamic_pointer_cast<ServerChannelImpl>(_serverChannel.lock());
+        }
+
+        if (!channel)
+            return;
+
+        // destroy
+        channel->destroy();
+
+        // .. and unregister
+        casTransport->unregisterChannel(channel->getSID());
+
+        // send response back
+        TransportSender::shared_pointer sr(new ServerDestroyChannelHandlerTransportSender(channel->getCID(), channel->getSID()));
+        transport->enqueueSendRequest(sr);
+    }
 }
 
 string ServerChannelRequesterImpl::getRequesterName()

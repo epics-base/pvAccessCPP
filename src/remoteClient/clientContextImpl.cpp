@@ -3165,6 +3165,33 @@ namespace epics {
         };
 
 
+        class DestroyChannelHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+        public:
+            DestroyChannelHandler(ClientContextImpl::shared_pointer const & context) :
+                    AbstractClientResponseHandler(context, "Destroy channel")
+            {
+            }
+
+            virtual ~DestroyChannelHandler() {
+            }
+
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                                        Transport::shared_pointer const & transport, int8 version, int8 command,
+                                        size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+            {
+                AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
+
+                transport->ensureData(4);
+                pvAccessID cid = payloadBuffer->getInt();
+                /*pvAccessID sid =*/ payloadBuffer->getInt();
+
+                // TODO optimize
+                ChannelImpl::shared_pointer channel = static_pointer_cast<ChannelImpl>(_context.lock()->getChannel(cid));
+                if (channel.get())
+                    channel->channelDestroyedOnServer();
+            }
+        };
+
 
         /**
          * PVA response handler - main handler which dispatches responses to appripriate handlers.
@@ -3200,7 +3227,7 @@ namespace epics {
                 m_handlerTable[CMD_AUTHNZ].reset(new AuthNZHandler(context.get())); /*  5 */
                 m_handlerTable[CMD_ACL_CHANGE].reset(new NoopResponse(context, "Access rights change")); /*  6 */
                 m_handlerTable[CMD_CREATE_CHANNEL].reset(new CreateChannelHandler(context)); /*  7 */
-                m_handlerTable[CMD_DESTROY_CHANNEL].reset(new NoopResponse(context, "Destroy channel")); /*  8 */ // TODO it might be useful to implement this...
+                m_handlerTable[CMD_DESTROY_CHANNEL].reset(new DestroyChannelHandler(context)); /*  8 */
                 m_handlerTable[CMD_CONNECTION_VALIDATED].reset(new ClientConnectionValidatedHandler(context)); /*  9 */
                 m_handlerTable[CMD_GET] = dataResponse; /* 10 - get response */
                 m_handlerTable[CMD_PUT] = dataResponse; /* 11 - put response */
@@ -3859,6 +3886,16 @@ namespace epics {
                         this->initiateSearch();
                     
                 }
+
+                void channelDestroyedOnServer() {
+                    if (isConnected())
+                    {
+                        disconnect(true, false);
+
+                        // should be called without any lock hold
+                        reportChannelStateChange();
+                    }
+                }
                 
                 #define STATIC_SEARCH_BASE_DELAY_SEC 5
                 #define STATIC_SEARCH_MAX_MULTIPLIER 10
@@ -4059,7 +4096,7 @@ namespace epics {
                     
                     if (issueCreateMessage)
                     {
-                        control->startMessage((int8)7, 2+4);
+                        control->startMessage((int8)CMD_CREATE_CHANNEL, 2+4);
                         
                         // count
                         buffer->putShort((int16)1);
@@ -4072,7 +4109,7 @@ namespace epics {
                     }
                     else
                     {
-                        control->startMessage((int8)8, 4+4);
+                        control->startMessage((int8)CMD_DESTROY_CHANNEL, 4+4);
                         // SID
                         m_channelMutex.lock();
                         pvAccessID sid = m_serverChannelID;
