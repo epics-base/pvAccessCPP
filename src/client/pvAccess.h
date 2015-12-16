@@ -633,8 +633,11 @@ namespace pvAccess {
 //            virtual ChannelProvider::shared_pointer getProvider() = 0;
 
             /**
-             * Returns the channel's remote address, e.g. "/192.168.1.101:5064" or "#C0 S1".
-             * @return the channel's remote address.
+             * Returns the channel's remote address, signal name, etc...
+             * For example:
+             *     - client side channel would return server's address, e.g. "/192.168.1.101:5064"
+             *     - server side channel would return underlying bus address, e.g. "#C0 S1".
+             * @return the channel's address.
              **/
             virtual std::string getRemoteAddress() = 0;
 

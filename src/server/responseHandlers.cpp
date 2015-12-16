@@ -760,7 +760,7 @@ ChannelRequester::shared_pointer ServerChannelRequesterImpl::create(
     std::tr1::shared_ptr<ServerChannelRequesterImpl> tp(new ServerChannelRequesterImpl(transport, channelName, cid, css));
     ChannelRequester::shared_pointer cr = tp;
     // TODO exception guard and report error back
-    provider->createChannel(channelName, cr, transport->getPriority(), transport->getRemoteName());
+    provider->createChannel(channelName, cr, transport->getPriority());
 	return cr;
 }
 
@@ -872,9 +872,11 @@ void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer cons
 
 string ServerChannelRequesterImpl::getRequesterName()
 {
-	std::stringstream name;
-	name << "ServerChannelRequesterImpl/" << _channelName << "[" << _cid << "]"; 
-	return name.str();
+    Transport::shared_pointer transport = _transport.lock();
+    if (transport)
+        return transport->getRemoteName();
+    else
+        return "<unknown>:0";
 }
 
 void ServerChannelRequesterImpl::message(std::string const & message, MessageType messageType)
@@ -943,7 +945,7 @@ void ServerDestroyChannelHandler::handleResponse(osiSockAddr* responseFrom,
 	ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
 
 
-	transport->ensureData(2*sizeof(int32)/sizeof(int8));
+    transport->ensureData(8);
 	const pvAccessID sid = payloadBuffer->getInt();
 	const pvAccessID cid = payloadBuffer->getInt();
 

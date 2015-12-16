@@ -2649,28 +2649,38 @@ public:
             short /*priority*/,
             std::string const & address)
     {
-        // this is a server instance provider, address holds remote socket IP
-        if (channelName == "testCounter")
+        if (address == "local")
         {
-            channelRequester->channelCreated(Status::Ok, m_counterChannel);
-            return m_counterChannel;
-        }
-        else if (channelName == "testADC")
-        {
-            channelRequester->channelCreated(Status::Ok, m_adcChannel);
-            return m_adcChannel;
-        }
-        else if (channelName == "testMP")
-        {
-            channelRequester->channelCreated(Status::Ok, m_mpChannel);
-            return m_mpChannel;
+            // this is a server instance provider, address holds remote socket IP
+            if (channelName == "testCounter")
+            {
+                channelRequester->channelCreated(Status::Ok, m_counterChannel);
+                return m_counterChannel;
+            }
+            else if (channelName == "testADC")
+            {
+                channelRequester->channelCreated(Status::Ok, m_adcChannel);
+                return m_adcChannel;
+            }
+            else if (channelName == "testMP")
+            {
+                channelRequester->channelCreated(Status::Ok, m_mpChannel);
+                return m_mpChannel;
+            }
+            else
+            {
+                ChannelProvider::shared_pointer chProviderPtr = shared_from_this();
+                Channel::shared_pointer channel = MockChannel::create(chProviderPtr, channelRequester, channelName, address);
+                channelRequester->channelCreated(Status::Ok, channel);
+                return channel;
+            }
         }
         else
         {
-            ChannelProvider::shared_pointer chProviderPtr = shared_from_this();
-            Channel::shared_pointer channel = MockChannel::create(chProviderPtr, channelRequester, channelName, address);
-            channelRequester->channelCreated(Status::Ok, channel);
-            return channel;
+            Channel::shared_pointer nullPtr;
+            Status errorStatus(Status::STATUSTYPE_ERROR, "only local supported");
+            channelRequester->channelCreated(errorStatus, nullPtr);
+            return nullPtr;
         }
     }
 private:
