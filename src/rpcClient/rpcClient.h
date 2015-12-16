@@ -49,6 +49,16 @@ namespace pvAccess
         static shared_pointer create(const std::string & serviceName);
 
         /**
+         * Create a RPCClient.
+         *
+         * @param  serviceName  the service name
+         * @param  pvRequest    the pvRequest for the ChannelRPC
+         * @return              the RPCClient interface
+         */
+        static shared_pointer create(const std::string & serviceName,
+             epics::pvData::PVStructure::shared_pointer const & pvRequest);
+
+        /**
          * Performs complete blocking RPC call, opening a channel and connecting to the
          * service and sending the request.
          *
@@ -129,10 +139,12 @@ namespace pvAccess
         virtual ~RPCClient() {}
 
     protected:
-        RPCClient(const std::string & serviceName);
+        RPCClient(const std::string & serviceName,
+            epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
         std::string m_serviceName;
         Channel::shared_pointer m_channel;
+        epics::pvData::PVStructure::shared_pointer m_pvRequest;
     };
 
 }
