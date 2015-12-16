@@ -26,6 +26,7 @@ namespace pvAccess {
 void addDefaultBroadcastAddress(InetAddrVector* v, unsigned short p) {
     osiSockAddr pNewNode;
     pNewNode.ia.sin_family = AF_INET;
+    // TODO this does not work in case of no active interfaces, should return 127.0.0.1 then
     pNewNode.ia.sin_addr.s_addr = htonl(INADDR_BROADCAST);
     pNewNode.ia.sin_port = htons(p);
     v->push_back(pNewNode);
@@ -47,6 +48,9 @@ InetAddrVector* getBroadcastAddresses(SOCKET sock,
         v->push_back(sn->addr);
     }
     ellFree(&as);
+    // add fallback address
+    if (!v->size())
+        addDefaultBroadcastAddress(v, defaultPort);
     return v;
 }
 

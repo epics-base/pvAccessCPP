@@ -4439,9 +4439,13 @@ namespace epics {
                     }
                 }
                 
-                for (size_t i = 0; broadcastAddresses.get() && i < broadcastAddresses->size(); i++)
-                    LOG(logLevelDebug,
-                        "Broadcast address #%d: %s.", i, inetAddressToString((*broadcastAddresses)[i]).c_str());
+                if (!broadcastAddresses.get() || !broadcastAddresses->size())
+                    LOG(logLevelWarn,
+                        "No broadcast addresses found or specified!");
+                else
+                    for (size_t i = 0; i < broadcastAddresses->size(); i++)
+                        LOG(logLevelDebug,
+                            "Broadcast address #%d: %s.", i, inetAddressToString((*broadcastAddresses)[i]).c_str());
 
                 // where to bind (listen) address
                 osiSockAddr listenLocalAddress;
