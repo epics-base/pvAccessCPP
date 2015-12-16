@@ -2431,7 +2431,7 @@ namespace epics {
                            ss << pvString->get();
                            ss >> size;
                            if (size > 0)
-                            m_ackAny = size;
+                               m_ackAny = (m_ackAny <= m_queueSize) ? size : m_queueSize;
                        }
                    }
                }

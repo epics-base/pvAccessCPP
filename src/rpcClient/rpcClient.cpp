@@ -44,9 +44,14 @@ class ChannelAndRPCRequesterImpl :
     Status m_status;
     PVStructure::shared_pointer m_response;
     ChannelRPC::shared_pointer m_channelRPC;
+    PVStructure::shared_pointer m_pvRequest;
 
     public:
-    ChannelAndRPCRequesterImpl() {}
+
+    ChannelAndRPCRequesterImpl(PVStructure::shared_pointer const & pvRequest)
+    : m_pvRequest(pvRequest)
+    {
+    }
     
     virtual string getRequesterName()
     {
@@ -96,9 +101,7 @@ class ChannelAndRPCRequesterImpl :
 
             if (!rpcAlreadyConnectedOnce)
             {
-                PVStructure::shared_pointer pvRequest =
-                        CreateRequest::create()->createRequest("");
-                channel->createChannelRPC(shared_from_this(), pvRequest);
+                channel->createChannelRPC(shared_from_this(), m_pvRequest);
             }
         }
         /*
@@ -216,8 +219,9 @@ class ChannelAndRPCRequesterImpl :
 
 
 
-RPCClient::RPCClient(const std::string & serviceName)
-    : m_serviceName(serviceName)
+RPCClient::RPCClient(const std::string & serviceName,
+     PVStructure::shared_pointer const & pvRequest)
+    : m_serviceName(serviceName), m_pvRequest(pvRequest)
 {
 }
 
@@ -245,7 +249,7 @@ void RPCClient::issueConnect()
     ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");
 
     // TODO try to reuse ChannelRequesterImpl instance (i.e. create only once)
-    shared_ptr<ChannelAndRPCRequesterImpl> channelRequesterImpl(new ChannelAndRPCRequesterImpl());
+    shared_ptr<ChannelAndRPCRequesterImpl> channelRequesterImpl(new ChannelAndRPCRequesterImpl(m_pvRequest));
     m_channel = provider->createChannel(m_serviceName, channelRequesterImpl);
 }
 
@@ -315,11 +319,17 @@ PVStructure::shared_pointer RPCClient::waitResponse(double timeout)
 
 RPCClient::shared_pointer RPCClient::create(const std::string & serviceName)
 {
-    ClientFactory::start();
-    
-    return RPCClient::shared_pointer(new RPCClient(serviceName));
+    PVStructure::shared_pointer pvRequest =
+        CreateRequest::create()->createRequest("");
+    return create(serviceName, pvRequest);
 }
 
+RPCClient::shared_pointer RPCClient::create(const std::string & serviceName,
+     PVStructure::shared_pointer const & pvRequest)
+{
+    ClientFactory::start(); 
+    return RPCClient::shared_pointer(new RPCClient(serviceName, pvRequest));
+}
 
 PVStructure::shared_pointer RPCClient::sendRequest(const std::string & serviceName,
      PVStructure::shared_pointer const & queryRequest,
