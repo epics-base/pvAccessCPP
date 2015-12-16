@@ -68,6 +68,7 @@ int ChannelAccessIFTest::runAllTest() {
                                             .build());
 
   TestServer::shared_pointer tstserv(new TestServer(base_config));
+  tstserv->start();
   testDiag("TestServer on ports TCP=%u UDP=%u\n",
            tstserv->getServerPort(),
            tstserv->getBroadcastPort());

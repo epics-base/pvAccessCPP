@@ -2750,10 +2750,20 @@ struct TestServer : public Runnable
 
         context = ServerContextImpl::create(conf);
         context->initialize(getChannelProviderRegistry());
-
-        runner.start();
-        startup.wait(); // wait for thread to start
     }
+    void start(bool inSameThread = false)
+    {
+        if (inSameThread)
+        {
+            context->run(conf->getPropertyAsInteger("timeToRun", 0)); // default is no timeout
+        }
+        else
+        {
+            runner.start();
+            startup.wait(); // wait for thread to start
+        }
+    }
+
     ~TestServer()
     {
         context->shutdown();
@@ -2787,6 +2797,9 @@ struct TestServer : public Runnable
     {
         startup.signal();
         context->run(conf->getPropertyAsInteger("timeToRun", 0)); // default is no timeout
+    }
+    void waitForShutdown() {
+        context->shutdown();
     }
     void shutdown() {
         context->shutdown();
@@ -2861,15 +2874,13 @@ int main(int argc, char *argv[])
 
     srand ( time(NULL) );
 
-    {
-        TestServer::shared_pointer srv(new TestServer(ConfigurationBuilder()
-                                                      .push_env()
-                                                      .add("timeToRun", timeToRun)
-                                                      .push_map()
-                                                      .build()));
-        TestServer::ctx = srv;
-    }
-    TestServer::ctx.reset();
+    TestServer::shared_pointer srv(new TestServer(ConfigurationBuilder()
+                                                  .push_env()
+                                                  .add("timeToRun", timeToRun)
+                                                  .push_map()
+                                                  .build()));
+    TestServer::ctx = srv;
+    srv->start(true);
 
     cout << "Done" << endl;
 
