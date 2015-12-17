@@ -308,9 +308,9 @@ void ServerContextImpl::initializeBroadcastTransport()
         if(_ifaceAddr.ia.sin_addr.s_addr != htonl(INADDR_ANY)) {
             if(_ifaceBCast.ia.sin_family == AF_UNSPEC ||
                     _ifaceBCast.ia.sin_addr.s_addr == listenLocalAddress.ia.sin_addr.s_addr) {
-                LOG(logLevelInfo, "Unable to find broadcast address of interface %s, using it as unicast address.", inetAddressToString(_ifaceBCast, false).c_str());
+                LOG(logLevelWarn, "Unable to find broadcast address of interface %s.", inetAddressToString(_ifaceBCast, false).c_str());
             }
-            //else
+            else
             {
                 /* An oddness of BSD sockets (not winsock) is that binding to
                  * INADDR_ANY will receive unicast and broadcast, but binding to
@@ -369,6 +369,21 @@ void ServerContextImpl::initializeBroadcastTransport()
             try
             {
                 osiSockAddr group;
+
+                // TODO there should be different mcast groups
+                // one for all interfaces, and then one per interface
+
+                // if received on specific NIF, then it's resent to speicfic mcast address
+                // if received on any NIF, then it should be resent to specific mcast address (calculate from receive from and mask)
+                // if interested for all the NIFs, then it should join to all specific mcast addresses
+
+                // --- server
+                // UDP bind on broadcast port + mcast as above
+
+                // -- client
+                // UDP bind to broadcast port + mcast as above
+
+
                 aToIPAddr("224.0.0.128", _broadcastPort, &group.ia);
                 _broadcastTransport->join(group, _ifaceAddr);
 
