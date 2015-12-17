@@ -460,7 +460,7 @@ namespace epics {
              * @return transport instance.
              */
             virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
-                    std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
+                    ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& address,
                     epics::pvData::int8 transportRevision, epics::pvData::int16 priority) = 0;
 
         };

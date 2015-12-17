@@ -41,7 +41,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
         PVACCESS_REFCOUNT_MONITOR_DEFINE(blockingUDPTransport);
 
         BlockingUDPTransport::BlockingUDPTransport(bool serverFlag,
-                auto_ptr<ResponseHandler>& responseHandler, SOCKET channel,
+                ResponseHandler::shared_pointer const & responseHandler, SOCKET channel,
                 osiSockAddr& bindAddress,
                 short /*remoteTransportRevision*/) :
                     _closed(),

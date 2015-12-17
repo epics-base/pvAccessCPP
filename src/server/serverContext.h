@@ -110,7 +110,6 @@ public:
 class epicsShareClass ServerContextImpl :
     public ServerContext,
     public Context,
-    public ResponseHandlerFactory,
     public std::tr1::enable_shared_from_this<ServerContextImpl>
 {
 public:
@@ -143,7 +142,6 @@ public:
 	TransportRegistry::shared_pointer getTransportRegistry();
     std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins();
 
-    std::auto_ptr<ResponseHandler> createResponseHandler();
     virtual void newServerDetected();
 
 
@@ -376,7 +374,12 @@ private:
 	 */
 	TransportRegistry::shared_pointer _transportRegistry;
 
-	/**
+    /**
+     * Response handler.
+     */
+    ResponseHandler::shared_pointer _responseHandler;
+
+    /**
 	 * Channel access.
 	 */
 	ChannelProviderRegistry::shared_pointer _channelProviderRegistry;

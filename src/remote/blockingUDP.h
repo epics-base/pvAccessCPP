@@ -47,12 +47,12 @@ namespace epics {
         	POINTER_DEFINITIONS(BlockingUDPTransport);
 
             BlockingUDPTransport(bool serverFlag,
-                                 std::auto_ptr<ResponseHandler> &responseHandler,
+                                 ResponseHandler::shared_pointer const & responseHandler,
                                  SOCKET channel, osiSockAddr &bindAddress,
                                  short remoteTransportRevision);
 
             static shared_pointer create(bool serverFlag,
-                    std::auto_ptr<ResponseHandler>& responseHandler,
+                    ResponseHandler::shared_pointer const & responseHandler,
                     SOCKET channel, osiSockAddr& bindAddress,
                     short remoteTransportRevision) EPICS_DEPRECATED
             {
@@ -314,7 +314,7 @@ namespace epics {
             /**
              * Response handler.
              */
-            const std::auto_ptr<ResponseHandler> _responseHandler;
+            ResponseHandler::shared_pointer _responseHandler;
 
             virtual void run();
             
@@ -419,7 +419,7 @@ namespace epics {
              * NOTE: transport client is ignored for broadcast (UDP).
              */
             virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
-                    std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& bindAddress,
+                    ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& bindAddress,
                     epics::pvData::int8 transportRevision, epics::pvData::int16 priority);
 
         private:

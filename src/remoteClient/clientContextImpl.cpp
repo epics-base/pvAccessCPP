@@ -4436,6 +4436,8 @@ namespace epics {
                 m_connector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_connectionTimeout));
                 m_transportRegistry.reset(new TransportRegistry());
 
+                m_responseHandler.reset(new ClientResponseHandler(shared_from_this()));
+
                 // preinitialize security plugins
                 SecurityPluginRegistry::instance();
 
@@ -4494,10 +4496,9 @@ namespace epics {
 
                 TransportClient::shared_pointer nullTransportClient;
 
-                auto_ptr<ResponseHandler> clientResponseHandler(new ClientResponseHandler(thisPointer));
                 auto_ptr<BlockingUDPConnector> broadcastConnector(new BlockingUDPConnector(false, true, true));
                 m_broadcastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
-                        nullTransportClient, clientResponseHandler,
+                        nullTransportClient, m_responseHandler,
                         listenLocalAddress, PVA_PROTOCOL_REVISION,
                         PVA_DEFAULT_PRIORITY));
                 if (!m_broadcastTransport.get())
@@ -4510,10 +4511,9 @@ namespace epics {
                 undefinedAddress.ia.sin_port = htons(0);
                 undefinedAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
-                clientResponseHandler.reset(new ClientResponseHandler(thisPointer));
                 auto_ptr<BlockingUDPConnector> searchConnector(new BlockingUDPConnector(false, false, true));
                 m_searchTransport = static_pointer_cast<BlockingUDPTransport>(searchConnector->connect(
-                        nullTransportClient, clientResponseHandler,
+                        nullTransportClient, m_responseHandler,
                         undefinedAddress, PVA_PROTOCOL_REVISION,
                         PVA_DEFAULT_PRIORITY));
                 if (!m_searchTransport.get())
@@ -4795,9 +4795,7 @@ namespace epics {
             {
                 try
                 {
-                    // TODO we are creating a new response handler even-though we might not need a new transprot !!!
-                    auto_ptr<ResponseHandler> handler(new ClientResponseHandler(shared_from_this()));
-                    Transport::shared_pointer t = m_connector->connect(client, handler, *serverAddress, minorRevision, priority);
+                    Transport::shared_pointer t = m_connector->connect(client, m_responseHandler, *serverAddress, minorRevision, priority);
                     // TODO !!!
                     //static_pointer_cast<BlockingTCPTransport>(t)->setFlushStrategy(m_flushStrategy);
                     return t;
@@ -4987,6 +4985,11 @@ namespace epics {
              * This registry contains all active transports - connections to PVA servers.
              */
             TransportRegistry::shared_pointer m_transportRegistry;
+
+            /**
+             * Response handler.
+             */
+            ClientResponseHandler::shared_pointer m_responseHandler;
 
             /**
              * Context instance.

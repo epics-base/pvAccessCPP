@@ -481,7 +481,7 @@ namespace epics {
         bool serverFlag,
         Context::shared_pointer const & context, 
         SOCKET channel,
-        std::auto_ptr<ResponseHandler>& responseHandler, 
+        ResponseHandler::shared_pointer const & responseHandler,
         int32_t sendBufferSize, 
         int32_t receiveBufferSize,
         epics::pvData::int16 priority
@@ -505,7 +505,7 @@ namespace epics {
 
     private:
 
-      std::auto_ptr<ResponseHandler> _responseHandler;
+      ResponseHandler::shared_pointer _responseHandler;
       size_t _remoteTransportReceiveBufferSize;
       epics::pvData::int8 _remoteTransportRevision;
       epics::pvData::int16 _priority;
@@ -529,7 +529,7 @@ namespace epics {
       BlockingServerTCPTransportCodec(
         Context::shared_pointer const & context, 
         SOCKET channel,
-        std::auto_ptr<ResponseHandler>& responseHandler, 
+        ResponseHandler::shared_pointer const & responseHandler,
         int32_t sendBufferSize, 
         int32_t receiveBufferSize );
 
@@ -537,7 +537,7 @@ namespace epics {
       static shared_pointer create(
         Context::shared_pointer const & context, 
         SOCKET channel,
-        std::auto_ptr<ResponseHandler>& responseHandler,
+        ResponseHandler::shared_pointer const & responseHandler,
         int sendBufferSize, 
         int receiveBufferSize)
       {
@@ -658,7 +658,7 @@ namespace epics {
       BlockingClientTCPTransportCodec(
         Context::shared_pointer const & context,
         SOCKET channel,
-        std::auto_ptr<ResponseHandler>& responseHandler,
+        ResponseHandler::shared_pointer const & responseHandler,
         int32_t sendBufferSize, 
         int32_t receiveBufferSize,
         TransportClient::shared_pointer const & client,
@@ -670,7 +670,7 @@ namespace epics {
       static shared_pointer create(
         Context::shared_pointer const & context,
         SOCKET channel,
-        std::auto_ptr<ResponseHandler>& responseHandler,
+        ResponseHandler::shared_pointer const & responseHandler,
         int32_t sendBufferSize, 
         int32_t receiveBufferSize,
         TransportClient::shared_pointer const & client,

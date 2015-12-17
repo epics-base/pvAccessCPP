@@ -24,11 +24,11 @@ namespace pvAccess {
 
         BlockingTCPAcceptor::BlockingTCPAcceptor(
                 Context::shared_pointer const & context,
-                ResponseHandlerFactory::shared_pointer const & responseHandlerFactory,
+                ResponseHandler::shared_pointer const & responseHandler,
                 int port,
                 int receiveBufferSize) :
             _context(context),
-            _responseHandlerFactory(responseHandlerFactory),
+            _responseHandler(responseHandler),
             _bindAddress(),
             _serverSocketChannel(INVALID_SOCKET),
             _receiveBufferSize(receiveBufferSize),
@@ -45,10 +45,10 @@ namespace pvAccess {
         }
 
         BlockingTCPAcceptor::BlockingTCPAcceptor(Context::shared_pointer const & context,
-                                                 ResponseHandlerFactory::shared_pointer const & responseHandlerFactory,
+                                                 ResponseHandler::shared_pointer const & responseHandler,
                                                  const osiSockAddr& addr, int receiveBufferSize) :
             _context(context),
-            _responseHandlerFactory(responseHandlerFactory),
+            _responseHandler(responseHandler),
             _bindAddress(),
             _serverSocketChannel(INVALID_SOCKET),
             _receiveBufferSize(receiveBufferSize),
@@ -207,12 +207,11 @@ namespace pvAccess {
                     /**
                      * Create transport, it registers itself to the registry.
                      */
-                    std::auto_ptr<ResponseHandler> responseHandler = _responseHandlerFactory->createResponseHandler();
                     detail::BlockingServerTCPTransportCodec::shared_pointer transport =
                                     detail::BlockingServerTCPTransportCodec::create(
                                             _context,
                                             newClient,
-                                            responseHandler,
+                                            _responseHandler,
                                             _socketSendBufferSize,
                                             _receiveBufferSize);
 

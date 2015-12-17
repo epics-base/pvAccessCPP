@@ -58,7 +58,7 @@ namespace epics {
             virtual ~BlockingTCPConnector();
 
             virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
-                    std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
+                    ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& address,
                     epics::pvData::int8 transportRevision, epics::pvData::int16 priority);
         private:
             /**
@@ -97,16 +97,6 @@ namespace epics {
 
         };
 
-        class ResponseHandlerFactory
-        {
-            public:
-        	POINTER_DEFINITIONS(ResponseHandlerFactory);
-            
-            virtual ~ResponseHandlerFactory() {};
-
-            virtual std::auto_ptr<ResponseHandler> createResponseHandler() = 0;
-        };
-        
         /**
          * Channel Access Server TCP acceptor.
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
@@ -123,10 +113,10 @@ namespace epics {
              * @throws PVAException
              */
             BlockingTCPAcceptor(Context::shared_pointer const & context,
-                                ResponseHandlerFactory::shared_pointer const & responseHandlerFactory,
+                                ResponseHandler::shared_pointer const & responseHandler,
                                 int port, int receiveBufferSize);
             BlockingTCPAcceptor(Context::shared_pointer const & context,
-                                ResponseHandlerFactory::shared_pointer const & responseHandlerFactory,
+                                ResponseHandler::shared_pointer const & responseHandler,
                                 const osiSockAddr& addr, int receiveBufferSize);
 
             virtual ~BlockingTCPAcceptor();
@@ -153,9 +143,9 @@ namespace epics {
             Context::shared_pointer _context;
             
             /**
-             * ResponseHandler factory.
+             * Response handler.
              */
-            ResponseHandlerFactory::shared_pointer _responseHandlerFactory;
+            ResponseHandler::shared_pointer _responseHandler;
 
             /**
              * Bind server socket address.

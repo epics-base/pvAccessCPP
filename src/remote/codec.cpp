@@ -1442,7 +1442,7 @@ namespace epics {
     BlockingServerTCPTransportCodec::BlockingServerTCPTransportCodec(
       Context::shared_pointer const & context, 
       SOCKET channel,
-      std::auto_ptr<ResponseHandler>& responseHandler, 
+      ResponseHandler::shared_pointer const & responseHandler,
       int32_t sendBufferSize, 
       int32_t receiveBufferSize) :
     BlockingTCPTransportCodec(true, context, channel, responseHandler,
@@ -1702,7 +1702,7 @@ namespace epics {
   BlockingClientTCPTransportCodec::BlockingClientTCPTransportCodec(
     Context::shared_pointer const & context,
     SOCKET channel,
-    std::auto_ptr<ResponseHandler>& responseHandler,
+    ResponseHandler::shared_pointer const & responseHandler,
     int32_t sendBufferSize, 
     int32_t receiveBufferSize,
     TransportClient::shared_pointer const & client,

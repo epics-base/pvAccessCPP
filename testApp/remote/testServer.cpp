@@ -2881,6 +2881,7 @@ int main(int argc, char *argv[])
                                                   .push_map()
                                                   .build()));
     TestServer::ctx = srv;
+    srv->context->printInfo();
     srv->start(true);
 
     cout << "Done" << endl;

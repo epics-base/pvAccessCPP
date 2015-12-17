@@ -252,12 +252,6 @@ void ServerContextImpl::initialize(ChannelProviderRegistry::shared_pointer const
 	_state = INITIALIZED;
 }
 
-std::auto_ptr<ResponseHandler> ServerContextImpl::createResponseHandler()
-{
-    ServerContextImpl::shared_pointer thisContext = shared_from_this();
-    return std::auto_ptr<ResponseHandler>(new ServerResponseHandler(thisContext));    
-}
-
 void ServerContextImpl::internalInitialize()
 {
     osiSockAttach();
@@ -266,8 +260,9 @@ void ServerContextImpl::internalInitialize()
 	_transportRegistry.reset(new TransportRegistry());
 
     ServerContextImpl::shared_pointer thisServerContext = shared_from_this();
+    _responseHandler.reset(new ServerResponseHandler(thisServerContext));
 
-    _acceptor.reset(new BlockingTCPAcceptor(thisServerContext, thisServerContext, _ifaceAddr, _receiveBufferSize));
+    _acceptor.reset(new BlockingTCPAcceptor(thisServerContext, _responseHandler, _ifaceAddr, _receiveBufferSize));
 	_serverPort = ntohs(_acceptor->getBindAddress()->ia.sin_port);
 
     // setup broadcast UDP transport
@@ -300,9 +295,8 @@ void ServerContextImpl::initializeBroadcastTransport()
         TransportClient::shared_pointer nullTransportClient;
 
         auto_ptr<BlockingUDPConnector> broadcastConnector(new BlockingUDPConnector(true, true, true));
-	    auto_ptr<epics::pvAccess::ResponseHandler> responseHandler = createResponseHandler();
         _broadcastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
-                nullTransportClient, responseHandler,
+                nullTransportClient, _responseHandler,
                 listenLocalAddress, PVA_PROTOCOL_REVISION,
                 PVA_DEFAULT_PRIORITY));
         listenLocalAddress = *_broadcastTransport->getRemoteAddress();
@@ -323,9 +317,8 @@ void ServerContextImpl::initializeBroadcastTransport()
                  */
                 _ifaceBCast.ia.sin_port = listenLocalAddress.ia.sin_port;
 
-                responseHandler = createResponseHandler();
                 _broadcastTransport2 = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
-                                                    nullTransportClient, responseHandler,
+                                                    nullTransportClient, _responseHandler,
                                                     _ifaceBCast, PVA_PROTOCOL_REVISION,
                                                     PVA_DEFAULT_PRIORITY));
                 /* The other wrinkle is that nothing should be sent from this second
@@ -382,9 +375,8 @@ void ServerContextImpl::initializeBroadcastTransport()
                 anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
                 // NOTE: localMulticastTransport is not started (no read is called on a socket)
-                auto_ptr<epics::pvAccess::ResponseHandler> responseHandler2 = createResponseHandler();
                 _localMulticastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
-                        nullTransportClient, responseHandler2,
+                        nullTransportClient, _responseHandler,
                         anyAddress, PVA_PROTOCOL_REVISION,
                         PVA_DEFAULT_PRIORITY));
                 _localMulticastTransport->setMutlicastNIF(loAddr, true);
@@ -452,7 +444,7 @@ void ServerContextImpl::run(int32 seconds)
 	}
 
 	// run...
-	_beaconEmitter->start();
+    _beaconEmitter->start();
 
 	//TODO review this
 	if(seconds == 0)
