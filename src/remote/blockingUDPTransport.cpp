@@ -364,7 +364,8 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                LOG(logLevelDebug, "Socket sendto error: %s.", errStr);
+                LOG(logLevelDebug, "Socket sendto to %s error: %s.",
+                    inetAddressToString(address).c_str(), errStr);
                 return false;
             }
 
@@ -395,7 +396,8 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 {
                     char errStr[64];
                     epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                    LOG(logLevelDebug, "Socket sendto error: %s.", errStr);
+                    LOG(logLevelDebug, "Socket sendto to %s error: %s.",
+                        inetAddressToString((*_sendAddresses)[i]).c_str(), errStr);
                     allOK = false;
                 }
             }

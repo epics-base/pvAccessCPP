@@ -138,6 +138,7 @@ void ServerContextImpl::loadConfiguration()
     if (debugLevel > 0)
         SET_LOG_LEVEL(logLevelDebug);
 
+    // TODO multiple addresses
     _ifaceAddr.ia.sin_family = AF_INET;
     _ifaceAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
     _ifaceAddr.ia.sin_port = 0;
@@ -307,8 +308,10 @@ void ServerContextImpl::initializeBroadcastTransport()
         if(_ifaceAddr.ia.sin_addr.s_addr != htonl(INADDR_ANY)) {
             if(_ifaceBCast.ia.sin_family == AF_UNSPEC ||
                     _ifaceBCast.ia.sin_addr.s_addr == listenLocalAddress.ia.sin_addr.s_addr) {
-                LOG(logLevelWarn, "Unable to find broadcast address of interface\n");
-            } else {
+                LOG(logLevelInfo, "Unable to find broadcast address of interface %s, using it as unicast address.", inetAddressToString(_ifaceBCast, false).c_str());
+            }
+            //else
+            {
                 /* An oddness of BSD sockets (not winsock) is that binding to
                  * INADDR_ANY will receive unicast and broadcast, but binding to
                  * a specific interface address receives only unicast.  The trick
@@ -591,7 +594,8 @@ void ServerContextImpl::printInfo(ostream& str)
 	    << "SERVER_PORT : " << _serverPort << endl \
 	    << "RCV_BUFFER_SIZE : " << _receiveBufferSize << endl \
 	    << "IGNORE_ADDR_LIST: " << _ignoreAddressList << endl \
-	    << "STATE : " << ServerContextImpl::StateNames[_state] << endl;
+        << "INTF_ADDR_LIST : " << inetAddressToString(_ifaceAddr, false) << endl \
+        << "STATE : " << ServerContextImpl::StateNames[_state] << endl;
 }
 
 void ServerContextImpl::dispose()
