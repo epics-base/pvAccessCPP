@@ -2862,7 +2862,7 @@ namespace epics {
                 {
                     transport->ensureData(4);
                     pvAccessID cid = payloadBuffer->getInt();
-                    csm->searchResponse(cid, searchSequenceId, version, &serverAddress);
+                    csm->searchResponse(guid, cid, searchSequenceId, version, &serverAddress);
                 }
 
 
@@ -3498,6 +3498,11 @@ namespace epics {
                 int32_t m_userValue;
                 
                 /**
+                 * @brief Server GUID.
+                 */
+                GUID m_guid;
+
+                /**
                  * Constructor.
                  * @param context
                  * @param name
@@ -3931,21 +3936,23 @@ namespace epics {
                         m_addressIndex = m_addresses->size()*STATIC_SEARCH_MAX_MULTIPLIER;
 
                     // NOTE: calls channelConnectFailed() on failure
-                    searchResponse(PVA_PROTOCOL_REVISION, &((*m_addresses)[ix]));
+                    static GUID guid = { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
+                    searchResponse(guid, PVA_PROTOCOL_REVISION, &((*m_addresses)[ix]));
                 }
 
                 virtual void timerStopped() {
                     // noop
                 }
 
-                virtual void searchResponse(int8 minorRevision, osiSockAddr* serverAddress) {
+                virtual void searchResponse(const GUID & guid, int8 minorRevision, osiSockAddr* serverAddress) {
                     Lock guard(m_channelMutex);
                     Transport::shared_pointer transport = m_transport;
                     if (transport.get())
                     {
-                        // TODO use GUID to determine whether there are multiple servers with the same channel
-                        // multiple defined PV or reconnect request (same server address)
-                        if (!sockAddrAreIdentical(transport->getRemoteAddress(), serverAddress))
+                        // GUID check case: same server listening on different NIF
+
+                        if (!sockAddrAreIdentical(transport->getRemoteAddress(), serverAddress) &&
+                            !std::equal(guid.value, guid.value + 12, m_guid.value))
                         {
                             EXCEPTION_GUARD(m_requester->message("More than one channel with name '" + m_name +
                                                                  "' detected, connected to: " + inetAddressToString(*transport->getRemoteAddress()) + ", ignored: " + inetAddressToString(*serverAddress), warningMessage));
@@ -3960,6 +3967,10 @@ namespace epics {
                         return;
                     }
                     
+
+                    // remember GUID
+                    std::copy(guid.value, guid.value + 12, m_guid.value);
+
                     // create channel
                     createChannel(transport);
                 }

@@ -41,11 +41,12 @@ class SearchInstance {
 
 	/**
 	 * Search response from server (channel found).
+     * @param guid server GUID.
 	 * @param minorRevision	server minor PVA revision.
 	 * @param serverAddress	server address.
 	 */
 	// TODO make serverAddress an URI or similar
-	virtual void searchResponse(int8_t minorRevision, osiSockAddr* serverAddress) = 0;
+    virtual void searchResponse(const GUID & guid, int8_t minorRevision, osiSockAddr* serverAddress) = 0;
 };
 
 class ChannelSearchManager {
@@ -78,12 +79,13 @@ class ChannelSearchManager {
 	
 	/**
 	 * Search response from server (channel found).
+     * @param guid  server GUID.
 	 * @param cid	client channel ID.
 	 * @param seqNo	search sequence number.
 	 * @param minorRevision	server minor PVA revision.
 	 * @param serverAddress	server address.
 	 */
-	virtual void searchResponse(pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress) = 0;
+    virtual void searchResponse(const GUID & guid, pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress) = 0;
 
 	/**
 	 * New server detected.

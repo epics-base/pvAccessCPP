@@ -137,7 +137,7 @@ void SimpleChannelSearchManagerImpl::unregisterSearchInstance(SearchInstance::sh
 		m_channels.erase(id);
 }
 
-void SimpleChannelSearchManagerImpl::searchResponse(pvAccessID cid, int32_t /*seqNo*/, int8_t minorRevision, osiSockAddr* serverAddress)
+void SimpleChannelSearchManagerImpl::searchResponse(const GUID & guid, pvAccessID cid, int32_t /*seqNo*/, int8_t minorRevision, osiSockAddr* serverAddress)
 {
 	Lock guard(m_channelMutex);
 	std::map<pvAccessID,SearchInstance::shared_pointer>::iterator channelsIter = m_channels.find(cid);
@@ -145,10 +145,10 @@ void SimpleChannelSearchManagerImpl::searchResponse(pvAccessID cid, int32_t /*se
 	{
 	    guard.unlock();
 		
-		// minor hack to enable duplicate reports
+        // enable duplicate reports
 		SearchInstance::shared_pointer si = std::tr1::dynamic_pointer_cast<SearchInstance>(m_context.lock()->getChannel(cid));
 		if (si)
-			si->searchResponse(minorRevision, serverAddress);
+            si->searchResponse(guid, minorRevision, serverAddress);
 	}
 	else
 	{
@@ -160,7 +160,7 @@ void SimpleChannelSearchManagerImpl::searchResponse(pvAccessID cid, int32_t /*se
 		guard.unlock();
 
 		// then notify SearchInstance
-		si->searchResponse(minorRevision, serverAddress);
+        si->searchResponse(guid, minorRevision, serverAddress);
 	}
 }
 

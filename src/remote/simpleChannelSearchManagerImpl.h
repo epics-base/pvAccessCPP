@@ -89,12 +89,13 @@ class SimpleChannelSearchManagerImpl :
 	void unregisterSearchInstance(SearchInstance::shared_pointer const & channel);
 	/**
 	 * Search response from server (channel found).
+     * @param guid  server GUID.
 	 * @param cid	client channel ID.
 	 * @param seqNo	search sequence number.
 	 * @param minorRevision	server minor PVA revision.
 	 * @param serverAddress	server address.
 	 */
-	void searchResponse(pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress);
+    void searchResponse(const GUID & guid, pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress);
 	/**
 	 * New server detected.
 	 * Boost searching of all channels.
