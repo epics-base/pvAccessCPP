@@ -49,7 +49,15 @@ public:
     typedef std::tr1::shared_ptr<T> value_type;
 
     class epicsShareClass entry {
-        ELLNODE node;
+        /* In c++, use of ellLib (which implies offsetof()) should be restricted
+         * to POD structs.  So enode_t exists as a POD struct for which offsetof()
+         * is safe and well defined.  enode_t::self is used in place of
+         * casting via CONTAINER(penode, entry, enode)
+         */
+        struct enode_t {
+            ELLNODE node;
+            entry *self;
+        } enode;
         unsigned Qcnt;
         value_type holder;
 #ifndef NDEBUG
@@ -61,16 +69,20 @@ public:
         entry(const entry&);
         entry& operator=(const entry&);
     public:
-        entry() :node(), Qcnt(0), holder()
+        entry() :Qcnt(0), holder()
 #ifndef NDEBUG
           , owner(NULL)
 #endif
         {
-            node.next = node.previous = NULL;
+            enode.node.next = enode.node.previous = NULL;
+            enode.self = this;
         }
         ~entry() {
             // nodes should be removed from the list before deletion
-            assert(!node.next && !node.previous && !owner);
+            assert(!enode.node.next && !enode.node.previous);
+#ifndef NDEBUG
+            assert(!owner);
+#endif
         }
     };
 
@@ -111,7 +123,7 @@ public:
                 assert(P->owner==NULL);
                 P->owner = this;
                 P->holder = ent; // the list will hold a reference
-                ellAdd(&list, &P->node); // push_back
+                ellAdd(&list, &P->enode.node); // push_back
             } else
                 assert(P->owner==this);
         }
@@ -124,16 +136,18 @@ public:
         ELLNODE *cur = ellGet(&list); // pop_front
 
         if(cur) {
-            entry *P = CONTAINER(cur, entry, node);
+            typedef typename entry::enode_t enode_t;
+            enode_t *PN = CONTAINER(cur, enode_t, node);
+            entry *P = PN->self;
             assert(P->owner==this);
             assert(P->Qcnt>0);
             if(--P->Qcnt==0) {
-                P->node.previous = P->node.next = NULL;
+                PN->node.previous = PN->node.next = NULL;
                 P->owner = NULL;
 
                 ret.swap(P->holder);
             } else {
-                ellAdd(&list, &P->node); // push_back
+                ellAdd(&list, &P->enode.node); // push_back
 
                 ret = P->holder;
             }
