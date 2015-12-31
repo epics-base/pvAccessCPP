@@ -284,22 +284,6 @@ void ServerContextImpl::initializeBroadcastTransport()
 	    listenLocalAddress.ia.sin_port = htons(_broadcastPort);
         listenLocalAddress.ia.sin_addr.s_addr = _ifaceAddr.ia.sin_addr.s_addr;
 
-		// where to send addresses
-	    SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	    if (socket == INVALID_SOCKET)
-	    {
-	    	THROW_BASE_EXCEPTION("Failed to initialize broadcast UDP transport");
-	    }
-	    auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(socket,_broadcastPort));
-
-        int ifIndex = discoverInterfaceIndex(socket, &listenLocalAddress);
-        if (ifIndex == -1)
-        {
-            LOG(logLevelWarn, "Unable to find interface index for %s.", inetAddressToString(listenLocalAddress, false).c_str());
-            // TODO fallback
-        }
-
-	    epicsSocketDestroy(socket);
 
         TransportClient::shared_pointer nullTransportClient;
 
@@ -309,15 +293,15 @@ void ServerContextImpl::initializeBroadcastTransport()
                 listenLocalAddress, PVA_PROTOCOL_REVISION,
                 PVA_DEFAULT_PRIORITY));
         listenLocalAddress = *_broadcastTransport->getRemoteAddress();
-        _broadcastTransport->setSendAddresses(broadcastAddresses.get());
         _broadcastPort = ntohs(listenLocalAddress.ia.sin_port);
+        _ifaceBCast.ia.sin_port = listenLocalAddress.ia.sin_port;
 
-#if !defined(_WIN32)
         if(_ifaceAddr.ia.sin_addr.s_addr != htonl(INADDR_ANY)) {
             if(_ifaceBCast.ia.sin_family == AF_UNSPEC ||
                     _ifaceBCast.ia.sin_addr.s_addr == listenLocalAddress.ia.sin_addr.s_addr) {
                 LOG(logLevelWarn, "Unable to find broadcast address of interface %s.", inetAddressToString(_ifaceBCast, false).c_str());
             }
+#if !defined(_WIN32)
             else
             {
                 /* An oddness of BSD sockets (not winsock) is that binding to
@@ -326,8 +310,6 @@ void ServerContextImpl::initializeBroadcastTransport()
                  * is to bind a second socket to the interface broadcast address,
                  * which will then receive only broadcasts.
                  */
-                _ifaceBCast.ia.sin_port = listenLocalAddress.ia.sin_port;
-
                 _broadcastTransport2 = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
                                                     nullTransportClient, _responseHandler,
                                                     _ifaceBCast, PVA_PROTOCOL_REVISION,
@@ -340,17 +322,41 @@ void ServerContextImpl::initializeBroadcastTransport()
         }
 #endif
 
-		// set ignore address list
-		if (!_ignoreAddressList.empty())
-		{
-			// we do not care about the port
-			auto_ptr<InetAddrVector> list(getSocketAddressList(_ignoreAddressList, 0, NULL));
-			if (list.get() != NULL && list->size() > 0)
-			{
-				_broadcastTransport->setIgnoredAddresses(list.get());
-			}
-		}
-		// set broadcast address list
+
+        SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (socket == INVALID_SOCKET)
+        {
+            THROW_BASE_EXCEPTION("Failed to initialize broadcast UDP transport");
+        }
+
+
+        auto_ptr<InetAddrVector> broadcastAddresses;
+        if(_ifaceAddr.ia.sin_addr.s_addr != htonl(INADDR_ANY))
+        {
+            InetAddrVector * v = new InetAddrVector;
+            v->push_back(_ifaceBCast);
+            broadcastAddresses.reset(v);
+        }
+        else
+        {
+            // all the interfaces
+            broadcastAddresses.reset(getBroadcastAddresses(socket, _broadcastPort));
+        }
+
+        int ifIndex = discoverInterfaceIndex(socket, &listenLocalAddress);
+        if (ifIndex == -1)
+        {
+            LOG(logLevelWarn, "Unable to find interface index for %s.", inetAddressToString(listenLocalAddress, false).c_str());
+            // TODO fallback
+        }
+
+        epicsSocketDestroy(socket);
+
+
+        // set default (auto) address list
+        _broadcastTransport->setSendAddresses(broadcastAddresses.get());
+
+        // set broadcast address list
 		if (!_beaconAddressList.empty())
 		{
 			// if auto is true, add it to specified list
@@ -367,6 +373,29 @@ void ServerContextImpl::initializeBroadcastTransport()
 			}
 		}
 
+
+        // debug output for broadcast addresses
+        InetAddrVector* blist = _broadcastTransport->getSendAddresses();
+        if (!blist || !blist->size())
+            LOG(logLevelWarn,
+                "No broadcast addresses found or specified!");
+        else
+            for (size_t i = 0; i < blist->size(); i++)
+                LOG(logLevelDebug,
+                    "Broadcast address #%d: %s.", i, inetAddressToString((*blist)[i]).c_str());
+
+        //
+        // set ignore address list
+        //
+        if (!_ignoreAddressList.empty())
+        {
+            // we do not care about the port
+            auto_ptr<InetAddrVector> list(getSocketAddressList(_ignoreAddressList, 0, NULL));
+            if (list.get() != NULL && list->size() > 0)
+            {
+                _broadcastTransport->setIgnoredAddresses(list.get());
+            }
+        }
 
         //
         // Setup local broadcasting

@@ -51,6 +51,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                     _sendAddresses(0),
                     _ignoredAddresses(0),
                     _sendToEnabled(false),
+                    _localMulticastAddressEnabled(false),
                     _receiveBuffer(new ByteBuffer(MAX_UDP_RECV)),
                     _sendBuffer(new ByteBuffer(MAX_UDP_RECV)),
                     _lastMessageStartPosition(0),
