@@ -212,5 +212,144 @@ int getLoopbackNIF(osiSockAddr &loAddr, string const & localNIF, unsigned short 
     return 1;
 }
 
+
+
+// copy of base-3.14.12.4/src/libCom/osi/os/default/osdNetIntf.c
+// TODO support windows (see osi/os/WIN32/osdNetIntf.c)
+
+#include <osiSock.h>
+//#include <epicsAssert.h>
+#include <errlog.h>
+
+/*
+ * Determine the size of an ifreq structure
+ * Made difficult by the fact that addresses larger than the structure
+ * size may be returned from the kernel.
+ */
+static size_t ifreqSize ( struct ifreq *pifreq )
+{
+    size_t        size;
+
+    size = ifreq_size ( pifreq );
+    if ( size < sizeof ( *pifreq ) ) {
+            size = sizeof ( *pifreq );
+    }
+    return size;
+}
+
+/*
+ * Move to the next ifreq structure
+ */
+static struct ifreq * ifreqNext ( struct ifreq *pifreq )
+{
+    struct ifreq *ifr;
+
+    ifr = ( struct ifreq * )( ifreqSize (pifreq) + ( char * ) pifreq );
+    return ifr;
+}
+
+int discoverInterfaceIndex
+     (SOCKET socket, const osiSockAddr *pMatchAddr)
+{
+    static const unsigned           nelem = 100;
+    int                             status;
+    struct ifconf                   ifconf;
+    struct ifreq                    *pIfreqList;
+    struct ifreq                    *pIfreqListEnd;
+    struct ifreq                    *pifreq;
+    struct ifreq                    *pnextifreq;
+
+    /*
+     * check if pMatchAddr is valid
+     */
+    if ( pMatchAddr->sa.sa_family == AF_UNSPEC ||
+         pMatchAddr->sa.sa_family != AF_INET ||
+         pMatchAddr->ia.sin_addr.s_addr == htonl(INADDR_ANY) ) {
+        errlogPrintf ("osiSockDiscoverInterfaceIndex(): invalid pMatchAddr\n");
+        return -1;
+    }
+
+    /*
+     * use pool so that we avoid using too much stack space
+     *
+     * nelem is set to the maximum interfaces
+     * on one machine here
+     */
+    pIfreqList = (struct ifreq *) calloc ( nelem, sizeof(*pifreq) );
+    if (!pIfreqList) {
+        errlogPrintf ("osiSockDiscoverInterfaceIndex(): no memory to complete request\n");
+        return -1;
+    }
+
+    ifconf.ifc_len = nelem * sizeof(*pifreq);
+    ifconf.ifc_req = pIfreqList;
+    status = socket_ioctl (socket, SIOCGIFCONF, &ifconf);
+    if (status < 0 || ifconf.ifc_len == 0) {
+        errlogPrintf ("osiSockDiscoverInterfaceIndex(): unable to fetch network interface configuration\n");
+        free (pIfreqList);
+        return -1;
+    }
+
+    pIfreqListEnd = (struct ifreq *) (ifconf.ifc_len + (char *) pIfreqList);
+    pIfreqListEnd--;
+
+    for ( pifreq = pIfreqList; pifreq <= pIfreqListEnd; pifreq = pnextifreq ) {
+        uint32_t  current_ifreqsize;
+
+        /*
+         * find the next ifreq
+         */
+        pnextifreq = ifreqNext (pifreq);
+
+        /* determine ifreq size */
+        current_ifreqsize = ifreqSize ( pifreq );
+        /* copy current ifreq to aligned bufferspace (to start of pIfreqList buffer) */
+        memmove(pIfreqList, pifreq, current_ifreqsize);
+
+        /*
+         * If its not an internet interface then dont use it
+         */
+        if ( pIfreqList->ifr_addr.sa_family != AF_INET ) {
+             continue;
+        }
+
+        /*
+         * if it isnt a wildcarded interface then look for
+         * an exact match
+         */
+         struct sockaddr_in *pInetAddr = (struct sockaddr_in *) &pIfreqList->ifr_addr;
+         if ( pInetAddr->sin_addr.s_addr == pMatchAddr->ia.sin_addr.s_addr ) {
+
+             unsigned int index = if_nametoindex(pIfreqList->ifr_name);
+             if ( !index ) {
+                 errlogPrintf ("osiSockDiscoverInterfaceIndex(): net intf index fetch for \"%s\" failed\n", pIfreqList->ifr_name);
+                 free (pIfreqList);
+                 return -1;
+             }
+
+             free (pIfreqList);
+             return index;
+
+             /*
+             status = socket_ioctl ( socket, SIOCGIFINDEX, pIfreqList );
+             if ( status ) {
+                 errlogPrintf ("osiSockDiscoverInterfaceIndex(): net intf index fetch for \"%s\" failed\n", pIfreqList->ifr_name);
+                 free (pIfreqList);
+                 return -1;
+             }
+
+             free (pIfreqList);
+             return pIfreqList->ifr_ifindex;
+             */
+         }
+
+    }
+
+    /* not found */
+    free ( pIfreqList );
+    return -1;
+}
+
+
 }
 }

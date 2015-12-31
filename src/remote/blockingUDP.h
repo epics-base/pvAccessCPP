@@ -194,6 +194,19 @@ namespace epics {
                 _sendTo = sendTo;
             }
 
+            virtual void setLocalMulticastAddress(const osiSockAddr& sendTo) {
+                _localMulticastAddressEnabled = true;
+                _localMulticastAddress = sendTo;
+            }
+
+            virtual bool hasLocalMulticastAddress() const {
+                return _localMulticastAddressEnabled;
+            }
+
+            virtual const osiSockAddr& getLocalMulticastAddress() const {
+                return _localMulticastAddress;
+            }
+
             virtual void flushSerializeBuffer() {
                 // noop
             }
@@ -366,6 +379,12 @@ namespace epics {
             osiSockAddr _sendTo;
             bool _sendToEnabled;
             
+            /**
+             * Local multicast address.
+             */
+            osiSockAddr _localMulticastAddress;
+            bool _localMulticastAddressEnabled;
+
             /**
              * Receive buffer.
              */

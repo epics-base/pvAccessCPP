@@ -389,6 +389,9 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                         (target == inetAddressType_broadcast_multicast && _isSendAddressUnicast[i]))
                         continue;
 
+                LOG(logLevelDebug, "Sending to %d bytes to %s.",
+                    buffer->getRemaining(), inetAddressToString((*_sendAddresses)[i]).c_str());
+
                 int retval = sendto(_channel, buffer->getArray(),
                         buffer->getLimit(), 0, &((*_sendAddresses)[i].sa),
                         sizeof(sockaddr));
@@ -460,7 +463,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
                 throw std::runtime_error(
-                            string("Failed to set multicast network inteface '") +
+                            string("Failed to set multicast network interface '") +
                             inetAddressToString(nifAddr, false) + "': " + errStr);
             }
 
@@ -473,7 +476,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
                 throw std::runtime_error(
-                            string("Failed to enable multicast loopback on network inteface '") +
+                            string("Failed to enable multicast loopback on network interface '") +
                             inetAddressToString(nifAddr, false) + "': " + errStr);
             }
 

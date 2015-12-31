@@ -43,6 +43,11 @@ namespace pvAccess {
     epicsShareFunc InetAddrVector* getBroadcastAddresses(SOCKET sock, unsigned short defaultPort);
 
     /**
+     * Returns NIF index for given interface address, or -1 on failure.
+     */
+    epicsShareFunc int discoverInterfaceIndex(SOCKET socket, const osiSockAddr *pMatchAddr);
+
+    /**
      * Encode IPv4 address as IPv6 address.
      * @param buffer byte-buffer where to put encoded data.
      * @param address address to encode.

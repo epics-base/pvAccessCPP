@@ -4468,10 +4468,24 @@ namespace epics {
              */
             bool initializeUDPTransport() {
 
+                // where to bind (listen) address
+                osiSockAddr listenLocalAddress;
+                listenLocalAddress.ia.sin_family = AF_INET;
+                listenLocalAddress.ia.sin_port = htons(m_broadcastPort);
+                listenLocalAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+
                 // quary broadcast addresses of all IFs
                 SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, 0);
                 if (socket == INVALID_SOCKET) return false;
                 auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(socket, m_broadcastPort));
+
+                int ifIndex = discoverInterfaceIndex(socket, &listenLocalAddress);
+                if (ifIndex == -1)
+                {
+                    LOG(logLevelWarn, "Unable to find interface index for %s.", inetAddressToString(listenLocalAddress, false).c_str());
+                    // TODO fallback
+                }
+
                 epicsSocketDestroy (socket);
 
                 // set broadcast address list
@@ -4497,12 +4511,6 @@ namespace epics {
                         LOG(logLevelDebug,
                             "Broadcast address #%d: %s.", i, inetAddressToString((*broadcastAddresses)[i]).c_str());
 
-                // where to bind (listen) address
-                osiSockAddr listenLocalAddress;
-                listenLocalAddress.ia.sin_family = AF_INET;
-                listenLocalAddress.ia.sin_port = htons(m_broadcastPort);
-                listenLocalAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-                
                 ClientContextImpl::shared_pointer thisPointer = shared_from_this();
 
                 TransportClient::shared_pointer nullTransportClient;
@@ -4540,8 +4548,13 @@ namespace epics {
                 {
                     try
                     {
+                        int lastAddr = 128 + ifIndex;
+                        std::ostringstream o;
+                        // TODO configurable
+                        o << "224.0.0." << lastAddr;
+
                         //osiSockAddr group;
-                        aToIPAddr("224.0.0.128", m_broadcastPort, &m_localBroadcastAddress.ia);
+                        aToIPAddr(o.str().c_str(), m_broadcastPort, &m_localBroadcastAddress.ia);
                         m_broadcastTransport->join(m_localBroadcastAddress, loAddr);
 
                         // NOTE: this disables usage of multicast addresses in EPICS_PVA_ADDR_LIST

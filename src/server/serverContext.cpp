@@ -291,6 +291,14 @@ void ServerContextImpl::initializeBroadcastTransport()
 	    	THROW_BASE_EXCEPTION("Failed to initialize broadcast UDP transport");
 	    }
 	    auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(socket,_broadcastPort));
+
+        int ifIndex = discoverInterfaceIndex(socket, &listenLocalAddress);
+        if (ifIndex == -1)
+        {
+            LOG(logLevelWarn, "Unable to find interface index for %s.", inetAddressToString(listenLocalAddress, false).c_str());
+            // TODO fallback
+        }
+
 	    epicsSocketDestroy(socket);
 
         TransportClient::shared_pointer nullTransportClient;
@@ -360,50 +368,48 @@ void ServerContextImpl::initializeBroadcastTransport()
 		}
 
 
-        // setup local broadcasting
+        //
+        // Setup local broadcasting
+        //
+        // Each network interface gets its own multicast group on a local interface.
+        // Multicast address is determined by prefix 224.0.0.124 + NIF index
+        //
+
         // TODO configurable local NIF, address
         osiSockAddr loAddr;
         getLoopbackNIF(loAddr, "", 0);
+
+        osiSockAddr group;
+        int lastAddr = 128 + ifIndex;
+        std::ostringstream o;
+        // TODO configurable prefix and base
+        o << "224.0.0." << lastAddr;
+        aToIPAddr(o.str().c_str(), _broadcastPort, &group.ia);
+
+        _broadcastTransport->setMutlicastNIF(loAddr, true);
+        _broadcastTransport->setLocalMulticastAddress(group);
+
         if (true)
         {
             try
             {
-                osiSockAddr group;
-
-                // TODO there should be different mcast groups
-                // one for all interfaces, and then one per interface
-
-                // if received on specific NIF, then it's resent to speicfic mcast address
-                // if received on any NIF, then it should be resent to specific mcast address (calculate from receive from and mask)
-                // if interested for all the NIFs, then it should join to all specific mcast addresses
-
-                // --- server
-                // UDP bind on broadcast port + mcast as above
-
-                // -- client
-                // UDP bind to broadcast port + mcast as above
-
-
-                aToIPAddr("224.0.0.128", _broadcastPort, &group.ia);
-                _broadcastTransport->join(group, _ifaceAddr);
-
-                osiSockAddr anyAddress;
-                anyAddress.ia.sin_family = AF_INET;
-                anyAddress.ia.sin_port = htons(0);
-                anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-
-                // NOTE: localMulticastTransport is not started (no read is called on a socket)
+                // NOTE: multicast receiver socket must be "bound" to INADDR_ANY or multicast address
                 _localMulticastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
                         nullTransportClient, _responseHandler,
-                        anyAddress, PVA_PROTOCOL_REVISION,
+                        group, PVA_PROTOCOL_REVISION,
                         PVA_DEFAULT_PRIORITY));
+                _localMulticastTransport->join(group, loAddr);
+                /* used for sending
                 _localMulticastTransport->setMutlicastNIF(loAddr, true);
                 InetAddrVector sendAddressList;
                 sendAddressList.push_back(group);
                 _localMulticastTransport->setSendAddresses(&sendAddressList);
+                */
 
-                LOG(logLevelDebug, "Local multicast enabled on %s using network interface %s.",
-                    inetAddressToString(group).c_str(), inetAddressToString(loAddr, false).c_str());
+                LOG(logLevelDebug, "Local multicast for %s enabled on %s/%s.",
+                    inetAddressToString(listenLocalAddress, false).c_str(),
+                    inetAddressToString(loAddr, false).c_str(),
+                    inetAddressToString(group).c_str());
             }
             catch (std::exception& ex)
             {

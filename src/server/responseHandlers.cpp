@@ -263,10 +263,10 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     //
     // locally broadcast if unicast (qosCode & 0x80 == 0x80)
     //
-    if (0)
+    if ((qosCode & 0x80) == 0x80)
     {
-        BlockingUDPTransport::shared_pointer bt = _context->getLocalMulticastTransport();
-        if (bt)
+        BlockingUDPTransport::shared_pointer bt = _context->getBroadcastTransport();
+        if (bt && bt->hasLocalMulticastAddress())
         {
             // clear unicast flag
             payloadBuffer->put(startPosition+4, (int8)(qosCode & ~0x80));
@@ -277,7 +277,7 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 
             payloadBuffer->setPosition(payloadBuffer->getLimit());		// send will call flip()
 
-            bt->send(payloadBuffer);
+            bt->send(payloadBuffer, bt->getLocalMulticastAddress());
             return;
         }
     }
