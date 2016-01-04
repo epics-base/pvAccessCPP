@@ -423,9 +423,6 @@ void ServerContextImpl::initializeBroadcastTransport()
                 }
     #endif
 
-            // TODO set ignore list on transport and transport2
-
-
             //
             // Setup local broadcasting
             //
