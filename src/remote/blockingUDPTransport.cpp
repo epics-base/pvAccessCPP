@@ -390,8 +390,11 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                         (target == inetAddressType_broadcast_multicast && _isSendAddressUnicast[i]))
                         continue;
 
-                LOG(logLevelDebug, "Sending to %d bytes to %s.",
-                    buffer->getRemaining(), inetAddressToString((*_sendAddresses)[i]).c_str());
+                if (IS_LOGGABLE(logLevelDebug))
+                {
+                    LOG(logLevelDebug, "Sending %d bytes to %s.",
+                        buffer->getRemaining(), inetAddressToString((*_sendAddresses)[i]).c_str());
+                }
 
                 int retval = sendto(_channel, buffer->getArray(),
                         buffer->getLimit(), 0, &((*_sendAddresses)[i].sa),

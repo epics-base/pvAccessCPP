@@ -129,8 +129,6 @@ namespace epics {
             virtual void poll() = 0;
 
             virtual void destroy() = 0;
-
-            virtual const osiSockAddr& getLocalBroadcastAddress() const = 0;
         };
 
         epicsShareExtern ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf);
