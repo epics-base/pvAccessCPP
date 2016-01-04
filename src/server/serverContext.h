@@ -145,8 +145,6 @@ public:
     virtual void newServerDetected();
 
 
-    BlockingUDPTransport::shared_pointer getLocalMulticastTransport();
-
     epicsTimeStamp& getStartTime();
 
 
@@ -256,13 +254,13 @@ public:
 	 */
 	osiSockAddr* getServerInetAddress();
 
-	/**
-	 * Broadcast transport.
-	 * @return broadcast transport.
-	 */
-	BlockingUDPTransport::shared_pointer getBroadcastTransport();
+    /**
+     * Broadcast (UDP send) transport.
+     * @return broadcast transport.
+     */
+    BlockingUDPTransport::shared_pointer getBroadcastTransport();
 
-	/**
+    /**
 	 * Get channel provider registry implementation used by this instance.
 	 * @return channel provider registry used by this instance.
 	 */
@@ -310,7 +308,12 @@ private:
 	 */
 	std::string _beaconAddressList;
 
-    osiSockAddr _ifaceAddr, _ifaceBCast;
+    /**
+     * List of used NIF.
+     */
+    IfaceNodeVector _ifaceList;
+
+    osiSockAddr _ifaceAddr;
 
 	/**
 	 * A space-separated list of address from which to ignore name resolution requests.
@@ -349,14 +352,15 @@ private:
 	epics::pvData::Timer::shared_pointer _timer;
 
 	/**
-	 * Broadcast transport needed for channel searches.
+     * UDP transports needed to receive channel searches.
 	 */
-    BlockingUDPTransport::shared_pointer _broadcastTransport, _broadcastTransport2;
+    typedef std::vector<BlockingUDPTransport::shared_pointer> BlockingUDPTransportVector;
+    BlockingUDPTransportVector _udpTransports;
 
     /**
-     * Local broadcast transport needed for local fan-out.
+     * UDP socket used to sending.
      */
-    BlockingUDPTransport::shared_pointer _localMulticastTransport;
+    BlockingUDPTransport::shared_pointer _broadcastTransport;
 
     /**
 	 * Beacon emitter.

@@ -258,14 +258,12 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     // TODO DoS attack?
 	const bool responseRequired = (QOS_REPLY_REQUIRED & qosCode) != 0;
 
-    // TODO bloom filter or similar server selection (by GUID)
-
     //
-    // locally broadcast if unicast (qosCode & 0x80 == 0x80)
+    // locally broadcast if unicast (qosCode & 0x80 == 0x80) via UDP
     //
     if ((qosCode & 0x80) == 0x80)
     {
-        BlockingUDPTransport::shared_pointer bt = _context->getBroadcastTransport();
+        BlockingUDPTransport::shared_pointer bt = dynamic_pointer_cast<BlockingUDPTransport>(transport);
         if (bt && bt->hasLocalMulticastAddress())
         {
             // clear unicast flag

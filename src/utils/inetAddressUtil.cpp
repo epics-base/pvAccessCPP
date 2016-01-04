@@ -248,8 +248,7 @@ static struct ifreq * ifreqNext ( struct ifreq *pifreq )
     return ifr;
 }
 
-int discoverInterfaceIndex
-     (SOCKET socket, const osiSockAddr *pMatchAddr)
+int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *pMatchAddr)
 {
     static const unsigned           nelem = 100;
     int                             status;
@@ -258,16 +257,7 @@ int discoverInterfaceIndex
     struct ifreq                    *pIfreqListEnd;
     struct ifreq                    *pifreq;
     struct ifreq                    *pnextifreq;
-
-    /*
-     * check if pMatchAddr is valid
-     */
-    if ( pMatchAddr->sa.sa_family == AF_UNSPEC ||
-         pMatchAddr->sa.sa_family != AF_INET ||
-         pMatchAddr->ia.sin_addr.s_addr == htonl(INADDR_ANY) ) {
-        errlogPrintf ("osiSockDiscoverInterfaceIndex(): invalid pMatchAddr\n");
-        return -1;
-    }
+    int                             match;
 
     /*
      * use pool so that we avoid using too much stack space
@@ -277,7 +267,7 @@ int discoverInterfaceIndex
      */
     pIfreqList = (struct ifreq *) calloc ( nelem, sizeof(*pifreq) );
     if (!pIfreqList) {
-        errlogPrintf ("osiSockDiscoverInterfaceIndex(): no memory to complete request\n");
+        errlogPrintf ("discoverInterfaces(): no memory to complete request\n");
         return -1;
     }
 
@@ -285,7 +275,8 @@ int discoverInterfaceIndex
     ifconf.ifc_req = pIfreqList;
     status = socket_ioctl (socket, SIOCGIFCONF, &ifconf);
     if (status < 0 || ifconf.ifc_len == 0) {
-        errlogPrintf ("osiSockDiscoverInterfaceIndex(): unable to fetch network interface configuration\n");
+        /*ifDepenDebugPrintf(("discoverInterfaces(): status: 0x08x, ifconf.ifc_len: %d\n", status, ifconf.ifc_len));*/
+        errlogPrintf ("discoverInterfaces(): unable to fetch network interface configuration\n");
         free (pIfreqList);
         return -1;
     }
@@ -306,10 +297,16 @@ int discoverInterfaceIndex
         /* copy current ifreq to aligned bufferspace (to start of pIfreqList buffer) */
         memmove(pIfreqList, pifreq, current_ifreqsize);
 
+        /*ifDepenDebugPrintf (("discoverInterfaces(): found IFACE: %s len: 0x%x current_ifreqsize: 0x%x \n",
+            pIfreqList->ifr_name,
+            ifreq_size(pifreq),
+            current_ifreqsize));*/
+
         /*
          * If its not an internet interface then dont use it
          */
         if ( pIfreqList->ifr_addr.sa_family != AF_INET ) {
+             /*ifDepenDebugPrintf ( ("discoverInterfaces(): interface \"%s\" was not AF_INET\n", pIfreqList->ifr_name) );*/
              continue;
         }
 
@@ -317,38 +314,110 @@ int discoverInterfaceIndex
          * if it isnt a wildcarded interface then look for
          * an exact match
          */
-         struct sockaddr_in *pInetAddr = (struct sockaddr_in *) &pIfreqList->ifr_addr;
-         if ( pInetAddr->sin_addr.s_addr == pMatchAddr->ia.sin_addr.s_addr ) {
+        match = 0;
+        if ( pMatchAddr && pMatchAddr->sa.sa_family != AF_UNSPEC ) {
+            if ( pMatchAddr->sa.sa_family != AF_INET ) {
+                continue;
+            }
+            if ( pMatchAddr->ia.sin_addr.s_addr != htonl (INADDR_ANY) ) {
+                 struct sockaddr_in *pInetAddr = (struct sockaddr_in *) &pIfreqList->ifr_addr;
+                 if ( pInetAddr->sin_addr.s_addr != pMatchAddr->ia.sin_addr.s_addr ) {
+                     /*ifDepenDebugPrintf ( ("discoverInterfaces(): net intf \"%s\" didnt match\n", pIfreqList->ifr_name) );*/
+                     continue;
+                 }
+                 else
+                     match = 1;
+            }
+        }
 
-             unsigned int index = if_nametoindex(pIfreqList->ifr_name);
-             if ( !index ) {
-                 errlogPrintf ("osiSockDiscoverInterfaceIndex(): net intf index fetch for \"%s\" failed\n", pIfreqList->ifr_name);
-                 free (pIfreqList);
-                 return -1;
-             }
+        status = socket_ioctl ( socket, SIOCGIFFLAGS, pIfreqList );
+        if ( status ) {
+            errlogPrintf ("discoverInterfaces(): net intf flags fetch for \"%s\" failed\n", pIfreqList->ifr_name);
+            continue;
+        }
 
-             free (pIfreqList);
-             return index;
+        /*
+         * dont bother with interfaces that have been disabled
+         */
+        if ( ! ( pIfreqList->ifr_flags & IFF_UP ) ) {
+             /*ifDepenDebugPrintf ( ("discoverInterfaces(): net intf \"%s\" was down\n", pIfreqList->ifr_name) );*/
+             continue;
+        }
 
-             /*
-             status = socket_ioctl ( socket, SIOCGIFINDEX, pIfreqList );
-             if ( status ) {
-                 errlogPrintf ("osiSockDiscoverInterfaceIndex(): net intf index fetch for \"%s\" failed\n", pIfreqList->ifr_name);
-                 free (pIfreqList);
-                 return -1;
-             }
+        /*
+         * dont use the loop back interface, unless it maches pMatchAddr
+         */
+        if (!match) {
+            if ( pIfreqList->ifr_flags & IFF_LOOPBACK ) {
+                 /*ifDepenDebugPrintf ( ("discoverInterfaces(): ignoring loopback interface: \"%s\"\n", pIfreqList->ifr_name) );*/
+                 continue;
+            }
+        }
 
-             free (pIfreqList);
-             return pIfreqList->ifr_ifindex;
-             */
+        ifaceNode node;
+        node.ifaceAddr.sa = pIfreqList->ifr_addr;
+
+        /*
+         * If this is an interface that supports
+         * broadcast fetch the broadcast address.
+         *
+         * Otherwise if this is a point to point
+         * interface then use the destination address.
+         *
+         * Otherwise CA will not query through the
+         * interface.
+         */
+        if ( pIfreqList->ifr_flags & IFF_BROADCAST ) {
+            status = socket_ioctl (socket, SIOCGIFBRDADDR, pIfreqList);
+            if ( status ) {
+                errlogPrintf ("discoverInterfaces(): net intf \"%s\": bcast addr fetch fail\n", pIfreqList->ifr_name);
+                continue;
+            }
+            node.ifaceBCast.sa = pIfreqList->ifr_broadaddr;
+            /*ifDepenDebugPrintf ( ( "found broadcast addr = %x\n", ntohl ( pNewNode->addr.ia.sin_addr.s_addr ) ) );*/
+        }
+#if defined (IFF_POINTOPOINT)
+        else if ( pIfreqList->ifr_flags & IFF_POINTOPOINT ) {
+            status = socket_ioctl ( socket, SIOCGIFDSTADDR, pIfreqList);
+            if ( status ) {
+                /*ifDepenDebugPrintf ( ("discoverInterfaces(): net intf \"%s\": pt to pt addr fetch fail\n", pIfreqList->ifr_name) );*/
+                continue;
+            }
+            node.ifaceBCast.sa = pIfreqList->ifr_dstaddr;
+        }
+#endif
+        else {
+             /*ifDepenDebugPrintf ( ( "discoverInterfaces(): net intf \"%s\": not point to point or bcast?\n", pIfreqList->ifr_name ) );*/
+             continue;
          }
 
-    }
 
-    /* not found */
-    free ( pIfreqList );
-    return -1;
-}
+        unsigned int index = if_nametoindex(pIfreqList->ifr_name);
+        if ( !index ) {
+            errlogPrintf ("discoverInterfaces(): net intf index fetch for \"%s\" failed\n", pIfreqList->ifr_name);
+            continue;
+        }
+
+        node.ifaceIndex = index;
+
+        /*
+        status = socket_ioctl ( socket, SIOCGIFINDEX, pIfreqList );
+        if ( status ) {
+            errlogPrintf ("discoverInterfaces(): net intf index fetch for \"%s\" failed\n", pIfreqList->ifr_name);
+            continue;
+        }
+
+        node.ifaceIndex = pIfreqList->ifr_ifindex;
+        */
+
+         /*ifDepenDebugPrintf ( ("discoverInterfaces(): net intf \"%s\" found\n", pIfreqList->ifr_name) );*/
+
+         list.push_back(node);
+     }
+
+     free ( pIfreqList );
+     return 0;
+ }
 
 
 }

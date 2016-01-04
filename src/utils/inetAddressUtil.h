@@ -42,6 +42,13 @@ namespace pvAccess {
      */
     epicsShareFunc InetAddrVector* getBroadcastAddresses(SOCKET sock, unsigned short defaultPort);
 
+    struct ifaceNode {
+        int ifaceIndex;
+        osiSockAddr ifaceAddr, ifaceBCast;
+    };
+    typedef std::vector<ifaceNode> IfaceNodeVector;
+    epicsShareFunc int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *pMatchAddr = 0);
+
     /**
      * Returns NIF index for given interface address, or -1 on failure.
      */
