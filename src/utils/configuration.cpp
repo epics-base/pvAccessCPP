@@ -14,6 +14,7 @@
 #include <algorithm>
 
 #include <pv/epicsException.h>
+#include <pv/typeCast.h>
 
 #include <osiSock.h>
 #include <epicsTypes.h>
@@ -283,32 +284,29 @@ bool Configuration::getPropertyAsBoolean(const std::string &name, const bool def
 
 epics::pvData::int32 Configuration::getPropertyAsInteger(const std::string &name, const epics::pvData::int32 defaultValue) const
 {
-    epicsInt32 ret;
-    std::string val(getPropertyAsString(name, ""));
-
-    if(epicsParseInt32(val.c_str(), &ret, 0, NULL))
+    try{
+        return castUnsafe<epics::pvData::int32>(getPropertyAsString(name, ""));
+    }catch(std::runtime_error&){
         return defaultValue;
-    return ret;
+    }
 }
 
 float Configuration::getPropertyAsFloat(const std::string &name, const float defaultValue) const
 {
-    float ret;
-    std::string val(getPropertyAsString(name, ""));
-
-    if(epicsParseFloat(val.c_str(), &ret, NULL))
+    try{
+        return castUnsafe<float>(getPropertyAsString(name, ""));
+    }catch(std::runtime_error&){
         return defaultValue;
-    return ret;
+    }
 }
 
 double Configuration::getPropertyAsDouble(const std::string &name, const double defaultValue) const
 {
-    double ret;
-    std::string val(getPropertyAsString(name, ""));
-
-    if(epicsParseDouble(val.c_str(), &ret, NULL))
+    try {
+        return castUnsafe<double>(getPropertyAsString(name, ""));
+    }catch(std::runtime_error&){
         return defaultValue;
-    return ret;
+    }
 }
 
 std::string Configuration::getPropertyAsString(const std::string &name, const std::string &defaultValue) const
