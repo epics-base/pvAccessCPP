@@ -4,19 +4,12 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#include <ctype.h>
-#include <stdio.h>
-#include <errno.h>
-#include <float.h>
-#include <limits.h>
-#include <math.h>
-
 #include <algorithm>
 
 #include <pv/epicsException.h>
+#include <pv/typeCast.h>
 
 #include <osiSock.h>
-#include <epicsTypes.h>
 #include <epicsStdlib.h>
 
 #define epicsExportSharedSymbols
@@ -32,122 +25,6 @@ namespace pvAccess {
 
 using namespace epics::pvData;
 using namespace std;
-
-#ifndef EPICS_VERSION_INT
-#define VERSION_INT(V,R,M,P) ( ((V)<<24) | ((R)<<16) | ((M)<<8) | (P))
-#define EPICS_VERSION_INT VERSION_INT(EPICS_VERSION, EPICS_REVISION, EPICS_MODIFICATION, EPICS_PATCH_LEVEL)
-#endif
-
-#if EPICS_VERSION_INT < VERSION_INT(3,15,0,1)
-/* integer conversion primitives added to epicsStdlib.c in 3.15.0.1 */
-
-#define S_stdlib_noConversion 1 /* No digits to convert */
-#define S_stdlib_extraneous   2 /* Extraneous characters */
-#define S_stdlib_underflow    3 /* Too small to represent */
-#define S_stdlib_overflow     4 /* Too large to represent */
-#define S_stdlib_badBase      5 /* Number base not supported */
-
-static int
-epicsParseDouble(const char *str, double *to, char **units)
-{
-    int c;
-    char *endp;
-    double value;
-
-    while ((c = *str) && isspace(c))
-        ++str;
-
-    errno = 0;
-    value = epicsStrtod(str, &endp);
-
-    if (endp == str)
-        return S_stdlib_noConversion;
-    if (errno == ERANGE)
-        return (value == 0) ? S_stdlib_underflow : S_stdlib_overflow;
-
-    while ((c = *endp) && isspace(c))
-        ++endp;
-    if (c && !units)
-        return S_stdlib_extraneous;
-
-    *to = value;
-    if (units)
-        *units = endp;
-    return 0;
-}
-
-static int
-epicsParseFloat(const char *str, float *to, char **units)
-{
-    double value, abs;
-    int status = epicsParseDouble(str, &value, units);
-
-    if (status)
-        return status;
-
-    abs = fabs(value);
-    if (value > 0 && abs <= FLT_MIN)
-        return S_stdlib_underflow;
-    // NOTE: 'finite' is deprecated in OS X 10.9, use 'isfinite' instead
-    if (isfinite(value) && abs >= FLT_MAX)
-        return S_stdlib_overflow;
-
-    *to = (float)value;
-    return 0;
-}
-
-static int
-epicsParseLong(const char *str, long *to, int base, char **units)
-{
-    int c;
-    char *endp;
-    long value;
-
-    while ((c = *str) && isspace(c))
-        ++str;
-
-    errno = 0;
-    value = strtol(str, &endp, base);
-
-    if (endp == str)
-        return S_stdlib_noConversion;
-    if (errno == EINVAL)    /* Not universally supported */
-        return S_stdlib_badBase;
-    if (errno == ERANGE)
-        return S_stdlib_overflow;
-
-    while ((c = *endp) && isspace(c))
-        ++endp;
-    if (c && !units)
-        return S_stdlib_extraneous;
-
-    *to = value;
-    if (units)
-        *units = endp;
-    return 0;
-}
-
-static int
-epicsParseInt32(const char *str, epicsInt32 *to, int base, char **units)
-{
-    long value;
-    int status = epicsParseLong(str, &value, base, units);
-
-    if (status)
-        return status;
-
-#if (LONG_MAX > 0x7fffffff)
-    if (value < -0x80000000L || value > 0x7fffffffL)
-        return S_stdlib_overflow;
-#endif
-
-    *to = (epicsInt32)value;
-    return 0;
-}
-
-#endif
-
-
 
 Properties::Properties() {}
 
@@ -283,32 +160,29 @@ bool Configuration::getPropertyAsBoolean(const std::string &name, const bool def
 
 epics::pvData::int32 Configuration::getPropertyAsInteger(const std::string &name, const epics::pvData::int32 defaultValue) const
 {
-    epicsInt32 ret;
-    std::string val(getPropertyAsString(name, ""));
-
-    if(epicsParseInt32(val.c_str(), &ret, 0, NULL))
+    try{
+        return castUnsafe<epics::pvData::int32>(getPropertyAsString(name, ""));
+    }catch(std::runtime_error&){
         return defaultValue;
-    return ret;
+    }
 }
 
 float Configuration::getPropertyAsFloat(const std::string &name, const float defaultValue) const
 {
-    float ret;
-    std::string val(getPropertyAsString(name, ""));
-
-    if(epicsParseFloat(val.c_str(), &ret, NULL))
+    try{
+        return castUnsafe<float>(getPropertyAsString(name, ""));
+    }catch(std::runtime_error&){
         return defaultValue;
-    return ret;
+    }
 }
 
 double Configuration::getPropertyAsDouble(const std::string &name, const double defaultValue) const
 {
-    double ret;
-    std::string val(getPropertyAsString(name, ""));
-
-    if(epicsParseDouble(val.c_str(), &ret, NULL))
+    try {
+        return castUnsafe<double>(getPropertyAsString(name, ""));
+    }catch(std::runtime_error&){
         return defaultValue;
-    return ret;
+    }
 }
 
 std::string Configuration::getPropertyAsString(const std::string &name, const std::string &defaultValue) const
