@@ -32,10 +32,10 @@ using std::endl;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-static void pvaClientExitHandler(void* /*pPrivate*/) {
-cout << "pvaClientExitHandler\n";
-    ClientFactory::stop();
-}
+//static void pvaClientExitHandler(void* /*pPrivate*/) {
+//cout << "pvaClientExitHandler\n";
+//    ClientFactory::stop();
+//}
 
 static const iocshFuncDef startPVAClientFuncDef = {
     "startPVAClient", 0, 0
@@ -44,7 +44,7 @@ static const iocshFuncDef startPVAClientFuncDef = {
 extern "C" void startPVAClient(const iocshArgBuf *args)
 {
     ClientFactory::start();
-    epicsAtExit(pvaClientExitHandler, NULL);
+//    epicsAtExit(pvaClientExitHandler, NULL);
 }
 
 
