@@ -37,7 +37,7 @@ CAClientSecurityPlugin::CAClientSecurityPlugin()
         userName = buffer;
     // TODO more error handling
 
-    m_userAndHost->getSubField<PVString>("user")->put(userName);
+    m_userAndHost->getSubFieldT<PVString>("user")->put(userName);
 
     //
     // host name
@@ -48,7 +48,7 @@ CAClientSecurityPlugin::CAClientSecurityPlugin()
         hostName = buffer;
     // TODO more error handling
 
-    m_userAndHost->getSubField<PVString>("host")->put(buffer);
+    m_userAndHost->getSubFieldT<PVString>("host")->put(buffer);
 }
 
 

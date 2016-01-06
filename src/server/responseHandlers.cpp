@@ -522,7 +522,7 @@ public:
         if (args->getSubField("help"))
         {
             PVStructure::shared_pointer help = getPVDataCreate()->createPVStructure(helpStructure);
-            help->getSubField<PVString>("value")->put(helpString);
+            help->getSubFieldT<PVString>("value")->put(helpString);
             return help;
         }
 
@@ -535,7 +535,7 @@ public:
         {
             PVStructure::shared_pointer result =
                 getPVDataCreate()->createPVStructure(channelListStructure);
-            PVStringArray::shared_pointer allChannelNames = result->getSubField<PVStringArray>("value");
+            PVStringArray::shared_pointer allChannelNames = result->getSubFieldT<PVStringArray>("value");
 
             ChannelListRequesterImpl::shared_pointer listListener(new ChannelListRequesterImpl());
             std::vector<ChannelProvider::shared_pointer>& providers = m_serverContext->getChannelProviders();
@@ -597,9 +597,9 @@ public:
             if (EPICS_PVA_DEVELOPMENT_FLAG)
                 ret << "-SNAPSHOT";
 
-            result->getSubField<PVString>("version")->put(ret.str());
-            result->getSubField<PVString>("implLang")->put("cpp");
-            result->getSubField<PVString>("host")->put(hostName);
+            result->getSubFieldT<PVString>("version")->put(ret.str());
+            result->getSubFieldT<PVString>("implLang")->put("cpp");
+            result->getSubFieldT<PVString>("host")->put(hostName);
 
             std::stringstream sspid;
 #ifdef __vxworks
@@ -609,12 +609,12 @@ public:
 #else
             sspid << getpid();
 #endif
-            result->getSubField<PVString>("process")->put(sspid.str());
+            result->getSubFieldT<PVString>("process")->put(sspid.str());
 
             char timeText[64];
             epicsTimeToStrftime(timeText, 64, "%Y-%m-%dT%H:%M:%S.%03f", &m_serverContext->getStartTime());
 
-            result->getSubField<PVString>("startTime")->put(timeText);
+            result->getSubFieldT<PVString>("startTime")->put(timeText);
 
 
             return result;
