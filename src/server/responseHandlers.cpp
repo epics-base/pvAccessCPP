@@ -815,7 +815,7 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
 			LOG(logLevelDebug, "Exception caught when creating channel: %s", _channelName.c_str());
 			{
 			 Lock guard(_mutex);
-            _status = Status(Status::STATUSTYPE_FATAL,  "failed to create channel", e.what());
+            _status = Status(Status::STATUSTYPE_FATAL, "failed to create channel", e.what());
 			}
         	TransportSender::shared_pointer thisSender = shared_from_this();
         	transport->enqueueSendRequest(thisSender);
@@ -828,7 +828,7 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
 			LOG(logLevelDebug, "Exception caught when creating channel: %s", _channelName.c_str());
 			{
 			 Lock guard(_mutex);
-			_status = Status(Status::STATUSTYPE_FATAL,  "failed to create channel");
+            _status = Status(Status::STATUSTYPE_FATAL, "failed to create channel");
 			}
         	TransportSender::shared_pointer thisSender = shared_from_this();
         	transport->enqueueSendRequest(thisSender);
@@ -905,32 +905,29 @@ void ServerChannelRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 		status = _status;
 	}
 
-	// error response
-	if (serverChannel.get() == NULL)
-	{
-		createChannelFailedResponse(buffer, control, status);
-	}
-	// OK
-	else if (Transport::shared_pointer transport = _transport.lock())
-	{
-	   ServerChannelImpl::shared_pointer serverChannelImpl = dynamic_pointer_cast<ServerChannelImpl>(serverChannel);
-		control->startMessage((int8)CMD_CREATE_CHANNEL, 2*sizeof(int32)/sizeof(int8));
-		buffer->putInt(serverChannelImpl->getCID());
-		buffer->putInt(serverChannelImpl->getSID());
-		status.serialize(buffer, control);
-	}
-}
-
-
-void ServerChannelRequesterImpl::createChannelFailedResponse(ByteBuffer* buffer, TransportSendControl* control, const Status& status)
-{
-	if (Transport::shared_pointer transport = _transport.lock())
-	{
-        control->startMessage((int8)CMD_CREATE_CHANNEL, 2*sizeof(int32)/sizeof(int8));
-    	buffer->putInt(_cid);
-    	buffer->putInt(-1);
-		status.serialize(buffer, control);
-	}
+    if (Transport::shared_pointer transport = _transport.lock())
+    {
+        // error response
+        if (!serverChannel)
+        {
+            control->startMessage((int8)CMD_CREATE_CHANNEL, 2*sizeof(int32)/sizeof(int8));
+            buffer->putInt(_cid);
+            buffer->putInt(-1);
+            // error status is expected or channel has been destroyed locally
+            if (status.isSuccess())
+                status = Status(Status::STATUSTYPE_ERROR, "channel has been destroyed");
+            status.serialize(buffer, control);
+        }
+        // OK
+        else
+        {
+            ServerChannelImpl::shared_pointer serverChannelImpl = dynamic_pointer_cast<ServerChannelImpl>(serverChannel);
+            control->startMessage((int8)CMD_CREATE_CHANNEL, 2*sizeof(int32)/sizeof(int8));
+            buffer->putInt(serverChannelImpl->getCID());
+            buffer->putInt(serverChannelImpl->getSID());
+            status.serialize(buffer, control);
+        }
+    }
 }
 
 /****************************************************************************************/
