@@ -839,8 +839,11 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
     }
 }
 
-void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer const & /*channel*/, const Channel::ConnectionState /*isConnected*/)
+void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer const & /*channel*/, const Channel::ConnectionState isConnected)
 {
+    if(isConnected==Channel::CONNECTED || isConnected==Channel::NEVER_CONNECTED)
+        return;
+
     if(Transport::shared_pointer transport = _transport.lock())
     {
         ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
