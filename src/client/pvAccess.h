@@ -964,7 +964,7 @@ namespace pvAccess {
 
 /** @page Overview Documentation
  *
- *<a href = "../pvAccessOverview.html">pvAccessOverview.html</a>
+ *<a href = "../documentation/pvAccessCPP.html">pvAccessCPP.html</a>
  *
  */
 

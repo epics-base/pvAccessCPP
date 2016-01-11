@@ -1,2 +1,1 @@
-registrar("startPVAClientRegister")
-registrar("stopPVAClientRegister")
+registrar("registerStartPVAClient")

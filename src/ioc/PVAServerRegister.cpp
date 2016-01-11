@@ -25,6 +25,7 @@
 #include <epicsEvent.h>
 #include <epicsThread.h>
 #include <iocsh.h>
+#include <epicsExit.h>
 
 #include <epicsExport.h>
 
@@ -89,6 +90,10 @@ PVAServerCTXPtr PVAServerCTX::getPVAServerCTX()
    return pvPVAServerCTX;
 }
 
+static void pvaServerExitHandler(void* /*pPrivate*/) {
+cout << "pvaServerExitHandler\n";
+    PVAServerCTX::getPVAServerCTX()->stop();
+}
 
 static const iocshFuncDef startPVAServerFuncDef = {
     "startPVAServer", 0, 0
@@ -96,18 +101,11 @@ static const iocshFuncDef startPVAServerFuncDef = {
 extern "C" void startPVAServer(const iocshArgBuf *args)
 {
     PVAServerCTX::getPVAServerCTX()->start();
-}
-
-static const iocshFuncDef stopPVAServerFuncDef = {
-    "stopPVAServer", 0, 0
-};
-extern "C" void stopPVAServer(const iocshArgBuf *args)
-{
-    PVAServerCTX::getPVAServerCTX()->stop();
+    epicsAtExit(pvaServerExitHandler, NULL);
 }
 
 
-static void startPVAServerRegister(void)
+static void registerStartPVAServer(void)
 {
     static int firstTime = 1;
     if (firstTime) {
@@ -116,16 +114,6 @@ static void startPVAServerRegister(void)
     }
 }
 
-static void stopPVAServerRegister(void)
-{
-    static int firstTime = 1;
-    if (firstTime) {
-        firstTime = 0;
-        iocshRegister(&stopPVAServerFuncDef, stopPVAServer);
-    }
-}
-
 extern "C" {
-    epicsExportRegistrar(startPVAServerRegister);
-    epicsExportRegistrar(stopPVAServerRegister);
+    epicsExportRegistrar(registerStartPVAServer);
 }

@@ -69,7 +69,7 @@ namespace pvAccess
          * @throws RPCRequestException exception thrown on error on timeout.
          */
         static epics::pvData::PVStructure::shared_pointer sendRequest(const std::string & serviceName,
-            epics::pvData::PVStructure::shared_pointer request, double timeOut = RPCCLIENT_DEFAULT_TIMEOUT);
+            epics::pvData::PVStructure::shared_pointer const &request, double timeOut = RPCCLIENT_DEFAULT_TIMEOUT);
 
 
 
