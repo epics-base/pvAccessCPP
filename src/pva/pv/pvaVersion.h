@@ -22,7 +22,7 @@
 
 #include <shareLib.h>
 
-#include "pvaVersionNum.h"
+#include "pv/pvaVersionNum.h"
 
 namespace epics {
 namespace pvAccess {
