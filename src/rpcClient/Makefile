@@ -2,6 +2,6 @@
 
 SRC_DIRS += $(PVACCESS_SRC)/rpcClient
 
-INC += rpcClient.h
+INC += pv/rpcClient.h
 
 LIBSRCS += rpcClient.cpp

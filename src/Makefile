@@ -15,9 +15,6 @@ EXPANDVARS += EPICS_PVA_DEVELOPMENT_FLAG
 
 EXPANDFLAGS += $(foreach var,$(EXPANDVARS),-D$(var)="$(strip $($(var)))")
 
-INSTALL_INCLUDE = $(INSTALL_LOCATION)/include/pv
-USR_INCLUDES += -I$(INSTALL_LOCATION)/include
-
 PVACCESS_SRC = $(TOP)/src
 
 include $(PVACCESS_SRC)/pva/Makefile

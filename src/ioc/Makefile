@@ -2,7 +2,7 @@
 
 SRC_DIRS += $(PVACCESS_SRC)/ioc
 
-INC += syncChannelFind.h
+INC += pv/syncChannelFind.h
 
 DBD += PVAServerRegister.dbd
 DBD += PVAClientRegister.dbd

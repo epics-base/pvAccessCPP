@@ -2,15 +2,15 @@
 
 SRC_DIRS += $(PVACCESS_SRC)/utils
 
-INC += hexDump.h
-INC += inetAddressUtil.h
-INC += logger.h
-INC += introspectionRegistry.h
-INC += namedLockPattern.h
-INC += referenceCountingLock.h
-INC += configuration.h
-INC += likely.h
-INC += wildcard.h
+INC += pv/hexDump.h
+INC += pv/inetAddressUtil.h
+INC += pv/logger.h
+INC += pv/introspectionRegistry.h
+INC += pv/namedLockPattern.h
+INC += pv/referenceCountingLock.h
+INC += pv/configuration.h
+INC += pv/likely.h
+INC += pv/wildcard.h
 
 LIBSRCS += hexDump.cpp
 LIBSRCS += inetAddressUtil.cpp
