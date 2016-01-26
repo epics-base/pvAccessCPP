@@ -563,12 +563,12 @@ void copy_DBR(const void * dbr, unsigned count, PVStructure::shared_pointer cons
 {
     if (count == 1)
     {
-        std::tr1::shared_ptr<sF> value = std::tr1::static_pointer_cast<sF>(pvStructure->getSubField("value"));
+        std::tr1::shared_ptr<sF> value = std::tr1::static_pointer_cast<sF>(pvStructure->getSubFieldT("value"));
         value->put(static_cast<const pT*>(dbr)[0]);
     }
     else
     {
-        std::tr1::shared_ptr<aF> value = pvStructure->getSubField<aF>("value");
+        std::tr1::shared_ptr<aF> value = pvStructure->getSubFieldT<aF>("value");
         typename aF::svector temp(value->reuse());
         temp.resize(count);
         std::copy(static_cast<const pT*>(dbr), static_cast<const pT*>(dbr) + count, temp.begin());
@@ -584,12 +584,12 @@ void copy_DBR<dbr_long_t, PVInt, PVIntArray>(const void * dbr, unsigned count, P
 {
     if (count == 1)
     {
-        std::tr1::shared_ptr<PVInt> value = std::tr1::static_pointer_cast<PVInt>(pvStructure->getSubField("value"));
+        std::tr1::shared_ptr<PVInt> value = std::tr1::static_pointer_cast<PVInt>(pvStructure->getSubFieldT("value"));
         value->put(static_cast<const int32*>(dbr)[0]);
     }
     else
     {
-        std::tr1::shared_ptr<PVIntArray> value = pvStructure->getSubField<PVIntArray>("value");
+        std::tr1::shared_ptr<PVIntArray> value = pvStructure->getSubFieldT<PVIntArray>("value");
         PVIntArray::svector temp(value->reuse());
         temp.resize(count);
         std::copy(static_cast<const int32*>(dbr), static_cast<const int32*>(dbr) + count, temp.begin());
@@ -609,7 +609,7 @@ void copy_DBR<string, PVString, PVStringArray>(const void * dbr, unsigned count,
     }
     else
     {
-        std::tr1::shared_ptr<PVStringArray> value = pvStructure->getSubField<PVStringArray>("value");
+        std::tr1::shared_ptr<PVStringArray> value = pvStructure->getSubFieldT<PVStringArray>("value");
         const dbr_string_t* dbrStrings = static_cast<const dbr_string_t*>(dbr);
         PVStringArray::svector sA(value->reuse());
         sA.resize(count);
@@ -624,7 +624,7 @@ void copy_DBR<dbr_enum_t,  PVString, PVStringArray>(const void * dbr, unsigned c
 {
     if (count == 1)
     {
-        std::tr1::shared_ptr<PVInt> value = std::tr1::static_pointer_cast<PVInt>(pvStructure->getSubField("value.index"));
+        std::tr1::shared_ptr<PVInt> value = std::tr1::static_pointer_cast<PVInt>(pvStructure->getSubFieldT("value.index"));
         value->put(static_cast<const dbr_enum_t*>(dbr)[0]);
     }
     else
@@ -640,10 +640,10 @@ void copy_DBR_STS(const void * dbr, unsigned count, PVStructure::shared_pointer 
 {
     const T* data = static_cast<const T*>(dbr);
 
-    PVStructure::shared_pointer alarm = pvStructure->getSubField<PVStructure>("alarm");
-    alarm->getSubField<PVInt>("status")->put(dbrStatus2alarmStatus[data->status]);
-    alarm->getSubField<PVInt>("severity")->put(data->severity);
-    alarm->getSubField<PVString>("message")->put(dbrStatus2alarmMessage[data->status]);
+    PVStructure::shared_pointer alarm = pvStructure->getSubFieldT<PVStructure>("alarm");
+    alarm->getSubFieldT<PVInt>("status")->put(dbrStatus2alarmStatus[data->status]);
+    alarm->getSubFieldT<PVInt>("severity")->put(data->severity);
+    alarm->getSubFieldT<PVString>("message")->put(dbrStatus2alarmMessage[data->status]);
 
     copy_DBR<pT, sF, aF>(&data->value, count, pvStructure);
 }
@@ -654,11 +654,11 @@ void copy_DBR_TIME(const void * dbr, unsigned count, PVStructure::shared_pointer
 {
     const T* data = static_cast<const T*>(dbr);
 
-    PVStructure::shared_pointer ts = pvStructure->getSubField<PVStructure>("timeStamp");
+    PVStructure::shared_pointer ts = pvStructure->getSubFieldT<PVStructure>("timeStamp");
     epics::pvData::int64 spe = data->stamp.secPastEpoch;
     spe += 7305*86400;
-    ts->getSubField<PVLong>("secondsPastEpoch")->put(spe);
-    ts->getSubField<PVInt>("nanoseconds")->put(data->stamp.nsec);
+    ts->getSubFieldT<PVLong>("secondsPastEpoch")->put(spe);
+    ts->getSubFieldT<PVInt>("nanoseconds")->put(data->stamp.nsec);
 
     copy_DBR_STS<T, pT, sF, aF>(dbr, count, pvStructure);
 }
@@ -667,13 +667,13 @@ void copy_DBR_TIME(const void * dbr, unsigned count, PVStructure::shared_pointer
 template <typename T>
 void copy_format(const void * /*dbr*/, PVStructure::shared_pointer const & pvDisplayStructure)
 {
-    pvDisplayStructure->getSubField<PVString>("format")->put("%d");
+    pvDisplayStructure->getSubFieldT<PVString>("format")->put("%d");
 }
 
 template <>
 void copy_format<dbr_time_string>(const void * /*dbr*/, PVStructure::shared_pointer const & pvDisplayStructure)
 {
-    pvDisplayStructure->getSubField<PVString>("format")->put("%s");
+    pvDisplayStructure->getSubFieldT<PVString>("format")->put("%s");
 }
 
 #define COPY_FORMAT_FOR(T) \
@@ -686,11 +686,11 @@ void copy_format<T>(const void * dbr, PVStructure::shared_pointer const & pvDisp
     { \
         char fmt[16]; \
         sprintf(fmt, "%%.%df", data->precision); \
-        pvDisplayStructure->getSubField<PVString>("format")->put(std::string(fmt)); \
+        pvDisplayStructure->getSubFieldT<PVString>("format")->put(std::string(fmt)); \
     } \
     else \
     { \
-        pvDisplayStructure->getSubField<PVString>("format")->put("%f"); \
+        pvDisplayStructure->getSubFieldT<PVString>("format")->put("%f"); \
     } \
 }
 
@@ -707,23 +707,23 @@ void copy_DBR_GR(const void * dbr, unsigned count, PVStructure::shared_pointer c
 {
     const T* data = static_cast<const T*>(dbr);
 
-    PVStructure::shared_pointer alarm = pvStructure->getSubField<PVStructure>("alarm");
-    alarm->getSubField<PVInt>("status")->put(0);
-    alarm->getSubField<PVInt>("severity")->put(data->severity);
-    alarm->getSubField<PVString>("message")->put(dbrStatus2alarmMessage[data->status]);
+    PVStructure::shared_pointer alarm = pvStructure->getSubFieldT<PVStructure>("alarm");
+    alarm->getSubFieldT<PVInt>("status")->put(0);
+    alarm->getSubFieldT<PVInt>("severity")->put(data->severity);
+    alarm->getSubFieldT<PVString>("message")->put(dbrStatus2alarmMessage[data->status]);
 
-    PVStructure::shared_pointer disp = pvStructure->getSubField<PVStructure>("display");
-    disp->getSubField<PVString>("units")->put(std::string(data->units));
-    disp->getSubField<PVDouble>("limitHigh")->put(data->upper_disp_limit);
-    disp->getSubField<PVDouble>("limitLow")->put(data->lower_disp_limit);
+    PVStructure::shared_pointer disp = pvStructure->getSubFieldT<PVStructure>("display");
+    disp->getSubFieldT<PVString>("units")->put(std::string(data->units));
+    disp->getSubFieldT<PVDouble>("limitHigh")->put(data->upper_disp_limit);
+    disp->getSubFieldT<PVDouble>("limitLow")->put(data->lower_disp_limit);
 
     copy_format<T>(dbr, disp);
 
-    PVStructure::shared_pointer va = pvStructure->getSubField<PVStructure>("valueAlarm");
-    va->getSubField<PVDouble>("highAlarmLimit")->put(data->upper_alarm_limit);
-    va->getSubField<PVDouble>("highWarningLimit")->put(data->upper_warning_limit);
-    va->getSubField<PVDouble>("lowWarningLimit")->put(data->lower_warning_limit);
-    va->getSubField<PVDouble>("lowAlarmLimit")->put(data->lower_alarm_limit);
+    PVStructure::shared_pointer va = pvStructure->getSubFieldT<PVStructure>("valueAlarm");
+    va->getSubFieldT<PVDouble>("highAlarmLimit")->put(data->upper_alarm_limit);
+    va->getSubFieldT<PVDouble>("highWarningLimit")->put(data->upper_warning_limit);
+    va->getSubFieldT<PVDouble>("lowWarningLimit")->put(data->lower_warning_limit);
+    va->getSubFieldT<PVDouble>("lowAlarmLimit")->put(data->lower_alarm_limit);
 
     copy_DBR<pT, sF, aF>(&data->value, count, pvStructure);
 }
@@ -745,27 +745,27 @@ void copy_DBR_CTRL(const void * dbr, unsigned count, PVStructure::shared_pointer
 {
     const T* data = static_cast<const T*>(dbr);
 
-    PVStructure::shared_pointer alarm = pvStructure->getSubField<PVStructure>("alarm");
-    alarm->getSubField<PVInt>("status")->put(0);
-    alarm->getSubField<PVInt>("severity")->put(data->severity);
-    alarm->getSubField<PVString>("message")->put(dbrStatus2alarmMessage[data->status]);
+    PVStructure::shared_pointer alarm = pvStructure->getSubFieldT<PVStructure>("alarm");
+    alarm->getSubFieldT<PVInt>("status")->put(0);
+    alarm->getSubFieldT<PVInt>("severity")->put(data->severity);
+    alarm->getSubFieldT<PVString>("message")->put(dbrStatus2alarmMessage[data->status]);
 
-    PVStructure::shared_pointer disp = pvStructure->getSubField<PVStructure>("display");
-    disp->getSubField<PVString>("units")->put(std::string(data->units));
-    disp->getSubField<PVDouble>("limitHigh")->put(data->upper_disp_limit);
-    disp->getSubField<PVDouble>("limitLow")->put(data->lower_disp_limit);
+    PVStructure::shared_pointer disp = pvStructure->getSubFieldT<PVStructure>("display");
+    disp->getSubFieldT<PVString>("units")->put(std::string(data->units));
+    disp->getSubFieldT<PVDouble>("limitHigh")->put(data->upper_disp_limit);
+    disp->getSubFieldT<PVDouble>("limitLow")->put(data->lower_disp_limit);
 
     copy_format<T>(dbr, disp);
 
-    PVStructure::shared_pointer va = pvStructure->getSubField<PVStructure>("valueAlarm");
-    std::tr1::static_pointer_cast<sF>(va->getSubField("highAlarmLimit"))->put(data->upper_alarm_limit);
-    std::tr1::static_pointer_cast<sF>(va->getSubField("highWarningLimit"))->put(data->upper_warning_limit);
-    std::tr1::static_pointer_cast<sF>(va->getSubField("lowWarningLimit"))->put(data->lower_warning_limit);
-    std::tr1::static_pointer_cast<sF>(va->getSubField("lowAlarmLimit"))->put(data->lower_alarm_limit);
+    PVStructure::shared_pointer va = pvStructure->getSubFieldT<PVStructure>("valueAlarm");
+    std::tr1::static_pointer_cast<sF>(va->getSubFieldT("highAlarmLimit"))->put(data->upper_alarm_limit);
+    std::tr1::static_pointer_cast<sF>(va->getSubFieldT("highWarningLimit"))->put(data->upper_warning_limit);
+    std::tr1::static_pointer_cast<sF>(va->getSubFieldT("lowWarningLimit"))->put(data->lower_warning_limit);
+    std::tr1::static_pointer_cast<sF>(va->getSubFieldT("lowAlarmLimit"))->put(data->lower_alarm_limit);
 
-    PVStructure::shared_pointer ctrl = pvStructure->getSubField<PVStructure>("control");
-    ctrl->getSubField<PVDouble>("limitHigh")->put(data->upper_ctrl_limit);
-    ctrl->getSubField<PVDouble>("limitLow")->put(data->lower_ctrl_limit);
+    PVStructure::shared_pointer ctrl = pvStructure->getSubFieldT<PVStructure>("control");
+    ctrl->getSubFieldT<PVDouble>("limitHigh")->put(data->upper_ctrl_limit);
+    ctrl->getSubFieldT<PVDouble>("limitLow")->put(data->lower_ctrl_limit);
 
     copy_DBR<pT, sF, aF>(&data->value, count, pvStructure);
 }
@@ -965,7 +965,7 @@ CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & _channel,
     lastRequestFlag(false)
 {
     // NOTE: we require value type, we can only put value field
-    bitSet->set(pvStructure->getSubField("value")->getFieldOffset());
+    bitSet->set(pvStructure->getSubFieldT("value")->getFieldOffset());
 }
 
 void CAChannelPut::activate()
@@ -1002,7 +1002,7 @@ int doPut_pvStructure(CAChannel::shared_pointer const & channel, void *usrArg, P
 
     if (isScalarValue)
     {
-        std::tr1::shared_ptr<sF> value = std::tr1::static_pointer_cast<sF>(pvStructure->getSubField("value"));
+        std::tr1::shared_ptr<sF> value = std::tr1::static_pointer_cast<sF>(pvStructure->getSubFieldT("value"));
 
         pT val = value->get();
         int result = ca_array_put_callback(channel->getNativeType(), 1,
@@ -1018,7 +1018,7 @@ int doPut_pvStructure(CAChannel::shared_pointer const & channel, void *usrArg, P
     }
     else
     {
-        std::tr1::shared_ptr<aF> value = pvStructure->getSubField<aF>("value");
+        std::tr1::shared_ptr<aF> value = pvStructure->getSubFieldT<aF>("value");
 
         const pT* val = value->view().data();
         int result = ca_array_put_callback(channel->getNativeType(), static_cast<unsigned long>(value->getLength()),
@@ -1042,7 +1042,7 @@ int doPut_pvStructure<string, pvString, PVString, PVStringArray>(CAChannel::shar
 
     if (isScalarValue)
     {
-        std::tr1::shared_ptr<PVString> value = std::tr1::static_pointer_cast<PVString>(pvStructure->getSubField("value"));
+        std::tr1::shared_ptr<PVString> value = std::tr1::static_pointer_cast<PVString>(pvStructure->getSubFieldT("value"));
 
         string val = value->get();
         int result = ca_array_put_callback(channel->getNativeType(), 1,
@@ -1058,7 +1058,7 @@ int doPut_pvStructure<string, pvString, PVString, PVStringArray>(CAChannel::shar
     }
     else
     {
-        std::tr1::shared_ptr<PVStringArray> value = pvStructure->getSubField<PVStringArray>("value");
+        std::tr1::shared_ptr<PVStringArray> value = pvStructure->getSubFieldT<PVStringArray>("value");
 
         PVStringArray::const_svector stringArray(value->view());
 
@@ -1101,7 +1101,7 @@ int doPut_pvStructure<dbr_enum_t, pvString, PVString, PVStringArray>(CAChannel::
 
     if (isScalarValue)
     {
-        std::tr1::shared_ptr<PVInt> value = std::tr1::static_pointer_cast<PVInt>(pvStructure->getSubField("value.index"));
+        std::tr1::shared_ptr<PVInt> value = std::tr1::static_pointer_cast<PVInt>(pvStructure->getSubFieldT("value.index"));
 
         dbr_enum_t val = value->get();
         int result = ca_array_put_callback(channel->getNativeType(), 1,
