@@ -4,6 +4,7 @@ SRC_DIRS += $(PVACCESS_SRC)/pva
 
 INC += pvaConstants.h
 INC += pvaVersion.h
+INC += pvaVersionNum.h
 INC += clientFactory.h
 
 LIBSRCS += pvaVersion.cpp
