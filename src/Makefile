@@ -49,5 +49,5 @@ include $(TOP)/configure/RULES
 
 # Can't use EXPAND as generated headers must appear
 # in O.Common, but EXPAND emits rules for O.$(T_A)
-../O.Common/pvaVersionNum.h: pvaVersionNum.h@
+../O.Common/pvaVersionNum.h: ../pva/pvaVersionNum.h@
 	$(EXPAND_TOOL) $(EXPANDFLAGS) $($@_EXPANDFLAGS) $< $@
