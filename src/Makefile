@@ -36,6 +36,8 @@ include $(PVACCESS_SRC)/ioc/Makefile
 
 LIBRARY = pvAccess
 
+SHRLIB_VERSION = $(EPICS_PVA_MAJOR_VERSION).$(EPICS_PVA_MINOR_VERSION).$(EPICS_PVA_MAINTENANCE_VERSION)
+
 pvAccess_LIBS += pvData
 pvAccess_LIBS += ca
 pvAccess_LIBS += Com
