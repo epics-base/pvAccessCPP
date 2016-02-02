@@ -15,9 +15,6 @@ EXPANDVARS += EPICS_PVA_DEVELOPMENT_FLAG
 
 EXPANDFLAGS += $(foreach var,$(EXPANDVARS),-D$(var)="$(strip $($(var)))")
 
-INSTALL_INCLUDE = $(INSTALL_LOCATION)/include/pv
-USR_INCLUDES += -I$(INSTALL_LOCATION)/include
-
 PVACCESS_SRC = $(TOP)/src
 
 include $(PVACCESS_SRC)/pva/Makefile
@@ -49,5 +46,6 @@ include $(TOP)/configure/RULES
 
 # Can't use EXPAND as generated headers must appear
 # in O.Common, but EXPAND emits rules for O.$(T_A)
-../O.Common/pvaVersionNum.h: ../pva/pvaVersionNum.h@
+../O.Common/pv/pvaVersionNum.h: ../pva/pvaVersionNum.h@
+	$(MKDIR) $(COMMON_DIR)/pv
 	$(EXPAND_TOOL) $(EXPANDFLAGS) $($@_EXPANDFLAGS) $< $@

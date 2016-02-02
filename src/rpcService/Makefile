@@ -2,8 +2,8 @@
 
 SRC_DIRS += $(PVACCESS_SRC)/rpcService
 
-INC += rpcService.h
-INC += rpcServer.h
+INC += pv/rpcService.h
+INC += pv/rpcServer.h
 
 LIBSRCS += rpcService.cpp
 LIBSRCS += rpcServer.cpp

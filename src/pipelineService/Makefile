@@ -2,8 +2,8 @@
 
 SRC_DIRS += $(PVACCESS_SRC)/pipelineService
 
-INC += pipelineService.h
-INC += pipelineServer.h
+INC += pv/pipelineService.h
+INC += pv/pipelineServer.h
 
 LIBSRCS += pipelineService.cpp
 LIBSRCS += pipelineServer.cpp

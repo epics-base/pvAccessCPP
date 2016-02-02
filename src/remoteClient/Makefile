@@ -2,6 +2,6 @@
 
 SRC_DIRS += $(PVACCESS_SRC)/remoteClient
 
-INC += clientContextImpl.h
+INC += pv/clientContextImpl.h
 
 LIBSRCS += clientContextImpl.cpp

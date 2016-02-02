@@ -5,7 +5,7 @@
  */
 
 #include <pv/blockingTCP.h>
-#include "codec.h"
+#include <pv/codec.h>
 #include <pv/remote.h>
 #include <pv/logger.h>
 
