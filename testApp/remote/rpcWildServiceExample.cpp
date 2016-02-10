@@ -19,7 +19,6 @@ class WildServiceImpl :
     public RPCService
 {
     PVStructure::shared_pointer request(PVStructure::shared_pointer const & pvArguments)
-        throw (RPCRequestException)
     {
         // requires NTURI as argument
         if (pvArguments->getStructure()->getID() != "epics:nt/NTURI:1.0")

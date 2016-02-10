@@ -24,7 +24,6 @@ class SumServiceImpl :
     public RPCService
 {
     PVStructure::shared_pointer request(PVStructure::shared_pointer const & pvArguments)
-        throw (RPCRequestException)
     {
         // NTURI support
         PVStructure::shared_pointer args(

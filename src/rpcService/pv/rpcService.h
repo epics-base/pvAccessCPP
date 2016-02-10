@@ -62,7 +62,7 @@ public:
  
     virtual epics::pvData::PVStructure::shared_pointer request(
         epics::pvData::PVStructure::shared_pointer const & args
-    ) throw (RPCRequestException) = 0;
+    ) = 0;
 };
 
 
