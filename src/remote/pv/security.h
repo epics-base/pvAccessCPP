@@ -138,8 +138,7 @@ namespace epics {
         virtual void close() = 0;
 
         // notification to the client on allowed requests (bitSet, a bit per request)
-        virtual ChannelSecuritySession::shared_pointer createChannelSession(std::string const & channelName)
-            throw (SecurityException) = 0;
+        virtual ChannelSecuritySession::shared_pointer createChannelSession(std::string const & channelName) = 0;
     };
 
     class epicsShareClass SecurityPluginControl {
@@ -197,7 +196,7 @@ namespace epics {
         virtual SecuritySession::shared_pointer createSession(
                 osiSockAddr const & remoteAddress,
                 SecurityPluginControl::shared_pointer const & control,
-                epics::pvData::PVField::shared_pointer const & data) throw (SecurityException) = 0;
+                epics::pvData::PVField::shared_pointer const & data) = 0;
     };
 
 
@@ -240,7 +239,6 @@ namespace epics {
 
         // notification to the client on allowed requests (bitSet, a bit per request)
         virtual ChannelSecuritySession::shared_pointer createChannelSession(std::string const & /*channelName*/)
-            throw (SecurityException)
         {
             return shared_from_this();
         }
@@ -284,7 +282,7 @@ namespace epics {
         virtual SecuritySession::shared_pointer createSession(
                 osiSockAddr const & /*remoteAddress*/,
                 SecurityPluginControl::shared_pointer const & control,
-                epics::pvData::PVField::shared_pointer const & /*data*/) throw (SecurityException) {
+                epics::pvData::PVField::shared_pointer const & /*data*/) {
             control->authenticationCompleted(epics::pvData::Status::Ok);
             return shared_from_this();
         }

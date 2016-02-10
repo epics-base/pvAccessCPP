@@ -509,7 +509,7 @@ public:
 
     virtual epics::pvData::PVStructure::shared_pointer request(
         epics::pvData::PVStructure::shared_pointer const & arguments
-    ) throw (RPCRequestException)
+    )
     {
         // NTURI support
         PVStructure::shared_pointer args(
