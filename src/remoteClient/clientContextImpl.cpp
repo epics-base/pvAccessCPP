@@ -2507,6 +2507,7 @@ namespace epics {
                     // if streaming
                     if (pendingRequest & QOS_GET_PUT)
                     {
+                        control->ensureBuffer(4);
                         buffer->putInt(m_queueSize);
                     }
                 }
