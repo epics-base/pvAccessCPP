@@ -1883,6 +1883,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
         const bool ack = (QOS_GET_PUT & qosCode) != 0;
         if (ack)
         {
+            transport->ensureData(4);
             int32 nfree = payloadBuffer->getInt();
             ServerMonitorRequesterImpl::shared_pointer request = static_pointer_cast<ServerMonitorRequesterImpl>(channel->getRequest(ioid));
 
@@ -1909,6 +1910,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 
         if (ack)
         {
+            transport->ensureData(4);
             int32 nfree = payloadBuffer->getInt();
             Monitor::shared_pointer mp = request->getChannelMonitor();
             PipelineMonitor* pmp = dynamic_cast<PipelineMonitor*>(mp.get());
