@@ -2427,10 +2427,19 @@ namespace epics {
                        pvString = pvOptions->getSubField<PVString>("ackAny");
                        if (pvString) {
                            int32 size;
+                           string sval = pvString->get();
+                           string::size_type slen = sval.length();
+                           bool percentage = (slen > 0) && (sval[slen-1] == '%');
+                           if (percentage)
+                               sval = sval.substr(0, slen-1);
                            std::stringstream ss;
-                           ss << pvString->get();
+                           ss << sval;
                            ss >> size;
-                           if (size > 0)
+                           if (percentage)
+                               size = (m_queueSize * size) / 100;
+                           if (size <= 0)
+                               m_ackAny = 1;
+                           else
                                m_ackAny = (m_ackAny <= m_queueSize) ? size : m_queueSize;
                        }
                    }
