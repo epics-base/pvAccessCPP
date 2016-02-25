@@ -387,8 +387,13 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
         }
 #endif
         else {
-             /*ifDepenDebugPrintf ( ( "discoverInterfaces(): net intf \"%s\": not point to point or bcast?\n", pIfreqList->ifr_name ) );*/
-             continue;
+            if (match)
+                node.ifaceBCast.sa.sa_family = AF_UNSPEC;
+            else
+            {
+                /*ifDepenDebugPrintf ( ( "discoverInterfaces(): net intf \"%s\": not point to point or bcast?\n", pIfreqList->ifr_name ) );*/
+                continue;
+            }
          }
 
 
