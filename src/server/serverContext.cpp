@@ -319,16 +319,17 @@ void ServerContextImpl::initializeBroadcastTransport()
         {
             _broadcastTransport->setSendAddresses(list.get());
         }
-        else    // TODO or no fallback at all
+        /*
+        else
         {
             // fallback
             // set default (auto) address list
             _broadcastTransport->setSendAddresses(&autoBCastAddr);
         }
+        */
     }
-    else
+    else if (_autoBeaconAddressList)
     {
-        // fallback
         // set default (auto) address list
         _broadcastTransport->setSendAddresses(&autoBCastAddr);
     }
@@ -337,8 +338,8 @@ void ServerContextImpl::initializeBroadcastTransport()
     // debug output for broadcast addresses
     InetAddrVector* blist = _broadcastTransport->getSendAddresses();
     if (!blist || !blist->size())
-        LOG(logLevelWarn,
-            "No beacon broadcast addresses found or specified!");
+        LOG(logLevelError,
+            "No broadcast addresses found or specified - empty beacon address list!");
     else
         for (size_t i = 0; i < blist->size(); i++)
             LOG(logLevelDebug,

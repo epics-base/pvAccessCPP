@@ -4526,16 +4526,17 @@ namespace epics {
                     {
                         m_searchTransport->setSendAddresses(list.get());
                     }
-                    else    // TODO or no fallback at all
+                    /*
+                    else
                     {
                         // fallback
                         // set default (auto) address list
                         m_searchTransport->setSendAddresses(&autoBCastAddr);
                     }
+                    */
                 }
-                else
+                else if (m_autoAddressList)
                 {
-                    // fallback
                     // set default (auto) address list
                     m_searchTransport->setSendAddresses(&autoBCastAddr);
                 }
@@ -4545,8 +4546,8 @@ namespace epics {
                 // debug output for broadcast addresses
                 InetAddrVector* blist = m_searchTransport->getSendAddresses();
                 if (!blist || !blist->size())
-                    LOG(logLevelWarn,
-                        "No broadcast addresses found or specified!");
+                    LOG(logLevelError,
+                        "No broadcast addresses found or specified - empty PV search address list!");
                 else
                     for (size_t i = 0; i < blist->size(); i++)
                         LOG(logLevelDebug,
