@@ -476,7 +476,8 @@ void ServerContextImpl::initializeBroadcastTransport()
                 localMulticastTransport->start();
 
             _udpTransports.push_back(transport);
-            _udpTransports.push_back(transport2);
+            if(transport2)
+                _udpTransports.push_back(transport2);
             _udpTransports.push_back(localMulticastTransport);
 
         }

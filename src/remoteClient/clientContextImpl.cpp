@@ -4666,7 +4666,8 @@ namespace epics {
                             localMulticastTransport->start();
 
                         m_udpTransports.push_back(transport);
-                        m_udpTransports.push_back(transport2);
+                        if (transport2)
+                            m_udpTransports.push_back(transport2);
                         m_udpTransports.push_back(localMulticastTransport);
 
                     }

@@ -154,7 +154,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             
             
             // wait for send thread to exit cleanly            
-            if (waitForThreadToComplete)
+            if (_thread.get() && waitForThreadToComplete)
             {
                 if (!_shutdownEvent.wait(5.0))
                 {
