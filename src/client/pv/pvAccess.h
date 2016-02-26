@@ -34,6 +34,17 @@ namespace epics {
 namespace pvAccess {
 class Configuration;
 
+using epics::pvData::Requester;
+using epics::pvData::RequesterPtr;
+using epics::pvData::MessageType;
+using epics::pvData::getMessageTypeName;
+
+using epics::pvData::MonitorElement;
+using epics::pvData::MonitorElementPtr;
+using epics::pvData::MonitorElementPtrArray;
+using epics::pvData::Monitor;
+using epics::pvData::MonitorRequester;
+
 // TODO add write-only?
 // change names
 enum AccessRights {
