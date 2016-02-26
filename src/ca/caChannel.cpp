@@ -277,13 +277,6 @@ std::tr1::shared_ptr<ChannelRequester> CAChannel::getChannelRequester()
     return channelRequester;
 }
 
-
-bool CAChannel::isConnected()
-{
-    return (ca_state(channelID) == cs_conn);
-}
-
-
 void CAChannel::getField(GetFieldRequester::shared_pointer const & requester,
                          std::string const & subField)
 {
@@ -383,12 +376,6 @@ ChannelArray::shared_pointer CAChannel::createChannelArray(
 }
 
 
-void CAChannel::printInfo()
-{
-    printInfo(std::cout);
-}
-
-
 void CAChannel::printInfo(std::ostream& out)
 {
     out << "CHANNEL  : " << getChannelName() << std::endl;
@@ -400,21 +387,6 @@ void CAChannel::printInfo(std::ostream& out)
         out << "ADDRESS  : " << getRemoteAddress() << std::endl;
         //out << "RIGHTS   : " << getAccessRights() << std::endl;
     }
-}
-
-
-/* --------------- epics::pvData::Requester --------------- */
-
-
-string CAChannel::getRequesterName()
-{
-    return getChannelName();
-}
-
-
-void CAChannel::message(std::string const & message,MessageType messageType)
-{
-    std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
 }
 
 
