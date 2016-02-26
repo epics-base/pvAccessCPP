@@ -250,7 +250,7 @@ public:
         return m_requestedCount;
     }
 
-    virtual epics::pvData::MonitorElement::shared_pointer getFreeElement() {
+    virtual MonitorElement::shared_pointer getFreeElement() {
         Lock guard(m_freeQueueLock);
         if (m_freeQueue.empty())
             return m_nullMonitorElement;
@@ -261,7 +261,7 @@ public:
         return freeElement;
     }
 
-    virtual void putElement(epics::pvData::MonitorElement::shared_pointer const & element) {
+    virtual void putElement(MonitorElement::shared_pointer const & element) {
 
         bool notify = false;
         {
@@ -430,8 +430,8 @@ public:
         return nullPtr;
     }
 
-    virtual epics::pvData::Monitor::shared_pointer createMonitor(
-        epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
+    virtual Monitor::shared_pointer createMonitor(
+        MonitorRequester::shared_pointer const & monitorRequester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest)
     {
         if (!pvRequest)

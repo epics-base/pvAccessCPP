@@ -510,7 +510,7 @@ public:
 
 class ServerMonitorRequesterImpl :
     public BaseChannelRequester,
-    public epics::pvData::MonitorRequester,
+    public MonitorRequester,
     public TransportSender,
     public std::tr1::enable_shared_from_this<ServerMonitorRequesterImpl>
 {
@@ -523,22 +523,22 @@ protected:
                                Transport::shared_pointer const & transport);
     void activate(epics::pvData::PVStructure::shared_pointer const & pvRequest);
 public:
-    static epics::pvData::MonitorRequester::shared_pointer create(ServerContextImpl::shared_pointer const & context,
+    static MonitorRequester::shared_pointer create(ServerContextImpl::shared_pointer const & context,
             ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
             Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
     virtual ~ServerMonitorRequesterImpl() {}
 
-    void monitorConnect(const epics::pvData::Status& status, epics::pvData::Monitor::shared_pointer const & monitor, epics::pvData::StructureConstPtr const & structure);
-    void unlisten(epics::pvData::Monitor::shared_pointer const & monitor);
-    void monitorEvent(epics::pvData::Monitor::shared_pointer const & monitor);
+    void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, epics::pvData::StructureConstPtr const & structure);
+    void unlisten(Monitor::shared_pointer const & monitor);
+    void monitorEvent(Monitor::shared_pointer const & monitor);
     void lock();
     void unlock();
     void destroy();
 
-    epics::pvData::Monitor::shared_pointer getChannelMonitor();
+    Monitor::shared_pointer getChannelMonitor();
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 private:
-    epics::pvData::Monitor::shared_pointer _channelMonitor;
+    Monitor::shared_pointer _channelMonitor;
     epics::pvData::StructureConstPtr _structure;
     epics::pvData::Status _status;
     bool _unlisten;

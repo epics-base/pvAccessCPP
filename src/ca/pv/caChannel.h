@@ -73,8 +73,8 @@ public:
         ChannelRPCRequester::shared_pointer const & channelRPCRequester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
-    virtual epics::pvData::Monitor::shared_pointer createMonitor(
-        epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
+    virtual Monitor::shared_pointer createMonitor(
+        MonitorRequester::shared_pointer const & monitorRequester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     virtual ChannelArray::shared_pointer createChannelArray(
@@ -243,27 +243,27 @@ private:
 
 
 class CAChannelMonitor :
-    public epics::pvData::Monitor,
+    public Monitor,
     public std::tr1::enable_shared_from_this<CAChannelMonitor>
 {
 
 public:
     POINTER_DEFINITIONS(CAChannelMonitor);
 
-    static epics::pvData::Monitor::shared_pointer create(CAChannel::shared_pointer const & channel,
-            epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
+    static Monitor::shared_pointer create(CAChannel::shared_pointer const & channel,
+            MonitorRequester::shared_pointer const & monitorRequester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     virtual ~CAChannelMonitor();
 
     void subscriptionEvent(struct event_handler_args &args);
 
-    /* --------------- epics::pvData::Monitor --------------- */
+    /* --------------- Monitor --------------- */
 
     virtual epics::pvData::Status start();
     virtual epics::pvData::Status stop();
-    virtual epics::pvData::MonitorElementPtr poll();
-    virtual void release(epics::pvData::MonitorElementPtr const & monitorElement);
+    virtual MonitorElementPtr poll();
+    virtual void release(MonitorElementPtr const & monitorElement);
 
     /* --------------- epics::pvData::ChannelRequest --------------- */
 
@@ -276,12 +276,12 @@ public:
 private:
 
     CAChannelMonitor(CAChannel::shared_pointer const & _channel,
-                     epics::pvData::MonitorRequester::shared_pointer const & _monitorRequester,
+                     MonitorRequester::shared_pointer const & _monitorRequester,
                      epics::pvData::PVStructure::shared_pointer const & pvRequest);
     void activate();
 
     CAChannel::shared_pointer channel;
-    epics::pvData::MonitorRequester::shared_pointer monitorRequester;
+    MonitorRequester::shared_pointer monitorRequester;
     chtype getType;
 
     epics::pvData::PVStructure::shared_pointer pvStructure;
@@ -292,8 +292,8 @@ private:
     epics::pvData::Mutex mutex;
     int count;
 
-    epics::pvData::MonitorElement::shared_pointer element;
-    epics::pvData::MonitorElement::shared_pointer nullElement;
+    MonitorElement::shared_pointer element;
+    MonitorElement::shared_pointer nullElement;
 
     // TODO remove
     Monitor::shared_pointer thisPointer;
