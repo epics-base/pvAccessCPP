@@ -616,6 +616,9 @@ public:
 
     virtual ~Channel() {}
 
+    virtual std::string getRequesterName();
+    virtual void message(std::string const & message, epics::pvData::MessageType messageType);
+
     /**
      * Channel connection status.
      */
@@ -664,7 +667,7 @@ public:
      * Is the channel connected?
      * @return (false,true) means (not, is) connected.
      */
-    virtual bool isConnected() = 0;
+    virtual bool isConnected() { return getConnectionState()==CONNECTED; }
 
     /**
      * Get a Field which describes the subField.
@@ -695,7 +698,7 @@ public:
      */
     virtual ChannelProcess::shared_pointer createChannelProcess(
         ChannelProcessRequester::shared_pointer const & channelProcessRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
+        epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     /**
      * Create a ChannelGet.
@@ -709,7 +712,7 @@ public:
      */
     virtual ChannelGet::shared_pointer createChannelGet(
         ChannelGetRequester::shared_pointer const & channelGetRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
+        epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     /**
      * Create a ChannelPut.
@@ -723,7 +726,7 @@ public:
      */
     virtual ChannelPut::shared_pointer createChannelPut(
         ChannelPutRequester::shared_pointer const & channelPutRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
+        epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     /**
      * Create a ChannelPutGet.
@@ -737,7 +740,7 @@ public:
      */
     virtual ChannelPutGet::shared_pointer createChannelPutGet(
         ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
+        epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     /**
      * Create a ChannelRPC (Remote Procedure Call).
@@ -747,7 +750,7 @@ public:
      */
     virtual ChannelRPC::shared_pointer createChannelRPC(
         ChannelRPCRequester::shared_pointer const & channelRPCRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
+        epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     /**
      * Create a Monitor.
@@ -758,7 +761,7 @@ public:
      */
     virtual epics::pvData::Monitor::shared_pointer createMonitor(
         epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
+        epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     /**
      * Create a ChannelArray.
@@ -768,18 +771,18 @@ public:
      */
     virtual ChannelArray::shared_pointer createChannelArray(
         ChannelArrayRequester::shared_pointer const & channelArrayRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
+        epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     /**
      * Prints detailed information about the context to the standard output stream.
      */
-    virtual void printInfo() = 0;
+    virtual void printInfo() { printInfo(std::cout); }
 
     /**
      * Prints detailed information about the context to the specified output stream.
      * @param out the output stream.
      */
-    virtual void printInfo(std::ostream& out) = 0;
+    virtual void printInfo(std::ostream& out) {}
 };
 
 
