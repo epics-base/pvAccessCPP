@@ -2220,7 +2220,8 @@ namespace epics {
 
                    m_up2datePVStructure = pvStructure;
 
-                   m_monitorQueue.push(newElement);
+                   if (!m_overrunInProgress)
+                       m_monitorQueue.push(newElement);
                }
 
                if (!m_overrunInProgress)
