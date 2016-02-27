@@ -2204,6 +2204,7 @@ namespace epics {
                    {
                        m_overrunInProgress = true;
                        m_overrunElement = newElement;
+                       return;
                    }
 
                    // setup current fields
