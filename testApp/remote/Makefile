@@ -48,3 +48,5 @@ rpcClientExample_SRCS += rpcClientExample.cpp
 PROD_HOST += pipelineServiceExample
 pipelineServiceExample_SRCS += pipelineServiceExample.cpp
 
+TESTPROD_HOST += testClientFactory
+testClientFactory_SRCS += testClientFactory.cpp
