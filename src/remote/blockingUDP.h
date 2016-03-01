@@ -243,7 +243,7 @@ namespace epics {
 
             /**
              * Set ignore list.
-             * @param addresses list of ignored addresses.
+             * @param address list of ignored addresses.
              */
             void setIgnoredAddresses(InetAddrVector* addresses) {
                 if (addresses)
@@ -264,6 +264,32 @@ namespace epics {
             InetAddrVector* getIgnoredAddresses() const {
                 return _ignoredAddresses;
             }
+
+            /**
+             * Set tapped NIF list.
+             * @param NIF address list to tap.
+             */
+            void setTappedNIF(InetAddrVector* addresses) {
+                if (addresses)
+                {
+                    if (!_tappedNIF) _tappedNIF = new InetAddrVector;
+                    *_tappedNIF = *addresses;
+                }
+                else
+                {
+                    if (_tappedNIF) { delete _tappedNIF; _tappedNIF = 0; }
+                }
+            }
+
+            /**
+             * Get list of tapped NIF addresses.
+             * @return tapped NIF addresses.
+             */
+            InetAddrVector* getTappedNIF() const {
+                return _tappedNIF;
+            }
+
+            bool send(const char* buffer, size_t length, const osiSockAddr& address);
 
             bool send(epics::pvData::ByteBuffer* buffer, const osiSockAddr& address);
 
@@ -372,6 +398,11 @@ namespace epics {
              * Ignore addresses.
              */
             InetAddrVector* _ignoredAddresses;
+
+            /**
+             * Tapped NIF addresses.
+             */
+            InetAddrVector* _tappedNIF;
 
             /**
              * Send address.

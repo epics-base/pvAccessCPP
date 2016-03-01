@@ -114,7 +114,8 @@ namespace epics {
             CMD_MESSAGE = 18,
             CMD_MULTIPLE_DATA = 19,
             CMD_RPC = 20,
-            CMD_CANCEL_REQUEST = 21
+            CMD_CANCEL_REQUEST = 21,
+            CMD_ORIGIN_TAG = 22
         };
 
 		enum ControlCommands {

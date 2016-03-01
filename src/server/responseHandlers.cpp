@@ -266,6 +266,17 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
         BlockingUDPTransport::shared_pointer bt = dynamic_pointer_cast<BlockingUDPTransport>(transport);
         if (bt && bt->hasLocalMulticastAddress())
         {
+            // RECEIVE_BUFFER_PRE_RESERVE allows to pre-fix message
+            size_t newStartPos = (startPosition-PVA_MESSAGE_HEADER_SIZE)-PVA_MESSAGE_HEADER_SIZE-16;
+            payloadBuffer->setPosition(newStartPos);
+
+            // copy part of a header, and add: command, payloadSize, NIF address
+            payloadBuffer->put(payloadBuffer->getArray(), startPosition-PVA_MESSAGE_HEADER_SIZE, PVA_MESSAGE_HEADER_SIZE-5);
+            payloadBuffer->putByte(CMD_ORIGIN_TAG);
+            payloadBuffer->putInt(16);
+            // encode this socket bind address
+            encodeAsIPv6Address(payloadBuffer, bt->getBindAddress());
+
             // clear unicast flag
             payloadBuffer->put(startPosition+4, (int8)(qosCode & ~0x80));
 
@@ -273,9 +284,12 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
             payloadBuffer->setPosition(startPosition+8);
             encodeAsIPv6Address(payloadBuffer, &responseAddress);
 
-            payloadBuffer->setPosition(payloadBuffer->getLimit());		// send will call flip()
+            // set to end of a message
+            payloadBuffer->setPosition(payloadBuffer->getLimit());
 
-            bt->send(payloadBuffer, bt->getLocalMulticastAddress());
+            bt->send(payloadBuffer->getArray()+newStartPos, payloadBuffer->getPosition()-newStartPos,
+                     bt->getLocalMulticastAddress());
+
             return;
         }
     }

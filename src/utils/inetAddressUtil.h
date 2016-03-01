@@ -43,7 +43,6 @@ namespace pvAccess {
     epicsShareFunc InetAddrVector* getBroadcastAddresses(SOCKET sock, unsigned short defaultPort);
 
     struct ifaceNode {
-        int ifaceIndex;
         osiSockAddr ifaceAddr, ifaceBCast;
     };
     typedef std::vector<ifaceNode> IfaceNodeVector;

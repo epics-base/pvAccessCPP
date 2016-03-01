@@ -2926,6 +2926,17 @@ namespace epics {
                     BlockingUDPTransport::shared_pointer bt = dynamic_pointer_cast<BlockingUDPTransport>(transport);
                     if (bt && bt->hasLocalMulticastAddress())
                     {
+                        // RECEIVE_BUFFER_PRE_RESERVE allows to pre-fix message
+                        size_t newStartPos = (startPosition-PVA_MESSAGE_HEADER_SIZE)-PVA_MESSAGE_HEADER_SIZE-16;
+                        payloadBuffer->setPosition(newStartPos);
+
+                        // copy part of a header, and add: command, payloadSize, NIF address
+                        payloadBuffer->put(payloadBuffer->getArray(), startPosition-PVA_MESSAGE_HEADER_SIZE, PVA_MESSAGE_HEADER_SIZE-5);
+                        payloadBuffer->putByte(CMD_ORIGIN_TAG);
+                        payloadBuffer->putInt(16);
+                        // encode this socket bind address
+                        encodeAsIPv6Address(payloadBuffer, bt->getBindAddress());
+
                         // clear unicast flag
                         payloadBuffer->put(startPosition+4, (int8)(qosCode & ~0x80));
 
@@ -2933,9 +2944,12 @@ namespace epics {
                         payloadBuffer->setPosition(startPosition+8);
                         encodeAsIPv6Address(payloadBuffer, &responseAddress);
 
-                        payloadBuffer->setPosition(payloadBuffer->getLimit());		// send will call flip()
+                        // set to end of a message
+                        payloadBuffer->setPosition(payloadBuffer->getLimit());
 
-                        bt->send(payloadBuffer, bt->getLocalMulticastAddress());
+                        bt->send(payloadBuffer->getArray()+newStartPos, payloadBuffer->getPosition()-newStartPos,
+                                 bt->getLocalMulticastAddress());
+
                         return;
                     }
                 }
@@ -4558,14 +4572,59 @@ namespace epics {
                 osiSockAddr loAddr;
                 getLoopbackNIF(loAddr, "", 0);
 
+                //
+                // Setup local multicasting
+                //
+
+                osiSockAddr group;
+                // TODO configurable local multicast address
+                aToIPAddr("224.0.0.128", m_broadcastPort, &group.ia);
+
+                BlockingUDPTransport::shared_pointer localMulticastTransport;
+
+                if (true)
+                {
+                    try
+                    {
+                        // NOTE: multicast receiver socket must be "bound" to INADDR_ANY or multicast address
+                        localMulticastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
+                                nullTransportClient, m_responseHandler,
+                                group, PVA_PROTOCOL_REVISION,
+                                PVA_DEFAULT_PRIORITY));
+                        localMulticastTransport->join(group, loAddr);
+
+                        if (localMulticastTransport)
+                        {
+                            localMulticastTransport->start();
+                            m_udpTransports.push_back(localMulticastTransport);
+                        }
+
+                        LOG(logLevelDebug, "Local multicast enabled on %s/%s.",
+                            inetAddressToString(loAddr, false).c_str(),
+                            inetAddressToString(group).c_str());
+                    }
+                    catch (std::exception& ex)
+                    {
+                        LOG(logLevelDebug, "Failed to initialize local multicast, funcionality disabled. Reason: %s.", ex.what());
+                    }
+                }
+                else
+                {
+                    LOG(logLevelDebug, "Failed to detect a loopback network interface, local multicast disabled.");
+                }
+
+
+
+
+
+
                 for (IfaceNodeVector::const_iterator iter = ifaceList.begin(); iter != ifaceList.end(); iter++)
                 {
                     ifaceNode node = *iter;
 
-                    LOG(logLevelDebug, "Setting up UDP for interface %s, broadcast %s, index %d.",
+                    LOG(logLevelDebug, "Setting up UDP for interface %s, broadcast %s.",
                         inetAddressToString(node.ifaceAddr, false).c_str(),
-                        inetAddressToString(node.ifaceBCast, false).c_str(),
-                        node.ifaceIndex);
+                        inetAddressToString(node.ifaceBCast, false).c_str());
                     try
                     {
                         // where to bind (listen) address
@@ -4614,62 +4673,17 @@ namespace epics {
                             }
                 #endif
 
-                        //
-                        // Setup local broadcasting
-                        //
-                        // Each network interface gets its own multicast group on a local interface.
-                        // Multicast address is determined by prefix 224.0.0.128 + NIF index
-                        //
-
-                        osiSockAddr group;
-                        int lastAddr = 128 + node.ifaceIndex;
-                        std::ostringstream o;
-                        // TODO configurable prefix and base
-                        o << "224.0.0." << lastAddr;
-                        aToIPAddr(o.str().c_str(), m_broadcastPort, &group.ia);
-
                         transport->setMutlicastNIF(loAddr, true);
                         transport->setLocalMulticastAddress(group);
 
-                        BlockingUDPTransport::shared_pointer localMulticastTransport;
-
-                        if (true)
-                        {
-                            try
-                            {
-                                // NOTE: multicast receiver socket must be "bound" to INADDR_ANY or multicast address
-                                localMulticastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
-                                        nullTransportClient, m_responseHandler,
-                                        group, PVA_PROTOCOL_REVISION,
-                                        PVA_DEFAULT_PRIORITY));
-                                localMulticastTransport->join(group, loAddr);
-
-                                LOG(logLevelDebug, "Local multicast for %s enabled on %s/%s.",
-                                    inetAddressToString(listenLocalAddress, false).c_str(),
-                                    inetAddressToString(loAddr, false).c_str(),
-                                    inetAddressToString(group).c_str());
-                            }
-                            catch (std::exception& ex)
-                            {
-                                LOG(logLevelDebug, "Failed to initialize local multicast, funcionality disabled. Reason: %s.", ex.what());
-                            }
-                        }
-                        else
-                        {
-                            LOG(logLevelDebug, "Failed to detect a loopback network interface, local multicast disabled.");
-                        }
-
                         transport->start();
-                        if(transport2)
-                            transport2->start();
-                        if (localMulticastTransport)
-                            localMulticastTransport->start();
-
                         m_udpTransports.push_back(transport);
-                        if (transport2)
-                            m_udpTransports.push_back(transport2);
-                        m_udpTransports.push_back(localMulticastTransport);
 
+                        if (transport2)
+                        {
+                            transport2->start();
+                            m_udpTransports.push_back(transport2);
+                        }
                     }
                     catch (std::exception& e)
                     {

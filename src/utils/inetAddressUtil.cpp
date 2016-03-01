@@ -396,25 +396,6 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
             }
          }
 
-
-        unsigned int index = if_nametoindex(pIfreqList->ifr_name);
-        if ( !index ) {
-            errlogPrintf ("discoverInterfaces(): net intf index fetch for \"%s\" failed\n", pIfreqList->ifr_name);
-            continue;
-        }
-
-        node.ifaceIndex = index;
-
-        /*
-        status = socket_ioctl ( socket, SIOCGIFINDEX, pIfreqList );
-        if ( status ) {
-            errlogPrintf ("discoverInterfaces(): net intf index fetch for \"%s\" failed\n", pIfreqList->ifr_name);
-            continue;
-        }
-
-        node.ifaceIndex = pIfreqList->ifr_ifindex;
-        */
-
          /*ifDepenDebugPrintf ( ("discoverInterfaces(): net intf \"%s\" found\n", pIfreqList->ifr_name) );*/
 
          list.push_back(node);
