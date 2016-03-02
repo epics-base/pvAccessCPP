@@ -1,3 +1,6 @@
+// disable buggy boost enable_shared_from_this assert code
+#define BOOST_DISABLE_ASSERTS
+
 #include <stdlib.h>
 #include <time.h>
 #include <vector>
