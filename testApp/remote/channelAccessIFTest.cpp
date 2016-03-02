@@ -61,7 +61,7 @@ int ChannelAccessIFTest::runAllTest() {
 
   testPlan(153+EXTRA_STRESS_TESTS);
 
-  Configuration::shared_pointer base_config(ConfigurationBuilder()
+  epics::pvAccess::Configuration::shared_pointer base_config(ConfigurationBuilder()
                                             //.add("EPICS_PVA_DEBUG", "3")
                                             .add("EPICS_PVAS_INTF_ADDR_LIST", "127.0.0.1")
                                             .add("EPICS_PVA_ADDR_LIST", "127.0.0.1")

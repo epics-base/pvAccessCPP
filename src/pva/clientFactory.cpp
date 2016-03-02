@@ -34,13 +34,13 @@ public:
         Lock guard(cfact_mutex);
         if (!cfact_shared_provider)
         {
-            Configuration::shared_pointer def;
+            epics::pvAccess::Configuration::shared_pointer def;
             cfact_shared_provider = createClientProvider(def);
         }
         return cfact_shared_provider;
     }
 
-    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf)
+    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<epics::pvAccess::Configuration>& conf)
     {
         Lock guard(cfact_mutex);
         return createClientProvider(conf);

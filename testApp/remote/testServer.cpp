@@ -2735,13 +2735,13 @@ struct TestServer : public Runnable
 
     static TestServer::shared_pointer ctx;
 
-    Configuration::shared_pointer conf;
+    epics::pvAccess::Configuration::shared_pointer conf;
     ServerContextImpl::shared_pointer context;
     Event startup;
     Thread runner;
     MockChannelProviderFactory::shared_pointer factory;
 
-    TestServer(const Configuration::shared_pointer& conf)
+    TestServer(const epics::pvAccess::Configuration::shared_pointer& conf)
         :conf(conf)
         ,runner(Thread::Config(this).name("TestServer").autostart(false))
         ,factory(new MockChannelProviderFactory())
