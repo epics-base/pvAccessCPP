@@ -24,6 +24,7 @@
 #include <pv/timer.h>
 #include <pv/pvData.h>
 #include <pv/sharedPtr.h>
+#include <pv/fairQueue.h>
 
 #ifdef remoteEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
@@ -113,7 +114,8 @@ namespace epics {
             CMD_MESSAGE = 18,
             CMD_MULTIPLE_DATA = 19,
             CMD_RPC = 20,
-            CMD_CANCEL_REQUEST = 21
+            CMD_CANCEL_REQUEST = 21,
+            CMD_ORIGIN_TAG = 22
         };
 
 		enum ControlCommands {
@@ -142,7 +144,7 @@ namespace epics {
         /**
          * Interface defining transport sender (instance sending data over transport).
          */
-        class TransportSender : public Lockable {
+        class TransportSender : public Lockable, public fair_queue<TransportSender>::entry {
         public:
         	POINTER_DEFINITIONS(TransportSender);
 
@@ -197,6 +199,8 @@ namespace epics {
              * @return remote address, can be null.
              */
             virtual const osiSockAddr* getRemoteAddress() const = 0;
+
+            virtual const std::string& getRemoteName() const = 0;
 
             // TODO getContext?
 
@@ -457,7 +461,7 @@ namespace epics {
              * @return transport instance.
              */
             virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
-                    std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
+                    ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& address,
                     epics::pvData::int8 transportRevision, epics::pvData::int16 priority) = 0;
 
         };

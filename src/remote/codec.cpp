@@ -32,6 +32,18 @@ using namespace std;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
+namespace {
+struct BreakTransport : TransportSender
+{
+    virtual ~BreakTransport() {}
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control)
+    {
+        throw epics::pvAccess::detail::connection_closed_exception("Break");
+    }
+    virtual void lock() {}
+    virtual void unlock() {}
+};
+} // namespace
 
 namespace epics {
   namespace pvAccess {
@@ -53,7 +65,7 @@ namespace epics {
     //PROTECTED
     _readMode(NORMAL), _version(0), _flags(0), _command(0), _payloadSize(0),
       _remoteTransportSocketReceiveBufferSize(MAX_TCP_RECV), _totalBytesSent(0),
-      _blockingProcessQueue(false), _senderThread(0),
+      _senderThread(0),
       _writeMode(PROCESS_SEND_QUEUE),
       _writeOpReady(false),_lowLatency(false),
       _socketBuffer(receiveBuffer),
@@ -98,7 +110,6 @@ namespace epics {
       _maxSendPayloadSize = 
         _sendBuffer->getSize() - 2*PVA_MESSAGE_HEADER_SIZE;	
       _socketSendBufferSize = socketSendBufferSize;
-      _blockingProcessQueue = blockingProcessQueue;
     }
 
 
@@ -851,7 +862,8 @@ namespace epics {
         std::size_t senderProcessed = 0;
         while (senderProcessed++ < MAX_MESSAGE_SEND)
         {
-          TransportSender::shared_pointer sender = _sendQueue.take(-1);
+          TransportSender::shared_pointer sender;
+          _sendQueue.pop_front_try(sender);
           if (sender.get() == 0)
           {
             // flush
@@ -860,19 +872,20 @@ namespace epics {
 
             sendCompleted();	// do not schedule sending
 
-            if (_blockingProcessQueue) {
-              if (terminated())			// termination
+            if (terminated())			// termination
                 break;
-              sender = _sendQueue.take(0);
-              // termination (we want to process even if shutdown)
-              if (sender.get() == 0)		
-                break;
-            }
-            else
-              return;
+            // termination (we want to process even if shutdown)
+            _sendQueue.pop_front(sender);
           }
 
-          processSender(sender);
+          try{
+              processSender(sender);
+          }catch(...){
+              if (_sendBuffer->getPosition() > 0)
+                flush(true);
+              sendCompleted();
+              throw;
+          }
         }
       }
 
@@ -882,15 +895,9 @@ namespace epics {
     }
 
 
-    void AbstractCodec::clearSendQueue()
-    {
-      _sendQueue.clean();
-    }
-
-
     void AbstractCodec::enqueueSendRequest(
       TransportSender::shared_pointer const & sender) {
-        _sendQueue.put(sender);
+        _sendQueue.push_back(sender);
         scheduleSend();
     }
 
@@ -1027,6 +1034,29 @@ namespace epics {
     //
     //
 
+    BlockingAbstractCodec::BlockingAbstractCodec(
+            bool serverFlag,
+            std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
+            std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
+            int32_t socketSendBufferSize)
+        :AbstractCodec(serverFlag, receiveBuffer, sendBuffer, socketSendBufferSize, true)
+        ,_readThread(Thread::Config(this, &BlockingAbstractCodec::receiveThread)
+                     .prio(epicsThreadPriorityCAServerLow)
+                     .name("TCP-rx")
+                     .autostart(false))
+        ,_sendThread(Thread::Config(this, &BlockingAbstractCodec::sendThread)
+                     .prio(epicsThreadPriorityCAServerLow)
+                     .name("TCP-tx")
+                     .autostart(false))
+    { _isOpen.getAndSet(true);}
+
+    BlockingAbstractCodec::~BlockingAbstractCodec()
+    {
+        assert(!_isOpen.get());
+        _sendThread.exitWait();
+        _readThread.exitWait();
+    }
+
     void BlockingAbstractCodec::readPollOne() {
       throw std::logic_error("should not be called for blocking IO");
     }
@@ -1044,20 +1074,21 @@ namespace epics {
         // always close in the same thread, same way, etc.
         // wakeup processSendQueue
 
-        // clean resources
+        // clean resources (close socket)
         internalClose(true);
 
-        // this is important to avoid cyclic refs (memory leak)
-        clearSendQueue();
-
-        _sendQueue.wakeup();
+        // Break sender from queue wait
+        BreakTransport::shared_pointer B(new BreakTransport);
+        enqueueSendRequest(B);
 
         // post close
         internalPostClose(true);
       }
     }
 
-    void BlockingAbstractCodec::internalClose(bool /*force*/) {
+    void BlockingAbstractCodec::internalClose(bool /*force*/)
+    {
+        this->internalDestroy();
     }
 
     void BlockingAbstractCodec::internalPostClose(bool /*force*/) {
@@ -1076,35 +1107,21 @@ namespace epics {
     // NOTE: must not be called from constructor (e.g. needs shared_from_this())
     void BlockingAbstractCodec::start() {
 
-      _readThread = epicsThreadCreate(
-        "BlockingAbstractCodec-readThread",
-        epicsThreadPriorityMedium,
-        epicsThreadGetStackSize(
-        epicsThreadStackMedium),
-        BlockingAbstractCodec::receiveThread,
-        this);
+      _readThread.start();
 
-      _sendThread = epicsThreadCreate(
-        "BlockingAbstractCodec-_sendThread",
-        epicsThreadPriorityMedium,
-        epicsThreadGetStackSize(
-        epicsThreadStackMedium),
-        BlockingAbstractCodec::sendThread,
-        this);
+      _sendThread.start();
 
     }
 
 
-    void BlockingAbstractCodec::receiveThread(void *param) 
+    void BlockingAbstractCodec::receiveThread()
     {
+      Transport::shared_pointer ptr = this->shared_from_this();
 
-      BlockingAbstractCodec *bac = static_cast<BlockingAbstractCodec *>(param);
-      Transport::shared_pointer ptr = bac->shared_from_this();
-
-      while (bac->isOpen())
+      while (this->isOpen())
       {
         try {
-          bac->processRead();
+          this->processRead();
         } catch (std::exception &e) {
           LOG(logLevelError,
             "an exception caught while in receiveThread at %s:%d: %s",
@@ -1116,22 +1133,20 @@ namespace epics {
         }
       }
 
-      bac->_shutdownEvent.signal();
+      this->_shutdownEvent.signal();
     }
 
 
-    void BlockingAbstractCodec::sendThread(void *param)
+    void BlockingAbstractCodec::sendThread()
     {
+      Transport::shared_pointer ptr = this->shared_from_this();
 
-      BlockingAbstractCodec *bac = static_cast<BlockingAbstractCodec *>(param);
-      Transport::shared_pointer ptr = bac->shared_from_this();
+      this->setSenderThread();
 
-      bac->setSenderThread();
-
-      while (bac->isOpen())
+      while (this->isOpen())
       {
         try {
-          bac->processWrite();
+          this->processWrite();
         } catch (connection_closed_exception &cce) {
           // noop
         } catch (std::exception &e) {
@@ -1144,18 +1159,7 @@ namespace epics {
             __FILE__, __LINE__);  
         }
       }
-
-      /*
-      // wait read thread to die
-      // TODO rewise if this is really needed
-      // this timeout is needed where close() is initiated from the send thread,
-      // and not from the read thread as usualy - recv() does not exit until socket is not destroyed,
-      // which is done the internalDestroy() call below
-      bac->_shutdownEvent.wait(3.0);
-      */
-
-      // call internal destroy
-      bac->internalDestroy();
+      _sendQueue.clear();
     }
 
 
@@ -1197,7 +1201,13 @@ namespace epics {
         LOG(logLevelError,
           "Error fetching socket remote address: %s.",
           errStr);
+        _socketName = "<unknown>:0";
+      } else {
+          char ipAddrStr[64];
+          ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
+          _socketName = ipAddrStr;
       }
+
     }
 
     // must be called only once, when there will be no operation on socket (e.g. just before tx/rx thread exists)
@@ -1234,7 +1244,7 @@ namespace epics {
                     epicsSocketDestroy(_channel);
             }
 
-            _channel = INVALID_SOCKET;
+            _channel = INVALID_SOCKET; //TODO: mutex to guard _channel
         }
 
     }
@@ -1432,14 +1442,13 @@ namespace epics {
     BlockingServerTCPTransportCodec::BlockingServerTCPTransportCodec(
       Context::shared_pointer const & context, 
       SOCKET channel,
-      std::auto_ptr<ResponseHandler>& responseHandler, 
+      ResponseHandler::shared_pointer const & responseHandler,
       int32_t sendBufferSize, 
       int32_t receiveBufferSize) :
     BlockingTCPTransportCodec(true, context, channel, responseHandler,
       sendBufferSize, receiveBufferSize, PVA_DEFAULT_PRIORITY),
       _lastChannelSID(0), _verifyOrVerified(false), _securityRequired(false)
     {
-
       // NOTE: priority not yet known, default priority is used to 
       //register/unregister
       // TODO implement priorities in Reactor... not that user will
@@ -1585,12 +1594,10 @@ namespace epics {
 
     if (IS_LOGGABLE(logLevelDebug))
     {
-        char ipAddrStr[64];
-        ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
         LOG(
           logLevelDebug,
           "Transport to %s still has %zd channel(s) active and closing...",
-          ipAddrStr, _channels.size());
+          _socketName.c_str(), _channels.size());
     }
 
     std::map<pvAccessID, ServerChannel::shared_pointer>::iterator it = _channels.begin();
@@ -1610,9 +1617,7 @@ namespace epics {
   {
       if (IS_LOGGABLE(logLevelDebug))
       {
-          char ipAddrStr[48];
-          ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-          LOG(logLevelDebug, "Authentication completed with status '%s' for PVA client: %s.", Status::StatusTypeName[status.getType()], ipAddrStr);
+          LOG(logLevelDebug, "Authentication completed with status '%s' for PVA client: %s.", Status::StatusTypeName[status.getType()], _socketName.c_str());
       }
 
       if (!isVerified()) // TODO sync
@@ -1659,9 +1664,7 @@ namespace epics {
 
             if (IS_LOGGABLE(logLevelDebug))
             {
-                char ipAddrStr[48];
-                ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-                LOG(logLevelDebug, "No security plug-in installed, selecting default plug-in '%s' for PVA client: %s.", securityPlugin->getId().c_str(), ipAddrStr);
+                LOG(logLevelDebug, "No security plug-in installed, selecting default plug-in '%s' for PVA client: %s.", securityPlugin->getId().c_str(), _socketName.c_str());
             }
         }
     }
@@ -1685,9 +1688,7 @@ namespace epics {
     } catch (SecurityException &se) {
         if (IS_LOGGABLE(logLevelDebug))
         {
-            char ipAddrStr[48];
-            ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-            LOG(logLevelDebug, "Security plug-in '%s' failed to create a session for PVA client: %s.", initData->securityPluginName.c_str(), ipAddrStr);
+            LOG(logLevelDebug, "Security plug-in '%s' failed to create a session for PVA client: %s.", initData->securityPluginName.c_str(), _socketName.c_str());
         }
         Status status(Status::STATUSTYPE_ERROR, se.what());
         verified(status);
@@ -1701,7 +1702,7 @@ namespace epics {
   BlockingClientTCPTransportCodec::BlockingClientTCPTransportCodec(
     Context::shared_pointer const & context,
     SOCKET channel,
-    std::auto_ptr<ResponseHandler>& responseHandler,
+    ResponseHandler::shared_pointer const & responseHandler,
     int32_t sendBufferSize, 
     int32_t receiveBufferSize,
     TransportClient::shared_pointer const & client,
@@ -1788,9 +1789,7 @@ namespace epics {
             
             if (IS_LOGGABLE(logLevelDebug))
             {
-                char ipAddrStr[48];
-                ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-                LOG(logLevelDebug, "Acquiring transport to %s.", ipAddrStr);
+                LOG(logLevelDebug, "Acquiring transport to %s.", _socketName.c_str());
             }
 
             _owners[client->getID()] = TransportClient::weak_pointer(client);
@@ -1825,12 +1824,10 @@ namespace epics {
 
                 if (IS_LOGGABLE(logLevelDebug))
                 {
-                    char ipAddrStr[48];
-                    ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
                     LOG(
                             logLevelDebug,
                             "Transport to %s still has %d client(s) active and closing...",
-                            ipAddrStr, refs);
+                            _socketName.c_str(), refs);
                 }
 
                 TransportClientMap_t::iterator it = _owners.begin();
@@ -1854,9 +1851,7 @@ namespace epics {
             
             if (IS_LOGGABLE(logLevelDebug))
             {
-                char ipAddrStr[48];
-                ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-                LOG(logLevelDebug, "Releasing TCP transport to %s.", ipAddrStr);
+                LOG(logLevelDebug, "Releasing TCP transport to %s.", _socketName.c_str());
             }
 
             _owners.erase(clientID);
@@ -1864,7 +1859,10 @@ namespace epics {
             
             // not used anymore, close it
             // TODO consider delayed destruction (can improve performance!!!)
-            if(_owners.size()==0) close();		// TODO close(false)
+            if(_owners.size()==0) {
+                lock.unlock();
+                close();
+            }
         }
 
         void BlockingClientTCPTransportCodec::aliveNotification() {

@@ -39,41 +39,34 @@ namespace pvAccess {
 class epicsShareClass Properties
 {
 public:
-	Properties();
-	Properties(const std::string &fileName);
-	virtual ~Properties();
+    Properties() EPICS_DEPRECATED;
+    Properties(const std::string &fileName) EPICS_DEPRECATED;
 
-	void setProperty(const std::string &key,const std::string &value);
-	std::string getProperty(const std::string &key);
-	std::string getProperty(const std::string &key, const std::string &defaultValue);
-    bool hasProperty(const std::string &key);
+    inline void setProperty(const std::string &key,const std::string &value)
+    { _properties[key] = value; }
+    const std::string& getProperty(const std::string &key) const;
+    const std::string& getProperty(const std::string &key, const std::string &defaultValue) const;
+    inline bool hasProperty(const std::string &key) const
+    { return _properties.find(key) != _properties.end(); }
 
-	void store();
-	void store(const std::string &fileName);
-	void load();
+    void store() const;
+    void store(const std::string &fileName) const;
+    void store(std::ostream& strm) const;
+    void load();
 	void load(const std::string &fileName);
+    void load(std::istream& strm);
 	void list();
 
+    inline size_t size() const {return _properties.size();}
 private:
-	std::map<std::string,std::string> _properties;
-	std::auto_ptr<std::ifstream> _infile;
-	std::auto_ptr<std::ofstream> _outfile;
-	std::string _fileName;
-
-	inline void	truncate(std::string& str)
-	{
-		while(str.length() != 0 && (str.at(0) == ' ' || str.at(0) == '\t'))
-		{
-			str.erase(0,1);
-		}
-		while(str.length() != 0 && (str.at(str.length()-1) == ' ' || str.at(str.length()-1) == '\t'))
-		{
-			str.erase(str.length()-1,1);
-		}
-	}
+    typedef std::map<std::string,std::string> _properties_t;
+    _properties_t _properties;
+    std::string _fileName;
+public:
+    inline const _properties_t& map() const {return _properties;}
 };
 
-
+class ConfigurationStack;
 
 /**
  * Configuration
@@ -96,7 +89,7 @@ public:
 	 *
 	 * @return environment variable value as bool or default value if it does not exist.
 	 */
-	virtual bool getPropertyAsBoolean(const std::string &name, const bool defaultValue) = 0;
+    bool getPropertyAsBoolean(const std::string &name, const bool defaultValue) const;
 	/**
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
@@ -106,7 +99,7 @@ public:
 	 *
 	 * @return environment variable value as int32 or default value if it does not exist.
 	 */
-	virtual epics::pvData::int32 getPropertyAsInteger(const std::string &name, const epics::pvData::int32 defaultValue) = 0;
+    epics::pvData::int32 getPropertyAsInteger(const std::string &name, const epics::pvData::int32 defaultValue) const;
 	/**
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
@@ -116,7 +109,7 @@ public:
 	 *
 	 * @return environment variable value as float or default value if it does not exist.
 	 */
-	virtual float getPropertyAsFloat(const std::string &name, const float defaultValue) = 0;
+    float getPropertyAsFloat(const std::string &name, const float defaultValue) const;
 	/**
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
@@ -126,7 +119,7 @@ public:
 	 *
 	 * @return environment variable value as double or default value if it does not exist.
 	 */
-	virtual float getPropertyAsDouble(const std::string &name, const double defaultValue) = 0;
+    double getPropertyAsDouble(const std::string &name, const double defaultValue) const;
 	/**
 	 * Get the environment variable specified by name or return default value
 	 * if it does not exist.
@@ -136,7 +129,7 @@ public:
 	 *
 	 * @return environment variable value as std::string or default value if it does not exist.
 	 */
-	virtual std::string getPropertyAsString(const std::string &name, const std::string &defaultValue) = 0;
+    std::string getPropertyAsString(const std::string &name, const std::string &defaultValue) const;
      /**
      * Fetch and parse as a socket address and port number (address family set accordingly).
      * At present only numeric addresses are parsed (eg. "127.0.0.1:4242").
@@ -147,28 +140,76 @@ public:
      * @pram addr pointer to the address struct to be filled in
      * @return true if addr now contains an address, false otherwise
      */
-    virtual bool getPropertyAsAddress(const std::string& name, osiSockAddr* addr) = 0;
+    bool getPropertyAsAddress(const std::string& name, osiSockAddr* addr) const;
 
-    virtual bool hasProperty(const std::string &name) = 0;
+    bool hasProperty(const std::string &name) const;
+
+protected:
+    friend class ConfigurationStack;
+    virtual bool tryGetPropertyAsString(const std::string& name, std::string* val) const = 0;
 };
 
-class epicsShareClass SystemConfigurationImpl: public Configuration
+//! Lookup configuration strings from an in memory store
+class epicsShareClass ConfigurationMap: public Configuration
 {
 public:
-	SystemConfigurationImpl();
-	~SystemConfigurationImpl();
-	bool getPropertyAsBoolean(const std::string &name, const bool defaultValue);
-	epics::pvData::int32 getPropertyAsInteger(const std::string &name, const epics::pvData::int32 defaultValue);
-	float getPropertyAsFloat(const std::string &name, const float defaultValue);
-	float getPropertyAsDouble(const std::string &name, const double defaultValue);
-	std::string getPropertyAsString(const std::string &name, const std::string &defaultValue);
-    bool getPropertyAsAddress(const std::string& name, osiSockAddr* addr);
-    bool hasProperty(const std::string &name);
-    std::auto_ptr<Properties> _properties;
+    typedef std::map<std::string, std::string> properties_t;
+    properties_t properties;
+    ConfigurationMap() {}
+    ConfigurationMap(const properties_t& p) :properties(p) {}
 private:
-	std::istringstream _ibuffer;
-	std::ostringstream _obuffer;
+    virtual bool tryGetPropertyAsString(const std::string& name, std::string* val) const;
+};
 
+//! Lookup configuration strings from the process environment
+class epicsShareClass ConfigurationEnviron: public Configuration
+{
+private:
+    virtual bool tryGetPropertyAsString(const std::string& name, std::string* val) const;
+};
+
+typedef ConfigurationEnviron SystemConfigurationImpl;
+
+//! Lookup configuration strings from a heap of sub-Configurations.
+//! Most recently push'd is checked first.
+class epicsShareClass ConfigurationStack : public Configuration
+{
+    typedef std::vector<std::tr1::shared_ptr<Configuration> > confs_t;
+    confs_t confs;
+    virtual bool tryGetPropertyAsString(const std::string& name, std::string* val) const;
+public:
+    inline void push_back(const confs_t::value_type& conf) {
+        confs.push_back(conf);
+    }
+    inline confs_t::value_type pop_back() {
+        if(confs.empty())
+            throw std::runtime_error("Stack empty");
+        confs_t::value_type ret(confs.back());
+        confs.pop_back();
+        return ret;
+    }
+    inline size_t size() const {return confs.size();}
+};
+
+struct ConfigurationBuilder
+{
+    ConfigurationBuilder();
+    ConfigurationBuilder& push_env();
+    ConfigurationBuilder& push_map();
+    ConfigurationBuilder& push_config(const Configuration::shared_pointer&);
+    template<typename V>
+    ConfigurationBuilder& add(const std::string& name, const V& val)
+    {
+        std::ostringstream strm;
+        strm<<val;
+        return _add(name, strm.str());
+    }
+    Configuration::shared_pointer build();
+private:
+    ConfigurationBuilder& _add(const std::string& name, const std::string& val);
+    ConfigurationMap::properties_t mymap;
+    std::tr1::shared_ptr<ConfigurationStack> stack;
+    friend ConfigurationBuilder& operator<<(ConfigurationBuilder&, const std::string& s);
 };
 
 /**
@@ -202,11 +243,11 @@ public:
 class ConfigurationProviderImpl: public ConfigurationProvider
 {
 public:
-	ConfigurationProviderImpl();
+    ConfigurationProviderImpl() {}
 	/**
 	 * Destructor. Note: Registered configurations will be deleted!!
 	 */
-	~ConfigurationProviderImpl();
+    ~ConfigurationProviderImpl() {}
 	Configuration::shared_pointer getConfiguration(const std::string &name);
 	void registerConfiguration(const std::string &name, Configuration::shared_pointer const & configuration);
 private:
@@ -231,6 +272,14 @@ public:
 	 * @return configuration provider
 	 */
 	static ConfigurationProvider::shared_pointer getProvider();
+    static void registerConfiguration(const std::string &name, Configuration::shared_pointer const & configuration)
+    {
+        getProvider()->registerConfiguration(name, configuration);
+    }
+    static Configuration::shared_pointer getConfiguration(const std::string& name)
+    {
+        return getProvider()->getConfiguration(name);
+    }
 
 private:
 	ConfigurationFactory() {};

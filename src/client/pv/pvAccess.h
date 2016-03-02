@@ -32,6 +32,7 @@
 
 namespace epics {
 namespace pvAccess { 
+        class Configuration;
 
         // TODO add write-only?
         // change names
@@ -613,6 +614,8 @@ namespace pvAccess {
             public:
             POINTER_DEFINITIONS(Channel);
 
+            virtual ~Channel() {}
+
         	/**
         	 * Channel connection status.
         	 */
@@ -630,8 +633,11 @@ namespace pvAccess {
 //            virtual ChannelProvider::shared_pointer getProvider() = 0;
 
             /**
-             * Returns the channel's remote address, e.g. "/192.168.1.101:5064" or "#C0 S1".
-             * @return the channel's remote address.
+             * Returns the channel's remote address, signal name, etc...
+             * For example:
+             *     - client side channel would return server's address, e.g. "/192.168.1.101:5064"
+             *     - server side channel would return underlying bus address, e.g. "#C0 S1".
+             * @return the channel's address.
              **/
             virtual std::string getRemoteAddress() = 0;
 
@@ -870,7 +876,7 @@ namespace pvAccess {
             virtual Channel::shared_pointer createChannel(std::string const & channelName,ChannelRequester::shared_pointer const & channelRequester,
                                                    short priority, std::string const & address) = 0;
 
-            virtual void configure(epics::pvData::PVStructure::shared_pointer /*configuration*/) {};
+            virtual void configure(epics::pvData::PVStructure::shared_pointer /*configuration*/) EPICS_DEPRECATED {};
             virtual void flush() {};
             virtual void poll() {};
 
@@ -892,16 +898,26 @@ namespace pvAccess {
             virtual std::string getFactoryName() = 0;
 
             /**
-             * Get a shared instance.
+             * Get a shared instance using the default Configuration.
              * @return a shared instance.
              */
             virtual ChannelProvider::shared_pointer sharedInstance() = 0;
 
             /**
-             * Create a new instance.
+             * Create a new instance using the default Configuration.
              * @return a new instance.
              */
-            virtual ChannelProvider::shared_pointer newInstance() = 0;
+            virtual ChannelProvider::shared_pointer newInstance() {
+                return newInstance(std::tr1::shared_ptr<Configuration>());
+            }
+
+            /**
+             * Create a new instance using a specific Configuration.
+             * @return a new instance.
+             */
+            virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>&) {
+                throw std::logic_error("This ChannelProviderFactory does not support non-default configurations");
+            }
         };
 
         /**

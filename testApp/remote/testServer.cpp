@@ -1554,12 +1554,14 @@ public:
             m_channelRPCRequester->requestDone(Status::Ok, shared_from_this(), result);
 
         }
+#ifndef TESTSERVERNOMAIN
         else if (channelName.find("testServerShutdown") == 0)
         {
             PVStructure::shared_pointer nullPtr;
             m_channelRPCRequester->requestDone(Status::Ok, shared_from_this(), nullPtr);
             testServerShutdown();
         }
+#endif
         else
         {
             /*
@@ -2649,6 +2651,7 @@ public:
     {
         if (address == "local")
         {
+            // this is a server instance provider, address holds remote socket IP
             if (channelName == "testCounter")
             {
                 channelRequester->channelCreated(Status::Ok, m_counterChannel);
@@ -2727,44 +2730,89 @@ public:
 
 };
 
-
-static ServerContextImpl::shared_pointer ctx;
-
-void testServer(int timeToRun)
+struct TestServer : public Runnable
 {
+    POINTER_DEFINITIONS(TestServer);
 
-    MockChannelProviderFactory::shared_pointer factory(new MockChannelProviderFactory());
-    registerChannelProviderFactory(factory);
+    static TestServer::shared_pointer ctx;
 
-    //ServerContextImpl::shared_pointer ctx = ServerContextImpl::create();
-    ctx = ServerContextImpl::create();
-    ctx->initialize(getChannelProviderRegistry());
+    Configuration::shared_pointer conf;
+    ServerContextImpl::shared_pointer context;
+    Event startup;
+    Thread runner;
+    MockChannelProviderFactory::shared_pointer factory;
 
-    ctx->printInfo();
-
-    ctx->run(timeToRun);
-
-    ctx->destroy();
-
-    unregisterChannelProviderFactory(factory);
-
-    structureChangedListeners.clear();
+    TestServer(const Configuration::shared_pointer& conf)
+        :conf(conf)
+        ,runner(Thread::Config(this).name("TestServer").autostart(false))
+        ,factory(new MockChannelProviderFactory())
     {
-       Lock guard(structureStoreMutex);
-       structureStore.clear();
+        registerChannelProviderFactory(factory);
+
+        context = ServerContextImpl::create(conf);
+        context->initialize(getChannelProviderRegistry());
     }
-    ctx.reset();
+    void start(bool inSameThread = false)
+    {
+        if (inSameThread)
+        {
+            context->run(conf->getPropertyAsInteger("timeToRun", 0)); // default is no timeout
+        }
+        else
+        {
+            runner.start();
+            startup.wait(); // wait for thread to start
+        }
+    }
 
-    unregisterChannelProviderFactory(factory);
+    ~TestServer()
+    {
+        context->shutdown();
+        runner.exitWait();
+        context->destroy();
+
+        unregisterChannelProviderFactory(factory);
+
+        structureChangedListeners.clear();
+        {
+           Lock guard(structureStoreMutex);
+           structureStore.clear();
+        }
+        ctx.reset();
+
+        unregisterChannelProviderFactory(factory);
 
 
-    shutdownSimADCs();
-}
+        shutdownSimADCs();
+    }
+    // Use with EPICS_PVA_SERVER_PORT==0 for dynamic port (unit-tests)
+    unsigned short getServerPort()
+    {
+        return context->getServerPort();
+    }
+    unsigned short getBroadcastPort()
+    {
+        return context->getBroadcastPort();
+    }
+    virtual void run()
+    {
+        startup.signal();
+        context->run(conf->getPropertyAsInteger("timeToRun", 0)); // default is no timeout
+    }
+    void waitForShutdown() {
+        context->shutdown();
+    }
+    void shutdown() {
+        context->shutdown();
+    }
+};
+
+TestServer::shared_pointer TestServer::ctx;
+
 
 void testServerShutdown()
 {
-    // NOTE: this is not thread-safe TODO
-    ctx->shutdown();
+    TestServer::ctx->shutdown();
 }
 
 #include <epicsGetopt.h>
@@ -2789,7 +2837,7 @@ int main(int argc, char *argv[])
     int opt;                    /* getopt() current option */
     bool debug = false;
     bool cleanupAndReport = false;
-    int timeToRun = 0;
+    std::string timeToRun("0");
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
@@ -2799,7 +2847,7 @@ int main(int argc, char *argv[])
             usage(argv);
             return 0;
         case 't':               /* Print usage */
-            timeToRun = atoi(optarg);
+            timeToRun = optarg;
             break;
         case 'd':               /* Debug log level */
             debug = true;
@@ -2827,7 +2875,14 @@ int main(int argc, char *argv[])
 
     srand ( time(NULL) );
 
-    testServer(timeToRun);
+    TestServer::shared_pointer srv(new TestServer(ConfigurationBuilder()
+                                                  .push_env()
+                                                  .add("timeToRun", timeToRun)
+                                                  .push_map()
+                                                  .build()));
+    TestServer::ctx = srv;
+    srv->context->printInfo();
+    srv->start(true);
 
     cout << "Done" << endl;
 

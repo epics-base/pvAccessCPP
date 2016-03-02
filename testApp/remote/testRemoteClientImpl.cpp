@@ -371,17 +371,6 @@ int main()
 {
     for (int i = 0; i < 10; i++) {
     {
-    /*
-    ClientContextImpl::shared_pointer context = createClientContextImpl();
-    context->printInfo();
-
-    context->initialize();
-    context->printInfo();
-
-    epicsThreadSleep ( SLEEP_TIME );
-    
-    ChannelProvider::shared_pointer provider = context->getProvider();
-    */
     
     ClientFactory::start();
     ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");

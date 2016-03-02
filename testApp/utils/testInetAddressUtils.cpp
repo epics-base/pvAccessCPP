@@ -180,8 +180,9 @@ void test_getBroadcastAddresses()
 
     SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     auto_ptr<InetAddrVector> broadcasts(getBroadcastAddresses(socket, 6678));
-    // at least one is expected
+    // at least one is expected, in case of no network connection a fallback address is returned
     testOk1(static_cast<size_t>(0) < broadcasts->size());
+    //testDiag("getBroadcastAddresses() returned %zu entry/-ies.", broadcasts->size());
     epicsSocketDestroy(socket);
 
     // debug

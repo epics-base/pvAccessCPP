@@ -40,24 +40,26 @@ namespace epics {
         class BlockingUDPTransport : public epics::pvData::NoDefaultMethods,
                 public Transport,
                 public TransportSendControl,
-                public std::tr1::enable_shared_from_this<BlockingUDPTransport>
+                public std::tr1::enable_shared_from_this<BlockingUDPTransport>,
+                public epicsThreadRunable
         {
         public:
         	POINTER_DEFINITIONS(BlockingUDPTransport);
 
-        private:
             BlockingUDPTransport(bool serverFlag,
-                                 std::auto_ptr<ResponseHandler> &responseHandler,
+                                 ResponseHandler::shared_pointer const & responseHandler,
                                  SOCKET channel, osiSockAddr &bindAddress,
                                  short remoteTransportRevision);
-        public:
+
             static shared_pointer create(bool serverFlag,
-                    std::auto_ptr<ResponseHandler>& responseHandler,
+                    ResponseHandler::shared_pointer const & responseHandler,
                     SOCKET channel, osiSockAddr& bindAddress,
-                    short remoteTransportRevision)
+                    short remoteTransportRevision) EPICS_DEPRECATED
             {
                 shared_pointer thisPointer(
-                            new BlockingUDPTransport(serverFlag, responseHandler, channel, bindAddress, remoteTransportRevision)
+                            new BlockingUDPTransport(serverFlag, responseHandler,
+                                                     channel, bindAddress,
+                                                     remoteTransportRevision)
                 );
                 return thisPointer;
             }
@@ -68,8 +70,17 @@ namespace epics {
                 return _closed.get();
             }
 
+            void setReplyTransport(const Transport::shared_pointer& T)
+            {
+                _replyTransport = T;
+            }
+
             virtual const osiSockAddr* getRemoteAddress() const {
                 return &_remoteAddress;
+            }
+
+            virtual const std::string& getRemoteName() const {
+                return _remoteName;
             }
 
             virtual std::string getType() const {
@@ -183,6 +194,19 @@ namespace epics {
                 _sendTo = sendTo;
             }
 
+            virtual void setLocalMulticastAddress(const osiSockAddr& sendTo) {
+                _localMulticastAddressEnabled = true;
+                _localMulticastAddress = sendTo;
+            }
+
+            virtual bool hasLocalMulticastAddress() const {
+                return _localMulticastAddressEnabled;
+            }
+
+            virtual const osiSockAddr& getLocalMulticastAddress() const {
+                return _localMulticastAddress;
+            }
+
             virtual void flushSerializeBuffer() {
                 // noop
             }
@@ -219,7 +243,7 @@ namespace epics {
 
             /**
              * Set ignore list.
-             * @param addresses list of ignored addresses.
+             * @param address list of ignored addresses.
              */
             void setIgnoredAddresses(InetAddrVector* addresses) {
                 if (addresses)
@@ -240,6 +264,32 @@ namespace epics {
             InetAddrVector* getIgnoredAddresses() const {
                 return _ignoredAddresses;
             }
+
+            /**
+             * Set tapped NIF list.
+             * @param NIF address list to tap.
+             */
+            void setTappedNIF(InetAddrVector* addresses) {
+                if (addresses)
+                {
+                    if (!_tappedNIF) _tappedNIF = new InetAddrVector;
+                    *_tappedNIF = *addresses;
+                }
+                else
+                {
+                    if (_tappedNIF) { delete _tappedNIF; _tappedNIF = 0; }
+                }
+            }
+
+            /**
+             * Get list of tapped NIF addresses.
+             * @return tapped NIF addresses.
+             */
+            InetAddrVector* getTappedNIF() const {
+                return _tappedNIF;
+            }
+
+            bool send(const char* buffer, size_t length, const osiSockAddr& address);
 
             bool send(epics::pvData::ByteBuffer* buffer, const osiSockAddr& address);
 
@@ -303,13 +353,11 @@ namespace epics {
             /**
              * Response handler.
              */
-            std::auto_ptr<ResponseHandler> _responseHandler;
+            ResponseHandler::shared_pointer _responseHandler;
 
-            virtual void processRead();
+            virtual void run();
             
         private:
-            static void threadRunner(void* param);
-
             bool processBuffer(Transport::shared_pointer const & transport, osiSockAddr& fromAddress, epics::pvData::ByteBuffer* receiveBuffer);
 
             void close(bool waitForThreadToComplete);
@@ -321,6 +369,13 @@ namespace epics {
              */
             SOCKET _channel;
 
+            /** When provided, this transport is used for replies (passed to handler)
+             * instead of *this.  This feature is used in the situation where broadcast
+             * traffic is received on one socket, but a different socket must be used
+             * for unicast replies.
+             */
+            Transport::shared_pointer _replyTransport;
+
             /**
              * Bind address.
              */
@@ -330,6 +385,7 @@ namespace epics {
              * Remote address.
              */
             osiSockAddr _remoteAddress;
+            std::string _remoteName;
 
             /**
              * Send addresses.
@@ -344,11 +400,22 @@ namespace epics {
             InetAddrVector* _ignoredAddresses;
 
             /**
+             * Tapped NIF addresses.
+             */
+            InetAddrVector* _tappedNIF;
+
+            /**
              * Send address.
              */
             osiSockAddr _sendTo;
             bool _sendToEnabled;
             
+            /**
+             * Local multicast address.
+             */
+            osiSockAddr _localMulticastAddress;
+            bool _localMulticastAddressEnabled;
+
             /**
              * Receive buffer.
              */
@@ -374,7 +441,7 @@ namespace epics {
             /**
              * Thread ID
              */
-            epicsThreadId _threadId;
+            std::auto_ptr<epicsThread> _thread;
 
             epics::pvData::int8 _clientServerWithEndianFlag;
 
@@ -402,7 +469,7 @@ namespace epics {
              * NOTE: transport client is ignored for broadcast (UDP).
              */
             virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
-                    std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& bindAddress,
+                    ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& bindAddress,
                     epics::pvData::int8 transportRevision, epics::pvData::int16 priority);
 
         private:
@@ -423,6 +490,20 @@ namespace epics {
             bool _broadcast;
 
         };
+
+        typedef std::vector<BlockingUDPTransport::shared_pointer> BlockingUDPTransportVector;
+
+        epicsShareExtern void initializeUDPTransports(
+                                     bool serverFlag,
+                                     BlockingUDPTransportVector& udpTransports,
+                                     const IfaceNodeVector& ifaceList,
+                                     const ResponseHandler::shared_pointer& responseHandler,
+                                     BlockingUDPTransport::shared_pointer& sendTransport,
+                                     epics::pvData::int32& listenPort,
+                                     bool autoAddressList,
+                                     const std::string& addressList,
+                                     const std::string& ignoreAddressList);
+
 
     }
 }

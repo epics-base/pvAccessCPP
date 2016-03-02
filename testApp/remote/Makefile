@@ -3,7 +3,7 @@
 SRC_DIRS += $(PVACCESS_TEST)/remote
 
 TESTPROD_HOST += testChannelAccess
-testChannelAccess_SRCS = testChannelAccess channelAccessIFTest
+testChannelAccess_SRCS = channelAccessIFTest.cpp
 testHarness_SRCS += testChannelAccess.cpp channelAccessIFTest.cpp
 TESTS += testChannelAccess
 
@@ -48,3 +48,5 @@ rpcClientExample_SRCS += rpcClientExample.cpp
 PROD_HOST += pipelineServiceExample
 pipelineServiceExample_SRCS += pipelineServiceExample.cpp
 
+TESTPROD_HOST += testClientFactory
+testClientFactory_SRCS += testClientFactory.cpp

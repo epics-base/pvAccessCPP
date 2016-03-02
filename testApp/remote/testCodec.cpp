@@ -22,6 +22,33 @@ namespace epics {
 
   namespace pvAccess {
 
+  struct sender_break : public connection_closed_exception
+  {
+      sender_break() : connection_closed_exception("break") {}
+  };
+
+  struct TransportSenderDisconnect: public TransportSender {
+      void unlock() {}
+      void lock() {}
+      void send(ByteBuffer *buffer, TransportSendControl *control)
+      {
+          control->flush(true);
+          throw sender_break();
+      }
+  };
+
+  struct TransportSenderSignal: public TransportSender {
+      Event *evt;
+      TransportSenderSignal(Event& evt) :evt(&evt) {}
+      void unlock() {}
+      void lock() {}
+      void send(ByteBuffer *buffer, TransportSendControl *control)
+      {
+          evt->signal();
+      }
+  };
+
+
     class PVAMessage {
 
     public:
@@ -257,13 +284,6 @@ namespace epics {
       }
 
 
-      void endBlockedProcessSendQueue() {
-        //TODO not thread safe  
-        _blockingProcessQueue = false;
-        _sendQueue.wakeup();
-      }
-
-
       void close()  { _closedCount++; }
 
       bool isOpen() { return _closedCount == 0; }
@@ -287,6 +307,10 @@ namespace epics {
       void scheduleSend() { _scheduleSendCount++; }
 
       void sendCompleted() { _sendCompletedCount++; }
+
+      void breakSender() {
+        enqueueSendRequest(std::tr1::shared_ptr<TransportSender>(new TransportSenderDisconnect()));
+      }
 
       bool terminated() { return false; }
 
@@ -326,6 +350,8 @@ namespace epics {
       }
 
       const osiSockAddr* getRemoteAddress() const  { return 0; }
+      std::string dummyRemoteName;
+      const std::string& getRemoteName() const {return dummyRemoteName;}
 
       epics::pvData::int8 getRevision() const  
       { 
@@ -412,7 +438,7 @@ namespace epics {
     public:
 
       int runAllTest() {
-        testPlan(5882);
+        testPlan(5883);
         testHeaderProcess(); 
         testInvalidHeaderMagic();
         testInvalidHeaderSegmentedInNormal();
@@ -438,7 +464,6 @@ namespace epics {
         testSendException();
         testSendHugeMessagePartes();
         testRecipient();
-        testClearSendQueue();
         testInvalidArguments();
         testDefaultModes();
         testEnqueueSendRequestExceptionThrown();
@@ -2223,7 +2248,6 @@ namespace epics {
           "%s: codec._closedCount == 1", CURRENT_FUNCTION);
       }
 
-
       class TransportSenderForTestEnqueueSendRequest: 
         public TransportSender {
       public:
@@ -2290,7 +2314,10 @@ namespace epics {
         // process
         codec.enqueueSendRequest(sender);
         codec.enqueueSendRequest(sender2);
-        codec.processSendQueue();
+        codec.breakSender();
+        try{
+            codec.processSendQueue();
+        }catch(sender_break&) {}
 
         codec.transferToReadBuffer();
 
@@ -2430,11 +2457,16 @@ namespace epics {
         //was processed
         testOk(0 == codec._sendCompletedCount, 
           "%s: 0 == codec._sendCompletedCount", CURRENT_FUNCTION);
+        testOk1(!codec.sendQueueEmpty());
 
-        codec.processSendQueue();
+        codec.breakSender();
+        try{
+            codec.processSendQueue();
+        }catch(sender_break&) {}
 
         testOk(1 == codec._sendCompletedCount, 
           "%s: 1 == codec._sendCompletedCount", CURRENT_FUNCTION);
+        testOk1(codec.sendQueueEmpty());
 
         codec.transferToReadBuffer();
 
@@ -2483,6 +2515,13 @@ namespace epics {
           "%s: 0 == codec.getSendBuffer()->getPosition()", 
           CURRENT_FUNCTION);
 
+        testOk1(codec.sendQueueEmpty());
+
+        testDiag("%u %u", (unsigned)codec._scheduleSendCount,
+                (unsigned)codec._sendCompletedCount);
+        testOk1(3 == codec._scheduleSendCount);
+        testOk1(1 == codec._sendCompletedCount);
+
         // now queue is empty and thread is right
         codec.enqueueSendRequest(sender2, PVA_MESSAGE_HEADER_SIZE);
 
@@ -2491,12 +2530,17 @@ namespace epics {
           "%s: PVA_MESSAGE_HEADER_SIZE == "
           "codec.getSendBuffer()->getPosition()", 
           CURRENT_FUNCTION);
-        testOk(3 == codec._scheduleSendCount, 
-          "%s: 3 == codec._scheduleSendCount", CURRENT_FUNCTION);
-        testOk(1 == codec._sendCompletedCount,
-          "%s: 1 == codec._sendCompletedCount", CURRENT_FUNCTION);
 
-        codec.processWrite();
+        testDiag("%u %u", (unsigned)codec._scheduleSendCount,
+                (unsigned)codec._sendCompletedCount);
+        testOk1(4 == codec._scheduleSendCount);
+        testOk1(1 == codec._sendCompletedCount);
+
+        codec.breakSender();
+
+        try{
+            codec.processWrite();
+        }catch(sender_break&) {}
 
         testOk(2 == codec._sendCompletedCount, 
           "%s: 2 == codec._sendCompletedCount", CURRENT_FUNCTION);
@@ -2575,7 +2619,10 @@ namespace epics {
 
         // process
         codec.enqueueSendRequest(sender);
-        codec.processSendQueue();
+        codec.breakSender();
+        try{
+            codec.processSendQueue();
+        }catch(sender_break&) {}
 
         codec.transferToReadBuffer();
 
@@ -2664,7 +2711,7 @@ namespace epics {
 
         // process
         codec.enqueueSendRequest(sender);
-
+        codec.breakSender();
         try
         {
           codec.processSendQueue();
@@ -2781,7 +2828,10 @@ namespace epics {
 
         // process
         codec.enqueueSendRequest(sender);
-        codec.processSendQueue();
+        codec.breakSender();
+        try{
+            codec.processSendQueue();
+        }catch(sender_break&) {}
 
         codec.addToReadBuffer();
 
@@ -2885,37 +2935,6 @@ namespace epics {
       private:
         TestCodec &_codec;
       };
-
-
-      void testClearSendQueue() 
-      {
-        testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
-        TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
-
-        std::tr1::shared_ptr<TransportSender> sender = 
-          std::tr1::shared_ptr<TransportSender>(
-          new TransportSenderForTestClearSendQueue(codec));
-
-        std::tr1::shared_ptr<TransportSender> sender2 = 
-          std::tr1::shared_ptr<TransportSender>(
-          new TransportSender2ForTestClearSendQueue(codec));
-
-
-        codec.enqueueSendRequest(sender);
-        codec.enqueueSendRequest(sender2);
-
-        codec.clearSendQueue();
-
-        codec.processSendQueue();
-
-        testOk(0 == codec.getSendBuffer()->getPosition(), 
-          "%s: 0 == codec.getSendBuffer()->getPosition()", 
-          CURRENT_FUNCTION);
-        testOk(0 == codec._writeBuffer.getPosition(), 
-          "%s: 0 == codec._writeBuffer.getPosition()", 
-          CURRENT_FUNCTION);
-      }
-
 
       void testInvalidArguments()
       {
@@ -3128,6 +3147,7 @@ namespace epics {
           TransportSendControl* control)
         {
           _codec.putControlMessage((int8_t)0x01, 0x00112233);
+          _codec.flush(true);
         }
 
       private:
@@ -3135,16 +3155,20 @@ namespace epics {
       };
 
 
-      class ValueHolder {
+      class ValueHolder : public Runnable {
       public:
-        ValueHolder(
-          TestCodec &testCodec, 
-          AtomicValue<bool> &processTreadExited): 
-        _testCodec(testCodec),
-          _processTreadExited(processTreadExited) {}
+        ValueHolder(TestCodec &testCodec):
+        _testCodec(testCodec) {}
 
         TestCodec &_testCodec;
-        AtomicValue<bool> & _processTreadExited;
+        Event waiter;
+
+        virtual void run() {
+            waiter.signal();
+            try{
+                _testCodec.processSendQueue();
+            }catch(sender_break&) {}
+        }
       };
 
 
@@ -3155,55 +3179,39 @@ namespace epics {
         TestCodec codec(DEFAULT_BUFFER_SIZE,
           DEFAULT_BUFFER_SIZE, true);
 
-        _processTreadExited.getAndSet(false);
         std::tr1::shared_ptr<TransportSender> sender = 
           std::tr1::shared_ptr<TransportSender>(
           new TransportSenderForTestBlockingProcessQueueTest(codec));
 
-        ValueHolder valueHolder(codec, _processTreadExited);
+        ValueHolder valueHolder(codec);
+        Event done;
 
-        epicsThreadCreate(
-          "testBlockingProcessQueueTest-processThread",
-          epicsThreadPriorityMedium,
-          epicsThreadGetStackSize(
-          epicsThreadStackMedium),
-          CodecTest::blockingProcessQueueThread,
-          &valueHolder);
+        Thread thr(Thread::Config(&valueHolder)
+                   .name("testBlockingProcessQueueTest-processThread"));
 
-        epicsThreadSleep(3);
-
-        testOk(_processTreadExited.get() == false, 
-          "%s: _processTreadExited.get() == false", 
-          CURRENT_FUNCTION);
+        valueHolder.waiter.wait();
 
         // let's put something into it
 
         codec.enqueueSendRequest(sender);
+        codec.enqueueSendRequest(std::tr1::shared_ptr<TransportSender>(new TransportSenderSignal(done)));
 
-        epicsThreadSleep(1);
+        testDiag("Waiting for work");
+        done.wait();
 
         testOk((std::size_t)PVA_MESSAGE_HEADER_SIZE == 
           codec._writeBuffer.getPosition(), 
           "%s: PVA_MESSAGE_HEADER_SIZE == "
-          "codec._writeBuffer.getPosition()", 
-          CURRENT_FUNCTION);
+          "codec._writeBuffer.getPosition()  (%u)",
+          CURRENT_FUNCTION,
+          (unsigned)codec._writeBuffer.getPosition());
 
-        codec.endBlockedProcessSendQueue();
+        codec.breakSender();
 
-        epicsThreadSleep(1);
-
-        testOk(_processTreadExited.get() == true, 
-          "%s: _processTreadExited.get() == true", CURRENT_FUNCTION);
+        thr.exitWait();
       }
 
     private:
-
-      void static blockingProcessQueueThread(void *param) {
-        ValueHolder *valueHolder = static_cast<ValueHolder *>(param);
-        // this should block
-        valueHolder->_testCodec.processSendQueue();
-        valueHolder->_processTreadExited.getAndSet(true);
-      }
 
       AtomicValue<bool> _processTreadExited;
     };
