@@ -491,6 +491,20 @@ namespace epics {
 
         };
 
+        typedef std::vector<BlockingUDPTransport::shared_pointer> BlockingUDPTransportVector;
+
+        epicsShareExtern void initializeUDPTransports(
+                                     bool serverFlag,
+                                     BlockingUDPTransportVector& udpTransports,
+                                     const IfaceNodeVector& ifaceList,
+                                     const ResponseHandler::shared_pointer& responseHandler,
+                                     BlockingUDPTransport::shared_pointer& sendTransport,
+                                     epics::pvData::int32& listenPort,
+                                     bool autoAddressList,
+                                     const std::string& addressList,
+                                     const std::string& ignoreAddressList);
+
+
     }
 }
 

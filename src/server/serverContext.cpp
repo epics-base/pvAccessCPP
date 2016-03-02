@@ -172,13 +172,15 @@ void ServerContextImpl::loadConfiguration()
     SOCKET sock = epicsSocketCreate(AF_INET, SOCK_STREAM, 0);
     if (!sock) {
         THROW_BASE_EXCEPTION("Failed to create a socket needed to introspect network interfaces.");
-        return;
     }
 
-    if (discoverInterfaces(_ifaceList, sock, &_ifaceAddr) || _ifaceList.size() == 0)
+    if (discoverInterfaces(_ifaceList, sock, &_ifaceAddr))
     {
-        THROW_BASE_EXCEPTION("Failed to introspect network interfaces or no network interfaces available.");
-        return;
+        THROW_BASE_EXCEPTION("Failed to introspect network interfaces.");
+    }
+    else if (_ifaceList.size() == 0)
+    {
+        THROW_BASE_EXCEPTION("No (specified) network interface(s) available.");
     }
     epicsSocketDestroy(sock);
 }
@@ -276,222 +278,8 @@ void ServerContextImpl::internalInitialize()
 
 void ServerContextImpl::initializeBroadcastTransport()
 {
-    TransportClient::shared_pointer nullTransportClient;
-    auto_ptr<BlockingUDPConnector> broadcastConnector(new BlockingUDPConnector(true, true, true));
-
-    // TODO configurable local NIF, address
-    osiSockAddr loAddr;
-    getLoopbackNIF(loAddr, "", 0);
-
-    // TODO configurable local multicast address
-    osiSockAddr group;
-    aToIPAddr("224.0.0.128", _broadcastPort, &group.ia);
-
-    //
-    // set ignore address list
-    //
-    auto_ptr<InetAddrVector> ignoreAddressList;
-    if (!_ignoreAddressList.empty())
-        ignoreAddressList.reset(getSocketAddressList(_ignoreAddressList, 0, 0));
-
-    //
-    // Setup UDP trasport(s) (per interface)
-    //
-
-    InetAddrVector tappedNIF;
-
-    for (IfaceNodeVector::const_iterator iter = _ifaceList.begin(); iter != _ifaceList.end(); iter++)
-    {
-        ifaceNode node = *iter;
-
-        LOG(logLevelDebug, "Setting up UDP for interface %s, broadcast %s.",
-            inetAddressToString(node.ifaceAddr, false).c_str(),
-            inetAddressToString(node.ifaceBCast, false).c_str());
-        try
-        {
-            // where to bind (listen) address
-            osiSockAddr listenLocalAddress;
-            listenLocalAddress.ia.sin_family = AF_INET;
-            listenLocalAddress.ia.sin_port = htons(_broadcastPort);
-            listenLocalAddress.ia.sin_addr.s_addr = node.ifaceAddr.ia.sin_addr.s_addr;
-
-            BlockingUDPTransport::shared_pointer transport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
-                    nullTransportClient, _responseHandler,
-                    listenLocalAddress, PVA_PROTOCOL_REVISION,
-                    PVA_DEFAULT_PRIORITY));
-            listenLocalAddress = *transport->getRemoteAddress();
-            // to allow automatic assignment of broadcast port (for testing)
-            if (_broadcastPort == 0)
-            {
-                _broadcastPort = ntohs(listenLocalAddress.ia.sin_port);
-                aToIPAddr("224.0.0.128", _broadcastPort, &group.ia);
-
-                LOG(logLevelDebug, "Dynamic broadcast UDP port set to %d.", _broadcastPort);
-            }
-
-            if (ignoreAddressList.get() && ignoreAddressList->size())
-                transport->setIgnoredAddresses(ignoreAddressList.get());
-
-            tappedNIF.push_back(listenLocalAddress);
-
-
-            BlockingUDPTransport::shared_pointer transport2;
-
-            if(node.ifaceBCast.ia.sin_family == AF_UNSPEC ||
-               node.ifaceBCast.ia.sin_addr.s_addr == listenLocalAddress.ia.sin_addr.s_addr) {
-                    LOG(logLevelWarn, "Unable to find broadcast address of interface %s.", inetAddressToString(node.ifaceBCast, false).c_str());
-                }
-    #if !defined(_WIN32)
-                else
-                {
-                    /* An oddness of BSD sockets (not winsock) is that binding to
-                     * INADDR_ANY will receive unicast and broadcast, but binding to
-                     * a specific interface address receives only unicast.  The trick
-                     * is to bind a second socket to the interface broadcast address,
-                     * which will then receive only broadcasts.
-                     */
-
-                    osiSockAddr bcastAddress;
-                    bcastAddress.ia.sin_family = AF_INET;
-                    bcastAddress.ia.sin_port = htons(_broadcastPort);
-                    bcastAddress.ia.sin_addr.s_addr = node.ifaceBCast.ia.sin_addr.s_addr;
-
-                    transport2 = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
-                                                        nullTransportClient, _responseHandler,
-                                                        bcastAddress, PVA_PROTOCOL_REVISION,
-                                                        PVA_DEFAULT_PRIORITY));
-                    /* The other wrinkle is that nothing should be sent from this second
-                     * socket. So replies are made through the unicast socket.
-                     */
-                    transport2->setReplyTransport(transport);
-
-                    if (ignoreAddressList.get() && ignoreAddressList->size())
-                        transport2->setIgnoredAddresses(ignoreAddressList.get());
-
-                    tappedNIF.push_back(bcastAddress);
-                }
-    #endif
-
-            transport->setMutlicastNIF(loAddr, true);
-            transport->setLocalMulticastAddress(group);
-
-            transport->start();
-            _udpTransports.push_back(transport);
-
-            if (transport2)
-            {
-                transport2->start();
-                _udpTransports.push_back(transport2);
-            }
-        }
-        catch (std::exception& e)
-        {
-            THROW_BASE_EXCEPTION_CAUSE("Failed to initialize broadcast UDP transport", e);
-        }
-        catch (...)
-        {
-            THROW_BASE_EXCEPTION("Failed to initialize broadcast UDP transport");
-        }
-    }
-
-
-    //
-    // Create UDP transport for sending (to all network interfaces)
-    //
-
-    osiSockAddr anyAddress;
-    anyAddress.ia.sin_family = AF_INET;
-    anyAddress.ia.sin_port = htons(0);
-    anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    _broadcastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
-            nullTransportClient, _responseHandler,
-            anyAddress, PVA_PROTOCOL_REVISION,
-            PVA_DEFAULT_PRIORITY));
-
-    //
-    // compile auto address list - where to send beacons
-    //
-
-    InetAddrVector autoBCastAddr;
-    for (IfaceNodeVector::const_iterator iter = _ifaceList.begin(); iter != _ifaceList.end(); iter++)
-    {
-        ifaceNode node = *iter;
-
-        if (node.ifaceBCast.ia.sin_family != AF_UNSPEC)
-        {
-            node.ifaceBCast.ia.sin_port = htons(_broadcastPort);
-            autoBCastAddr.push_back(node.ifaceBCast);
-        }
-    }
-
-    //
-    // set beacon (broadcast) address list
-    //
-
-    if (!_beaconAddressList.empty())
-    {
-        // if auto is true, add it to specified list
-        if (!_autoBeaconAddressList)
-            autoBCastAddr.clear();
-
-        auto_ptr<InetAddrVector> list(getSocketAddressList(_beaconAddressList, _broadcastPort, &autoBCastAddr));
-        if (list.get() && list->size())
-        {
-            _broadcastTransport->setSendAddresses(list.get());
-        }
-        /*
-        else
-        {
-            // fallback
-            // set default (auto) address list
-            _broadcastTransport->setSendAddresses(&autoBCastAddr);
-        }
-        */
-    }
-    else if (_autoBeaconAddressList)
-    {
-        // set default (auto) address list
-        _broadcastTransport->setSendAddresses(&autoBCastAddr);
-    }
-
-
-    // debug output of broadcast addresses
-    InetAddrVector* blist = _broadcastTransport->getSendAddresses();
-    if (!blist || !blist->size())
-        LOG(logLevelError,
-            "No broadcast addresses found or specified - empty beacon address list!");
-    else
-        for (size_t i = 0; i < blist->size(); i++)
-            LOG(logLevelDebug,
-                "Beacon broadcast address #%d: %s.", i, inetAddressToString((*blist)[i]).c_str());
-
-    //
-    // Setup local multicasting
-    //
-
-    BlockingUDPTransport::shared_pointer localMulticastTransport;
-    try
-    {
-        // NOTE: multicast receiver socket must be "bound" to INADDR_ANY or multicast address
-        localMulticastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
-                nullTransportClient, _responseHandler,
-                group, PVA_PROTOCOL_REVISION,
-                PVA_DEFAULT_PRIORITY));
-        localMulticastTransport->setTappedNIF(&tappedNIF);
-        localMulticastTransport->join(group, loAddr);
-        localMulticastTransport->start();
-        _udpTransports.push_back(localMulticastTransport);
-
-        LOG(logLevelDebug, "Local multicast enabled on %s/%s.",
-            inetAddressToString(loAddr, false).c_str(),
-            inetAddressToString(group).c_str());
-    }
-    catch (std::exception& ex)
-    {
-        LOG(logLevelDebug, "Failed to initialize local multicast, funcionality disabled. Reason: %s.", ex.what());
-    }
-
+    initializeUDPTransports(true, _udpTransports, _ifaceList, _responseHandler, _broadcastTransport,
+                            _broadcastPort, _autoBeaconAddressList, _beaconAddressList, _ignoreAddressList);
 }
 
 void ServerContextImpl::run(int32 seconds)

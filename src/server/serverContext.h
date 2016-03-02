@@ -354,7 +354,6 @@ private:
 	/**
      * UDP transports needed to receive channel searches.
 	 */
-    typedef std::vector<BlockingUDPTransport::shared_pointer> BlockingUDPTransportVector;
     BlockingUDPTransportVector _udpTransports;
 
     /**
