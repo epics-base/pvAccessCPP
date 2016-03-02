@@ -63,6 +63,7 @@ int ChannelAccessIFTest::runAllTest() {
                                             .add("EPICS_PVA_ADDR_LIST", "127.0.0.1")
                                             .add("EPICS_PVA_AUTO_ADDR_LIST","0")
                                             .add("EPICS_PVA_SERVER_PORT", "0")
+                                            .add("EPICS_PVA_BROADCAST_PORT", "0")
                                             .push_map()
                                             .build());
 
@@ -74,6 +75,7 @@ int ChannelAccessIFTest::runAllTest() {
   ConfigurationFactory::registerConfiguration("pvAccess-client",
                                               ConfigurationBuilder()
                                               .push_config(base_config)
+                                              .add("EPICS_PVA_BROADCAST_PORT", tstserv->getBroadcastPort())
                                               .push_map()
                                               .build());
   ScopedClientFactory SCF;
