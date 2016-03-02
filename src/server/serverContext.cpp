@@ -33,7 +33,6 @@ ServerContextImpl::ServerContextImpl():
 				_serverPort(PVA_SERVER_PORT),
 				_receiveBufferSize(MAX_TCP_RECV),
 				_timer(),
-				_broadcastTransport(),
 				_beaconEmitter(),
 				_acceptor(),
 				_transportRegistry(),
@@ -51,13 +50,22 @@ ServerContextImpl::ServerContextImpl():
     epicsSignalInstallSigPipeIgnore ();
 
     generateGUID();
-	initializeLogger();
-	loadConfiguration();
+    initializeLogger();
 }
 
 ServerContextImpl::shared_pointer ServerContextImpl::create()
 {
     ServerContextImpl::shared_pointer thisPointer(new ServerContextImpl());
+    thisPointer->loadConfiguration();
+    return thisPointer;
+}
+
+ServerContextImpl::shared_pointer ServerContextImpl::create(
+        const Configuration::shared_pointer& conf)
+{
+    ServerContextImpl::shared_pointer thisPointer(new ServerContextImpl());
+    thisPointer->configuration = conf;
+    thisPointer->loadConfiguration();
     return thisPointer;
 }
 
@@ -102,11 +110,6 @@ void ServerContextImpl::initializeLogger()
     //createFileLogger("serverContextImpl.log");
 }
 
-struct noop_deleter
-{
-    template<class T> void operator()(T * p) {}
-};
-
 Configuration::shared_pointer ServerContextImpl::getConfiguration()
 {
 	Lock guard(_mutex);
@@ -134,6 +137,12 @@ void ServerContextImpl::loadConfiguration()
     if (debugLevel > 0)
         SET_LOG_LEVEL(logLevelDebug);
 
+    // TODO multiple addresses
+    _ifaceAddr.ia.sin_family = AF_INET;
+    _ifaceAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+    _ifaceAddr.ia.sin_port = 0;
+    config->getPropertyAsAddress("EPICS_PVAS_INTF_ADDR_LIST", &_ifaceAddr);
+
     _beaconAddressList = config->getPropertyAsString("EPICS_PVA_ADDR_LIST", _beaconAddressList);
     _beaconAddressList = config->getPropertyAsString("EPICS_PVAS_BEACON_ADDR_LIST", _beaconAddressList);
 
@@ -145,6 +154,7 @@ void ServerContextImpl::loadConfiguration()
 
     _serverPort = config->getPropertyAsInteger("EPICS_PVA_SERVER_PORT", _serverPort);
     _serverPort = config->getPropertyAsInteger("EPICS_PVAS_SERVER_PORT", _serverPort);
+    _ifaceAddr.ia.sin_port = htons(_serverPort);
 
     _broadcastPort = config->getPropertyAsInteger("EPICS_PVA_BROADCAST_PORT", _broadcastPort);
     _broadcastPort = config->getPropertyAsInteger("EPICS_PVAS_BROADCAST_PORT", _broadcastPort);
@@ -154,6 +164,25 @@ void ServerContextImpl::loadConfiguration()
 
     _channelProviderNames = config->getPropertyAsString("EPICS_PVA_PROVIDER_NAMES", _channelProviderNames);
     _channelProviderNames = config->getPropertyAsString("EPICS_PVAS_PROVIDER_NAMES", _channelProviderNames);
+
+    //
+    // introspect network interfaces
+    //
+
+    SOCKET sock = epicsSocketCreate(AF_INET, SOCK_STREAM, 0);
+    if (!sock) {
+        THROW_BASE_EXCEPTION("Failed to create a socket needed to introspect network interfaces.");
+    }
+
+    if (discoverInterfaces(_ifaceList, sock, &_ifaceAddr))
+    {
+        THROW_BASE_EXCEPTION("Failed to introspect network interfaces.");
+    }
+    else if (_ifaceList.size() == 0)
+    {
+        THROW_BASE_EXCEPTION("No (specified) network interface(s) available.");
+    }
+    epicsSocketDestroy(sock);
 }
 
 bool ServerContextImpl::isChannelProviderNamePreconfigured()
@@ -167,7 +196,7 @@ void ServerContextImpl::initialize(ChannelProviderRegistry::shared_pointer const
 	Lock guard(_mutex);
     if (!channelProviderRegistry.get())
 	{
-		THROW_BASE_EXCEPTION("non null channelProviderRegistry expected");
+        THROW_BASE_EXCEPTION("channelProviderRegistry == NULL");
 	}
 
 	if (_state == DESTROYED)
@@ -227,12 +256,6 @@ void ServerContextImpl::initialize(ChannelProviderRegistry::shared_pointer const
 	_state = INITIALIZED;
 }
 
-std::auto_ptr<ResponseHandler> ServerContextImpl::createResponseHandler()
-{
-    ServerContextImpl::shared_pointer thisContext = shared_from_this();
-    return std::auto_ptr<ResponseHandler>(new ServerResponseHandler(thisContext));    
-}
-
 void ServerContextImpl::internalInitialize()
 {
     osiSockAttach();
@@ -241,128 +264,22 @@ void ServerContextImpl::internalInitialize()
 	_transportRegistry.reset(new TransportRegistry());
 
     ServerContextImpl::shared_pointer thisServerContext = shared_from_this();
+    _responseHandler.reset(new ServerResponseHandler(thisServerContext));
 
-	_acceptor.reset(new BlockingTCPAcceptor(thisServerContext, thisServerContext, _serverPort, _receiveBufferSize));
+    _acceptor.reset(new BlockingTCPAcceptor(thisServerContext, _responseHandler, _ifaceAddr, _receiveBufferSize));
 	_serverPort = ntohs(_acceptor->getBindAddress()->ia.sin_port);
 
     // setup broadcast UDP transport
     initializeBroadcastTransport();
 
-    // TODO introduce a constant
+    // TODO introduce "tcp" a constant
     _beaconEmitter.reset(new BeaconEmitter("tcp", _broadcastTransport, thisServerContext));
 }
 
 void ServerContextImpl::initializeBroadcastTransport()
 {
-	// setup UDP transport
-	try
-	{
-		// where to bind (listen) address
-	    osiSockAddr listenLocalAddress;
-	    listenLocalAddress.ia.sin_family = AF_INET;
-	    listenLocalAddress.ia.sin_port = htons(_broadcastPort);
-	    listenLocalAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-
-		// where to send addresses
-	    SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	    if (socket == INVALID_SOCKET)
-	    {
-	    	THROW_BASE_EXCEPTION("Failed to initialize broadcast UDP transport");
-	    }
-	    auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(socket,_broadcastPort));
-	    epicsSocketDestroy(socket);
-
-        TransportClient::shared_pointer nullTransportClient;
-
-        auto_ptr<BlockingUDPConnector> broadcastConnector(new BlockingUDPConnector(true, true, true));
-	    auto_ptr<epics::pvAccess::ResponseHandler> responseHandler = createResponseHandler();
-        _broadcastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
-                nullTransportClient, responseHandler,
-                listenLocalAddress, PVA_PROTOCOL_REVISION,
-                PVA_DEFAULT_PRIORITY));
-        _broadcastTransport->setSendAddresses(broadcastAddresses.get());
-
-		// set ignore address list
-		if (!_ignoreAddressList.empty())
-		{
-			// we do not care about the port
-			auto_ptr<InetAddrVector> list(getSocketAddressList(_ignoreAddressList, 0, NULL));
-			if (list.get() != NULL && list->size() > 0)
-			{
-				_broadcastTransport->setIgnoredAddresses(list.get());
-			}
-		}
-		// set broadcast address list
-		if (!_beaconAddressList.empty())
-		{
-			// if auto is true, add it to specified list
-			InetAddrVector* appendList = NULL;
-			if (_autoBeaconAddressList == true)
-			{
-				appendList = _broadcastTransport->getSendAddresses();
-			}
-
-			auto_ptr<InetAddrVector> list(getSocketAddressList(_beaconAddressList, _broadcastPort, appendList));
-			if (list.get() != NULL  && list->size() > 0)
-			{
-                _broadcastTransport->setSendAddresses(list.get());
-			}
-		}
-
-
-        // setup local broadcasting
-        // TODO configurable local NIF, address
-        osiSockAddr loAddr;
-        getLoopbackNIF(loAddr, "", 0);
-        if (true)
-        {
-            try
-            {
-                osiSockAddr group;
-                aToIPAddr("224.0.0.128", _broadcastPort, &group.ia);
-                _broadcastTransport->join(group, loAddr);
-
-                osiSockAddr anyAddress;
-                anyAddress.ia.sin_family = AF_INET;
-                anyAddress.ia.sin_port = htons(0);
-                anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-
-                // NOTE: localMulticastTransport is not started (no read is called on a socket)
-                auto_ptr<epics::pvAccess::ResponseHandler> responseHandler2 = createResponseHandler();
-                _localMulticastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
-                        nullTransportClient, responseHandler2,
-                        anyAddress, PVA_PROTOCOL_REVISION,
-                        PVA_DEFAULT_PRIORITY));
-                _localMulticastTransport->setMutlicastNIF(loAddr, true);
-                InetAddrVector sendAddressList;
-                sendAddressList.push_back(group);
-                _localMulticastTransport->setSendAddresses(&sendAddressList);
-
-                LOG(logLevelDebug, "Local multicast enabled on %s using network interface %s.",
-                    inetAddressToString(group).c_str(), inetAddressToString(loAddr, false).c_str());
-            }
-            catch (std::exception& ex)
-            {
-                LOG(logLevelDebug, "Failed to initialize local multicast, funcionality disabled. Reason: %s.", ex.what());
-            }
-        }
-        else
-        {
-            LOG(logLevelDebug, "Failed to detect a loopback network interface, local multicast disabled.");
-        }
-
-        _broadcastTransport->start();
-        if (_localMulticastTransport)
-            _localMulticastTransport->start();
-	}
-	catch (std::exception& e)
-	{
-		THROW_BASE_EXCEPTION_CAUSE("Failed to initialize broadcast UDP transport", e);
-	}
-	catch (...)
-	{
-		THROW_BASE_EXCEPTION("Failed to initialize broadcast UDP transport");
-	}
+    initializeUDPTransports(true, _udpTransports, _ifaceList, _responseHandler, _broadcastTransport,
+                            _broadcastPort, _autoBeaconAddressList, _beaconAddressList, _ignoreAddressList);
 }
 
 void ServerContextImpl::run(int32 seconds)
@@ -396,7 +313,7 @@ void ServerContextImpl::run(int32 seconds)
 	}
 
 	// run...
-	_beaconEmitter->start();
+    _beaconEmitter->start();
 
 	//TODO review this
 	if(seconds == 0)
@@ -451,30 +368,30 @@ void ServerContextImpl::destroy()
 void ServerContextImpl::internalDestroy()
 {
 	// stop responding to search requests
-    if (_broadcastTransport.get())
-	{
-		_broadcastTransport->close();
-		_broadcastTransport.reset();
-	}
-    // and close local multicast transport
-    if (_localMulticastTransport.get())
+    for (BlockingUDPTransportVector::const_iterator iter = _udpTransports.begin();
+         iter != _udpTransports.end(); iter++)
+        (*iter)->close();
+    _udpTransports.clear();
+
+    // stop emitting beacons
+    if (_beaconEmitter)
     {
-        _localMulticastTransport->close();
-        _localMulticastTransport.reset();
+        _beaconEmitter->destroy();
+        _beaconEmitter.reset();
+    }
+
+    // close UDP sent transport
+    if (_broadcastTransport)
+    {
+        _broadcastTransport->close();
+        _broadcastTransport.reset();
     }
 
 	// stop accepting connections
-    if (_acceptor.get())
+    if (_acceptor)
 	{
 		_acceptor->destroy();
 		_acceptor.reset();
-	}
-
-	// stop emitting beacons
-    if (_beaconEmitter.get())
-	{
-		_beaconEmitter->destroy();
-		_beaconEmitter.reset();
 	}
 
 	// this will also destroy all channels
@@ -541,7 +458,8 @@ void ServerContextImpl::printInfo(ostream& str)
 	    << "SERVER_PORT : " << _serverPort << endl \
 	    << "RCV_BUFFER_SIZE : " << _receiveBufferSize << endl \
 	    << "IGNORE_ADDR_LIST: " << _ignoreAddressList << endl \
-	    << "STATE : " << ServerContextImpl::StateNames[_state] << endl;
+        << "INTF_ADDR_LIST : " << inetAddressToString(_ifaceAddr, false) << endl \
+        << "STATE : " << ServerContextImpl::StateNames[_state] << endl;
 }
 
 void ServerContextImpl::dispose()
@@ -550,6 +468,10 @@ void ServerContextImpl::dispose()
 	{
 		destroy();
 	}
+    catch(std::exception& e)
+    {
+        std::cerr<<"Error in: ServerContextImpl::dispose: "<<e.what()<<"\n";
+    }
 	catch(...)
 	{
         std::cerr<<"Oh no, something when wrong in ServerContextImpl::dispose!\n";
@@ -598,11 +520,6 @@ int32 ServerContextImpl::getServerPort()
 	return _serverPort;
 }
 
-void ServerContextImpl::setServerPort(int32 port)
-{
-	_serverPort = port;
-}
-
 int32 ServerContextImpl::getBroadcastPort()
 {
 	return _broadcastPort;
@@ -629,12 +546,7 @@ osiSockAddr* ServerContextImpl::getServerInetAddress()
 
 BlockingUDPTransport::shared_pointer ServerContextImpl::getBroadcastTransport()
 {
-	return _broadcastTransport;
-}
-
-BlockingUDPTransport::shared_pointer ServerContextImpl::getLocalMulticastTransport()
-{
-    return _localMulticastTransport;
+    return _broadcastTransport;
 }
 
 ChannelProviderRegistry::shared_pointer ServerContextImpl::getChannelProviderRegistry()

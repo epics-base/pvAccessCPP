@@ -42,6 +42,17 @@ namespace pvAccess {
      */
     epicsShareFunc InetAddrVector* getBroadcastAddresses(SOCKET sock, unsigned short defaultPort);
 
+    struct ifaceNode {
+        osiSockAddr ifaceAddr, ifaceBCast;
+    };
+    typedef std::vector<ifaceNode> IfaceNodeVector;
+    epicsShareFunc int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *pMatchAddr = 0);
+
+    /**
+     * Returns NIF index for given interface address, or -1 on failure.
+     */
+    epicsShareFunc int discoverInterfaceIndex(SOCKET socket, const osiSockAddr *pMatchAddr);
+
     /**
      * Encode IPv4 address as IPv6 address.
      * @param buffer byte-buffer where to put encoded data.

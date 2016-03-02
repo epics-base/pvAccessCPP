@@ -24,36 +24,56 @@ namespace pvAccess {
 
         BlockingTCPAcceptor::BlockingTCPAcceptor(
                 Context::shared_pointer const & context,
-                ResponseHandlerFactory::shared_pointer const & responseHandlerFactory,
+                ResponseHandler::shared_pointer const & responseHandler,
                 int port,
                 int receiveBufferSize) :
             _context(context),
-            _responseHandlerFactory(responseHandlerFactory),
+            _responseHandler(responseHandler),
             _bindAddress(),
             _serverSocketChannel(INVALID_SOCKET),
             _receiveBufferSize(receiveBufferSize),
             _destroyed(false),
-            _threadId(0)
+            _thread(*this, "TCP-acceptor",
+                    epicsThreadGetStackSize(
+                            epicsThreadStackMedium),
+                    epicsThreadPriorityMedium)
         {
-            initialize(port);
+            _bindAddress.ia.sin_family = AF_INET;
+            _bindAddress.ia.sin_port = htons(port);
+            _bindAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+            initialize();
+        }
+
+        BlockingTCPAcceptor::BlockingTCPAcceptor(Context::shared_pointer const & context,
+                                                 ResponseHandler::shared_pointer const & responseHandler,
+                                                 const osiSockAddr& addr, int receiveBufferSize) :
+            _context(context),
+            _responseHandler(responseHandler),
+            _bindAddress(),
+            _serverSocketChannel(INVALID_SOCKET),
+            _receiveBufferSize(receiveBufferSize),
+            _destroyed(false),
+            _thread(*this, "TCP-acceptor",
+                    epicsThreadGetStackSize(
+                            epicsThreadStackMedium),
+                    epicsThreadPriorityMedium)
+        {
+            _bindAddress = addr;
+            initialize();
         }
 
         BlockingTCPAcceptor::~BlockingTCPAcceptor() {
             destroy();
         }
 
-        int BlockingTCPAcceptor::initialize(unsigned short port) {
-            // specified bind address
-            _bindAddress.ia.sin_family = AF_INET;
-            _bindAddress.ia.sin_port = htons(port);
-            _bindAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+        int BlockingTCPAcceptor::initialize() {
 
-            char strBuffer[64];
             char ipAddrStr[48];
             ipAddrToDottedIP(&_bindAddress.ia, ipAddrStr, sizeof(ipAddrStr));
 
             int tryCount = 0;
             while(tryCount<2) {
+                char strBuffer[64];
 
                 LOG(logLevelDebug, "Creating acceptor to %s.", ipAddrStr);
 
@@ -80,7 +100,7 @@ namespace pvAccess {
                             LOG(
                                     logLevelDebug,
                                     "Configured TCP port %d is unavailable, trying to assign it dynamically.",
-                                    port);
+                                    ntohs(_bindAddress.ia.sin_port));
                             _bindAddress.ia.sin_port = htons(0);
                         }
                         else {
@@ -109,7 +129,7 @@ namespace pvAccess {
                             }
                         }
 
-                        retval = ::listen(_serverSocketChannel, 1024);
+                        retval = ::listen(_serverSocketChannel, 4);
                         if(retval<0) {
                             epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
                             ostringstream temp;
@@ -118,14 +138,7 @@ namespace pvAccess {
                             THROW_BASE_EXCEPTION(temp.str().c_str());
                         }
 
-                        _threadId
-                                = epicsThreadCreate(
-                                        "TCP-acceptor",
-                                        epicsThreadPriorityMedium,
-                                        epicsThreadGetStackSize(
-                                                epicsThreadStackMedium),
-                                        BlockingTCPAcceptor::handleEventsRunner,
-                                        this);
+                        _thread.start();
 
                         // all OK, return
                         return ntohs(_bindAddress.ia.sin_port);
@@ -139,7 +152,7 @@ namespace pvAccess {
             THROW_BASE_EXCEPTION(temp.str().c_str());
         }
 
-        void BlockingTCPAcceptor::handleEvents() {
+        void BlockingTCPAcceptor::run() {
             // rise level if port is assigned dynamically
             char ipAddrStr[48];
             ipAddrToDottedIP(&_bindAddress.ia, ipAddrStr, sizeof(ipAddrStr));
@@ -194,12 +207,11 @@ namespace pvAccess {
                     /**
                      * Create transport, it registers itself to the registry.
                      */
-                    std::auto_ptr<ResponseHandler> responseHandler = _responseHandlerFactory->createResponseHandler();
                     detail::BlockingServerTCPTransportCodec::shared_pointer transport =
                                     detail::BlockingServerTCPTransportCodec::create(
                                             _context,
                                             newClient,
-                                            responseHandler,
+                                            _responseHandler,
                                             _socketSendBufferSize,
                                             _receiveBufferSize);
 
@@ -235,21 +247,36 @@ namespace pvAccess {
             }
         }
 
-        void BlockingTCPAcceptor::handleEventsRunner(void* param) {
-            ((BlockingTCPAcceptor*)param)->handleEvents();
-        }
-
         void BlockingTCPAcceptor::destroy() {
-            Lock guard(_mutex);
-            if(_destroyed) return;
-            _destroyed = true;
+            SOCKET sock;
+            {
+                Lock guard(_mutex);
+                if(_destroyed) return;
+                _destroyed = true;
 
-            if(_serverSocketChannel!=INVALID_SOCKET) {
+                sock = _serverSocketChannel;
+                _serverSocketChannel = INVALID_SOCKET;
+            }
+
+            if(sock!=INVALID_SOCKET) {
                 char ipAddrStr[48];
                 ipAddrToDottedIP(&_bindAddress.ia, ipAddrStr, sizeof(ipAddrStr));
                 LOG(logLevelDebug, "Stopped accepting connections at %s.", ipAddrStr);
 
-                epicsSocketDestroy(_serverSocketChannel);
+                switch(epicsSocketSystemCallInterruptMechanismQuery())
+                {
+                case esscimqi_socketBothShutdownRequired:
+                    shutdown(sock, SHUT_RDWR);
+                    epicsSocketDestroy(sock);
+                    _thread.exitWait();
+                    break;
+                case esscimqi_socketSigAlarmRequired:
+                    LOG(logLevelError, "SigAlarm close not implemented for this target\n");
+                case esscimqi_socketCloseRequired:
+                    epicsSocketDestroy(sock);
+                    _thread.exitWait();
+                    break;
+                }
             }
         }
 

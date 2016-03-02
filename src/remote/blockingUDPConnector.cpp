@@ -19,7 +19,7 @@ namespace epics {
     namespace pvAccess {
 
     Transport::shared_pointer BlockingUDPConnector::connect(TransportClient::shared_pointer const & /*client*/,
-                auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& bindAddress,
+                ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& bindAddress,
                 int8 transportRevision, int16 /*priority*/) {
                     
             LOG(logLevelDebug, "Creating datagram socket to: %s.",
@@ -68,9 +68,10 @@ namespace epics {
             }
 
             // sockets are blocking by default
-            Transport::shared_pointer transport = BlockingUDPTransport::create(_serverFlag,
-                                                                               responseHandler, socket, bindAddress, transportRevision);
-            return transport;
+            BlockingUDPTransport::shared_pointer transport(new BlockingUDPTransport(_serverFlag, responseHandler,
+                                                                         socket, bindAddress, transportRevision));
+
+            return Transport::shared_pointer(transport);
         }
 
     }

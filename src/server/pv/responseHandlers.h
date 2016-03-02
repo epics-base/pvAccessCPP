@@ -263,7 +263,6 @@ namespace pvAccess {
              ChannelSecuritySession::shared_pointer const & _css;
         	 epics::pvData::Status _status;
         	 epics::pvData::Mutex _mutex;
-        	 void createChannelFailedResponse(epics::pvData::ByteBuffer* buffer, TransportSendControl* control, const epics::pvData::Status& status);
         };
 
         /****************************************************************************************/

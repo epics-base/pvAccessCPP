@@ -12,3 +12,8 @@ configure/*.local
 !configure/ExampleRELEASE.local
 **/O.*
 QtC-*
+*.config
+*.creator
+*.files
+*.includes
+*.user

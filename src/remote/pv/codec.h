@@ -112,120 +112,6 @@ namespace epics {
 #endif
 
 
-    // TODO replace this queue with lock-free implementation
-    template<typename T> 
-    class queue {
-    public:
-
-      queue(void) { }
-      //TODO 
-      /*queue(queue const &T) = delete;
-      queue(queue &&T) = delete;
-      queue& operator=(const queue &T) = delete;
-      */
-      ~queue(void) 
-      {    
-      }
-
-
-      bool empty(void) 
-      { 
-        epics::pvData::Lock lock(_queueMutex);
-        return _queue.empty();
-      }
-
-      void clean()
-      { 
-        epics::pvData::Lock lock(_queueMutex);
-        _queue.clear();
-      }
-
-
-      void wakeup() 
-      { 
-        if (!_wakeup.getAndSet(true))
-        {
-          _queueEvent.signal();
-        }
-      }
-
-
-      void put(T const & elem) 
-      { 
-        {
-          epics::pvData::Lock lock(_queueMutex);
-          _queue.push_back(elem);
-        }
-
-        _queueEvent.signal();
-      }
-
-
-      // TODO very sub-optimal (locks and empty() - pop() sequence; at least 2 locks!)
-      T take(int timeOut) 
-      { 
-        while (true)
-        {
-
-          bool isEmpty = empty();
-
-          if (isEmpty)
-          {
-
-            if (timeOut < 0) {
-              return T();
-            }
-
-            while (isEmpty)
-            {
-
-              if (timeOut == 0) {
-                _queueEvent.wait();
-              }
-              else {
-                _queueEvent.wait(timeOut);
-              }
-
-              isEmpty = empty();
-              if (isEmpty)
-              {
-                if (timeOut > 0) {	// TODO spurious wakeup, but not critical
-                  return T();
-                }
-                else // if (timeout == 0)	cannot be negative
-                {
-                  if (_wakeup.getAndSet(false)) {
-                    return T();
-                  }
-                }
-              }
-            }
-          }
-          else
-          {
-            epics::pvData::Lock lock(_queueMutex);
-            if (_queue.empty())
-                return T();
-            T sender = _queue.front();
-            _queue.pop_front();
-            return sender;
-          }
-        }
-      }
-
-      size_t size() {
-          epics::pvData::Lock lock(_queueMutex);
-          return _queue.size();
-      }
-
-    private:
-
-      std::deque<T> _queue;
-      epics::pvData::Event _queueEvent;
-      epics::pvData::Mutex _queueMutex;
-      AtomicValue<bool> _wakeup;
-    };
-
 
     class epicsShareClass io_exception: public std::runtime_error {
     public:
@@ -307,7 +193,6 @@ namespace epics {
       void processWrite(); 
       void processRead(); 
       void processSendQueue();
-      void clearSendQueue();
       void enqueueSendRequest(TransportSender::shared_pointer const & sender);
       void enqueueSendRequest(TransportSender::shared_pointer const & sender, 
         std::size_t requiredBufferSize);
@@ -327,6 +212,10 @@ namespace epics {
         char* /*deserializeTo*/,
         std::size_t /*elementCount*/, std::size_t /*elementSize*/);
 
+      bool sendQueueEmpty() const {
+          return _sendQueue.empty();
+      }
+
     protected:
 
       virtual void sendBufferFull(int tries) = 0;
@@ -341,7 +230,6 @@ namespace epics {
       int32_t _payloadSize; // TODO why not size_t?
       epics::pvData::int32 _remoteTransportSocketReceiveBufferSize;
       int64_t _totalBytesSent;
-      bool _blockingProcessQueue;
       //TODO initialize union
       osiSockAddr _sendTo;
       epicsThreadId _senderThread;
@@ -352,7 +240,7 @@ namespace epics {
       std::tr1::shared_ptr<epics::pvData::ByteBuffer> _socketBuffer;
       std::tr1::shared_ptr<epics::pvData::ByteBuffer> _sendBuffer;
 
-      queue<TransportSender::shared_pointer> _sendQueue;
+      fair_queue<TransportSender> _sendQueue;
 
     private:
 
@@ -395,9 +283,8 @@ namespace epics {
         bool serverFlag,
         std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
         std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
-        int32_t socketSendBufferSize): 
-      AbstractCodec(serverFlag, receiveBuffer, sendBuffer, socketSendBufferSize, true),
-        _readThread(0), _sendThread(0) { _isOpen.getAndSet(true);}
+        int32_t socketSendBufferSize);
+      virtual ~BlockingAbstractCodec();
 
       void readPollOne();
       void writePollOne();
@@ -408,8 +295,9 @@ namespace epics {
       bool isOpen();
       void start();
 
-      static void receiveThread(void* param);
-      static void sendThread(void* param);
+    private:
+      void receiveThread();
+      void sendThread();
 
     protected:
       void sendBufferFull(int tries);
@@ -431,8 +319,7 @@ namespace epics {
 
     private:
       AtomicValue<bool> _isOpen;
-      volatile epicsThreadId _readThread;
-      volatile epicsThreadId _sendThread;
+      epics::pvData::Thread _readThread, _sendThread;
       epics::pvData::Event _shutdownEvent;
     };
 
@@ -461,6 +348,7 @@ namespace epics {
 
       SOCKET _channel;
       osiSockAddr _socketAddress;
+      std::string _socketName;
     };
 
 
@@ -506,6 +394,9 @@ namespace epics {
         return &_socketAddress;
       }
 
+      const std::string& getRemoteName() const {
+          return _socketName;
+      }
 
       epics::pvData::int8 getRevision() const  {
         return PVA_PROTOCOL_REVISION;
@@ -590,7 +481,7 @@ namespace epics {
         bool serverFlag,
         Context::shared_pointer const & context, 
         SOCKET channel,
-        std::auto_ptr<ResponseHandler>& responseHandler, 
+        ResponseHandler::shared_pointer const & responseHandler,
         int32_t sendBufferSize, 
         int32_t receiveBufferSize,
         epics::pvData::int16 priority
@@ -614,7 +505,7 @@ namespace epics {
 
     private:
 
-      std::auto_ptr<ResponseHandler> _responseHandler;
+      ResponseHandler::shared_pointer _responseHandler;
       size_t _remoteTransportReceiveBufferSize;
       epics::pvData::int8 _remoteTransportRevision;
       epics::pvData::int16 _priority;
@@ -638,7 +529,7 @@ namespace epics {
       BlockingServerTCPTransportCodec(
         Context::shared_pointer const & context, 
         SOCKET channel,
-        std::auto_ptr<ResponseHandler>& responseHandler, 
+        ResponseHandler::shared_pointer const & responseHandler,
         int32_t sendBufferSize, 
         int32_t receiveBufferSize );
 
@@ -646,7 +537,7 @@ namespace epics {
       static shared_pointer create(
         Context::shared_pointer const & context, 
         SOCKET channel,
-        std::auto_ptr<ResponseHandler>& responseHandler,
+        ResponseHandler::shared_pointer const & responseHandler,
         int sendBufferSize, 
         int receiveBufferSize)
       {
@@ -767,7 +658,7 @@ namespace epics {
       BlockingClientTCPTransportCodec(
         Context::shared_pointer const & context,
         SOCKET channel,
-        std::auto_ptr<ResponseHandler>& responseHandler,
+        ResponseHandler::shared_pointer const & responseHandler,
         int32_t sendBufferSize, 
         int32_t receiveBufferSize,
         TransportClient::shared_pointer const & client,
@@ -779,7 +670,7 @@ namespace epics {
       static shared_pointer create(
         Context::shared_pointer const & context,
         SOCKET channel,
-        std::auto_ptr<ResponseHandler>& responseHandler,
+        ResponseHandler::shared_pointer const & responseHandler,
         int32_t sendBufferSize, 
         int32_t receiveBufferSize,
         TransportClient::shared_pointer const & client,

@@ -21,6 +21,9 @@
 #include "channelAccessIFTest.h"
 
 //#define ENABLE_STRESS_TESTS
+#define TESTSERVERNOMAIN
+
+#include "testServer.cpp"
 
 using namespace std::tr1;
 
@@ -38,14 +41,45 @@ std::string ChannelAccessIFTest::TEST_SUMRPC_CHANNEL_NAME = "testSum";
 // double[] value
 std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray1";
 
+#ifdef ENABLE_STRESS_TESTS
+#define EXTRA_STRESS_TESTS 5
+#else
+#define EXTRA_STRESS_TESTS 0
+#endif
+
+namespace {
+struct ScopedClientFactory {
+    ScopedClientFactory() { ClientFactory::start(); }
+    ~ScopedClientFactory() { ClientFactory::stop(); }
+};
+}
 
 int ChannelAccessIFTest::runAllTest() {
 
-#ifdef ENABLE_STRESS_TESTS
-  testPlan(158);
-#else
-  testPlan(153);
-#endif
+  testPlan(153+EXTRA_STRESS_TESTS);
+
+  Configuration::shared_pointer base_config(ConfigurationBuilder()
+                                            //.add("EPICS_PVA_DEBUG", "3")
+                                            .add("EPICS_PVAS_INTF_ADDR_LIST", "127.0.0.1")
+                                            .add("EPICS_PVA_ADDR_LIST", "127.0.0.1")
+                                            .add("EPICS_PVA_AUTO_ADDR_LIST","0")
+                                            .add("EPICS_PVA_SERVER_PORT", "0")
+                                            .add("EPICS_PVA_BROADCAST_PORT", "0")
+                                            .push_map()
+                                            .build());
+
+  TestServer::shared_pointer tstserv(new TestServer(base_config));
+  tstserv->start();
+  testDiag("TestServer on ports TCP=%u UDP=%u\n",
+           tstserv->getServerPort(),
+           tstserv->getBroadcastPort());
+  ConfigurationFactory::registerConfiguration("pvAccess-client",
+                                              ConfigurationBuilder()
+                                              .push_config(base_config)
+                                              .add("EPICS_PVA_BROADCAST_PORT", tstserv->getBroadcastPort())
+                                              .push_map()
+                                              .build());
+  ScopedClientFactory SCF;
 
   test_implementation();
   test_providerName();
@@ -2347,4 +2381,31 @@ PVStructure::shared_pointer ChannelAccessIFTest::createArrayPvRequest() {
   PVString::shared_pointer pvFieldName = pvRequest->getSubField<PVString>("field");
   pvFieldName->put("value");
   return pvRequest;
+}
+
+
+class ChannelAccessIFRemoteTest: public ChannelAccessIFTest  {
+
+  public:
+
+    virtual ChannelProvider::shared_pointer getChannelProvider() {
+      return getChannelProviderRegistry()->getProvider(
+          "pva");
+    }
+
+
+    virtual long getTimeoutSec() {
+      return 3;
+    }
+
+
+    virtual bool isLocal() { return false;}
+
+};
+
+MAIN(testChannelAccess)
+{
+  SET_LOG_LEVEL(logLevelError);
+  ChannelAccessIFRemoteTest caRemoteTest;
+  return caRemoteTest.runAllTest();
 }

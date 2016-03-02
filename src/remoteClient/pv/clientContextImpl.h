@@ -48,6 +48,7 @@ namespace epics {
             virtual void connectionCompleted(pvAccessID sid/*,  rights*/) = 0;
             virtual void createChannelFailed() = 0;
             virtual std::tr1::shared_ptr<ClientContextImpl> getContext() = 0;
+            virtual void channelDestroyedOnServer() = 0;
 
             virtual pvAccessID getServerChannelID() = 0;
             virtual void registerResponseRequest(ResponseRequest::shared_pointer const & responseRequest) = 0;
@@ -77,13 +78,13 @@ namespace epics {
             /**
              * Initialize client context. This method is called immediately after instance construction (call of constructor).
              */
-            virtual void initialize() = 0;
+            virtual void initialize() = 0; // public?
 
             /**
              * Get channel provider implementation.
              * @return the channel provider.
              */
-            virtual ChannelProvider::shared_pointer const & getProvider() = 0;
+            //virtual ChannelProvider::shared_pointer const & getProvider() = 0;
 
             /**
              * Prints detailed information about the context to the standard output stream.
@@ -128,11 +129,9 @@ namespace epics {
             virtual void poll() = 0;
 
             virtual void destroy() = 0;
-
-            virtual const osiSockAddr& getLocalBroadcastAddress() const = 0;
         };
 
-        epicsShareExtern ClientContextImpl::shared_pointer createClientContextImpl();
+        epicsShareExtern ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf);
 
     }
 }

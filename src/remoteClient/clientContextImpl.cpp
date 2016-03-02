@@ -2873,7 +2873,7 @@ namespace epics {
                 {
                     transport->ensureData(4);
                     pvAccessID cid = payloadBuffer->getInt();
-                    csm->searchResponse(cid, searchSequenceId, version, &serverAddress);
+                    csm->searchResponse(guid, cid, searchSequenceId, version, &serverAddress);
                 }
 
 
@@ -2925,7 +2925,7 @@ namespace epics {
                 // to do the local multicast
 
                 //
-                // locally broadcast if unicast (qosCode & 0x80 == 0x80)
+                // locally broadcast if unicast (qosCode & 0x80 == 0x80) via UDP
                 //
                 if ((qosCode & 0x80) == 0x80)
                 {
@@ -2934,12 +2934,20 @@ namespace epics {
                     if (!context)
                         return;
 
-                    BlockingUDPTransport::shared_pointer bt =
-                            //context->getLocalMulticastTransport();
-                            std::tr1::dynamic_pointer_cast<BlockingUDPTransport>(context->getSearchTransport());
-
-                    if (bt)
+                    BlockingUDPTransport::shared_pointer bt = dynamic_pointer_cast<BlockingUDPTransport>(transport);
+                    if (bt && bt->hasLocalMulticastAddress())
                     {
+                        // RECEIVE_BUFFER_PRE_RESERVE allows to pre-fix message
+                        size_t newStartPos = (startPosition-PVA_MESSAGE_HEADER_SIZE)-PVA_MESSAGE_HEADER_SIZE-16;
+                        payloadBuffer->setPosition(newStartPos);
+
+                        // copy part of a header, and add: command, payloadSize, NIF address
+                        payloadBuffer->put(payloadBuffer->getArray(), startPosition-PVA_MESSAGE_HEADER_SIZE, PVA_MESSAGE_HEADER_SIZE-5);
+                        payloadBuffer->putByte(CMD_ORIGIN_TAG);
+                        payloadBuffer->putInt(16);
+                        // encode this socket bind address
+                        encodeAsIPv6Address(payloadBuffer, bt->getBindAddress());
+
                         // clear unicast flag
                         payloadBuffer->put(startPosition+4, (int8)(qosCode & ~0x80));
 
@@ -2947,9 +2955,12 @@ namespace epics {
                         payloadBuffer->setPosition(startPosition+8);
                         encodeAsIPv6Address(payloadBuffer, &responseAddress);
 
-                        payloadBuffer->setPosition(payloadBuffer->getLimit());		// send will call flip()
+                        // set to end of a message
+                        payloadBuffer->setPosition(payloadBuffer->getLimit());
 
-                        bt->send(payloadBuffer, context->getLocalBroadcastAddress());
+                        bt->send(payloadBuffer->getArray()+newStartPos, payloadBuffer->getPosition()-newStartPos,
+                                 bt->getLocalMulticastAddress());
+
                         return;
                     }
                 }
@@ -3176,6 +3187,33 @@ namespace epics {
         };
 
 
+        class DestroyChannelHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+        public:
+            DestroyChannelHandler(ClientContextImpl::shared_pointer const & context) :
+                    AbstractClientResponseHandler(context, "Destroy channel")
+            {
+            }
+
+            virtual ~DestroyChannelHandler() {
+            }
+
+            virtual void handleResponse(osiSockAddr* responseFrom,
+                                        Transport::shared_pointer const & transport, int8 version, int8 command,
+                                        size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+            {
+                AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
+
+                transport->ensureData(4);
+                pvAccessID cid = payloadBuffer->getInt();
+                /*pvAccessID sid =*/ payloadBuffer->getInt();
+
+                // TODO optimize
+                ChannelImpl::shared_pointer channel = static_pointer_cast<ChannelImpl>(_context.lock()->getChannel(cid));
+                if (channel.get())
+                    channel->channelDestroyedOnServer();
+            }
+        };
+
 
         /**
          * PVA response handler - main handler which dispatches responses to appripriate handlers.
@@ -3211,7 +3249,7 @@ namespace epics {
                 m_handlerTable[CMD_AUTHNZ].reset(new AuthNZHandler(context.get())); /*  5 */
                 m_handlerTable[CMD_ACL_CHANGE].reset(new NoopResponse(context, "Access rights change")); /*  6 */
                 m_handlerTable[CMD_CREATE_CHANNEL].reset(new CreateChannelHandler(context)); /*  7 */
-                m_handlerTable[CMD_DESTROY_CHANNEL].reset(new NoopResponse(context, "Destroy channel")); /*  8 */ // TODO it might be useful to implement this...
+                m_handlerTable[CMD_DESTROY_CHANNEL].reset(new DestroyChannelHandler(context)); /*  8 */
                 m_handlerTable[CMD_CONNECTION_VALIDATED].reset(new ClientConnectionValidatedHandler(context)); /*  9 */
                 m_handlerTable[CMD_GET] = dataResponse; /* 10 - get response */
                 m_handlerTable[CMD_PUT] = dataResponse; /* 11 - put response */
@@ -3280,45 +3318,12 @@ namespace epics {
             public ClientContextImpl,
             public std::tr1::enable_shared_from_this<InternalClientContextImpl>
         {
-
-
-            class ChannelProviderImpl;
-/*
-            class ChannelImplFind : public ChannelFind
-            {
-            public:
-                ChannelImplFind(ChannelProvider::shared_pointer const & provider) : m_provider(provider)
-                {
-                }
-
-                virtual void destroy()
-                {
-                    // one instance for all, do not delete at all
-                }
-
-                virtual ChannelProvider::shared_pointer getChannelProvider()
-                {
-                    return m_provider;
-                };
-
-                virtual void cancel()
-                {
-                    throw std::runtime_error("not supported");
-                }
-
-            private:
-
-                // only to be destroyed by it
-                friend class ChannelProviderImpl;
-                virtual ~ChannelImplFind() {}
-
-                ChannelProvider::shared_pointer m_provider;
-            };
-*/
+        public:
+            POINTER_DEFINITIONS(InternalClientContextImpl);
             class ChannelProviderImpl : public ChannelProvider {
             public:
 
-                ChannelProviderImpl(std::tr1::shared_ptr<ClientContextImpl> const & context) :
+                ChannelProviderImpl(InternalClientContextImpl* context) :
                         m_context(context)
                 {
                     MB_INIT;
@@ -3339,9 +3344,7 @@ namespace epics {
                 {
                     // TODO not implemented
 
-                	std::tr1::shared_ptr<ClientContextImpl> context = m_context.lock();
-                	if (context.get())
-                		context->checkChannelName(channelName);
+                    m_context->checkChannelName(channelName);
 
                     if (!channelFindRequester.get())
                         throw std::runtime_error("null requester");
@@ -3379,15 +3382,6 @@ namespace epics {
                         short priority,
                         std::string const & addressesStr)
                 {
-                	std::tr1::shared_ptr<ClientContextImpl> context = m_context.lock();
-                	if (!context.get())
-                	{
-                        Status errorStatus(Status::STATUSTYPE_ERROR, "context already destroyed");
-                        Channel::shared_pointer nullChannel;
-                        EXCEPTION_GUARD(channelRequester->channelCreated(errorStatus, nullChannel));
-                        return nullChannel;
-                	}
-
                     auto_ptr<InetAddrVector> addresses;
                     if (!addressesStr.empty())
                     {
@@ -3396,7 +3390,7 @@ namespace epics {
                             addresses.reset();
                     }
                     
-                    Channel::shared_pointer channel = context->createChannelInternal(channelName, channelRequester, priority, addresses);
+                    Channel::shared_pointer channel = m_context->createChannelInternal(channelName, channelRequester, priority, addresses);
                     if (channel.get())
                         channelRequester->channelCreated(Status::Ok, channel);
                     return channel;
@@ -3406,37 +3400,31 @@ namespace epics {
 
                 virtual void configure(epics::pvData::PVStructure::shared_pointer configuration)
                 {
-                    std::tr1::shared_ptr<ClientContextImpl> context = m_context.lock();
-                    if (context.get())
-                        context->configure(configuration);
+                    LOG(logLevelError, "Client context must be configured at construction (see ChannelProvider::newInstance(conf))");
                 }
 
                 virtual void flush()
                 {
-                    std::tr1::shared_ptr<ClientContextImpl> context = m_context.lock();
-                    if (context.get())
-                        context->flush();
+                    m_context->flush();
                 }
 
                 virtual void poll()
                 {
-                    std::tr1::shared_ptr<ClientContextImpl> context = m_context.lock();
-                    if (context.get())
-                        context->poll();
+                    m_context->poll();
                 }
 
                 ~ChannelProviderImpl() {};
 
             private:
 
-                std::tr1::weak_ptr<ClientContextImpl> m_context;
+                InternalClientContextImpl* const m_context;
             };
 
             
             
             
             
-            
+        private:
             /**
              * Implementation of PVAJ JCA <code>Channel</code>.
              */
@@ -3450,7 +3438,7 @@ namespace epics {
                 /**
                  * Context.
                  */
-                ClientContextImpl::shared_pointer m_context;
+                std::tr1::shared_ptr<InternalClientContextImpl> m_context;
                 
                 /**
                  * Client channel ID.
@@ -3532,6 +3520,11 @@ namespace epics {
                 int32_t m_userValue;
                 
                 /**
+                 * @brief Server GUID.
+                 */
+                GUID m_guid;
+
+                /**
                  * Constructor.
                  * @param context
                  * @param name
@@ -3539,7 +3532,7 @@ namespace epics {
                  * @throws PVAException
                  */
                 InternalChannelImpl(
-                                    ClientContextImpl::shared_pointer const & context,
+                                    InternalClientContextImpl::shared_pointer const & context,
                                     pvAccessID channelID,
                                     string const & name,
                                     ChannelRequester::shared_pointer const & requester,
@@ -3573,7 +3566,7 @@ namespace epics {
                 
             public:
                 
-                static ChannelImpl::shared_pointer create(ClientContextImpl::shared_pointer context,
+                static ChannelImpl::shared_pointer create(InternalClientContextImpl::shared_pointer context,
                                                    pvAccessID channelID,
                                                    string const & name,
                                                    ChannelRequester::shared_pointer requester,
@@ -3613,7 +3606,7 @@ namespace epics {
                 
                 virtual ChannelProvider::shared_pointer getProvider()
                 {
-                    return m_context->getProvider();
+                    return ChannelProvider::shared_pointer(m_context->m_provider_ptr);
                 }
                 
                 // NOTE: synchronization guarantees that <code>transport</code> is non-<code>0</code> and <code>state == CONNECTED</code>.
@@ -3621,12 +3614,11 @@ namespace epics {
                 {
                     Lock guard(m_channelMutex);
                     if (m_connectionState != CONNECTED) {
-                        static string emptyString;
-                        return emptyString;
+                        return "";
                     }
                     else
                     {
-                        return inetAddressToString(*m_transport->getRemoteAddress());
+                        return m_transport->getRemoteName();
                     }
                 }
                 
@@ -3888,6 +3880,9 @@ namespace epics {
                  * @param remoteDestroy        issue channel destroy request.
                  */
                 void disconnect(bool initiateSearch, bool remoteDestroy) {
+                    // order of oldchan and guard is important to ensure
+                    // oldchan is destoryed after unlock
+                    Transport::shared_pointer oldchan;
                     Lock guard(m_channelMutex);
                     
                     if (m_connectionState != CONNECTED)
@@ -3911,12 +3906,22 @@ namespace epics {
                         }
 
                         m_transport->release(getID());
-                        m_transport.reset();
+                        oldchan.swap(m_transport);
                     }
                     
                     if (initiateSearch)
                         this->initiateSearch();
                     
+                }
+
+                void channelDestroyedOnServer() {
+                    if (isConnected())
+                    {
+                        disconnect(true, false);
+
+                        // should be called without any lock hold
+                        reportChannelStateChange();
+                    }
                 }
                 
                 #define STATIC_SEARCH_BASE_DELAY_SEC 5
@@ -3953,21 +3958,23 @@ namespace epics {
                         m_addressIndex = m_addresses->size()*STATIC_SEARCH_MAX_MULTIPLIER;
 
                     // NOTE: calls channelConnectFailed() on failure
-                    searchResponse(PVA_PROTOCOL_REVISION, &((*m_addresses)[ix]));
+                    static GUID guid = { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
+                    searchResponse(guid, PVA_PROTOCOL_REVISION, &((*m_addresses)[ix]));
                 }
 
                 virtual void timerStopped() {
                     // noop
                 }
 
-                virtual void searchResponse(int8 minorRevision, osiSockAddr* serverAddress) {
+                virtual void searchResponse(const GUID & guid, int8 minorRevision, osiSockAddr* serverAddress) {
                     Lock guard(m_channelMutex);
                     Transport::shared_pointer transport = m_transport;
                     if (transport.get())
                     {
-                        // TODO use GUID to determine whether there are multiple servers with the same channel
-                        // multiple defined PV or reconnect request (same server address)
-                        if (!sockAddrAreIdentical(transport->getRemoteAddress(), serverAddress))
+                        // GUID check case: same server listening on different NIF
+
+                        if (!sockAddrAreIdentical(transport->getRemoteAddress(), serverAddress) &&
+                            !std::equal(guid.value, guid.value + 12, m_guid.value))
                         {
                             EXCEPTION_GUARD(m_requester->message("More than one channel with name '" + m_name +
                                                                  "' detected, connected to: " + inetAddressToString(*transport->getRemoteAddress()) + ", ignored: " + inetAddressToString(*serverAddress), warningMessage));
@@ -3982,6 +3989,10 @@ namespace epics {
                         return;
                     }
                     
+
+                    // remember GUID
+                    std::copy(guid.value, guid.value + 12, m_guid.value);
+
                     // create channel
                     createChannel(transport);
                 }
@@ -4118,7 +4129,7 @@ namespace epics {
                     
                     if (issueCreateMessage)
                     {
-                        control->startMessage((int8)7, 2+4);
+                        control->startMessage((int8)CMD_CREATE_CHANNEL, 2+4);
                         
                         // count
                         buffer->putShort((int16)1);
@@ -4131,7 +4142,7 @@ namespace epics {
                     }
                     else
                     {
-                        control->startMessage((int8)8, 4+4);
+                        control->startMessage((int8)CMD_DESTROY_CHANNEL, 4+4);
                         // SID
                         m_channelMutex.lock();
                         pvAccessID sid = m_serverChannelID;
@@ -4310,11 +4321,9 @@ namespace epics {
             
             
             
-            
+        public:
 
-        private:
-            
-            InternalClientContextImpl() :
+            InternalClientContextImpl(const Configuration::shared_pointer& conf) :
                     m_addressList(""), m_autoAddressList(true), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
                     m_broadcastPort(PVA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV),
                     m_namedLocker(), m_lastCID(0), m_lastIOID(0),
@@ -4323,49 +4332,23 @@ namespace epics {
                                 EPICS_PVA_MINOR_VERSION,
                                 EPICS_PVA_MAINTENANCE_VERSION,
                                 EPICS_PVA_DEVELOPMENT_FLAG),
+                    m_provider(this),
                     m_contextState(CONTEXT_NOT_INITIALIZED),
-                    m_configuration(new SystemConfigurationImpl()),
+                    m_configuration(conf),
                     m_flushStrategy(DELAYED)
             {
                 PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(remoteClientContext);
+                if(!m_configuration) m_configuration = ConfigurationFactory::getConfiguration("pvAccess-client");
                 m_flushTransports.reserve(64);
                 loadConfiguration();
             }
 
-        public:
-            
-            static shared_pointer create()
-            {
-                // TODO use std::make_shared
-                std::tr1::shared_ptr<InternalClientContextImpl> tp(new InternalClientContextImpl(), delayed_destroyable_deleter());
-                shared_pointer thisPointer = tp;
-                static_cast<InternalClientContextImpl*>(thisPointer.get())->activate();
-                return thisPointer;
-            }
-
-            void activate()
-            {
-            	m_provider.reset(new ChannelProviderImpl(shared_from_this()));
-            }
-
             virtual Configuration::shared_pointer getConfiguration() {
-                /*
-TODO
-        final ConfigurationProvider configurationProvider = ConfigurationFactory.getProvider();
-        Configuration config = configurationProvider.getConfiguration("pvAccess-client");
-        if (!config)
-            config = configurationProvider.getConfiguration("system");
-        return config;
-*/
                 return m_configuration;
             }
 
             virtual const Version& getVersion() {
                 return m_version;
-            }
-
-            virtual ChannelProvider::shared_pointer const & getProvider() {
-                return m_provider;
             }
 
             virtual Timer::shared_pointer getTimer()
@@ -4456,11 +4439,6 @@ TODO
                 PVACCESS_REFCOUNT_MONITOR_DESTRUCT(remoteClientContext);
             };
 
-            virtual const osiSockAddr& getLocalBroadcastAddress() const
-            {
-                return m_localBroadcastAddress;
-            }
-
         private:
 
             void loadConfiguration() {
@@ -4486,6 +4464,8 @@ TODO
                 m_connector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_connectionTimeout));
                 m_transportRegistry.reset(new TransportRegistry());
 
+                m_responseHandler.reset(new ClientResponseHandler(shared_from_this()));
+
                 // preinitialize security plugins
                 SecurityPluginRegistry::instance();
 
@@ -4505,103 +4485,24 @@ TODO
              */
             bool initializeUDPTransport() {
 
-                // quary broadcast addresses of all IFs
+                // query broadcast addresses of all IFs
                 SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, 0);
-                if (socket == INVALID_SOCKET) return false;
-                auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(socket, m_broadcastPort));
+                if (socket == INVALID_SOCKET)
+                {
+                    LOG(logLevelError, "Failed to create a socket to introspect network interfaces.");
+                    return false;
+                }
+
+                IfaceNodeVector ifaceList;
+                if (discoverInterfaces(ifaceList, socket, 0) || ifaceList.size() == 0)
+                {
+                    LOG(logLevelError, "Failed to introspect interfaces or no network interfaces available.");
+                    return false;
+                }
                 epicsSocketDestroy (socket);
 
-                // set broadcast address list
-                if (!m_addressList.empty())
-                {
-                    // if auto is true, add it to specified list
-                    InetAddrVector* appendList = 0;
-                    if (m_autoAddressList)
-                        appendList = broadcastAddresses.get();
-
-                    auto_ptr<InetAddrVector> list(getSocketAddressList(m_addressList, m_broadcastPort, appendList));
-                    if (list.get() && list->size()) {
-                        // delete old list and take ownership of a new one
-                        broadcastAddresses = list;
-                    }
-                }
-                
-                for (size_t i = 0; broadcastAddresses.get() && i < broadcastAddresses->size(); i++)
-                    LOG(logLevelDebug,
-                        "Broadcast address #%d: %s.", i, inetAddressToString((*broadcastAddresses)[i]).c_str());
-
-                // where to bind (listen) address
-                osiSockAddr listenLocalAddress;
-                listenLocalAddress.ia.sin_family = AF_INET;
-                listenLocalAddress.ia.sin_port = htons(m_broadcastPort);
-                listenLocalAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-                
-                ClientContextImpl::shared_pointer thisPointer = shared_from_this();
-
-                TransportClient::shared_pointer nullTransportClient;
-
-                auto_ptr<ResponseHandler> clientResponseHandler(new ClientResponseHandler(thisPointer));
-                auto_ptr<BlockingUDPConnector> broadcastConnector(new BlockingUDPConnector(false, true, true));
-                m_broadcastTransport = static_pointer_cast<BlockingUDPTransport>(broadcastConnector->connect(
-                        nullTransportClient, clientResponseHandler,
-                        listenLocalAddress, PVA_PROTOCOL_REVISION,
-                        PVA_DEFAULT_PRIORITY));
-                if (!m_broadcastTransport.get())
-                    return false;
-                m_broadcastTransport->setSendAddresses(broadcastAddresses.get());
-
-                // undefined address
-                osiSockAddr undefinedAddress;
-                undefinedAddress.ia.sin_family = AF_INET;
-                undefinedAddress.ia.sin_port = htons(0);
-                undefinedAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-
-                clientResponseHandler.reset(new ClientResponseHandler(thisPointer));
-                auto_ptr<BlockingUDPConnector> searchConnector(new BlockingUDPConnector(false, false, true));
-                m_searchTransport = static_pointer_cast<BlockingUDPTransport>(searchConnector->connect(
-                        nullTransportClient, clientResponseHandler,
-                        undefinedAddress, PVA_PROTOCOL_REVISION,
-                        PVA_DEFAULT_PRIORITY));
-                if (!m_searchTransport.get())
-                    return false;
-                m_searchTransport->setSendAddresses(broadcastAddresses.get());
-
-                // TODO do not use searchBroadcast in future
-                // setup local broadcasting
-                // TODO configurable local NIF, address
-                osiSockAddr loAddr;
-                getLoopbackNIF(loAddr, "", 0);
-                if (true)
-                {
-                    try
-                    {
-                        //osiSockAddr group;
-                        aToIPAddr("224.0.0.128", m_broadcastPort, &m_localBroadcastAddress.ia);
-                        m_broadcastTransport->join(m_localBroadcastAddress, loAddr);
-
-                        // NOTE: this disables usage of multicast addresses in EPICS_PVA_ADDR_LIST
-                        m_searchTransport->setMutlicastNIF(loAddr, true);
-
-                        //InetAddrVector sendAddressList;
-                        //sendAddressList.push_back(group);
-                        //m_searchTransport->setSendAddresses(&sendAddressList);
-
-                        LOG(logLevelDebug, "Local multicast enabled on %s using network interface %s.",
-                            inetAddressToString(m_localBroadcastAddress).c_str(), inetAddressToString(loAddr, false).c_str());
-                    }
-                    catch (std::exception& ex)
-                    {
-                        LOG(logLevelDebug, "Failed to initialize local multicast, funcionality disabled. Reason: %s.", ex.what());
-                    }
-                }
-                else
-                {
-                    LOG(logLevelDebug, "Failed to detect a loopback network interface, local multicast disabled.");
-                }
-
-                // become active
-                m_broadcastTransport->start();
-                m_searchTransport->start();
+                initializeUDPTransports(false, m_udpTransports, ifaceList, m_responseHandler, m_searchTransport,
+                                        m_broadcastPort, m_autoAddressList, m_addressList, std::string());
 
                 return true;
             }
@@ -4616,8 +4517,14 @@ TODO
                 destroyAllChannels();
                 
                 // stop UDPs
-                m_searchTransport->close();
-                m_broadcastTransport->close();
+                for (BlockingUDPTransportVector::const_iterator iter = m_udpTransports.begin();
+                     iter != m_udpTransports.end(); iter++)
+                    (*iter)->close();
+                m_udpTransports.clear();
+
+                // stop UDPs
+                if (m_searchTransport)
+                    m_searchTransport->close();
 
                 // wait for all transports to cleanly exit
                 int tries = 40;
@@ -4841,9 +4748,7 @@ TODO
             {
                 try
                 {
-                    // TODO we are creating a new response handler even-though we might not need a new transprot !!!
-                    auto_ptr<ResponseHandler> handler(new ClientResponseHandler(shared_from_this()));
-                    Transport::shared_pointer t = m_connector->connect(client, handler, *serverAddress, minorRevision, priority);
+                    Transport::shared_pointer t = m_connector->connect(client, m_responseHandler, *serverAddress, minorRevision, priority);
                     // TODO !!!
                     //static_pointer_cast<BlockingTCPTransport>(t)->setFlushStrategy(m_flushStrategy);
                     return t;
@@ -4924,7 +4829,7 @@ TODO
             }
             
             virtual void configure(epics::pvData::PVStructure::shared_pointer configuration)
-            {
+            {// remove?
                 if (m_transportRegistry->numberOfActiveTransports() > 0)
                     throw std::runtime_error("Configure must be called when there is no transports active.");
                 
@@ -5014,9 +4919,9 @@ TODO
             Timer::shared_pointer m_timer;
 
             /**
-             * Broadcast transport needed to listen for broadcasts.
+             * UDP transports needed to receive channel searches.
              */
-            BlockingUDPTransport::shared_pointer m_broadcastTransport;
+            BlockingUDPTransportVector m_udpTransports;
 
             /**
              * UDP transport needed for channel searches.
@@ -5033,6 +4938,11 @@ TODO
              * This registry contains all active transports - connections to PVA servers.
              */
             TransportRegistry::shared_pointer m_transportRegistry;
+
+            /**
+             * Response handler.
+             */
+            ClientResponseHandler::shared_pointer m_responseHandler;
 
             /**
              * Context instance.
@@ -5099,10 +5009,13 @@ TODO
              */
             Version m_version;
 
+        public:
             /**
              * Provider implementation.
              */
-            ChannelProviderImpl::shared_pointer m_provider;
+            ChannelProviderImpl m_provider;
+            ChannelProviderImpl::weak_pointer m_provider_ptr;
+        private:
 
             /**
              * Context state.
@@ -5121,14 +5034,39 @@ TODO
             TransportRegistry::transportVector_t m_flushTransports;
             
             FlushStrategy m_flushStrategy;
-
-            osiSockAddr m_localBroadcastAddress;
         };
 
-        ClientContextImpl::shared_pointer createClientContextImpl()
+        namespace {
+        struct nested {
+            ClientContextImpl::shared_pointer ptr;
+            nested(const ClientContextImpl::shared_pointer& p) :ptr(p) {}
+            void operator()(ChannelProvider*) {
+                ptr.reset();
+            }
+        };
+        }
+
+        ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf)
         {
-            ClientContextImpl::shared_pointer ptr = InternalClientContextImpl::create();
-            return ptr;
+            /* For PVA the context and provider have a tight 1-to-1 relationship
+             * were each must know about the other, and both must be referenced by shared_ptr
+             * from outside code (provider) and Channels (context and provider.
+             *
+             * So we compose the provider within the context and use a nested shared_ptr
+             * to the context for the provider.
+             */
+            // TODO use make::shared
+            InternalClientContextImpl::shared_pointer t(new InternalClientContextImpl(conf));
+            ClientContextImpl::shared_pointer ctxt(t);
+
+            InternalClientContextImpl *self = static_cast<InternalClientContextImpl*>(ctxt.get());
+
+            // a wrapped shared_ptr to the provider which really holds a reference to the context
+            ChannelProvider::shared_pointer prov(&self->m_provider, nested(ctxt));
+
+            self->m_provider_ptr = prov; // keep a weak_ptr for the context itself so that it can give out refs. to it's provider
+            ctxt->initialize();
+            return prov;
         }
 
     }};

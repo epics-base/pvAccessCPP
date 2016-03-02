@@ -110,16 +110,16 @@ public:
 class epicsShareClass ServerContextImpl :
     public ServerContext,
     public Context,
-    public ResponseHandlerFactory,
     public std::tr1::enable_shared_from_this<ServerContextImpl>
 {
 public:
     typedef std::tr1::shared_ptr<ServerContextImpl> shared_pointer;
     typedef std::tr1::shared_ptr<const ServerContextImpl> const_shared_pointer;
-protected:
+private:
 	ServerContextImpl();
 public:
     static shared_pointer create();
+    static shared_pointer create(const Configuration::shared_pointer& conf);
     
 	virtual ~ServerContextImpl();
 
@@ -142,11 +142,8 @@ public:
 	TransportRegistry::shared_pointer getTransportRegistry();
     std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins();
 
-    std::auto_ptr<ResponseHandler> createResponseHandler();
     virtual void newServerDetected();
 
-
-    BlockingUDPTransport::shared_pointer getLocalMulticastTransport();
 
     epicsTimeStamp& getStartTime();
 
@@ -234,12 +231,6 @@ public:
 	epics::pvData::int32 getServerPort();
 
 	/**
-	 * Set server port number.
-	 * @param port new server port number.
-	 */
-	void setServerPort(epics::pvData::int32 port);
-
-	/**
 	 * Get broadcast port.
 	 * @return broadcast port.
 	 */
@@ -263,13 +254,13 @@ public:
 	 */
 	osiSockAddr* getServerInetAddress();
 
-	/**
-	 * Broadcast transport.
-	 * @return broadcast transport.
-	 */
-	BlockingUDPTransport::shared_pointer getBroadcastTransport();
+    /**
+     * Broadcast (UDP send) transport.
+     * @return broadcast transport.
+     */
+    BlockingUDPTransport::shared_pointer getBroadcastTransport();
 
-	/**
+    /**
 	 * Get channel provider registry implementation used by this instance.
 	 * @return channel provider registry used by this instance.
 	 */
@@ -317,6 +308,13 @@ private:
 	 */
 	std::string _beaconAddressList;
 
+    /**
+     * List of used NIF.
+     */
+    IfaceNodeVector _ifaceList;
+
+    osiSockAddr _ifaceAddr;
+
 	/**
 	 * A space-separated list of address from which to ignore name resolution requests.
 	 * Each address must be of the form: ip.number:port or host.name:port
@@ -354,14 +352,14 @@ private:
 	epics::pvData::Timer::shared_pointer _timer;
 
 	/**
-	 * Broadcast transport needed for channel searches.
+     * UDP transports needed to receive channel searches.
 	 */
-	BlockingUDPTransport::shared_pointer _broadcastTransport;
+    BlockingUDPTransportVector _udpTransports;
 
     /**
-     * Local broadcast transport needed for local fan-out.
+     * UDP socket used to sending.
      */
-    BlockingUDPTransport::shared_pointer _localMulticastTransport;
+    BlockingUDPTransport::shared_pointer _broadcastTransport;
 
     /**
 	 * Beacon emitter.
@@ -379,7 +377,12 @@ private:
 	 */
 	TransportRegistry::shared_pointer _transportRegistry;
 
-	/**
+    /**
+     * Response handler.
+     */
+    ResponseHandler::shared_pointer _responseHandler;
+
+    /**
 	 * Channel access.
 	 */
 	ChannelProviderRegistry::shared_pointer _channelProviderRegistry;

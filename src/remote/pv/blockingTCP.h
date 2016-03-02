@@ -58,7 +58,7 @@ namespace epics {
             virtual ~BlockingTCPConnector();
 
             virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
-                    std::auto_ptr<ResponseHandler>& responseHandler, osiSockAddr& address,
+                    ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& address,
                     epics::pvData::int8 transportRevision, epics::pvData::int16 priority);
         private:
             /**
@@ -97,22 +97,12 @@ namespace epics {
 
         };
 
-        class ResponseHandlerFactory
-        {
-            public:
-        	POINTER_DEFINITIONS(ResponseHandlerFactory);
-            
-            virtual ~ResponseHandlerFactory() {};
-
-            virtual std::auto_ptr<ResponseHandler> createResponseHandler() = 0;
-        };
-        
         /**
          * Channel Access Server TCP acceptor.
          * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
          * @version $Id: BlockingTCPAcceptor.java,v 1.1 2010/05/03 14:45:42 mrkraimer Exp $
          */
-        class BlockingTCPAcceptor {
+        class BlockingTCPAcceptor : public epicsThreadRunable {
         public:
         	POINTER_DEFINITIONS(BlockingTCPAcceptor);
 
@@ -123,12 +113,13 @@ namespace epics {
              * @throws PVAException
              */
             BlockingTCPAcceptor(Context::shared_pointer const & context,
-                                ResponseHandlerFactory::shared_pointer const & responseHandlerFactory,
+                                ResponseHandler::shared_pointer const & responseHandler,
                                 int port, int receiveBufferSize);
+            BlockingTCPAcceptor(Context::shared_pointer const & context,
+                                ResponseHandler::shared_pointer const & responseHandler,
+                                const osiSockAddr& addr, int receiveBufferSize);
 
             virtual ~BlockingTCPAcceptor();
-
-            void handleEvents();
 
             /**
              * Bind socket address.
@@ -144,15 +135,17 @@ namespace epics {
             void destroy();
 
         private:
+            virtual void run();
+
             /**
              * Context instance.
              */
             Context::shared_pointer _context;
             
             /**
-             * ResponseHandler factory.
+             * Response handler.
              */
-            ResponseHandlerFactory::shared_pointer _responseHandlerFactory;
+            ResponseHandler::shared_pointer _responseHandler;
 
             /**
              * Bind server socket address.
@@ -176,21 +169,19 @@ namespace epics {
             
             epics::pvData::Mutex _mutex;
 
-            epicsThreadId _threadId;
+            epicsThread _thread;
 
             /**
              * Initialize connection acception.
              * @return port where server is listening
              */
-            int initialize(unsigned short port);
+            int initialize();
 
             /**
              * Validate connection by sending a validation message request.
              * @return <code>true</code> on success.
              */
             bool validateConnection(Transport::shared_pointer const & transport, const char* address);
-
-            static void handleEventsRunner(void* param);
         };
 
     }

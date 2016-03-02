@@ -38,11 +38,13 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
 }
 #endif
 
+// reserve some space for CMD_ORIGIN_TAG message
+#define RECEIVE_BUFFER_PRE_RESERVE PVA_MESSAGE_HEADER_SIZE + 16
+
         PVACCESS_REFCOUNT_MONITOR_DEFINE(blockingUDPTransport);
 
-        BlockingUDPTransport::BlockingUDPTransport(
-                bool serverFlag,
-                auto_ptr<ResponseHandler>& responseHandler, SOCKET channel,
+        BlockingUDPTransport::BlockingUDPTransport(bool serverFlag,
+                ResponseHandler::shared_pointer const & responseHandler, SOCKET channel,
                 osiSockAddr& bindAddress,
                 short /*remoteTransportRevision*/) :
                     _closed(),
@@ -51,15 +53,17 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                     _bindAddress(bindAddress),
                     _sendAddresses(0),
                     _ignoredAddresses(0),
+                    _tappedNIF(0),
                     _sendToEnabled(false),
-                    _receiveBuffer(new ByteBuffer(MAX_UDP_RECV)),
+                    _localMulticastAddressEnabled(false),
+                    _receiveBuffer(new ByteBuffer(MAX_UDP_RECV+RECEIVE_BUFFER_PRE_RESERVE)),
                     _sendBuffer(new ByteBuffer(MAX_UDP_RECV)),
                     _lastMessageStartPosition(0),
-                    _threadId(0),
                     _clientServerWithEndianFlag(
                         (serverFlag ? 0x40 : 0x00) | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00))
         {
             PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(blockingUDPTransport);
+            assert(_responseHandler.get());
 
             osiSocklen_t sockLen = sizeof(sockaddr);
             // read the actual socket info
@@ -71,6 +75,11 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 char strBuffer[64];
                 epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
                 LOG(logLevelDebug, "getsockname error: %s.", strBuffer);
+                _remoteName = "<unknown>:0";
+            } else {
+                char strBuffer[64];
+                sockAddrToA(&_remoteAddress.sa, strBuffer, sizeof(strBuffer));
+                _remoteName = strBuffer;
             }
         }
 
@@ -94,10 +103,10 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 LOG(logLevelTrace, "Starting thread: %s.", threadName.c_str());
             }
             
-            _threadId = epicsThreadCreate(threadName.c_str(),
-                    epicsThreadPriorityMedium,
-                    epicsThreadGetStackSize(epicsThreadStackSmall),
-                    BlockingUDPTransport::threadRunner, this);
+            _thread.reset(new epicsThread(*this, threadName.c_str(),
+                                          epicsThreadGetStackSize(epicsThreadStackSmall),
+                                          epicsThreadPriorityMedium));
+            _thread->start();
         }
 
         void BlockingUDPTransport::close() {
@@ -149,7 +158,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             
             
             // wait for send thread to exit cleanly            
-            if (waitForThreadToComplete)
+            if (_thread.get() && waitForThreadToComplete)
             {
                 if (!_shutdownEvent.wait(5.0))
                 {
@@ -202,25 +211,31 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                     _sendBuffer->getPosition()-_lastMessageStartPosition-PVA_MESSAGE_HEADER_SIZE);
         }
 
-        void BlockingUDPTransport::processRead() {
+        void BlockingUDPTransport::run() {
             // This function is always called from only one thread - this
             // object's own thread.
 
             osiSockAddr fromAddress;
             osiSocklen_t addrStructSize = sizeof(sockaddr);
-            Transport::shared_pointer thisTransport = shared_from_this();
+            Transport::shared_pointer thisTransport = shared_from_this(),
+                                      replyTo(_replyTransport ? _replyTransport : thisTransport);
 
             try {
 
+                char* recvfrom_buffer_start = (char*)(_receiveBuffer->getArray()+RECEIVE_BUFFER_PRE_RESERVE);
+                size_t recvfrom_buffer_len =_receiveBuffer->getSize()-RECEIVE_BUFFER_PRE_RESERVE;
                 while(!_closed.get())
                 {
                     // we poll to prevent blocking indefinitely
 
                     // data ready to be read
                     _receiveBuffer->clear();
+                    // reserve some space for CMD_ORIGIN_TAG
+                    _receiveBuffer->setPosition(RECEIVE_BUFFER_PRE_RESERVE);
 
-                    int bytesRead = recvfrom(_channel, (char*)_receiveBuffer->getArray(),
-                            _receiveBuffer->getRemaining(), 0, (sockaddr*)&fromAddress,
+                    int bytesRead = recvfrom(_channel,
+                            recvfrom_buffer_start, recvfrom_buffer_len,
+                            0, (sockaddr*)&fromAddress,
                             &addrStructSize);
 
                     if(likely(bytesRead>0)) {
@@ -239,12 +254,11 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                         }
                         
                         if(likely(!ignore)) {
-                            _receiveBuffer->setPosition(bytesRead);
-
-                            _receiveBuffer->flip();
+                            _receiveBuffer->setPosition(RECEIVE_BUFFER_PRE_RESERVE);
+                            _receiveBuffer->setLimit(RECEIVE_BUFFER_PRE_RESERVE+bytesRead);
 
                             try{
-                                processBuffer(thisTransport, fromAddress, _receiveBuffer.get());
+                                processBuffer(replyTo, fromAddress, _receiveBuffer.get());
                             }catch(std::exception& e){
                                 LOG(logLevelError,
                                   "an exception caught while in UDP receiveThread at %s:%d: %s",
@@ -299,7 +313,8 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             _shutdownEvent.signal();
         }
 
-        bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & thisTransport, osiSockAddr& fromAddress, ByteBuffer* receiveBuffer) {
+        bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & replyTransport,
+                                                 osiSockAddr& fromAddress, ByteBuffer* receiveBuffer) {
 
             // handle response(s)
             while(likely((int)receiveBuffer->getRemaining()>=PVA_MESSAGE_HEADER_SIZE)) {
@@ -315,11 +330,10 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 // second byte version
                 int8 version = receiveBuffer->getByte();
 
-                // only data for UDP
                 int8 flags = receiveBuffer->getByte();
-                if (flags < 0)
+                if (flags & 0x80)
                 {
-                    // 7-bit set
+                    // 7th bit set
                     receiveBuffer->setEndianess(EPICS_ENDIAN_BIG);
                 }
                 else
@@ -331,34 +345,111 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 int8 command = receiveBuffer->getByte();
                 // TODO check this cast (size_t must be 32-bit)
                 size_t payloadSize = receiveBuffer->getInt();
+
+                // control message check (skip message)
+                if (flags & 0x01)
+                    continue;
+
                 size_t nextRequestPosition = receiveBuffer->getPosition() + payloadSize;
 
                 // payload size check
                 if(unlikely(nextRequestPosition>receiveBuffer->getLimit())) return false;
 
-                // handle
-                _responseHandler->handleResponse(&fromAddress, thisTransport,
-                        version, command, payloadSize,
-                        _receiveBuffer.get());
+                // CMD_ORIGIN_TAG filtering
+                // NOTE: from design point of view this is not a right place to process application message here
+                if (unlikely(command == CMD_ORIGIN_TAG))
+                {
+                    // enabled?
+                    if (_tappedNIF)
+                    {
+                        // 128-bit IPv6 address
+                        osiSockAddr originNIFAddress;
+                        if (decodeAsIPv6Address(receiveBuffer, &originNIFAddress))
+                        {
+                            originNIFAddress.ia.sin_family = AF_INET;
+
+                            /*
+                            LOG(logLevelDebug, "Got CMD_ORIGIN_TAG message form %s tagged as %s.",
+                                inetAddressToString(fromAddress, true).c_str(),
+                                inetAddressToString(originNIFAddress, false).c_str());
+                            */
+
+                            // filter
+                            if (originNIFAddress.ia.sin_addr.s_addr != htonl(INADDR_ANY))
+                            {
+                                bool accept = false;
+                                for(size_t i = 0; i < _tappedNIF->size(); i++)
+                                {
+                                    if((*_tappedNIF)[i].ia.sin_addr.s_addr == originNIFAddress.ia.sin_addr.s_addr)
+                                    {
+                                        accept = true;
+                                        break;
+                                    }
+                                }
+
+                                // ignore messages from non-tapped NIFs
+                                if (!accept)
+                                    return false;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                     // handle
+                    _responseHandler->handleResponse(&fromAddress, replyTransport,
+                            version, command, payloadSize,
+                            _receiveBuffer.get());
+                }
 
                 // set position (e.g. in case handler did not read all)
                 receiveBuffer->setPosition(nextRequestPosition);
             }
 
-            //all ok
+            // all ok
+            return true;
+        }
+
+        bool BlockingUDPTransport::send(const char* buffer, size_t length, const osiSockAddr& address)
+        {
+            if (IS_LOGGABLE(logLevelDebug))
+            {
+                LOG(logLevelDebug, "Sending %d bytes to %s.",
+                    length, inetAddressToString(address).c_str());
+            }
+
+            int retval = sendto(_channel, buffer,
+                    length, 0, &(address.sa), sizeof(sockaddr));
+            if(unlikely(retval<0))
+            {
+                char errStr[64];
+                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+                LOG(logLevelDebug, "Socket sendto to %s error: %s.",
+                    inetAddressToString(address).c_str(), errStr);
+                return false;
+            }
+
             return true;
         }
 
         bool BlockingUDPTransport::send(ByteBuffer* buffer, const osiSockAddr& address) {
 
             buffer->flip();
+
+            if (IS_LOGGABLE(logLevelDebug))
+            {
+                LOG(logLevelDebug, "Sending %d bytes to %s.",
+                    buffer->getRemaining(), inetAddressToString(address).c_str());
+            }
+
             int retval = sendto(_channel, buffer->getArray(),
                     buffer->getLimit(), 0, &(address.sa), sizeof(sockaddr));
             if(unlikely(retval<0))
             {
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                LOG(logLevelDebug, "Socket sendto error: %s.", errStr);
+                LOG(logLevelDebug, "Socket sendto to %s error: %s.",
+                    inetAddressToString(address).c_str(), errStr);
                 return false;
             }
 
@@ -382,6 +473,12 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                         (target == inetAddressType_broadcast_multicast && _isSendAddressUnicast[i]))
                         continue;
 
+                if (IS_LOGGABLE(logLevelDebug))
+                {
+                    LOG(logLevelDebug, "Sending %d bytes to %s.",
+                        buffer->getRemaining(), inetAddressToString((*_sendAddresses)[i]).c_str());
+                }
+
                 int retval = sendto(_channel, buffer->getArray(),
                         buffer->getLimit(), 0, &((*_sendAddresses)[i].sa),
                         sizeof(sockaddr));
@@ -389,7 +486,8 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 {
                     char errStr[64];
                     epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                    LOG(logLevelDebug, "Socket sendto error: %s.", errStr);
+                    LOG(logLevelDebug, "Socket sendto to %s error: %s.",
+                        inetAddressToString((*_sendAddresses)[i]).c_str(), errStr);
                     allOK = false;
                 }
             }
@@ -419,10 +517,6 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             return (size_t)sockBufSize;
         }
 
-        void BlockingUDPTransport::threadRunner(void* param) {
-            ((BlockingUDPTransport*)param)->processRead();
-        }
-
 
         void BlockingUDPTransport::join(const osiSockAddr & mcastAddr, const osiSockAddr & nifAddr)
         {
@@ -432,7 +526,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             imreq.imr_multiaddr.s_addr = mcastAddr.ia.sin_addr.s_addr;
             imreq.imr_interface.s_addr = nifAddr.ia.sin_addr.s_addr;
 
-            // join multicast group on default interface
+            // join multicast group on the given interface
             int status = ::setsockopt(_channel, IPPROTO_IP, IP_ADD_MEMBERSHIP,
                             (char*)&imreq, sizeof(struct ip_mreq));
             if (status)
@@ -456,7 +550,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
                 throw std::runtime_error(
-                            string("Failed to set multicast network inteface '") +
+                            string("Failed to set multicast network interface '") +
                             inetAddressToString(nifAddr, false) + "': " + errStr);
             }
 
@@ -469,10 +563,245 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                 char errStr[64];
                 epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
                 throw std::runtime_error(
-                            string("Failed to enable multicast loopback on network inteface '") +
+                            string("Failed to enable multicast loopback on network interface '") +
                             inetAddressToString(nifAddr, false) + "': " + errStr);
             }
 
+        }
+
+        void initializeUDPTransports(bool serverFlag,
+                                     BlockingUDPTransportVector& udpTransports,
+                                     const IfaceNodeVector& ifaceList,
+                                     const ResponseHandler::shared_pointer& responseHandler,
+                                     BlockingUDPTransport::shared_pointer& sendTransport,
+                                     int32& listenPort,
+                                     bool autoAddressList,
+                                     const std::string& addressList,
+                                     const std::string& ignoreAddressList)
+        {
+            TransportClient::shared_pointer nullTransportClient;
+            auto_ptr<BlockingUDPConnector> connector(new BlockingUDPConnector(serverFlag, true, true));
+
+            // TODO configurable local NIF, address
+            osiSockAddr loAddr;
+            getLoopbackNIF(loAddr, "", 0);
+
+            // TODO configurable local multicast address
+            std::string mcastAddress("224.0.0.128");
+
+            osiSockAddr group;
+            aToIPAddr(mcastAddress.c_str(), listenPort, &group.ia);
+
+            //
+            // set ignore address list
+            //
+            auto_ptr<InetAddrVector> ignoreAddressVector;
+            if (!ignoreAddressList.empty())
+                ignoreAddressVector.reset(getSocketAddressList(ignoreAddressList, 0, 0));
+
+            //
+            // Setup UDP trasport(s) (per interface)
+            //
+
+            InetAddrVector tappedNIF;
+
+            for (IfaceNodeVector::const_iterator iter = ifaceList.begin(); iter != ifaceList.end(); iter++)
+            {
+                ifaceNode node = *iter;
+
+                LOG(logLevelDebug, "Setting up UDP for interface %s, broadcast %s.",
+                    inetAddressToString(node.ifaceAddr, false).c_str(),
+                    inetAddressToString(node.ifaceBCast, false).c_str());
+                try
+                {
+                    // where to bind (listen) address
+                    osiSockAddr listenLocalAddress;
+                    listenLocalAddress.ia.sin_family = AF_INET;
+                    listenLocalAddress.ia.sin_port = htons(listenPort);
+                    listenLocalAddress.ia.sin_addr.s_addr = node.ifaceAddr.ia.sin_addr.s_addr;
+
+                    BlockingUDPTransport::shared_pointer transport = static_pointer_cast<BlockingUDPTransport>(connector->connect(
+                            nullTransportClient, responseHandler,
+                            listenLocalAddress, PVA_PROTOCOL_REVISION,
+                            PVA_DEFAULT_PRIORITY));
+                    listenLocalAddress = *transport->getRemoteAddress();
+                    // to allow automatic assignment of listen port (for testing)
+                    if (listenPort == 0)
+                    {
+                        listenPort = ntohs(listenLocalAddress.ia.sin_port);
+                        aToIPAddr(mcastAddress.c_str(), listenPort, &group.ia);
+
+                        LOG(logLevelDebug, "Dynamic listen UDP port set to %d.", listenPort);
+                    }
+
+                    if (ignoreAddressVector.get() && ignoreAddressVector->size())
+                        transport->setIgnoredAddresses(ignoreAddressVector.get());
+
+                    tappedNIF.push_back(listenLocalAddress);
+
+
+                    BlockingUDPTransport::shared_pointer transport2;
+
+                    if(node.ifaceBCast.ia.sin_family == AF_UNSPEC ||
+                       node.ifaceBCast.ia.sin_addr.s_addr == listenLocalAddress.ia.sin_addr.s_addr) {
+                            LOG(logLevelWarn, "Unable to find broadcast address of interface %s.", inetAddressToString(node.ifaceAddr, false).c_str());
+                        }
+            #if !defined(_WIN32)
+                        else
+                        {
+                            /* An oddness of BSD sockets (not winsock) is that binding to
+                             * INADDR_ANY will receive unicast and broadcast, but binding to
+                             * a specific interface address receives only unicast.  The trick
+                             * is to bind a second socket to the interface broadcast address,
+                             * which will then receive only broadcasts.
+                             */
+
+                            osiSockAddr bcastAddress;
+                            bcastAddress.ia.sin_family = AF_INET;
+                            bcastAddress.ia.sin_port = htons(listenPort);
+                            bcastAddress.ia.sin_addr.s_addr = node.ifaceBCast.ia.sin_addr.s_addr;
+
+                            transport2 = static_pointer_cast<BlockingUDPTransport>(connector->connect(
+                                                                nullTransportClient, responseHandler,
+                                                                bcastAddress, PVA_PROTOCOL_REVISION,
+                                                                PVA_DEFAULT_PRIORITY));
+                            /* The other wrinkle is that nothing should be sent from this second
+                             * socket. So replies are made through the unicast socket.
+                             */
+                            transport2->setReplyTransport(transport);
+
+                            if (ignoreAddressVector.get() && ignoreAddressVector->size())
+                                transport2->setIgnoredAddresses(ignoreAddressVector.get());
+
+                            tappedNIF.push_back(bcastAddress);
+                        }
+            #endif
+
+                    transport->setMutlicastNIF(loAddr, true);
+                    transport->setLocalMulticastAddress(group);
+
+                    transport->start();
+                    udpTransports.push_back(transport);
+
+                    if (transport2)
+                    {
+                        transport2->start();
+                        udpTransports.push_back(transport2);
+                    }
+                }
+                catch (std::exception& e)
+                {
+                    THROW_BASE_EXCEPTION_CAUSE("Failed to initialize UDP transport.", e);
+                }
+                catch (...)
+                {
+                    THROW_BASE_EXCEPTION("Failed to initialize UDP transport.");
+                }
+            }
+
+
+            //
+            // Create UDP transport for sending (to all network interfaces)
+            //
+
+            osiSockAddr anyAddress;
+            anyAddress.ia.sin_family = AF_INET;
+            anyAddress.ia.sin_port = htons(0);
+            anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+
+            sendTransport = static_pointer_cast<BlockingUDPTransport>(connector->connect(
+                    nullTransportClient, responseHandler,
+                    anyAddress, PVA_PROTOCOL_REVISION,
+                    PVA_DEFAULT_PRIORITY));
+
+            // TODO current implementation shares the port (aka beacon and search port)
+            int32 sendPort = listenPort;
+
+            //
+            // compile auto address list - where to send packets
+            //
+
+            InetAddrVector autoBCastAddr;
+            for (IfaceNodeVector::const_iterator iter = ifaceList.begin(); iter != ifaceList.end(); iter++)
+            {
+                ifaceNode node = *iter;
+
+                if (node.ifaceBCast.ia.sin_family != AF_UNSPEC)
+                {
+                    node.ifaceBCast.ia.sin_port = htons(sendPort);
+                    autoBCastAddr.push_back(node.ifaceBCast);
+                }
+            }
+
+            //
+            // set send address list
+            //
+
+            if (!addressList.empty())
+            {
+                // if auto is true, add it to specified list
+                if (!autoAddressList)
+                    autoBCastAddr.clear();
+
+                auto_ptr<InetAddrVector> list(getSocketAddressList(addressList, sendPort, &autoBCastAddr));
+                if (list.get() && list->size())
+                {
+                    sendTransport->setSendAddresses(list.get());
+                }
+                /*
+                else
+                {
+                    // fallback
+                    // set default (auto) address list
+                    sendTransport->setSendAddresses(&autoBCastAddr);
+                }
+                */
+            }
+            else if (autoAddressList)
+            {
+                // set default (auto) address list
+                sendTransport->setSendAddresses(&autoBCastAddr);
+            }
+
+
+            sendTransport->start();
+            udpTransports.push_back(sendTransport);
+
+            // debug output of broadcast addresses
+            InetAddrVector* blist = sendTransport->getSendAddresses();
+            if (!blist || !blist->size())
+                LOG(logLevelError,
+                    "No broadcast addresses found or specified - empty address list!");
+            else
+                for (size_t i = 0; i < blist->size(); i++)
+                    LOG(logLevelDebug,
+                        "Broadcast address #%d: %s.", i, inetAddressToString((*blist)[i]).c_str());
+
+            //
+            // Setup local multicasting
+            //
+
+            BlockingUDPTransport::shared_pointer localMulticastTransport;
+            try
+            {
+                // NOTE: multicast receiver socket must be "bound" to INADDR_ANY or multicast address
+                localMulticastTransport = static_pointer_cast<BlockingUDPTransport>(connector->connect(
+                        nullTransportClient, responseHandler,
+                        group, PVA_PROTOCOL_REVISION,
+                        PVA_DEFAULT_PRIORITY));
+                localMulticastTransport->setTappedNIF(&tappedNIF);
+                localMulticastTransport->join(group, loAddr);
+                localMulticastTransport->start();
+                udpTransports.push_back(localMulticastTransport);
+
+                LOG(logLevelDebug, "Local multicast enabled on %s/%s.",
+                    inetAddressToString(loAddr, false).c_str(),
+                    inetAddressToString(group).c_str());
+            }
+            catch (std::exception& ex)
+            {
+                LOG(logLevelDebug, "Failed to initialize local multicast, funcionality disabled. Reason: %s.", ex.what());
+            }
         }
 
 
