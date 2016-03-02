@@ -1040,11 +1040,11 @@ namespace epics {
             std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
             int32_t socketSendBufferSize)
         :AbstractCodec(serverFlag, receiveBuffer, sendBuffer, socketSendBufferSize, true)
-        ,_readThread(Thread::Config(this, &BlockingAbstractCodec::receiveThread)
+        ,_readThread(epics::pvData::Thread::Config(this, &BlockingAbstractCodec::receiveThread)
                      .prio(epicsThreadPriorityCAServerLow)
                      .name("TCP-rx")
                      .autostart(false))
-        ,_sendThread(Thread::Config(this, &BlockingAbstractCodec::sendThread)
+        ,_sendThread(epics::pvData::Thread::Config(this, &BlockingAbstractCodec::sendThread)
                      .prio(epicsThreadPriorityCAServerLow)
                      .name("TCP-tx")
                      .autostart(false))

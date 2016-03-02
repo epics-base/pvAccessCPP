@@ -2738,12 +2738,12 @@ struct TestServer : public Runnable
     epics::pvAccess::Configuration::shared_pointer conf;
     ServerContextImpl::shared_pointer context;
     Event startup;
-    Thread runner;
+    epics::pvData::Thread runner;
     MockChannelProviderFactory::shared_pointer factory;
 
     TestServer(const epics::pvAccess::Configuration::shared_pointer& conf)
         :conf(conf)
-        ,runner(Thread::Config(this).name("TestServer").autostart(false))
+        ,runner(epics::pvData::Thread::Config(this).name("TestServer").autostart(false))
         ,factory(new MockChannelProviderFactory())
     {
         registerChannelProviderFactory(factory);

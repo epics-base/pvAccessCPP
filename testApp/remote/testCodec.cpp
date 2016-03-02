@@ -3186,7 +3186,7 @@ namespace epics {
         ValueHolder valueHolder(codec);
         Event done;
 
-        Thread thr(Thread::Config(&valueHolder)
+        epics::pvData::Thread thr(epics::pvData::Thread::Config(&valueHolder)
                    .name("testBlockingProcessQueueTest-processThread"));
 
         valueHolder.waiter.wait();
