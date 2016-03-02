@@ -70,10 +70,12 @@ namespace epics {
                 return _closed.get();
             }
 
+            /*
             void setReplyTransport(const Transport::shared_pointer& T)
             {
                 _replyTransport = T;
             }
+            */
 
             virtual const osiSockAddr* getRemoteAddress() const {
                 return &_remoteAddress;
@@ -369,12 +371,13 @@ namespace epics {
              */
             SOCKET _channel;
 
-            /** When provided, this transport is used for replies (passed to handler)
+            /* When provided, this transport is used for replies (passed to handler)
              * instead of *this.  This feature is used in the situation where broadcast
              * traffic is received on one socket, but a different socket must be used
              * for unicast replies.
-             */
+             *
             Transport::shared_pointer _replyTransport;
+            */
 
             /**
              * Bind address.
