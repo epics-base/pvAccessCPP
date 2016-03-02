@@ -4906,7 +4906,7 @@ namespace epics {
             /**
              * Broadcast (beacon, search) port number to listen to.
              */
-            int m_broadcastPort;
+            int32 m_broadcastPort;
 
             /**
              * Receive buffer size (max size of payload).
