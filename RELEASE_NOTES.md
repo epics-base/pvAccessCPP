@@ -1,3 +1,8 @@
+Release 4.1.3 
+==========
+
+* Monitor fix: element no longer queued when overrun in progress.
+
 Release 4.1.2 
 ==========
 
