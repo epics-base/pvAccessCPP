@@ -7,7 +7,11 @@
 #ifndef FAIRQUEUE_H
 #define FAIRQUEUE_H
 
-#include <shareLib.h>
+#ifdef epicsExportSharedSymbols
+#   define fairQueueExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <epicsEvent.h>
 #include <epicsMutex.h>
 #include <epicsGuard.h>
@@ -15,6 +19,13 @@
 #include <dbDefs.h>
 
 #include <pv/sharedPtr.h>
+
+#ifdef fairQueueExportSharedSymbols
+#   define epicsExportSharedSymbols
+#   undef fairQueueExportSharedSymbols
+#endif
+
+#include <shareLib.h>
 
 namespace epics {namespace pvAccess {
 
@@ -42,13 +53,13 @@ namespace epics {namespace pvAccess {
  *   as push_back() does not broadcast (only wakes up one waiter)
  */
 template<typename T>
-class epicsShareClass fair_queue
+class fair_queue
 {
     typedef epicsGuard<epicsMutex> guard_t;
 public:
     typedef std::tr1::shared_ptr<T> value_type;
 
-    class epicsShareClass entry {
+    class entry {
         /* In c++, use of ellLib (which implies offsetof()) should be restricted
          * to POD structs.  So enode_t exists as a POD struct for which offsetof()
          * is safe and well defined.  enode_t::self is used in place of

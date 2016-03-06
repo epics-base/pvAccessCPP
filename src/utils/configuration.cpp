@@ -50,7 +50,7 @@ const std::string &Properties::getProperty(const string &key, const string &defa
     }
 }
 
-void Properties::Properties::load()
+void Properties::load()
 {
     load(_fileName);
 }

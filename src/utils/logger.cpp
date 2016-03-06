@@ -53,6 +53,7 @@ namespace epics {
                 va_end(arg);
 
                 printf("\n");
+				fflush(stdout);    // needed for WIN32
             }
         }
 

@@ -619,6 +619,8 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                             nullTransportClient, responseHandler,
                             listenLocalAddress, PVA_PROTOCOL_REVISION,
                             PVA_DEFAULT_PRIORITY));
+					if (!transport)
+						continue;
                     listenLocalAddress = *transport->getRemoteAddress();
                     // to allow automatic assignment of listen port (for testing)
                     if (listenPort == 0)
@@ -660,17 +662,20 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                                                                 nullTransportClient, responseHandler,
                                                                 bcastAddress, PVA_PROTOCOL_REVISION,
                                                                 PVA_DEFAULT_PRIORITY));
-                            /* The other wrinkle is that nothing should be sent from this second
-                             * socket. So replies are made through the unicast socket.
-                             *
-                            transport2->setReplyTransport(transport);
-                            */
-                            // NOTE: search responses all always send from sendTransport
+							if (transport2)
+							{
+								/* The other wrinkle is that nothing should be sent from this second
+								 * socket. So replies are made through the unicast socket.
+								 *
+								transport2->setReplyTransport(transport);
+								*/
+								// NOTE: search responses all always send from sendTransport
 
-                            if (ignoreAddressVector.get() && ignoreAddressVector->size())
-                                transport2->setIgnoredAddresses(ignoreAddressVector.get());
+								if (ignoreAddressVector.get() && ignoreAddressVector->size())
+									transport2->setIgnoredAddresses(ignoreAddressVector.get());
 
-                            tappedNIF.push_back(bcastAddress);
+								tappedNIF.push_back(bcastAddress);
+							}
                         }
             #endif
 
@@ -710,7 +715,11 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
                     nullTransportClient, responseHandler,
                     anyAddress, PVA_PROTOCOL_REVISION,
                     PVA_DEFAULT_PRIORITY));
-
+			if (!sendTransport)
+			{
+				THROW_BASE_EXCEPTION("Failed to initialize UDP transport.");
+			}
+			
             // TODO current implementation shares the port (aka beacon and search port)
             int32 sendPort = listenPort;
 
@@ -778,14 +787,27 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             // Setup local multicasting
             //
 
+			// WIN32 do not allow binding to multicast address, use any address w/ port
+            #if defined(_WIN32)
+            anyAddress.ia.sin_port = htons(listenPort);
+			#endif
+
             BlockingUDPTransport::shared_pointer localMulticastTransport;
             try
             {
                 // NOTE: multicast receiver socket must be "bound" to INADDR_ANY or multicast address
                 localMulticastTransport = static_pointer_cast<BlockingUDPTransport>(connector->connect(
                         nullTransportClient, responseHandler,
-                        group, PVA_PROTOCOL_REVISION,
-                        PVA_DEFAULT_PRIORITY));
+            #if !defined(_WIN32)
+						group,
+			#else
+						anyAddress,
+			#endif
+						PVA_PROTOCOL_REVISION,
+					    PVA_DEFAULT_PRIORITY));
+				if (!localMulticastTransport)
+					throw std::runtime_error("Failed to bind UDP socket.");
+					
                 localMulticastTransport->setTappedNIF(&tappedNIF);
                 localMulticastTransport->join(group, loAddr);
                 localMulticastTransport->start();
@@ -797,7 +819,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             }
             catch (std::exception& ex)
             {
-                LOG(logLevelDebug, "Failed to initialize local multicast, funcionality disabled. Reason: %s.", ex.what());
+                LOG(logLevelDebug, "Failed to initialize local multicast, functionality disabled. Reason: %s.", ex.what());
             }
         }
 

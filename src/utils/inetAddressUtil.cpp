@@ -214,12 +214,11 @@ int getLoopbackNIF(osiSockAddr &loAddr, string const & localNIF, unsigned short 
 
 
 
-// copy of base-3.14.12.4/src/libCom/osi/os/default/osdNetIntf.c
-// TODO support windows (see osi/os/WIN32/osdNetIntf.c)
-
 #include <osiSock.h>
 //#include <epicsAssert.h>
 #include <errlog.h>
+
+#if !defined(_WIN32)
 
 /*
  * Determine the size of an ifreq structure
@@ -387,6 +386,7 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
         }
 #endif
         else {
+            // if it is a match, accept the interface even if it does not support broadcast (i.e. 127.0.0.1)
             if (match)
                 node.ifaceBCast.sa.sa_family = AF_UNSPEC;
             else
@@ -405,6 +405,128 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
      return 0;
  }
 
+
+#else
+
+#define VC_EXTRALEAN
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
+int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *pMatchAddr)
+{
+    int             	status;
+    INTERFACE_INFO      *pIfinfo;
+    INTERFACE_INFO      *pIfinfoList;
+    unsigned			nelem;
+    int					numifs;
+    DWORD				cbBytesReturned;
+    int					match;
+
+    /* only valid for winsock 2 and above
+	TODO resolve dllimport compilation problem and uncomment this check
+    if (wsaMajorVersion() < 2 ) {
+        fprintf(stderr, "Need to set EPICS_CA_AUTO_ADDR_LIST=NO for winsock 1\n");
+        return -1;
+    }
+    */
+
+    nelem = 100;
+    pIfinfoList = (INTERFACE_INFO *) calloc(nelem, sizeof(INTERFACE_INFO));
+    if(!pIfinfoList){
+        return -1;
+    }
+
+    status = WSAIoctl (socket, SIO_GET_INTERFACE_LIST,
+                        NULL, 0,
+                        (LPVOID)pIfinfoList, nelem*sizeof(INTERFACE_INFO),
+                        &cbBytesReturned, NULL, NULL);
+
+    if (status != 0 || cbBytesReturned == 0) {
+        fprintf(stderr, "WSAIoctl SIO_GET_INTERFACE_LIST failed %d\n",WSAGetLastError());
+        free(pIfinfoList);
+        return -1;
+    }
+
+    numifs = cbBytesReturned/sizeof(INTERFACE_INFO);
+    for (pIfinfo = pIfinfoList; pIfinfo < (pIfinfoList+numifs); pIfinfo++){
+
+        /*
+         * dont bother with interfaces that have been disabled
+         */
+        if (!(pIfinfo->iiFlags & IFF_UP)) {
+            continue;
+        }
+
+        /*
+         * If its not an internet interface then dont use it
+         * + work around WS2 bug
+         */
+        if (pIfinfo->iiAddress.Address.sa_family != AF_INET) {
+            if (pIfinfo->iiAddress.Address.sa_family == 0) {
+                pIfinfo->iiAddress.Address.sa_family = AF_INET;
+            }
+            else
+                continue;
+        }
+
+        /*
+         * if it isnt a wildcarded interface then look for
+         * an exact match
+         */
+        match = 0;
+        if (pMatchAddr && pMatchAddr->sa.sa_family != AF_UNSPEC) {
+            if (pIfinfo->iiAddress.Address.sa_family != pMatchAddr->sa.sa_family) {
+                continue;
+            }
+            if (pIfinfo->iiAddress.Address.sa_family != AF_INET) {
+                continue;
+            }
+            if (pMatchAddr->sa.sa_family != AF_INET) {
+                continue;
+            }
+            if (pMatchAddr->ia.sin_addr.s_addr != htonl(INADDR_ANY)) {
+                if (pIfinfo->iiAddress.AddressIn.sin_addr.s_addr != pMatchAddr->ia.sin_addr.s_addr) {
+                    continue;
+                }
+                else
+                    match = 1;
+            }
+        }
+
+        /*
+         * dont use the loop back interface, unless it maches pMatchAddr
+         */
+        if (!match) {
+            if (pIfinfo->iiFlags & IFF_LOOPBACK) {
+                continue;
+            }
+        }
+
+        ifaceNode node;
+        node.ifaceAddr.ia = pIfinfo->iiAddress.AddressIn;
+		
+        if (pIfinfo->iiFlags & IFF_BROADCAST) {
+            const unsigned mask = pIfinfo->iiNetmask.AddressIn.sin_addr.s_addr;
+            const unsigned bcast = pIfinfo->iiBroadcastAddress.AddressIn.sin_addr.s_addr;
+            const unsigned addr = pIfinfo->iiAddress.AddressIn.sin_addr.s_addr;
+            unsigned result = (addr & mask) | (bcast &~mask);
+            node.ifaceBCast.ia.sin_family = AF_INET;
+            node.ifaceBCast.ia.sin_addr.s_addr = result;
+            node.ifaceBCast.ia.sin_port = htons ( 0 );
+        } 
+        else {
+			node.ifaceBCast.ia = pIfinfo->iiBroadcastAddress.AddressIn;
+        }
+		
+
+        list.push_back(node);
+    }
+
+    free (pIfinfoList);
+    return 0;
+}
+
+#endif
 
 }
 }

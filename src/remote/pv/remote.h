@@ -24,7 +24,6 @@
 #include <pv/timer.h>
 #include <pv/pvData.h>
 #include <pv/sharedPtr.h>
-#include <pv/fairQueue.h>
 
 #ifdef remoteEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
@@ -33,6 +32,7 @@
 
 #include <pv/pvaConstants.h>
 #include <pv/configuration.h>
+#include <pv/fairQueue.h>
 
 /// TODO only here because of the Lockable
 #include <pv/pvAccess.h>

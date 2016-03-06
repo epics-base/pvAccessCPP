@@ -191,7 +191,7 @@ public:
     inline size_t size() const {return confs.size();}
 };
 
-struct ConfigurationBuilder
+struct epicsShareClass ConfigurationBuilder
 {
     ConfigurationBuilder();
     ConfigurationBuilder& push_env();

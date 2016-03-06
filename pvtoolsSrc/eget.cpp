@@ -1946,6 +1946,7 @@ int main (int argc, char *argv[])
         		epicsThreadSleep(timeOut);
         }
 
+        epics::pvAccess::ca::CAClientFactory::stop();
         ClientFactory::stop();
     }
     // service RPC mode
@@ -2137,7 +2138,6 @@ int main (int argc, char *argv[])
 
         channel->destroy();
 
-        epics::pvAccess::ca::CAClientFactory::stop();
         ClientFactory::stop();
     }
 
