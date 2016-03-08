@@ -3316,26 +3316,15 @@ namespace epics {
 
         class InternalClientContextImpl :
             public ClientContextImpl,
+            public virtual ChannelProvider,
             public std::tr1::enable_shared_from_this<InternalClientContextImpl>
         {
         public:
             POINTER_DEFINITIONS(InternalClientContextImpl);
-            class ChannelProviderImpl : public ChannelProvider {
-            public:
-
-                ChannelProviderImpl(InternalClientContextImpl* context) :
-                        m_context(context)
-                {
-                    MB_INIT;
-                }
 
                 virtual std::string getProviderName()
                 {
                     return PROVIDER_NAME;
-                }
-
-                virtual void destroy()
-                {
                 }
 
                 virtual ChannelFind::shared_pointer channelFind(
@@ -3344,7 +3333,7 @@ namespace epics {
                 {
                     // TODO not implemented
 
-                    m_context->checkChannelName(channelName);
+                    checkChannelName(channelName);
 
                     if (!channelFindRequester.get())
                         throw std::runtime_error("null requester");
@@ -3390,7 +3379,7 @@ namespace epics {
                             addresses.reset();
                     }
                     
-                    Channel::shared_pointer channel = m_context->createChannelInternal(channelName, channelRequester, priority, addresses);
+                    Channel::shared_pointer channel = createChannelInternal(channelName, channelRequester, priority, addresses);
                     if (channel.get())
                         channelRequester->channelCreated(Status::Ok, channel);
                     return channel;
@@ -3398,35 +3387,9 @@ namespace epics {
                     // NOTE it's up to internal code to respond w/ error to requester and return 0 in case of errors
                 }
 
-                virtual void configure(epics::pvData::PVStructure::shared_pointer configuration)
-                {
-                    LOG(logLevelError, "Client context must be configured at construction (see ChannelProvider::newInstance(conf))");
-                }
-
-                virtual void flush()
-                {
-                    m_context->flush();
-                }
-
-                virtual void poll()
-                {
-                    m_context->poll();
-                }
-
-                ~ChannelProviderImpl() {};
-
-            private:
-
-                InternalClientContextImpl* const m_context;
-            };
-
-            
-            
-            
-            
         private:
             /**
-             * Implementation of PVAJ JCA <code>Channel</code>.
+             * Implementation of <code>Channel</code>.
              */
             class InternalChannelImpl :
                 public ChannelImpl,
@@ -3606,7 +3569,7 @@ namespace epics {
                 
                 virtual ChannelProvider::shared_pointer getProvider()
                 {
-                    return ChannelProvider::shared_pointer(m_context->m_provider_ptr);
+                    return m_context;
                 }
                 
                 // NOTE: synchronization guarantees that <code>transport</code> is non-<code>0</code> and <code>state == CONNECTED</code>.
@@ -3736,7 +3699,7 @@ namespace epics {
                         // this happens when server is slower (processing search requests) than client generating it
                         return;
                     }
-                    
+
                     m_transport = transport;
                     m_transport->enqueueSendRequest(shared_from_this());
                 }
@@ -3978,10 +3941,13 @@ namespace epics {
                         {
                             EXCEPTION_GUARD(m_requester->message("More than one channel with name '" + m_name +
                                                                  "' detected, connected to: " + inetAddressToString(*transport->getRemoteAddress()) + ", ignored: " + inetAddressToString(*serverAddress), warningMessage));
-                            return;
                         }
+
+                        // do not pass (create transports) with we already have one
+                        return;
                     }
-                    
+
+                    // NOTE: this creates a new or acquires an existing transport (implies increases usage count)
                     transport = m_context->getTransport(shared_from_this(), serverAddress, minorRevision, m_priority);
                     if (!transport.get())
                     {
@@ -4332,12 +4298,12 @@ namespace epics {
                                 EPICS_PVA_MINOR_VERSION,
                                 EPICS_PVA_MAINTENANCE_VERSION,
                                 EPICS_PVA_DEVELOPMENT_FLAG),
-                    m_provider(this),
                     m_contextState(CONTEXT_NOT_INITIALIZED),
                     m_configuration(conf),
                     m_flushStrategy(DELAYED)
             {
                 PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(remoteClientContext);
+                MB_INIT;
                 if(!m_configuration) m_configuration = ConfigurationFactory::getConfiguration("pvAccess-client");
                 m_flushTransports.reserve(64);
                 loadConfiguration();
@@ -4437,7 +4403,7 @@ namespace epics {
             ~InternalClientContextImpl()
             {
                 PVACCESS_REFCOUNT_MONITOR_DESTRUCT(remoteClientContext);
-            };
+            }
 
         private:
 
@@ -5009,12 +4975,6 @@ namespace epics {
              */
             Version m_version;
 
-        public:
-            /**
-             * Provider implementation.
-             */
-            ChannelProviderImpl m_provider;
-            ChannelProviderImpl::weak_pointer m_provider_ptr;
         private:
 
             /**
@@ -5036,37 +4996,11 @@ namespace epics {
             FlushStrategy m_flushStrategy;
         };
 
-        namespace {
-        struct nested {
-            ClientContextImpl::shared_pointer ptr;
-            nested(const ClientContextImpl::shared_pointer& p) :ptr(p) {}
-            void operator()(ChannelProvider*) {
-                ptr.reset();
-            }
-        };
-        }
-
         ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf)
         {
-            /* For PVA the context and provider have a tight 1-to-1 relationship
-             * were each must know about the other, and both must be referenced by shared_ptr
-             * from outside code (provider) and Channels (context and provider.
-             *
-             * So we compose the provider within the context and use a nested shared_ptr
-             * to the context for the provider.
-             */
-            // TODO use make::shared
-            InternalClientContextImpl::shared_pointer t(new InternalClientContextImpl(conf));
-            ClientContextImpl::shared_pointer ctxt(t);
-
-            InternalClientContextImpl *self = static_cast<InternalClientContextImpl*>(ctxt.get());
-
-            // a wrapped shared_ptr to the provider which really holds a reference to the context
-            ChannelProvider::shared_pointer prov(&self->m_provider, nested(ctxt));
-
-            self->m_provider_ptr = prov; // keep a weak_ptr for the context itself so that it can give out refs. to it's provider
-            ctxt->initialize();
-            return prov;
+            InternalClientContextImpl::shared_pointer t(new InternalClientContextImpl(conf), delayed_destroyable_deleter());
+            t->initialize();
+            return t;
         }
 
     }};

@@ -59,7 +59,7 @@ struct ScopedClientFactory {
 
 int ChannelAccessIFTest::runAllTest() {
 
-  testPlan(153+EXTRA_STRESS_TESTS);
+  testPlan(152+EXTRA_STRESS_TESTS);
 
   epics::pvAccess::Configuration::shared_pointer base_config(ConfigurationBuilder()
                                             //.add("EPICS_PVA_DEBUG", "3")
@@ -90,7 +90,6 @@ int ChannelAccessIFTest::runAllTest() {
   test_createEmptyChannel();
   test_createChannelWithInvalidPriority();
   test_createChannel();
-  test_recreateChannelOnDestroyedProvider();
   test_findEmptyChannel();
   test_findChannel();
   test_channel();
@@ -139,6 +138,8 @@ int ChannelAccessIFTest::runAllTest() {
   test_stressConnectGetDisconnect();
   test_stressMonitorAndProcess(); 
 #endif
+
+  test_recreateChannelOnDestroyedProvider();
 
   return testDone();
 }
@@ -370,7 +371,12 @@ void ChannelAccessIFTest::test_recreateChannelOnDestroyedProvider() {
 
   ChannelProvider::shared_pointer provider = getChannelProvider();
   provider->destroy();
-  test_createChannel();
+
+  try {
+      test_createChannel();
+      testFail("%s: exception expected when creating a channel on destroyed context", CURRENT_FUNCTION);
+  } catch(std::runtime_error &) {
+  }
 }
 
 
