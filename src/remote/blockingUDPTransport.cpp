@@ -40,7 +40,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
 #endif
 
 // reserve some space for CMD_ORIGIN_TAG message
-#define RECEIVE_BUFFER_PRE_RESERVE PVA_MESSAGE_HEADER_SIZE + 16
+#define RECEIVE_BUFFER_PRE_RESERVE (PVA_MESSAGE_HEADER_SIZE + 16)
 
         PVACCESS_REFCOUNT_MONITOR_DEFINE(blockingUDPTransport);
 
@@ -93,6 +93,7 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
             
             if (_sendAddresses) delete _sendAddresses;
             if (_ignoredAddresses) delete _ignoredAddresses;
+            if (_tappedNIF) delete _tappedNIF;
         }
 
         void BlockingUDPTransport::start() {
