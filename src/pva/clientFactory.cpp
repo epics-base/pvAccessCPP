@@ -24,6 +24,18 @@ class ChannelProviderFactoryImpl : public ChannelProviderFactory
 public:
     POINTER_DEFINITIONS(ChannelProviderFactoryImpl);
 
+    virtual ~ChannelProviderFactoryImpl()
+    {
+        Lock guard(cfact_mutex);
+        if (cfact_shared_provider)
+        {
+            ChannelProvider::shared_pointer provider;
+            cfact_shared_provider.swap(provider);
+            // factroy cleans up also shared provider
+            provider->destroy();
+        }
+    }
+
     virtual std::string getFactoryName()
     {
         return ClientContextImpl::PROVIDER_NAME;

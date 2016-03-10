@@ -32,30 +32,32 @@ static ChannelProviderFactoryMap channelProviders;
 class ChannelProviderRegistryImpl : public ChannelProviderRegistry {
     public:
 
-    ChannelProvider::shared_pointer getProvider(std::string const & _providerName) {
-        
-        // TODO remove, here for backward compatibility 
-        const string providerName = (_providerName == "pvAccess") ? "pva" : _providerName;
-            
-        Lock guard(channelProviderMutex);
-        ChannelProviderFactoryMap::const_iterator iter = channelProviders.find(providerName);
-        if (iter != channelProviders.end())
-            return iter->second->sharedInstance();
-        else
-            return ChannelProvider::shared_pointer();
+    ChannelProvider::shared_pointer getProvider(std::string const & providerName) {
+
+        ChannelProviderFactory::shared_pointer providerFactory;
+        {
+            Lock guard(channelProviderMutex);
+            ChannelProviderFactoryMap::const_iterator iter = channelProviders.find(providerName);
+            if (iter == channelProviders.end())
+                return ChannelProvider::shared_pointer();
+            else
+                providerFactory = iter->second;
+        }
+        return providerFactory->sharedInstance();
     }
 
-    ChannelProvider::shared_pointer createProvider(std::string const & _providerName) {
+    ChannelProvider::shared_pointer createProvider(std::string const & providerName) {
 
-        // TODO remove, here for backward compatibility 
-        const string providerName = (_providerName == "pvAccess") ? "pva" : _providerName;
-            
-        Lock guard(channelProviderMutex);
-        ChannelProviderFactoryMap::const_iterator iter = channelProviders.find(providerName);
-        if (iter != channelProviders.end())
-            return iter->second->newInstance();
-        else
-            return ChannelProvider::shared_pointer();
+        ChannelProviderFactory::shared_pointer providerFactory;
+        {
+            Lock guard(channelProviderMutex);
+            ChannelProviderFactoryMap::const_iterator iter = channelProviders.find(providerName);
+            if (iter == channelProviders.end())
+                return ChannelProvider::shared_pointer();
+            else
+                providerFactory = iter->second;
+        }
+        return providerFactory->newInstance();
     }
 
     std::auto_ptr<stringVector_t> getProviderNames() {
