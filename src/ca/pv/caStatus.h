@@ -23,6 +23,8 @@ enum AlarmStatus {
 epicsShareExtern std::string dbrStatus2alarmMessage[];
 epicsShareExtern int dbrStatus2alarmStatus[];
 
-}}}
+}
+}
+}
 
 #endif  /* CASTATUS_H */

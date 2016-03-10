@@ -19,10 +19,10 @@ CAClientSecurityPlugin::shared_pointer CAClientSecurityPlugin::INSTANCE(new CACl
 CAClientSecurityPlugin::CAClientSecurityPlugin()
 {
     StructureConstPtr userAndHostStructure =
-            getFieldCreate()->createFieldBuilder()->
-            add("user", pvString)->
-            add("host", pvString)->
-            createStructure();
+        getFieldCreate()->createFieldBuilder()->
+        add("user", pvString)->
+        add("host", pvString)->
+        createStructure();
 
     m_userAndHost = getPVDataCreate()->createPVStructure(userAndHostStructure);
 
@@ -53,16 +53,16 @@ CAClientSecurityPlugin::CAClientSecurityPlugin()
 
 
 void AuthNZHandler::handleResponse(osiSockAddr* responseFrom,
-                                    Transport::shared_pointer const & transport,
-                                    epics::pvData::int8 version,
-                                    epics::pvData::int8 command,
-                                    size_t payloadSize,
-                                    epics::pvData::ByteBuffer* payloadBuffer)
+                                   Transport::shared_pointer const & transport,
+                                   epics::pvData::int8 version,
+                                   epics::pvData::int8 command,
+                                   size_t payloadSize,
+                                   epics::pvData::ByteBuffer* payloadBuffer)
 {
     AbstractResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
     epics::pvData::PVField::shared_pointer data =
-            SerializationHelper::deserializeFull(payloadBuffer, transport.get());
+        SerializationHelper::deserializeFull(payloadBuffer, transport.get());
 
     transport->authNZMessage(data);
 }

@@ -12,4 +12,5 @@ namespace pvAccess {
 
 const char* Channel::ConnectionStateNames[] = { "NEVER_CONNECTED", "CONNECTED", "DISCONNECTED", "DESTROYED" };
 
-}}
+}
+}

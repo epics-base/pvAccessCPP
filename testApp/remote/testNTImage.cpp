@@ -17,53 +17,53 @@ epics::pvData::StructureConstPtr createNTNDArrayStructure()
         UnionConstPtr valueType = fb->createUnion();
 
         StructureConstPtr codecStruc = fb->setId("codec_t")->
-            add("name", pvString)->
-            add("parameters", getFieldCreate()->createVariantUnion())->
-            createStructure();
+                                       add("name", pvString)->
+                                       add("parameters", getFieldCreate()->createVariantUnion())->
+                                       createStructure();
 
         StructureConstPtr dimensionStruc = fb->setId("dimension_t")->
-            add("size", pvInt)->
-            add("offset",  pvInt)->
-            add("fullSize",  pvInt)->
-            add("binning",  pvInt)->
-            add("reverse",  pvBoolean)->
-            createStructure();
+                                           add("size", pvInt)->
+                                           add("offset",  pvInt)->
+                                           add("fullSize",  pvInt)->
+                                           add("binning",  pvInt)->
+                                           add("reverse",  pvBoolean)->
+                                           createStructure();
 
         StructureConstPtr attributeStruc = fb->setId("epics:nt/NTAttribute:1.0")->
-            add("name", pvString)->
-            add("value", getFieldCreate()->createVariantUnion())->
-            add("descriptor", pvString)->
-            add("sourceType", pvInt)->
-            add("source", pvString)->
-            createStructure();
+                                           add("name", pvString)->
+                                           add("value", getFieldCreate()->createVariantUnion())->
+                                           add("descriptor", pvString)->
+                                           add("sourceType", pvInt)->
+                                           add("source", pvString)->
+                                           createStructure();
 
 
         ntndArrayStructure = fb->setId("epics:nt/NTNDArray:1.0")->
-            add("value", valueType)->
-            add("codec", codecStruc)->
-            add("compressedSize", pvLong)->
-            add("uncompressedSize", pvLong)->
-            addArray("dimension", dimensionStruc)->
-            add("uniqueId", pvInt)->
-            add("dataTimeStamp", standardField->timeStamp())->
-            addArray("attribute", attributeStruc)->
-            //add("descriptor", pvString)->
-            //add("timeStamp", standardField->timeStamp())->
-            //add("alarm", standardField->alarm())->
-            //add("display", standardField->display())->
-            createStructure();
+                             add("value", valueType)->
+                             add("codec", codecStruc)->
+                             add("compressedSize", pvLong)->
+                             add("uncompressedSize", pvLong)->
+                             addArray("dimension", dimensionStruc)->
+                             add("uniqueId", pvInt)->
+                             add("dataTimeStamp", standardField->timeStamp())->
+                             addArray("attribute", attributeStruc)->
+                             //add("descriptor", pvString)->
+                             //add("timeStamp", standardField->timeStamp())->
+                             //add("alarm", standardField->alarm())->
+                             //add("display", standardField->display())->
+                             createStructure();
     }
 
     return ntndArrayStructure;
 }
 
 void setNTNDArrayValue(
-        PVStructure::shared_pointer const & imagePV,
-        const size_t raw_dim_size,
-        const int32_t* raw_dim,
-        const size_t raw_size,
-        const int8_t* raw
-        )
+    PVStructure::shared_pointer const & imagePV,
+    const size_t raw_dim_size,
+    const int32_t* raw_dim,
+    const size_t raw_size,
+    const int8_t* raw
+)
 {
     PVUnionPtr unionValue = imagePV->getSubField<PVUnion>("value");
     // assumes byteArray
@@ -109,10 +109,10 @@ void setNTNDArrayValue(
 
 
 void setNTNDArrayData(
-        PVStructure::shared_pointer const & imagePV,
-        const string & codec,
-        int32 colorMode
-        )
+    PVStructure::shared_pointer const & imagePV,
+    const string & codec,
+    int32 colorMode
+)
 {
     imagePV->getSubField<PVString>("codec.name")->put(codec);
 
@@ -128,8 +128,8 @@ void setNTNDArrayData(
 
     // find ColorMode
     for (PVStructureArray::const_svector::const_iterator iter = attributes.begin();
-         iter != attributes.end();
-         iter++)
+            iter != attributes.end();
+            iter++)
     {
         PVStructure::shared_pointer fattribute = *iter;
         PVString::shared_pointer pvName = fattribute->getSubField<PVString>("name");
@@ -162,14 +162,14 @@ void setNTNDArrayData(
 }
 
 void initImage(
-        PVStructure::shared_pointer const & imagePV,
-        const string & codec,
-        int32 colorMode,
-        const size_t raw_dim_size,
-        const int32_t* raw_dim,
-        const size_t raw_size,
-        const int8_t* raw
-        )
+    PVStructure::shared_pointer const & imagePV,
+    const string & codec,
+    int32 colorMode,
+    const size_t raw_dim_size,
+    const int32_t* raw_dim,
+    const size_t raw_size,
+    const int8_t* raw
+)
 {
     setNTNDArrayValue(imagePV, raw_dim_size, raw_dim, raw_size, raw);
     setNTNDArrayData(imagePV, codec, colorMode);

@@ -52,60 +52,60 @@ public:
 };
 
 class RequesterImpl :
-	public epics::pvData::Requester
+    public epics::pvData::Requester
 {
-    public:
-	    RequesterImpl(std::string const & requesterName);
-        virtual std::string getRequesterName();
-        virtual void message(std::string const & message, epics::pvData::MessageType messageType);
+public:
+    RequesterImpl(std::string const & requesterName);
+    virtual std::string getRequesterName();
+    virtual void message(std::string const & message, epics::pvData::MessageType messageType);
 
-    private:
-        std::string m_requesterName;
+private:
+    std::string m_requesterName;
 };
 
 class ChannelRequesterImpl :
     public epics::pvAccess::ChannelRequester
 {
-    private:
-        epics::pvData::Event m_event;
-        bool printOnlyErrors;
-        bool showDisconnectMsg;
+private:
+    epics::pvData::Event m_event;
+    bool printOnlyErrors;
+    bool showDisconnectMsg;
 
-    public:
+public:
 
-        ChannelRequesterImpl(bool printOnlyErrors = false);
+    ChannelRequesterImpl(bool printOnlyErrors = false);
 
-        virtual std::string getRequesterName();
-        virtual void message(std::string const & message, epics::pvData::MessageType messageType);
-    
-        virtual void channelCreated(const epics::pvData::Status& status, epics::pvAccess::Channel::shared_pointer const & channel);
-        virtual void channelStateChange(epics::pvAccess::Channel::shared_pointer const & channel, epics::pvAccess::Channel::ConnectionState connectionState);
-    
-        bool waitUntilConnected(double timeOut);
-        void showDisconnectMessage(bool show = true);
+    virtual std::string getRequesterName();
+    virtual void message(std::string const & message, epics::pvData::MessageType messageType);
+
+    virtual void channelCreated(const epics::pvData::Status& status, epics::pvAccess::Channel::shared_pointer const & channel);
+    virtual void channelStateChange(epics::pvAccess::Channel::shared_pointer const & channel, epics::pvAccess::Channel::ConnectionState connectionState);
+
+    bool waitUntilConnected(double timeOut);
+    void showDisconnectMessage(bool show = true);
 };
 
 class GetFieldRequesterImpl :
-	public epics::pvAccess::GetFieldRequester
+    public epics::pvAccess::GetFieldRequester
 {
-    private:
-		epics::pvAccess::Channel::shared_pointer m_channel;
-		epics::pvData::FieldConstPtr m_field;
-        epics::pvData::Event m_event;
-        epics::pvData::Mutex m_pointerMutex;
+private:
+    epics::pvAccess::Channel::shared_pointer m_channel;
+    epics::pvData::FieldConstPtr m_field;
+    epics::pvData::Event m_event;
+    epics::pvData::Mutex m_pointerMutex;
 
-    public:
+public:
 
-        GetFieldRequesterImpl(epics::pvAccess::Channel::shared_pointer channel);
+    GetFieldRequesterImpl(epics::pvAccess::Channel::shared_pointer channel);
 
-        virtual std::string getRequesterName();
-        virtual void message(std::string const & message, epics::pvData::MessageType messageType);
+    virtual std::string getRequesterName();
+    virtual void message(std::string const & message, epics::pvData::MessageType messageType);
 
-        virtual void getDone(const epics::pvData::Status& status, epics::pvData::FieldConstPtr const & field);
+    virtual void getDone(const epics::pvData::Status& status, epics::pvData::FieldConstPtr const & field);
 
-        epics::pvData::FieldConstPtr getField();
+    epics::pvData::FieldConstPtr getField();
 
-        bool waitUntilFieldGet(double timeOut);
+    bool waitUntilFieldGet(double timeOut);
 };
 
 
@@ -142,7 +142,9 @@ public:
     friend pvutil_ostream& operator<<(pvutil_ostream&, std::ostream& (*)(std::ostream&));
 
     // Accessor function to get a reference to the ostream
-    std::ostream& get_ostream() { return *this; }
+    std::ostream& get_ostream() {
+        return *this;
+    }
 };
 
 

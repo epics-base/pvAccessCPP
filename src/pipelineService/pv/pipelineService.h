@@ -26,7 +26,8 @@
 
 #include <shareLib.h>
 
-namespace epics { namespace pvAccess { 
+namespace epics {
+namespace pvAccess {
 
 class epicsShareClass PipelineControl
 {
@@ -86,16 +87,17 @@ class epicsShareClass PipelineService
 {
 public:
     POINTER_DEFINITIONS(PipelineService);
-   
+
     virtual ~PipelineService() {};
 
     virtual PipelineSession::shared_pointer createPipeline(
-            epics::pvData::PVStructure::shared_pointer const & pvRequest
-            ) = 0;
+        epics::pvData::PVStructure::shared_pointer const & pvRequest
+    ) = 0;
 
 };
 
 
-}}
+}
+}
 
 #endif  /* PIPELINESERVICE_H */

@@ -53,7 +53,7 @@ string request(DEFAULT_REQUEST);
 PVStructure::shared_pointer pvRequest;
 
 class RequesterImpl : public Requester,
-        public std::tr1::enable_shared_from_this<RequesterImpl>
+    public std::tr1::enable_shared_from_this<RequesterImpl>
 {
 public:
 
@@ -109,8 +109,8 @@ epicsTimeStamp startTime;
 void get_all()
 {
     for (vector<ChannelGet::shared_pointer>::const_iterator i = channelGetList.begin();
-         i != channelGetList.end();
-         i++)
+            i != channelGetList.end();
+            i++)
         (*i)->get();
 
     // we assume all channels are from the same provider
@@ -205,7 +205,7 @@ public:
                 else
                 {
                     printf("%d %d %d %d %.3f\n", channels, arraySize, iterations, runs, sum/runs);
-        
+
                     Lock guard(waitLoopPtrMutex);
                     waitLoopEvent->signal();	// all done
                 }
@@ -312,12 +312,12 @@ void runTest()
 
     vector<Channel::shared_pointer> channels;
     for (vector<string>::const_iterator i = channelNames.begin();
-         i != channelNames.end();
-         i++)
+            i != channelNames.end();
+            i++)
     {
         shared_ptr<ChannelRequesterImpl> channelRequesterImpl(
-                        new ChannelRequesterImpl()
-                    );
+            new ChannelRequesterImpl()
+        );
         Channel::shared_pointer channel = provider->createChannel(*i, channelRequesterImpl);
         channels.push_back(channel);
     }
@@ -326,12 +326,12 @@ void runTest()
     bool differentConnectionsWarningIssued = false;
     string theRemoteAddress;
     for (vector<Channel::shared_pointer>::iterator i = channels.begin();
-         i != channels.end();
-         i++)
+            i != channels.end();
+            i++)
     {
         Channel::shared_pointer channel = *i;
         shared_ptr<ChannelRequesterImpl> channelRequesterImpl =
-                dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+            dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
         if (channelRequesterImpl->waitUntilConnected(5.0))
         {
             string remoteAddress = channel->getRemoteAddress();
@@ -344,7 +344,7 @@ void runTest()
                 if (!differentConnectionsWarningIssued)
                 {
                     std::cout << "not all channels are hosted by the same connection: " <<
-                                 theRemoteAddress << " != " << remoteAddress << std::endl;
+                              theRemoteAddress << " != " << remoteAddress << std::endl;
                     differentConnectionsWarningIssued = true;
                     // we assumes same connection (thread-safety)
                     exit(2);
@@ -352,8 +352,8 @@ void runTest()
             }
 
             shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(
-                            new ChannelGetRequesterImpl(channel->getChannelName())
-                        );
+                new ChannelGetRequesterImpl(channel->getChannelName())
+            );
             ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
             if (bulkMode) provider->flush();
 
@@ -383,7 +383,7 @@ void runTest()
     }
     epicsTimeGetCurrent(&startTime);
     get_all();
-    
+
     waitLoopEvent->wait();
 }
 
@@ -478,7 +478,7 @@ int main (int argc, char *argv[])
                         {
                             //printf("%d %d %d %d\n", channels, arraySize, iterations, runs);
                             runTest();
-                            
+
                             // wait a bit for a next test
                             epicsThreadSleep(1.0);
                         }

@@ -34,7 +34,8 @@
 #include <pv/pvAccess.h>
 
 
-namespace epics { namespace pvAccess { 
+namespace epics {
+namespace pvAccess {
 
 class SyncChannelFind : public ChannelFind
 {
@@ -47,7 +48,7 @@ public:
 
     virtual ~SyncChannelFind() {}
 
-    virtual void destroy(){}
+    virtual void destroy() {}
 
     virtual ChannelProvider::shared_pointer getChannelProvider()
     {
@@ -63,5 +64,6 @@ private:
 
 
 
-}}
+}
+}
 #endif  /* SYNCCHANNELFIND_H */

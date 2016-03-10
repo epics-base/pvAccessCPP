@@ -20,88 +20,88 @@ using namespace epics::pvAccess::detail;
 
 namespace epics {
 
-  namespace pvAccess {
+namespace pvAccess {
 
-  struct sender_break : public connection_closed_exception
-  {
-      sender_break() : connection_closed_exception("break") {}
-  };
+struct sender_break : public connection_closed_exception
+{
+    sender_break() : connection_closed_exception("break") {}
+};
 
-  struct TransportSenderDisconnect: public TransportSender {
-      void unlock() {}
-      void lock() {}
-      void send(ByteBuffer *buffer, TransportSendControl *control)
-      {
-          control->flush(true);
-          throw sender_break();
-      }
-  };
+struct TransportSenderDisconnect: public TransportSender {
+    void unlock() {}
+    void lock() {}
+    void send(ByteBuffer *buffer, TransportSendControl *control)
+    {
+        control->flush(true);
+        throw sender_break();
+    }
+};
 
-  struct TransportSenderSignal: public TransportSender {
-      Event *evt;
-      TransportSenderSignal(Event& evt) :evt(&evt) {}
-      void unlock() {}
-      void lock() {}
-      void send(ByteBuffer *buffer, TransportSendControl *control)
-      {
-          evt->signal();
-      }
-  };
-
-
-    class PVAMessage {
-
-    public:
-     
-      PVAMessage(int8_t version, 
-        int8_t flags, 
-        int8_t command, 
-        int32_t payloadSize) {
-          _version = version;
-          _flags = flags;
-          _command = command;
-          _payloadSize = payloadSize;
-      } 
-
-      int8_t _version;
-      int8_t _flags;
-      int8_t _command;
-      int32_t _payloadSize;  
-      std::tr1::shared_ptr<epics::pvData::ByteBuffer> _payload;
-
-      //memberwise copy constructor/assigment operator 
-      //provided by the compiler
-    };
+struct TransportSenderSignal: public TransportSender {
+    Event *evt;
+    TransportSenderSignal(Event& evt) :evt(&evt) {}
+    void unlock() {}
+    void lock() {}
+    void send(ByteBuffer *buffer, TransportSendControl *control)
+    {
+        evt->signal();
+    }
+};
 
 
-    class ReadPollOneCallback {
-    public:
-      virtual ~ReadPollOneCallback() {}
-      virtual void readPollOne() = 0;
-    };
+class PVAMessage {
+
+public:
+
+    PVAMessage(int8_t version,
+               int8_t flags,
+               int8_t command,
+               int32_t payloadSize) {
+        _version = version;
+        _flags = flags;
+        _command = command;
+        _payloadSize = payloadSize;
+    }
+
+    int8_t _version;
+    int8_t _flags;
+    int8_t _command;
+    int32_t _payloadSize;
+    std::tr1::shared_ptr<epics::pvData::ByteBuffer> _payload;
+
+    //memberwise copy constructor/assigment operator
+    //provided by the compiler
+};
 
 
-    class WritePollOneCallback {
-    public:
-      virtual ~WritePollOneCallback() {}
-      virtual void writePollOne() = 0 ;
-    };
+class ReadPollOneCallback {
+public:
+    virtual ~ReadPollOneCallback() {}
+    virtual void readPollOne() = 0;
+};
 
 
-    class TestCodec: public AbstractCodec {
+class WritePollOneCallback {
+public:
+    virtual ~WritePollOneCallback() {}
+    virtual void writePollOne() = 0 ;
+};
 
-    public:
 
-      TestCodec(
-        std::size_t receiveBufferSize, 
-        std::size_t sendBufferSize, 
+class TestCodec: public AbstractCodec {
+
+public:
+
+    TestCodec(
+        std::size_t receiveBufferSize,
+        std::size_t sendBufferSize,
         bool blocking = false):
         AbstractCodec(
-         false,
-         std::tr1::shared_ptr<epics::pvData::ByteBuffer>(new ByteBuffer(receiveBufferSize)), 
-         std::tr1::shared_ptr<epics::pvData::ByteBuffer>(new ByteBuffer(sendBufferSize)), 
-          sendBufferSize/10, 
-          blocking),
+            false,
+            std::tr1::shared_ptr<epics::pvData::ByteBuffer>(new ByteBuffer(receiveBufferSize)),
+            std::tr1::shared_ptr<epics::pvData::ByteBuffer>(new ByteBuffer(sendBufferSize)),
+            sendBufferSize/10,
+            blocking),
         _closedCount(0),
         _invalidDataStreamCount(0),
         _scheduleSendCount(0),
@@ -116,12 +116,12 @@ namespace epics {
         _readBuffer(new ByteBuffer(receiveBufferSize)),
         _writeBuffer(sendBufferSize),
         _dummyAddress()
-       {
-      }
+    {
+    }
 
 
-      void reset()
-      {
+    void reset()
+    {
         _closedCount = 0;
         _invalidDataStreamCount = 0;
         _scheduleSendCount = 0;
@@ -133,13 +133,13 @@ namespace epics {
         _writeBuffer.clear();
         _receivedAppMessages.clear();
         _receivedControlMessages.clear();
-      }
+    }
 
 
-      int read(ByteBuffer *buffer) {
+    int read(ByteBuffer *buffer) {
 
         if (_disconnected)
-          return -1;
+            return -1;
 
         std::size_t startPos = _readBuffer->getPosition();
         //buffer.put(readBuffer);
@@ -147,299 +147,333 @@ namespace epics {
         //	buffer.put(readBuffer.get());
 
         std::size_t bufferRemaining = buffer->getRemaining();
-        std::size_t readBufferRemaining = 
-          _readBuffer->getRemaining();
+        std::size_t readBufferRemaining =
+            _readBuffer->getRemaining();
 
         if (bufferRemaining >= readBufferRemaining) {
 
-          while(_readBuffer->getRemaining() > 0) {
-            buffer->putByte(_readBuffer->getByte());
-          }
+            while(_readBuffer->getRemaining() > 0) {
+                buffer->putByte(_readBuffer->getByte());
+            }
 
         }
         else
         {
-          // TODO this could be optimized
-          for (std::size_t i = 0; i < bufferRemaining; i++) {
-            buffer->putByte(_readBuffer->getByte());
-          }
+            // TODO this could be optimized
+            for (std::size_t i = 0; i < bufferRemaining; i++) {
+                buffer->putByte(_readBuffer->getByte());
+            }
         }
         return _readBuffer->getPosition() - startPos;
-      }
+    }
 
 
-      int write(ByteBuffer *buffer) {
+    int write(ByteBuffer *buffer) {
         if (_disconnected)
-          return -1;	// TODO: not by the JavaDoc API spec
+            return -1;	// TODO: not by the JavaDoc API spec
 
         if (_throwExceptionOnSend)
-          throw io_exception("text IO exception");
+            throw io_exception("text IO exception");
 
-        // we could write remaining int8_ts, but for 
+        // we could write remaining int8_ts, but for
         //test this is enought
         if (buffer->getRemaining() > _writeBuffer.getRemaining())
-          return 0;
+            return 0;
 
         std::size_t startPos = buffer->getPosition();
 
         while(buffer->getRemaining() > 0) {
-          _writeBuffer.putByte(buffer->getByte());
+            _writeBuffer.putByte(buffer->getByte());
         }
 
         return buffer->getPosition() - startPos;
-      }
+    }
 
 
-      void transferToReadBuffer()
-      {
+    void transferToReadBuffer()
+    {
         flushSerializeBuffer();
         _writeBuffer.flip();
 
         _readBuffer->clear();
 
         while(_writeBuffer.getRemaining() > 0) {
-          _readBuffer->putByte(_writeBuffer.getByte());
+            _readBuffer->putByte(_writeBuffer.getByte());
         }
 
         _readBuffer->flip();
 
         _writeBuffer.clear();
-      }
+    }
 
 
-      void addToReadBuffer() 
-      {
+    void addToReadBuffer()
+    {
         flushSerializeBuffer();
         _writeBuffer.flip();
 
         while(_writeBuffer.getRemaining() > 0) {
-          _readBuffer->putByte(_writeBuffer.getByte());
+            _readBuffer->putByte(_writeBuffer.getByte());
         }
 
         _readBuffer->flip();
 
         _writeBuffer.clear();
-      }
+    }
 
 
-      void processControlMessage() {
+    void processControlMessage() {
         // alignment check
         if (_socketBuffer->getPosition() % PVA_ALIGNMENT != 0)
-          throw std::logic_error("message not aligned");
+            throw std::logic_error("message not aligned");
 
         _receivedControlMessages.push_back(
-          PVAMessage(_version, _flags, _command, _payloadSize));
-      }
+            PVAMessage(_version, _flags, _command, _payloadSize));
+    }
 
 
-      void processApplicationMessage()  {
+    void processApplicationMessage()  {
         // alignment check
         if (_socketBuffer->getPosition() % PVA_ALIGNMENT != 0)
-          throw std::logic_error("message not aligned");
+            throw std::logic_error("message not aligned");
 
-        PVAMessage caMessage(_version, _flags, 
-          _command, _payloadSize);
+        PVAMessage caMessage(_version, _flags,
+                             _command, _payloadSize);
 
         if (_readPayload && _payloadSize > 0)
         {
-          // no fragmentation supported by this implementation
-          std::size_t toRead = 
-            _forcePayloadRead >= 0 
-            ? _forcePayloadRead : _payloadSize;
+            // no fragmentation supported by this implementation
+            std::size_t toRead =
+                _forcePayloadRead >= 0
+                ? _forcePayloadRead : _payloadSize;
 
-          caMessage._payload.reset(new ByteBuffer(toRead));
-          while (toRead > 0)
-          {
-            std::size_t partitalRead = 
-              std::min<std::size_t>(toRead, MAX_ENSURE_DATA_SIZE);
-            ensureData(partitalRead);
-            std::size_t pos = caMessage._payload->getPosition();
+            caMessage._payload.reset(new ByteBuffer(toRead));
+            while (toRead > 0)
+            {
+                std::size_t partitalRead =
+                    std::min<std::size_t>(toRead, MAX_ENSURE_DATA_SIZE);
+                ensureData(partitalRead);
+                std::size_t pos = caMessage._payload->getPosition();
 
 
-            while(_socketBuffer->getRemaining() > 0) {
-              caMessage._payload->putByte(_socketBuffer->getByte());
+                while(_socketBuffer->getRemaining() > 0) {
+                    caMessage._payload->putByte(_socketBuffer->getByte());
+                }
+
+                std::size_t read =
+                    caMessage._payload->getPosition() - pos;
+
+                toRead -= read;
             }
-
-            std::size_t read = 
-              caMessage._payload->getPosition() - pos;
-
-            toRead -= read;
-          }
         }
         _receivedAppMessages.push_back(caMessage);
-      }
+    }
 
 
-      void readPollOne() {
+    void readPollOne() {
         _readPollOneCount++;
         if (_readPollOneCallback.get() != 0)
-          _readPollOneCallback->readPollOne();
-      }
+            _readPollOneCallback->readPollOne();
+    }
 
 
-      void writePollOne() {
+    void writePollOne() {
         _writePollOneCount++;
         if (_writePollOneCallback.get() != 0)
-          _writePollOneCallback->writePollOne();
-      }
+            _writePollOneCallback->writePollOne();
+    }
 
 
-      void close()  { _closedCount++; }
+    void close()  {
+        _closedCount++;
+    }
 
-      bool isOpen() { return _closedCount == 0; }
+    bool isOpen() {
+        return _closedCount == 0;
+    }
 
-      ReadMode getReadMode() { return _readMode; }
+    ReadMode getReadMode() {
+        return _readMode;
+    }
 
-      WriteMode getWriteMode() { return _writeMode;}
+    WriteMode getWriteMode() {
+        return _writeMode;
+    }
 
-      std::tr1::shared_ptr<ByteBuffer>  getSendBuffer() 
-      {
+    std::tr1::shared_ptr<ByteBuffer>  getSendBuffer()
+    {
         return _sendBuffer;
-      }
+    }
 
-      const osiSockAddr* getLastReadBufferSocketAddress()
-      { 
+    const osiSockAddr* getLastReadBufferSocketAddress()
+    {
         return &_dummyAddress;
-      }
+    }
 
-      void invalidDataStreamHandler() { _invalidDataStreamCount++; }
+    void invalidDataStreamHandler() {
+        _invalidDataStreamCount++;
+    }
 
-      void scheduleSend() { _scheduleSendCount++; }
+    void scheduleSend() {
+        _scheduleSendCount++;
+    }
 
-      void sendCompleted() { _sendCompletedCount++; }
+    void sendCompleted() {
+        _sendCompletedCount++;
+    }
 
-      void breakSender() {
+    void breakSender() {
         enqueueSendRequest(std::tr1::shared_ptr<TransportSender>(new TransportSenderDisconnect()));
-      }
+    }
 
-      bool terminated() { return false; }
+    bool terminated() {
+        return false;
+    }
 
-      void cachedSerialize(
-        const std::tr1::shared_ptr<const Field>& field, 
-        ByteBuffer* buffer) {field->serialize(buffer, this); }
+    void cachedSerialize(
+        const std::tr1::shared_ptr<const Field>& field,
+        ByteBuffer* buffer) {
+        field->serialize(buffer, this);
+    }
 
-      bool acquire(
+    bool acquire(
         std::tr1::shared_ptr<TransportClient> const & client)
-      { 
-        return false; 
-      }
+    {
+        return false;
+    }
 
-      bool directSerialize(
-        ByteBuffer *existingBuffer, 
+    bool directSerialize(
+        ByteBuffer *existingBuffer,
         const char* toSerialize,
-        std::size_t elementCount, 
-        std::size_t elementSize)  {return false; }
+        std::size_t elementCount,
+        std::size_t elementSize)  {
+        return false;
+    }
 
-      bool directDeserialize(
-        ByteBuffer *existingBuffer, 
+    bool directDeserialize(
+        ByteBuffer *existingBuffer,
         char* deserializeTo,
-        std::size_t elementCount, 
-        std::size_t elementSize)  { return false; }
+        std::size_t elementCount,
+        std::size_t elementSize)  {
+        return false;
+    }
 
-      std::tr1::shared_ptr<const Field>
-        cachedDeserialize(ByteBuffer* buffer) 
-      { 
-        return std::tr1::shared_ptr<const Field>(); 
-      }
+    std::tr1::shared_ptr<const Field>
+    cachedDeserialize(ByteBuffer* buffer)
+    {
+        return std::tr1::shared_ptr<const Field>();
+    }
 
-      void release(pvAccessID clientId) {}
+    void release(pvAccessID clientId) {}
 
-      std::string getType() const  
-      { 
-        return std::string("TCP"); 
-      }
+    std::string getType() const
+    {
+        return std::string("TCP");
+    }
 
-      const osiSockAddr* getRemoteAddress() const  { return 0; }
-      std::string dummyRemoteName;
-      const std::string& getRemoteName() const {return dummyRemoteName;}
+    const osiSockAddr* getRemoteAddress() const  {
+        return 0;
+    }
+    std::string dummyRemoteName;
+    const std::string& getRemoteName() const {
+        return dummyRemoteName;
+    }
 
-      epics::pvData::int8 getRevision() const  
-      { 
+    epics::pvData::int8 getRevision() const
+    {
         return PVA_PROTOCOL_REVISION;
-      }
+    }
 
-      std::size_t getReceiveBufferSize() const  { return 16384; }
-
-      epics::pvData::int16 getPriority() const  { return 0; }
-
-      std::size_t getSocketReceiveBufferSize() const  
-      { 
+    std::size_t getReceiveBufferSize() const  {
         return 16384;
-      }
+    }
 
-      void setRemoteRevision(epics::pvData::int8 revision)  {}
+    epics::pvData::int16 getPriority() const  {
+        return 0;
+    }
 
-      void setRemoteTransportSocketReceiveBufferSize(
+    std::size_t getSocketReceiveBufferSize() const
+    {
+        return 16384;
+    }
+
+    void setRemoteRevision(epics::pvData::int8 revision)  {}
+
+    void setRemoteTransportSocketReceiveBufferSize(
         std::size_t socketReceiveBufferSize)  {}
 
-      void setRemoteTransportReceiveBufferSize(
+    void setRemoteTransportReceiveBufferSize(
         std::size_t remoteTransportReceiveBufferSize)  {}
 
-      void changedTransport() {}
+    void changedTransport() {}
 
-      void flushSendQueue() { };
+    void flushSendQueue() { };
 
-      bool verify(epics::pvData::int32 timeoutMs) { return true;}
+    bool verify(epics::pvData::int32 timeoutMs) {
+        return true;
+    }
 
-      void verified(epics::pvData::Status const &) {}
+    void verified(epics::pvData::Status const &) {}
 
-      void aliveNotification() {}
+    void aliveNotification() {}
 
-      void authNZMessage(epics::pvData::PVField::shared_pointer const & data) {}
-      void authNZInitialize(void*) {}
+    void authNZMessage(epics::pvData::PVField::shared_pointer const & data) {}
+    void authNZInitialize(void*) {}
 
-      virtual std::tr1::shared_ptr<SecuritySession> getSecuritySession() const
-      {
-          return std::tr1::shared_ptr<SecuritySession>();
-      }
-
-
-
-      bool isClosed() { return false; }
+    virtual std::tr1::shared_ptr<SecuritySession> getSecuritySession() const
+    {
+        return std::tr1::shared_ptr<SecuritySession>();
+    }
 
 
-      std::size_t _closedCount;
-      std::size_t _invalidDataStreamCount;
-      std::size_t _scheduleSendCount;
-      std::size_t _sendCompletedCount;
-      std::size_t _sendBufferFullCount;
-      std::size_t _readPollOneCount;
-      std::size_t _writePollOneCount;
-      bool _throwExceptionOnSend;
-      bool _readPayload;
-      bool _disconnected;
-      int _forcePayloadRead;
 
-      std::auto_ptr<epics::pvData::ByteBuffer> _readBuffer;
-      epics::pvData::ByteBuffer _writeBuffer;
+    bool isClosed() {
+        return false;
+    }
 
-      std::vector<PVAMessage> _receivedAppMessages;
-      std::vector<PVAMessage> _receivedControlMessages;
 
-      std::auto_ptr<ReadPollOneCallback> _readPollOneCallback;
-      std::auto_ptr<WritePollOneCallback> _writePollOneCallback;
+    std::size_t _closedCount;
+    std::size_t _invalidDataStreamCount;
+    std::size_t _scheduleSendCount;
+    std::size_t _sendCompletedCount;
+    std::size_t _sendBufferFullCount;
+    std::size_t _readPollOneCount;
+    std::size_t _writePollOneCount;
+    bool _throwExceptionOnSend;
+    bool _readPayload;
+    bool _disconnected;
+    int _forcePayloadRead;
 
-      osiSockAddr _dummyAddress;
+    std::auto_ptr<epics::pvData::ByteBuffer> _readBuffer;
+    epics::pvData::ByteBuffer _writeBuffer;
 
-    protected:
+    std::vector<PVAMessage> _receivedAppMessages;
+    std::vector<PVAMessage> _receivedControlMessages;
 
-      void sendBufferFull(int tries) {
+    std::auto_ptr<ReadPollOneCallback> _readPollOneCallback;
+    std::auto_ptr<WritePollOneCallback> _writePollOneCallback;
+
+    osiSockAddr _dummyAddress;
+
+protected:
+
+    void sendBufferFull(int tries) {
         _sendBufferFullCount++;
         _writeOpReady = false;
         _writeMode = WAIT_FOR_READY_SIGNAL;
         this->writePollOne();
         _writeMode = PROCESS_SEND_QUEUE;
-      }
-    };
+    }
+};
 
 
-    class CodecTest {
+class CodecTest {
 
-    public:
+public:
 
-      int runAllTest() {
+    int runAllTest() {
         testPlan(5883);
-        testHeaderProcess(); 
+        testHeaderProcess();
         testInvalidHeaderMagic();
         testInvalidHeaderSegmentedInNormal();
         testInvalidHeaderPayloadNotRead();
@@ -469,17 +503,17 @@ namespace epics {
         testEnqueueSendRequestExceptionThrown();
         testBlockingProcessQueueTest();
         return testDone();
-      }
+    }
 
-      virtual ~CodecTest() {} 
+    virtual ~CodecTest() {}
 
-    protected:
+protected:
 
-      static const std::size_t DEFAULT_BUFFER_SIZE = 10240;
+    static const std::size_t DEFAULT_BUFFER_SIZE = 10240;
 
-    private:
+private:
 
-      void testHeaderProcess() {
+    void testHeaderProcess() {
 
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
@@ -495,32 +529,32 @@ namespace epics {
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0",
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
-        testOk(codec._receivedControlMessages.size() == 1, 
-          "%s: codec._receivedControlMessages.size() == 1 ", 
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 0, 
-          "%s: codec._receivedAppMessages.size() == 0", 
-          CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._receivedControlMessages.size() == 1,
+               "%s: codec._receivedControlMessages.size() == 1 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 0,
+               "%s: codec._receivedAppMessages.size() == 0",
+               CURRENT_FUNCTION);
 
         PVAMessage header = codec._receivedControlMessages[0];
 
-        testOk(header._version == PVA_VERSION, 
-          "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_VERSION,
+               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(header._flags == 0x01, 
-          "%s: header._flags == 0x01", CURRENT_FUNCTION);
-        testOk(header._command == 0x23, 
-          "%s: header._command == 0x23", CURRENT_FUNCTION);
-        testOk(header._payloadSize == 0x456789AB, 
-          "%s: header._payloadSize == 0x456789AB", CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(header._flags == 0x01,
+               "%s: header._flags == 0x01", CURRENT_FUNCTION);
+        testOk(header._command == 0x23,
+               "%s: header._command == 0x23", CURRENT_FUNCTION);
+        testOk(header._payloadSize == 0x456789AB,
+               "%s: header._payloadSize == 0x456789AB", CURRENT_FUNCTION);
 
         codec.reset();
 
@@ -540,48 +574,48 @@ namespace epics {
 
         codec.processRead();
 
-        testOk(0 == codec._invalidDataStreamCount, 
-          "%s: 0 == codec._invalidDataStreamCount", 
-          CURRENT_FUNCTION);
-        testOk(0 == codec._closedCount, 
-          "%s: 0 == codec._closedCount", CURRENT_FUNCTION);
-        testOk(1 == codec._receivedControlMessages.size(), 
-          "%s: 1 == codec._receivedControlMessages.size()", 
-          CURRENT_FUNCTION);
-        testOk(1 == codec._receivedAppMessages.size(), 
-          "%s: 1 == codec._receivedAppMessages.size()", 
-          CURRENT_FUNCTION);
+        testOk(0 == codec._invalidDataStreamCount,
+               "%s: 0 == codec._invalidDataStreamCount",
+               CURRENT_FUNCTION);
+        testOk(0 == codec._closedCount,
+               "%s: 0 == codec._closedCount", CURRENT_FUNCTION);
+        testOk(1 == codec._receivedControlMessages.size(),
+               "%s: 1 == codec._receivedControlMessages.size()",
+               CURRENT_FUNCTION);
+        testOk(1 == codec._receivedAppMessages.size(),
+               "%s: 1 == codec._receivedAppMessages.size()",
+               CURRENT_FUNCTION);
 
 
         // app, no payload
         header = codec._receivedAppMessages[0];
 
-        testOk(header._version == PVA_VERSION, 
-          "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_VERSION,
+               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)0x00,
-          "%s: header._flags == 0x00", CURRENT_FUNCTION);
+               "%s: header._flags == 0x00", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0x20,
-          "%s: header._command == 0x20", CURRENT_FUNCTION);
-        testOk(header._payloadSize == 0x00000000, 
-          "%s: header._payloadSize == 0x00000000", CURRENT_FUNCTION);
+               "%s: header._command == 0x20", CURRENT_FUNCTION);
+        testOk(header._payloadSize == 0x00000000,
+               "%s: header._payloadSize == 0x00000000", CURRENT_FUNCTION);
 
         // control
         header = codec._receivedControlMessages[0];
 
-        testOk(header._version == PVA_VERSION, 
-          "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
-        testOk(header._flags == (int8_t)0x81, 
-          "%s: header._flags == 0x81", CURRENT_FUNCTION);
+        testOk(header._version == PVA_VERSION,
+               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._flags == (int8_t)0x81,
+               "%s: header._flags == 0x81", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0xEE,
-          "%s: header._command == 0xEE", CURRENT_FUNCTION);
+               "%s: header._command == 0xEE", CURRENT_FUNCTION);
         testOk(header._payloadSize == (int32_t)0xDDCCBBAA,
-          "%s: header._payloadSize == 0xDDCCBBAA", 
-          CURRENT_FUNCTION);
-      }
+               "%s: header._payloadSize == 0xDDCCBBAA",
+               CURRENT_FUNCTION);
+    }
 
 
-      void testInvalidHeaderMagic()
-      {     
+    void testInvalidHeaderMagic()
+    {
 
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
@@ -596,61 +630,61 @@ namespace epics {
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 1, 
-          "%s: codec._invalidDataStreamCount == 1", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 1,
+               "%s: codec._invalidDataStreamCount == 1",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
         testOk(codec._receivedControlMessages.size() == 0,
-          "%s: codec._receivedControlMessages.size() == 0 ", 
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 0, 
-          "%s: codec._receivedAppMessages.size() == 0", 
-          CURRENT_FUNCTION);
-      }
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 0,
+               "%s: codec._receivedAppMessages.size() == 0",
+               CURRENT_FUNCTION);
+    }
 
 
-      void testInvalidHeaderSegmentedInNormal() 
-      {
+    void testInvalidHeaderSegmentedInNormal()
+    {
 
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
-        int8_t invalidFlagsValues[] = 
+        int8_t invalidFlagsValues[] =
         {(int8_t)0x20, (int8_t)(0x30+0x80)};
 
         std::size_t size=sizeof(invalidFlagsValues)/sizeof(int8_t);
 
         for (std::size_t i = 0; i < size; i++)
         {
-          TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
-          codec._readBuffer->put(PVA_MAGIC);
-          codec._readBuffer->put(PVA_VERSION);
-          codec._readBuffer->put(invalidFlagsValues[i]);
-          codec._readBuffer->put((int8_t)0x23);
-          //codec._readBuffer->putInt(0);
-          codec._readBuffer->putInt(i);   // to check zero-payload
-          codec._readBuffer->flip();
+            TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
+            codec._readBuffer->put(PVA_MAGIC);
+            codec._readBuffer->put(PVA_VERSION);
+            codec._readBuffer->put(invalidFlagsValues[i]);
+            codec._readBuffer->put((int8_t)0x23);
+            //codec._readBuffer->putInt(0);
+            codec._readBuffer->putInt(i);   // to check zero-payload
+            codec._readBuffer->flip();
 
-          codec.processRead();
+            codec.processRead();
 
-          testOk(codec._invalidDataStreamCount == (i != 0 ? 1 : 0),
-          //testOk(codec._invalidDataStreamCount == 1,
-            "%s: codec._invalidDataStreamCount == 1",
-            CURRENT_FUNCTION);
-          testOk(codec._closedCount == 0, 
-            "%s: codec._closedCount == 0", CURRENT_FUNCTION);
-          testOk(codec._receivedControlMessages.size() == 0, 
-            "%s: codec._receivedControlMessages.size() == 0 ", 
-            CURRENT_FUNCTION);
-          testOk(codec._receivedAppMessages.size() == 0, 
-            "%s: codec._receivedAppMessages.size() == 0", 
-            CURRENT_FUNCTION);
+            testOk(codec._invalidDataStreamCount == (i != 0 ? 1 : 0),
+                   //testOk(codec._invalidDataStreamCount == 1,
+                   "%s: codec._invalidDataStreamCount == 1",
+                   CURRENT_FUNCTION);
+            testOk(codec._closedCount == 0,
+                   "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+            testOk(codec._receivedControlMessages.size() == 0,
+                   "%s: codec._receivedControlMessages.size() == 0 ",
+                   CURRENT_FUNCTION);
+            testOk(codec._receivedAppMessages.size() == 0,
+                   "%s: codec._receivedAppMessages.size() == 0",
+                   CURRENT_FUNCTION);
         }
-      }
+    }
 
 
-      void testInvalidHeaderPayloadNotRead() 
-      {
+    void testInvalidHeaderPayloadNotRead()
+    {
 
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
@@ -664,23 +698,23 @@ namespace epics {
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 1, 
-          "%s: codec._invalidDataStreamCount == 1", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
-        testOk(codec._receivedControlMessages.size() == 0, 
-          "%s: codec._receivedControlMessages.size() == 0 ", 
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 1, 
-          "%s: codec._receivedAppMessages.size() == 1", 
-          CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 1,
+               "%s: codec._invalidDataStreamCount == 1",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._receivedControlMessages.size() == 0,
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 1,
+               "%s: codec._receivedAppMessages.size() == 1",
+               CURRENT_FUNCTION);
 
-      }
+    }
 
 
-      void testHeaderSplitRead() 
-      {
+    void testHeaderSplitRead()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
@@ -691,17 +725,17 @@ namespace epics {
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
-        testOk(codec._receivedControlMessages.size() == 0, 
-          "%s: codec._receivedControlMessages.size() == 0 ", 
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 0, 
-          "%s: codec._receivedAppMessages.size() == 0", 
-          CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._receivedControlMessages.size() == 0,
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 0,
+               "%s: codec._receivedAppMessages.size() == 0",
+               CURRENT_FUNCTION);
 
         codec._readBuffer->clear();
 
@@ -711,35 +745,35 @@ namespace epics {
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
-        testOk(codec._receivedControlMessages.size() == 1, 
-          "%s: codec._receivedControlMessages.size() == 1 ",
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 0, 
-          "%s: codec._receivedAppMessages.size() == 0", 
-          CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._receivedControlMessages.size() == 1,
+               "%s: codec._receivedControlMessages.size() == 1 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 0,
+               "%s: codec._receivedAppMessages.size() == 0",
+               CURRENT_FUNCTION);
 
 
         // app, no payload
         PVAMessage header = codec._receivedControlMessages[0];
 
         testOk(header._version == PVA_VERSION,
-          "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)0x01,
-          "%s: header._flags == 0x01", CURRENT_FUNCTION);
+               "%s: header._flags == 0x01", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0x23,
-          "%s: header._command == 0x23", CURRENT_FUNCTION);
+               "%s: header._command == 0x23", CURRENT_FUNCTION);
         testOk(header._payloadSize == 0x456789AB,
-          "%s: header._payloadSize == 0x456789AB", CURRENT_FUNCTION);
-      }
+               "%s: header._payloadSize == 0x456789AB", CURRENT_FUNCTION);
+    }
 
 
-      void testNonEmptyPayload() 
-      {
+    void testNonEmptyPayload()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
@@ -752,41 +786,41 @@ namespace epics {
         codec._readBuffer->put((int8_t)0x23);
         codec._readBuffer->putInt(PVA_ALIGNMENT);
         for (int i = 0; i < PVA_ALIGNMENT; i++)
-          codec._readBuffer->put((int8_t)i);
+            codec._readBuffer->put((int8_t)i);
         codec._readBuffer->flip();
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
         testOk(codec._receivedControlMessages.size() == 0,
-          "%s: codec._receivedControlMessages.size() == 0 ", 
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 1, 
-          "%s: codec._receivedAppMessages.size() == 1", 
-          CURRENT_FUNCTION);
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 1,
+               "%s: codec._receivedAppMessages.size() == 1",
+               CURRENT_FUNCTION);
 
         // app, no payload
         PVAMessage header = codec._receivedAppMessages[0];
 
         testOk(header._payload.get() != 0,
-          "%s: header._payload.get() != 0", CURRENT_FUNCTION);
+               "%s: header._payload.get() != 0", CURRENT_FUNCTION);
 
         header._payload->flip();
 
         testOk(
-          (std::size_t)PVA_ALIGNMENT == header._payload->getLimit(), 
-          "%s: PVA_ALIGNMENT == header._payload->getLimit()", 
-          CURRENT_FUNCTION);
+            (std::size_t)PVA_ALIGNMENT == header._payload->getLimit(),
+            "%s: PVA_ALIGNMENT == header._payload->getLimit()",
+            CURRENT_FUNCTION);
 
-      }
+    }
 
 
-      void testNormalAlignment() 
-      {
+    void testNormalAlignment()
+    {
 
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
@@ -801,13 +835,13 @@ namespace epics {
         codec._readBuffer->putInt(payloadSize1);
 
         for (int32_t i = 0; i < payloadSize1; i++)
-          codec._readBuffer->put((int8_t)i);
+            codec._readBuffer->put((int8_t)i);
         // align
         std::size_t aligned =
-          AbstractCodec::alignedValue(payloadSize1, PVA_ALIGNMENT);
+            AbstractCodec::alignedValue(payloadSize1, PVA_ALIGNMENT);
 
         for (std::size_t i = payloadSize1; i < aligned; i++)
-          codec._readBuffer->put((int8_t)0xFF);
+            codec._readBuffer->put((int8_t)0xFF);
 
 
         codec._readBuffer->put(PVA_MAGIC);
@@ -819,153 +853,153 @@ namespace epics {
         codec._readBuffer->putInt(payloadSize2);
 
         for (int32_t i = 0; i < payloadSize2; i++) {
-          codec._readBuffer->put((int8_t)i);
+            codec._readBuffer->put((int8_t)i);
         }
 
-        aligned = 
-          AbstractCodec::alignedValue(payloadSize2, PVA_ALIGNMENT);
+        aligned =
+            AbstractCodec::alignedValue(payloadSize2, PVA_ALIGNMENT);
 
         for (std::size_t i = payloadSize2; i < aligned; i++) {
-          codec._readBuffer->put((int8_t)0xFF);
+            codec._readBuffer->put((int8_t)0xFF);
         }
 
         codec._readBuffer->flip();
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
         testOk(codec._receivedControlMessages.size() == 0,
-          "%s: codec._receivedControlMessages.size() == 0 ",
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 2, 
-          "%s: codec._receivedAppMessages.size() == 2", 
-          CURRENT_FUNCTION);
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 2,
+               "%s: codec._receivedAppMessages.size() == 2",
+               CURRENT_FUNCTION);
 
         PVAMessage msg = codec._receivedAppMessages[0];
 
-        testOk(msg._payloadSize == payloadSize1, 
-          "%s: msg._payloadSize == payloadSize1", CURRENT_FUNCTION);
+        testOk(msg._payloadSize == payloadSize1,
+               "%s: msg._payloadSize == payloadSize1", CURRENT_FUNCTION);
 
         testOk(msg._payload.get() != 0,
-          "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
+               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
 
 
         msg._payload->flip();
 
         testOk((std::size_t)payloadSize1 == msg._payload->getLimit(),
-          "%s: payloadSize1, msg._payload->getLimit()", 
-          CURRENT_FUNCTION);
+               "%s: payloadSize1, msg._payload->getLimit()",
+               CURRENT_FUNCTION);
 
         for (int32_t i = 0; i < msg._payloadSize; i++) {
-          testOk((int8_t)i == msg._payload->getByte(), 
-            "%s: (int8_t)i == msg._payload->getByte()", 
-            CURRENT_FUNCTION);
+            testOk((int8_t)i == msg._payload->getByte(),
+                   "%s: (int8_t)i == msg._payload->getByte()",
+                   CURRENT_FUNCTION);
         }
 
         msg = codec._receivedAppMessages[1];
 
-        testOk(msg._payloadSize == payloadSize2, 
-          "%s: msg._payloadSize == payloadSize2", CURRENT_FUNCTION);
+        testOk(msg._payloadSize == payloadSize2,
+               "%s: msg._payloadSize == payloadSize2", CURRENT_FUNCTION);
 
-        testOk(msg._payload.get() != 0, 
-          "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
+        testOk(msg._payload.get() != 0,
+               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
 
         msg._payload->flip();
 
         testOk((std::size_t)payloadSize2 == msg._payload->getLimit(),
-          "%s: payloadSize2 == msg._payload->getLimit()", 
-          CURRENT_FUNCTION);
+               "%s: payloadSize2 == msg._payload->getLimit()",
+               CURRENT_FUNCTION);
 
         for (int32_t i = 0; i < msg._payloadSize; i++) {
-          testOk((int8_t)i == msg._payload->getByte(), 
-            "%s: (int8_t)i == msg._payload->getByte()", 
-            CURRENT_FUNCTION);
+            testOk((int8_t)i == msg._payload->getByte(),
+                   "%s: (int8_t)i == msg._payload->getByte()",
+                   CURRENT_FUNCTION);
         }
-      }
+    }
 
 
-      class ReadPollOneCallbackForTestSplitAlignment: 
+    class ReadPollOneCallbackForTestSplitAlignment:
         public ReadPollOneCallback {
 
-      public:
+    public:
 
         ReadPollOneCallbackForTestSplitAlignment(
-          TestCodec & codec, 
-          int32_t payloadSize1, 
-          int32_t payloadSize2): 
-        _codec(codec), _payloadSize1(payloadSize1),
-          _payloadSize2(payloadSize2)  {}
+            TestCodec & codec,
+            int32_t payloadSize1,
+            int32_t payloadSize2):
+            _codec(codec), _payloadSize1(payloadSize1),
+            _payloadSize2(payloadSize2)  {}
 
 
         void readPollOne()  {
 
-          if (_codec._readPollOneCount == 1)
-          {
-            _codec._readBuffer->clear();
-            for (int32_t i = _payloadSize1-2; 
-              i < _payloadSize1; i++) {
-                _codec._readBuffer->put((int8_t)i);
+            if (_codec._readPollOneCount == 1)
+            {
+                _codec._readBuffer->clear();
+                for (int32_t i = _payloadSize1-2;
+                        i < _payloadSize1; i++) {
+                    _codec._readBuffer->put((int8_t)i);
+                }
+
+                // align
+                std::size_t aligned =
+                    AbstractCodec::alignedValue(
+                        _payloadSize1, PVA_ALIGNMENT);
+
+                for (std::size_t i = _payloadSize1; i < aligned; i++)
+                    _codec._readBuffer->put((int8_t)0xFF);
+
+
+                _codec._readBuffer->put(PVA_MAGIC);
+                _codec._readBuffer->put(PVA_VERSION);
+                _codec._readBuffer->put((int8_t)0x80);
+                _codec._readBuffer->put((int8_t)0x45);
+                _codec._readBuffer->putInt(_payloadSize2);
+
+                for (int32_t i = 0; i < _payloadSize2; i++) {
+                    _codec._readBuffer->put((int8_t)i);
+                }
+
+                _codec._readBuffer->flip();
+            }
+            else if (_codec._readPollOneCount == 2)
+            {
+                _codec._readBuffer->clear();
+
+                std::size_t aligned =
+                    AbstractCodec::alignedValue(
+                        _payloadSize2, PVA_ALIGNMENT);
+
+                for (std::size_t i = _payloadSize2; i < aligned; i++) {
+                    _codec._readBuffer->put((int8_t)0xFF);
+                }
+
+                _codec._readBuffer->flip();
             }
 
-            // align
-            std::size_t aligned = 
-              AbstractCodec::alignedValue(
-              _payloadSize1, PVA_ALIGNMENT);
-
-            for (std::size_t i = _payloadSize1; i < aligned; i++)
-              _codec._readBuffer->put((int8_t)0xFF);
-
-
-            _codec._readBuffer->put(PVA_MAGIC);
-            _codec._readBuffer->put(PVA_VERSION);
-            _codec._readBuffer->put((int8_t)0x80);
-            _codec._readBuffer->put((int8_t)0x45);
-            _codec._readBuffer->putInt(_payloadSize2);
-
-            for (int32_t i = 0; i < _payloadSize2; i++) {
-              _codec._readBuffer->put((int8_t)i);
-            }
-
-            _codec._readBuffer->flip();
-          }
-          else if (_codec._readPollOneCount == 2)
-          {
-            _codec._readBuffer->clear();
-
-            std::size_t aligned = 
-              AbstractCodec::alignedValue(
-              _payloadSize2, PVA_ALIGNMENT);
-
-            for (std::size_t i = _payloadSize2; i < aligned; i++) {
-              _codec._readBuffer->put((int8_t)0xFF);
-            }
-
-            _codec._readBuffer->flip();
-          }
-
-          else
-            throw std::logic_error("should not happen");
+            else
+                throw std::logic_error("should not happen");
         }
 
-      private:
+    private:
         TestCodec &_codec;
         int8_t _payloadSize1;
         int8_t _payloadSize2;
-      };
+    };
 
 
-      void testSplitAlignment() 
-      {
+    void testSplitAlignment()
+    {
 
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
         // "<=" used instead of "==" to suppress compiler warning
         if (PVA_ALIGNMENT <= 1)
-          return;
+            return;
 
         codec._readPayload = true;
 
@@ -978,15 +1012,15 @@ namespace epics {
         codec._readBuffer->putInt(payloadSize1);
 
         for (int32_t i = 0; i < payloadSize1-2; i++) {
-          codec._readBuffer->put((int8_t)i);
+            codec._readBuffer->put((int8_t)i);
         }
 
         int32_t payloadSize2 = 2*PVA_ALIGNMENT-1;
 
-        std::auto_ptr<ReadPollOneCallback> 
-          readPollOneCallback( 
-          new ReadPollOneCallbackForTestSplitAlignment
-          (codec, payloadSize1, payloadSize2));
+        std::auto_ptr<ReadPollOneCallback>
+        readPollOneCallback(
+            new ReadPollOneCallbackForTestSplitAlignment
+            (codec, payloadSize1, payloadSize2));
 
         codec._readPollOneCallback = readPollOneCallback;
 
@@ -994,62 +1028,62 @@ namespace epics {
         codec.processRead();
 
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
         testOk(codec._receivedControlMessages.size() == 0,
-          "%s: codec._receivedControlMessages.size() == 0 ", 
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 2, 
-          "%s: codec._receivedAppMessages.size() == 2", 
-          CURRENT_FUNCTION);
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 2,
+               "%s: codec._receivedAppMessages.size() == 2",
+               CURRENT_FUNCTION);
         testOk(codec._readPollOneCount == 2,
-          "%s: codec._readPollOneCount == 2", CURRENT_FUNCTION);
+               "%s: codec._readPollOneCount == 2", CURRENT_FUNCTION);
 
         PVAMessage msg = codec._receivedAppMessages[0];
 
-        testOk(msg._payloadSize == payloadSize1, 
-          "%s: msg._payloadSize == payloadSize1", CURRENT_FUNCTION);
+        testOk(msg._payloadSize == payloadSize1,
+               "%s: msg._payloadSize == payloadSize1", CURRENT_FUNCTION);
         testOk(msg._payload.get() != 0,
-          "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
+               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
 
         msg._payload->flip();
 
-        testOk(payloadSize1 = msg._payload->getLimit(), 
-          "%s: payloadSize1 = msg._payload->getLimit()", 
-          CURRENT_FUNCTION);
+        testOk(payloadSize1 = msg._payload->getLimit(),
+               "%s: payloadSize1 = msg._payload->getLimit()",
+               CURRENT_FUNCTION);
 
         for (int32_t i = 0; i < msg._payloadSize; i++) {
-          testOk((int8_t)i == msg._payload->getByte(), 
-            "%s: (int8_t)i == msg._payload->getByte()", 
-            CURRENT_FUNCTION);
+            testOk((int8_t)i == msg._payload->getByte(),
+                   "%s: (int8_t)i == msg._payload->getByte()",
+                   CURRENT_FUNCTION);
         }
 
         msg = codec._receivedAppMessages[1];
 
-        testOk(msg._payloadSize == payloadSize2, 
-          "%s: msg._payloadSize == payloadSize2", CURRENT_FUNCTION);
-        testOk(msg._payload.get() != 0, 
-          "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
+        testOk(msg._payloadSize == payloadSize2,
+               "%s: msg._payloadSize == payloadSize2", CURRENT_FUNCTION);
+        testOk(msg._payload.get() != 0,
+               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
 
         msg._payload->flip();
 
         testOk((std::size_t)payloadSize2 == msg._payload->getLimit(),
-          "%s: payloadSize2 == msg._payload->getLimit()", 
-          CURRENT_FUNCTION);
+               "%s: payloadSize2 == msg._payload->getLimit()",
+               CURRENT_FUNCTION);
 
         for (int32_t i = 0; i < msg._payloadSize; i++) {
-          testOk((int8_t)i == msg._payload->getByte(), 
-            "%s: (int8_t)i == msg._payload->getByte()", 
-            CURRENT_FUNCTION);
+            testOk((int8_t)i == msg._payload->getByte(),
+                   "%s: (int8_t)i == msg._payload->getByte()",
+                   CURRENT_FUNCTION);
         }
-      }
+    }
 
 
-      void testSegmentedMessage() 
-      {
+    void testSegmentedMessage()
+    {
 
         // no misalignment
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
@@ -1068,7 +1102,7 @@ namespace epics {
 
         int32_t c = 0;
         for (int32_t i = 0; i < payloadSize1; i++)
-          codec._readBuffer->put((int8_t)(c++));
+            codec._readBuffer->put((int8_t)(c++));
 
         // 2nd
         codec._readBuffer->put(PVA_MAGIC);
@@ -1080,7 +1114,7 @@ namespace epics {
         codec._readBuffer->putInt(payloadSize2);
 
         for (int32_t i = 0; i < payloadSize2; i++)
-          codec._readBuffer->put((int8_t)(c++));
+            codec._readBuffer->put((int8_t)(c++));
 
         // control in between
         codec._readBuffer->put(PVA_MAGIC);
@@ -1099,7 +1133,7 @@ namespace epics {
         codec._readBuffer->putInt(payloadSize3);
 
         for (int32_t i = 0; i < payloadSize3; i++)
-          codec._readBuffer->put((int8_t)(c++));
+            codec._readBuffer->put((int8_t)(c++));
 
         // 4t (last)
         codec._readBuffer->put(PVA_MAGIC);
@@ -1111,66 +1145,66 @@ namespace epics {
         codec._readBuffer->putInt(payloadSize4);
 
         for (int32_t i = 0; i < payloadSize4; i++)
-          codec._readBuffer->put((int8_t)(c++));
+            codec._readBuffer->put((int8_t)(c++));
 
         codec._readBuffer->flip();
 
-        int32_t payloadSizeSum = 
-          payloadSize1+payloadSize2+payloadSize3+payloadSize4;
+        int32_t payloadSizeSum =
+            payloadSize1+payloadSize2+payloadSize3+payloadSize4;
 
         codec._forcePayloadRead = payloadSizeSum;
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
         testOk(codec._receivedControlMessages.size() == 1,
-          "%s: codec._receivedControlMessages.size() == 1 ", 
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 1, 
-          "%s: codec._receivedAppMessages.size() == 1", 
-          CURRENT_FUNCTION);
-        testOk(codec._readPollOneCount == 0, 
-          "%s: codec._readPollOneCount == 0", CURRENT_FUNCTION);
+               "%s: codec._receivedControlMessages.size() == 1 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 1,
+               "%s: codec._receivedAppMessages.size() == 1",
+               CURRENT_FUNCTION);
+        testOk(codec._readPollOneCount == 0,
+               "%s: codec._readPollOneCount == 0", CURRENT_FUNCTION);
 
 
         PVAMessage msg = codec._receivedAppMessages[0];
 
-        testOk(msg._payload.get() != 0, 
-          "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
+        testOk(msg._payload.get() != 0,
+               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
 
         msg._payload->flip();
 
         testOk(
-          (std::size_t)payloadSizeSum == msg._payload->getLimit(),
-          "%s: payloadSizeSum == msg._payload->getLimit()", 
-          CURRENT_FUNCTION);
+            (std::size_t)payloadSizeSum == msg._payload->getLimit(),
+            "%s: payloadSizeSum == msg._payload->getLimit()",
+            CURRENT_FUNCTION);
 
         for (int32_t i = 0; i < msg._payloadSize; i++) {
-          testOk((int8_t)i == msg._payload->getByte(), 
-            "%s: (int8_t)i == msg._payload->getint8_t()", 
-            CURRENT_FUNCTION);
+            testOk((int8_t)i == msg._payload->getByte(),
+                   "%s: (int8_t)i == msg._payload->getint8_t()",
+                   CURRENT_FUNCTION);
         }
 
 
         msg = codec._receivedControlMessages[0];
 
         testOk(msg._version == PVA_VERSION,
-          "%s: msg._version == PVA_VERSION", CURRENT_FUNCTION);
+               "%s: msg._version == PVA_VERSION", CURRENT_FUNCTION);
         testOk(msg._flags == (int8_t)0x81,
-          "%s: msg._flags == 0x81", CURRENT_FUNCTION);
+               "%s: msg._flags == 0x81", CURRENT_FUNCTION);
         testOk(msg._command == (int8_t)0xEE,
-          "%s: msg._command == 0xEE", CURRENT_FUNCTION);
+               "%s: msg._command == 0xEE", CURRENT_FUNCTION);
         testOk(msg._payloadSize == (int32_t)0xDDCCBBAA,
-          "%s: msg._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
-      }
+               "%s: msg._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
+    }
 
 
-      void testSegmentedInvalidInBetweenFlagsMessage() 
-      {
+    void testSegmentedInvalidInBetweenFlagsMessage()
+    {
         // no misalignment
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
@@ -1188,20 +1222,20 @@ namespace epics {
 
         int32_t c = 0;
         for (int32_t i = 0; i < payloadSize1; i++)
-          codec._readBuffer->put((int8_t)(c++));
+            codec._readBuffer->put((int8_t)(c++));
 
         // 2nd
         codec._readBuffer->put(PVA_MAGIC);
         codec._readBuffer->put(PVA_VERSION);
         // invalid flag, should be 0xB0
-        codec._readBuffer->put((int8_t)0x90);	
+        codec._readBuffer->put((int8_t)0x90);
         codec._readBuffer->put((int8_t)0x01);
 
         int32_t payloadSize2 = 2*PVA_ALIGNMENT;
         codec._readBuffer->putInt(payloadSize2);
 
         for (int32_t i = 0; i < payloadSize2; i++)
-          codec._readBuffer->put((int8_t)(c++));
+            codec._readBuffer->put((int8_t)(c++));
 
         // control in between
         codec._readBuffer->put(PVA_MAGIC);
@@ -1220,7 +1254,7 @@ namespace epics {
         codec._readBuffer->putInt(payloadSize3);
 
         for (int32_t i = 0; i < payloadSize3; i++)
-          codec._readBuffer->put((int8_t)(c++));
+            codec._readBuffer->put((int8_t)(c++));
 
         // 4t (last)
         codec._readBuffer->put(PVA_MAGIC);
@@ -1232,40 +1266,40 @@ namespace epics {
         codec._readBuffer->putInt(payloadSize4);
 
         for (int32_t i = 0; i < payloadSize4; i++)
-          codec._readBuffer->put((int8_t)(c++));
+            codec._readBuffer->put((int8_t)(c++));
 
         codec._readBuffer->flip();
 
-        int32_t payloadSizeSum = 
-          payloadSize1+payloadSize2+payloadSize3+payloadSize4;
+        int32_t payloadSizeSum =
+            payloadSize1+payloadSize2+payloadSize3+payloadSize4;
         codec._forcePayloadRead = payloadSizeSum;
 
         try {
-          codec.processRead();
-          testFail(
-            "%s: invalid_data_stream_exception, but not reported",
-            CURRENT_FUNCTION);
+            codec.processRead();
+            testFail(
+                "%s: invalid_data_stream_exception, but not reported",
+                CURRENT_FUNCTION);
         } catch(invalid_data_stream_exception &) {
-          testOk(true, "%s: invalid_data_stream_exception reported", 
-            CURRENT_FUNCTION);
+            testOk(true, "%s: invalid_data_stream_exception reported",
+                   CURRENT_FUNCTION);
         }
 
-        testOk(codec._invalidDataStreamCount == 1, 
-          "%s: codec._invalidDataStreamCount == 1", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
-        testOk(codec._receivedControlMessages.size() == 0, 
-          "%s: codec._receivedControlMessages.size() == 0 ", 
-          CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 1,
+               "%s: codec._invalidDataStreamCount == 1",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._receivedControlMessages.size() == 0,
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
         testOk(codec._receivedAppMessages.size() == 0,
-          "%s: codec._receivedAppMessages.size() == 0", 
-          CURRENT_FUNCTION);
-      }
+               "%s: codec._receivedAppMessages.size() == 0",
+               CURRENT_FUNCTION);
+    }
 
 
-      void testSegmentedMessageAlignment()
-      {
+    void testSegmentedMessageAlignment()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
@@ -1282,12 +1316,12 @@ namespace epics {
 
         int32_t c = 0;
         for (int32_t i = 0; i < payloadSize1; i++)
-          codec._readBuffer->put((int8_t)(c++));
+            codec._readBuffer->put((int8_t)(c++));
 
         std::size_t aligned =
-          AbstractCodec::alignedValue(payloadSize1, PVA_ALIGNMENT);
+            AbstractCodec::alignedValue(payloadSize1, PVA_ALIGNMENT);
         for (std::size_t i = payloadSize1; i < aligned; i++)
-          codec._readBuffer->put((int8_t)0xFF);
+            codec._readBuffer->put((int8_t)0xFF);
 
 
         // 2nd
@@ -1297,24 +1331,24 @@ namespace epics {
         codec._readBuffer->put((int8_t)0x01);
 
         int32_t payloadSize2 = 2*PVA_ALIGNMENT-1;
-        int32_t payloadSize2Real = 
-          payloadSize2 + payloadSize1 % PVA_ALIGNMENT;
+        int32_t payloadSize2Real =
+            payloadSize2 + payloadSize1 % PVA_ALIGNMENT;
 
         codec._readBuffer->putInt(payloadSize2Real);
 
-        // pre-message padding 
+        // pre-message padding
         for (int32_t i = 0; i < payloadSize1 % PVA_ALIGNMENT; i++)
-          codec._readBuffer->put((int8_t)0xEE);
+            codec._readBuffer->put((int8_t)0xEE);
 
         for (int32_t i = 0; i < payloadSize2; i++)
-          codec._readBuffer->put((int8_t)(c++));
+            codec._readBuffer->put((int8_t)(c++));
 
         aligned =
-          AbstractCodec::alignedValue(
-          payloadSize2Real, PVA_ALIGNMENT);
+            AbstractCodec::alignedValue(
+                payloadSize2Real, PVA_ALIGNMENT);
 
         for (std::size_t i = payloadSize2Real; i < aligned; i++)
-          codec._readBuffer->put((int8_t)0xFF);
+            codec._readBuffer->put((int8_t)0xFF);
 
         // 3rd
         codec._readBuffer->put(PVA_MAGIC);
@@ -1323,24 +1357,24 @@ namespace epics {
         codec._readBuffer->put((int8_t)0x01);
 
         int32_t payloadSize3 = PVA_ALIGNMENT+2;
-        int32_t payloadSize3Real = 
-          payloadSize3 + payloadSize2Real % PVA_ALIGNMENT;
+        int32_t payloadSize3Real =
+            payloadSize3 + payloadSize2Real % PVA_ALIGNMENT;
         codec._readBuffer->putInt(payloadSize3Real);
 
         // pre-message padding required
-        for (int32_t i = 0; 
-          i < payloadSize2Real % PVA_ALIGNMENT; i++)
-          codec._readBuffer->put((int8_t)0xEE);
+        for (int32_t i = 0;
+                i < payloadSize2Real % PVA_ALIGNMENT; i++)
+            codec._readBuffer->put((int8_t)0xEE);
 
         for (int32_t i = 0; i < payloadSize3; i++)
-          codec._readBuffer->put((int8_t)(c++));
+            codec._readBuffer->put((int8_t)(c++));
 
-        aligned = 
-          AbstractCodec::alignedValue(
-          payloadSize3Real, PVA_ALIGNMENT);
+        aligned =
+            AbstractCodec::alignedValue(
+                payloadSize3Real, PVA_ALIGNMENT);
 
         for (std::size_t i = payloadSize3Real; i < aligned; i++)
-          codec._readBuffer->put((int8_t)0xFF);
+            codec._readBuffer->put((int8_t)0xFF);
 
         // 4t (last)
         codec._readBuffer->put(PVA_MAGIC);
@@ -1350,278 +1384,278 @@ namespace epics {
 
         int32_t payloadSize4 = 2*PVA_ALIGNMENT+3;
         int32_t payloadSize4Real =
-          payloadSize4 + payloadSize3Real % PVA_ALIGNMENT;
+            payloadSize4 + payloadSize3Real % PVA_ALIGNMENT;
 
         codec._readBuffer->putInt(payloadSize4Real);
 
         // pre-message padding required
         for (int32_t i = 0;
-          i < payloadSize3Real % PVA_ALIGNMENT; i++)
-          codec._readBuffer->put((int8_t)0xEE);
+                i < payloadSize3Real % PVA_ALIGNMENT; i++)
+            codec._readBuffer->put((int8_t)0xEE);
 
         for (int32_t i = 0; i < payloadSize4; i++)
-          codec._readBuffer->put((int8_t)(c++));
+            codec._readBuffer->put((int8_t)(c++));
 
-        aligned = 
-          AbstractCodec::alignedValue(
-          payloadSize4Real, PVA_ALIGNMENT);
+        aligned =
+            AbstractCodec::alignedValue(
+                payloadSize4Real, PVA_ALIGNMENT);
 
         for (std::size_t i = payloadSize4Real; i < aligned; i++)
-          codec._readBuffer->put((int8_t)0xFF);
+            codec._readBuffer->put((int8_t)0xFF);
 
         codec._readBuffer->flip();
 
-        int32_t payloadSizeSum = 
-          payloadSize1+payloadSize2+payloadSize3+payloadSize4;
+        int32_t payloadSizeSum =
+            payloadSize1+payloadSize2+payloadSize3+payloadSize4;
 
         codec._forcePayloadRead = payloadSizeSum;
 
         codec.processRead();
 
         testOk(codec._invalidDataStreamCount == 0,
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
         testOk(codec._receivedControlMessages.size() == 0,
-          "%s: codec._receivedControlMessages.size() == 0 ", 
-          CURRENT_FUNCTION);
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
         testOk(codec._receivedAppMessages.size() == 1,
-          "%s: codec._receivedAppMessages.size() == 1", 
-          CURRENT_FUNCTION);
-        testOk(codec._readPollOneCount == 0, 
-          "%s: codec._readPollOneCount == 0", CURRENT_FUNCTION);
+               "%s: codec._receivedAppMessages.size() == 1",
+               CURRENT_FUNCTION);
+        testOk(codec._readPollOneCount == 0,
+               "%s: codec._readPollOneCount == 0", CURRENT_FUNCTION);
 
         PVAMessage msg = codec._receivedAppMessages[0];
 
-        testOk(msg._payload.get() != 0, 
-          "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
+        testOk(msg._payload.get() != 0,
+               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
 
         msg._payload->flip();
 
         testOk(
-          (std::size_t)payloadSizeSum == msg._payload->getLimit(), 
-          "%s: payloadSizeSum == msg._payload->getLimit()", 
-          CURRENT_FUNCTION);
+            (std::size_t)payloadSizeSum == msg._payload->getLimit(),
+            "%s: payloadSizeSum == msg._payload->getLimit()",
+            CURRENT_FUNCTION);
 
         for (int32_t i = 0; i < msg._payloadSize; i++)
-          testOk((int8_t)i == msg._payload->getByte(), 
-          "%s: (int8_t)i == msg._payload->getByte()",
-          CURRENT_FUNCTION);
-      }
+            testOk((int8_t)i == msg._payload->getByte(),
+                   "%s: (int8_t)i == msg._payload->getByte()",
+                   CURRENT_FUNCTION);
+    }
 
 
-      class ReadPollOneCallbackForTestSegmentedSplitMessage: 
+    class ReadPollOneCallbackForTestSegmentedSplitMessage:
         public ReadPollOneCallback {
 
-      public:
+    public:
 
         ReadPollOneCallbackForTestSegmentedSplitMessage(
-          TestCodec & codec, 
-          int32_t realReadBufferEnd): 
-        _codec(codec), _realReadBufferEnd(realReadBufferEnd) {}
+            TestCodec & codec,
+            int32_t realReadBufferEnd):
+            _codec(codec), _realReadBufferEnd(realReadBufferEnd) {}
 
 
         void readPollOne()  {
-          if (_codec._readPollOneCount == 1)
-          {
-            _codec._readBuffer->setLimit(_realReadBufferEnd);
-          }
-          else
-            throw std::logic_error("should not happen");
+            if (_codec._readPollOneCount == 1)
+            {
+                _codec._readBuffer->setLimit(_realReadBufferEnd);
+            }
+            else
+                throw std::logic_error("should not happen");
         }
 
-      private:
+    private:
         TestCodec &_codec;
         std::size_t _realReadBufferEnd;
-      };
+    };
 
 
-      void testSegmentedSplitMessage() 
-      {
+    void testSegmentedSplitMessage()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
         for (int32_t firstMessagePayloadSize = 1;	// cannot be zero
-          firstMessagePayloadSize <= 3*PVA_ALIGNMENT;
-          firstMessagePayloadSize++)
+                firstMessagePayloadSize <= 3*PVA_ALIGNMENT;
+                firstMessagePayloadSize++)
         {
-          for (int32_t secondMessagePayloadSize = 0;
-            secondMessagePayloadSize <= 2*PVA_ALIGNMENT;
-            secondMessagePayloadSize++)
-          {
-            // cannot be zero
-            for (int32_t thirdMessagePayloadSize = 1;	
-              thirdMessagePayloadSize <= 2*PVA_ALIGNMENT;
-              thirdMessagePayloadSize++)
+            for (int32_t secondMessagePayloadSize = 0;
+                    secondMessagePayloadSize <= 2*PVA_ALIGNMENT;
+                    secondMessagePayloadSize++)
             {
-              std::size_t splitAt = 1;
-              while (true)
-              {
-                TestCodec codec(DEFAULT_BUFFER_SIZE,
-                  DEFAULT_BUFFER_SIZE);
-
-                codec._readPayload = true;
-
-                // 1st
-                codec._readBuffer->put(PVA_MAGIC);
-                codec._readBuffer->put(PVA_VERSION);
-                codec._readBuffer->put((int8_t)0x90);
-                codec._readBuffer->put((int8_t)0x01);
-
-                int32_t payloadSize1 = firstMessagePayloadSize;
-                codec._readBuffer->putInt(payloadSize1);
-
-                int32_t c = 0;
-                for (int32_t i = 0; i < payloadSize1; i++)
-                  codec._readBuffer->put((int8_t)(c++));
-
-                std::size_t aligned = 
-                  AbstractCodec::alignedValue(
-                  payloadSize1, PVA_ALIGNMENT);
-
-                for (std::size_t i = payloadSize1; i < aligned; i++)
-                  codec._readBuffer->put((int8_t)0xFF);
-
-                // 2nd
-                codec._readBuffer->put(PVA_MAGIC);
-                codec._readBuffer->put(PVA_VERSION);
-                codec._readBuffer->put((int8_t)0xB0);
-                codec._readBuffer->put((int8_t)0x01);
-
-                int32_t payloadSize2 = secondMessagePayloadSize;
-                int payloadSize2Real = 
-                  payloadSize2 + payloadSize1 % PVA_ALIGNMENT;
-
-                codec._readBuffer->putInt(payloadSize2Real);
-
-                // pre-message padding 
-                for (int32_t i = 0;
-                  i < payloadSize1 % PVA_ALIGNMENT; i++)
-                  codec._readBuffer->put((int8_t)0xEE);
-
-                for (int32_t i = 0; i < payloadSize2; i++)
-                  codec._readBuffer->put((int8_t)(c++));
-
-                aligned = 
-                  AbstractCodec::alignedValue(
-                  payloadSize2Real, PVA_ALIGNMENT);
-
-                for (std::size_t i = payloadSize2Real;
-                  i < aligned; i++)
-                  codec._readBuffer->put((int8_t)0xFF);
-
-                // 3rd
-                codec._readBuffer->put(PVA_MAGIC);
-                codec._readBuffer->put(PVA_VERSION);
-                codec._readBuffer->put((int8_t)0xA0);
-                codec._readBuffer->put((int8_t)0x01);
-
-                int32_t payloadSize3 = thirdMessagePayloadSize;
-                int32_t payloadSize3Real =
-                  payloadSize3 + payloadSize2Real % PVA_ALIGNMENT;
-
-                codec._readBuffer->putInt(payloadSize3Real);
-
-                // pre-message padding required
-                for (int32_t i = 0; 
-                  i < payloadSize2Real % PVA_ALIGNMENT; i++)
-                  codec._readBuffer->put((int8_t)0xEE);
-
-                for (int32_t i = 0; i < payloadSize3; i++)
-                  codec._readBuffer->put((int8_t)(c++));
-
-                aligned =
-                  AbstractCodec::alignedValue(
-                  payloadSize3Real, PVA_ALIGNMENT);
-
-                for (std::size_t i = payloadSize3Real;
-                  i < aligned; i++)
-                  codec._readBuffer->put((int8_t)0xFF);
-
-                codec._readBuffer->flip();
-
-                std::size_t realReadBufferEnd =
-                  codec._readBuffer->getLimit();
-
-                if (splitAt++ == realReadBufferEnd)
-                  break;
-
-                codec._readBuffer->setLimit(splitAt);
-
-                std::auto_ptr<ReadPollOneCallback> 
-                  readPollOneCallback(
-                  new ReadPollOneCallbackForTestSegmentedSplitMessage
-                  (codec, realReadBufferEnd));
-
-                codec._readPollOneCallback = readPollOneCallback;
-
-
-                int32_t payloadSizeSum = 
-                  payloadSize1+payloadSize2+payloadSize3;
-
-                codec._forcePayloadRead = payloadSizeSum;
-
-                codec.processRead();
-
-                while (codec._invalidDataStreamCount == 0 && 
-                  codec._readBuffer->getPosition() != 
-                  realReadBufferEnd)
+                // cannot be zero
+                for (int32_t thirdMessagePayloadSize = 1;
+                        thirdMessagePayloadSize <= 2*PVA_ALIGNMENT;
+                        thirdMessagePayloadSize++)
                 {
-                  codec._readPollOneCount++;
-                  codec._readPollOneCallback->readPollOne();
-                  codec.processRead();
+                    std::size_t splitAt = 1;
+                    while (true)
+                    {
+                        TestCodec codec(DEFAULT_BUFFER_SIZE,
+                                        DEFAULT_BUFFER_SIZE);
+
+                        codec._readPayload = true;
+
+                        // 1st
+                        codec._readBuffer->put(PVA_MAGIC);
+                        codec._readBuffer->put(PVA_VERSION);
+                        codec._readBuffer->put((int8_t)0x90);
+                        codec._readBuffer->put((int8_t)0x01);
+
+                        int32_t payloadSize1 = firstMessagePayloadSize;
+                        codec._readBuffer->putInt(payloadSize1);
+
+                        int32_t c = 0;
+                        for (int32_t i = 0; i < payloadSize1; i++)
+                            codec._readBuffer->put((int8_t)(c++));
+
+                        std::size_t aligned =
+                            AbstractCodec::alignedValue(
+                                payloadSize1, PVA_ALIGNMENT);
+
+                        for (std::size_t i = payloadSize1; i < aligned; i++)
+                            codec._readBuffer->put((int8_t)0xFF);
+
+                        // 2nd
+                        codec._readBuffer->put(PVA_MAGIC);
+                        codec._readBuffer->put(PVA_VERSION);
+                        codec._readBuffer->put((int8_t)0xB0);
+                        codec._readBuffer->put((int8_t)0x01);
+
+                        int32_t payloadSize2 = secondMessagePayloadSize;
+                        int payloadSize2Real =
+                            payloadSize2 + payloadSize1 % PVA_ALIGNMENT;
+
+                        codec._readBuffer->putInt(payloadSize2Real);
+
+                        // pre-message padding
+                        for (int32_t i = 0;
+                                i < payloadSize1 % PVA_ALIGNMENT; i++)
+                            codec._readBuffer->put((int8_t)0xEE);
+
+                        for (int32_t i = 0; i < payloadSize2; i++)
+                            codec._readBuffer->put((int8_t)(c++));
+
+                        aligned =
+                            AbstractCodec::alignedValue(
+                                payloadSize2Real, PVA_ALIGNMENT);
+
+                        for (std::size_t i = payloadSize2Real;
+                                i < aligned; i++)
+                            codec._readBuffer->put((int8_t)0xFF);
+
+                        // 3rd
+                        codec._readBuffer->put(PVA_MAGIC);
+                        codec._readBuffer->put(PVA_VERSION);
+                        codec._readBuffer->put((int8_t)0xA0);
+                        codec._readBuffer->put((int8_t)0x01);
+
+                        int32_t payloadSize3 = thirdMessagePayloadSize;
+                        int32_t payloadSize3Real =
+                            payloadSize3 + payloadSize2Real % PVA_ALIGNMENT;
+
+                        codec._readBuffer->putInt(payloadSize3Real);
+
+                        // pre-message padding required
+                        for (int32_t i = 0;
+                                i < payloadSize2Real % PVA_ALIGNMENT; i++)
+                            codec._readBuffer->put((int8_t)0xEE);
+
+                        for (int32_t i = 0; i < payloadSize3; i++)
+                            codec._readBuffer->put((int8_t)(c++));
+
+                        aligned =
+                            AbstractCodec::alignedValue(
+                                payloadSize3Real, PVA_ALIGNMENT);
+
+                        for (std::size_t i = payloadSize3Real;
+                                i < aligned; i++)
+                            codec._readBuffer->put((int8_t)0xFF);
+
+                        codec._readBuffer->flip();
+
+                        std::size_t realReadBufferEnd =
+                            codec._readBuffer->getLimit();
+
+                        if (splitAt++ == realReadBufferEnd)
+                            break;
+
+                        codec._readBuffer->setLimit(splitAt);
+
+                        std::auto_ptr<ReadPollOneCallback>
+                        readPollOneCallback(
+                            new ReadPollOneCallbackForTestSegmentedSplitMessage
+                            (codec, realReadBufferEnd));
+
+                        codec._readPollOneCallback = readPollOneCallback;
+
+
+                        int32_t payloadSizeSum =
+                            payloadSize1+payloadSize2+payloadSize3;
+
+                        codec._forcePayloadRead = payloadSizeSum;
+
+                        codec.processRead();
+
+                        while (codec._invalidDataStreamCount == 0 &&
+                                codec._readBuffer->getPosition() !=
+                                realReadBufferEnd)
+                        {
+                            codec._readPollOneCount++;
+                            codec._readPollOneCallback->readPollOne();
+                            codec.processRead();
+                        }
+
+                        testOk(codec._invalidDataStreamCount == 0,
+                               "%s: codec._invalidDataStreamCount == 0",
+                               CURRENT_FUNCTION);
+                        testOk(codec._closedCount == 0,
+                               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+                        testOk(codec._receivedControlMessages.size() == 0,
+                               "%s: codec._receivedControlMessages.size() == 0 ",
+                               CURRENT_FUNCTION);
+                        testOk(codec._receivedAppMessages.size() == 1,
+                               "%s: codec._receivedAppMessages.size() == 1",
+                               CURRENT_FUNCTION);
+
+
+                        if (splitAt == realReadBufferEnd) {
+                            testOk(0 == codec._readPollOneCount,
+                                   "%s: 0 == codec._readPollOneCount",
+                                   CURRENT_FUNCTION);
+                        }
+                        else {
+                            testOk(1 == codec._readPollOneCount,
+                                   "%s: 1 == codec._readPollOneCount",
+                                   CURRENT_FUNCTION);
+                        }
+
+                        PVAMessage msg = codec._receivedAppMessages[0];
+
+                        testOk(msg._payload.get() != 0,
+                               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
+
+                        msg._payload->flip();
+
+                        testOk((std::size_t)payloadSizeSum ==
+                               msg._payload->getLimit(),
+                               "%s: payloadSizeSum == msg._payload->getLimit()",
+                               CURRENT_FUNCTION);
+
+                        for (int32_t i = 0; i < msg._payloadSize; i++) {
+                            testOk((int8_t)i == msg._payload->getByte(),
+                                   "%s: (int8_t)i == msg._payload->getByte()",
+                                   CURRENT_FUNCTION);
+                        }
+                    }
                 }
-
-                testOk(codec._invalidDataStreamCount == 0, 
-                  "%s: codec._invalidDataStreamCount == 0", 
-                  CURRENT_FUNCTION);
-                testOk(codec._closedCount == 0, 
-                  "%s: codec._closedCount == 0", CURRENT_FUNCTION);
-                testOk(codec._receivedControlMessages.size() == 0, 
-                  "%s: codec._receivedControlMessages.size() == 0 ", 
-                  CURRENT_FUNCTION);
-                testOk(codec._receivedAppMessages.size() == 1, 
-                  "%s: codec._receivedAppMessages.size() == 1", 
-                  CURRENT_FUNCTION);
-
-
-                if (splitAt == realReadBufferEnd) {
-                  testOk(0 == codec._readPollOneCount, 
-                    "%s: 0 == codec._readPollOneCount",
-                    CURRENT_FUNCTION);
-                }
-                else {
-                  testOk(1 == codec._readPollOneCount, 
-                    "%s: 1 == codec._readPollOneCount", 
-                    CURRENT_FUNCTION);
-                }
-
-                PVAMessage msg = codec._receivedAppMessages[0];
-
-                testOk(msg._payload.get() != 0,
-                  "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
-
-                msg._payload->flip();
-
-                testOk((std::size_t)payloadSizeSum == 
-                  msg._payload->getLimit(),
-                  "%s: payloadSizeSum == msg._payload->getLimit()",
-                  CURRENT_FUNCTION);
-
-                for (int32_t i = 0; i < msg._payloadSize; i++) {
-                  testOk((int8_t)i == msg._payload->getByte(), 
-                    "%s: (int8_t)i == msg._payload->getByte()", 
-                    CURRENT_FUNCTION);
-                }
-              }
             }
-          }
         }
-      }
+    }
 
 
-      void testStartMessage() 
-      {
+    void testStartMessage()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
@@ -1631,29 +1665,29 @@ namespace epics {
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
-        testOk(codec._receivedControlMessages.size() == 1, 
-          "%s: codec._receivedControlMessages.size() == 1 ", 
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 0, 
-          "%s: codec._receivedAppMessages.size() == 0", 
-          CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._receivedControlMessages.size() == 1,
+               "%s: codec._receivedControlMessages.size() == 1 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 0,
+               "%s: codec._receivedAppMessages.size() == 0",
+               CURRENT_FUNCTION);
 
 
         PVAMessage header = codec._receivedControlMessages[0];
 
-        testOk(header._version == PVA_VERSION, 
-          "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_VERSION,
+               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x01),
-          "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
+               "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0x23,
-          "%s: header._command == 0x23", CURRENT_FUNCTION);
-        testOk(header._payloadSize == 0x456789AB, 
-          "%s: header._payloadSize == 0x456789AB", CURRENT_FUNCTION);
+               "%s: header._command == 0x23", CURRENT_FUNCTION);
+        testOk(header._payloadSize == 0x456789AB,
+               "%s: header._payloadSize == 0x456789AB", CURRENT_FUNCTION);
 
         codec.reset();
 
@@ -1669,46 +1703,46 @@ namespace epics {
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
         testOk(codec._receivedControlMessages.size() == 1,
-          "%s: codec._receivedControlMessages.size() == 1 ",
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 1, 
-          "%s: codec._receivedAppMessages.size() == 1", 
-          CURRENT_FUNCTION);
+               "%s: codec._receivedControlMessages.size() == 1 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 1,
+               "%s: codec._receivedAppMessages.size() == 1",
+               CURRENT_FUNCTION);
 
         // app, no payload
         header = codec._receivedAppMessages[0];
 
-        testOk(header._version == PVA_VERSION, 
-          "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_VERSION,
+               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)0x00,
-          "%s: header._flags == 0x00", CURRENT_FUNCTION);
+               "%s: header._flags == 0x00", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0x20,
-          "%s: header._command == 0x20", CURRENT_FUNCTION);
-        testOk(header._payloadSize == 0x00000000, 
-          "%s: header._payloadSize == 0x00000000", CURRENT_FUNCTION);
+               "%s: header._command == 0x20", CURRENT_FUNCTION);
+        testOk(header._payloadSize == 0x00000000,
+               "%s: header._payloadSize == 0x00000000", CURRENT_FUNCTION);
 
         // control
         header = codec._receivedControlMessages[0];
 
-        testOk(header._version == PVA_VERSION, 
-          "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_VERSION,
+               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)0x81,
-          "%s: header._flags == 0x81", CURRENT_FUNCTION);
+               "%s: header._flags == 0x81", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0xEE,
-          "%s: header._command == 0xEE", CURRENT_FUNCTION);
+               "%s: header._command == 0xEE", CURRENT_FUNCTION);
         testOk(header._payloadSize == (int32_t)0xDDCCBBAA,
-          "%s: header._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
-      }	
+               "%s: header._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
+    }
 
 
-      void testStartMessageNonEmptyPayload()
-      {
+    void testStartMessageNonEmptyPayload()
+    {
         // no misalignment
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
@@ -1718,7 +1752,7 @@ namespace epics {
 
         codec.ensureBuffer((std::size_t)PVA_ALIGNMENT);
         for (int32_t i = 0; i < PVA_ALIGNMENT; i++)
-          codec.getSendBuffer()->put((int8_t)i);
+            codec.getSendBuffer()->put((int8_t)i);
 
         codec.endMessage();
 
@@ -1726,35 +1760,35 @@ namespace epics {
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
         testOk(codec._receivedControlMessages.size() == 0,
-          "%s: codec._receivedControlMessages.size() == 0 ", 
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 1, 
-          "%s: codec._receivedAppMessages.size() == 1", 
-          CURRENT_FUNCTION);
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 1,
+               "%s: codec._receivedAppMessages.size() == 1",
+               CURRENT_FUNCTION);
 
         // app, no payload
         PVAMessage header = codec._receivedAppMessages[0];
 
-        testOk(header._payload.get() != 0, 
-          "%s: header._payload.get() != 0", CURRENT_FUNCTION);
+        testOk(header._payload.get() != 0,
+               "%s: header._payload.get() != 0", CURRENT_FUNCTION);
 
         header._payload->flip();
 
-        testOk((std::size_t)PVA_ALIGNMENT == 
-          header._payload->getLimit(), 
-          "%s: PVA_ALIGNMENT == header._payload->getLimit()", 
-          CURRENT_FUNCTION);
-      }
+        testOk((std::size_t)PVA_ALIGNMENT ==
+               header._payload->getLimit(),
+               "%s: PVA_ALIGNMENT == header._payload->getLimit()",
+               CURRENT_FUNCTION);
+    }
 
 
-      void testStartMessageNormalAlignment()
-      {
+    void testStartMessageNormalAlignment()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
@@ -1765,7 +1799,7 @@ namespace epics {
         codec.ensureBuffer(payloadSize1);
 
         for (int32_t i = 0; i < payloadSize1; i++)
-          codec.getSendBuffer()->put((int8_t)i);
+            codec.getSendBuffer()->put((int8_t)i);
 
         codec.endMessage();
 
@@ -1774,7 +1808,7 @@ namespace epics {
         codec.ensureBuffer(payloadSize2);
 
         for (int32_t i = 0; i < payloadSize2; i++)
-          codec.getSendBuffer()->put((int8_t)i);
+            codec.getSendBuffer()->put((int8_t)i);
 
         codec.endMessage();
 
@@ -1782,60 +1816,60 @@ namespace epics {
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
-        testOk(codec._receivedControlMessages.size() == 0, 
-          "%s: codec._receivedControlMessages.size() == 0 ", 
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 2, 
-          "%s: codec._receivedAppMessages.size() == 2", 
-          CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._receivedControlMessages.size() == 0,
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 2,
+               "%s: codec._receivedAppMessages.size() == 2",
+               CURRENT_FUNCTION);
 
         PVAMessage msg = codec._receivedAppMessages[0];
 
-        testOk(msg._payloadSize == payloadSize1, 
-          "%s: msg._payloadSize == payloadSize1", CURRENT_FUNCTION);
-        testOk(msg._payload.get() != 0, 
-          "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
+        testOk(msg._payloadSize == payloadSize1,
+               "%s: msg._payloadSize == payloadSize1", CURRENT_FUNCTION);
+        testOk(msg._payload.get() != 0,
+               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
 
         msg._payload->flip();
 
-        testOk((std::size_t)payloadSize1 == 
-          msg._payload->getLimit(), 
-          "%s: payloadSize1 == msg._payload->getLimit()", 
-          CURRENT_FUNCTION);
+        testOk((std::size_t)payloadSize1 ==
+               msg._payload->getLimit(),
+               "%s: payloadSize1 == msg._payload->getLimit()",
+               CURRENT_FUNCTION);
 
         for (int32_t i = 0; i < msg._payloadSize; i++)
-          testOk((int8_t)i == msg._payload->getByte(), 
-          "%s: (int8_t)i == msg._payload->getByte()", 
-          CURRENT_FUNCTION);
+            testOk((int8_t)i == msg._payload->getByte(),
+                   "%s: (int8_t)i == msg._payload->getByte()",
+                   CURRENT_FUNCTION);
 
         msg = codec._receivedAppMessages[1];
 
-        testOk(msg._payloadSize == payloadSize2, 
-          "%s: msg._payloadSize == payloadSize2", CURRENT_FUNCTION);
-        testOk(msg._payload.get() != 0, 
-          "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
+        testOk(msg._payloadSize == payloadSize2,
+               "%s: msg._payloadSize == payloadSize2", CURRENT_FUNCTION);
+        testOk(msg._payload.get() != 0,
+               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
 
         msg._payload->flip();
 
-        testOk((std::size_t)payloadSize2 == 
-          msg._payload->getLimit(),
-          "%s: payloadSize2 == msg._payload->getLimit()", 
-          CURRENT_FUNCTION);
+        testOk((std::size_t)payloadSize2 ==
+               msg._payload->getLimit(),
+               "%s: payloadSize2 == msg._payload->getLimit()",
+               CURRENT_FUNCTION);
 
         for (int32_t i = 0; i < msg._payloadSize; i++)
-          testOk((int8_t)i == msg._payload->getByte(),
-          "%s: (int8_t)i == msg._payload->getByte()", 
-          CURRENT_FUNCTION);
-      }
+            testOk((int8_t)i == msg._payload->getByte(),
+                   "%s: (int8_t)i == msg._payload->getByte()",
+                   CURRENT_FUNCTION);
+    }
 
 
-      void testStartMessageSegmentedMessage() 
-      {
+    void testStartMessageSegmentedMessage()
+    {
         // no misalignment
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
@@ -1848,178 +1882,178 @@ namespace epics {
 
         int32_t payloadSize1 = PVA_ALIGNMENT;
         for (int32_t i = 0; i < payloadSize1; i++)
-          codec.getSendBuffer()->put((int8_t)(c++));
+            codec.getSendBuffer()->put((int8_t)(c++));
 
         codec.flush(false);
 
         int32_t payloadSize2 = 2*PVA_ALIGNMENT;
         for (int32_t i = 0; i < payloadSize2; i++)
-          codec.getSendBuffer()->put((int8_t)(c++));
+            codec.getSendBuffer()->put((int8_t)(c++));
 
         codec.flush(false);
 
         int32_t payloadSize3 = PVA_ALIGNMENT;
         for (int32_t i = 0; i < payloadSize3; i++)
-          codec.getSendBuffer()->put((int8_t)(c++));
+            codec.getSendBuffer()->put((int8_t)(c++));
 
         codec.flush(false);
 
         int32_t payloadSize4 = 2*PVA_ALIGNMENT;
         for (int32_t i = 0; i < payloadSize4; i++)
-          codec.getSendBuffer()->put((int8_t)(c++));
+            codec.getSendBuffer()->put((int8_t)(c++));
 
         codec.endMessage();
 
         codec.transferToReadBuffer();
 
-        int32_t payloadSizeSum = 
-          payloadSize1+payloadSize2+payloadSize3+payloadSize4;
+        int32_t payloadSizeSum =
+            payloadSize1+payloadSize2+payloadSize3+payloadSize4;
 
         codec._forcePayloadRead = payloadSizeSum;
 
         codec.processRead();
 
         testOk(codec._invalidDataStreamCount == 0,
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
         testOk(codec._receivedControlMessages.size() == 0,
-          "%s: codec._receivedControlMessages.size() == 0 ", 
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 1, 
-          "%s: codec._receivedAppMessages.size() == 1", 
-          CURRENT_FUNCTION);
-        testOk(codec._readPollOneCount == 0, 
-          "%s: codec._readPollOneCount == 0", CURRENT_FUNCTION);
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 1,
+               "%s: codec._receivedAppMessages.size() == 1",
+               CURRENT_FUNCTION);
+        testOk(codec._readPollOneCount == 0,
+               "%s: codec._readPollOneCount == 0", CURRENT_FUNCTION);
 
         PVAMessage msg = codec._receivedAppMessages[0];
 
         testOk(msg._payload.get() != 0,
-          "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
+               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
 
         msg._payload->flip();
 
-        testOk((std::size_t)payloadSizeSum == 
-          msg._payload->getLimit(), 
-          "%s: payloadSizeSum == msg._payload->getLimit()", 
-          CURRENT_FUNCTION);
+        testOk((std::size_t)payloadSizeSum ==
+               msg._payload->getLimit(),
+               "%s: payloadSizeSum == msg._payload->getLimit()",
+               CURRENT_FUNCTION);
 
         for (int32_t i = 0; i < msg._payloadSize; i++)
-          testOk((int8_t)i == msg._payload->getByte(), 
-          "%s: (int8_t)i == msg._payload->getByte()", 
-          CURRENT_FUNCTION);
-      }
+            testOk((int8_t)i == msg._payload->getByte(),
+                   "%s: (int8_t)i == msg._payload->getByte()",
+                   CURRENT_FUNCTION);
+    }
 
 
-      void testStartMessageSegmentedMessageAlignment()  
-      {
+    void testStartMessageSegmentedMessageAlignment()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
         for (int32_t firstMessagePayloadSize = 1;	// cannot be zero
-          firstMessagePayloadSize <= 3*PVA_ALIGNMENT;
-          firstMessagePayloadSize++)
+                firstMessagePayloadSize <= 3*PVA_ALIGNMENT;
+                firstMessagePayloadSize++)
         {
-          for (int32_t secondMessagePayloadSize = 0;
-            secondMessagePayloadSize <= 2*PVA_ALIGNMENT;
-            secondMessagePayloadSize++)
-          {
-            // cannot be zero
-            for (int32_t thirdMessagePayloadSize = 1;		
-              thirdMessagePayloadSize <= 2*PVA_ALIGNMENT;
-              thirdMessagePayloadSize++)
+            for (int32_t secondMessagePayloadSize = 0;
+                    secondMessagePayloadSize <= 2*PVA_ALIGNMENT;
+                    secondMessagePayloadSize++)
             {
-              // cannot be zero
-              for (int32_t fourthMessagePayloadSize = 1;		
-                fourthMessagePayloadSize <= 2*PVA_ALIGNMENT;
-                fourthMessagePayloadSize++)
-              {
-                TestCodec codec(DEFAULT_BUFFER_SIZE,
-                  DEFAULT_BUFFER_SIZE);
+                // cannot be zero
+                for (int32_t thirdMessagePayloadSize = 1;
+                        thirdMessagePayloadSize <= 2*PVA_ALIGNMENT;
+                        thirdMessagePayloadSize++)
+                {
+                    // cannot be zero
+                    for (int32_t fourthMessagePayloadSize = 1;
+                            fourthMessagePayloadSize <= 2*PVA_ALIGNMENT;
+                            fourthMessagePayloadSize++)
+                    {
+                        TestCodec codec(DEFAULT_BUFFER_SIZE,
+                                        DEFAULT_BUFFER_SIZE);
 
-                codec._readPayload = true;
+                        codec._readPayload = true;
 
-                codec.startMessage((int8_t)0x01, 0);
+                        codec.startMessage((int8_t)0x01, 0);
 
-                int32_t c = 0;
+                        int32_t c = 0;
 
-                int32_t payloadSize1 = firstMessagePayloadSize;
-                for (int32_t i = 0; i < payloadSize1; i++)
-                  codec.getSendBuffer()->put((int8_t)(c++));
+                        int32_t payloadSize1 = firstMessagePayloadSize;
+                        for (int32_t i = 0; i < payloadSize1; i++)
+                            codec.getSendBuffer()->put((int8_t)(c++));
 
-                codec.flush(false);
+                        codec.flush(false);
 
-                int32_t payloadSize2 = secondMessagePayloadSize;
-                for (int32_t i = 0; i < payloadSize2; i++)
-                  codec.getSendBuffer()->put((int8_t)(c++));
+                        int32_t payloadSize2 = secondMessagePayloadSize;
+                        for (int32_t i = 0; i < payloadSize2; i++)
+                            codec.getSendBuffer()->put((int8_t)(c++));
 
-                codec.flush(false);
+                        codec.flush(false);
 
-                int32_t payloadSize3 = thirdMessagePayloadSize;
-                for (int32_t i = 0; i < payloadSize3; i++)
-                  codec.getSendBuffer()->put((int8_t)(c++));
+                        int32_t payloadSize3 = thirdMessagePayloadSize;
+                        for (int32_t i = 0; i < payloadSize3; i++)
+                            codec.getSendBuffer()->put((int8_t)(c++));
 
-                codec.flush(false);
+                        codec.flush(false);
 
-                int32_t payloadSize4 = fourthMessagePayloadSize;
-                for (int32_t i = 0; i < payloadSize4; i++)
-                  codec.getSendBuffer()->put((int8_t)(c++));
+                        int32_t payloadSize4 = fourthMessagePayloadSize;
+                        for (int32_t i = 0; i < payloadSize4; i++)
+                            codec.getSendBuffer()->put((int8_t)(c++));
 
-                codec.endMessage();
+                        codec.endMessage();
 
-                codec.transferToReadBuffer();
+                        codec.transferToReadBuffer();
 
-                int32_t payloadSizeSum = 
-                  payloadSize1+payloadSize2+payloadSize3
-                  +payloadSize4;
+                        int32_t payloadSizeSum =
+                            payloadSize1+payloadSize2+payloadSize3
+                            +payloadSize4;
 
-                codec._forcePayloadRead = payloadSizeSum;
+                        codec._forcePayloadRead = payloadSizeSum;
 
-                codec.processRead();
+                        codec.processRead();
 
-                testOk(codec._invalidDataStreamCount == 0, 
-                  "%s: codec._invalidDataStreamCount == 0", 
-                  CURRENT_FUNCTION);
-                testOk(codec._closedCount == 0, 
-                  "%s: codec._closedCount == 0", CURRENT_FUNCTION);
-                testOk(codec._receivedControlMessages.size() == 0, 
-                  "%s: codec._receivedControlMessages.size() == 0 ",
-                  CURRENT_FUNCTION);
-                testOk(codec._receivedAppMessages.size() == 1,
-                  "%s: codec._receivedAppMessages.size() == 1", 
-                  CURRENT_FUNCTION);
-                testOk(codec._readPollOneCount == 0, 
-                  "%s: codec._readPollOneCount == 0", 
-                  CURRENT_FUNCTION);
+                        testOk(codec._invalidDataStreamCount == 0,
+                               "%s: codec._invalidDataStreamCount == 0",
+                               CURRENT_FUNCTION);
+                        testOk(codec._closedCount == 0,
+                               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+                        testOk(codec._receivedControlMessages.size() == 0,
+                               "%s: codec._receivedControlMessages.size() == 0 ",
+                               CURRENT_FUNCTION);
+                        testOk(codec._receivedAppMessages.size() == 1,
+                               "%s: codec._receivedAppMessages.size() == 1",
+                               CURRENT_FUNCTION);
+                        testOk(codec._readPollOneCount == 0,
+                               "%s: codec._readPollOneCount == 0",
+                               CURRENT_FUNCTION);
 
-                PVAMessage msg = codec._receivedAppMessages[0];
+                        PVAMessage msg = codec._receivedAppMessages[0];
 
-                testOk(msg._payload.get() != 0, 
-                  "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
+                        testOk(msg._payload.get() != 0,
+                               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
 
-                msg._payload->flip();
+                        msg._payload->flip();
 
-                testOk((std::size_t)payloadSizeSum == 
-                  msg._payload->getLimit(), 
-                  "%s: payloadSizeSum == msg._payload->getLimit()",
-                  CURRENT_FUNCTION);
+                        testOk((std::size_t)payloadSizeSum ==
+                               msg._payload->getLimit(),
+                               "%s: payloadSizeSum == msg._payload->getLimit()",
+                               CURRENT_FUNCTION);
 
-                for (int32_t i = 0; i < msg._payloadSize; i++) {
-                  if ((int8_t)i != msg._payload->getByte()) {
-                    testFail(
-                      "%s: (int8_t)%d == msg._payload->getByte()",
-                      CURRENT_FUNCTION, (int8_t)i);
-                  }
+                        for (int32_t i = 0; i < msg._payloadSize; i++) {
+                            if ((int8_t)i != msg._payload->getByte()) {
+                                testFail(
+                                    "%s: (int8_t)%d == msg._payload->getByte()",
+                                    CURRENT_FUNCTION, (int8_t)i);
+                            }
+                        }
+                    }
                 }
-              }
             }
-          }
         }
-      }
+    }
 
 
-      void testReadNormalConnectionLoss() 
-      {
+    void testReadNormalConnectionLoss()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
@@ -2036,195 +2070,195 @@ namespace epics {
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 1, 
-          "%s: codec._closedCount == 1", CURRENT_FUNCTION);
-        testOk(codec._receivedControlMessages.size() == 0, 
-          "%s: codec._receivedControlMessages.size() == 0 ", 
-          CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 1,
+               "%s: codec._closedCount == 1", CURRENT_FUNCTION);
+        testOk(codec._receivedControlMessages.size() == 0,
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
         testOk(codec._receivedAppMessages.size() == 0,
-          "%s: codec._receivedAppMessages.size() == 0", 
-          CURRENT_FUNCTION);
-      }
+               "%s: codec._receivedAppMessages.size() == 0",
+               CURRENT_FUNCTION);
+    }
 
 
-      class ReadPollOneCallbackForTestSegmentedSplitConnectionLoss:
+    class ReadPollOneCallbackForTestSegmentedSplitConnectionLoss:
         public ReadPollOneCallback {
 
-      public:
+    public:
 
         ReadPollOneCallbackForTestSegmentedSplitConnectionLoss(
-          TestCodec & codec): _codec(codec) {}
+            TestCodec & codec): _codec(codec) {}
 
 
         void readPollOne()  {
-          if (_codec._readPollOneCount == 1)
-          {
-            _codec._disconnected = true;
-          }
-          else
-            throw std::logic_error("should not happen");
+            if (_codec._readPollOneCount == 1)
+            {
+                _codec._disconnected = true;
+            }
+            else
+                throw std::logic_error("should not happen");
         }
 
-      private:
+    private:
         TestCodec &_codec;
-      };
+    };
 
 
-      void testSegmentedSplitConnectionLoss()
-      {
+    void testSegmentedSplitConnectionLoss()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
 
         for (int32_t firstMessagePayloadSize = 1;	// cannot be zero
-          firstMessagePayloadSize <= 3*PVA_ALIGNMENT;
-          firstMessagePayloadSize++)
+                firstMessagePayloadSize <= 3*PVA_ALIGNMENT;
+                firstMessagePayloadSize++)
         {
-          for (int32_t secondMessagePayloadSize = 0;
-            secondMessagePayloadSize <= 2*PVA_ALIGNMENT;
-            secondMessagePayloadSize++)
-          {
-            // cannot be zero
-            for (int32_t thirdMessagePayloadSize = 1;		
-              thirdMessagePayloadSize <= 2*PVA_ALIGNMENT;
-              thirdMessagePayloadSize++)
+            for (int32_t secondMessagePayloadSize = 0;
+                    secondMessagePayloadSize <= 2*PVA_ALIGNMENT;
+                    secondMessagePayloadSize++)
             {
-              std::size_t splitAt = 1;
-
-              while (true)
-              {
-                TestCodec codec(DEFAULT_BUFFER_SIZE,
-                  DEFAULT_BUFFER_SIZE);
-
-                codec._readPayload = true;
-
-                // 1st
-                codec._readBuffer->put(PVA_MAGIC);
-                codec._readBuffer->put(PVA_VERSION);
-                codec._readBuffer->put((int8_t)0x90);
-                codec._readBuffer->put((int8_t)0x01);
-
-                int32_t payloadSize1 = firstMessagePayloadSize;
-                codec._readBuffer->putInt(payloadSize1);
-
-                int32_t c = 0;
-                for (int32_t i = 0; i < payloadSize1; i++)
-                  codec._readBuffer->put((int8_t)(c++));
-
-                std::size_t aligned = 
-                  AbstractCodec::alignedValue(
-                  payloadSize1, PVA_ALIGNMENT);
-
-                for (std::size_t i = payloadSize1; i < aligned; i++)
-                  codec._readBuffer->put((int8_t)0xFF);
-
-                // 2nd
-                codec._readBuffer->put(PVA_MAGIC);
-                codec._readBuffer->put(PVA_VERSION);
-                codec._readBuffer->put((int8_t)0xB0);
-                codec._readBuffer->put((int8_t)0x01);
-
-                int32_t payloadSize2 = secondMessagePayloadSize;
-                int32_t payloadSize2Real = 
-                  payloadSize2 + payloadSize1 % PVA_ALIGNMENT;
-
-                codec._readBuffer->putInt(payloadSize2Real);
-
-                // pre-message padding 
-                for (int32_t i = 0; 
-                  i < payloadSize1 % PVA_ALIGNMENT; i++)
-                  codec._readBuffer->put((int8_t)0xEE);
-
-                for (int32_t i = 0; i < payloadSize2; i++)
-                  codec._readBuffer->put((int8_t)(c++));
-
-                aligned =
-                  AbstractCodec::alignedValue(
-                  payloadSize2Real, PVA_ALIGNMENT);
-
-                for (std::size_t i = payloadSize2Real; 
-                  i < aligned; i++)
-                  codec._readBuffer->put((int8_t)0xFF);
-
-                // 3rd
-                codec._readBuffer->put(PVA_MAGIC);
-                codec._readBuffer->put(PVA_VERSION);
-                codec._readBuffer->put((int8_t)0xA0);
-                codec._readBuffer->put((int8_t)0x01);
-
-                int32_t payloadSize3 = thirdMessagePayloadSize;
-                int32_t payloadSize3Real = 
-                  payloadSize3 + payloadSize2Real % PVA_ALIGNMENT;
-
-                codec._readBuffer->putInt(payloadSize3Real);
-
-                // pre-message padding required
-                for (int32_t i = 0; 
-                  i < payloadSize2Real % PVA_ALIGNMENT; i++)
-                  codec._readBuffer->put((int8_t)0xEE);
-
-                for (int32_t i = 0; i < payloadSize3; i++)
-                  codec._readBuffer->put((int8_t)(c++));
-
-                aligned = 
-                  AbstractCodec::alignedValue(
-                  payloadSize3Real, PVA_ALIGNMENT);
-
-                for (std::size_t i = payloadSize3Real; 
-                  i < aligned; i++)
-                  codec._readBuffer->put((int8_t)0xFF);
-
-                codec._readBuffer->flip();
-
-                std::size_t realReadBufferEnd = 
-                  codec._readBuffer->getLimit();
-
-                if (splitAt++ == realReadBufferEnd-1)
-                  break;
-
-                codec._readBuffer->setLimit(splitAt);
-
-                std::auto_ptr<ReadPollOneCallback> 
-                  readPollOneCallback( new
-                  ReadPollOneCallbackForTestSegmentedSplitConnectionLoss
-                  (codec));
-
-
-                codec._readPollOneCallback = readPollOneCallback;
-
-                int32_t payloadSizeSum = 
-                  payloadSize1+payloadSize2+payloadSize3;
-
-                codec._forcePayloadRead = payloadSizeSum;
-
-                codec.processRead();
-
-                while (codec._closedCount == 0 && 
-                  codec._invalidDataStreamCount == 0 &&
-                  codec._readBuffer->getPosition() != 
-                  realReadBufferEnd)
+                // cannot be zero
+                for (int32_t thirdMessagePayloadSize = 1;
+                        thirdMessagePayloadSize <= 2*PVA_ALIGNMENT;
+                        thirdMessagePayloadSize++)
                 {
-                  codec._readPollOneCount++;
-                  codec._readPollOneCallback->readPollOne();
-                  codec.processRead();
+                    std::size_t splitAt = 1;
+
+                    while (true)
+                    {
+                        TestCodec codec(DEFAULT_BUFFER_SIZE,
+                                        DEFAULT_BUFFER_SIZE);
+
+                        codec._readPayload = true;
+
+                        // 1st
+                        codec._readBuffer->put(PVA_MAGIC);
+                        codec._readBuffer->put(PVA_VERSION);
+                        codec._readBuffer->put((int8_t)0x90);
+                        codec._readBuffer->put((int8_t)0x01);
+
+                        int32_t payloadSize1 = firstMessagePayloadSize;
+                        codec._readBuffer->putInt(payloadSize1);
+
+                        int32_t c = 0;
+                        for (int32_t i = 0; i < payloadSize1; i++)
+                            codec._readBuffer->put((int8_t)(c++));
+
+                        std::size_t aligned =
+                            AbstractCodec::alignedValue(
+                                payloadSize1, PVA_ALIGNMENT);
+
+                        for (std::size_t i = payloadSize1; i < aligned; i++)
+                            codec._readBuffer->put((int8_t)0xFF);
+
+                        // 2nd
+                        codec._readBuffer->put(PVA_MAGIC);
+                        codec._readBuffer->put(PVA_VERSION);
+                        codec._readBuffer->put((int8_t)0xB0);
+                        codec._readBuffer->put((int8_t)0x01);
+
+                        int32_t payloadSize2 = secondMessagePayloadSize;
+                        int32_t payloadSize2Real =
+                            payloadSize2 + payloadSize1 % PVA_ALIGNMENT;
+
+                        codec._readBuffer->putInt(payloadSize2Real);
+
+                        // pre-message padding
+                        for (int32_t i = 0;
+                                i < payloadSize1 % PVA_ALIGNMENT; i++)
+                            codec._readBuffer->put((int8_t)0xEE);
+
+                        for (int32_t i = 0; i < payloadSize2; i++)
+                            codec._readBuffer->put((int8_t)(c++));
+
+                        aligned =
+                            AbstractCodec::alignedValue(
+                                payloadSize2Real, PVA_ALIGNMENT);
+
+                        for (std::size_t i = payloadSize2Real;
+                                i < aligned; i++)
+                            codec._readBuffer->put((int8_t)0xFF);
+
+                        // 3rd
+                        codec._readBuffer->put(PVA_MAGIC);
+                        codec._readBuffer->put(PVA_VERSION);
+                        codec._readBuffer->put((int8_t)0xA0);
+                        codec._readBuffer->put((int8_t)0x01);
+
+                        int32_t payloadSize3 = thirdMessagePayloadSize;
+                        int32_t payloadSize3Real =
+                            payloadSize3 + payloadSize2Real % PVA_ALIGNMENT;
+
+                        codec._readBuffer->putInt(payloadSize3Real);
+
+                        // pre-message padding required
+                        for (int32_t i = 0;
+                                i < payloadSize2Real % PVA_ALIGNMENT; i++)
+                            codec._readBuffer->put((int8_t)0xEE);
+
+                        for (int32_t i = 0; i < payloadSize3; i++)
+                            codec._readBuffer->put((int8_t)(c++));
+
+                        aligned =
+                            AbstractCodec::alignedValue(
+                                payloadSize3Real, PVA_ALIGNMENT);
+
+                        for (std::size_t i = payloadSize3Real;
+                                i < aligned; i++)
+                            codec._readBuffer->put((int8_t)0xFF);
+
+                        codec._readBuffer->flip();
+
+                        std::size_t realReadBufferEnd =
+                            codec._readBuffer->getLimit();
+
+                        if (splitAt++ == realReadBufferEnd-1)
+                            break;
+
+                        codec._readBuffer->setLimit(splitAt);
+
+                        std::auto_ptr<ReadPollOneCallback>
+                        readPollOneCallback( new
+                                             ReadPollOneCallbackForTestSegmentedSplitConnectionLoss
+                                             (codec));
+
+
+                        codec._readPollOneCallback = readPollOneCallback;
+
+                        int32_t payloadSizeSum =
+                            payloadSize1+payloadSize2+payloadSize3;
+
+                        codec._forcePayloadRead = payloadSizeSum;
+
+                        codec.processRead();
+
+                        while (codec._closedCount == 0 &&
+                                codec._invalidDataStreamCount == 0 &&
+                                codec._readBuffer->getPosition() !=
+                                realReadBufferEnd)
+                        {
+                            codec._readPollOneCount++;
+                            codec._readPollOneCallback->readPollOne();
+                            codec.processRead();
+                        }
+
+                        testOk(codec._invalidDataStreamCount == 0,
+                               "%s: codec._invalidDataStreamCount == 0",
+                               CURRENT_FUNCTION);
+                        testOk(codec._closedCount == 1,
+                               "%s: codec._closedCount == 1", CURRENT_FUNCTION);
+                    }
                 }
-
-                testOk(codec._invalidDataStreamCount == 0, 
-                  "%s: codec._invalidDataStreamCount == 0",
-                  CURRENT_FUNCTION);
-                testOk(codec._closedCount == 1, 
-                  "%s: codec._closedCount == 1", CURRENT_FUNCTION);
-              }
             }
-          }
         }
-      }
+    }
 
 
-      void testSendConnectionLoss()
-      {
+    void testSendConnectionLoss()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
@@ -2235,25 +2269,25 @@ namespace epics {
 
         try
         {
-          codec.transferToReadBuffer();
-          testFail("%s: connection lost, but not reported", 
-            CURRENT_FUNCTION);
+            codec.transferToReadBuffer();
+            testFail("%s: connection lost, but not reported",
+                     CURRENT_FUNCTION);
         }
         catch (connection_closed_exception & ) {
-          testOk(true, "%s: connection closed exception expected", 
-            CURRENT_FUNCTION);
+            testOk(true, "%s: connection closed exception expected",
+                   CURRENT_FUNCTION);
         }
 
-        testOk(codec._closedCount == 1, 
-          "%s: codec._closedCount == 1", CURRENT_FUNCTION);
-      }
+        testOk(codec._closedCount == 1,
+               "%s: codec._closedCount == 1", CURRENT_FUNCTION);
+    }
 
-      class TransportSenderForTestEnqueueSendRequest: 
+    class TransportSenderForTestEnqueueSendRequest:
         public TransportSender {
-      public:
+    public:
 
         TransportSenderForTestEnqueueSendRequest(
-          TestCodec & codec): _codec(codec) {}
+            TestCodec & codec): _codec(codec) {}
 
         void unlock() {
         }
@@ -2261,24 +2295,24 @@ namespace epics {
         void lock() {
         }
 
-        void send(epics::pvData::ByteBuffer* buffer, 
-          TransportSendControl* control)
+        void send(epics::pvData::ByteBuffer* buffer,
+                  TransportSendControl* control)
         {
-          _codec.startMessage((int8_t)0x20, 0x00000000);
-          _codec.endMessage();
+            _codec.startMessage((int8_t)0x20, 0x00000000);
+            _codec.endMessage();
         }
 
-      private:
+    private:
         TestCodec &_codec;
-      };
+    };
 
 
-      class TransportSender2ForTestEnqueueSendRequest: 
+    class TransportSender2ForTestEnqueueSendRequest:
         public TransportSender {
-      public:
+    public:
 
         TransportSender2ForTestEnqueueSendRequest(
-          TestCodec & codec): _codec(codec) {}
+            TestCodec & codec): _codec(codec) {}
 
         void unlock() {
         }
@@ -2286,88 +2320,88 @@ namespace epics {
         void lock() {
         }
 
-        void send(epics::pvData::ByteBuffer* buffer, 
-          TransportSendControl* control)
+        void send(epics::pvData::ByteBuffer* buffer,
+                  TransportSendControl* control)
         {
-          _codec.putControlMessage((int8_t)0xEE, 0xDDCCBBAA);
+            _codec.putControlMessage((int8_t)0xEE, 0xDDCCBBAA);
         }
 
-      private:
+    private:
         TestCodec &_codec;
-      };
+    };
 
 
-      void testEnqueueSendRequest() 
-      {
+    void testEnqueueSendRequest()
+    {
 
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
-        std::tr1::shared_ptr<TransportSender> sender = 
-          std::tr1::shared_ptr<TransportSender>(
-          new TransportSenderForTestEnqueueSendRequest(codec));
+        std::tr1::shared_ptr<TransportSender> sender =
+            std::tr1::shared_ptr<TransportSender>(
+                new TransportSenderForTestEnqueueSendRequest(codec));
 
-        std::tr1::shared_ptr<TransportSender> sender2 = 
-          std::tr1::shared_ptr<TransportSender>(
-          new TransportSender2ForTestEnqueueSendRequest(codec));
+        std::tr1::shared_ptr<TransportSender> sender2 =
+            std::tr1::shared_ptr<TransportSender>(
+                new TransportSender2ForTestEnqueueSendRequest(codec));
 
         // process
         codec.enqueueSendRequest(sender);
         codec.enqueueSendRequest(sender2);
         codec.breakSender();
-        try{
+        try {
             codec.processSendQueue();
-        }catch(sender_break&) {}
+        } catch(sender_break&) {}
 
         codec.transferToReadBuffer();
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
         testOk(codec._closedCount == 0,
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
-        testOk(codec._receivedControlMessages.size() == 1, 
-          "%s: codec._receivedControlMessages.size() == 1 ", 
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 1, 
-          "%s: codec._receivedAppMessages.size() == 1", 
-          CURRENT_FUNCTION);
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._receivedControlMessages.size() == 1,
+               "%s: codec._receivedControlMessages.size() == 1 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 1,
+               "%s: codec._receivedAppMessages.size() == 1",
+               CURRENT_FUNCTION);
 
 
         // app, no payload
         PVAMessage header = codec._receivedAppMessages[0];
 
         testOk(header._version == PVA_VERSION,
-          "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x00),
-          "%s: header._flags == 0x(0|8)0", CURRENT_FUNCTION);
+               "%s: header._flags == 0x(0|8)0", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0x20,
-          "%s: header._command == 0x20", CURRENT_FUNCTION);
-        testOk(header._payloadSize == 0x00000000, 
-          "%s: header._payloadSize == 0x00000000", CURRENT_FUNCTION);
+               "%s: header._command == 0x20", CURRENT_FUNCTION);
+        testOk(header._payloadSize == 0x00000000,
+               "%s: header._payloadSize == 0x00000000", CURRENT_FUNCTION);
 
         // control
         header = codec._receivedControlMessages[0];
 
-        testOk(header._version == PVA_VERSION, 
-          "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_VERSION,
+               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x01),
-          "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
+               "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0xEE,
-          "%s: header._command == 0xEE", CURRENT_FUNCTION);
+               "%s: header._command == 0xEE", CURRENT_FUNCTION);
         testOk(header._payloadSize == (int32_t)0xDDCCBBAA,
-          "%s: header._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
-      }
+               "%s: header._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
+    }
 
 
-      class TransportSenderForTestEnqueueSendDirectRequest: 
+    class TransportSenderForTestEnqueueSendDirectRequest:
         public TransportSender {
-      public:
+    public:
 
         TransportSenderForTestEnqueueSendDirectRequest(
-          TestCodec & codec): _codec(codec) {}
+            TestCodec & codec): _codec(codec) {}
 
         void unlock() {
         }
@@ -2375,24 +2409,24 @@ namespace epics {
         void lock() {
         }
 
-        void send(epics::pvData::ByteBuffer* buffer, 
-          TransportSendControl* control)
+        void send(epics::pvData::ByteBuffer* buffer,
+                  TransportSendControl* control)
         {
-          _codec.startMessage((int8_t)0x20, 0x00000000);
-          _codec.endMessage();
+            _codec.startMessage((int8_t)0x20, 0x00000000);
+            _codec.endMessage();
         }
 
-      private:
+    private:
         TestCodec &_codec;
-      };
+    };
 
 
-      class TransportSender2ForTestEnqueueSendDirectRequest: 
+    class TransportSender2ForTestEnqueueSendDirectRequest:
         public TransportSender {
-      public:
+    public:
 
         TransportSender2ForTestEnqueueSendDirectRequest(
-          TestCodec & codec): _codec(codec) {}
+            TestCodec & codec): _codec(codec) {}
 
         void unlock() {
         }
@@ -2400,72 +2434,72 @@ namespace epics {
         void lock() {
         }
 
-        void send(epics::pvData::ByteBuffer* buffer, 
-          TransportSendControl* control)
+        void send(epics::pvData::ByteBuffer* buffer,
+                  TransportSendControl* control)
         {
-          _codec.putControlMessage((int8_t)0xEE, 
-            0xDDCCBBAA);        
+            _codec.putControlMessage((int8_t)0xEE,
+                                     0xDDCCBBAA);
         }
 
-      private:
+    private:
         TestCodec &_codec;
-      };
+    };
 
 
-      void testEnqueueSendDirectRequest() 
-      {
+    void testEnqueueSendDirectRequest()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
-        std::tr1::shared_ptr<TransportSender> sender = 
-          std::tr1::shared_ptr<TransportSender>(
-          new TransportSenderForTestEnqueueSendDirectRequest(codec));
-        std::tr1::shared_ptr<TransportSender> sender2 = 
-          std::tr1::shared_ptr<TransportSender>(
-          new TransportSender2ForTestEnqueueSendDirectRequest
-          (codec));
+        std::tr1::shared_ptr<TransportSender> sender =
+            std::tr1::shared_ptr<TransportSender>(
+                new TransportSenderForTestEnqueueSendDirectRequest(codec));
+        std::tr1::shared_ptr<TransportSender> sender2 =
+            std::tr1::shared_ptr<TransportSender>(
+                new TransportSender2ForTestEnqueueSendDirectRequest
+                (codec));
 
 
         // thread not right
         codec.enqueueSendRequest(sender, PVA_MESSAGE_HEADER_SIZE);
 
 
-        testOk(1 == codec._scheduleSendCount, 
-          "%s: 1 == codec._scheduleSendCount", CURRENT_FUNCTION);
-        testOk(0 == codec._receivedControlMessages.size(), 
-          "%s: 0 == codec._receivedControlMessages.size()", 
-          CURRENT_FUNCTION);
-        testOk(0 == codec._receivedAppMessages.size(), 
-          "%s: 0 == codec._receivedAppMessages.size()", 
-          CURRENT_FUNCTION);
+        testOk(1 == codec._scheduleSendCount,
+               "%s: 1 == codec._scheduleSendCount", CURRENT_FUNCTION);
+        testOk(0 == codec._receivedControlMessages.size(),
+               "%s: 0 == codec._receivedControlMessages.size()",
+               CURRENT_FUNCTION);
+        testOk(0 == codec._receivedAppMessages.size(),
+               "%s: 0 == codec._receivedAppMessages.size()",
+               CURRENT_FUNCTION);
 
         codec.setSenderThread();
 
         // not empty queue
         codec.enqueueSendRequest(sender2, PVA_MESSAGE_HEADER_SIZE);
 
-        testOk(2 == codec._scheduleSendCount, 
-          "%s: 2 == codec._scheduleSendCount", CURRENT_FUNCTION);
+        testOk(2 == codec._scheduleSendCount,
+               "%s: 2 == codec._scheduleSendCount", CURRENT_FUNCTION);
         testOk(0 == codec._receivedControlMessages.size(),
-          "%s: 0 == codec._receivedControlMessages.size()", 
-          CURRENT_FUNCTION);
+               "%s: 0 == codec._receivedControlMessages.size()",
+               CURRENT_FUNCTION);
         testOk(0 == codec._receivedAppMessages.size(),
-          "%s: 0 == codec._receivedAppMessages.size()", 
-          CURRENT_FUNCTION);
+               "%s: 0 == codec._receivedAppMessages.size()",
+               CURRENT_FUNCTION);
 
-        // send will be triggered after last 
+        // send will be triggered after last
         //was processed
-        testOk(0 == codec._sendCompletedCount, 
-          "%s: 0 == codec._sendCompletedCount", CURRENT_FUNCTION);
+        testOk(0 == codec._sendCompletedCount,
+               "%s: 0 == codec._sendCompletedCount", CURRENT_FUNCTION);
         testOk1(!codec.sendQueueEmpty());
 
         codec.breakSender();
-        try{
+        try {
             codec.processSendQueue();
-        }catch(sender_break&) {}
+        } catch(sender_break&) {}
 
-        testOk(1 == codec._sendCompletedCount, 
-          "%s: 1 == codec._sendCompletedCount", CURRENT_FUNCTION);
+        testOk(1 == codec._sendCompletedCount,
+               "%s: 1 == codec._sendCompletedCount", CURRENT_FUNCTION);
         testOk1(codec.sendQueueEmpty());
 
         codec.transferToReadBuffer();
@@ -2473,110 +2507,110 @@ namespace epics {
         codec.processRead();
 
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
         testOk(codec._closedCount == 0,
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
         testOk(codec._receivedControlMessages.size() == 1,
-          "%s: codec._receivedControlMessages.size() == 1 ",
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 1, 
-          "%s: codec._receivedAppMessages.size() == 1", 
-          CURRENT_FUNCTION);
+               "%s: codec._receivedControlMessages.size() == 1 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 1,
+               "%s: codec._receivedAppMessages.size() == 1",
+               CURRENT_FUNCTION);
 
         // app, no payload
         PVAMessage header = codec._receivedAppMessages[0];
 
-        testOk(header._version == PVA_VERSION, 
-          "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_VERSION,
+               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x00),
-          "%s: header._flags == 0x(0|8)0", CURRENT_FUNCTION);
+               "%s: header._flags == 0x(0|8)0", CURRENT_FUNCTION);
         testOk(header._command == 0x20,
-          "%s: header._command == 0x20", CURRENT_FUNCTION);
+               "%s: header._command == 0x20", CURRENT_FUNCTION);
         testOk(header._payloadSize == 0x00000000,
-          "%s: header._payloadSize == 0x00000000", CURRENT_FUNCTION);
+               "%s: header._payloadSize == 0x00000000", CURRENT_FUNCTION);
 
 
         // control
         header = codec._receivedControlMessages[0];
 
         testOk(header._version == PVA_VERSION,
-          "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x01),
-          "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
+               "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0xEE,
-          "%s: header._command == 0xEE", CURRENT_FUNCTION);
+               "%s: header._command == 0xEE", CURRENT_FUNCTION);
         testOk(header._payloadSize == (int32_t)0xDDCCBBAA,
-          "%s: header._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
+               "%s: header._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
 
 
-        testOk(0 == codec.getSendBuffer()->getPosition(), 
-          "%s: 0 == codec.getSendBuffer()->getPosition()", 
-          CURRENT_FUNCTION);
+        testOk(0 == codec.getSendBuffer()->getPosition(),
+               "%s: 0 == codec.getSendBuffer()->getPosition()",
+               CURRENT_FUNCTION);
 
         testOk1(codec.sendQueueEmpty());
 
         testDiag("%u %u", (unsigned)codec._scheduleSendCount,
-                (unsigned)codec._sendCompletedCount);
+                 (unsigned)codec._sendCompletedCount);
         testOk1(3 == codec._scheduleSendCount);
         testOk1(1 == codec._sendCompletedCount);
 
         // now queue is empty and thread is right
         codec.enqueueSendRequest(sender2, PVA_MESSAGE_HEADER_SIZE);
 
-        testOk((std::size_t)PVA_MESSAGE_HEADER_SIZE == 
-          codec.getSendBuffer()->getPosition(), 
-          "%s: PVA_MESSAGE_HEADER_SIZE == "
-          "codec.getSendBuffer()->getPosition()", 
-          CURRENT_FUNCTION);
+        testOk((std::size_t)PVA_MESSAGE_HEADER_SIZE ==
+               codec.getSendBuffer()->getPosition(),
+               "%s: PVA_MESSAGE_HEADER_SIZE == "
+               "codec.getSendBuffer()->getPosition()",
+               CURRENT_FUNCTION);
 
         testDiag("%u %u", (unsigned)codec._scheduleSendCount,
-                (unsigned)codec._sendCompletedCount);
+                 (unsigned)codec._sendCompletedCount);
         testOk1(4 == codec._scheduleSendCount);
         testOk1(1 == codec._sendCompletedCount);
 
         codec.breakSender();
 
-        try{
+        try {
             codec.processWrite();
-        }catch(sender_break&) {}
+        } catch(sender_break&) {}
 
-        testOk(2 == codec._sendCompletedCount, 
-          "%s: 2 == codec._sendCompletedCount", CURRENT_FUNCTION);
+        testOk(2 == codec._sendCompletedCount,
+               "%s: 2 == codec._sendCompletedCount", CURRENT_FUNCTION);
 
 
         codec.transferToReadBuffer();
         codec.processRead();
 
         testOk(codec._receivedControlMessages.size() == 2,
-          "%s: codec._receivedControlMessages.size() == 2 ",
-          CURRENT_FUNCTION);
+               "%s: codec._receivedControlMessages.size() == 2 ",
+               CURRENT_FUNCTION);
         testOk(codec._receivedAppMessages.size() == 1,
-          "%s: codec._receivedAppMessages.size() == 1", 
-          CURRENT_FUNCTION);
+               "%s: codec._receivedAppMessages.size() == 1",
+               CURRENT_FUNCTION);
 
         header = codec._receivedControlMessages[1];
 
-        testOk(header._version == PVA_VERSION, 
-          "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_VERSION,
+               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x01),
-          "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
+               "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0xEE,
-          "%s: header._command == 0xEE", CURRENT_FUNCTION);
+               "%s: header._command == 0xEE", CURRENT_FUNCTION);
         testOk(header._payloadSize == (int32_t)0xDDCCBBAA,
-          "%s: header._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
-      }
+               "%s: header._payloadSize == 0xDDCCBBAA", CURRENT_FUNCTION);
+    }
 
 
 
-      class TransportSenderForTestSendPerPartes: 
+    class TransportSenderForTestSendPerPartes:
         public TransportSender {
-      public:
+    public:
 
         TransportSenderForTestSendPerPartes(
-          TestCodec & codec, std::size_t bytesToSend):
-        _codec(codec), _bytesToSent(bytesToSend) {}
+            TestCodec & codec, std::size_t bytesToSend):
+            _codec(codec), _bytesToSent(bytesToSend) {}
 
         void unlock() {
         }
@@ -2584,101 +2618,101 @@ namespace epics {
         void lock() {
         }
 
-        void send(epics::pvData::ByteBuffer* buffer, 
-          TransportSendControl* control)
+        void send(epics::pvData::ByteBuffer* buffer,
+                  TransportSendControl* control)
         {
-          _codec.startMessage((int8_t)0x12, _bytesToSent);
+            _codec.startMessage((int8_t)0x12, _bytesToSent);
 
-          for (std::size_t i = 0; i < _bytesToSent; i++)
-            _codec.getSendBuffer()->put((int8_t)i);
+            for (std::size_t i = 0; i < _bytesToSent; i++)
+                _codec.getSendBuffer()->put((int8_t)i);
 
-          _codec.endMessage();
+            _codec.endMessage();
         }
 
-      private:
+    private:
         TestCodec &_codec;
         std::size_t _bytesToSent;
-      };
+    };
 
 
-      void testSendPerPartes() 
-      {
+    void testSendPerPartes()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
-        std::size_t bytesToSent = 
-          DEFAULT_BUFFER_SIZE - 2*PVA_MESSAGE_HEADER_SIZE;
+        std::size_t bytesToSent =
+            DEFAULT_BUFFER_SIZE - 2*PVA_MESSAGE_HEADER_SIZE;
 
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
-        std::tr1::shared_ptr<TransportSender> sender = 
-          std::tr1::shared_ptr<TransportSender>(
-          new TransportSenderForTestSendPerPartes(
-          codec, bytesToSent));
+        std::tr1::shared_ptr<TransportSender> sender =
+            std::tr1::shared_ptr<TransportSender>(
+                new TransportSenderForTestSendPerPartes(
+                    codec, bytesToSent));
 
         codec._readPayload = true;
 
         // process
         codec.enqueueSendRequest(sender);
         codec.breakSender();
-        try{
+        try {
             codec.processSendQueue();
-        }catch(sender_break&) {}
+        } catch(sender_break&) {}
 
         codec.transferToReadBuffer();
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
-        testOk(codec._receivedControlMessages.size() == 0, 
-          "%s: codec._receivedControlMessages.size() == 0 ", 
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 1, 
-          "%s: codec._receivedAppMessages.size() == 1", 
-          CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._receivedControlMessages.size() == 0,
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 1,
+               "%s: codec._receivedAppMessages.size() == 1",
+               CURRENT_FUNCTION);
 
 
         // app
         PVAMessage header = codec._receivedAppMessages[0];
 
-        testOk(header._version == PVA_VERSION, 
-          "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_VERSION,
+               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)0x80,
-          "%s: header._flags == 0x80", CURRENT_FUNCTION);
+               "%s: header._flags == 0x80", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0x12,
-          "%s: header._command == 0x12", CURRENT_FUNCTION);
+               "%s: header._command == 0x12", CURRENT_FUNCTION);
         testOk(header._payloadSize == (int32_t)bytesToSent,
-          "%s: header._payloadSize == bytesToSent", 
-          CURRENT_FUNCTION);
+               "%s: header._payloadSize == bytesToSent",
+               CURRENT_FUNCTION);
 
 
-        testOk(header._payload.get() != 0, 
-          "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
+        testOk(header._payload.get() != 0,
+               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
 
         header._payload->flip();
 
-        testOk(bytesToSent == header._payload->getLimit(), 
-          "%s: bytesToSent == header._payload->getLimit()",
-          CURRENT_FUNCTION);
+        testOk(bytesToSent == header._payload->getLimit(),
+               "%s: bytesToSent == header._payload->getLimit()",
+               CURRENT_FUNCTION);
 
         for (int32_t i = 0; i < header._payloadSize; i++) {
-          if ((int8_t)i != header._payload->getByte()) {
-            testFail("%s: (int8_t)%d == header._payload->getByte()", 
-              CURRENT_FUNCTION, (int)i);
-          }
+            if ((int8_t)i != header._payload->getByte()) {
+                testFail("%s: (int8_t)%d == header._payload->getByte()",
+                         CURRENT_FUNCTION, (int)i);
+            }
         }
-      }	
+    }
 
 
-      class TransportSenderForTestSendException: 
+    class TransportSenderForTestSendException:
         public TransportSender {
-      public:
+    public:
 
         TransportSenderForTestSendException(
-          TestCodec & codec): _codec(codec) {}
+            TestCodec & codec): _codec(codec) {}
 
         void unlock() {
         }
@@ -2686,26 +2720,26 @@ namespace epics {
         void lock() {
         }
 
-        void send(epics::pvData::ByteBuffer* buffer, 
-          TransportSendControl* control)
+        void send(epics::pvData::ByteBuffer* buffer,
+                  TransportSendControl* control)
         {
-          _codec.putControlMessage((int8_t)0x01, 0x00112233);
+            _codec.putControlMessage((int8_t)0x01, 0x00112233);
         }
 
-      private:
+    private:
         TestCodec &_codec;
-      };
+    };
 
 
-      void testSendException() 
-      {
+    void testSendException()
+    {
 
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
-        std::tr1::shared_ptr<TransportSender> sender = 
-          std::tr1::shared_ptr<TransportSender>(
-          new TransportSenderForTestSendException(codec));
+        std::tr1::shared_ptr<TransportSender> sender =
+            std::tr1::shared_ptr<TransportSender>(
+                new TransportSenderForTestSendException(codec));
 
         codec._throwExceptionOnSend = true;
 
@@ -2714,34 +2748,34 @@ namespace epics {
         codec.breakSender();
         try
         {
-          codec.processSendQueue();
-          testFail("%s: ConnectionClosedException expected",
-            CURRENT_FUNCTION);
+            codec.processSendQueue();
+            testFail("%s: ConnectionClosedException expected",
+                     CURRENT_FUNCTION);
         } catch (connection_closed_exception &) {
-          // OK
+            // OK
         }
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 1, 
-          "%s: codec._closedCount == 1", CURRENT_FUNCTION);
-        testOk(codec._receivedControlMessages.size() == 0, 
-          "%s: codec._receivedControlMessages.size() == 0 ", 
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 0, 
-          "%s: codec._receivedAppMessages.size() == 0", 
-          CURRENT_FUNCTION);
-      }
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 1,
+               "%s: codec._closedCount == 1", CURRENT_FUNCTION);
+        testOk(codec._receivedControlMessages.size() == 0,
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 0,
+               "%s: codec._receivedAppMessages.size() == 0",
+               CURRENT_FUNCTION);
+    }
 
 
-      class TransportSenderForTestSendHugeMessagePartes: 
+    class TransportSenderForTestSendHugeMessagePartes:
         public TransportSender {
-      public:
+    public:
 
         TransportSenderForTestSendHugeMessagePartes(
-          TestCodec & codec, std::size_t bytesToSend): 
-        _codec(codec), _bytesToSent(bytesToSend) {}
+            TestCodec & codec, std::size_t bytesToSend):
+            _codec(codec), _bytesToSent(bytesToSend) {}
 
         void unlock() {
         }
@@ -2749,60 +2783,60 @@ namespace epics {
         void lock() {
         }
 
-        void send(epics::pvData::ByteBuffer* buffer, 
-          TransportSendControl* control)
+        void send(epics::pvData::ByteBuffer* buffer,
+                  TransportSendControl* control)
         {
-          _codec.startMessage((int8_t)0x12, 0);
-          std::size_t toSend = _bytesToSent;
-          int32_t c = 0;
-          while (toSend > 0)
-          {
-            std::size_t sendNow = std::min<std::size_t>(toSend, 
-              AbstractCodec::MAX_ENSURE_BUFFER_SIZE);
+            _codec.startMessage((int8_t)0x12, 0);
+            std::size_t toSend = _bytesToSent;
+            int32_t c = 0;
+            while (toSend > 0)
+            {
+                std::size_t sendNow = std::min<std::size_t>(toSend,
+                                      AbstractCodec::MAX_ENSURE_BUFFER_SIZE);
 
-            _codec.ensureBuffer(sendNow);
-            for (std::size_t i = 0; i < sendNow; i++)
-              _codec.getSendBuffer()->put((int8_t)(c++));
-            toSend -= sendNow;
-          }
-          _codec.endMessage();
+                _codec.ensureBuffer(sendNow);
+                for (std::size_t i = 0; i < sendNow; i++)
+                    _codec.getSendBuffer()->put((int8_t)(c++));
+                toSend -= sendNow;
+            }
+            _codec.endMessage();
         }
 
-      private:
+    private:
         TestCodec &_codec;
         std::size_t _bytesToSent;
-      };
+    };
 
 
-      class WritePollOneCallbackForTestSendHugeMessagePartes: 
+    class WritePollOneCallbackForTestSendHugeMessagePartes:
         public WritePollOneCallback {
-      public:
+    public:
 
         WritePollOneCallbackForTestSendHugeMessagePartes(
-          TestCodec &codec): _codec(codec) {}
+            TestCodec &codec): _codec(codec) {}
 
         void writePollOne() {
-          _codec.processWrite();	// this should return immediately
+            _codec.processWrite();	// this should return immediately
 
-          // now we fake reading
-          _codec._writeBuffer.flip();
+            // now we fake reading
+            _codec._writeBuffer.flip();
 
-          // in this test we made sure readBuffer is big enough
-          while(_codec._writeBuffer.getRemaining() > 0) 
-          {
-            _codec._readBuffer->putByte(
-              _codec._writeBuffer.getByte());
-          }
+            // in this test we made sure readBuffer is big enough
+            while(_codec._writeBuffer.getRemaining() > 0)
+            {
+                _codec._readBuffer->putByte(
+                    _codec._writeBuffer.getByte());
+            }
 
-          _codec._writeBuffer.clear();
+            _codec._writeBuffer.clear();
         }
-      private:
+    private:
         TestCodec & _codec;
-      };
+    };
 
 
-      void testSendHugeMessagePartes() 
-      {
+    void testSendHugeMessagePartes()
+    {
 
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
@@ -2811,17 +2845,17 @@ namespace epics {
 
         codec._readPayload = true;
         codec._readBuffer.reset(
-          new ByteBuffer(11*DEFAULT_BUFFER_SIZE));
+            new ByteBuffer(11*DEFAULT_BUFFER_SIZE));
 
-        std::auto_ptr<WritePollOneCallback> 
-          writePollOneCallback(
-          new WritePollOneCallbackForTestSendHugeMessagePartes
-          (codec));
+        std::auto_ptr<WritePollOneCallback>
+        writePollOneCallback(
+            new WritePollOneCallbackForTestSendHugeMessagePartes
+            (codec));
 
-        std::tr1::shared_ptr<TransportSender> sender = 
-          std::tr1::shared_ptr<TransportSender>(
-          new TransportSenderForTestSendHugeMessagePartes(
-          codec, bytesToSent));
+        std::tr1::shared_ptr<TransportSender> sender =
+            std::tr1::shared_ptr<TransportSender>(
+                new TransportSenderForTestSendHugeMessagePartes(
+                    codec, bytesToSent));
 
         codec._writePollOneCallback = writePollOneCallback;
 
@@ -2829,9 +2863,9 @@ namespace epics {
         // process
         codec.enqueueSendRequest(sender);
         codec.breakSender();
-        try{
+        try {
             codec.processSendQueue();
-        }catch(sender_break&) {}
+        } catch(sender_break&) {}
 
         codec.addToReadBuffer();
 
@@ -2839,61 +2873,61 @@ namespace epics {
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0, 
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
+        testOk(codec._closedCount == 0,
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
         testOk(codec._receivedControlMessages.size() == 0,
-          "%s: codec._receivedControlMessages.size() == 0 ",
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 1, 
-          "%s: codec._receivedAppMessages.size() == 1", 
-          CURRENT_FUNCTION);
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 1,
+               "%s: codec._receivedAppMessages.size() == 1",
+               CURRENT_FUNCTION);
 
         // app
         PVAMessage header = codec._receivedAppMessages[0];
 
-        testOk(header._version == PVA_VERSION, 
-          "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_VERSION,
+               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x10),
-          "%s: header._flags == (int8_t)(0x(0|8)0 | 0x10)",
-          CURRENT_FUNCTION);
-        testOk(header._command == 0x12, 
-          "%s: header._command == 0x12", CURRENT_FUNCTION);
+               "%s: header._flags == (int8_t)(0x(0|8)0 | 0x10)",
+               CURRENT_FUNCTION);
+        testOk(header._command == 0x12,
+               "%s: header._command == 0x12", CURRENT_FUNCTION);
 
-        testOk(header._payload.get() != 0, 
-          "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
+        testOk(header._payload.get() != 0,
+               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
 
         header._payload->flip();
 
-        testOk(bytesToSent == header._payload->getLimit(), 
-          "%s: bytesToSent == header._payload->getLimit()", 
-          CURRENT_FUNCTION);
+        testOk(bytesToSent == header._payload->getLimit(),
+               "%s: bytesToSent == header._payload->getLimit()",
+               CURRENT_FUNCTION);
 
 
         for (int32_t i = 0; i < header._payloadSize; i++) {
-          if ((int8_t)i != header._payload->getByte()) {
-            testFail("%s: (int8_t)%d == header._payload->getByte()", 
-              CURRENT_FUNCTION, (int)i);
-          }
+            if ((int8_t)i != header._payload->getByte()) {
+                testFail("%s: (int8_t)%d == header._payload->getByte()",
+                         CURRENT_FUNCTION, (int)i);
+            }
         }
 
-      }
+    }
 
 
-      void testRecipient() 
-      {
+    void testRecipient()
+    {
         // nothing to test, depends on implementation
-      }
+    }
 
 
-      class TransportSenderForTestClearSendQueue: 
+    class TransportSenderForTestClearSendQueue:
         public TransportSender {
-      public:
+    public:
 
         TransportSenderForTestClearSendQueue(
-          TestCodec & codec): _codec(codec) {}
+            TestCodec & codec): _codec(codec) {}
 
         void unlock() {
         }
@@ -2901,24 +2935,24 @@ namespace epics {
         void lock() {
         }
 
-        void send(epics::pvData::ByteBuffer* buffer, 
-          TransportSendControl* control)
+        void send(epics::pvData::ByteBuffer* buffer,
+                  TransportSendControl* control)
         {
-          _codec.startMessage((int8_t)0x20, 0x00000000);
-          _codec.endMessage();
+            _codec.startMessage((int8_t)0x20, 0x00000000);
+            _codec.endMessage();
         }
 
-      private:
+    private:
         TestCodec &_codec;
-      };
+    };
 
 
-      class TransportSender2ForTestClearSendQueue: 
+    class TransportSender2ForTestClearSendQueue:
         public TransportSender {
-      public:
+    public:
 
         TransportSender2ForTestClearSendQueue(
-          TestCodec & codec): _codec(codec) {}
+            TestCodec & codec): _codec(codec) {}
 
         void unlock() {
         }
@@ -2926,110 +2960,110 @@ namespace epics {
         void lock() {
         }
 
-        void send(epics::pvData::ByteBuffer* buffer, 
-          TransportSendControl* control)
+        void send(epics::pvData::ByteBuffer* buffer,
+                  TransportSendControl* control)
         {
-          _codec.putControlMessage((int8_t)0xEE, 0xDDCCBBAA);
+            _codec.putControlMessage((int8_t)0xEE, 0xDDCCBBAA);
         }
 
-      private:
+    private:
         TestCodec &_codec;
-      };
+    };
 
-      void testInvalidArguments()
-      {
+    void testInvalidArguments()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
         try
         {
-          // too small
-          TestCodec codec(1,DEFAULT_BUFFER_SIZE);
-          testFail("%s: too small buffer accepted", 
-            CURRENT_FUNCTION);
+            // too small
+            TestCodec codec(1,DEFAULT_BUFFER_SIZE);
+            testFail("%s: too small buffer accepted",
+                     CURRENT_FUNCTION);
         } catch (std::exception &) {
-          // OK
+            // OK
         }
 
         try
         {
-          // too small
-          TestCodec codec(DEFAULT_BUFFER_SIZE,1);
-          testFail("%s: too small buffer accepted", 
-            CURRENT_FUNCTION);
+            // too small
+            TestCodec codec(DEFAULT_BUFFER_SIZE,1);
+            testFail("%s: too small buffer accepted",
+                     CURRENT_FUNCTION);
         } catch (std::exception &) {
-          // OK
+            // OK
         }
 
         if (PVA_ALIGNMENT > 1)
         {
-          try
-          {
-            // non aligned
-            TestCodec codec(2*AbstractCodec::MAX_ENSURE_SIZE+1, 
-              DEFAULT_BUFFER_SIZE);
+            try
+            {
+                // non aligned
+                TestCodec codec(2*AbstractCodec::MAX_ENSURE_SIZE+1,
+                                DEFAULT_BUFFER_SIZE);
 
-            testFail("%s: non-aligned buffer size accepted", 
-              CURRENT_FUNCTION);
+                testFail("%s: non-aligned buffer size accepted",
+                         CURRENT_FUNCTION);
 
-          } catch (std::exception &) {
-            // OK
-          }
+            } catch (std::exception &) {
+                // OK
+            }
 
-          try
-          {
-            // non aligned
-            TestCodec codec(DEFAULT_BUFFER_SIZE, 
-              2*AbstractCodec::MAX_ENSURE_SIZE+1);
+            try
+            {
+                // non aligned
+                TestCodec codec(DEFAULT_BUFFER_SIZE,
+                                2*AbstractCodec::MAX_ENSURE_SIZE+1);
 
-            testFail("%s: non-aligned buffer size accepted", 
-              CURRENT_FUNCTION);
+                testFail("%s: non-aligned buffer size accepted",
+                         CURRENT_FUNCTION);
 
-          } catch (std::exception &) {
-            // OK
-          }
+            } catch (std::exception &) {
+                // OK
+            }
         }
 
         TestCodec codec(DEFAULT_BUFFER_SIZE,
-          DEFAULT_BUFFER_SIZE);
+                        DEFAULT_BUFFER_SIZE);
 
         try
         {
-          codec.ensureBuffer(DEFAULT_BUFFER_SIZE+1);
-          testFail("%s: too big size accepted", 
-            CURRENT_FUNCTION);
+            codec.ensureBuffer(DEFAULT_BUFFER_SIZE+1);
+            testFail("%s: too big size accepted",
+                     CURRENT_FUNCTION);
         } catch (std::exception &) {
-          // OK
+            // OK
         }
 
         try
         {
-          codec.ensureData(AbstractCodec::MAX_ENSURE_DATA_SIZE+1);
-          testFail("%s: too big size accepted", CURRENT_FUNCTION);
+            codec.ensureData(AbstractCodec::MAX_ENSURE_DATA_SIZE+1);
+            testFail("%s: too big size accepted", CURRENT_FUNCTION);
         } catch (std::exception &) {
-          // OK
+            // OK
         }
-      }
+    }
 
 
-      void testDefaultModes()
-      {
+    void testDefaultModes()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
-        testOk(NORMAL== codec.getReadMode(), 
-          "%s: NORMAL== codec.getReadMode()", CURRENT_FUNCTION);
+        testOk(NORMAL== codec.getReadMode(),
+               "%s: NORMAL== codec.getReadMode()", CURRENT_FUNCTION);
         testOk(PROCESS_SEND_QUEUE == codec.getWriteMode(),
-          "%s: PROCESS_SEND_QUEUE == codec.getWriteMode()", 
-          CURRENT_FUNCTION);
-      }
+               "%s: PROCESS_SEND_QUEUE == codec.getWriteMode()",
+               CURRENT_FUNCTION);
+    }
 
 
-      class TransportSenderForTestEnqueueSendRequestExceptionThrown: 
+    class TransportSenderForTestEnqueueSendRequestExceptionThrown:
         public TransportSender {
-      public:
+    public:
 
         TransportSenderForTestEnqueueSendRequestExceptionThrown(
-          TestCodec & /*codec*/)/*: _codec(codec)*/ {}
+            TestCodec & /*codec*/) { /*: _codec(codec)*/ }
 
         void unlock() {
         }
@@ -3037,29 +3071,29 @@ namespace epics {
         void lock() {
         }
 
-        void send(epics::pvData::ByteBuffer* buffer, 
-          TransportSendControl* control)
+        void send(epics::pvData::ByteBuffer* buffer,
+                  TransportSendControl* control)
         {
-          // after connection_closed_exception is thrown codec is no longer valid,
-          // however we want to do some tests and in order for memory checkers not to complain
-          // the following step is needed
-          memset((void*)buffer->getBuffer(), 0, buffer->getSize());
+            // after connection_closed_exception is thrown codec is no longer valid,
+            // however we want to do some tests and in order for memory checkers not to complain
+            // the following step is needed
+            memset((void*)buffer->getBuffer(), 0, buffer->getSize());
 
-          throw connection_closed_exception(
-            "expected test exception");
+            throw connection_closed_exception(
+                "expected test exception");
         }
 
-      private:
+    private:
         //TestCodec &_codec;
-      };
+    };
 
 
-      class TransportSender2ForTestEnqueueSendRequestExceptionThrown:
+    class TransportSender2ForTestEnqueueSendRequestExceptionThrown:
         public TransportSender {
-      public:
+    public:
 
         TransportSender2ForTestEnqueueSendRequestExceptionThrown(
-          TestCodec & codec): _codec(codec) {}
+            TestCodec & codec): _codec(codec) {}
 
         void unlock() {
         }
@@ -3067,33 +3101,33 @@ namespace epics {
         void lock() {
         }
 
-        void send(epics::pvData::ByteBuffer* buffer, 
-          TransportSendControl* control)
+        void send(epics::pvData::ByteBuffer* buffer,
+                  TransportSendControl* control)
         {
-          _codec.putControlMessage((int8_t)0xEE, 0xDDCCBBAA);
+            _codec.putControlMessage((int8_t)0xEE, 0xDDCCBBAA);
         }
 
-      private:
+    private:
         TestCodec &_codec;
-      };
+    };
 
 
-      void testEnqueueSendRequestExceptionThrown()
-      {
+    void testEnqueueSendRequestExceptionThrown()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
-        std::tr1::shared_ptr<TransportSender> sender = 
-          std::tr1::shared_ptr<TransportSender>(
-          new 
-          TransportSenderForTestEnqueueSendRequestExceptionThrown
-          (codec));
+        std::tr1::shared_ptr<TransportSender> sender =
+            std::tr1::shared_ptr<TransportSender>(
+                new
+                TransportSenderForTestEnqueueSendRequestExceptionThrown
+                (codec));
 
-        std::tr1::shared_ptr<TransportSender> sender2 = 
-          std::tr1::shared_ptr<TransportSender>(new 
-          TransportSender2ForTestEnqueueSendRequestExceptionThrown(
-          codec));
+        std::tr1::shared_ptr<TransportSender> sender2 =
+            std::tr1::shared_ptr<TransportSender>(new
+                    TransportSender2ForTestEnqueueSendRequestExceptionThrown(
+                        codec));
 
 
         // process
@@ -3102,40 +3136,40 @@ namespace epics {
 
         try
         {
-          codec.processSendQueue();
-          testFail("%s: ConnectionClosedException expected", 
-            CURRENT_FUNCTION);
+            codec.processSendQueue();
+            testFail("%s: ConnectionClosedException expected",
+                     CURRENT_FUNCTION);
 
         } catch (connection_closed_exception &) {
-          // OK
+            // OK
         }
 
         codec.transferToReadBuffer();
 
         codec.processRead();
 
-        testOk(codec._invalidDataStreamCount == 0, 
-          "%s: codec._invalidDataStreamCount == 0", 
-          CURRENT_FUNCTION);
+        testOk(codec._invalidDataStreamCount == 0,
+               "%s: codec._invalidDataStreamCount == 0",
+               CURRENT_FUNCTION);
         // _closedCount is not incremented since CCE exception is being thrown manually
         // w/o calling close()
         testOk(codec._closedCount == 0 /*1*/,
-          "%s: codec._closedCount == 0", CURRENT_FUNCTION);
-        testOk(codec._receivedControlMessages.size() == 0, 
-          "%s: codec._receivedControlMessages.size() == 0 ",
-          CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 0, 
-          "%s: codec._receivedAppMessages.size() == 0", 
-          CURRENT_FUNCTION);
-      }	
+               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
+        testOk(codec._receivedControlMessages.size() == 0,
+               "%s: codec._receivedControlMessages.size() == 0 ",
+               CURRENT_FUNCTION);
+        testOk(codec._receivedAppMessages.size() == 0,
+               "%s: codec._receivedAppMessages.size() == 0",
+               CURRENT_FUNCTION);
+    }
 
 
-      class TransportSenderForTestBlockingProcessQueueTest: 
+    class TransportSenderForTestBlockingProcessQueueTest:
         public TransportSender {
-      public:
+    public:
 
         TransportSenderForTestBlockingProcessQueueTest(
-          TestCodec & codec): _codec(codec) {}
+            TestCodec & codec): _codec(codec) {}
 
         void unlock() {
         }
@@ -3143,51 +3177,51 @@ namespace epics {
         void lock() {
         }
 
-        void send(epics::pvData::ByteBuffer* buffer, 
-          TransportSendControl* control)
+        void send(epics::pvData::ByteBuffer* buffer,
+                  TransportSendControl* control)
         {
-          _codec.putControlMessage((int8_t)0x01, 0x00112233);
-          _codec.flush(true);
+            _codec.putControlMessage((int8_t)0x01, 0x00112233);
+            _codec.flush(true);
         }
 
-      private:
+    private:
         TestCodec &_codec;
-      };
+    };
 
 
-      class ValueHolder : public Runnable {
-      public:
+    class ValueHolder : public Runnable {
+    public:
         ValueHolder(TestCodec &testCodec):
-        _testCodec(testCodec) {}
+            _testCodec(testCodec) {}
 
         TestCodec &_testCodec;
         Event waiter;
 
         virtual void run() {
             waiter.signal();
-            try{
+            try {
                 _testCodec.processSendQueue();
-            }catch(sender_break&) {}
+            } catch(sender_break&) {}
         }
-      };
+    };
 
 
-      void testBlockingProcessQueueTest() 
-      {
+    void testBlockingProcessQueueTest()
+    {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
         TestCodec codec(DEFAULT_BUFFER_SIZE,
-          DEFAULT_BUFFER_SIZE, true);
+                        DEFAULT_BUFFER_SIZE, true);
 
-        std::tr1::shared_ptr<TransportSender> sender = 
-          std::tr1::shared_ptr<TransportSender>(
-          new TransportSenderForTestBlockingProcessQueueTest(codec));
+        std::tr1::shared_ptr<TransportSender> sender =
+            std::tr1::shared_ptr<TransportSender>(
+                new TransportSenderForTestBlockingProcessQueueTest(codec));
 
         ValueHolder valueHolder(codec);
         Event done;
 
         epics::pvData::Thread thr(epics::pvData::Thread::Config(&valueHolder)
-                   .name("testBlockingProcessQueueTest-processThread"));
+                                  .name("testBlockingProcessQueueTest-processThread"));
 
         valueHolder.waiter.wait();
 
@@ -3199,23 +3233,23 @@ namespace epics {
         testDiag("Waiting for work");
         done.wait();
 
-        testOk((std::size_t)PVA_MESSAGE_HEADER_SIZE == 
-          codec._writeBuffer.getPosition(), 
-          "%s: PVA_MESSAGE_HEADER_SIZE == "
-          "codec._writeBuffer.getPosition()  (%u)",
-          CURRENT_FUNCTION,
-          (unsigned)codec._writeBuffer.getPosition());
+        testOk((std::size_t)PVA_MESSAGE_HEADER_SIZE ==
+               codec._writeBuffer.getPosition(),
+               "%s: PVA_MESSAGE_HEADER_SIZE == "
+               "codec._writeBuffer.getPosition()  (%u)",
+               CURRENT_FUNCTION,
+               (unsigned)codec._writeBuffer.getPosition());
 
         codec.breakSender();
 
         thr.exitWait();
-      }
+    }
 
-    private:
+private:
 
-      AtomicValue<bool> _processTreadExited;
-    };
-  }
+    AtomicValue<bool> _processTreadExited;
+};
+}
 }
 
 
@@ -3223,6 +3257,6 @@ using namespace epics::pvAccess;
 
 MAIN(testCodec)
 {
-  CodecTest codecTest;
-  return codecTest.runAllTest();
+    CodecTest codecTest;
+    return codecTest.runAllTest();
 }

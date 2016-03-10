@@ -22,8 +22,9 @@ namespace pvAccess {
 
 /// Byte to hexchar mapping.
 static const char lookup[] = {
-        '0', '1', '2', '3', '4', '5', '6', '7',
-        '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+    '0', '1', '2', '3', '4', '5', '6', '7',
+    '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+};
 
 /// Get hex representation of byte.
 string toHex(int8 b) {
@@ -57,7 +58,7 @@ void hexDump(std::string const & name, const int8 *bs, int start, int len) {
 }
 
 void hexDump(std::string const & prologue, string const & name, const int8 *bs,
-        int start, int len) {
+             int start, int len) {
 
     stringstream header;
 

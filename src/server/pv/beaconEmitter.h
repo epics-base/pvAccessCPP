@@ -27,129 +27,131 @@
 #include <pv/beaconServerStatusProvider.h>
 //#include <pv/serverContext.h>
 
-namespace epics { namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
-    class ServerContextImpl;
+class ServerContextImpl;
 
-	/**
-	 * BeaconEmitter
-	 *
-	 * @author gjansa
-	 */
-	class BeaconEmitter:
-	   public TransportSender,
-	   public epics::pvData::TimerCallback,
-	   public std::tr1::enable_shared_from_this<BeaconEmitter>
-	{
-	public:
-        typedef std::tr1::shared_ptr<BeaconEmitter> shared_pointer;
-        typedef std::tr1::shared_ptr<const BeaconEmitter> const_shared_pointer;
+/**
+ * BeaconEmitter
+ *
+ * @author gjansa
+ */
+class BeaconEmitter:
+    public TransportSender,
+    public epics::pvData::TimerCallback,
+    public std::tr1::enable_shared_from_this<BeaconEmitter>
+{
+public:
+    typedef std::tr1::shared_ptr<BeaconEmitter> shared_pointer;
+    typedef std::tr1::shared_ptr<const BeaconEmitter> const_shared_pointer;
 
-		/**
-		 * Constructor.
-		 * @param protocol a protocol (transport) name to report.
-		 * @param transport	transport to be used to send beacons.
-		 * @param context PVA context.
-		 */
+    /**
+     * Constructor.
+     * @param protocol a protocol (transport) name to report.
+     * @param transport	transport to be used to send beacons.
+     * @param context PVA context.
+     */
 //		BeaconEmitter(std::sting const & protocol,
 //          Transport::shared_pointer const & transport, ServerContextImpl::shared_pointer const & context);
-		BeaconEmitter(std::string const & protocol,
-		  Transport::shared_pointer const & transport, std::tr1::shared_ptr<ServerContextImpl>& context);
-		
-		virtual ~BeaconEmitter();
+    BeaconEmitter(std::string const & protocol,
+                  Transport::shared_pointer const & transport, std::tr1::shared_ptr<ServerContextImpl>& context);
 
-		void lock();
-		void unlock();
-		
-		void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
+    virtual ~BeaconEmitter();
 
-		void timerStopped();
+    void lock();
+    void unlock();
 
-		/**
-		 * Start emitting.
-		 */
-		void start();
-		
-        /**
-		 * Reschedule timer.
-		 */
-		void reschedule();
-		
-        /**
-		 * Timer callback.
-		 */
-		void callback();
+    void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 
-		void destroy();
-	
-    private:
+    void timerStopped();
 
-		/**
-		 * Minimal (initial) PVA beacon period (in seconds).
-		 */
-		static const float EPICS_PVA_MIN_BEACON_PERIOD;
+    /**
+     * Start emitting.
+     */
+    void start();
 
-		/**
-		 * Minimal PVA beacon count limit.
-		 */
-		static const float EPICS_PVA_MIN_BEACON_COUNT_LIMIT;
+    /**
+     * Reschedule timer.
+     */
+    void reschedule();
 
-        /**
-         * Protocol.
-         */
-        std::string _protocol;
-        
-		/**
-		 * Transport.
-		 */
-        Transport::shared_pointer _transport;
+    /**
+     * Timer callback.
+     */
+    void callback();
 
-		/**
-		 * Beacon sequence ID.
-		 */
-        epics::pvData::int8 _beaconSequenceID;
+    void destroy();
 
-		/**
-		 * Server GUID.
-		 */
-		GUID _guid;
+private:
 
-		/**
-		 * Fast (at startup) beacon period (in sec).
-		 */
-		double _fastBeaconPeriod;
+    /**
+     * Minimal (initial) PVA beacon period (in seconds).
+     */
+    static const float EPICS_PVA_MIN_BEACON_PERIOD;
 
-		/**
-		 * Slow (after beaconCountLimit is reached) beacon period (in sec).
-		 */
-		double _slowBeaconPeriod;
+    /**
+     * Minimal PVA beacon count limit.
+     */
+    static const float EPICS_PVA_MIN_BEACON_COUNT_LIMIT;
 
-		/**
-		 * Limit on number of beacons issued.
-		 */
-		epics::pvData::int16 _beaconCountLimit;
+    /**
+     * Protocol.
+     */
+    std::string _protocol;
 
-		/**
-		 * Server address.
-		 */
-		const osiSockAddr _serverAddress;
+    /**
+     * Transport.
+     */
+    Transport::shared_pointer _transport;
 
-		/**
-		 * Server port.
-		 */
-		epics::pvData::int32 _serverPort;
+    /**
+     * Beacon sequence ID.
+     */
+    epics::pvData::int8 _beaconSequenceID;
 
-		/**
-		 * Server status provider implementation (optional).
-		 */
-        BeaconServerStatusProvider::shared_pointer _serverStatusProvider;
+    /**
+     * Server GUID.
+     */
+    GUID _guid;
 
-		/**
-		 * Timer.
-		 */
-        epics::pvData::Timer::shared_pointer _timer;
-	};
+    /**
+     * Fast (at startup) beacon period (in sec).
+     */
+    double _fastBeaconPeriod;
 
-}}
+    /**
+     * Slow (after beaconCountLimit is reached) beacon period (in sec).
+     */
+    double _slowBeaconPeriod;
+
+    /**
+     * Limit on number of beacons issued.
+     */
+    epics::pvData::int16 _beaconCountLimit;
+
+    /**
+     * Server address.
+     */
+    const osiSockAddr _serverAddress;
+
+    /**
+     * Server port.
+     */
+    epics::pvData::int32 _serverPort;
+
+    /**
+     * Server status provider implementation (optional).
+     */
+    BeaconServerStatusProvider::shared_pointer _serverStatusProvider;
+
+    /**
+     * Timer.
+     */
+    epics::pvData::Timer::shared_pointer _timer;
+};
+
+}
+}
 
 #endif  /* BEACONEMITTER_H */

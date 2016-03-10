@@ -11,18 +11,18 @@ using namespace epics::pvData;
 using namespace epics::pvAccess;
 
 static Structure::const_shared_pointer dataStructure =
-        getFieldCreate()->createFieldBuilder()->
-               add("count", pvInt)->
-               createStructure();
+    getFieldCreate()->createFieldBuilder()->
+    add("count", pvInt)->
+    createStructure();
 
 class PipelineSessionImpl :
-        public PipelineSession
+    public PipelineSession
 {
 public:
 
     PipelineSessionImpl(
-            epics::pvData::PVStructure::shared_pointer const & pvRequest
-            ) :
+        epics::pvData::PVStructure::shared_pointer const & pvRequest
+    ) :
         m_counter(0),
         m_max(0)
     {
@@ -76,11 +76,11 @@ private:
 };
 
 class PipelineServiceImpl :
-        public PipelineService
+    public PipelineService
 {
     PipelineSession::shared_pointer createPipeline(
-            epics::pvData::PVStructure::shared_pointer const & pvRequest
-            )
+        epics::pvData::PVStructure::shared_pointer const & pvRequest
+    )
     {
         return PipelineSession::shared_pointer(new PipelineSessionImpl(pvRequest));
     }

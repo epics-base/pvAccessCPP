@@ -41,150 +41,150 @@
 #include <pv/inetAddressUtil.h>
 
 namespace epics {
-    namespace pvAccess {
+namespace pvAccess {
 
-        /**
-         * Channel Access TCP connector.
-         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
-         * @version $Id: BlockingTCPConnector.java,v 1.1 2010/05/03 14:45:47 mrkraimer Exp $
-         */
-        class BlockingTCPConnector : public Connector {
-        public:
-        	POINTER_DEFINITIONS(BlockingTCPConnector);
+/**
+ * Channel Access TCP connector.
+ * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+ * @version $Id: BlockingTCPConnector.java,v 1.1 2010/05/03 14:45:47 mrkraimer Exp $
+ */
+class BlockingTCPConnector : public Connector {
+public:
+    POINTER_DEFINITIONS(BlockingTCPConnector);
 
-            BlockingTCPConnector(Context::shared_pointer const & context, int receiveBufferSize,
-                    float beaconInterval);
+    BlockingTCPConnector(Context::shared_pointer const & context, int receiveBufferSize,
+                         float beaconInterval);
 
-            virtual ~BlockingTCPConnector();
+    virtual ~BlockingTCPConnector();
 
-            virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
-                    ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& address,
-                    epics::pvData::int8 transportRevision, epics::pvData::int16 priority);
-        private:
-            /**
-             * Lock timeout
-             */
-            static const int LOCK_TIMEOUT = 20*1000; // 20s
+    virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
+            ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& address,
+            epics::pvData::int8 transportRevision, epics::pvData::int16 priority);
+private:
+    /**
+     * Lock timeout
+     */
+    static const int LOCK_TIMEOUT = 20*1000; // 20s
 
-            /**
-             * Context instance.
-             */
-            Context::weak_pointer _context;
+    /**
+     * Context instance.
+     */
+    Context::weak_pointer _context;
 
-            /**
-             * named lock
-             */
-            NamedLockPattern<const osiSockAddr*, comp_osiSockAddrPtr> _namedLocker;
+    /**
+     * named lock
+     */
+    NamedLockPattern<const osiSockAddr*, comp_osiSockAddrPtr> _namedLocker;
 
-            /**
-             * Receive buffer size.
-             */
-            int _receiveBufferSize;
+    /**
+     * Receive buffer size.
+     */
+    int _receiveBufferSize;
 
-            /**
-             * Heartbeat interval.
-             */
-            float _heartbeatInterval;
+    /**
+     * Heartbeat interval.
+     */
+    float _heartbeatInterval;
 
-            /**
-             * Tries to connect to the given address.
-             * @param[in] address
-             * @param[in] tries
-             * @return the SOCKET
-             * @throws IOException
-             */
-            SOCKET tryConnect(osiSockAddr& address, int tries);
+    /**
+     * Tries to connect to the given address.
+     * @param[in] address
+     * @param[in] tries
+     * @return the SOCKET
+     * @throws IOException
+     */
+    SOCKET tryConnect(osiSockAddr& address, int tries);
 
-        };
+};
 
-        /**
-         * Channel Access Server TCP acceptor.
-         * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
-         * @version $Id: BlockingTCPAcceptor.java,v 1.1 2010/05/03 14:45:42 mrkraimer Exp $
-         */
-        class BlockingTCPAcceptor : public epicsThreadRunable {
-        public:
-        	POINTER_DEFINITIONS(BlockingTCPAcceptor);
+/**
+ * Channel Access Server TCP acceptor.
+ * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
+ * @version $Id: BlockingTCPAcceptor.java,v 1.1 2010/05/03 14:45:42 mrkraimer Exp $
+ */
+class BlockingTCPAcceptor : public epicsThreadRunable {
+public:
+    POINTER_DEFINITIONS(BlockingTCPAcceptor);
 
-            /**
-             * @param context
-             * @param port
-             * @param receiveBufferSize
-             * @throws PVAException
-             */
-            BlockingTCPAcceptor(Context::shared_pointer const & context,
-                                ResponseHandler::shared_pointer const & responseHandler,
-                                int port, int receiveBufferSize);
-            BlockingTCPAcceptor(Context::shared_pointer const & context,
-                                ResponseHandler::shared_pointer const & responseHandler,
-                                const osiSockAddr& addr, int receiveBufferSize);
+    /**
+     * @param context
+     * @param port
+     * @param receiveBufferSize
+     * @throws PVAException
+     */
+    BlockingTCPAcceptor(Context::shared_pointer const & context,
+                        ResponseHandler::shared_pointer const & responseHandler,
+                        int port, int receiveBufferSize);
+    BlockingTCPAcceptor(Context::shared_pointer const & context,
+                        ResponseHandler::shared_pointer const & responseHandler,
+                        const osiSockAddr& addr, int receiveBufferSize);
 
-            virtual ~BlockingTCPAcceptor();
+    virtual ~BlockingTCPAcceptor();
 
-            /**
-             * Bind socket address.
-             * @return bind socket address, <code>null</code> if not binded.
-             */
-            const osiSockAddr* getBindAddress() {
-                return &_bindAddress;
-            }
-
-            /**
-             * Destroy acceptor (stop listening).
-             */
-            void destroy();
-
-        private:
-            virtual void run();
-
-            /**
-             * Context instance.
-             */
-            Context::shared_pointer _context;
-            
-            /**
-             * Response handler.
-             */
-            ResponseHandler::shared_pointer _responseHandler;
-
-            /**
-             * Bind server socket address.
-             */
-            osiSockAddr _bindAddress;
-
-            /**
-             * Server socket channel.
-             */
-            SOCKET _serverSocketChannel;
-
-            /**
-             * Receive buffer size.
-             */
-            int _receiveBufferSize;
-
-            /**
-             * Destroyed flag.
-             */
-            bool _destroyed;
-            
-            epics::pvData::Mutex _mutex;
-
-            epicsThread _thread;
-
-            /**
-             * Initialize connection acception.
-             * @return port where server is listening
-             */
-            int initialize();
-
-            /**
-             * Validate connection by sending a validation message request.
-             * @return <code>true</code> on success.
-             */
-            bool validateConnection(Transport::shared_pointer const & transport, const char* address);
-        };
-
+    /**
+     * Bind socket address.
+     * @return bind socket address, <code>null</code> if not binded.
+     */
+    const osiSockAddr* getBindAddress() {
+        return &_bindAddress;
     }
+
+    /**
+     * Destroy acceptor (stop listening).
+     */
+    void destroy();
+
+private:
+    virtual void run();
+
+    /**
+     * Context instance.
+     */
+    Context::shared_pointer _context;
+
+    /**
+     * Response handler.
+     */
+    ResponseHandler::shared_pointer _responseHandler;
+
+    /**
+     * Bind server socket address.
+     */
+    osiSockAddr _bindAddress;
+
+    /**
+     * Server socket channel.
+     */
+    SOCKET _serverSocketChannel;
+
+    /**
+     * Receive buffer size.
+     */
+    int _receiveBufferSize;
+
+    /**
+     * Destroyed flag.
+     */
+    bool _destroyed;
+
+    epics::pvData::Mutex _mutex;
+
+    epicsThread _thread;
+
+    /**
+     * Initialize connection acception.
+     * @return port where server is listening
+     */
+    int initialize();
+
+    /**
+     * Validate connection by sending a validation message request.
+     * @return <code>true</code> on success.
+     */
+    bool validateConnection(Transport::shared_pointer const & transport, const char* address);
+};
+
+}
 }
 
 #endif /* BLOCKINGTCP_H_ */

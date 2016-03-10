@@ -19,8 +19,8 @@ namespace pvAccess {
 namespace ca {
 
 class epicsShareClass CAChannelProvider :
-        public ChannelProvider,
-        public std::tr1::enable_shared_from_this<CAChannelProvider>
+    public ChannelProvider,
+    public std::tr1::enable_shared_from_this<CAChannelProvider>
 {
 public:
 
@@ -34,22 +34,22 @@ public:
     virtual std::string getProviderName();
 
     virtual ChannelFind::shared_pointer channelFind(
-            std::string const & channelName,
-            ChannelFindRequester::shared_pointer const & channelFindRequester);
+        std::string const & channelName,
+        ChannelFindRequester::shared_pointer const & channelFindRequester);
 
     virtual ChannelFind::shared_pointer channelList(
-            ChannelListRequester::shared_pointer const & channelListRequester);
+        ChannelListRequester::shared_pointer const & channelListRequester);
 
     virtual Channel::shared_pointer createChannel(
-            std::string const & channelName,
-            ChannelRequester::shared_pointer const & channelRequester,
-            short priority);
+        std::string const & channelName,
+        ChannelRequester::shared_pointer const & channelRequester,
+        short priority);
 
     virtual Channel::shared_pointer createChannel(
-            std::string const & channelName,
-            ChannelRequester::shared_pointer const & channelRequester,
-            short priority,
-            std::string const & address);
+        std::string const & channelName,
+        ChannelRequester::shared_pointer const & channelRequester,
+        short priority,
+        std::string const & address);
 
     virtual void configure(epics::pvData::PVStructure::shared_pointer configuration);
     virtual void flush();
@@ -85,6 +85,8 @@ public:
     static void stop();
 };
 
-}}}
+}
+}
+}
 
 #endif  /* CAPROVIDER_H */

@@ -120,7 +120,7 @@ baseValue::baseValue()
 #include <epicsEvent.h>
 
 struct SimADC : public std::tr1::enable_shared_from_this<SimADC>,
-                public epicsThreadRunable
+    public epicsThreadRunable
 {
     typedef std::tr1::shared_ptr<SimADC> smart_pointer_type;
 
@@ -247,10 +247,12 @@ SimADC::~SimADC()
 }
 
 namespace {
-    template<typename T>
-    struct Freeme {
-        void operator()(T* p) {free(p);}
-    };
+template<typename T>
+struct Freeme {
+    void operator()(T* p) {
+        free(p);
+    }
+};
 }
 
 void SimADC::cycle()

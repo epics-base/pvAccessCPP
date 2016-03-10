@@ -3,7 +3,7 @@
  * pvAccessCPP is distributed subject to a Software License Agreement found
  * in file LICENSE that is included with this distribution.
  */
- 
+
 #ifndef TRANSPORTREGISTRY_H
 #define TRANSPORTREGISTRY_H
 
@@ -49,7 +49,7 @@ public:
     Transport::shared_pointer remove(Transport::shared_pointer const & transport);
     void clear();
     epics::pvData::int32 numberOfActiveTransports();
-    
+
     // TODO note type not supported
     std::auto_ptr<transportVector_t> toArray(std::string const & type);
     std::auto_ptr<transportVector_t> toArray();
@@ -68,6 +68,7 @@ private:
     epics::pvData::Mutex _mutex;
 };
 
-}}
+}
+}
 
 #endif  /* INTROSPECTIONREGISTRY_H */

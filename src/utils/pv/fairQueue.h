@@ -27,7 +27,8 @@
 
 #include <shareLib.h>
 
-namespace epics {namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
 
 /** @brief An intrusive, loss-less, unbounded, round-robin queue
@@ -82,7 +83,7 @@ public:
     public:
         entry() :Qcnt(0), holder()
 #ifndef NDEBUG
-          , owner(NULL)
+            , owner(NULL)
 #endif
         {
             enode.node.next = enode.node.previous = NULL;
@@ -196,6 +197,7 @@ private:
     mutable epicsEvent wakeup;
 };
 
-}} // namespace
+}
+} // namespace
 
 #endif // FAIRQUEUE_H

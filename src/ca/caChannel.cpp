@@ -29,9 +29,9 @@ using std::string;
 PVACCESS_REFCOUNT_MONITOR_DEFINE(caChannel);
 
 CAChannel::shared_pointer CAChannel::create(CAChannelProvider::shared_pointer const & channelProvider,
-                                            std::string const & channelName,
-                                            short priority,
-                                            ChannelRequester::shared_pointer const & channelRequester)
+        std::string const & channelName,
+        short priority,
+        ChannelRequester::shared_pointer const & channelRequester)
 {
     CAChannel::shared_pointer thisPtr(new CAChannel(channelName, channelProvider, channelRequester));
     thisPtr->activate(priority);
@@ -70,8 +70,8 @@ static Structure::const_shared_pointer createStructure(CAChannel::shared_pointer
     {
         ScalarType st = dbr2ST[channelType];
         structure = (channel->getElementCount() > 1) ?
-                     standardField->scalarArray(st, properties) :
-                     standardField->scalar(st, properties);
+                    standardField->scalarArray(st, properties) :
+                    standardField->scalar(st, properties);
     }
     else
     {
@@ -166,9 +166,9 @@ void CAChannel::connected()
 
     // no valueAlarm and control,display for non-numeric type
     string allProperties =
-            (channelType != DBR_STRING && channelType != DBR_ENUM) ?
-                "value,timeStamp,alarm,display,valueAlarm,control" :
-                "value,timeStamp,alarm";
+        (channelType != DBR_STRING && channelType != DBR_ENUM) ?
+        "value,timeStamp,alarm,display,valueAlarm,control" :
+        "value,timeStamp,alarm";
     Structure::const_shared_pointer structure = createStructure(shared_from_this(), allProperties);
 
     // TODO thread sync
@@ -288,9 +288,9 @@ void CAChannel::getField(GetFieldRequester::shared_pointer const & requester,
                          std::string const & subField)
 {
     Field::const_shared_pointer field =
-                subField.empty() ?
-                std::tr1::static_pointer_cast<const Field>(structure) :
-                structure->getField(subField);
+        subField.empty() ?
+        std::tr1::static_pointer_cast<const Field>(structure) :
+        structure->getField(subField);
 
     if (field)
     {
@@ -316,8 +316,8 @@ AccessRights CAChannel::getAccessRights(epics::pvData::PVField::shared_pointer c
 
 
 ChannelProcess::shared_pointer CAChannel::createChannelProcess(
-        ChannelProcessRequester::shared_pointer const & channelProcessRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
+    ChannelProcessRequester::shared_pointer const & channelProcessRequester,
+    epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
 {
     Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
     ChannelProcess::shared_pointer nullChannelProcess;
@@ -326,35 +326,35 @@ ChannelProcess::shared_pointer CAChannel::createChannelProcess(
 }
 
 ChannelGet::shared_pointer CAChannel::createChannelGet(
-        ChannelGetRequester::shared_pointer const & channelGetRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest)
+    ChannelGetRequester::shared_pointer const & channelGetRequester,
+    epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
     return CAChannelGet::create(shared_from_this(), channelGetRequester, pvRequest);
 }
 
 
 ChannelPut::shared_pointer CAChannel::createChannelPut(
-        ChannelPutRequester::shared_pointer const & channelPutRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest)
+    ChannelPutRequester::shared_pointer const & channelPutRequester,
+    epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
     return CAChannelPut::create(shared_from_this(), channelPutRequester, pvRequest);
 }
 
 ChannelPutGet::shared_pointer CAChannel::createChannelPutGet(
-        ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
+    ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
+    epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
 {
     Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
     ChannelPutGet::shared_pointer nullChannelPutGet;
     EXCEPTION_GUARD(channelPutGetRequester->channelPutGetConnect(errorStatus, nullChannelPutGet,
-                                                                 Structure::const_shared_pointer(), Structure::const_shared_pointer()));
+                    Structure::const_shared_pointer(), Structure::const_shared_pointer()));
     return nullChannelPutGet;
 }
 
 
 ChannelRPC::shared_pointer CAChannel::createChannelRPC(
-        ChannelRPCRequester::shared_pointer const & channelRPCRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
+    ChannelRPCRequester::shared_pointer const & channelRPCRequester,
+    epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
 {
     Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
     ChannelRPC::shared_pointer nullChannelRPC;
@@ -364,21 +364,21 @@ ChannelRPC::shared_pointer CAChannel::createChannelRPC(
 
 
 epics::pvData::Monitor::shared_pointer CAChannel::createMonitor(
-        epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest)
+    epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
+    epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
     return CAChannelMonitor::create(shared_from_this(), monitorRequester, pvRequest);
 }
 
 
 ChannelArray::shared_pointer CAChannel::createChannelArray(
-        ChannelArrayRequester::shared_pointer const & channelArrayRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
+    ChannelArrayRequester::shared_pointer const & channelArrayRequester,
+    epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
 {
     Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
     ChannelArray::shared_pointer nullChannelArray;
     EXCEPTION_GUARD(channelArrayRequester->channelArrayConnect(errorStatus, nullChannelArray,
-                                                               Array::const_shared_pointer()));
+                    Array::const_shared_pointer()));
     return nullChannelArray;
 }
 
@@ -392,7 +392,7 @@ void CAChannel::printInfo()
 void CAChannel::printInfo(std::ostream& out)
 {
     out << "CHANNEL  : " << getChannelName() << std::endl;
-    
+
     ConnectionState state = getConnectionState();
     out << "STATE    : " << ConnectionStateNames[state] << std::endl;
     if (state == CONNECTED)
@@ -472,14 +472,14 @@ void CAChannel::unregisterRequest(ChannelRequest::shared_pointer const & request
 
 
 ChannelGet::shared_pointer CAChannelGet::create(
-        CAChannel::shared_pointer const & channel,
-        ChannelGetRequester::shared_pointer const & channelGetRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest)
+    CAChannel::shared_pointer const & channel,
+    ChannelGetRequester::shared_pointer const & channelGetRequester,
+    epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
     // TODO use std::make_shared
     std::tr1::shared_ptr<CAChannelGet> tp(
-                    new CAChannelGet(channel, channelGetRequester, pvRequest)
-                );
+        new CAChannelGet(channel, channelGetRequester, pvRequest)
+    );
     ChannelGet::shared_pointer thisPtr = tp;
     static_cast<CAChannelGet*>(thisPtr.get())->activate();
     return thisPtr;
@@ -496,14 +496,14 @@ static chtype getDBRType(PVStructure::shared_pointer const & pvRequest, chtype n
 {
     // get "field" sub-structure
     PVStructure::shared_pointer fieldSubField =
-            std::tr1::dynamic_pointer_cast<PVStructure>(pvRequest->getSubField("field"));
+        std::tr1::dynamic_pointer_cast<PVStructure>(pvRequest->getSubField("field"));
     if (!fieldSubField)
         fieldSubField = pvRequest;
     Structure::const_shared_pointer fieldStructure = fieldSubField->getStructure();
 
     // no fields or control -> DBR_CTRL_<type>
     if (fieldStructure->getNumberFields() == 0 ||
-          fieldStructure->getField("control"))
+            fieldStructure->getField("control"))
         return static_cast<chtype>(static_cast<int>(nativeType) + DBR_CTRL_STRING);
 
     // display/valueAlarm -> DBR_GR_<type>
@@ -541,7 +541,7 @@ CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & _channel,
 void CAChannelGet::activate()
 {
     EXCEPTION_GUARD(channelGetRequester->channelGetConnect(Status::Ok, shared_from_this(),
-                                                           pvStructure->getStructure()));
+                    pvStructure->getStructure()));
 }
 
 
@@ -731,7 +731,7 @@ void copy_DBR_GR(const void * dbr, unsigned count, PVStructure::shared_pointer c
 // enum specialization
 template<>
 void copy_DBR_GR<dbr_gr_enum, dbr_enum_t, PVString, PVStringArray>
-        (const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
     const dbr_gr_enum* data = static_cast<const dbr_gr_enum*>(dbr);
 
@@ -773,7 +773,7 @@ void copy_DBR_CTRL(const void * dbr, unsigned count, PVStructure::shared_pointer
 // enum specialization
 template<>
 void copy_DBR_CTRL<dbr_ctrl_enum, dbr_enum_t, PVString, PVStringArray>
-        (const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
+(const void * dbr, unsigned count, PVStructure::shared_pointer const & pvStructure)
 {
     const dbr_ctrl_enum* data = static_cast<const dbr_ctrl_enum*>(dbr);
 
@@ -934,14 +934,14 @@ void CAChannelGet::unlock()
 
 
 ChannelPut::shared_pointer CAChannelPut::create(
-        CAChannel::shared_pointer const & channel,
-        ChannelPutRequester::shared_pointer const & channelPutRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest)
+    CAChannel::shared_pointer const & channel,
+    ChannelPutRequester::shared_pointer const & channelPutRequester,
+    epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
     // TODO use std::make_shared
     std::tr1::shared_ptr<CAChannelPut> tp(
-                    new CAChannelPut(channel, channelPutRequester, pvRequest)
-                );
+        new CAChannelPut(channel, channelPutRequester, pvRequest)
+    );
     ChannelPut::shared_pointer thisPtr = tp;
     static_cast<CAChannelPut*>(thisPtr.get())->activate();
     return thisPtr;
@@ -971,7 +971,7 @@ CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & _channel,
 void CAChannelPut::activate()
 {
     EXCEPTION_GUARD(channelPutRequester->channelPutConnect(Status::Ok, shared_from_this(),
-                                                           pvStructure->getStructure()));
+                    pvStructure->getStructure()));
 }
 
 
@@ -1129,11 +1129,11 @@ static doPut doPutFuncTable[] =
     doPut_pvStructure<dbr_float_t, pvFloat, PVFloat, PVFloatArray>,          // DBR_FLOAT
     doPut_pvStructure<dbr_enum_t, pvString, PVString, PVStringArray>,          // DBR_ENUM
     doPut_pvStructure<int8 /*dbr_char_t*/, pvByte, PVByte, PVByteArray>,          // DBR_CHAR
-    #if defined(__vxworks) || defined(__rtems__)
+#if defined(__vxworks) || defined(__rtems__)
     doPut_pvStructure<int32, pvInt, PVInt, PVIntArray>,          // DBR_LONG
-    #else
+#else
     doPut_pvStructure<dbr_long_t, pvInt, PVInt, PVIntArray>,          // DBR_LONG
-    #endif
+#endif
     doPut_pvStructure<dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_DOUBLE
 };
 
@@ -1198,7 +1198,7 @@ void CAChannelPut::getDone(struct event_handler_args &args)
     {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(args.status)));
         EXCEPTION_GUARD(channelPutRequester->getDone(errorStatus, shared_from_this(),
-                                                     PVStructure::shared_pointer(), BitSet::shared_pointer()));
+                        PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
 
     // TODO here???!!!
@@ -1221,7 +1221,7 @@ void CAChannelPut::get()
     {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
         EXCEPTION_GUARD(channelPutRequester->getDone(errorStatus, shared_from_this(),
-                                                     PVStructure::shared_pointer(), BitSet::shared_pointer()));
+                        PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
 }
 
@@ -1279,14 +1279,14 @@ void CAChannelPut::unlock()
 
 
 Monitor::shared_pointer CAChannelMonitor::create(
-        CAChannel::shared_pointer const & channel,
-        epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest)
+    CAChannel::shared_pointer const & channel,
+    epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
+    epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
     // TODO use std::make_shared
     std::tr1::shared_ptr<CAChannelMonitor> tp(
-                new CAChannelMonitor(channel, monitorRequester, pvRequest)
-                );
+        new CAChannelMonitor(channel, monitorRequester, pvRequest)
+    );
     Monitor::shared_pointer thisPtr = tp;
     static_cast<CAChannelMonitor*>(thisPtr.get())->activate();
     return thisPtr;
@@ -1300,8 +1300,8 @@ CAChannelMonitor::~CAChannelMonitor()
 
 
 CAChannelMonitor::CAChannelMonitor(CAChannel::shared_pointer const & _channel,
-                           epics::pvData::MonitorRequester::shared_pointer const & _monitorRequester,
-                           epics::pvData::PVStructure::shared_pointer const & pvRequest) :
+                                   epics::pvData::MonitorRequester::shared_pointer const & _monitorRequester,
+                                   epics::pvData::PVStructure::shared_pointer const & pvRequest) :
     channel(_channel),
     monitorRequester(_monitorRequester),
     getType(getDBRType(pvRequest, _channel->getNativeType())),
@@ -1325,7 +1325,7 @@ void CAChannelMonitor::activate()
     thisPointer = shared_from_this();
 
     EXCEPTION_GUARD(monitorRequester->monitorConnect(Status::Ok, shared_from_this(),
-                                                     pvStructure->getStructure()));
+                    pvStructure->getStructure()));
 }
 
 

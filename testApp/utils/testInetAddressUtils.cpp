@@ -43,12 +43,12 @@ void test_getSocketAddressList()
     testOk1(htons(555) == addr.ia.sin_port);
     testOk1(htonl(0xC0A80304) == addr.ia.sin_addr.s_addr);
     testOk1("192.168.3.4:555" == inetAddressToString(addr));
-    
-    
-    
+
+
+
 
     auto_ptr<InetAddrVector> vec1(getSocketAddressList("172.16.55.160", 6789, vec.get()));
-    
+
     testOk1(static_cast<size_t>(4) == vec1->size());
 
     addr = vec1->at(0);
@@ -143,16 +143,17 @@ void test_encodeAsIPv6Address()
     auto_ptr<ByteBuffer> buff(new ByteBuffer(32, EPICS_ENDIAN_LITTLE));
 
     char src[] = { (char)0, (char)0, (char)0, (char)0, (char)0, (char)0,
-            (char)0, (char)0, (char)0, (char)0, (char)0xFF, (char)0xFF,
-            (char)0x0A, (char)0x0A, (char)0x0C, (char)0x0B };
+                   (char)0, (char)0, (char)0, (char)0, (char)0xFF, (char)0xFF,
+                   (char)0x0A, (char)0x0A, (char)0x0C, (char)0x0B
+                 };
 
     auto_ptr<osiSockAddr> paddr(intToIPv4Address(0x0A0A0C0B));
     testOk1((uintptr_t)0 != (uintptr_t)paddr.get());
     osiSockAddr addr = *paddr;
-    
+
     encodeAsIPv6Address(buff.get(), &addr);
     testOk1(static_cast<size_t>(16) == buff->getPosition());
-    
+
     testOk1(strncmp(buff->getArray(), src, 16) == 0);
 }
 
@@ -262,9 +263,9 @@ void test_multicastLoopback()
     imreq.imr_multiaddr.s_addr = mcastAddr.ia.sin_addr.s_addr;
     imreq.imr_interface.s_addr = loAddr.ia.sin_addr.s_addr;
 
-       // join multicast group on default interface
+    // join multicast group on default interface
     status = ::setsockopt(socket, IPPROTO_IP, IP_ADD_MEMBERSHIP,
-                    (char*)&imreq, sizeof(struct ip_mreq));
+                          (char*)&imreq, sizeof(struct ip_mreq));
     if (status)
     {
         char errStr[64];
@@ -294,7 +295,7 @@ void test_multicastLoopback()
     // send multicast traffic to myself too
     unsigned char mcast_loop = 1;
     status = ::setsockopt(sendSocket, IPPROTO_IP, IP_MULTICAST_LOOP,
-                        (char*)&mcast_loop, sizeof(unsigned char));
+                          (char*)&mcast_loop, sizeof(unsigned char));
     if (status)
     {
         char errStr[64];

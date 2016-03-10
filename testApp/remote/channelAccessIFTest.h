@@ -1,41 +1,41 @@
 #ifndef CHANNELACCESSIFTEST_HPP
-#define CHANNELACCESSIFTEST_HPP 
+#define CHANNELACCESSIFTEST_HPP
 
 #include <pv/pvAccess.h>
 #include "syncTestRequesters.h"
 
 
 class ChannelAccessIFTest {
-  
-  public:
+
+public:
 
     int runAllTest();
-   
-   virtual ~ChannelAccessIFTest() {} 
 
-  protected:
-    
+    virtual ~ChannelAccessIFTest() {}
+
+protected:
+
     static std::string TEST_COUNTER_CHANNEL_NAME;
     static std::string TEST_SIMPLECOUNTER_CHANNEL_NAME;
     static std::string TEST_CHANNEL_NAME;
     static std::string TEST_VALUEONLY_CHANNEL_NAME;
     static std::string TEST_SUMRPC_CHANNEL_NAME;
     static std::string TEST_ARRAY_CHANNEL_NAME;
-    
-    
+
+
     virtual ChannelProvider::shared_pointer getChannelProvider() = 0;
     virtual long getTimeoutSec() = 0;
     virtual bool isLocal() = 0;
 
 
-    Channel::shared_pointer createChannel(std::string channelName, bool debug = false ); 
+    Channel::shared_pointer createChannel(std::string channelName, bool debug = false );
 
 
     Channel::shared_pointer syncCreateChannel(std::string channelName, bool debug = false );
 
 
     SyncChannelGetRequesterImpl::shared_pointer syncCreateChannelGet(
-        Channel::shared_pointer const & channel, std::string const & request, bool debug = false ); 
+        Channel::shared_pointer const & channel, std::string const & request, bool debug = false );
 
 
     SyncChannelPutRequesterImpl::shared_pointer syncCreateChannelPut(
@@ -43,33 +43,33 @@ class ChannelAccessIFTest {
 
 
     SyncChannelPutGetRequesterImpl::shared_pointer syncCreateChannelPutGet(
-        Channel::shared_pointer const & channel, std::string const & request, bool debug = false ); 
+        Channel::shared_pointer const & channel, std::string const & request, bool debug = false );
 
 
     SyncChannelRPCRequesterImpl::shared_pointer syncCreateChannelRPC(
-        Channel::shared_pointer const & channel, bool debug = false); 
+        Channel::shared_pointer const & channel, bool debug = false);
 
 
     SyncMonitorRequesterImpl::shared_pointer syncCreateChannelMonitor(
         Channel::shared_pointer const & channel, std::string const & request, bool debug = false);
 
     SyncChannelArrayRequesterImpl::shared_pointer syncCreateChannelArray(
-        Channel::shared_pointer const & channel, PVStructure::shared_pointer pvRequest, bool debug = false); 
+        Channel::shared_pointer const & channel, PVStructure::shared_pointer pvRequest, bool debug = false);
 
- 
-  private:
+
+private:
 
     void test_implementation();
 
     void test_providerName();
 
-    void test_createEmptyChannel(); 
+    void test_createEmptyChannel();
 
     void test_createChannelWithInvalidPriority();
 
     void test_createChannel();
 
-    void test_recreateChannelOnDestroyedProvider(); 
+    void test_recreateChannelOnDestroyedProvider();
 
     void test_findEmptyChannel();
 
@@ -77,7 +77,7 @@ class ChannelAccessIFTest {
 
     void test_channel();
 
-    void test_channelGetWithInvalidChannelAndRequester(); 
+    void test_channelGetWithInvalidChannelAndRequester();
 
     void test_channelGetNoProcess();
 
@@ -85,14 +85,14 @@ class ChannelAccessIFTest {
 
     void test_channelGetNotYetConnected();
 
-    void test_channelGetIntProcessInternal(Channel::shared_pointer channel, std::string const & testMethodName); 
+    void test_channelGetIntProcessInternal(Channel::shared_pointer channel, std::string const & testMethodName);
 
     void test_channelGetTestNoConnection();
 
     void test_channelPutWithInvalidChannelAndRequester();
 
     void test_channelPutNoProcess();
-    
+
     void test_channelPutIntProcess();
 
     void test_channelPutNotYetConnected();
@@ -148,8 +148,8 @@ class ChannelAccessIFTest {
     void test_stressConnectGetDisconnect();
 
     void test_stressMonitorAndProcess();
-  
-    PVStructure::shared_pointer createSumArgumentStructure(int a, int b); 
+
+    PVStructure::shared_pointer createSumArgumentStructure(int a, int b);
 
     PVStructure::shared_pointer createArrayPvRequest();
 };

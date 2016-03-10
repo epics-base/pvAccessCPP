@@ -17,25 +17,25 @@ PVDataCreatePtr SerializationHelper::_pvDataCreate(getPVDataCreate());
 
 PVStructure::shared_pointer SerializationHelper::deserializePVRequest(ByteBuffer* buffer, DeserializableControl* control)
 {
-	// for now ordinary structure, later can be changed
-	return deserializeStructureFull(buffer, control);
+    // for now ordinary structure, later can be changed
+    return deserializeStructureFull(buffer, control);
 }
 
 PVStructure::shared_pointer SerializationHelper::deserializeStructureAndCreatePVStructure(ByteBuffer* buffer, DeserializableControl* control)
 {
-	return deserializeStructureAndCreatePVStructure(buffer, control, PVStructure::shared_pointer());
+    return deserializeStructureAndCreatePVStructure(buffer, control, PVStructure::shared_pointer());
 }
 
 PVStructure::shared_pointer SerializationHelper::deserializeStructureAndCreatePVStructure(ByteBuffer* buffer, DeserializableControl* control, PVStructure::shared_pointer const & existingStructure)
 {
-	FieldConstPtr field = control->cachedDeserialize(buffer);
-	if (field.get() == 0)
-		return PVStructure::shared_pointer();
+    FieldConstPtr field = control->cachedDeserialize(buffer);
+    if (field.get() == 0)
+        return PVStructure::shared_pointer();
 
-	if (existingStructure.get() != 0 && *(field.get()) == *(existingStructure->getField()))
-		return existingStructure;
-	else
-		return _pvDataCreate->createPVStructure(std::tr1::static_pointer_cast<const Structure>(field));
+    if (existingStructure.get() != 0 && *(field.get()) == *(existingStructure->getField()))
+        return existingStructure;
+    else
+        return _pvDataCreate->createPVStructure(std::tr1::static_pointer_cast<const Structure>(field));
 }
 
 PVStructure::shared_pointer SerializationHelper::deserializeStructureFull(ByteBuffer* buffer, DeserializableControl* control)
@@ -57,14 +57,14 @@ PVField::shared_pointer SerializationHelper::deserializeFull(ByteBuffer* buffer,
 
 void SerializationHelper::serializeNullField(ByteBuffer* buffer, SerializableControl* control)
 {
-	control->ensureBuffer(1);
-	buffer->putByte(IntrospectionRegistry::NULL_TYPE_CODE);
+    control->ensureBuffer(1);
+    buffer->putByte(IntrospectionRegistry::NULL_TYPE_CODE);
 }
 
 void SerializationHelper::serializePVRequest(ByteBuffer* buffer, SerializableControl* control, PVStructure::shared_pointer const & pvRequest)
 {
-	// for now ordinary structure, later can be changed
-	serializeStructureFull(buffer, control, pvRequest);
+    // for now ordinary structure, later can be changed
+    serializeStructureFull(buffer, control, pvRequest);
 }
 
 void SerializationHelper::serializeStructureFull(ByteBuffer* buffer, SerializableControl* control, PVStructure::shared_pointer const & pvStructure)
@@ -85,6 +85,7 @@ void SerializationHelper::serializeFull(ByteBuffer* buffer, SerializableControl*
     }
 }
 
-}}
+}
+}
 
 

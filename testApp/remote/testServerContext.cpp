@@ -12,16 +12,18 @@ using namespace std;
 class TestChannelProvider : public ChannelProvider
 {
 public:
-       
-    std::string getProviderName() { return "local"; };
-    
+
+    std::string getProviderName() {
+        return "local";
+    };
+
 
     ChannelFind::shared_pointer channelFind(std::string const & /*channelName*/,
                                             ChannelFindRequester::shared_pointer const & channelFindRequester)
     {
         ChannelFind::shared_pointer nullCF;
-        channelFindRequester->channelFindResult(Status::Ok, nullCF, false); 
-        return nullCF;  
+        channelFindRequester->channelFindResult(Status::Ok, nullCF, false);
+        return nullCF;
     }
 
     ChannelFind::shared_pointer channelList(ChannelListRequester::shared_pointer const & channelListRequester)
@@ -33,23 +35,23 @@ public:
     }
 
     Channel::shared_pointer createChannel(
-                std::string const & channelName,
-                ChannelRequester::shared_pointer const & channelRequester,
-                short priority = PRIORITY_DEFAULT)  
+        std::string const & channelName,
+        ChannelRequester::shared_pointer const & channelRequester,
+        short priority = PRIORITY_DEFAULT)
     {
         return createChannel(channelName, channelRequester, priority, "");
     }
 
     Channel::shared_pointer createChannel(
-                std::string const & /*channelName*/,
-                ChannelRequester::shared_pointer const & channelRequester,
-                short /*priority*/, std::string const & /*address*/)
+        std::string const & /*channelName*/,
+        ChannelRequester::shared_pointer const & channelRequester,
+        short /*priority*/, std::string const & /*address*/)
     {
         Channel::shared_pointer nullC;
         channelRequester->channelCreated(Status::Ok, nullC);
-        return nullC;    
+        return nullC;
     }
-    
+
     void destroy()
     {
     }
@@ -58,19 +60,19 @@ public:
 
 class TestChannelProviderRegistry : public ChannelProviderRegistry {
 public:
-                
+
     virtual ~TestChannelProviderRegistry() {};
-            
+
     ChannelProvider::shared_pointer getProvider(std::string const & providerName)
     {
         if (providerName == "local")
         {
-            return ChannelProvider::shared_pointer(new TestChannelProvider()); 
+            return ChannelProvider::shared_pointer(new TestChannelProvider());
         }
         else
-            return ChannelProvider::shared_pointer(); 
+            return ChannelProvider::shared_pointer();
     }
-            
+
     ChannelProvider::shared_pointer createProvider(std::string const & providerName)
     {
         return getProvider(providerName);
@@ -87,24 +89,24 @@ public:
 void testServerContext()
 {
 
-	ServerContextImpl::shared_pointer ctx = ServerContextImpl::create();
+    ServerContextImpl::shared_pointer ctx = ServerContextImpl::create();
 
-	ChannelProviderRegistry::shared_pointer ca(new TestChannelProviderRegistry());
-	ctx->initialize(ca);
+    ChannelProviderRegistry::shared_pointer ca(new TestChannelProviderRegistry());
+    ctx->initialize(ca);
 
-	ctx->printInfo();
+    ctx->printInfo();
 
-	ctx->run(1);
+    ctx->run(1);
 
-	ctx->destroy();
+    ctx->destroy();
 }
 
 int main()
 {
-	testServerContext();
+    testServerContext();
 
-	cout << "Done" << endl;
+    cout << "Done" << endl;
 
-	//epicsExitCallAtExits();
+    //epicsExitCallAtExits();
     return (0);
 }

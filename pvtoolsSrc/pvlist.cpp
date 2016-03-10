@@ -42,8 +42,9 @@ using namespace epics::pvAccess;
 
 /// Byte to hexchar mapping.
 static const char lookup[] = {
-        '0', '1', '2', '3', '4', '5', '6', '7',
-        '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+    '0', '1', '2', '3', '4', '5', '6', '7',
+    '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+};
 
 /// Get hex representation of byte.
 string toHex(int8* ba, size_t len) {
@@ -360,8 +361,8 @@ bool discoverServers(double timeOut)
 
         // receive packet from socket
         int bytesRead = ::recvfrom(socket, (char*)receiveBuffer.getArray(),
-                            receiveBuffer.getRemaining(), 0,
-                            (sockaddr*)&fromAddress, &addrStructSize);
+                                   receiveBuffer.getRemaining(), 0,
+                                   (sockaddr*)&fromAddress, &addrStructSize);
 
         if (bytesRead > 0)
         {
@@ -379,15 +380,15 @@ bool discoverServers(double timeOut)
 
                 // interrupted or timeout
                 if (socketError == SOCK_EINTR ||
-                    socketError == EAGAIN ||        // no alias in libCom
-                    // windows times out with this
-                    socketError == SOCK_ETIMEDOUT ||
-                    socketError == SOCK_EWOULDBLOCK)
+                        socketError == EAGAIN ||        // no alias in libCom
+                        // windows times out with this
+                        socketError == SOCK_ETIMEDOUT ||
+                        socketError == SOCK_EWOULDBLOCK)
                 {
                     // OK
                 }
                 else if (socketError == SOCK_ECONNREFUSED || // avoid spurious ECONNREFUSED in Linux
-                    socketError == SOCK_ECONNRESET)     // or ECONNRESET in Windows
+                         socketError == SOCK_ECONNRESET)     // or ECONNRESET in Windows
                 {
                     // OK
                 }
@@ -444,15 +445,15 @@ bool discoverServers(double timeOut)
 void usage (void)
 {
     fprintf (stderr, "\nUsage: pvlist [options] [<server address or GUID starting with '0x'>]...\n\n"
-    "  -h: Help: Print this message\n"
-    "options:\n"
-    "  -i                 Print server info (when server address list/GUID is given)\n"
-    "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
-    "  -q:                Quiet mode, print only error messages\n"
-    "  -d:                Enable debug output\n"
+             "  -h: Help: Print this message\n"
+             "options:\n"
+             "  -i                 Print server info (when server address list/GUID is given)\n"
+             "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
+             "  -q:                Quiet mode, print only error messages\n"
+             "  -d:                Enable debug output\n"
 //    "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
 //    "  -f <input file>:   Use <input file> as an input that provides a list input parameters(s) to be read, use '-' for stdin\n"
-    "\nexamples:\n"
+             "\nexamples:\n"
              "\tpvlist\n"
              "\tpvlist ioc0001\n"
              "\tpvlist 10.5.1.205:10000\n"
@@ -482,7 +483,7 @@ int main (int argc, char *argv[])
     bool debug = false;
     bool quiet = false;
     double timeOut = DEFAULT_TIMEOUT;
-   // char fieldSeparator = ' ';
+    // char fieldSeparator = ' ';
     bool printInfo = false;
 
     /*
@@ -514,31 +515,31 @@ int main (int argc, char *argv[])
         case 'i':               /* Print server info */
             printInfo = true;
             break;
-            /*
+        /*
         case 'F':               // Store this for output formatting
-            fieldSeparator = (char) *optarg;
-            break;
+        fieldSeparator = (char) *optarg;
+        break;
         case 'f':               // Use input stream as input
         {
-            string fileName = optarg;
-            if (fileName == "-")
-                inputStream = &cin;
-            else
+        string fileName = optarg;
+        if (fileName == "-")
+            inputStream = &cin;
+        else
+        {
+            ifs.open(fileName.c_str(), ifstream::in);
+            if (!ifs)
             {
-                ifs.open(fileName.c_str(), ifstream::in);
-                if (!ifs)
-                {
-                    fprintf(stderr,
-                            "Failed to open file '%s'.\n",
-                            fileName.c_str());
-                    return 1;
-                }
-                else
-                    inputStream = &ifs;
+                fprintf(stderr,
+                        "Failed to open file '%s'.\n",
+                        fileName.c_str());
+                return 1;
             }
+            else
+                inputStream = &ifs;
+        }
 
-            fromStream = true;
-            break;
+        fromStream = true;
+        break;
         }*/
         case '?':
             fprintf(stderr,
@@ -567,8 +568,8 @@ int main (int argc, char *argv[])
 
         // by GUID search
         if (serverAddress.length() == 26 &&
-            serverAddress[0] == '0' &&
-            serverAddress[1] == 'x')
+                serverAddress[0] == '0' &&
+                serverAddress[1] == 'x')
         {
             byGUIDSearch = true;
             break;
@@ -590,8 +591,8 @@ int main (int argc, char *argv[])
     if (noArgs)
     {
         for (ServerMap::const_iterator iter = serverMap.begin();
-             iter != serverMap.end();
-             iter++)
+                iter != serverMap.end();
+                iter++)
         {
             const ServerEntry& entry = iter->second;
 
@@ -616,13 +617,13 @@ int main (int argc, char *argv[])
 
             // by GUID search
             if (serverAddress.length() == 26 &&
-                serverAddress[0] == '0' &&
-                serverAddress[1] == 'x')
+                    serverAddress[0] == '0' &&
+                    serverAddress[1] == 'x')
             {
                 bool resolved = false;
                 for (ServerMap::const_iterator iter = serverMap.begin();
-                     iter != serverMap.end();
-                     iter++)
+                        iter != serverMap.end();
+                        iter++)
                 {
                     const ServerEntry& entry = iter->second;
 

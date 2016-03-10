@@ -3,7 +3,7 @@
  * pvAccessCPP is distributed subject to a Software License Agreement found
  * in file LICENSE that is included with this distribution.
  */
- 
+
 #ifndef PIPELINESERVER_H
 #define PIPELINESERVER_H
 
@@ -25,38 +25,39 @@
 
 #include <shareLib.h>
 
-namespace epics { namespace pvAccess { 
+namespace epics {
+namespace pvAccess {
 
 class epicsShareClass PipelineServer :
     public std::tr1::enable_shared_from_this<PipelineServer>
 {
-    private:
+private:
 
     ServerContextImpl::shared_pointer m_serverContext;
     ChannelProviderFactory::shared_pointer m_channelProviderFactory;
     ChannelProvider::shared_pointer m_channelProviderImpl;
 
     // TODO no thread poll implementation
-    
-    public:
+
+public:
     POINTER_DEFINITIONS(PipelineServer);
-    
+
     PipelineServer();
 
     virtual ~PipelineServer();
-    
+
     void registerService(std::string const & serviceName, PipelineService::shared_pointer const & service);
-    
+
     void unregisterService(std::string const & serviceName);
 
     void run(int seconds = 0);
-    
+
     /// Method requires usage of std::tr1::shared_ptr<PipelineServer>. This instance must be
     /// owned by a shared_ptr instance.
     void runInNewThread(int seconds = 0);
-    
-    void destroy();    
-    
+
+    void destroy();
+
     /**
      * Display basic information about the context.
      */
@@ -65,10 +66,11 @@ class epicsShareClass PipelineServer :
 };
 
 epicsShareExtern Channel::shared_pointer createPipelineChannel(ChannelProvider::shared_pointer const & provider,
-                                                          std::string const & channelName,
-                                                          ChannelRequester::shared_pointer const & channelRequester,
-                                                          PipelineService::shared_pointer const & pipelineService);
+        std::string const & channelName,
+        ChannelRequester::shared_pointer const & channelRequester,
+        PipelineService::shared_pointer const & pipelineService);
 
-}}
+}
+}
 
 #endif  /* PIPELINESERVER_H */

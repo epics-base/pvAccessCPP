@@ -1,9 +1,9 @@
 /*
  * Network configuration -- QEMU NOT using DHCP
- * 
+ *
  ************************************************************
  * EDIT THIS FILE TO REFLECT YOUR NETWORK CONFIGURATION     *
- * BEFORE RUNNING ANY RTEMS PROGRAMS WHICH USE THE NETWORK! * 
+ * BEFORE RUNNING ANY RTEMS PROGRAMS WHICH USE THE NETWORK! *
  ************************************************************
  *
  *  The dynamic probing is based upon the EPICS network
@@ -19,8 +19,8 @@
 /* #define USE_LIBBSDPORT */
 
 #if defined(USE_LIBBSDPORT)
-  #include <bsp/libbsdport_api.h>
-  #define CONFIGURE_MAXIMUM_TIMERS 10
+#include <bsp/libbsdport_api.h>
+#define CONFIGURE_MAXIMUM_TIMERS 10
 #endif
 /*
  * For TFTP test application
@@ -35,7 +35,7 @@
 
 /*
  * For NFS test application
- * 
+ *
  * NFS mount and a directory to ls once mounted
  */
 #define RTEMS_NFS_SERVER      "192.168.1.210"
@@ -128,9 +128,9 @@ const int gesysNetworkTaskPriority = NETWORK_TASK_PRIORITY;
 #ifdef MULTI_NETDRIVER
 
 #if 0
-  #if RTEMS_VERSION_ATLEAST(4,6,99)
-  #define pcib_init pci_initialize
-  #endif
+#if RTEMS_VERSION_ATLEAST(4,6,99)
+#define pcib_init pci_initialize
+#endif
 #endif
 
 extern int rtems_3c509_driver_attach (struct rtems_bsdnet_ifconfig *, int);
@@ -143,60 +143,60 @@ extern int rtems_ne_driver_attach (struct rtems_bsdnet_ifconfig *, int);
 extern int rtems_wd_driver_attach (struct rtems_bsdnet_ifconfig *, int);
 
 static struct rtems_bsdnet_ifconfig isa_netdriver_config[] = {
-  {
-  	"ep0", rtems_3c509_driver_attach, isa_netdriver_config + 1,
-  },
-  {
-  	"ne1", rtems_ne_driver_attach, 0, irno: 9 /* qemu cannot configure irq-no :-(; has it hardwired to 9 */
-  },
+    {
+        "ep0", rtems_3c509_driver_attach, isa_netdriver_config + 1,
+    },
+    {
+        "ne1", rtems_ne_driver_attach, 0, irno: 9 /* qemu cannot configure irq-no :-(; has it hardwired to 9 */
+    },
 };
 
-static struct rtems_bsdnet_ifconfig pci_netdriver_config[]={
-  {
-  "dc1", rtems_dec21140_driver_attach, pci_netdriver_config+1,
-  },
-  #if !defined(USE_LIBBSDPORT)
+static struct rtems_bsdnet_ifconfig pci_netdriver_config[]= {
     {
-    "fxp1", rtems_fxp_attach, pci_netdriver_config+2,
+        "dc1", rtems_dec21140_driver_attach, pci_netdriver_config+1,
     },
-  #else
+#if !defined(USE_LIBBSDPORT)
     {
-      "", libbsdport_netdriver_attach, pci_netdriver_config+2,
+        "fxp1", rtems_fxp_attach, pci_netdriver_config+2,
     },
-  #endif
-  {
-  "elnk1", rtems_elnk_driver_attach, isa_netdriver_config,
-  },
+#else
+    {
+        "", libbsdport_netdriver_attach, pci_netdriver_config+2,
+    },
+#endif
+    {
+        "elnk1", rtems_elnk_driver_attach, isa_netdriver_config,
+    },
 };
 
 static int pci_check(struct rtems_bsdnet_ifconfig *ocfg, int attaching)
 {
-struct rtems_bsdnet_ifconfig *cfg;
-int if_index_pre;
-extern int if_index;
-  if ( attaching ) {
-  	cfg = pci_initialize() ?
-                      isa_netdriver_config : pci_netdriver_config;
-  }
-  while ( cfg ) {
-  	printk("Probing '%s'", cfg->name);
-  	/* unfortunately, the return value is unreliable - some drivers report
-  	 * success even if they fail.
-  	 * Check if they chained an interface (ifnet) structure instead
-  	 */
-  	if_index_pre = if_index;
-  	cfg->attach(cfg, attaching);
-  	if ( if_index > if_index_pre ) {
-  		/* assume success */
-  		printk(" .. seemed to work\n");
-  		ocfg->name   = cfg->name;
-  		ocfg->attach = cfg->attach;
-  		return 0;
-  	}
-  	printk(" .. failed\n");
-  	cfg = cfg->next;
-  }
-  return -1;
+    struct rtems_bsdnet_ifconfig *cfg;
+    int if_index_pre;
+    extern int if_index;
+    if ( attaching ) {
+        cfg = pci_initialize() ?
+              isa_netdriver_config : pci_netdriver_config;
+    }
+    while ( cfg ) {
+        printk("Probing '%s'", cfg->name);
+        /* unfortunately, the return value is unreliable - some drivers report
+         * success even if they fail.
+         * Check if they chained an interface (ifnet) structure instead
+         */
+        if_index_pre = if_index;
+        cfg->attach(cfg, attaching);
+        if ( if_index > if_index_pre ) {
+            /* assume success */
+            printk(" .. seemed to work\n");
+            ocfg->name   = cfg->name;
+            ocfg->attach = cfg->attach;
+            return 0;
+        }
+        printk(" .. failed\n");
+        cfg = cfg->next;
+    }
+    return -1;
 }
 
 
@@ -233,18 +233,19 @@ static char ethernet_address[6] = { 0x00, 0xab, 0xcd, 0xef, 0x12, 0x34 };
 #endif
 
 static struct rtems_bsdnet_ifconfig netdriver_config[1] = {{
-  NIC_NAME,  /* name */
-  (int (*)(struct rtems_bsdnet_ifconfig*,int))NIC_ATTACH,  /* attach function */
-  0,  		/* link to next interface */
-  FIXED_IP_ADDR,
-  FIXED_NETMASK
+        NIC_NAME,  /* name */
+        (int (*)(struct rtems_bsdnet_ifconfig*,int))NIC_ATTACH,  /* attach function */
+        0,  		/* link to next interface */
+        FIXED_IP_ADDR,
+        FIXED_NETMASK
 #if RTEMS_BSP_NETWORK_DRIVER_ATTACH == BSP_NE2000_NETWORK_DRIVER_ATTACH
-  ,
-  ethernet_address,
-  irno:9,
-  port:0xc100
+        ,
+        ethernet_address,
+        irno:9,
+        port:0xc100
 #endif
-}};
+    }
+};
 #else
 #warning "NO KNOWN NETWORK DRIVER FOR THIS BSP -- YOU MAY HAVE TO EDIT networkconfig.h"
 #endif

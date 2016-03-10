@@ -60,22 +60,22 @@ private:
 
 void PVAServerCTX::start()
 {
-   if(ctx.get()) {
+    if(ctx.get()) {
         cout<< "PVAServer already started" << endl;
         return;
-   }
-   ctx = startPVAServer(PVACCESS_ALL_PROVIDERS,0,true,true);
+    }
+    ctx = startPVAServer(PVACCESS_ALL_PROVIDERS,0,true,true);
 }
 
 void PVAServerCTX::stop()
 {
-   if(!ctx.get()) {
+    if(!ctx.get()) {
         cout<< "PVAServer already stopped" << endl;
         return;
-   }
-   ctx->destroy();
-   ctx.reset();
-   epicsThreadSleep(1.0);
+    }
+    ctx->destroy();
+    ctx.reset();
+    epicsThreadSleep(1.0);
 }
 
 PVAServerCTXPtr PVAServerCTX::getPVAServerCTX()
@@ -84,14 +84,14 @@ PVAServerCTXPtr PVAServerCTX::getPVAServerCTX()
     static Mutex mutex;
     Lock xx(mutex);
 
-   if(!pvPVAServerCTX.get()) {
-      pvPVAServerCTX = PVAServerCTXPtr(new PVAServerCTX());
-   }
-   return pvPVAServerCTX;
+    if(!pvPVAServerCTX.get()) {
+        pvPVAServerCTX = PVAServerCTXPtr(new PVAServerCTX());
+    }
+    return pvPVAServerCTX;
 }
 
 static void pvaServerExitHandler(void* /*pPrivate*/) {
-cout << "pvaServerExitHandler\n";
+    cout << "pvaServerExitHandler\n";
     PVAServerCTX::getPVAServerCTX()->stop();
 }
 

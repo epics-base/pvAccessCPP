@@ -34,26 +34,26 @@ size_t fromString(PVFieldPtr const & pv, StringArray const & from, size_t fromSt
 
 size_t fromString(PVScalarArrayPtr const &pv, StringArray const & from, size_t fromStartIndex = 0)
 {
-	int processed = 0;
-	size_t fromValueCount = from.size();
+    int processed = 0;
+    size_t fromValueCount = from.size();
 
-	// first get count
-	if (fromStartIndex >= fromValueCount)
-		throw std::runtime_error("not enough values");
+    // first get count
+    if (fromStartIndex >= fromValueCount)
+        throw std::runtime_error("not enough values");
 
-	size_t count;
-	istringstream iss(from[fromStartIndex]);
-	iss >> count;
-	// not fail and entire value is parsed (e.g. to detect 1.2 parsing to 1)
-	if (iss.fail() || !iss.eof())
-    	throw runtime_error("failed to parse element count value (uint) of field '" + pv->getFieldName() + "' from string value '" + from[fromStartIndex] + "'");
-	fromStartIndex++;
-	processed++;
+    size_t count;
+    istringstream iss(from[fromStartIndex]);
+    iss >> count;
+    // not fail and entire value is parsed (e.g. to detect 1.2 parsing to 1)
+    if (iss.fail() || !iss.eof())
+        throw runtime_error("failed to parse element count value (uint) of field '" + pv->getFieldName() + "' from string value '" + from[fromStartIndex] + "'");
+    fromStartIndex++;
+    processed++;
 
-	if ((fromStartIndex+count) > fromValueCount)
-	{
-    	throw runtime_error("not enough array values for field " + pv->getFieldName());
-	}
+    if ((fromStartIndex+count) > fromValueCount)
+    {
+        throw runtime_error("not enough array values for field " + pv->getFieldName());
+    }
 
     PVStringArray::svector valueList(count);
     std::copy(from.begin() + fromStartIndex, from.begin() + fromStartIndex + count, valueList.begin());
@@ -68,21 +68,21 @@ size_t fromString(PVStructurePtr const & pvStructure, StringArray const & from, 
 
 size_t fromString(PVStructureArrayPtr const &pv, StringArray const & from, size_t fromStartIndex = 0)
 {
-	int processed = 0;
-	size_t fromValueCount = from.size();
+    int processed = 0;
+    size_t fromValueCount = from.size();
 
-	// first get count
-	if (fromStartIndex >= fromValueCount)
-		throw std::runtime_error("not enough values");
+    // first get count
+    if (fromStartIndex >= fromValueCount)
+        throw std::runtime_error("not enough values");
 
-	size_t numberOfStructures;
-	istringstream iss(from[fromStartIndex]);
-	iss >> numberOfStructures;
-	// not fail and entire value is parsed (e.g. to detect 1.2 parsing to 1)
-	if (iss.fail() || !iss.eof())
-    	throw runtime_error("failed to parse element count value (uint) of field '" + pv->getFieldName() + "' from string value '" + from[fromStartIndex] + "'");
-	fromStartIndex++;
-	processed++;
+    size_t numberOfStructures;
+    istringstream iss(from[fromStartIndex]);
+    iss >> numberOfStructures;
+    // not fail and entire value is parsed (e.g. to detect 1.2 parsing to 1)
+    if (iss.fail() || !iss.eof())
+        throw runtime_error("failed to parse element count value (uint) of field '" + pv->getFieldName() + "' from string value '" + from[fromStartIndex] + "'");
+    fromStartIndex++;
+    processed++;
 
     PVStructureArray::svector pvStructures;
     pvStructures.reserve(numberOfStructures);
@@ -220,35 +220,35 @@ size_t fromString(PVFieldPtr const & fieldField, StringArray const & from, size_
     {
         switch (fieldField->getField()->getType())
         {
-            case scalar:
-            {
-                if (fromStartIndex >= from.size())
-                    throw std::runtime_error("not enough values");
+        case scalar:
+        {
+            if (fromStartIndex >= from.size())
+                throw std::runtime_error("not enough values");
 
-                PVScalarPtr pv = static_pointer_cast<PVScalar>(fieldField);
-                getConvert()->fromString(pv, from[fromStartIndex]);
-                return 1;
-            }
+            PVScalarPtr pv = static_pointer_cast<PVScalar>(fieldField);
+            getConvert()->fromString(pv, from[fromStartIndex]);
+            return 1;
+        }
 
-            case scalarArray:
-                return fromString(static_pointer_cast<PVScalarArray>(fieldField), from, fromStartIndex);
+        case scalarArray:
+            return fromString(static_pointer_cast<PVScalarArray>(fieldField), from, fromStartIndex);
 
-            case structure:
-                return fromString(static_pointer_cast<PVStructure>(fieldField), from, fromStartIndex);
+        case structure:
+            return fromString(static_pointer_cast<PVStructure>(fieldField), from, fromStartIndex);
 
-            case structureArray:
-                return fromString(static_pointer_cast<PVStructureArray>(fieldField), from, fromStartIndex);
+        case structureArray:
+            return fromString(static_pointer_cast<PVStructureArray>(fieldField), from, fromStartIndex);
 
-            case union_:
-                return fromString(static_pointer_cast<PVUnion>(fieldField), from, fromStartIndex);
+        case union_:
+            return fromString(static_pointer_cast<PVUnion>(fieldField), from, fromStartIndex);
 
-            case unionArray:
-                return fromString(static_pointer_cast<PVUnionArray>(fieldField), from, fromStartIndex);
+        case unionArray:
+            return fromString(static_pointer_cast<PVUnionArray>(fieldField), from, fromStartIndex);
 
-            default:
-                std::ostringstream oss;
-                oss << "fromString unsupported fieldType " << fieldField->getField()->getType();
-                throw std::logic_error(oss.str());
+        default:
+            std::ostringstream oss;
+            oss << "fromString unsupported fieldType " << fieldField->getField()->getType();
+            throw std::logic_error(oss.str());
         }
     }
     catch (std::exception &ex)
@@ -279,21 +279,21 @@ char fieldSeparator = ' ';
 void usage (void)
 {
     fprintf (stderr, "\nUsage: pvput [options] <PV name> <values>...\n\n"
-    "  -h: Help: Print this message\n"
-    "options:\n"
-    "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
-    "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
-    "  -t:                Terse mode - print only successfully written value, without names\n"
-    "  -p <provider>:     Set default provider name, default is '%s'\n"
-    "  -q:                Quiet mode, print only error messages\n"
-    "  -d:                Enable debug output\n"
-    "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
-    "  -f <input file>:   Use <input file> as an input that provides a list PV name(s) to be read, use '-' for stdin\n"
-    " enum format:\n"
-    "  default: Auto - try value as enum string, then as index number\n"
-    "  -n: Force enum interpretation of values as numbers\n"
-    "  -s: Force enum interpretation of values as strings\n"
-    "\nexample: pvput double01 1.234\n\n"
+             "  -h: Help: Print this message\n"
+             "options:\n"
+             "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
+             "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
+             "  -t:                Terse mode - print only successfully written value, without names\n"
+             "  -p <provider>:     Set default provider name, default is '%s'\n"
+             "  -q:                Quiet mode, print only error messages\n"
+             "  -d:                Enable debug output\n"
+             "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
+             "  -f <input file>:   Use <input file> as an input that provides a list PV name(s) to be read, use '-' for stdin\n"
+             " enum format:\n"
+             "  default: Auto - try value as enum string, then as index number\n"
+             "  -n: Force enum interpretation of values as numbers\n"
+             "  -s: Force enum interpretation of values as strings\n"
+             "\nexample: pvput double01 1.234\n\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT, DEFAULT_PROVIDER);
 }
 
@@ -305,14 +305,14 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
         PVField::shared_pointer value = pv->getSubField("value");
         if (value.get() == 0)
         {
-        	std::cerr << "no 'value' field" << std::endl;
+            std::cerr << "no 'value' field" << std::endl;
             std::cout << std::endl << *(pv.get()) << std::endl << std::endl;
         }
         else
         {
-			Type valueType = value->getField()->getType();
-			if (valueType != scalar && valueType != scalarArray)
-			{
+            Type valueType = value->getField()->getType();
+            if (valueType != scalar && valueType != scalarArray)
+            {
                 // special case for enum
                 if (valueType == structure)
                 {
@@ -334,20 +334,20 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
                     }
                 }
 
-				// switch to structure mode
-				std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
-			}
-			else
-			{
-				if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
-					std::cout << std::setw(30) << std::left << channelName;
-				else
-					std::cout << channelName;
+                // switch to structure mode
+                std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+            }
+            else
+            {
+                if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
+                    std::cout << std::setw(30) << std::left << channelName;
+                else
+                    std::cout << channelName;
 
-				std::cout << fieldSeparator;
+                std::cout << fieldSeparator;
 
-				terse(std::cout, value) << std::endl;
-			}
+                terse(std::cout, value) << std::endl;
+            }
         }
     }
     else if (mode == TerseMode)
@@ -365,22 +365,32 @@ struct AtomicBoolean_null_deleter
 // alternative is to use boost::atomic
 class AtomicBoolean
 {
-    public:
-        AtomicBoolean() : counter(static_cast<void*>(0), AtomicBoolean_null_deleter()) {};
+public:
+    AtomicBoolean() : counter(static_cast<void*>(0), AtomicBoolean_null_deleter()) {};
 
-        void set() { mutex.lock(); setp = counter; mutex.unlock(); }
-        void clear() { mutex.lock(); setp.reset(); mutex.unlock(); }
+    void set() {
+        mutex.lock();
+        setp = counter;
+        mutex.unlock();
+    }
+    void clear() {
+        mutex.lock();
+        setp.reset();
+        mutex.unlock();
+    }
 
-        bool get() const { return counter.use_count() == 2; }
-    private:
-        std::tr1::shared_ptr<void> counter;
-        std::tr1::shared_ptr<void> setp;
-        epics::pvData::Mutex mutex;
+    bool get() const {
+        return counter.use_count() == 2;
+    }
+private:
+    std::tr1::shared_ptr<void> counter;
+    std::tr1::shared_ptr<void> setp;
+    epics::pvData::Mutex mutex;
 };
 
 class ChannelPutRequesterImpl : public ChannelPutRequester
 {
-    private:
+private:
     PVStructure::shared_pointer m_pvStructure;
     BitSet::shared_pointer m_bitSet;
     Mutex m_pointerMutex;
@@ -389,13 +399,13 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     string m_channelName;
     AtomicBoolean m_done;
 
-    public:
-    
+public:
+
     ChannelPutRequesterImpl(std::string channelName) : m_channelName(channelName)
     {
-    	resetEvent();
+        resetEvent();
     }
-    
+
     virtual string getRequesterName()
     {
         return "ChannelPutRequesterImpl";
@@ -407,7 +417,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     }
 
     virtual void channelPutConnect(const epics::pvData::Status& status,
-    							   ChannelPut::shared_pointer const & channelPut,
+                                   ChannelPut::shared_pointer const & channelPut,
                                    epics::pvData::Structure::const_shared_pointer const & /*structure*/)
     {
         if (status.isSuccess())
@@ -429,7 +439,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
     }
 
     virtual void getDone(const epics::pvData::Status& status, ChannelPut::shared_pointer const & /*channelPut*/,
-                         epics::pvData::PVStructure::shared_pointer const & pvStructure, 
+                         epics::pvData::PVStructure::shared_pointer const & pvStructure,
                          epics::pvData::BitSet::shared_pointer const & bitSet)
     {
         if (status.isSuccess())
@@ -440,7 +450,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
                 std::cerr << "[" << m_channelName << "] channel get: " << dump_stack_only_on_debug(status) << std::endl;
             }
 
-        	m_done.set();
+            m_done.set();
 
             {
                 Lock lock(m_pointerMutex);
@@ -454,7 +464,7 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         {
             std::cerr << "[" << m_channelName << "] failed to get: " << dump_stack_only_on_debug(status) << std::endl;
         }
-        
+
         m_event->signal();
     }
 
@@ -467,14 +477,14 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
             {
                 std::cerr << "[" << m_channelName << "] channel put: " << dump_stack_only_on_debug(status) << std::endl;
             }
-  
+
             m_done.set();
         }
         else
         {
             std::cerr << "[" << m_channelName << "] failed to put: " << dump_stack_only_on_debug(status) << std::endl;
         }
-        
+
         m_event->signal();
     }
 
@@ -496,21 +506,21 @@ class ChannelPutRequesterImpl : public ChannelPutRequester
         m_event.reset(new Event());
         m_done.clear();
     }
-    
+
     bool waitUntilDone(double timeOut)
     {
-    	Event* event;
-    	{
-    		Lock lock(m_eventMutex);
-    		event = m_event.get();
-    	}
+        Event* event;
+        {
+            Lock lock(m_eventMutex);
+            event = m_event.get();
+        }
 
         bool signaled = event->wait(timeOut);
         if (!signaled)
         {
             std::cerr << "[" << m_channelName << "] timeout" << std::endl;
             return false;
-    	}
+        }
 
         return m_done.get();
     }
@@ -656,7 +666,7 @@ int main (int argc, char *argv[])
     {
         std::cerr << "invalid "
                   << (usingDefaultProvider ? "default provider" : "URI scheme")
-                  << " '" << providerName 
+                  << " '" << providerName
                   << "', only 'pva' and 'ca' are supported" << std::endl;
         return 1;
     }
@@ -699,7 +709,7 @@ int main (int argc, char *argv[])
         fprintf(stderr, "failed to parse request string\n");
         return 1;
     }
-    
+
     SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
 
     std::cout << std::boolalpha;
@@ -721,17 +731,17 @@ int main (int argc, char *argv[])
             Channel::shared_pointer channel;
             if (address.empty())
                 channel = getChannelProviderRegistry()->getProvider(
-                    providerName)->createChannel(pvName, channelRequesterImpl);
+                              providerName)->createChannel(pvName, channelRequesterImpl);
             else
                 channel = getChannelProviderRegistry()->getProvider(
-                    providerName)->createChannel(pvName, channelRequesterImpl, 
-                    ChannelProvider::PRIORITY_DEFAULT, address);
+                              providerName)->createChannel(pvName, channelRequesterImpl,
+                                      ChannelProvider::PRIORITY_DEFAULT, address);
 
             if (channelRequesterImpl->waitUntilConnected(timeOut))
             {
                 shared_ptr<ChannelPutRequesterImpl> putRequesterImpl(new ChannelPutRequesterImpl(channel->getChannelName()));
                 if (mode != TerseMode && !quiet)
-                	std::cout << "Old : ";
+                    std::cout << "Old : ";
                 ChannelPut::shared_pointer channelPut = channel->createChannelPut(putRequesterImpl, pvRequest);
                 allOK &= putRequesterImpl->waitUntilDone(timeOut);
                 if (allOK)
@@ -739,19 +749,19 @@ int main (int argc, char *argv[])
                     if (mode != TerseMode && !quiet)
                         printValue(pvName, putRequesterImpl->getStructure());
 
-                	// convert value from string
-                	// since we access structure from another thread, we need to lock
-                	{
-						ScopedLock lock(channelPut);
-						fromString(putRequesterImpl->getStructure(), values);
-                	}
+                    // convert value from string
+                    // since we access structure from another thread, we need to lock
+                    {
+                        ScopedLock lock(channelPut);
+                        fromString(putRequesterImpl->getStructure(), values);
+                    }
 
                     // we do a put
                     putRequesterImpl->resetEvent();
                     // note on bitSet: we get all, we set all
                     channelPut->put(putRequesterImpl->getStructure(), putRequesterImpl->getBitSet());
                     allOK &= putRequesterImpl->waitUntilDone(timeOut);
-        
+
                     if (allOK)
                     {
                         // and than a get again to verify put
@@ -783,7 +793,7 @@ int main (int argc, char *argv[])
         std::cerr << "unknown exception caught" << std::endl;
     }
 
-    epics::pvAccess::ca::CAClientFactory::stop(); 
+    epics::pvAccess::ca::CAClientFactory::stop();
     ClientFactory::stop();
 
     return allOK ? 0 : 1;

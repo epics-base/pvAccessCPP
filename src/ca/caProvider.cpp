@@ -42,8 +42,8 @@ std::string CAChannelProvider::getProviderName()
 }
 
 ChannelFind::shared_pointer CAChannelProvider::channelFind(
-        std::string const & channelName,
-        ChannelFindRequester::shared_pointer const & channelFindRequester)
+    std::string const & channelName,
+    ChannelFindRequester::shared_pointer const & channelFindRequester)
 {
     if (channelName.empty())
         throw std::invalid_argument("empty channel name");
@@ -58,7 +58,7 @@ ChannelFind::shared_pointer CAChannelProvider::channelFind(
 }
 
 ChannelFind::shared_pointer CAChannelProvider::channelList(
-        ChannelListRequester::shared_pointer const & channelListRequester)
+    ChannelListRequester::shared_pointer const & channelListRequester)
 {
     if (!channelListRequester.get())
         throw std::runtime_error("null requester");
@@ -71,9 +71,9 @@ ChannelFind::shared_pointer CAChannelProvider::channelList(
 }
 
 Channel::shared_pointer CAChannelProvider::createChannel(
-        std::string const & channelName,
-        ChannelRequester::shared_pointer const & channelRequester,
-        short priority)
+    std::string const & channelName,
+    ChannelRequester::shared_pointer const & channelRequester,
+    short priority)
 {
     threadAttach();
 
@@ -82,10 +82,10 @@ Channel::shared_pointer CAChannelProvider::createChannel(
 }
 
 Channel::shared_pointer CAChannelProvider::createChannel(
-        std::string const & channelName,
-        ChannelRequester::shared_pointer const & channelRequester,
-        short priority,
-        std::string const & address)
+    std::string const & channelName,
+    ChannelRequester::shared_pointer const & channelRequester,
+    short priority,
+    std::string const & address)
 {
     if (!address.empty())
         throw std::invalid_argument("CA does not support 'address' parameter");
@@ -144,7 +144,7 @@ void CAChannelProvider::initialize()
     int result = ca_context_create(ca_enable_preemptive_callback);
     if (result != ECA_NORMAL) {
         throw std::runtime_error(std::string("CA error %s occurred while trying "
-                "to start channel access:") + ca_message(result));
+                                             "to start channel access:") + ca_message(result));
     }
 
     current_context = ca_current_context();

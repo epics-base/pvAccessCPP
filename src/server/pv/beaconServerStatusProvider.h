@@ -23,57 +23,58 @@
 namespace epics {
 namespace pvAccess {
 
-    class ServerContext;
+class ServerContext;
 
-	/**
-	 * BeaconServerStatusProvider
-	 */
-	class epicsShareClass BeaconServerStatusProvider
-	{
-	public:
-        typedef std::tr1::shared_ptr<BeaconServerStatusProvider> shared_pointer;
-        typedef std::tr1::shared_ptr<const BeaconServerStatusProvider> const_shared_pointer;
+/**
+ * BeaconServerStatusProvider
+ */
+class epicsShareClass BeaconServerStatusProvider
+{
+public:
+    typedef std::tr1::shared_ptr<BeaconServerStatusProvider> shared_pointer;
+    typedef std::tr1::shared_ptr<const BeaconServerStatusProvider> const_shared_pointer;
 
-        virtual ~BeaconServerStatusProvider() {};
-        
-		/**
-		 * Gets server status data.
-		 */
-		virtual epics::pvData::PVField::shared_pointer getServerStatusData() = 0;
-	};
+    virtual ~BeaconServerStatusProvider() {};
 
-	/**
-	 * DefaultBeaconServerStatusProvider
-	 */
-	class epicsShareClass DefaultBeaconServerStatusProvider : public BeaconServerStatusProvider
-	{
-	public:
-		/**
-		 * Constructor.
-		 * @param context PVA context.
-		 */
+    /**
+     * Gets server status data.
+     */
+    virtual epics::pvData::PVField::shared_pointer getServerStatusData() = 0;
+};
+
+/**
+ * DefaultBeaconServerStatusProvider
+ */
+class epicsShareClass DefaultBeaconServerStatusProvider : public BeaconServerStatusProvider
+{
+public:
+    /**
+     * Constructor.
+     * @param context PVA context.
+     */
 //		DefaultBeaconServerStatusProvider(ServerContext::shared_pointer const & context);
-		DefaultBeaconServerStatusProvider(std::tr1::shared_ptr<ServerContext> const & context);
-		/**
-		 * Destructor.
-		 */
-		virtual ~DefaultBeaconServerStatusProvider();
+    DefaultBeaconServerStatusProvider(std::tr1::shared_ptr<ServerContext> const & context);
+    /**
+     * Destructor.
+     */
+    virtual ~DefaultBeaconServerStatusProvider();
 
-		virtual epics::pvData::PVField::shared_pointer getServerStatusData();
+    virtual epics::pvData::PVField::shared_pointer getServerStatusData();
 
-	private:
-		/**
-		 * Initialize
-		 */
-		void initialize();
+private:
+    /**
+     * Initialize
+     */
+    void initialize();
 
 
-	private:
-		epics::pvData::PVStructure::shared_pointer _status;
-		std::tr1::shared_ptr<ServerContext> _context;
-        //ServerContext::shared_pointer _context;
-	};
+private:
+    epics::pvData::PVStructure::shared_pointer _status;
+    std::tr1::shared_ptr<ServerContext> _context;
+    //ServerContext::shared_pointer _context;
+};
 
-}}
+}
+}
 
 #endif  /* BEACONSERVERSTATUSPROVIDER_H */

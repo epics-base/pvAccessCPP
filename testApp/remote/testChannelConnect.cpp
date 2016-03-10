@@ -30,7 +30,7 @@ private:
     size_t total;
     int count;
     Event& g_event;
-    
+
     virtual string getRequesterName()
     {
         return "ChannelRequesterImpl";
@@ -66,7 +66,7 @@ private:
         }
         else
             cout << c->getChannelName() << " " << Channel::ConnectionStateNames[connectionState] << endl;
-        
+
     }
 };
 
@@ -102,7 +102,7 @@ int main (int argc, char *argv[])
             int tmp = atoi(optarg);
             if (tmp < 0) tmp = 1;
             // note: possible overflow (size_t is not always unsigned int)
-            nChannels = static_cast<size_t>(tmp);    
+            nChannels = static_cast<size_t>(tmp);
             break;
         }
         case '?':
@@ -120,37 +120,37 @@ int main (int argc, char *argv[])
             return 1;
         }
     }
-    
+
     {
         Event g_event;
 
         ClientFactory::start();
         ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");
-        
+
         int run = 0;
-        
+
         while (runs < 0 || run++ < runs)
         {
             vector<Channel::shared_pointer> channels(nChannels);
-            
+
             ChannelRequester::shared_pointer channelRequester(new ChannelRequesterImpl(nChannels, g_event));
-            
+
             char buf[16];
             for (size_t i = 0; i < nChannels; i++)
             {
                 sprintf(buf, "test%zu", (i+1));
                 channels.push_back(provider->createChannel(buf, channelRequester));
             }
-            
+
             g_event.wait();
-            
+
             cout << "connected to all" << endl;
-        }        
-    
+        }
+
         ClientFactory::stop();
     }
-    
-    epicsThreadSleep ( 2.0 ); 
+
+    epicsThreadSleep ( 2.0 );
     //std::cout << "-----------------------------------------------------------------------" << std::endl;
     //epicsExitCallAtExits();
     return(0);

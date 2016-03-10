@@ -19,17 +19,17 @@ namespace pvAccess {
 namespace ca {
 
 class CAChannel :
-        public Channel,
-        public std::tr1::enable_shared_from_this<CAChannel>
+    public Channel,
+    public std::tr1::enable_shared_from_this<CAChannel>
 {
 
 public:
     POINTER_DEFINITIONS(CAChannel);
 
     static shared_pointer create(CAChannelProvider::shared_pointer const & channelProvider,
-                                            std::string const & channelName,
-                                            short priority,
-                                            ChannelRequester::shared_pointer const & channelRequester);
+                                 std::string const & channelName,
+                                 short priority,
+                                 ChannelRequester::shared_pointer const & channelRequester);
 
     virtual ~CAChannel();
 
@@ -54,32 +54,32 @@ public:
     virtual AccessRights getAccessRights(epics::pvData::PVField::shared_pointer const & pvField);
 
     virtual ChannelProcess::shared_pointer createChannelProcess(
-            ChannelProcessRequester::shared_pointer const & channelProcessRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest);
+        ChannelProcessRequester::shared_pointer const & channelProcessRequester,
+        epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     virtual ChannelGet::shared_pointer createChannelGet(
-            ChannelGetRequester::shared_pointer const & channelGetRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest);
+        ChannelGetRequester::shared_pointer const & channelGetRequester,
+        epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     virtual ChannelPut::shared_pointer createChannelPut(
-            ChannelPutRequester::shared_pointer const & channelPutRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest);
+        ChannelPutRequester::shared_pointer const & channelPutRequester,
+        epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     virtual ChannelPutGet::shared_pointer createChannelPutGet(
-            ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest);
+        ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
+        epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     virtual ChannelRPC::shared_pointer createChannelRPC(
-            ChannelRPCRequester::shared_pointer const & channelRPCRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest);
+        ChannelRPCRequester::shared_pointer const & channelRPCRequester,
+        epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     virtual epics::pvData::Monitor::shared_pointer createMonitor(
-            epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest);
+        epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
+        epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     virtual ChannelArray::shared_pointer createChannelArray(
-            ChannelArrayRequester::shared_pointer const & channelArrayRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest);
+        ChannelArrayRequester::shared_pointer const & channelArrayRequester,
+        epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     virtual void printInfo();
 
@@ -110,7 +110,7 @@ private:
     void activate(short priority);
 
     std::string channelName;
-    
+
     CAChannelProvider::shared_pointer channelProvider;
     ChannelRequester::shared_pointer channelRequester;
 
@@ -129,16 +129,16 @@ private:
 
 
 class CAChannelGet :
-        public ChannelGet,
-        public std::tr1::enable_shared_from_this<CAChannelGet>
+    public ChannelGet,
+    public std::tr1::enable_shared_from_this<CAChannelGet>
 {
 
 public:
     POINTER_DEFINITIONS(CAChannelGet);
 
     static ChannelGet::shared_pointer create(CAChannel::shared_pointer const & channel,
-                                             ChannelGetRequester::shared_pointer const & channelGetRequester,
-                                             epics::pvData::PVStructure::shared_pointer const & pvRequest);
+            ChannelGetRequester::shared_pointer const & channelGetRequester,
+            epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     virtual ~CAChannelGet();
 
@@ -176,7 +176,7 @@ private:
 
     epics::pvData::PVStructure::shared_pointer pvStructure;
     epics::pvData::BitSet::shared_pointer bitSet;
-    
+
     // TODO AtomicBoolean !!!
     bool lastRequestFlag;
 };
@@ -184,16 +184,16 @@ private:
 
 
 class CAChannelPut :
-        public ChannelPut,
-        public std::tr1::enable_shared_from_this<CAChannelPut>
+    public ChannelPut,
+    public std::tr1::enable_shared_from_this<CAChannelPut>
 {
 
 public:
     POINTER_DEFINITIONS(CAChannelPut);
 
     static ChannelPut::shared_pointer create(CAChannel::shared_pointer const & channel,
-                                             ChannelPutRequester::shared_pointer const & channelPutRequester,
-                                             epics::pvData::PVStructure::shared_pointer const & pvRequest);
+            ChannelPutRequester::shared_pointer const & channelPutRequester,
+            epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     virtual ~CAChannelPut();
 
@@ -203,9 +203,9 @@ public:
     /* --------------- epics::pvAccess::ChannelPut --------------- */
 
     virtual void put(
-            epics::pvData::PVStructure::shared_pointer const & pvPutStructure,
-            epics::pvData::BitSet::shared_pointer const & putBitSet
-            );
+        epics::pvData::PVStructure::shared_pointer const & pvPutStructure,
+        epics::pvData::BitSet::shared_pointer const & putBitSet
+    );
     virtual void get();
 
     /* --------------- epics::pvData::ChannelRequest --------------- */
@@ -243,16 +243,16 @@ private:
 
 
 class CAChannelMonitor :
-        public epics::pvData::Monitor,
-        public std::tr1::enable_shared_from_this<CAChannelMonitor>
+    public epics::pvData::Monitor,
+    public std::tr1::enable_shared_from_this<CAChannelMonitor>
 {
 
 public:
     POINTER_DEFINITIONS(CAChannelMonitor);
 
     static epics::pvData::Monitor::shared_pointer create(CAChannel::shared_pointer const & channel,
-                                             epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
-                                             epics::pvData::PVStructure::shared_pointer const & pvRequest);
+            epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
+            epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     virtual ~CAChannelMonitor();
 
@@ -276,8 +276,8 @@ public:
 private:
 
     CAChannelMonitor(CAChannel::shared_pointer const & _channel,
-                 epics::pvData::MonitorRequester::shared_pointer const & _monitorRequester,
-                 epics::pvData::PVStructure::shared_pointer const & pvRequest);
+                     epics::pvData::MonitorRequester::shared_pointer const & _monitorRequester,
+                     epics::pvData::PVStructure::shared_pointer const & pvRequest);
     void activate();
 
     CAChannel::shared_pointer channel;
@@ -299,6 +299,8 @@ private:
     Monitor::shared_pointer thisPointer;
 };
 
-}}}
+}
+}
+}
 
 #endif  /* CACHANNEL_H */

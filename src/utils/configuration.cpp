@@ -37,7 +37,7 @@ const std::string &Properties::getProperty(const string &key) const
         return propertiesIterator->second;
     } else {
         THROW_BASE_EXCEPTION(string("Property not found in the map: ") + key);
-	}
+    }
 }
 
 const std::string &Properties::getProperty(const string &key, const string &defaultValue) const
@@ -125,7 +125,7 @@ void Properties::store(const std::string& fname) const
 void Properties::store(std::ostream& strm) const
 {
     for(_properties_t::const_iterator it=_properties.begin(), end=_properties.end();
-        it!=end && strm.good(); ++it)
+            it!=end && strm.good(); ++it)
     {
         strm << it->first << " = " << it->second << "\n";
     }
@@ -133,12 +133,12 @@ void Properties::store(std::ostream& strm) const
 
 void Properties::list()
 {
-	for (std::map<std::string,std::string>::iterator propertiesIterator =  _properties.begin() ;
-			propertiesIterator != _properties.end();
-			propertiesIterator++ )
-	{
-		cout << "Key:" << propertiesIterator->first << ",Value: " << propertiesIterator->second << endl;
-	}
+    for (std::map<std::string,std::string>::iterator propertiesIterator =  _properties.begin() ;
+            propertiesIterator != _properties.end();
+            propertiesIterator++ )
+    {
+        cout << "Key:" << propertiesIterator->first << ",Value: " << propertiesIterator->second << endl;
+    }
 }
 
 bool Configuration::getPropertyAsBoolean(const std::string &name, const bool defaultValue) const
@@ -160,18 +160,18 @@ bool Configuration::getPropertyAsBoolean(const std::string &name, const bool def
 
 epics::pvData::int32 Configuration::getPropertyAsInteger(const std::string &name, const epics::pvData::int32 defaultValue) const
 {
-    try{
+    try {
         return castUnsafe<epics::pvData::int32>(getPropertyAsString(name, ""));
-    }catch(std::runtime_error&){
+    } catch(std::runtime_error&) {
         return defaultValue;
     }
 }
 
 float Configuration::getPropertyAsFloat(const std::string &name, const float defaultValue) const
 {
-    try{
+    try {
         return castUnsafe<float>(getPropertyAsString(name, ""));
-    }catch(std::runtime_error&){
+    } catch(std::runtime_error&) {
         return defaultValue;
     }
 }
@@ -180,7 +180,7 @@ double Configuration::getPropertyAsDouble(const std::string &name, const double 
 {
     try {
         return castUnsafe<double>(getPropertyAsString(name, ""));
-    }catch(std::runtime_error&){
+    } catch(std::runtime_error&) {
         return defaultValue;
     }
 }
@@ -238,7 +238,7 @@ bool ConfigurationEnviron::tryGetPropertyAsString(const std::string& name, std::
 bool ConfigurationStack::tryGetPropertyAsString(const std::string& name, std::string* val) const
 {
     for(confs_t::const_reverse_iterator it = confs.rbegin(), end = confs.rend();
-        it!=end; ++it)
+            it!=end; ++it)
     {
         Configuration& conf = **it;
         if(conf.tryGetPropertyAsString(name, val))
@@ -295,24 +295,24 @@ Configuration::shared_pointer ConfigurationBuilder::build()
 
 void ConfigurationProviderImpl::registerConfiguration(const string &name, Configuration::shared_pointer const & configuration)
 {
-	Lock guard(_mutex);
-	std::map<std::string,Configuration::shared_pointer>::iterator configsIter = _configs.find(name);
-	if(configsIter != _configs.end())
-	{
-		string msg = "configuration with name " + name + " already registered";
-		THROW_BASE_EXCEPTION(msg.c_str());
-	}
-	_configs[name] = configuration;
+    Lock guard(_mutex);
+    std::map<std::string,Configuration::shared_pointer>::iterator configsIter = _configs.find(name);
+    if(configsIter != _configs.end())
+    {
+        string msg = "configuration with name " + name + " already registered";
+        THROW_BASE_EXCEPTION(msg.c_str());
+    }
+    _configs[name] = configuration;
 }
 
 Configuration::shared_pointer ConfigurationProviderImpl::getConfiguration(const string &name)
 {
     Lock guard(_mutex);
     std::map<std::string,Configuration::shared_pointer>::iterator configsIter = _configs.find(name);
-	if(configsIter != _configs.end())
-	{
-		return configsIter->second;
-	}
+    if(configsIter != _configs.end())
+    {
+        return configsIter->second;
+    }
     Configuration::shared_pointer env(new ConfigurationEnviron); // default to environment only
     _configs[name] = env; // ensure that a later attempt to define this config will fail
     return env;
@@ -323,15 +323,16 @@ Mutex conf_factory_mutex;
 
 ConfigurationProvider::shared_pointer ConfigurationFactory::getProvider()
 {
-	Lock guard(conf_factory_mutex);
-	if(configurationProvider.get() == NULL)
-	{
-		configurationProvider.reset(new ConfigurationProviderImpl());
+    Lock guard(conf_factory_mutex);
+    if(configurationProvider.get() == NULL)
+    {
+        configurationProvider.reset(new ConfigurationProviderImpl());
         Configuration::shared_pointer systemConfig(new ConfigurationEnviron);
-		configurationProvider->registerConfiguration("system", systemConfig);
-	}
-	return configurationProvider;
+        configurationProvider->registerConfiguration("system", systemConfig);
+    }
+    return configurationProvider;
 }
 
-}}
+}
+}
 

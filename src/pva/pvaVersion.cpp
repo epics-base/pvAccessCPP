@@ -16,9 +16,9 @@ namespace epics {
 namespace pvAccess {
 
 Version::Version(std::string const & productName,
-		std::string const & implementationLangugage,
-        int majorVersion, int minorVersion,
-        int maintenanceVersion, bool developmentFlag) :
+                 std::string const & implementationLangugage,
+                 int majorVersion, int minorVersion,
+                 int maintenanceVersion, bool developmentFlag) :
     _productName(productName),
     _implementationLanguage(implementationLangugage),
     _majorVersion(majorVersion),
@@ -62,7 +62,7 @@ const string Version::getVersionString() const {
 }
 
 std::ostream& operator<<(std::ostream& o, const Version& v) {
-	return o << v.getVersionString();
+    return o << v.getVersionString();
 }
 
 }

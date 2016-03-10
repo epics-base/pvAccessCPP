@@ -35,7 +35,8 @@
 
 #include <shareLib.h>
 
-namespace epics { namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
 /**
  * Class which implements UNIX style wildcards and tests to see
@@ -43,19 +44,19 @@ namespace epics { namespace pvAccess {
  */
 class epicsShareClass Wildcard
 {
-    
-  public:
-    
-    /** 
+
+public:
+
+    /**
      * This function implements the UN*X wildcards.
      * @param wildcard Wildcard to be used.
      * @param test Value which we want to see if it matches the wildcard.
-     * @return 0 if wildcard does not match *test. 1 - if wildcard 
+     * @return 0 if wildcard does not match *test. 1 - if wildcard
      * matches test.
      */
     static int wildcardfit (const char *wildcard, const char *test);
-    
-  private:
+
+private:
     /**
      * Scans a set of characters and returns 0 if the set mismatches at this
      * position in the teststring and 1 if it is matching
@@ -66,7 +67,7 @@ class epicsShareClass Wildcard
      * @return 0 if the set mismatches. 1 otherwise.
      */
     static int set (const char **wildcard, const char **test);
-    
+
     /**
      * Scans an asterisk.
      * @param wildcard UNIX style wildcard to be used
@@ -76,7 +77,8 @@ class epicsShareClass Wildcard
     static int asterisk (const char **wildcard, const char **test);
 };
 
-} }
+}
+}
 
 
 #endif

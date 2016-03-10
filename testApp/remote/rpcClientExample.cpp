@@ -10,11 +10,11 @@
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-static StructureConstPtr requestStructure = 
+static StructureConstPtr requestStructure =
     getFieldCreate()->createFieldBuilder()->
-                    add("a", pvString)->
-                    add("b", pvString)->
-                    createStructure();
+    add("a", pvString)->
+    add("b", pvString)->
+    createStructure();
 
 #define TIMEOUT 3.0
 
@@ -47,7 +47,7 @@ int main()
         std::cout << e.what() << std::endl;
         return 1;
     }
-    
+
     // async way, allows multiple RPC calls on the clinet instance
     try
     {

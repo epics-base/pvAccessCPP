@@ -11,9 +11,9 @@ using namespace epics::pvData;
 using namespace epics::pvAccess;
 
 static Structure::const_shared_pointer resultStructure =
-        getFieldCreate()->createFieldBuilder()->
-               add("channelName", pvString)->
-               createStructure();
+    getFieldCreate()->createFieldBuilder()->
+    add("channelName", pvString)->
+    createStructure();
 
 class WildServiceImpl :
     public RPCService
@@ -25,7 +25,7 @@ class WildServiceImpl :
             throw RPCRequestException(Status::STATUSTYPE_ERROR, "RPC argument must be a NTURI normative type");
 
         std::string channelName = pvArguments->getSubField<PVString>("path")->get();
-        
+
         // create return structure and set data
         PVStructure::shared_pointer result = getPVDataCreate()->createPVStructure(resultStructure);
         result->getSubField<PVString>("channelName")->put(channelName);

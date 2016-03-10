@@ -18,18 +18,18 @@ using namespace epics::pvData;
 using namespace epics::pvAccess;
 
 RequesterImpl::RequesterImpl(std::string const & requesterName) :
-		m_requesterName(requesterName)
+    m_requesterName(requesterName)
 {
 }
 
 string RequesterImpl::getRequesterName()
 {
-	return "RequesterImpl";
+    return "RequesterImpl";
 }
 
 void RequesterImpl::message(std::string const & message, MessageType messageType)
 {
-	std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+    std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
 }
 
 std::ostream& operator<<(std::ostream& o, const dump_stack_only_on_debug& d)
@@ -60,13 +60,13 @@ std::ostream& operator<<(std::ostream& o, const dump_stack_only_on_debug& d)
 char separator = ' ';
 void terseSeparator(char c)
 {
-	separator = c;
+    separator = c;
 }
 
 char arrayCountFlag = true;
 void terseArrayCount(bool flag)
 {
-	arrayCountFlag = flag;
+    arrayCountFlag = flag;
 }
 
 EnumMode enumMode = AutoEnum;
@@ -93,17 +93,17 @@ std::ostream& terse(std::ostream& o, PVField::shared_pointer const & pv)
     switch (type)
     {
     case scalar:
-    	o << *(pv.get());
-    	return o;
+        o << *(pv.get());
+        return o;
     case structure:
-    	return terseStructure(o, static_pointer_cast<PVStructure>(pv));
-    	break;
+        return terseStructure(o, static_pointer_cast<PVStructure>(pv));
+        break;
     case scalarArray:
-    	return terseScalarArray(o, static_pointer_cast<PVScalarArray>(pv));
-    	break;
+        return terseScalarArray(o, static_pointer_cast<PVScalarArray>(pv));
+        break;
     case structureArray:
-    	return terseStructureArray(o, static_pointer_cast<PVStructureArray>(pv));
-    	break;
+        return terseStructureArray(o, static_pointer_cast<PVStructureArray>(pv));
+        break;
     case union_:
         return terseUnion(o, static_pointer_cast<PVUnion>(pv));
         break;
@@ -148,7 +148,7 @@ std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure::shared_poi
 
 std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvTimeT)
 {
-    #define TIMETEXTLEN 32
+#define TIMETEXTLEN 32
     char timeText[TIMETEXTLEN];
     epicsTimeStamp epicsTS;
     int32 userTag;
@@ -162,7 +162,7 @@ std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::shared_poi
         userTag = ts.getUserTag();
 
         if (ts.getSecondsPastEpoch() == 0 &&
-            ts.getNanoseconds() == 0)
+                ts.getNanoseconds() == 0)
         {
             o << "<undefined>";
             if (printUserTagFlag)
@@ -290,17 +290,17 @@ std::ostream& terseStructure(std::ostream& o, PVStructure::shared_pointer const 
         return o;
 
     PVFieldPtrArray fieldsData = pvStructure->getPVFields();
-	size_t length = pvStructure->getStructure()->getNumberFields();
-	bool first = true;
-	for (size_t i = 0; i < length; i++) {
-		if (first)
-			first = false;
-		else
-			o << separator;
+    size_t length = pvStructure->getStructure()->getNumberFields();
+    bool first = true;
+    for (size_t i = 0; i < length; i++) {
+        if (first)
+            first = false;
+        else
+            o << separator;
 
-		terse(o, fieldsData[i]);
-	}
-	return o;
+        terse(o, fieldsData[i]);
+    }
+    return o;
 }
 
 std::ostream& terseUnion(std::ostream& o, PVUnion::shared_pointer const & pvUnion)
@@ -319,30 +319,30 @@ std::ostream& terseScalarArray(std::ostream& o, PVScalarArray::shared_pointer co
     size_t length = pvArray->getLength();
     if (arrayCountFlag)
     {
-		if (length<=0)
-		{
-			o << '0';
-			return o;
-		}
-		o << length << separator;
+        if (length<=0)
+        {
+            o << '0';
+            return o;
+        }
+        o << length << separator;
     }
 
     bool first = true;
     for (size_t i = 0; i < length; i++) {
-		if (first)
-			first = false;
-		else
-			o << separator;
+        if (first)
+            first = false;
+        else
+            o << separator;
 
-		pvArray->dumpValue(o, i);
+        pvArray->dumpValue(o, i);
     }
     return o;
 
     // avoid brackets
     /*
-	o << *(pvArray.get());
-	return o;
-	*/
+    o << *(pvArray.get());
+    return o;
+    */
 }
 
 std::ostream& terseStructureArray(std::ostream& o, PVStructureArray::shared_pointer const & pvArray)
@@ -350,23 +350,23 @@ std::ostream& terseStructureArray(std::ostream& o, PVStructureArray::shared_poin
     size_t length = pvArray->getLength();
     if (arrayCountFlag)
     {
-		if (length<=0)
-		{
-			o << '0';
-			return o;
-		}
-		o << length << separator;
+        if (length<=0)
+        {
+            o << '0';
+            return o;
+        }
+        o << length << separator;
     }
 
     PVStructureArray::const_svector data = pvArray->view();
     bool first = true;
     for (size_t i = 0; i < length; i++) {
-		if (first)
-			first = false;
-		else
-			o << separator;
+        if (first)
+            first = false;
+        else
+            o << separator;
 
-		terseStructure(o, data[i]);
+        terseStructure(o, data[i]);
     }
     return o;
 }
@@ -408,37 +408,37 @@ std::ostream& terseUnionArray(std::ostream& o, PVUnionArray::shared_pointer cons
 
 /* Converts a hex character to its integer value */
 char from_hex(char ch) {
-  return isdigit(ch) ? ch - '0' : tolower(ch) - 'a' + 10;
+    return isdigit(ch) ? ch - '0' : tolower(ch) - 'a' + 10;
 }
 
 /* Converts an integer value to its hex character*/
 char to_hex(char code) {
-  static char hex[] = "0123456789abcdef";
-  return hex[code & 15];
+    static char hex[] = "0123456789abcdef";
+    return hex[code & 15];
 }
 
 /* Returns a url-encoded version of str */
 /* IMPORTANT: be sure to free() the returned string after use */
 char *url_encode(const char *str) {
-  const char *pstr = str;
-  char *buf = (char*)malloc(strlen(str) * 3 + 1), *pbuf = buf;
-  bool firstEquals = true;
-  while (*pstr) {
-    if (isalnum(*pstr) || *pstr == '-' || *pstr == '_' || *pstr == '.' || *pstr == '~') 
-      *pbuf++ = *pstr;
-    else if (*pstr == ' ') 
-      *pbuf++ = '+';
-    else if (*pstr == '=' && firstEquals)
-    { 
-      firstEquals = false;
-      *pbuf++ = '=';
+    const char *pstr = str;
+    char *buf = (char*)malloc(strlen(str) * 3 + 1), *pbuf = buf;
+    bool firstEquals = true;
+    while (*pstr) {
+        if (isalnum(*pstr) || *pstr == '-' || *pstr == '_' || *pstr == '.' || *pstr == '~')
+            *pbuf++ = *pstr;
+        else if (*pstr == ' ')
+            *pbuf++ = '+';
+        else if (*pstr == '=' && firstEquals)
+        {
+            firstEquals = false;
+            *pbuf++ = '=';
+        }
+        else
+            *pbuf++ = '%', *pbuf++ = to_hex(*pstr >> 4), *pbuf++ = to_hex(*pstr & 15);
+        pstr++;
     }
-    else 
-      *pbuf++ = '%', *pbuf++ = to_hex(*pstr >> 4), *pbuf++ = to_hex(*pstr & 15);
-    pstr++;
-  }
-  *pbuf = '\0';
-  return buf;
+    *pbuf = '\0';
+    return buf;
 }
 
 
@@ -450,7 +450,7 @@ ChannelRequesterImpl::ChannelRequesterImpl(bool _printOnlyErrors) :
 
 string ChannelRequesterImpl::getRequesterName()
 {
-	return "ChannelRequesterImpl";
+    return "ChannelRequesterImpl";
 }
 
 void ChannelRequesterImpl::message(std::string const & message, MessageType messageType)
@@ -461,42 +461,42 @@ void ChannelRequesterImpl::message(std::string const & message, MessageType mess
 
 void ChannelRequesterImpl::channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel)
 {
-	if (status.isSuccess())
-	{
-		// show warning
-		if (!status.isOK())
-		{
+    if (status.isSuccess())
+    {
+        // show warning
+        if (!status.isOK())
+        {
             std::cerr << "[" << channel->getChannelName() << "] channel create: " << dump_stack_only_on_debug(status) << std::endl;
-		}
-	}
-	else
-	{
+        }
+    }
+    else
+    {
         std::cerr << "[" << channel->getChannelName() << "] failed to create a channel: " << dump_stack_only_on_debug(status) << std::endl;
-	}
+    }
 }
 
 void ChannelRequesterImpl::channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState)
 {
-	if (connectionState == Channel::CONNECTED)
-	{
-		m_event.signal();
-	}
+    if (connectionState == Channel::CONNECTED)
+    {
+        m_event.signal();
+    }
     else if (showDisconnectMsg && connectionState == Channel::DISCONNECTED)
     {
         std::cerr << std::setw(30) << std::left << channel->getChannelName()
                   << ' ' << "*** disconnected" << std::endl;
     }
     /*
-	else if (connectionState != Channel::DESTROYED)
-	{
-		std::cerr << "[" << channel->getChannelName() << "] channel state change: "  << Channel::ConnectionStateNames[connectionState] << std::endl;
-	}
-	*/
+    else if (connectionState != Channel::DESTROYED)
+    {
+    	std::cerr << "[" << channel->getChannelName() << "] channel state change: "  << Channel::ConnectionStateNames[connectionState] << std::endl;
+    }
+    */
 }
-    
+
 bool ChannelRequesterImpl::waitUntilConnected(double timeOut)
 {
-	return m_event.wait(timeOut);
+    return m_event.wait(timeOut);
 }
 
 void ChannelRequesterImpl::showDisconnectMessage(bool show)
@@ -506,49 +506,49 @@ void ChannelRequesterImpl::showDisconnectMessage(bool show)
 
 
 GetFieldRequesterImpl::GetFieldRequesterImpl(epics::pvAccess::Channel::shared_pointer channel) :
-		m_channel(channel)
+    m_channel(channel)
 {
 
 }
 
 string GetFieldRequesterImpl::getRequesterName()
 {
-	return "GetFieldRequesterImpl";
+    return "GetFieldRequesterImpl";
 }
 
 void GetFieldRequesterImpl::message(std::string const & message, MessageType messageType)
 {
-	std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+    std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
 }
 
 void GetFieldRequesterImpl::getDone(const epics::pvData::Status& status, epics::pvData::FieldConstPtr const & field)
 {
-	if (status.isSuccess())
-	{
-		// show warning
-		if (!status.isOK())
-		{
+    if (status.isSuccess())
+    {
+        // show warning
+        if (!status.isOK())
+        {
             std::cerr << "[" << m_channel->getChannelName() << "] getField: " << dump_stack_only_on_debug(status) << std::endl;
-		}
+        }
 
-		// assign smart pointers
-		{
-		    Lock lock(m_pointerMutex);
-		    m_field = field;
-		}
-	}
-	else
-	{
-		// do not complain about missing field
+        // assign smart pointers
+        {
+            Lock lock(m_pointerMutex);
+            m_field = field;
+        }
+    }
+    else
+    {
+        // do not complain about missing field
         //std::cerr << "[" << m_channel->getChannelName() << "] failed to get channel introspection data: " << dump_stack_only_on_debug(status) << std::endl;
-	}
+    }
 
-	m_event.signal();
+    m_event.signal();
 }
 
 bool GetFieldRequesterImpl::waitUntilFieldGet(double timeOut)
 {
-	return m_event.wait(timeOut);
+    return m_event.wait(timeOut);
 }
 
 epics::pvData::FieldConstPtr GetFieldRequesterImpl::getField()

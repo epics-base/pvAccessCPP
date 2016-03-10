@@ -19,14 +19,15 @@
 using namespace std;
 using namespace epics::pvData;
 
-namespace epics { namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
 const float BeaconEmitter::EPICS_PVA_MIN_BEACON_PERIOD = 1.0;
 const float BeaconEmitter::EPICS_PVA_MIN_BEACON_COUNT_LIMIT = 3.0;
 
 //BeaconEmitter::BeaconEmitter(Transport::shared_pointer const & transport, ServerContextImpl::shared_pointer const & context) :
 BeaconEmitter::BeaconEmitter(std::string const & protocol,
-    Transport::shared_pointer const & transport, std::tr1::shared_ptr<ServerContextImpl>& context) :
+                             Transport::shared_pointer const & transport, std::tr1::shared_ptr<ServerContextImpl>& context) :
     _protocol(protocol),
     _transport(transport),
     _beaconSequenceID(0),
@@ -43,39 +44,39 @@ BeaconEmitter::BeaconEmitter(std::string const & protocol,
 
 BeaconEmitter::~BeaconEmitter()
 {
-	// shared_from_this is not yet allows in destructor
-	// be sure to call destroy() first !!!
-	// destroy();
+    // shared_from_this is not yet allows in destructor
+    // be sure to call destroy() first !!!
+    // destroy();
 }
 
 void BeaconEmitter::lock()
 {
-	//noop
+    //noop
 }
 
 void BeaconEmitter::unlock()
 {
-	//noop
+    //noop
 }
 
 void BeaconEmitter::send(ByteBuffer* buffer, TransportSendControl* control)
 {
-	// get server status
-	PVField::shared_pointer serverStatus;
-	if(_serverStatusProvider.get())
-	{
-		try
-		{
-			serverStatus = _serverStatusProvider->getServerStatusData();
-		}
-		catch (...) {
-			// we have to proctect internal code from external implementation...
-			LOG(logLevelDebug, "BeaconServerStatusProvider implementation thrown an exception.");
-		}
-	}
+    // get server status
+    PVField::shared_pointer serverStatus;
+    if(_serverStatusProvider.get())
+    {
+        try
+        {
+            serverStatus = _serverStatusProvider->getServerStatusData();
+        }
+        catch (...) {
+            // we have to proctect internal code from external implementation...
+            LOG(logLevelDebug, "BeaconServerStatusProvider implementation thrown an exception.");
+        }
+    }
 
-	// send beacon
-	control->startMessage((int8)0, 12+2+2+16+2);
+    // send beacon
+    control->startMessage((int8)0, 12+2+2+16+2);
 
     buffer->put(_guid.value, 0, sizeof(_guid.value));
 
@@ -84,36 +85,36 @@ void BeaconEmitter::send(ByteBuffer* buffer, TransportSendControl* control)
 
     buffer->putByte(_beaconSequenceID);
 
-	// TODO for now fixed changeCount
-	buffer->putShort(0);
+    // TODO for now fixed changeCount
+    buffer->putShort(0);
 
-	// NOTE: is it possible (very likely) that address is any local address ::ffff:0.0.0.0
-	encodeAsIPv6Address(buffer, &_serverAddress);
-	buffer->putShort((int16)_serverPort);
+    // NOTE: is it possible (very likely) that address is any local address ::ffff:0.0.0.0
+    encodeAsIPv6Address(buffer, &_serverAddress);
+    buffer->putShort((int16)_serverPort);
 
     SerializeHelper::serializeString(_protocol, buffer, control);
 
-	if (serverStatus)
-	{
-		// introspection interface + data
-		serverStatus->getField()->serialize(buffer, control);
-		serverStatus->serialize(buffer, control);
-	}
-	else
-	{
+    if (serverStatus)
+    {
+        // introspection interface + data
+        serverStatus->getField()->serialize(buffer, control);
+        serverStatus->serialize(buffer, control);
+    }
+    else
+    {
         SerializationHelper::serializeNullField(buffer, control);
-	}
-	control->flush(true);
+    }
+    control->flush(true);
 
-	// increment beacon sequence ID
-	_beaconSequenceID++;
+    // increment beacon sequence ID
+    _beaconSequenceID++;
 
-	reschedule();
+    reschedule();
 }
 
 void BeaconEmitter::timerStopped()
 {
-	//noop
+    //noop
 }
 
 void BeaconEmitter::destroy()
@@ -129,16 +130,17 @@ void BeaconEmitter::start()
 void BeaconEmitter::reschedule()
 {
     const double period = (_beaconSequenceID >= _beaconCountLimit) ? _slowBeaconPeriod : _fastBeaconPeriod;
-	if (period > 0)
-	{
+    if (period > 0)
+    {
         _timer->scheduleAfterDelay(shared_from_this(), period);
-	}
+    }
 }
 
 void BeaconEmitter::callback()
 {
-	_transport->enqueueSendRequest(shared_from_this());
+    _transport->enqueueSendRequest(shared_from_this());
 }
 
-}}
+}
+}
 

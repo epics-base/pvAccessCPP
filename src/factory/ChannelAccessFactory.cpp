@@ -30,7 +30,7 @@ static ChannelProviderFactoryMap channelProviders;
 
 
 class ChannelProviderRegistryImpl : public ChannelProviderRegistry {
-    public:
+public:
 
     ChannelProvider::shared_pointer getProvider(std::string const & providerName) {
 
@@ -64,7 +64,7 @@ class ChannelProviderRegistryImpl : public ChannelProviderRegistry {
         Lock guard(channelProviderMutex);
         std::auto_ptr<stringVector_t> providers(new stringVector_t());
         for (ChannelProviderFactoryMap::const_iterator i = channelProviders.begin();
-            i != channelProviders.end(); i++)
+                i != channelProviders.end(); i++)
             providers->push_back(i->first);
 
         return providers;
@@ -75,7 +75,7 @@ ChannelProviderRegistry::shared_pointer getChannelProviderRegistry() {
     static Mutex mutex;
     Lock guard(mutex);
 
-    if(ChannelProviderRegistry.get()==0){
+    if(ChannelProviderRegistry.get()==0) {
         ChannelProviderRegistry.reset(new ChannelProviderRegistryImpl());
     }
     return ChannelProviderRegistry;
@@ -91,5 +91,6 @@ void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer con
     channelProviders.erase(channelProviderFactory->getFactoryName());
 }
 
-}}
+}
+}
 
