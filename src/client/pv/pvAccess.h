@@ -119,6 +119,13 @@ private:
 
 class Channel;
 class ChannelProvider;
+class ChannelArrayRequester;
+class ChannelFindRequester;
+class ChannelGetRequester;
+class ChannelProcessRequester;
+class ChannelPutRequester;
+class ChannelPutGetRequester;
+class ChannelRPCRequester;
 
 /**
  * Base interface for all channel requests.
@@ -157,6 +164,7 @@ public:
 class epicsShareClass ChannelArray : public ChannelRequest {
 public:
     POINTER_DEFINITIONS(ChannelArray);
+    typedef ChannelArrayRequester requester_type;
 
     /**
      * put to the remote array.
@@ -195,6 +203,7 @@ public:
 class epicsShareClass ChannelArrayRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelArrayRequester);
+    typedef ChannelArray operation_type;
 
     /**
      * The client and server have both completed the createChannelArray request.
@@ -255,6 +264,7 @@ public:
 class epicsShareClass ChannelFind : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
 public:
     POINTER_DEFINITIONS(ChannelFind);
+    typedef ChannelFindRequester requester_type;
 
     virtual std::tr1::shared_ptr<ChannelProvider> getChannelProvider() = 0;
     virtual void cancel() = 0;
@@ -266,6 +276,7 @@ public:
 class epicsShareClass ChannelFindRequester {
 public:
     POINTER_DEFINITIONS(ChannelFindRequester);
+    typedef ChannelFind operation_type;
 
     virtual ~ChannelFindRequester() {};
 
@@ -284,6 +295,7 @@ public:
 class epicsShareClass ChannelListRequester {
 public:
     POINTER_DEFINITIONS(ChannelListRequester);
+    typedef ChannelFind operation_type;
 
     virtual ~ChannelListRequester() {};
 
@@ -303,6 +315,7 @@ public:
 class epicsShareClass ChannelGet : public ChannelRequest {
 public:
     POINTER_DEFINITIONS(ChannelGet);
+    typedef ChannelGetRequester requester_type;
 
     /**
      * Get data from the channel.
@@ -318,6 +331,7 @@ public:
 class epicsShareClass ChannelGetRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelGetRequester);
+    typedef ChannelGet operation_type;
 
     /**
      * The client and server have both completed the createChannelGet request.
@@ -351,6 +365,7 @@ public:
 class epicsShareClass ChannelProcess : public ChannelRequest {
 public:
     POINTER_DEFINITIONS(ChannelProcess);
+    typedef ChannelProcessRequester requester_type;
 
     /**
      * Issue a process request.
@@ -366,6 +381,7 @@ public:
 class epicsShareClass ChannelProcessRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelProcessRequester);
+    typedef ChannelProcess operation_type;
 
     /**
      * The client and server have both completed the createChannelProcess request.
@@ -394,6 +410,7 @@ public:
 class epicsShareClass ChannelPut : public ChannelRequest {
 public:
     POINTER_DEFINITIONS(ChannelPut);
+    typedef ChannelPutRequester requester_type;
 
     /**
      * Put data to a channel.
@@ -418,6 +435,7 @@ public:
 class epicsShareClass ChannelPutRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelPutRequester);
+    typedef ChannelPut operation_type;
 
     /**
      * The client and server have both processed the createChannelPut request.
@@ -461,6 +479,7 @@ public:
 class epicsShareClass ChannelPutGet : public ChannelRequest {
 public:
     POINTER_DEFINITIONS(ChannelPutGet);
+    typedef ChannelPutGetRequester requester_type;
 
     /**
      * Issue a put/get request. If process was requested when the ChannelPutGet was created this is a put, process, get.
@@ -493,6 +512,7 @@ class epicsShareClass ChannelPutGetRequester : virtual public Requester
 {
 public:
     POINTER_DEFINITIONS(ChannelPutGetRequester);
+    typedef ChannelPutGet operation_type;
 
     /**
      * The client and server have both completed the createChannelPutGet request.
@@ -554,6 +574,7 @@ public:
 class epicsShareClass ChannelRPC : public ChannelRequest {
 public:
     POINTER_DEFINITIONS(ChannelRPC);
+    typedef ChannelRPCRequester requester_type;
 
     /**
      * Issue an RPC request to the channel.
@@ -570,6 +591,7 @@ public:
 class epicsShareClass ChannelRPCRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelRPCRequester);
+    typedef ChannelRPC operation_type;
 
     /**
      * The client and server have both completed the createChannelGet request.
@@ -624,6 +646,7 @@ class epicsShareClass Channel :
     private epics::pvData::NoDefaultMethods {
 public:
     POINTER_DEFINITIONS(Channel);
+    typedef ChannelRequester requester_type;
 
     virtual ~Channel() {}
 
@@ -803,6 +826,7 @@ public:
 class epicsShareClass ChannelRequester : public virtual Requester {
 public:
     POINTER_DEFINITIONS(ChannelRequester);
+    typedef Channel operation_type;
 
     /**
      * A channel has been created. This may be called multiple times if there are multiple providers.
