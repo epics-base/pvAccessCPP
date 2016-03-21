@@ -4254,8 +4254,8 @@ private:
             return ChannelRPCImpl::create(shared_from_this(), channelRPCRequester, pvRequest);
         }
 
-        virtual epics::pvData::Monitor::shared_pointer createMonitor(
-            epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
+        virtual Monitor::shared_pointer createMonitor(
+            MonitorRequester::shared_pointer const & monitorRequester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest)
         {
             return ChannelMonitorImpl::create(shared_from_this(), monitorRequester, pvRequest);

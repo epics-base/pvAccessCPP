@@ -34,6 +34,17 @@ namespace epics {
 namespace pvAccess {
 class Configuration;
 
+using epics::pvData::Requester;
+using epics::pvData::RequesterPtr;
+using epics::pvData::MessageType;
+using epics::pvData::getMessageTypeName;
+
+using epics::pvData::MonitorElement;
+using epics::pvData::MonitorElementPtr;
+using epics::pvData::MonitorElementPtrArray;
+using epics::pvData::Monitor;
+using epics::pvData::MonitorRequester;
+
 // TODO add write-only?
 // change names
 enum AccessRights {
@@ -179,9 +190,9 @@ public:
 };
 
 /**
- * The epics::pvData::Requester for a ChannelArray.
+ * The Requester for a ChannelArray.
  */
-class epicsShareClass ChannelArrayRequester : virtual public epics::pvData::Requester {
+class epicsShareClass ChannelArrayRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelArrayRequester);
 
@@ -302,9 +313,9 @@ public:
 
 
 /**
- * epics::pvData::Requester for channelGet.
+ * Requester for channelGet.
  */
-class epicsShareClass ChannelGetRequester : virtual public epics::pvData::Requester {
+class epicsShareClass ChannelGetRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelGetRequester);
 
@@ -350,9 +361,9 @@ public:
 
 
 /**
- * epics::pvData::Requester for channelProcess.
+ * Requester for channelProcess.
  */
-class epicsShareClass ChannelProcessRequester : virtual public epics::pvData::Requester {
+class epicsShareClass ChannelProcessRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelProcessRequester);
 
@@ -402,9 +413,9 @@ public:
 };
 
 /**
- * epics::pvData::Requester for ChannelPut.
+ * Requester for ChannelPut.
  */
-class epicsShareClass ChannelPutRequester : virtual public epics::pvData::Requester {
+class epicsShareClass ChannelPutRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelPutRequester);
 
@@ -476,9 +487,9 @@ public:
 
 
 /**
- * epics::pvData::Requester for ChannelPutGet.
+ * Requester for ChannelPutGet.
  */
-class epicsShareClass ChannelPutGetRequester : virtual public epics::pvData::Requester
+class epicsShareClass ChannelPutGetRequester : virtual public Requester
 {
 public:
     POINTER_DEFINITIONS(ChannelPutGetRequester);
@@ -538,7 +549,7 @@ public:
 
 
 /**
- * epics::pvData::Requester for channelGet.
+ * Requester for channelGet.
  */
 class epicsShareClass ChannelRPC : public ChannelRequest {
 public:
@@ -554,9 +565,9 @@ public:
 
 
 /**
- * epics::pvData::Requester for channelGet.
+ * Requester for channelGet.
  */
-class epicsShareClass ChannelRPCRequester : virtual public epics::pvData::Requester {
+class epicsShareClass ChannelRPCRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelRPCRequester);
 
@@ -583,9 +594,9 @@ public:
 
 
 /**
- * epics::pvData::Requester for a getStructure request.
+ * Requester for a getStructure request.
  */
-class epicsShareClass GetFieldRequester : virtual public epics::pvData::Requester {
+class epicsShareClass GetFieldRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(GetFieldRequester);
 
@@ -608,7 +619,7 @@ class ChannelRequester;
  * A channel is created via a call to ChannelAccess.createChannel(std::string channelName).
  */
 class epicsShareClass Channel :
-    public epics::pvData::Requester,
+    public Requester,
     public epics::pvData::Destroyable,
     private epics::pvData::NoDefaultMethods {
 public:
@@ -654,8 +665,8 @@ public:
     virtual std::string getChannelName() = 0;
 
     /**
-     * Get the channel epics::pvData::Requester.
-     * @return The epics::pvData::Requester.
+     * Get the channel Requester.
+     * @return The Requester.
      */
 //            virtual ChannelRequester::shared_pointer getChannelRequester() = 0;
     virtual std::tr1::shared_ptr<ChannelRequester> getChannelRequester() = 0;
@@ -670,7 +681,7 @@ public:
      * Get a Field which describes the subField.
      * GetFieldRequester.getDone is called after both client and server have processed the getField request.
      * This is for clients that want to introspect a PVRecord via channel access.
-     * @param epics::pvData::Requester The epics::pvData::Requester.
+     * @param Requester The Requester.
      * @param subField The name of the subField.
      * If this is null or an empty std::string the returned Field is for the entire record.
      */
@@ -741,7 +752,7 @@ public:
 
     /**
      * Create a ChannelRPC (Remote Procedure Call).
-     * @param channelRPCRequester The epics::pvData::Requester.
+     * @param channelRPCRequester The Requester.
      * @param pvRequest Request options.
      * @return <code>ChannelRPC</code> instance.
      */
@@ -751,13 +762,13 @@ public:
 
     /**
      * Create a Monitor.
-     * @param monitorRequester The epics::pvData::Requester.
+     * @param monitorRequester The Requester.
      * @param pvRequest A structure describing the desired set of fields from the remote PVRecord.
      * This has the same form as a pvRequest to PVCopyFactory.create.
      * @return <code>Monitor</code> instance.
      */
-    virtual epics::pvData::Monitor::shared_pointer createMonitor(
-        epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
+    virtual Monitor::shared_pointer createMonitor(
+        MonitorRequester::shared_pointer const & monitorRequester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
 
     /**
@@ -786,7 +797,7 @@ public:
 /**
  * Listener for connect state changes.
  */
-class epicsShareClass ChannelRequester : public virtual epics::pvData::Requester {
+class epicsShareClass ChannelRequester : public virtual Requester {
 public:
     POINTER_DEFINITIONS(ChannelRequester);
 
@@ -842,7 +853,7 @@ public:
     /**
      * Find a channel.
      * @param channelName The channel name.
-     * @param channelFindRequester The epics::pvData::Requester.
+     * @param channelFindRequester The Requester.
      * @return An interface for the find.
      */
     virtual ChannelFind::shared_pointer channelFind(std::string const & channelName,
@@ -850,7 +861,7 @@ public:
 
     /**
      * Find channels.
-     * @param channelFindRequester The epics::pvData::Requester.
+     * @param channelFindRequester The Requester.
      * @return An interface for the find.
      */
     virtual ChannelFind::shared_pointer channelList(ChannelListRequester::shared_pointer const & channelListRequester) = 0;
@@ -858,7 +869,7 @@ public:
     /**
      * Create a channel.
      * @param channelName The name of the channel.
-     * @param channelRequester The epics::pvData::Requester.
+     * @param channelRequester The Requester.
      * @param priority channel priority, must be <code>PRIORITY_MIN</code> <= priority <= <code>PRIORITY_MAX</code>.
      * @return <code>Channel</code> instance. If channel does not exist <code>null</code> is returned and <code>channelRequester</code> notified.
      */
@@ -868,7 +879,7 @@ public:
     /**
      * Create a channel.
      * @param channelName The name of the channel.
-     * @param channelRequester The epics::pvData::Requester.
+     * @param channelRequester The Requester.
      * @param priority channel priority, must be <code>PRIORITY_MIN</code> <= priority <= <code>PRIORITY_MAX</code>.
      * @param address address (or list of addresses) where to look for a channel. Implementation independed std::string.
      * @return <code>Channel</code> instance. If channel does not exist <code>null</code> is returned and <code>channelRequester</code> notified.
@@ -961,7 +972,7 @@ epicsShareExtern void unregisterChannelProviderFactory(ChannelProviderFactory::s
  * @brief Pipeline (streaming) support API (optional).
  * This is used by pvAccess to implement pipeline (streaming) monitors.
  */
-class epicsShareClass PipelineMonitor : public virtual epics::pvData::Monitor {
+class epicsShareClass PipelineMonitor : public virtual Monitor {
 public:
     POINTER_DEFINITIONS(PipelineMonitor);
     virtual ~PipelineMonitor() {}

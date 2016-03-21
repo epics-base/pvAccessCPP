@@ -2496,8 +2496,8 @@ public:
         return MockChannelRPC::create(channelRPCRequester, shared_from_this(), m_pvStructure, pvRequest);
     }
 
-    virtual epics::pvData::Monitor::shared_pointer createMonitor(
-        epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
+    virtual Monitor::shared_pointer createMonitor(
+        MonitorRequester::shared_pointer const & monitorRequester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest)
     {
         return MockMonitor::create(m_name, monitorRequester, m_pvStructure, pvRequest);
