@@ -47,7 +47,6 @@ public:
     virtual ConnectionState getConnectionState();
     virtual std::string getChannelName();
     virtual std::tr1::shared_ptr<ChannelRequester> getChannelRequester();
-    virtual bool isConnected();
 
     virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField);
 
@@ -81,15 +80,7 @@ public:
         ChannelArrayRequester::shared_pointer const & channelArrayRequester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
-    virtual void printInfo();
-
     virtual void printInfo(std::ostream& out);
-
-    /* --------------- epics::pvData::Requester --------------- */
-
-    virtual std::string getRequesterName();
-
-    virtual void message(std::string const & message, epics::pvData::MessageType messageType);
 
     /* --------------- epics::pvData::Destroyable --------------- */
 

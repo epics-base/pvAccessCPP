@@ -189,9 +189,6 @@ class RPCChannel :
 {
 private:
 
-    static Status notSupportedStatus;
-    static Status destroyedStatus;
-
     AtomicBoolean m_destroyed;
 
     ChannelProvider::shared_pointer m_provider;
@@ -233,7 +230,7 @@ public:
 
     virtual ConnectionState getConnectionState()
     {
-        return isConnected() ?
+        return (!m_destroyed.get()) ?
                Channel::CONNECTED :
                Channel::DESTROYED;
     }
@@ -248,12 +245,6 @@ public:
         return m_channelRequester;
     }
 
-    virtual bool isConnected()
-    {
-        return !m_destroyed.get();
-    }
-
-
     virtual AccessRights getAccessRights(epics::pvData::PVField::shared_pointer const & /*pvField*/)
     {
         return none;
@@ -261,47 +252,8 @@ public:
 
     virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & /*subField*/)
     {
-        requester->getDone(notSupportedStatus, epics::pvData::Field::shared_pointer());
-    }
-
-    virtual ChannelProcess::shared_pointer createChannelProcess(
-        ChannelProcessRequester::shared_pointer const & channelProcessRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-    {
-        ChannelProcess::shared_pointer nullPtr;
-        channelProcessRequester->channelProcessConnect(notSupportedStatus, nullPtr);
-        return nullPtr;
-    }
-
-    virtual ChannelGet::shared_pointer createChannelGet(
-        ChannelGetRequester::shared_pointer const & channelGetRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-    {
-        ChannelGet::shared_pointer nullPtr;
-        channelGetRequester->channelGetConnect(notSupportedStatus, nullPtr,
-                                               epics::pvData::Structure::const_shared_pointer());
-        return nullPtr;
-    }
-
-    virtual ChannelPut::shared_pointer createChannelPut(
-        ChannelPutRequester::shared_pointer const & channelPutRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-    {
-        ChannelPut::shared_pointer nullPtr;
-        channelPutRequester->channelPutConnect(notSupportedStatus, nullPtr,
-                                               epics::pvData::Structure::const_shared_pointer());
-        return nullPtr;
-    }
-
-
-    virtual ChannelPutGet::shared_pointer createChannelPutGet(
-        ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-    {
-        ChannelPutGet::shared_pointer nullPtr;
-        epics::pvData::Structure::const_shared_pointer nullStructure;
-        channelPutGetRequester->channelPutGetConnect(notSupportedStatus, nullPtr, nullStructure, nullStructure);
-        return nullPtr;
+        requester->getDone(epics::pvData::Status(epics::pvData::Status::STATUSTYPE_ERROR, "Only RPC is implemented"),
+                           epics::pvData::Field::shared_pointer());
     }
 
     virtual ChannelRPC::shared_pointer createChannelRPC(
@@ -316,7 +268,7 @@ public:
         if (m_destroyed.get())
         {
             ChannelRPC::shared_pointer nullPtr;
-            channelRPCRequester->channelRPCConnect(destroyedStatus, nullPtr);
+            channelRPCRequester->channelRPCConnect(epics::pvData::Status(epics::pvData::Status::STATUSTYPE_ERROR, "channel destroyed"), nullPtr);
             return nullPtr;
         }
 
@@ -327,30 +279,6 @@ public:
         ChannelRPC::shared_pointer channelRPCImpl = tp;
         channelRPCRequester->channelRPCConnect(Status::Ok, channelRPCImpl);
         return channelRPCImpl;
-    }
-
-    virtual epics::pvData::Monitor::shared_pointer createMonitor(
-        epics::pvData::MonitorRequester::shared_pointer const & monitorRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-    {
-        epics::pvData::Monitor::shared_pointer nullPtr;
-        monitorRequester->monitorConnect(notSupportedStatus, nullPtr, epics::pvData::Structure::shared_pointer());
-        return nullPtr;
-    }
-
-    virtual ChannelArray::shared_pointer createChannelArray(
-        ChannelArrayRequester::shared_pointer const & channelArrayRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-    {
-        ChannelArray::shared_pointer nullPtr;
-        channelArrayRequester->channelArrayConnect(notSupportedStatus, nullPtr, epics::pvData::Array::const_shared_pointer());
-        return nullPtr;
-    }
-
-
-    virtual void printInfo()
-    {
-        printInfo(std::cout);
     }
 
     virtual void printInfo(std::ostream& out)
@@ -367,20 +295,11 @@ public:
         return getChannelName();
     }
 
-    virtual void message(std::string const & message,MessageType messageType)
-    {
-        // just delegate
-        m_channelRequester->message(message, messageType);
-    }
-
     virtual void destroy()
     {
         m_destroyed.set();
     }
 };
-
-Status RPCChannel::notSupportedStatus(Status::STATUSTYPE_ERROR, "only channelRPC requests are supported by this channel");
-Status RPCChannel::destroyedStatus(Status::STATUSTYPE_ERROR, "channel destroyed");
 
 Channel::shared_pointer createRPCChannel(ChannelProvider::shared_pointer const & provider,
         std::string const & channelName,
