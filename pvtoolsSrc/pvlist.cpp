@@ -446,7 +446,8 @@ void usage (void)
 {
     fprintf (stderr, "\nUsage: pvlist [options] [<server address or GUID starting with '0x'>]...\n\n"
              "  -h: Help: Print this message\n"
-             "options:\n"
+             "  -v: Print version and exit\n"
+             "\noptions:\n"
              "  -i                 Print server info (when server address list/GUID is given)\n"
              "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
              "  -q:                Quiet mode, print only error messages\n"
@@ -493,11 +494,21 @@ int main (int argc, char *argv[])
     */
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hw:qdF:f:i")) != -1) {
+    while ((opt = getopt(argc, argv, ":hvw:qdF:f:i")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
             return 0;
+        case 'v':               /* Print version */
+        {
+            Version version("pvlist", "cpp",
+                    EPICS_PVA_MAJOR_VERSION,
+                    EPICS_PVA_MINOR_VERSION,
+                    EPICS_PVA_MAINTENANCE_VERSION,
+                    EPICS_PVA_DEVELOPMENT_FLAG);
+            fprintf(stdout, "%s\n", version.getVersionString().c_str());
+            return 0;
+        }
         case 'w':               /* Set PVA timeout value */
             if((epicsScanDouble(optarg, &timeOut)) != 1 || timeOut <= 0.0)
             {

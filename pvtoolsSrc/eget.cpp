@@ -1030,6 +1030,7 @@ void usage (void)
 {
     fprintf (stderr, "\nUsage: eget [options] [<PV name>... | -s <service name>]\n\n"
              "  -h: Help: Print this message\n"
+             "  -v: Print version and exit\n"
              "\noptions:\n"
              "  -s <service name>:   Service API compliant based RPC service name (accepts NTURI request argument)\n"
              "  -a <service arg>:    Service argument in 'name[=value]' or 'name value' form\n"
@@ -1468,11 +1469,21 @@ int main (int argc, char *argv[])
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hr:s:a:w:zNtTmxp:qdcF:f:ni")) != -1) {
+    while ((opt = getopt(argc, argv, ":hvr:s:a:w:zNtTmxp:qdcF:f:ni")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
             return 0;
+        case 'v':               /* Print version */
+        {
+            Version version("eget", "cpp",
+                    EPICS_PVA_MAJOR_VERSION,
+                    EPICS_PVA_MINOR_VERSION,
+                    EPICS_PVA_MAINTENANCE_VERSION,
+                    EPICS_PVA_DEVELOPMENT_FLAG);
+            fprintf(stdout, "%s\n", version.getVersionString().c_str());
+            return 0;
+        }
         case 'w':               /* Set PVA timeout value */
             if((epicsScanDouble(optarg, &timeOut)) != 1 || timeOut <= 0.0)
             {
