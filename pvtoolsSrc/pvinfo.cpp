@@ -204,7 +204,7 @@ int main (int argc, char *argv[])
         for (int n = 0; n < nPvs; n++)
         {
             Channel::shared_pointer channel = channels[n];
-            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
 
             if (channelRequesterImpl->waitUntilConnected(timeOut))
             {
@@ -214,7 +214,7 @@ int main (int argc, char *argv[])
                 if (getFieldRequesterImpl->waitUntilFieldGet(timeOut))
                 {
                     Structure::const_shared_pointer structure =
-                        dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
+                        TR1::dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
 
                     channel->printInfo();
                     if (structure)

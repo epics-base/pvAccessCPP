@@ -68,7 +68,7 @@ void formatNTAny(std::ostream& o, PVStructurePtr const & pvStruct)
 
 void formatNTScalar(std::ostream& o, PVStructurePtr const & pvStruct)
 {
-    PVScalarPtr value = dynamic_pointer_cast<PVScalar>(pvStruct->getSubField("value"));
+    PVScalarPtr value = TR1::dynamic_pointer_cast<PVScalar>(pvStruct->getSubField("value"));
     if (value.get() == 0)
     {
         std::cerr << "no scalar_t 'value' field in NTScalar" << std::endl;
@@ -135,7 +135,7 @@ std::ostream& formatScalarArray(std::ostream& o, PVScalarArrayPtr const & pvScal
 
 void formatNTScalarArray(std::ostream& o, PVStructurePtr const & pvStruct)
 {
-    PVScalarArrayPtr value = dynamic_pointer_cast<PVScalarArray>(pvStruct->getSubField("value"));
+    PVScalarArrayPtr value = TR1::dynamic_pointer_cast<PVScalarArray>(pvStruct->getSubField("value"));
     if (value.get() == 0)
     {
         std::cerr << "no scalar_t[] 'value' field in NTScalarArray" << std::endl;
@@ -149,7 +149,7 @@ void formatNTScalarArray(std::ostream& o, PVStructurePtr const & pvStruct)
 
 void formatNTEnum(std::ostream& o, PVStructurePtr const & pvStruct)
 {
-    PVStructurePtr enumt = dynamic_pointer_cast<PVStructure>(pvStruct->getSubField("value"));
+    PVStructurePtr enumt = TR1::dynamic_pointer_cast<PVStructure>(pvStruct->getSubField("value"));
     if (enumt.get() == 0)
     {
         std::cerr << "no enum_t 'value' field in NTEnum" << std::endl;
@@ -354,7 +354,7 @@ void formatNTTable(std::ostream& o, PVStructurePtr const & pvStruct)
 
     for (size_t i = 0; i < numColumns; i++)
     {
-        PVScalarArrayPtr array = dynamic_pointer_cast<PVScalarArray>(fields[i]);
+        PVScalarArrayPtr array = TR1::dynamic_pointer_cast<PVScalarArray>(fields[i]);
         if (array.get() == 0)
         {
             std::cerr << "malformed NTTable, " << (i+1) << ". field is not scalar_t[]" << std::endl;
@@ -493,7 +493,7 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
         return;
     }
 
-    PVScalarArrayPtr array = dynamic_pointer_cast<PVScalarArray>(value);
+    PVScalarArrayPtr array = TR1::dynamic_pointer_cast<PVScalarArray>(value);
     if (array.get() == 0)
     {
         std::cerr << "malformed NTNameValue, 'value' field is not scalar_t[]" << std::endl;
@@ -613,22 +613,22 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
 
 void formatNTURI(std::ostream& o, PVStructurePtr const & pvStruct)
 {
-    PVStringPtr scheme = dynamic_pointer_cast<PVString>(pvStruct->getSubField<PVString>("scheme"));
+    PVStringPtr scheme = TR1::dynamic_pointer_cast<PVString>(pvStruct->getSubField<PVString>("scheme"));
     if (scheme.get() == 0)
     {
         std::cerr << "no string 'scheme' field in NTURI" << std::endl;
     }
 
-    PVStringPtr authority = dynamic_pointer_cast<PVString>(pvStruct->getSubField("authority"));
+    PVStringPtr authority = TR1::dynamic_pointer_cast<PVString>(pvStruct->getSubField("authority"));
 
-    PVStringPtr path = dynamic_pointer_cast<PVString>(pvStruct->getSubField<PVString>("path"));
+    PVStringPtr path = TR1::dynamic_pointer_cast<PVString>(pvStruct->getSubField<PVString>("path"));
     if (path.get() == 0)
     {
         std::cerr << "no string 'path' field in NTURI" << std::endl;
         return;
     }
 
-    PVStructurePtr query = dynamic_pointer_cast<PVStructure>(pvStruct->getSubField("query"));
+    PVStructurePtr query = TR1::dynamic_pointer_cast<PVStructure>(pvStruct->getSubField("query"));
 
     o << scheme->get() << "://";
     if (authority.get()) o << authority->get();
@@ -750,7 +750,7 @@ void formatNTNDArray(std::ostream& /*o*/, PVStructurePtr const & pvStruct)
         return;
     }
 
-    PVByteArrayPtr array = dynamic_pointer_cast<PVByteArray>(value);
+    PVByteArrayPtr array = TR1::dynamic_pointer_cast<PVByteArray>(value);
     if (array.get() == 0)
     {
         std::cerr << "currently only byte[] value is supported" << std::endl;
@@ -851,7 +851,7 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
     Type type = pv->getField()->getType();
     if (type==structure)
     {
-        PVStructurePtr pvStruct = static_pointer_cast<PVStructure>(pv);
+        PVStructurePtr pvStruct = TR1::static_pointer_cast<PVStructure>(pv);
         {
             string id = pvStruct->getField()->getID();
 
@@ -918,15 +918,15 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
                 std::cout << *(value.get()) << std::endl;
             else if (valueType == scalarArray)
             {
-                //formatScalarArray(std::cout, dynamic_pointer_cast<PVScalarArray>(value));
-                formatVector(std::cout, "", dynamic_pointer_cast<PVScalarArray>(value), false);
+                //formatScalarArray(std::cout, TR1::dynamic_pointer_cast<PVScalarArray>(value));
+                formatVector(std::cout, "", TR1::dynamic_pointer_cast<PVScalarArray>(value), false);
             }
             else
             {
                 // switch to structure mode, unless it's T-type
                 if (valueType == structure && isTType(static_pointer_cast<PVStructure>(value)))
                 {
-                    formatTType(std::cout, static_pointer_cast<PVStructure>(value));
+                    formatTType(std::cout, TR1::static_pointer_cast<PVStructure>(value));
                     std::cout << std::endl;
                 }
                 else
@@ -961,12 +961,12 @@ void printValues(shared_vector<const string> const & names, vector<PVStructure::
                 scalarArrays.push_back(dynamic_pointer_cast<PVScalarArray>(value));
             else if (type == scalar)
             {
-                PVScalar::shared_pointer scalar = dynamic_pointer_cast<PVScalar>(value);
+                PVScalar::shared_pointer scalar = TR1::dynamic_pointer_cast<PVScalar>(value);
                 scalars.push_back(scalar);
 
                 // make an array, i.e. PVStringArray, out of a scalar (since scalar is an array w/ element count == 1)
                 PVStringArray::shared_pointer StringArray =
-                    dynamic_pointer_cast<PVStringArray>(getPVDataCreate()->createPVScalarArray(pvString));
+                    TR1::dynamic_pointer_cast<PVStringArray>(getPVDataCreate()->createPVScalarArray(pvString));
 
                 PVStringArray::svector values;
                 values.push_back(scalar->getAs<std::string>());
@@ -1383,7 +1383,7 @@ public:
                                 std::cout << m_channelName;
                             std::cout << fieldSeparator;
 
-                            formatTType(std::cout, static_pointer_cast<PVStructure>(value));
+                            formatTType(std::cout, TR1::static_pointer_cast<PVStructure>(value));
                             std::cout << std::endl;
                         }
                         else
@@ -1857,7 +1857,7 @@ int main (int argc, char *argv[])
 
             if (monitor)
             {
-                TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+                TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
                 channelRequesterImpl->showDisconnectMessage();
 
                 // TODO remove this line, when CA provider will allow creation of monitors
@@ -1881,7 +1881,7 @@ int main (int argc, char *argv[])
                 Channel::shared_pointer channel = provider->createChannel(pvs[n], channelRequesterImpl);
                 */
 
-                TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+                TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
 
                 if (channelRequesterImpl->waitUntilConnected(timeOut))
                 {
@@ -1903,7 +1903,7 @@ int main (int argc, char *argv[])
                         if (getFieldRequesterImpl.get())
                         {
                             Structure::const_shared_pointer structure =
-                                dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
+                                TR1::dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
                             if (structure.get() == 0 || structure->getField("value").get() == 0)
                             {
                                 // fallback to structure

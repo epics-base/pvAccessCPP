@@ -89,11 +89,11 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
             if (valueType != scalar && valueType != scalarArray)
             {
                 // switch to structure mode, unless it's T-type
-                if (valueType == structure && isTType(static_pointer_cast<PVStructure>(value)))
+                if (valueType == structure && isTType(TR1::static_pointer_cast<PVStructure>(value)))
                 {
                     std::cout << std::setw(30) << std::left << channelName;
                     std::cout << fieldSeparator;
-                    formatTType(std::cout, static_pointer_cast<PVStructure>(value));
+                    formatTType(std::cout, TR1::static_pointer_cast<PVStructure>(value));
                     std::cout << std::endl;
                 }
                 else
@@ -293,11 +293,11 @@ public:
                     if (valueType != scalar && valueType != scalarArray)
                     {
                         // switch to structure mode, unless it's T-type
-                        if (valueType == structure && isTType(static_pointer_cast<PVStructure>(value)))
+                        if (valueType == structure && isTType(TR1::static_pointer_cast<PVStructure>(value)))
                         {
                             std::cout << std::setw(30) << std::left << m_channelName;
                             std::cout << fieldSeparator;
-                            formatTType(std::cout, static_pointer_cast<PVStructure>(value));
+                            formatTType(std::cout, TR1::static_pointer_cast<PVStructure>(value));
                             std::cout << std::endl;
                         }
                         else
@@ -591,7 +591,7 @@ int main (int argc, char *argv[])
         for (int n = 0; n < nPvs; n++)
         {
             Channel::shared_pointer channel = channels[n];
-            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
 
             if (channelRequesterImpl->waitUntilConnected(timeOut))
             {
@@ -612,7 +612,7 @@ int main (int argc, char *argv[])
                     if (getFieldRequesterImpl.get())
                     {
                         Structure::const_shared_pointer structure =
-                            dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
+                            TR1::dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
                         if (structure.get() == 0 || structure->getField("value").get() == 0)
                         {
                             // fallback to structure
@@ -631,7 +631,7 @@ int main (int argc, char *argv[])
                     }
                     else
                     {
-                        TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+                        TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
                         channelRequesterImpl->showDisconnectMessage();
 
                         TR1::shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));

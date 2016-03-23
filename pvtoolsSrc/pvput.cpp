@@ -225,7 +225,7 @@ size_t fromString(PVFieldPtr const & fieldField, StringArray const & from, size_
             if (fromStartIndex >= from.size())
                 throw std::runtime_error("not enough values");
 
-            PVScalarPtr pv = static_pointer_cast<PVScalar>(fieldField);
+            PVScalarPtr pv = TR1::static_pointer_cast<PVScalar>(fieldField);
             getConvert()->fromString(pv, from[fromStartIndex]);
             return 1;
         }
@@ -317,7 +317,7 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
                 // special case for enum
                 if (valueType == structure)
                 {
-                    PVStructurePtr pvStructure = static_pointer_cast<PVStructure>(value);
+                    PVStructurePtr pvStructure = TR1::static_pointer_cast<PVStructure>(value);
                     if (pvStructure->getStructure()->getID() == "enum_t")
                     {
                         if (fieldSeparator == ' ')
