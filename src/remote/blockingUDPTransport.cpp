@@ -578,6 +578,95 @@ void initializeUDPTransports(bool serverFlag,
     TransportClient::shared_pointer nullTransportClient;
     auto_ptr<BlockingUDPConnector> connector(new BlockingUDPConnector(serverFlag, true, true));
 
+    //
+    // Create UDP transport for sending (to all network interfaces)
+    //
+
+    osiSockAddr anyAddress;
+    anyAddress.ia.sin_family = AF_INET;
+    anyAddress.ia.sin_port = htons(0);
+    anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    sendTransport = static_pointer_cast<BlockingUDPTransport>(connector->connect(
+                        nullTransportClient, responseHandler,
+                        anyAddress, PVA_PROTOCOL_REVISION,
+                        PVA_DEFAULT_PRIORITY));
+    if (!sendTransport)
+    {
+        THROW_BASE_EXCEPTION("Failed to initialize UDP transport.");
+    }
+
+    // to allow automatic assignment of listen port (for testing)
+    if (listenPort == 0)
+    {
+        listenPort = ntohs(sendTransport->getRemoteAddress()->ia.sin_port);
+        LOG(logLevelDebug, "Dynamic listen UDP port set to %d.", listenPort);
+    }
+
+    // TODO current implementation shares the port (aka beacon and search port)
+    int32 sendPort = listenPort;
+
+    //
+    // compile auto address list - where to send packets
+    //
+
+    InetAddrVector autoBCastAddr;
+    for (IfaceNodeVector::const_iterator iter = ifaceList.begin(); iter != ifaceList.end(); iter++)
+    {
+        ifaceNode node = *iter;
+
+        if (node.ifaceBCast.ia.sin_family != AF_UNSPEC)
+        {
+            node.ifaceBCast.ia.sin_port = htons(sendPort);
+            autoBCastAddr.push_back(node.ifaceBCast);
+        }
+    }
+
+    //
+    // set send address list
+    //
+
+    if (!addressList.empty())
+    {
+        // if auto is true, add it to specified list
+        if (!autoAddressList)
+            autoBCastAddr.clear();
+
+        auto_ptr<InetAddrVector> list(getSocketAddressList(addressList, sendPort, &autoBCastAddr));
+        if (list.get() && list->size())
+        {
+            sendTransport->setSendAddresses(list.get());
+        }
+        /*
+        else
+        {
+            // fallback
+            // set default (auto) address list
+            sendTransport->setSendAddresses(&autoBCastAddr);
+        }
+        */
+    }
+    else if (autoAddressList)
+    {
+        // set default (auto) address list
+        sendTransport->setSendAddresses(&autoBCastAddr);
+    }
+
+
+    sendTransport->start();
+    udpTransports.push_back(sendTransport);
+
+    // debug output of broadcast addresses
+    InetAddrVector* blist = sendTransport->getSendAddresses();
+    if (!blist || !blist->size())
+        LOG(logLevelError,
+            "No broadcast addresses found or specified - empty address list!");
+    else
+        for (size_t i = 0; i < blist->size(); i++)
+            LOG(logLevelDebug,
+                "Broadcast address #%d: %s.", i, inetAddressToString((*blist)[i]).c_str());
+
+
     // TODO configurable local NIF, address
     osiSockAddr loAddr;
     getLoopbackNIF(loAddr, "", 0);
@@ -623,14 +712,6 @@ void initializeUDPTransports(bool serverFlag,
             if (!transport)
                 continue;
             listenLocalAddress = *transport->getRemoteAddress();
-            // to allow automatic assignment of listen port (for testing)
-            if (listenPort == 0)
-            {
-                listenPort = ntohs(listenLocalAddress.ia.sin_port);
-                aToIPAddr(mcastAddress.c_str(), listenPort, &group.ia);
-
-                LOG(logLevelDebug, "Dynamic listen UDP port set to %d.", listenPort);
-            }
 
             if (ignoreAddressVector.get() && ignoreAddressVector->size())
                 transport->setIgnoredAddresses(ignoreAddressVector.get());
@@ -702,87 +783,6 @@ void initializeUDPTransports(bool serverFlag,
         }
     }
 
-
-    //
-    // Create UDP transport for sending (to all network interfaces)
-    //
-
-    osiSockAddr anyAddress;
-    anyAddress.ia.sin_family = AF_INET;
-    anyAddress.ia.sin_port = htons(0);
-    anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    sendTransport = static_pointer_cast<BlockingUDPTransport>(connector->connect(
-                        nullTransportClient, responseHandler,
-                        anyAddress, PVA_PROTOCOL_REVISION,
-                        PVA_DEFAULT_PRIORITY));
-    if (!sendTransport)
-    {
-        THROW_BASE_EXCEPTION("Failed to initialize UDP transport.");
-    }
-
-    // TODO current implementation shares the port (aka beacon and search port)
-    int32 sendPort = listenPort;
-
-    //
-    // compile auto address list - where to send packets
-    //
-
-    InetAddrVector autoBCastAddr;
-    for (IfaceNodeVector::const_iterator iter = ifaceList.begin(); iter != ifaceList.end(); iter++)
-    {
-        ifaceNode node = *iter;
-
-        if (node.ifaceBCast.ia.sin_family != AF_UNSPEC)
-        {
-            node.ifaceBCast.ia.sin_port = htons(sendPort);
-            autoBCastAddr.push_back(node.ifaceBCast);
-        }
-    }
-
-    //
-    // set send address list
-    //
-
-    if (!addressList.empty())
-    {
-        // if auto is true, add it to specified list
-        if (!autoAddressList)
-            autoBCastAddr.clear();
-
-        auto_ptr<InetAddrVector> list(getSocketAddressList(addressList, sendPort, &autoBCastAddr));
-        if (list.get() && list->size())
-        {
-            sendTransport->setSendAddresses(list.get());
-        }
-        /*
-        else
-        {
-            // fallback
-            // set default (auto) address list
-            sendTransport->setSendAddresses(&autoBCastAddr);
-        }
-        */
-    }
-    else if (autoAddressList)
-    {
-        // set default (auto) address list
-        sendTransport->setSendAddresses(&autoBCastAddr);
-    }
-
-
-    sendTransport->start();
-    udpTransports.push_back(sendTransport);
-
-    // debug output of broadcast addresses
-    InetAddrVector* blist = sendTransport->getSendAddresses();
-    if (!blist || !blist->size())
-        LOG(logLevelError,
-            "No broadcast addresses found or specified - empty address list!");
-    else
-        for (size_t i = 0; i < blist->size(); i++)
-            LOG(logLevelDebug,
-                "Broadcast address #%d: %s.", i, inetAddressToString((*blist)[i]).c_str());
 
     //
     // Setup local multicasting

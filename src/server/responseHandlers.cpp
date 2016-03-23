@@ -406,10 +406,14 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/,
         {
             ServerSearchHandler::s_channelNameToProvider[_name] = channelFind->getChannelProvider();
         }
-
         _wasFound = wasFound;
-        TransportSender::shared_pointer thisSender = shared_from_this();
-        _context->getBroadcastTransport()->enqueueSendRequest(thisSender);
+        
+        BlockingUDPTransport::shared_pointer bt = _context->getBroadcastTransport();
+        if (bt)
+        {
+            TransportSender::shared_pointer thisSender = shared_from_this();
+            bt->enqueueSendRequest(thisSender);
+        }
     }
 }
 
