@@ -890,7 +890,7 @@ void dumpValue(std::string const & channelName, PVField::shared_pointer const & 
 
     pvutil_ostream myos(std::cout.rdbuf());
     if (pv->getField()->getType() == structure)
-        myos << *(static_pointer_cast<PVStructure>(pv).get()) << std::endl << std::endl;
+        myos << *(TR1::static_pointer_cast<PVStructure>(pv).get()) << std::endl << std::endl;
     else
         myos << *(pv.get()) << std::endl << std::endl;
 }
@@ -924,7 +924,7 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
             else
             {
                 // switch to structure mode, unless it's T-type
-                if (valueType == structure && isTType(static_pointer_cast<PVStructure>(value)))
+                if (valueType == structure && isTType(TR1::static_pointer_cast<PVStructure>(value)))
                 {
                     formatTType(std::cout, TR1::static_pointer_cast<PVStructure>(value));
                     std::cout << std::endl;
@@ -958,7 +958,7 @@ void printValues(shared_vector<const string> const & names, vector<PVStructure::
         {
             Type type = value->getField()->getType();
             if (type == scalarArray)
-                scalarArrays.push_back(dynamic_pointer_cast<PVScalarArray>(value));
+                scalarArrays.push_back(TR1::dynamic_pointer_cast<PVScalarArray>(value));
             else if (type == scalar)
             {
                 PVScalar::shared_pointer scalar = TR1::dynamic_pointer_cast<PVScalar>(value);
@@ -1375,7 +1375,7 @@ public:
                     if (valueType != scalar && valueType != scalarArray)
                     {
                         // switch to structure mode, unless it's T-type
-                        if (valueType == structure && isTType(static_pointer_cast<PVStructure>(value)))
+                        if (valueType == structure && isTType(TR1::static_pointer_cast<PVStructure>(value)))
                         {
                             if (fieldSeparator == ' ')
                                 std::cout << std::setw(30) << std::left << m_channelName;

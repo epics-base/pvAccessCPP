@@ -231,19 +231,19 @@ size_t fromString(PVFieldPtr const & fieldField, StringArray const & from, size_
         }
 
         case scalarArray:
-            return fromString(static_pointer_cast<PVScalarArray>(fieldField), from, fromStartIndex);
+            return fromString(TR1::static_pointer_cast<PVScalarArray>(fieldField), from, fromStartIndex);
 
         case structure:
-            return fromString(static_pointer_cast<PVStructure>(fieldField), from, fromStartIndex);
+            return fromString(TR1::static_pointer_cast<PVStructure>(fieldField), from, fromStartIndex);
 
         case structureArray:
-            return fromString(static_pointer_cast<PVStructureArray>(fieldField), from, fromStartIndex);
+            return fromString(TR1::static_pointer_cast<PVStructureArray>(fieldField), from, fromStartIndex);
 
         case union_:
-            return fromString(static_pointer_cast<PVUnion>(fieldField), from, fromStartIndex);
+            return fromString(TR1::static_pointer_cast<PVUnion>(fieldField), from, fromStartIndex);
 
         case unionArray:
-            return fromString(static_pointer_cast<PVUnionArray>(fieldField), from, fromStartIndex);
+            return fromString(TR1::static_pointer_cast<PVUnionArray>(fieldField), from, fromStartIndex);
 
         default:
             std::ostringstream oss;
