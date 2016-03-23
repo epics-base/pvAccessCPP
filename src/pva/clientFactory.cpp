@@ -16,21 +16,22 @@
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-static Mutex cfact_mutex;
-static ChannelProvider::shared_pointer cfact_shared_provider;
-
 class ChannelProviderFactoryImpl : public ChannelProviderFactory
 {
+private:
+    Mutex m_mutex;
+    ChannelProvider::shared_pointer m_shared_provider;
+
 public:
     POINTER_DEFINITIONS(ChannelProviderFactoryImpl);
 
     virtual ~ChannelProviderFactoryImpl()
     {
-        Lock guard(cfact_mutex);
-        if (cfact_shared_provider)
+        Lock guard(m_mutex);
+        if (m_shared_provider)
         {
             ChannelProvider::shared_pointer provider;
-            cfact_shared_provider.swap(provider);
+            m_shared_provider.swap(provider);
             // factroy cleans up also shared provider
             provider->destroy();
         }
@@ -43,22 +44,23 @@ public:
 
     virtual ChannelProvider::shared_pointer sharedInstance()
     {
-        Lock guard(cfact_mutex);
-        if (!cfact_shared_provider)
+        Lock guard(m_mutex);
+        if (!m_shared_provider)
         {
             epics::pvAccess::Configuration::shared_pointer def;
-            cfact_shared_provider = createClientProvider(def);
+            m_shared_provider = createClientProvider(def);
         }
-        return cfact_shared_provider;
+        return m_shared_provider;
     }
 
     virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<epics::pvAccess::Configuration>& conf)
     {
-        Lock guard(cfact_mutex);
+        Lock guard(m_mutex);
         return createClientProvider(conf);
     }
 };
 
+static Mutex cprovfact_mutex;
 static ChannelProviderFactoryImpl::shared_pointer pva_factory;
 
 void ClientFactory::start()
@@ -66,7 +68,7 @@ void ClientFactory::start()
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
 
-    Lock guard(cfact_mutex);
+    Lock guard(cprovfact_mutex);
     if (!pva_factory)
         pva_factory.reset(new ChannelProviderFactoryImpl());
 
@@ -75,7 +77,7 @@ void ClientFactory::start()
 
 void ClientFactory::stop()
 {
-    Lock guard(cfact_mutex);
+    Lock guard(cprovfact_mutex);
 
     if (pva_factory)
     {
