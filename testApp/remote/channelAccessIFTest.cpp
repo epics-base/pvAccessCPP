@@ -28,7 +28,7 @@
 
 #include "testServer.cpp"
 
-using namespace std::tr1;
+namespace TR1 = std::tr1;
 
 
 // int value, 1Hz increment by one
@@ -152,7 +152,7 @@ int ChannelAccessIFTest::runAllTest() {
 Channel::shared_pointer ChannelAccessIFTest::createChannel(string channelName, bool debug )
 {
 
-    std::tr1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl(debug));
+    TR1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl(debug));
     Channel::shared_pointer channel = getChannelProvider()->createChannel(channelName, channelReq);
     return channel;
 }
@@ -161,12 +161,12 @@ Channel::shared_pointer ChannelAccessIFTest::createChannel(string channelName, b
 Channel::shared_pointer ChannelAccessIFTest::syncCreateChannel(string channelName, bool debug )
 {
 
-    std::tr1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl(debug));
+    TR1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl(debug));
     Channel::shared_pointer channel = getChannelProvider()->createChannel(channelName, channelReq);
     bool isConnected = channelReq->waitUntilStateChange(getTimeoutSec());
     if (!isConnected) {
         std::cerr << "[" << channelName << "] failed to connect to the channel. " << std::endl;
-        return shared_ptr<Channel>();
+        return TR1::shared_ptr<Channel>();
     }
 
     return channel;
@@ -177,7 +177,7 @@ SyncChannelGetRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChann
     Channel::shared_pointer const & channel, string const & request, bool debug )
 {
 
-    shared_ptr<SyncChannelGetRequesterImpl>
+    TR1::shared_ptr<SyncChannelGetRequesterImpl>
     channelGetReq(new SyncChannelGetRequesterImpl(channel->getChannelName(), debug));
 
     PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(request);
@@ -186,7 +186,7 @@ SyncChannelGetRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChann
     bool succStatus = channelGetReq->waitUntilGetDone(getTimeoutSec());
     if (!succStatus) {
         std::cerr << "[" << channel->getChannelName() << "] failed to get. " << std::endl;
-        return shared_ptr<SyncChannelGetRequesterImpl>();
+        return TR1::shared_ptr<SyncChannelGetRequesterImpl>();
     }
     return channelGetReq;
 }
@@ -196,7 +196,7 @@ SyncChannelPutRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChann
     Channel::shared_pointer const & channel, string const & request, bool debug )
 {
 
-    shared_ptr<SyncChannelPutRequesterImpl>
+    TR1::shared_ptr<SyncChannelPutRequesterImpl>
     channelPutReq(new SyncChannelPutRequesterImpl(channel->getChannelName(), debug));
 
 
@@ -207,7 +207,7 @@ SyncChannelPutRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChann
 
     if (!succStatus) {
         std::cerr << "[" << channel->getChannelName() << "] failed to create a put channel. " << std::endl;
-        return shared_ptr<SyncChannelPutRequesterImpl>();
+        return TR1::shared_ptr<SyncChannelPutRequesterImpl>();
     }
     return channelPutReq;
 }
@@ -217,7 +217,7 @@ SyncChannelPutGetRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateCh
     Channel::shared_pointer const & channel, string const & request, bool debug )
 {
 
-    shared_ptr<SyncChannelPutGetRequesterImpl>
+    TR1::shared_ptr<SyncChannelPutGetRequesterImpl>
     channelPutGetReq(new SyncChannelPutGetRequesterImpl(debug));
 
     PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(request);
@@ -227,7 +227,7 @@ SyncChannelPutGetRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateCh
 
     if (!succStatus) {
         std::cerr << "[" << channel->getChannelName() << "] failed to create a put get channel. " << std::endl;
-        return shared_ptr<SyncChannelPutGetRequesterImpl>();
+        return TR1::shared_ptr<SyncChannelPutGetRequesterImpl>();
     }
     return channelPutGetReq;
 }
@@ -237,7 +237,7 @@ SyncChannelRPCRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChann
     Channel::shared_pointer const & channel, bool debug )
 {
 
-    shared_ptr<SyncChannelRPCRequesterImpl>
+    TR1::shared_ptr<SyncChannelRPCRequesterImpl>
     channelRPCReq(new SyncChannelRPCRequesterImpl(debug));
 
     PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(string());
@@ -247,7 +247,7 @@ SyncChannelRPCRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChann
 
     if (!succStatus) {
         std::cerr << "[" << channel->getChannelName() << "] failed to create a RPC channel. " << std::endl;
-        return shared_ptr<SyncChannelRPCRequesterImpl>();
+        return TR1::shared_ptr<SyncChannelRPCRequesterImpl>();
     }
     return channelRPCReq;
 }
@@ -256,7 +256,7 @@ SyncChannelRPCRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChann
 SyncMonitorRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChannelMonitor(
     Channel::shared_pointer const & channel, string const & request, bool debug )
 {
-    shared_ptr<SyncMonitorRequesterImpl> monitorReq(new SyncMonitorRequesterImpl(debug));
+    TR1::shared_ptr<SyncMonitorRequesterImpl> monitorReq(new SyncMonitorRequesterImpl(debug));
 
     PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(request);
 
@@ -265,7 +265,7 @@ SyncMonitorRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChannelM
 
     if (!succStatus) {
         std::cerr << "[" << channel->getChannelName() << "] failed to create a monitor channel. " << std::endl;
-        return shared_ptr<SyncMonitorRequesterImpl>();
+        return TR1::shared_ptr<SyncMonitorRequesterImpl>();
     }
     return monitorReq;
 }
@@ -274,14 +274,14 @@ SyncMonitorRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChannelM
 SyncChannelArrayRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChannelArray(
     Channel::shared_pointer const & channel, PVStructure::shared_pointer pvRequest, bool debug )
 {
-    shared_ptr<SyncChannelArrayRequesterImpl> arrayReq(new SyncChannelArrayRequesterImpl(debug));
+    TR1::shared_ptr<SyncChannelArrayRequesterImpl> arrayReq(new SyncChannelArrayRequesterImpl(debug));
 
     channel->createChannelArray(arrayReq, pvRequest);
     bool succStatus = arrayReq->waitUntilConnected(getTimeoutSec());
 
     if (!succStatus) {
         std::cerr << "[" << channel->getChannelName() << "] failed to create an array channel. " << std::endl;
-        return shared_ptr<SyncChannelArrayRequesterImpl>();
+        return TR1::shared_ptr<SyncChannelArrayRequesterImpl>();
     }
     return arrayReq;
 }
@@ -313,7 +313,7 @@ void ChannelAccessIFTest::test_createEmptyChannel() {
 
     testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
-    std::tr1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl());
+    TR1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl());
 
     try {
         Channel::shared_pointer channel = getChannelProvider()->createChannel(std::string(), channelReq);
@@ -331,7 +331,7 @@ void ChannelAccessIFTest::test_createChannelWithInvalidPriority() {
 
     testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
-    std::tr1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl());
+    TR1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl());
 
     try {
         Channel::shared_pointer channel = getChannelProvider()->createChannel(std::string(), channelReq,
@@ -350,7 +350,7 @@ void ChannelAccessIFTest::test_createChannel() {
 
     testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
-    std::tr1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl());
+    TR1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl());
     Channel::shared_pointer channel = getChannelProvider()->createChannel(TEST_COUNTER_CHANNEL_NAME, channelReq);
     bool succStatus = channelReq->waitUntilStateChange(getTimeoutSec());
     if (!succStatus) {
@@ -389,7 +389,7 @@ void ChannelAccessIFTest::test_findEmptyChannel() {
     testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
     try {
-        std::tr1::shared_ptr<SyncChannelFindRequesterImpl> channelFindReq(new SyncChannelFindRequesterImpl());
+        TR1::shared_ptr<SyncChannelFindRequesterImpl> channelFindReq(new SyncChannelFindRequesterImpl());
         getChannelProvider()->channelFind(std::string(), channelFindReq);
         testFail("%s: empty channel name shoud never be allowed when searching for channels", CURRENT_FUNCTION);
         return;
@@ -405,7 +405,7 @@ void ChannelAccessIFTest::test_findChannel() {
 
     testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
-    std::tr1::shared_ptr<SyncChannelFindRequesterImpl> channelFindReq(new SyncChannelFindRequesterImpl());
+    TR1::shared_ptr<SyncChannelFindRequesterImpl> channelFindReq(new SyncChannelFindRequesterImpl());
     getChannelProvider()->channelFind(TEST_COUNTER_CHANNEL_NAME, channelFindReq);
     bool isFindResult = channelFindReq->waitUntilFindResult(getTimeoutSec());
     if (!isFindResult) {
@@ -421,7 +421,7 @@ void ChannelAccessIFTest::test_channel() {
 
     testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
-    std::tr1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl());
+    TR1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl());
     Channel::shared_pointer channel = getChannelProvider()->createChannel(TEST_COUNTER_CHANNEL_NAME, channelReq);
     bool succStatus = channelReq->waitUntilStateChange(getTimeoutSec());
     if (!succStatus) {
@@ -596,7 +596,7 @@ void ChannelAccessIFTest::test_channelGetIntProcessInternal(Channel::shared_poin
         return;
     }
 
-    std::tr1::shared_ptr<PVInt> value = channelGetReq->getPVStructure()->getSubField<PVInt>("value");
+    TR1::shared_ptr<PVInt> value = channelGetReq->getPVStructure()->getSubField<PVInt>("value");
 
     PVTimeStamp pvTimeStamp;
 
@@ -726,7 +726,7 @@ void ChannelAccessIFTest::test_channelPutNoProcess() {
         return;
     }
 
-    std::tr1::shared_ptr<PVDouble> value = channelPutReq->getPVStructure()->getSubField<PVDouble>("value");
+    TR1::shared_ptr<PVDouble> value = channelPutReq->getPVStructure()->getSubField<PVDouble>("value");
     if (!value.get()) {
         testFail("%s: getting double value field failed ", CURRENT_FUNCTION);
         return;
@@ -865,7 +865,7 @@ void ChannelAccessIFTest::test_channelPutIntProcessInternal(Channel::shared_poin
         return;
     }
 
-    std::tr1::shared_ptr<PVInt> value = channelPutReq->getPVStructure()->getSubField<PVInt>("value");
+    TR1::shared_ptr<PVInt> value = channelPutReq->getPVStructure()->getSubField<PVInt>("value");
     if (!value.get()) {
         testFail("%s: getting int value field failed ", testMethodName.c_str());
         return;
@@ -978,7 +978,7 @@ void ChannelAccessIFTest::test_channelGetFieldAll() {
         return;
     }
 
-    shared_ptr<SyncGetFieldRequesterImpl>
+    TR1::shared_ptr<SyncGetFieldRequesterImpl>
     channelGetFieldReq(new SyncGetFieldRequesterImpl());
 
     channel->getField(channelGetFieldReq, string());
@@ -1008,7 +1008,7 @@ void ChannelAccessIFTest::test_channelGetFieldValue() {
         return;
     }
 
-    shared_ptr<SyncGetFieldRequesterImpl>
+    TR1::shared_ptr<SyncGetFieldRequesterImpl>
     channelGetFieldReq(new SyncGetFieldRequesterImpl());
 
     channel->getField(channelGetFieldReq, "value");
@@ -1038,7 +1038,7 @@ void ChannelAccessIFTest::test_channelGetFieldInvalid() {
         return;
     }
 
-    shared_ptr<SyncGetFieldRequesterImpl>
+    TR1::shared_ptr<SyncGetFieldRequesterImpl>
     channelGetFieldReq(new SyncGetFieldRequesterImpl());
 
     channel->getField(channelGetFieldReq, "invalid");
@@ -1111,7 +1111,7 @@ void ChannelAccessIFTest::test_channelProcess() {
         testOk(true, "%s: syncGet the initial state", CURRENT_FUNCTION);
     }
 
-    shared_ptr<SyncChannelProcessRequesterImpl>
+    TR1::shared_ptr<SyncChannelProcessRequesterImpl>
     channelProcessReq(new SyncChannelProcessRequesterImpl());
 
 
@@ -1260,7 +1260,7 @@ void ChannelAccessIFTest::test_channelPutGetNoProcess_putGet() {
     }
 
 
-    std::tr1::shared_ptr<PVDouble> putValue = channelPutGetReq->getPVPutStructure()->getSubField<PVDouble>("value");
+    TR1::shared_ptr<PVDouble> putValue = channelPutGetReq->getPVPutStructure()->getSubField<PVDouble>("value");
     if (!putValue.get()) {
         testFail("%s: getting put double value field failed ", CURRENT_FUNCTION);
         return;
@@ -1269,7 +1269,7 @@ void ChannelAccessIFTest::test_channelPutGetNoProcess_putGet() {
     double initVal = 321.0;
     putValue->put(initVal);
 
-    std::tr1::shared_ptr<PVDouble> getValuePtr = channelPutGetReq->getPVGetStructure()->getSubField<PVDouble>("value");
+    TR1::shared_ptr<PVDouble> getValuePtr = channelPutGetReq->getPVGetStructure()->getSubField<PVDouble>("value");
     if (!getValuePtr.get()) {
         testFail("%s: getting get double value field failed ", CURRENT_FUNCTION);
         return;
@@ -1339,7 +1339,7 @@ void ChannelAccessIFTest::test_channelPutGetNoProcess_getPut() {
     }
 
 
-    std::tr1::shared_ptr<PVDouble> putValue = channelPutGetReq->getPVPutStructure()->getSubField<PVDouble>("value");
+    TR1::shared_ptr<PVDouble> putValue = channelPutGetReq->getPVPutStructure()->getSubField<PVDouble>("value");
     if (!putValue.get()) {
         testFail("%s: getting put double value field failed ", CURRENT_FUNCTION);
         return;
@@ -1348,7 +1348,7 @@ void ChannelAccessIFTest::test_channelPutGetNoProcess_getPut() {
     double initVal = 321.0;
     putValue->put(initVal);
 
-    std::tr1::shared_ptr<PVDouble> getValuePtr = channelPutGetReq->getPVGetStructure()->getSubField<PVDouble>("value");
+    TR1::shared_ptr<PVDouble> getValuePtr = channelPutGetReq->getPVGetStructure()->getSubField<PVDouble>("value");
     if (!getValuePtr.get()) {
         testFail("%s: getting get double value field failed ", CURRENT_FUNCTION);
         return;
@@ -1416,7 +1416,7 @@ void ChannelAccessIFTest::test_channelPutGetNoProcess_getGet() {
     }
 
 
-    std::tr1::shared_ptr<PVDouble> putValue = channelPutGetReq->getPVPutStructure()->getSubField<PVDouble>("value");
+    TR1::shared_ptr<PVDouble> putValue = channelPutGetReq->getPVPutStructure()->getSubField<PVDouble>("value");
     if (!putValue.get()) {
         testFail("%s: getting put double value field failed ", CURRENT_FUNCTION);
         return;
@@ -1425,7 +1425,7 @@ void ChannelAccessIFTest::test_channelPutGetNoProcess_getGet() {
     double initVal = 432.0;
     putValue->put(initVal);
 
-    std::tr1::shared_ptr<PVDouble> getValuePtr = channelPutGetReq->getPVGetStructure()->getSubField<PVDouble>("value");
+    TR1::shared_ptr<PVDouble> getValuePtr = channelPutGetReq->getPVGetStructure()->getSubField<PVDouble>("value");
     if (!getValuePtr.get()) {
         testFail("%s: getting get double value field failed ", CURRENT_FUNCTION);
         return;
@@ -1552,7 +1552,7 @@ void ChannelAccessIFTest::test_channelPutGetIntProcess() {
     }
 
 
-    std::tr1::shared_ptr<PVInt> putValue = channelPutGetReq->getPVPutStructure()->getSubField<PVInt>("value");
+    TR1::shared_ptr<PVInt> putValue = channelPutGetReq->getPVPutStructure()->getSubField<PVInt>("value");
     if (!putValue.get()) {
         testFail("%s: getting put int value field failed ", CURRENT_FUNCTION);
         return;
@@ -1561,7 +1561,7 @@ void ChannelAccessIFTest::test_channelPutGetIntProcess() {
     int initVal = 3;
     putValue->put(initVal);
 
-    std::tr1::shared_ptr<PVInt> getValuePtr = channelPutGetReq->getPVGetStructure()->getSubField<PVInt>("value");
+    TR1::shared_ptr<PVInt> getValuePtr = channelPutGetReq->getPVGetStructure()->getSubField<PVInt>("value");
     if (!getValuePtr.get()) {
         testFail("%s: getting get int value field failed ", CURRENT_FUNCTION);
         return;
@@ -1795,8 +1795,8 @@ void ChannelAccessIFTest::test_channelMonitor(int queueSize) {
         testOk(monitorReq->getChangedBitSet()->get(0) == true, "%s: changeBitSet get(0) is true ", CURRENT_FUNCTION);
     }
 
-    std::tr1::shared_ptr<PVField> valueField = monitorReq->getPVStructure()->getSubField("value");
-    std::tr1::shared_ptr<PVField> previousValue = getPVDataCreate()->createPVField(valueField->getField());
+    TR1::shared_ptr<PVField> valueField = monitorReq->getPVStructure()->getSubField("value");
+    TR1::shared_ptr<PVField> previousValue = getPVDataCreate()->createPVField(valueField->getField());
 
     std::ostringstream oss;
 //oss << *monitorReq->getChangedBitSet() << std::endl;
@@ -1884,7 +1884,7 @@ void ChannelAccessIFTest::test_channelArray() {
         return;
     }
 
-    PVDoubleArrayPtr array = static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
+    PVDoubleArrayPtr array = TR1::static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
 
     /*bool*/ succStatus = arrayReq->syncGet(false, 0, 2, getTimeoutSec());
     if (!succStatus) {
@@ -1940,7 +1940,7 @@ void ChannelAccessIFTest::test_channelArray() {
     }
 
 
-    PVDoubleArrayPtr array1 = static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
+    PVDoubleArrayPtr array1 = TR1::static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
     PVDoubleArray::const_svector data1(array1->view());
     testOk(data1[0] == 4.4 , "%s: 1.check 0: %f", CURRENT_FUNCTION, data1[0]);
     testOk(data1[1] == 1.1 , "%s: 1.check 1: %f", CURRENT_FUNCTION, data1[1]);
@@ -1962,7 +1962,7 @@ void ChannelAccessIFTest::test_channelArray() {
     }
 
     //checking 1.1 2.2 3.3
-    PVDoubleArrayPtr array2 = static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
+    PVDoubleArrayPtr array2 = TR1::static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
     PVDoubleArray::const_svector data2(array2->view());
     testOk(data2.size() == 3, "%s: data size after calling setLength should be 3 ",
            CURRENT_FUNCTION);
@@ -1984,7 +1984,7 @@ void ChannelAccessIFTest::test_channelArray() {
     }
 
     //checking 1.1 2.2
-    PVDoubleArrayPtr array3 = static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
+    PVDoubleArrayPtr array3 = TR1::static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
     PVDoubleArray::const_svector data3(array3->view());
     testOk(data3.size() == newLength,
            "%s: data size after calling setLength should be %zu", CURRENT_FUNCTION, newLength);
@@ -2005,7 +2005,7 @@ void ChannelAccessIFTest::test_channelArray() {
         return;
     }
 
-    PVDoubleArrayPtr array4 = static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
+    PVDoubleArrayPtr array4 = TR1::static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
     PVDoubleArray::const_svector data4(array4->view());
     testOk(data4.size() == bigCapacity, "%s: data size after calling setLength should be %zu",
            CURRENT_FUNCTION, bigCapacity);
@@ -2311,7 +2311,7 @@ void ChannelAccessIFTest::test_stressMonitorAndProcess() {
            CURRENT_FUNCTION);
 
 
-    shared_ptr<SyncChannelProcessRequesterImpl>
+    TR1::shared_ptr<SyncChannelProcessRequesterImpl>
     channelProcessReq(new SyncChannelProcessRequesterImpl(debug));
 
     ChannelProcess::shared_pointer channelProcess =

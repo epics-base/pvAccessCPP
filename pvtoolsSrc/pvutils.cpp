@@ -13,7 +13,8 @@
 #include <pv/pvTimeStamp.h>
 
 using namespace std;
-using namespace std::tr1;
+namespace TR1 = std::tr1;
+
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
@@ -96,19 +97,19 @@ std::ostream& terse(std::ostream& o, PVField::shared_pointer const & pv)
         o << *(pv.get());
         return o;
     case structure:
-        return terseStructure(o, static_pointer_cast<PVStructure>(pv));
+        return terseStructure(o, TR1::static_pointer_cast<PVStructure>(pv));
         break;
     case scalarArray:
-        return terseScalarArray(o, static_pointer_cast<PVScalarArray>(pv));
+        return terseScalarArray(o, TR1::static_pointer_cast<PVScalarArray>(pv));
         break;
     case structureArray:
-        return terseStructureArray(o, static_pointer_cast<PVStructureArray>(pv));
+        return terseStructureArray(o, TR1::static_pointer_cast<PVStructureArray>(pv));
         break;
     case union_:
-        return terseUnion(o, static_pointer_cast<PVUnion>(pv));
+        return terseUnion(o, TR1::static_pointer_cast<PVUnion>(pv));
         break;
     case unionArray:
-        return terseUnionArray(o, static_pointer_cast<PVUnionArray>(pv));
+        return terseUnionArray(o, TR1::static_pointer_cast<PVUnionArray>(pv));
         break;
     default:
         std::ostringstream msg("unknown Field type: ");

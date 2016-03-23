@@ -24,7 +24,7 @@
 #include <pv/caProvider.h>
 
 using namespace std;
-using namespace std::tr1;
+namespace TR1 = std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
@@ -362,7 +362,7 @@ struct AtomicBoolean_null_deleter
     void operator()(void const *) const {}
 };
 
-// standard performance on set/clear, use of tr1::shared_ptr lock-free counter for get
+// standard performance on set/clear, use of TR1::shared_ptr lock-free counter for get
 // alternative is to use boost::atomic
 class AtomicBoolean
 {
@@ -384,8 +384,8 @@ public:
         return counter.use_count() == 2;
     }
 private:
-    std::tr1::shared_ptr<void> counter;
-    std::tr1::shared_ptr<void> setp;
+    TR1::shared_ptr<void> counter;
+    TR1::shared_ptr<void> setp;
     epics::pvData::Mutex mutex;
 };
 
@@ -654,7 +654,7 @@ int main (int argc, char *argv[])
     URI uri;
     bool validURI = URI::parse(pv, uri);
 
-    shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
+    TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
 
     string providerName(defaultProvider);
     string pvName(pv);
@@ -737,7 +737,7 @@ int main (int argc, char *argv[])
         do
         {
             // first connect
-            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
+            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
 
             Channel::shared_pointer channel;
             if (address.empty())
@@ -750,7 +750,7 @@ int main (int argc, char *argv[])
 
             if (channelRequesterImpl->waitUntilConnected(timeOut))
             {
-                shared_ptr<ChannelPutRequesterImpl> putRequesterImpl(new ChannelPutRequesterImpl(channel->getChannelName()));
+                TR1::shared_ptr<ChannelPutRequesterImpl> putRequesterImpl(new ChannelPutRequesterImpl(channel->getChannelName()));
                 if (mode != TerseMode && !quiet)
                     std::cout << "Old : ";
                 ChannelPut::shared_pointer channelPut = channel->createChannelPut(putRequesterImpl, pvRequest);

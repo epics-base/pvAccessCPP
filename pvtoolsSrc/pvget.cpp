@@ -23,7 +23,7 @@
 #include <pv/caProvider.h>
 
 using namespace std;
-using namespace std::tr1;
+namespace TR1 = std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
@@ -577,7 +577,7 @@ int main (int argc, char *argv[])
         vector<Channel::shared_pointer> channels(nPvs);
         for (int n = 0; n < nPvs; n++)
         {
-            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
+            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
             if (pvAddresses[n].empty())
                 channels[n] = getChannelProviderRegistry()->getProvider(
                                   providerNames[n])->createChannel(pvNames[n], channelRequesterImpl);
@@ -591,11 +591,11 @@ int main (int argc, char *argv[])
         for (int n = 0; n < nPvs; n++)
         {
             Channel::shared_pointer channel = channels[n];
-            shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
 
             if (channelRequesterImpl->waitUntilConnected(timeOut))
             {
-                shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl;
+                TR1::shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl;
 
                 // probe for value field
                 if (mode == ValueOnlyMode)
@@ -623,7 +623,7 @@ int main (int argc, char *argv[])
 
                     if (!monitor)
                     {
-                        shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
+                        TR1::shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
                         ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
                         allOK &= getRequesterImpl->waitUntilGet(timeOut);
                         if (allOK)
@@ -631,10 +631,10 @@ int main (int argc, char *argv[])
                     }
                     else
                     {
-                        shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+                        TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
                         channelRequesterImpl->showDisconnectMessage();
 
-                        shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
+                        TR1::shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
                         Monitor::shared_pointer monitorGet = channel->createMonitor(monitorRequesterImpl, pvRequest);
                         allOK &= true;
                     }

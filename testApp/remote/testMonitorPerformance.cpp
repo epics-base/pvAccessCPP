@@ -25,7 +25,7 @@
 #include <pv/event.h>
 
 using namespace std;
-using namespace std::tr1;
+namespace TR1 = std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
@@ -43,7 +43,7 @@ int channels = DEFAULT_CHANNELS;
 int runs = DEFAULT_RUNS;
 int arraySize = DEFAULT_ARRAY_SIZE;          // 0 means scalar
 Mutex waitLoopPtrMutex;
-std::tr1::shared_ptr<Event> waitLoopEvent;
+TR1::shared_ptr<Event> waitLoopEvent;
 
 double timeOut = DEFAULT_TIMEOUT;
 string request(DEFAULT_REQUEST);
@@ -51,7 +51,7 @@ string request(DEFAULT_REQUEST);
 PVStructure::shared_pointer pvRequest;
 
 class RequesterImpl : public Requester,
-    public std::tr1::enable_shared_from_this<RequesterImpl>
+    public TR1::enable_shared_from_this<RequesterImpl>
 {
 public:
 
@@ -297,7 +297,7 @@ void runTest()
             i != channelNames.end();
             i++)
     {
-        shared_ptr<ChannelRequesterImpl> channelRequesterImpl(
+        TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(
             new ChannelRequesterImpl()
         );
         Channel::shared_pointer channel = provider->createChannel(*i, channelRequesterImpl);
@@ -311,8 +311,8 @@ void runTest()
             i++)
     {
         Channel::shared_pointer channel = *i;
-        shared_ptr<ChannelRequesterImpl> channelRequesterImpl =
-            dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+        TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl =
+            TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
         if (channelRequesterImpl->waitUntilConnected(5.0))
         {
             string remoteAddress = channel->getRemoteAddress();
@@ -332,7 +332,7 @@ void runTest()
                 }
             }
 
-            shared_ptr<ChannelMonitorRequesterImpl> getRequesterImpl(
+            TR1::shared_ptr<ChannelMonitorRequesterImpl> getRequesterImpl(
                 new ChannelMonitorRequesterImpl(channel->getChannelName())
             );
             Monitor::shared_pointer monitor = channel->createMonitor(getRequesterImpl, pvRequest);

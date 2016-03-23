@@ -35,7 +35,6 @@ int pclose(FILE *stream) {
 #endif
 
 using namespace std;
-using namespace std::tr1;
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;

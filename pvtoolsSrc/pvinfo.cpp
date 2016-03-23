@@ -20,7 +20,7 @@
 #include "pvutils.cpp"
 
 using namespace std;
-using namespace std::tr1;
+namespace TR1 = std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
@@ -151,7 +151,7 @@ int main (int argc, char *argv[])
             URI uri;
             bool validURI = URI::parse(pvs[n], uri);
 
-            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
+            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
 
             std::string providerName(defaultProvider);
             std::string pvName(pvs[n]);
@@ -190,7 +190,7 @@ int main (int argc, char *argv[])
         vector<Channel::shared_pointer> channels(nPvs);
         for (int n = 0; n < nPvs; n++)
         {
-            shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
+            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
             if (pvAddresses[n].empty())
                 channels[n] = getChannelProviderRegistry()->getProvider(
                                   providerNames[n])->createChannel(pvNames[n], channelRequesterImpl);
@@ -204,11 +204,11 @@ int main (int argc, char *argv[])
         for (int n = 0; n < nPvs; n++)
         {
             Channel::shared_pointer channel = channels[n];
-            shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
+            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
 
             if (channelRequesterImpl->waitUntilConnected(timeOut))
             {
-                shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl(new GetFieldRequesterImpl(channel));
+                TR1::shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl(new GetFieldRequesterImpl(channel));
                 channel->getField(getFieldRequesterImpl, "");
 
                 if (getFieldRequesterImpl->waitUntilFieldGet(timeOut))
