@@ -3204,7 +3204,7 @@ public:
     {
         AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
-        transport->ensureData(4);
+        transport->ensureData(8);
         pvAccessID cid = payloadBuffer->getInt();
         /*pvAccessID sid =*/ payloadBuffer->getInt();
 
