@@ -25,7 +25,7 @@
 #include <pv/remote.h>
 #include <pv/rpcClient.h>
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(_MINGW)
 FILE *popen(const char *command, const char *mode) {
     return _popen(command, mode);
 }
