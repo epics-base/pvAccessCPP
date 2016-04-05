@@ -14,12 +14,12 @@
 
 #include <osiSock.h>
 
-#include <pv/remote.h>
-
 #ifdef channelSearchManagerEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
 #	undef channelSearchManagerEpicsExportSharedSymbols
 #endif
+
+#include <pv/remote.h>
 
 namespace epics {
 namespace pvAccess {

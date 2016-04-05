@@ -21,14 +21,15 @@
 #include <pv/lock.h>
 #include <pv/pvType.h>
 #include <pv/epicsException.h>
-#include <pv/remote.h>
-#include <pv/inetAddressUtil.h>
 #include <pv/sharedPtr.h>
 
 #ifdef transportRegistryEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
 #	undef transportRegistryEpicsExportSharedSymbols
 #endif
+
+#include <pv/remote.h>
+#include <pv/inetAddressUtil.h>
 
 namespace epics {
 namespace pvAccess {
