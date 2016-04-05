@@ -4,17 +4,18 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#include <sstream>
+
+#include <epicsThread.h>
+#include <osiSock.h>
+
+#include <pv/epicsException.h>
+
+#define epicsExportSharedSymbols
 #include <pv/blockingTCP.h>
 #include <pv/codec.h>
 #include <pv/remote.h>
 #include <pv/logger.h>
-
-#include <pv/epicsException.h>
-
-#include <osiSock.h>
-#include <epicsThread.h>
-
-#include <sstream>
 
 using std::ostringstream;
 using namespace epics::pvData;

@@ -13,10 +13,10 @@
 #include <pv/lock.h>
 #include <pv/timer.h>
 #include <pv/bitSetUtil.h>
-#include <pv/serializationHelper.h>
 #include <pv/queue.h>
 #include <pv/standardPVField.h>
 
+#define epicsExportSharedSymbols
 #include <pv/pvAccess.h>
 #include <pv/pvaConstants.h>
 #include <pv/blockingUDP.h>
@@ -26,6 +26,7 @@
 #include <pv/hexDump.h>
 #include <pv/remote.h>
 #include <pv/channelSearchManager.h>
+#include <pv/serializationHelper.h>
 #include <pv/simpleChannelSearchManagerImpl.h>
 #include <pv/clientContextImpl.h>
 #include <pv/configuration.h>

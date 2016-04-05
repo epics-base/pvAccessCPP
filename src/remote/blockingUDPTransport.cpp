@@ -9,21 +9,22 @@
 #include <ws2tcpip.h>
 #endif
 
+#include <sys/types.h>
+#include <cstdio>
+
+#include <epicsThread.h>
+#include <osiSock.h>
+#include <osdSock.h>
+
+#include <pv/lock.h>
+#include <pv/byteBuffer.h>
+
+#define epicsExportSharedSymbols
 #include <pv/blockingUDP.h>
 #include <pv/pvaConstants.h>
 #include <pv/inetAddressUtil.h>
 #include <pv/logger.h>
 #include <pv/likely.h>
-
-#include <pv/byteBuffer.h>
-#include <pv/lock.h>
-
-#include <osdSock.h>
-#include <osiSock.h>
-#include <epicsThread.h>
-
-#include <cstdio>
-#include <sys/types.h>
 
 using namespace epics::pvData;
 using namespace std;

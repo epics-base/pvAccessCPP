@@ -4,14 +4,15 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#include <pv/remote.h>
-#include <pv/hexDump.h>
-
-#include <pv/byteBuffer.h>
+#include <sstream>
 
 #include <osiSock.h>
 
-#include <sstream>
+#include <pv/byteBuffer.h>
+
+#define epicsExportSharedSymbols
+#include <pv/remote.h>
+#include <pv/hexDump.h>
 
 using std::ostringstream;
 using std::hex;

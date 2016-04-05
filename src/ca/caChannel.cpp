@@ -6,9 +6,10 @@
 
 #include <epicsVersion.h>
 
-#include <pv/logger.h>
 #include <pv/standardField.h>
 
+#define epicsExportSharedSymbols
+#include <pv/logger.h>
 #include <pv/caChannel.h>
 #include <pv/caStatus.h>
 
