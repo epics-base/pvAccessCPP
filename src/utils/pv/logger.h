@@ -48,9 +48,9 @@ OFF
 */
 
 
-epicsShareExtern void pvAccessLog(pvAccessLogLevel level, const char* format, ...);
-epicsShareExtern void pvAccessSetLogLevel(pvAccessLogLevel level);
-epicsShareExtern bool pvAccessIsLoggable(pvAccessLogLevel level);
+epicsShareFunc void pvAccessLog(pvAccessLogLevel level, const char* format, ...);
+epicsShareFunc void pvAccessSetLogLevel(pvAccessLogLevel level);
+epicsShareFunc bool pvAccessIsLoggable(pvAccessLogLevel level);
 
 #if defined (__GNUC__) && __GNUC__ < 3
 #define LOG(level, format, ARGS...) pvAccessLog(level, format, ##ARGS)
@@ -76,7 +76,7 @@ epicsShareExtern bool pvAccessIsLoggable(pvAccessLogLevel level);
     * @param[in] fname The file to write to. If the file exists, it
     * is opened for append.
     */
-epicsShareExtern void createFileLogger( std::string const & fname );
+epicsShareFunc void createFileLogger( std::string const & fname );
 
 }
 }

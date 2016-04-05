@@ -111,7 +111,7 @@ private:
     bool _developmentFlag;
 };
 
-epicsShareExtern std::ostream& operator<<(std::ostream& o, const Version& v);
+epicsShareFunc std::ostream& operator<<(std::ostream& o, const Version& v);
 }
 }
 
