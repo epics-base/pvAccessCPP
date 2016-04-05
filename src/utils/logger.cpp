@@ -10,14 +10,13 @@
 #include <cstring>
 #include <stdio.h>
 
+#include <epicsExit.h>
+#include <errlog.h>
+#include <epicsTime.h>
+
 #include <pv/noDefaultMethods.h>
 #include <pv/lock.h>
 #include <pv/pvType.h>
-
-#include <epicsExit.h>
-#include <errlog.h>
-
-#include <epicsTime.h>
 
 #define epicsExportSharedSymbols
 #include <pv/logger.h>
