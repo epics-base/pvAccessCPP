@@ -7,17 +7,7 @@
 #ifndef RESPONSEHANDLERS_H_
 #define RESPONSEHANDLERS_H_
 
-#ifdef epicsExportSharedSymbols
-#   define responseHandlersEpicsExportSharedSymbols
-#   undef epicsExportSharedSymbols
-#endif
-
 #include <pv/timer.h>
-
-#ifdef responseHandlersEpicsExportSharedSymbols
-#   define epicsExportSharedSymbols
-#	undef responseHandlersEpicsExportSharedSymbols
-#endif
 
 #include <pv/serverContext.h>
 #include <pv/remote.h>

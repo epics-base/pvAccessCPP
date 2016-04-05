@@ -7,18 +7,7 @@
 #ifndef LOGGER_H_
 #define LOGGER_H_
 
-#ifdef epicsExportSharedSymbols
-#   define loggerEpicsExportSharedSymbols
-#   undef epicsExportSharedSymbols
-#endif
-
-#include <pv/pvType.h>
-#include <errlog.h>
-
-#ifdef loggerEpicsExportSharedSymbols
-#   define epicsExportSharedSymbols
-#undef loggerEpicsExportSharedSymbols
-#endif
+#include <string>
 
 #include <shareLib.h>
 

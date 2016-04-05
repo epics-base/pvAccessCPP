@@ -8,23 +8,33 @@
 #endif
 
 
-#include <epicsThread.h>
-#include <osiSock.h>
-
-#include <sys/types.h>
-#include <sstream>
-#include <stdexcept>
-#include <limits>
-#include <vector>
-#include <string>
 #include <map>
+#include <string>
+#include <vector>
+#include <limits>
+#include <stdexcept>
+#include <sstream>
+#include <sys/types.h>
+
+#include <osiSock.h>
+#include <epicsTime.h>
+#include <epicsThread.h>
+#include <epicsVersion.h>
+
+#include <pv/byteBuffer.h>
+#include <pv/pvType.h>
+#include <pv/lock.h>
+#include <pv/timer.h>
+#include <pv/event.h>
 
 #define epicsExportSharedSymbols
 #include <pv/blockingTCP.h>
 #include <pv/remote.h>
+#include <pv/inetAddressUtil.h>
 #include <pv/namedLockPattern.h>
 #include <pv/hexDump.h>
 #include <pv/logger.h>
+#include <pv/likely.h>
 #include <pv/codec.h>
 #include <pv/serializationHelper.h>
 

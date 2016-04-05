@@ -4,6 +4,10 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#include <pv/mb.h>
+
+#define epicsExportSharedSymbols
+
 #include "pv/pvAccessMB.h"
 
 MB_DECLARE(channelGet, 100000);

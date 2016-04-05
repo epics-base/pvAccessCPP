@@ -8,21 +8,11 @@
 #ifndef SERIALIZATIONHELPER_H_
 #define SERIALIZATIONHELPER_H_
 
-#ifdef epicsExportSharedSymbols
-#   define serializationHelperEpicsExportSharedSymbols
-#   undef epicsExportSharedSymbols
-#endif
-
 #include <pv/serialize.h>
 #include <pv/pvData.h>
 #include <pv/noDefaultMethods.h>
 #include <pv/pvIntrospect.h>
 #include <pv/byteBuffer.h>
-
-#ifdef serializationHelperEpicsExportSharedSymbols
-#   define epicsExportSharedSymbols
-#	undef serializationHelperEpicsExportSharedSymbols
-#endif
 
 #include <pv/pvaConstants.h>
 #include <pv/pvAccess.h>
