@@ -2149,8 +2149,11 @@ public:
 
         // reuse on reconnect
         if (m_lastStructure.get() == 0 ||
-                *(m_lastStructure.get()) == *(structure.get()))
+                *(m_lastStructure.get()) != *(structure.get()))
         {
+            while (!m_monitorQueue.empty())
+                m_monitorQueue.pop();
+            m_freeQueue.clear();
             for (int32 i = 0; i < m_queueSize; i++)
             {
                 PVStructure::shared_pointer pvStructure = getPVDataCreate()->createPVStructure(structure);
@@ -2266,6 +2269,13 @@ public:
 
     // NOTE: a client must always call poll() after release() to check the presence of any new monitor elements
     virtual void release(MonitorElement::shared_pointer const & monitorElement) {
+
+        // fast sanity check check if monitorElement->pvStructurePtr->getStructure() matches
+        // not to accept wrong structure (might happen on monitor reconnect with different type)
+        // silent return
+        if (monitorElement->pvStructurePtr->getStructure().get() != m_lastStructure.get())
+            return;
+
         bool sendAck = false;
         {
             Lock guard(m_mutex);
