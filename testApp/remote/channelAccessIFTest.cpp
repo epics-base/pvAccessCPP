@@ -1987,7 +1987,7 @@ void ChannelAccessIFTest::test_channelArray() {
     PVDoubleArrayPtr array3 = TR1::static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
     PVDoubleArray::const_svector data3(array3->view());
     testOk(data3.size() == newLength,
-           "%s: data size after calling setLength should be %zu", CURRENT_FUNCTION, newLength);
+           "%s: data size after calling setLength should be %lu", CURRENT_FUNCTION, (unsigned long) newLength);
     testOk(data3[0] == 1.1 , "%s: 3.check 0: %f", CURRENT_FUNCTION, data3[0]);
     testOk(data3[1] == 2.2 , "%s: 3.check 1: %f", CURRENT_FUNCTION, data3[1]);
 
@@ -2007,8 +2007,8 @@ void ChannelAccessIFTest::test_channelArray() {
 
     PVDoubleArrayPtr array4 = TR1::static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
     PVDoubleArray::const_svector data4(array4->view());
-    testOk(data4.size() == bigCapacity, "%s: data size after calling setLength should be %zu",
-           CURRENT_FUNCTION, bigCapacity);
+    testOk(data4.size() == bigCapacity, "%s: data size after calling setLength should be %lu",
+           CURRENT_FUNCTION, (unsigned long) bigCapacity);
     testOk(data4[0] == 1.1 , "%s: 4.check 0: %f", CURRENT_FUNCTION, data4[0]);
     testOk(data4[1] == 2.2 , "%s: 4.check 1: %f", CURRENT_FUNCTION, data4[1]);
     /*
@@ -2022,7 +2022,7 @@ void ChannelAccessIFTest::test_channelArray() {
       if (i == bigCapacity)
         testOk("%s: 4.check: all data 0.0", CURRENT_FUNCTION);
       else
-        testFail("%s: 4.check: data at %zu should be 0.0 but was %f", CURRENT_FUNCTION, i, data4[i]);
+        testFail("%s: 4.check: data at %lu should be 0.0 but was %f", CURRENT_FUNCTION, (unsigned long) i, data4[i]);
     }
     else {
       testFail("%s: will not check the rest of the array if the size is not correct", CURRENT_FUNCTION);
@@ -2040,7 +2040,7 @@ void ChannelAccessIFTest::test_channelArray() {
         testFail("%s: an array getLength failed", CURRENT_FUNCTION);
         return;
     }
-    testOk(arrayReq->getLength() == newLen, "%s: retrieved length should be %zu", CURRENT_FUNCTION, newLen);
+    testOk(arrayReq->getLength() == newLen, "%s: retrieved length should be %lu", CURRENT_FUNCTION, (unsigned long) newLen);
 
 
     channel->destroy();
@@ -2180,7 +2180,7 @@ void ChannelAccessIFTest::test_stressPutAndGetLargeArray() {
 
     for (size_t len = minSize; len <= maxSize; len+=step) {
 
-        //testDiag("%s: array size %zd", CURRENT_FUNCTION, len);
+        //testDiag("%s: array size %lu", CURRENT_FUNCTION, (unsigned long) len);
 
         // prepare data
         newdata.resize(len);
@@ -2192,19 +2192,19 @@ void ChannelAccessIFTest::test_stressPutAndGetLargeArray() {
 
         bool succStatus = putReq->syncPut(false, getTimeoutSec());
         if (!succStatus) {
-            testFail("%s: sync put failed at array size %zd", CURRENT_FUNCTION, len);
+            testFail("%s: sync put failed at array size %lu", CURRENT_FUNCTION, (unsigned long) len);
             return;
         }
 
         succStatus = putReq->syncGet(getTimeoutSec());
         if (!succStatus) {
-            testFail("%s: sync get failed at array size %zd", CURRENT_FUNCTION, len);
+            testFail("%s: sync get failed at array size %lu", CURRENT_FUNCTION, (unsigned long) len);
             return;
         }
 
         // length check
         if (value->getLength() != len) {
-            testFail("%s: length does not math %zd != %zd", CURRENT_FUNCTION, len, value->getLength());
+            testFail("%s: length does not match %lu != %lu", CURRENT_FUNCTION, (unsigned long) len, (unsigned long) value->getLength());
             return;
         }
 
@@ -2212,7 +2212,7 @@ void ChannelAccessIFTest::test_stressPutAndGetLargeArray() {
         PVDoubleArray::const_svector data(value->view());
         for (size_t i = 0; i < len; i++) {
             if (i != data[i])        // NOTE: floating-point value comparison without delta
-                testFail("%s: data slot %zd does not match %f != %f at array size %zd", CURRENT_FUNCTION, i, (double)i, data[i], len);
+                testFail("%s: data slot %lu does not match %f != %f at array size %lu", CURRENT_FUNCTION, (unsigned long) i, (double)i, data[i], (unsigned long) len);
         }
 
     }
