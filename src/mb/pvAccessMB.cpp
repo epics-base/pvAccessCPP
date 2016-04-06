@@ -4,7 +4,9 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#ifdef WITH_MICROBENCH
 #include <pv/mb.h>
+#endif
 
 #define epicsExportSharedSymbols
 
