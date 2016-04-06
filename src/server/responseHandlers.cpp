@@ -4,18 +4,26 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#ifdef __vxworks
-#include <taskLib.h>
-#endif
-
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(NOMINMAX)
 #define NOMINMAX
-#include <process.h>
 #endif
 
 #include <sstream>
 #include <time.h>
 #include <stdlib.h>
+
+#ifdef _WIN32
+#define GETPID() GetCurrentProcessId()
+#endif
+
+#ifdef vxWorks
+#include <taskLib.h>
+#define GETPID() taskIdSelf()
+#endif
+
+#ifndef GETPID
+#define GETPID() getpid()
+#endif
 
 #include <osiSock.h>
 #include <osiProcess.h>
@@ -619,13 +627,7 @@ public:
             result->getSubFieldT<PVString>("host")->put(hostName);
 
             std::stringstream sspid;
-#ifdef __vxworks
-            sspid << taskIdSelf();
-#elif defined(_WIN32)
-            sspid << _getpid();
-#else
-            sspid << getpid();
-#endif
+            sspid << GETPID();
             result->getSubFieldT<PVString>("process")->put(sspid.str());
 
             char timeText[64];
