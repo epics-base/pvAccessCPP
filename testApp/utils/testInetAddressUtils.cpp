@@ -217,7 +217,7 @@ void test_getLoopbackNIF()
 
 #ifdef _WIN32
 // needed for ip_mreq
-#include <Ws2tcpip.h>
+#include <ws2tcpip.h>
 #endif
 
 void test_multicastLoopback()

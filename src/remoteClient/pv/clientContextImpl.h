@@ -131,7 +131,7 @@ public:
     virtual void destroy() = 0;
 };
 
-epicsShareExtern ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf);
+epicsShareFunc ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf);
 
 }
 }

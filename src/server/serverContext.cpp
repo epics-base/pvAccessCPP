@@ -6,6 +6,10 @@
 
 #include <epicsSignal.h>
 
+#include <pv/lock.h>
+#include <pv/timer.h>
+#include <pv/thread.h>
+
 #define epicsExportSharedSymbols
 #include <pv/responseHandlers.h>
 #include <pv/logger.h>

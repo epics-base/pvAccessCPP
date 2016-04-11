@@ -453,7 +453,7 @@ private:
 
 };
 
-epicsShareExtern ServerContext::shared_pointer startPVAServer(
+epicsShareFunc ServerContext::shared_pointer startPVAServer(
     std::string const & providerNames = PVACCESS_ALL_PROVIDERS,
     int timeToRun = 0,
     bool runInSeparateThread = false,

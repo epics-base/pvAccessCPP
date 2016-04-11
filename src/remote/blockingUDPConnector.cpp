@@ -4,13 +4,14 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#include <pv/blockingUDP.h>
-#include <pv/remote.h>
-#include <pv/logger.h>
+#include <sys/types.h>
 
 #include <osiSock.h>
 
-#include <sys/types.h>
+#define epicsExportSharedSymbols
+#include <pv/blockingUDP.h>
+#include <pv/remote.h>
+#include <pv/logger.h>
 
 using namespace std;
 using namespace epics::pvData;

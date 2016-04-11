@@ -67,7 +67,7 @@ public:
 
 };
 
-epicsShareExtern Channel::shared_pointer createRPCChannel(ChannelProvider::shared_pointer const & provider,
+epicsShareFunc Channel::shared_pointer createRPCChannel(ChannelProvider::shared_pointer const & provider,
         std::string const & channelName,
         ChannelRequester::shared_pointer const & channelRequester,
         Service::shared_pointer const & rpcService);

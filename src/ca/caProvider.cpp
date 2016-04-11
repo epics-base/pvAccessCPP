@@ -10,10 +10,8 @@
 #include <cadef.h>
 #include <epicsSignal.h>
 
-#include <pv/logger.h>
-
 #define epicsExportSharedSymbols
-
+#include <pv/logger.h>
 #include <pv/caProvider.h>
 #include <pv/caChannel.h>
 

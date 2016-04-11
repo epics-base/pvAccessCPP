@@ -9,10 +9,12 @@
 #include <cstdlib>
 #include <sstream>
 
-#include <pv/byteBuffer.h>
-#include <pv/epicsException.h>
 #include <osiSock.h>
 #include <ellLib.h>
+
+#include <pv/pvType.h>
+#include <pv/byteBuffer.h>
+#include <pv/epicsException.h>
 
 #define epicsExportSharedSymbols
 #include <pv/inetAddressUtil.h>

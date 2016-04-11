@@ -9,22 +9,11 @@
 
 #include <vector>
 
-#ifdef epicsExportSharedSymbols
-#   define inetAddressUtilExportSharedSymbols
-#   undef epicsExportSharedSymbols
-#endif
+#include <osiSock.h>
+#include <shareLib.h>
 
 #include <pv/pvType.h>
 #include <pv/byteBuffer.h>
-
-#include <osiSock.h>
-
-#ifdef inetAddressUtilExportSharedSymbols
-#   define epicsExportSharedSymbols
-#   undef inetAddressUtilExportSharedSymbols
-#endif
-
-#include <shareLib.h>
 
 
 // TODO implement using smart pointers

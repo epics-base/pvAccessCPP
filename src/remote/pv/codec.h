@@ -11,13 +11,7 @@
 #include <map>
 #include <deque>
 
-#ifdef epicsExportSharedSymbols
-#   define abstractCodecEpicsExportSharedSymbols
-#   undef epicsExportSharedSymbols
-#endif
-
 #include <shareLib.h>
-#include <osdSock.h>
 #include <osiSock.h>
 #include <epicsTime.h>
 #include <epicsThread.h>
@@ -37,11 +31,6 @@
 #include <pv/event.h>
 #include <pv/likely.h>
 
-#ifdef abstractCodecEpicsExportSharedSymbols
-#   define epicsExportSharedSymbols
-#	undef abstractCodecEpicsExportSharedSymbols
-#endif
-
 #include <pv/pvaConstants.h>
 #include <pv/remote.h>
 #include <pv/security.h>
@@ -50,7 +39,6 @@
 #include <pv/namedLockPattern.h>
 #include <pv/inetAddressUtil.h>
 
-#include <shareLib.h>
 
 namespace epics {
 namespace pvAccess {

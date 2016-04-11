@@ -4,16 +4,16 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(NOMINMAX)
 #define NOMINMAX
 #endif
 
-#include <pv/beaconEmitter.h>
-#include <pv/serializationHelper.h>
-
-#include <pv/logger.h>
 #include <algorithm>
 
+#define epicsExportSharedSymbols
+#include <pv/beaconEmitter.h>
+#include <pv/serializationHelper.h>
+#include <pv/logger.h>
 #include <pv/serverContext.h>
 
 using namespace std;

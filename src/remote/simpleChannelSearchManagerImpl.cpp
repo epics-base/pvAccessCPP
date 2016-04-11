@@ -4,15 +4,17 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#include <stdlib.h>
+#include <time.h>
+#include <vector>
+
+#include <pv/timeStamp.h>
+
+#define epicsExportSharedSymbols
 #include <pv/simpleChannelSearchManagerImpl.h>
 #include <pv/pvaConstants.h>
 #include <pv/blockingUDP.h>
 #include <pv/serializeHelper.h>
-
-#include <stdlib.h>
-#include <time.h>
-#include <pv/timeStamp.h>
-#include <vector>
 
 using namespace std;
 using namespace epics::pvData;

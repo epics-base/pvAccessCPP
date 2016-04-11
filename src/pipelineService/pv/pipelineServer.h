@@ -65,7 +65,7 @@ public:
 
 };
 
-epicsShareExtern Channel::shared_pointer createPipelineChannel(ChannelProvider::shared_pointer const & provider,
+epicsShareFunc Channel::shared_pointer createPipelineChannel(ChannelProvider::shared_pointer const & provider,
         std::string const & channelName,
         ChannelRequester::shared_pointer const & channelRequester,
         PipelineService::shared_pointer const & pipelineService);

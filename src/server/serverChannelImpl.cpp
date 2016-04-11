@@ -4,6 +4,7 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#define epicsExportSharedSymbols
 #include <pv/serverChannelImpl.h>
 
 using namespace epics::pvData;

@@ -4,6 +4,7 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#define epicsExportSharedSymbols
 #include <pv/transportRegistry.h>
 
 using namespace epics::pvData;

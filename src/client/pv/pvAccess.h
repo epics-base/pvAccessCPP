@@ -990,9 +990,9 @@ public:
     virtual std::auto_ptr<stringVector_t> getProviderNames() = 0;
 };
 
-epicsShareExtern ChannelProviderRegistry::shared_pointer getChannelProviderRegistry();
-epicsShareExtern void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
-epicsShareExtern void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
+epicsShareFunc ChannelProviderRegistry::shared_pointer getChannelProviderRegistry();
+epicsShareFunc void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
+epicsShareFunc void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
 
 
 /**
