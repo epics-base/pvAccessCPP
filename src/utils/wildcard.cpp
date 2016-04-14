@@ -4,9 +4,10 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#include <epicsString.h>
+
 #define epicsExportSharedSymbols
 #include <pv/wildcard.h>
-#include <epicsString.h>
 
 using namespace epics::pvAccess;
 
