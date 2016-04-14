@@ -51,3 +51,8 @@ TESTS += configurationTest
 TESTPROD_HOST += testFairQueue
 testFairQueue_SRCS += testFairQueue
 TESTS += testFairQueue
+
+TESTPROD_HOST += testWildcard
+testWildcard = testWildcard.cpp
+testHarness_SRCS += testWildcard.cpp
+TESTS += testWildcard
