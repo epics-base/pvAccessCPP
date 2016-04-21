@@ -621,7 +621,7 @@ void ChannelAccessIFTest::test_channelGetIntProcessInternal(Channel::shared_poin
     for (int i = 0; i < numOfTimes; i++) {
 
         int previousValue = value->get();
-        long previousTimestampSec = timeStamp.getSecondsPastEpoch();
+        TimeStamp previousTimestamp = timeStamp;
 
         epicsThreadSleep(1.0);
 
@@ -635,7 +635,7 @@ void ChannelAccessIFTest::test_channelGetIntProcessInternal(Channel::shared_poin
 
         testOk((previousValue +1)/*%11*/ == value->get(), "%s: testing the counter value change",
                testMethodName.c_str());
-        testOk(timeStamp.getSecondsPastEpoch() > previousTimestampSec,
+        testOk(timeStamp > previousTimestamp,
                "%s: testing the timestamp change", testMethodName.c_str());
     }
 
