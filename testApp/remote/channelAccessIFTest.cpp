@@ -632,11 +632,12 @@ void ChannelAccessIFTest::test_channelGetIntProcessInternal(Channel::shared_poin
         }
 
         pvTimeStamp.get(timeStamp);
+        double deltaT = TimeStamp::diff(timeStamp, previousTimestamp);
 
         testOk((previousValue +1)/*%11*/ == value->get(), "%s: testing the counter value change",
                testMethodName.c_str());
-        testOk(timeStamp > previousTimestamp,
-               "%s: testing the timestamp change", testMethodName.c_str());
+        testOk(deltaT > 0.9 && deltaT < 2.0,
+               "%s: timestamp change was %g", testMethodName.c_str(), deltaT);
     }
 
     channelGetReq->getChannelGet()->destroy();
@@ -1590,7 +1591,7 @@ void ChannelAccessIFTest::test_channelPutGetIntProcess() {
     for (int i = 0; i < numOfTimes; i++) {
 
         int previousValue = getValuePtr->get();
-        long previousTimestampSec = timeStamp.getSecondsPastEpoch();
+        TimeStamp previousTimestamp = timeStamp;
 
         //cout << "previousValue:" << previousValue << " previousTimestampSec:" << previousTimestampSec << endl;
         //cout << "next val:" << ((previousValue +1) % 11) << endl;
@@ -1607,6 +1608,7 @@ void ChannelAccessIFTest::test_channelPutGetIntProcess() {
         epicsThreadSleep(1.0);
 
         pvTimeStamp.get(timeStamp);
+        double deltaT = TimeStamp::diff(timeStamp, previousTimestamp);
 
         int testValue = (previousValue +1 + 1) /*% 11*/; //+1 (new value) +1 (process)
 
@@ -1614,8 +1616,8 @@ void ChannelAccessIFTest::test_channelPutGetIntProcess() {
         //cout << "Testing2:" << timeStamp.getSecondsPastEpoch() << ">" << previousTimestampSec << endl;
         testOk( testValue == getValuePtr->get(), "%s: testing the counter value change",
                 CURRENT_FUNCTION);
-        testOk(timeStamp.getSecondsPastEpoch() > previousTimestampSec,
-               "%s: testing the timestamp change", CURRENT_FUNCTION);
+        testOk(deltaT > 0.9 && deltaT < 2.0,
+               "%s: timestamp change is %g", CURRENT_FUNCTION, deltaT);
     }
 
     channel->destroy();
