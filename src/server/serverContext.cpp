@@ -174,6 +174,8 @@ void ServerContextImpl::loadConfiguration()
     // introspect network interfaces
     //
 
+    osiSockAttach();
+
     SOCKET sock = epicsSocketCreate(AF_INET, SOCK_STREAM, 0);
     if (!sock) {
         THROW_BASE_EXCEPTION("Failed to create a socket needed to introspect network interfaces.");
@@ -263,7 +265,8 @@ void ServerContextImpl::initialize(ChannelProviderRegistry::shared_pointer const
 
 void ServerContextImpl::internalInitialize()
 {
-    osiSockAttach();
+    // already called in loadConfiguration
+    //osiSockAttach();
 
     _timer.reset(new Timer("pvAccess-server timer", lowerPriority));
     _transportRegistry.reset(new TransportRegistry());
