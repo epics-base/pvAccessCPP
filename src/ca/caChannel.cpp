@@ -108,9 +108,10 @@ static void ca_get_labels_handler(struct event_handler_args args)
 
 // Filter out unrequested fields from a source structure according to a
 // structure conforming to the format of the "field" field of a pvRequest,
-// preserving type ids of unchanged structures.
+// preserving type ids of unchanged structures. If ntTop is true also preserve
+// type id if none of the deleted top-level subfields are the value field.
 static StructureConstPtr refineStructure(StructureConstPtr const & source,
-           StructureConstPtr const & requestedFields)
+           StructureConstPtr const & requestedFields, bool ntTop)
 {
     if (requestedFields.get() == NULL || requestedFields->getNumberFields() == 0)
         return source;
@@ -138,13 +139,13 @@ static StructureConstPtr refineStructure(StructureConstPtr const & source,
                 StructureConstPtr reqSubstruct =
                     std::tr1::dynamic_pointer_cast<const Structure>(reqField);
 
-                StructureConstPtr nested = refineStructure(substruct, reqSubstruct);
+                StructureConstPtr nested = refineStructure(substruct, reqSubstruct, false);
                 builder->add(name,nested);
                 if (nested->getID() != substruct->getID())
                     addId = false;
             }
         }
-        else
+        else if (!ntTop || name == "value")
             addId =  false;
     }
     if (addId)
@@ -158,7 +159,7 @@ static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer c
 
     PVStructurePtr fieldPVStructure = pvRequest->getSubField<PVStructure>("field");
     StructureConstPtr finalStructure = fieldPVStructure.get() ?
-        refineStructure(unrefinedStructure, fieldPVStructure->getStructure()) :
+        refineStructure(unrefinedStructure, fieldPVStructure->getStructure(),true) :
         unrefinedStructure;
 
     PVStructure::shared_pointer pvStructure = getPVDataCreate()->createPVStructure(finalStructure);
