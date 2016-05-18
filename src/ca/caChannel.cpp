@@ -790,7 +790,7 @@ void copy_DBR_GR(const void * dbr, unsigned count, PVStructure::shared_pointer c
         if (limitHigh.get()) limitHigh->put(data->upper_disp_limit);
 
         PVDoublePtr limitLow = disp->getSubField<PVDouble>("limitLow");
-        if (limitLow.get()) limitLow->put(data->upper_disp_limit);
+        if (limitLow.get()) limitLow->put(data->lower_disp_limit);
 
         copy_format<T>(dbr, disp);
     }
@@ -854,7 +854,7 @@ void copy_DBR_CTRL(const void * dbr, unsigned count, PVStructure::shared_pointer
         if (limitHigh.get()) limitHigh->put(data->upper_disp_limit);
 
         PVDoublePtr limitLow = disp->getSubField<PVDouble>("limitLow");
-        if (limitLow.get()) limitLow->put(data->upper_disp_limit);
+        if (limitLow.get()) limitLow->put(data->lower_disp_limit);
 
         copy_format<T>(dbr, disp);
     }
