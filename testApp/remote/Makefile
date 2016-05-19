@@ -50,3 +50,6 @@ pipelineServiceExample_SRCS += pipelineServiceExample.cpp
 
 TESTPROD_HOST += testClientFactory
 testClientFactory_SRCS += testClientFactory.cpp
+
+TESTPROD_HOST += testRAII
+testRAII_SRCS += testRAII.cpp
