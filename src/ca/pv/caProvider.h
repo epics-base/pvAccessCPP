@@ -23,6 +23,7 @@ class epicsShareClass CAChannelProvider :
     public std::tr1::enable_shared_from_this<CAChannelProvider>
 {
 public:
+    POINTER_DEFINITIONS(CAChannelProvider);
 
     static std::string PROVIDER_NAME;
 
@@ -63,6 +64,7 @@ public:
 
     void registerChannel(Channel::shared_pointer const & channel);
     void unregisterChannel(Channel::shared_pointer const & channel);
+    void unregisterChannel(Channel* pchannel);
 
 private:
 
@@ -72,9 +74,12 @@ private:
 
     epics::pvData::Mutex channelsMutex;
     // TODO std::unordered_map
-    // void* is not the nicest thing, but there is no fast weak_ptr==
+    // void* is not the nicest thing, but there is no fast weak_ptr::operator==
     typedef std::map<void*, Channel::weak_pointer> ChannelList;
     ChannelList channels;
+
+    // synced on channelsMutex
+    bool destroyed;
 };
 
 

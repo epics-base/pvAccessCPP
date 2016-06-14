@@ -112,9 +112,12 @@ private:
 
     epics::pvData::Mutex requestsMutex;
     // TODO std::unordered_map
-    // void* is not the nicest thing, but there is no fast weak_ptr==
+    // void* is not the nicest thing, but there is no fast weak_ptr::operator==
     typedef std::map<void*, ChannelRequest::weak_pointer> RequestsList;
     RequestsList requests;
+
+    // synced on requestsMutex
+    bool destroyed;
 };
 
 

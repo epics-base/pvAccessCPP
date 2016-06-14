@@ -25,13 +25,15 @@ using namespace epics::pvAccess::ca;
 
 std::string CAChannelProvider::PROVIDER_NAME = "ca";
 
-CAChannelProvider::CAChannelProvider() : current_context(0)
+CAChannelProvider::CAChannelProvider() : current_context(0), destroyed(false)
 {
     initialize();
 }
 
 CAChannelProvider::~CAChannelProvider()
 {
+    // call destroy() to destroy CA context
+    destroy();
 }
 
 std::string CAChannelProvider::getProviderName()
@@ -107,11 +109,17 @@ void CAChannelProvider::destroy()
 {
     Lock lock(channelsMutex);
     {
+        if (destroyed)
+            return;
+        destroyed = true;
+
         while (!channels.empty())
         {
-            Channel::shared_pointer channel = channels.rbegin()->second.lock();
+            Channel::shared_pointer channel = channels.begin()->second.lock();
             if (channel)
                 channel->destroy();
+            else
+                channels.erase(channels.begin());
         }
     }
 
@@ -134,6 +142,12 @@ void CAChannelProvider::unregisterChannel(Channel::shared_pointer const & channe
 {
     Lock lock(channelsMutex);
     channels.erase(channel.get());
+}
+
+void CAChannelProvider::unregisterChannel(Channel* pchannel)
+{
+    Lock lock(channelsMutex);
+    channels.erase(pchannel);
 }
 
 void CAChannelProvider::initialize()

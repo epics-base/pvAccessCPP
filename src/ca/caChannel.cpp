@@ -251,7 +251,8 @@ CAChannel::CAChannel(std::string const & _channelName,
     channelRequester(_channelRequester),
     channelID(0),
     channelType(0),
-    elementCount(0)
+    elementCount(0),
+    destroyed(false)
 {
     PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(caChannel);
 }
@@ -265,6 +266,8 @@ void CAChannel::activate(short priority)
                                    &channelID);
     if (result == ECA_NORMAL)
     {
+        channelProvider->registerChannel(shared_from_this());
+
         // TODO be sure that ca_connection_handler is not called before this call
         EXCEPTION_GUARD(channelRequester->channelCreated(Status::Ok, shared_from_this()));
     }
@@ -278,6 +281,19 @@ void CAChannel::activate(short priority)
 CAChannel::~CAChannel()
 {
     PVACCESS_REFCOUNT_MONITOR_DESTRUCT(caChannel);
+
+    Lock lock(requestsMutex);
+    {
+        if (destroyed)
+            return;
+        destroyed = true;
+    }
+
+    channelProvider->unregisterChannel(this);
+
+    /* Clear CA Channel */
+    threadAttach();
+    ca_clear_channel(channelID);
 }
 
 
@@ -454,19 +470,24 @@ void CAChannel::printInfo(std::ostream& out)
 
 void CAChannel::destroy()
 {
-    threadAttach();
-
     Lock lock(requestsMutex);
     {
+        if (destroyed)
+            return;
+        destroyed = true;
+
         while (!requests.empty())
         {
-            ChannelRequest::shared_pointer request = requests.rbegin()->second.lock();
+            ChannelRequest::shared_pointer request = requests.begin()->second.lock();
             if (request)
                 request->destroy();
         }
     }
 
+    channelProvider->unregisterChannel(shared_from_this());
+
     /* Clear CA Channel */
+    threadAttach();
     ca_clear_channel(channelID);
 }
 
