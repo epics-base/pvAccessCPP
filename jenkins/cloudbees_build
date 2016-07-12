@@ -36,6 +36,8 @@ tar -xzf base-${BASE}.CB-dist.tar.gz
 tar -xzf pvData.CB-dist.tar.gz
 
 if [ "${MB}" = "WITH_MICROBENCH" ]; then
+    wget -nv https://openepics.ci.cloudbees.com/job/Boost-1.61.0_Build/lastSuccessfulBuild/artifact/boost-1.61.0.CB-dist.tar.gz
+    tar -xzf boost-1.61.0.CB-dist.tar.gz
     wget -nv https://openepics.ci.cloudbees.com/job/e4-cpp-pvCommon-${PVCOMMON_BRANCH}-build/BASE=${BASE},MB=WITH_MICROBENCH/lastSuccessfulBuild/artifact/pvCommon.CB-dist.tar.gz
     tar -xzf pvCommon.CB-dist.tar.gz
 fi
