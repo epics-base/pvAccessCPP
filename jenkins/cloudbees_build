@@ -6,20 +6,20 @@
 #
 # Author: Ralph Lange <ralph.lange@gmx.de>
 # Copyright (C) 2013 Helmholtz-Zentrum Berlin für Materialien und Energie GmbH
-# Copyright (C) 2014-2015 ITER Organization.
+# Copyright (C) 2014-2016 ITER Organization.
 # All rights reserved. Use is subject to license terms.
 
 ###########################################
 # Determine EPICS Base version
 
-DEFAULT_BASE=3.14.12.5
+DEFAULT_BASE=3.15.4
 
-BASE=${1:-${DEFAULT_BASE}}
-USE_MB=${2:-"MB_NO"}
+BASE=${BASE:-${DEFAULT_BASE}}
+MB=${MB:-"NO_MICROBENCH"}
 
-# Dependent module branches (empty = master)
-PVCOMMON_BRANCH=""
-PVDATA_BRANCH=""
+# Dependent module branches
+PVCOMMON_BRANCH="master"
+PVDATA_BRANCH="master"
 
 ###########################################
 # Fetch and unpack dependencies
@@ -31,12 +31,12 @@ mkdir -p ${STUFF}
 cd ${STUFF}
 
 wget -nv https://openepics.ci.cloudbees.com/job/Base-${BASE}_Build/lastSuccessfulBuild/artifact/base-${BASE}.CB-dist.tar.gz
-wget -nv https://openepics.ci.cloudbees.com/job/pvDataCPP_${PVDATA_BRANCH}Build/BASE=${BASE},USE_MB=MB_NO/lastSuccessfulBuild/artifact/pvData.CB-dist.tar.gz
+wget -nv https://openepics.ci.cloudbees.com/job/e4-cpp-pvData-${PVDATA_BRANCH}-build/BASE=${BASE},MB=NO_MICROBENCH/lastSuccessfulBuild/artifact/pvData.CB-dist.tar.gz
 tar -xzf base-${BASE}.CB-dist.tar.gz
 tar -xzf pvData.CB-dist.tar.gz
 
-if [ "${USE_MB}" = "MB_YES" ]; then
-    wget -nv https://openepics.ci.cloudbees.com/job/pvCommonCPP_${PVCOMMON_BRANCH}Build/BASE=${BASE},USE_MB=MB_YES/lastSuccessfulBuild/artifact/pvCommon.CB-dist.tar.gz
+if [ "${MB}" = "WITH_MICROBENCH" ]; then
+    wget -nv https://openepics.ci.cloudbees.com/job/e4-cpp-pvCommon-${PVCOMMON_BRANCH}-build/BASE=${BASE},MB=WITH_MICROBENCH/lastSuccessfulBuild/artifact/pvCommon.CB-dist.tar.gz
     tar -xzf pvCommon.CB-dist.tar.gz
 fi
 
@@ -54,7 +54,7 @@ cat > configure/RELEASE.local << EOF
 EPICS_BASE=${EPICS_BASE}
 EOF
 
-if [ "${USE_MB}" = "MB_YES" ]; then
+if [ "${MB}" = "WITH_MICROBENCH" ]; then
 	# must use TAB characters here
 	cat > configure/CONFIG_SITE.local <<- EOF
 	WITH_MICROBENCH=1
