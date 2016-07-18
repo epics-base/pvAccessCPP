@@ -792,7 +792,7 @@ void copy_DBR_GR(const void * dbr, unsigned count, PVStructure::shared_pointer c
     if (alarm.get())
     {
         PVIntPtr status = alarm->getSubField<PVInt>("status");
-        if (status.get()) status->put(0);
+        if (status.get()) status->put(dbrStatus2alarmStatus[data->status]);
 
         PVIntPtr severity = alarm->getSubField<PVInt>("severity");
         if (severity.get()) severity->put(data->severity);
@@ -856,7 +856,7 @@ void copy_DBR_CTRL(const void * dbr, unsigned count, PVStructure::shared_pointer
     if (alarm.get())
     {
         PVIntPtr status = alarm->getSubField<PVInt>("status");
-        if (status.get()) status->put(0);
+        if (status.get()) status->put(dbrStatus2alarmStatus[data->status]);
 
         PVIntPtr severity = alarm->getSubField<PVInt>("severity");
         if (severity.get()) severity->put(data->severity);
