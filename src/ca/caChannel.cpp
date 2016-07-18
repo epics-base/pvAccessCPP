@@ -191,17 +191,28 @@ static PVStructure::shared_pointer createPVStructure(CAChannel::shared_pointer c
     // Match to closest DBR type
     // NOTE: value is always there
     string properties;
+    bool isArray = channel->getElementCount() > 1;
     if (dbrType >= DBR_CTRL_STRING)      // 28
     {
         if (dbrType != DBR_CTRL_STRING && dbrType != DBR_CTRL_ENUM)
-            properties = "value,alarm,display,valueAlarm,control";
+        {
+            if (isArray)
+                properties = "value,alarm,display";
+            else
+                properties = "value,alarm,display,valueAlarm,control";
+        }
         else
             properties = "value,alarm";
     }
     else if (dbrType >= DBR_GR_STRING)   // 21
     {
         if (dbrType != DBR_GR_STRING && dbrType != DBR_GR_ENUM)
-            properties = "value,alarm,display,valueAlarm";
+        {
+            if (isArray)
+                properties = "value,alarm,display";
+            else
+                properties = "value,alarm,display,valueAlarm";
+        }
         else
             properties = "value,alarm";
     }
@@ -222,10 +233,14 @@ void CAChannel::connected()
     // we assume array if element count > 1
     elementCount = ca_element_count(channelID);
     channelType = ca_field_type(channelID);
+    bool isArray = elementCount > 1;
 
     // no valueAlarm and control,display for non-numeric type
+    // no control,display for numeric arrays
     string allProperties =
         (channelType != DBR_STRING && channelType != DBR_ENUM) ?
+        isArray ?
+        "value,timeStamp,alarm,display" :
         "value,timeStamp,alarm,display,valueAlarm,control" :
         "value,timeStamp,alarm";
     Structure::const_shared_pointer structure = createStructure(shared_from_this(), allProperties);
