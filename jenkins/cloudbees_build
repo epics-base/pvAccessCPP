@@ -23,7 +23,7 @@ installE4 () {
 
     # If microbench version does not exist, try without
     if [ "${MB}" = "WITH_MICROBENCH" ]; then
-        if wget -nv https://openepics.ci.cloudbees.com/job/e4-cpp-${module}-${branch}-build/BASE=${BASE},MB=WITH_MICROBENCH/lastSuccessfulBuild/artifact/${module}.CB-dist.tar.gz; then
+        if ! wget -nv https://openepics.ci.cloudbees.com/job/e4-cpp-${module}-${branch}-build/BASE=${BASE},MB=WITH_MICROBENCH/lastSuccessfulBuild/artifact/${module}.CB-dist.tar.gz; then
             wget -nv https://openepics.ci.cloudbees.com/job/e4-cpp-${module}-${branch}-build/BASE=${BASE},MB=NO_MICROBENCH/lastSuccessfulBuild/artifact/${module}.CB-dist.tar.gz
         fi
     else
