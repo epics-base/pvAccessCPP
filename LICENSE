@@ -1,12 +1,17 @@
+Copyright and License Terms
+---------------------------
 
-Copyright (c) 2008 Martin R. Kraimer
-Copyright (c) 2006 The University of Chicago, as Operator of Argonne
+Copyright (c) 2006-2016 Martin R. Kraimer
+Copyright (c) 2006-2016 UChicago Argonne LLC, as Operator of Argonne
      National Laboratory.
 Copyright (c) 2006 Deutsches Elektronen-Synchrotron,
      Member of the Helmholtz Association, (DESY), HAMBURG, GERMANY.
-Copyright (c) 2007 Control System Laboratory,
+Copyright (c) 2007-2016 Control System Laboratory,
     (COSYLAB) Ljubljana Slovenia
-
+Copyright (c) 2010-2016 Brookhaven Science Associates, as Operator
+    of Brookhaven National Laboratory
+Copyright (c) 2011-2016 Diamond Light Source Limited,
+    (DLS) Didcot, United Kingdom
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
@@ -31,48 +36,30 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 ________________________________________________________________________
 
-This software is in part copyrighted by the University of Chicago (UofC)
+Additional Disclaimers
+----------------------
 
-In no event shall UofC be liable to any party for direct, indirect,
-special, incidental, or consequential damages arising out of the use of
-this software, its documentation, or any derivatives thereof, even if
-UofC has been advised of the possibility of such damage.
+This software is copyright in part by these institutions:
 
-UofC specifically disclaims any warranties, including, but not limited
-to, the implied warranties of merchantability, fitness for a particular
-purpose, and non-infringement.  This software is provided on an "as is"
-basis, and UofC has no obligation to provide maintenance, support,
-updates, enhancements, or modifications.
+  * Brookhaven Science Associates, as Operator of Brookhaven
+    National Laboratory, New York, USA
+  * Control System Laboratory, Ljubljana, Slovenia
+  * Deutsches Elektronen-Synchroton, Member of the Helmholtz
+    Association, Hamburg, Germany
+  * Diamond Light Source Limited, Didcot, United Kingdom
+  * Helmholtz-Zentrum Berlin fuer Materialien und Energie m.b.H.,
+    Berlin, Germany.
+  * UChicage Argonne LLC, as Operator of Argonne National Laboratory,
+    Illinois, USA
 
-________________________________________________________________________
+In no event shall these institutions be liable to any party for direct,
+indirect, special, incidental, or consequential damages arising out of
+the use of this software, its documentation, or any derivatives thereof,
+even if advised of the possibility of such damage.
 
-This software is in part copyrighted by the BERLINER SPEICHERRING
-GESELLSCHAFT FUER SYNCHROTRONSTRAHLUNG M.B.H. (BESSY), BERLIN, GERMANY.
+These institutions specifically disclaim any warranties, including, but
+not limited to, the implied warranties of merchantability, fitness for a
+particular purpose, and non-infringement. This software is provided on
+an "as is" basis, and these institutions have no obligation to provide
+maintenance, support, updates, enhancements, or modifications.
 
-In no event shall BESSY be liable to any party for direct, indirect,
-special, incidental, or consequential damages arising out of the use of
-this software, its documentation, or any derivatives thereof, even if
-BESSY has been advised of the possibility of such damage.
-
-BESSY specifically disclaims any warranties, including, but not limited
-to, the implied warranties of merchantability, fitness for a particular
-purpose, and non-infringement.  This software is provided on an "as is"
-basis, and BESSY has no obligation to provide maintenance, support,
-updates, enhancements, or modifications.
-
-________________________________________________________________________
-
-This software is in part copyrighted by the Deutsches Elektronen-Synchroton,
-    Member of the Helmholtz Association, (DESY), HAMBURG, GERMANY.
-
-In no event shall DESY be liable to any party for direct, indirect,
-special, incidental, or consequential damages arising out of the use of
-this software, its documentation, or any derivatives thereof, even if
-DESY has been advised of the possibility of such damage.
-
-DESY specifically disclaims any warranties, including, but not limited
-to, the implied warranties of merchantability, fitness for a particular
-purpose, and non-infringement.  This software is provided on an "as is"
-basis, and DESY has no obligation to provide maintenance, support,
-updates, enhancements, or modifications.
-________________________________________________________________________
