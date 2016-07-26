@@ -1,6 +1,11 @@
 Release 5.x.x
 ==========
 
+*
+
+Release 5.0.0
+==========
+
 * Remote channel destroy support
 * Multiple network inteface support
 * Local multicast (repetitor) reimplemented
