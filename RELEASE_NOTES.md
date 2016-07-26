@@ -1,3 +1,18 @@
+Release 5.x.x
+==========
+
+* Remote channel destroy support
+* Multiple network inteface support
+* Local multicast (repetitor) reimplemented
+* Monitor reconnect when channel type changes fix
+* C++11 compilation fixes
+* Added version to pvaTools
+* Memory management improved
+* pipeline: ackAny argument percentage support
+* Monitor overrun memory issues fixed
+* CA provider destruction fixed
+* Replaced LGPL wildcard matcher with simplistic EPICS version
+
 Release 4.1.2 
 ==========
 
