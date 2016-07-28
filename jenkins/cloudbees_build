@@ -57,7 +57,7 @@ cd ${STUFF}
 installTool Boost 1.61.0
 installTool Base ${BASE}
 
-installE4 pvCommon ${PVDATA_BRANCH}
+installE4 pvCommon ${PVCOMMON_BRANCH}
 installE4 pvData ${PVDATA_BRANCH}
 
 ###########################################
@@ -91,4 +91,4 @@ make runtests
 ###########################################
 # Create distribution
 
-tar --exclude=test* -czf pvAccess.CB-dist.tar.gz bin lib include dbd
+tar --exclude=test* -czf pvAccess.CB-dist.tar.gz bin lib include dbd LICENSE COPYRIGHT
