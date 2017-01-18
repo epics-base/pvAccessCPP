@@ -703,7 +703,7 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
     {
 
         char host[100];
-        sockAddrToA(&transport->getRemoteAddress()->sa,host,100);
+        sockAddrToDottedIP(&transport->getRemoteAddress()->sa,host,100);
         LOG(logLevelDebug,"Zero length channel name, disconnecting client: %s", host);
         disconnect(transport);
         return;
@@ -711,7 +711,7 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
     else if (channelName.size() > MAX_CHANNEL_NAME_LENGTH)
     {
         char host[100];
-        sockAddrToA(&transport->getRemoteAddress()->sa,host,100);
+        sockAddrToDottedIP(&transport->getRemoteAddress()->sa,host,100);
         LOG(logLevelDebug,"Unreasonable channel name length, disconnecting client: %s", host);
         disconnect(transport);
         return;
@@ -975,7 +975,7 @@ void ServerDestroyChannelHandler::handleResponse(osiSockAddr* responseFrom,
         if (!transport->isClosed())
         {
             char host[100];
-            sockAddrToA(&responseFrom->sa,host,100);
+            sockAddrToDottedIP(&responseFrom->sa,host,100);
             LOG(logLevelDebug, "Trying to destroy a channel that no longer exists (SID: %d, CID %d, client: %s).", sid, cid, host);
         }
         return;

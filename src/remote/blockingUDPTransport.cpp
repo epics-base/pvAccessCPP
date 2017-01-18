@@ -80,7 +80,7 @@ BlockingUDPTransport::BlockingUDPTransport(bool serverFlag,
         _remoteName = "<unknown>:0";
     } else {
         char strBuffer[64];
-        sockAddrToA(&_remoteAddress.sa, strBuffer, sizeof(strBuffer));
+        sockAddrToDottedIP(&_remoteAddress.sa, strBuffer, sizeof(strBuffer));
         _remoteName = strBuffer;
     }
 }
