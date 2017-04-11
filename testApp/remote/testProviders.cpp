@@ -190,7 +190,7 @@ static
 void testChannelGetDrop(const char *providerName,
                            const char *badChannel)
 {
-    testDiag("== testChannelGet(\"%s\", \"%s\")", providerName, badChannel);
+    testDiag("== testChannelGetDrop(\"%s\", \"%s\")", providerName, badChannel);
 
     pva::ChannelProvider::shared_pointer provider(pva::getChannelProviderRegistry()->createProvider(providerName));
 
@@ -230,6 +230,45 @@ void testChannelGetDrop(const char *providerName,
     testOk(provider.unique(), "empty provider refs=%u", (unsigned)provider.use_count());
 }
 
+static
+void testChannelDrop(const char *providerName,
+                            const char *badChannel)
+{
+    testDiag("== testChannelDrop(\"%s\", \"%s\")", providerName, badChannel);
+
+    pva::ChannelProvider::shared_pointer provider(pva::getChannelProviderRegistry()->createProvider(providerName));
+
+    testOk(provider.unique(), "create provider refs=%u", (unsigned)provider.use_count());
+
+    TestChanReq::shared_pointer req(new TestChanReq);
+    pva::Channel::shared_pointer chan(provider->createChannel(badChannel, req));
+    pva::Channel::weak_pointer chanW(chan);
+
+    testOk(chan.unique(), "create non-existant channel refs=%u", (unsigned)chan.use_count());
+
+    TestGetReq::shared_pointer getreq(new TestGetReq);
+    pva::ChannelGet::shared_pointer get(chan->createChannelGet(getreq,
+                                                               pvd::getPVDataCreate()->createPVStructure(
+                                                                   pvd::getFieldCreate()->createFieldBuilder()->createStructure()
+                                                                   )));
+    pva::ChannelGet::weak_pointer getW(get);
+
+    testOk(get.unique(), "create get refs=%u", (unsigned)get.use_count());
+
+    testDiag("drop our ref to Channel then ChannelGet");
+    chan.reset();
+    get.reset();
+
+    testOk(!chanW.lock(), "Channel kept alive NULL==%p", chanW.lock().get());
+    testOk(!getW.lock(), "ChannelGet kept alive NULL==%p", getW.lock().get());
+
+    testDiag("drop our ref to Provider");
+    provider.reset();
+
+    testOk(!chanW.lock(), "Channel kept alive after Provider NULL==%p", chanW.lock().get());
+    testOk(!getW.lock(), "ChannelGet kept alive after Provider NULL==%p", getW.lock().get());
+}
+
 } // namespace
 
 MAIN(testProviders) {
@@ -240,6 +279,7 @@ MAIN(testProviders) {
         testChannelCreateDestroy("pva", "reallyInvalidChannelName");
         testChannelCreateDrop   ("pva", "reallyInvalidChannelName");
         testChannelGetDestroy   ("pva", "reallyInvalidChannelName");
+        testChannelDrop         ("pva", "reallyInvalidChannelName");
         pva::ClientFactory::stop();
     }
     testDiag("==== CA ====");
@@ -248,6 +288,7 @@ MAIN(testProviders) {
         testChannelCreateDestroy("ca", "reallyInvalidChannelName");
         testChannelCreateDrop   ("ca", "reallyInvalidChannelName");
         testChannelGetDestroy   ("ca", "reallyInvalidChannelName");
+        testChannelDrop         ("ca", "reallyInvalidChannelName");
         pva::ca::CAClientFactory::stop();
     }
     return testDone();
