@@ -54,7 +54,7 @@ static
 void testChannelCreateDestroy(const char *providerName,
                               const char *badChannel)
 {
-    testDiag("testChannelCreateDestroy(\"%s\", \"%s\")", providerName, badChannel);
+    testDiag("== testChannelCreateDestroy(\"%s\", \"%s\")", providerName, badChannel);
 
     pva::ChannelProvider::shared_pointer provider(pva::getChannelProviderRegistry()->createProvider(providerName));
     pva::ChannelProvider::weak_pointer providerW(provider);
@@ -104,7 +104,7 @@ static
 void testChannelCreateDrop(const char *providerName,
                               const char *badChannel)
 {
-    testDiag("testChannelCreateDrop(\"%s\", \"%s\")", providerName, badChannel);
+    testDiag("== testChannelCreateDrop(\"%s\", \"%s\")", providerName, badChannel);
 
     pva::ChannelProvider::shared_pointer provider(pva::getChannelProviderRegistry()->createProvider(providerName));
     pva::ChannelProvider::weak_pointer providerW(provider);
@@ -145,10 +145,10 @@ void testChannelCreateDrop(const char *providerName,
 }
 
 static
-void testChannelGet(const char *providerName,
-                    const char *badChannel)
+void testChannelGetDestroy(const char *providerName,
+                           const char *badChannel)
 {
-    testDiag("testChannelGet(\"%s\", \"%s\")", providerName, badChannel);
+    testDiag("== testChannelGet(\"%s\", \"%s\")", providerName, badChannel);
 
     pva::ChannelProvider::shared_pointer provider(pva::getChannelProviderRegistry()->createProvider(providerName));
 
@@ -174,6 +174,51 @@ void testChannelGet(const char *providerName,
 
     chan->destroy();
 
+    testOk(get.unique(), "get after Channel::destroy() refs=%u", (unsigned)get.use_count());
+    testOk(chan.unique(), "destroy non-existant channel refs=%u", (unsigned)chan.use_count());
+    testOk(req.unique(), "ChannelRequester after Channel::destroy() refs=%u", (unsigned)req.use_count());
+
+    get.reset();
+    getreq.reset();
+    chan.reset();
+    req.reset();
+
+    testOk(provider.unique(), "empty provider refs=%u", (unsigned)provider.use_count());
+}
+
+static
+void testChannelGetDrop(const char *providerName,
+                           const char *badChannel)
+{
+    testDiag("== testChannelGet(\"%s\", \"%s\")", providerName, badChannel);
+
+    pva::ChannelProvider::shared_pointer provider(pva::getChannelProviderRegistry()->createProvider(providerName));
+
+    testOk(provider.unique(), "create provider refs=%u", (unsigned)provider.use_count());
+
+    TestChanReq::shared_pointer req(new TestChanReq);
+    pva::Channel::shared_pointer chan(provider->createChannel(badChannel, req));
+
+    testOk(chan.unique(), "create non-existant channel refs=%u", (unsigned)chan.use_count());
+
+    TestGetReq::shared_pointer getreq(new TestGetReq);
+    pva::ChannelGet::shared_pointer get(chan->createChannelGet(getreq,
+                                                               pvd::getPVDataCreate()->createPVStructure(
+                                                                   pvd::getFieldCreate()->createFieldBuilder()->createStructure()
+                                                                   )));
+
+    testOk(get.unique(), "create get refs=%u", (unsigned)get.use_count());
+
+    testDiag("Drop reference to Channel");
+    chan.reset();
+
+    testDiag("Drop reference to ChannelGet");
+    get.reset();
+
+    testOk(getreq.unique(), "getreq after ChannelGet::destroy() refs=%u", (unsigned)getreq.use_count());
+    epicsThreadSleep(1.0);
+    testOk(getreq.unique(), "2getreq after ChannelGet::destroy() refs=%u", (unsigned)getreq.use_count());
+
     testOk(chan.unique(), "destroy non-existant channel refs=%u", (unsigned)chan.use_count());
     testOk(req.unique(), "ChannelRequester after Channel::destroy() refs=%u", (unsigned)req.use_count());
 
@@ -194,7 +239,7 @@ MAIN(testProviders) {
         pva::ClientFactory::start();
         testChannelCreateDestroy("pva", "reallyInvalidChannelName");
         testChannelCreateDrop   ("pva", "reallyInvalidChannelName");
-        testChannelGet          ("pva", "reallyInvalidChannelName");
+        testChannelGetDestroy   ("pva", "reallyInvalidChannelName");
         pva::ClientFactory::stop();
     }
     testDiag("==== CA ====");
@@ -202,7 +247,7 @@ MAIN(testProviders) {
         pva::ca::CAClientFactory::start();
         testChannelCreateDestroy("ca", "reallyInvalidChannelName");
         testChannelCreateDrop   ("ca", "reallyInvalidChannelName");
-        testChannelGet          ("ca", "reallyInvalidChannelName");
+        testChannelGetDestroy   ("ca", "reallyInvalidChannelName");
         pva::ca::CAClientFactory::stop();
     }
     return testDone();
