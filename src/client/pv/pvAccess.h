@@ -958,41 +958,124 @@ public:
     }
 };
 
+//! Simple ChannelProviderFactory which requires the existance of a ctor
+//!   Provider(const std::tr1::shared_ptr<Configuration>& conf)
+//! which is called with a Configuration instance or NULL (use some defaults)
+template<class Provider>
+struct SimpleChannelProviderFactory : public ChannelProviderFactory
+{
+    SimpleChannelProviderFactory(const std::string& name) :pname(name) {}
+    virtual ~SimpleChannelProviderFactory() {}
+
+    virtual std::string getFactoryName() { return pname; }
+
+    virtual ChannelProvider::shared_pointer sharedInstance()
+    {
+        epics::pvData::Lock L(sharedM);
+        if(!shared) {
+            std::tr1::shared_ptr<Configuration> empty;
+            shared.reset(new Provider(empty));
+        }
+        return shared;
+    }
+
+    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf)
+    {
+        ChannelProvider::shared_pointer ret(new Provider(conf));
+        return ret;
+    }
+
+private:
+    const std::string pname;
+    epics::pvData::Mutex sharedM;
+    std::tr1::shared_ptr<Provider> shared;
+};
+
 /**
  * Interface for locating channel providers.
  */
-class epicsShareClass ChannelProviderRegistry : private epics::pvData::NoDefaultMethods {
+class epicsShareClass ChannelProviderRegistry {
 public:
     POINTER_DEFINITIONS(ChannelProviderRegistry);
 
     typedef std::vector<std::string> stringVector_t;
-
-    virtual ~ChannelProviderRegistry() {};
 
     /**
      * Get a shared instance of the provider with the specified name.
      * @param providerName The name of the provider.
      * @return The interface for the provider or null if the provider is not known.
      */
-    virtual ChannelProvider::shared_pointer getProvider(std::string const & providerName) = 0;
+    ChannelProvider::shared_pointer getProvider(std::string const & providerName);
 
     /**
      * Creates a new instanceof the provider with the specified name.
      * @param providerName The name of the provider.
      * @return The interface for the provider or null if the provider is not known.
      */
-    virtual ChannelProvider::shared_pointer createProvider(std::string const & providerName) = 0;
+    ChannelProvider::shared_pointer createProvider(std::string const & providerName);
+
+    /**
+     * Creates a new instanceof the provider with the specified name.
+     * @param providerName The name of the provider.
+     * @return The interface for the provider or null if the provider is not known.
+     */
+    ChannelProvider::shared_pointer createProvider(std::string const & providerName,
+                                                           const std::tr1::shared_ptr<Configuration>& conf);
+
+    /**
+     * Fetch provider factor with the specified name.
+     * @param providerName The name of the provider.
+     * @return The factor or null if the provider is not known.
+     */
+    ChannelProviderFactory::shared_pointer getFactory(std::string const & providerName);
 
     /**
      * Get a array of the names of all the known providers.
      * @return The names. Be sure to delete vector instance.
      */
-    virtual std::auto_ptr<stringVector_t> getProviderNames() = 0;
+    std::auto_ptr<stringVector_t> getProviderNames();
+
+
+    static ChannelProviderRegistry::shared_pointer build() {
+        ChannelProviderRegistry::shared_pointer ret(new ChannelProviderRegistry);
+        return ret;
+    }
+
+    //! Add new factory.  if replace=false and name already in use, return false with no change
+    //! in other cases insert provided factory and return true.
+    bool add(const ChannelProviderFactory::shared_pointer& fact, bool replace=true);
+
+    //! Add a new Provider which will be built using SimpleChannelProviderFactory<Provider>
+    template<class Provider>
+    bool add(const std::string& name, bool replace=true)
+    {
+        typedef SimpleChannelProviderFactory<Provider> Factory;
+        typename Factory::shared_pointer fact(new Factory(name));
+        return add(fact, replace);
+    }
+
+    //! Attempt to remove named factory.  Return Factory which was removed, or NULL if not found.
+    ChannelProviderFactory::shared_pointer remove(const std::string& name);
+
+    //! Drop all factories
+    void clear()
+    {
+        providers.clear();
+    }
+
+private:
+    ChannelProviderRegistry() {}
+
+    epics::pvData::Mutex mutex;
+    typedef std::map<std::string, ChannelProviderFactory::shared_pointer> providers_t;
+    providers_t providers;
 };
 
+//! never returns NULL
 epicsShareFunc ChannelProviderRegistry::shared_pointer getChannelProviderRegistry();
 epicsShareFunc void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
 epicsShareFunc void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
+epicsShareFunc void unregisterAllChannelProviderFactory();
 
 
 /**
