@@ -21,75 +21,99 @@ using std::string;
 namespace epics {
 namespace pvAccess {
 
-static ChannelProviderRegistry::shared_pointer ChannelProviderRegistry;
+ChannelProvider::shared_pointer ChannelProviderRegistry::getProvider(std::string const & providerName) {
+    ChannelProviderFactory::shared_pointer fact(getFactory(providerName));
+    if(fact)
+        return fact->sharedInstance();
+    else
+        return ChannelProvider::shared_pointer();
+}
 
-static Mutex channelProviderMutex;
+ChannelProvider::shared_pointer ChannelProviderRegistry::createProvider(std::string const & providerName) {
+    ChannelProviderFactory::shared_pointer fact(getFactory(providerName));
+    if(fact)
+        return fact->newInstance();
+    else
+        return ChannelProvider::shared_pointer();
+}
 
-typedef std::map<string, ChannelProviderFactory::shared_pointer> ChannelProviderFactoryMap;
-static ChannelProviderFactoryMap channelProviders;
+ChannelProvider::shared_pointer ChannelProviderRegistry::createProvider(std::string const & providerName,
+                                                                        const std::tr1::shared_ptr<Configuration>& conf) {
+    ChannelProviderFactory::shared_pointer fact(getFactory(providerName));
+    if(fact)
+        return fact->newInstance(conf);
+    else
+        return ChannelProvider::shared_pointer();
+}
 
+ChannelProviderFactory::shared_pointer ChannelProviderRegistry::getFactory(std::string const & providerName)
+{
+    Lock G(mutex);
+    providers_t::const_iterator iter = providers.find(providerName);
+    if (iter == providers.end())
+        return ChannelProviderFactory::shared_pointer();
+    else
+        return iter->second;
+}
 
-class ChannelProviderRegistryImpl : public ChannelProviderRegistry {
-public:
+std::auto_ptr<ChannelProviderRegistry::stringVector_t> ChannelProviderRegistry::getProviderNames()
+{
+    Lock G(mutex);
+    std::auto_ptr<stringVector_t> ret(new stringVector_t);
+    for (providers_t::const_iterator iter = providers.begin();
+            iter != providers.end(); iter++)
+        ret->push_back(iter->first);
 
-    ChannelProvider::shared_pointer getProvider(std::string const & providerName) {
+    return ret;
+}
 
-        ChannelProviderFactory::shared_pointer providerFactory;
-        {
-            Lock guard(channelProviderMutex);
-            ChannelProviderFactoryMap::const_iterator iter = channelProviders.find(providerName);
-            if (iter == channelProviders.end())
-                return ChannelProvider::shared_pointer();
-            else
-                providerFactory = iter->second;
-        }
-        return providerFactory->sharedInstance();
+bool ChannelProviderRegistry::add(const ChannelProviderFactory::shared_pointer& fact, bool replace)
+{
+    Lock G(mutex);
+    std::string name(fact->getFactoryName());
+    if(!replace && providers.find(name)!=providers.end())
+        throw false;
+    providers[name] = fact;
+    return true;
+}
+
+ChannelProviderFactory::shared_pointer ChannelProviderRegistry::remove(const std::string& name)
+{
+    ChannelProviderFactory::shared_pointer ret;
+    providers_t::iterator iter(providers.find(name));
+    if(iter!=providers.end()) {
+        ret = iter->second;
+        providers.erase(iter);
     }
-
-    ChannelProvider::shared_pointer createProvider(std::string const & providerName) {
-
-        ChannelProviderFactory::shared_pointer providerFactory;
-        {
-            Lock guard(channelProviderMutex);
-            ChannelProviderFactoryMap::const_iterator iter = channelProviders.find(providerName);
-            if (iter == channelProviders.end())
-                return ChannelProvider::shared_pointer();
-            else
-                providerFactory = iter->second;
-        }
-        return providerFactory->newInstance();
-    }
-
-    std::auto_ptr<stringVector_t> getProviderNames() {
-        Lock guard(channelProviderMutex);
-        std::auto_ptr<stringVector_t> providers(new stringVector_t());
-        for (ChannelProviderFactoryMap::const_iterator i = channelProviders.begin();
-                i != channelProviders.end(); i++)
-            providers->push_back(i->first);
-
-        return providers;
-    }
-};
+    return ret;
+}
 
 ChannelProviderRegistry::shared_pointer getChannelProviderRegistry() {
     static Mutex mutex;
+    static ChannelProviderRegistry::shared_pointer global_reg;
     Lock guard(mutex);
 
-    if(ChannelProviderRegistry.get()==0) {
-        ChannelProviderRegistry.reset(new ChannelProviderRegistryImpl());
+    if(!global_reg) {
+        global_reg = ChannelProviderRegistry::build();
     }
-    return ChannelProviderRegistry;
+    return global_reg;
 }
 
 void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) {
-    Lock guard(channelProviderMutex);
-    channelProviders[channelProviderFactory->getFactoryName()] = channelProviderFactory;
+    assert(channelProviderFactory);
+    getChannelProviderRegistry()->add(channelProviderFactory);
 }
 
 void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) {
-    Lock guard(channelProviderMutex);
-    channelProviders.erase(channelProviderFactory->getFactoryName());
+    assert(channelProviderFactory);
+    getChannelProviderRegistry()->remove(channelProviderFactory->getFactoryName());
 }
+
+epicsShareFunc void unregisterAllChannelProviderFactory()
+{
+    getChannelProviderRegistry()->clear();
+}
+
 
 }
 }

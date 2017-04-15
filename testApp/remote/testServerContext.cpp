@@ -17,6 +17,7 @@ public:
         return "local";
     };
 
+    TestChannelProvider(const std::tr1::shared_ptr<Configuration>&) {}
 
     ChannelFind::shared_pointer channelFind(std::string const & /*channelName*/,
                                             ChannelFindRequester::shared_pointer const & channelFindRequester)
@@ -57,41 +58,12 @@ public:
     }
 };
 
-
-class TestChannelProviderRegistry : public ChannelProviderRegistry {
-public:
-
-    virtual ~TestChannelProviderRegistry() {};
-
-    ChannelProvider::shared_pointer getProvider(std::string const & providerName)
-    {
-        if (providerName == "local")
-        {
-            return ChannelProvider::shared_pointer(new TestChannelProvider());
-        }
-        else
-            return ChannelProvider::shared_pointer();
-    }
-
-    ChannelProvider::shared_pointer createProvider(std::string const & providerName)
-    {
-        return getProvider(providerName);
-    }
-
-    std::auto_ptr<stringVector_t> getProviderNames()
-    {
-        std::auto_ptr<stringVector_t> pn(new stringVector_t());
-        pn->push_back("local");
-        return pn;
-    }
-};
-
 void testServerContext()
 {
-
     ServerContextImpl::shared_pointer ctx = ServerContextImpl::create();
 
-    ChannelProviderRegistry::shared_pointer ca(new TestChannelProviderRegistry());
+    ChannelProviderRegistry::shared_pointer ca(ChannelProviderRegistry::build());
+    ca->add<TestChannelProvider>("local");
     ctx->initialize(ca);
 
     ctx->printInfo();
