@@ -287,8 +287,9 @@ public:
         {
             startRequest(PURE_CANCEL_REQUEST);
             m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
-        } catch (...) {
+        } catch (std::exception& e) {
             // noop (do not complain if fails)
+            LOG(logLevelWarn, "Ignore exception during ChanneGet::cancel: %s", e.what());
         }
 
     }
