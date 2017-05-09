@@ -206,8 +206,10 @@ public:
         return sharedProvider;
     }
 
-    virtual ChannelProvider::shared_pointer newInstance()
+    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf)
     {
+        // Ignoring configuration as CA only allows config via. environment,
+        // and we don't want to change this here.
         try {
             // TODO use std::make_shared
             std::tr1::shared_ptr<CAChannelProvider> tp(new CAChannelProvider());
