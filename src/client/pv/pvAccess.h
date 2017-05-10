@@ -134,6 +134,8 @@ class epicsShareClass ChannelRequest : public epics::pvData::Destroyable, public
 public:
     POINTER_DEFINITIONS(ChannelRequest);
 
+    virtual ~ChannelRequest() {}
+
     /**
      * Get a channel instance this request belongs to.
      * @return the channel instance.
@@ -165,6 +167,8 @@ class epicsShareClass ChannelArray : public ChannelRequest {
 public:
     POINTER_DEFINITIONS(ChannelArray);
     typedef ChannelArrayRequester requester_type;
+
+    virtual ~ChannelArray() {}
 
     /**
      * put to the remote array.
@@ -204,6 +208,8 @@ class epicsShareClass ChannelArrayRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelArrayRequester);
     typedef ChannelArray operation_type;
+
+    virtual ~ChannelArrayRequester() {}
 
     /**
      * The client and server have both completed the createChannelArray request.
@@ -266,6 +272,8 @@ public:
     POINTER_DEFINITIONS(ChannelFind);
     typedef ChannelFindRequester requester_type;
 
+    virtual ~ChannelFind() {}
+
     virtual std::tr1::shared_ptr<ChannelProvider> getChannelProvider() = 0;
     virtual void cancel() = 0;
 };
@@ -278,7 +286,7 @@ public:
     POINTER_DEFINITIONS(ChannelFindRequester);
     typedef ChannelFind operation_type;
 
-    virtual ~ChannelFindRequester() {};
+    virtual ~ChannelFindRequester() {}
 
     /**
      * @param status Completion status.
@@ -297,7 +305,7 @@ public:
     POINTER_DEFINITIONS(ChannelListRequester);
     typedef ChannelFind operation_type;
 
-    virtual ~ChannelListRequester() {};
+    virtual ~ChannelListRequester() {}
 
     /**
      * @param status Completion status.
@@ -317,6 +325,8 @@ public:
     POINTER_DEFINITIONS(ChannelGet);
     typedef ChannelGetRequester requester_type;
 
+    virtual ~ChannelGet() {}
+
     /**
      * Get data from the channel.
      * Completion status is reported by calling ChannelGetRequester.getDone() callback.
@@ -332,6 +342,8 @@ class epicsShareClass ChannelGetRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelGetRequester);
     typedef ChannelGet operation_type;
+
+    virtual ~ChannelGetRequester() {}
 
     /**
      * The client and server have both completed the createChannelGet request.
@@ -367,6 +379,8 @@ public:
     POINTER_DEFINITIONS(ChannelProcess);
     typedef ChannelProcessRequester requester_type;
 
+    virtual ~ChannelProcess() {}
+
     /**
      * Issue a process request.
      * Completion status is reported by calling ChannelProcessRequester.processDone() callback.
@@ -382,6 +396,8 @@ class epicsShareClass ChannelProcessRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelProcessRequester);
     typedef ChannelProcess operation_type;
+
+    virtual ~ChannelProcessRequester() {}
 
     /**
      * The client and server have both completed the createChannelProcess request.
@@ -412,6 +428,8 @@ public:
     POINTER_DEFINITIONS(ChannelPut);
     typedef ChannelPutRequester requester_type;
 
+    virtual ~ChannelPut() {}
+
     /**
      * Put data to a channel.
      * Completion status is reported by calling ChannelPutRequester.putDone() callback.
@@ -436,6 +454,8 @@ class epicsShareClass ChannelPutRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelPutRequester);
     typedef ChannelPut operation_type;
+
+    virtual ~ChannelPutRequester() {}
 
     /**
      * The client and server have both processed the createChannelPut request.
@@ -481,6 +501,8 @@ public:
     POINTER_DEFINITIONS(ChannelPutGet);
     typedef ChannelPutGetRequester requester_type;
 
+    virtual ~ChannelPutGet() {}
+
     /**
      * Issue a put/get request. If process was requested when the ChannelPutGet was created this is a put, process, get.
      * Completion status is reported by calling ChannelPutGetRequester.putGetDone() callback.
@@ -513,6 +535,8 @@ class epicsShareClass ChannelPutGetRequester : virtual public Requester
 public:
     POINTER_DEFINITIONS(ChannelPutGetRequester);
     typedef ChannelPutGet operation_type;
+
+    virtual ~ChannelPutGetRequester() {}
 
     /**
      * The client and server have both completed the createChannelPutGet request.
@@ -576,6 +600,8 @@ public:
     POINTER_DEFINITIONS(ChannelRPC);
     typedef ChannelRPCRequester requester_type;
 
+    virtual ~ChannelRPC() {}
+
     /**
      * Issue an RPC request to the channel.
      * Completion status is reported by calling ChannelRPCRequester.requestDone() callback.
@@ -592,6 +618,8 @@ class epicsShareClass ChannelRPCRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(ChannelRPCRequester);
     typedef ChannelRPC operation_type;
+
+    virtual ~ChannelRPCRequester() {}
 
     /**
      * The client and server have both completed the createChannelGet request.
@@ -621,6 +649,8 @@ public:
 class epicsShareClass GetFieldRequester : virtual public Requester {
 public:
     POINTER_DEFINITIONS(GetFieldRequester);
+
+    virtual ~GetFieldRequester() {}
 
     /**
      * The client and server have both completed the getStructure request.
@@ -667,7 +697,6 @@ public:
      * @return The channel provider.
      */
     virtual std::tr1::shared_ptr<ChannelProvider> getProvider() = 0;
-//            virtual ChannelProvider::shared_pointer getProvider() = 0;
 
     /**
      * Returns the channel's remote address, signal name, etc...
@@ -828,6 +857,8 @@ public:
     POINTER_DEFINITIONS(ChannelRequester);
     typedef Channel operation_type;
 
+    virtual ~ChannelRequester() {}
+
     /**
      * A channel has been created. This may be called multiple times if there are multiple providers.
      * @param status Completion status.
@@ -870,6 +901,8 @@ public:
     static const short PRIORITY_ARCHIVE = (PRIORITY_MAX + PRIORITY_MIN) / 2;
     /** OPI priority. */
     static const short PRIORITY_OPI = PRIORITY_MIN;
+
+    virtual ~ChannelProvider() {}
 
     /**
      * Get the provider name.
@@ -927,7 +960,7 @@ class epicsShareClass ChannelProviderFactory : private epics::pvData::NoDefaultM
 public:
     POINTER_DEFINITIONS(ChannelProviderFactory);
 
-    virtual ~ChannelProviderFactory() {};
+    virtual ~ChannelProviderFactory() {}
 
     /**
      * Get factory name (i.e. name of the provider).
