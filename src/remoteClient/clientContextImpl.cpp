@@ -326,8 +326,9 @@ public:
             {
                 startRequest(PURE_DESTROY_REQUEST);
                 m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
-            } catch (...) {
+            } catch (std::exception& e) {
                 // noop (do not complain if fails)
+                LOG(logLevelWarn, "Ignore exception during BaseRequestImpl::destroy: %s", e.what());
             }
 
         }
@@ -2312,8 +2313,9 @@ public:
                 try
                 {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
-                } catch (...) {
+                } catch (std::exception& e) {
                     // noop (do not complain if fails)
+                    LOG(logLevelWarn, "Ignore exception during MonitorStrategyQueue::release: %s", e.what());
                     m_reportQueueStateInProgress = false;
                 }
             }
