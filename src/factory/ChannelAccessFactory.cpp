@@ -115,6 +115,14 @@ epicsShareFunc void unregisterAllChannelProviderFactory()
 }
 
 
+Channel::shared_pointer
+ChannelProvider::createChannel(std::string const & channelName,
+                               ChannelRequester::shared_pointer const & channelRequester,
+                               short priority)
+{
+    return createChannel(channelName, channelRequester, priority, "");
+}
+
 }
 }
 

@@ -934,7 +934,7 @@ public:
      * @return <code>Channel</code> instance. If channel does not exist <code>null</code> is returned and <code>channelRequester</code> notified.
      */
     virtual Channel::shared_pointer createChannel(std::string const & channelName,ChannelRequester::shared_pointer const & channelRequester,
-            short priority = PRIORITY_DEFAULT) = 0;
+            short priority = PRIORITY_DEFAULT);
 
     /**
      * Create a channel.
