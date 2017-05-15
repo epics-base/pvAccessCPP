@@ -100,16 +100,6 @@ void BaseChannelRequesterMessageTransportSender::send(ByteBuffer* buffer, Transp
     epics::pvData::SerializeHelper::serializeString(_message, buffer, control);
 }
 
-void BaseChannelRequesterMessageTransportSender::lock()
-{
-    // noop
-}
-
-void BaseChannelRequesterMessageTransportSender::unlock()
-{
-    // noop
-}
-
 BaseChannelRequesterFailureMessageTransportSender::BaseChannelRequesterFailureMessageTransportSender(const int8 command,
         Transport::shared_pointer const & transport, const pvAccessID ioid, const int8 qos, const Status& status) :
     _command(command),
@@ -126,16 +116,6 @@ void BaseChannelRequesterFailureMessageTransportSender::send(ByteBuffer* buffer,
     buffer->putInt(_ioid);
     buffer->put(_qos);
     _status.serialize(buffer, control);
-}
-
-void BaseChannelRequesterFailureMessageTransportSender::lock()
-{
-    // noop
-}
-
-void BaseChannelRequesterFailureMessageTransportSender::unlock()
-{
-    // noop
 }
 
 

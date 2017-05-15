@@ -1062,23 +1062,6 @@ void CAChannelGet::destroy()
 }
 
 
-/* --------------- epics::pvData::Lockable --------------- */
-
-
-void CAChannelGet::lock()
-{
-    // TODO
-}
-
-
-void CAChannelGet::unlock()
-{
-    // TODO
-}
-
-
-
-
 
 
 
@@ -1406,22 +1389,6 @@ void CAChannelPut::destroy()
 {
     // TODO
 }
-
-
-/* --------------- epics::pvData::Lockable --------------- */
-
-
-void CAChannelPut::lock()
-{
-    // TODO
-}
-
-
-void CAChannelPut::unlock()
-{
-    // TODO
-}
-
 
 
 

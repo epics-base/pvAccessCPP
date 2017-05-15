@@ -59,9 +59,6 @@ public:
 
     virtual ~BeaconEmitter();
 
-    void lock();
-    void unlock();
-
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 
     void timerStopped();

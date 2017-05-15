@@ -28,8 +28,6 @@ struct sender_break : public connection_closed_exception
 };
 
 struct TransportSenderDisconnect: public TransportSender {
-    void unlock() {}
-    void lock() {}
     void send(ByteBuffer *buffer, TransportSendControl *control)
     {
         control->flush(true);
@@ -40,8 +38,6 @@ struct TransportSenderDisconnect: public TransportSender {
 struct TransportSenderSignal: public TransportSender {
     Event *evt;
     TransportSenderSignal(Event& evt) :evt(&evt) {}
-    void unlock() {}
-    void lock() {}
     void send(ByteBuffer *buffer, TransportSendControl *control)
     {
         evt->signal();
@@ -2289,12 +2285,6 @@ private:
         TransportSenderForTestEnqueueSendRequest(
             TestCodec & codec): _codec(codec) {}
 
-        void unlock() {
-        }
-
-        void lock() {
-        }
-
         void send(epics::pvData::ByteBuffer* buffer,
                   TransportSendControl* control)
         {
@@ -2313,12 +2303,6 @@ private:
 
         TransportSender2ForTestEnqueueSendRequest(
             TestCodec & codec): _codec(codec) {}
-
-        void unlock() {
-        }
-
-        void lock() {
-        }
 
         void send(epics::pvData::ByteBuffer* buffer,
                   TransportSendControl* control)
@@ -2403,12 +2387,6 @@ private:
         TransportSenderForTestEnqueueSendDirectRequest(
             TestCodec & codec): _codec(codec) {}
 
-        void unlock() {
-        }
-
-        void lock() {
-        }
-
         void send(epics::pvData::ByteBuffer* buffer,
                   TransportSendControl* control)
         {
@@ -2427,12 +2405,6 @@ private:
 
         TransportSender2ForTestEnqueueSendDirectRequest(
             TestCodec & codec): _codec(codec) {}
-
-        void unlock() {
-        }
-
-        void lock() {
-        }
 
         void send(epics::pvData::ByteBuffer* buffer,
                   TransportSendControl* control)
@@ -2612,12 +2584,6 @@ private:
             TestCodec & codec, std::size_t bytesToSend):
             _codec(codec), _bytesToSent(bytesToSend) {}
 
-        void unlock() {
-        }
-
-        void lock() {
-        }
-
         void send(epics::pvData::ByteBuffer* buffer,
                   TransportSendControl* control)
         {
@@ -2714,12 +2680,6 @@ private:
         TransportSenderForTestSendException(
             TestCodec & codec): _codec(codec) {}
 
-        void unlock() {
-        }
-
-        void lock() {
-        }
-
         void send(epics::pvData::ByteBuffer* buffer,
                   TransportSendControl* control)
         {
@@ -2776,12 +2736,6 @@ private:
         TransportSenderForTestSendHugeMessagePartes(
             TestCodec & codec, std::size_t bytesToSend):
             _codec(codec), _bytesToSent(bytesToSend) {}
-
-        void unlock() {
-        }
-
-        void lock() {
-        }
 
         void send(epics::pvData::ByteBuffer* buffer,
                   TransportSendControl* control)
@@ -2929,12 +2883,6 @@ private:
         TransportSenderForTestClearSendQueue(
             TestCodec & codec): _codec(codec) {}
 
-        void unlock() {
-        }
-
-        void lock() {
-        }
-
         void send(epics::pvData::ByteBuffer* buffer,
                   TransportSendControl* control)
         {
@@ -2953,12 +2901,6 @@ private:
 
         TransportSender2ForTestClearSendQueue(
             TestCodec & codec): _codec(codec) {}
-
-        void unlock() {
-        }
-
-        void lock() {
-        }
 
         void send(epics::pvData::ByteBuffer* buffer,
                   TransportSendControl* control)
@@ -3065,12 +3007,6 @@ private:
         TransportSenderForTestEnqueueSendRequestExceptionThrown(
             TestCodec & /*codec*/) { /*: _codec(codec)*/ }
 
-        void unlock() {
-        }
-
-        void lock() {
-        }
-
         void send(epics::pvData::ByteBuffer* buffer,
                   TransportSendControl* control)
         {
@@ -3094,12 +3030,6 @@ private:
 
         TransportSender2ForTestEnqueueSendRequestExceptionThrown(
             TestCodec & codec): _codec(codec) {}
-
-        void unlock() {
-        }
-
-        void lock() {
-        }
 
         void send(epics::pvData::ByteBuffer* buffer,
                   TransportSendControl* control)
@@ -3170,12 +3100,6 @@ private:
 
         TransportSenderForTestBlockingProcessQueueTest(
             TestCodec & codec): _codec(codec) {}
-
-        void unlock() {
-        }
-
-        void lock() {
-        }
 
         void send(epics::pvData::ByteBuffer* buffer,
                   TransportSendControl* control)

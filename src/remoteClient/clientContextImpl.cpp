@@ -539,14 +539,6 @@ public:
     {
         BaseRequestImpl::lastRequest();
     }
-
-    virtual void lock() {
-        // noop
-    }
-
-    virtual void unlock() {
-        // noop
-    }
 };
 
 
@@ -1986,10 +1978,6 @@ public:
         return m_ioid;
     }
 
-    virtual void lock() {
-        // noop
-    }
-
     virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
         control->startMessage((int8)17, 8);
         buffer->putInt(m_channel->getServerChannelID());
@@ -2017,10 +2005,6 @@ public:
         if (&status == &ChannelImpl::channelDestroyed)
             destroy();
         // TODO notify?
-    }
-
-    virtual void unlock() {
-        // noop
     }
 
     virtual void destroy()
@@ -2337,16 +2321,6 @@ public:
 
         // immediate send
         control->flush(true);
-    }
-
-    virtual void lock()
-    {
-        // noop
-    }
-
-    virtual void unlock()
-    {
-        // noop
     }
 
     Status start() {
@@ -2701,16 +2675,6 @@ public:
     virtual void release(MonitorElement::shared_pointer const & monitorElement)
     {
         m_monitorStrategy->release(monitorElement);
-    }
-
-    virtual void lock()
-    {
-        // noop
-    }
-
-    virtual void unlock()
-    {
-        // noop
     }
 
 };
@@ -4100,11 +4064,6 @@ private:
         }
 
 
-        virtual void lock() {
-            // noop
-        }
-
-
         virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
             m_channelMutex.lock();
             bool issueCreateMessage = m_issueCreateMessage;
@@ -4137,10 +4096,6 @@ private:
                 // TODO
                 control->flush(true);
             }
-        }
-
-        virtual void unlock() {
-            // noop
         }
 
 

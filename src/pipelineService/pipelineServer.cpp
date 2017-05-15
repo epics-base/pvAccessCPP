@@ -229,16 +229,6 @@ public:
             m_pipelineSession->cancel();
     }
 
-    virtual void lock()
-    {
-        // noop
-    }
-
-    virtual void unlock()
-    {
-        // noop
-    }
-
     virtual size_t getFreeElementCount() {
         Lock guard(m_freeQueueLock);
         return m_freeQueue.size();

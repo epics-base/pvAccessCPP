@@ -49,16 +49,6 @@ BeaconEmitter::~BeaconEmitter()
     // destroy();
 }
 
-void BeaconEmitter::lock()
-{
-    //noop
-}
-
-void BeaconEmitter::unlock()
-{
-    //noop
-}
-
 void BeaconEmitter::send(ByteBuffer* buffer, TransportSendControl* control)
 {
     // get server status

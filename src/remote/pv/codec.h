@@ -548,14 +548,6 @@ public:
 
     virtual int getChannelCount() OVERRIDE FINAL;
 
-    virtual void lock() OVERRIDE FINAL {
-        // noop
-    }
-
-    virtual void unlock() OVERRIDE FINAL {
-        // noop
-    }
-
     virtual bool verify(epics::pvData::int32 timeoutMs) OVERRIDE FINAL {
 
         TransportSender::shared_pointer transportSender =
@@ -679,14 +671,6 @@ public:
     virtual void release(pvAccessID clientId) OVERRIDE FINAL;
 
     virtual void changedTransport() OVERRIDE FINAL;
-
-    virtual void lock() OVERRIDE FINAL {
-        // noop
-    }
-
-    virtual void unlock() OVERRIDE FINAL {
-        // noop
-    }
 
     virtual void aliveNotification() OVERRIDE FINAL;
 

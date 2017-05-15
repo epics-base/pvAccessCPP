@@ -152,11 +152,6 @@ public:
 
     virtual void destroy();
 
-    /* --------------- epics::pvData::Lockable --------------- */
-
-    virtual void lock();
-    virtual void unlock();
-
 private:
 
     CAChannelGet(CAChannel::shared_pointer const & _channel,
@@ -211,11 +206,6 @@ public:
     /* --------------- epics::pvData::Destroyable --------------- */
 
     virtual void destroy();
-
-    /* --------------- epics::pvData::Lockable --------------- */
-
-    virtual void lock();
-    virtual void unlock();
 
 private:
 

@@ -51,8 +51,6 @@ struct BreakTransport : TransportSender
     {
         throw epics::pvAccess::detail::connection_closed_exception("Break");
     }
-    virtual void lock() {}
-    virtual void unlock() {}
 };
 } // namespace
 
@@ -1426,9 +1424,6 @@ public:
         // send immediately
         control->flush(true);
     }
-
-    void lock() {}
-    void unlock() {}
 
 private:
     PVField::shared_pointer _data;

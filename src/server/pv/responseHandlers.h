@@ -125,12 +125,6 @@ public:
         // TODO content
     }
 
-    virtual void lock() {
-    }
-
-    virtual void unlock() {
-    }
-
 private:
     osiSockAddr _echoFrom;
 };
@@ -174,8 +168,6 @@ public:
                                         epics::pvData::int32 cid, osiSockAddr const & sendTo, bool responseRequired, bool serverSearch);
     void channelFindResult(const epics::pvData::Status& status, ChannelFind::shared_pointer const & channelFind, bool wasFound);
 
-    void lock();
-    void unlock();
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 
     void callback();
@@ -242,8 +234,6 @@ public:
     void channelStateChange(Channel::shared_pointer const & c, const Channel::ConnectionState isConnected);
     std::string getRequesterName();
     void message(std::string const & message, epics::pvData::MessageType messageType);
-    void lock();
-    void unlock();
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 private:
     ServerChannel::weak_pointer _serverChannel;
@@ -284,14 +274,6 @@ public:
         control->startMessage((epics::pvData::int8)CMD_DESTROY_CHANNEL, 2*sizeof(epics::pvData::int32)/sizeof(epics::pvData::int8));
         buffer->putInt(_sid);
         buffer->putInt(_cid);
-    }
-
-    void lock() {
-        // noop
-    }
-
-    void unlock() {
-        // noop
     }
 
 private:
@@ -345,8 +327,6 @@ public:
 
     ChannelGet::shared_pointer getChannelGet();
 
-    void lock();
-    void unlock();
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 private:
     ChannelGet::shared_pointer _channelGet;
@@ -396,8 +376,6 @@ public:
     void channelPutConnect(const epics::pvData::Status& status, ChannelPut::shared_pointer const & channelPut, epics::pvData::Structure::const_shared_pointer const & structure);
     void putDone(const epics::pvData::Status& status, ChannelPut::shared_pointer const & channelPut);
     void getDone(const epics::pvData::Status& status, ChannelPut::shared_pointer const & channelPut, epics::pvData::PVStructure::shared_pointer const & pvStructure, epics::pvData::BitSet::shared_pointer const & bitSet);
-    void lock();
-    void unlock();
     void destroy();
 
     ChannelPut::shared_pointer getChannelPut();
@@ -460,8 +438,6 @@ public:
     void putGetDone(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
                     epics::pvData::PVStructure::shared_pointer const & pvStructure,
                     epics::pvData::BitSet::shared_pointer const & bitSet);
-    void lock();
-    void unlock();
     void destroy();
 
     ChannelPutGet::shared_pointer getChannelPutGet();
@@ -521,8 +497,6 @@ public:
     void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, epics::pvData::StructureConstPtr const & structure);
     void unlisten(Monitor::shared_pointer const & monitor);
     void monitorEvent(Monitor::shared_pointer const & monitor);
-    void lock();
-    void unlock();
     void destroy();
 
     Monitor::shared_pointer getChannelMonitor();
@@ -579,8 +553,6 @@ public:
     void setLengthDone(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray);
     void getLengthDone(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray,
                        std::size_t length);
-    void lock();
-    void unlock();
     void destroy();
 
     ChannelArray::shared_pointer getChannelArray();
@@ -677,8 +649,6 @@ public:
 
     void channelProcessConnect(const epics::pvData::Status& status, ChannelProcess::shared_pointer const & channelProcess);
     void processDone(const epics::pvData::Status& status, ChannelProcess::shared_pointer const & channelProcess);
-    void lock();
-    void unlock();
     void destroy();
 
     ChannelProcess::shared_pointer getChannelProcess();
@@ -724,8 +694,6 @@ public:
 
     virtual ~ServerGetFieldRequesterImpl() {}
     void getDone(const epics::pvData::Status& status, epics::pvData::FieldConstPtr const & field);
-    void lock();
-    void unlock();
     void destroy();
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 private:
@@ -746,14 +714,6 @@ public:
         control->startMessage((epics::pvData::int8)CMD_GET_FIELD, sizeof(epics::pvData::int32)/sizeof(epics::pvData::int8));
         buffer->putInt(_ioid);
         _status.serialize(buffer, control);
-    }
-
-    void lock() {
-        // noop
-    }
-
-    void unlock() {
-        // noop
     }
 
 private:
@@ -802,8 +762,6 @@ public:
 
     void channelRPCConnect(const epics::pvData::Status& status, ChannelRPC::shared_pointer const & channelRPC);
     void requestDone(const epics::pvData::Status& status, ChannelRPC::shared_pointer const & channelRPC, epics::pvData::PVStructure::shared_pointer const & pvResponse);
-    void lock();
-    void unlock();
     void destroy();
     /**
      * @return the channelRPC

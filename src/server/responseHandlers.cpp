@@ -426,16 +426,6 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/,
     }
 }
 
-void ServerChannelFindRequesterImpl::lock()
-{
-    // noop
-}
-
-void ServerChannelFindRequesterImpl::unlock()
-{
-    // noop
-}
-
 void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
     control->startMessage((int8)4, 12+4+16+2);
@@ -906,16 +896,6 @@ void ServerChannelRequesterImpl::message(std::string const & message, MessageTyp
     LOG(logLevelDebug, "[%s] %s", getMessageTypeName(messageType).c_str(), message.c_str());
 }
 
-void ServerChannelRequesterImpl::lock()
-{
-    //noop
-}
-
-void ServerChannelRequesterImpl::unlock()
-{
-    //noop
-}
-
 void ServerChannelRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
     ServerChannel::shared_pointer serverChannel;
@@ -1201,16 +1181,6 @@ ChannelGet::shared_pointer ServerChannelGetRequesterImpl::getChannelGet()
     return _channelGet;
 }
 
-void ServerChannelGetRequesterImpl::lock()
-{
-    // noop
-}
-
-void ServerChannelGetRequesterImpl::unlock()
-{
-    // noop
-}
-
 // TODO get rid of all these mutex-es
 void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
@@ -1450,16 +1420,6 @@ void ServerChannelPutRequesterImpl::getDone(const Status& status, ChannelPut::sh
     }
     TransportSender::shared_pointer thisSender = shared_from_this();
     _transport->enqueueSendRequest(thisSender);
-}
-
-void ServerChannelPutRequesterImpl::lock()
-{
-    //noop
-}
-
-void ServerChannelPutRequesterImpl::unlock()
-{
-    //noop
 }
 
 void ServerChannelPutRequesterImpl::destroy()
@@ -1772,16 +1732,6 @@ void ServerChannelPutGetRequesterImpl::putGetDone(const Status& status, ChannelP
     _transport->enqueueSendRequest(thisSender);
 }
 
-void ServerChannelPutGetRequesterImpl::lock()
-{
-    // noop
-}
-
-void ServerChannelPutGetRequesterImpl::unlock()
-{
-    // noop
-}
-
 void ServerChannelPutGetRequesterImpl::destroy()
 {
     // keep a reference to ourselves as the owner
@@ -2073,16 +2023,6 @@ void ServerMonitorRequesterImpl::monitorEvent(Monitor::shared_pointer const & /*
     // multiple ((BlockingServerTCPTransport)transport).enqueueMonitorSendRequest(this);
     TransportSender::shared_pointer thisSender = shared_from_this();
     _transport->enqueueSendRequest(thisSender);
-}
-
-void ServerMonitorRequesterImpl::lock()
-{
-    //noop
-}
-
-void ServerMonitorRequesterImpl::unlock()
-{
-    //noop
 }
 
 void ServerMonitorRequesterImpl::destroy()
@@ -2440,16 +2380,6 @@ void ServerChannelArrayRequesterImpl::getLengthDone(const Status& status, Channe
     _transport->enqueueSendRequest(thisSender);
 }
 
-void ServerChannelArrayRequesterImpl::lock()
-{
-    // noop
-}
-
-void ServerChannelArrayRequesterImpl::unlock()
-{
-    // noop
-}
-
 void ServerChannelArrayRequesterImpl::destroy()
 {
     // keep a reference to ourselves as the owner
@@ -2749,16 +2679,6 @@ void ServerChannelProcessRequesterImpl::processDone(const Status& status, Channe
     _transport->enqueueSendRequest(thisSender);
 }
 
-void ServerChannelProcessRequesterImpl::lock()
-{
-    // noop
-}
-
-void ServerChannelProcessRequesterImpl::unlock()
-{
-    // noop
-}
-
 void ServerChannelProcessRequesterImpl::destroy()
 {
     // keep a reference to ourselves as the owner
@@ -2872,16 +2792,6 @@ void ServerGetFieldRequesterImpl::getDone(const Status& status, FieldConstPtr co
     }
     TransportSender::shared_pointer thisSender = shared_from_this();
     _transport->enqueueSendRequest(thisSender);
-}
-
-void ServerGetFieldRequesterImpl::lock()
-{
-    //noop
-}
-
-void ServerGetFieldRequesterImpl::unlock()
-{
-    //noop
 }
 
 void ServerGetFieldRequesterImpl::destroy()
@@ -3039,16 +2949,6 @@ void ServerChannelRPCRequesterImpl::requestDone(const Status& status, ChannelRPC
     }
     TransportSender::shared_pointer thisSender = shared_from_this();
     _transport->enqueueSendRequest(thisSender);
-}
-
-void ServerChannelRPCRequesterImpl::lock()
-{
-    // noop
-}
-
-void ServerChannelRPCRequesterImpl::unlock()
-{
-    // noop
 }
 
 void ServerChannelRPCRequesterImpl::destroy()

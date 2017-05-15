@@ -168,16 +168,6 @@ public:
     {
         // noop
     }
-
-    virtual void lock()
-    {
-        // noop
-    }
-
-    virtual void unlock()
-    {
-        // noop
-    }
 };
 
 
