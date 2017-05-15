@@ -293,23 +293,25 @@ private:
 };
 
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class epicsShareClass BlockingSocketAbstractCodec:
+class epicsShareClass BlockingTCPTransportCodec:
     public AbstractCodec,
-    public std::tr1::enable_shared_from_this<BlockingSocketAbstractCodec>
+    public SecurityPluginControl,
+    public std::tr1::enable_shared_from_this<BlockingTCPTransportCodec>
 {
 
 public:
 
-    POINTER_DEFINITIONS(BlockingSocketAbstractCodec);
+    POINTER_DEFINITIONS(BlockingTCPTransportCodec);
 
-    BlockingSocketAbstractCodec(
+    BlockingTCPTransportCodec(
             bool serverFlag,
+            Context::shared_pointer const & context,
             SOCKET channel,
+            ResponseHandler::shared_pointer const & responseHandler,
             int32_t sendBufferSize,
-            int32_t receiveBufferSize);
-    virtual ~BlockingSocketAbstractCodec();
+            int32_t receiveBufferSize,
+            epics::pvData::int16 priority);
+    virtual ~BlockingTCPTransportCodec();
 
     virtual void readPollOne() OVERRIDE FINAL;
     virtual void writePollOne() OVERRIDE FINAL;
@@ -328,56 +330,12 @@ public:
     virtual void invalidDataStreamHandler() OVERRIDE FINAL;
     virtual std::size_t getSocketReceiveBufferSize() const OVERRIDE FINAL;
 
-private:
-    void receiveThread();
-    void sendThread();
-
-protected:
-    virtual void sendBufferFull(int tries) OVERRIDE FINAL;
-    virtual void internalDestroy();
-
-    /**
-     * Called to any resources just before closing transport
-     * @param[in] force   flag indicating if forced (e.g. forced
-     * disconnect) is required
-     */
-    virtual void internalClose(bool force);
-
-    /**
-     * Called to any resources just after closing transport and without any locks held on transport
-     * @param[in] force   flag indicating if forced (e.g. forced
-     * disconnect) is required
-     */
-    virtual void internalPostClose(bool force);
-
-private:
-    AtomicValue<bool> _isOpen;
-    epics::pvData::Thread _readThread, _sendThread;
-    epics::pvData::Event _shutdownEvent;
-protected:
-    SOCKET _channel;
-    osiSockAddr _socketAddress;
-    std::string _socketName;
-};
-
-class  BlockingTCPTransportCodec :
-    public BlockingSocketAbstractCodec,
-    public SecurityPluginControl
-
-{
-
-public:
-
     virtual std::string getType() const OVERRIDE FINAL {
         return std::string("tcp");
     }
 
 
-    virtual void internalDestroy() OVERRIDE FINAL {
-        BlockingSocketAbstractCodec::internalDestroy();
-        Transport::shared_pointer thisSharedPtr = this->shared_from_this();
-        _context->getTransportRegistry()->remove(thisSharedPtr);
-    }
+    void internalDestroy();
 
 
     virtual void changedTransport() OVERRIDE {}
@@ -453,7 +411,7 @@ public:
     }
 
 
-    virtual void flushSendQueue() OVERRIDE FINAL { };
+    virtual void flushSendQueue() OVERRIDE FINAL { }
 
 
     virtual bool isClosed() OVERRIDE FINAL {
@@ -485,27 +443,36 @@ public:
 
     virtual void sendSecurityPluginMessage(epics::pvData::PVField::shared_pointer const & data) OVERRIDE FINAL;
 
+private:
+    void receiveThread();
+    void sendThread();
+
 protected:
+    virtual void sendBufferFull(int tries) OVERRIDE FINAL;
 
-    BlockingTCPTransportCodec(
-        bool serverFlag,
-        Context::shared_pointer const & context,
-        SOCKET channel,
-        ResponseHandler::shared_pointer const & responseHandler,
-        int32_t sendBufferSize,
-        int32_t receiveBufferSize,
-        epics::pvData::int16 priority
-    ):
-        BlockingSocketAbstractCodec(serverFlag, channel, sendBufferSize, receiveBufferSize),
-        _context(context), _responseHandler(responseHandler),
-        _remoteTransportReceiveBufferSize(MAX_TCP_RECV),
-        _remoteTransportRevision(0), _priority(priority),
-        _verified(false)
-    {
-    }
+    /**
+     * Called to any resources just before closing transport
+     * @param[in] force   flag indicating if forced (e.g. forced
+     * disconnect) is required
+     */
+    virtual void internalClose(bool force);
 
-    virtual void internalClose(bool force) OVERRIDE;
+    /**
+     * Called to any resources just after closing transport and without any locks held on transport
+     * @param[in] force   flag indicating if forced (e.g. forced
+     * disconnect) is required
+     */
+    virtual void internalPostClose(bool force);
 
+private:
+    AtomicValue<bool> _isOpen;
+    epics::pvData::Thread _readThread, _sendThread;
+    epics::pvData::Event _shutdownEvent;
+protected:
+    SOCKET _channel;
+    osiSockAddr _socketAddress;
+    std::string _socketName;
+protected:
     Context::shared_pointer _context;
 
     IntrospectionRegistry _incomingIR;
@@ -523,10 +490,7 @@ private:
     bool _verified;
     epics::pvData::Mutex _verifiedMutex;
     epics::pvData::Event _verifiedEvent;
-
 };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class epicsShareClass BlockingServerTCPTransportCodec :
     public BlockingTCPTransportCodec,
