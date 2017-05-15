@@ -337,10 +337,6 @@ public:
 
     void internalDestroy();
 
-
-    virtual void changedTransport() OVERRIDE {}
-
-
     virtual void processControlMessage() OVERRIDE FINAL {
         if (_command == 2)
         {
@@ -462,7 +458,7 @@ protected:
      * @param[in] force   flag indicating if forced (e.g. forced
      * disconnect) is required
      */
-    virtual void internalPostClose(bool force);
+    virtual void internalPostClose(bool force) {}
 
 private:
     AtomicValue<bool> _isOpen;
@@ -533,6 +529,8 @@ public:
     }
 
     virtual void release(pvAccessID /*clientId*/) OVERRIDE FINAL {}
+
+    virtual void changedTransport() OVERRIDE {}
 
     virtual pvAccessID preallocateChannelSID() OVERRIDE FINAL;
 

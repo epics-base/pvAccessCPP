@@ -1099,9 +1099,6 @@ void BlockingTCPTransportCodec::internalClose(bool /*force*/)
     }
 }
 
-void BlockingTCPTransportCodec::internalPostClose(bool /*force*/) {
-}
-
 bool BlockingTCPTransportCodec::terminated() {
     return !isOpen();
 }
