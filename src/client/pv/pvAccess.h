@@ -71,10 +71,10 @@ class epicsShareClass Lockable
 public:
     POINTER_DEFINITIONS(Lockable);
 
-    virtual ~Lockable() {};
+    virtual ~Lockable() {}
 
-    virtual void lock() = 0;
-    virtual void unlock() = 0;
+    virtual void lock() {}
+    virtual void unlock() {}
 };
 
 /**
