@@ -293,21 +293,23 @@ private:
 };
 
 
-class epicsShareClass BlockingAbstractCodec:
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class epicsShareClass BlockingSocketAbstractCodec:
     public AbstractCodec,
-    public std::tr1::enable_shared_from_this<BlockingAbstractCodec>
+    public std::tr1::enable_shared_from_this<BlockingSocketAbstractCodec>
 {
 
 public:
 
-    POINTER_DEFINITIONS(BlockingAbstractCodec);
+    POINTER_DEFINITIONS(BlockingSocketAbstractCodec);
 
-    BlockingAbstractCodec(
-        bool serverFlag,
-        std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
-        std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
-        int32_t socketSendBufferSize);
-    virtual ~BlockingAbstractCodec();
+    BlockingSocketAbstractCodec(
+            bool serverFlag,
+            SOCKET channel,
+            int32_t sendBufferSize,
+            int32_t receiveBufferSize);
+    virtual ~BlockingSocketAbstractCodec();
 
     virtual void readPollOne() OVERRIDE FINAL;
     virtual void writePollOne() OVERRIDE FINAL;
@@ -318,13 +320,21 @@ public:
     virtual bool isOpen() OVERRIDE FINAL;
     void start();
 
+    virtual int read(epics::pvData::ByteBuffer* dst) OVERRIDE FINAL;
+    virtual int write(epics::pvData::ByteBuffer* src) OVERRIDE FINAL;
+    virtual const osiSockAddr* getLastReadBufferSocketAddress() OVERRIDE FINAL  {
+        return &_socketAddress;
+    }
+    virtual void invalidDataStreamHandler() OVERRIDE FINAL;
+    virtual std::size_t getSocketReceiveBufferSize() const OVERRIDE FINAL;
+
 private:
     void receiveThread();
     void sendThread();
 
 protected:
     virtual void sendBufferFull(int tries) OVERRIDE FINAL;
-    virtual void internalDestroy() = 0;
+    virtual void internalDestroy();
 
     /**
      * Called to any resources just before closing transport
@@ -344,38 +354,11 @@ private:
     AtomicValue<bool> _isOpen;
     epics::pvData::Thread _readThread, _sendThread;
     epics::pvData::Event _shutdownEvent;
-};
-
-
-class epicsShareClass BlockingSocketAbstractCodec:
-    public BlockingAbstractCodec
-{
-
-public:
-
-    BlockingSocketAbstractCodec(
-        bool serverFlag,
-        SOCKET channel,
-        int32_t sendBufferSize,
-        int32_t receiveBufferSize);
-
-    virtual int read(epics::pvData::ByteBuffer* dst) OVERRIDE FINAL;
-    virtual int write(epics::pvData::ByteBuffer* src) OVERRIDE FINAL;
-    virtual const osiSockAddr* getLastReadBufferSocketAddress() OVERRIDE FINAL  {
-        return &_socketAddress;
-    }
-    virtual void invalidDataStreamHandler() OVERRIDE FINAL;
-    virtual std::size_t getSocketReceiveBufferSize() const OVERRIDE FINAL;
-
 protected:
-
-    virtual void internalDestroy() OVERRIDE;
-
     SOCKET _channel;
     osiSockAddr _socketAddress;
     std::string _socketName;
 };
-
 
 class  BlockingTCPTransportCodec :
     public BlockingSocketAbstractCodec,
@@ -543,6 +526,7 @@ private:
 
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class epicsShareClass BlockingServerTCPTransportCodec :
     public BlockingTCPTransportCodec,
