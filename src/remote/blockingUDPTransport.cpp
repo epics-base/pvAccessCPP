@@ -58,8 +58,8 @@ BlockingUDPTransport::BlockingUDPTransport(bool serverFlag,
     _tappedNIF(0),
     _sendToEnabled(false),
     _localMulticastAddressEnabled(false),
-    _receiveBuffer(new ByteBuffer(MAX_UDP_RECV+RECEIVE_BUFFER_PRE_RESERVE)),
-    _sendBuffer(new ByteBuffer(MAX_UDP_RECV)),
+    _receiveBuffer(MAX_UDP_RECV+RECEIVE_BUFFER_PRE_RESERVE),
+    _sendBuffer(MAX_UDP_RECV),
     _lastMessageStartPosition(0),
     _clientServerWithEndianFlag(
         (serverFlag ? 0x40 : 0x00) | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00))
@@ -176,16 +176,16 @@ void BlockingUDPTransport::enqueueSendRequest(TransportSender::shared_pointer co
     Lock lock(_sendMutex);
 
     _sendToEnabled = false;
-    _sendBuffer->clear();
+    _sendBuffer.clear();
     sender->lock();
     try {
-        sender->send(_sendBuffer.get(), this);
+        sender->send(&_sendBuffer, this);
         sender->unlock();
         endMessage();
         if(!_sendToEnabled)
-            send(_sendBuffer.get());
+            send(&_sendBuffer);
         else
-            send(_sendBuffer.get(), _sendTo);
+            send(&_sendBuffer, _sendTo);
     } catch(...) {
         sender->unlock();
     }
@@ -198,20 +198,20 @@ void BlockingUDPTransport::flushSendQueue()
 }
 
 void BlockingUDPTransport::startMessage(int8 command, size_t /*ensureCapacity*/, int32 payloadSize) {
-    _lastMessageStartPosition = _sendBuffer->getPosition();
-    _sendBuffer->putByte(PVA_MAGIC);
-    _sendBuffer->putByte(PVA_VERSION);
-    _sendBuffer->putByte(_clientServerWithEndianFlag);
-    _sendBuffer->putByte(command); // command
-    _sendBuffer->putInt(payloadSize);
+    _lastMessageStartPosition = _sendBuffer.getPosition();
+    _sendBuffer.putByte(PVA_MAGIC);
+    _sendBuffer.putByte(PVA_VERSION);
+    _sendBuffer.putByte(_clientServerWithEndianFlag);
+    _sendBuffer.putByte(command); // command
+    _sendBuffer.putInt(payloadSize);
 }
 
 void BlockingUDPTransport::endMessage() {
     //we always (for now) send by packet, so no need for this here...
     //alignBuffer(PVA_ALIGNMENT);
-    _sendBuffer->putInt(
+    _sendBuffer.putInt(
         _lastMessageStartPosition+(sizeof(int16)+2),
-        _sendBuffer->getPosition()-_lastMessageStartPosition-PVA_MESSAGE_HEADER_SIZE);
+        _sendBuffer.getPosition()-_lastMessageStartPosition-PVA_MESSAGE_HEADER_SIZE);
 }
 
 void BlockingUDPTransport::run() {
@@ -224,8 +224,8 @@ void BlockingUDPTransport::run() {
 
     try {
 
-        char* recvfrom_buffer_start = (char*)(_receiveBuffer->getArray()+RECEIVE_BUFFER_PRE_RESERVE);
-        size_t recvfrom_buffer_len =_receiveBuffer->getSize()-RECEIVE_BUFFER_PRE_RESERVE;
+        char* recvfrom_buffer_start = (char*)(_receiveBuffer.getArray()+RECEIVE_BUFFER_PRE_RESERVE);
+        size_t recvfrom_buffer_len =_receiveBuffer.getSize()-RECEIVE_BUFFER_PRE_RESERVE;
         while(!_closed.get())
         {
             int bytesRead = recvfrom(_channel,
@@ -249,11 +249,11 @@ void BlockingUDPTransport::run() {
                 }
 
                 if(likely(!ignore)) {
-                    _receiveBuffer->setPosition(RECEIVE_BUFFER_PRE_RESERVE);
-                    _receiveBuffer->setLimit(RECEIVE_BUFFER_PRE_RESERVE+bytesRead);
+                    _receiveBuffer.setPosition(RECEIVE_BUFFER_PRE_RESERVE);
+                    _receiveBuffer.setLimit(RECEIVE_BUFFER_PRE_RESERVE+bytesRead);
 
                     try {
-                        processBuffer(thisTransport, fromAddress, _receiveBuffer.get());
+                        processBuffer(thisTransport, fromAddress, &_receiveBuffer);
                     } catch(std::exception& e) {
                         LOG(logLevelError,
                             "an exception caught while in UDP receiveThread at %s:%d: %s",
@@ -396,7 +396,7 @@ bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & trans
             // handle
             _responseHandler->handleResponse(&fromAddress, transport,
                                              version, command, payloadSize,
-                                             _receiveBuffer.get());
+                                             &_receiveBuffer);
         }
 
         // set position (e.g. in case handler did not read all)

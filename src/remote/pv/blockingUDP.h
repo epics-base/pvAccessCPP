@@ -90,7 +90,7 @@ public:
     }
 
     virtual std::size_t getReceiveBufferSize() const {
-        return _receiveBuffer->getSize();
+        return _receiveBuffer.getSize();
     }
 
     virtual std::size_t getSocketReceiveBufferSize() const;
@@ -149,10 +149,10 @@ public:
     // NOTE: this is not yet used for UDP
     virtual void setByteOrder(int byteOrder)  {
         // called from receive thread... or before processing
-        _receiveBuffer->setEndianess(byteOrder);
+        _receiveBuffer.setEndianess(byteOrder);
 
         // sync?!
-        _sendBuffer->setEndianess(byteOrder);
+        _sendBuffer.setEndianess(byteOrder);
     }
 
     virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender);
@@ -164,12 +164,12 @@ public:
     virtual void close();
 
     virtual void ensureData(std::size_t size) {
-        if (_receiveBuffer->getRemaining() < size)
+        if (_receiveBuffer.getRemaining() < size)
             throw std::underflow_error("no more data in UDP packet");
     }
 
     virtual void alignData(std::size_t alignment) {
-        _receiveBuffer->align(alignment);
+        _receiveBuffer.align(alignment);
     }
 
     virtual bool directSerialize(epics::pvData::ByteBuffer* /*existingBuffer*/, const char* /*toSerialize*/,
@@ -218,7 +218,7 @@ public:
     }
 
     virtual void alignBuffer(std::size_t alignment) {
-        _sendBuffer->align(alignment);
+        _sendBuffer.align(alignment);
     }
 
     virtual void cachedSerialize(
@@ -431,12 +431,12 @@ private:
     /**
      * Receive buffer.
      */
-    std::auto_ptr<epics::pvData::ByteBuffer> _receiveBuffer;
+    epics::pvData::ByteBuffer _receiveBuffer;
 
     /**
      * Send buffer.
      */
-    std::auto_ptr<epics::pvData::ByteBuffer> _sendBuffer;
+    epics::pvData::ByteBuffer _sendBuffer;
 
     /**
      * Last message start position.
