@@ -175,8 +175,8 @@ public:
 
     AbstractCodec(
         bool serverFlag,
-        std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
-        std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
+        size_t sendBufferSize,
+        size_t receiveBufferSize,
         int32_t socketSendBufferSize,
         bool blockingProcessQueue);
 
@@ -260,8 +260,8 @@ protected:
     bool _writeOpReady;
     bool _lowLatency;
 
-    std::tr1::shared_ptr<epics::pvData::ByteBuffer> _socketBuffer;
-    std::tr1::shared_ptr<epics::pvData::ByteBuffer> _sendBuffer;
+    epics::pvData::ByteBuffer _socketBuffer;
+    epics::pvData::ByteBuffer _sendBuffer;
 
     fair_queue<TransportSender> _sendQueue;
 
@@ -281,7 +281,7 @@ private:
     std::size_t _storedLimit;
     std::size_t _startPosition;
 
-    std::size_t _maxSendPayloadSize;
+    const std::size_t _maxSendPayloadSize;
     std::size_t _lastMessageStartPosition;
     std::size_t _lastSegmentedMessageType;
     int8_t _lastSegmentedMessageCommand;
@@ -289,7 +289,7 @@ private:
 
     epics::pvData::int8 _byteOrderFlag;
     epics::pvData::int8 _clientServerFlag;
-    int32_t _socketSendBufferSize;
+    const size_t _socketSendBufferSize;
 };
 
 
@@ -308,8 +308,8 @@ public:
             Context::shared_pointer const & context,
             SOCKET channel,
             ResponseHandler::shared_pointer const & responseHandler,
-            int32_t sendBufferSize,
-            int32_t receiveBufferSize,
+            size_t sendBufferSize,
+            size_t receiveBufferSize,
             epics::pvData::int16 priority);
     virtual ~BlockingTCPTransportCodec();
 
@@ -348,7 +348,7 @@ public:
 
     virtual void processApplicationMessage() OVERRIDE FINAL {
         _responseHandler->handleResponse(&_socketAddress, shared_from_this(),
-                                         _version, _command, _payloadSize, _socketBuffer.get());
+                                         _version, _command, _payloadSize, &_socketBuffer);
     }
 
 
@@ -366,7 +366,7 @@ public:
 
 
     virtual std::size_t getReceiveBufferSize() const OVERRIDE FINAL {
-        return _socketBuffer->getSize();
+        return _socketBuffer.getSize();
     }
 
 

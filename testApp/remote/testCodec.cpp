@@ -94,8 +94,8 @@ public:
         bool blocking = false):
         AbstractCodec(
             false,
-            std::tr1::shared_ptr<epics::pvData::ByteBuffer>(new ByteBuffer(receiveBufferSize)),
-            std::tr1::shared_ptr<epics::pvData::ByteBuffer>(new ByteBuffer(sendBufferSize)),
+            sendBufferSize,
+            receiveBufferSize,
             sendBufferSize/10,
             blocking),
         _closedCount(0),
@@ -171,18 +171,11 @@ public:
         if (_throwExceptionOnSend)
             throw io_exception("text IO exception");
 
-        // we could write remaining int8_ts, but for
-        //test this is enought
-        if (buffer->getRemaining() > _writeBuffer.getRemaining())
-            return 0;
+        size_t nmove = std::min(buffer->getRemaining(), _writeBuffer.getRemaining());
 
-        std::size_t startPos = buffer->getPosition();
-
-        while(buffer->getRemaining() > 0) {
+        for(size_t n=0; n<nmove; n++)
             _writeBuffer.putByte(buffer->getByte());
-        }
-
-        return buffer->getPosition() - startPos;
+        return nmove;
     }
 
 
@@ -220,7 +213,7 @@ public:
 
     void processControlMessage() {
         // alignment check
-        if (_socketBuffer->getPosition() % PVA_ALIGNMENT != 0)
+        if (_socketBuffer.getPosition() % PVA_ALIGNMENT != 0)
             throw std::logic_error("message not aligned");
 
         _receivedControlMessages.push_back(
@@ -230,7 +223,7 @@ public:
 
     void processApplicationMessage()  {
         // alignment check
-        if (_socketBuffer->getPosition() % PVA_ALIGNMENT != 0)
+        if (_socketBuffer.getPosition() % PVA_ALIGNMENT != 0)
             throw std::logic_error("message not aligned");
 
         PVAMessage caMessage(_version, _flags,
@@ -252,8 +245,8 @@ public:
                 std::size_t pos = caMessage._payload->getPosition();
 
 
-                while(_socketBuffer->getRemaining() > 0) {
-                    caMessage._payload->putByte(_socketBuffer->getByte());
+                while(_socketBuffer.getRemaining() > 0) {
+                    caMessage._payload->putByte(_socketBuffer.getByte());
                 }
 
                 std::size_t read =
@@ -296,9 +289,9 @@ public:
         return _writeMode;
     }
 
-    std::tr1::shared_ptr<ByteBuffer>  getSendBuffer()
+    ByteBuffer*  getSendBuffer()
     {
-        return _sendBuffer;
+        return &_sendBuffer;
     }
 
     const osiSockAddr* getLastReadBufferSocketAddress()
@@ -454,6 +447,9 @@ public:
 protected:
 
     void sendBufferFull(int tries) {
+        testDiag("sendBufferFull tries=%d", tries);
+        if(tries>10) // arbitrary limit
+            testAbort("Stuck");
         _sendBufferFullCount++;
         _writeOpReady = false;
         _writeMode = WAIT_FOR_READY_SIGNAL;
@@ -2770,6 +2766,7 @@ private:
             TestCodec &codec): _codec(codec) {}
 
         void writePollOne() {
+            testDiag("In %s", CURRENT_FUNCTION);
             _codec.processWrite();	// this should return immediately
 
             // now we fake reading
@@ -2819,7 +2816,9 @@ private:
         codec.breakSender();
         try {
             codec.processSendQueue();
-        } catch(sender_break&) {}
+        } catch(sender_break&) {
+            testDiag("sender_break");
+        }
 
         codec.addToReadBuffer();
 
@@ -2916,26 +2915,6 @@ private:
     {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
-        try
-        {
-            // too small
-            TestCodec codec(1,DEFAULT_BUFFER_SIZE);
-            testFail("%s: too small buffer accepted",
-                     CURRENT_FUNCTION);
-        } catch (std::exception &) {
-            // OK
-        }
-
-        try
-        {
-            // too small
-            TestCodec codec(DEFAULT_BUFFER_SIZE,1);
-            testFail("%s: too small buffer accepted",
-                     CURRENT_FUNCTION);
-        } catch (std::exception &) {
-            // OK
-        }
-
         if (PVA_ALIGNMENT > 1)
         {
             try
@@ -2970,7 +2949,7 @@ private:
 
         try
         {
-            codec.ensureBuffer(DEFAULT_BUFFER_SIZE+1);
+            codec.ensureBuffer(MAX_TCP_RECV + AbstractCodec::MAX_ENSURE_DATA_BUFFER_SIZE+1);
             testFail("%s: too big size accepted",
                      CURRENT_FUNCTION);
         } catch (std::exception &) {
