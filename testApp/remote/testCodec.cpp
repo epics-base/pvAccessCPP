@@ -212,20 +212,12 @@ public:
 
 
     void processControlMessage() {
-        // alignment check
-        if (_socketBuffer.getPosition() % PVA_ALIGNMENT != 0)
-            throw std::logic_error("message not aligned");
-
         _receivedControlMessages.push_back(
             PVAMessage(_version, _flags, _command, _payloadSize));
     }
 
 
     void processApplicationMessage()  {
-        // alignment check
-        if (_socketBuffer.getPosition() % PVA_ALIGNMENT != 0)
-            throw std::logic_error("message not aligned");
-
         PVAMessage caMessage(_version, _flags,
                              _command, _payloadSize);
 
@@ -472,7 +464,6 @@ public:
         testHeaderSplitRead();
         testNonEmptyPayload();
         testNormalAlignment();
-        testSplitAlignment();
         testSegmentedMessage();
         //testSegmentedInvalidInBetweenFlagsMessage();
         testSegmentedMessageAlignment();
@@ -776,9 +767,8 @@ private:
         codec._readBuffer->put(PVA_VERSION);
         codec._readBuffer->put((int8_t)0x80);
         codec._readBuffer->put((int8_t)0x23);
-        codec._readBuffer->putInt(PVA_ALIGNMENT);
-        for (int i = 0; i < PVA_ALIGNMENT; i++)
-            codec._readBuffer->put((int8_t)i);
+        codec._readBuffer->putInt(1); // size
+        codec._readBuffer->put((int8_t)0);
         codec._readBuffer->flip();
 
         codec.processRead();
@@ -804,8 +794,8 @@ private:
         header._payload->flip();
 
         testOk(
-            (std::size_t)PVA_ALIGNMENT == header._payload->getLimit(),
-            "%s: PVA_ALIGNMENT == header._payload->getLimit()",
+            1 == header._payload->getLimit(),
+            "%s: 1 == header._payload->getLimit()",
             CURRENT_FUNCTION);
 
     }
@@ -823,14 +813,13 @@ private:
         codec._readBuffer->put(PVA_VERSION);
         codec._readBuffer->put((int8_t)0x80);
         codec._readBuffer->put((int8_t)0x23);
-        int32_t payloadSize1 = PVA_ALIGNMENT+1;
+        const int32_t payloadSize1 = 2;
         codec._readBuffer->putInt(payloadSize1);
 
         for (int32_t i = 0; i < payloadSize1; i++)
             codec._readBuffer->put((int8_t)i);
         // align
-        std::size_t aligned =
-            AbstractCodec::alignedValue(payloadSize1, PVA_ALIGNMENT);
+        std::size_t aligned = payloadSize1;
 
         for (std::size_t i = payloadSize1; i < aligned; i++)
             codec._readBuffer->put((int8_t)0xFF);
@@ -841,15 +830,14 @@ private:
         codec._readBuffer->put((int8_t)0x80);
         codec._readBuffer->put((int8_t)0x45);
 
-        int32_t payloadSize2 = 2*PVA_ALIGNMENT-1;
+        const int32_t payloadSize2 = 1;
         codec._readBuffer->putInt(payloadSize2);
 
         for (int32_t i = 0; i < payloadSize2; i++) {
             codec._readBuffer->put((int8_t)i);
         }
 
-        aligned =
-            AbstractCodec::alignedValue(payloadSize2, PVA_ALIGNMENT);
+        aligned = payloadSize2;
 
         for (std::size_t i = payloadSize2; i < aligned; i++) {
             codec._readBuffer->put((int8_t)0xFF);
@@ -937,9 +925,7 @@ private:
                 }
 
                 // align
-                std::size_t aligned =
-                    AbstractCodec::alignedValue(
-                        _payloadSize1, PVA_ALIGNMENT);
+                std::size_t aligned = _payloadSize1;
 
                 for (std::size_t i = _payloadSize1; i < aligned; i++)
                     _codec._readBuffer->put((int8_t)0xFF);
@@ -961,9 +947,7 @@ private:
             {
                 _codec._readBuffer->clear();
 
-                std::size_t aligned =
-                    AbstractCodec::alignedValue(
-                        _payloadSize2, PVA_ALIGNMENT);
+                std::size_t aligned = _payloadSize2;
 
                 for (std::size_t i = _payloadSize2; i < aligned; i++) {
                     _codec._readBuffer->put((int8_t)0xFF);
@@ -983,97 +967,6 @@ private:
     };
 
 
-    void testSplitAlignment()
-    {
-
-        testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
-        TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
-
-        // "<=" used instead of "==" to suppress compiler warning
-        if (PVA_ALIGNMENT <= 1)
-            return;
-
-        codec._readPayload = true;
-
-        codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
-        codec._readBuffer->put((int8_t)0x80);
-        codec._readBuffer->put((int8_t)0x23);
-
-        int32_t payloadSize1 = PVA_ALIGNMENT+1;
-        codec._readBuffer->putInt(payloadSize1);
-
-        for (int32_t i = 0; i < payloadSize1-2; i++) {
-            codec._readBuffer->put((int8_t)i);
-        }
-
-        int32_t payloadSize2 = 2*PVA_ALIGNMENT-1;
-
-        std::auto_ptr<ReadPollOneCallback>
-        readPollOneCallback(
-            new ReadPollOneCallbackForTestSplitAlignment
-            (codec, payloadSize1, payloadSize2));
-
-        codec._readPollOneCallback = readPollOneCallback;
-
-        codec._readBuffer->flip();
-        codec.processRead();
-
-
-        testOk(codec._invalidDataStreamCount == 0,
-               "%s: codec._invalidDataStreamCount == 0",
-               CURRENT_FUNCTION);
-        testOk(codec._closedCount == 0,
-               "%s: codec._closedCount == 0", CURRENT_FUNCTION);
-        testOk(codec._receivedControlMessages.size() == 0,
-               "%s: codec._receivedControlMessages.size() == 0 ",
-               CURRENT_FUNCTION);
-        testOk(codec._receivedAppMessages.size() == 2,
-               "%s: codec._receivedAppMessages.size() == 2",
-               CURRENT_FUNCTION);
-        testOk(codec._readPollOneCount == 2,
-               "%s: codec._readPollOneCount == 2", CURRENT_FUNCTION);
-
-        PVAMessage msg = codec._receivedAppMessages[0];
-
-        testOk(msg._payloadSize == payloadSize1,
-               "%s: msg._payloadSize == payloadSize1", CURRENT_FUNCTION);
-        testOk(msg._payload.get() != 0,
-               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
-
-        msg._payload->flip();
-
-        testOk(payloadSize1 = msg._payload->getLimit(),
-               "%s: payloadSize1 = msg._payload->getLimit()",
-               CURRENT_FUNCTION);
-
-        for (int32_t i = 0; i < msg._payloadSize; i++) {
-            testOk((int8_t)i == msg._payload->getByte(),
-                   "%s: (int8_t)i == msg._payload->getByte()",
-                   CURRENT_FUNCTION);
-        }
-
-        msg = codec._receivedAppMessages[1];
-
-        testOk(msg._payloadSize == payloadSize2,
-               "%s: msg._payloadSize == payloadSize2", CURRENT_FUNCTION);
-        testOk(msg._payload.get() != 0,
-               "%s: msg._payload.get() != 0", CURRENT_FUNCTION);
-
-        msg._payload->flip();
-
-        testOk((std::size_t)payloadSize2 == msg._payload->getLimit(),
-               "%s: payloadSize2 == msg._payload->getLimit()",
-               CURRENT_FUNCTION);
-
-        for (int32_t i = 0; i < msg._payloadSize; i++) {
-            testOk((int8_t)i == msg._payload->getByte(),
-                   "%s: (int8_t)i == msg._payload->getByte()",
-                   CURRENT_FUNCTION);
-        }
-    }
-
-
     void testSegmentedMessage()
     {
 
@@ -1089,7 +982,7 @@ private:
         codec._readBuffer->put((int8_t)0x90);
         codec._readBuffer->put((int8_t)0x01);
 
-        int32_t payloadSize1 = PVA_ALIGNMENT;
+        int32_t payloadSize1 = 1;
         codec._readBuffer->putInt(payloadSize1);
 
         int32_t c = 0;
@@ -1102,7 +995,7 @@ private:
         codec._readBuffer->put((int8_t)0xB0);
         codec._readBuffer->put((int8_t)0x01);
 
-        int32_t payloadSize2 = 2*PVA_ALIGNMENT;
+        int32_t payloadSize2 = 2;
         codec._readBuffer->putInt(payloadSize2);
 
         for (int32_t i = 0; i < payloadSize2; i++)
@@ -1121,7 +1014,7 @@ private:
         codec._readBuffer->put((int8_t)0xB0);
         codec._readBuffer->put((int8_t)0x01);
 
-        int32_t payloadSize3 = PVA_ALIGNMENT;
+        int32_t payloadSize3 = 1;
         codec._readBuffer->putInt(payloadSize3);
 
         for (int32_t i = 0; i < payloadSize3; i++)
@@ -1133,7 +1026,7 @@ private:
         codec._readBuffer->put((int8_t)0xA0);
         codec._readBuffer->put((int8_t)0x01);
 
-        int32_t payloadSize4 = 2*PVA_ALIGNMENT;
+        int32_t payloadSize4 = 2;
         codec._readBuffer->putInt(payloadSize4);
 
         for (int32_t i = 0; i < payloadSize4; i++)
@@ -1209,7 +1102,7 @@ private:
         codec._readBuffer->put((int8_t)0x90);
         codec._readBuffer->put((int8_t)0x01);
 
-        int32_t payloadSize1 = PVA_ALIGNMENT;
+        int32_t payloadSize1 = 1;
         codec._readBuffer->putInt(payloadSize1);
 
         int32_t c = 0;
@@ -1223,7 +1116,7 @@ private:
         codec._readBuffer->put((int8_t)0x90);
         codec._readBuffer->put((int8_t)0x01);
 
-        int32_t payloadSize2 = 2*PVA_ALIGNMENT;
+        int32_t payloadSize2 = 2;
         codec._readBuffer->putInt(payloadSize2);
 
         for (int32_t i = 0; i < payloadSize2; i++)
@@ -1242,7 +1135,7 @@ private:
         codec._readBuffer->put((int8_t)0xB0);
         codec._readBuffer->put((int8_t)0x01);
 
-        int32_t payloadSize3 = PVA_ALIGNMENT;
+        int32_t payloadSize3 = 1;
         codec._readBuffer->putInt(payloadSize3);
 
         for (int32_t i = 0; i < payloadSize3; i++)
@@ -1254,7 +1147,7 @@ private:
         codec._readBuffer->put((int8_t)0xA0);
         codec._readBuffer->put((int8_t)0x01);
 
-        int32_t payloadSize4 = 2*PVA_ALIGNMENT;
+        int32_t payloadSize4 = 2;
         codec._readBuffer->putInt(payloadSize4);
 
         for (int32_t i = 0; i < payloadSize4; i++)
@@ -1303,15 +1196,14 @@ private:
         codec._readBuffer->put((int8_t)0x90);
         codec._readBuffer->put((int8_t)0x01);
 
-        int32_t payloadSize1 = PVA_ALIGNMENT+1;
+        int32_t payloadSize1 = 1+1;
         codec._readBuffer->putInt(payloadSize1);
 
         int32_t c = 0;
         for (int32_t i = 0; i < payloadSize1; i++)
             codec._readBuffer->put((int8_t)(c++));
 
-        std::size_t aligned =
-            AbstractCodec::alignedValue(payloadSize1, PVA_ALIGNMENT);
+        std::size_t aligned = payloadSize1;
         for (std::size_t i = payloadSize1; i < aligned; i++)
             codec._readBuffer->put((int8_t)0xFF);
 
@@ -1322,22 +1214,15 @@ private:
         codec._readBuffer->put((int8_t)0xB0);
         codec._readBuffer->put((int8_t)0x01);
 
-        int32_t payloadSize2 = 2*PVA_ALIGNMENT-1;
-        int32_t payloadSize2Real =
-            payloadSize2 + payloadSize1 % PVA_ALIGNMENT;
+        int32_t payloadSize2 = 1;
+        int32_t payloadSize2Real = payloadSize2;
 
         codec._readBuffer->putInt(payloadSize2Real);
-
-        // pre-message padding
-        for (int32_t i = 0; i < payloadSize1 % PVA_ALIGNMENT; i++)
-            codec._readBuffer->put((int8_t)0xEE);
 
         for (int32_t i = 0; i < payloadSize2; i++)
             codec._readBuffer->put((int8_t)(c++));
 
-        aligned =
-            AbstractCodec::alignedValue(
-                payloadSize2Real, PVA_ALIGNMENT);
+        aligned = payloadSize2Real;
 
         for (std::size_t i = payloadSize2Real; i < aligned; i++)
             codec._readBuffer->put((int8_t)0xFF);
@@ -1348,22 +1233,14 @@ private:
         codec._readBuffer->put((int8_t)0xB0);
         codec._readBuffer->put((int8_t)0x01);
 
-        int32_t payloadSize3 = PVA_ALIGNMENT+2;
-        int32_t payloadSize3Real =
-            payloadSize3 + payloadSize2Real % PVA_ALIGNMENT;
+        int32_t payloadSize3 = 3;
+        int32_t payloadSize3Real = payloadSize3;
         codec._readBuffer->putInt(payloadSize3Real);
-
-        // pre-message padding required
-        for (int32_t i = 0;
-                i < payloadSize2Real % PVA_ALIGNMENT; i++)
-            codec._readBuffer->put((int8_t)0xEE);
 
         for (int32_t i = 0; i < payloadSize3; i++)
             codec._readBuffer->put((int8_t)(c++));
 
-        aligned =
-            AbstractCodec::alignedValue(
-                payloadSize3Real, PVA_ALIGNMENT);
+        aligned = payloadSize3Real;
 
         for (std::size_t i = payloadSize3Real; i < aligned; i++)
             codec._readBuffer->put((int8_t)0xFF);
@@ -1374,23 +1251,15 @@ private:
         codec._readBuffer->put((int8_t)0xA0);
         codec._readBuffer->put((int8_t)0x01);
 
-        int32_t payloadSize4 = 2*PVA_ALIGNMENT+3;
-        int32_t payloadSize4Real =
-            payloadSize4 + payloadSize3Real % PVA_ALIGNMENT;
+        int32_t payloadSize4 = 2+3;
+        int32_t payloadSize4Real = payloadSize4;
 
         codec._readBuffer->putInt(payloadSize4Real);
-
-        // pre-message padding required
-        for (int32_t i = 0;
-                i < payloadSize3Real % PVA_ALIGNMENT; i++)
-            codec._readBuffer->put((int8_t)0xEE);
 
         for (int32_t i = 0; i < payloadSize4; i++)
             codec._readBuffer->put((int8_t)(c++));
 
-        aligned =
-            AbstractCodec::alignedValue(
-                payloadSize4Real, PVA_ALIGNMENT);
+        aligned = payloadSize4Real;
 
         for (std::size_t i = payloadSize4Real; i < aligned; i++)
             codec._readBuffer->put((int8_t)0xFF);
@@ -1468,16 +1337,16 @@ private:
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
         for (int32_t firstMessagePayloadSize = 1;	// cannot be zero
-                firstMessagePayloadSize <= 3*PVA_ALIGNMENT;
+                firstMessagePayloadSize <= 3;
                 firstMessagePayloadSize++)
         {
             for (int32_t secondMessagePayloadSize = 0;
-                    secondMessagePayloadSize <= 2*PVA_ALIGNMENT;
+                    secondMessagePayloadSize <= 2;
                     secondMessagePayloadSize++)
             {
                 // cannot be zero
                 for (int32_t thirdMessagePayloadSize = 1;
-                        thirdMessagePayloadSize <= 2*PVA_ALIGNMENT;
+                        thirdMessagePayloadSize <= 2;
                         thirdMessagePayloadSize++)
                 {
                     std::size_t splitAt = 1;
@@ -1501,9 +1370,7 @@ private:
                         for (int32_t i = 0; i < payloadSize1; i++)
                             codec._readBuffer->put((int8_t)(c++));
 
-                        std::size_t aligned =
-                            AbstractCodec::alignedValue(
-                                payloadSize1, PVA_ALIGNMENT);
+                        std::size_t aligned = payloadSize1;
 
                         for (std::size_t i = payloadSize1; i < aligned; i++)
                             codec._readBuffer->put((int8_t)0xFF);
@@ -1515,22 +1382,14 @@ private:
                         codec._readBuffer->put((int8_t)0x01);
 
                         int32_t payloadSize2 = secondMessagePayloadSize;
-                        int payloadSize2Real =
-                            payloadSize2 + payloadSize1 % PVA_ALIGNMENT;
+                        int payloadSize2Real = payloadSize2;
 
                         codec._readBuffer->putInt(payloadSize2Real);
-
-                        // pre-message padding
-                        for (int32_t i = 0;
-                                i < payloadSize1 % PVA_ALIGNMENT; i++)
-                            codec._readBuffer->put((int8_t)0xEE);
 
                         for (int32_t i = 0; i < payloadSize2; i++)
                             codec._readBuffer->put((int8_t)(c++));
 
-                        aligned =
-                            AbstractCodec::alignedValue(
-                                payloadSize2Real, PVA_ALIGNMENT);
+                        aligned = payloadSize2Real;
 
                         for (std::size_t i = payloadSize2Real;
                                 i < aligned; i++)
@@ -1543,22 +1402,14 @@ private:
                         codec._readBuffer->put((int8_t)0x01);
 
                         int32_t payloadSize3 = thirdMessagePayloadSize;
-                        int32_t payloadSize3Real =
-                            payloadSize3 + payloadSize2Real % PVA_ALIGNMENT;
+                        int32_t payloadSize3Real = payloadSize3;
 
                         codec._readBuffer->putInt(payloadSize3Real);
-
-                        // pre-message padding required
-                        for (int32_t i = 0;
-                                i < payloadSize2Real % PVA_ALIGNMENT; i++)
-                            codec._readBuffer->put((int8_t)0xEE);
 
                         for (int32_t i = 0; i < payloadSize3; i++)
                             codec._readBuffer->put((int8_t)(c++));
 
-                        aligned =
-                            AbstractCodec::alignedValue(
-                                payloadSize3Real, PVA_ALIGNMENT);
+                        aligned = payloadSize3Real;
 
                         for (std::size_t i = payloadSize3Real;
                                 i < aligned; i++)
@@ -1742,9 +1593,8 @@ private:
         codec._readPayload = true;
         codec.startMessage((int8_t)0x23, 0);
 
-        codec.ensureBuffer((std::size_t)PVA_ALIGNMENT);
-        for (int32_t i = 0; i < PVA_ALIGNMENT; i++)
-            codec.getSendBuffer()->put((int8_t)i);
+        codec.ensureBuffer(1);
+        codec.getSendBuffer()->put((int8_t)0);
 
         codec.endMessage();
 
@@ -1772,8 +1622,7 @@ private:
 
         header._payload->flip();
 
-        testOk((std::size_t)PVA_ALIGNMENT ==
-               header._payload->getLimit(),
+        testOk(1u == header._payload->getLimit(),
                "%s: PVA_ALIGNMENT == header._payload->getLimit()",
                CURRENT_FUNCTION);
     }
@@ -1787,7 +1636,7 @@ private:
         codec._readPayload = true;
 
         codec.startMessage((int8_t)0x23, 0);
-        int32_t payloadSize1 = PVA_ALIGNMENT+1;
+        int32_t payloadSize1 = 1+1;
         codec.ensureBuffer(payloadSize1);
 
         for (int32_t i = 0; i < payloadSize1; i++)
@@ -1796,7 +1645,7 @@ private:
         codec.endMessage();
 
         codec.startMessage((int8_t)0x45, 0);
-        int32_t payloadSize2 = 2*PVA_ALIGNMENT-1;
+        int32_t payloadSize2 = 1;
         codec.ensureBuffer(payloadSize2);
 
         for (int32_t i = 0; i < payloadSize2; i++)
@@ -1872,25 +1721,25 @@ private:
 
         int32_t c = 0;
 
-        int32_t payloadSize1 = PVA_ALIGNMENT;
+        int32_t payloadSize1 = 1;
         for (int32_t i = 0; i < payloadSize1; i++)
             codec.getSendBuffer()->put((int8_t)(c++));
 
         codec.flush(false);
 
-        int32_t payloadSize2 = 2*PVA_ALIGNMENT;
+        int32_t payloadSize2 = 2;
         for (int32_t i = 0; i < payloadSize2; i++)
             codec.getSendBuffer()->put((int8_t)(c++));
 
         codec.flush(false);
 
-        int32_t payloadSize3 = PVA_ALIGNMENT;
+        int32_t payloadSize3 = 1;
         for (int32_t i = 0; i < payloadSize3; i++)
             codec.getSendBuffer()->put((int8_t)(c++));
 
         codec.flush(false);
 
-        int32_t payloadSize4 = 2*PVA_ALIGNMENT;
+        int32_t payloadSize4 = 2;
         for (int32_t i = 0; i < payloadSize4; i++)
             codec.getSendBuffer()->put((int8_t)(c++));
 
@@ -1943,21 +1792,21 @@ private:
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
         for (int32_t firstMessagePayloadSize = 1;	// cannot be zero
-                firstMessagePayloadSize <= 3*PVA_ALIGNMENT;
+                firstMessagePayloadSize <= 3;
                 firstMessagePayloadSize++)
         {
             for (int32_t secondMessagePayloadSize = 0;
-                    secondMessagePayloadSize <= 2*PVA_ALIGNMENT;
+                    secondMessagePayloadSize <= 2;
                     secondMessagePayloadSize++)
             {
                 // cannot be zero
                 for (int32_t thirdMessagePayloadSize = 1;
-                        thirdMessagePayloadSize <= 2*PVA_ALIGNMENT;
+                        thirdMessagePayloadSize <= 2;
                         thirdMessagePayloadSize++)
                 {
                     // cannot be zero
                     for (int32_t fourthMessagePayloadSize = 1;
-                            fourthMessagePayloadSize <= 2*PVA_ALIGNMENT;
+                            fourthMessagePayloadSize <= 2;
                             fourthMessagePayloadSize++)
                     {
                         TestCodec codec(DEFAULT_BUFFER_SIZE,
@@ -2105,16 +1954,16 @@ private:
 
 
         for (int32_t firstMessagePayloadSize = 1;	// cannot be zero
-                firstMessagePayloadSize <= 3*PVA_ALIGNMENT;
+                firstMessagePayloadSize <= 3;
                 firstMessagePayloadSize++)
         {
             for (int32_t secondMessagePayloadSize = 0;
-                    secondMessagePayloadSize <= 2*PVA_ALIGNMENT;
+                    secondMessagePayloadSize <= 2;
                     secondMessagePayloadSize++)
             {
                 // cannot be zero
                 for (int32_t thirdMessagePayloadSize = 1;
-                        thirdMessagePayloadSize <= 2*PVA_ALIGNMENT;
+                        thirdMessagePayloadSize <= 2;
                         thirdMessagePayloadSize++)
                 {
                     std::size_t splitAt = 1;
@@ -2139,9 +1988,7 @@ private:
                         for (int32_t i = 0; i < payloadSize1; i++)
                             codec._readBuffer->put((int8_t)(c++));
 
-                        std::size_t aligned =
-                            AbstractCodec::alignedValue(
-                                payloadSize1, PVA_ALIGNMENT);
+                        std::size_t aligned = payloadSize1;
 
                         for (std::size_t i = payloadSize1; i < aligned; i++)
                             codec._readBuffer->put((int8_t)0xFF);
@@ -2153,22 +2000,14 @@ private:
                         codec._readBuffer->put((int8_t)0x01);
 
                         int32_t payloadSize2 = secondMessagePayloadSize;
-                        int32_t payloadSize2Real =
-                            payloadSize2 + payloadSize1 % PVA_ALIGNMENT;
+                        int32_t payloadSize2Real = payloadSize2;
 
                         codec._readBuffer->putInt(payloadSize2Real);
-
-                        // pre-message padding
-                        for (int32_t i = 0;
-                                i < payloadSize1 % PVA_ALIGNMENT; i++)
-                            codec._readBuffer->put((int8_t)0xEE);
 
                         for (int32_t i = 0; i < payloadSize2; i++)
                             codec._readBuffer->put((int8_t)(c++));
 
-                        aligned =
-                            AbstractCodec::alignedValue(
-                                payloadSize2Real, PVA_ALIGNMENT);
+                        aligned = payloadSize2Real;
 
                         for (std::size_t i = payloadSize2Real;
                                 i < aligned; i++)
@@ -2181,22 +2020,14 @@ private:
                         codec._readBuffer->put((int8_t)0x01);
 
                         int32_t payloadSize3 = thirdMessagePayloadSize;
-                        int32_t payloadSize3Real =
-                            payloadSize3 + payloadSize2Real % PVA_ALIGNMENT;
+                        int32_t payloadSize3Real = payloadSize3;
 
                         codec._readBuffer->putInt(payloadSize3Real);
-
-                        // pre-message padding required
-                        for (int32_t i = 0;
-                                i < payloadSize2Real % PVA_ALIGNMENT; i++)
-                            codec._readBuffer->put((int8_t)0xEE);
 
                         for (int32_t i = 0; i < payloadSize3; i++)
                             codec._readBuffer->put((int8_t)(c++));
 
-                        aligned =
-                            AbstractCodec::alignedValue(
-                                payloadSize3Real, PVA_ALIGNMENT);
+                        aligned = payloadSize3Real;
 
                         for (std::size_t i = payloadSize3Real;
                                 i < aligned; i++)
@@ -2914,35 +2745,6 @@ private:
     void testInvalidArguments()
     {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
-
-        if (PVA_ALIGNMENT > 1)
-        {
-            try
-            {
-                // non aligned
-                TestCodec codec(2*AbstractCodec::MAX_ENSURE_SIZE+1,
-                                DEFAULT_BUFFER_SIZE);
-
-                testFail("%s: non-aligned buffer size accepted",
-                         CURRENT_FUNCTION);
-
-            } catch (std::exception &) {
-                // OK
-            }
-
-            try
-            {
-                // non aligned
-                TestCodec codec(DEFAULT_BUFFER_SIZE,
-                                2*AbstractCodec::MAX_ENSURE_SIZE+1);
-
-                testFail("%s: non-aligned buffer size accepted",
-                         CURRENT_FUNCTION);
-
-            } catch (std::exception &) {
-                // OK
-            }
-        }
 
         TestCodec codec(DEFAULT_BUFFER_SIZE,
                         DEFAULT_BUFFER_SIZE);

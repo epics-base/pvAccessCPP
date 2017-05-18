@@ -207,8 +207,6 @@ void BlockingUDPTransport::startMessage(int8 command, size_t /*ensureCapacity*/,
 }
 
 void BlockingUDPTransport::endMessage() {
-    //we always (for now) send by packet, so no need for this here...
-    //alignBuffer(PVA_ALIGNMENT);
     _sendBuffer.putInt(
         _lastMessageStartPosition+(sizeof(int16)+2),
         _sendBuffer.getPosition()-_lastMessageStartPosition-PVA_MESSAGE_HEADER_SIZE);

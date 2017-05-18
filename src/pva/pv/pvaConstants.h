@@ -41,13 +41,6 @@ const epics::pvData::int32 PVA_BROADCAST_PORT = 5076;
 const epics::pvData::int16 PVA_MESSAGE_HEADER_SIZE = 8;
 
 /**
- * All messages must be aligned to 8-bytes (64-bit).
- * MUST be 1. Code does not handle well alignment in some situations (e.g. direct deserialize).
- * Alignment is not worth additional code complexity.
- */
-const epics::pvData::int32 PVA_ALIGNMENT = 1;
-
-/**
  * UDP maximum send message size.
  * MAX_UDP: 1500 (max of ethernet and 802.{2,3} MTU) - 20/40(IPv4/IPv6)
  * - 8(UDP) - some reserve (the MTU of Ethernet is currently independent

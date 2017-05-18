@@ -98,21 +98,8 @@ AbstractCodec::AbstractCodec(
         throw std::invalid_argument(
             "receiveBuffer.capacity() < 2*MAX_ENSURE_SIZE");
 
-    // require aligned buffer size
-    //(not condition, but simplifies alignment code)
-
-    if (_socketBuffer.getSize() % PVA_ALIGNMENT != 0)
-        throw std::invalid_argument(
-            "receiveBuffer.capacity() % PVAConstants.PVA_ALIGNMENT != 0");
-
     if (_sendBuffer.getSize() < 2*MAX_ENSURE_SIZE)
         throw std::invalid_argument("sendBuffer() < 2*MAX_ENSURE_SIZE");
-
-    // require aligned buffer size
-    //(not condition, but simplifies alignment code)
-    if (_sendBuffer.getSize() % PVA_ALIGNMENT != 0)
-        throw std::invalid_argument(
-            "sendBuffer() % PVAConstants.PVA_ALIGNMENT != 0");
 
     // initialize to be empty
     _socketBuffer.setPosition(_socketBuffer.getLimit());
@@ -219,8 +206,7 @@ void AbstractCodec::processReadNormal()  {
                 _storedPayloadSize = _payloadSize;
                 _storedPosition = _socketBuffer.getPosition();
                 _storedLimit = _socketBuffer.getLimit();
-                _socketBuffer.setLimit(std::min<std::size_t>
-                                        (_storedPosition + _storedPayloadSize, _storedLimit));
+                _socketBuffer.setLimit(std::min(_storedPosition + _storedPayloadSize, _storedLimit));
                 bool postProcess = true;
                 try
                 {
@@ -268,9 +254,7 @@ void AbstractCodec::postProcessApplicationMessage()
     {
         // set position as whole message was read
         //(in case code haven't done so)
-        std::size_t newPosition =
-            alignedValue(
-                _storedPosition + _storedPayloadSize, PVA_ALIGNMENT);
+        std::size_t newPosition = _storedPosition + _storedPayloadSize;
 
         // aligned buffer size ensures that there is enough space
         //in buffer,
@@ -285,17 +269,12 @@ void AbstractCodec::postProcessApplicationMessage()
             // we only handle unused alignment bytes
             int bytesNotRead =
                 newPosition - _socketBuffer.getPosition();
+            assert(bytesNotRead>=0);
 
-            if (bytesNotRead < PVA_ALIGNMENT)
+            if (bytesNotRead==0)
             {
-                // make alignment bytes as real payload to enable SPLIT
-                // no end-of-socket or segmented scenario can happen
-                // due to aligned buffer size
-                _storedPayloadSize += bytesNotRead;
                 // reveal currently existing padding
                 _socketBuffer.setLimit(_storedLimit);
-                ensureData(bytesNotRead);
-                _storedPayloadSize -= bytesNotRead;
                 continue;
             }
 
@@ -368,7 +347,7 @@ bool AbstractCodec::readToBuffer(
     }
 
     // assumption: remainingBytes < MAX_ENSURE_DATA_BUFFER_SIZE &&
-    //			   requiredBytes < (socketBuffer.capacity() - PVA_ALIGNMENT)
+    //			   requiredBytes < (socketBuffer.capacity() - 1)
 
     //
     // copy unread part to the beginning of the buffer
@@ -377,8 +356,7 @@ bool AbstractCodec::readToBuffer(
     //
 
     // a new start position, we are careful to preserve alignment
-    _startPosition =
-        MAX_ENSURE_SIZE + _socketBuffer.getPosition() % PVA_ALIGNMENT;
+    _startPosition = MAX_ENSURE_SIZE;
 
     std::size_t endPosition = _startPosition + remainingBytes;
 
@@ -491,19 +469,6 @@ void AbstractCodec::ensureData(std::size_t size) {
             //and readToBuffer needs to know real limit)
             _socketBuffer.setLimit(_storedLimit);
 
-            // remember alignment offset of end of the message (to be restored)
-            std::size_t storedAlignmentOffset =
-                _socketBuffer.getPosition() % PVA_ALIGNMENT;
-
-            // skip post-message alignment bytes
-            if (storedAlignmentOffset > 0)
-            {
-                std::size_t toSkip = PVA_ALIGNMENT - storedAlignmentOffset;
-                readToBuffer(toSkip, true);
-                std::size_t currentPos = _socketBuffer.getPosition();
-                _socketBuffer.setPosition(currentPos + toSkip);
-            }
-
             // we expect segmented message, we expect header
             // that (and maybe some control packets) needs to be "removed"
             // so that we get combined payload
@@ -513,14 +478,12 @@ void AbstractCodec::ensureData(std::size_t size) {
             _readMode = storedMode;
 
             // make sure we have all the data (maybe we run into SPLIT)
-            readToBuffer(size - remainingBytes + storedAlignmentOffset, true);
+            readToBuffer(size - remainingBytes, true);
 
-            // skip storedAlignmentOffset bytes (sender should padded start of
-            //segmented message)
             // SPLIT cannot mess with this, since start of the message,
             //i.e. current position, is always aligned
             _socketBuffer.setPosition(
-                _socketBuffer.getPosition() + storedAlignmentOffset);
+                _socketBuffer.getPosition());
 
             // copy before position (i.e. start of the payload)
             for (int32_t i = remainingBytes - 1,
@@ -530,7 +493,7 @@ void AbstractCodec::ensureData(std::size_t size) {
             _startPosition = _socketBuffer.getPosition() - remainingBytes;
             _socketBuffer.setPosition(_startPosition);
 
-            _storedPayloadSize += remainingBytes - storedAlignmentOffset;
+            _storedPayloadSize += remainingBytes;
             _storedPosition = _startPosition;
             _storedLimit = _socketBuffer.getLimit();
             _socketBuffer.setLimit(
@@ -604,12 +567,6 @@ void AbstractCodec::alignBuffer(std::size_t alignment) {
     if (pos == newpos)
         return;
 
-    /*
-    // there is always enough of space
-    // since sendBuffer capacity % PVA_ALIGNMENT == 0
-    _sendBuffer.setPosition(newpos);
-    */
-
     // for safety reasons we really pad (override previous message data)
     std::size_t padCount = newpos - pos;
     _sendBuffer.put(PADDING_BYTES, 0, padCount);
@@ -665,9 +622,6 @@ void AbstractCodec::endMessage(bool hasMoreSegments) {
     {
         std::size_t lastPayloadBytePosition = _sendBuffer.getPosition();
 
-        // align
-        alignBuffer(PVA_ALIGNMENT);
-
         // set paylaod size (non-aligned)
         std::size_t payloadSize =
             lastPayloadBytePosition -
@@ -689,7 +643,7 @@ void AbstractCodec::endMessage(bool hasMoreSegments) {
                 _lastSegmentedMessageCommand =
                     _sendBuffer.getByte(flagsPosition + 1);
             }
-            _nextMessagePayloadOffset = lastPayloadBytePosition % PVA_ALIGNMENT;
+            _nextMessagePayloadOffset = 0;
         }
         else
         {
