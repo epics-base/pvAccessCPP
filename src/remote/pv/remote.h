@@ -566,7 +566,7 @@ public:
      * Report status to clients (e.g. disconnected).
      * @param status to report.
      */
-    virtual void reportStatus(epics::pvData::Status const & status) = 0;
+    virtual void reportStatus(Channel::ConnectionState status) = 0;
 
     /**
      * Get request requester.

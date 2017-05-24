@@ -342,12 +342,11 @@ public:
         // TODO notify?
     }
 
-    void reportStatus(const Status& status) {
+    void reportStatus(Channel::ConnectionState status) {
         // destroy, since channel (parent) was destroyed
-        // NOTE: by-ref compare, not nice
-        if (&status == &ChannelImpl::channelDestroyed)
+        if (status == Channel::DESTROYED)
             destroy();
-        else if (&status == &ChannelImpl::channelDisconnected)
+        else if (status == Channel::DISCONNECTED)
         {
             m_subscribed.clear();
             stopRequest();
@@ -2000,9 +1999,9 @@ public:
         cancel();
     }
 
-    void reportStatus(const Status& status) {
+    void reportStatus(Channel::ConnectionState status) {
         // destroy, since channel (parent) was destroyed
-        if (&status == &ChannelImpl::channelDestroyed)
+        if (status == Channel::DESTROYED)
             destroy();
         // TODO notify?
     }
@@ -4105,7 +4104,7 @@ private:
          */
         void disconnectPendingIO(bool destroy)
         {
-            Status& status = destroy ? channelDestroyed : channelDisconnected;
+            Channel::ConnectionState state = destroy ? Channel::DESTROYED : Channel::DISCONNECTED;
 
             Lock guard(m_responseRequestsMutex);
 
@@ -4125,7 +4124,7 @@ private:
             {
                 if((ptr = rrs[i].lock()))
                 {
-                    EXCEPTION_GUARD(ptr->reportStatus(status));
+                    EXCEPTION_GUARD(ptr->reportStatus(state));
                 }
             }
         }
