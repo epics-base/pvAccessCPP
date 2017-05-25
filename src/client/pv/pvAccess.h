@@ -39,12 +39,6 @@ using epics::pvData::RequesterPtr;
 using epics::pvData::MessageType;
 using epics::pvData::getMessageTypeName;
 
-using epics::pvData::MonitorElement;
-using epics::pvData::MonitorElementPtr;
-using epics::pvData::MonitorElementPtrArray;
-using epics::pvData::Monitor;
-using epics::pvData::MonitorRequester;
-
 // TODO add write-only?
 // change names
 enum AccessRights {
@@ -116,7 +110,6 @@ private:
     bool locked;
 };
 
-
 class Channel;
 class ChannelProvider;
 class ChannelArrayRequester;
@@ -127,8 +120,23 @@ class ChannelPutRequester;
 class ChannelPutGetRequester;
 class ChannelRPCRequester;
 
+struct epicsShareClass ChannelBaseRequester : virtual public epics::pvData::Requester
+{
+    POINTER_DEFINITIONS(ChannelBaseRequester);
+
+    virtual ~ChannelBaseRequester() {}
+
+    /** Notification when underlying Channel becomes DISCONNECTED or DESTORYED
+     *
+     * (re)connection is notified through a sub-class *Connect() method.
+     *
+     * @param destroy true for final disconnect (shutdown).
+     */
+    virtual void channelDisconnect(bool destroy) {}
+};
+
 /**
- * Base interface for all channel requests.
+ * Base interface for all channel requests (aka. Operations).
  */
 class epicsShareClass ChannelRequest : public epics::pvData::Destroyable, public Lockable, private epics::pvData::NoDefaultMethods {
 public:
@@ -157,6 +165,37 @@ public:
      * When last request will be completed (regardless of completion status) the remote and local instance will be destroyed.
      */
     virtual void lastRequest() = 0;
+};
+
+/**
+ * @brief Callback implemented by monitor clients.
+ *
+ * Requester for ChannelMonitor.
+ * @author mrk
+ */
+class epicsShareClass MonitorRequester : public ChannelBaseRequester {
+    public:
+    POINTER_DEFINITIONS(MonitorRequester);
+    virtual ~MonitorRequester(){}
+    /**
+     * The client and server have both completed the createMonitor request.
+     * @param status Completion status.
+     * @param monitor The monitor
+     * @param structure The structure defining the data.
+     */
+    virtual void monitorConnect(epics::pvData::Status const & status,
+        MonitorPtr const & monitor, epics::pvData::StructureConstPtr const & structure) = 0;
+    /**
+     * A monitor event has occurred.
+     * The requester must call Monitor.poll to get data.
+     * @param monitor The monitor.
+     */
+    virtual void monitorEvent(MonitorPtr const & monitor) = 0;
+    /**
+     * The data source is no longer available.
+     * @param monitor The monitor.
+     */
+    virtual void unlisten(MonitorPtr const & monitor) = 0;
 };
 
 /**
@@ -204,7 +243,7 @@ public:
 /**
  * The Requester for a ChannelArray.
  */
-class epicsShareClass ChannelArrayRequester : virtual public Requester {
+class epicsShareClass ChannelArrayRequester : public ChannelBaseRequester {
 public:
     POINTER_DEFINITIONS(ChannelArrayRequester);
     typedef ChannelArray operation_type;
@@ -338,7 +377,7 @@ public:
 /**
  * Requester for channelGet.
  */
-class epicsShareClass ChannelGetRequester : virtual public Requester {
+class epicsShareClass ChannelGetRequester : public ChannelBaseRequester {
 public:
     POINTER_DEFINITIONS(ChannelGetRequester);
     typedef ChannelGet operation_type;
@@ -392,7 +431,7 @@ public:
 /**
  * Requester for channelProcess.
  */
-class epicsShareClass ChannelProcessRequester : virtual public Requester {
+class epicsShareClass ChannelProcessRequester : public ChannelBaseRequester {
 public:
     POINTER_DEFINITIONS(ChannelProcessRequester);
     typedef ChannelProcess operation_type;
@@ -450,7 +489,7 @@ public:
 /**
  * Requester for ChannelPut.
  */
-class epicsShareClass ChannelPutRequester : virtual public Requester {
+class epicsShareClass ChannelPutRequester : public ChannelBaseRequester {
 public:
     POINTER_DEFINITIONS(ChannelPutRequester);
     typedef ChannelPut operation_type;
@@ -530,7 +569,7 @@ public:
 /**
  * Requester for ChannelPutGet.
  */
-class epicsShareClass ChannelPutGetRequester : virtual public Requester
+class epicsShareClass ChannelPutGetRequester : public ChannelBaseRequester
 {
 public:
     POINTER_DEFINITIONS(ChannelPutGetRequester);
@@ -625,7 +664,7 @@ public:
  *
  * No locks may be held while calling these methods.
  */
-class epicsShareClass ChannelRPCRequester : virtual public Requester {
+class epicsShareClass ChannelRPCRequester : public ChannelBaseRequester {
 public:
     POINTER_DEFINITIONS(ChannelRPCRequester);
     typedef ChannelRPC operation_type;
@@ -665,7 +704,7 @@ public:
 /**
  * Completion notification for Channel::getField()
  */
-class epicsShareClass GetFieldRequester : virtual public Requester {
+class epicsShareClass GetFieldRequester : public ChannelBaseRequester {
 public:
     POINTER_DEFINITIONS(GetFieldRequester);
 
@@ -1248,6 +1287,12 @@ public:
 
 }
 }
+
+// compatibility
+namespace epics { namespace pvData {
+using epics::pvAccess::MonitorRequester;
+}}
+
 
 #endif  /* PVACCESS_H */
 

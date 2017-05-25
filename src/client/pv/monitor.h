@@ -18,7 +18,7 @@
 
 #include <shareLib.h>
 
-namespace epics { namespace pvData { 
+namespace epics { namespace pvAccess {
 
 class MonitorElement;
 typedef std::tr1::shared_ptr<MonitorElement> MonitorElementPtr;
@@ -38,14 +38,14 @@ class epicsShareClass MonitorElement {
     public:
     POINTER_DEFINITIONS(MonitorElement);
     MonitorElement(){}
-    MonitorElement(PVStructurePtr const & pvStructurePtr)
+    MonitorElement(epics::pvData::PVStructurePtr const & pvStructurePtr)
     : pvStructurePtr(pvStructurePtr),
-      changedBitSet(BitSet::create(static_cast<uint32>(pvStructurePtr->getNumberFields()))),
-      overrunBitSet(BitSet::create(static_cast<uint32>(pvStructurePtr->getNumberFields())))
+      changedBitSet(epics::pvData::BitSet::create(static_cast<epics::pvData::uint32>(pvStructurePtr->getNumberFields()))),
+      overrunBitSet(epics::pvData::BitSet::create(static_cast<epics::pvData::uint32>(pvStructurePtr->getNumberFields())))
     {}
-    PVStructurePtr pvStructurePtr;
-    BitSet::shared_pointer changedBitSet;
-    BitSet::shared_pointer overrunBitSet;
+    epics::pvData::PVStructurePtr pvStructurePtr;
+    epics::pvData::BitSet::shared_pointer changedBitSet;
+    epics::pvData::BitSet::shared_pointer overrunBitSet;
 };
 
 /**
@@ -54,7 +54,7 @@ class epicsShareClass MonitorElement {
  * This is used by pvAccess to implement monitors.
  * @author mrk
  */
-class epicsShareClass Monitor : public Destroyable{
+class epicsShareClass Monitor : public epics::pvData::Destroyable{
     public:
     POINTER_DEFINITIONS(Monitor);
     virtual ~Monitor(){}
@@ -62,12 +62,12 @@ class epicsShareClass Monitor : public Destroyable{
      * Start monitoring.
      * @return completion status.
      */
-    virtual Status start() = 0;
+    virtual epics::pvData::Status start() = 0;
     /**
      * Stop Monitoring.
      * @return completion status.
      */
-    virtual Status stop() = 0;
+    virtual epics::pvData::Status stop() = 0;
     /**
      * If monitor has occurred return data.
      * @return monitorElement for modified data.
@@ -93,36 +93,15 @@ class epicsShareClass Monitor : public Destroyable{
 };
 
 
-/**
- * @brief Callback implemented by monitor clients.
- *
- * Requester for ChannelMonitor.
- * @author mrk
- */
-class epicsShareClass MonitorRequester : public virtual Requester {
-    public:
-    POINTER_DEFINITIONS(MonitorRequester);
-    virtual ~MonitorRequester(){}
-    /**
-     * The client and server have both completed the createMonitor request.
-     * @param status Completion status.
-     * @param monitor The monitor
-     * @param structure The structure defining the data.
-     */
-    virtual void monitorConnect(Status const & status,
-        MonitorPtr const & monitor, StructureConstPtr const & structure) = 0;
-    /**
-     * A monitor event has occurred.
-     * The requester must call Monitor.poll to get data.
-     * @param monitor The monitor.
-     */
-    virtual void monitorEvent(MonitorPtr const & monitor) = 0;
-    /**
-     * The data source is no longer available.
-     * @param monitor The monitor.
-     */
-    virtual void unlisten(MonitorPtr const & monitor) = 0;
-};
-
 }}
+
+namespace epics { namespace pvData {
+
+using epics::pvAccess::MonitorElement;
+using epics::pvAccess::MonitorElementPtr;
+using epics::pvAccess::MonitorElementPtrArray;
+using epics::pvAccess::Monitor;
+using epics::pvAccess::MonitorPtr;
+}}
+
 #endif  /* MONITOR_H */

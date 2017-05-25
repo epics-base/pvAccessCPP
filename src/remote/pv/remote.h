@@ -572,7 +572,7 @@ public:
      * Get request requester.
      * @return request requester.
      */
-    virtual std::tr1::shared_ptr<epics::pvData::Requester> getRequester() = 0;
+    virtual std::tr1::shared_ptr<ChannelBaseRequester> getRequester() = 0;
 };
 
 /**
