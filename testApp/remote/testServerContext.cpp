@@ -2,7 +2,7 @@
  * testServerContext.cpp
  */
 
-#include <pv/serverContext.h>
+#include <pv/serverContextImpl.h>
 #include <epicsExit.h>
 
 using namespace epics::pvAccess;

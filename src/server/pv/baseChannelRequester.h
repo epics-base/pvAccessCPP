@@ -20,7 +20,7 @@
 #	undef baseChannelRequesterEpicsExportSharedSymbols
 #endif
 
-#include <pv/serverContext.h>
+#include <pv/serverContextImpl.h>
 #include <pv/serverChannelImpl.h>
 
 namespace epics {

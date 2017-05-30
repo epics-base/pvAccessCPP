@@ -9,7 +9,7 @@
 // disable buggy boost enable_shared_from_this assert code
 #define BOOST_DISABLE_ASSERTS
 
-#include <pv/serverContext.h>
+#include <pv/serverContextImpl.h>
 #include <pv/clientContextImpl.h>
 #include <epicsExit.h>
 #include <pv/standardPVField.h>

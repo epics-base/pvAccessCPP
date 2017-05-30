@@ -3,6 +3,8 @@
 TOP = ..
 include $(TOP)/configure/CONFIG
 
+USR_CPPFLAGS += -I$(TOP)/src/server/pv
+
 PVACCESS_TEST = $(TOP)/testApp
 
 PROD_LIBS += pvAccess pvData $(MBLIB) Com

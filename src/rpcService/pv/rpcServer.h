@@ -21,7 +21,7 @@
 
 #include <pv/pvAccess.h>
 #include <pv/rpcService.h>
-#include <pv/serverContext.h>
+#include <pv/serverContextImpl.h>
 
 #include <shareLib.h>
 
