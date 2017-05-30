@@ -36,44 +36,6 @@ union osiSockAddr; // defined in osiSock;
 namespace epics {
 namespace pvAccess {
 
-class epicsShareClass Properties
-{
-public:
-    Properties() EPICS_DEPRECATED;
-    Properties(const std::string &fileName) EPICS_DEPRECATED;
-
-    inline void setProperty(const std::string &key,const std::string &value)
-    {
-        _properties[key] = value;
-    }
-    const std::string& getProperty(const std::string &key) const;
-    const std::string& getProperty(const std::string &key, const std::string &defaultValue) const;
-    inline bool hasProperty(const std::string &key) const
-    {
-        return _properties.find(key) != _properties.end();
-    }
-
-    void store() const;
-    void store(const std::string &fileName) const;
-    void store(std::ostream& strm) const;
-    void load();
-    void load(const std::string &fileName);
-    void load(std::istream& strm);
-    void list();
-
-    inline size_t size() const {
-        return _properties.size();
-    }
-private:
-    typedef std::map<std::string,std::string> _properties_t;
-    _properties_t _properties;
-    std::string _fileName;
-public:
-    inline const _properties_t& map() const {
-        return _properties;
-    }
-};
-
 class ConfigurationStack;
 
 /**

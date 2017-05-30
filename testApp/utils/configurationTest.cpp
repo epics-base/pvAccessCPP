@@ -54,36 +54,6 @@ void showEscaped(const char *msg, const std::string& s)
     testDiag("%s: '%s", msg, &chars[0]);
 }
 
-static
-void testProp()
-{
-    Properties plist;
-
-    {
-        std::istringstream input(indata);
-        plist.load(input);
-        testOk1(!input.bad());
-        testOk1(input.eof());
-    }
-
-    testOk1(plist.size()==3);
-    testOk1(plist.getProperty("hello")=="world");
-    testOk1(plist.getProperty("this")=="is a test");
-    testOk1(!plist.hasProperty("foobar"));
-
-    {
-        std::ostringstream output;
-        plist.store(output);
-        std::string expect(expectdata), actual(output.str());
-
-        testOk1(!output.bad());
-        testOk(expect.size()==actual.size(), "%u == %u", (unsigned)expect.size(), (unsigned)actual.size());
-        testOk1(actual==expectdata);
-        showEscaped("actual", actual);
-        showEscaped("expect", expect);
-    }
-}
-
 static void showEnv(const char *name)
 {
     testDiag("%s = \"%s\"", name, getenv(name));
@@ -201,8 +171,7 @@ void testConfig()
 
 MAIN(configurationTest)
 {
-    testPlan(49);
-    testProp();
+    testPlan(40);
     testBuilder();
     testConfig();
     return testDone();
