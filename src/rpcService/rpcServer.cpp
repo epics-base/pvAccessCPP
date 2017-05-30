@@ -10,6 +10,7 @@
 
 #define epicsExportSharedSymbols
 #include <pv/rpcServer.h>
+#include <pv/serverContextImpl.h>
 #include <pv/wildcard.h>
 
 using namespace epics::pvData;
@@ -525,7 +526,7 @@ RPCServer::RPCServer()
     m_channelProviderImpl = m_channelProviderFactory->sharedInstance();
 
     m_serverContext = ServerContextImpl::create();
-    m_serverContext->setChannelProviderName(m_channelProviderImpl->getProviderName());
+    static_cast<ServerContextImpl*>(m_serverContext.get())->setChannelProviderName(m_channelProviderImpl->getProviderName());
 
     m_serverContext->initialize(getChannelProviderRegistry());
 }

@@ -7,15 +7,13 @@
 #ifndef SERVERCONTEXT_H_
 #define SERVERCONTEXT_H_
 
-#include <pv/remote.h>
+#include <epicsTime.h>
+
+#include <pv/pvaDefs.h>
 #include <pv/beaconServerStatusProvider.h>
 #include <pv/pvaConstants.h>
 #include <pv/pvaVersion.h>
 #include <pv/pvAccess.h>
-#include <pv/blockingUDP.h>
-#include <pv/blockingTCP.h>
-#include <pv/beaconEmitter.h>
-#include <pv/logger.h>
 
 #include <shareLib.h>
 

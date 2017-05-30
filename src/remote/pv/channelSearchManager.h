@@ -19,7 +19,7 @@
 #	undef channelSearchManagerEpicsExportSharedSymbols
 #endif
 
-#include <pv/remote.h>
+#include <pv/pvaDefs.h>
 
 namespace epics {
 namespace pvAccess {

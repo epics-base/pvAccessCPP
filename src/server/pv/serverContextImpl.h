@@ -1,6 +1,10 @@
 #ifndef SERVERCONTEXTIMPL_H
 #define SERVERCONTEXTIMPL_H
 
+#include <pv/blockingUDP.h>
+#include <pv/blockingTCP.h>
+#include <pv/beaconEmitter.h>
+
 #include "serverContext.h"
 
 namespace epics {

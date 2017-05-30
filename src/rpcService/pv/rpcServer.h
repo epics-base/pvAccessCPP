@@ -21,19 +21,21 @@
 
 #include <pv/pvAccess.h>
 #include <pv/rpcService.h>
-#include <pv/serverContextImpl.h>
+#include <pv/serverContext.h>
 
 #include <shareLib.h>
 
 namespace epics {
 namespace pvAccess {
 
+class ServerContext;
+
 class epicsShareClass RPCServer :
     public std::tr1::enable_shared_from_this<RPCServer>
 {
 private:
 
-    ServerContextImpl::shared_pointer m_serverContext;
+    std::tr1::shared_ptr<ServerContext> m_serverContext;
     ChannelProviderFactory::shared_pointer m_channelProviderFactory;
     ChannelProvider::shared_pointer m_channelProviderImpl;
 

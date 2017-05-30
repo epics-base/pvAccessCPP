@@ -32,7 +32,7 @@
 #include <pv/configuration.h>
 #include <pv/beaconHandler.h>
 #include <pv/logger.h>
-#include <pv/security.h>
+#include <pv/securityImpl.h>
 
 #include <pv/pvAccessMB.h>
 

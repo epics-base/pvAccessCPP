@@ -2,6 +2,8 @@ TOP=..
 
 include $(TOP)/configure/CONFIG
 
+USR_CPPFLAGS += -I$(TOP)/src/remote
+
 PROD_HOST += pvget
 pvget_SRCS += pvget.cpp
 pvget_LIBS += pvAccess pvData $(MBLIB) ca Com

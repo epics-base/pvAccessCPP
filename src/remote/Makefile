@@ -2,16 +2,8 @@
 
 SRC_DIRS += $(PVACCESS_SRC)/remote
 
-INC += pv/remote.h
 INC += pv/security.h
-INC += pv/blockingUDP.h
-INC += pv/beaconHandler.h
-INC += pv/blockingTCP.h
-INC += pv/channelSearchManager.h
-INC += pv/simpleChannelSearchManagerImpl.h
-INC += pv/transportRegistry.h
 INC += pv/serializationHelper.h
-INC += pv/codec.h
 
 LIBSRCS += blockingUDPTransport.cpp
 LIBSRCS += blockingUDPConnector.cpp

@@ -39,7 +39,7 @@
 #include <pv/logger.h>
 #include <pv/pvAccessMB.h>
 #include <pv/rpcServer.h>
-#include <pv/security.h>
+#include <pv/securityImpl.h>
 
 using std::string;
 using std::ostringstream;

@@ -33,6 +33,7 @@
 #include <pv/pvaConstants.h>
 #include <pv/configuration.h>
 #include <pv/fairQueue.h>
+#include <pv/pvaDefs.h>
 
 /// TODO only here because of the Lockable
 #include <pv/pvAccess.h>
@@ -47,13 +48,6 @@ namespace pvAccess {
 //#define PVACCESS_REFCOUNT_MONITOR_DESTRUCT(name) LOG(logLevelDebug, #name "::~" #name);
 
 class TransportRegistry;
-
-/**
- * Globally unique ID.
- */
-typedef struct {
-    char value[12];
-} GUID;
 
 enum QoS {
     /**
@@ -93,8 +87,6 @@ enum QoS {
      */
     QOS_GET_PUT = 0x80
 };
-
-typedef epics::pvData::int32 pvAccessID;
 
 enum ApplicationCommands {
     CMD_BEACON = 0,

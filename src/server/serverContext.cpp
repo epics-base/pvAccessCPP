@@ -653,7 +653,7 @@ ServerContext::shared_pointer startPVAServer(std::string const & providerNames, 
 
     if (runInSeparateThread)
     {
-        // delete left to the thread
+        // delete left to the thread (which doesn't)
         auto_ptr<ThreadRunnerParam> param(new ThreadRunnerParam());
         param->ctx = ctx;
         param->timeToRun = timeToRun;
@@ -665,6 +665,7 @@ ServerContext::shared_pointer startPVAServer(std::string const & providerNames, 
                           threadRunner, param.get());
 
         param.release();
+        // leak...
     }
     else
     {

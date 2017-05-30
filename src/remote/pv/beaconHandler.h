@@ -22,6 +22,7 @@
 #	undef beaconHandlerEpicsExportSharedSymbols
 #endif
 
+#include <pv/pvaDefs.h>
 #include <pv/remote.h>
 #include <pv/pvAccess.h>
 

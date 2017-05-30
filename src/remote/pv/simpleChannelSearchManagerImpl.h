@@ -22,6 +22,7 @@
 #endif
 
 #include <pv/channelSearchManager.h>
+#include <pv/remote.h>
 
 namespace epics {
 namespace pvAccess {
