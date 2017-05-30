@@ -16,6 +16,7 @@
 #include <fstream>
 #include <sstream>
 
+#include <pv/pvaDefs.h>
 #include <pv/event.h>
 #include <epicsExit.h>
 
@@ -356,38 +357,6 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
     else
         std::cout << std::endl << *(pv.get()) << std::endl << std::endl;
 }
-
-struct AtomicBoolean_null_deleter
-{
-    void operator()(void const *) const {}
-};
-
-// standard performance on set/clear, use of TR1::shared_ptr lock-free counter for get
-// alternative is to use boost::atomic
-class AtomicBoolean
-{
-public:
-    AtomicBoolean() : counter(static_cast<void*>(0), AtomicBoolean_null_deleter()) {};
-
-    void set() {
-        mutex.lock();
-        setp = counter;
-        mutex.unlock();
-    }
-    void clear() {
-        mutex.lock();
-        setp.reset();
-        mutex.unlock();
-    }
-
-    bool get() const {
-        return counter.use_count() == 2;
-    }
-private:
-    TR1::shared_ptr<void> counter;
-    TR1::shared_ptr<void> setp;
-    epics::pvData::Mutex mutex;
-};
 
 class ChannelPutRequesterImpl : public ChannelPutRequester
 {
