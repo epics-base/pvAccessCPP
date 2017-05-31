@@ -85,6 +85,11 @@ public:
      */
     virtual epics::pvData::int32 getBroadcastPort() = 0;
 
+    /** Return a Configuration with the actual values being used,
+     *  including defaults used, and bounds limits applied.
+     */
+    virtual Configuration::shared_pointer getCurrentConfig() = 0;
+
     // ************************************************************************** //
     // **************************** [ Plugins ] ********************************* //
     // ************************************************************************** //

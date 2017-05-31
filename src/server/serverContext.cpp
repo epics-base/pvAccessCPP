@@ -198,6 +198,55 @@ void ServerContextImpl::loadConfiguration()
     epicsSocketDestroy(sock);
 }
 
+Configuration::shared_pointer
+ServerContextImpl::getCurrentConfig()
+{
+    ConfigurationBuilder B;
+
+    std::ostringstream providerName;
+    for(size_t i=0; i<_channelProviders.size(); i++) {
+        if(i>0)
+            providerName<<" ";
+        providerName<<_channelProviders[i]->getProviderName();
+    }
+
+#define SET(K, V) B.add(K, V);
+
+    {
+        char buf[50];
+        ipAddrToA(&_ifaceAddr.ia, buf, sizeof(buf));
+        buf[sizeof(buf)-1] = '\0';
+        SET("EPICS_PVAS_INTF_ADDR_LIST", buf);
+    }
+
+    SET("EPICS_PVAS_BEACON_ADDR_LIST", getBeaconAddressList());
+    SET("EPICS_PVA_ADDR_LIST", getBeaconAddressList());
+
+    SET("EPICS_PVAS_AUTO_BEACON_ADDR_LIST",
+                         isAutoBeaconAddressList() ? "YES" : "NO");
+    SET("EPICS_PVA_AUTO_ADDR_LIST",
+                         isAutoBeaconAddressList() ? "YES" : "NO");
+
+    SET("EPICS_PVAS_BEACON_PERIOD", getBeaconPeriod());
+    SET("EPICS_PVA_BEACON_PERIOD", getBeaconPeriod());
+
+    SET("EPICS_PVAS_SERVER_PORT", getServerPort());
+    SET("EPICS_PVA_SERVER_PORT", getServerPort());
+
+    SET("EPICS_PVAS_BROADCAST_PORT", getBroadcastPort());
+    SET("EPICS_PVA_BROADCAST_PORT", getBroadcastPort());
+
+    SET("EPICS_PVAS_MAX_ARRAY_BYTES", getReceiveBufferSize());
+    SET("EPICS_PVA_MAX_ARRAY_BYTES", getReceiveBufferSize());
+
+    SET("EPICS_PVAS_PROVIDER_NAMES", providerName.str());
+    SET("EPICS_PVA_PROVIDER_NAMES", providerName.str());
+
+#undef SET
+
+    return B.push_map().build();
+}
+
 bool ServerContextImpl::isChannelProviderNamePreconfigured()
 {
     Configuration::const_shared_pointer config = getConfiguration();

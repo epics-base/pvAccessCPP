@@ -45,6 +45,7 @@ public:
 
     epicsTimeStamp& getStartTime();
 
+    virtual Configuration::shared_pointer getCurrentConfig();
 
     /**
      * Version.
