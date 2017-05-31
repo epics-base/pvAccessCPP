@@ -1,6 +1,7 @@
 #ifndef SERVERCONTEXTIMPL_H
 #define SERVERCONTEXTIMPL_H
 
+#include <pv/thread.h>
 #include <pv/blockingUDP.h>
 #include <pv/blockingTCP.h>
 #include <pv/beaconEmitter.h>
@@ -15,33 +16,27 @@ class epicsShareClass ServerContextImpl :
     public Context,
     public std::tr1::enable_shared_from_this<ServerContextImpl>
 {
+    friend class ServerContext;
 public:
     typedef std::tr1::shared_ptr<ServerContextImpl> shared_pointer;
     typedef std::tr1::shared_ptr<const ServerContextImpl> const_shared_pointer;
-private:
-    ServerContextImpl();
-public:
-    static shared_pointer create();
-    static shared_pointer create(const Configuration::shared_pointer& conf);
 
+    ServerContextImpl();
     virtual ~ServerContextImpl();
 
     //**************** derived from ServerContext ****************//
     const GUID& getGUID();
     const Version& getVersion();
-    void initialize(ChannelProviderRegistry::shared_pointer const & channelProviderRegistry);
-    void run(epics::pvData::int32 seconds);
+    void initialize();
+    void run(epics::pvData::uint32 seconds);
     void shutdown();
-    void destroy();
-    void printInfo();
     void printInfo(std::ostream& str);
-    void dispose();
     void setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer const & beaconServerStatusProvider);
     //**************** derived from Context ****************//
     epics::pvData::Timer::shared_pointer getTimer();
     Channel::shared_pointer getChannel(pvAccessID id);
     Transport::shared_pointer getSearchTransport();
-    Configuration::shared_pointer getConfiguration();
+    Configuration::const_shared_pointer getConfiguration();
     TransportRegistry::shared_pointer getTransportRegistry();
     std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins();
 
@@ -55,53 +50,6 @@ public:
      * Version.
      */
     static const Version VERSION;
-
-
-    /**
-     * Server state enum.
-     */
-    enum State {
-        /**
-         * State value of non-initialized context.
-         */
-        NOT_INITIALIZED,
-
-        /**
-         * State value of initialized context.
-         */
-        INITIALIZED,
-
-        /**
-         * State value of running context.
-         */
-        RUNNING,
-
-        /**
-         * State value of shutdown (once running) context.
-         */
-        SHUTDOWN,
-
-        /**
-         * State value of destroyed context.
-         */
-        DESTROYED
-    };
-    /**
-     * Names of the enum <code>State</code>
-     */
-    static const char* StateNames[];
-
-    /**
-     * Get initialization status.
-     * @return initialization status.
-     */
-    bool isInitialized();
-
-    /**
-     * Get destruction status.
-     * @return destruction status.
-     */
-    bool isDestroyed();
 
     /**
      * Get beacon address list.
@@ -164,24 +112,6 @@ public:
     BlockingUDPTransport::shared_pointer getBroadcastTransport();
 
     /**
-     * Get channel provider registry implementation used by this instance.
-     * @return channel provider registry used by this instance.
-     */
-    ChannelProviderRegistry::shared_pointer getChannelProviderRegistry();
-
-    /**
-     * Get channel provider name.
-     * @return channel provider name.
-     */
-    std::string getChannelProviderName();
-
-    /**
-     * Set channel provider name.
-     * This method can only be called before initialize.
-     */
-    void setChannelProviderName(std::string providerName);
-
-    /**
      * Get channel providers.
      * @return channel providers.
      */
@@ -199,11 +129,6 @@ private:
      * Server GUID.
      */
     GUID _guid;
-
-    /**
-     * Initialization status.
-     */
-    State _state;
 
     /**
      * A space-separated list of broadcast address which to send beacons.
@@ -286,16 +211,6 @@ private:
     ResponseHandler::shared_pointer _responseHandler;
 
     /**
-     * Channel access.
-     */
-    ChannelProviderRegistry::shared_pointer _channelProviderRegistry;
-
-    /**
-     * Channel provider name.
-     */
-    std::string _channelProviderNames;
-
-    /**
      * Channel provider.
      */
     std::vector<ChannelProvider::shared_pointer> _channelProviders;
@@ -331,29 +246,13 @@ private:
     void loadConfiguration();
 
     /**
-     * Internal initialization.
-     */
-    void internalInitialize();
-
-    /**
-     * Initialize broadcast DP transport (broadcast socket and repeater connection).
-     */
-    void initializeBroadcastTransport();
-
-    /**
-     * Internal destroy.
-     */
-    void internalDestroy();
-
-    /**
      * Destroy all transports.
      */
     void destroyAllTransports();
 
-    Configuration::shared_pointer configuration;
+    Configuration::const_shared_pointer configuration;
 
     epicsTimeStamp _startTime;
-
 };
 
 }

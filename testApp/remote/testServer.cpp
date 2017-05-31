@@ -9,7 +9,7 @@
 // disable buggy boost enable_shared_from_this assert code
 #define BOOST_DISABLE_ASSERTS
 
-#include <pv/serverContextImpl.h>
+#include <pv/serverContext.h>
 #include <pv/clientContextImpl.h>
 #include <epicsExit.h>
 #include <pv/standardPVField.h>
@@ -2755,73 +2755,26 @@ private:
 
 string MockServerChannelProvider::PROVIDER_NAME = "local";
 
-class MockChannelProviderFactory : public ChannelProviderFactory
-{
-public:
-    POINTER_DEFINITIONS(MockChannelProviderFactory);
-
-    virtual std::string getFactoryName()
-    {
-        return MockServerChannelProvider::PROVIDER_NAME;
-    }
-
-    virtual ChannelProvider::shared_pointer sharedInstance()
-    {
-        // no shared instance support for mock...
-        return newInstance();
-    }
-
-    virtual ChannelProvider::shared_pointer newInstance()
-    {
-        MockServerChannelProvider::shared_pointer channelProvider(new MockServerChannelProvider());
-        channelProvider->initialize();
-        return channelProvider;
-    }
-
-};
-
-struct TestServer : public Runnable
+struct TestServer
 {
     POINTER_DEFINITIONS(TestServer);
 
     static TestServer::shared_pointer ctx;
 
-    epics::pvAccess::Configuration::shared_pointer conf;
-    ServerContextImpl::shared_pointer context;
-    Event startup;
-    epics::pvData::Thread runner;
-    MockChannelProviderFactory::shared_pointer factory;
+    ServerContext::shared_pointer context;
 
     TestServer(const epics::pvAccess::Configuration::shared_pointer& conf)
-        :conf(conf)
-        ,runner(epics::pvData::Thread::Config(this).name("TestServer").autostart(false))
-        ,factory(new MockChannelProviderFactory())
     {
-        registerChannelProviderFactory(factory);
-
-        context = ServerContextImpl::create(conf);
-        context->initialize(getChannelProviderRegistry());
-    }
-    void start(bool inSameThread = false)
-    {
-        if (inSameThread)
-        {
-            context->run(conf->getPropertyAsInteger("timeToRun", 0)); // default is no timeout
-        }
-        else
-        {
-            runner.start();
-            startup.wait(); // wait for thread to start
-        }
+        ChannelProvider::shared_pointer prov(new MockServerChannelProvider);
+        static_cast<MockServerChannelProvider*>(prov.get())->initialize();
+        context = ServerContext::create(ServerContext::Config()
+                                        .config(conf)
+                                        .provider(prov));
     }
 
     ~TestServer()
     {
         context->shutdown();
-        runner.exitWait();
-        context->destroy();
-
-        unregisterChannelProviderFactory(factory);
 
         structureChangedListeners.clear();
         {
@@ -2829,9 +2782,6 @@ struct TestServer : public Runnable
             structureStore.clear();
         }
         ctx.reset();
-
-        unregisterChannelProviderFactory(factory);
-
 
         shutdownSimADCs();
     }
@@ -2844,11 +2794,7 @@ struct TestServer : public Runnable
     {
         return context->getBroadcastPort();
     }
-    virtual void run()
-    {
-        startup.signal();
-        context->run(conf->getPropertyAsInteger("timeToRun", 0)); // default is no timeout
-    }
+
     void waitForShutdown() {
         context->shutdown();
     }
@@ -2932,7 +2878,7 @@ int main(int argc, char *argv[])
                                    .build()));
     TestServer::ctx = srv;
     srv->context->printInfo();
-    srv->start(true);
+    srv->context->run(epics::pvData::castUnsafe<epicsUInt32>(timeToRun));
 
     cout << "Done" << endl;
 

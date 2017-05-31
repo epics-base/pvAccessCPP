@@ -76,13 +76,14 @@ int ChannelAccessIFTest::runAllTest() {
             .build());
 
     TestServer::shared_pointer tstserv(new TestServer(base_config));
-    tstserv->start();
-    testDiag("TestServer on ports TCP=%u UDP=%u\n",
+
+    testDiag("TestServer on ports TCP=%u UDP=%u",
              tstserv->getServerPort(),
              tstserv->getBroadcastPort());
     ConfigurationFactory::registerConfiguration("pvAccess-client",
             ConfigurationBuilder()
             .push_config(base_config)
+            //.add("EPICS_PVA_DEBUG", "3")
             .add("EPICS_PVA_BROADCAST_PORT", tstserv->getBroadcastPort())
             .push_map()
             .build());
@@ -352,6 +353,7 @@ void ChannelAccessIFTest::test_createChannel() {
 
     TR1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl());
     Channel::shared_pointer channel = getChannelProvider()->createChannel(TEST_COUNTER_CHANNEL_NAME, channelReq);
+    testDiag("Channel to '%s', wait for connect", TEST_COUNTER_CHANNEL_NAME.c_str());
     bool succStatus = channelReq->waitUntilStateChange(getTimeoutSec());
     if (!succStatus) {
         std::cerr << "[" << TEST_COUNTER_CHANNEL_NAME << "] failed to connect. " << std::endl;

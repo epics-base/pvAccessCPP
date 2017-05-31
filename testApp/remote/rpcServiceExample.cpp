@@ -53,7 +53,7 @@ class SumServiceImpl :
 
         // create return structure and set data
         PVStructure::shared_pointer result = getPVDataCreate()->createPVStructure(resultStructure);
-        result->getSubField<PVDouble>("c")->put(a+b);
+        result->getSubFieldT<PVDouble>("c")->put(a+b);
         return result;
     }
 };

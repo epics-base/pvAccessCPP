@@ -21,7 +21,7 @@
 
 #include <pv/pvAccess.h>
 #include <pv/pipelineService.h>
-#include <pv/serverContextImpl.h>
+#include <pv/serverContext.h>
 
 #include <shareLib.h>
 
@@ -33,8 +33,7 @@ class epicsShareClass PipelineServer :
 {
 private:
 
-    ServerContextImpl::shared_pointer m_serverContext;
-    ChannelProviderFactory::shared_pointer m_channelProviderFactory;
+    ServerContext::shared_pointer m_serverContext;
     ChannelProvider::shared_pointer m_channelProviderImpl;
 
     // TODO no thread poll implementation

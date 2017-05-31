@@ -3744,9 +3744,9 @@ private:
                     resubscribeSubscriptions();
                     setConnectionState(CONNECTED);
                 }
-                catch (...) {
+                catch (std::exception& e) {
+                    LOG(logLevelError, "connectionCompleted() %d '%s' unhandled exception: %s\n", sid, m_name.c_str(), e.what());
                     // noop
-                    // TODO at least log something??
                 }
 
                 // NOTE: always call cancel
@@ -4300,7 +4300,7 @@ public:
         loadConfiguration();
     }
 
-    virtual Configuration::shared_pointer getConfiguration() {
+    virtual Configuration::const_shared_pointer getConfiguration() {
         return m_configuration;
     }
 
@@ -4746,8 +4746,8 @@ private:
                 pvAccessID cid = generateCID();
                 return InternalChannelImpl::create(shared_from_this(), cid, name, requester, priority, addresses);
             }
-            catch(...) {
-                // TODO
+            catch(std::exception& e) {
+                LOG(logLevelError, "createChannelInternal() exception: %s\n", e.what());
                 return ChannelImpl::shared_pointer();
             }
             // TODO namedLocker.releaseSynchronizationObject(name);

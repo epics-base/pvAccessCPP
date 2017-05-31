@@ -483,52 +483,12 @@ string RPCChannelProvider::PROVIDER_NAME("rpcService");
 Status RPCChannelProvider::noSuchChannelStatus(Status::STATUSTYPE_ERROR, "no such channel");
 
 
-
-class RPCChannelProviderFactory : public ChannelProviderFactory
-{
-public:
-    POINTER_DEFINITIONS(RPCChannelProviderFactory);
-
-    RPCChannelProviderFactory() :
-        m_channelProviderImpl(new RPCChannelProvider())
-    {
-    }
-
-    virtual std::string getFactoryName()
-    {
-        return RPCChannelProvider::PROVIDER_NAME;
-    }
-
-    virtual ChannelProvider::shared_pointer sharedInstance()
-    {
-        return m_channelProviderImpl;
-    }
-
-    virtual ChannelProvider::shared_pointer newInstance()
-    {
-        // TODO use std::make_shared
-        std::tr1::shared_ptr<RPCChannelProvider> tp(new RPCChannelProvider());
-        ChannelProvider::shared_pointer channelProvider = tp;
-        return channelProvider;
-    }
-
-private:
-    RPCChannelProvider::shared_pointer m_channelProviderImpl;
-};
-
-
 RPCServer::RPCServer()
+    :m_channelProviderImpl(new RPCChannelProvider)
 {
-    // TODO factory is never deregistered, multiple RPCServer instances create multiple factories, etc.
-    m_channelProviderFactory.reset(new RPCChannelProviderFactory());
-    registerChannelProviderFactory(m_channelProviderFactory);
-
-    m_channelProviderImpl = m_channelProviderFactory->sharedInstance();
-
-    m_serverContext = ServerContextImpl::create();
-    static_cast<ServerContextImpl*>(m_serverContext.get())->setChannelProviderName(m_channelProviderImpl->getProviderName());
-
-    m_serverContext->initialize(getChannelProviderRegistry());
+    ChannelProvider::shared_pointer prov(new RPCChannelProvider);
+    m_serverContext = ServerContext::create(ServerContext::Config()
+                                            .provider(m_channelProviderImpl));
 }
 
 RPCServer::~RPCServer()
@@ -581,7 +541,7 @@ void RPCServer::runInNewThread(int seconds)
 
 void RPCServer::destroy()
 {
-    m_serverContext->destroy();
+    m_serverContext->shutdown();
 }
 
 void RPCServer::registerService(std::string const & serviceName, RPCService::shared_pointer const & service)

@@ -21,7 +21,7 @@ testChannelConnect_SRCS += testChannelConnect.cpp
 
 TESTPROD_HOST += testServerContext
 testServerContext_SRCS += testServerContext.cpp
-
+TESTS += testServerContext
 
 
 PROD_HOST += testServer

@@ -823,7 +823,7 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
         }
         catch (std::exception& e)
         {
-            LOG(logLevelDebug, "Exception caught when creating channel: %s", _channelName.c_str());
+            LOG(logLevelDebug, "Exception caught when creating channel '%s': %s", _channelName.c_str(), e.what());
             {
                 Lock guard(_mutex);
                 _status = Status(Status::STATUSTYPE_FATAL, "failed to create channel", e.what());

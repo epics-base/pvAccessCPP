@@ -328,7 +328,7 @@ public:
 
 
 
-    virtual Configuration::shared_pointer getConfiguration() = 0;
+    virtual Configuration::const_shared_pointer getConfiguration() = 0;
 
     /**
      * Get map of available security plug-ins.

@@ -36,7 +36,6 @@ class epicsShareClass RPCServer :
 private:
 
     std::tr1::shared_ptr<ServerContext> m_serverContext;
-    ChannelProviderFactory::shared_pointer m_channelProviderFactory;
     ChannelProvider::shared_pointer m_channelProviderImpl;
 
     // TODO no thread poll implementation

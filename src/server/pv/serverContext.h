@@ -14,6 +14,7 @@
 #include <pv/pvaConstants.h>
 #include <pv/pvaVersion.h>
 #include <pv/pvAccess.h>
+#include <pv/configuration.h>
 
 #include <shareLib.h>
 
@@ -26,8 +27,7 @@ namespace pvAccess {
 class epicsShareClass ServerContext
 {
 public:
-    typedef std::tr1::shared_ptr<ServerContext> shared_pointer;
-    typedef std::tr1::shared_ptr<const ServerContext> const_shared_pointer;
+    POINTER_DEFINITIONS(ServerContext);
 
     /**
      * Destructor
@@ -47,36 +47,21 @@ public:
     virtual const Version& getVersion() = 0;
 
     /**
-     * Set <code>ChannelProviderRegistry</code> implementation and initialize server.
-     * @param channelProviderRegistry channel providers registry to be used.
-     */
-    virtual void initialize(ChannelProviderRegistry::shared_pointer const & channelProviderRegistry) = 0;
-
-    /**
      * Run server (process events).
      * @param	seconds	time in seconds the server will process events (method will block), if <code>0</code>
      * 				the method would block until <code>destroy()</code> is called.
      * @throws BaseException if server is already destroyed.
      */
-    virtual void run(epics::pvData::int32 seconds) = 0;
+    virtual void run(epics::pvData::uint32 seconds) = 0;
 
-    /**
-     * Shutdown (stop executing run() method) of this context.
-     * After shutdown Context cannot be rerun again, destroy() has to be called to clear all used resources.
-     * @throws BaseException if the context has been destroyed.
-     */
     virtual void shutdown() = 0;
 
-    /**
-     * Clear all resources attached to this context.
-     * @throws BaseException if the context has been destroyed.
-     */
-    virtual void destroy() = 0;
+    void destroy() EPICS_DEPRECATED { this->shutdown(); }
 
     /**
      * Prints detailed information about the context to the standard output stream.
      */
-    virtual void printInfo() = 0;
+    void printInfo();
 
     /**
      * Prints detailed information about the context to the specified output stream.
@@ -84,13 +69,21 @@ public:
      */
     virtual void printInfo(std::ostream& str) = 0;
 
-    /**
-     * Dispose (destroy) server context.
-     * This calls <code>destroy()</code> and silently handles all exceptions.
-     */
-    virtual void dispose() = 0;
+    void dispose();
 
     virtual epicsTimeStamp& getStartTime() = 0;
+
+    /**
+     * Get server port.
+     * @return server port.
+     */
+    virtual epics::pvData::int32 getServerPort() = 0;
+
+    /**
+     * Get broadcast port.
+     * @return broadcast port.
+     */
+    virtual epics::pvData::int32 getBroadcastPort() = 0;
 
     // ************************************************************************** //
     // **************************** [ Plugins ] ********************************* //
@@ -102,6 +95,29 @@ public:
      */
     virtual void setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer const & beaconServerStatusProvider) = 0;
 
+    class Config {
+        friend class ServerContext;
+        Configuration::const_shared_pointer _conf;
+        std::vector<ChannelProvider::shared_pointer> _providers;
+    public:
+        Config() {}
+        Config& config(const Configuration::const_shared_pointer& c) { _conf = c; return *this; }
+        Config& providers(const std::vector<ChannelProvider::shared_pointer>& p) { _providers = p; return *this; }
+        Config& provider(const ChannelProvider::shared_pointer& p) { _providers.push_back(p); return *this; }
+    };
+
+    /** Start a new PVA server
+     *
+     * By default the server will select ChannelProviders using the
+     * EPICS_PVA_PROVIDER_NAMES or EPICS_PVAS_PROVIDER_NAMES Configuration key.
+     *
+     * If a list of provided is given with Config::providers() then this
+     * overrides any Configuration.
+     *
+     * If a specific Configuration is given with Config::config() then
+     * this overrides the default Configuration.
+     */
+    static ServerContext::shared_pointer create(const Config& conf = Config());
 };
 
 epicsShareFunc ServerContext::shared_pointer startPVAServer(

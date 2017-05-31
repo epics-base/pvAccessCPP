@@ -691,52 +691,11 @@ string PipelineChannelProvider::PROVIDER_NAME("PipelineService");
 Status PipelineChannelProvider::noSuchChannelStatus(Status::STATUSTYPE_ERROR, "no such channel");
 
 
-
-class PipelineChannelProviderFactory : public ChannelProviderFactory
-{
-public:
-    POINTER_DEFINITIONS(PipelineChannelProviderFactory);
-
-    PipelineChannelProviderFactory() :
-        m_channelProviderImpl(new PipelineChannelProvider())
-    {
-    }
-
-    virtual std::string getFactoryName()
-    {
-        return PipelineChannelProvider::PROVIDER_NAME;
-    }
-
-    virtual ChannelProvider::shared_pointer sharedInstance()
-    {
-        return m_channelProviderImpl;
-    }
-
-    virtual ChannelProvider::shared_pointer newInstance()
-    {
-        // TODO use std::make_shared
-        std::tr1::shared_ptr<PipelineChannelProvider> tp(new PipelineChannelProvider());
-        ChannelProvider::shared_pointer channelProvider = tp;
-        return channelProvider;
-    }
-
-private:
-    PipelineChannelProvider::shared_pointer m_channelProviderImpl;
-};
-
-
 PipelineServer::PipelineServer()
 {
-    // TODO factory is never deregistered, multiple PipelineServer instances create multiple factories, etc.
-    m_channelProviderFactory.reset(new PipelineChannelProviderFactory());
-    registerChannelProviderFactory(m_channelProviderFactory);
-
-    m_channelProviderImpl = m_channelProviderFactory->sharedInstance();
-
-    m_serverContext = ServerContextImpl::create();
-    m_serverContext->setChannelProviderName(m_channelProviderImpl->getProviderName());
-
-    m_serverContext->initialize(getChannelProviderRegistry());
+    ChannelProvider::shared_pointer prov(new PipelineChannelProvider);
+    m_serverContext = ServerContext::create(ServerContext::Config()
+                                            .provider(m_channelProviderImpl));
 }
 
 PipelineServer::~PipelineServer()
@@ -756,40 +715,17 @@ void PipelineServer::run(int seconds)
     m_serverContext->run(seconds);
 }
 
-struct ThreadRunnerParam {
-    PipelineServer::shared_pointer server;
-    int timeToRun;
-};
-
-static void threadRunner(void* usr)
-{
-    ThreadRunnerParam* pusr = static_cast<ThreadRunnerParam*>(usr);
-    ThreadRunnerParam param = *pusr;
-    delete pusr;
-
-    param.server->run(param.timeToRun);
-}
-
 /// Method requires usage of std::tr1::shared_ptr<PipelineServer>. This instance must be
 /// owned by a shared_ptr instance.
 void PipelineServer::runInNewThread(int seconds)
 {
-    std::auto_ptr<ThreadRunnerParam> param(new ThreadRunnerParam());
-    param->server = shared_from_this();
-    param->timeToRun = seconds;
-
-    epicsThreadCreate("PipelineServer thread",
-                      epicsThreadPriorityMedium,
-                      epicsThreadGetStackSize(epicsThreadStackSmall),
-                      threadRunner, param.get());
-
-    // let the thread delete 'param'
-    param.release();
+    if(seconds!=0)
+        std::cerr<<"PipelineServer::runInNewThread() only suppose seconds=0\n";
 }
 
 void PipelineServer::destroy()
 {
-    m_serverContext->destroy();
+    m_serverContext->shutdown();
 }
 
 void PipelineServer::registerService(std::string const & serviceName, PipelineService::shared_pointer const & service)
