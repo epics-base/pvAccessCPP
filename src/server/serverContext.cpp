@@ -476,7 +476,7 @@ ServerContext::shared_pointer startPVAServer(std::string const & providerNames, 
                                  .config(ConfigurationBuilder()
                                          .add("EPICS_PVAS_PROVIDER_NAMES", providerNames)
                                          .push_map()
-                                         .push_env()
+                                         .push_env() // environment takes precidence (top of stack)
                                          .build())));
     if(printInfo)
         ret->printInfo();

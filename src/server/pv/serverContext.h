@@ -116,10 +116,13 @@ public:
      *
      * If a specific Configuration is given with Config::config() then
      * this overrides the default Configuration.
+     *
+     * @returns shared_ptr<ServerContext> which will automatically shutdown() when the last reference is released.
      */
     static ServerContext::shared_pointer create(const Config& conf = Config());
 };
 
+// Caller must store the returned pointer to keep the server alive.
 epicsShareFunc ServerContext::shared_pointer startPVAServer(
     std::string const & providerNames = PVACCESS_ALL_PROVIDERS,
     int timeToRun = 0,
