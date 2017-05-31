@@ -12,6 +12,7 @@
 #include <sstream>
 #include <fstream>
 #include <map>
+#include <set>
 
 #ifdef epicsExportSharedSymbols
 #   define configurationEpicsExportSharedSymbols
@@ -114,9 +115,21 @@ public:
 
     bool hasProperty(const std::string &name) const;
 
+    typedef std::set<std::string> keys_t;
+    /** Return a (partial) list of available key names.
+     *  Does not include key names from the ConfigurationEnviron
+     */
+    keys_t keys() const
+    {
+        keys_t ret;
+        addKeys(ret);
+        return ret;
+    }
+
 protected:
     friend class ConfigurationStack;
     virtual bool tryGetPropertyAsString(const std::string& name, std::string* val) const = 0;
+    virtual void addKeys(keys_t&) const {}
 };
 
 //! Lookup configuration strings from an in memory store
@@ -129,6 +142,7 @@ public:
     ConfigurationMap(const properties_t& p) :properties(p) {}
 private:
     virtual bool tryGetPropertyAsString(const std::string& name, std::string* val) const;
+    virtual void addKeys(keys_t&) const;
 };
 
 //! Lookup configuration strings from the process environment
@@ -147,6 +161,7 @@ class epicsShareClass ConfigurationStack : public Configuration
     typedef std::vector<std::tr1::shared_ptr<Configuration> > confs_t;
     confs_t confs;
     virtual bool tryGetPropertyAsString(const std::string& name, std::string* val) const;
+    virtual void addKeys(keys_t&) const;
 public:
     inline void push_back(const confs_t::value_type& conf) {
         confs.push_back(conf);

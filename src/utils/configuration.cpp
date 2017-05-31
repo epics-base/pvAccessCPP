@@ -110,6 +110,12 @@ bool ConfigurationMap::tryGetPropertyAsString(const std::string& name, std::stri
     return true;
 }
 
+void ConfigurationMap::addKeys(keys_t& names) const
+{
+    for(properties_t::const_iterator it=properties.begin(); it!=properties.end(); ++it)
+        names.insert(it->first);
+}
+
 bool ConfigurationEnviron::tryGetPropertyAsString(const std::string& name, std::string* val) const
 {
     const char *env = getenv(name.c_str());
@@ -130,6 +136,12 @@ bool ConfigurationStack::tryGetPropertyAsString(const std::string& name, std::st
             return true;
     }
     return false;
+}
+
+void ConfigurationStack::addKeys(keys_t& names) const
+{
+    for(confs_t::const_iterator it=confs.begin(); it!=confs.end(); ++it)
+        (*it)->addKeys(names);
 }
 
 ConfigurationBuilder::ConfigurationBuilder() :stack(new ConfigurationStack) {}
