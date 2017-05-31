@@ -306,6 +306,10 @@ void ServerContextImpl::destroyAllTransports()
         try
         {
             transport->close();
+            if(!transport.unique())
+                LOG(logLevelError, "Closed transport %s still has use_count=%u",
+                    transport->getRemoteName().c_str(),
+                    (unsigned)transport.use_count());
         }
         catch (std::exception &e)
         {
