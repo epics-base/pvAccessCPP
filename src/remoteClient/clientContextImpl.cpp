@@ -4313,9 +4313,9 @@ public:
         return m_timer;
     }
 
-    virtual TransportRegistry::shared_pointer getTransportRegistry()
+    virtual TransportRegistry* getTransportRegistry()
     {
-        return m_transportRegistry;
+        return &m_transportRegistry;
     }
 
     virtual Transport::shared_pointer getSearchTransport()
@@ -4422,7 +4422,6 @@ private:
         m_timer.reset(new Timer("pvAccess-client timer", lowPriority));
         Context::shared_pointer thisPointer = shared_from_this();
         m_connector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_connectionTimeout));
-        m_transportRegistry.reset(new TransportRegistry());
 
         m_responseHandler.reset(new ClientResponseHandler(shared_from_this()));
 
@@ -4489,7 +4488,7 @@ private:
         // wait for all transports to cleanly exit
         int tries = 40;
         epics::pvData::int32 transportCount;
-        while ((transportCount = m_transportRegistry->numberOfActiveTransports()) && tries--)
+        while ((transportCount = m_transportRegistry.numberOfActiveTransports()) && tries--)
             epicsThreadSleep(0.025);
 
         if (transportCount)
@@ -4790,7 +4789,7 @@ private:
 
     virtual void configure(epics::pvData::PVStructure::shared_pointer configuration)
     {   // remove?
-        if (m_transportRegistry->numberOfActiveTransports() > 0)
+        if (m_transportRegistry.numberOfActiveTransports() > 0)
             throw std::runtime_error("Configure must be called when there is no transports active.");
 
         PVInt::shared_pointer pvStrategy = dynamic_pointer_cast<PVInt>(configuration->getSubField("strategy"));
@@ -4814,7 +4813,7 @@ private:
 
     virtual void flush()
     {
-        m_transportRegistry->toArray(m_flushTransports);
+        m_transportRegistry.toArray(m_flushTransports);
         TransportRegistry::transportVector_t::const_iterator iter = m_flushTransports.begin();
         while (iter != m_flushTransports.end())
             (*iter++)->flushSendQueue();
@@ -4897,7 +4896,7 @@ private:
      * PVA transport (virtual circuit) registry.
      * This registry contains all active transports - connections to PVA servers.
      */
-    TransportRegistry::shared_pointer m_transportRegistry;
+    TransportRegistry m_transportRegistry;
 
     /**
      * Response handler.

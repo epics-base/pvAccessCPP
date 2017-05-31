@@ -37,7 +37,7 @@ public:
     Channel::shared_pointer getChannel(pvAccessID id);
     Transport::shared_pointer getSearchTransport();
     Configuration::const_shared_pointer getConfiguration();
-    TransportRegistry::shared_pointer getTransportRegistry();
+    TransportRegistry* getTransportRegistry();
     std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins();
 
     virtual void newServerDetected();
@@ -203,7 +203,7 @@ private:
      * PVA transport (virtual circuit) registry.
      * This registry contains all active transports - connections to PVA servers.
      */
-    TransportRegistry::shared_pointer _transportRegistry;
+    TransportRegistry _transportRegistry;
 
     /**
      * Response handler.

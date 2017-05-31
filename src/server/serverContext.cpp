@@ -212,7 +212,6 @@ void ServerContextImpl::initialize()
     //osiSockAttach();
 
     _timer.reset(new Timer("pvAccess-server timer", lowerPriority));
-    _transportRegistry.reset(new TransportRegistry());
 
     ServerContextImpl::shared_pointer thisServerContext = shared_from_this();
     _responseHandler.reset(new ServerResponseHandler(thisServerContext));
@@ -284,13 +283,7 @@ void ServerContextImpl::shutdown()
 void ServerContextImpl::destroyAllTransports()
 {
 
-    // not initialized yet
-    if (!_transportRegistry.get())
-    {
-        return;
-    }
-
-    std::auto_ptr<TransportRegistry::transportVector_t> transports = _transportRegistry->toArray();
+    std::auto_ptr<TransportRegistry::transportVector_t> transports = _transportRegistry.toArray();
     if (transports.get() == 0)
         return;
 
@@ -324,7 +317,7 @@ void ServerContextImpl::destroyAllTransports()
     }
 
     // now clear all (release)
-    _transportRegistry->clear();
+    _transportRegistry.clear();
 
 }
 
@@ -439,9 +432,9 @@ Timer::shared_pointer ServerContextImpl::getTimer()
     return _timer;
 }
 
-TransportRegistry::shared_pointer ServerContextImpl::getTransportRegistry()
+epics::pvAccess::TransportRegistry* ServerContextImpl::getTransportRegistry()
 {
-    return _transportRegistry;
+    return &_transportRegistry;
 }
 
 Channel::shared_pointer ServerContextImpl::getChannel(pvAccessID /*id*/)
