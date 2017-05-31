@@ -1,7 +1,8 @@
 Release 5.x.x
 ==========
 
-*
+* Add new library pvAccessIOC for use with PVAClientRegister.dbd and PVAServerRegister.dbd.
+  Necessary to avoid having pvAccess library depend on all IOC core libraries.
 
 Release 5.0.0
 ==========

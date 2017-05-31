@@ -8,6 +8,9 @@ DIRS := configure
 DIRS += src
 src_DEPEND_DIRS = configure
 
+DIRS += src/ioc
+src/ioc_DEPEND_DIRS = src
+
 DIRS += pvtoolsSrc
 pvtoolsSrc_DEPEND_DIRS = src
 

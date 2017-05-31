@@ -1,6 +1,7 @@
-# This is a Makefile fragment, see ../Makefile
+TOP = ../..
+include $(TOP)/configure/CONFIG
 
-SRC_DIRS += $(PVACCESS_SRC)/ioc
+LIBRARY += pvAccessIOC
 
 INC += pv/syncChannelFind.h
 
@@ -9,3 +10,7 @@ DBD += PVAClientRegister.dbd
 
 LIBSRCS += PVAServerRegister.cpp
 LIBSRCS += PVAClientRegister.cpp
+
+pvAccessIOC_LIBS += $(EPICS_BASE_IOC_LIBS)
+
+include $(TOP)/configure/RULES
