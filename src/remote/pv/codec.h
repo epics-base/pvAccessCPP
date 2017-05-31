@@ -192,7 +192,6 @@ public:
     virtual int write(epics::pvData::ByteBuffer* src) = 0;
     virtual int read(epics::pvData::ByteBuffer* dst) = 0;
     virtual bool isOpen() = 0;
-    virtual void close() = 0;
 
 
     virtual ~AbstractCodec()
