@@ -27,29 +27,17 @@
 #include <pv/pvAccess.h>
 #include <pv/clientFactory.h>
 
-using std::cout;
-using std::endl;
-using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-
-static const iocshFuncDef startPVAClientFuncDef = {
-    "startPVAClient", 0, 0
-};
-
-extern "C" void startPVAClient(const iocshArgBuf *args)
+static void stopPVAClient(void*)
 {
-    ClientFactory::start();
+    ClientFactory::stop();
 }
-
 
 static void registerStartPVAClient(void)
 {
-    static int firstTime = 1;
-    if (firstTime) {
-        firstTime = 0;
-        iocshRegister(&startPVAClientFuncDef, startPVAClient);
-    }
+    ClientFactory::start();
+    epicsAtExit(stopPVAClient, 0);
 }
 
 
