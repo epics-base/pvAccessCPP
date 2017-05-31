@@ -282,27 +282,21 @@ void ServerContextImpl::shutdown()
 
 void ServerContextImpl::destroyAllTransports()
 {
+    TransportRegistry::transportVector_t transports;
+    _transportRegistry.toArray(transports);
 
-    std::auto_ptr<TransportRegistry::transportVector_t> transports = _transportRegistry.toArray();
-    if (transports.get() == 0)
-        return;
-
-    int size = (int)transports->size();
+    size_t size = transports.size();
     if (size == 0)
         return;
 
     LOG(logLevelInfo, "Server context still has %d transport(s) active and closing...", size);
 
-    for (int i = 0; i < size; i++)
+    for (size_t i = 0; i < size; i++)
     {
-        Transport::shared_pointer transport = (*transports)[i];
+        const Transport::shared_pointer& transport = transports[i];
         try
         {
             transport->close();
-            if(!transport.unique())
-                LOG(logLevelError, "Closed transport %s still has use_count=%u",
-                    transport->getRemoteName().c_str(),
-                    (unsigned)transport.use_count());
         }
         catch (std::exception &e)
         {
@@ -319,6 +313,14 @@ void ServerContextImpl::destroyAllTransports()
     // now clear all (release)
     _transportRegistry.clear();
 
+    for (size_t i = 0; i < size; i++)
+    {
+        const Transport::shared_pointer& transport = transports[i];
+        if(!transport.unique())
+            LOG(logLevelError, "Closed transport %s still has use_count=%u",
+                transport->getRemoteName().c_str(),
+                (unsigned)transport.use_count());
+    }
 }
 
 void ServerContext::printInfo()
