@@ -448,7 +448,6 @@ private:
      */
     epics::pvData::Mutex _mutex;
     epics::pvData::Mutex _sendMutex;
-    epics::pvData::Event _shutdownEvent;
 
     /**
      * Thread ID

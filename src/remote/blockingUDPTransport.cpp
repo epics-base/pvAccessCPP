@@ -163,7 +163,7 @@ void BlockingUDPTransport::close(bool waitForThreadToComplete) {
     // wait for send thread to exit cleanly
     if (_thread.get() && waitForThreadToComplete)
     {
-        if (!_shutdownEvent.wait(5.0))
+        if (!_thread->exitWait(5.0))
         {
             LOG(logLevelError,
                 "Receive thread for UDP socket %s has not exited.",
@@ -302,8 +302,6 @@ void BlockingUDPTransport::run() {
         string threadName = "UDP-rx "+inetAddressToString(_bindAddress);
         LOG(logLevelTrace, "Thread '%s' exiting.", threadName.c_str());
     }
-
-    _shutdownEvent.signal();
 }
 
 bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & transport,
