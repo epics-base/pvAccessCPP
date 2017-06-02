@@ -35,6 +35,8 @@
 namespace epics {
 namespace pvAccess {
 
+class BlockingUDPConnector;
+
 enum InetAddressType { inetAddressType_all, inetAddressType_unicast, inetAddressType_broadcast_multicast };
 
 class BlockingUDPTransport : public epics::pvData::NoDefaultMethods,
@@ -46,10 +48,13 @@ class BlockingUDPTransport : public epics::pvData::NoDefaultMethods,
 public:
     POINTER_DEFINITIONS(BlockingUDPTransport);
 
+private:
+    friend class BlockingUDPConnector;
     BlockingUDPTransport(bool serverFlag,
                          ResponseHandler::shared_pointer const & responseHandler,
                          SOCKET channel, osiSockAddr &bindAddress,
                          short remoteTransportRevision);
+public:
 
     static shared_pointer create(bool serverFlag,
                                  ResponseHandler::shared_pointer const & responseHandler,

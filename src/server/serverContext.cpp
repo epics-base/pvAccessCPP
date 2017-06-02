@@ -263,6 +263,7 @@ void ServerContextImpl::initialize()
     _timer.reset(new Timer("pvAccess-server timer", lowerPriority));
 
     ServerContextImpl::shared_pointer thisServerContext = shared_from_this();
+    // we create reference cycles here which are broken by our shutdown() method,
     _responseHandler.reset(new ServerResponseHandler(thisServerContext));
 
     _acceptor.reset(new BlockingTCPAcceptor(thisServerContext, _responseHandler, _ifaceAddr, _receiveBufferSize));
