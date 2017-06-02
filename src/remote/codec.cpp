@@ -1032,12 +1032,6 @@ void BlockingTCPTransportCodec::close() {
 
         // post close
         internalPostClose(true);
-
-        // wait for threads
-        if(!_sendThread.isCurrentThread())
-            _sendThread.exitWait();
-        if(!_readThread.isCurrentThread())
-            _readThread.exitWait();
     }
 }
 
