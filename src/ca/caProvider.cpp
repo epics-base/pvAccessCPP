@@ -15,9 +15,12 @@
 #include <pv/caProvider.h>
 #include <pv/caChannel.h>
 
+namespace epics {
+namespace pvAccess {
+namespace ca {
+
 using namespace epics::pvData;
 using namespace epics::pvAccess;
-using namespace epics::pvAccess::ca;
 
 #define EXCEPTION_GUARD(code) try { code; } \
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
@@ -165,23 +168,25 @@ void CAChannelProvider::initialize()
 }
 
 
-
-
-
-
-
-
-
-
-
-// TODO global static variable (de/initialization order not guaranteed)
-static Mutex mutex;
-static CAChannelProvider::shared_pointer sharedProvider;
-
-class CAChannelProviderFactoryImpl : public ChannelProviderFactory
+class CAChannelProviderFactory : public ChannelProviderFactory
 {
+private:
+    Mutex m_mutex;
+    CAChannelProvider::shared_pointer sharedProvider;
 public:
-    POINTER_DEFINITIONS(CAChannelProviderFactoryImpl);
+    POINTER_DEFINITIONS(CAChannelProviderFactory);
+
+   virtual ~CAChannelProviderFactory()
+    {
+        Lock guard(m_mutex);
+        if (sharedProvider)
+        {
+            CAChannelProvider::shared_pointer provider;
+            sharedProvider.swap(provider);
+            // factroy cleans up also shared provider
+            provider->destroy();
+        }
+    }
 
     virtual std::string getFactoryName()
     {
@@ -190,8 +195,8 @@ public:
 
     virtual ChannelProvider::shared_pointer sharedInstance()
     {
-        Lock guard(mutex);
-        if (!sharedProvider.get())
+        Lock guard(m_mutex);
+        if (!sharedProvider)
         {
             try {
                 // TODO use std::make_shared
@@ -224,35 +229,47 @@ public:
         }
     }
 
-    void destroySharedInstance()
-    {
-        if(!sharedProvider) return;
-        sharedProvider->destroy();
-        sharedProvider.reset();
-    }
 };
 
-static CAChannelProviderFactoryImpl::shared_pointer factory;
+static Mutex startStopMutex;
+
+ChannelProviderRegistry::shared_pointer CAClientFactory::channelRegistry = ChannelProviderRegistry::shared_pointer();
+CAChannelProviderFactoryPtr  CAClientFactory::channelProvider = CAChannelProviderFactory::shared_pointer();
+int CAClientFactory::numStart = 0;
+
 
 void CAClientFactory::start()
 {
+    Lock guard(startStopMutex);
+std::cout << "CAClientFactory::start() numStart " << numStart << std::endl; 
+    ++numStart;
+    if(numStart>1) return;
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
-
-    Lock guard(mutex);
-    if (!factory.get())
-        factory.reset(new CAChannelProviderFactoryImpl());
-
-    registerChannelProviderFactory(factory);
+    channelProvider.reset(new CAChannelProviderFactory());
+    channelRegistry = ChannelProviderRegistry::getChannelProviderRegistry();
+std::cout << "channelRegistry::use_count " << channelRegistry.use_count() << std::endl;
+    channelRegistry->registerChannelProviderFactory(channelProvider);    
 }
 
 void CAClientFactory::stop()
 {
-    Lock guard(mutex);
-
-    if (factory.get())
+std::cout << "ClientFactory::stop() numStart " << numStart << std::endl; 
+std::cout << "channelRegistry::use_count " << channelRegistry.use_count() << std::endl;
+    Lock guard(startStopMutex);
+    if(numStart==0) return;
+    --numStart;
+    if(numStart>=1) return;
+    if (channelProvider)
     {
-        unregisterChannelProviderFactory(factory);
-        factory->destroySharedInstance();
+        channelRegistry->unregisterChannelProviderFactory(channelProvider);
+        if(!channelProvider.unique()) {
+            LOG(logLevelWarn, "ClientFactory::stop() finds shared client context with %u remaining users",
+                (unsigned)channelProvider.use_count());
+        }
+        channelProvider.reset();
+        channelRegistry.reset();
     }
 }
+
+}}}

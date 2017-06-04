@@ -21,6 +21,42 @@ using std::string;
 namespace epics {
 namespace pvAccess {
 
+ChannelProviderRegistry::ChannelProviderRegistry()
+{
+std::cout << "ChannelProviderRegistry\n";
+}
+
+ChannelProviderRegistry::~ChannelProviderRegistry()
+{
+std::cout << "~ChannelProviderRegistry\n";
+}
+
+
+ChannelProviderRegistry::shared_pointer ChannelProviderRegistry::getChannelProviderRegistry()
+{
+    static Mutex mutex;
+    static ChannelProviderRegistry::shared_pointer global_reg;
+    Lock guard(mutex);
+    if(!global_reg) {
+        global_reg = ChannelProviderRegistry::build();
+    }
+    return global_reg;
+}
+
+void ChannelProviderRegistry::registerChannelProviderFactory(
+         ChannelProviderFactory::shared_pointer const & channelProviderFactory)
+{
+    assert(channelProviderFactory);
+    add(channelProviderFactory);
+}
+
+void ChannelProviderRegistry::unregisterChannelProviderFactory(
+         ChannelProviderFactory::shared_pointer const & channelProviderFactory)
+{
+    assert(channelProviderFactory);
+    remove(channelProviderFactory->getFactoryName());
+}
+
 ChannelProvider::shared_pointer ChannelProviderRegistry::getProvider(std::string const & providerName) {
     ChannelProviderFactory::shared_pointer fact(getFactory(providerName));
     if(fact)
@@ -78,6 +114,7 @@ bool ChannelProviderRegistry::add(const ChannelProviderFactory::shared_pointer& 
 }
 
 ChannelProviderFactory::shared_pointer ChannelProviderRegistry::remove(const std::string& name)
+
 {
     ChannelProviderFactory::shared_pointer ret;
     providers_t::iterator iter(providers.find(name));
@@ -89,24 +126,18 @@ ChannelProviderFactory::shared_pointer ChannelProviderRegistry::remove(const std
 }
 
 ChannelProviderRegistry::shared_pointer getChannelProviderRegistry() {
-    static Mutex mutex;
-    static ChannelProviderRegistry::shared_pointer global_reg;
-    Lock guard(mutex);
-
-    if(!global_reg) {
-        global_reg = ChannelProviderRegistry::build();
-    }
-    return global_reg;
+std::cerr << "getChannelProviderRegistry should not be used\n";
+    return ChannelProviderRegistry::getChannelProviderRegistry();
 }
 
 void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) {
-    assert(channelProviderFactory);
-    getChannelProviderRegistry()->add(channelProviderFactory);
+std::cerr << "registerChannelProviderFactory should not be used\n";
+     getChannelProviderRegistry()->registerChannelProviderFactory(channelProviderFactory);
 }
 
 void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) {
-    assert(channelProviderFactory);
-    getChannelProviderRegistry()->remove(channelProviderFactory->getFactoryName());
+std::cerr << "unregisterChannelProviderFactory should not be used\n";
+    getChannelProviderRegistry()->unregisterChannelProviderFactory(channelProviderFactory);
 }
 
 epicsShareFunc void unregisterAllChannelProviderFactory()

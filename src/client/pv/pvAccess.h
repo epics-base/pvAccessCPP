@@ -998,7 +998,29 @@ class epicsShareClass ChannelProviderRegistry {
 public:
     POINTER_DEFINITIONS(ChannelProviderRegistry);
 
+    ~ChannelProviderRegistry();
+
     typedef std::vector<std::string> stringVector_t;
+
+    /**
+     * Get a shared instance of the single instance of ChannelProviderRegistry.
+     * The caller must keep the shared instance until the caller no longer needs
+     * the registry. The first call creates the single instance.
+     * @return The interface for ChannelProviderRegistry
+     */
+    static ChannelProviderRegistry::shared_pointer getChannelProviderRegistry();
+    /**
+     * Register a ChannelProviderFactory.
+     * @param channelProviderFactory The ChannelProviderFactory.
+     */
+    void registerChannelProviderFactory(
+         ChannelProviderFactory::shared_pointer const & channelProviderFactory);
+    /**
+     * Unregister a ChannelProviderFactory.
+     * @param channelProviderFactory The ChannelProviderFactory.
+     */
+    void unregisterChannelProviderFactory(
+         ChannelProviderFactory::shared_pointer const & channelProviderFactory);
 
     /**
      * Get a shared instance of the provider with the specified name.
@@ -1064,18 +1086,22 @@ public:
     }
 
 private:
-    ChannelProviderRegistry() {}
+//    ChannelProviderRegistry() {}
+    ChannelProviderRegistry();
+    
 
     epics::pvData::Mutex mutex;
     typedef std::map<std::string, ChannelProviderFactory::shared_pointer> providers_t;
     providers_t providers;
 };
 
-//! never returns NULL
-epicsShareFunc ChannelProviderRegistry::shared_pointer getChannelProviderRegistry();
-epicsShareFunc void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
-epicsShareFunc void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
-epicsShareFunc void unregisterAllChannelProviderFactory();
+// THE FOLLOWING SHOULD NOT BE CALLED
+epicsShareFunc ChannelProviderRegistry::shared_pointer getChannelProviderRegistry() EPICS_DEPRECATED;
+epicsShareFunc void registerChannelProviderFactory(
+     ChannelProviderFactory::shared_pointer const & channelProviderFactory) EPICS_DEPRECATED;
+epicsShareFunc void unregisterChannelProviderFactory(
+     ChannelProviderFactory::shared_pointer const & channelProviderFactory) EPICS_DEPRECATED;
+epicsShareFunc void unregisterAllChannelProviderFactory() EPICS_DEPRECATED;
 
 
 /**

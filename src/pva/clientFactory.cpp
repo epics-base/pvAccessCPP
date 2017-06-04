@@ -15,8 +15,10 @@
 #include <pv/clientFactory.h>
 #include <pv/clientContextImpl.h>
 
+namespace epics {
+namespace pvAccess {
+
 using namespace epics::pvData;
-using namespace epics::pvAccess;
 
 class ChannelProviderFactoryImpl : public ChannelProviderFactory
 {
@@ -62,32 +64,45 @@ public:
     }
 };
 
-static Mutex cprovfact_mutex;
-static ChannelProviderFactoryImpl::shared_pointer pva_factory;
+static Mutex startStopMutex;
+
+ChannelProviderRegistryPtr ClientFactory::channelRegistry = ChannelProviderRegistryPtr();
+ChannelProviderFactoryImplPtr ClientFactory::channelProvider = ChannelProviderFactoryImplPtr();
+int ClientFactory::numStart = 0;
 
 void ClientFactory::start()
 {
+   Lock guard(startStopMutex);
+std::cout << "ClientFactory::start() numStart " << numStart << std::endl; 
+    ++numStart;
+    if(numStart>1) return;
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
-
-    Lock guard(cprovfact_mutex);
-    if (!pva_factory)
-        pva_factory.reset(new ChannelProviderFactoryImpl());
-
-    registerChannelProviderFactory(pva_factory);
+    channelProvider.reset(new ChannelProviderFactoryImpl());
+    channelRegistry = ChannelProviderRegistry::getChannelProviderRegistry();
+std::cout << "channelRegistry::use_count " << channelRegistry.use_count() << std::endl;
+    channelRegistry->registerChannelProviderFactory(channelProvider);
 }
 
 void ClientFactory::stop()
 {
-    Lock guard(cprovfact_mutex);
+std::cout << "ClientFactory::stop() numStart " << numStart << std::endl; 
+std::cout << "channelRegistry::use_count " << channelRegistry.use_count() << std::endl;
+    Lock guard(startStopMutex);
+    if(numStart==0) return;
+    --numStart;
+    if(numStart>=1) return;
 
-    if (pva_factory)
+    if (channelProvider)
     {
-        unregisterChannelProviderFactory(pva_factory);
-        if(!pva_factory.unique()) {
+        channelRegistry->unregisterChannelProviderFactory(channelProvider);
+        if(!channelProvider.unique()) {
             LOG(logLevelWarn, "ClientFactory::stop() finds shared client context with %u remaining users",
-                (unsigned)pva_factory.use_count());
+                (unsigned)channelProvider.use_count());
         }
-        pva_factory.reset();
+        channelProvider.reset();
+        channelRegistry.reset();
     }
 }
+
+}}
