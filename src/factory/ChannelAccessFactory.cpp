@@ -43,19 +43,6 @@ ChannelProviderRegistry::shared_pointer ChannelProviderRegistry::getChannelProvi
     return global_reg;
 }
 
-void ChannelProviderRegistry::registerChannelProviderFactory(
-         ChannelProviderFactory::shared_pointer const & channelProviderFactory)
-{
-    assert(channelProviderFactory);
-    add(channelProviderFactory);
-}
-
-void ChannelProviderRegistry::unregisterChannelProviderFactory(
-         ChannelProviderFactory::shared_pointer const & channelProviderFactory)
-{
-    assert(channelProviderFactory);
-    remove(channelProviderFactory->getFactoryName());
-}
 
 ChannelProvider::shared_pointer ChannelProviderRegistry::getProvider(std::string const & providerName) {
     ChannelProviderFactory::shared_pointer fact(getFactory(providerName));
@@ -132,12 +119,12 @@ std::cerr << "getChannelProviderRegistry should not be used\n";
 
 void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) {
 std::cerr << "registerChannelProviderFactory should not be used\n";
-     getChannelProviderRegistry()->registerChannelProviderFactory(channelProviderFactory);
+     getChannelProviderRegistry()->add(channelProviderFactory);
 }
 
 void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) {
 std::cerr << "unregisterChannelProviderFactory should not be used\n";
-    getChannelProviderRegistry()->unregisterChannelProviderFactory(channelProviderFactory);
+    getChannelProviderRegistry()->remove(channelProviderFactory->getFactoryName());
 }
 
 epicsShareFunc void unregisterAllChannelProviderFactory()

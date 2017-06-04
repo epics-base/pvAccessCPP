@@ -17,13 +17,13 @@ namespace pvAccess {
 class ChannelProviderRegistry;
 typedef std::tr1::shared_ptr<ChannelProviderRegistry> ChannelProviderRegistryPtr;
 
-class ChannelProviderFactoryImpl;
-typedef std::tr1::shared_ptr<ChannelProviderFactoryImpl> ChannelProviderFactoryImplPtr;
+class ChannelProviderFactory;
+typedef std::tr1::shared_ptr<ChannelProviderFactory> ChannelProviderFactoryPtr;
 
 class epicsShareClass ClientFactory {
 private:
     static ChannelProviderRegistryPtr channelRegistry;
-    static ChannelProviderFactoryImplPtr channelProvider;
+    static ChannelProviderFactoryPtr channelProvider;
     static int numStart;
 public:
     static void start();

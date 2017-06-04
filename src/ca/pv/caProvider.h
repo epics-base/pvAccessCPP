@@ -82,13 +82,11 @@ private:
     bool destroyed;
 };
 
-class CAChannelProviderFactory;
-typedef std::tr1::shared_ptr<CAChannelProviderFactory> CAChannelProviderFactoryPtr;
 
 class epicsShareClass CAClientFactory {
 private:
     static epics::pvAccess::ChannelProviderRegistry::shared_pointer channelRegistry;
-    static CAChannelProviderFactoryPtr channelProvider;
+    static epics::pvAccess::ChannelProviderFactory::shared_pointer channelProvider;
     static int numStart;
 public:
     static void start();

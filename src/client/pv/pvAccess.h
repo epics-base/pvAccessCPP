@@ -1010,19 +1010,6 @@ public:
      */
     static ChannelProviderRegistry::shared_pointer getChannelProviderRegistry();
     /**
-     * Register a ChannelProviderFactory.
-     * @param channelProviderFactory The ChannelProviderFactory.
-     */
-    void registerChannelProviderFactory(
-         ChannelProviderFactory::shared_pointer const & channelProviderFactory);
-    /**
-     * Unregister a ChannelProviderFactory.
-     * @param channelProviderFactory The ChannelProviderFactory.
-     */
-    void unregisterChannelProviderFactory(
-         ChannelProviderFactory::shared_pointer const & channelProviderFactory);
-
-    /**
      * Get a shared instance of the provider with the specified name.
      * @param providerName The name of the provider.
      * @return The interface for the provider or null if the provider is not known.

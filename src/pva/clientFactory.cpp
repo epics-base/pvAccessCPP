@@ -66,8 +66,8 @@ public:
 
 static Mutex startStopMutex;
 
-ChannelProviderRegistryPtr ClientFactory::channelRegistry = ChannelProviderRegistryPtr();
-ChannelProviderFactoryImplPtr ClientFactory::channelProvider = ChannelProviderFactoryImplPtr();
+ChannelProviderRegistryPtr ClientFactory::channelRegistry;
+ChannelProviderFactoryPtr ClientFactory::channelProvider;
 int ClientFactory::numStart = 0;
 
 void ClientFactory::start()
@@ -81,7 +81,7 @@ std::cout << "ClientFactory::start() numStart " << numStart << std::endl;
     channelProvider.reset(new ChannelProviderFactoryImpl());
     channelRegistry = ChannelProviderRegistry::getChannelProviderRegistry();
 std::cout << "channelRegistry::use_count " << channelRegistry.use_count() << std::endl;
-    channelRegistry->registerChannelProviderFactory(channelProvider);
+    channelRegistry->add(channelProvider);
 }
 
 void ClientFactory::stop()
@@ -95,7 +95,7 @@ std::cout << "channelRegistry::use_count " << channelRegistry.use_count() << std
 
     if (channelProvider)
     {
-        channelRegistry->unregisterChannelProviderFactory(channelProvider);
+        channelRegistry->remove(ClientContextImpl::PROVIDER_NAME);
         if(!channelProvider.unique()) {
             LOG(logLevelWarn, "ClientFactory::stop() finds shared client context with %u remaining users",
                 (unsigned)channelProvider.use_count());

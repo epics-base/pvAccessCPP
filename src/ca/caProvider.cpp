@@ -233,8 +233,8 @@ public:
 
 static Mutex startStopMutex;
 
-ChannelProviderRegistry::shared_pointer CAClientFactory::channelRegistry = ChannelProviderRegistry::shared_pointer();
-CAChannelProviderFactoryPtr  CAClientFactory::channelProvider = CAChannelProviderFactory::shared_pointer();
+ChannelProviderRegistry::shared_pointer CAClientFactory::channelRegistry;
+ChannelProviderFactory::shared_pointer  CAClientFactory::channelProvider;
 int CAClientFactory::numStart = 0;
 
 
@@ -249,7 +249,7 @@ std::cout << "CAClientFactory::start() numStart " << numStart << std::endl;
     channelProvider.reset(new CAChannelProviderFactory());
     channelRegistry = ChannelProviderRegistry::getChannelProviderRegistry();
 std::cout << "channelRegistry::use_count " << channelRegistry.use_count() << std::endl;
-    channelRegistry->registerChannelProviderFactory(channelProvider);    
+    channelRegistry->add(channelProvider);   
 }
 
 void CAClientFactory::stop()
@@ -262,7 +262,7 @@ std::cout << "channelRegistry::use_count " << channelRegistry.use_count() << std
     if(numStart>=1) return;
     if (channelProvider)
     {
-        channelRegistry->unregisterChannelProviderFactory(channelProvider);
+        channelRegistry->remove(CAChannelProvider::PROVIDER_NAME);
         if(!channelProvider.unique()) {
             LOG(logLevelWarn, "ClientFactory::stop() finds shared client context with %u remaining users",
                 (unsigned)channelProvider.use_count());

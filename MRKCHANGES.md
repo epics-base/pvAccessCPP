@@ -48,14 +48,10 @@ All these changes are in the github repositories belonging to mrkraimer.
 ChannelProviderRegistry
 -----------------------
 
-The following new methods are added to ChannelProviderRegistry:
+The following new method is added to ChannelProviderRegistry:
 
 
     static ChannelProviderRegistry::shared_pointer getChannelProviderRegistry();
-    void registerChannelProviderFactory(
-         ChannelProviderFactory::shared_pointer const & channelProviderFactory);
-    void unregisterChannelProviderFactory(
-         ChannelProviderFactory::shared_pointer const & channelProviderFactory);
 
 **getChannelProviderRegistry** creates the single instance of **ChannelProviderRegistry**
 the first time it is called and always returns a shared pointer to the single
