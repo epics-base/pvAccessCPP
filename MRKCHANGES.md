@@ -61,8 +61,8 @@ The following new methods are added to ChannelProviderRegistry:
 the first time it is called and always returns a shared pointer to the single
 instance,
 
-Any facility that calls this must keep the shared pointer until the faciliity no longer requires
-use of the registry or any channel provider the facliity uses.
+Any facility that calls the start/stop methods of any channelProvider factory must keep the shared pointer
+until the facility no longer requires use of the registry or any channel provider the facility uses.
 
 The above methods replace the following functions:
 
