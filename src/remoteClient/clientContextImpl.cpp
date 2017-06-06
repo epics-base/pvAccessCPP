@@ -47,7 +47,6 @@ using namespace epics::pvData;
 namespace epics {
 namespace pvAccess {
 
-string ClientContextImpl::PROVIDER_NAME = "pva";
 Status ChannelImpl::channelDestroyed(
     Status::STATUSTYPE_WARNING, "channel destroyed");
 Status ChannelImpl::channelDisconnected(
@@ -3302,7 +3301,7 @@ public:
 
     virtual std::string getProviderName()
     {
-        return PROVIDER_NAME;
+        return "pva";
     }
 
     virtual ChannelFind::shared_pointer channelFind(

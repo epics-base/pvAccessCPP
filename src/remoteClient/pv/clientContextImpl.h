@@ -67,8 +67,6 @@ class ClientContextImpl : public Context
 public:
     POINTER_DEFINITIONS(ClientContextImpl);
 
-    static std::string PROVIDER_NAME;
-
     /**
      * Get context implementation version.
      * @return version of the context implementation.
