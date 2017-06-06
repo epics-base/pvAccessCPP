@@ -9,9 +9,11 @@
 /* for CA */
 #include <cadef.h>
 #include <epicsSignal.h>
+#include <epicsThread.h>
 
 #define epicsExportSharedSymbols
 #include <pv/logger.h>
+#include <pv/configuration.h>
 #include <pv/caProvider.h>
 #include <pv/caChannel.h>
 
@@ -23,10 +25,17 @@ using namespace epics::pvAccess::ca;
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
 
-std::string CAChannelProvider::PROVIDER_NAME = "ca";
-
 CAChannelProvider::CAChannelProvider() : current_context(0), destroyed(false)
 {
+    initialize();
+}
+
+CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
+    : current_context(0)
+    , destroyed(false)
+{
+    // Ignoring Configuration as CA only allows config via. environment,
+    // and we don't want to change this here.
     initialize();
 }
 
@@ -38,7 +47,7 @@ CAChannelProvider::~CAChannelProvider()
 
 std::string CAChannelProvider::getProviderName()
 {
-    return PROVIDER_NAME;
+    return "ca";
 }
 
 ChannelFind::shared_pointer CAChannelProvider::channelFind(
@@ -165,94 +174,42 @@ void CAChannelProvider::initialize()
 }
 
 
+static epicsThreadOnceId cafactory_once = EPICS_THREAD_ONCE_INIT;
+static struct cafactory_gbl_t {
+    Mutex mutex;
+    int count;
+    cafactory_gbl_t() :count(0u) {}
+} *cafactory_gbl;
 
-
-
-
-
-
-
-
-
-// TODO global static variable (de/initialization order not guaranteed)
-static Mutex mutex;
-static CAChannelProvider::shared_pointer sharedProvider;
-
-class CAChannelProviderFactoryImpl : public ChannelProviderFactory
+static
+void cafactory_init(void*)
 {
-public:
-    POINTER_DEFINITIONS(CAChannelProviderFactoryImpl);
-
-    virtual std::string getFactoryName()
-    {
-        return CAChannelProvider::PROVIDER_NAME;
-    }
-
-    virtual ChannelProvider::shared_pointer sharedInstance()
-    {
-        Lock guard(mutex);
-        if (!sharedProvider.get())
-        {
-            try {
-                // TODO use std::make_shared
-                std::tr1::shared_ptr<CAChannelProvider> tp(new CAChannelProvider());
-                sharedProvider = tp;
-            } catch (std::exception &e) {
-                LOG(logLevelError, "Unhandled exception caught at %s:%d: %s", __FILE__, __LINE__, e.what());
-            } catch (...) {
-                LOG(logLevelError, "Unhandled exception caught at %s:%d.", __FILE__, __LINE__);
-            }
-        }
-        return sharedProvider;
-    }
-
-    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf)
-    {
-        // Ignoring configuration as CA only allows config via. environment,
-        // and we don't want to change this here.
-        try {
-            // TODO use std::make_shared
-            std::tr1::shared_ptr<CAChannelProvider> tp(new CAChannelProvider());
-            ChannelProvider::shared_pointer ni = tp;
-            return ni;
-        } catch (std::exception &e) {
-            LOG(logLevelError, "Unhandled exception caught at %s:%d: %s", __FILE__, __LINE__, e.what());
-            return ChannelProvider::shared_pointer();
-        } catch (...) {
-            LOG(logLevelError, "Unhandled exception caught at %s:%d.", __FILE__, __LINE__);
-            return ChannelProvider::shared_pointer();
-        }
-    }
-
-    void destroySharedInstance()
-    {
-        if(!sharedProvider) return;
-        sharedProvider->destroy();
-        sharedProvider.reset();
-    }
-};
-
-static CAChannelProviderFactoryImpl::shared_pointer factory;
+    cafactory_gbl = new cafactory_gbl_t;
+}
 
 void CAClientFactory::start()
 {
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
 
-    Lock guard(mutex);
-    if (!factory.get())
-        factory.reset(new CAChannelProviderFactoryImpl());
+    epicsThreadOnce(&cafactory_once, &cafactory_init, 0);
 
-    registerChannelProviderFactory(factory);
+    Lock guard(cafactory_gbl->mutex);
+    if(cafactory_gbl->count++==0) {
+        if(!getChannelProviderRegistry()->add<CAChannelProvider>("ca", false))
+            LOG(logLevelError, "Unable to register \"ca\" provider\n");
+    }
 }
 
 void CAClientFactory::stop()
 {
-    Lock guard(mutex);
+    epicsThreadOnce(&cafactory_once, &cafactory_init, 0);
 
-    if (factory.get())
-    {
-        unregisterChannelProviderFactory(factory);
-        factory->destroySharedInstance();
+    Lock guard(cafactory_gbl->mutex);
+
+    if(--cafactory_gbl->count==0) {
+        getChannelProviderRegistry()->remove("ca");
     }
+    if(cafactory_gbl->count<0)
+        LOG(logLevelError, "too many calls to CAClientFactory::stop()");
 }
