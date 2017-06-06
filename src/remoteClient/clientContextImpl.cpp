@@ -4712,10 +4712,9 @@ private:
             //static_pointer_cast<BlockingTCPTransport>(t)->setFlushStrategy(m_flushStrategy);
             return t;
         }
-        catch (...)
+        catch (std::exception& e)
         {
-            // TODO log
-            //printf("failed to get transport\n");
+            LOG(logLevelError, "getTransport() fails: %s\n", e.what());
             return Transport::shared_pointer();
         }
     }
