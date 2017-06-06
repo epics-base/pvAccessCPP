@@ -1162,11 +1162,12 @@ struct SimpleChannelProviderFactory : public ChannelProviderFactory
     virtual ChannelProvider::shared_pointer sharedInstance()
     {
         epics::pvData::Lock L(sharedM);
-        if(!shared) {
-            std::tr1::shared_ptr<Configuration> empty;
-            shared.reset(new Provider(empty));
+        ChannelProvider::shared_pointer ret(shared.lock());
+        if(!ret) {
+            ret.reset(new Provider(std::tr1::shared_ptr<Configuration>()));
+            shared = ret;
         }
-        return shared;
+        return ret;
     }
 
     virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf)
@@ -1178,7 +1179,7 @@ struct SimpleChannelProviderFactory : public ChannelProviderFactory
 private:
     const std::string pname;
     epics::pvData::Mutex sharedM;
-    std::tr1::shared_ptr<Provider> shared;
+    ChannelProvider::weak_pointer shared;
 };
 
 /**
