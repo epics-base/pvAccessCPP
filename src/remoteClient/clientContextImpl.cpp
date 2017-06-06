@@ -110,10 +110,6 @@ public:
     static Status invalidBitSetLengthStatus;
     static Status pvRequestNull;
 
-    static PVStructure::shared_pointer nullPVStructure;
-    static Structure::const_shared_pointer nullStructure;
-    static BitSet::shared_pointer nullBitSet;
-
     static BitSet::shared_pointer createBitSetFor(
         PVStructure::shared_pointer const & pvStructure,
         BitSet::shared_pointer const & existingBitSet)
@@ -400,10 +396,6 @@ Status BaseRequestImpl::invalidPutArrayStatus(Status::STATUSTYPE_ERROR, "incompa
 Status BaseRequestImpl::invalidBitSetLengthStatus(Status::STATUSTYPE_ERROR, "invalid bit-set length");
 Status BaseRequestImpl::pvRequestNull(Status::STATUSTYPE_ERROR, "pvRequest == 0");
 
-PVStructure::shared_pointer BaseRequestImpl::nullPVStructure;
-Structure::const_shared_pointer BaseRequestImpl::nullStructure;
-BitSet::shared_pointer BaseRequestImpl::nullBitSet;
-
 PVACCESS_REFCOUNT_MONITOR_DEFINE(channelProcess);
 
 class ChannelProcessRequestImpl :
@@ -574,7 +566,7 @@ private:
         if (!m_pvRequest)
         {
             ChannelGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelGet>(shared_from_this());
-            EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(pvRequestNull, thisPointer, nullStructure));
+            EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(pvRequestNull, thisPointer, StructureConstPtr()));
             return;
         }
 
@@ -587,7 +579,7 @@ private:
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
         } catch (std::runtime_error &rte) {
             ChannelGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelGet>(shared_from_this());
-            EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(channelDestroyed, thisPointer, nullStructure));
+            EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(channelDestroyed, thisPointer, StructureConstPtr()));
             BaseRequestImpl::destroy(true);
         }
     }
@@ -641,7 +633,7 @@ public:
         if (!status.isSuccess())
         {
             ChannelGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelGet>(shared_from_this());
-            EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(status, thisPointer, nullStructure));
+            EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(status, thisPointer, StructureConstPtr()));
             return;
         }
 
@@ -665,7 +657,7 @@ public:
 
         if (!status.isSuccess())
         {
-            EXCEPTION_GUARD(m_channelGetRequester->getDone(status, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD(m_channelGetRequester->getDone(status, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
@@ -691,11 +683,11 @@ public:
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_channelGetRequester->getDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD(m_channelGetRequester->getDone(destroyedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelGetRequester->getDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD(m_channelGetRequester->getDone(notInitializedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
         }
@@ -713,7 +705,7 @@ public:
                     }
           */
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_GET : QOS_DEFAULT)) {
-            EXCEPTION_GUARD(m_channelGetRequester->getDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD(m_channelGetRequester->getDone(otherRequestPendingStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
@@ -722,7 +714,7 @@ public:
             //TODO bulk hack m_channel->checkAndGetTransport()->enqueueOnlySendRequest(thisSender);
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelGetRequester->getDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD(m_channelGetRequester->getDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
     }
 
@@ -796,7 +788,7 @@ private:
         if (!m_pvRequest)
         {
             ChannelPut::shared_pointer thisPointer = dynamic_pointer_cast<ChannelPut>(shared_from_this());
-            EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(pvRequestNull, thisPointer, nullStructure));
+            EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(pvRequestNull, thisPointer, StructureConstPtr()));
             return;
         }
 
@@ -809,7 +801,7 @@ private:
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
         } catch (std::runtime_error &rte) {
             ChannelPut::shared_pointer thisPointer = dynamic_pointer_cast<ChannelPut>(shared_from_this());
-            EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(channelDestroyed, thisPointer, nullStructure));
+            EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(channelDestroyed, thisPointer, StructureConstPtr()));
             BaseRequestImpl::destroy(true);
         }
     }
@@ -868,7 +860,7 @@ public:
         if (!status.isSuccess())
         {
             ChannelPut::shared_pointer thisChannelPut = dynamic_pointer_cast<ChannelPut>(shared_from_this());
-            EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(status, thisChannelPut, nullStructure));
+            EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(status, thisChannelPut, StructureConstPtr()));
             return;
         }
 
@@ -892,7 +884,7 @@ public:
         {
             if (!status.isSuccess())
             {
-                EXCEPTION_GUARD(m_channelPutRequester->getDone(status, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD(m_channelPutRequester->getDone(status, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
 
@@ -917,17 +909,17 @@ public:
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_channelPutRequester->getDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD(m_channelPutRequester->getDone(destroyedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelPutRequester->getDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD(m_channelPutRequester->getDone(notInitializedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_GET | QOS_DESTROY : QOS_GET)) {
-            EXCEPTION_GUARD(m_channelPutRequester->getDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD(m_channelPutRequester->getDone(otherRequestPendingStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
@@ -936,7 +928,7 @@ public:
             m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelPutRequester->getDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD(m_channelPutRequester->getDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
     }
 
@@ -1057,7 +1049,7 @@ private:
         if (!m_pvRequest)
         {
             ChannelPutGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
-            EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(pvRequestNull, thisPointer, nullStructure, nullStructure));
+            EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(pvRequestNull, thisPointer, StructureConstPtr(), StructureConstPtr()));
             return;
         }
 
@@ -1067,7 +1059,7 @@ private:
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
         } catch (std::runtime_error &rte) {
             ChannelPutGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
-            EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(channelDestroyed, thisPointer, nullStructure, nullStructure));
+            EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(channelDestroyed, thisPointer, StructureConstPtr(), StructureConstPtr()));
             BaseRequestImpl::destroy(true);
         }
     }
@@ -1130,7 +1122,7 @@ public:
         if (!status.isSuccess())
         {
             ChannelPutGet::shared_pointer thisChannelPutGet = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
-            EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(status, thisChannelPutGet, nullStructure, nullStructure));
+            EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(status, thisChannelPutGet, StructureConstPtr(), StructureConstPtr()));
             return;
         }
 
@@ -1156,7 +1148,7 @@ public:
         {
             if (!status.isSuccess())
             {
-                EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(status, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(status, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
 
@@ -1173,7 +1165,7 @@ public:
         {
             if (!status.isSuccess())
             {
-                EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(status, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(status, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
 
@@ -1190,7 +1182,7 @@ public:
         {
             if (!status.isSuccess())
             {
-                EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(status, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(status, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
 
@@ -1213,29 +1205,29 @@ public:
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(destroyedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(notInitializedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
         }
 
         if (!(*m_putData->getStructure() == *pvPutStructure->getStructure()))
         {
-            EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(invalidPutStructureStatus, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(invalidPutStructureStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
         if (bitSet->size() < m_putDataBitSet->size())
         {
-            EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(invalidBitSetLengthStatus, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(invalidBitSetLengthStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY : QOS_DEFAULT)) {
-            EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(otherRequestPendingStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
@@ -1247,7 +1239,7 @@ public:
             m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
     }
 
@@ -1258,17 +1250,17 @@ public:
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(destroyedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(notInitializedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_GET : QOS_GET)) {
-            EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(otherRequestPendingStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
@@ -1276,7 +1268,7 @@ public:
             m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
     }
 
@@ -1287,17 +1279,17 @@ public:
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                m_channelPutGetRequester->getPutDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet);
+                m_channelPutGetRequester->getPutDone(destroyedStatus, thisPtr, PVStructurePtr(), BitSetPtr());
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(notInitializedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_GET_PUT : QOS_GET_PUT)) {
-            m_channelPutGetRequester->getPutDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet);
+            m_channelPutGetRequester->getPutDone(otherRequestPendingStatus, thisPtr, PVStructurePtr(), BitSetPtr());
             return;
         }
 
@@ -1305,7 +1297,7 @@ public:
             m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
     }
 
@@ -1465,7 +1457,7 @@ public:
 
         if (!status.isSuccess())
         {
-            EXCEPTION_GUARD(m_channelRPCRequester->requestDone(status, thisPtr, nullPVStructure));
+            EXCEPTION_GUARD(m_channelRPCRequester->requestDone(status, thisPtr, PVStructurePtr()));
             return;
         }
 
@@ -1481,17 +1473,17 @@ public:
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_channelRPCRequester->requestDone(destroyedStatus, thisPtr, nullPVStructure));
+                EXCEPTION_GUARD(m_channelRPCRequester->requestDone(destroyedStatus, thisPtr, PVStructurePtr()));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelRPCRequester->requestDone(notInitializedStatus, thisPtr, nullPVStructure));
+                EXCEPTION_GUARD(m_channelRPCRequester->requestDone(notInitializedStatus, thisPtr, PVStructurePtr()));
                 return;
             }
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY : QOS_DEFAULT)) {
-            EXCEPTION_GUARD(m_channelRPCRequester->requestDone(otherRequestPendingStatus, thisPtr, nullPVStructure));
+            EXCEPTION_GUARD(m_channelRPCRequester->requestDone(otherRequestPendingStatus, thisPtr, PVStructurePtr()));
             return;
         }
 
@@ -1503,7 +1495,7 @@ public:
             m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelRPCRequester->requestDone(channelNotConnected, thisPtr, nullPVStructure));
+            EXCEPTION_GUARD(m_channelRPCRequester->requestDone(channelNotConnected, thisPtr, PVStructurePtr()));
         }
     }
 
