@@ -7,6 +7,8 @@
 #include <map>
 #include <vector>
 
+#include <epicsThread.h>
+
 #include <pv/lock.h>
 #include <pv/noDefaultMethods.h>
 #include <pv/pvData.h>
@@ -140,15 +142,31 @@ bool ChannelProviderRegistry::remove(const ChannelProviderFactory::shared_pointe
     return false;
 }
 
-ChannelProviderRegistry::shared_pointer getChannelProviderRegistry() {
-    static Mutex mutex;
-    static ChannelProviderRegistry::shared_pointer global_reg;
-    Lock guard(mutex);
+namespace {
+struct providerRegGbl_t {
+    Mutex mutex;
+    ChannelProviderRegistry::shared_pointer reg;
+} *providerRegGbl;
 
-    if(!global_reg) {
-        global_reg = ChannelProviderRegistry::build();
+epicsThreadOnceId providerRegOnce = EPICS_THREAD_ONCE_INIT;
+
+void providerRegInit(void*)
+{
+    providerRegGbl = new providerRegGbl_t;
+}
+
+} // namespace
+
+ChannelProviderRegistry::shared_pointer getChannelProviderRegistry()
+{
+    epicsThreadOnce(&providerRegOnce, &providerRegInit, 0);
+
+    Lock guard(providerRegGbl->mutex);
+
+    if(!providerRegGbl->reg) {
+        providerRegGbl->reg = ChannelProviderRegistry::build();
     }
-    return global_reg;
+    return providerRegGbl->reg;
 }
 
 void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) {
