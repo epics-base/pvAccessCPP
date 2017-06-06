@@ -69,6 +69,7 @@ std::auto_ptr<ChannelProviderRegistry::stringVector_t> ChannelProviderRegistry::
 
 bool ChannelProviderRegistry::add(const ChannelProviderFactory::shared_pointer& fact, bool replace)
 {
+    assert(fact);
     Lock G(mutex);
     std::string name(fact->getFactoryName());
     if(!replace && providers.find(name)!=providers.end())
@@ -79,6 +80,7 @@ bool ChannelProviderRegistry::add(const ChannelProviderFactory::shared_pointer& 
 
 ChannelProviderFactory::shared_pointer ChannelProviderRegistry::remove(const std::string& name)
 {
+    Lock G(mutex);
     ChannelProviderFactory::shared_pointer ret;
     providers_t::iterator iter(providers.find(name));
     if(iter!=providers.end()) {
@@ -86,6 +88,18 @@ ChannelProviderFactory::shared_pointer ChannelProviderRegistry::remove(const std
         providers.erase(iter);
     }
     return ret;
+}
+
+bool ChannelProviderRegistry::remove(const ChannelProviderFactory::shared_pointer& fact)
+{
+    assert(fact);
+    Lock G(mutex);
+    providers_t::iterator iter(providers.find(fact->getFactoryName()));
+    if(iter!=providers.end() && iter->second==fact) {
+        providers.erase(iter);
+        return true;
+    }
+    return false;
 }
 
 ChannelProviderRegistry::shared_pointer getChannelProviderRegistry() {

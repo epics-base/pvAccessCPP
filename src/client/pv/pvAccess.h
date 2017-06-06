@@ -1237,15 +1237,18 @@ public:
 
     //! Add a new Provider which will be built using SimpleChannelProviderFactory<Provider>
     template<class Provider>
-    bool add(const std::string& name, bool replace=true)
+    ChannelProviderFactory::shared_pointer add(const std::string& name, bool replace=true)
     {
         typedef SimpleChannelProviderFactory<Provider> Factory;
         typename Factory::shared_pointer fact(new Factory(name));
-        return add(fact, replace);
+        return add(fact, replace) ? fact : typename Factory::shared_pointer();
     }
 
-    //! Attempt to remove named factory.  Return Factory which was removed, or NULL if not found.
+    //! Attempt to remove a factory with the given name.  Return Factory which was removed, or NULL if not found.
     ChannelProviderFactory::shared_pointer remove(const std::string& name);
+
+    //! Attempt to remove a factory.  Return true if Factory was previously registered, and now removed.
+    bool remove(const ChannelProviderFactory::shared_pointer& factory);
 
     //! Drop all factories
     void clear()
