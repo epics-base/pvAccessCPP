@@ -1245,6 +1245,10 @@ public:
         return add(fact, replace) ? fact : typename Factory::shared_pointer();
     }
 
+    typedef ChannelProvider::shared_pointer (*factoryfn_t)(const std::tr1::shared_ptr<Configuration>&);
+
+    ChannelProviderFactory::shared_pointer add(const std::string& name, factoryfn_t, bool replace=true);
+
     //! Attempt to remove a factory with the given name.  Return Factory which was removed, or NULL if not found.
     ChannelProviderFactory::shared_pointer remove(const std::string& name);
 

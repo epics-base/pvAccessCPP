@@ -78,6 +78,44 @@ bool ChannelProviderRegistry::add(const ChannelProviderFactory::shared_pointer& 
     return true;
 }
 
+namespace {
+struct FunctionFactory : public ChannelProviderFactory {
+    const std::string pname;
+    epics::pvData::Mutex sharedM;
+    ChannelProvider::weak_pointer shared;
+    const ChannelProviderRegistry::factoryfn_t fn;
+
+    FunctionFactory(const std::string& name, ChannelProviderRegistry::factoryfn_t fn)
+        :pname(name), fn(fn)
+    {}
+    virtual ~FunctionFactory() {}
+    virtual std::string getFactoryName() { return pname; }
+
+    virtual ChannelProvider::shared_pointer sharedInstance()
+    {
+        epics::pvData::Lock L(sharedM);
+        ChannelProvider::shared_pointer ret(shared.lock());
+        if(!ret) {
+            ret = fn(std::tr1::shared_ptr<Configuration>());
+            shared = ret;
+        }
+        return ret;
+    }
+
+    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf)
+    {
+        return fn(conf);
+    }
+
+};
+}//namespace
+
+ChannelProviderFactory::shared_pointer ChannelProviderRegistry::add(const std::string& name, factoryfn_t fn, bool replace)
+{
+    ChannelProviderFactory::shared_pointer F(new FunctionFactory(name, fn));
+    return add(F, replace) ? F : ChannelProviderFactory::shared_pointer();
+}
+
 ChannelProviderFactory::shared_pointer ChannelProviderRegistry::remove(const std::string& name)
 {
     Lock G(mutex);
