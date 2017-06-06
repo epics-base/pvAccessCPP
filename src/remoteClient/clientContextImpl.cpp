@@ -4282,7 +4282,7 @@ public:
     InternalClientContextImpl(const Configuration::shared_pointer& conf) :
         m_addressList(""), m_autoAddressList(true), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
         m_broadcastPort(PVA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV),
-        m_namedLocker(), m_lastCID(0), m_lastIOID(0),
+        m_lastCID(0), m_lastIOID(0),
         m_version("pvAccess Client", "cpp",
                   EPICS_PVA_MAJOR_VERSION,
                   EPICS_PVA_MINOR_VERSION,
@@ -4900,11 +4900,6 @@ private:
      * Response handler.
      */
     ClientResponseHandler::shared_pointer m_responseHandler;
-
-    /**
-     * Context instance.
-     */
-    NamedLockPattern<string> m_namedLocker;
 
     /**
      * Context instance.

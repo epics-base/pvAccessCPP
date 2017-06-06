@@ -89,6 +89,9 @@ Transport::shared_pointer BlockingTCPConnector::connect(TransportClient::shared_
             return transport;
     }
 
+    /* TODO: bound map<> size
+     * Lazy creates a lock for each 'address' ever encountered.
+     */
     bool lockAcquired = _namedLocker.acquireSynchronizationObject(&address, LOCK_TIMEOUT);
     if(lockAcquired) {
         try {
