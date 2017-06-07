@@ -138,7 +138,7 @@ struct epicsShareClass ChannelBaseRequester : virtual public epics::pvData::Requ
 /**
  * Base interface for all channel requests (aka. Operations).
  */
-class epicsShareClass ChannelRequest : public epics::pvData::Destroyable, public Lockable, private epics::pvData::NoDefaultMethods {
+class epicsShareClass ChannelRequest : public virtual epics::pvData::Destroyable, public Lockable, private epics::pvData::NoDefaultMethods {
 public:
     POINTER_DEFINITIONS(ChannelRequest);
 

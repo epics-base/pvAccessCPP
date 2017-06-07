@@ -181,9 +181,9 @@ SyncChannelGetRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChann
     TR1::shared_ptr<SyncChannelGetRequesterImpl>
     channelGetReq(new SyncChannelGetRequesterImpl(channel->getChannelName(), debug));
 
-    PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(request);
+    PVStructure::shared_pointer pvRequest = createRequest(request);
 
-    channel->createChannelGet(channelGetReq,pvRequest);
+    ChannelGet::shared_pointer op(channel->createChannelGet(channelGetReq,pvRequest));
     bool succStatus = channelGetReq->waitUntilGetDone(getTimeoutSec());
     if (!succStatus) {
         std::cerr << "[" << channel->getChannelName() << "] failed to get. " << std::endl;
@@ -201,9 +201,9 @@ SyncChannelPutRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChann
     channelPutReq(new SyncChannelPutRequesterImpl(channel->getChannelName(), debug));
 
 
-    PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(request);
+    PVStructure::shared_pointer pvRequest = createRequest(request);
 
-    channel->createChannelPut(channelPutReq,pvRequest);
+    ChannelPut::shared_pointer op(channel->createChannelPut(channelPutReq,pvRequest));
     bool succStatus = channelPutReq->waitUntilConnected(getTimeoutSec());
 
     if (!succStatus) {
@@ -221,9 +221,9 @@ SyncChannelPutGetRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateCh
     TR1::shared_ptr<SyncChannelPutGetRequesterImpl>
     channelPutGetReq(new SyncChannelPutGetRequesterImpl(debug));
 
-    PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(request);
+    PVStructure::shared_pointer pvRequest = createRequest(request);
 
-    channel->createChannelPutGet(channelPutGetReq,pvRequest);
+    ChannelPutGet::shared_pointer op(channel->createChannelPutGet(channelPutGetReq,pvRequest));
     bool succStatus = channelPutGetReq->waitUntilConnected(getTimeoutSec());
 
     if (!succStatus) {
@@ -243,7 +243,7 @@ SyncChannelRPCRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChann
 
     PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(string());
 
-    channel->createChannelRPC(channelRPCReq, pvRequest);
+    ChannelRPC::shared_pointer op(channel->createChannelRPC(channelRPCReq, pvRequest));
     bool succStatus = channelRPCReq->waitUntilConnected(getTimeoutSec());
 
     if (!succStatus) {
@@ -259,9 +259,9 @@ SyncMonitorRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChannelM
 {
     TR1::shared_ptr<SyncMonitorRequesterImpl> monitorReq(new SyncMonitorRequesterImpl(debug));
 
-    PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(request);
+    PVStructure::shared_pointer pvRequest = createRequest(request);
 
-    channel->createMonitor(monitorReq, pvRequest);
+    Monitor::shared_pointer op(channel->createMonitor(monitorReq, pvRequest));
     bool succStatus = monitorReq->waitUntilConnected(getTimeoutSec());
 
     if (!succStatus) {
@@ -277,7 +277,7 @@ SyncChannelArrayRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateCha
 {
     TR1::shared_ptr<SyncChannelArrayRequesterImpl> arrayReq(new SyncChannelArrayRequesterImpl(debug));
 
-    channel->createChannelArray(arrayReq, pvRequest);
+    ChannelArray::shared_pointer op(channel->createChannelArray(arrayReq, pvRequest));
     bool succStatus = arrayReq->waitUntilConnected(getTimeoutSec());
 
     if (!succStatus) {
@@ -519,6 +519,7 @@ void ChannelAccessIFTest::test_channelGetNoProcess() {
         return;
     }
 
+    testDiag("start Get");
     SyncChannelGetRequesterImpl::shared_pointer channelGetReq =  syncCreateChannelGet(channel,request);
 
     if (!channelGetReq.get()) {

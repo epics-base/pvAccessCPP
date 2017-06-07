@@ -54,7 +54,7 @@ class epicsShareClass MonitorElement {
  * This is used by pvAccess to implement monitors.
  * @author mrk
  */
-class epicsShareClass Monitor : public epics::pvData::Destroyable{
+class epicsShareClass Monitor : public virtual epics::pvData::Destroyable{
     public:
     POINTER_DEFINITIONS(Monitor);
     virtual ~Monitor(){}
