@@ -1690,6 +1690,7 @@ int main (int argc, char *argv[])
         vector<string> pvs;
         vector<string> pvsAddress;
         vector<string> providerNames;
+        vector<Destroyable::shared_pointer> operations;
 
         if (validURI)
         {
@@ -1865,7 +1866,7 @@ int main (int argc, char *argv[])
                 if (channelRequesterImpl->waitUntilConnected(timeOut))
                 {
                     TR1::shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
-                    channel->createMonitor(monitorRequesterImpl, pvRequest);
+                    operations.push_back(channel->createMonitor(monitorRequesterImpl, pvRequest));
                 }
                 else
                 {

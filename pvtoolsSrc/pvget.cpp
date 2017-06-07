@@ -575,6 +575,7 @@ int main (int argc, char *argv[])
 
         // first connect to all, this allows resource (e.g. TCP connection) sharing
         vector<Channel::shared_pointer> channels(nPvs);
+        vector<Destroyable::shared_pointer> operations(nPvs);
         for (int n = 0; n < nPvs; n++)
         {
             TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
@@ -635,7 +636,7 @@ int main (int argc, char *argv[])
                         channelRequesterImpl->showDisconnectMessage();
 
                         TR1::shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
-                        Monitor::shared_pointer monitorGet = channel->createMonitor(monitorRequesterImpl, pvRequest);
+                        operations[n] = channel->createMonitor(monitorRequesterImpl, pvRequest);
                         allOK &= true;
                     }
                 }
