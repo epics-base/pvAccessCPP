@@ -516,11 +516,12 @@ int main (int argc, char *argv[])
     std::cout << std::boolalpha;
     terseSeparator(fieldSeparator);
 
+    ClientFactory::start();
+    epics::pvAccess::ca::CAClientFactory::start();
+
     bool allOK = true;
 
     {
-        Requester::shared_pointer requester(new RequesterImpl("pvget"));
-
         PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(request);
         if(pvRequest.get()==NULL) {
             fprintf(stderr, "failed to parse request string\n");
@@ -529,11 +530,10 @@ int main (int argc, char *argv[])
 
         std::vector<std::string> pvNames;
         std::vector<std::string> pvAddresses;
-        std::vector<std::string> providerNames;
+        std::vector<ChannelProvider::shared_pointer> providers;
 
         pvNames.reserve(nPvs);
         pvAddresses.reserve(nPvs);
-        providerNames.reserve(nPvs);
 
         for (int n = 0; n < nPvs; n++)
         {
@@ -543,7 +543,7 @@ int main (int argc, char *argv[])
             std::string providerName(defaultProvider);
             std::string pvName(pvs[n]);
             std::string address(noAddress);
-            bool usingDefaultProvider = true;
+
             if (validURI)
             {
                 if (uri.path.length() <= 1)
@@ -554,44 +554,41 @@ int main (int argc, char *argv[])
                 providerName = uri.protocol;
                 pvName = uri.path.substr(1);
                 address = uri.host;
-                usingDefaultProvider = false;
             }
 
-            if ((providerName != "pva") && (providerName != "ca"))
-            {
-                std::cerr << "invalid "
-                          << (usingDefaultProvider ? "default provider" : "URI scheme")
-                          << " '" << providerName
-                          << "', only 'pva' and 'ca' are supported" << std::endl;
-                return 1;
-            }
             pvNames.push_back(pvName);
             pvAddresses.push_back(address);
-            providerNames.push_back(providerName);
+            providers.push_back(getChannelProviderRegistry()->getProvider(providerName));
+            if(!providers.back()) {
+                std::cerr<<"Unknown provider \""<<providerName<<"\" for channel "<<pvs[n]<<"\n";
+                allOK = false;
+            }
         }
-
-        ClientFactory::start();
-        epics::pvAccess::ca::CAClientFactory::start();
 
         // first connect to all, this allows resource (e.g. TCP connection) sharing
         vector<Channel::shared_pointer> channels(nPvs);
         vector<Destroyable::shared_pointer> operations(nPvs);
         for (int n = 0; n < nPvs; n++)
         {
+            if(!providers[n]) continue;
             TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
             if (pvAddresses[n].empty())
-                channels[n] = getChannelProviderRegistry()->getProvider(
-                                  providerNames[n])->createChannel(pvNames[n], channelRequesterImpl);
+                channels[n] = providers[n]->createChannel(pvNames[n], channelRequesterImpl);
             else
-                channels[n] = getChannelProviderRegistry()->getProvider(
-                                  providerNames[n])->createChannel(pvNames[n], channelRequesterImpl,
+                channels[n] = providers[n]->createChannel(pvNames[n], channelRequesterImpl,
                                           ChannelProvider::PRIORITY_DEFAULT, pvAddresses[n]);
+            if(!channels[n]) {
+                std::cerr<<"Can't create channel \""<<pvNames[n]<<"\" with provider "<<providers[n]->getProviderName()<<"\n";
+                allOK = false;
+            }
         }
 
         // for now a simple iterating sync implementation, guarantees order
         for (int n = 0; n < nPvs; n++)
         {
             Channel::shared_pointer channel = channels[n];
+            if(!channel) continue;
+
             TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
 
             if (channelRequesterImpl->waitUntilConnected(timeOut))

@@ -137,21 +137,21 @@ int main (int argc, char *argv[])
 
     bool allOK = true;
 
+    ClientFactory::start();
+    epics::pvAccess::ca::CAClientFactory::start();
+
     {
         std::vector<std::string> pvNames;
         std::vector<std::string> pvAddresses;
-        std::vector<std::string> providerNames;
+        std::vector<ChannelProvider::shared_pointer> providers;
 
         pvNames.reserve(nPvs);
         pvAddresses.reserve(nPvs);
-        providerNames.reserve(nPvs);
 
         for (int n = 0; n < nPvs; n++)
         {
             URI uri;
             bool validURI = URI::parse(pvs[n], uri);
-
-            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
 
             std::string providerName(defaultProvider);
             std::string pvName(pvs[n]);
@@ -170,33 +170,27 @@ int main (int argc, char *argv[])
                 usingDefaultProvider = false;
             }
 
-            if ((providerName != "pva") && (providerName != "ca"))
-            {
-                std::cerr << "invalid "
-                          << (usingDefaultProvider ? "default provider" : "URI scheme")
-                          << " '" << providerName
-                          << "', only 'pva' and 'ca' are supported" << std::endl;
-                return 1;
-            }
             pvNames.push_back(pvName);
             pvAddresses.push_back(address);
-            providerNames.push_back(providerName);
+            providers.push_back(getChannelProviderRegistry()->getProvider(providerName));
+            if(!providers.back())
+            {
+                std::cerr << "unknown provider name '" << providerName
+                          << "', only 'pva' and 'ca' are supported" << std::endl;
+                allOK = false;
+            }
         }
-
-        ClientFactory::start();
-        epics::pvAccess::ca::CAClientFactory::start();
 
         // first connect to all, this allows resource (e.g. TCP connection) sharing
         vector<Channel::shared_pointer> channels(nPvs);
         for (int n = 0; n < nPvs; n++)
         {
+            if(!providers[n]) continue;
             TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
             if (pvAddresses[n].empty())
-                channels[n] = getChannelProviderRegistry()->getProvider(
-                                  providerNames[n])->createChannel(pvNames[n], channelRequesterImpl);
+                channels[n] = providers[n]->createChannel(pvNames[n], channelRequesterImpl);
             else
-                channels[n] = getChannelProviderRegistry()->getProvider(
-                                  providerNames[n])->createChannel(pvNames[n], channelRequesterImpl,
+                channels[n] = providers[n]->createChannel(pvNames[n], channelRequesterImpl,
                                           ChannelProvider::PRIORITY_DEFAULT, pvAddresses[n]);
         }
 

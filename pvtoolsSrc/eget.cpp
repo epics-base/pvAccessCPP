@@ -1664,8 +1664,6 @@ int main (int argc, char *argv[])
 
     bool allOK = true;
 
-    Requester::shared_pointer requester(new RequesterImpl("eget"));
-
     // parse URI
     // try to parse as URI if only one nPvs
     URI uri;
@@ -1682,14 +1680,16 @@ int main (int argc, char *argv[])
         serviceRequest = true;
     }
 
-    static string noAddress;
+    // register "pva" and "ca" providers
+    ClientFactory::start();
+    epics::pvAccess::ca::CAClientFactory::start();
 
     // PVs mode
     if (!serviceRequest)
     {
         vector<string> pvs;
         vector<string> pvsAddress;
-        vector<string> providerNames;
+        vector<ChannelProvider::shared_pointer> providers;
         vector<Destroyable::shared_pointer> operations;
 
         if (validURI)
@@ -1714,26 +1714,38 @@ int main (int argc, char *argv[])
             // skip trailing '/'
             pvs.push_back(uri.path.substr(1));
             pvsAddress.push_back(uri.host);
-            providerNames.push_back(uri.protocol);
+            providers.push_back(getChannelProviderRegistry()->getProvider(uri.protocol));
+            if(!providers.back()) {
+                std::cerr<<"Unknown provider \""<<uri.protocol<<"\" for \""<<pvs.back()<<"\n";
+                allOK = false;
+            }
         }
         else
         {
-            for (int n = 0; optind < argc; n++, optind++)
+            std::vector<std::string> uris;
+
+            if(!fromStream) {
+                for (int n = 0; optind < argc; n++, optind++)
+                {
+                    uris.push_back(argv[optind]);
+                }
+            } else {
+                string cn;
+                while (true)
+                {
+                    *inputStream >> cn;
+                    if (!(*inputStream))
+                        break;
+                    uris.push_back(cn);
+                }
+            }
+
+            for (size_t n = 0; n<uris.size(); n++)
             {
                 URI uri;
-                bool validURI = URI::parse(argv[optind], uri);
+                bool validURI = URI::parse(uris[n], uri);
                 if (validURI)
                 {
-                    // TODO this is copy&pase code from above, clean it up
-                    // for now no only pva/ca schema is supported, without authority
-                    // TODO
-                    if (uri.protocol != "pva" && uri.protocol != "ca")
-                    {
-                        std::cerr << "invalid URI scheme '" << uri.protocol << "', only 'pva' and 'ca' are supported" << std::endl;
-                        // TODO
-                        return 1;
-                    }
-
                     if (uri.path.length() <= 1)
                     {
                         std::cerr << "invalid URI, empty path" << std::endl;
@@ -1744,16 +1756,24 @@ int main (int argc, char *argv[])
                     // skip trailing '/'
                     pvs.push_back(uri.path.substr(1));
                     pvsAddress.push_back(uri.host);
-                    providerNames.push_back(uri.protocol);
+                    providers.push_back(getChannelProviderRegistry()->getProvider(uri.protocol));
                 }
                 else
                 {
-                    pvs.push_back(argv[optind]);
-                    pvsAddress.push_back(noAddress);
-                    providerNames.push_back(defaultProvider);
+                    uri.protocol = defaultProvider;
+                    pvs.push_back(uris[n]);
+                    pvsAddress.push_back(std::string());
+                    providers.push_back(getChannelProviderRegistry()->getProvider(defaultProvider));
+                }
+
+                if(!providers.back()) {
+                    std::cerr<<"Unknown provider \""<<uri.protocol<<"\" for \""<<pvs.back()<<"\"\n";
+                    allOK = false;
                 }
             }
         }
+
+        nPvs = pvs.size();
 
         PVStructure::shared_pointer pvRequest =
             CreateRequest::create()->createRequest(request);
@@ -1762,20 +1782,21 @@ int main (int argc, char *argv[])
             return 1;
         }
 
-        // register "pva" and "ca" providers
-        ClientFactory::start();
-        epics::pvAccess::ca::CAClientFactory::start();
-
         // first connect to all, this allows resource (e.g. TCP connection) sharing
         vector<Channel::shared_pointer> channels(nPvs);
         for (int n = 0; n < nPvs; n++)
         {
+            if(!providers[n]) continue;
             TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
             if (pvsAddress[n].empty())
-                channels[n] = getChannelProviderRegistry()->getProvider(providerNames[n])->createChannel(pvs[n], channelRequesterImpl);
+                channels[n] = providers[n]->createChannel(pvs[n], channelRequesterImpl);
             else
-                channels[n] = getChannelProviderRegistry()->getProvider(providerNames[n])->createChannel(pvs[n], channelRequesterImpl,
+                channels[n] = providers[n]->createChannel(pvs[n], channelRequesterImpl,
                               ChannelProvider::PRIORITY_DEFAULT, pvsAddress[n]);
+
+            if(!channels[n]) {
+                std::cerr<<"No such channel '"<<pvs[n]<<"'\n";
+            }
         }
 
         // TODO maybe unify for nPvs == 1?!
@@ -1791,69 +1812,13 @@ int main (int argc, char *argv[])
         }
 
         // for now a simple iterating sync implementation, guarantees order
-        int n = -1;
-        while (true)
+        for (int n = 0; n < nPvs; n++)
         {
-            Channel::shared_pointer channel;
+            Channel::shared_pointer channel(channels[n]);
 
-            if (!fromStream)
-            {
-                if (++n >= nPvs)
-                    break;
-                channel = channels[n];
-            }
-            else
-            {
-                string cn;
-                string ca;
-                string cp;
-
-                // read next channel name from stream
-                *inputStream >> cn;
-                if (!(*inputStream))
-                    break;
-
-                URI uri;
-                bool validURI = URI::parse(cn.c_str(), uri);
-                if (validURI)
-                {
-                    // TODO this is copy&pase code from above, clean it up
-                    // for now no only pva/ca schema is supported, without authority
-                    // TODO
-                    if (uri.protocol != "pva" && uri.protocol != "ca")
-                    {
-                        std::cerr << "invalid URI scheme '" << uri.protocol << "', only 'pva' and 'ca' are supported" << std::endl;
-                        // TODO
-                        return 1;
-                    }
-
-                    if (uri.path.length() <= 1)
-                    {
-                        std::cerr << "invalid URI, empty path" << std::endl;
-                        // TODO
-                        return 1;
-                    }
-
-                    // skip trailing '/'
-                    cn = uri.path.substr(1);
-                    ca = uri.host;
-                    cp = uri.protocol;
-                }
-                else
-                {
-                    // leave cn as it is, use default provider
-                    ca = noAddress;
-                    cp = defaultProvider;
-                }
-
-
-
-                TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
-                if (ca.empty())
-                    channel = getChannelProviderRegistry()->getProvider(cp)->createChannel(cn, channelRequesterImpl);
-                else
-                    channel = getChannelProviderRegistry()->getProvider(cp)->createChannel(cn, channelRequesterImpl,
-                              ChannelProvider::PRIORITY_DEFAULT, ca);
+            if(!channel) {
+                allOK = false;
+                continue;
             }
 
             if (monitor)
@@ -2101,6 +2066,7 @@ int main (int argc, char *argv[])
 
         ClientFactory::start();
         ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");
+        assert(provider);
 
         TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
         Channel::shared_pointer channel =

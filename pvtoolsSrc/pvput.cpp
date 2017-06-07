@@ -642,12 +642,12 @@ int main (int argc, char *argv[])
         usingDefaultProvider = false;
     }
 
-    if ((providerName != "pva") && (providerName != "ca"))
-    {
-        std::cerr << "invalid "
-                  << (usingDefaultProvider ? "default provider" : "URI scheme")
-                  << " '" << providerName
-                  << "', only 'pva' and 'ca' are supported" << std::endl;
+    ClientFactory::start();
+    epics::pvAccess::ca::CAClientFactory::start();
+
+    ChannelProvider::shared_pointer provider(getChannelProviderRegistry()->getProvider(providerName));
+    if(!provider) {
+        std::cerr << "Unknown provider '"<<providerName<<"'\n";
         return 1;
     }
 
@@ -696,9 +696,6 @@ int main (int argc, char *argv[])
     terseSeparator(fieldSeparator);
     setEnumPrintMode(enumMode);
 
-    ClientFactory::start();
-    epics::pvAccess::ca::CAClientFactory::start();
-
     bool allOK = true;
 
     try
@@ -710,11 +707,9 @@ int main (int argc, char *argv[])
 
             Channel::shared_pointer channel;
             if (address.empty())
-                channel = getChannelProviderRegistry()->getProvider(
-                              providerName)->createChannel(pvName, channelRequesterImpl);
+                channel = provider->createChannel(pvName, channelRequesterImpl);
             else
-                channel = getChannelProviderRegistry()->getProvider(
-                              providerName)->createChannel(pvName, channelRequesterImpl,
+                channel = provider->createChannel(pvName, channelRequesterImpl,
                                       ChannelProvider::PRIORITY_DEFAULT, address);
 
             if (channelRequesterImpl->waitUntilConnected(timeOut))
