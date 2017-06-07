@@ -7,7 +7,7 @@
 #include <string>
 
 #include <epicsSignal.h>
-
+#include <epicsExit.h>
 #include <pv/lock.h>
 
 #define epicsExportSharedSymbols
@@ -18,15 +18,26 @@
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
+static
+void pva_factory_cleanup(void*)
+{
+    try {
+        getChannelProviderRegistry()->remove("pva");
+    } catch(std::exception& e) {
+        LOG(logLevelWarn, "Error when unregister \"pva\" factory");
+    }
+}
+
 void ClientFactory::start()
 {
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
 
-    getChannelProviderRegistry()->add("pva", createClientProvider, false);
+    if(getChannelProviderRegistry()->add("pva", createClientProvider, false))
+        epicsAtExit(&pva_factory_cleanup, NULL);
 }
 
 void ClientFactory::stop()
 {
-    getChannelProviderRegistry()->remove("pva");
+    // unregister now done with exit hook
 }
