@@ -75,7 +75,7 @@ bool ChannelProviderRegistry::add(const ChannelProviderFactory::shared_pointer& 
     Lock G(mutex);
     std::string name(fact->getFactoryName());
     if(!replace && providers.find(name)!=providers.end())
-        throw false;
+        return false;
     providers[name] = fact;
     return true;
 }
