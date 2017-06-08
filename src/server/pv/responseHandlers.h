@@ -329,6 +329,7 @@ public:
 
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 private:
+    // Note: this forms a reference loop, which is broken in destroy()
     ChannelGet::shared_pointer _channelGet;
     epics::pvData::PVStructure::shared_pointer _pvStructure;
     epics::pvData::BitSet::shared_pointer _bitSet;
@@ -383,6 +384,7 @@ public:
     epics::pvData::PVStructure::shared_pointer getPutPVStructure();
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 private:
+    // Note: this forms a reference loop, which is broken in destroy()
     ChannelPut::shared_pointer _channelPut;
     epics::pvData::BitSet::shared_pointer _bitSet;
     epics::pvData::PVStructure::shared_pointer _pvStructure;
@@ -447,6 +449,7 @@ public:
 
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 private:
+    // Note: this forms a reference loop, which is broken in destroy()
     ChannelPutGet::shared_pointer _channelPutGet;
     epics::pvData::PVStructure::shared_pointer _pvPutStructure;
     epics::pvData::BitSet::shared_pointer _pvPutBitSet;
@@ -502,6 +505,7 @@ public:
     Monitor::shared_pointer getChannelMonitor();
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 private:
+    // Note: this forms a reference loop, which is broken in destroy()
     Monitor::shared_pointer _channelMonitor;
     epics::pvData::StructureConstPtr _structure;
     epics::pvData::Status _status;
@@ -561,6 +565,7 @@ public:
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 
 private:
+    // Note: this forms a reference loop, which is broken in destroy()
     ChannelArray::shared_pointer _channelArray;
     epics::pvData::PVArray::shared_pointer _pvArray;
 
@@ -655,6 +660,7 @@ public:
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 
 private:
+    // Note: this forms a reference loop, which is broken in destroy()
     ChannelProcess::shared_pointer _channelProcess;
     epics::pvData::Status _status;
 };
@@ -770,6 +776,7 @@ public:
 
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 private:
+    // Note: this forms a reference loop, which is broken in destroy()
     ChannelRPC::shared_pointer _channelRPC;
     epics::pvData::PVStructure::shared_pointer _pvResponse;
     epics::pvData::Status _status;
