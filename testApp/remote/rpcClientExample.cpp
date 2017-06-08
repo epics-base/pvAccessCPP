@@ -24,18 +24,6 @@ int main()
     request->getSubField<PVString>("a")->put("3.14");
     request->getSubField<PVString>("b")->put("2.71");
 
-    std::cout<<"simplest way\n";
-    try
-    {
-        PVStructure::shared_pointer result = RPCClient::sendRequest("sum", request, TIMEOUT);
-        std::cout << "Error: " << *result << std::endl;
-    } catch (std::exception &e)
-    {
-        std::cout << e.what() << std::endl;
-        return 1;
-    }
-
-
     std::cout<<"simple sync way, allows multiple RPC calls on the client instance\n";
     try
     {
