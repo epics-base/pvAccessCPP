@@ -44,19 +44,20 @@ public:
      * Create a RPCClient.
      *
      * @param  serviceName  the service name
-     * @return              the RPCClient interface
-     */
-    static shared_pointer create(const std::string & serviceName);
-
-    /**
-     * Create a RPCClient.
-     *
-     * @param  serviceName  the service name
      * @param  pvRequest    the pvRequest for the ChannelRPC
      * @return              the RPCClient interface
      */
     static shared_pointer create(const std::string & serviceName,
-                                 epics::pvData::PVStructure::shared_pointer const & pvRequest);
+                                 epics::pvData::PVStructure::shared_pointer const & pvRequest = epics::pvData::PVStructure::shared_pointer());
+
+    RPCClient(const std::string & serviceName,
+              epics::pvData::PVStructure::shared_pointer const & pvRequest);
+
+    RPCClient(const ChannelProvider::shared_pointer& provider,
+              const std::string & serviceName,
+              epics::pvData::PVStructure::shared_pointer const & pvRequest);
+
+    ~RPCClient() {destroy();}
 
     /**
      * Performs complete blocking RPC call, opening a channel and connecting to the
@@ -136,15 +137,21 @@ public:
      */
     epics::pvData::PVStructure::shared_pointer waitResponse(double timeout = RPCCLIENT_DEFAULT_TIMEOUT);
 
-    virtual ~RPCClient() {}
+private:
+    void construct(const ChannelProvider::shared_pointer& provider,
+                   const std::string & serviceName,
+                   epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
-protected:
-    RPCClient(const std::string & serviceName,
-              epics::pvData::PVStructure::shared_pointer const & pvRequest);
-
-    std::string m_serviceName;
+    const std::string m_serviceName;
     Channel::shared_pointer m_channel;
-    epics::pvData::PVStructure::shared_pointer m_pvRequest;
+    ChannelRPC::shared_pointer m_rpc;
+    const epics::pvData::PVStructure::shared_pointer m_pvRequest;
+
+    struct RPCRequester;
+    std::tr1::shared_ptr<RPCRequester> m_rpc_requester;
+
+    RPCClient(const RPCClient&);
+    RPCClient& operator=(const RPCClient&);
 };
 
 }
