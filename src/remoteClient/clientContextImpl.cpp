@@ -159,7 +159,7 @@ protected:
         ResponseRequest::shared_pointer P(m_this_external);
         return std::tr1::static_pointer_cast<subklass>(P);
     }
-
+public:
     template<class subklass>
     static
     typename std::tr1::shared_ptr<subklass>
@@ -177,7 +177,7 @@ protected:
         internal->activate();
         return external;
     }
-
+protected:
     bool m_destroyed;
     bool m_initialized;
 
@@ -445,13 +445,6 @@ public:
     }
 
 public:
-    static ChannelProcess::shared_pointer create(ChannelImpl::shared_pointer const & channel,
-                                                 ChannelProcessRequester::shared_pointer const & requester,
-                                                 PVStructure::shared_pointer const & pvRequest)
-    {
-        return build<ChannelProcessRequestImpl>(channel, requester, pvRequest);
-    }
-
     ~ChannelProcessRequestImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelProcess);
@@ -589,13 +582,6 @@ public:
     }
 
 public:
-    static ChannelGet::shared_pointer create(ChannelImpl::shared_pointer const & channel,
-                                             ChannelGetRequester::shared_pointer const & requester,
-                                             PVStructure::shared_pointer const & pvRequest)
-    {
-        return build<ChannelGetImpl>(channel, requester, pvRequest);
-    }
-
     ~ChannelGetImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelGet);
@@ -801,13 +787,6 @@ public:
     }
 
 public:
-    static ChannelPut::shared_pointer create(ChannelImpl::shared_pointer const & channel,
-                                             ChannelPutRequester::shared_pointer const & requester,
-                                             PVStructure::shared_pointer const & pvRequest)
-    {
-        return build<ChannelPutImpl>(channel, requester, pvRequest);
-    }
-
     ~ChannelPutImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelPut);
@@ -1365,13 +1344,6 @@ public:
     }
 
 public:
-    static ChannelRPC::shared_pointer create(ChannelImpl::shared_pointer const & channel,
-                                             ChannelRPCRequester::shared_pointer const & requester,
-                                             PVStructure::shared_pointer const & pvRequest)
-    {
-        return build<ChannelRPCImpl>(channel, requester, pvRequest);
-    }
-
     ~ChannelRPCImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelRPC);
@@ -1562,13 +1534,6 @@ public:
     }
 
 public:
-    static ChannelArray::shared_pointer create(ChannelImpl::shared_pointer const & channel,
-                                               ChannelArrayRequester::shared_pointer const & requester,
-                                               PVStructure::shared_pointer const & pvRequest)
-    {
-        return build<ChannelArrayImpl>(channel, requester, pvRequest);
-    }
-
     ~ChannelArrayImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelArray);
@@ -2276,14 +2241,6 @@ public:
     }
 
 public:
-    static Monitor::shared_pointer create(
-        ChannelImpl::shared_pointer const & channel,
-        MonitorRequester::shared_pointer const & requester,
-        PVStructure::shared_pointer const & pvRequest)
-    {
-        return build<ChannelMonitorImpl>(channel, requester, pvRequest);
-    }
-
     ~ChannelMonitorImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelMonitor);
@@ -4020,52 +3977,52 @@ public:
         virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField);
 
         virtual ChannelProcess::shared_pointer createChannelProcess(
-            ChannelProcessRequester::shared_pointer const & channelProcessRequester,
+            ChannelProcessRequester::shared_pointer const & requester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest)
         {
-            return ChannelProcessRequestImpl::create(shared_from_this(), channelProcessRequester, pvRequest);
+            return BaseRequestImpl::build<ChannelProcessRequestImpl>(shared_from_this(), requester, pvRequest);
         }
 
         virtual ChannelGet::shared_pointer createChannelGet(
-            ChannelGetRequester::shared_pointer const & channelGetRequester,
+            ChannelGetRequester::shared_pointer const & requester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest)
         {
-            return ChannelGetImpl::create(shared_from_this(), channelGetRequester, pvRequest);
+            return BaseRequestImpl::build<ChannelGetImpl>(shared_from_this(), requester, pvRequest);
         }
 
         virtual ChannelPut::shared_pointer createChannelPut(
-            ChannelPutRequester::shared_pointer const & channelPutRequester,
+            ChannelPutRequester::shared_pointer const & requester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest)
         {
-            return ChannelPutImpl::create(shared_from_this(), channelPutRequester, pvRequest);
+            return BaseRequestImpl::build<ChannelPutImpl>(shared_from_this(), requester, pvRequest);
         }
 
         virtual ChannelPutGet::shared_pointer createChannelPutGet(
-            ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
+            ChannelPutGetRequester::shared_pointer const & requester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest)
         {
-            return ChannelPutGetImpl::create(shared_from_this(), channelPutGetRequester, pvRequest);
+            return BaseRequestImpl::build<ChannelPutGetImpl>(shared_from_this(), requester, pvRequest);
         }
 
         virtual ChannelRPC::shared_pointer createChannelRPC(
-            ChannelRPCRequester::shared_pointer const & channelRPCRequester,
+            ChannelRPCRequester::shared_pointer const & requester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest)
         {
-            return ChannelRPCImpl::create(shared_from_this(), channelRPCRequester, pvRequest);
+            return BaseRequestImpl::build<ChannelRPCImpl>(shared_from_this(), requester, pvRequest);
         }
 
         virtual Monitor::shared_pointer createMonitor(
-            MonitorRequester::shared_pointer const & monitorRequester,
+            MonitorRequester::shared_pointer const & requester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest)
         {
-            return ChannelMonitorImpl::create(shared_from_this(), monitorRequester, pvRequest);
+            return BaseRequestImpl::build<ChannelMonitorImpl>(shared_from_this(), requester, pvRequest);
         }
 
         virtual ChannelArray::shared_pointer createChannelArray(
-            ChannelArrayRequester::shared_pointer const & channelArrayRequester,
+            ChannelArrayRequester::shared_pointer const & requester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest)
         {
-            return ChannelArrayImpl::create(shared_from_this(), channelArrayRequester, pvRequest);
+            return BaseRequestImpl::build<ChannelArrayImpl>(shared_from_this(), requester, pvRequest);
         }
 
 
@@ -4853,15 +4810,6 @@ public:
     }
 
 public:
-    static void create(InternalClientContextImpl::InternalChannelImpl::shared_pointer const & channel,
-                                 GetFieldRequester::shared_pointer const & requester,
-                                 std::string const & subField)
-    {
-        ChannelGetFieldRequestImpl::shared_pointer self(new ChannelGetFieldRequestImpl(channel, requester, subField));
-        self->activate();
-        // activate() stores self in channel
-    }
-
     virtual ~ChannelGetFieldRequestImpl()
     {
         destroy();
@@ -4959,7 +4907,9 @@ public:
 
 void InternalClientContextImpl::InternalChannelImpl::getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField)
 {
-    ChannelGetFieldRequestImpl::create(shared_from_this(), requester, subField);
+    ChannelGetFieldRequestImpl::shared_pointer self(new ChannelGetFieldRequestImpl(shared_from_this(), requester, subField));
+    self->activate();
+    // activate() stores self in channel
 }
 
 ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf)

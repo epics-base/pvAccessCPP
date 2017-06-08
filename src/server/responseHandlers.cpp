@@ -2909,9 +2909,8 @@ ChannelRPCRequester::shared_pointer ServerChannelRPCRequesterImpl::create(
 {
     // TODO use std::make_shared
     std::tr1::shared_ptr<ServerChannelRPCRequesterImpl> tp(new ServerChannelRPCRequesterImpl(context, channel, ioid, transport));
-    ChannelRPCRequester::shared_pointer thisPointer = tp;
-    static_cast<ServerChannelRPCRequesterImpl*>(thisPointer.get())->activate(pvRequest);
-    return thisPointer;
+    tp->activate(pvRequest);
+    return tp;
 }
 
 void ServerChannelRPCRequesterImpl::activate(PVStructure::shared_pointer const & pvRequest)
