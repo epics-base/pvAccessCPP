@@ -1,0 +1,8 @@
+digraph ownership {
+  MyClient [shape=box];
+  Channel;
+  ChannelRequester [shape=box];
+  MyClient -> Channel [color=red];
+  Channel -> ChannelRequester [color=red, style=dashed];
+  ChannelRequester -> MyClient [color=green];
+}

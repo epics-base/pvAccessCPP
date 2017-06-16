@@ -5,8 +5,6 @@ include/
 db/
 dbd/
 html/
-documentation/html
-documentation/*.tag
 envPaths
 configure/*.local
 !configure/ExampleRELEASE.local

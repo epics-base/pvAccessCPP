@@ -31,6 +31,7 @@
 #include <shareLib.h>
 
 namespace epics {
+//! Holds all PVA related
 namespace pvAccess {
 class Configuration;
 
@@ -120,6 +121,7 @@ class ChannelPutRequester;
 class ChannelPutGetRequester;
 class ChannelRPCRequester;
 
+//! Base for all Requesters (callbacks to client)
 struct epicsShareClass ChannelBaseRequester : virtual public epics::pvData::Requester
 {
     POINTER_DEFINITIONS(ChannelBaseRequester);
@@ -176,6 +178,8 @@ public:
 class epicsShareClass MonitorRequester : public ChannelBaseRequester {
     public:
     POINTER_DEFINITIONS(MonitorRequester);
+    typedef Monitor operation_type;
+
     virtual ~MonitorRequester(){}
     /**
      * The client and server have both completed the createMonitor request.
@@ -1084,19 +1088,19 @@ public:
     /**
      * Request a Channel.
      *
-     * May call ChannelListRequester::channelCreated() before returning, or at some time later.
-     * If an exception is thrown, then channelCreated() will never be called.
+     * Channel creation is immediate.
+     * ChannelRequester::channelCreated() will be called before returning.
+     * The shared_ptr which is passed to channelCreated() will also be returned.
      *
-     * The returned Channel will hold a strong reference to the provided ChannelRequester
+     * Failures during channel creation are delivered to ChannelRequester::channelCreated() with Status::isSuccess()==false.
      *
-     * Returned shared_ptr<Channel> includes only external references.
-     * eg. the first call to createChannel() with a particular name, priority, and address
-     * must return a unique()==true pointer.
-     * Subsequent calls with the same triple must either return the same reference or
-     * another with unique()==true.
+     * @post The returned Channel will hold a strong reference to the provided ChannelRequester
+     * and to the ChannelProvider through which it is created.
+     *
+     * @post The shared_ptr passed to ChannelRequester::channelCreated() is unique.  See @ref providers_ownership_unique
      *
      * @param name The name of the channel.
-     * @param requester The Requester.
+     * @param requester Will receive notifications about channel state changes
      * @param priority channel priority, must be <code>PRIORITY_MIN</code> <= priority <= <code>PRIORITY_MAX</code>.
      * @param address Implementation dependent condition.  eg. A network address to bypass the search phase.  Pass an empty() string for default behavour.
      * @return A non-NULL Channel unless channelCreated() called with an Error
@@ -1104,8 +1108,11 @@ public:
     virtual Channel::shared_pointer createChannel(std::string const & name,ChannelRequester::shared_pointer const & requester,
             short priority, std::string const & address) = 0;
 
+    //! @deprecated Changing of Configuration after start is not supported
     virtual void configure(epics::pvData::PVStructure::shared_pointer /*configuration*/) EPICS_DEPRECATED {};
+    //! @deprecated No function
     virtual void flush() EPICS_DEPRECATED {};
+    //! @deprecated No function
     virtual void poll() EPICS_DEPRECATED {};
 
 };
@@ -1269,10 +1276,16 @@ private:
     providers_t providers;
 };
 
-//! never returns NULL
+/** Access to the global ChannelProviderRegistry instance.
+ *
+ * Never returns NULL
+ */
 epicsShareFunc ChannelProviderRegistry::shared_pointer getChannelProviderRegistry();
+//! Shorthand for getChannelProviderRegistry()->add(channelProviderFactory);
 epicsShareFunc void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
+//! Shorthand for getChannelProviderRegistry()->remove(channelProviderFactory);
 epicsShareFunc void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
+//! Shorthand for getChannelProviderRegistry()->clear();
 epicsShareFunc void unregisterAllChannelProviderFactory();
 
 

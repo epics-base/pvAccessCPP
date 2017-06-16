@@ -20,6 +20,7 @@
 
 namespace epics { namespace pvAccess {
 
+class MonitorRequester;
 class MonitorElement;
 typedef std::tr1::shared_ptr<MonitorElement> MonitorElementPtr;
 typedef std::vector<MonitorElementPtr> MonitorElementPtrArray;
@@ -57,6 +58,8 @@ class epicsShareClass MonitorElement {
 class epicsShareClass Monitor : public virtual epics::pvData::Destroyable{
     public:
     POINTER_DEFINITIONS(Monitor);
+    typedef MonitorRequester requester_type;
+
     virtual ~Monitor(){}
     /**
      * Start monitoring.
