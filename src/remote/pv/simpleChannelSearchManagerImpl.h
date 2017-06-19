@@ -158,7 +158,8 @@ private:
     /**
      * Set of registered channels.
      */
-    std::map<pvAccessID,SearchInstance::shared_pointer> m_channels;
+    typedef std::map<pvAccessID,SearchInstance::weak_pointer> m_channels_t;
+    m_channels_t m_channels;
 
     /**
      * Time of last frame send.

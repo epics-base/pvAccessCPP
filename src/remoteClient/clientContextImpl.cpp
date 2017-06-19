@@ -3286,10 +3286,6 @@ private:
                 new InternalChannelImpl(context, channelID, name, requester, priority, addresses));
             ChannelImpl::shared_pointer thisPointer = tp;
             static_cast<InternalChannelImpl*>(thisPointer.get())->activate();
-            {
-                ChannelImpl::shared_pointer wrap(thisPointer.get(), Destroyable::cleaner(thisPointer));
-                thisPointer.swap(wrap);
-            }
             return thisPointer;
         }
 
@@ -3315,6 +3311,7 @@ private:
 
     private:
 
+        // intentionally returning non-const reference
         int32_t& getUserValue() {
             return m_userValue;
         }
