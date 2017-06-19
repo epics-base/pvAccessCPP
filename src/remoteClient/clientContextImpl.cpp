@@ -338,8 +338,9 @@ public:
             {
                 startRequest(PURE_DESTROY_REQUEST);
                 m_channel->checkAndGetTransport()->enqueueSendRequest(external_from_this<BaseRequestImpl>());
-            } catch (std::exception& e) {
+            } catch (std::tr1::bad_weak_ptr& e) {
                 // noop (do not complain if fails)
+            } catch (std::exception& e) {
                 LOG(logLevelWarn, "Ignore exception during BaseRequestImpl::destroy: %s", e.what());
             }
 
