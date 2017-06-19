@@ -582,7 +582,7 @@ public:
     }
 
 public:
-    ~ChannelGetImpl()
+    virtual ~ChannelGetImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelGet);
     }
@@ -787,7 +787,7 @@ public:
     }
 
 public:
-    ~ChannelPutImpl()
+    virtual ~ChannelPutImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelPut);
     }
@@ -1037,7 +1037,7 @@ public:
         return build<ChannelPutGetImpl>(channel, requester, pvRequest);
     }
 
-    ~ChannelPutGetImpl()
+    virtual ~ChannelPutGetImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelPutGet);
     }
@@ -1344,7 +1344,7 @@ public:
     }
 
 public:
-    ~ChannelRPCImpl()
+    virtual ~ChannelRPCImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelRPC);
     }
@@ -1534,7 +1534,7 @@ public:
     }
 
 public:
-    ~ChannelArrayImpl()
+    virtual ~ChannelArrayImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelArray);
     }
@@ -2241,7 +2241,7 @@ public:
     }
 
 public:
-    ~ChannelMonitorImpl()
+    virtual ~ChannelMonitorImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelMonitor);
     }
@@ -3293,7 +3293,7 @@ private:
             return thisPointer;
         }
 
-        ~InternalChannelImpl()
+        virtual ~InternalChannelImpl()
         {
             PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channel);
         }
@@ -4163,7 +4163,7 @@ public:
         }
     }
 
-    ~InternalClientContextImpl()
+    virtual ~InternalClientContextImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(remoteClientContext);
     }
