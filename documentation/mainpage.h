@@ -12,6 +12,10 @@ See pv/pvAccess.h
 
 See the @ref providers page.
 
+Examples
+
+- @ref examples_getme
+
 */
 
 #endif /* MAINPAGE_H */

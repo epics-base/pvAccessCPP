@@ -1,5 +1,5 @@
 
-all: gen commit
+all: gen
 
 clean:
 	rm -rf doxygen_sqlite3.db html
@@ -7,7 +7,7 @@ clean:
 gen:
 	doxygen
 
-commit:
+commit: gen
 	touch html/.nojekyll
 	./commit-gh.sh documentation/html/ html/.nojekyll html/*.* html/search/*.*
 
