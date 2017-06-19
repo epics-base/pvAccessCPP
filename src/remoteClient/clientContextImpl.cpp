@@ -3055,8 +3055,7 @@ PVACCESS_REFCOUNT_MONITOR_DEFINE(remoteClientContext);
 
 class InternalClientContextImpl :
     public ClientContextImpl,
-    public virtual ChannelProvider,
-    public std::tr1::enable_shared_from_this<InternalClientContextImpl>
+    public ChannelProvider
 {
 public:
     POINTER_DEFINITIONS(InternalClientContextImpl);
@@ -4175,6 +4174,13 @@ public:
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(remoteClientContext);
     }
 
+    const weak_pointer m_external_this, m_internal_this;
+    shared_pointer internal_from_this() const {
+        return shared_pointer(m_internal_this);
+    }
+    shared_pointer external_from_this() const {
+        return shared_pointer(m_external_this);
+    }
 private:
 
     void loadConfiguration() {
@@ -4196,12 +4202,12 @@ private:
 
         osiSockAttach();
         m_timer.reset(new Timer("pvAccess-client timer", lowPriority));
-        Context::shared_pointer thisPointer = shared_from_this();
+        InternalClientContextImpl::shared_pointer thisPointer = internal_from_this();
         // stores weak_ptr
         m_connector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_connectionTimeout));
 
         // stores many weak_ptr
-        m_responseHandler.reset(new ClientResponseHandler(shared_from_this()));
+        m_responseHandler.reset(new ClientResponseHandler(thisPointer));
 
         // preinitialize security plugins
         SecurityPluginRegistry::instance();
@@ -4268,6 +4274,11 @@ private:
         epics::pvData::int32 transportCount;
         while ((transportCount = m_transportRegistry.numberOfActiveTransports()) && tries--)
             epicsThreadSleep(0.025);
+
+        {
+            Lock guard(m_beaconMapMutex);
+            m_beaconHandlers.clear();
+        }
 
         if (transportCount)
             LOG(logLevelDebug, "PVA client context destroyed with %d transport(s) active.", transportCount);
@@ -4468,7 +4479,7 @@ private:
         if (it == m_beaconHandlers.end())
         {
             // stores weak_ptr
-            handler.reset(new BeaconHandler(shared_from_this(), protocol, responseFrom));
+            handler.reset(new BeaconHandler(internal_from_this(), protocol, responseFrom));
             m_beaconHandlers[*responseFrom] = handler;
         }
         else
@@ -4521,7 +4532,7 @@ private:
             try
             {
                 pvAccessID cid = generateCID();
-                return InternalChannelImpl::create(shared_from_this(), cid, name, requester, priority, addresses);
+                return InternalChannelImpl::create(external_from_this(), cid, name, requester, priority, addresses);
             }
             catch(std::exception& e) {
                 LOG(logLevelError, "createChannelInternal() exception: %s\n", e.what());
@@ -4895,9 +4906,12 @@ void InternalClientContextImpl::InternalChannelImpl::getField(GetFieldRequester:
 
 ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf)
 {
-    InternalClientContextImpl::shared_pointer prov(new InternalClientContextImpl(conf));
-    prov->initialize();
-    return prov;
+    InternalClientContextImpl::shared_pointer internal(new InternalClientContextImpl(conf)),
+                                              external(internal.get(), Destroyable::cleaner(internal));
+    const_cast<InternalClientContextImpl::weak_pointer&>(internal->m_external_this) = external;
+    const_cast<InternalClientContextImpl::weak_pointer&>(internal->m_internal_this) = internal;
+    internal->initialize();
+    return external;
 }
 
 }
