@@ -17,4 +17,7 @@ pvtoolsSrc_DEPEND_DIRS = src
 DIRS += testApp
 testApp_DEPEND_DIRS = src
 
+DIRS += examples
+examples_DEPEND_DIRS += src
+
 include $(TOP)/configure/RULES_TOP
