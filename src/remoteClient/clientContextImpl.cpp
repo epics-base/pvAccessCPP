@@ -3327,7 +3327,7 @@ private:
 
         virtual ChannelProvider::shared_pointer getProvider()
         {
-            return m_context;
+            return m_context->external_from_this();
         }
 
         // NOTE: synchronization guarantees that <code>transport</code> is non-<code>0</code> and <code>state == CONNECTED</code>.
@@ -3377,8 +3377,8 @@ private:
             return m_channelID;
         }
 public:
-        virtual ClientContextImpl::shared_pointer getContext() {
-            return m_context;
+        virtual ClientContextImpl* getContext() {
+            return m_context.get();
         }
 
         virtual pvAccessID getSearchInstanceID() {

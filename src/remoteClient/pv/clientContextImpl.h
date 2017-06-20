@@ -47,7 +47,7 @@ public:
     virtual void destroyChannel(bool force) = 0;
     virtual void connectionCompleted(pvAccessID sid/*,  rights*/) = 0;
     virtual void createChannelFailed() = 0;
-    virtual std::tr1::shared_ptr<ClientContextImpl> getContext() = 0;
+    virtual ClientContextImpl* getContext() = 0;
     virtual void channelDestroyedOnServer() = 0;
 
     virtual pvAccessID getServerChannelID() = 0;
