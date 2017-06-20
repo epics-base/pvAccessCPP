@@ -9,7 +9,6 @@
 #define USE_SIGNAL
 #endif
 
-#include <epicsExit.h>
 #include <epicsEvent.h>
 
 //! [Headers]
@@ -33,11 +32,6 @@ void alldone(int num)
     done.signal();
 }
 #endif
-
-void onthewayout(void* arg) {
-    (void)arg;
-    std::cout<<"Done\n";
-}
 
 struct ChanReq : public pva::ChannelRequester
 {
@@ -123,6 +117,7 @@ struct GetReq : public pva::ChannelGetRequester
 
 int main(int argc, char *argv[]) {
     try {
+        double waitTime = -1.0;
         std::string providerName("pva");
         typedef std::vector<std::string> pvs_t;
         pvs_t pvs;
@@ -131,9 +126,16 @@ int main(int argc, char *argv[]) {
             if(argv[i][0]=='-') {
                 if(strcmp(argv[i], "-P")==0 || strcmp(argv[i], "--provider")==0) {
                     if(i<argc-1) {
-                        providerName = argv[i+1];
+                        providerName = argv[++i];
                     } else {
                         std::cerr << "--provider requires value\n";
+                        return 1;
+                    }
+                } else if(strcmp(argv[i], "-T")==0 || strcmp(argv[i], "--timeout")==0) {
+                    if(i<argc-1) {
+                        waitTime = pvd::castUnsafe<double, std::string>(argv[++i]);
+                    } else {
+                        std::cerr << "--timeout requires value\n";
                         return 1;
                     }
                 } else {
@@ -145,8 +147,6 @@ int main(int argc, char *argv[]) {
             }
 
         }
-
-        epicsAtExit(&onthewayout, 0);
 
 #ifdef USE_SIGNAL
         signal(SIGINT, alldone);
@@ -198,11 +198,14 @@ int main(int argc, char *argv[]) {
             // drop our explicit Channel reference, ChannelGet holds an additional reference
         }
 
-        done.wait();
+        if(waitTime<0.0)
+            done.wait();
+        else
+            done.wait(waitTime);
 
-        return 0;
     } catch(std::exception& e){
         std::cerr<<"Error: "<<e.what()<<"\n";
         return 1;
     }
+    return 0;
 }
