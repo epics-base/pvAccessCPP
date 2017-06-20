@@ -3821,7 +3821,14 @@ public:
 
         void reportChannelStateChange()
         {
-            shared_pointer self(external_from_this());
+            // hack
+            // we should always use the external shared_ptr.
+            // however, this is already dead during destroy(),
+            // but we still want to give notification.
+            // so give the internal ref and hope it isn't stored...
+            shared_pointer self(m_external_this.lock());
+            if(!self)
+                self = internal_from_this();
 
             while (true)
             {
@@ -4531,8 +4538,13 @@ private:
         {
             try
             {
+                /* Note that our channels have an internal ref. to us.
+                 * Thus having active channels will *not* keep us alive.
+                 * Use code must explicitly keep our external ref. as well
+                 * as our channels.
+                 */
                 pvAccessID cid = generateCID();
-                return InternalChannelImpl::create(external_from_this(), cid, name, requester, priority, addresses);
+                return InternalChannelImpl::create(internal_from_this(), cid, name, requester, priority, addresses);
             }
             catch(std::exception& e) {
                 LOG(logLevelError, "createChannelInternal() exception: %s\n", e.what());
