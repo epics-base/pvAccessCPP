@@ -106,42 +106,6 @@ void alldone(int num)
 }
 #endif
 
-struct ChanReq : public pva::ChannelRequester
-{
-    virtual ~ChanReq() {}
-
-    virtual std::string getRequesterName() { return "ChanReq"; }
-
-    virtual void channelCreated(const epics::pvData::Status& status,
-                                pva::Channel::shared_pointer const & channel)
-    {
-        // called once, recursively during ChannelProvider::createChannel()
-        if(!status.isSuccess()) {
-            std::cout<<"Oops Connect: "<<status<<"\n";
-        } else {
-            std::cout<<"Connect: "<<channel->getChannelName()<<"\n";
-        }
-    }
-
-    virtual void channelStateChange(pva::Channel::shared_pointer const & channel,
-                                    pva::Channel::ConnectionState connectionState)
-    {
-        // Called for each connect/disconnect event, and on shutdown (destroy)
-        switch(connectionState) {
-        case pva::Channel::NEVER_CONNECTED:
-        case pva::Channel::CONNECTED:
-        case pva::Channel::DISCONNECTED:
-        case pva::Channel::DESTROYED:
-            std::cout<<"CHANNEL "<<channel->getChannelName()<<" "<<pva::Channel::ConnectionStateNames[connectionState]<<"\n";
-            break;
-
-        default:
-            break;
-        }
-    }
-};
-
-
 struct MonTracker : public epicsThreadRunable
 {
     POINTER_DEFINITIONS(MonTracker);
@@ -316,15 +280,13 @@ int main(int argc, char *argv[]) {
 
         std::vector<MonTracker::shared_pointer> monitors;
 
-        pva::ChannelRequester::shared_pointer chanreq(new ChanReq);
-
         for(pvs_t::const_iterator it=pvs.begin(); it!=pvs.end(); ++it) {
             const std::string& pv = *it;
 
             MonTracker::shared_pointer mon(new MonTracker);
             mon->req.reset(new MonTracker::Req(mon));
 
-            pva::Channel::shared_pointer chan(provider->createChannel(pv, chanreq));
+            pva::Channel::shared_pointer chan(provider->createChannel(pv));
             {
                 Guard G(mon->mutex);
                 mon->chan = chan;

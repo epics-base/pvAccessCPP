@@ -33,41 +33,6 @@ void alldone(int num)
 }
 #endif
 
-struct ChanReq : public pva::ChannelRequester
-{
-    virtual ~ChanReq() {}
-
-    virtual std::string getRequesterName() { return "ChanReq"; }
-
-    virtual void channelCreated(const epics::pvData::Status& status,
-                                pva::Channel::shared_pointer const & channel)
-    {
-        // called once, recursively during ChannelProvider::createChannel()
-        if(!status.isSuccess()) {
-            std::cout<<"Oops Connect: "<<status<<"\n";
-        } else {
-            std::cout<<"Connect: "<<channel->getChannelName()<<"\n";
-        }
-    }
-
-    virtual void channelStateChange(pva::Channel::shared_pointer const & channel,
-                                    pva::Channel::ConnectionState connectionState)
-    {
-        // Called for each connect/disconnect event, and on shutdown (destroy)
-        switch(connectionState) {
-        case pva::Channel::NEVER_CONNECTED:
-        case pva::Channel::CONNECTED:
-        case pva::Channel::DISCONNECTED:
-        case pva::Channel::DESTROYED:
-            std::cout<<"CHANNEL "<<channel->getChannelName()<<" "<<pva::Channel::ConnectionStateNames[connectionState]<<"\n";
-            break;
-
-        default:
-            break;
-        }
-    }
-};
-
 struct GetReq : public pva::ChannelGetRequester
 {
     const std::string name;
@@ -178,16 +143,12 @@ int main(int argc, char *argv[]) {
         typedef std::set<pva::ChannelGet::shared_pointer> gets_t;
         gets_t gets;
 
-        // as we have no channel specific data,
-        // use the same requesters for all PVs
-        pva::ChannelRequester::shared_pointer chanreq(new ChanReq);
-
         for(pvs_t::const_iterator it=pvs.begin(); it!=pvs.end(); ++it) {
             const std::string& pv = *it;
 
             pva::ChannelGetRequester::shared_pointer getreq(new GetReq(pv));
 
-            pva::Channel::shared_pointer chan(provider->createChannel(pv, chanreq));
+            pva::Channel::shared_pointer chan(provider->createChannel(pv));
             // if !chan then channelCreated() called with error status
             if(!chan) continue;
 
