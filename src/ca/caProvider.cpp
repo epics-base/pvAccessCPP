@@ -6,10 +6,10 @@
 
 #include <algorithm>
 
-/* for CA */
 #include <cadef.h>
 #include <epicsSignal.h>
 #include <epicsThread.h>
+#include <epicsExit.h>
 
 #define epicsExportSharedSymbols
 #include <pv/logger.h>
@@ -174,17 +174,14 @@ void CAChannelProvider::initialize()
 }
 
 
-static epicsThreadOnceId cafactory_once = EPICS_THREAD_ONCE_INIT;
-static struct cafactory_gbl_t {
-    Mutex mutex;
-    int count;
-    cafactory_gbl_t() :count(0u) {}
-} *cafactory_gbl;
-
 static
-void cafactory_init(void*)
+void ca_factory_cleanup(void*)
 {
-    cafactory_gbl = new cafactory_gbl_t;
+    try {
+        getChannelProviderRegistry()->remove("ca");
+    } catch(std::exception& e) {
+        LOG(logLevelWarn, "Error when unregister \"ca\" factory");
+    }
 }
 
 void CAClientFactory::start()
@@ -192,24 +189,11 @@ void CAClientFactory::start()
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
 
-    epicsThreadOnce(&cafactory_once, &cafactory_init, 0);
-
-    Lock guard(cafactory_gbl->mutex);
-    if(cafactory_gbl->count++==0) {
-        if(!getChannelProviderRegistry()->add<CAChannelProvider>("ca", false))
-            LOG(logLevelError, "Unable to register \"ca\" provider\n");
-    }
+    if(getChannelProviderRegistry()->add<CAChannelProvider>("ca", false))
+        epicsAtExit(&ca_factory_cleanup, NULL);
 }
 
 void CAClientFactory::stop()
 {
-    epicsThreadOnce(&cafactory_once, &cafactory_init, 0);
-
-    Lock guard(cafactory_gbl->mutex);
-
-    if(--cafactory_gbl->count==0) {
-        getChannelProviderRegistry()->remove("ca");
-    }
-    if(cafactory_gbl->count<0)
-        LOG(logLevelError, "too many calls to CAClientFactory::stop()");
+    // unregister now done with exit hook
 }
