@@ -11,6 +11,8 @@
 #endif
 
 #include <epicsEvent.h>
+#include <epicsMutex.h>
+#include <epicsGuard.h>
 
 #include <pv/configuration.h>
 #include <pv/pvAccess.h>

@@ -10,6 +10,8 @@
 #endif
 
 #include <epicsEvent.h>
+#include <epicsMutex.h>
+#include <epicsGuard.h>
 
 //! [Headers]
 #include <pv/configuration.h>
