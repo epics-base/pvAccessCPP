@@ -70,6 +70,8 @@ struct ChanReq : public pva::ChannelRequester
 
 struct GetReq : public pva::ChannelGetRequester
 {
+    const std::string name;
+    GetReq(const std::string& name) :name(name) {}
     virtual ~GetReq() {}
 
     virtual std::string getRequesterName() { return "GetReq"; }
@@ -81,18 +83,18 @@ struct GetReq : public pva::ChannelGetRequester
     {
         // Called each time get operation becomes "ready" (channel connected)
         if(status.isSuccess()) {
-            std::cout<<"Get execute "<<channelGet->getChannel()->getChannelName()<<"\n";
+            std::cout<<"Get execute "<<name<<"\n";
             // can now execute the get operation
             channelGet->get();
         } else {
-            std::cout<<"Oops GetConnect: "<<channelGet->getChannel()->getChannelName()<<" "<<status<<"\n";
+            std::cout<<"Oops GetConnect: "<<name<<" "<<status<<"\n";
         }
     }
 
     virtual void channelDisconnect(bool destroy) {
         // Called each time operation becomes no "ready" (channel disconnected)
         // same as channelStateChange() for DISCONNECTED and DESTROYED
-        std::cout<<"Get disconnected\n";
+        std::cout<<name<<"Get disconnected\n";
     }
 
     virtual void getDone(
@@ -106,9 +108,9 @@ struct GetReq : public pva::ChannelGetRequester
             pvd::PVFieldPtr valfld(pvStructure->getSubField("value"));
             if(!valfld)
                 valfld = pvStructure;
-            std::cout<<channelGet->getChannel()->getChannelName()<<" : "<<*valfld<<"\n";
+            std::cout<<name<<" : "<<*valfld<<"\n";
         } else {
-            std::cout<<"Oops Get: "<<status<<"\n";
+            std::cout<<name<<"Oops Get: "<<status<<"\n";
         }
     }
 };
@@ -176,13 +178,14 @@ int main(int argc, char *argv[]) {
         typedef std::set<pva::ChannelGet::shared_pointer> gets_t;
         gets_t gets;
 
-        // as we have no channel or operation specific data,
+        // as we have no channel specific data,
         // use the same requesters for all PVs
         pva::ChannelRequester::shared_pointer chanreq(new ChanReq);
-        pva::ChannelGetRequester::shared_pointer getreq(new GetReq);
 
         for(pvs_t::const_iterator it=pvs.begin(); it!=pvs.end(); ++it) {
             const std::string& pv = *it;
+
+            pva::ChannelGetRequester::shared_pointer getreq(new GetReq(pv));
 
             pva::Channel::shared_pointer chan(provider->createChannel(pv, chanreq));
             // if !chan then channelCreated() called with error status
