@@ -60,7 +60,7 @@ public:
      * Get channel SID.
      * @return channel SID.
      */
-    pvAccessID getSID() const;
+    virtual pvAccessID getSID() const OVERRIDE FINAL;
 
     /**
      * Get ChannelSecuritySession instance.
@@ -91,7 +91,7 @@ public:
     /**
      * Destroy server channel.
      */
-    void destroy();
+    virtual void destroy() OVERRIDE FINAL;
 
     /**
      * Prints detailed information about the process variable to the standard output stream.

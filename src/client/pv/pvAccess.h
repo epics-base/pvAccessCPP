@@ -30,6 +30,31 @@
 
 #include <shareLib.h>
 
+/* C++11 keywords
+ @code
+ struct Base {
+   virtual void foo();
+ };
+ struct Class : public Base {
+   virtual void foo() OVERRIDE FINAL;
+ };
+ @endcode
+ */
+#ifndef FINAL
+#  if __cplusplus>=201103L
+#    define FINAL final
+#  else
+#    define FINAL
+#  endif
+#endif
+#ifndef OVERRIDE
+#  if __cplusplus>=201103L
+#    define OVERRIDE override
+#  else
+#    define OVERRIDE
+#  endif
+#endif
+
 namespace epics {
 //! Holds all PVA related
 namespace pvAccess {
@@ -1027,9 +1052,9 @@ public:
 struct epicsShareClass DefaultChannelRequester : public ChannelRequester
 {
     virtual ~DefaultChannelRequester() {}
-    virtual std::string getRequesterName();
-    virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel);
-    virtual void channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState);
+    virtual std::string getRequesterName() OVERRIDE FINAL;
+    virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel) OVERRIDE FINAL;
+    virtual void channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState) OVERRIDE FINAL;
     static ChannelRequester::shared_pointer build();
 };
 
@@ -1183,9 +1208,9 @@ struct SimpleChannelProviderFactory : public ChannelProviderFactory
     SimpleChannelProviderFactory(const std::string& name) :pname(name) {}
     virtual ~SimpleChannelProviderFactory() {}
 
-    virtual std::string getFactoryName() { return pname; }
+    virtual std::string getFactoryName() OVERRIDE FINAL { return pname; }
 
-    virtual ChannelProvider::shared_pointer sharedInstance()
+    virtual ChannelProvider::shared_pointer sharedInstance() OVERRIDE FINAL
     {
         epics::pvData::Lock L(sharedM);
         ChannelProvider::shared_pointer ret(shared.lock());
@@ -1196,7 +1221,7 @@ struct SimpleChannelProviderFactory : public ChannelProviderFactory
         return ret;
     }
 
-    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf)
+    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf) OVERRIDE FINAL
     {
         ChannelProvider::shared_pointer ret(new Provider(conf));
         return ret;

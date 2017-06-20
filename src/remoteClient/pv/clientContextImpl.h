@@ -79,15 +79,9 @@ public:
     virtual void initialize() = 0; // public?
 
     /**
-     * Get channel provider implementation.
-     * @return the channel provider.
-     */
-    //virtual ChannelProvider::shared_pointer const & getProvider() = 0;
-
-    /**
      * Prints detailed information about the context to the standard output stream.
      */
-    virtual void printInfo() = 0;
+    virtual void printInfo() {printInfo(std::cout);}
 
     /**
      * Prints detailed information about the context to the specified output stream.
@@ -125,8 +119,8 @@ public:
     virtual std::tr1::shared_ptr<BeaconHandler> getBeaconHandler(std::string const & protocol, osiSockAddr* responseFrom) = 0;
 
     virtual void configure(epics::pvData::PVStructure::shared_pointer configuration) = 0;
-    virtual void flush() = 0;
-    virtual void poll() = 0;
+    virtual void flush() {}
+    virtual void poll() {}
 
     virtual void destroy() = 0;
 };

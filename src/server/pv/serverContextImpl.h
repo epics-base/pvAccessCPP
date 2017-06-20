@@ -25,27 +25,27 @@ public:
     virtual ~ServerContextImpl();
 
     //**************** derived from ServerContext ****************//
-    const GUID& getGUID();
-    const Version& getVersion();
+    const GUID& getGUID() OVERRIDE FINAL;
+    const Version& getVersion() OVERRIDE FINAL;
     void initialize();
-    void run(epics::pvData::uint32 seconds);
-    void shutdown();
-    void printInfo(std::ostream& str);
-    void setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer const & beaconServerStatusProvider);
+    void run(epics::pvData::uint32 seconds) OVERRIDE FINAL;
+    void shutdown() OVERRIDE FINAL;
+    void printInfo(std::ostream& str) OVERRIDE FINAL;
+    void setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer const & beaconServerStatusProvider) OVERRIDE FINAL;
     //**************** derived from Context ****************//
-    epics::pvData::Timer::shared_pointer getTimer();
-    Channel::shared_pointer getChannel(pvAccessID id);
-    Transport::shared_pointer getSearchTransport();
-    Configuration::const_shared_pointer getConfiguration();
-    TransportRegistry* getTransportRegistry();
-    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins();
+    epics::pvData::Timer::shared_pointer getTimer() OVERRIDE FINAL;
+    Channel::shared_pointer getChannel(pvAccessID id) OVERRIDE FINAL;
+    Transport::shared_pointer getSearchTransport() OVERRIDE FINAL;
+    Configuration::const_shared_pointer getConfiguration() OVERRIDE FINAL;
+    TransportRegistry* getTransportRegistry() OVERRIDE FINAL;
+    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins() OVERRIDE FINAL;
 
-    virtual void newServerDetected();
+    virtual void newServerDetected() OVERRIDE FINAL;
 
 
-    epicsTimeStamp& getStartTime();
+    epicsTimeStamp& getStartTime() OVERRIDE FINAL;
 
-    virtual Configuration::shared_pointer getCurrentConfig();
+    virtual Configuration::shared_pointer getCurrentConfig() OVERRIDE FINAL;
 
     /**
      * Version.
@@ -80,13 +80,13 @@ public:
      * Get server port.
      * @return server port.
      */
-    epics::pvData::int32 getServerPort();
+    epics::pvData::int32 getServerPort() OVERRIDE FINAL;
 
     /**
      * Get broadcast port.
      * @return broadcast port.
      */
-    epics::pvData::int32 getBroadcastPort();
+    epics::pvData::int32 getBroadcastPort() OVERRIDE FINAL;
 
     /**
      * Get ignore search address list.
