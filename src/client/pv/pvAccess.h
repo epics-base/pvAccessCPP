@@ -1023,6 +1023,16 @@ public:
     virtual void channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState) = 0;
 };
 
+//! Used when ChannelProvider::createChannel() is passed a NULL ChannelRequester
+struct epicsShareClass DefaultChannelRequester : public ChannelRequester
+{
+    virtual ~DefaultChannelRequester() {}
+    virtual std::string getRequesterName();
+    virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel);
+    virtual void channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState);
+    static ChannelRequester::shared_pointer build();
+};
+
 /**
  * @brief The FlushStrategy enum
  */
@@ -1087,8 +1097,9 @@ public:
     /**
      * See longer form
      */
-    virtual Channel::shared_pointer createChannel(std::string const & name,ChannelRequester::shared_pointer const & requester,
-            short priority = PRIORITY_DEFAULT);
+    virtual Channel::shared_pointer createChannel(std::string const & name,
+                                                  ChannelRequester::shared_pointer const & requester = DefaultChannelRequester::build(),
+                                                  short priority = PRIORITY_DEFAULT);
 
     /**
      * Request a Channel.

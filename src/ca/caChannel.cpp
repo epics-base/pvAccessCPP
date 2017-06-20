@@ -284,12 +284,12 @@ void CAChannel::activate(short priority)
         channelProvider->registerChannel(shared_from_this());
 
         // TODO be sure that ca_connection_handler is not called before this call
-        EXCEPTION_GUARD(channelRequester->channelCreated(Status::Ok, shared_from_this()));
+        channelRequester->channelCreated(Status::Ok, shared_from_this());
     }
     else
     {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
-        EXCEPTION_GUARD(channelRequester->channelCreated(errorStatus, shared_from_this()));
+        channelRequester->channelCreated(errorStatus, shared_from_this());
     }
 }
 

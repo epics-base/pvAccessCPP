@@ -100,5 +100,26 @@ ChannelArray::shared_pointer Channel::createChannelArray(
     return ret;
 }
 
+std::string DefaultChannelRequester::getRequesterName() { return "DefaultChannelRequester"; }
+
+void DefaultChannelRequester::channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel)
+{
+    if(!status.isSuccess()) {
+        std::ostringstream strm;
+        status.dump(strm);
+        throw std::runtime_error(strm.str());
+    }
+}
+
+void DefaultChannelRequester::channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState)
+{ /* no-op */ }
+
+ChannelRequester::shared_pointer DefaultChannelRequester::build()
+{
+    ChannelRequester::shared_pointer ret(new DefaultChannelRequester);
+    return ret;
+}
+
+
 }
 }
