@@ -182,7 +182,9 @@ class epicsShareClass MonitorRequester : public ChannelBaseRequester {
 
     virtual ~MonitorRequester(){}
     /**
-     * The client and server have both completed the createMonitor request.
+     * Underlying Channel is connected and operation setup is complete.
+     * Call start() to begin subscription updates.
+     *
      * @param status Completion status.
      * @param monitor The monitor
      * @param structure The structure defining the data.
@@ -190,13 +192,14 @@ class epicsShareClass MonitorRequester : public ChannelBaseRequester {
     virtual void monitorConnect(epics::pvData::Status const & status,
         MonitorPtr const & monitor, epics::pvData::StructureConstPtr const & structure) = 0;
     /**
-     * A monitor event has occurred.
+     * Monitor queue is not empty.
+     *
      * The requester must call Monitor.poll to get data.
      * @param monitor The monitor.
      */
     virtual void monitorEvent(MonitorPtr const & monitor) = 0;
     /**
-     * The data source is no longer available.
+     * No more subscription update will be sent.
      * @param monitor The monitor.
      */
     virtual void unlisten(MonitorPtr const & monitor) = 0;
@@ -255,7 +258,9 @@ public:
     virtual ~ChannelArrayRequester() {}
 
     /**
-     * The client and server have both completed the createChannelArray request.
+     * Underlying Channel is connected and operation setup is complete.
+     * May call putArray(), getArray(), getLength(), or setLength() to execute.
+     *
      * @param status Completion status.
      * @param channelArray The channelArray interface or <code>null</code> if the request failed.
      * @param pvArray The PVArray that holds the data or <code>null</code> if the request failed.
@@ -1098,6 +1103,9 @@ public:
      * and to the ChannelProvider through which it is created.
      *
      * @post The shared_ptr passed to ChannelRequester::channelCreated() is unique.  See @ref providers_ownership_unique
+     *
+     * @post The new Channel will _not_ hold a strong reference to this ChannelProvider.
+     *       This provider must be kept alive in order to keep the Channel from being destoryed.
      *
      * @param name The name of the channel.
      * @param requester Will receive notifications about channel state changes

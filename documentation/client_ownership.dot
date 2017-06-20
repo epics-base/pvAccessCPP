@@ -20,8 +20,10 @@ digraph clientowner {
   ChannelArray;
   ChannelArrayRequester [shape=box];
 
+  Channel -> ChannelProvider [color=green, style=dashed];
+  ChannelProvider -> Channel [color=green, style=dashed];
+
   # Operation -> Requester  strong ref
-  Channel -> ChannelProvider [color=red, style=dashed];
   Channel -> ChannelRequester [color=red, style=dashed];
   ChannelGet -> ChannelGetRequester [color=red, style=dashed];
   ChannelPut -> ChannelPutRequester [color=red, style=dashed];

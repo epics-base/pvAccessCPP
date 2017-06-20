@@ -48,6 +48,30 @@ is called when a Channel becomes (dis)connected.
 A "Requester" sub-class must be provided when each "Operation" is created.
 This Requester then becomes bound to the Operation.
 
+@subsubsection provider_roles_requester_locking
+
+Operations methods may call requester methods, and vis versa.
+The following rules must be followed to avoid deadlocks.
+
+- No locks must be held when Requester methods are called.
+- Locks may be held when Operation methods are called.
+
+These rules place the burdon of avoiding deadlocks on the ChannelProvider implementation (Server role).
+
+Clients must still be aware when Operation methods can call Requester methods recursivly,
+and consider this when locking.
+
+For example, the following call stack may legitimetly occur for a ChannelProvider
+to for a Get which accesses locally stored data.
+
+- Channel::createChannelGet()
+ - ChannelGetRequester::channelGetConnect()
+  - ChannelGet::get()
+   - ChannelGetRequester::getDone()
+
+Thus care should be taken when calling ChannelGet::get() from within ChannelGetRequester::getDone()
+to avoid infinite recursion.
+
 @subsection providers_ownership shared_ptr<> and Ownership
 
 "Operations" and "Requesters" are always handled via std::tr1::shared_ptr.
@@ -153,6 +177,11 @@ which is uniquely owned by the caller (see @ref providers_ownership_unique).
 As such, the caller must keep a reference to to the Channel or it will be destroyed.
 This may be done explicitly, or implicitly by storing a reference to an Operation.
 
+@note The returned Channel does *not* hold a strong reference for the ChannelProvider
+      from which it was created.
+      User code *must* keep a reference to the provider as long as Channels are in use.
+      All Channels are automatically closed when their provider is destroyed.
+
 A Channel can be created at any time, and shall succeed as long as
 the provided name and address are syntactically valid, and the priority is in the valid range.
 
@@ -202,11 +231,80 @@ When the underlying Channel becomes disconnected or is destroyed,
 then the channelDisconnect() method of each Requester is called (eg.
 see epics::pvAccess::ChannelBaseRequester::channelDisconnect()
 ).
+All operations are implicitly cancelled/stopped before channelDisconnect() is called.
 
 @subsubsection providers_client_operations_lifetime Operation Lifetime and (dis)connection
 
 An Operation can be created at any time regardless of whether a Channel is connected or not.
 An Operation will remain associated with a Channel through (re)connection and disconnection.
+
+@subsubsection providers_client_operations_exec Executing an Operation
+
+After an Operation becomes ready/connected an additional step is necessary to request data.
+
+- epics::pvAccess::ChannelGet::get()
+- epics::pvAccess::ChannelPut::get()
+- epics::pvAccess::ChannelPut::put()
+- epics::pvAccess::ChannelRPC::request()
+- epics::pvAccess::ChannelPutGet::putGet()
+- epics::pvAccess::ChannelPutGet::getPut()
+- epics::pvAccess::ChannelPutGet::getGet()
+- epics::pvAccess::ChannelProcess::process()
+- epics::pvAccess::ChannelArray::putArray()
+- epics::pvAccess::ChannelArray::getArray()
+- epics::pvAccess::ChannelArray::getLength()
+- epics::pvAccess::ChannelArray::setLength()
+
+Once one of these methods is called to execute an operation,
+none may be again until the corresponding completion callback is called,
+or the operation is cancel()ed (or epics::pvAccess::Monitor::stop() ).
+
+- epics::pvAccess::ChannelGetRequester::getDone()
+- epics::pvAccess::ChannelPutRequester::getDone()
+- epics::pvAccess::ChannelPutRequester::putDone()
+- epics::pvAccess::ChannelRPCRequester::requestDone()
+- epics::pvAccess::ChannelPutGetRequester::putGetDone()
+- epics::pvAccess::ChannelPutGetRequester::getPutDone()
+- epics::pvAccess::ChannelPutGetRequester::getGetDone()
+- epics::pvAccess::ChannelProcessRequester::processDone()
+- epics::pvAccess::ChannelArrayRequester::putArrayDone()
+- epics::pvAccess::ChannelArrayRequester::getArrayDone()
+- epics::pvAccess::ChannelArrayRequester::getLengthDone()
+- epics::pvAccess::ChannelArrayRequester::setLengthDone()
+
+@subsubsection providers_client_operations_monitor Monitor Operation
+
+epics::pvAccess::Monitor operations are handled differently than others as
+more than one subscription update may be delivered after start() is called.
+
+During or after epics::pvAccess::MonitorRequester::monitorConnect()
+it is necessary to call epics::pvAccess::Monitor::start()
+to begin receiving subscription updates.
+
+The epics::pvAccess::Monitor::poll() and epics::pvAccess::Monitor::release()
+methods access a FIFO queue of subscription updates which have been received.
+The epics::pvAccess::MonitorRequester::monitorEvent() method is called
+when this FIFO becomes not empty.
+
+@note The pvAccess::MonitorRequester::monitorEvent() is called from a server internal thread
+      which may be shared with other operations.
+      In order to avoid delaying other channels/operations
+      it is recommended to use monitorEvent() as notification for a client
+      specific worker thread where poll() and release() are called.
+
+epics::pvAccess::MonitorRequester::unlisten() is called to indicate a subscription
+has reached a definite end without an error.
+Not all subscription sources will use this.
+
+@warning It is critical that any non-NULL MonitorElement returned by poll()
+         must be passed to release().
+         Failure to do this will result in a resource leak and possibly stall
+         the monitor.
+         See epics::pvAccess::Monitor::Stats::noutstanding
+
+epics::pvAccess::Monitor::getStats() can help diagnose problems related
+to the Monitor FIFO.
+See epics::pvAccess::Monitor::Stats.
 
 @subsection provides_client_ownership Client Ownership
 
@@ -214,9 +312,17 @@ Implicit ownership in classes outside the control of client code.
 
 @dotfile client_ownership.dot Client implicit relationships
 
-- Channel hold strong refs. of ChannelProvider and ChannelRequester
+- Channel holds weak ref. to ChannelProvider
+- ChannelProvider holds weak ref. to Channel
+- Channel holds strong ref. to ChannelRequester
 - Channel holds weak refs to all Operations
 - Operation holds strong refs to the corresponding Requester, and Channel
+
+@subsection provides_client_examples Client Examples
+
+- @ref examples_getme
+- @ref examples_monitorme
+
 
 @section providers_server Server Role
 */
