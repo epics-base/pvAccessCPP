@@ -69,7 +69,7 @@ public:
      */
     virtual void printInfo(std::ostream& str) = 0;
 
-    void dispose();
+    void dispose() EPICS_DEPRECATED;
 
     virtual epicsTimeStamp& getStartTime() = 0;
 

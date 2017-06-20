@@ -93,7 +93,7 @@ public:
      * Dispose (destroy) server context.
      * This calls <code>destroy()</code> and silently handles all exceptions.
      */
-    virtual void dispose() = 0;
+    virtual void dispose() EPICS_DEPRECATED = 0;
 
 
     virtual ChannelSearchManager::shared_pointer getChannelSearchManager() = 0;

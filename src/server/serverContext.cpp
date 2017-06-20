@@ -55,7 +55,14 @@ ServerContextImpl::ServerContextImpl():
 
 ServerContextImpl::~ServerContextImpl()
 {
-    dispose();
+    try
+    {
+        shutdown();
+    }
+    catch(std::exception& e)
+    {
+        std::cerr<<"Error in: ServerContextImpl::dispose: "<<e.what()<<"\n";
+    }
 }
 
 const GUID& ServerContextImpl::getGUID()
