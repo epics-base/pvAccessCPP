@@ -22,7 +22,7 @@ static
 void pva_factory_cleanup(void*)
 {
     try {
-        getChannelProviderRegistry()->remove("pva");
+        ChannelProviderRegistry::clients()->remove("pva");
     } catch(std::exception& e) {
         LOG(logLevelWarn, "Error when unregister \"pva\" factory");
     }
@@ -33,7 +33,7 @@ void ClientFactory::start()
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
 
-    if(getChannelProviderRegistry()->add("pva", createClientProvider, false))
+    if(ChannelProviderRegistry::clients()->add("pva", createClientProvider, false))
         epicsAtExit(&pva_factory_cleanup, NULL);
 }
 

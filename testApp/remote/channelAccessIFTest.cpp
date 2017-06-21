@@ -50,17 +50,6 @@ std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray1";
 #define EXTRA_STRESS_TESTS 0
 #endif
 
-namespace {
-struct ScopedClientFactory {
-    ScopedClientFactory() {
-        ClientFactory::start();
-    }
-    ~ScopedClientFactory() {
-        ClientFactory::stop();
-    }
-};
-}
-
 int ChannelAccessIFTest::runAllTest() {
 
     testPlan(152+EXTRA_STRESS_TESTS);
@@ -87,7 +76,9 @@ int ChannelAccessIFTest::runAllTest() {
             .add("EPICS_PVA_BROADCAST_PORT", tstserv->getBroadcastPort())
             .push_map()
             .build());
-    ScopedClientFactory SCF;
+    epics::pvAccess::ClientFactory::start();
+
+    m_provider = ChannelProviderRegistry::clients()->getProvider("pva");
 
     test_implementation();
     test_providerName();
@@ -2403,31 +2394,15 @@ PVStructure::shared_pointer ChannelAccessIFTest::createArrayPvRequest() {
     return pvRequest;
 }
 
-
-class ChannelAccessIFRemoteTest: public ChannelAccessIFTest  {
-
-public:
-
-    virtual ChannelProvider::shared_pointer getChannelProvider() {
-        return getChannelProviderRegistry()->getProvider(
-                   "pva");
-    }
-
-
-    virtual long getTimeoutSec() {
-        return 3;
-    }
-
-
-    virtual bool isLocal() {
-        return false;
-    }
-
-};
-
 MAIN(testChannelAccess)
 {
-    SET_LOG_LEVEL(logLevelError);
-    ChannelAccessIFRemoteTest caRemoteTest;
-    return caRemoteTest.runAllTest();
+    try{
+        SET_LOG_LEVEL(logLevelError);
+        ChannelAccessIFTest caRemoteTest;
+        return caRemoteTest.runAllTest();
+    }catch(std::exception& e){
+        PRINT_EXCEPTION(e);
+        std::cerr<<"Unhandled exception: "<<e.what()<<"\n";
+        return 1;
+    }
 }

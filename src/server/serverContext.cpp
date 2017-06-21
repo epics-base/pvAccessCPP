@@ -144,17 +144,17 @@ void ServerContextImpl::loadConfiguration()
     _receiveBufferSize = config->getPropertyAsInteger("EPICS_PVAS_MAX_ARRAY_BYTES", _receiveBufferSize);
 
     if(_channelProviders.empty()) {
-        std::string providers = config->getPropertyAsString("EPICS_PVA_PROVIDER_NAMES", PVACCESS_DEFAULT_PROVIDER);
-        providers             = config->getPropertyAsString("EPICS_PVAS_PROVIDER_NAMES", providers);
+        std::string providers = config->getPropertyAsString("EPICS_PVAS_PROVIDER_NAMES", PVACCESS_DEFAULT_PROVIDER);
 
-        ChannelProviderRegistry::shared_pointer reg(getChannelProviderRegistry());
+        ChannelProviderRegistry::shared_pointer reg(ChannelProviderRegistry::servers());
 
         if (providers == PVACCESS_ALL_PROVIDERS)
         {
             providers.resize(0); // VxWorks 5.5 omits clear()
 
-            std::auto_ptr<ChannelProviderRegistry::stringVector_t> names = reg->getProviderNames();
-            for (ChannelProviderRegistry::stringVector_t::iterator iter = names->begin(); iter != names->end(); iter++)
+            std::set<std::string> names;
+            reg->getProviderNames(names);
+            for (std::set<std::string>::const_iterator iter = names.begin(); iter != names.end(); iter++)
             {
                 ChannelProvider::shared_pointer channelProvider = reg->getProvider(*iter);
                 if (channelProvider) {
@@ -247,7 +247,6 @@ ServerContextImpl::getCurrentConfig()
     SET("EPICS_PVA_MAX_ARRAY_BYTES", getReceiveBufferSize());
 
     SET("EPICS_PVAS_PROVIDER_NAMES", providerName.str());
-    SET("EPICS_PVA_PROVIDER_NAMES", providerName.str());
 
 #undef SET
 
@@ -257,7 +256,7 @@ ServerContextImpl::getCurrentConfig()
 bool ServerContextImpl::isChannelProviderNamePreconfigured()
 {
     Configuration::const_shared_pointer config = getConfiguration();
-    return config->hasProperty("EPICS_PVA_PROVIDER_NAMES") || config->hasProperty("EPICS_PVAS_PROVIDER_NAMES");
+    return config->hasProperty("EPICS_PVAS_PROVIDER_NAMES");
 }
 
 void ServerContextImpl::initialize()
@@ -523,8 +522,6 @@ std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& ServerContextImpl:
 {
     return SecurityPluginRegistry::instance().getServerSecurityPlugins();
 }
-
-
 
 ServerContext::shared_pointer startPVAServer(std::string const & providerNames, int timeToRun, bool runInSeparateThread, bool printInfo)
 {

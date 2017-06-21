@@ -197,7 +197,7 @@ void ConfigurationProviderImpl::registerConfiguration(const string &name, Config
     if(configsIter != _configs.end())
     {
         string msg = "configuration with name " + name + " already registered";
-        THROW_BASE_EXCEPTION(msg.c_str());
+        THROW_BASE_EXCEPTION(msg);
     }
     _configs[name] = configuration;
 }

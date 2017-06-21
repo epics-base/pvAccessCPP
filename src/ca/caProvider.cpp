@@ -178,7 +178,7 @@ static
 void ca_factory_cleanup(void*)
 {
     try {
-        getChannelProviderRegistry()->remove("ca");
+        ChannelProviderRegistry::clients()->remove("ca");
     } catch(std::exception& e) {
         LOG(logLevelWarn, "Error when unregister \"ca\" factory");
     }
@@ -189,7 +189,7 @@ void CAClientFactory::start()
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
 
-    if(getChannelProviderRegistry()->add<CAChannelProvider>("ca", false))
+    if(ChannelProviderRegistry::clients()->add<CAChannelProvider>("ca", false))
         epicsAtExit(&ca_factory_cleanup, NULL);
 }
 

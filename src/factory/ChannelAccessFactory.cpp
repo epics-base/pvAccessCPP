@@ -23,18 +23,15 @@ using std::string;
 namespace epics {
 namespace pvAccess {
 
+ChannelProviderRegistry::shared_pointer ChannelProviderRegistry::build() {
+    ChannelProviderRegistry::shared_pointer ret(new ChannelProviderRegistry);
+    return ret;
+}
+
 ChannelProvider::shared_pointer ChannelProviderRegistry::getProvider(std::string const & providerName) {
     ChannelProviderFactory::shared_pointer fact(getFactory(providerName));
     if(fact)
         return fact->sharedInstance();
-    else
-        return ChannelProvider::shared_pointer();
-}
-
-ChannelProvider::shared_pointer ChannelProviderRegistry::createProvider(std::string const & providerName) {
-    ChannelProviderFactory::shared_pointer fact(getFactory(providerName));
-    if(fact)
-        return fact->newInstance();
     else
         return ChannelProvider::shared_pointer();
 }
@@ -60,14 +57,27 @@ ChannelProviderFactory::shared_pointer ChannelProviderRegistry::getFactory(std::
 
 std::auto_ptr<ChannelProviderRegistry::stringVector_t> ChannelProviderRegistry::getProviderNames()
 {
-    Lock G(mutex);
-    std::auto_ptr<stringVector_t> ret(new stringVector_t);
-    for (providers_t::const_iterator iter = providers.begin();
-            iter != providers.end(); iter++)
-        ret->push_back(iter->first);
+    std::set<std::string> names;
+    getProviderNames(names);
 
+    std::auto_ptr<ChannelProviderRegistry::stringVector_t> ret(new ChannelProviderRegistry::stringVector_t);
+    ret->reserve(names.size());
+
+    for(std::set<std::string>::const_iterator it=names.begin(); it!=names.end(); ++it)
+    {
+        ret->push_back(*it);
+    }
     return ret;
 }
+
+void ChannelProviderRegistry::getProviderNames(std::set<std::string>& names)
+{
+    Lock G(mutex);
+    for (providers_t::const_iterator iter = providers.begin();
+         iter != providers.end(); iter++)
+        names.insert(iter->first);
+}
+
 
 bool ChannelProviderRegistry::add(const ChannelProviderFactory::shared_pointer& fact, bool replace)
 {
@@ -121,13 +131,11 @@ ChannelProviderFactory::shared_pointer ChannelProviderRegistry::add(const std::s
 ChannelProviderFactory::shared_pointer ChannelProviderRegistry::remove(const std::string& name)
 {
     Lock G(mutex);
-    ChannelProviderFactory::shared_pointer ret;
-    providers_t::iterator iter(providers.find(name));
-    if(iter!=providers.end()) {
-        ret = iter->second;
-        providers.erase(iter);
+    ChannelProviderFactory::shared_pointer fact(getFactory(name));
+    if(fact) {
+        remove(fact);
     }
-    return ret;
+    return fact;
 }
 
 bool ChannelProviderRegistry::remove(const ChannelProviderFactory::shared_pointer& fact)
@@ -142,10 +150,57 @@ bool ChannelProviderRegistry::remove(const ChannelProviderFactory::shared_pointe
     return false;
 }
 
+void ChannelProviderRegistry::clear()
+{
+    Lock G(mutex);
+    providers.clear();
+}
+
+struct CompatRegistry : public ChannelProviderRegistry
+{
+    CompatRegistry() {}
+    virtual ~CompatRegistry() {}
+    virtual ChannelProviderFactory::shared_pointer getFactory(std::string const & providerName) OVERRIDE FINAL
+    {
+        ChannelProviderFactory::shared_pointer ret(clients()->getFactory(providerName));
+        if(!ret)
+            ret = servers()->getFactory(providerName);
+        return ret;
+    }
+    virtual void getProviderNames(std::set<std::string>& names) OVERRIDE FINAL
+    {
+        clients()->getProviderNames(names);
+        servers()->getProviderNames(names);
+    }
+    virtual bool add(const ChannelProviderFactory::shared_pointer& fact, bool replace=true) OVERRIDE FINAL
+    {
+        std::cerr<<"Warning: Adding provider \""<<fact->getFactoryName()<<"\" to compatibility ChannelProviderFactory is deprecated\n"
+                 <<"         Instead explicitly add to ChannelProviderFactory::clients() or ChannelProviderFactory::servers()\n";
+        // intentionally not using short-circuit or
+        return clients()->add(fact, replace) | servers()->add(fact, replace);
+    }
+    virtual bool remove(const ChannelProviderFactory::shared_pointer& factory) OVERRIDE FINAL
+    {
+        // intentionally not using short-circuit or
+        return clients()->remove(factory) | servers()->remove(factory);
+    }
+    virtual void clear() OVERRIDE FINAL
+    {
+        clients()->clear();
+        servers()->clear();
+    }
+};
+
 namespace {
 struct providerRegGbl_t {
-    Mutex mutex;
-    ChannelProviderRegistry::shared_pointer reg;
+    ChannelProviderRegistry::shared_pointer clients,
+                                            servers,
+                                            compat;
+    providerRegGbl_t()
+        :clients(ChannelProviderRegistry::build())
+        ,servers(ChannelProviderRegistry::build())
+        ,compat(new CompatRegistry)
+    {}
 } *providerRegGbl;
 
 epicsThreadOnceId providerRegOnce = EPICS_THREAD_ONCE_INIT;
@@ -157,16 +212,25 @@ void providerRegInit(void*)
 
 } // namespace
 
+ChannelProviderRegistry::shared_pointer ChannelProviderRegistry::clients()
+{
+    epicsThreadOnce(&providerRegOnce, &providerRegInit, 0);
+
+    return providerRegGbl->clients;
+}
+
+ChannelProviderRegistry::shared_pointer ChannelProviderRegistry::servers()
+{
+    epicsThreadOnce(&providerRegOnce, &providerRegInit, 0);
+
+    return providerRegGbl->servers;
+}
+
 ChannelProviderRegistry::shared_pointer getChannelProviderRegistry()
 {
     epicsThreadOnce(&providerRegOnce, &providerRegInit, 0);
 
-    Lock guard(providerRegGbl->mutex);
-
-    if(!providerRegGbl->reg) {
-        providerRegGbl->reg = ChannelProviderRegistry::build();
-    }
-    return providerRegGbl->reg;
+    return providerRegGbl->compat;
 }
 
 void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) {

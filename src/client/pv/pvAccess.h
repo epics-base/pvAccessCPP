@@ -8,6 +8,7 @@
 #define PVACCESS_H
 
 #include <vector>
+#include <set>
 
 #ifdef epicsExportSharedSymbols
 #   define pvAccessEpicsExportSharedSymbols
@@ -1242,6 +1243,20 @@ public:
 
     typedef std::vector<std::string> stringVector_t;
 
+
+    //! Create a custom registry
+    static ChannelProviderRegistry::shared_pointer build();
+    //! The global registry for "clients".
+    //! Register providers which will be used within this process.
+    //! Typically providers which access data outside of the process.
+    //! Associated with EPICS_PVA_PROVIDER_NAMES
+    static ChannelProviderRegistry::shared_pointer clients();
+    //! The global registry for "servers".
+    //! Register providers which will be used outside of this process (via ServerContext).
+    //! Typically providers which access data within the process.
+    //! Associated with EPICS_PVAS_PROVIDER_NAMES
+    static ChannelProviderRegistry::shared_pointer servers();
+
     /**
      * Get a shared instance of the provider with the specified name.
      * @param providerName The name of the provider.
@@ -1254,38 +1269,27 @@ public:
      * @param providerName The name of the provider.
      * @return The interface for the provider or null if the provider is not known.
      */
-    ChannelProvider::shared_pointer createProvider(std::string const & providerName);
-
-    /**
-     * Creates a new instanceof the provider with the specified name.
-     * @param providerName The name of the provider.
-     * @return The interface for the provider or null if the provider is not known.
-     */
     ChannelProvider::shared_pointer createProvider(std::string const & providerName,
-                                                           const std::tr1::shared_ptr<Configuration>& conf);
+                                                           const std::tr1::shared_ptr<Configuration>& conf = std::tr1::shared_ptr<Configuration>());
 
     /**
      * Fetch provider factor with the specified name.
      * @param providerName The name of the provider.
      * @return The factor or null if the provider is not known.
      */
-    ChannelProviderFactory::shared_pointer getFactory(std::string const & providerName);
+    virtual ChannelProviderFactory::shared_pointer getFactory(std::string const & providerName);
 
     /**
      * Get a array of the names of all the known providers.
      * @return The names. Be sure to delete vector instance.
      */
-    std::auto_ptr<stringVector_t> getProviderNames();
+    std::auto_ptr<stringVector_t> getProviderNames() EPICS_DEPRECATED;
 
-
-    static ChannelProviderRegistry::shared_pointer build() {
-        ChannelProviderRegistry::shared_pointer ret(new ChannelProviderRegistry);
-        return ret;
-    }
+    virtual void getProviderNames(std::set<std::string>& names);
 
     //! Add new factory.  if replace=false and name already in use, return false with no change
     //! in other cases insert provided factory and return true.
-    bool add(const ChannelProviderFactory::shared_pointer& fact, bool replace=true);
+    virtual bool add(const ChannelProviderFactory::shared_pointer& fact, bool replace=true);
 
     //! Add a new Provider which will be built using SimpleChannelProviderFactory<Provider>
     template<class Provider>
@@ -1304,16 +1308,16 @@ public:
     ChannelProviderFactory::shared_pointer remove(const std::string& name);
 
     //! Attempt to remove a factory.  Return true if Factory was previously registered, and now removed.
-    bool remove(const ChannelProviderFactory::shared_pointer& factory);
+    virtual bool remove(const ChannelProviderFactory::shared_pointer& factory);
 
     //! Drop all factories
-    void clear()
-    {
-        providers.clear();
-    }
+    virtual void clear();
 
 private:
+    // ctor is hidden to ensure explict compile errors from a hypothetical sub-class
+    // we no longer support sub-classing by outside code
     ChannelProviderRegistry() {}
+    friend struct CompatRegistry;
 
     epics::pvData::Mutex mutex;
     typedef std::map<std::string, ChannelProviderFactory::shared_pointer> providers_t;
@@ -1323,14 +1327,16 @@ private:
 /** Access to the global ChannelProviderRegistry instance.
  *
  * Never returns NULL
+ *
+ * @deprecated Deprecated in favor of either ChannelProviderRegistry::clients() or ChannelProviderRegistry::servers()
  */
-epicsShareFunc ChannelProviderRegistry::shared_pointer getChannelProviderRegistry();
+epicsShareFunc ChannelProviderRegistry::shared_pointer getChannelProviderRegistry() EPICS_DEPRECATED;
 //! Shorthand for getChannelProviderRegistry()->add(channelProviderFactory);
-epicsShareFunc void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
+epicsShareFunc void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) EPICS_DEPRECATED;
 //! Shorthand for getChannelProviderRegistry()->remove(channelProviderFactory);
-epicsShareFunc void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory);
+epicsShareFunc void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) EPICS_DEPRECATED;
 //! Shorthand for getChannelProviderRegistry()->clear();
-epicsShareFunc void unregisterAllChannelProviderFactory();
+epicsShareFunc void unregisterAllChannelProviderFactory() EPICS_DEPRECATED;
 
 
 /**

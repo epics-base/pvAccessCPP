@@ -7,6 +7,7 @@
 
 class ChannelAccessIFTest {
 
+    ChannelProvider::shared_pointer m_provider;
 public:
 
     int runAllTest();
@@ -23,9 +24,9 @@ protected:
     static std::string TEST_ARRAY_CHANNEL_NAME;
 
 
-    virtual ChannelProvider::shared_pointer getChannelProvider() = 0;
-    virtual long getTimeoutSec() = 0;
-    virtual bool isLocal() = 0;
+    ChannelProvider::shared_pointer getChannelProvider() { return m_provider; }
+    long getTimeoutSec() {return 3;}
+    bool isLocal() {return false;}
 
 
     Channel::shared_pointer createChannel(std::string channelName, bool debug = false );

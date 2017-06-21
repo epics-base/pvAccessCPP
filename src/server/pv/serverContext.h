@@ -114,7 +114,7 @@ public:
     /** Start a new PVA server
      *
      * By default the server will select ChannelProviders using the
-     * EPICS_PVA_PROVIDER_NAMES or EPICS_PVAS_PROVIDER_NAMES Configuration key.
+     * EPICS_PVAS_PROVIDER_NAMES Configuration key.
      *
      * If a list of provided is given with Config::providers() then this
      * overrides any Configuration.

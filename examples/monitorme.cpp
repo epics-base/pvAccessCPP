@@ -276,7 +276,7 @@ int main(int argc, char *argv[]) {
         pva::ca::CAClientFactory::start();
 
         std::cout<<"Use provider: "<<providerName<<"\n";
-        pva::ChannelProvider::shared_pointer provider(pva::getChannelProviderRegistry()->createProvider(providerName, conf));
+        pva::ChannelProvider::shared_pointer provider(pva::ChannelProviderRegistry::clients()->createProvider(providerName, conf));
         if(!provider)
             throw std::logic_error("pva provider not registered");
 

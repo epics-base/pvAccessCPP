@@ -154,7 +154,7 @@ RPCClient::RPCClient(const std::string & serviceName,
     : m_serviceName(serviceName), m_pvRequest(pvRequest ? pvRequest : pvd::createRequest(""))
 {
     ClientFactory::start();
-    ChannelProvider::shared_pointer provider(getChannelProviderRegistry()->getProvider("pva"));
+    ChannelProvider::shared_pointer provider(ChannelProviderRegistry::clients()->getProvider("pva"));
     if(!provider)
         throw std::logic_error("Unknown Provider");
     construct(provider, serviceName, pvRequest);
