@@ -1158,7 +1158,7 @@ public:
      * @param requester The Requester.
      * @return An unique()==true handle for the pending response.  May only return NULL if channelFindResult() called with an Error
      */
-    virtual ChannelFind::shared_pointer channelList(ChannelListRequester::shared_pointer const & requester) = 0;
+    virtual ChannelFind::shared_pointer channelList(ChannelListRequester::shared_pointer const & requester);
 
     /**
      * See longer form

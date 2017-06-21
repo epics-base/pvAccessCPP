@@ -248,6 +248,16 @@ epicsShareFunc void unregisterAllChannelProviderFactory()
     getChannelProviderRegistry()->clear();
 }
 
+ChannelFind::shared_pointer
+ChannelProvider::channelList(ChannelListRequester::shared_pointer const & requester)
+{
+    ChannelFind::shared_pointer ret;
+    requester->channelListResult(Status::error("not implemented"),
+                                 ret,
+                                 epics::pvData::PVStringArray::const_svector(),
+                                 false);
+    return ret;
+}
 
 Channel::shared_pointer
 ChannelProvider::createChannel(std::string const & name,
