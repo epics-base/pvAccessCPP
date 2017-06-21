@@ -158,7 +158,13 @@ struct epicsShareClass ChannelBaseRequester : virtual public epics::pvData::Requ
      *
      * (re)connection is notified through a sub-class *Connect() method.
      *
-     * @param destroy true for final disconnect (shutdown).
+     * Any in-progress get()/put()/request()/start() is implicitly cancel()'d or stop()'d
+     * before this method is called.
+     *
+     * Ownership of any PVStructures passed to completion callbacks (eg. ChannelGetRequester::getDone() )
+     * is returned the operation
+     *
+     * @param destroy true for final disconnect.
      */
     virtual void channelDisconnect(bool destroy) {}
 };
@@ -244,8 +250,12 @@ public:
 
     /**
      * put to the remote array.
+     *
+     * Ownership of the PVArray is transferred to the ChannelArray until ChannelArrayRequester::putArrayDone()
+     * or ChannelArrayRequester::channelDisconnect() is called.
+     *
      * @param putArray array to put.
-     * @param offset The offset in the remote array, i.e. the PVArray returned by ChannelArrayRequester.channelArrayConnect.
+     * @param offset The offset in the remote array, i.e. the PVArray returned by ChannelArrayRequester::channelArrayConnect.
      * @param count The number of elements to put, 0 means "entire array".
      * @param stride 1 means all the elements from offset to count, 2 means every other, 3 means every third, etc.
      */
@@ -255,7 +265,11 @@ public:
 
     /**
      * get from the remote array.
-     * @param offset The offset in the remote array, i.e. the PVArray returned by ChannelArrayRequester.channelArrayConnect.
+     *
+     * Ownership of the PVArray previously passed to ChannelArrayRequester::getArrayDone()
+     * is returned to the ChannelArray from the ChannelArrayRequester.
+     *
+     * @param offset The offset in the remote array, i.e. the PVArray returned by ChannelArrayRequester::channelArrayConnect.
      * @param count The number of elements to get, 0 means "till the end of an array".
      * @param stride 1 means all the elements from offset to count, 2 means every other, 3 means every third, etc.
      */
@@ -288,8 +302,8 @@ public:
      * May call putArray(), getArray(), getLength(), or setLength() to execute.
      *
      * @param status Completion status.
-     * @param channelArray The channelArray interface or <code>null</code> if the request failed.
-     * @param pvArray The PVArray that holds the data or <code>null</code> if the request failed.
+     * @param channelArray The channelArray interface or nullptr if the request failed.
+     * @param pvArray The PVArray that holds the data or nullptr if the request failed.
      */
     virtual void channelArrayConnect(
         const epics::pvData::Status& status,
@@ -298,6 +312,9 @@ public:
 
     /**
      * The request is done. This is always called with no locks held.
+     *
+     * Ownership of PVArray passed to ChannelArray::putArray() returns to ChannelArrayRequester
+     *
      * @param status Completion status.
      * @param channelArray The channelArray interface.
      */
@@ -307,9 +324,13 @@ public:
 
     /**
      * The request is done. This is always called with no locks held.
+     *
+     * Ownership of the PVArray is transfered to the ChannelArrayRequester until
+     * a subsequent call to ChannelArray::getArray() or ChannelArrayRequester::channelDisconnect().
+     *
      * @param status Completion status.
      * @param channelArray The channelArray interface.
-     * @param pvArray The PVArray that holds the data or <code>null</code> if the request failed.
+     * @param pvArray The PVArray that holds the data or nullptr if the request failed.
      */
     virtual void getArrayDone(
         const epics::pvData::Status& status,
@@ -403,7 +424,11 @@ public:
 
     /**
      * Get data from the channel.
-     * Completion status is reported by calling ChannelGetRequester.getDone() callback.
+     *
+     * Ownership of the PVStructure passed to ChannelGetRequester::getDone() is
+     * returned to the ChannelGet.
+     *
+     * Completion status is reported by calling ChannelGetRequester::getDone() callback.
      */
     virtual void get() = 0;
 };
@@ -422,8 +447,8 @@ public:
     /**
      * The client and server have both completed the createChannelGet request.
      * @param status Completion status.
-     * @param channelGet The channelGet interface or <code>null</code> if the request failed.
-     * @param structure The introspection interface of requested get structure or <code>null</code> if the request failed.
+     * @param channelGet The channelGet interface or nullptr if the request failed.
+     * @param structure The introspection interface of requested get structure or nullptr if the request failed.
      */
     virtual void channelGetConnect(
         const epics::pvData::Status& status,
@@ -432,10 +457,14 @@ public:
 
     /**
      * The request is done. This is always called with no locks held.
+     *
+     * Ownership of the PVStructure is passed to the ChannelGetRequester until a subsequent call to
+     * ChannelGet::get() or ChannelGetRequester::channelDisconnect()
+     *
      * @param status Completion status.
      * @param channelGet The channelGet interface.
-     * @param pvStructure The PVStructure that holds the data or <code>null</code> if the request failed.
-     * @param bitSet The bitSet for that shows what data has changed or <code>null</code> if the request failed.
+     * @param pvStructure The PVStructure that holds the data or nullptr if the request failed.
+     * @param bitSet The bitSet for that shows what data has changed or nullptr if the request failed.
      */
     virtual void getDone(
         const epics::pvData::Status& status,
@@ -476,7 +505,7 @@ public:
     /**
      * The client and server have both completed the createChannelProcess request.
      * @param status Completion status.
-     * @param channelProcess The channelProcess interface or <code>null</code> if the client could not become
+     * @param channelProcess The channelProcess interface or nullptr if the client could not become
      * the record processor.
      */
     virtual void channelProcessConnect(
@@ -506,7 +535,13 @@ public:
 
     /**
      * Put data to a channel.
-     * Completion status is reported by calling ChannelPutRequester.putDone() callback.
+     *
+     * Completion status is reported by calling ChannelPutRequester::putDone()
+     *
+     * Ownership of the PVStructure is transfered to the ChannelPut until
+     * ChannelPutRequester::putDone() or ChannelPutRequester::channelDisconnect()
+     * is called.
+     *
      * @param pvPutStructure The PVStructure that holds the putData.
      * @param putBitSet putPVStructure bit-set (selects what fields to put).
      */
@@ -516,6 +551,8 @@ public:
 
     /**
      * Get the current data.
+     *
+     * Ownership transfer as with ChannelGet::get()
      */
     virtual void get() = 0;
 
@@ -535,7 +572,7 @@ public:
      * The client and server have both processed the createChannelPut request.
      * @param status Completion status.
      * @param channelPut The channelPut interface or null if the request failed.
-     * @param structure The introspection interface of requested put/get structure or <code>null</code> if the request failed.
+     * @param structure The introspection interface of requested put/get structure or nullptr if the request failed.
      */
     virtual void channelPutConnect(
         const epics::pvData::Status& status,
@@ -553,10 +590,13 @@ public:
 
     /**
      * The get request is done. This is always called with no locks held.
+     *
+     * Ownership transfer as with ChannelGetRequester::getDone()
+     *
      * @param status Completion status.
      * @param channelPut The channelPut interface.
-     * @param pvStructure The PVStructure that holds the data or <code>null</code> if the request failed.
-     * @param bitSet The bitSet for that shows what data has changed or <code>null</code> if the request failed.
+     * @param pvStructure The PVStructure that holds the data or nullptr if the request failed.
+     * @param bitSet The bitSet for that shows what data has changed or nullptr if the request failed.
      */
     virtual void getDone(
         const epics::pvData::Status& status,
@@ -616,8 +656,8 @@ public:
      * The client and server have both completed the createChannelPutGet request.
      * @param status Completion status.
      * @param channelPutGet The channelPutGet interface or null if the request failed.
-     * @param putStructure The put structure introspection data or <code>null</code> if the request failed.
-     * @param getStructure The get structure introspection data or <code>null</code> if the request failed.
+     * @param putStructure The put structure introspection data or nullptr if the request failed.
+     * @param getStructure The get structure introspection data or nullptr if the request failed.
      */
     virtual void channelPutGetConnect(
         const epics::pvData::Status& status,
@@ -629,8 +669,8 @@ public:
      * The putGet request is done. This is always called with no locks held.
      * @param status Completion status.
      * @param channelPutGet The channelPutGet interface.
-     * @param pvGetStructure The PVStructure that holds the getData or <code>null</code> if the request failed.
-     * @param getBitSet getPVStructure changed bit-set or <code>null</code> if the request failed.
+     * @param pvGetStructure The PVStructure that holds the getData or nullptr if the request failed.
+     * @param getBitSet getPVStructure changed bit-set or nullptr if the request failed.
      */
     virtual void putGetDone(
         const epics::pvData::Status& status,
@@ -642,8 +682,8 @@ public:
      * The getPut request is done. This is always called with no locks held.
      * @param status Completion status.
      * @param channelPutGet The channelPutGet interface.
-     * @param pvPutStructure The PVStructure that holds the putData or <code>null</code> if the request failed.
-     * @param putBitSet putPVStructure changed bit-set or <code>null</code> if the request failed.
+     * @param pvPutStructure The PVStructure that holds the putData or nullptr if the request failed.
+     * @param putBitSet putPVStructure changed bit-set or nullptr if the request failed.
      */
     virtual void getPutDone(
         const epics::pvData::Status& status,
@@ -655,8 +695,8 @@ public:
      * The getGet request is done. This is always called with no locks held.
      * @param status Completion status.
      * @param channelPutGet The channelPutGet interface.
-     * @param pvGetStructure The PVStructure that holds the getData or <code>null</code> if the request failed.
-     * @param getBitSet getPVStructure changed bit-set or <code>null</code> if the request failed.
+     * @param pvGetStructure The PVStructure that holds the getData or nullptr if the request failed.
+     * @param getBitSet getPVStructure changed bit-set or nullptr if the request failed.
      */
     virtual void getGetDone(
         const epics::pvData::Status& status,
