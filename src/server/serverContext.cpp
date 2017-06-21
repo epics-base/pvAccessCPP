@@ -466,7 +466,7 @@ BeaconServerStatusProvider::shared_pointer ServerContextImpl::getBeaconServerSta
     return _beaconServerStatusProvider;
 }
 
-osiSockAddr* ServerContextImpl::getServerInetAddress()
+const osiSockAddr* ServerContextImpl::getServerInetAddress()
 {
     if(_acceptor.get())
     {

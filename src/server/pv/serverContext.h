@@ -90,6 +90,8 @@ public:
      */
     virtual Configuration::shared_pointer getCurrentConfig() = 0;
 
+    virtual const std::vector<ChannelProvider::shared_pointer>& getChannelProviders() =0;
+
     // ************************************************************************** //
     // **************************** [ Plugins ] ********************************* //
     // ************************************************************************** //

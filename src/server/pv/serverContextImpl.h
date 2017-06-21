@@ -104,7 +104,7 @@ public:
      * Get server newtwork (IP) address.
      * @return server network (IP) address, <code>NULL</code> if not bounded.
      */
-    osiSockAddr* getServerInetAddress();
+    const osiSockAddr *getServerInetAddress();
 
     /**
      * Broadcast (UDP send) transport.
@@ -116,7 +116,7 @@ public:
      * Get channel providers.
      * @return channel providers.
      */
-    std::vector<ChannelProvider::shared_pointer>& getChannelProviders();
+    virtual std::vector<ChannelProvider::shared_pointer>& getChannelProviders() OVERRIDE FINAL;
 
     /**
      * Return <code>true</code> if channel provider name is provided by configuration (e.g. system env. var.).
