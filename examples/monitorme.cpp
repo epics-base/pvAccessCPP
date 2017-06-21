@@ -101,7 +101,7 @@ WorkQueue monwork;
 epicsEvent done;
 
 #ifdef USE_SIGNAL
-void alldone(int num)
+void sigdone(int num)
 {
     (void)num;
     done.signal();
@@ -132,7 +132,7 @@ struct MonTracker : public epicsThreadRunable
 
             std::cout<<"monitorConnect "<<self->chan->getChannelName()<<" "<<status<<"\n";
 
-            if(status.isSuccess()) {
+            if(status.isSuccess() && !self->alldone) {
                 Guard G(self->mutex);
 
                 if(!self->op) {
@@ -257,9 +257,9 @@ int main(int argc, char *argv[]) {
         }
 
 #ifdef USE_SIGNAL
-        signal(SIGINT, alldone);
-        signal(SIGTERM, alldone);
-        signal(SIGQUIT, alldone);
+        signal(SIGINT, sigdone);
+        signal(SIGTERM, sigdone);
+        signal(SIGQUIT, sigdone);
 #endif
 
         // build "pvRequest" which asks for all fields
@@ -294,7 +294,7 @@ int main(int argc, char *argv[]) {
                 mon->chan = chan;
             }
 
-            pva::Monitor::shared_pointer M(chan->createMonitor(mon->req, pvd::createRequest("field()")));
+            pva::Monitor::shared_pointer M(chan->createMonitor(mon->req, pvReq));
             // monitorConnect may already be called
             {
                 Guard G(mon->mutex);
