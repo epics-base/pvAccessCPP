@@ -28,11 +28,6 @@ string RequesterImpl::getRequesterName()
     return "RequesterImpl";
 }
 
-void RequesterImpl::message(std::string const & message, MessageType messageType)
-{
-    std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
-}
-
 std::ostream& operator<<(std::ostream& o, const dump_stack_only_on_debug& d)
 {
     const Status &s = d.status;
@@ -454,12 +449,6 @@ string ChannelRequesterImpl::getRequesterName()
     return "ChannelRequesterImpl";
 }
 
-void ChannelRequesterImpl::message(std::string const & message, MessageType messageType)
-{
-    if (!printOnlyErrors || messageType > warningMessage)
-        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
-}
-
 void ChannelRequesterImpl::channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel)
 {
     if (status.isSuccess())
@@ -515,11 +504,6 @@ GetFieldRequesterImpl::GetFieldRequesterImpl(epics::pvAccess::Channel::shared_po
 string GetFieldRequesterImpl::getRequesterName()
 {
     return "GetFieldRequesterImpl";
-}
-
-void GetFieldRequesterImpl::message(std::string const & message, MessageType messageType)
-{
-    std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
 }
 
 void GetFieldRequesterImpl::getDone(const epics::pvData::Status& status, epics::pvData::FieldConstPtr const & field)

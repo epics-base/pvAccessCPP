@@ -1096,11 +1096,6 @@ public:
         return "ChannelGetRequesterImpl";
     }
 
-    virtual void message(std::string const & message, MessageType messageType)
-    {
-        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
-    }
-
     virtual void channelGetConnect(const epics::pvData::Status& status,
                                    ChannelGet::shared_pointer const & channelGet,
                                    epics::pvData::Structure::const_shared_pointer const & /*structure*/)
@@ -1202,11 +1197,6 @@ public:
     virtual string getRequesterName()
     {
         return "ChannelRPCRequesterImpl";
-    }
-
-    virtual void message(std::string const & message, MessageType messageType)
-    {
-        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelRPCConnect(const epics::pvData::Status& status, ChannelRPC::shared_pointer const & /*channelRPC*/)
@@ -1323,11 +1313,6 @@ public:
     virtual string getRequesterName()
     {
         return "MonitorRequesterImpl";
-    };
-
-    virtual void message(std::string const & message,MessageType messageType)
-    {
-        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, StructureConstPtr const & /*structure*/)

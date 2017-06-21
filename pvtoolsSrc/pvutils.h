@@ -57,7 +57,6 @@ class RequesterImpl :
 public:
     RequesterImpl(std::string const & requesterName);
     virtual std::string getRequesterName();
-    virtual void message(std::string const & message, epics::pvData::MessageType messageType);
 
 private:
     std::string m_requesterName;
@@ -76,7 +75,6 @@ public:
     ChannelRequesterImpl(bool printOnlyErrors = false);
 
     virtual std::string getRequesterName();
-    virtual void message(std::string const & message, epics::pvData::MessageType messageType);
 
     virtual void channelCreated(const epics::pvData::Status& status, epics::pvAccess::Channel::shared_pointer const & channel);
     virtual void channelStateChange(epics::pvAccess::Channel::shared_pointer const & channel, epics::pvAccess::Channel::ConnectionState connectionState);
@@ -99,7 +97,6 @@ public:
     GetFieldRequesterImpl(epics::pvAccess::Channel::shared_pointer channel);
 
     virtual std::string getRequesterName();
-    virtual void message(std::string const & message, epics::pvData::MessageType messageType);
 
     virtual void getDone(const epics::pvData::Status& status, epics::pvData::FieldConstPtr const & field);
 

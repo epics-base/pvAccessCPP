@@ -381,11 +381,6 @@ public:
         return "ChannelPutRequesterImpl";
     }
 
-    virtual void message(std::string const & message, MessageType messageType)
-    {
-        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
-    }
-
     virtual void channelPutConnect(const epics::pvData::Status& status,
                                    ChannelPut::shared_pointer const & channelPut,
                                    epics::pvData::Structure::const_shared_pointer const & /*structure*/)
