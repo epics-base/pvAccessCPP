@@ -47,7 +47,7 @@ namespace {
 struct BreakTransport : TransportSender
 {
     virtual ~BreakTransport() {}
-    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control)
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL
     {
         throw epics::pvAccess::detail::connection_closed_exception("Break");
     }

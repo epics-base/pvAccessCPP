@@ -329,6 +329,9 @@ void ServerContextImpl::shutdown()
     // this will also destroy all channels
     destroyAllTransports();
 
+    // drop timer queue
+    _timer.reset();
+
     // response handlers hold strong references to us,
     // so must break the cycles
     _responseHandler.reset();
