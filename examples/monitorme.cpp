@@ -130,8 +130,6 @@ struct MonTracker : public epicsThreadRunable
             MonTracker::shared_pointer self(owner.lock());
             if(!self) return;
 
-            std::cout<<"monitorConnect "<<self->chan->getChannelName()<<" "<<status<<"\n";
-
             if(status.isSuccess() && !self->alldone) {
                 Guard G(self->mutex);
 
@@ -154,22 +152,29 @@ struct MonTracker : public epicsThreadRunable
             MonTracker::shared_pointer self(owner.lock());
             if(!self) return;
 
-            Guard G(self->mutex);
-            std::cout<<"channelDisconnect "<<self->chan->getChannelName()<<"\n";
+            {
+                Guard G(self->mutex);
 
-            self->cur_type.reset();
-            self->alldone |= destroy;
+                self->cur_type.reset();
+                self->alldone |= destroy;
 
-            // no need to call self->op->stop()
-            // monitor implicitly stopped on disconnect
-            pvd::Status msts(self->op->stop());
+                // no need to call self->op->stop()
+                // monitor implicitly stopped on disconnect
+                pvd::Status msts(self->op->stop());
+            }
+            try {
+                monwork.push(owner);
+            }catch(std::exception& e){
+                Guard G(self->mutex);
+                self->queued = false;
+                std::cout<<"channelDisconnect failed to queue "<<e.what()<<"\n";
+            }
         }
 
         virtual void monitorEvent(pva::MonitorPtr const & monitor)
         {
             MonTracker::shared_pointer self(owner.lock());
             if(!self) return;
-            std::cout<<"monitorEvent "<<self->chan->getChannelName()<<"\n";
             {
                 Guard G(self->mutex);
                 if(self->queued) return;
@@ -203,21 +208,30 @@ struct MonTracker : public epicsThreadRunable
 
     virtual void run()
     {
+        bool disconn;
         {
             Guard G(mutex);
             queued = false;
+            disconn = !cur_type;
         }
         while(true) {
             pva::MonitorElementPtr elem(op->poll());
             if(!elem) break;
             try {
-                std::cout<<"Event "<<chan->getChannelName()<<"\n"<<elem->pvStructurePtr<<"\n";
+                pvd::PVField::shared_pointer fld(elem->pvStructurePtr->getSubField("value"));
+                if(!fld)
+                    fld = elem->pvStructurePtr;
+                std::cout<<"Event "<<chan->getChannelName()<<" "<<fld
+                         <<" Changed:"<<*elem->changedBitSet
+                         <<" overrun:"<<*elem->overrunBitSet<<"\n";
             } catch(...) {
                 op->release(elem);
                 throw;
             }
             op->release(elem);
         }
+        if(disconn)
+            std::cout<<"Disconnected\n";
     }
 };
 
@@ -226,7 +240,8 @@ struct MonTracker : public epicsThreadRunable
 int main(int argc, char *argv[]) {
     try {
         double waitTime = -1.0;
-        std::string providerName("pva");
+        std::string providerName("pva"),
+                    requestStr("field()");
         typedef std::vector<std::string> pvs_t;
         pvs_t pvs;
 
@@ -246,6 +261,13 @@ int main(int argc, char *argv[]) {
                         std::cout << "--timeout requires value\n";
                         return 1;
                     }
+                } else if(strcmp(argv[i], "-r")==0 || strcmp(argv[i], "--request")==0) {
+                    if(i<argc-1) {
+                        requestStr = argv[++i];
+                    } else {
+                        std::cout << "--request requires value\n";
+                        return 1;
+                    }
                 } else {
                     std::cout<<"Unknown argument: "<<argv[i]<<"\n";
                 }
@@ -263,7 +285,7 @@ int main(int argc, char *argv[]) {
 #endif
 
         // build "pvRequest" which asks for all fields
-        pvd::PVStructure::shared_pointer pvReq(pvd::createRequest("field()"));
+        pvd::PVStructure::shared_pointer pvReq(pvd::createRequest(requestStr));
 
         // explicitly select configuration from process environment
         pva::Configuration::shared_pointer conf(pva::ConfigurationBuilder()
