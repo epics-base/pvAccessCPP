@@ -2069,8 +2069,10 @@ public:
                 try
                 {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+                } catch (std::runtime_error&) {
+                    // assume wrong connection state from checkAndGetTransport()
+                    m_reportQueueStateInProgress = false;
                 } catch (std::exception& e) {
-                    // noop (do not complain if fails)
                     LOG(logLevelWarn, "Ignore exception during MonitorStrategyQueue::release: %s", e.what());
                     m_reportQueueStateInProgress = false;
                 }
