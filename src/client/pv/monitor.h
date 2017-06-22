@@ -93,6 +93,12 @@ class epicsShareClass Monitor : public virtual epics::pvData::Destroyable{
     virtual void getStats(Stats& s) const {
         s.nfilled = s.noutstanding = s.nempty = 0;
     }
+
+    /**
+     * Report remote queue status.
+     * @param freeElements number of free elements.
+     */
+    virtual void reportRemoteQueueStatus(epics::pvData::int32 freeElements) {}
 };
 
 

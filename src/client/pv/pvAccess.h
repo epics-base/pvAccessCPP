@@ -1383,17 +1383,7 @@ epicsShareFunc void unregisterAllChannelProviderFactory() EPICS_DEPRECATED;
  * @brief Pipeline (streaming) support API (optional).
  * This is used by pvAccess to implement pipeline (streaming) monitors.
  */
-class epicsShareClass PipelineMonitor : public virtual Monitor {
-public:
-    POINTER_DEFINITIONS(PipelineMonitor);
-    virtual ~PipelineMonitor() {}
-
-    /**
-     * Report remote queue status.
-     * @param freeElements number of free elements.
-     */
-    virtual void reportRemoteQueueStatus(epics::pvData::int32 freeElements) = 0;
-};
+typedef Monitor PipelineMonitor;
 
 
 }

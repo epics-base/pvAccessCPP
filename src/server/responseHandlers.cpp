@@ -1882,10 +1882,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
             int32 nfree = payloadBuffer->getInt();
             ServerMonitorRequesterImpl::shared_pointer request = static_pointer_cast<ServerMonitorRequesterImpl>(channel->getRequest(ioid));
 
-            Monitor::shared_pointer mp = request->getChannelMonitor();
-            PipelineMonitor* pmp = dynamic_cast<PipelineMonitor*>(mp.get());
-            if (pmp)
-                pmp->reportRemoteQueueStatus(nfree);
+            request->getChannelMonitor()->reportRemoteQueueStatus(nfree);
         }
 
     }
@@ -1907,10 +1904,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
         {
             transport->ensureData(4);
             int32 nfree = payloadBuffer->getInt();
-            Monitor::shared_pointer mp = request->getChannelMonitor();
-            PipelineMonitor* pmp = dynamic_cast<PipelineMonitor*>(mp.get());
-            if (pmp)
-                pmp->reportRemoteQueueStatus(nfree);
+            request->getChannelMonitor()->reportRemoteQueueStatus(nfree);
             return;
             // note: not possible to ack and destroy
         }
