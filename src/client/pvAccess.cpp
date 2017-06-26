@@ -14,6 +14,9 @@ namespace pvAccess {
 
 const char* Channel::ConnectionStateNames[] = { "NEVER_CONNECTED", "CONNECTED", "DISCONNECTED", "DESTROYED" };
 
+Channel::Channel() {}
+Channel::~Channel() {}
+
 std::string Channel::getRequesterName()
 {
     std::tr1::shared_ptr<ChannelRequester> req(getChannelRequester());

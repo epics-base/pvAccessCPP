@@ -821,7 +821,8 @@ public:
     POINTER_DEFINITIONS(Channel);
     typedef ChannelRequester requester_type;
 
-    virtual ~Channel() {}
+    Channel();
+    virtual ~Channel();
 
     virtual std::string getRequesterName();
     virtual void message(std::string const & message, epics::pvData::MessageType messageType);
