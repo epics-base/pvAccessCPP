@@ -16,8 +16,8 @@
 using namespace epics::pvData;
 using namespace std;
 
-namespace epics {
-namespace pvAccess {
+namespace {
+using namespace epics::pvAccess;
 
 class ChannelPipelineMonitorImpl :
     public PipelineMonitor,
@@ -500,6 +500,10 @@ public:
 Status PipelineChannel::notSupportedStatus(Status::STATUSTYPE_ERROR, "only monitor (aka pipeline) requests are supported by this channel");
 Status PipelineChannel::destroyedStatus(Status::STATUSTYPE_ERROR, "channel destroyed");
 
+} // namespace
+namespace epics {
+namespace pvAccess {
+
 Channel::shared_pointer createPipelineChannel(ChannelProvider::shared_pointer const & provider,
         std::string const & channelName,
         ChannelRequester::shared_pointer const & channelRequester,
@@ -513,6 +517,8 @@ Channel::shared_pointer createPipelineChannel(ChannelProvider::shared_pointer co
     return channel;
 }
 
+}} // epics::pvAccess
+namespace {
 
 class PipelineChannelProvider :
     public virtual ChannelProvider,
@@ -690,6 +696,10 @@ private:
 string PipelineChannelProvider::PROVIDER_NAME("PipelineService");
 Status PipelineChannelProvider::noSuchChannelStatus(Status::STATUSTYPE_ERROR, "no such channel");
 
+} //namespace
+
+namespace epics {
+namespace pvAccess {
 
 PipelineServer::PipelineServer()
 {

@@ -26,8 +26,6 @@
 
 #include <shareLib.h>
 
-class ChannelSearchManager;
-
 namespace epics {
 namespace pvAccess {
 

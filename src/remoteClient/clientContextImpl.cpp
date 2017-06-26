@@ -47,13 +47,17 @@ using namespace epics::pvData;
 namespace epics {
 namespace pvAccess {
 
-class ChannelGetFieldRequestImpl;
-
 Status ChannelImpl::channelDestroyed(
     Status::STATUSTYPE_WARNING, "channel destroyed");
 Status ChannelImpl::channelDisconnected(
     Status::STATUSTYPE_WARNING, "channel disconnected");
 string emptyString;
+
+}}
+namespace {
+using namespace epics::pvAccess;
+
+class ChannelGetFieldRequestImpl;
 
 // TODO consider std::unordered_map
 //typedef std::tr1::unordered_map<pvAccessID, ResponseRequest::weak_pointer> IOIDResponseRequestMap;
@@ -4885,6 +4889,10 @@ void InternalClientContextImpl::InternalChannelImpl::getField(GetFieldRequester:
     self->activate();
     // activate() stores self in channel
 }
+
+}//namespace
+namespace epics {
+namespace pvAccess {
 
 ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf)
 {

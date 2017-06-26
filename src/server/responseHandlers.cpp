@@ -496,6 +496,10 @@ private:
 
 };
 
+}}
+namespace {
+using namespace epics::pvAccess;
+
 // TODO move out to a separate class
 class ServerRPCService : public RPCService {
 
@@ -669,6 +673,10 @@ std::string ServerRPCService::helpString =
     "\t\tchannels\treturns a list of 'static' channels the server can provide\n"
 //        "\t\t\t (no arguments)\n"
     "\n";
+
+}
+namespace epics {
+namespace pvAccess {
 
 std::string ServerCreateChannelHandler::SERVER_CHANNEL_NAME = "server";
 
