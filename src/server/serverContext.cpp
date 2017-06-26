@@ -295,18 +295,29 @@ void ServerContextImpl::run(uint32 seconds)
     }
 }
 
+#define LEAK_CHECK(PTR, NAME) if((PTR) && !(PTR).unique()) { std::cerr<<"Leaking ServerContext " NAME " use_count="<<(PTR).use_count()<<"\n"<<show_referrers(PTR, false);}
+
 void ServerContextImpl::shutdown()
 {
     // stop responding to search requests
     for (BlockingUDPTransportVector::const_iterator iter = _udpTransports.begin();
             iter != _udpTransports.end(); iter++)
-        (*iter)->close();
+    {
+        const BlockingUDPTransport::shared_pointer& transport = *iter;
+        // joins worker thread
+        transport->close();
+        // _udpTransports contains _broadcastTransport
+        // _broadcastTransport is referred to be _beaconEmitter
+        if(transport!=_broadcastTransport)
+            LEAK_CHECK(transport, "udp transport")
+    }
     _udpTransports.clear();
 
     // stop emitting beacons
     if (_beaconEmitter)
     {
         _beaconEmitter->destroy();
+        LEAK_CHECK(_beaconEmitter, "_beaconEmitter")
         _beaconEmitter.reset();
     }
 
@@ -314,6 +325,7 @@ void ServerContextImpl::shutdown()
     if (_broadcastTransport)
     {
         _broadcastTransport->close();
+        LEAK_CHECK(_broadcastTransport, "_broadcastTransport")
         _broadcastTransport.reset();
     }
 
@@ -321,6 +333,7 @@ void ServerContextImpl::shutdown()
     if (_acceptor)
     {
         _acceptor->destroy();
+        LEAK_CHECK(_acceptor, "_acceptor")
         _acceptor.reset();
     }
 
@@ -328,10 +341,12 @@ void ServerContextImpl::shutdown()
     destroyAllTransports();
 
     // drop timer queue
+    LEAK_CHECK(_timer, "_timer")
     _timer.reset();
 
     // response handlers hold strong references to us,
     // so must break the cycles
+    LEAK_CHECK(_responseHandler, "_responseHandler")
     _responseHandler.reset();
 
     _runEvent.signal();
@@ -374,10 +389,12 @@ void ServerContextImpl::destroyAllTransports()
     {
         const Transport::shared_pointer& transport = transports[i];
         transport->waitJoin();
-        if(!transport.unique())
+        LEAK_CHECK(transport, "tcp transport")
+        if(!transport.unique()) {
             LOG(logLevelError, "Closed transport %s still has use_count=%u",
                 transport->getRemoteName().c_str(),
                 (unsigned)transport.use_count());
+        }
     }
 }
 

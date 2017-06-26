@@ -286,9 +286,14 @@ int main(int argc, char *argv[]) {
         done.wait();
         std::cout<<"Done\n";
 
-        std::cout<<"Server use_count="<<server.use_count()<<" provider use_count="<<provider.use_count()<<"\n";
+        std::cout<<"Server use_count="<<server.use_count()<<"\n"
+                 <<show_referrers(server, false);
         server.reset();
-        std::cout<<"provider use_count="<<provider.use_count()<<"\n";
+
+        std::cout<<"provider use_count="<<provider.use_count()<<"\n"
+                 <<show_referrers(provider, false);
+        if(!provider.unique())
+            return 2;
 
     } catch(std::exception& e){
         std::cerr<<"Error: "<<e.what()<<"\n";
