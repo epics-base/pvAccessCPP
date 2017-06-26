@@ -287,6 +287,9 @@ public:
      */
     virtual void close() = 0;
 
+    //! Call after close() to wait for any worker threads to exit
+    virtual void waitJoin() {}
+
     /**
      * Check connection status.
      * @return <code>true</code> if connected.

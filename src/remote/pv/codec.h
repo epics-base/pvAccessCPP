@@ -317,6 +317,7 @@ public:
     virtual void scheduleSend() OVERRIDE FINAL {}
     virtual void sendCompleted() OVERRIDE FINAL {}
     virtual void close() OVERRIDE FINAL;
+    virtual void waitJoin() OVERRIDE FINAL;
     virtual bool terminated() OVERRIDE FINAL;
     virtual bool isOpen() OVERRIDE FINAL;
     void start();

@@ -1001,9 +1001,7 @@ bool AbstractCodec::directDeserialize(ByteBuffer *existingBuffer, char* deserial
 
 BlockingTCPTransportCodec::~BlockingTCPTransportCodec()
 {
-    assert(!_isOpen.get());
-    _sendThread.exitWait();
-    _readThread.exitWait();
+    waitJoin();
 }
 
 void BlockingTCPTransportCodec::readPollOne() {
@@ -1033,6 +1031,13 @@ void BlockingTCPTransportCodec::close() {
         // post close
         internalPostClose(true);
     }
+}
+
+void BlockingTCPTransportCodec::waitJoin()
+{
+    assert(!_isOpen.get());
+    _sendThread.exitWait();
+    _readThread.exitWait();
 }
 
 void BlockingTCPTransportCodec::internalClose(bool /*force*/)

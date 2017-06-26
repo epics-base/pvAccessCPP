@@ -375,6 +375,7 @@ void ServerContextImpl::destroyAllTransports()
     for (size_t i = 0; i < size; i++)
     {
         const Transport::shared_pointer& transport = transports[i];
+        transport->waitJoin();
         if(!transport.unique())
             LOG(logLevelError, "Closed transport %s still has use_count=%u",
                 transport->getRemoteName().c_str(),
