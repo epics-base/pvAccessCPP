@@ -1840,8 +1840,8 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
     AbstractServerResponseHandler::handleResponse(responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
-    // NOTE: we do not explicitly check if transport is OK
     ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
+    assert(!!casTransport);
 
     transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
     const pvAccessID sid = payloadBuffer->getInt();
