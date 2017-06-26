@@ -35,7 +35,7 @@ ServerContextImpl::ServerContextImpl():
     _broadcastPort(PVA_BROADCAST_PORT),
     _serverPort(PVA_SERVER_PORT),
     _receiveBufferSize(MAX_TCP_RECV),
-    _timer(),
+    _timer(new Timer("pvAccess-server timer", lowerPriority)),
     _beaconEmitter(),
     _acceptor(),
     _transportRegistry(),
@@ -265,8 +265,6 @@ void ServerContextImpl::initialize()
 
     // already called in loadConfiguration
     //osiSockAttach();
-
-    _timer.reset(new Timer("pvAccess-server timer", lowerPriority));
 
     ServerContextImpl::shared_pointer thisServerContext = shared_from_this();
     // we create reference cycles here which are broken by our shutdown() method,
