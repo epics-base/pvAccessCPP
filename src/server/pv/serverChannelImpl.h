@@ -120,10 +120,11 @@ private:
      */
     pvAccessID _sid;
 
+    typedef std::map<pvAccessID, epics::pvData::Destroyable::shared_pointer> _requests_t;
     /**
      * Requests.
      */
-    std::map<pvAccessID, epics::pvData::Destroyable::shared_pointer> _requests;
+    _requests_t _requests;
 
     /**
      * Destroy state.
@@ -139,11 +140,6 @@ private:
      * Channel security session.
      */
     ChannelSecuritySession::shared_pointer _channelSecuritySession;
-
-    /**
-     * Destroy all registered requests.
-     */
-    void destroyAllRequests();
 };
 
 }

@@ -50,13 +50,14 @@ ChannelSecuritySession::shared_pointer ServerChannelImpl::getChannelSecuritySess
 void ServerChannelImpl::registerRequest(const pvAccessID id, Destroyable::shared_pointer const & request)
 {
     Lock guard(_mutex);
+    if(_destroyed) throw std::logic_error("Can't registerRequest() for destory'd server channel");
     _requests[id] = request;
 }
 
 void ServerChannelImpl::unregisterRequest(const pvAccessID id)
 {
     Lock guard(_mutex);
-    std::map<pvAccessID, epics::pvData::Destroyable::shared_pointer>::iterator iter = _requests.find(id);
+    _requests_t::iterator iter = _requests.find(id);
     if(iter != _requests.end())
     {
         _requests.erase(iter);
@@ -66,7 +67,7 @@ void ServerChannelImpl::unregisterRequest(const pvAccessID id)
 Destroyable::shared_pointer ServerChannelImpl::getRequest(const pvAccessID id)
 {
     Lock guard(_mutex);
-    std::map<pvAccessID, epics::pvData::Destroyable::shared_pointer>::iterator iter = _requests.find(id);
+    _requests_t::iterator iter = _requests.find(id);
     if(iter != _requests.end())
     {
         return iter->second;
@@ -77,11 +78,22 @@ Destroyable::shared_pointer ServerChannelImpl::getRequest(const pvAccessID id)
 void ServerChannelImpl::destroy()
 {
     Lock guard(_mutex);
+
     if (_destroyed) return;
     _destroyed = true;
 
     // destroy all requests
-    destroyAllRequests();
+    // take ownership of _requests locally to prevent
+    // removal via unregisterRequest() during iteration
+    _requests_t reqs;
+    _requests.swap(reqs);
+    for(_requests_t::const_iterator it=reqs.begin(), end=reqs.end(); it!=end; ++it)
+    {
+        const _requests_t::mapped_type& req = it->second;
+        // will call unregisterRequest() which is now a no-op
+        req->destroy();
+        // May still be in the send queue
+    }
 
     // close channel security session
     // TODO try catch
@@ -106,22 +118,6 @@ void ServerChannelImpl::printInfo(FILE *fd)
 {
     fprintf(fd,"CLASS        : %s\n", typeid(*this).name());
     fprintf(fd,"CHANNEL      : %s\n", typeid(*_channel).name());
-}
-
-void ServerChannelImpl::destroyAllRequests()
-{
-    Lock guard(_mutex);
-
-    // resource allocation optimization
-    if (_requests.size() == 0)
-        return;
-
-    while(_requests.size() != 0)
-    {
-        _requests.begin()->second->destroy();
-    }
-
-    _requests.clear();
 }
 
 }
