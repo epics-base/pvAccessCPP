@@ -36,17 +36,19 @@ typedef std::tr1::shared_ptr<Monitor> MonitorPtr;
  * @author mrk
  */
 class epicsShareClass MonitorElement {
-    public:
+public:
     POINTER_DEFINITIONS(MonitorElement);
     MonitorElement(){}
-    MonitorElement(epics::pvData::PVStructurePtr const & pvStructurePtr)
-    : pvStructurePtr(pvStructurePtr),
-      changedBitSet(epics::pvData::BitSet::create(static_cast<epics::pvData::uint32>(pvStructurePtr->getNumberFields()))),
-      overrunBitSet(epics::pvData::BitSet::create(static_cast<epics::pvData::uint32>(pvStructurePtr->getNumberFields())))
-    {}
-    epics::pvData::PVStructurePtr pvStructurePtr;
-    epics::pvData::BitSet::shared_pointer changedBitSet;
-    epics::pvData::BitSet::shared_pointer overrunBitSet;
+    MonitorElement(epics::pvData::PVStructurePtr const & pvStructurePtr);
+    const epics::pvData::PVStructurePtr pvStructurePtr;
+    const epics::pvData::BitSet::shared_pointer changedBitSet;
+    const epics::pvData::BitSet::shared_pointer overrunBitSet;
+    // info to assist monitor debugging
+    enum state_t {
+        Free,   //!< data invalid.  eg. on internal free list
+        Queued, //!< data valid.  Owned by Monitor.  Waiting for Monitor::poll()
+        InUse   //!< data valid.  Owned by MonitorRequester.  Waiting for Monitor::release()
+    } state;
 };
 
 /**

@@ -1926,8 +1926,6 @@ private:
     bool m_continuous;
     PVStructure::shared_pointer m_pvStructure;
     PVStructure::shared_pointer m_ccopy;
-    BitSet::shared_pointer m_changedBitSet;
-    BitSet::shared_pointer m_overrunBitSet;
     Mutex m_lock;
     enum QueueState { MM_STATE_FULL, MM_STATE_TAKEN, MM_STATE_FREE };
     QueueState m_state ;
@@ -1935,7 +1933,6 @@ private:
 
 
     MonitorElement::shared_pointer m_thisPtr;
-    MonitorElement::shared_pointer m_nullMonitor;
 
 protected:
     MockMonitor(std::string const & channelName, MonitorRequester::shared_pointer const & monitorRequester,
@@ -1945,11 +1942,9 @@ protected:
         m_continuous(false),
         m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
         m_ccopy(getPVDataCreate()->createPVStructure(m_pvStructure->getStructure())),
-        m_changedBitSet(new BitSet(m_pvStructure->getNumberFields())),
-        m_overrunBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_lock(),
         m_state(MM_STATE_FREE),
-        m_thisPtr(new MonitorElement())
+        m_thisPtr(new MonitorElement(m_ccopy))
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockMonitor);
 
@@ -1958,11 +1953,7 @@ protected:
             m_continuous = pvScalar->getAs<epics::pvData::boolean>();
 
         // we always send all
-        m_changedBitSet->set(0);
-
-        m_thisPtr->pvStructurePtr = m_ccopy;
-        m_thisPtr->changedBitSet = m_changedBitSet;
-        m_thisPtr->overrunBitSet = m_overrunBitSet;
+        m_thisPtr->changedBitSet->set(0);
     }
 
 public:
@@ -2034,13 +2025,13 @@ public:
 
                 if (m_state == MM_STATE_FULL || m_state == MM_STATE_TAKEN)      // "queue" full
                 {
-                    m_overrunBitSet->set(0);
+                    m_thisPtr->overrunBitSet->set(0);
                     copy();
                     return;
                 }
                 else
                 {
-                    m_overrunBitSet->clear(0);
+                    m_thisPtr->overrunBitSet->clear(0);
                     m_state = MM_STATE_FULL;
                     copy();
                 }
@@ -2058,7 +2049,7 @@ public:
         Lock xx(m_lock);
         if (m_state != MM_STATE_FULL)
         {
-            return m_nullMonitor;
+            return MonitorElement::shared_pointer();
         }
         else
         {

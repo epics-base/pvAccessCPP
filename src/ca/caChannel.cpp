@@ -1427,17 +1427,11 @@ CAChannelMonitor::CAChannelMonitor(CAChannel::shared_pointer const & _channel,
     monitorRequester(_monitorRequester),
     getType(getDBRType(pvRequest, _channel->getNativeType())),
     pvStructure(createPVStructure(_channel, getType, pvRequest)),
-    changedBitSet(new BitSet(static_cast<uint32>(pvStructure->getStructure()->getNumberFields()))),
-    overrunBitSet(new BitSet(static_cast<uint32>(pvStructure->getStructure()->getNumberFields()))),
     count(0),
-    element(new MonitorElement())
+    element(new MonitorElement(pvStructure))
 {
     // TODO
-    changedBitSet->set(0);
-
-    element->pvStructurePtr = pvStructure;
-    element->changedBitSet = changedBitSet;
-    element->overrunBitSet = overrunBitSet;
+    element->changedBitSet->set(0);
 }
 
 void CAChannelMonitor::activate()

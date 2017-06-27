@@ -124,5 +124,11 @@ ChannelRequester::shared_pointer DefaultChannelRequester::build()
 }
 
 
-}
-}
+MonitorElement::MonitorElement(epics::pvData::PVStructurePtr const & pvStructurePtr)
+    : pvStructurePtr(pvStructurePtr)
+    ,changedBitSet(epics::pvData::BitSet::create(static_cast<epics::pvData::uint32>(pvStructurePtr->getNumberFields())))
+    ,overrunBitSet(epics::pvData::BitSet::create(static_cast<epics::pvData::uint32>(pvStructurePtr->getNumberFields())))
+    ,state(Free)
+{}
+
+}} // namespace epics::pvAccess
