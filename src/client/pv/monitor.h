@@ -73,8 +73,9 @@ public:
      * To fetch all available elements (c++98)
      @code
        epics::pvAccess::Monitor::shared_pointer mon(....);
-       for(epics::pvAccess::MonitorElement::Ref elem(mon); elem; ++elem) {
-          assert(elem->pvStructurePtr->getSubField("foo"));
+       for(epics::pvAccess::MonitorElement::Ref it(mon); it; ++it) {
+          MonitorElement& elem(*it);
+          assert(elem.pvStructurePtr->getSubField("foo"));
        }
      @endcode
      */
