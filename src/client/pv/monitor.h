@@ -49,13 +49,41 @@ public:
         Queued, //!< data valid.  Owned by Monitor.  Waiting for Monitor::poll()
         InUse   //!< data valid.  Owned by MonitorRequester.  Waiting for Monitor::release()
     } state;
+
+    /** A smart pointer to extract a MonitorElement from a Monitor queue
+     *
+     * To fetch a single element
+     @code
+       epics::pvAccess::Monitor::shared_pointer mon(....);
+       epics::pvAccess::MonitorElement::Ref elem(mon);
+       if(elem) {
+          // do something with element
+          assert(elem->pvStructurePtr->getSubField("foo"));
+       } else {
+          // queue was empty
+       }
+     @endcode
+     * To fetch all available elements (c++11)
+     @code
+       epics::pvAccess::Monitor::shared_pointer mon(....);
+       for(auto& elem : *mon) {
+          assert(elem.pvStructurePtr->getSubField("foo"));
+       }
+     @endcode
+     * To fetch all available elements (c++98)
+     @code
+       epics::pvAccess::Monitor::shared_pointer mon(....);
+       for(epics::pvAccess::MonitorElement::Ref elem(mon); elem; ++elem) {
+          assert(elem->pvStructurePtr->getSubField("foo"));
+       }
+     @endcode
+     */
+    class Ref;
 };
 
-/**
- * @brief Monitor changes to fields of a pvStructure.
+/** Access to Monitor subscription and queue
  *
- * This is used by pvAccess to implement monitors.
- * @author mrk
+ * Downstream interface to access a monitor queue (via poll() and release() )
  */
 class epicsShareClass Monitor : public virtual epics::pvData::Destroyable{
     public:
@@ -77,6 +105,8 @@ class epicsShareClass Monitor : public virtual epics::pvData::Destroyable{
      * If monitor has occurred return data.
      * @return monitorElement for modified data.
      * Must call get to determine if data is available.
+     *
+     * May recursively call MonitorRequester::unlisten()
      */
     virtual MonitorElementPtr poll() = 0;
     /**
@@ -103,6 +133,42 @@ class epicsShareClass Monitor : public virtual epics::pvData::Destroyable{
     virtual void reportRemoteQueueStatus(epics::pvData::int32 freeElements) {}
 };
 
+class MonitorElement::Ref
+{
+    Monitor* mon;
+    MonitorElementPtr elem;
+public:
+    Ref() :mon(0), elem() {}
+    Ref(Monitor& M) :mon(&M), elem(mon->poll()) {}
+    Ref(const Monitor::shared_pointer& M) :mon(M.get()), elem(mon->poll()) {}
+    ~Ref() { reset(); }
+    bool next() {
+        if(elem) mon->release(elem);
+        elem = mon->poll();
+        return !!elem;
+    }
+    void reset() {
+        if(elem) mon->release(elem);
+        elem.reset();
+    }
+    Ref& operator++() {// prefix increment.  aka "++(*this)"
+        next();
+        return *this;
+    }
+    inline explicit operator bool() const { return elem.get(); }
+    inline MonitorElement* operator->() { return elem.get(); }
+    inline MonitorElement& operator*() { return *elem; }
+    inline MonitorElement* get() { return elem.get(); }
+
+    inline bool operator==(const Ref& o) const { return elem==o.elem; }
+    inline bool operator!=(const Ref& o) const { return !(*this==o); }
+};
+
+#if __cplusplus>=201103L
+// used by c++11 for-range
+inline MonitorElement::Ref begin(Monitor& mon) { return MonitorElement::Ref(mon); }
+inline MonitorElement::Ref end(Monitor& mon) { return MonitorElement::Ref(); }
+#endif // __cplusplus<201103L
 
 }}
 
