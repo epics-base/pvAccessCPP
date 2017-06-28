@@ -156,7 +156,14 @@ public:
         next();
         return *this;
     }
+#if __cplusplus>=201103L
     inline explicit operator bool() const { return elem.get(); }
+#else
+private:
+    typedef const Monitor* const * hidden_bool_type;
+public:
+    operator hidden_bool_type() const { return elem.get() ? &mon : 0; }
+#endif
     inline MonitorElement* operator->() { return elem.get(); }
     inline MonitorElement& operator*() { return *elem; }
     inline MonitorElement* get() { return elem.get(); }
