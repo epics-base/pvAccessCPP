@@ -340,9 +340,9 @@ public:
 
     virtual ConnectionState getConnectionState()
     {
-        return isConnected() ?
-               Channel::CONNECTED :
-               Channel::DESTROYED;
+        return m_destroyed.get() ?
+               Channel::DESTROYED :
+               Channel::CONNECTED;
     }
 
     virtual std::string getChannelName()
@@ -355,69 +355,9 @@ public:
         return m_channelRequester;
     }
 
-    virtual bool isConnected()
-    {
-        return !m_destroyed.get();
-    }
-
-
     virtual AccessRights getAccessRights(epics::pvData::PVField::shared_pointer const & /*pvField*/)
     {
         return none;
-    }
-
-    virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & /*subField*/)
-    {
-        requester->getDone(notSupportedStatus, epics::pvData::Field::shared_pointer());
-    }
-
-    virtual ChannelProcess::shared_pointer createChannelProcess(
-        ChannelProcessRequester::shared_pointer const & channelProcessRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-    {
-        ChannelProcess::shared_pointer nullPtr;
-        channelProcessRequester->channelProcessConnect(notSupportedStatus, nullPtr);
-        return nullPtr;
-    }
-
-    virtual ChannelGet::shared_pointer createChannelGet(
-        ChannelGetRequester::shared_pointer const & channelGetRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-    {
-        ChannelGet::shared_pointer nullPtr;
-        channelGetRequester->channelGetConnect(notSupportedStatus, nullPtr,
-                                               epics::pvData::Structure::const_shared_pointer());
-        return nullPtr;
-    }
-
-    virtual ChannelPut::shared_pointer createChannelPut(
-        ChannelPutRequester::shared_pointer const & channelPutRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-    {
-        ChannelPut::shared_pointer nullPtr;
-        channelPutRequester->channelPutConnect(notSupportedStatus, nullPtr,
-                                               epics::pvData::Structure::const_shared_pointer());
-        return nullPtr;
-    }
-
-
-    virtual ChannelPutGet::shared_pointer createChannelPutGet(
-        ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-    {
-        ChannelPutGet::shared_pointer nullPtr;
-        epics::pvData::Structure::const_shared_pointer nullStructure;
-        channelPutGetRequester->channelPutGetConnect(notSupportedStatus, nullPtr, nullStructure, nullStructure);
-        return nullPtr;
-    }
-
-    virtual ChannelRPC::shared_pointer createChannelRPC(
-        ChannelRPCRequester::shared_pointer const & channelRPCRequester,
-        epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-    {
-        ChannelRPC::shared_pointer nullPtr;
-        channelRPCRequester->channelRPCConnect(notSupportedStatus, nullPtr);
-        return nullPtr;
     }
 
     virtual Monitor::shared_pointer createMonitor(
@@ -466,11 +406,6 @@ public:
     }
 
 
-    virtual void printInfo()
-    {
-        printInfo(std::cout);
-    }
-
     virtual void printInfo(std::ostream& out)
     {
         out << "PipelineChannel: ";
@@ -483,12 +418,6 @@ public:
     virtual string getRequesterName()
     {
         return getChannelName();
-    }
-
-    virtual void message(std::string const & message,MessageType messageType)
-    {
-        // just delegate
-        m_channelRequester->message(message, messageType);
     }
 
     virtual void destroy()

@@ -241,12 +241,6 @@ public:
         return none;
     }
 
-    virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & /*subField*/)
-    {
-        requester->getDone(epics::pvData::Status(epics::pvData::Status::STATUSTYPE_ERROR, "Only RPC is implemented"),
-                           epics::pvData::Field::shared_pointer());
-    }
-
     virtual ChannelRPC::shared_pointer createChannelRPC(
         ChannelRPCRequester::shared_pointer const & channelRPCRequester,
         epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
