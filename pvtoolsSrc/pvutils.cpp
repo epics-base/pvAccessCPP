@@ -524,8 +524,7 @@ void GetFieldRequesterImpl::getDone(const epics::pvData::Status& status, epics::
     }
     else
     {
-        // do not complain about missing field
-        //std::cerr << "[" << m_channel->getChannelName() << "] failed to get channel introspection data: " << dump_stack_only_on_debug(status) << std::endl;
+        std::cerr << "[" << m_channel->getChannelName() << "] failed to get channel introspection data: " << dump_stack_only_on_debug(status) << std::endl;
     }
 
     m_event.signal();

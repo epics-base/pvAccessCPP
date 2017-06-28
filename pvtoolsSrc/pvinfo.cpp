@@ -186,52 +186,37 @@ int main (int argc, char *argv[])
         for (int n = 0; n < nPvs; n++)
         {
             if(!providers[n]) continue;
-            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
-            if (pvAddresses[n].empty())
-                channels[n] = providers[n]->createChannel(pvNames[n], channelRequesterImpl);
-            else
-                channels[n] = providers[n]->createChannel(pvNames[n], channelRequesterImpl,
-                                          ChannelProvider::PRIORITY_DEFAULT, pvAddresses[n]);
+            channels[n] = providers[n]->createChannel(pvNames[n], DefaultChannelRequester::build(),
+                                                      ChannelProvider::PRIORITY_DEFAULT, pvAddresses[n]);
         }
 
         // for now a simple iterating sync implementation, guarantees order
         for (int n = 0; n < nPvs; n++)
         {
             Channel::shared_pointer channel = channels[n];
-            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
 
-            if (channelRequesterImpl->waitUntilConnected(timeOut))
+            TR1::shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl(new GetFieldRequesterImpl(channel));
+            channel->getField(getFieldRequesterImpl, "");
+
+            if (getFieldRequesterImpl->waitUntilFieldGet(timeOut))
             {
-                TR1::shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl(new GetFieldRequesterImpl(channel));
-                channel->getField(getFieldRequesterImpl, "");
+                Structure::const_shared_pointer structure =
+                    TR1::dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
 
-                if (getFieldRequesterImpl->waitUntilFieldGet(timeOut))
+                channel->printInfo();
+                if (structure)
                 {
-                    Structure::const_shared_pointer structure =
-                        TR1::dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
-
-                    channel->printInfo();
-                    if (structure)
-                    {
-                        std::cout << *structure << std::endl << std::endl;
-                    }
-                    else
-                    {
-                        std::cout << "(null introspection data)" << std::endl << std::endl;
-                    }
+                    std::cout << *structure << std::endl << std::endl;
                 }
                 else
                 {
-                    allOK = false;
-                    channel->destroy();
-                    std::cerr << "[" << channel->getChannelName() << "] failed to get channel introspection data" << std::endl;
+                    std::cout << "(null introspection data)" << std::endl << std::endl;
                 }
             }
             else
             {
                 allOK = false;
-                channel->destroy();
-                std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
+                std::cerr << "[" << channel->getChannelName() << "] failed to get channel introspection data" << std::endl;
             }
         }
 
