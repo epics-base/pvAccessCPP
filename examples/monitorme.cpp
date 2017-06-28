@@ -108,95 +108,80 @@ void sigdone(int num)
 }
 #endif
 
-struct MonTracker : public epicsThreadRunable
+struct MonTracker : public epicsThreadRunable,
+                    public pva::MonitorRequester,
+                    public std::tr1::enable_shared_from_this<MonTracker>
 {
     POINTER_DEFINITIONS(MonTracker);
     pva::Channel::shared_pointer chan;
     pva::Monitor::shared_pointer op;
 
-    struct Req : public pva::MonitorRequester
+    virtual std::string getRequesterName() { return "MonTracker"; }
+
+    virtual void monitorConnect(pvd::Status const & status,
+                                pva::MonitorPtr const & monitor,
+                                pvd::StructureConstPtr const & structure)
     {
-        MonTracker::weak_pointer owner;
+        if(status.isSuccess() && !this->alldone) {
+            Guard G(this->mutex);
 
-        Req(const MonTracker::weak_pointer& owner) :owner(owner) {}
-        virtual ~Req() {}
+            if(!this->op) {
+                // called during createMonitor()
+                this->op = monitor;
+            }
 
-        virtual std::string getRequesterName() { return "MonReq"; }
+            // store type info
+            // also serves as "connected" flag
+            this->cur_type = structure;
 
-        virtual void monitorConnect(pvd::Status const & status,
-                                    pva::MonitorPtr const & monitor,
-                                    pvd::StructureConstPtr const & structure)
+            // use 'monitor' arg as owner->mon may not be assigned yet
+            pvd::Status msts(monitor->start());
+            std::cout<<"monitorConnect "<<this->chan->getChannelName()<<" start "<<msts<<"\n";
+        }
+    }
+
+    virtual void channelDisconnect(bool destroy) {
         {
-            MonTracker::shared_pointer self(owner.lock());
-            if(!self) return;
+            Guard G(this->mutex);
 
-            if(status.isSuccess() && !self->alldone) {
-                Guard G(self->mutex);
+            this->cur_type.reset();
+            this->alldone |= destroy;
 
-                if(!self->op) {
-                    // called during createMonitor()
-                    self->op = monitor;
-                }
-
-                // store type info
-                // also serves as "connected" flag
-                self->cur_type = structure;
-
-                // use 'monitor' arg as owner->mon may not be assigned yet
-                pvd::Status msts(monitor->start());
-                std::cout<<"monitorConnect "<<self->chan->getChannelName()<<" start "<<msts<<"\n";
-            }
+            // no need to call self->op->stop()
+            // monitor implicitly stopped on disconnect
+            pvd::Status msts(this->op->stop());
         }
-
-        virtual void channelDisconnect(bool destroy) {
-            MonTracker::shared_pointer self(owner.lock());
-            if(!self) return;
-
-            {
-                Guard G(self->mutex);
-
-                self->cur_type.reset();
-                self->alldone |= destroy;
-
-                // no need to call self->op->stop()
-                // monitor implicitly stopped on disconnect
-                pvd::Status msts(self->op->stop());
-            }
-            try {
-                monwork.push(owner);
-            }catch(std::exception& e){
-                Guard G(self->mutex);
-                self->queued = false;
-                std::cout<<"channelDisconnect failed to queue "<<e.what()<<"\n";
-            }
+        try {
+            monwork.push(shared_from_this());
+        }catch(std::exception& e){
+            Guard G(this->mutex);
+            this->queued = false;
+            std::cout<<"channelDisconnect failed to queue "<<e.what()<<"\n";
         }
+    }
 
-        virtual void monitorEvent(pva::MonitorPtr const & monitor)
+    virtual void monitorEvent(pva::MonitorPtr const & monitor)
+    {
         {
-            MonTracker::shared_pointer self(owner.lock());
-            if(!self) return;
-            {
-                Guard G(self->mutex);
-                if(self->queued) return;
-                self->queued = true;
-            }
-            try {
-                monwork.push(owner);
-            }catch(std::exception& e){
-                Guard G(self->mutex);
-                self->queued = false;
-                std::cout<<"monitorEvent failed to queue "<<e.what()<<"\n";
-            }
+            Guard G(this->mutex);
+            if(this->queued) return;
+            this->queued = true;
         }
+        try {
+            monwork.push(shared_from_this());
+        }catch(std::exception& e){
+            Guard G(this->mutex);
+            this->queued = false;
+            std::cout<<"monitorEvent failed to queue "<<e.what()<<"\n";
+        }
+    }
 
-        virtual void unlisten(pva::MonitorPtr const & monitor)
-        {
-            std::cout<<"monitor unlisten\n";
-            // handled the same as destroy
-            channelDisconnect(true);
-        }
-    };
-    std::tr1::shared_ptr<Req> req;
+    virtual void unlisten(pva::MonitorPtr const & monitor)
+    {
+        std::cout<<"monitor unlisten\n";
+        // handled the same as destroy
+        channelDisconnect(true);
+    }
 
     epicsMutex mutex;
     pvd::StructureConstPtr cur_type;
@@ -308,7 +293,6 @@ int main(int argc, char *argv[]) {
             const std::string& pv = *it;
 
             MonTracker::shared_pointer mon(new MonTracker);
-            mon->req.reset(new MonTracker::Req(mon));
 
             pva::Channel::shared_pointer chan(provider->createChannel(pv));
             {
@@ -316,7 +300,7 @@ int main(int argc, char *argv[]) {
                 mon->chan = chan;
             }
 
-            pva::Monitor::shared_pointer M(chan->createMonitor(mon->req, pvReq));
+            pva::Monitor::shared_pointer M(chan->createMonitor(mon, pvReq));
             // monitorConnect may already be called
             {
                 Guard G(mon->mutex);
