@@ -14,7 +14,19 @@ See pv/pvAccess.h header.
 
 See the @ref providers page.
 
-Examples
+@section main_interesting Interesting
+
+- Clients providers
+ - PVA Client
+ - CA Client (wraps libca)
+- RPC Client helper
+- PVA Server epics::pvAccess::ServerContext
+- Server providers
+ - RPC
+ - Pipeline (monitor w/ flow control)
+
+
+@section main_examples Examples
 
 - @ref examples_getme
 - @ref examples_monitorme

@@ -11,12 +11,12 @@
 The Client and Server APIs revolve around the epics::pvAccess::ChannelProvider class.
 
 In the following discussion the @ref providers_client calls methods of ChannelProvider and associated classes.
-The @ref providers_server implements ChannelProvider and associated classes and is called by a "client.
+The @ref providers_server implements ChannelProvider and associated classes and is called by a client.
 
-By convention, instances of ChannelProvider are registered through a
-epics::pvAccess::ChannelProviderRegistry
-Typically the global instance
-epics::pvAccess::getChannelProviderRegistry()
+By convention, instances of ChannelProvider are registered and retrieved through one of
+epics::pvAccess::ChannelProviderRegistry::clients()
+or
+epics::pvAccess::ChannelProviderRegistry::servers()
 
 @subsection provider_roles_requester Operation and Requester
 
@@ -35,10 +35,6 @@ eg.
 In the following discussions the term "Operation" refers to eg. Channel, ChannelGet, or similar
 while "Requester" refers to ChannelRequester, ChannelGetRequester, or similar.
 
-For convenience each Operation class has a member typedef for it's associated Requester, and vis. versa.
-For example ChannelGet::requester_type is ChannelGetRequester
-and ChannelGetRequester::operation_type is ChannelGet.
-
 The "Requester" classes are implemented by the Client role
 and called by the Server role to give notification to the client of certain events.
 For example,
@@ -47,6 +43,13 @@ is called when a Channel becomes (dis)connected.
 
 A "Requester" sub-class must be provided when each "Operation" is created.
 This Requester then becomes bound to the Operation.
+
+@note An exception to this is epics::pvAccess::ChannelProvider::createChannel()
+      Where a epics::pvAccess::ChannelRequester may be omitted.
+
+For convenience each Operation class has a member typedef for it's associated Requester, and vis. versa.
+For example ChannelGet::requester_type is ChannelGetRequester
+and ChannelGetRequester::operation_type is ChannelGet.
 
 @subsubsection provider_roles_requester_locking
 
@@ -58,7 +61,7 @@ The following rules must be followed to avoid deadlocks.
 
 These rules place the burdon of avoiding deadlocks on the ChannelProvider implementation (Server role).
 
-Clients must still be aware when Operation methods can call Requester methods recursivly,
+Clients must still be aware when some Operation methods can call some Requester methods recursively,
 and consider this when locking.
 
 For example, the following call stack may legitimetly occur for a ChannelProvider
@@ -83,9 +86,9 @@ The associated std::tr1::weak_ptr is referred to as a weak reference.
 shared_ptr instances can exist on the stack (local variables) or as
 struct/class members.
 
-Situations where a object contains are reference to itself, either directly or indirectly,
+Situations where an object contains a reference to itself, either directly or indirectly,
 are known as "reference loops".
-As long as a reference loop persists any cleanup of resources associated with
+As long as a reference loop persists, any cleanup of resources associated with
 the shared_ptr (s) involved will not be done.
 A reference loop which is never broken is called a "reference leak".
 
@@ -100,10 +103,11 @@ When discussing the Server role, user code will implement Channel.
 
 @subsubsection providers_ownership_unique Uniqueness
 
-A shared_ptr is said to be unique if it's method shared_ptr::unique() returns true.
+A shared_ptr is said to be unique if it is the only strong reference to the underlying object.
+In this case shared_ptr::unique() returns true.
 
-The general rule is that functions which create/allocate new objects using shared_ptr must yield unique shared_ptr.
-Yielding a non-unique shared_ptr is a sign that an internal reference leak could occur.
+The general rule is that functions which create/allocate new objects using shared_ptr must yield a unique shared_ptr.
+Yielding a non-unique shared_ptr is a sign that an internal reference leak exists.
 
 @dotfile ownership.dot "shared_ptr relationships"
 
@@ -314,9 +318,9 @@ Implicit ownership in classes outside the control of client code.
 
 - Channel holds weak ref. to ChannelProvider
 - ChannelProvider holds weak ref. to Channel
-- Channel holds strong ref. to ChannelRequester
+- Channel holds weak ref. to ChannelRequester
 - Channel holds weak refs to all Operations
-- Operation holds strong refs to the corresponding Requester, and Channel
+- Operations hold weak refs to the corresponding Requester, and Channel
 
 @subsection provides_client_examples Client Examples
 

@@ -23,15 +23,15 @@ digraph clientowner {
   Channel -> ChannelProvider [color=green, style=dashed];
   ChannelProvider -> Channel [color=green, style=dashed];
 
-  # Operation -> Requester  strong ref
-  Channel -> ChannelRequester [color=red, style=dashed];
-  ChannelGet -> ChannelGetRequester [color=red, style=dashed];
-  ChannelPut -> ChannelPutRequester [color=red, style=dashed];
-  Monitor -> MonitorRequester [color=red, style=dashed];
-  ChannelRPC -> ChannelRPCRequester [color=red, style=dashed];
-  ChannelProcess -> ChannelProcessRequester [color=red, style=dashed];
-  ChannelPutGet -> ChannelPutGetRequester [color=red, style=dashed];
-  ChannelArray -> ChannelArrayRequester [color=red, style=dashed];
+  # Operation -> Requester  weak ref
+  Channel -> ChannelRequester [color=green, style=dashed];
+  ChannelGet -> ChannelGetRequester [color=green, style=dashed];
+  ChannelPut -> ChannelPutRequester [color=green, style=dashed];
+  Monitor -> MonitorRequester [color=green, style=dashed];
+  ChannelRPC -> ChannelRPCRequester [color=green, style=dashed];
+  ChannelProcess -> ChannelProcessRequester [color=green, style=dashed];
+  ChannelPutGet -> ChannelPutGetRequester [color=green, style=dashed];
+  ChannelArray -> ChannelArrayRequester [color=green, style=dashed];
 
   # Channel -> Operation  weak ref
   Channel -> ChannelGet [color=green, style=dashed];
