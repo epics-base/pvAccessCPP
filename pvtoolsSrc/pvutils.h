@@ -67,7 +67,6 @@ class ChannelRequesterImpl :
 {
 private:
     epics::pvData::Event m_event;
-    bool printOnlyErrors;
     bool showDisconnectMsg;
 
 public:

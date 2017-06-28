@@ -4650,11 +4650,6 @@ private:
     ClientResponseHandler::shared_pointer m_responseHandler;
 
     /**
-     * Context instance.
-     */
-    static const int LOCK_TIMEOUT = 20 * 1000;    // 20s
-
-    /**
      * Map of channels (keys are CIDs).
      */
     // TODO consider std::unordered_map

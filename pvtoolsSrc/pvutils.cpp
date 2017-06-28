@@ -440,7 +440,7 @@ char *url_encode(const char *str) {
 
 
 ChannelRequesterImpl::ChannelRequesterImpl(bool _printOnlyErrors) :
-    printOnlyErrors(_printOnlyErrors), showDisconnectMsg(false)
+    showDisconnectMsg(false)
 {
 }
 
