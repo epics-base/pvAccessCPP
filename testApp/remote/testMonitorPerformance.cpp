@@ -434,7 +434,7 @@ int main (int argc, char *argv[])
     }
 
     ClientFactory::start();
-    provider = getChannelProviderRegistry()->getProvider("pva");
+    provider = ChannelProviderRegistry::clients()->getProvider("pva");
 
     if (!testFile.empty())
     {

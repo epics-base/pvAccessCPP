@@ -172,7 +172,7 @@ int main (int argc, char *argv[])
 
             pvNames.push_back(pvName);
             pvAddresses.push_back(address);
-            providers.push_back(getChannelProviderRegistry()->getProvider(providerName));
+            providers.push_back(ChannelProviderRegistry::clients()->getProvider(providerName));
             if(!providers.back())
             {
                 std::cerr << "unknown provider name '" << providerName

@@ -373,7 +373,7 @@ int main()
         {
 
             ClientFactory::start();
-            ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");
+            ChannelProvider::shared_pointer provider = ChannelProviderRegistry::clients()->getProvider("pva");
 
             ChannelFindRequester::shared_pointer findRequester(new ChannelFindRequesterImpl());
             ChannelFind::shared_pointer channelFind = provider->channelFind("testSomething", findRequester);

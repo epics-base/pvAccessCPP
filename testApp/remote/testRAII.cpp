@@ -93,7 +93,7 @@ int main()
     pva::ClientFactory::start();
 
     pva::ChannelProvider::shared_pointer provider =
-            pva::getChannelProviderRegistry()->getProvider("pva");
+            pva::ChannelProviderRegistry::clients()->getProvider("pva");
 
 
     {

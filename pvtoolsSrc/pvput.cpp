@@ -640,7 +640,7 @@ int main (int argc, char *argv[])
     ClientFactory::start();
     epics::pvAccess::ca::CAClientFactory::start();
 
-    ChannelProvider::shared_pointer provider(getChannelProviderRegistry()->getProvider(providerName));
+    ChannelProvider::shared_pointer provider(ChannelProviderRegistry::clients()->getProvider(providerName));
     if(!provider) {
         std::cerr << "Unknown provider '"<<providerName<<"'\n";
         return 1;

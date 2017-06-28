@@ -1699,7 +1699,7 @@ int main (int argc, char *argv[])
             // skip trailing '/'
             pvs.push_back(uri.path.substr(1));
             pvsAddress.push_back(uri.host);
-            providers.push_back(getChannelProviderRegistry()->getProvider(uri.protocol));
+            providers.push_back(ChannelProviderRegistry::clients()->getProvider(uri.protocol));
             if(!providers.back()) {
                 std::cerr<<"Unknown provider \""<<uri.protocol<<"\" for \""<<pvs.back()<<"\n";
                 allOK = false;
@@ -1741,14 +1741,14 @@ int main (int argc, char *argv[])
                     // skip trailing '/'
                     pvs.push_back(uri.path.substr(1));
                     pvsAddress.push_back(uri.host);
-                    providers.push_back(getChannelProviderRegistry()->getProvider(uri.protocol));
+                    providers.push_back(ChannelProviderRegistry::clients()->getProvider(uri.protocol));
                 }
                 else
                 {
                     uri.protocol = defaultProvider;
                     pvs.push_back(uris[n]);
                     pvsAddress.push_back(std::string());
-                    providers.push_back(getChannelProviderRegistry()->getProvider(defaultProvider));
+                    providers.push_back(ChannelProviderRegistry::clients()->getProvider(defaultProvider));
                 }
 
                 if(!providers.back()) {
@@ -2050,7 +2050,7 @@ int main (int argc, char *argv[])
 
 
         ClientFactory::start();
-        ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");
+        ChannelProvider::shared_pointer provider = ChannelProviderRegistry::clients()->getProvider("pva");
         assert(provider);
 
         TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));

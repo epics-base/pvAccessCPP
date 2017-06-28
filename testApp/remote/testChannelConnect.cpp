@@ -125,7 +125,7 @@ int main (int argc, char *argv[])
         Event g_event;
 
         ClientFactory::start();
-        ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");
+        ChannelProvider::shared_pointer provider = ChannelProviderRegistry::clients()->getProvider("pva");
 
         int run = 0;
 

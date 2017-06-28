@@ -175,7 +175,7 @@ struct CompatRegistry : public ChannelProviderRegistry
     virtual bool add(const ChannelProviderFactory::shared_pointer& fact, bool replace=true) OVERRIDE FINAL
     {
         std::cerr<<"Warning: Adding provider \""<<fact->getFactoryName()<<"\" to compatibility ChannelProviderFactory is deprecated\n"
-                 <<"         Instead explicitly add to ChannelProviderFactory::clients() or ChannelProviderFactory::servers()\n";
+                 <<"         Instead explicitly add to ChannelProviderRegistry::clients() or ChannelProviderRegistry::servers()\n";
         // intentionally not using short-circuit or
         return clients()->add(fact, replace) | servers()->add(fact, replace);
     }
