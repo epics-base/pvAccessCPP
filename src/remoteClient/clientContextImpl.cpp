@@ -1852,8 +1852,8 @@ private:
 
     Mutex m_mutex;
 
-    BitSet::shared_pointer m_bitSet1;
-    BitSet::shared_pointer m_bitSet2;
+    BitSet m_bitSet1;
+    BitSet m_bitSet2;
     MonitorElement::shared_pointer m_overrunElement;
     bool m_overrunInProgress;
 
@@ -1940,24 +1940,20 @@ public:
                 BitSet::shared_pointer changedBitSet = m_overrunElement->changedBitSet;
                 BitSet::shared_pointer overrunBitSet = m_overrunElement->overrunBitSet;
 
-                // lazy init
-                if (m_bitSet1.get() == 0) m_bitSet1.reset(new BitSet(changedBitSet->size()));
-                if (m_bitSet2.get() == 0) m_bitSet2.reset(new BitSet(overrunBitSet->size()));
-
-                m_bitSet1->deserialize(payloadBuffer, transport.get());
-                pvStructure->deserialize(payloadBuffer, transport.get(), m_bitSet1.get());
-                m_bitSet2->deserialize(payloadBuffer, transport.get());
+                m_bitSet1.deserialize(payloadBuffer, transport.get());
+                pvStructure->deserialize(payloadBuffer, transport.get(), &m_bitSet1);
+                m_bitSet2.deserialize(payloadBuffer, transport.get());
 
                 // OR local overrun
                 // TODO this does not work perfectly if bitSet is compressed !!!
                 // uncompressed bitSets should be used !!!
-                overrunBitSet->or_and(*(changedBitSet.get()), *(m_bitSet1.get()));
+                overrunBitSet->or_and(*(changedBitSet.get()), m_bitSet1);
 
                 // OR remove change
-                *(changedBitSet.get()) |= *(m_bitSet1.get());
+                *(changedBitSet.get()) |= m_bitSet1;
 
                 // OR remote overrun
-                *(overrunBitSet.get()) |= *(m_bitSet2.get());
+                *(overrunBitSet.get()) |= m_bitSet2;
 
                 // m_up2datePVStructure is already set
 
