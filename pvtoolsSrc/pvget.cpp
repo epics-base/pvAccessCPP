@@ -1,26 +1,32 @@
 #include <iostream>
-#include <pv/clientFactory.h>
-#include <pv/pvAccess.h>
-
-#include <stdio.h>
-#include <epicsStdlib.h>
-#include <epicsGetopt.h>
-#include <epicsThread.h>
-#include <pv/logger.h>
-#include <pv/lock.h>
-
 #include <vector>
+#include <set>
 #include <string>
 #include <istream>
 #include <fstream>
 #include <sstream>
 
-#include <pv/event.h>
+#include <stdio.h>
+
+#if !defined(_WIN32)
+#include <signal.h>
+#define USE_SIGNAL
+#endif
+
+#include <epicsStdlib.h>
+#include <epicsGetopt.h>
 #include <epicsExit.h>
+#include <epicsGuard.h>
+
+#include <pv/clientFactory.h>
+#include <pv/caProvider.h>
+#include <pv/pvAccess.h>
+#include <epicsThread.h>
+#include <pv/logger.h>
+#include <pv/lock.h>
+#include <pv/event.h>
 
 #include "pvutils.cpp"
-
-#include <pv/caProvider.h>
 
 using namespace std;
 namespace TR1 = std::tr1;
@@ -29,17 +35,15 @@ using namespace epics::pvAccess;
 
 
 
+typedef epicsGuard<epicsMutex> Guard;
+typedef epicsGuardRelease<epicsMutex> UnGuard;
 
+namespace {
 
+bool debugFlag = false;
 
-#define DEFAULT_TIMEOUT 3.0
-#define DEFAULT_REQUEST "field(value)"
-#define DEFAULT_PROVIDER "pva"
-
-double timeOut = DEFAULT_TIMEOUT;
-string request(DEFAULT_REQUEST);
-string defaultProvider(DEFAULT_PROVIDER);
-const string noAddress;
+string request("field(value)");
+string defaultProvider("pva");
 
 enum PrintMode { ValueOnlyMode, StructureMode, TerseMode };
 PrintMode mode = ValueOnlyMode;
@@ -53,7 +57,7 @@ void usage (void)
              "  -v: Print version and exit\n"
              "\noptions:\n"
              "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
-             "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
+             "  -w <sec>:          Wait time, specifies timeout, default is 3 seconds for get, inf. for monitor\n"
              "  -t:                Terse mode - print only value, without names\n"
              "  -i:                Do not format standard types (enum_t, time_t, ...)\n"
              "  -m:                Monitor mode\n"
@@ -68,7 +72,7 @@ void usage (void)
 //    " time format:\n"
 //    "  -u: print userTag\n"
              "\nexample: pvget double01\n\n"
-             , DEFAULT_REQUEST, DEFAULT_TIMEOUT, DEFAULT_PROVIDER);
+             , request.c_str(), defaultProvider.c_str());
 }
 
 void printValue(std::string const & channelName, PVStructure::shared_pointer const & pv)
@@ -78,10 +82,9 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
         PVField::shared_pointer value = pv->getSubField("value");
         if (value.get() == 0)
         {
-            std::cerr << "no 'value' field" << std::endl;
-            //std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+            std::cerr << "no 'value' field\n";
             pvutil_ostream myos(std::cout.rdbuf());
-            myos << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+            myos << channelName << "\n" << *(pv.get()) << "\n\n";
         }
         else
         {
@@ -94,13 +97,12 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
                     std::cout << std::setw(30) << std::left << channelName;
                     std::cout << fieldSeparator;
                     formatTType(std::cout, TR1::static_pointer_cast<PVStructure>(value));
-                    std::cout << std::endl;
+                    std::cout << '\n';
                 }
                 else
                 {
-                    //std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
                     pvutil_ostream myos(std::cout.rdbuf());
-                    myos << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+                    myos << channelName << '\n' << *(pv.get()) << "\n\n";
                 }
             }
             else
@@ -112,50 +114,79 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
 
                 std::cout << fieldSeparator;
 
-                terse(std::cout, value) << std::endl;
+                terse(std::cout, value) << '\n';
             }
         }
     }
     else if (mode == TerseMode)
-        terseStructure(std::cout, pv) << std::endl;
+        terseStructure(std::cout, pv) << '\n';
     else
     {
-        //std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
         pvutil_ostream myos(std::cout.rdbuf());
-        myos << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
+        myos << channelName << '\n' << *(pv.get()) << "\n\n";
     }
 }
 
+// tracking get and monitor operations in progress
 
-class ChannelGetRequesterImpl : public ChannelGetRequester
-{
-private:
-    PVStructure::shared_pointer m_pvStructure;
-    BitSet::shared_pointer m_bitSet;
-    Mutex m_pointerMutex;
-    Event m_event;
-    string m_channelName;
+struct Tracker {
+    static epicsMutex doneLock;
+    static epicsEvent doneEvt;
+    typedef std::set<Tracker*> inprog_t;
+    static inprog_t inprog;
+    static bool abort;
 
-    bool m_done;
-
-public:
-
-    ChannelGetRequesterImpl(std::string channelName) : m_channelName(channelName), m_done(false) {}
-
-    virtual string getRequesterName()
+    Tracker()
     {
-        return "ChannelGetRequesterImpl";
+        Guard G(doneLock);
+        inprog.insert(this);
     }
+    ~Tracker()
+    {
+        done();
+    }
+    void done()
+    {
+        {
+            Guard G(doneLock);
+            inprog.erase(this);
+        }
+        doneEvt.signal();
+    }
+};
+
+epicsMutex Tracker::doneLock;
+epicsEvent Tracker::doneEvt;
+Tracker::inprog_t Tracker::inprog;
+bool Tracker::abort = false;
+
+#ifdef USE_SIGNAL
+void alldone(int num)
+{
+    (void)num;
+    Tracker::abort = true;
+    Tracker::doneEvt.signal();
+}
+#endif
+
+struct ChannelGetRequesterImpl : public ChannelGetRequester, public Tracker
+{
+    const string m_channelName;
+    operation_type::shared_pointer op;
+
+    ChannelGetRequesterImpl(std::string channelName) : m_channelName(channelName) {}
+    virtual ~ChannelGetRequesterImpl() {}
+
+    virtual string getRequesterName()    { return "ChannelGetRequesterImpl"; }
 
     virtual void channelGetConnect(const epics::pvData::Status& status, ChannelGet::shared_pointer const & channelGet,
                                    epics::pvData::Structure::const_shared_pointer const & /*structure*/)
     {
         if (status.isSuccess())
         {
-            // show warning
-            if (!status.isOK())
+            if (!status.isOK() || debugFlag)
             {
-                std::cerr << "[" << m_channelName << "] channel get create: " << status << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get create: " << status << '\n';
             }
 
             channelGet->lastRequest();
@@ -163,8 +194,8 @@ public:
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status << std::endl;
-            m_event.signal();
+            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status << '\n';
+            done();
         }
     }
 
@@ -175,60 +206,32 @@ public:
     {
         if (status.isSuccess())
         {
-            // show warning
-            if (!status.isOK())
+            if (!status.isOK() || debugFlag)
             {
-                std::cerr << "[" << m_channelName << "] channel get: " << status << std::endl;
+                std::cerr << "[" << m_channelName << "] channel get: " << status << '\n';
             }
 
-            // access smart pointers
-            {
-                Lock lock(m_pointerMutex);
+            printValue(m_channelName, pvStructure);
 
-                m_pvStructure = pvStructure;
-                m_bitSet = bitSet;
-
-                m_done = true;
-
-            }
         }
         else
         {
-            std::cerr << "[" << m_channelName << "] failed to get: " << status << std::endl;
+            std::cerr << "[" << m_channelName << "] failed to get: " << status << '\n';
         }
 
-        m_event.signal();
+        done();
     }
 
-    PVStructure::shared_pointer getPVStructure()
-    {
-        Lock lock(m_pointerMutex);
-        return m_pvStructure;
-    }
-
-    bool waitUntilGet(double timeOut)
-    {
-        bool signaled = m_event.wait(timeOut);
-        if (!signaled)
-        {
-            std::cerr << "[" << m_channelName << "] get timeout" << std::endl;
-            return false;
-        }
-
-        Lock lock(m_pointerMutex);
-        return m_done;
-    }
 };
 
-class MonitorRequesterImpl : public MonitorRequester
+struct MonitorRequesterImpl : public MonitorRequester, public Tracker
 {
-private:
 
-    string m_channelName;
+    const string m_channelName;
+    operation_type::shared_pointer op;
 
-public:
-
-    MonitorRequesterImpl(std::string channelName) : m_channelName(channelName) {};
+    MonitorRequesterImpl(std::string channelName) : m_channelName(channelName) {}
+    virtual ~MonitorRequesterImpl() {}
 
     virtual string getRequesterName()
     {
@@ -239,43 +242,46 @@ public:
     {
         if (status.isSuccess())
         {
-            /*
-            string str;
-            structure->toString(&str);
-            std::cout << str << std::endl;
-            */
-
             Status startStatus = monitor->start();
             // show error
             // TODO and exit
-            if (!startStatus.isSuccess())
+            if (!startStatus.isSuccess() || debugFlag)
             {
-                std::cerr << "[" << m_channelName << "] channel monitor start: " << startStatus << std::endl;
+                std::cerr << "[" << m_channelName << "] channel monitor start: " << startStatus << '\n';
             }
 
         }
         else
         {
-            std::cerr << "monitorConnect(" << status << ")" << std::endl;
+            std::cerr << "monitorConnect(" << status << ")\n";
+            done();
+        }
+    }
+
+    virtual void channelDisconnect(bool destroy) {
+        if(!destroy) {
+            std::cerr << m_channelName<<" Disconnected\n";
         }
     }
 
     virtual void monitorEvent(Monitor::shared_pointer const & monitor)
     {
+        if(debugFlag)
+            std::cerr << "[" << m_channelName << "] channel monitor event: \n";
 
-        MonitorElement::shared_pointer element;
-        while ((element = monitor->poll()))
+        for(MonitorElement::Ref it(monitor); it; ++it)
         {
+            MonitorElement* element(it.get());
+
             if (mode == ValueOnlyMode)
             {
                 PVField::shared_pointer value = element->pvStructurePtr->getSubField("value");
                 if (value.get() == 0)
                 {
-                    std::cerr << "no 'value' field" << std::endl;
-                    std::cout << m_channelName << std::endl;
-                    //std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                    std::cerr << "no 'value' field" << '\n';
+                    std::cout << m_channelName << '\n';
                     pvutil_ostream myos(std::cout.rdbuf());
-                    myos << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                    myos << *(element->pvStructurePtr.get()) << "\n\n";
                 }
                 else
                 {
@@ -288,14 +294,13 @@ public:
                             std::cout << std::setw(30) << std::left << m_channelName;
                             std::cout << fieldSeparator;
                             formatTType(std::cout, TR1::static_pointer_cast<PVStructure>(value));
-                            std::cout << std::endl;
+                            std::cout << '\n';
                         }
                         else
                         {
-                            std::cout << m_channelName << std::endl;
-                            //std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                            std::cout << m_channelName << '\n';
                             pvutil_ostream myos(std::cout.rdbuf());
-                            myos << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                            myos << *(element->pvStructurePtr.get()) << "\n\n";
                         }
                     }
                     else
@@ -307,7 +312,7 @@ public:
 
                         std::cout << fieldSeparator;
 
-                        terse(std::cout, value) << std::endl;
+                        terse(std::cout, value) << '\n';
                     }
                 }
             }
@@ -320,49 +325,33 @@ public:
 
                 std::cout << fieldSeparator;
 
-                terseStructure(std::cout, element->pvStructurePtr) << std::endl;
+                terseStructure(std::cout, element->pvStructurePtr) << '\n';
             }
             else
             {
-                std::cout << m_channelName << std::endl;
-                //std::cout << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                std::cout << m_channelName << '\n';
                 pvutil_ostream myos(std::cout.rdbuf());
-                myos << *(element->pvStructurePtr.get()) << std::endl << std::endl;
+                myos << *(element->pvStructurePtr.get()) << "\n\n";
             }
 
-            monitor->release(element);
         }
 
     }
 
     virtual void unlisten(Monitor::shared_pointer const & /*monitor*/)
     {
-        std::cerr << "unlisten" << std::endl;
+        if(debugFlag)
+            std::cerr << "unlisten" << m_channelName << '\n';
+        done();
     }
 };
 
+} // namespace
 
-
-/*+**************************************************************************
- *
- * Function:	main
- *
- * Description:	pvget main()
- * 		Evaluate command line options, set up PVA, connect the
- * 		channels, print the data as requested
- *
- * Arg(s) In:	[options] <pv-name>...
- *
- * Arg(s) Out:	none
- *
- * Return(s):	Standard return code (0=success, 1=error)
- *
- **************************************************************************-*/
 
 int main (int argc, char *argv[])
 {
     int opt;                    /* getopt() current option */
-    bool debug = false;
     bool cleanupAndReport = false;
     bool monitor = false;
     bool quiet = false;
@@ -371,7 +360,12 @@ int main (int argc, char *argv[])
     ifstream ifs;
     bool fromStream = false;
 
+    double timeOut = -1.0;
+    bool explicit_timeout = false;
+
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
+
+    // ================ Parse Arguments
 
     while ((opt = getopt(argc, argv, ":hvr:w:tmp:qdcF:f:ni")) != -1) {
         switch (opt) {
@@ -393,7 +387,8 @@ int main (int argc, char *argv[])
             {
                 fprintf(stderr, "'%s' is not a valid timeout value "
                         "- ignored. ('pvget -h' for help.)\n", optarg);
-                timeOut = DEFAULT_TIMEOUT;
+            } else {
+                explicit_timeout = true;
             }
             break;
         case 'r':               /* Set PVA timeout value */
@@ -417,7 +412,7 @@ int main (int argc, char *argv[])
             quiet = true;
             break;
         case 'd':               /* Debug log level */
-            debug = true;
+            debugFlag = true;
             break;
         case 'c':               /* Clean-up and report used instance count */
             cleanupAndReport = true;
@@ -466,6 +461,13 @@ int main (int argc, char *argv[])
         }
     }
 
+    if(!explicit_timeout) {
+        if(monitor)
+            timeOut = -1.0; // forever
+        else
+            timeOut = 3.0;
+    }
+
     int nPvs = argc - optind;       /* Remaining arg list are PV names */
     if (nPvs > 0)
     {
@@ -501,164 +503,125 @@ int main (int argc, char *argv[])
     }
 
 
-    SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
+    SET_LOG_LEVEL(debugFlag ? logLevelDebug : logLevelError);
 
     std::cout << std::boolalpha;
     terseSeparator(fieldSeparator);
+
+    // ================ Connect channels and start operations
 
     ClientFactory::start();
     epics::pvAccess::ca::CAClientFactory::start();
 
     bool allOK = true;
 
+    std::set<ChannelProvider::shared_pointer> providers;
+    typedef std::map<std::string, Channel::shared_pointer> chan_cache_t;
+    chan_cache_t chan_cache;
+
+    PVStructure::shared_pointer pvRequest;
+    try {
+        pvRequest = createRequest(request);
+    } catch(std::exception& e){
+        fprintf(stderr, "failed to parse request string: %s\n", e.what());
+        return 1;
+    }
+
+    // keep the operations, and associated channels, alive
+    std::vector<std::tr1::shared_ptr<Tracker> > ops;
+
+    for(size_t n=0; n<pvs.size(); n++)
     {
-        PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(request);
-        if(pvRequest.get()==NULL) {
-            fprintf(stderr, "failed to parse request string\n");
+        URI uri;
+        bool validURI = URI::parse(pvs[n], uri);
+
+        if (validURI) {
+            if (uri.path.length() <= 1)
+            {
+                std::cerr << "invalid URI '" << pvs[n] << "', empty path\n";
+                return 1;
+            }
+            pvs[n] = uri.path.substr(1);;
+        } else {
+            uri.protocol = defaultProvider;
+            uri.host.clear();
+        }
+
+        ChannelProvider::shared_pointer provider(ChannelProviderRegistry::clients()->getProvider(uri.protocol));
+        if(!provider) {
+            std::cerr<<"Unknown provider \""<<uri.protocol<<"\" for channel "<<pvs[n]<<"\n";
             return 1;
         }
 
-        std::vector<std::string> pvNames;
-        std::vector<std::string> pvAddresses;
-        std::vector<ChannelProvider::shared_pointer> providers;
-
-        pvNames.reserve(nPvs);
-        pvAddresses.reserve(nPvs);
-
-        for (int n = 0; n < nPvs; n++)
-        {
-            URI uri;
-            bool validURI = URI::parse(pvs[n], uri);
-
-            std::string providerName(defaultProvider);
-            std::string pvName(pvs[n]);
-            std::string address(noAddress);
-
-            if (validURI)
-            {
-                if (uri.path.length() <= 1)
-                {
-                    std::cerr << "invalid URI '" << pvs[n] << "', empty path" << std::endl;
-                    return 1;
-                }
-                providerName = uri.protocol;
-                pvName = uri.path.substr(1);
-                address = uri.host;
+        Channel::shared_pointer channel;
+        chan_cache_t::const_iterator it = chan_cache.find(pvs[n]);
+        if(it==chan_cache.end()) {
+            try {
+                channel = provider->createChannel(pvs[n], DefaultChannelRequester::build(),
+                                                  ChannelProvider::PRIORITY_DEFAULT, uri.host);
+            } catch(std::exception& e) {
+                std::cerr<<"Provider "<<uri.protocol<<" can't create channel \""<<pvs[n]<<"\"\n";
+                return 1;
             }
-
-            pvNames.push_back(pvName);
-            pvAddresses.push_back(address);
-            providers.push_back(ChannelProviderRegistry::clients()->getProvider(providerName));
-            if(!providers.back()) {
-                std::cerr<<"Unknown provider \""<<providerName<<"\" for channel "<<pvs[n]<<"\n";
-                allOK = false;
-            }
+            chan_cache[pvs[n]] = channel;
+        } else {
+            channel = it->second;
         }
 
-        // first connect to all, this allows resource (e.g. TCP connection) sharing
-        vector<Channel::shared_pointer> channels(nPvs);
-        vector<Destroyable::shared_pointer> operations(nPvs);
-        for (int n = 0; n < nPvs; n++)
-        {
-            if(!providers[n]) continue;
-            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
-            if (pvAddresses[n].empty())
-                channels[n] = providers[n]->createChannel(pvNames[n], channelRequesterImpl);
-            else
-                channels[n] = providers[n]->createChannel(pvNames[n], channelRequesterImpl,
-                                          ChannelProvider::PRIORITY_DEFAULT, pvAddresses[n]);
-            if(!channels[n]) {
-                std::cerr<<"Can't create channel \""<<pvNames[n]<<"\" with provider "<<providers[n]->getProviderName()<<"\n";
-                allOK = false;
-            }
+        if(monitor) {
+            std::tr1::shared_ptr<MonitorRequesterImpl> req(new MonitorRequesterImpl(pvs[n]));
+
+            req->op = channel->createMonitor(req, pvRequest);
+
+            ops.push_back(req);
+
+        } else {
+            std::tr1::shared_ptr<ChannelGetRequesterImpl> req(new ChannelGetRequesterImpl(pvs[n]));
+
+            req->op = channel->createChannelGet(req, pvRequest);
+
+            ops.push_back(req);
         }
 
-        // for now a simple iterating sync implementation, guarantees order
-        for (int n = 0; n < nPvs; n++)
-        {
-            Channel::shared_pointer channel = channels[n];
-            if(!channel) continue;
-
-            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
-
-            if (channelRequesterImpl->waitUntilConnected(timeOut))
-            {
-                TR1::shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl;
-
-                // probe for value field
-                if (mode == ValueOnlyMode)
-                {
-                    getFieldRequesterImpl.reset(new GetFieldRequesterImpl(channel));
-                    // get all to be immune to bad clients not supporting selective getField request
-                    channel->getField(getFieldRequesterImpl, "");
-                }
-
-                if (getFieldRequesterImpl.get() == 0 ||
-                        getFieldRequesterImpl->waitUntilFieldGet(timeOut))
-                {
-                    // check probe
-                    if (getFieldRequesterImpl.get())
-                    {
-                        Structure::const_shared_pointer structure =
-                            TR1::dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
-                        if (structure.get() == 0 || structure->getField("value").get() == 0)
-                        {
-                            // fallback to structure
-                            mode = StructureMode;
-                            pvRequest = CreateRequest::create()->createRequest("field()");
-                        }
-                    }
-
-                    if (!monitor)
-                    {
-                        TR1::shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(new ChannelGetRequesterImpl(channel->getChannelName()));
-                        ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
-                        allOK &= getRequesterImpl->waitUntilGet(timeOut);
-                        if (allOK)
-                            printValue(channel->getChannelName(), getRequesterImpl->getPVStructure());
-                    }
-                    else
-                    {
-                        TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
-                        channelRequesterImpl->showDisconnectMessage();
-
-                        TR1::shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
-                        operations[n] = channel->createMonitor(monitorRequesterImpl, pvRequest);
-                        allOK &= true;
-                    }
-                }
-                else
-                {
-                    allOK = false;
-                    channel->destroy();
-                    std::cerr << "[" << channel->getChannelName() << "] failed to get channel introspection data" << std::endl;
-                }
-            }
-            else
-            {
-                allOK = false;
-                channel->destroy();
-                std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
-            }
-        }
-
-        if (allOK && monitor)
-        {
-            while (true)
-                epicsThreadSleep(timeOut);
-        }
-
-        epics::pvAccess::ca::CAClientFactory::stop();
-        ClientFactory::stop();
+        // make sure to keep the provider alive as Channels will be automatically closed
+        providers.insert(provider);
     }
 
-    if (cleanupAndReport)
+    // Active channels continue to be referenced by get/monitor stored in 'ops'
+    chan_cache.clear();
+
+    // ========================== Wait for operations to complete, or timeout
+
+#ifdef USE_SIGNAL
+        signal(SIGINT, alldone);
+        signal(SIGTERM, alldone);
+        signal(SIGQUIT, alldone);
+#endif
+
+    if(debugFlag)
+        std::cerr<<"Waiting...\n";
+
     {
-        // TODO implement wait on context
-        epicsThreadSleep ( 3.0 );
-        //std::cout << "-----------------------------------------------------------------------" << std::endl;
-        //epicsExitCallAtExits();
+        Guard G(Tracker::doneLock);
+        while(Tracker::inprog.size() && !Tracker::abort) {
+            UnGuard U(G);
+            if(timeOut<=0)
+                Tracker::doneEvt.wait();
+            else if(!Tracker::doneEvt.wait(timeOut)) {
+                allOK = false;
+                if(debugFlag)
+                    std::cerr<<"Timeout\n";
+                break;
+            }
+        }
     }
 
+    // ========================== All done now
+
+    epics::pvAccess::ca::CAClientFactory::stop();
+    ClientFactory::stop();
+
+    if(debugFlag)
+        std::cerr<<"Done\n";
     return allOK ? 0 : 1;
 }
