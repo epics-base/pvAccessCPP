@@ -3936,26 +3936,7 @@ public:
          * Resubscribe subscriptions.
          */
         // TODO to be called from non-transport thread !!!!!!
-        void resubscribeSubscriptions()
-        {
-            Lock guard(m_responseRequestsMutex);
-
-            Transport::shared_pointer transport = getTransport();
-
-            // NOTE: elements cannot be removed within rrs->updateSubscription callbacks
-            for (IOIDResponseRequestMap::iterator iter = m_responseRequests.begin();
-                    iter != m_responseRequests.end();
-                    iter++)
-            {
-                ResponseRequest::shared_pointer ptr = iter->second.lock();
-                if (ptr)
-                {
-                    SubscriptionRequest::shared_pointer rrs = dynamic_pointer_cast<SubscriptionRequest>(ptr);
-                    if (rrs)
-                        EXCEPTION_GUARD(rrs->resubscribeSubscription(transport));
-                }
-            }
-        }
+        void resubscribeSubscriptions();
 
         /**
          * Update subscriptions.
@@ -4788,7 +4769,7 @@ public:
         try {
             m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
         } catch (std::runtime_error &rte) {
-            notify(BaseRequestImpl::channelNotConnected, FieldConstPtr());
+            //notify(BaseRequestImpl::channelNotConnected, FieldConstPtr());
         }
     }
 
@@ -4893,6 +4874,31 @@ void InternalClientContextImpl::InternalChannelImpl::getField(GetFieldRequester:
     ChannelGetFieldRequestImpl::shared_pointer self(new ChannelGetFieldRequestImpl(internal_from_this(), requester, subField));
     self->activate();
     // activate() stores self in channel
+}
+
+void InternalClientContextImpl::InternalChannelImpl::resubscribeSubscriptions()
+{
+    Lock guard(m_responseRequestsMutex);
+
+    Transport::shared_pointer transport = getTransport();
+
+    if(m_getfield) {
+        transport->enqueueSendRequest(m_getfield);
+    }
+
+    // NOTE: elements cannot be removed within rrs->updateSubscription callbacks
+    for (IOIDResponseRequestMap::iterator iter = m_responseRequests.begin();
+            iter != m_responseRequests.end();
+            iter++)
+    {
+        ResponseRequest::shared_pointer ptr = iter->second.lock();
+        if (ptr)
+        {
+            SubscriptionRequest::shared_pointer rrs = dynamic_pointer_cast<SubscriptionRequest>(ptr);
+            if (rrs)
+                EXCEPTION_GUARD(rrs->resubscribeSubscription(transport));
+        }
+    }
 }
 
 }//namespace
