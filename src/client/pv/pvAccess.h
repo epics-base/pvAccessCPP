@@ -856,7 +856,7 @@ public:
     /**
      * Poll the connection state in more detail
      **/
-    virtual ConnectionState getConnectionState() = 0;
+    virtual ConnectionState getConnectionState();
 
     /**
      * The name passed to ChannelProvider::createChannel()
@@ -871,7 +871,7 @@ public:
     /**
      * Poll connection state
      */
-    virtual bool isConnected() { return getConnectionState()==CONNECTED; }
+    virtual bool isConnected();
 
     /**
      * Initiate a request to retrieve a description of the structure of this Channel.
@@ -883,7 +883,7 @@ public:
      * @param Requester The Requester.
      * @param subField Empty string, or the field name of a sub-structure.
      */
-    virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField) = 0;
+    virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField);
 
     /**
      * Not useful...
@@ -891,7 +891,7 @@ public:
      * @param pvField The field for which access rights is desired.
      * @return The access rights.
      */
-    virtual AccessRights getAccessRights(epics::pvData::PVField::shared_pointer const & pvField) = 0;
+    virtual AccessRights getAccessRights(epics::pvData::PVField::shared_pointer const & pvField);
 
     /**
      * Initiate a request for a Process action.

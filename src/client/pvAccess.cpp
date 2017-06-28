@@ -35,6 +35,21 @@ void Channel::message(std::string const & message, epics::pvData::MessageType me
     }
 }
 
+Channel::ConnectionState Channel::getConnectionState() { return CONNECTED; }
+
+bool Channel::isConnected() { return getConnectionState()==CONNECTED; }
+
+void Channel::getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField)
+{
+    requester->getDone(pvd::Status(pvd::Status::STATUSTYPE_FATAL, "Not Implemented")
+                       ,pvd::FieldConstPtr());
+}
+
+AccessRights Channel::getAccessRights(epics::pvData::PVField::shared_pointer const & pvField)
+{
+    return readWrite;
+}
+
 ChannelProcess::shared_pointer Channel::createChannelProcess(
         ChannelProcessRequester::shared_pointer const & requester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest)
