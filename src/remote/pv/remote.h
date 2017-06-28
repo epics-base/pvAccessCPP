@@ -564,8 +564,9 @@ public:
     virtual void reportStatus(Channel::ConnectionState status) = 0;
 
     /**
-     * Get request requester.
-     * @return request requester.
+     * used by MessageHandler and reportChannelStateChange().
+     *
+     * May return NULL
      */
     virtual std::tr1::shared_ptr<ChannelBaseRequester> getRequester() = 0;
 };
