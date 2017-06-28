@@ -10,6 +10,7 @@
 #endif
 
 #include <epicsEvent.h>
+#include <epicsThread.h>
 #include <epicsMutex.h>
 #include <epicsGuard.h>
 
@@ -45,7 +46,7 @@ struct SpamMonitor : public pva::Monitor,
                      public std::tr1::enable_shared_from_this<SpamMonitor>
 {
     const std::tr1::shared_ptr<SpamChannel> channel;
-    const pva::MonitorRequester::shared_pointer requester;
+    const requester_type::weak_pointer requester;
     pvd::int32 maxQueue;
     bool pipeline;
     // Has the client seen poll()==NULL
@@ -170,9 +171,14 @@ struct SpamMonitor : public pva::Monitor,
             }
 
             signal &= !filled.empty();
+            if(signal)
+                clientEmpty = false;
         }
-        if(signal)
-            requester->monitorEvent(shared_from_this());
+        if(signal) {
+            requester_type::shared_pointer req(requester.lock());
+            if(req)
+                req->monitorEvent(shared_from_this());
+        }
     }
 };
 
@@ -182,7 +188,7 @@ struct SpamChannel : public pva::Channel,
 {
     const std::tr1::shared_ptr<pva::ChannelProvider> provider;
     const std::string name;
-    const pva::ChannelRequester::shared_pointer requester;
+    const pva::ChannelRequester::weak_pointer requester;
 
     SpamChannel(const std::tr1::shared_ptr<pva::ChannelProvider>& provider,
                 const std::string& name,
@@ -197,7 +203,7 @@ struct SpamChannel : public pva::Channel,
 
     virtual std::string getRemoteAddress() OVERRIDE FINAL {return "";}
     virtual ConnectionState getConnectionState() OVERRIDE FINAL {return CONNECTED;}
-    virtual std::tr1::shared_ptr<pva::ChannelRequester> getChannelRequester() OVERRIDE FINAL { return requester; }
+    virtual pva::ChannelRequester::shared_pointer getChannelRequester() OVERRIDE FINAL { return pva::ChannelRequester::shared_pointer(requester); }
 
     virtual void destroy() OVERRIDE FINAL {}
 
@@ -289,6 +295,10 @@ int main(int argc, char *argv[]) {
         std::cout<<"Server use_count="<<server.use_count()<<"\n"
                  <<show_referrers(server, false);
         server.reset();
+
+        std::cout<<"threads\n";
+        std::cout.flush();
+        epicsThreadShowAll(0);
 
         std::cout<<"provider use_count="<<provider.use_count()<<"\n"
                  <<show_referrers(provider, false);
