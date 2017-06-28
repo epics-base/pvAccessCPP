@@ -614,6 +614,7 @@ void CAChannelGet::activate()
 
 /* --------------- epics::pvAccess::ChannelGet --------------- */
 
+namespace {
 
 static void ca_get_handler(struct event_handler_args args)
 {
@@ -978,6 +979,8 @@ static copyDBRtoPVStructure copyFuncTable[] =
     copy_DBR_CTRL<dbr_ctrl_double, dbr_double_t, PVDouble, PVDoubleArray>          // DBR_CTRL_DOUBLE
 };
 
+} // namespace
+
 void CAChannelGet::getDone(struct event_handler_args &args)
 {
     if (args.status == ECA_NORMAL)
@@ -1114,6 +1117,7 @@ void CAChannelPut::activate()
 
 /* --------------- epics::pvAccess::ChannelPut --------------- */
 
+namespace {
 
 static void ca_put_handler(struct event_handler_args args)
 {
@@ -1274,6 +1278,8 @@ static doPut doPutFuncTable[] =
     doPut_pvStructure<dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_DOUBLE
 };
 
+} // namespace
+
 void CAChannelPut::putDone(struct event_handler_args &args)
 {
     if (args.status == ECA_NORMAL)
@@ -1286,7 +1292,6 @@ void CAChannelPut::putDone(struct event_handler_args &args)
         EXCEPTION_GUARD(channelPutRequester->putDone(errorStatus, shared_from_this()));
     }
 }
-
 
 void CAChannelPut::put(PVStructure::shared_pointer const & pvPutStructure,
                        BitSet::shared_pointer const & /*putBitSet*/)
