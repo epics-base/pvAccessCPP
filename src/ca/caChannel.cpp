@@ -398,16 +398,6 @@ AccessRights CAChannel::getAccessRights(epics::pvData::PVField::shared_pointer c
 }
 
 
-ChannelProcess::shared_pointer CAChannel::createChannelProcess(
-    ChannelProcessRequester::shared_pointer const & channelProcessRequester,
-    epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-{
-    Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
-    ChannelProcess::shared_pointer nullChannelProcess;
-    EXCEPTION_GUARD(channelProcessRequester->channelProcessConnect(errorStatus, nullChannelProcess));
-    return nullChannelProcess;
-}
-
 ChannelGet::shared_pointer CAChannel::createChannelGet(
     ChannelGetRequester::shared_pointer const & channelGetRequester,
     epics::pvData::PVStructure::shared_pointer const & pvRequest)
@@ -423,46 +413,12 @@ ChannelPut::shared_pointer CAChannel::createChannelPut(
     return CAChannelPut::create(shared_from_this(), channelPutRequester, pvRequest);
 }
 
-ChannelPutGet::shared_pointer CAChannel::createChannelPutGet(
-    ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
-    epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-{
-    Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
-    ChannelPutGet::shared_pointer nullChannelPutGet;
-    EXCEPTION_GUARD(channelPutGetRequester->channelPutGetConnect(errorStatus, nullChannelPutGet,
-                    Structure::const_shared_pointer(), Structure::const_shared_pointer()));
-    return nullChannelPutGet;
-}
-
-
-ChannelRPC::shared_pointer CAChannel::createChannelRPC(
-    ChannelRPCRequester::shared_pointer const & channelRPCRequester,
-    epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-{
-    Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
-    ChannelRPC::shared_pointer nullChannelRPC;
-    EXCEPTION_GUARD(channelRPCRequester->channelRPCConnect(errorStatus, nullChannelRPC));
-    return nullChannelRPC;
-}
-
 
 Monitor::shared_pointer CAChannel::createMonitor(
     MonitorRequester::shared_pointer const & monitorRequester,
     epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
     return CAChannelMonitor::create(shared_from_this(), monitorRequester, pvRequest);
-}
-
-
-ChannelArray::shared_pointer CAChannel::createChannelArray(
-    ChannelArrayRequester::shared_pointer const & channelArrayRequester,
-    epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-{
-    Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
-    ChannelArray::shared_pointer nullChannelArray;
-    EXCEPTION_GUARD(channelArrayRequester->channelArrayConnect(errorStatus, nullChannelArray,
-                    Array::const_shared_pointer()));
-    return nullChannelArray;
 }
 
 
