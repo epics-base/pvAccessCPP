@@ -29,37 +29,7 @@
 namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
 
-namespace {
-struct DummyChannelRequester : public pva::ChannelRequester
-{
-    POINTER_DEFINITIONS(DummyChannelRequester);
-    pvd::Mutex mutex;
-    pvd::Status status;
-
-    DummyChannelRequester()
-        :status(pvd::Status::error("Never created"))
-    {}
-    virtual ~DummyChannelRequester() {}
-
-    virtual std::string getRequesterName() { return "DummyChannelRequester"; }
-
-    virtual void channelCreated(const pvd::Status& status, pva::Channel::shared_pointer const & channel) {
-        TRACE("status="<<status);
-        pvd::Lock L(mutex);
-        this->status = status;
-    }
-
-    virtual void channelStateChange(pva::Channel::shared_pointer const & channel, pva::Channel::ConnectionState connectionState) {}
-};
-
-}// namespace
-
-namespace epics
-{
-
-namespace pvAccess
-{
-
+namespace epics{namespace pvAccess{
 
 struct RPCClient::RPCRequester : public pva::ChannelRPCRequester
 {
@@ -145,41 +115,24 @@ struct RPCClient::RPCRequester : public pva::ChannelRPCRequester
 };
 
 
-
-
-
-
 RPCClient::RPCClient(const std::string & serviceName,
-                     pvd::PVStructure::shared_pointer const & pvRequest)
-    : m_serviceName(serviceName), m_pvRequest(pvRequest ? pvRequest : pvd::createRequest(""))
+                     pvd::PVStructure::shared_pointer const & pvRequest,
+                     const ChannelProvider::shared_pointer &provider,
+                     const std::string &address)
+    : m_serviceName(serviceName)
+    , m_provider(provider)
+    , m_pvRequest(pvRequest ? pvRequest : pvd::createRequest(""))
 {
     ClientFactory::start();
-    ChannelProvider::shared_pointer provider(ChannelProviderRegistry::clients()->getProvider("pva"));
-    if(!provider)
+    if(!m_provider)
+        m_provider = ChannelProviderRegistry::clients()->getProvider("pva");
+    if(!m_provider)
         throw std::logic_error("Unknown Provider");
-    construct(provider, serviceName, pvRequest);
-}
 
-RPCClient::RPCClient(const ChannelProvider::shared_pointer& provider,
-                     const std::string & serviceName,
-                     epics::pvData::PVStructure::shared_pointer const & pvRequest)
-{
-    construct(provider, serviceName, pvRequest);
-}
+    m_channel = m_provider->createChannel(serviceName, DefaultChannelRequester::build(),
+                                        ChannelProvider::PRIORITY_DEFAULT,
+                                        address);
 
-void RPCClient::construct(const ChannelProvider::shared_pointer& provider,
-                          const std::string & serviceName,
-                          epics::pvData::PVStructure::shared_pointer const & pvRequest)
-{
-    assert(provider);
-
-    DummyChannelRequester::shared_pointer dummy(new DummyChannelRequester);
-    m_channel = provider->createChannel(serviceName, dummy);
-    {
-        pvd::Lock L(dummy->mutex);
-        if(!dummy->status.isSuccess())
-            throw std::runtime_error(dummy->status.getMessage());
-    }
     if(!m_channel)
         throw std::logic_error("provider createChannel() succeeds w/ NULL Channel");
 
@@ -188,7 +141,6 @@ void RPCClient::construct(const ChannelProvider::shared_pointer& provider,
     if(!m_rpc)
         throw std::logic_error("channel createChannelRPC() NULL");
 }
-
 
 void RPCClient::destroy()
 {
@@ -328,7 +280,4 @@ pvd::PVStructure::shared_pointer RPCClient::sendRequest(const std::string & serv
 }
 
 
-}
-
-}
-
+}}// namespace epics::pvAccess

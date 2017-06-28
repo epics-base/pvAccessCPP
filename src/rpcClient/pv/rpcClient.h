@@ -51,11 +51,9 @@ public:
                                  epics::pvData::PVStructure::shared_pointer const & pvRequest = epics::pvData::PVStructure::shared_pointer());
 
     RPCClient(const std::string & serviceName,
-              epics::pvData::PVStructure::shared_pointer const & pvRequest);
-
-    RPCClient(const ChannelProvider::shared_pointer& provider,
-              const std::string & serviceName,
-              epics::pvData::PVStructure::shared_pointer const & pvRequest);
+              epics::pvData::PVStructure::shared_pointer const & pvRequest,
+              const ChannelProvider::shared_pointer& provider = ChannelProvider::shared_pointer(),
+              const std::string& address = std::string());
 
     ~RPCClient() {destroy();}
 
@@ -138,11 +136,9 @@ public:
     epics::pvData::PVStructure::shared_pointer waitResponse(double timeout = RPCCLIENT_DEFAULT_TIMEOUT);
 
 private:
-    void construct(const ChannelProvider::shared_pointer& provider,
-                   const std::string & serviceName,
-                   epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     const std::string m_serviceName;
+    ChannelProvider::shared_pointer m_provider;
     Channel::shared_pointer m_channel;
     ChannelRPC::shared_pointer m_rpc;
     const epics::pvData::PVStructure::shared_pointer m_pvRequest;
