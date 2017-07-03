@@ -36,7 +36,7 @@ struct RPCClient::RPCRequester : public pva::ChannelRPCRequester
     POINTER_DEFINITIONS(RPCRequester);
 
     pvd::Mutex mutex;
-    ChannelRPC::weak_pointer op;
+    ChannelRPC::shared_pointer op;
     pvd::Status conn_status, resp_status;
     epics::pvData::PVStructure::shared_pointer next_args, last_data;
     epicsEvent event;

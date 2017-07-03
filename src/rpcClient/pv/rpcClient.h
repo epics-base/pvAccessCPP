@@ -14,6 +14,7 @@
 #   undef epicsExportSharedSymbols
 #endif
 #include <pv/pvData.h>
+#include <pv/valueBuilder.h>
 #ifdef rpcClientEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
 #	undef rpcClientEpicsExportSharedSymbols

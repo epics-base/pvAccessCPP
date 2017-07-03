@@ -12,6 +12,9 @@ testCodec_SRCS = testCodec
 testHarness_SRCS += testCodec.cpp
 TESTS += testCodec
 
+TESTPROD_HOST += testRPC
+testRPC_SRCS += testRPC.cpp
+TESTS += testRPC
 
 TESTPROD_HOST += testRemoteClientImpl
 testRemoteClientImpl_SRCS += testRemoteClientImpl.cpp

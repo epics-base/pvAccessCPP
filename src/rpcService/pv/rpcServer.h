@@ -38,12 +38,10 @@ private:
     std::tr1::shared_ptr<ServerContext> m_serverContext;
     ChannelProvider::shared_pointer m_channelProviderImpl;
 
-    // TODO no thread poll implementation
-
 public:
     POINTER_DEFINITIONS(RPCServer);
 
-    RPCServer();
+    explicit RPCServer(const Configuration::const_shared_pointer& conf = Configuration::const_shared_pointer());
 
     virtual ~RPCServer();
 
@@ -66,6 +64,7 @@ public:
      */
     void printInfo();
 
+    const std::tr1::shared_ptr<ServerContext>& getServer() const { return m_serverContext; }
 };
 
 epicsShareFunc Channel::shared_pointer createRPCChannel(ChannelProvider::shared_pointer const & provider,

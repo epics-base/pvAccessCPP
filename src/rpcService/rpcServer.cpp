@@ -477,11 +477,12 @@ string RPCChannelProvider::PROVIDER_NAME("rpcService");
 Status RPCChannelProvider::noSuchChannelStatus(Status::STATUSTYPE_ERROR, "no such channel");
 
 
-RPCServer::RPCServer()
+RPCServer::RPCServer(const Configuration::const_shared_pointer &conf)
     :m_channelProviderImpl(new RPCChannelProvider)
 {
     ChannelProvider::shared_pointer prov(new RPCChannelProvider);
     m_serverContext = ServerContext::create(ServerContext::Config()
+                                            .config(conf)
                                             .provider(m_channelProviderImpl));
 }
 
