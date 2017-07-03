@@ -1786,7 +1786,7 @@ void ChannelAccessIFTest::test_channelMonitor(int queueSize) {
         return;
     }
     else {
-        testOk(monitorReq->getMonitorCounter() == 1, "%s: monitor event happened", CURRENT_FUNCTION);
+        testOk(monitorReq->getMonitorCounter() == 1, "%s: monitor event happened %d", CURRENT_FUNCTION, monitorReq->getMonitorCounter());
         testOk(monitorReq->getChangedBitSet()->cardinality() == 1, "%s: monitor cardinality is 1", CURRENT_FUNCTION);
         testOk(monitorReq->getChangedBitSet()->get(0) == true, "%s: changeBitSet get(0) is true ", CURRENT_FUNCTION);
     }
@@ -1812,7 +1812,7 @@ void ChannelAccessIFTest::test_channelMonitor(int queueSize) {
             return;
         }
 
-        testOk(monitorReq->getMonitorCounter() == i, "%s: monitor event happened for i=%d", CURRENT_FUNCTION, i);
+        testOk(monitorReq->getMonitorCounter() == i, "%s: monitor event happened for i=%d != %d", CURRENT_FUNCTION, i, monitorReq->getMonitorCounter());
 
         if (queueSize == 1 ) {
             testOk(monitorReq->getChangedBitSet()->cardinality() == 1, "%s: monitor cardinality is 1 (queue size = 1)",
