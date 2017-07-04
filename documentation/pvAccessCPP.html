@@ -1193,7 +1193,7 @@ class  ServerContext
 {
 public:
 	virtual ~ServerContext() {};
-	virtual const GUID&amp; getGUID() = 0;
+	virtual const ServerGUID&amp; getGUID() = 0;
 	virtual const Version&amp; getVersion() = 0;
 	virtual void initialize(ChannelProviderRegistryPtr const &amp; channelProviderRegistry) = 0;
 	virtual void run(int32 seconds) = 0;
@@ -1216,7 +1216,7 @@ ServerContextPtr startPVAServer(
 where
 <dl>
    <dt>getGUID</dt>
-     <dd>Returns GUID (12-byte array).</dd>
+     <dd>Returns ServerGUID (12-byte array).</dd>
    <dt>getVersion</dt>
      <dd>Get context implementation version.</dd>
    <dt>initialize</dt>

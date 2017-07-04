@@ -96,7 +96,7 @@ public:
      * @param minorRevision	server minor PVA revision.
      * @param serverAddress	server address.
      */
-    void searchResponse(const GUID & guid, pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress);
+    void searchResponse(const ServerGUID & guid, pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress);
     /**
      * New server detected.
      * Boost searching of all channels.

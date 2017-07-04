@@ -110,7 +110,7 @@ private:
     /**
      * Server GUID.
      */
-    GUID _guid;
+    ServerGUID _guid;
 
     /**
      * Fast (at startup) beacon period (in sec).

@@ -34,7 +34,7 @@ BeaconHandler::~BeaconHandler()
 }
 
 void BeaconHandler::beaconNotify(osiSockAddr* /*from*/, int8 remoteTransportRevision,
-                                 TimeStamp* timestamp, GUID const & guid, int16 sequentalID,
+                                 TimeStamp* timestamp, ServerGUID const & guid, int16 sequentalID,
                                  int16 changeCount,
                                  PVFieldPtr /*data*/)
 {
@@ -44,7 +44,7 @@ void BeaconHandler::beaconNotify(osiSockAddr* /*from*/, int8 remoteTransportRevi
 }
 
 bool BeaconHandler::updateBeacon(int8 /*remoteTransportRevision*/, TimeStamp* /*timestamp*/,
-                                 GUID const & guid, int16 /*sequentalID*/, int16 changeCount)
+                                 ServerGUID const & guid, int16 /*sequentalID*/, int16 changeCount)
 {
     Lock guard(_mutex);
     // first beacon notification check

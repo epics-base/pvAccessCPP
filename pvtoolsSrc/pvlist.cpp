@@ -141,7 +141,7 @@ bool processSearchResponse(osiSockAddr const & responseFrom, ByteBuffer & receiv
         return false;
 
 
-    epics::pvAccess::GUID guid;
+    epics::pvAccess::ServerGUID guid;
     receiveBuffer.get(guid.value, 0, sizeof(guid.value));
 
     /*int32 searchSequenceId = */receiveBuffer.getInt();

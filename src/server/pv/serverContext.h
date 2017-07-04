@@ -38,7 +38,7 @@ public:
      * Returns GUID (12-byte array).
      * @return GUID.
      */
-    virtual const GUID& getGUID() = 0;
+    virtual const ServerGUID& getGUID() = 0;
 
     /**
      * Get context implementation version.

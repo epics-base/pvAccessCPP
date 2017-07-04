@@ -2586,7 +2586,7 @@ public:
 
         transport->ensureData(12+4+16+2);
 
-        GUID guid;
+        ServerGUID guid;
         payloadBuffer->get(guid.value, 0, sizeof(guid.value));
 
         int32 searchSequenceId = payloadBuffer->getInt();
@@ -2737,7 +2737,7 @@ public:
 
         transport->ensureData(12+2+2+16+2);
 
-        GUID guid;
+        ServerGUID guid;
         payloadBuffer->get(guid.value, 0, sizeof(guid.value));
 
         /*int8 qosCode =*/ payloadBuffer->getByte();
@@ -3247,7 +3247,7 @@ private:
         /**
          * @brief Server GUID.
          */
-        GUID m_guid;
+        ServerGUID m_guid;
 
         /**
          * Constructor.
@@ -3677,7 +3677,7 @@ public:
                 m_addressIndex = m_addresses->size()*STATIC_SEARCH_MAX_MULTIPLIER;
 
             // NOTE: calls channelConnectFailed() on failure
-            static GUID guid = { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
+            static ServerGUID guid = { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
             searchResponse(guid, PVA_PROTOCOL_REVISION, &((*m_addresses)[ix]));
         }
 
@@ -3685,7 +3685,7 @@ public:
             // noop
         }
 
-        virtual void searchResponse(const GUID & guid, int8 minorRevision, osiSockAddr* serverAddress) OVERRIDE FINAL {
+        virtual void searchResponse(const ServerGUID & guid, int8 minorRevision, osiSockAddr* serverAddress) OVERRIDE FINAL {
             Lock guard(m_channelMutex);
             Transport::shared_pointer transport = m_transport;
             if (transport.get())

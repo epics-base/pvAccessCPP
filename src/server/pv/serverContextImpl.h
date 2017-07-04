@@ -25,7 +25,7 @@ public:
     virtual ~ServerContextImpl();
 
     //**************** derived from ServerContext ****************//
-    const GUID& getGUID() OVERRIDE FINAL;
+    const ServerGUID& getGUID() OVERRIDE FINAL;
     const Version& getVersion() OVERRIDE FINAL;
     void initialize();
     void run(epics::pvData::uint32 seconds) OVERRIDE FINAL;
@@ -129,7 +129,7 @@ private:
     /**
      * Server GUID.
      */
-    GUID _guid;
+    ServerGUID _guid;
 
     /**
      * A space-separated list of broadcast address which to send beacons.
@@ -232,7 +232,7 @@ private:
     BeaconServerStatusProvider::shared_pointer _beaconServerStatusProvider;
 
     /**
-     * Generate GUID.
+     * Generate ServerGUID.
      */
     void generateGUID();
 

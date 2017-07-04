@@ -65,7 +65,7 @@ ServerContextImpl::~ServerContextImpl()
     }
 }
 
-const GUID& ServerContextImpl::getGUID()
+const ServerGUID& ServerContextImpl::getGUID()
 {
     return _guid;
 }

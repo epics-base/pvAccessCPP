@@ -174,7 +174,7 @@ public:
     void timerStopped();
 
 private:
-    GUID _guid;
+    ServerGUID _guid;
     std::string _name;
     epics::pvData::int32 _searchSequenceId;
     epics::pvData::int32 _cid;

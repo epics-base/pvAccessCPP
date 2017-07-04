@@ -139,7 +139,7 @@ void SimpleChannelSearchManagerImpl::unregisterSearchInstance(SearchInstance::sh
         m_channels.erase(id);
 }
 
-void SimpleChannelSearchManagerImpl::searchResponse(const GUID & guid, pvAccessID cid, int32_t /*seqNo*/, int8_t minorRevision, osiSockAddr* serverAddress)
+void SimpleChannelSearchManagerImpl::searchResponse(const ServerGUID & guid, pvAccessID cid, int32_t /*seqNo*/, int8_t minorRevision, osiSockAddr* serverAddress)
 {
     Lock guard(m_channelMutex);
     m_channels_t::iterator channelsIter = m_channels.find(cid);
