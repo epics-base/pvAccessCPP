@@ -1779,14 +1779,19 @@ void ChannelAccessIFTest::test_channelMonitor(int queueSize) {
            CURRENT_FUNCTION);
 
     monitorReq->getChannelMonitor()->start();
+    // Start will trigger one update with the initial value.
+    // As the timer for 'testCounter' is not synchronized, we may see a second update before
+    // waitUntilMonitor() returns
 
+    int ucnt;
     bool succStatus = monitorReq->waitUntilMonitor(getTimeoutSec());
     if (!succStatus) {
         testFail("%s: no monitoring event happened ", CURRENT_FUNCTION);
         return;
     }
     else {
-        testOk(monitorReq->getMonitorCounter() == 1, "%s: monitor event happened %d", CURRENT_FUNCTION, monitorReq->getMonitorCounter());
+        ucnt = monitorReq->getMonitorCounter();
+        testOk(ucnt == 1 || ucnt == 2, "%s: monitor event happened %d", CURRENT_FUNCTION, monitorReq->getMonitorCounter());
         testOk(monitorReq->getChangedBitSet()->cardinality() == 1, "%s: monitor cardinality is 1", CURRENT_FUNCTION);
         testOk(monitorReq->getChangedBitSet()->get(0) == true, "%s: changeBitSet get(0) is true ", CURRENT_FUNCTION);
     }
@@ -1804,7 +1809,7 @@ void ChannelAccessIFTest::test_channelMonitor(int queueSize) {
     testOk(valueField->equals(*previousValue.get()) == true , "%s: value field equals to a previous value",
            CURRENT_FUNCTION);
 
-    for (int i = 2; i < 5; i++ ) {
+    for (int i = ucnt+1; i < ucnt+4; i++ ) {
 
         succStatus = monitorReq->waitUntilMonitor(getTimeoutSec());
         if (!succStatus) {
