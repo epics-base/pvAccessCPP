@@ -11,9 +11,9 @@ namespace pvAccess {
 /**
  * Globally unique ID.
  */
-typedef struct {
+struct GUID {
     char value[12];
-} GUID;
+};
 
 typedef epicsInt32 pvAccessID;
 
