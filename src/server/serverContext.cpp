@@ -13,7 +13,7 @@
 #define epicsExportSharedSymbols
 #include <pv/responseHandlers.h>
 #include <pv/logger.h>
-#include <pv/serverContext.h>
+#include <pv/serverContextImpl.h>
 #include <pv/security.h>
 
 using namespace std;
