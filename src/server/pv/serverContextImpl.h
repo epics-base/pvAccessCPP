@@ -11,7 +11,7 @@
 namespace epics {
 namespace pvAccess {
 
-class epicsShareClass ServerContextImpl :
+class ServerContextImpl :
     public ServerContext,
     public Context,
     public std::tr1::enable_shared_from_this<ServerContextImpl>
