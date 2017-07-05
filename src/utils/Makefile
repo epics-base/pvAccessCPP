@@ -12,6 +12,7 @@ INC += pv/configuration.h
 INC += pv/likely.h
 INC += pv/wildcard.h
 INC += pv/fairQueue.h
+INC += pv/destroyable.h
 
 LIBSRCS += hexDump.cpp
 LIBSRCS += inetAddressUtil.cpp
