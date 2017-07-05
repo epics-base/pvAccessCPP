@@ -9,12 +9,23 @@
 #ifndef MONITOR_H
 #define MONITOR_H
 
+#ifdef epicsExportSharedSymbols
+#   define monitorEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <pv/status.h>
-#include <pv/destroyable.h>
 #include <pv/pvData.h>
 #include <pv/sharedPtr.h>
 #include <pv/bitSet.h>
 #include <pv/requester.h>
+
+#ifdef monitorEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef monitorEpicsExportSharedSymbols
+#endif
+
+#include <pv/destroyable.h>
 
 #include <shareLib.h>
 
