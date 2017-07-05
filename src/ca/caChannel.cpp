@@ -436,7 +436,7 @@ void CAChannel::printInfo(std::ostream& out)
 }
 
 
-/* --------------- epics::pvData::Destroyable --------------- */
+/* --------------- Destroyable --------------- */
 
 
 void CAChannel::destroy()
@@ -1012,7 +1012,7 @@ void CAChannelGet::lastRequest()
     lastRequestFlag = true;
 }
 
-/* --------------- epics::pvData::Destroyable --------------- */
+/* --------------- Destroyable --------------- */
 
 
 void CAChannelGet::destroy()
@@ -1343,7 +1343,7 @@ void CAChannelPut::lastRequest()
     lastRequestFlag = true;
 }
 
-/* --------------- epics::pvData::Destroyable --------------- */
+/* --------------- Destroyable --------------- */
 
 
 void CAChannelPut::destroy()
@@ -1521,7 +1521,7 @@ void CAChannelMonitor::cancel()
     // noop
 }
 
-/* --------------- epics::pvData::Destroyable --------------- */
+/* --------------- Destroyable --------------- */
 
 
 void CAChannelMonitor::destroy()

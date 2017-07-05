@@ -73,7 +73,7 @@ public:
      * @param id request ID.
      * @param request request to be registered.
      */
-    void registerRequest(pvAccessID id, epics::pvData::Destroyable::shared_pointer const & request);
+    void registerRequest(pvAccessID id, Destroyable::shared_pointer const & request);
 
     /**
      * Unregister request.
@@ -86,7 +86,7 @@ public:
      * @param id request ID.
      * @return request with given ID, <code>null</code> if there is no request with such ID.
      */
-    epics::pvData::Destroyable::shared_pointer getRequest(pvAccessID id);
+    Destroyable::shared_pointer getRequest(pvAccessID id);
 
     /**
      * Destroy server channel.
@@ -120,7 +120,7 @@ private:
      */
     pvAccessID _sid;
 
-    typedef std::map<pvAccessID, epics::pvData::Destroyable::shared_pointer> _requests_t;
+    typedef std::map<pvAccessID, Destroyable::shared_pointer> _requests_t;
     /**
      * Requests.
      */

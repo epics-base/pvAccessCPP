@@ -172,7 +172,7 @@ struct epicsShareClass ChannelBaseRequester : virtual public epics::pvData::Requ
 /**
  * Base interface for all channel requests (aka. Operations).
  */
-class epicsShareClass ChannelRequest : public virtual epics::pvData::Destroyable, public Lockable, private epics::pvData::NoDefaultMethods {
+class epicsShareClass ChannelRequest : public virtual Destroyable, public Lockable, private epics::pvData::NoDefaultMethods {
 public:
     POINTER_DEFINITIONS(ChannelRequest);
 
@@ -362,7 +362,7 @@ public:
 /**
  *
  */
-class epicsShareClass ChannelFind : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
+class epicsShareClass ChannelFind : public Destroyable, private epics::pvData::NoDefaultMethods {
 public:
     POINTER_DEFINITIONS(ChannelFind);
     typedef ChannelFindRequester requester_type;
@@ -815,7 +815,7 @@ class ChannelRequester;
  */
 class epicsShareClass Channel :
     public Requester,
-    public epics::pvData::Destroyable,
+    public Destroyable,
     private epics::pvData::NoDefaultMethods {
 public:
     POINTER_DEFINITIONS(Channel);
@@ -1112,7 +1112,7 @@ enum FlushStrategy {
  *
  * Uniquely configurable (via ChannelProviderFactory::newInstance(Configuration*)
  */
-class epicsShareClass ChannelProvider : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
+class epicsShareClass ChannelProvider : public Destroyable, private epics::pvData::NoDefaultMethods {
 public:
     POINTER_DEFINITIONS(ChannelProvider);
 

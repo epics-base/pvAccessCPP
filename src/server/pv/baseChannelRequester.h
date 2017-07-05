@@ -26,7 +26,7 @@
 namespace epics {
 namespace pvAccess {
 
-class BaseChannelRequester :  virtual public epics::pvData::Requester, public epics::pvData::Destroyable
+class BaseChannelRequester :  virtual public epics::pvData::Requester, public Destroyable
 {
 public:
     BaseChannelRequester(ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,

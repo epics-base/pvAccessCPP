@@ -86,7 +86,7 @@ public:
  *
  * Downstream interface to access a monitor queue (via poll() and release() )
  */
-class epicsShareClass Monitor : public virtual epics::pvData::Destroyable{
+class epicsShareClass Monitor : public virtual Destroyable{
     public:
     POINTER_DEFINITIONS(Monitor);
     typedef MonitorRequester requester_type;

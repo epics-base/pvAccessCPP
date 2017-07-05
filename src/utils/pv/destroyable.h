@@ -9,11 +9,13 @@
 #ifndef DESTROYABLE_H
 #define DESTROYABLE_H
 
+#include <compilerDependencies.h>
+
 #include <pv/sharedPtr.h>
 
 #include <shareLib.h>
 
-namespace epics { namespace pvData { 
+namespace epics { namespace pvAccess {
 
 
         /**
@@ -55,5 +57,8 @@ namespace epics { namespace pvData {
             };
         };
 
+}}
+namespace epics { namespace pvData {
+    typedef ::epics::pvAccess::Destroyable Destroyable EPICS_DEPRECATED;
 }}
 #endif  /* DESTROYABLE_H */

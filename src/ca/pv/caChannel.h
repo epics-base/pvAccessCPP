@@ -66,7 +66,7 @@ public:
 
     virtual void printInfo(std::ostream& out);
 
-    /* --------------- epics::pvData::Destroyable --------------- */
+    /* --------------- Destroyable --------------- */
 
     virtual void destroy();
 
@@ -132,7 +132,7 @@ public:
     virtual void cancel();
     virtual void lastRequest();
 
-    /* --------------- epics::pvData::Destroyable --------------- */
+    /* --------------- Destroyable --------------- */
 
     virtual void destroy();
 
@@ -187,7 +187,7 @@ public:
     virtual void cancel();
     virtual void lastRequest();
 
-    /* --------------- epics::pvData::Destroyable --------------- */
+    /* --------------- Destroyable --------------- */
 
     virtual void destroy();
 
@@ -237,7 +237,7 @@ public:
 
     virtual void cancel();
 
-    /* --------------- epics::pvData::Destroyable --------------- */
+    /* --------------- Destroyable --------------- */
 
     virtual void destroy();
 
