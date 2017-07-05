@@ -18,7 +18,6 @@
 #include <pv/pvData.h>
 #include <pv/createRequest.h>
 #include <pv/status.h>
-#include <pv/destroyable.h>
 #include <pv/monitor.h>
 #include <pv/bitSet.h>
 
@@ -28,6 +27,7 @@
 #endif
 
 #include <pv/pvaVersion.h>
+#include <pv/destroyable.h>
 
 #include <shareLib.h>
 

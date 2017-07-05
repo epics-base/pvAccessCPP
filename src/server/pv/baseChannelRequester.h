@@ -13,13 +13,12 @@
 #endif
 
 #include <pv/requester.h>
-#include <pv/destroyable.h>
-
 #ifdef baseChannelRequesterEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
 #	undef baseChannelRequesterEpicsExportSharedSymbols
 #endif
 
+#include <pv/destroyable.h>
 #include <pv/serverContextImpl.h>
 #include <pv/serverChannelImpl.h>
 
