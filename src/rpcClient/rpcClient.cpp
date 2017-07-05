@@ -228,8 +228,6 @@ pvd::PVStructure::shared_pointer RPCClient::waitResponse(double timeout)
 {
     pvd::Lock L(m_rpc_requester->mutex);
     TRACE("timeout="<<timeout);
-    if(!m_rpc_requester->inprogress)
-        throw std::logic_error("No request in progress");
 
     while(m_rpc_requester->inprogress)
     {
@@ -255,7 +253,7 @@ pvd::PVStructure::shared_pointer RPCClient::waitResponse(double timeout)
     data.swap(m_rpc_requester->last_data);
 
     if(!data)
-        throw std::logic_error("No reply data?!?");
+        throw std::logic_error("No request in progress");
 
     // copy it so that the caller need not worry about whether it will overwritten
     // when the next request is issued
