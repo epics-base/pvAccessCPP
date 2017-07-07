@@ -42,7 +42,13 @@ void alldone(int num)
 
 struct GetReq : public pva::ChannelGetRequester
 {
+    POINTER_DEFINITIONS(GetReq);
+
     const std::string name;
+    // we hold strong ref to ChannelGet
+    // which should only hold weak ref to us
+    operation_type::shared_pointer op;
+
     GetReq(const std::string& name) :name(name) {}
     virtual ~GetReq() {}
 
@@ -147,25 +153,24 @@ int main(int argc, char *argv[]) {
             throw std::logic_error("pva provider not registered");
 
         // need to store references to keep get (and channel) from being closed
-        typedef std::set<pva::ChannelGet::shared_pointer> gets_t;
+        typedef std::set<GetReq::shared_pointer> gets_t;
         gets_t gets;
 
         for(pvs_t::const_iterator it=pvs.begin(); it!=pvs.end(); ++it) {
             const std::string& pv = *it;
 
-            pva::ChannelGetRequester::shared_pointer getreq(new GetReq(pv));
+            GetReq::shared_pointer getreq(new GetReq(pv));
 
             pva::Channel::shared_pointer chan(provider->createChannel(pv));
-            // if !chan then channelCreated() called with error status
-            if(!chan) continue;
+            assert(chan);
 
             // no need to wait for connection
 
-            pva::ChannelGet::shared_pointer op(chan->createChannelGet(getreq, pvReq));
+            getreq->op = chan->createChannelGet(getreq, pvReq);
             // if !op then channelGetConnect() called with error status
-            if(!op) continue;
+            if(!getreq->op) continue;
 
-            gets.insert(op);
+            gets.insert(getreq);
             // drop our explicit Channel reference, ChannelGet holds an additional reference
         }
 
