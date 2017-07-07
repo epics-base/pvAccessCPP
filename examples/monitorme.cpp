@@ -20,10 +20,10 @@
 #include <epicsGuard.h>
 
 #include <pv/configuration.h>
-#include <pv/pvAccess.h>
 #include <pv/clientFactory.h>
 #include <pv/caProvider.h>
 #include <pv/thread.h>
+#include <pv/pvaTestClient.h>
 
 namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
@@ -33,14 +33,20 @@ namespace {
 typedef epicsGuard<epicsMutex> Guard;
 typedef epicsGuardRelease<epicsMutex> UnGuard;
 
+struct Worker {
+    virtual ~Worker() {}
+    virtual void process(const TestMonitorEvent& event) =0;
+};
+
 // simple work queue with thread.
 // moves monitor queue handling off of PVA thread(s)
 struct WorkQueue : public epicsThreadRunable {
     epicsMutex mutex;
-    typedef std::tr1::shared_ptr<epicsThreadRunable> value_t;
+    typedef std::tr1::shared_ptr<Worker> value_type;
+    typedef std::tr1::weak_ptr<Worker> weak_type;
     // work queue holds only weak_ptr
     // so jobs must be kept alive seperately
-    typedef std::deque<std::tr1::weak_ptr<epicsThreadRunable> > queue_t;
+    typedef std::deque<std::pair<weak_type, TestMonitorEvent> > queue_t;
     queue_t queue;
     epicsEvent event;
     bool running;
@@ -65,20 +71,20 @@ struct WorkQueue : public epicsThreadRunable {
         worker.exitWait();
     }
 
-    void push(const queue_t::value_type& v)
+    void push(const weak_type& cb, const TestMonitorEvent& evt)
     {
         bool wake;
         {
             Guard G(mutex);
             if(!running) return; // silently refuse to queue during/after close()
             wake = queue.empty();
-            queue.push_back(v);
+            queue.push_back(std::make_pair(cb, evt));
         }
         if(wake)
             event.signal();
     }
 
-    virtual void run()
+    virtual void run() OVERRIDE FINAL
     {
         Guard G(mutex);
 
@@ -87,13 +93,14 @@ struct WorkQueue : public epicsThreadRunable {
                 UnGuard U(G);
                 event.wait();
             } else {
-                value_t ent(queue.front().lock());
+                queue_t::value_type ent(queue.front());
+                value_type cb(ent.first.lock());
                 queue.pop_front();
-                if(!ent) continue;
+                if(!cb) continue;
 
                 try {
                     UnGuard U(G);
-                    ent->run();
+                    cb->process(ent.second);
                 }catch(std::exception& e){
                     std::cout<<"Error in monitor handler : "<<e.what()<<"\n";
                 }
@@ -113,115 +120,51 @@ void sigdone(int num)
 }
 #endif
 
-struct MonTracker : public epicsThreadRunable,
-                    public pva::MonitorRequester,
+struct MonTracker : public TestClientChannel::MonitorCallback,
+                    public Worker,
                     public std::tr1::enable_shared_from_this<MonTracker>
 {
     POINTER_DEFINITIONS(MonTracker);
-    pva::Channel::shared_pointer chan;
-    pva::Monitor::shared_pointer op;
 
-    virtual std::string getRequesterName() { return "MonTracker"; }
-
-    virtual void monitorConnect(pvd::Status const & status,
-                                pva::MonitorPtr const & monitor,
-                                pvd::StructureConstPtr const & structure)
-    {
-        if(status.isSuccess() && !this->alldone) {
-            Guard G(this->mutex);
-
-            if(!this->op) {
-                // called during createMonitor()
-                this->op = monitor;
-            }
-
-            // store type info
-            // also serves as "connected" flag
-            this->cur_type = structure;
-
-            // use 'monitor' arg as owner->mon may not be assigned yet
-            pvd::Status msts(monitor->start());
-            std::cout<<"monitorConnect "<<this->chan->getChannelName()<<" start "<<msts<<"\n";
-        }
-    }
-
-    virtual void channelDisconnect(bool destroy) {
-        {
-            Guard G(this->mutex);
-
-            this->cur_type.reset();
-            this->alldone |= destroy;
-
-            // no need to call self->op->stop()
-            // monitor implicitly stopped on disconnect
-            pvd::Status msts(this->op->stop());
-        }
-        try {
-            monwork.push(shared_from_this());
-        }catch(std::exception& e){
-            Guard G(this->mutex);
-            this->queued = false;
-            std::cout<<"channelDisconnect failed to queue "<<e.what()<<"\n";
-        }
-    }
-
-    virtual void monitorEvent(pva::MonitorPtr const & monitor)
-    {
-        {
-            Guard G(this->mutex);
-            if(this->queued) return;
-            this->queued = true;
-        }
-        try {
-            monwork.push(shared_from_this());
-        }catch(std::exception& e){
-            Guard G(this->mutex);
-            this->queued = false;
-            std::cout<<"monitorEvent failed to queue "<<e.what()<<"\n";
-        }
-    }
-
-    virtual void unlisten(pva::MonitorPtr const & monitor)
-    {
-        std::cout<<"monitor unlisten\n";
-        // handled the same as destroy
-        channelDisconnect(true);
-    }
-
-    epicsMutex mutex;
-    pvd::StructureConstPtr cur_type;
-    bool alldone;
-    bool queued;
-
-    MonTracker() :alldone(false), queued(false) {}
+    MonTracker(const std::string& name) :name(name) {}
     virtual ~MonTracker() {}
 
-    virtual void run()
+    const std::string name;
+    TestMonitor mon;
+
+    virtual void monitorEvent(const TestMonitorEvent& evt) OVERRIDE FINAL
     {
-        bool disconn;
-        {
-            Guard G(mutex);
-            queued = false;
-            disconn = !cur_type;
-        }
-        while(true) {
-            pva::MonitorElementPtr elem(op->poll());
-            if(!elem) break;
-            try {
-                pvd::PVField::shared_pointer fld(elem->pvStructurePtr->getSubField("value"));
+        // running on internal provider worker thread
+        // minimize work here.
+        // TODO: bound queue size
+        monwork.push(shared_from_this(), evt);
+    }
+
+    virtual void process(const TestMonitorEvent& evt) OVERRIDE FINAL
+    {
+        // running on our worker thread
+        switch(evt.event) {
+        case TestMonitorEvent::Fail:
+            std::cout<<"Error "<<name<<" "<<evt.message<<"\n";
+            break;
+        case TestMonitorEvent::Cancel:
+            std::cout<<"Cancel "<<name<<"\n";
+            break;
+        case TestMonitorEvent::Disconnect:
+            std::cout<<"Disconnect "<<name<<"\n";
+            break;
+        case TestMonitorEvent::Data:
+            while(mon.poll()) {
+                pvd::PVField::const_shared_pointer fld(mon.root->getSubField("value"));
                 if(!fld)
-                    fld = elem->pvStructurePtr;
-                std::cout<<"Event "<<chan->getChannelName()<<" "<<fld
-                         <<" Changed:"<<*elem->changedBitSet
-                         <<" overrun:"<<*elem->overrunBitSet<<"\n";
-            } catch(...) {
-                op->release(elem);
-                throw;
+                    fld = mon.root;
+
+                std::cout<<"Event "<<name<<" "<<fld
+                        <<" Changed:"<<mon.changed
+                       <<" overrun:"<<mon.overrun<<"\n";
             }
-            op->release(elem);
+            break;
         }
-        if(disconn)
-            std::cout<<"Disconnected\n";
     }
 };
 
@@ -288,30 +231,18 @@ int main(int argc, char *argv[]) {
         pva::ca::CAClientFactory::start();
 
         std::cout<<"Use provider: "<<providerName<<"\n";
-        pva::ChannelProvider::shared_pointer provider(pva::ChannelProviderRegistry::clients()->createProvider(providerName, conf));
-        if(!provider)
-            throw std::logic_error("pva provider not registered");
+        TestClientProvider provider(providerName, conf);
 
         std::vector<MonTracker::shared_pointer> monitors;
 
         for(pvs_t::const_iterator it=pvs.begin(); it!=pvs.end(); ++it) {
             const std::string& pv = *it;
 
-            MonTracker::shared_pointer mon(new MonTracker);
+            MonTracker::shared_pointer mon(new MonTracker(pv));
 
-            pva::Channel::shared_pointer chan(provider->createChannel(pv));
-            {
-                Guard G(mon->mutex);
-                mon->chan = chan;
-            }
+            TestClientChannel chan(provider.connect(pv));
 
-            pva::Monitor::shared_pointer M(chan->createMonitor(mon, pvReq));
-            // monitorConnect may already be called
-            {
-                Guard G(mon->mutex);
-                assert(!mon->op || mon->op==M);
-                mon->op = M;
-            }
+            mon->mon = chan.monitor(mon.get());
 
             monitors.push_back(mon);
         }
