@@ -768,6 +768,7 @@ WARN_LOGFILE           =
 INPUT                  = ../src/client/pv \
                          ../src/utils/pv \
                          ../src/pva/pv \
+                         ../src/testing/pv \
                          .
 
 # This tag can be used to specify the character encoding of the source files
