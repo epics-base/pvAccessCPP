@@ -154,13 +154,21 @@ public:
     Ref(Monitor& M) :mon(&M), elem(mon->poll()) {}
     Ref(const Monitor::shared_pointer& M) :mon(M.get()), elem(mon->poll()) {}
     ~Ref() { reset(); }
+    void attach(Monitor& M) {
+        reset();
+        mon = &M;
+    }
+    void attach(const Monitor::shared_pointer& M) {
+        reset();
+        mon = M.get();
+    }
     bool next() {
         if(elem) mon->release(elem);
         elem = mon->poll();
         return !!elem;
     }
     void reset() {
-        if(elem) mon->release(elem);
+        if(elem && mon) mon->release(elem);
         elem.reset();
     }
     Ref& operator++() {// prefix increment.  aka "++(*this)"
