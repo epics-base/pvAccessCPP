@@ -3172,7 +3172,7 @@ public:
         /**
          * Channel requester.
          */
-        ChannelRequester::shared_pointer m_requester;
+        ChannelRequester::weak_pointer m_requester;
 
     public:
         //! The in-progress GetField operation.
@@ -3353,7 +3353,7 @@ private:
 
         virtual ChannelRequester::shared_pointer getChannelRequester() OVERRIDE FINAL
         {
-            return m_requester;
+            return ChannelRequester::shared_pointer(m_requester);
         }
 
         virtual ConnectionState getConnectionState() OVERRIDE FINAL
@@ -3695,7 +3695,7 @@ public:
                 if (!sockAddrAreIdentical(transport->getRemoteAddress(), serverAddress) &&
                         !std::equal(guid.value, guid.value + 12, m_guid.value))
                 {
-                    EXCEPTION_GUARD(m_requester->message("More than one channel with name '" + m_name +
+                    EXCEPTION_GUARD3(m_requester, req, req->message("More than one channel with name '" + m_name +
                                                          "' detected, connected to: " + inetAddressToString(*transport->getRemoteAddress()) + ", ignored: " + inetAddressToString(*serverAddress), warningMessage));
                 }
 
@@ -3851,7 +3851,7 @@ public:
                     }
                 }
 
-                EXCEPTION_GUARD(m_requester->channelStateChange(self, connectionState));
+                EXCEPTION_GUARD3(m_requester, req, req->channelStateChange(self, connectionState));
 
                 if(connectionState==Channel::DISCONNECTED || connectionState==Channel::DESTROYED) {
                     for(size_t i=0, N=ops.size(); i<N; i++) {

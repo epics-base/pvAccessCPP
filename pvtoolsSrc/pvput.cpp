@@ -604,8 +604,6 @@ int main (int argc, char *argv[])
     URI uri;
     bool validURI = URI::parse(pv, uri);
 
-    TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
-
     string providerName(defaultProvider);
     string pvName(pv);
     string address(noAddress);

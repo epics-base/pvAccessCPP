@@ -865,6 +865,8 @@ public:
 
     /**
      * The ChannelRequester passed to ChannelProvider::createChannel()
+     *
+     * @throws std::tr1::bad_weak_ptr
      */
     virtual std::tr1::shared_ptr<ChannelRequester> getChannelRequester() = 0;
 

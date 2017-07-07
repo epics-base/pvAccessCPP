@@ -62,26 +62,6 @@ private:
     std::string m_requesterName;
 };
 
-class ChannelRequesterImpl :
-    public epics::pvAccess::ChannelRequester
-{
-private:
-    epics::pvData::Event m_event;
-    bool showDisconnectMsg;
-
-public:
-
-    ChannelRequesterImpl(bool printOnlyErrors = false);
-
-    virtual std::string getRequesterName();
-
-    virtual void channelCreated(const epics::pvData::Status& status, epics::pvAccess::Channel::shared_pointer const & channel);
-    virtual void channelStateChange(epics::pvAccess::Channel::shared_pointer const & channel, epics::pvAccess::Channel::ConnectionState connectionState);
-
-    bool waitUntilConnected(double timeOut);
-    void showDisconnectMessage(bool show = true);
-};
-
 class GetFieldRequesterImpl :
     public epics::pvAccess::GetFieldRequester
 {

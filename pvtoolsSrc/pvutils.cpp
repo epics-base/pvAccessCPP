@@ -437,64 +437,6 @@ char *url_encode(const char *str) {
     return buf;
 }
 
-
-
-ChannelRequesterImpl::ChannelRequesterImpl(bool _printOnlyErrors) :
-    showDisconnectMsg(false)
-{
-}
-
-string ChannelRequesterImpl::getRequesterName()
-{
-    return "ChannelRequesterImpl";
-}
-
-void ChannelRequesterImpl::channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel)
-{
-    if (status.isSuccess())
-    {
-        // show warning
-        if (!status.isOK())
-        {
-            std::cerr << "[" << channel->getChannelName() << "] channel create: " << dump_stack_only_on_debug(status) << std::endl;
-        }
-    }
-    else
-    {
-        std::cerr << "[" << channel->getChannelName() << "] failed to create a channel: " << dump_stack_only_on_debug(status) << std::endl;
-    }
-}
-
-void ChannelRequesterImpl::channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState)
-{
-    if (connectionState == Channel::CONNECTED)
-    {
-        m_event.signal();
-    }
-    else if (showDisconnectMsg && connectionState == Channel::DISCONNECTED)
-    {
-        std::cerr << std::setw(30) << std::left << channel->getChannelName()
-                  << ' ' << "*** disconnected" << std::endl;
-    }
-    /*
-    else if (connectionState != Channel::DESTROYED)
-    {
-    	std::cerr << "[" << channel->getChannelName() << "] channel state change: "  << Channel::ConnectionStateNames[connectionState] << std::endl;
-    }
-    */
-}
-
-bool ChannelRequesterImpl::waitUntilConnected(double timeOut)
-{
-    return m_event.wait(timeOut);
-}
-
-void ChannelRequesterImpl::showDisconnectMessage(bool show)
-{
-    showDisconnectMsg = show;
-}
-
-
 GetFieldRequesterImpl::GetFieldRequesterImpl(epics::pvAccess::Channel::shared_pointer channel) :
     m_channel(channel)
 {

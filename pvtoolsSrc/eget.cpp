@@ -1340,6 +1340,13 @@ public:
         }
     }
 
+    virtual void channelDisconnect(bool destroy)
+    {
+        if(!destroy)
+            std::cerr << std::setw(30) << std::left << m_channelName
+                      << ' ' << "*** disconnected" << std::endl;
+    }
+
     virtual void monitorEvent(Monitor::shared_pointer const & monitor)
     {
 
@@ -1772,12 +1779,8 @@ int main (int argc, char *argv[])
         for (int n = 0; n < nPvs; n++)
         {
             if(!providers[n]) continue;
-            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
-            if (pvsAddress[n].empty())
-                channels[n] = providers[n]->createChannel(pvs[n], channelRequesterImpl);
-            else
-                channels[n] = providers[n]->createChannel(pvs[n], channelRequesterImpl,
-                              ChannelProvider::PRIORITY_DEFAULT, pvsAddress[n]);
+            channels[n] = providers[n]->createChannel(pvs[n], DefaultChannelRequester::build(),
+                                                      ChannelProvider::PRIORITY_DEFAULT, pvsAddress[n]);
 
             if(!channels[n]) {
                 std::cerr<<"No such channel '"<<pvs[n]<<"'\n";
@@ -1808,93 +1811,63 @@ int main (int argc, char *argv[])
 
             if (monitor)
             {
-                TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
-                channelRequesterImpl->showDisconnectMessage();
-
-                // TODO remove this line, when CA provider will allow creation of monitors
-                // when channels is yet not connected
-                if (channelRequesterImpl->waitUntilConnected(timeOut))
-                {
-                    TR1::shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
-                    operations.push_back(channel->createMonitor(monitorRequesterImpl, pvRequest));
-                }
-                else
-                {
-                    allOK = false;
-                    channel->destroy();
-                    std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
-                }
+                TR1::shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
+                operations.push_back(channel->createMonitor(monitorRequesterImpl, pvRequest));
             }
             else
             {
-                /*
-                TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
-                Channel::shared_pointer channel = provider->createChannel(pvs[n], channelRequesterImpl);
-                */
+                TR1::shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl;
 
-                TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
-
-                if (channelRequesterImpl->waitUntilConnected(timeOut))
+                // probe for value field
+                // but only if there is only one PV request (otherwise mode change makes a mess)
+                if (mode == ValueOnlyMode && nPvs == 1)
                 {
-                    TR1::shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl;
+                    getFieldRequesterImpl.reset(new GetFieldRequesterImpl(channel));
+                    // get all to be immune to bad clients not supporting selective getField request
+                    channel->getField(getFieldRequesterImpl, "");
+                }
 
-                    // probe for value field
-                    // but only if there is only one PV request (otherwise mode change makes a mess)
-                    if (mode == ValueOnlyMode && nPvs == 1)
+                if (getFieldRequesterImpl.get() == 0 ||
+                        getFieldRequesterImpl->waitUntilFieldGet(timeOut))
+                {
+                    // check probe
+                    if (getFieldRequesterImpl.get())
                     {
-                        getFieldRequesterImpl.reset(new GetFieldRequesterImpl(channel));
-                        // get all to be immune to bad clients not supporting selective getField request
-                        channel->getField(getFieldRequesterImpl, "");
-                    }
-
-                    if (getFieldRequesterImpl.get() == 0 ||
-                            getFieldRequesterImpl->waitUntilFieldGet(timeOut))
-                    {
-                        // check probe
-                        if (getFieldRequesterImpl.get())
+                        Structure::const_shared_pointer structure =
+                            TR1::dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
+                        if (structure.get() == 0 || structure->getField("value").get() == 0)
                         {
-                            Structure::const_shared_pointer structure =
-                                TR1::dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
-                            if (structure.get() == 0 || structure->getField("value").get() == 0)
-                            {
-                                // fallback to structure
-                                mode = StructureMode;
-                                pvRequest = CreateRequest::create()->createRequest("field()");
-                            }
-                        }
-
-                        TR1::shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(
-                            new ChannelGetRequesterImpl(channel->getChannelName(), false)
-                        );
-                        ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
-                        bool ok = getRequesterImpl->waitUntilGet(timeOut);
-                        allOK &= ok;
-                        if (ok)
-                        {
-                            if (collectValues)
-                            {
-                                collectedValues.push_back(getRequesterImpl->getPVStructure());
-                                collectedNames.push_back(channel->getChannelName());
-                            }
-                            else
-                            {
-                                // print immediately
-                                printValue(channel->getChannelName(), getRequesterImpl->getPVStructure(), fromStream);
-                            }
+                            // fallback to structure
+                            mode = StructureMode;
+                            pvRequest = CreateRequest::create()->createRequest("field()");
                         }
                     }
-                    else
+
+                    TR1::shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(
+                        new ChannelGetRequesterImpl(channel->getChannelName(), false)
+                    );
+                    ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
+                    bool ok = getRequesterImpl->waitUntilGet(timeOut);
+                    allOK &= ok;
+                    if (ok)
                     {
-                        allOK = false;
-                        channel->destroy();
-                        std::cerr << "[" << channel->getChannelName() << "] failed to get channel introspection data" << std::endl;
+                        if (collectValues)
+                        {
+                            collectedValues.push_back(getRequesterImpl->getPVStructure());
+                            collectedNames.push_back(channel->getChannelName());
+                        }
+                        else
+                        {
+                            // print immediately
+                            printValue(channel->getChannelName(), getRequesterImpl->getPVStructure(), fromStream);
+                        }
                     }
                 }
                 else
                 {
                     allOK = false;
                     channel->destroy();
-                    std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
+                    std::cerr << "[" << channel->getChannelName() << "] failed to get channel introspection data" << std::endl;
                 }
             }
         }
@@ -2053,50 +2026,39 @@ int main (int argc, char *argv[])
         ChannelProvider::shared_pointer provider = ChannelProviderRegistry::clients()->getProvider("pva");
         assert(provider);
 
-        TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
         Channel::shared_pointer channel =
-            authority.empty() ?
-            provider->createChannel(service, channelRequesterImpl) :
-            provider->createChannel(service, channelRequesterImpl,
+            provider->createChannel(service, DefaultChannelRequester::build(),
                                     ChannelProvider::PRIORITY_DEFAULT, authority);
 
-        if (channelRequesterImpl->waitUntilConnected(timeOut))
-        {
-            TR1::shared_ptr<ChannelRPCRequesterImpl> rpcRequesterImpl(new ChannelRPCRequesterImpl(channel->getChannelName()));
-            ChannelRPC::shared_pointer channelRPC = channel->createChannelRPC(rpcRequesterImpl, pvRequest);
+        TR1::shared_ptr<ChannelRPCRequesterImpl> rpcRequesterImpl(new ChannelRPCRequesterImpl(channel->getChannelName()));
+        ChannelRPC::shared_pointer channelRPC = channel->createChannelRPC(rpcRequesterImpl, pvRequest);
 
-            if (rpcRequesterImpl->waitUntilConnected(timeOut))
+        if (rpcRequesterImpl->waitUntilConnected(timeOut))
+        {
+            channelRPC->lastRequest();
+            channelRPC->request(arg);
+            allOK &= rpcRequesterImpl->waitUntilRPC(timeOut);
+            if (allOK)
             {
-                channelRPC->lastRequest();
-                channelRPC->request(arg);
-                allOK &= rpcRequesterImpl->waitUntilRPC(timeOut);
-                if (allOK)
+                if (dumpStructure)
                 {
-                    if (dumpStructure)
-                    {
-                        if (rpcRequesterImpl->getLastResponse().get() == 0)
-                            std::cout << "(null)" << std::endl;
-                        else
-                        {
-                            //std::cout << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
-                            pvutil_ostream myos(std::cout.rdbuf());
-                            myos << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
-                        }
-                    }
+                    if (rpcRequesterImpl->getLastResponse().get() == 0)
+                        std::cout << "(null)" << std::endl;
                     else
-                        formatNT(std::cout, rpcRequesterImpl->getLastResponse());
-                    std::cout << std::endl;
+                    {
+                        //std::cout << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
+                        pvutil_ostream myos(std::cout.rdbuf());
+                        myos << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
+                    }
                 }
-            }
-            else
-            {
-                allOK = false;
+                else
+                    formatNT(std::cout, rpcRequesterImpl->getLastResponse());
+                std::cout << std::endl;
             }
         }
         else
         {
             allOK = false;
-            std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
         }
 
         channel->destroy();
