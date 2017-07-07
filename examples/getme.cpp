@@ -20,9 +20,9 @@
 
 //! [Headers]
 #include <pv/configuration.h>
-#include <pv/pvAccess.h>
 #include <pv/clientFactory.h>
 #include <pv/caProvider.h>
+#include <pv/pvaTestClient.h>
 //! [Headers]
 
 namespace pvd = epics::pvData;
@@ -40,55 +40,50 @@ void alldone(int num)
 }
 #endif
 
-struct GetReq : public pva::ChannelGetRequester
+struct Getter : public TestClientChannel::GetCallback,
+                public TestClientChannel::ConnectCallback
 {
-    POINTER_DEFINITIONS(GetReq);
+    POINTER_DEFINITIONS(Getter);
 
     const std::string name;
-    // we hold strong ref to ChannelGet
-    // which should only hold weak ref to us
-    operation_type::shared_pointer op;
+    TestClientChannel channel;
+    TestOperation op;
 
-    GetReq(const std::string& name) :name(name) {}
-    virtual ~GetReq() {}
-
-    virtual std::string getRequesterName() { return "GetReq"; }
-
-    virtual void channelGetConnect(
-        const epics::pvData::Status& status,
-        pva::ChannelGet::shared_pointer const & channelGet,
-        pvd::Structure::const_shared_pointer const & structure)
+    Getter(TestClientProvider& provider, const std::string& name)
+        :name(name)
+        ,channel(provider.connect(name))
     {
-        // Called each time get operation becomes "ready" (channel connected)
-        if(status.isSuccess()) {
-            std::cout<<"Get execute "<<name<<"\n";
-            // can now execute the get operation
-            channelGet->get();
-        } else {
-            std::cout<<"Oops GetConnect: "<<name<<" "<<status<<"\n";
+        channel.addConnectListener(this);
+    }
+    virtual ~Getter()
+    {
+        channel.removeConnectListener(this);
+    }
+
+    virtual void getDone(const TestGetEvent& event)
+    {
+        switch(event.event) {
+        case TestGetEvent::Fail:
+            std::cout<<"Error "<<name<<" : "<<event.message<<"\n";
+            break;
+        case TestGetEvent::Cancel:
+            std::cout<<"Cancel "<<name<<"\n";
+            break;
+        case TestGetEvent::Success:
+            pvd::PVField::const_shared_pointer valfld(event.value->getSubField("value"));
+            if(!valfld)
+                valfld = event.value;
+            std::cout<<name<<" : "<<*valfld<<"\n";
+            break;
         }
     }
 
-    virtual void channelDisconnect(bool destroy) {
-        // Called each time operation becomes no "ready" (channel disconnected)
-        // same as channelStateChange() for DISCONNECTED and DESTROYED
-        std::cout<<name<<"Get disconnected\n";
-    }
-
-    virtual void getDone(
-        const epics::pvData::Status& status,
-        pva::ChannelGet::shared_pointer const & channelGet,
-        pvd::PVStructure::shared_pointer const & pvStructure,
-        pvd::BitSet::shared_pointer const & bitSet)
+    virtual void connectEvent(const TestConnectEvent& evt)
     {
-        // when execution completes
-        if(status.isSuccess()) {
-            pvd::PVFieldPtr valfld(pvStructure->getSubField("value"));
-            if(!valfld)
-                valfld = pvStructure;
-            std::cout<<name<<" : "<<*valfld<<"\n";
+        if(evt.connected) {
+            op = channel.get(this);
         } else {
-            std::cout<<name<<"Oops Get: "<<status<<"\n";
+            std::cout<<"Disconnect "<<name<<"\n";
         }
     }
 };
@@ -148,30 +143,19 @@ int main(int argc, char *argv[]) {
         pva::ca::CAClientFactory::start();
 
         std::cout<<"Use provider: "<<providerName<<"\n";
-        pva::ChannelProvider::shared_pointer provider(pva::ChannelProviderRegistry::clients()->createProvider(providerName, conf));
-        if(!provider)
-            throw std::logic_error("pva provider not registered");
+        TestClientProvider provider(providerName, conf);
 
         // need to store references to keep get (and channel) from being closed
-        typedef std::set<GetReq::shared_pointer> gets_t;
+        typedef std::set<Getter::shared_pointer> gets_t;
         gets_t gets;
 
         for(pvs_t::const_iterator it=pvs.begin(); it!=pvs.end(); ++it) {
             const std::string& pv = *it;
 
-            GetReq::shared_pointer getreq(new GetReq(pv));
+            Getter::shared_pointer get(new Getter(provider, pv));
+            // addConnectListener() always invokes connectEvent() with current state
 
-            pva::Channel::shared_pointer chan(provider->createChannel(pv));
-            assert(chan);
-
-            // no need to wait for connection
-
-            getreq->op = chan->createChannelGet(getreq, pvReq);
-            // if !op then channelGetConnect() called with error status
-            if(!getreq->op) continue;
-
-            gets.insert(getreq);
-            // drop our explicit Channel reference, ChannelGet holds an additional reference
+            gets.insert(get);
         }
 
         if(waitTime<0.0)
