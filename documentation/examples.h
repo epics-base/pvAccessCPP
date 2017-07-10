@@ -10,6 +10,17 @@ and again each time a channel becomes Connected.
 */
 /**
 
+@page examples_putme Client Put Example
+
+This example demonstrates a client which issues a Put operation on startup,
+waits for acknowledgement that the put has been handled,
+then exits.
+
+@include putme.cpp
+
+*/
+/**
+
 @page examples_monitorme Client Monitor Example
 
 This example demonstrates a client which sets up a persistent Monitor operation.

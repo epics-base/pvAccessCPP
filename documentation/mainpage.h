@@ -29,6 +29,7 @@ See the @ref providers page.
 @section main_examples Examples
 
 - @ref examples_getme
+- @ref examples_putme
 - @ref examples_monitorme
 
 */

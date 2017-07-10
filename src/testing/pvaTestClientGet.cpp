@@ -109,6 +109,7 @@ struct GetPutter : public pva::ChannelPutRequester,
                     LOG(pva::logLevelInfo, "Lost exception in %s: %s", CURRENT_FUNCTION, e.what());
                 }
             }
+            // check putcb again after UnGuard
             if(putcb) {
                 pvd::BitSet::shared_pointer all(new pvd::BitSet);
                 all->set(0);
@@ -132,7 +133,7 @@ struct GetPutter : public pva::ChannelPutRequester,
         pva::ChannelPut::shared_pointer const & channelPut) OVERRIDE FINAL
     {
         Guard G(mutex);
-        if(!getcb) return;
+        if(!putcb) return;
 
         if(!status.isOK()) {
             event.message = status.getMessage();
