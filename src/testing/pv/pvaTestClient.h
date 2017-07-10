@@ -17,6 +17,8 @@ class Monitor;
 class Configuration;
 }}//namespace epics::pvAccess
 
+class TestClientProvider;
+
 //! Information on get/put/rpc completion
 struct epicsShareClass TestOperation
 {
@@ -109,11 +111,15 @@ class epicsShareClass TestClientChannel
 {
     struct Impl;
     std::tr1::shared_ptr<Impl> impl;
+    friend class TestClientProvider;
+
+    TestClientChannel(const std::tr1::shared_ptr<Impl>& i) :impl(i) {}
 public:
     struct Options {
         short priority;
         std::string address;
         Options();
+        bool operator<(const Options&) const;
     };
 
     TestClientChannel() {}
@@ -186,7 +192,8 @@ private:
 //! Central client context.
 class epicsShareClass TestClientProvider
 {
-    std::tr1::shared_ptr<epics::pvAccess::ChannelProvider> provider;
+    struct Impl;
+    std::tr1::shared_ptr<Impl> impl;
 public:
 
     TestClientProvider(const std::string& providerName,
@@ -195,8 +202,17 @@ public:
 
     //! Get a new Channel
     //! Does not block.
+    //! Never returns NULL.
+    //! Uses internal Channel cache.
     TestClientChannel connect(const std::string& name,
                               const TestClientChannel::Options& conf = TestClientChannel::Options());
+
+    //! Remove from channel cache
+    bool disconnect(const std::string& name,
+                    const TestClientChannel::Options& conf = TestClientChannel::Options());
+
+    //! Clear channel cache
+    void disconnect();
 };
 
 #endif // PVATESTCLIENT_H

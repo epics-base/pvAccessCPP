@@ -67,6 +67,11 @@ TestClientChannel::Options::Options()
     ,address()
 {}
 
+bool TestClientChannel::Options::operator<(const Options& O) const
+{
+    return priority<O.priority || (priority==O.priority && address<O.address);
+}
+
 TestOperation::TestOperation(const std::tr1::shared_ptr<Impl>& i)
     :impl(i)
 {}
@@ -138,14 +143,24 @@ std::tr1::shared_ptr<epics::pvAccess::Channel>
 TestClientChannel::getChannel()
 { return impl->channel; }
 
+struct TestClientProvider::Impl
+{
+    pva::ChannelProvider::shared_pointer provider;
+
+    epicsMutex mutex;
+    typedef std::map<std::pair<std::string, TestClientChannel::Options>, std::tr1::weak_ptr<TestClientChannel::Impl> > channels_t;
+    channels_t channels;
+};
+
 TestClientProvider::TestClientProvider(const std::string& providerName,
                                        const std::tr1::shared_ptr<epics::pvAccess::Configuration>& conf)
-    :provider(pva::ChannelProviderRegistry::clients()->createProvider(providerName,
-                                                                      conf ? conf : pva::ConfigurationBuilder()
-                                                                             .push_env()
-                                                                             .build()))
+    :impl(new Impl)
 {
-    if(!provider)
+    impl->provider = pva::ChannelProviderRegistry::clients()->createProvider(providerName,
+                                                                             conf ? conf : pva::ConfigurationBuilder()
+                                                                                    .push_env()
+                                                                                    .build());
+    if(!impl->provider)
         THROW_EXCEPTION2(std::invalid_argument, providerName);
 }
 
@@ -155,5 +170,37 @@ TestClientChannel
 TestClientProvider::connect(const std::string& name,
                             const TestClientChannel::Options& conf)
 {
-    return TestClientChannel(provider, name, conf);
+    Guard G(impl->mutex);
+    Impl::channels_t::key_type K(name, conf);
+    Impl::channels_t::iterator it(impl->channels.find(K));
+    if(it!=impl->channels.end()) {
+        // cache hit
+        std::tr1::shared_ptr<TestClientChannel::Impl> chan(it->second.lock());
+        if(chan)
+            return TestClientChannel(chan);
+        else
+            impl->channels.erase(it); // remove stale
+    }
+    // cache miss
+    TestClientChannel ret(impl->provider, name, conf);
+    impl->channels[K] = ret.impl;
+    return ret;
+}
+
+bool TestClientProvider::disconnect(const std::string& name,
+                                    const TestClientChannel::Options& conf)
+{
+    Guard G(impl->mutex);
+
+    Impl::channels_t::iterator it(impl->channels.find(std::make_pair(name, conf)));
+    bool found = it!=impl->channels.end();
+    if(found)
+        impl->channels.erase(it);
+    return found;
+}
+
+void TestClientProvider::disconnect()
+{
+    Guard G(impl->mutex);
+    impl->channels.clear();
 }
