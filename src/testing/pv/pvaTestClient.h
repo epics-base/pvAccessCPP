@@ -30,7 +30,10 @@ struct epicsShareClass TestOperation
     TestOperation() {}
     TestOperation(const std::tr1::shared_ptr<Impl>&);
     ~TestOperation();
+    //! Channel name
     std::string name() const;
+    //! Immediate cancellation.
+    //! Does not wait for remote confirmation.
     void cancel();
 
 protected:
@@ -64,7 +67,10 @@ struct epicsShareClass TestMonitor
     TestMonitor(const std::tr1::shared_ptr<Impl>&);
     ~TestMonitor();
 
+    //! Channel name
     std::string name() const;
+    //! Immediate cancellation.
+    //! Does not wait for remote confirmation.
     void cancel();
     //! updates root, changed, overrun
     //! return true if root!=NULL
@@ -123,10 +129,12 @@ public:
     };
 
     //! Issue request to retrieve current PV value
+    //! @param cb Completion notification callback.  Must outlive TestOperation (call TestOperation::cancel() to force release)
     TestOperation get(GetCallback* cb,
                       epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
     //! Start an RPC call
+    //! @param cb Completion notification callback.  Must outlive TestOperation (call TestOperation::cancel() to force release)
     TestOperation rpc(GetCallback* cb,
                       const epics::pvData::PVStructure::const_shared_pointer& arguments,
                       epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
@@ -140,6 +148,7 @@ public:
     };
 
     //! Initiate request to change PV
+    //! @param cb Completion notification callback.  Must outlive TestOperation (call TestOperation::cancel() to force release)
     //! TODO: produce bitset to mask fields being set
     TestOperation put(PutCallback* cb,
                       epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
@@ -150,6 +159,7 @@ public:
     };
 
     //! Begin subscription
+    //! @param cb Completion notification callback.  Must outlive TestOperation (call TestOperation::cancel() to force release)
     TestMonitor monitor(MonitorCallback *cb,
                           epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
@@ -159,6 +169,7 @@ public:
         virtual void connectEvent(const TestConnectEvent& evt)=0;
     };
     //! Append to list of listeners
+    //! @param cb Channel dis/connect notification callback.  Must outlive TestClientChannel or call to removeConnectListener()
     void addConnectListener(ConnectCallback*);
     //! Remove from list of listeners
     void removeConnectListener(ConnectCallback*);

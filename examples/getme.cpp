@@ -58,6 +58,7 @@ struct Getter : public TestClientChannel::GetCallback,
     virtual ~Getter()
     {
         channel.removeConnectListener(this);
+        op.cancel();
     }
 
     virtual void getDone(const TestGetEvent& event)

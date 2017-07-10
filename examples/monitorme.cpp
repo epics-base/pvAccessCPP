@@ -110,12 +110,15 @@ struct WorkQueue : public epicsThreadRunable {
 };
 
 WorkQueue monwork;
+epicsMutex mutex;
 epicsEvent done;
+volatile size_t waitingFor;
 
 #ifdef USE_SIGNAL
 void sigdone(int num)
 {
     (void)num;
+    waitingFor = 0;
     done.signal();
 }
 #endif
@@ -127,13 +130,16 @@ struct MonTracker : public TestClientChannel::MonitorCallback,
     POINTER_DEFINITIONS(MonTracker);
 
     MonTracker(const std::string& name) :name(name) {}
-    virtual ~MonTracker() {}
+    virtual ~MonTracker() {mon.cancel();}
 
     const std::string name;
     TestMonitor mon;
 
     virtual void monitorEvent(const TestMonitorEvent& evt) OVERRIDE FINAL
     {
+        // shared_from_this() will fail as Cancel is delivered in our dtor.
+        if(evt.event==TestMonitorEvent::Cancel) return;
+
         // running on internal provider worker thread
         // minimize work here.
         // TODO: bound queue size
@@ -154,7 +160,9 @@ struct MonTracker : public TestClientChannel::MonitorCallback,
             std::cout<<"Disconnect "<<name<<"\n";
             break;
         case TestMonitorEvent::Data:
-            while(mon.poll()) {
+        {
+            unsigned n;
+            for(n=0; n<2 && mon.poll(); n++) {
                 pvd::PVField::const_shared_pointer fld(mon.root->getSubField("value"));
                 if(!fld)
                     fld = mon.root;
@@ -163,6 +171,11 @@ struct MonTracker : public TestClientChannel::MonitorCallback,
                         <<" Changed:"<<mon.changed
                        <<" overrun:"<<mon.overrun<<"\n";
             }
+            if(n==2) {
+                // too many updates, re-queue to balance with others
+                monwork.push(shared_from_this(), evt);
+            }
+        }
             break;
         }
     }
@@ -235,6 +248,11 @@ int main(int argc, char *argv[]) {
 
         std::vector<MonTracker::shared_pointer> monitors;
 
+        {
+            Guard G(mutex);
+            waitingFor = pvs.size();
+        }
+
         for(pvs_t::const_iterator it=pvs.begin(); it!=pvs.end(); ++it) {
             const std::string& pv = *it;
 
@@ -247,10 +265,18 @@ int main(int argc, char *argv[]) {
             monitors.push_back(mon);
         }
 
-        if(waitTime<0.0)
-            done.wait();
-        else
-            done.wait(waitTime);
+        {
+            Guard G(mutex);
+            while(waitingFor) {
+                UnGuard U(G);
+                if(waitTime<0.0) {
+                    done.wait();
+                } else if(!done.wait(waitTime)) {
+                    std::cerr<<"Timeout\n";
+                    break; // timeout
+                }
+            }
+        }
 
     } catch(std::exception& e){
         std::cout<<"Error: "<<e.what()<<"\n";

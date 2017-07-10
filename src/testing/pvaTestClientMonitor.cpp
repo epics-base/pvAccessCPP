@@ -49,6 +49,7 @@ struct TestMonitor::Impl : public pva::MonitorRequester
 
         if(evt==TestMonitorEvent::Fail || evt==TestMonitorEvent::Cancel)
             this->cb = 0; // last event
+
         try {
             UnGuard U(G);
             cb->monitorEvent(event);
