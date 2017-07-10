@@ -22,10 +22,10 @@
 #include <iocsh.h>
 #include <epicsExit.h>
 
-#include <epicsExport.h>
-
 #include <pv/pvAccess.h>
 #include <pv/clientFactory.h>
+
+#include <epicsExport.h>
 
 using namespace epics::pvAccess;
 
