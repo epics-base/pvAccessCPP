@@ -28,15 +28,15 @@ include $(PVACCESS_SRC)/mb/Makefile
 
 LIBRARY = pvAccess
 
-pvAccess_LIBS += pvData
+LIB_LIBS += pvData
 ifdef WITH_MICROBENCH
-  pvAccess_LIBS += pvMB
+  LIB_LIBS += pvMB
 endif
-pvAccess_LIBS += ca
-pvAccess_LIBS += Com
+LIB_LIBS += ca
+LIB_LIBS += Com
 
 # needed for Windows
-pvAccess_SYS_LIBS_WIN32 += ws2_32
+LIB_SYS_LIBS_WIN32 += ws2_32
 
 include $(TOP)/configure/RULES
 

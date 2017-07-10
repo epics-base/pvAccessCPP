@@ -3,6 +3,8 @@ include $(TOP)/configure/CONFIG
 
 LIBRARY += pvAccessIOC
 
+pvAccessIOC_LIBS += pvAccess
+
 INC += pv/syncChannelFind.h
 
 DBD += PVAServerRegister.dbd
