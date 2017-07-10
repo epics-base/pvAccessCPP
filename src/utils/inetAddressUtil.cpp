@@ -389,8 +389,10 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
 #endif
         else {
             // if it is a match, accept the interface even if it does not support broadcast (i.e. 127.0.0.1)
-            if (match)
+            if (match) {
+                memset(&node.ifaceBCast, 0, sizeof(node.ifaceBCast));
                 node.ifaceBCast.sa.sa_family = AF_UNSPEC;
+            }
             else
             {
                 /*ifDepenDebugPrintf ( ( "discoverInterfaces(): net intf \"%s\": not point to point or bcast?\n", pIfreqList->ifr_name ) );*/
