@@ -66,19 +66,33 @@ struct PutTracker : public TestClientChannel::PutCallback
         op.cancel();
     }
 
-    virtual pvd::PVStructure::const_shared_pointer putBuild(const epics::pvData::StructureConstPtr &build)
+    virtual void putBuild(const epics::pvData::StructureConstPtr &build, TestClientChannel::PutCallback::Args& args) OVERRIDE FINAL
     {
+        // At this point we have the user provided value string 'value'
+        // and the server provided structure (with types).
+
+        // note: an exception thrown here will result in putDone() w/ Fail
+
+        // allocate a new structure instance.
+        // we are one-shot so don't bother to re-use
         pvd::PVStructurePtr root(pvd::getPVDataCreate()->createPVStructure(build));
 
+        // we only know about writes to scalar 'value' field
         pvd::PVScalarPtr valfld(root->getSubFieldT<pvd::PVScalar>("value"));
 
+        // attempt convert string to actual field type
         valfld->putFrom(value);
 
-        std::cout<<"Put value "<<valfld<<"\n";
-        return root;
+        args.root = root; // non-const -> const
+
+        // mark only 'value' field to be sent.
+        // other fields w/ default values won't be sent.
+        args.tosend.set(valfld->getFieldOffset());
+
+        std::cout<<"Put value "<<valfld<<" sending="<<args.tosend<<"\n";
     }
 
-    virtual void putDone(const TestPutEvent &evt)
+    virtual void putDone(const TestPutEvent &evt) OVERRIDE FINAL
     {
         switch(evt.event) {
         case TestPutEvent::Fail:

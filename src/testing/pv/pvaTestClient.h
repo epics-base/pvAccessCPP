@@ -142,8 +142,13 @@ public:
     //! callbacks for put()
     struct epicsShareClass PutCallback {
         virtual ~PutCallback() {}
+        struct Args {
+            Args(epics::pvData::BitSet& tosend) :tosend(tosend) {}
+            epics::pvData::PVStructure::const_shared_pointer root;
+            epics::pvData::BitSet& tosend;
+        };
         //! Called to build the value to be sent once the type info is known
-        virtual epics::pvData::PVStructure::const_shared_pointer putBuild(const epics::pvData::StructureConstPtr& build) =0;
+        virtual void putBuild(const epics::pvData::StructureConstPtr& build, Args& args) =0;
         virtual void putDone(const TestPutEvent& evt)=0;
     };
 

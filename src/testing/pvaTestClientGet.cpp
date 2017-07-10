@@ -97,10 +97,15 @@ struct GetPutter : public pva::ChannelPutRequester,
 
         } else if(putcb){
             TestClientChannel::PutCallback *cb(putcb);
-            pvd::PVStructure::const_shared_pointer val;
+            pvd::BitSet::shared_pointer tosend(new pvd::BitSet);
+            TestClientChannel::PutCallback::Args args(*tosend);
             try {
                 UnGuard U(G);
-                val = cb->putBuild(structure);
+                cb->putBuild(structure, args);
+                if(!args.root)
+                    throw std::logic_error("No put value provided");
+                else if(args.root->getStructure().get()!=structure.get())
+                    throw std::logic_error("Provided put value with wrong type");
             }catch(std::exception& e){
                 if(putcb) {
                     event.message = e.what();
@@ -111,10 +116,8 @@ struct GetPutter : public pva::ChannelPutRequester,
             }
             // check putcb again after UnGuard
             if(putcb) {
-                pvd::BitSet::shared_pointer all(new pvd::BitSet);
-                all->set(0);
                 channelPut->lastRequest();
-                channelPut->put(std::tr1::const_pointer_cast<pvd::PVStructure>(val), all);
+                channelPut->put(std::tr1::const_pointer_cast<pvd::PVStructure>(args.root), tosend);
                 started = true;
             }
         }
