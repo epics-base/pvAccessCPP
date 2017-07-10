@@ -28,10 +28,10 @@
 #include <initHooks.h>
 #include <epicsExit.h>
 
-#include <epicsExport.h>
-
 #include <pv/pvAccess.h>
 #include <pv/serverContext.h>
+
+#include <epicsExport.h>
 
 using std::cout;
 using std::endl;
