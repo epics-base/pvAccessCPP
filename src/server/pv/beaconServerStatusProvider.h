@@ -20,6 +20,8 @@
 #   undef beaconServerStatusProviderEpicsExportSharedSymbols
 #endif
 
+#include <shareLib.h>
+
 namespace epics {
 namespace pvAccess {
 
