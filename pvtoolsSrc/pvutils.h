@@ -51,17 +51,6 @@ public:
     bool query_indicated;
 };
 
-class RequesterImpl :
-    public epics::pvData::Requester
-{
-public:
-    RequesterImpl(std::string const & requesterName);
-    virtual std::string getRequesterName();
-
-private:
-    std::string m_requesterName;
-};
-
 class GetFieldRequesterImpl :
     public epics::pvAccess::GetFieldRequester
 {

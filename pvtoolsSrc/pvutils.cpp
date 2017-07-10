@@ -18,16 +18,6 @@ namespace TR1 = std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-RequesterImpl::RequesterImpl(std::string const & requesterName) :
-    m_requesterName(requesterName)
-{
-}
-
-string RequesterImpl::getRequesterName()
-{
-    return "RequesterImpl";
-}
-
 std::ostream& operator<<(std::ostream& o, const dump_stack_only_on_debug& d)
 {
     const Status &s = d.status;
