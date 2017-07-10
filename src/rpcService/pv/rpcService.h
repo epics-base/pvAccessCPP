@@ -44,32 +44,12 @@ public:
         return m_status;
     }
 
+    epics::pvData::Status asStatus() const {
+        return epics::pvData::Status(m_status, what());
+    }
 private:
     epics::pvData::Status::StatusType m_status;
 };
-
-class epicsShareClass Service
-{
-public:
-    POINTER_DEFINITIONS(Service);
-
-    virtual ~Service() {};
-};
-
-class epicsShareClass RPCService :
-    public virtual Service
-{
-public:
-    POINTER_DEFINITIONS(RPCService);
-
-    virtual ~RPCService() {};
-
-    virtual epics::pvData::PVStructure::shared_pointer request(
-        epics::pvData::PVStructure::shared_pointer const & args
-    ) = 0;
-};
-
-
 
 class epicsShareClass RPCResponseCallback
 {
@@ -84,8 +64,7 @@ public:
     ) = 0;
 };
 
-class epicsShareClass RPCServiceAsync :
-    public virtual Service
+class epicsShareClass RPCServiceAsync
 {
 public:
     POINTER_DEFINITIONS(RPCServiceAsync);
@@ -96,6 +75,27 @@ public:
         epics::pvData::PVStructure::shared_pointer const & args,
         RPCResponseCallback::shared_pointer const & callback
     ) = 0;
+};
+
+typedef RPCServiceAsync Service EPICS_DEPRECATED;
+
+class epicsShareClass RPCService :
+    public RPCServiceAsync
+{
+public:
+    POINTER_DEFINITIONS(RPCService);
+
+    virtual ~RPCService() {};
+
+    virtual epics::pvData::PVStructure::shared_pointer request(
+        epics::pvData::PVStructure::shared_pointer const & args
+    ) = 0;
+
+private:
+    virtual void request(
+        epics::pvData::PVStructure::shared_pointer const & args,
+        RPCResponseCallback::shared_pointer const & callback
+    ) OVERRIDE FINAL;
 };
 
 }

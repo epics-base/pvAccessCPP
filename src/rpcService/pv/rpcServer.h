@@ -45,8 +45,6 @@ public:
 
     virtual ~RPCServer();
 
-    void registerService(std::string const & serviceName, RPCService::shared_pointer const & service);
-
     void registerService(std::string const & serviceName, RPCServiceAsync::shared_pointer const & service);
 
     void unregisterService(std::string const & serviceName);
@@ -70,7 +68,7 @@ public:
 epicsShareFunc Channel::shared_pointer createRPCChannel(ChannelProvider::shared_pointer const & provider,
         std::string const & channelName,
         ChannelRequester::shared_pointer const & channelRequester,
-        Service::shared_pointer const & rpcService);
+        RPCServiceAsync::shared_pointer const & rpcService);
 
 }
 }
