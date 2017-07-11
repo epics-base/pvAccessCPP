@@ -312,7 +312,9 @@ See epics::pvAccess::Monitor::Stats.
 
 @subsection provides_client_ownership Client Ownership
 
-Implicit ownership in classes outside the control of client code.
+The following shows the implicit ownership in classes outside the control of client code,
+as well as the expected ownerships of of Client user code.
+"External" denotes references stored by Client objects which can't participate in reference cycles.
 
 @dotfile client_ownership.dot Client implicit relationships
 

@@ -2,6 +2,7 @@ digraph clientowner {
   ChannelProvider;
   Channel;
   ChannelRequester [shape=box];
+  External [shape=box];
 
   Channel;
   ChannelRequester [shape=box];
@@ -50,4 +51,24 @@ digraph clientowner {
   ChannelProcess -> Channel [color=red, style=dashed];
   ChannelPutGet -> Channel [color=red, style=dashed];
   ChannelArray -> Channel [color=red, style=dashed];
+
+  # user code ownership
+  External -> ChannelProvider [color=red];
+  External -> ChannelRequester [color=red];
+  External -> ChannelGetRequester [color=red];
+  External -> ChannelPutRequester [color=red];
+  External -> MonitorRequester [color=red];
+  External -> ChannelRPCRequester [color=red];
+  External -> ChannelProcessRequester [color=red];
+  External -> ChannelPutGetRequester [color=red];
+  External -> ChannelArrayRequester [color=red];
+
+  ChannelRequester -> Channel [color=red];
+  ChannelGetRequester -> ChannelGet [color=red];
+  ChannelPutRequester -> ChannelPut [color=red];
+  MonitorRequester    -> Monitor [color=red];
+  ChannelRPCRequester -> ChannelRPC [color=red];
+  ChannelProcessRequester -> ChannelProcess [color=red];
+  ChannelPutGetRequester -> ChannelPutGet [color=red];
+  ChannelArrayRequester -> ChannelArray [color=red];
 }
