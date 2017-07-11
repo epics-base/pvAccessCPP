@@ -20,6 +20,10 @@ namespace pva = epics::pvAccess;
 
 typedef epicsGuard<epicsMutex> Guard;
 
+TestTimeout::TestTimeout()
+    :std::runtime_error("Timeout")
+{}
+
 struct TestClientChannel::Impl : public pva::ChannelRequester
 {
     epicsMutex mutex;
@@ -78,7 +82,6 @@ TestOperation::TestOperation(const std::tr1::shared_ptr<Impl>& i)
 
 TestOperation::~TestOperation() {}
 
-
 std::string TestOperation::name() const
 {
     return impl ? impl->name() : "<NULL>";
@@ -102,6 +105,11 @@ TestClientChannel::TestClientChannel(const std::tr1::shared_ptr<pva::ChannelProv
 }
 
 TestClientChannel::~TestClientChannel() {}
+
+std::string TestClientChannel::name() const
+{
+    return impl ? impl->channel->getChannelName() : "<NONE>";
+}
 
 void TestClientChannel::addConnectListener(ConnectCallback* cb)
 {

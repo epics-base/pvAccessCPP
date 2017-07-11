@@ -5,6 +5,8 @@
 #ifndef PVATESTCLIENT_H
 #define PVATESTCLIENT_H
 
+#include <stdexcept>
+
 #include <epicsMutex.h>
 
 #include <pv/pvData.h>
@@ -106,6 +108,11 @@ struct epicsShareClass TestConnectEvent
     bool connected;
 };
 
+struct epicsShareClass TestTimeout : public std::runtime_error
+{
+    TestTimeout();
+};
+
 //! Represents a single channel
 class epicsShareClass TestClientChannel
 {
@@ -128,6 +135,8 @@ public:
                       const Options& opt = Options());
     ~TestClientChannel();
 
+    std::string name() const;
+
     //! callback for get() and rpc()
     struct epicsShareClass GetCallback {
         virtual ~GetCallback() {}
@@ -139,11 +148,23 @@ public:
     TestOperation get(GetCallback* cb,
                       epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
+    //! Block and retrieve current PV value
+    //! @throws TestTimeout or std::runtime_error
+    epics::pvData::PVStructure::const_shared_pointer
+    get(double timeout = 3.0,
+        epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
+
+
     //! Start an RPC call
     //! @param cb Completion notification callback.  Must outlive TestOperation (call TestOperation::cancel() to force release)
     TestOperation rpc(GetCallback* cb,
                       const epics::pvData::PVStructure::const_shared_pointer& arguments,
                       epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
+
+    epics::pvData::PVStructure::const_shared_pointer
+    rpc(double timeout,
+        const epics::pvData::PVStructure::const_shared_pointer& arguments,
+        epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
     //! callbacks for put()
     struct epicsShareClass PutCallback {

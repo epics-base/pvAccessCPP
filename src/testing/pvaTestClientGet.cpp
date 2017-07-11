@@ -5,6 +5,7 @@
 
 #include <epicsMutex.h>
 #include <epicsGuard.h>
+#include <epicsEvent.h>
 
 #include <pv/current_function.h>
 #include <pv/pvData.h>
@@ -187,7 +188,6 @@ TestClientChannel::get(TestClientChannel::GetCallback* cb,
 
     return TestOperation(ret);
 }
-
 
 TestOperation
 TestClientChannel::put(PutCallback* cb,

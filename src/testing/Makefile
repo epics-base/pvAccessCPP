@@ -5,6 +5,7 @@ SRC_DIRS += $(PVACCESS_SRC)/testing
 INC += pv/pvaTestClient.h
 
 LIBSRCS += pvaTestClient.cpp
+LIBSRCS += pvaTestClientSync.cpp
 LIBSRCS += pvaTestClientGet.cpp
 LIBSRCS += pvaTestClientRPC.cpp
 LIBSRCS += pvaTestClientMonitor.cpp
