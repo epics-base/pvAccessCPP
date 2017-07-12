@@ -292,7 +292,7 @@ private:
 };
 
 
-class epicsShareClass BlockingTCPTransportCodec:
+class BlockingTCPTransportCodec:
     public AbstractCodec,
     public SecurityPluginControl,
     public std::tr1::enable_shared_from_this<BlockingTCPTransportCodec>
@@ -488,7 +488,7 @@ private:
     epics::pvData::Event _verifiedEvent;
 };
 
-class epicsShareClass BlockingServerTCPTransportCodec :
+class BlockingServerTCPTransportCodec :
     public BlockingTCPTransportCodec,
     public ChannelHostingTransport,
     public TransportSender {
@@ -611,7 +611,7 @@ private:
 
 };
 
-class epicsShareClass BlockingClientTCPTransportCodec :
+class BlockingClientTCPTransportCodec :
     public BlockingTCPTransportCodec,
     public TransportSender,
     public epics::pvData::TimerCallback {

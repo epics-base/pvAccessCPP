@@ -3,7 +3,6 @@
 SRC_DIRS += $(PVACCESS_SRC)/server
 
 INC += pv/serverContext.h
-INC += pv/serverChannelImpl.h
 INC += pv/beaconServerStatusProvider.h
 
 LIBSRCS += responseHandlers.cpp
