@@ -12,6 +12,7 @@ INC += pv/configuration.h
 INC += pv/likely.h
 INC += pv/wildcard.h
 INC += pv/fairQueue.h
+INC += pv/requester.h
 INC += pv/destroyable.h
 
 LIBSRCS += hexDump.cpp
@@ -20,4 +21,5 @@ LIBSRCS += logger.cpp
 LIBSRCS += introspectionRegistry.cpp
 LIBSRCS += configuration.cpp
 LIBSRCS += referenceCountingLock.cpp
+LIBSRCS += requester.cpp
 LIBSRCS += wildcard.cpp
