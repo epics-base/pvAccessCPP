@@ -3,7 +3,7 @@ include $(TOP)/configure/CONFIG
 
 LIBRARY += pvAccessIOC
 
-pvAccessIOC_LIBS += pvAccess
+pvAccessIOC_LIBS += pvAccess pvData
 
 INC += pv/syncChannelFind.h
 

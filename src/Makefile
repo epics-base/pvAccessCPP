@@ -28,7 +28,7 @@ include $(PVACCESS_SRC)/mb/Makefile
 
 LIBRARY = pvAccess
 
-LIB_LIBS += pvData
+pvAccess_LIBS += pvData
 ifdef WITH_MICROBENCH
   LIB_LIBS += pvMB
 endif
