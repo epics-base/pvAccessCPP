@@ -12,28 +12,25 @@
 
 #include <epicsMutex.h>
 
-#define epicsExportSharedSymbols
 #include <pv/lock.h>
+
+#define epicsExportSharedSymbols
 #include <pv/requester.h>
 
 using std::string;
 
-namespace epics { namespace pvData { 
+namespace epics { namespace pvAccess {
 
-static StringArray messageTypeName(MESSAGE_TYPE_COUNT);
 
 string getMessageTypeName(MessageType messageType)
 {
-    // TODO not thread-safe
-    static Mutex mutex;
-    Lock xx(mutex);
-    if(messageTypeName[0].size()==0) {
-        messageTypeName[0] = "info";
-        messageTypeName[1] = "warning";
-        messageTypeName[2] = "error";
-        messageTypeName[3] = "fatalError";
+    switch(messageType) {
+    case infoMessage: return "info";
+    case warningMessage: return "warning";
+    case errorMessage: return "error";
+    case fatalErrorMessage: return "fatalError";
+    default: return "unknown";
     }
-    return messageTypeName[messageType];
 }
 
 void Requester::message(std::string const & message,MessageType messageType)

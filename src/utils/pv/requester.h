@@ -15,7 +15,7 @@
 
 #include <shareLib.h>
 
-namespace epics { namespace pvData { 
+namespace epics { namespace pvAccess {
 
 class Requester;
 typedef std::tr1::shared_ptr<Requester> RequesterPtr;
@@ -27,45 +27,31 @@ enum MessageType {
 
 epicsShareExtern std::string getMessageTypeName(MessageType messageType);
 
-/**
- *  @brief Callback class for passing messages to a requester.
- *
- *  This is used by many other classes and also extended by other classes.
- *  The request is passed a message and a messageType.
- *  A message is just a string and a messageType is:
-@code
-enum MessageType {
-   infoMessage,warningMessage,errorMessage,fatalErrorMessage
-};
-@endcode
- *
+/** @brief Callback class for passing messages to a requester.
  */
-
 class epicsShareClass Requester {
 public:
     POINTER_DEFINITIONS(Requester);
-    /**
-     * Destructor
-     */
     virtual ~Requester(){}
     /**
      * The requester must have a name.
      * @return The requester's name.
      */
     virtual std::string getRequesterName() = 0;
-    /**
-     * 
-     * A message for the requester.
-     * @param message The message.
-     * @param messageType The type of message:
-     @code
-     enum MessageType {
-        infoMessage,warningMessage,errorMessage,fatalErrorMessage
-     };
-     @endcode
+    /** Push notification
      */
-    virtual void message(std::string const & message,MessageType messageType);
+    virtual void message(std::string const & message,MessageType messageType = errorMessage);
 };
 
+}}
+namespace epics { namespace pvData {
+using ::epics::pvAccess::Requester;
+using ::epics::pvAccess::RequesterPtr;
+using ::epics::pvAccess::MessageType;
+using ::epics::pvAccess::getMessageTypeName;
+using ::epics::pvAccess::infoMessage;
+using ::epics::pvAccess::warningMessage;
+using ::epics::pvAccess::errorMessage;
+using ::epics::pvAccess::fatalErrorMessage;
 }}
 #endif  /* REQUESTER_H */

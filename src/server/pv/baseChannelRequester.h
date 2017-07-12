@@ -7,17 +7,7 @@
 #ifndef BASECHANNELREQUESTER_H_
 #define BASECHANNELREQUESTER_H_
 
-#ifdef epicsExportSharedSymbols
-#   define baseChannelRequesterEpicsExportSharedSymbols
-#   undef epicsExportSharedSymbols
-#endif
-
 #include <pv/requester.h>
-#ifdef baseChannelRequesterEpicsExportSharedSymbols
-#   define epicsExportSharedSymbols
-#	undef baseChannelRequesterEpicsExportSharedSymbols
-#endif
-
 #include <pv/destroyable.h>
 #include <pv/serverContextImpl.h>
 #include <pv/serverChannelImpl.h>
