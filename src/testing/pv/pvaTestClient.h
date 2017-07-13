@@ -122,7 +122,7 @@ class epicsShareClass TestClientChannel
 
     TestClientChannel(const std::tr1::shared_ptr<Impl>& i) :impl(i) {}
 public:
-    struct Options {
+    struct epicsShareClass Options {
         short priority;
         std::string address;
         Options();
