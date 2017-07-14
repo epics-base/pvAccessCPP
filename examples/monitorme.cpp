@@ -23,7 +23,7 @@
 #include <pv/clientFactory.h>
 #include <pv/caProvider.h>
 #include <pv/thread.h>
-#include <pv/pvaTestClient.h>
+#include <pva/client.h>
 
 namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;

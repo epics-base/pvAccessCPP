@@ -7,7 +7,7 @@
 #include <iostream>
 
 #include "pv/clientFactory.h"
-#include "pv/pvaTestClient.h"
+#include "pva/client.h"
 
 int main(int argc, char *argv[])
 {

@@ -12,7 +12,7 @@
 
 #define epicsExportSharedSymbols
 #include "pv/logger.h"
-#include "pv/pvaTestClient.h"
+#include "pva/client.h"
 #include "pv/pvAccess.h"
 
 namespace pvd = epics::pvData;

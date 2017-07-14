@@ -24,7 +24,7 @@
 #include <pv/configuration.h>
 #include <pv/clientFactory.h>
 #include <pv/caProvider.h>
-#include <pv/pvaTestClient.h>
+#include <pva/client.h>
 //! [Headers]
 
 namespace pvd = epics::pvData;
