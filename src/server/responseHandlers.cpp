@@ -801,7 +801,7 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
                 pvAccessID sid = casTransport->preallocateChannelSID();
                 try
                 {
-                    serverChannel.reset(new ServerChannelImpl(channel, _cid, sid, _css));
+                    serverChannel.reset(new ServerChannelImpl(channel, shared_from_this(), _cid, sid, _css));
 
                     // ack allocation and register
                     casTransport->registerChannel(sid, serverChannel);

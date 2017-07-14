@@ -27,7 +27,10 @@ public:
      * @param sid channel SID.
      * @param css channel security session.
      */
-    ServerChannelImpl(Channel::shared_pointer const & channel, pvAccessID cid, pvAccessID sid, ChannelSecuritySession::shared_pointer const & css);
+    ServerChannelImpl(Channel::shared_pointer const & channel,
+                      const ChannelRequester::shared_pointer& requester,
+                      pvAccessID cid, pvAccessID sid,
+                      ChannelSecuritySession::shared_pointer const & css);
     /*
      * Destructor.
      */
@@ -98,6 +101,8 @@ private:
      * Local channel.
      */
     Channel::shared_pointer _channel;
+
+    ChannelRequester::shared_pointer _requester;
 
     /**
      * Channel CID.

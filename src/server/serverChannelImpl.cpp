@@ -13,9 +13,11 @@ namespace epics {
 namespace pvAccess {
 
 ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer const & channel,
+                                     const ChannelRequester::shared_pointer &requester,
                                      pvAccessID cid, pvAccessID sid,
                                      ChannelSecuritySession::shared_pointer const & css):
     _channel(channel),
+    _requester(requester),
     _cid(cid),
     _sid(sid),
     _destroyed(false),
