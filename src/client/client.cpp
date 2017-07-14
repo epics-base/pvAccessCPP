@@ -99,18 +99,20 @@ ClientChannel::ClientChannel(const std::tr1::shared_ptr<pva::ChannelProvider>& p
                   const Options& opt)
     :impl(new Impl)
 {
+    if(name.empty())
+        THROW_EXCEPTION2(std::logic_error, "empty channel name not allowed");
     if(!provider)
-        throw std::logic_error("NULL ChannelProvider");
+        THROW_EXCEPTION2(std::logic_error, "NULL ChannelProvider");
     impl->channel = provider->createChannel(name, impl, opt.priority, opt.address);
     if(!impl->channel)
-        throw std::logic_error("ChannelProvider failed to create Channel");
+        throw std::runtime_error("ChannelProvider failed to create Channel");
 }
 
 ClientChannel::~ClientChannel() {}
 
 std::string ClientChannel::name() const
 {
-    return impl ? impl->channel->getChannelName() : "<NONE>";
+    return impl ? impl->channel->getChannelName() : std::string();
 }
 
 void ClientChannel::addConnectListener(ConnectCallback* cb)
@@ -166,10 +168,24 @@ ClientProvider::ClientProvider(const std::string& providerName,
                                        const std::tr1::shared_ptr<epics::pvAccess::Configuration>& conf)
     :impl(new Impl)
 {
-    impl->provider = pva::ChannelProviderRegistry::clients()->createProvider(providerName,
-                                                                             conf ? conf : pva::ConfigurationBuilder()
-                                                                                    .push_env()
-                                                                                    .build());
+    std::string name;
+    pva::ChannelProviderRegistry::shared_pointer reg;
+
+    if(strncmp("server:", providerName.c_str(), 7)==0) {
+        name = providerName.substr(7);
+        reg = pva::ChannelProviderRegistry::servers();
+    } else if(strncmp("client:", providerName.c_str(), 7)==0) {
+        name = providerName.substr(7);
+        reg = pva::ChannelProviderRegistry::clients();
+    } else {
+        name = providerName;
+        reg = pva::ChannelProviderRegistry::clients();
+    }
+    impl->provider = reg->createProvider(name,
+                                         conf ? conf : pva::ConfigurationBuilder()
+                                                .push_env()
+                                                .build());
+
     if(!impl->provider)
         THROW_EXCEPTION2(std::invalid_argument, providerName);
 }
