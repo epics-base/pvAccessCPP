@@ -1,0 +1,92 @@
+changes
+
+must keep ChannelProvider refs
+  Channel doesn't have strong ref to provider.
+  All channels closed when provider destory'd
+
+default ChannelProviderFactory uses weak_ptr for sharedInstance()
+  copy+paste from eget.cpp very inefficient...
+
+TODO
+
+
+ca provider changes
+  channel has weak_ref to provider
+  create operations on disconnected channel
+  monitor queue
+
+untangle responseHandlers.cpp
+  ref. loops galore
+  destroy which queued to send???
+
+maps which grow w/o bound
+
+ named lock pattern
+ m_beaconHandlers
+
+
+
+
+
+locking
+
+
+
+no internal locks held when calling *Requester methods, including dtor
+
+any external locks may be held when channel/operation methods called
+
+
+provider->createChannel()
+
+* returns unique() reference.
+* Provider must maintain a cache of existing Channels are prefer this to creating new Channels
+
+calls to channel->createChannel*
+
+* returns unique() reference
+* Channel retains internal references to Operation until destroy() is called (or all external references released)
+* request on dis-connected channel queues until connected
+
+Add channelStateChanged() to all operation Requesters
+
+* called only with DISCONNECTED (channel connected -> disconnected) or DESTROYED (channel->destroy() called).
+* Any in-progress action is implicitly cancel()'d
+
+
+
+After some considerable thought, I like to re-define some of the semantics of ChannelProvider, Channel, and operations (eg. ChannelGet).
+
+1. User/caller code takes ownership of returned Channel or operation.
+
+For a Channel to remain open, or an operation to remain active, the caller must hold a reference.  This will prevent accumulation of channels and operations which user code isn't accounting for.
+
+The suggested way to accomplish this is for a ChannelProvider to return a shared_ptr<> with a custom cleanup function which calls destroy().
+
+1.1 returned shared_ptr<Channel> must not include an internal references.  That is, the first time a Channel is returned it is unique().  Subsequent calls to createChannel() with the same arguments may return unique()==false provided that this count includes only external references.
+
+1.2 returned operation shared_ptr<> must be unique().
+
+2. User/caller code need not cache Channel instances.
+
+Every non-trivial client worries about minimizing the number of Channels.
+
+2.1 ChannelProvider is required to maintain a cache of in-use Channels and prefer to return a cached entry before creating a new Channel.
+
+3 Notify operations about Channel state changes
+
+channelStateChanged() by itself isn't so useful.  Clients always proxy this through to some action of each in-progress operation.  So have the Channel do this.
+
+3.1 Add a new method channelStateChanged() to all operation Requester classes.  Default implementation is a no-op.  Only DISCONNECTED and DESTROYED shall be used (CONNECT is delivered as a separate callback *Connect() ).
+
+3.2 When DISCONNECTED is delivered the operation remains "valid" and its *Connect() will be called (again) if/when the Channel again becomes connected
+
+3.3 When DESTROYED is delivered, the underlying Channel has been forcibly closed.
+
+3.3 Delivery of DISCONNECTED or DESTROYED implicitly cancels any in-progress action.
+
+4 Operation life-time
+
+4.1 Channel must support starting operations while in disconnected state
+
+4.2 Operations persist when a Channel becomes DISCONNECTED.  On re-connect, the operation *Connect() method is called again, potentially with new Structure definition.

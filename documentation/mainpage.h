@@ -3,34 +3,22 @@
 /**
 @mainpage pvAccess C++ docs
 
-The epics::pvAccess namespace.
-See pv/pvAccess.h header.
+- [Download](https://sourceforge.net/projects/epics-pvdata/files/)
+- @htmlonly <a href="modules.html">API components</a> @endhtmlonly
+- @ref pvarelease_notes
+- API documentation
+ - @ref pvac page
+ - @ref providers page
+ - @ref pvtools
 
-@code
-#include <pv/configuration.h>
-#include <pv/pvAccess.h>
-#include <pv/clientFactory.h>
-@endcode
+@section main_examples API usage Examples
 
-See the @ref providers page.
-
-@section main_interesting Interesting
-
-- Clients providers
- - PVA Client
- - CA Client (wraps libca)
-- RPC Client helper
-- PVA Server epics::pvAccess::ServerContext
-- Server providers
- - RPC
- - Pipeline (monitor w/ flow control)
-
-
-@section main_examples Examples
-
-- @ref examples_getme
-- @ref examples_putme
-- @ref examples_monitorme
+- Simplest (shortest) possible
+ - @ref examples_miniget
+- More complete
+ - @ref examples_getme
+ - @ref examples_putme
+ - @ref examples_monitorme
 
 */
 

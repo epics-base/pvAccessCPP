@@ -6,6 +6,15 @@
 
 @tableofcontents
 
+The epics::pvAccess namespace.
+See pv/pvAccess.h header.
+
+@code
+#include <pv/configuration.h>
+#include <pv/pvAccess.h>
+#include <pv/clientFactory.h>
+@endcode
+
 @section providers_roles Roles
 
 The Client and Server APIs revolve around the epics::pvAccess::ChannelProvider class.

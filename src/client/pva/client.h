@@ -22,8 +22,21 @@ class Configuration;
 //! See @ref pvac API
 namespace pvac {
 
-/** @defgroup pvac PVAccess Client
+/** @defgroup pvac Client API
  *
+ * PVAccess network client (or other epics::pvAccess::ChannelProvider)
+ *
+ * Usage:
+ *
+ * 1. Construct a ClientProvider
+ * 2. Use the ClientProvider to obtain a ClientChannel
+ * 3. Use the ClientChannel to begin an get, put, rpc, or monitor operation
+ *
+ * Code examples
+ *
+ * - @ref examples_getme
+ * - @ref examples_putme
+ * - @ref examples_monitorme
  * @{
  */
 
@@ -110,12 +123,13 @@ struct epicsShareClass MonitorEvent
     void *priv;
 };
 
-//! informaiton on connect/disconnect
+//! information on connect/disconnect
 struct epicsShareClass ConnectEvent
 {
     bool connected;
 };
 
+//! Thrown by blocking methods of ClientChannel on operation timeout
 struct epicsShareClass Timeout : public std::runtime_error
 {
     Timeout();
@@ -130,6 +144,7 @@ class epicsShareClass ClientChannel
 
     ClientChannel(const std::tr1::shared_ptr<Impl>& i) :impl(i) {}
 public:
+    //! Channel creation options
     struct epicsShareClass Options {
         short priority;
         std::string address;
@@ -137,26 +152,38 @@ public:
         bool operator<(const Options&) const;
     };
 
+    //! Construct a null channel.  All methods throw.  May later be assigned from a valid ClientChannel
     ClientChannel() {}
+    /** Construct a ClientChannel using epics::pvAccess::ChannelProvider::createChannel()
+     *
+     * Does not block.
+     * @throw std::logic_error if the provider is NULL or name is an empty string
+     * @throw std::runtime_error if the ChannelProvider can't provide
+     */
     ClientChannel(const std::tr1::shared_ptr<epics::pvAccess::ChannelProvider>& provider,
                       const std::string& name,
                       const Options& opt = Options());
     ~ClientChannel();
 
+    //! Channel name or an empty string
     std::string name() const;
 
     //! callback for get() and rpc()
     struct epicsShareClass GetCallback {
         virtual ~GetCallback() {}
+        //! get or rpc operation is complete
         virtual void getDone(const GetEvent& evt)=0;
     };
 
     //! Issue request to retrieve current PV value
     //! @param cb Completion notification callback.  Must outlive Operation (call Operation::cancel() to force release)
+    //! @param pvRequest if NULL defaults to "field()".
     Operation get(GetCallback* cb,
                       epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
     //! Block and retrieve current PV value
+    //! @param timeout in seconds
+    //! @param pvRequest if NULL defaults to "field()".
     //! @throws Timeout or std::runtime_error
     epics::pvData::PVStructure::const_shared_pointer
     get(double timeout = 3.0,
@@ -165,10 +192,16 @@ public:
 
     //! Start an RPC call
     //! @param cb Completion notification callback.  Must outlive Operation (call Operation::cancel() to force release)
+    //! @param arguments encoded call arguments
+    //! @param pvRequest if NULL defaults to "field()".
     Operation rpc(GetCallback* cb,
                       const epics::pvData::PVStructure::const_shared_pointer& arguments,
                       epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
+    //! Block and execute remote call
+    //! @param timeout in seconds
+    //! @param arguments encoded call arguments
+    //! @param pvRequest if NULL defaults to "field()".
     epics::pvData::PVStructure::const_shared_pointer
     rpc(double timeout,
         const epics::pvData::PVStructure::const_shared_pointer& arguments,
@@ -182,8 +215,15 @@ public:
             epics::pvData::PVStructure::const_shared_pointer root;
             epics::pvData::BitSet& tosend;
         };
-        //! Called to build the value to be sent once the type info is known
+        /** Server provides expected structure.
+         *
+         * Implementation must instanciate (or re-use) a PVStructure into args.root,
+         * then initialize any necessary fields and set bits in args.tosend as approprate.
+         *
+         * If this method throws, then putDone() is called with PutEvent::Fail
+         */
         virtual void putBuild(const epics::pvData::StructureConstPtr& build, Args& args) =0;
+        //! Put operation is complete
         virtual void putDone(const PutEvent& evt)=0;
     };
 
@@ -193,8 +233,16 @@ public:
     Operation put(PutCallback* cb,
                       epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
+    //! Monitor event notification
     struct epicsShareClass MonitorCallback {
         virtual ~MonitorCallback() {}
+        /** New monitor event
+         *
+         * - MonitorEvent::Fail - An Error occurred.  Check evt.message
+         * - MonitorEvent::Cancel - Monitor::cancel() called
+         * - MonitorEvent::Disconnect - Underlying ClientChannel becomes disconnected
+         * - MonitorEvent::Data - FIFO becomes not empty.Call Monitor::poll()
+         */
         virtual void monitorEvent(const MonitorEvent& evt)=0;
     };
 
@@ -225,16 +273,25 @@ class epicsShareClass ClientProvider
     std::tr1::shared_ptr<Impl> impl;
 public:
 
+    /** Use named provider.
+     *
+     * @param providerName ChannelProvider name, may be prefixed with "clients:" or "servers:" to query
+     *        epics::pvAccess::ChannelProviderRegistry::clients() or
+     *        epics::pvAccess::ChannelProviderRegistry::servers().
+     *        No prefix implies "clients:".
+     */
     ClientProvider(const std::string& providerName,
-                       const std::tr1::shared_ptr<epics::pvAccess::Configuration>& conf = std::tr1::shared_ptr<epics::pvAccess::Configuration>());
+                   const std::tr1::shared_ptr<epics::pvAccess::Configuration>& conf = std::tr1::shared_ptr<epics::pvAccess::Configuration>());
     ~ClientProvider();
 
-    //! Get a new Channel
-    //! Does not block.
-    //! Never returns NULL.
-    //! Uses internal Channel cache.
+    /** Get a new Channel
+     *
+     * Does not block.
+     * Never returns NULL.
+     * Uses internal Channel cache.
+     */
     ClientChannel connect(const std::string& name,
-                              const ClientChannel::Options& conf = ClientChannel::Options());
+                          const ClientChannel::Options& conf = ClientChannel::Options());
 
     //! Remove from channel cache
     bool disconnect(const std::string& name,
