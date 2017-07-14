@@ -156,50 +156,13 @@ void ChannelProviderRegistry::clear()
     providers.clear();
 }
 
-struct CompatRegistry : public ChannelProviderRegistry
-{
-    CompatRegistry() {}
-    virtual ~CompatRegistry() {}
-    virtual ChannelProviderFactory::shared_pointer getFactory(std::string const & providerName) OVERRIDE FINAL
-    {
-        ChannelProviderFactory::shared_pointer ret(clients()->getFactory(providerName));
-        if(!ret)
-            ret = servers()->getFactory(providerName);
-        return ret;
-    }
-    virtual void getProviderNames(std::set<std::string>& names) OVERRIDE FINAL
-    {
-        clients()->getProviderNames(names);
-        servers()->getProviderNames(names);
-    }
-    virtual bool add(const ChannelProviderFactory::shared_pointer& fact, bool replace=true) OVERRIDE FINAL
-    {
-        std::cerr<<"Warning: Adding provider \""<<fact->getFactoryName()<<"\" to compatibility ChannelProviderFactory is deprecated\n"
-                 <<"         Instead explicitly add to ChannelProviderRegistry::clients() or ChannelProviderRegistry::servers()\n";
-        // intentionally not using short-circuit or
-        return clients()->add(fact, replace) | servers()->add(fact, replace);
-    }
-    virtual bool remove(const ChannelProviderFactory::shared_pointer& factory) OVERRIDE FINAL
-    {
-        // intentionally not using short-circuit or
-        return clients()->remove(factory) | servers()->remove(factory);
-    }
-    virtual void clear() OVERRIDE FINAL
-    {
-        clients()->clear();
-        servers()->clear();
-    }
-};
-
 namespace {
 struct providerRegGbl_t {
     ChannelProviderRegistry::shared_pointer clients,
-                                            servers,
-                                            compat;
+                                            servers;
     providerRegGbl_t()
         :clients(ChannelProviderRegistry::build())
         ,servers(ChannelProviderRegistry::build())
-        ,compat(new CompatRegistry)
     {}
 } *providerRegGbl;
 
@@ -224,28 +187,6 @@ ChannelProviderRegistry::shared_pointer ChannelProviderRegistry::servers()
     epicsThreadOnce(&providerRegOnce, &providerRegInit, 0);
 
     return providerRegGbl->servers;
-}
-
-ChannelProviderRegistry::shared_pointer getChannelProviderRegistry()
-{
-    epicsThreadOnce(&providerRegOnce, &providerRegInit, 0);
-
-    return providerRegGbl->compat;
-}
-
-void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) {
-    assert(channelProviderFactory);
-    getChannelProviderRegistry()->add(channelProviderFactory);
-}
-
-void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) {
-    assert(channelProviderFactory);
-    getChannelProviderRegistry()->remove(channelProviderFactory->getFactoryName());
-}
-
-epicsShareFunc void unregisterAllChannelProviderFactory()
-{
-    getChannelProviderRegistry()->clear();
 }
 
 ChannelFind::shared_pointer

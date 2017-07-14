@@ -1367,20 +1367,26 @@ private:
     providers_t providers;
 };
 
-/** Access to the global ChannelProviderRegistry instance.
+/* Deprecated in favor of either ChannelProviderRegistry::clients() or ChannelProviderRegistry::servers()
  *
- * Never returns NULL
- *
- * @deprecated Deprecated in favor of either ChannelProviderRegistry::clients() or ChannelProviderRegistry::servers()
+ * These functions have been removed as a signal that the shared_ptr ownership symantics of ChannelProvider
+ * and friends has changed.
  */
-epicsShareFunc ChannelProviderRegistry::shared_pointer getChannelProviderRegistry() EPICS_DEPRECATED;
-//! Shorthand for getChannelProviderRegistry()->add(channelProviderFactory);
-epicsShareFunc void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) EPICS_DEPRECATED;
-//! Shorthand for getChannelProviderRegistry()->remove(channelProviderFactory);
-epicsShareFunc void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) EPICS_DEPRECATED;
-//! Shorthand for getChannelProviderRegistry()->clear();
-epicsShareFunc void unregisterAllChannelProviderFactory() EPICS_DEPRECATED;
+#ifdef __GNUC__
 
+#define gCPRMSG __attribute__((error("ChannelProvider shared_ptr ownership rules have changed.")))
+
+epicsShareFunc ChannelProviderRegistry::shared_pointer getChannelProviderRegistry() gCPRMSG;
+// Shorthand for getChannelProviderRegistry()->add(channelProviderFactory);
+epicsShareFunc void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) gCPRMSG;
+// Shorthand for getChannelProviderRegistry()->remove(channelProviderFactory);
+epicsShareFunc void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) gCPRMSG;
+// Shorthand for getChannelProviderRegistry()->clear();
+epicsShareFunc void unregisterAllChannelProviderFactory() gCPRMSG;
+
+#undef gCPRMSG
+
+#endif // __GNUC__
 
 /**
  * @brief Pipeline (streaming) support API (optional).
