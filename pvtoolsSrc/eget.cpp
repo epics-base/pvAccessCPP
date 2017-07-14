@@ -1456,7 +1456,6 @@ int main (int argc, char *argv[])
     //string urlEncodedRequest;
     vector< pair<string,string> > parameters;
     bool monitor = false;
-    bool quiet = false;
     string defaultProvider = DEFAULT_PROVIDER;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
@@ -1570,7 +1569,6 @@ int main (int argc, char *argv[])
 
             break;
         case 'q':               /* Quiet mode */
-            quiet = true;
             break;
         case 'd':               /* Debug log level */
             debug = true;

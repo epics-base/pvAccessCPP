@@ -156,7 +156,6 @@ int main (int argc, char *argv[])
             std::string providerName(defaultProvider);
             std::string pvName(pvs[n]);
             std::string address(noAddress);
-            bool usingDefaultProvider = true;
             if (validURI)
             {
                 if (uri.path.length() <= 1)
@@ -167,7 +166,6 @@ int main (int argc, char *argv[])
                 providerName = uri.protocol;
                 pvName = uri.path.substr(1);
                 address = uri.host;
-                usingDefaultProvider = false;
             }
 
             pvNames.push_back(pvName);

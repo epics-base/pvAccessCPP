@@ -46,14 +46,6 @@ static const char expectdata[] =
     "this = is a test\n"
     ;
 
-static
-void showEscaped(const char *msg, const std::string& s)
-{
-    std::vector<char> chars(epicsStrnEscapedFromRawSize(s.c_str(), s.size())+1);
-    epicsStrnEscapedFromRaw(&chars[0], chars.size(), s.c_str(), s.size());
-    testDiag("%s: '%s", msg, &chars[0]);
-}
-
 static void showEnv(const char *name)
 {
     testDiag("%s = \"%s\"", name, getenv(name));

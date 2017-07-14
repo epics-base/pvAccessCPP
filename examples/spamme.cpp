@@ -102,10 +102,8 @@ struct SpamMonitor : public pva::Monitor,
 
     virtual pvd::Status start() OVERRIDE FINAL
     {
-        bool run;
         {
             Guard G(mutex);
-            run = running;
             running = true;
             clientEmpty = true;
         }

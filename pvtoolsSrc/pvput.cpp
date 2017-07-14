@@ -607,7 +607,6 @@ int main (int argc, char *argv[])
     string providerName(defaultProvider);
     string pvName(pv);
     string address(noAddress);
-    bool usingDefaultProvider = true;
     if (validURI)
     {
         if (uri.path.length() <= 1)
@@ -618,7 +617,6 @@ int main (int argc, char *argv[])
         providerName = uri.protocol;
         pvName = uri.path.substr(1);
         address = uri.host;
-        usingDefaultProvider = false;
     }
 
     ClientFactory::start();

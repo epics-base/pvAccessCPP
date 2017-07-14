@@ -66,7 +66,6 @@ void usage (void)
              "  -d:                Enable debug output\n"
              "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
              "  -f <input file>:   Use <input file> as an input that provides a list PV name(s) to be read, use '-' for stdin\n"
-             "  -c:                Wait for clean shutdown and report used instance count (for expert users)\n"
              " enum format:\n"
              "  -n: Force enum interpretation of values as numbers (default is enum string)\n"
 //    " time format:\n"
@@ -352,9 +351,7 @@ struct MonitorRequesterImpl : public MonitorRequester, public Tracker
 int main (int argc, char *argv[])
 {
     int opt;                    /* getopt() current option */
-    bool cleanupAndReport = false;
     bool monitor = false;
-    bool quiet = false;
 
     istream* inputStream = 0;
     ifstream ifs;
@@ -409,13 +406,11 @@ int main (int argc, char *argv[])
             defaultProvider = optarg;
             break;
         case 'q':               /* Quiet mode */
-            quiet = true;
             break;
         case 'd':               /* Debug log level */
             debugFlag = true;
             break;
         case 'c':               /* Clean-up and report used instance count */
-            cleanupAndReport = true;
             break;
         case 'F':               /* Store this for output formatting */
             fieldSeparator = (char) *optarg;

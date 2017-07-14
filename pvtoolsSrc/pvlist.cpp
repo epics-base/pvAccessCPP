@@ -485,7 +485,6 @@ int main (int argc, char *argv[])
 {
     int opt;                    /* getopt() current option */
     bool debug = false;
-    bool quiet = false;
     double timeOut = DEFAULT_TIMEOUT;
     // char fieldSeparator = ' ';
     bool printInfo = false;
@@ -521,7 +520,6 @@ int main (int argc, char *argv[])
             }
             break;
         case 'q':               /* Quiet mode */
-            quiet = true;
             break;
         case 'd':               /* Debug log level */
             debug = true;
@@ -592,14 +590,8 @@ int main (int argc, char *argv[])
 
     bool allOK = true;
 
-    //if (!quiet)
-    //    fprintf(stderr, "Searching...\n");
-
     if (noArgs || byGUIDSearch)
         discoverServers(timeOut);
-
-    //if (!quiet)
-    //    fprintf(stderr, "done.\n");
 
     // just list all the discovered servers
     if (noArgs)
