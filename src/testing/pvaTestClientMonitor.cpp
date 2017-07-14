@@ -20,19 +20,21 @@ namespace pva = epics::pvAccess;
 typedef epicsGuard<epicsMutex> Guard;
 typedef epicsGuardRelease<epicsMutex> UnGuard;
 
-struct TestMonitor::Impl : public pva::MonitorRequester
+namespace pvac {
+
+struct Monitor::Impl : public pva::MonitorRequester
 {
     mutable epicsMutex mutex;
     pva::Channel::shared_pointer chan;
     operation_type::shared_pointer op;
     bool started, done, seenEmpty;
 
-    TestClientChannel::MonitorCallback *cb;
-    TestMonitorEvent event;
+    ClientChannel::MonitorCallback *cb;
+    MonitorEvent event;
 
     pva::MonitorElement::Ref last;
 
-    Impl(TestClientChannel::MonitorCallback* cb)
+    Impl(ClientChannel::MonitorCallback* cb)
         :started(false)
         ,done(false)
         ,seenEmpty(false)
@@ -40,14 +42,14 @@ struct TestMonitor::Impl : public pva::MonitorRequester
     {}
     virtual ~Impl() {}
 
-    void callEvent(Guard& G, TestMonitorEvent::event_t evt = TestMonitorEvent::Fail)
+    void callEvent(Guard& G, MonitorEvent::event_t evt = MonitorEvent::Fail)
     {
-        TestClientChannel::MonitorCallback *cb=this->cb;
+        ClientChannel::MonitorCallback *cb=this->cb;
         if(!cb) return;
 
         event.event = evt;
 
-        if(evt==TestMonitorEvent::Fail || evt==TestMonitorEvent::Cancel)
+        if(evt==MonitorEvent::Fail || evt==MonitorEvent::Cancel)
             this->cb = 0; // last event
 
         try {
@@ -55,10 +57,10 @@ struct TestMonitor::Impl : public pva::MonitorRequester
             cb->monitorEvent(event);
             return;
         }catch(std::exception& e){
-            if(!this->cb || evt==TestMonitorEvent::Fail) {
-                LOG(pva::logLevelError, "Unhandled exception in TestClientChannel::MonitorCallback::monitorEvent(): %s", e.what());
+            if(!this->cb || evt==MonitorEvent::Fail) {
+                LOG(pva::logLevelError, "Unhandled exception in ClientChannel::MonitorCallback::monitorEvent(): %s", e.what());
             } else {
-               event.event = TestMonitorEvent::Fail;
+               event.event = MonitorEvent::Fail;
                event.message = e.what();
             }
         }
@@ -68,7 +70,7 @@ struct TestMonitor::Impl : public pva::MonitorRequester
             cb->monitorEvent(event);
             return;
         }catch(std::exception& e){
-            LOG(pva::logLevelError, "Unhandled exception following exception in TestClientChannel::MonitorCallback::monitorEvent(): %s", e.what());
+            LOG(pva::logLevelError, "Unhandled exception following exception in ClientChannel::MonitorCallback::monitorEvent(): %s", e.what());
         }
     }
 
@@ -111,7 +113,7 @@ struct TestMonitor::Impl : public pva::MonitorRequester
         if(!cb || done) return;
         event.message = "Disconnect";
         started = false;
-        callEvent(G, TestMonitorEvent::Disconnect);
+        callEvent(G, MonitorEvent::Disconnect);
     }
 
     virtual void monitorEvent(pva::MonitorPtr const & monitor) OVERRIDE FINAL
@@ -120,7 +122,7 @@ struct TestMonitor::Impl : public pva::MonitorRequester
         if(!cb || done) return;
         event.message.clear();
 
-        callEvent(G, TestMonitorEvent::Data);
+        callEvent(G, MonitorEvent::Data);
     }
 
     virtual void unlisten(pva::MonitorPtr const & monitor) OVERRIDE FINAL
@@ -130,24 +132,24 @@ struct TestMonitor::Impl : public pva::MonitorRequester
         done = true;
 
         if(seenEmpty)
-            callEvent(G, TestMonitorEvent::Data);
+            callEvent(G, MonitorEvent::Data);
         // else // wait until final poll()
     }
 };
 
-TestMonitor::TestMonitor(const std::tr1::shared_ptr<Impl>& impl)
+Monitor::Monitor(const std::tr1::shared_ptr<Impl>& impl)
     :impl(impl)
 {}
 
-TestMonitor::~TestMonitor() {}
+Monitor::~Monitor() {}
 
 
-std::string TestMonitor::name() const
+std::string Monitor::name() const
 {
     return impl ? impl->chan->getChannelName() : "<NULL>";
 }
 
-void TestMonitor::cancel()
+void Monitor::cancel()
 {
     if(!impl) return;
     Guard G(impl->mutex);
@@ -162,10 +164,10 @@ void TestMonitor::cancel()
         impl->started = false;
     }
     impl->op->destroy();
-    impl->callEvent(G, TestMonitorEvent::Cancel);
+    impl->callEvent(G, MonitorEvent::Cancel);
 }
 
-bool TestMonitor::poll()
+bool Monitor::poll()
 {
     if(!impl) return false;
     Guard G(impl->mutex);
@@ -183,22 +185,22 @@ bool TestMonitor::poll()
     return impl->seenEmpty = !!root;
 }
 
-bool TestMonitor::complete() const
+bool Monitor::complete() const
 {
     if(impl) return true;
     Guard G(impl->mutex);
     return impl->done && impl->seenEmpty;
 }
 
-TestMonitor
-TestClientChannel::monitor(MonitorCallback *cb,
+Monitor
+ClientChannel::monitor(MonitorCallback *cb,
                            epics::pvData::PVStructure::const_shared_pointer pvRequest)
 {
     if(!impl) throw std::logic_error("Dead Channel");
     if(!pvRequest)
         pvRequest = pvd::createRequest("field()");
 
-    std::tr1::shared_ptr<TestMonitor::Impl> ret(new TestMonitor::Impl(cb));
+    std::tr1::shared_ptr<Monitor::Impl> ret(new Monitor::Impl(cb));
     ret->chan = getChannel();
 
     {
@@ -206,5 +208,7 @@ TestClientChannel::monitor(MonitorCallback *cb,
         ret->op = ret->chan->createMonitor(ret, std::tr1::const_pointer_cast<pvd::PVStructure>(pvRequest));
     }
 
-    return TestMonitor(ret);
+    return Monitor(ret);
 }
+
+}//namespace pvac

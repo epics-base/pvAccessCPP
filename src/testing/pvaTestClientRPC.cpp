@@ -22,25 +22,25 @@ typedef epicsGuardRelease<epicsMutex> UnGuard;
 namespace {
 
 struct RPCer : public pva::ChannelRPCRequester,
-               public TestOperation::Impl
+               public pvac::Operation::Impl
 {
     mutable epicsMutex mutex;
 
     bool started;
     operation_type::shared_pointer op;
 
-    TestClientChannel::GetCallback *cb;
-    TestGetEvent event;
+    pvac::ClientChannel::GetCallback *cb;
+    pvac::GetEvent event;
 
     pvd::PVStructure::const_shared_pointer args;
 
-    RPCer(TestClientChannel::GetCallback* cb,
+    RPCer(pvac::ClientChannel::GetCallback* cb,
           const pvd::PVStructure::const_shared_pointer& args) :started(false), cb(cb), args(args) {}
     virtual ~RPCer() {}
 
-    void callEvent(Guard& G, TestGetEvent::event_t evt = TestGetEvent::Fail)
+    void callEvent(Guard& G, pvac::GetEvent::event_t evt = pvac::GetEvent::Fail)
     {
-        TestClientChannel::GetCallback *cb=this->cb;
+        pvac::ClientChannel::GetCallback *cb=this->cb;
         if(!cb) return;
 
         event.event = evt;
@@ -52,10 +52,10 @@ struct RPCer : public pva::ChannelRPCRequester,
             cb->getDone(event);
             return;
         }catch(std::exception& e){
-            if(!this->cb || evt==TestGetEvent::Fail) {
-                LOG(pva::logLevelError, "Unhandled exception in TestClientChannel::GetCallback::getDone(): %s", e.what());
+            if(!this->cb || evt==pvac::GetEvent::Fail) {
+                LOG(pva::logLevelError, "Unhandled exception in ClientChannel::GetCallback::getDone(): %s", e.what());
             } else {
-               event.event = TestGetEvent::Fail;
+               event.event = pvac::GetEvent::Fail;
                event.message = e.what();
             }
         }
@@ -65,7 +65,7 @@ struct RPCer : public pva::ChannelRPCRequester,
             cb->getDone(event);
             return;
         }catch(std::exception& e){
-            LOG(pva::logLevelError, "Unhandled exception following exception in TestClientChannel::GetCallback::monitorEvent(): %s", e.what());
+            LOG(pva::logLevelError, "Unhandled exception following exception in ClientChannel::GetCallback::monitorEvent(): %s", e.what());
         }
     }
 
@@ -79,7 +79,7 @@ struct RPCer : public pva::ChannelRPCRequester,
     {
         Guard G(mutex);
         if(started && op) op->cancel();
-        callEvent(G, TestGetEvent::Cancel);
+        callEvent(G, pvac::GetEvent::Cancel);
     }
 
     virtual std::string getRequesterName() OVERRIDE FINAL
@@ -129,14 +129,16 @@ struct RPCer : public pva::ChannelRPCRequester,
         }
         event.value = pvResponse;
 
-        callEvent(G, status.isSuccess()? TestGetEvent::Success : TestGetEvent::Fail);
+        callEvent(G, status.isSuccess()? pvac::GetEvent::Success : pvac::GetEvent::Fail);
     }
 };
 
 }//namespace
 
-TestOperation
-TestClientChannel::rpc(GetCallback* cb,
+namespace pvac {
+
+Operation
+ClientChannel::rpc(GetCallback* cb,
                        const epics::pvData::PVStructure::const_shared_pointer& arguments,
                        epics::pvData::PVStructure::const_shared_pointer pvRequest)
 {
@@ -151,5 +153,7 @@ TestClientChannel::rpc(GetCallback* cb,
         ret->op = getChannel()->createChannelRPC(ret, std::tr1::const_pointer_cast<pvd::PVStructure>(pvRequest));
     }
 
-    return TestOperation(ret);
+    return Operation(ret);
 }
+
+}//namespace pvac

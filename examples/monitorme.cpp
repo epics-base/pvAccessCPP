@@ -35,7 +35,7 @@ typedef epicsGuardRelease<epicsMutex> UnGuard;
 
 struct Worker {
     virtual ~Worker() {}
-    virtual void process(const TestMonitorEvent& event) =0;
+    virtual void process(const pvac::MonitorEvent& event) =0;
 };
 
 // simple work queue with thread.
@@ -46,7 +46,7 @@ struct WorkQueue : public epicsThreadRunable {
     typedef std::tr1::weak_ptr<Worker> weak_type;
     // work queue holds only weak_ptr
     // so jobs must be kept alive seperately
-    typedef std::deque<std::pair<weak_type, TestMonitorEvent> > queue_t;
+    typedef std::deque<std::pair<weak_type, pvac::MonitorEvent> > queue_t;
     queue_t queue;
     epicsEvent event;
     bool running;
@@ -71,7 +71,7 @@ struct WorkQueue : public epicsThreadRunable {
         worker.exitWait();
     }
 
-    void push(const weak_type& cb, const TestMonitorEvent& evt)
+    void push(const weak_type& cb, const pvac::MonitorEvent& evt)
     {
         bool wake;
         {
@@ -123,7 +123,7 @@ void sigdone(int num)
 }
 #endif
 
-struct MonTracker : public TestClientChannel::MonitorCallback,
+struct MonTracker : public pvac::ClientChannel::MonitorCallback,
                     public Worker,
                     public std::tr1::enable_shared_from_this<MonTracker>
 {
@@ -133,12 +133,12 @@ struct MonTracker : public TestClientChannel::MonitorCallback,
     virtual ~MonTracker() {mon.cancel();}
 
     const std::string name;
-    TestMonitor mon;
+    pvac::Monitor mon;
 
-    virtual void monitorEvent(const TestMonitorEvent& evt) OVERRIDE FINAL
+    virtual void monitorEvent(const pvac::MonitorEvent& evt) OVERRIDE FINAL
     {
         // shared_from_this() will fail as Cancel is delivered in our dtor.
-        if(evt.event==TestMonitorEvent::Cancel) return;
+        if(evt.event==pvac::MonitorEvent::Cancel) return;
 
         // running on internal provider worker thread
         // minimize work here.
@@ -146,20 +146,20 @@ struct MonTracker : public TestClientChannel::MonitorCallback,
         monwork.push(shared_from_this(), evt);
     }
 
-    virtual void process(const TestMonitorEvent& evt) OVERRIDE FINAL
+    virtual void process(const pvac::MonitorEvent& evt) OVERRIDE FINAL
     {
         // running on our worker thread
         switch(evt.event) {
-        case TestMonitorEvent::Fail:
+        case pvac::MonitorEvent::Fail:
             std::cout<<"Error "<<name<<" "<<evt.message<<"\n";
             break;
-        case TestMonitorEvent::Cancel:
+        case pvac::MonitorEvent::Cancel:
             std::cout<<"Cancel "<<name<<"\n";
             break;
-        case TestMonitorEvent::Disconnect:
+        case pvac::MonitorEvent::Disconnect:
             std::cout<<"Disconnect "<<name<<"\n";
             break;
-        case TestMonitorEvent::Data:
+        case pvac::MonitorEvent::Data:
         {
             unsigned n;
             for(n=0; n<2 && mon.poll(); n++) {
@@ -244,7 +244,7 @@ int main(int argc, char *argv[]) {
         pva::ca::CAClientFactory::start();
 
         std::cout<<"Use provider: "<<providerName<<"\n";
-        TestClientProvider provider(providerName, conf);
+        pvac::ClientProvider provider(providerName, conf);
 
         std::vector<MonTracker::shared_pointer> monitors;
 
@@ -258,7 +258,7 @@ int main(int argc, char *argv[]) {
 
             MonTracker::shared_pointer mon(new MonTracker(pv));
 
-            TestClientChannel chan(provider.connect(pv));
+            pvac::ClientChannel chan(provider.connect(pv));
 
             mon->mon = chan.monitor(mon.get());
 

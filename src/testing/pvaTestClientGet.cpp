@@ -24,34 +24,34 @@ typedef epicsGuardRelease<epicsMutex> UnGuard;
 namespace {
 
 struct GetPutter : public pva::ChannelPutRequester,
-                   public TestOperation::Impl
+                   public pvac::Operation::Impl
 {
     mutable epicsMutex mutex;
 
     bool started;
     operation_type::shared_pointer op;
 
-    TestClientChannel::GetCallback *getcb;
-    TestClientChannel::PutCallback *putcb;
-    TestGetEvent event;
+    pvac::ClientChannel::GetCallback *getcb;
+    pvac::ClientChannel::PutCallback *putcb;
+    pvac::GetEvent event;
 
-    GetPutter(TestClientChannel::GetCallback* cb) :started(false), getcb(cb), putcb(0) {}
-    GetPutter(TestClientChannel::PutCallback* cb) :started(false), getcb(0), putcb(cb) {}
+    GetPutter(pvac::ClientChannel::GetCallback* cb) :started(false), getcb(cb), putcb(0) {}
+    GetPutter(pvac::ClientChannel::PutCallback* cb) :started(false), getcb(0), putcb(cb) {}
     virtual ~GetPutter() {}
 
-    void callEvent(Guard& G, TestGetEvent::event_t evt = TestGetEvent::Fail)
+    void callEvent(Guard& G, pvac::GetEvent::event_t evt = pvac::GetEvent::Fail)
     {
         if(!putcb && !getcb) return;
 
         event.event = evt;
         if(putcb) {
-            TestClientChannel::PutCallback *cb=putcb;
+            pvac::ClientChannel::PutCallback *cb=putcb;
             putcb = 0;
             UnGuard U(G);
             cb->putDone(event);
         }
         if(getcb) {
-            TestClientChannel::GetCallback *cb=getcb;
+            pvac::ClientChannel::GetCallback *cb=getcb;
             getcb = 0;
             UnGuard U(G);
             cb->getDone(event);
@@ -68,7 +68,7 @@ struct GetPutter : public pva::ChannelPutRequester,
     {
         Guard G(mutex);
         if(started && op) op->cancel();
-        callEvent(G, TestGetEvent::Cancel);
+        callEvent(G, pvac::GetEvent::Cancel);
     }
 
     virtual std::string getRequesterName() OVERRIDE FINAL
@@ -97,9 +97,9 @@ struct GetPutter : public pva::ChannelPutRequester,
             started = true;
 
         } else if(putcb){
-            TestClientChannel::PutCallback *cb(putcb);
+            pvac::ClientChannel::PutCallback *cb(putcb);
             pvd::BitSet::shared_pointer tosend(new pvd::BitSet);
-            TestClientChannel::PutCallback::Args args(*tosend);
+            pvac::ClientChannel::PutCallback::Args args(*tosend);
             try {
                 UnGuard U(G);
                 cb->putBuild(structure, args);
@@ -145,7 +145,7 @@ struct GetPutter : public pva::ChannelPutRequester,
             event.message.clear();
         }
 
-        callEvent(G, status.isSuccess()? TestGetEvent::Success : TestGetEvent::Fail);
+        callEvent(G, status.isSuccess()? pvac::GetEvent::Success : pvac::GetEvent::Fail);
     }
 
     virtual void getDone(
@@ -165,14 +165,16 @@ struct GetPutter : public pva::ChannelPutRequester,
         event.value = pvStructure;
         // assume bitSet->get(0)==true as we only make one request
 
-        callEvent(G, status.isSuccess()? TestGetEvent::Success : TestGetEvent::Fail);
+        callEvent(G, status.isSuccess()? pvac::GetEvent::Success : pvac::GetEvent::Fail);
     }
 };
 
 } //namespace
 
-TestOperation
-TestClientChannel::get(TestClientChannel::GetCallback* cb,
+namespace pvac {
+
+Operation
+ClientChannel::get(ClientChannel::GetCallback* cb,
                   epics::pvData::PVStructure::const_shared_pointer pvRequest)
 {
     if(!impl) throw std::logic_error("Dead Channel");
@@ -186,11 +188,11 @@ TestClientChannel::get(TestClientChannel::GetCallback* cb,
         ret->op = getChannel()->createChannelPut(ret, std::tr1::const_pointer_cast<pvd::PVStructure>(pvRequest));
     }
 
-    return TestOperation(ret);
+    return Operation(ret);
 }
 
-TestOperation
-TestClientChannel::put(PutCallback* cb,
+Operation
+ClientChannel::put(PutCallback* cb,
                   epics::pvData::PVStructure::const_shared_pointer pvRequest)
 {
     if(!impl) throw std::logic_error("Dead Channel");
@@ -204,6 +206,8 @@ TestClientChannel::put(PutCallback* cb,
         ret->op = getChannel()->createChannelPut(ret, std::tr1::const_pointer_cast<pvd::PVStructure>(pvRequest));
     }
 
-    return TestOperation(ret);
+    return Operation(ret);
 
 }
+
+}//namespace pvac

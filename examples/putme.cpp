@@ -47,14 +47,14 @@ void alldone(int num)
 }
 #endif
 
-struct PutTracker : public TestClientChannel::PutCallback
+struct PutTracker : public pvac::ClientChannel::PutCallback
 {
     POINTER_DEFINITIONS(PutTracker);
 
-    TestOperation op;
+    pvac::Operation op;
     const std::string value;
 
-    PutTracker(TestClientChannel& channel,
+    PutTracker(pvac::ClientChannel& channel,
                const pvd::PVStructure::const_shared_pointer& pvReq,
                const std::string& value)
         :op(channel.put(this, pvReq)) // put() starts here
@@ -66,7 +66,7 @@ struct PutTracker : public TestClientChannel::PutCallback
         op.cancel();
     }
 
-    virtual void putBuild(const epics::pvData::StructureConstPtr &build, TestClientChannel::PutCallback::Args& args) OVERRIDE FINAL
+    virtual void putBuild(const epics::pvData::StructureConstPtr &build, pvac::ClientChannel::PutCallback::Args& args) OVERRIDE FINAL
     {
         // At this point we have the user provided value string 'value'
         // and the server provided structure (with types).
@@ -92,16 +92,16 @@ struct PutTracker : public TestClientChannel::PutCallback
         std::cout<<"Put value "<<valfld<<" sending="<<args.tosend<<"\n";
     }
 
-    virtual void putDone(const TestPutEvent &evt) OVERRIDE FINAL
+    virtual void putDone(const pvac::PutEvent &evt) OVERRIDE FINAL
     {
         switch(evt.event) {
-        case TestPutEvent::Fail:
+        case pvac::PutEvent::Fail:
             std::cerr<<op.name()<<" Error: "<<evt.message<<"\n";
             break;
-        case TestPutEvent::Cancel:
+        case pvac::PutEvent::Cancel:
             std::cerr<<op.name()<<" Cancelled\n";
             break;
-        case TestPutEvent::Success:
+        case pvac::PutEvent::Success:
             std::cout<<op.name()<<" Done\n";
         }
         {
@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
         pva::ca::CAClientFactory::start();
 
         std::cout<<"Use provider: "<<providerName<<"\n";
-        TestClientProvider provider(providerName, conf);
+        pvac::ClientProvider provider(providerName, conf);
 
         std::vector<PutTracker::shared_pointer> ops(args.size());
 
@@ -201,7 +201,7 @@ int main(int argc, char *argv[]) {
         {
             args_t::const_reference arg = args[i];
 
-            TestClientChannel chan(provider.connect(arg.first));
+            pvac::ClientChannel chan(provider.connect(arg.first));
 
             PutTracker::shared_pointer op(new PutTracker(chan, pvReq, arg.second));
 

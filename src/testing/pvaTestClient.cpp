@@ -20,21 +20,23 @@ namespace pva = epics::pvAccess;
 
 typedef epicsGuard<epicsMutex> Guard;
 
-TestTimeout::TestTimeout()
+namespace pvac {
+
+Timeout::Timeout()
     :std::runtime_error("Timeout")
 {}
 
-struct TestClientChannel::Impl : public pva::ChannelRequester
+struct ClientChannel::Impl : public pva::ChannelRequester
 {
     epicsMutex mutex;
     pva::Channel::shared_pointer channel;
     // assume few listeners per channel, store in vector
-    typedef std::vector<TestClientChannel::ConnectCallback*> listeners_t;
+    typedef std::vector<ClientChannel::ConnectCallback*> listeners_t;
     listeners_t listeners;
 
     virtual ~Impl() {}
 
-    virtual std::string getRequesterName() OVERRIDE FINAL { return "TestClientChannel::Impl"; }
+    virtual std::string getRequesterName() OVERRIDE FINAL { return "ClientChannel::Impl"; }
 
     virtual void channelCreated(const pvd::Status& status, pva::Channel::shared_pointer const & channel) OVERRIDE FINAL {}
 
@@ -45,7 +47,7 @@ struct TestClientChannel::Impl : public pva::ChannelRequester
             Guard G(mutex);
             notify = listeners;
         }
-        TestConnectEvent evt;
+        ConnectEvent evt;
         evt.connected = connectionState==pva::Channel::CONNECTED;
         for(listeners_t::const_iterator it=notify.begin(), end=notify.end(); it!=end; ++it)
         {
@@ -66,33 +68,33 @@ struct TestClientChannel::Impl : public pva::ChannelRequester
     }
 };
 
-TestClientChannel::Options::Options()
+ClientChannel::Options::Options()
     :priority(0)
     ,address()
 {}
 
-bool TestClientChannel::Options::operator<(const Options& O) const
+bool ClientChannel::Options::operator<(const Options& O) const
 {
     return priority<O.priority || (priority==O.priority && address<O.address);
 }
 
-TestOperation::TestOperation(const std::tr1::shared_ptr<Impl>& i)
+Operation::Operation(const std::tr1::shared_ptr<Impl>& i)
     :impl(i)
 {}
 
-TestOperation::~TestOperation() {}
+Operation::~Operation() {}
 
-std::string TestOperation::name() const
+std::string Operation::name() const
 {
     return impl ? impl->name() : "<NULL>";
 }
 
-void TestOperation::cancel()
+void Operation::cancel()
 {
     if(impl) impl->cancel();
 }
 
-TestClientChannel::TestClientChannel(const std::tr1::shared_ptr<pva::ChannelProvider>& provider,
+ClientChannel::ClientChannel(const std::tr1::shared_ptr<pva::ChannelProvider>& provider,
                   const std::string& name,
                   const Options& opt)
     :impl(new Impl)
@@ -104,17 +106,17 @@ TestClientChannel::TestClientChannel(const std::tr1::shared_ptr<pva::ChannelProv
         throw std::logic_error("ChannelProvider failed to create Channel");
 }
 
-TestClientChannel::~TestClientChannel() {}
+ClientChannel::~ClientChannel() {}
 
-std::string TestClientChannel::name() const
+std::string ClientChannel::name() const
 {
     return impl ? impl->channel->getChannelName() : "<NONE>";
 }
 
-void TestClientChannel::addConnectListener(ConnectCallback* cb)
+void ClientChannel::addConnectListener(ConnectCallback* cb)
 {
     if(!impl) throw std::logic_error("Dead Channel");
-    TestConnectEvent evt;
+    ConnectEvent evt;
     {
         Guard G(impl->mutex);
 
@@ -133,7 +135,7 @@ void TestClientChannel::addConnectListener(ConnectCallback* cb)
     }
 }
 
-void TestClientChannel::removeConnectListener(ConnectCallback* cb)
+void ClientChannel::removeConnectListener(ConnectCallback* cb)
 {
     if(!impl) throw std::logic_error("Dead Channel");
     Guard G(impl->mutex);
@@ -148,19 +150,19 @@ void TestClientChannel::removeConnectListener(ConnectCallback* cb)
 }
 
 std::tr1::shared_ptr<epics::pvAccess::Channel>
-TestClientChannel::getChannel()
+ClientChannel::getChannel()
 { return impl->channel; }
 
-struct TestClientProvider::Impl
+struct ClientProvider::Impl
 {
     pva::ChannelProvider::shared_pointer provider;
 
     epicsMutex mutex;
-    typedef std::map<std::pair<std::string, TestClientChannel::Options>, std::tr1::weak_ptr<TestClientChannel::Impl> > channels_t;
+    typedef std::map<std::pair<std::string, ClientChannel::Options>, std::tr1::weak_ptr<ClientChannel::Impl> > channels_t;
     channels_t channels;
 };
 
-TestClientProvider::TestClientProvider(const std::string& providerName,
+ClientProvider::ClientProvider(const std::string& providerName,
                                        const std::tr1::shared_ptr<epics::pvAccess::Configuration>& conf)
     :impl(new Impl)
 {
@@ -172,31 +174,31 @@ TestClientProvider::TestClientProvider(const std::string& providerName,
         THROW_EXCEPTION2(std::invalid_argument, providerName);
 }
 
-TestClientProvider::~TestClientProvider() {}
+ClientProvider::~ClientProvider() {}
 
-TestClientChannel
-TestClientProvider::connect(const std::string& name,
-                            const TestClientChannel::Options& conf)
+ClientChannel
+ClientProvider::connect(const std::string& name,
+                            const ClientChannel::Options& conf)
 {
     Guard G(impl->mutex);
     Impl::channels_t::key_type K(name, conf);
     Impl::channels_t::iterator it(impl->channels.find(K));
     if(it!=impl->channels.end()) {
         // cache hit
-        std::tr1::shared_ptr<TestClientChannel::Impl> chan(it->second.lock());
+        std::tr1::shared_ptr<ClientChannel::Impl> chan(it->second.lock());
         if(chan)
-            return TestClientChannel(chan);
+            return ClientChannel(chan);
         else
             impl->channels.erase(it); // remove stale
     }
     // cache miss
-    TestClientChannel ret(impl->provider, name, conf);
+    ClientChannel ret(impl->provider, name, conf);
     impl->channels[K] = ret.impl;
     return ret;
 }
 
-bool TestClientProvider::disconnect(const std::string& name,
-                                    const TestClientChannel::Options& conf)
+bool ClientProvider::disconnect(const std::string& name,
+                                    const ClientChannel::Options& conf)
 {
     Guard G(impl->mutex);
 
@@ -207,8 +209,10 @@ bool TestClientProvider::disconnect(const std::string& name,
     return found;
 }
 
-void TestClientProvider::disconnect()
+void ClientProvider::disconnect()
 {
     Guard G(impl->mutex);
     impl->channels.clear();
 }
+
+} //namespace pvac

@@ -40,16 +40,16 @@ void alldone(int num)
 }
 #endif
 
-struct Getter : public TestClientChannel::GetCallback,
-                public TestClientChannel::ConnectCallback
+struct Getter : public pvac::ClientChannel::GetCallback,
+                public pvac::ClientChannel::ConnectCallback
 {
     POINTER_DEFINITIONS(Getter);
 
     const std::string name;
-    TestClientChannel channel;
-    TestOperation op;
+    pvac::ClientChannel channel;
+    pvac::Operation op;
 
-    Getter(TestClientProvider& provider, const std::string& name)
+    Getter(pvac::ClientProvider& provider, const std::string& name)
         :name(name)
         ,channel(provider.connect(name))
     {
@@ -61,16 +61,16 @@ struct Getter : public TestClientChannel::GetCallback,
         op.cancel();
     }
 
-    virtual void getDone(const TestGetEvent& event)
+    virtual void getDone(const pvac::GetEvent& event)
     {
         switch(event.event) {
-        case TestGetEvent::Fail:
+        case pvac::GetEvent::Fail:
             std::cout<<"Error "<<name<<" : "<<event.message<<"\n";
             break;
-        case TestGetEvent::Cancel:
+        case pvac::GetEvent::Cancel:
             std::cout<<"Cancel "<<name<<"\n";
             break;
-        case TestGetEvent::Success:
+        case pvac::GetEvent::Success:
             pvd::PVField::const_shared_pointer valfld(event.value->getSubField("value"));
             if(!valfld)
                 valfld = event.value;
@@ -79,7 +79,7 @@ struct Getter : public TestClientChannel::GetCallback,
         }
     }
 
-    virtual void connectEvent(const TestConnectEvent& evt)
+    virtual void connectEvent(const pvac::ConnectEvent& evt)
     {
         if(evt.connected) {
             op = channel.get(this);
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
         pva::ca::CAClientFactory::start();
 
         std::cout<<"Use provider: "<<providerName<<"\n";
-        TestClientProvider provider(providerName, conf);
+        pvac::ClientProvider provider(providerName, conf);
 
         // need to store references to keep get (and channel) from being closed
         typedef std::set<Getter::shared_pointer> gets_t;

@@ -19,9 +19,9 @@ int main(int argc, char *argv[])
 
         epics::pvAccess::ClientFactory::start();
 
-        TestClientProvider provider("pva");
+        pvac::ClientProvider provider("pva");
 
-        TestClientChannel channel(provider.connect(argv[1]));
+        pvac::ClientChannel channel(provider.connect(argv[1]));
 
         std::cout<<channel.name()<<" : "<<channel.get()<<"\n";
 

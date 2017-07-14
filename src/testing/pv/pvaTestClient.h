@@ -19,10 +19,18 @@ class Monitor;
 class Configuration;
 }}//namespace epics::pvAccess
 
-class TestClientProvider;
+//! See @ref pvac API
+namespace pvac {
 
-//! Information on get/put/rpc completion
-struct epicsShareClass TestOperation
+/** @defgroup pvac PVAccess Client
+ *
+ * @{
+ */
+
+class ClientProvider;
+
+//! Handle for in-progress get/put/rpc operation
+struct epicsShareClass Operation
 {
     struct Impl
     {
@@ -31,9 +39,9 @@ struct epicsShareClass TestOperation
         virtual void cancel() =0;
     };
 
-    TestOperation() {}
-    TestOperation(const std::tr1::shared_ptr<Impl>&);
-    ~TestOperation();
+    Operation() {}
+    Operation(const std::tr1::shared_ptr<Impl>&);
+    ~Operation();
     //! Channel name
     std::string name() const;
     //! Immediate cancellation.
@@ -45,7 +53,7 @@ protected:
 };
 
 //! Information on put completion
-struct epicsShareClass TestPutEvent
+struct epicsShareClass PutEvent
 {
     enum event_t {
         Fail,    //!< request ends in failure.  Check message
@@ -57,19 +65,19 @@ struct epicsShareClass TestPutEvent
 };
 
 //! Information on get/rpc completion
-struct epicsShareClass TestGetEvent : public TestPutEvent
+struct epicsShareClass GetEvent : public PutEvent
 {
     //! New data. NULL unless event==Success
     epics::pvData::PVStructure::const_shared_pointer value;
 };
 
 //! Handle for monitor subscription
-struct epicsShareClass TestMonitor
+struct epicsShareClass Monitor
 {
     struct Impl;
-    TestMonitor() {}
-    TestMonitor(const std::tr1::shared_ptr<Impl>&);
-    ~TestMonitor();
+    Monitor() {}
+    Monitor(const std::tr1::shared_ptr<Impl>&);
+    ~Monitor();
 
     //! Channel name
     std::string name() const;
@@ -90,37 +98,37 @@ protected:
 };
 
 //! Information on monitor subscription/queue change
-struct epicsShareClass TestMonitorEvent
+struct epicsShareClass MonitorEvent
 {
     enum event_t {
         Fail=1,      //!< subscription ends in an error
         Cancel=2,    //!< subscription ends in cancellation
         Disconnect=4,//!< subscription interrupted to do lose of communication
-        Data=8,      //!< Data queue not empty.  Call TestMonitor::poll()
+        Data=8,      //!< Data queue not empty.  Call Monitor::poll()
     } event;
     std::string message; // set for event=Fail
     void *priv;
 };
 
 //! informaiton on connect/disconnect
-struct epicsShareClass TestConnectEvent
+struct epicsShareClass ConnectEvent
 {
     bool connected;
 };
 
-struct epicsShareClass TestTimeout : public std::runtime_error
+struct epicsShareClass Timeout : public std::runtime_error
 {
-    TestTimeout();
+    Timeout();
 };
 
 //! Represents a single channel
-class epicsShareClass TestClientChannel
+class epicsShareClass ClientChannel
 {
     struct Impl;
     std::tr1::shared_ptr<Impl> impl;
-    friend class TestClientProvider;
+    friend class ClientProvider;
 
-    TestClientChannel(const std::tr1::shared_ptr<Impl>& i) :impl(i) {}
+    ClientChannel(const std::tr1::shared_ptr<Impl>& i) :impl(i) {}
 public:
     struct epicsShareClass Options {
         short priority;
@@ -129,35 +137,35 @@ public:
         bool operator<(const Options&) const;
     };
 
-    TestClientChannel() {}
-    TestClientChannel(const std::tr1::shared_ptr<epics::pvAccess::ChannelProvider>& provider,
+    ClientChannel() {}
+    ClientChannel(const std::tr1::shared_ptr<epics::pvAccess::ChannelProvider>& provider,
                       const std::string& name,
                       const Options& opt = Options());
-    ~TestClientChannel();
+    ~ClientChannel();
 
     std::string name() const;
 
     //! callback for get() and rpc()
     struct epicsShareClass GetCallback {
         virtual ~GetCallback() {}
-        virtual void getDone(const TestGetEvent& evt)=0;
+        virtual void getDone(const GetEvent& evt)=0;
     };
 
     //! Issue request to retrieve current PV value
-    //! @param cb Completion notification callback.  Must outlive TestOperation (call TestOperation::cancel() to force release)
-    TestOperation get(GetCallback* cb,
+    //! @param cb Completion notification callback.  Must outlive Operation (call Operation::cancel() to force release)
+    Operation get(GetCallback* cb,
                       epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
     //! Block and retrieve current PV value
-    //! @throws TestTimeout or std::runtime_error
+    //! @throws Timeout or std::runtime_error
     epics::pvData::PVStructure::const_shared_pointer
     get(double timeout = 3.0,
         epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
 
     //! Start an RPC call
-    //! @param cb Completion notification callback.  Must outlive TestOperation (call TestOperation::cancel() to force release)
-    TestOperation rpc(GetCallback* cb,
+    //! @param cb Completion notification callback.  Must outlive Operation (call Operation::cancel() to force release)
+    Operation rpc(GetCallback* cb,
                       const epics::pvData::PVStructure::const_shared_pointer& arguments,
                       epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
@@ -176,32 +184,32 @@ public:
         };
         //! Called to build the value to be sent once the type info is known
         virtual void putBuild(const epics::pvData::StructureConstPtr& build, Args& args) =0;
-        virtual void putDone(const TestPutEvent& evt)=0;
+        virtual void putDone(const PutEvent& evt)=0;
     };
 
     //! Initiate request to change PV
-    //! @param cb Completion notification callback.  Must outlive TestOperation (call TestOperation::cancel() to force release)
+    //! @param cb Completion notification callback.  Must outlive Operation (call Operation::cancel() to force release)
     //! TODO: produce bitset to mask fields being set
-    TestOperation put(PutCallback* cb,
+    Operation put(PutCallback* cb,
                       epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
     struct epicsShareClass MonitorCallback {
         virtual ~MonitorCallback() {}
-        virtual void monitorEvent(const TestMonitorEvent& evt)=0;
+        virtual void monitorEvent(const MonitorEvent& evt)=0;
     };
 
     //! Begin subscription
-    //! @param cb Completion notification callback.  Must outlive TestOperation (call TestOperation::cancel() to force release)
-    TestMonitor monitor(MonitorCallback *cb,
+    //! @param cb Completion notification callback.  Must outlive Operation (call Operation::cancel() to force release)
+    Monitor monitor(MonitorCallback *cb,
                           epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
     //! Connection state change CB
     struct epicsShareClass ConnectCallback {
         virtual ~ConnectCallback() {}
-        virtual void connectEvent(const TestConnectEvent& evt)=0;
+        virtual void connectEvent(const ConnectEvent& evt)=0;
     };
     //! Append to list of listeners
-    //! @param cb Channel dis/connect notification callback.  Must outlive TestClientChannel or call to removeConnectListener()
+    //! @param cb Channel dis/connect notification callback.  Must outlive ClientChannel or call to removeConnectListener()
     void addConnectListener(ConnectCallback*);
     //! Remove from list of listeners
     void removeConnectListener(ConnectCallback*);
@@ -211,29 +219,33 @@ private:
 };
 
 //! Central client context.
-class epicsShareClass TestClientProvider
+class epicsShareClass ClientProvider
 {
     struct Impl;
     std::tr1::shared_ptr<Impl> impl;
 public:
 
-    TestClientProvider(const std::string& providerName,
+    ClientProvider(const std::string& providerName,
                        const std::tr1::shared_ptr<epics::pvAccess::Configuration>& conf = std::tr1::shared_ptr<epics::pvAccess::Configuration>());
-    ~TestClientProvider();
+    ~ClientProvider();
 
     //! Get a new Channel
     //! Does not block.
     //! Never returns NULL.
     //! Uses internal Channel cache.
-    TestClientChannel connect(const std::string& name,
-                              const TestClientChannel::Options& conf = TestClientChannel::Options());
+    ClientChannel connect(const std::string& name,
+                              const ClientChannel::Options& conf = ClientChannel::Options());
 
     //! Remove from channel cache
     bool disconnect(const std::string& name,
-                    const TestClientChannel::Options& conf = TestClientChannel::Options());
+                    const ClientChannel::Options& conf = ClientChannel::Options());
 
     //! Clear channel cache
     void disconnect();
 };
+
+//! @}
+
+}//namespace pvac
 
 #endif // PVATESTCLIENT_H

@@ -22,16 +22,16 @@ typedef epicsGuard<epicsMutex> Guard;
 typedef epicsGuardRelease<epicsMutex> UnGuard;
 
 namespace {
-struct GetWait : TestClientChannel::GetCallback
+struct GetWait : pvac::ClientChannel::GetCallback
 {
     epicsMutex mutex;
     epicsEvent event;
     bool done;
-    TestGetEvent result;
+    pvac::GetEvent result;
 
     GetWait() :done(false) {}
     virtual ~GetWait() {}
-    virtual void getDone(const TestGetEvent& evt)
+    virtual void getDone(const pvac::GetEvent& evt)
     {
         {
             Guard G(mutex);
@@ -47,47 +47,51 @@ struct GetWait : TestClientChannel::GetCallback
 };
 } //namespace
 
+namespace pvac {
+
 pvd::PVStructure::const_shared_pointer
-TestClientChannel::get(double timeout,
+pvac::ClientChannel::get(double timeout,
                        pvd::PVStructure::const_shared_pointer pvRequest)
 {
     GetWait waiter;
-    TestOperation op(get(&waiter, pvRequest));
+    Operation op(get(&waiter, pvRequest));
     {
         Guard G(waiter.mutex);
         while(!waiter.done) {
             UnGuard U(G);
             if(!waiter.event.wait(timeout)) {
                 op.cancel();
-                throw TestTimeout();
+                throw Timeout();
             }
         }
     }
-    if(waiter.result.event==TestGetEvent::Success)
+    if(waiter.result.event==pvac::GetEvent::Success)
         return waiter.result.value;
     else
         throw std::runtime_error(waiter.result.message);
 }
 
 pvd::PVStructure::const_shared_pointer
-TestClientChannel::rpc(double timeout,
+pvac::ClientChannel::rpc(double timeout,
                        const epics::pvData::PVStructure::const_shared_pointer& arguments,
                        epics::pvData::PVStructure::const_shared_pointer pvRequest)
 {
     GetWait waiter;
-    TestOperation op(rpc(&waiter, arguments, pvRequest));
+    Operation op(rpc(&waiter, arguments, pvRequest));
     {
         Guard G(waiter.mutex);
         while(!waiter.done) {
             UnGuard U(G);
             if(!waiter.event.wait(timeout)) {
                 op.cancel();
-                throw TestTimeout();
+                throw Timeout();
             }
         }
     }
-    if(waiter.result.event==TestGetEvent::Success)
+    if(waiter.result.event==pvac::GetEvent::Success)
         return waiter.result.value;
     else
         throw std::runtime_error(waiter.result.message);
 }
+
+}//namespace pvac
