@@ -41,3 +41,25 @@ void ClientFactory::stop()
 {
     // unregister now done with exit hook
 }
+
+// automatically register on load
+namespace {
+struct pvaloader
+{
+    pvaloader() {
+        ClientFactory::start();
+    }
+} pvaloaderinstance;
+} // namespace
+
+// perhaps useful during dynamic loading?
+extern "C" {
+void registerClientProvider_pva()
+{
+    try {
+        ClientFactory::start();
+    } catch(std::exception& e){
+        std::cerr<<"Error loading pva: "<<e.what()<<"\n";
+    }
+}
+} // extern "C"

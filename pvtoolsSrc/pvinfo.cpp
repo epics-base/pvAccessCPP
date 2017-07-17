@@ -1,5 +1,4 @@
 #include <iostream>
-#include <pv/clientFactory.h>
 #include <pv/pvAccess.h>
 #include <pv/caProvider.h>
 
@@ -137,7 +136,6 @@ int main (int argc, char *argv[])
 
     bool allOK = true;
 
-    ClientFactory::start();
     epics::pvAccess::ca::CAClientFactory::start();
 
     {
@@ -218,8 +216,6 @@ int main (int argc, char *argv[])
             }
         }
 
-        epics::pvAccess::ca::CAClientFactory::stop();
-        ClientFactory::stop();
     }
 
     if (cleanupAndReport)

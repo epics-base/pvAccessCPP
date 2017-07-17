@@ -1,5 +1,4 @@
 #include <iostream>
-#include <pv/clientFactory.h>
 #include <pv/pvAccess.h>
 
 #include <stdio.h>
@@ -619,7 +618,6 @@ int main (int argc, char *argv[])
         address = uri.host;
     }
 
-    ClientFactory::start();
     epics::pvAccess::ca::CAClientFactory::start();
 
     ChannelProvider::shared_pointer provider(ChannelProviderRegistry::clients()->getProvider(providerName));
@@ -732,9 +730,6 @@ int main (int argc, char *argv[])
         allOK = false;
         std::cerr << "unknown exception caught" << std::endl;
     }
-
-    epics::pvAccess::ca::CAClientFactory::stop();
-    ClientFactory::stop();
 
     return allOK ? 0 : 1;
 }

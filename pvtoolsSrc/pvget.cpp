@@ -18,7 +18,6 @@
 #include <epicsExit.h>
 #include <epicsGuard.h>
 
-#include <pv/clientFactory.h>
 #include <pv/caProvider.h>
 #include <pv/pvAccess.h>
 #include <epicsThread.h>
@@ -505,7 +504,6 @@ int main (int argc, char *argv[])
 
     // ================ Connect channels and start operations
 
-    ClientFactory::start();
     epics::pvAccess::ca::CAClientFactory::start();
 
     bool allOK = true;
@@ -612,9 +610,6 @@ int main (int argc, char *argv[])
     }
 
     // ========================== All done now
-
-    epics::pvAccess::ca::CAClientFactory::stop();
-    ClientFactory::stop();
 
     if(debugFlag)
         std::cerr<<"Done\n";

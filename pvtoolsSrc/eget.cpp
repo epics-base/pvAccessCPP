@@ -3,7 +3,6 @@
 #endif
 
 #include <iostream>
-#include <pv/clientFactory.h>
 #include <pv/pvAccess.h>
 
 #include <pv/caProvider.h>
@@ -1670,8 +1669,7 @@ int main (int argc, char *argv[])
         serviceRequest = true;
     }
 
-    // register "pva" and "ca" providers
-    ClientFactory::start();
+    // register "ca" provider
     epics::pvAccess::ca::CAClientFactory::start();
 
     // PVs mode
@@ -1878,9 +1876,6 @@ int main (int argc, char *argv[])
             while (true)
                 epicsThreadSleep(timeOut);
         }
-
-        epics::pvAccess::ca::CAClientFactory::stop();
-        ClientFactory::stop();
     }
     // service RPC mode
     else
@@ -2020,7 +2015,6 @@ int main (int argc, char *argv[])
         }
 
 
-        ClientFactory::start();
         ChannelProvider::shared_pointer provider = ChannelProviderRegistry::clients()->getProvider("pva");
         assert(provider);
 
@@ -2060,8 +2054,6 @@ int main (int argc, char *argv[])
         }
 
         channel->destroy();
-
-        ClientFactory::stop();
     }
 
     if (cleanupAndReport)

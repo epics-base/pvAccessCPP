@@ -22,7 +22,6 @@
 
 //! [Headers]
 #include <pv/configuration.h>
-#include <pv/clientFactory.h>
 #include <pv/caProvider.h>
 #include <pva/client.h>
 //! [Headers]
@@ -182,8 +181,7 @@ int main(int argc, char *argv[]) {
                                                 .push_env()
                                                 .build());
 
-        // add "pva" provider to registry
-        pva::ClientFactory::start();
+        // "pva" provider automatically in registry
         // add "ca" provider to registry
         pva::ca::CAClientFactory::start();
 

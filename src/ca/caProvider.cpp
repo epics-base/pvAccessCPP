@@ -197,3 +197,15 @@ void CAClientFactory::stop()
 {
     // unregister now done with exit hook
 }
+
+// perhaps useful during dynamic loading?
+extern "C" {
+void registerClientProvider_ca()
+{
+    try {
+        CAClientFactory::start();
+    } catch(std::exception& e){
+        std::cerr<<"Error loading ca: "<<e.what()<<"\n";
+    }
+}
+} // extern "C"

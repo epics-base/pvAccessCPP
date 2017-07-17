@@ -6,7 +6,6 @@
 
 #include <iostream>
 
-#include "pv/clientFactory.h"
 #include "pva/client.h"
 
 int main(int argc, char *argv[])
@@ -16,8 +15,6 @@ int main(int argc, char *argv[])
             std::cerr<<"Usage: "<<argv[0]<<" <pvname>\n";
             return 1;
         }
-
-        epics::pvAccess::ClientFactory::start();
 
         pvac::ClientProvider provider("pva");
 
