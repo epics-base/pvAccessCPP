@@ -55,21 +55,6 @@ ChannelProviderFactory::shared_pointer ChannelProviderRegistry::getFactory(std::
         return iter->second;
 }
 
-std::auto_ptr<ChannelProviderRegistry::stringVector_t> ChannelProviderRegistry::getProviderNames()
-{
-    std::set<std::string> names;
-    getProviderNames(names);
-
-    std::auto_ptr<ChannelProviderRegistry::stringVector_t> ret(new ChannelProviderRegistry::stringVector_t);
-    ret->reserve(names.size());
-
-    for(std::set<std::string>::const_iterator it=names.begin(); it!=names.end(); ++it)
-    {
-        ret->push_back(*it);
-    }
-    return ret;
-}
-
 void ChannelProviderRegistry::getProviderNames(std::set<std::string>& names)
 {
     Lock G(mutex);

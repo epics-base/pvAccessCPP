@@ -1322,13 +1322,11 @@ public:
      */
     virtual ChannelProviderFactory::shared_pointer getFactory(std::string const & providerName);
 
+    typedef std::set<std::string> provider_name_set;
     /**
-     * Get a array of the names of all the known providers.
-     * @return The names. Be sure to delete vector instance.
+     * Find currently registered provider names.
      */
-    std::auto_ptr<stringVector_t> getProviderNames() EPICS_DEPRECATED;
-
-    virtual void getProviderNames(std::set<std::string>& names);
+    virtual void getProviderNames(provider_name_set& names);
 
     //! Add new factory.  if replace=false and name already in use, return false with no change
     //! in other cases insert provided factory and return true.
