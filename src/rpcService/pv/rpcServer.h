@@ -29,6 +29,7 @@ namespace epics {
 namespace pvAccess {
 
 class ServerContext;
+class RPCChannelProvider;
 
 class epicsShareClass RPCServer :
     public std::tr1::enable_shared_from_this<RPCServer>
@@ -36,7 +37,7 @@ class epicsShareClass RPCServer :
 private:
 
     std::tr1::shared_ptr<ServerContext> m_serverContext;
-    ChannelProvider::shared_pointer m_channelProviderImpl;
+    std::tr1::shared_ptr<RPCChannelProvider> m_channelProviderImpl;
 
 public:
     POINTER_DEFINITIONS(RPCServer);

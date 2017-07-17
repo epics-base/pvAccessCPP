@@ -481,12 +481,12 @@ void RPCServer::destroy()
 
 void RPCServer::registerService(std::string const & serviceName, RPCServiceAsync::shared_pointer const & service)
 {
-    std::tr1::dynamic_pointer_cast<RPCChannelProvider>(m_channelProviderImpl)->registerService(serviceName, service);
+    m_channelProviderImpl->registerService(serviceName, service);
 }
 
 void RPCServer::unregisterService(std::string const & serviceName)
 {
-    std::tr1::dynamic_pointer_cast<RPCChannelProvider>(m_channelProviderImpl)->unregisterService(serviceName);
+    m_channelProviderImpl->unregisterService(serviceName);
 }
 
 }
