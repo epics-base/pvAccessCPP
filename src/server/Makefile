@@ -5,9 +5,9 @@ SRC_DIRS += $(PVACCESS_SRC)/server
 INC += pv/serverContext.h
 INC += pv/beaconServerStatusProvider.h
 
-LIBSRCS += responseHandlers.cpp
-LIBSRCS += serverContext.cpp
-LIBSRCS += serverChannelImpl.cpp
-LIBSRCS += baseChannelRequester.cpp
-LIBSRCS += beaconEmitter.cpp
-LIBSRCS += beaconServerStatusProvider.cpp
+pvAccess_SRCS += responseHandlers.cpp
+pvAccess_SRCS += serverContext.cpp
+pvAccess_SRCS += serverChannelImpl.cpp
+pvAccess_SRCS += baseChannelRequester.cpp
+pvAccess_SRCS += beaconEmitter.cpp
+pvAccess_SRCS += beaconServerStatusProvider.cpp

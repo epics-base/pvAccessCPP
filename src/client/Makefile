@@ -6,9 +6,9 @@ INC += pv/monitor.h
 INC += pv/pvAccess.h
 INC += pva/client.h
 
-LIBSRCS += pvAccess.cpp
-LIBSRCS += client.cpp
-LIBSRCS += clientSync.cpp
-LIBSRCS += clientGet.cpp
-LIBSRCS += clientRPC.cpp
-LIBSRCS += clientMonitor.cpp
+pvAccess_SRCS += pvAccess.cpp
+pvAccess_SRCS += client.cpp
+pvAccess_SRCS += clientSync.cpp
+pvAccess_SRCS += clientGet.cpp
+pvAccess_SRCS += clientRPC.cpp
+pvAccess_SRCS += clientMonitor.cpp

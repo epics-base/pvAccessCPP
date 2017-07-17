@@ -4,4 +4,4 @@ SRC_DIRS += $(PVACCESS_SRC)/mb
 
 INC += pv/pvAccessMB.h
 
-LIBSRCS += pvAccessMB.cpp
+pvAccess_SRCS += pvAccessMB.cpp

@@ -8,5 +8,5 @@ INC += pv/pvaVersion.h
 INC += pv/pvaVersionNum.h
 INC += pv/clientFactory.h
 
-LIBSRCS += pvaVersion.cpp
-LIBSRCS += clientFactory.cpp
+pvAccess_SRCS += pvaVersion.cpp
+pvAccess_SRCS += clientFactory.cpp

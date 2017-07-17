@@ -2,4 +2,4 @@
 
 SRC_DIRS += $(PVACCESS_SRC)/factory
 
-LIBSRCS += ChannelAccessFactory.cpp
+pvAccess_SRCS += ChannelAccessFactory.cpp

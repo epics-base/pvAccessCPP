@@ -25,13 +25,12 @@ include $(PVACCESS_SRC)/pipelineService/Makefile
 include $(PVACCESS_SRC)/ca/Makefile
 include $(PVACCESS_SRC)/mb/Makefile
 
-LIBRARY = pvAccess
+LIBRARY += pvAccess
 
 pvAccess_LIBS += pvData
 ifdef WITH_MICROBENCH
   LIB_LIBS += pvMB
 endif
-LIB_LIBS += ca
 LIB_LIBS += Com
 
 # needed for Windows
