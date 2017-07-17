@@ -10,10 +10,11 @@
 #include <epicsSignal.h>
 #include <epicsThread.h>
 #include <epicsExit.h>
-
-#define epicsExportSharedSymbols
 #include <pv/logger.h>
 #include <pv/configuration.h>
+#include <pv/pvAccess.h>
+
+#define epicsExportSharedSymbols
 #include <pv/caProvider.h>
 #include <pv/caChannel.h>
 
