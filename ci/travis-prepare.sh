@@ -10,8 +10,8 @@ cat configure/RELEASE.local
 install -d "$HOME/.source"
 cd "$HOME/.source"
 
-git clone --quiet --depth 5 --branch "$BRBASE" https://github.com/epics-base/epics-base.git epics-base
-git clone --quiet --depth 5 --branch "$BRPVD" https://github.com/mdavidsaver/pvDataCPP.git pvDataCPP
+git clone --quiet --depth 5 --branch "${BRBASE:-master}" https://github.com/${SRCBASE:-epics-base}/epics-base.git epics-base
+git clone --quiet --depth 5 --branch "${BRPVD:-master}" https://github.com/${SRCPVD:-epics-base}/pvDataCPP.git pvDataCPP
 
 (cd epics-base && git log -n1 )
 (cd pvDataCPP && git log -n1 )
