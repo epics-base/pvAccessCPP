@@ -68,7 +68,7 @@ const std::size_t AbstractCodec::MAX_ENSURE_DATA_BUFFER_SIZE = 1024;
 static
 size_t bufSizeSelect(size_t request)
 {
-    return std::max(request, MAX_TCP_RECV + AbstractCodec::MAX_ENSURE_DATA_BUFFER_SIZE);
+    return std::max(request, size_t(MAX_TCP_RECV + AbstractCodec::MAX_ENSURE_DATA_BUFFER_SIZE));
 }
 
 AbstractCodec::AbstractCodec(
