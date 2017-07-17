@@ -89,7 +89,9 @@ Transport::shared_pointer BlockingUDPConnector::connect(TransportClient::shared_
             socket, bindAddress, transportRevision));
 
     // the worker thread holds a strong ref, which is released by transport->close()
-    Transport::shared_pointer ret(transport.get(), closer(transport));
+    // note: casting to Transport* to prevent iOS version of shared_ptr from trying (and failing)
+    //       to setup shared_from_this() using the wrapped pointer
+    Transport::shared_pointer ret(static_cast<Transport*>(transport.get()), closer(transport));
 
     return ret;
 }
