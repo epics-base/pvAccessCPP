@@ -79,7 +79,7 @@ class BaseRequestImpl :
     public DataResponse,
     public SubscriptionRequest,
     public TransportSender,
-    public virtual Destroyable
+    public virtual epics::pvAccess::Destroyable
 {
 public:
     POINTER_DEFINITIONS(BaseRequestImpl);
@@ -174,7 +174,7 @@ public:
     {
         std::tr1::shared_ptr<subklass> internal(new subklass(channel, requester, pvRequest)),
                                        external(internal.get(),
-                                                Destroyable::cleaner(internal));
+                                                epics::pvAccess::Destroyable::cleaner(internal));
         // only we get to set these, but since this isn't the ctor, we aren't able to
         // follow the rules.
         const_cast<BaseRequestImpl::weak_pointer&>(internal->m_this_internal) = internal;
@@ -3298,7 +3298,7 @@ private:
         {
             std::tr1::shared_ptr<InternalChannelImpl> internal(
                 new InternalChannelImpl(context, channelID, name, requester, priority, addresses)),
-                    external(internal.get(), Destroyable::cleaner(internal));
+                    external(internal.get(), epics::pvAccess::Destroyable::cleaner(internal));
             const_cast<weak_pointer&>(internal->m_internal_this) = internal;
             const_cast<weak_pointer&>(internal->m_external_this) = external;
             internal->activate();
@@ -4719,7 +4719,7 @@ PVACCESS_REFCOUNT_MONITOR_DEFINE(channelGetField);
 class ChannelGetFieldRequestImpl :
     public DataResponse,
     public TransportSender,
-    public Destroyable,
+    public epics::pvAccess::Destroyable,
     public std::tr1::enable_shared_from_this<ChannelGetFieldRequestImpl>
 {
 public:
@@ -4907,7 +4907,7 @@ namespace pvAccess {
 ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf)
 {
     InternalClientContextImpl::shared_pointer internal(new InternalClientContextImpl(conf)),
-                                              external(internal.get(), Destroyable::cleaner(internal));
+                                              external(internal.get(), epics::pvAccess::Destroyable::cleaner(internal));
     const_cast<InternalClientContextImpl::weak_pointer&>(internal->m_external_this) = external;
     const_cast<InternalClientContextImpl::weak_pointer&>(internal->m_internal_this) = internal;
     internal->initialize();
