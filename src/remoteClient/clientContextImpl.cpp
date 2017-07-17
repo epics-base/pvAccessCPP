@@ -13,7 +13,6 @@
 #include <pv/lock.h>
 #include <pv/timer.h>
 #include <pv/bitSetUtil.h>
-#include <pv/queue.h>
 #include <pv/standardPVField.h>
 
 #define epicsExportSharedSymbols
