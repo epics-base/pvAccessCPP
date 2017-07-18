@@ -24,8 +24,9 @@ void handler(int num)
 {
     (void)num;
     done = true;
-    if(subscription)
-        subscription->wake();
+    pvac::MonitorSync *mon = subscription;
+    if(mon)
+        mon->wake();
 }
 #endif
 
