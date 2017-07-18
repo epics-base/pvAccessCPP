@@ -1267,7 +1267,7 @@ struct SimpleChannelProviderFactory : public ChannelProviderFactory
 
     virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf) OVERRIDE FINAL
     {
-        ChannelProvider::shared_pointer ret(new Provider(conf));
+        std::tr1::shared_ptr<Provider> ret(new Provider(conf));
         return ret;
     }
 
