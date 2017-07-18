@@ -1259,8 +1259,8 @@ struct SimpleChannelProviderFactory : public ChannelProviderFactory
         epics::pvData::Lock L(sharedM);
         ChannelProvider::shared_pointer ret(shared.lock());
         if(!ret) {
-            ret.reset(new Provider(std::tr1::shared_ptr<Configuration>()));
-            shared = ret;
+            std::tr1::shared_ptr<Provider> inst(new Provider(std::tr1::shared_ptr<Configuration>()));
+            shared = ret = inst;
         }
         return ret;
     }
