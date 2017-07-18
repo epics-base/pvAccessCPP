@@ -1370,7 +1370,7 @@ private:
  * These functions have been removed as a signal that the shared_ptr ownership symantics of ChannelProvider
  * and friends has changed.
  */
-#ifdef __GNUC__
+#if __GNUC__>4 || (__GNUC__==4&&__GNUC_MINOR__>=3)
 
 #define gCPRMSG __attribute__((error("ChannelProvider shared_ptr ownership rules have changed.")))
 
