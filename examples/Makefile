@@ -10,6 +10,7 @@ TESTPROD_HOST += monitorme
 TESTPROD_HOST += spamme
 
 TESTPROD_HOST += miniget
+TESTPROD_HOST += miniput
 
 include $(TOP)/configure/RULES
 #----------------------------------------

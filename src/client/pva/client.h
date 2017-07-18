@@ -135,7 +135,15 @@ struct epicsShareClass Timeout : public std::runtime_error
     Timeout();
 };
 
-//! Represents a single channel
+/** Represents a single channel
+ *
+ * This class has two sets of methods, those which block for completion, and
+ * those which use callbacks to signal completion.
+ *
+ * Those which block accept a 'timeout' argument (in seconds).
+ *
+ * Those which use callbacks accept a 'cb' argument and return an Operation or Monitor handle object.
+ */
 class epicsShareClass ClientChannel
 {
     struct Impl;
@@ -232,6 +240,28 @@ public:
     //! TODO: produce bitset to mask fields being set
     Operation put(PutCallback* cb,
                       epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
+
+    //! Put to the 'value' field and block until complete.
+    //! Accepts a scalar value
+    template<epics::pvData::ScalarType ID>
+    inline void putValue(typename epics::pvData::meta::arg_type<typename epics::pvData::ScalarTypeTraits<ID>::type>::type value,
+                  double timeout = 3.0,
+                  epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer())
+    {
+        putValue(&value, ID, timeout, pvRequest);
+    }
+
+    //! Put to the 'value' field and block until complete.
+    //! Accepts untyped scalar value
+    void putValue(const void* value, epics::pvData::ScalarType vtype,
+                  double timeout,
+                  epics::pvData::PVStructure::const_shared_pointer pvRequest);
+
+    //! Put to the 'value' field and block until complete.
+    //! Accepts scalar array
+    void putValue(const epics::pvData::shared_vector<const void>& value,
+                  double timeout,
+                  epics::pvData::PVStructure::const_shared_pointer pvRequest);
 
     //! Monitor event notification
     struct epicsShareClass MonitorCallback {

@@ -9,6 +9,15 @@ The shortest possible PVA get() example.
 */
 /**
 
+@page examples_miniput Simple Client Put Example
+
+The shortest possible PVA put() example.
+
+@include miniput.cpp
+
+*/
+/**
+
 @page examples_getme Client Get Example
 
 This example demonstrates a client which issues a Get operation on startup,

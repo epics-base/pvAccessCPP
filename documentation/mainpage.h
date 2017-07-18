@@ -15,6 +15,7 @@
 
 - Simplest (shortest) possible
  - @ref examples_miniget
+ - @ref examples_miniput
 - More complete
  - @ref examples_getme
  - @ref examples_putme
