@@ -36,7 +36,7 @@ struct RPCer : public pva::ChannelRPCRequester,
 
     RPCer(pvac::ClientChannel::GetCallback* cb,
           const pvd::PVStructure::const_shared_pointer& args) :started(false), cb(cb), args(args) {}
-    virtual ~RPCer() {}
+    virtual ~RPCer() {cancel();}
 
     void callEvent(Guard& G, pvac::GetEvent::event_t evt = pvac::GetEvent::Fail)
     {

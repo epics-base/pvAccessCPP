@@ -37,7 +37,7 @@ struct GetPutter : public pva::ChannelPutRequester,
 
     GetPutter(pvac::ClientChannel::GetCallback* cb) :started(false), getcb(cb), putcb(0) {}
     GetPutter(pvac::ClientChannel::PutCallback* cb) :started(false), getcb(0), putcb(cb) {}
-    virtual ~GetPutter() {}
+    virtual ~GetPutter() {cancel();}
 
     void callEvent(Guard& G, pvac::GetEvent::event_t evt = pvac::GetEvent::Fail)
     {
