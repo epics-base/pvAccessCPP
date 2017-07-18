@@ -446,9 +446,6 @@ Channel::shared_pointer createPipelineChannel(ChannelProvider::shared_pointer co
     return channel;
 }
 
-}} // epics::pvAccess
-namespace {
-
 class PipelineChannelProvider :
     public virtual ChannelProvider,
     public virtual ChannelFind,
@@ -625,14 +622,9 @@ private:
 string PipelineChannelProvider::PROVIDER_NAME("PipelineService");
 Status PipelineChannelProvider::noSuchChannelStatus(Status::STATUSTYPE_ERROR, "no such channel");
 
-} //namespace
-
-namespace epics {
-namespace pvAccess {
-
 PipelineServer::PipelineServer()
+    :m_channelProviderImpl(new PipelineChannelProvider)
 {
-    ChannelProvider::shared_pointer prov(new PipelineChannelProvider);
     m_serverContext = ServerContext::create(ServerContext::Config()
                                             .provider(m_channelProviderImpl));
 }
