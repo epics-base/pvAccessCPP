@@ -31,6 +31,7 @@ namespace pvAccess {
 class ServerContext;
 class RPCChannelProvider;
 
+//! Serves (only) RPCServiceAsync and RPCService instances.
 class epicsShareClass RPCServer :
     public std::tr1::enable_shared_from_this<RPCServer>
 {

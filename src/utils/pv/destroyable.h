@@ -20,8 +20,6 @@ namespace epics { namespace pvAccess {
 
         /**
          * @brief Instance declaring destroy method.
-         * 
-         * @author mse
          */
         class epicsShareClass Destroyable {
         public:
@@ -32,10 +30,7 @@ namespace epics { namespace pvAccess {
             virtual void destroy() = 0;
             
         protected:
-            /**
-             * Do not allow delete on this instance and derived classes, destroy() must be used instead.
-             */ 
-            virtual ~Destroyable() {};
+            virtual ~Destroyable() {}
         public:
 
             /** for use with shared_ptr<> when wrapping
@@ -44,6 +39,10 @@ namespace epics { namespace pvAccess {
                shared_ptr<foo> inner(new foo),
                                outer(inner.get, Destroyable::cleaner(inner));
              @endcode
+
+             @warning Do not use this trick in combination with enable_shared_from_this
+                      as it is _undefined_ whether the hidden weak_ptr will be the original
+                      or wrapped reference.
              */
             class cleaner {
                 Destroyable::shared_pointer ptr;

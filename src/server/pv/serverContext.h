@@ -102,14 +102,18 @@ public:
      */
     virtual void setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer const & beaconServerStatusProvider) = 0;
 
+    //! Options for a server insatnce
     class Config {
         friend class ServerContext;
         Configuration::const_shared_pointer _conf;
         std::vector<ChannelProvider::shared_pointer> _providers;
     public:
         Config() {}
+        //! Use specific configuration.  Default is process environment
         Config& config(const Configuration::const_shared_pointer& c) { _conf = c; return *this; }
+        //! Attach many providers.
         Config& providers(const std::vector<ChannelProvider::shared_pointer>& p) { _providers = p; return *this; }
+        //! short hand for providers() with a length 1 vector.
         Config& provider(const ChannelProvider::shared_pointer& p) { _providers.push_back(p); return *this; }
     };
 

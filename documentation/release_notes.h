@@ -1,20 +1,63 @@
 /** @page pvarelease_notes Release Notes
 
-Release 6.x.x
-=============
+Release 6.0.0 (UNRELEASED)
+==========================
 
 - Incompatible changes
+ - Requires pvDataCPP >=7.0.0 due to headers moved from pvDataCPP into this module: requester.h, destoryable.h, and monitor.h
  - Major changes to shared_ptr ownership rules for epics::pvAccess::ChannelProvider and
    associated classes.  See
   - @ref providers
   - @ref providers_changes
  - Add new library pvAccessIOC for use with PVAClientRegister.dbd and PVAServerRegister.dbd.
    Necessary to avoid having pvAccess library depend on all IOC core libraries.
+ - Added new library pvAccessCA with "ca" provider.  Main pvAccess library no longer depends on libca.
+   Applications needing the "ca" provider must link against pvAccessCA and pvAccess.
+   See examples/Makefile in the source tree.
+   The headers associated with this library are: caChannel.h, caProvider.h, and caStatus.h
+ - A number of headers which were previously installed, but considered "private", are no longer installed.
+ - epics::pvAccess::ChannelProviderRegistry may no longer be sub-classed.
+ - Removed access to singleton registry via getChannelProviderRegistry() and registerChannelProviderFactory()
+   in favor of epics::pvAccess::ChannelProviderRegistry::clients() and epics::pvAccess::ChannelProviderRegistry::servers().
+   The "pva" and "ca" providers are registered with the clients() singleton.
+   epics::pvAccess::ServerContext() looks up names with the servers() singleton.
+ - Removed deprecated epics::pvAccess::Properties
 - Simplifications
  - use of the epics::pvAccess::ChannelRequester interface is optional
    and may be omitted when calling createChannel().
    Channel state change notifications are deliviered
    to individual operations via epics::pvAccess::ChannelBaseRequester::channelDisconnect()
+ - Default implementions added for the following methods
+  - epics::pvAccess::Lockable::lock() and epics::pvAccess::Lockable::unlock() which do nothing.
+  - epics::pvAccess::Channel::getConnectionState() returns CONNECTED
+  - epics::pvAccess::Channel::isConnected() uses getConnectionState()
+  - epics::pvAccess::Channel::getField() which errors
+  - epics::pvAccess::Channel::getAccessRights() which returns rw
+ - Added epics::pvAccess::SimpleChannelProviderFactory template and
+   epics::pvAccess::ChannelProviderRegistry::add() avoids need for custom
+   factory.
+ - Added epics::pvAccess::MonitorElement::Ref iterator/smart-pointer
+   to ensure proper handling of calls Monitor::poll() and Monitor::release().
+ - epics::pvAccess::PipelineMonitor "internal" is collapsed into epics::pvAccess::Monitor.
+   PipelineMonitor becomes a typedef for Monitor.
+ - epics::pvAccess::RPCService is now a sub-class of epics::pvAccess::RPCServiceAsync
+- Additions
+ - pv/pvAccess.h now provides macros OVERRIDE and FINAL which conditionally expand to the c++11 keywords override and final.
+ - Deliver disconnect notifications to individual Operations (get/put/rpc/monitor/...) via
+   new epics::pvAccess::ChannelBaseRequester::channelDisconnect()
+ - New API for server creation via epics::pvAccess::ServerContext::create() allows direct specification
+   of configuration and ChannelProvider(s).
+ - Add epics::pvAccess::ServerContext::getCurrentConfig() to get actual configuration, eg. for use with a client.
+ - Classes from moved headers requester.h, destoryable.h, and monitor.h added to epics::pvAccess namespace.
+   Typedefs provided in epics::pvData namespace.
+ - Added Client API based on pvac::ClientProvider
+ - pv/pvaVersion.h defines VERSION_INT and PVACCESS_VERSION_INT
+ - epics::pvAccess::RPCClient may be directly constructed.
+ - epics::pvAccess::RPCServer allows epics::pvAccess::Configuration to be specified and access to ServerContext.
+ - Added epics::pvAccess::Configuration::keys() to iterate configuration parameters (excluding environment variables).
+ - Added epics::pvAccess::Destoryable::cleaner
+- Deprecations
+ - epics::pvAccess::GUID in favor of epics::pvAccess::ServerGUID due to win32 name conflict.
 
 Release 5.0.0 (July 2016)
 =========================
@@ -123,7 +166,7 @@ It was thus (sometimes) necessary to explicitly call a  destory() method
 to fully dispose of an Operation.
 Failure to do this resulted in a slow resource leak.
 
-Beginning with 6.0.0 an Operation may not rely on user code to call a destory() method.
+Beginning with 6.0.0 an Operation must not rely on user code to call a destory() method.
 
 @subsection providers_changes_store_port Porting
 

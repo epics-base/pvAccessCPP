@@ -61,35 +61,6 @@ public:
         InUse   //!< data valid.  Owned by MonitorRequester.  Waiting for Monitor::release()
     } state;
 
-    /** A smart pointer to extract a MonitorElement from a Monitor queue
-     *
-     * To fetch a single element
-     @code
-       epics::pvAccess::Monitor::shared_pointer mon(....);
-       epics::pvAccess::MonitorElement::Ref elem(mon);
-       if(elem) {
-          // do something with element
-          assert(elem->pvStructurePtr->getSubField("foo"));
-       } else {
-          // queue was empty
-       }
-     @endcode
-     * To fetch all available elements (c++11)
-     @code
-       epics::pvAccess::Monitor::shared_pointer mon(....);
-       for(auto& elem : *mon) {
-          assert(elem.pvStructurePtr->getSubField("foo"));
-       }
-     @endcode
-     * To fetch all available elements (c++98)
-     @code
-       epics::pvAccess::Monitor::shared_pointer mon(....);
-       for(epics::pvAccess::MonitorElement::Ref it(mon); it; ++it) {
-          MonitorElement& elem(*it);
-          assert(elem.pvStructurePtr->getSubField("foo"));
-       }
-     @endcode
-     */
     class Ref;
 };
 
@@ -145,6 +116,35 @@ class epicsShareClass Monitor : public virtual Destroyable{
     virtual void reportRemoteQueueStatus(epics::pvData::int32 freeElements) {}
 };
 
+/** A smart pointer to extract a MonitorElement from a Monitor queue
+ *
+ * To fetch a single element
+ @code
+   epics::pvAccess::Monitor::shared_pointer mon(....);
+   epics::pvAccess::MonitorElement::Ref elem(mon);
+   if(elem) {
+      // do something with element
+      assert(elem->pvStructurePtr->getSubField("foo"));
+   } else {
+      // queue was empty
+   }
+ @endcode
+ * To fetch all available elements (c++11)
+ @code
+   epics::pvAccess::Monitor::shared_pointer mon(....);
+   for(auto& elem : *mon) {
+      assert(elem.pvStructurePtr->getSubField("foo"));
+   }
+ @endcode
+ * To fetch all available elements (c++98)
+ @code
+   epics::pvAccess::Monitor::shared_pointer mon(....);
+   for(epics::pvAccess::MonitorElement::Ref it(mon); it; ++it) {
+      MonitorElement& elem(*it);
+      assert(elem.pvStructurePtr->getSubField("foo"));
+   }
+ @endcode
+ */
 class MonitorElement::Ref
 {
     Monitor* mon;

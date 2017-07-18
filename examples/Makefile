@@ -2,7 +2,7 @@ TOP=..
 
 include $(TOP)/configure/CONFIG
 
-PROD_LIBS += pvAccessCA pvAccess pvData ca Com
+PROD_LIBS += pvAccessCA ca pvAccess pvData Com
 
 TESTPROD_HOST += getme
 TESTPROD_HOST += putme
