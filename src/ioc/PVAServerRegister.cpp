@@ -81,7 +81,7 @@ static void startPVAServer(const iocshArgBuf *args)
     }
 }
 
-static const iocshArg *stopPVAServerArgs[] = {};
+static const iocshArg *stopPVAServerArgs[1] = {};
 static const iocshFuncDef stopPVAServerFuncDef = {
     "stopPVAServer", 0, stopPVAServerArgs
 };
@@ -99,7 +99,7 @@ static void stopPVAServer(const iocshArgBuf *args)
     }
 }
 
-static const iocshArg *statusPVAServerArgs[] = {};
+static const iocshArg *statusPVAServerArgs[1] = {};
 static const iocshFuncDef statusPVAServerFuncDef = {
     "statusPVAServer", 0, statusPVAServerArgs
 };
