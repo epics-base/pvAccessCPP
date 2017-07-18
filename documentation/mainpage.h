@@ -13,10 +13,11 @@
 
 @section main_examples API usage Examples
 
-- Simplest (shortest) possible
+- Simple synchronous (blocking) examples
  - @ref examples_miniget
  - @ref examples_miniput
-- More complete
+ - @ref examples_minimonitor
+- More complete callback based examples
  - @ref examples_getme
  - @ref examples_putme
  - @ref examples_monitorme

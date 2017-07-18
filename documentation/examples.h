@@ -18,6 +18,15 @@ The shortest possible PVA put() example.
 */
 /**
 
+@page examples_minimonitor Simple Client Monitor Example
+
+The shortest possible PVA monitor() example.
+
+@include minimonitor.cpp
+
+*/
+/**
+
 @page examples_getme Client Get Example
 
 This example demonstrates a client which issues a Get operation on startup,

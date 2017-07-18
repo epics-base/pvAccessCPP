@@ -40,7 +40,7 @@ struct Monitor::Impl : public pva::MonitorRequester
         ,seenEmpty(false)
         ,cb(cb)
     {}
-    virtual ~Impl() {}
+    virtual ~Impl() {cancel();}
 
     void callEvent(Guard& G, MonitorEvent::event_t evt = MonitorEvent::Fail)
     {
@@ -74,6 +74,19 @@ struct Monitor::Impl : public pva::MonitorRequester
         }
     }
 
+    void cancel()
+    {
+        Guard G(mutex);
+
+        last.reset();
+
+        if(started) {
+            op->stop();
+            started = false;
+        }
+        op->destroy();
+        callEvent(G, MonitorEvent::Cancel);
+    }
 
     virtual std::string getRequesterName() OVERRIDE FINAL
     { return "RPCer"; }
@@ -151,20 +164,10 @@ std::string Monitor::name() const
 
 void Monitor::cancel()
 {
-    if(!impl) return;
-    Guard G(impl->mutex);
-
-    root.reset();
     changed.clear();
     overrun.clear();
-    impl->last.reset();
-
-    if(impl->started) {
-        impl->op->stop();
-        impl->started = false;
-    }
-    impl->op->destroy();
-    impl->callEvent(G, MonitorEvent::Cancel);
+    root.reset();
+    if(impl) impl->cancel();
 }
 
 bool Monitor::poll()
@@ -187,7 +190,7 @@ bool Monitor::poll()
 
 bool Monitor::complete() const
 {
-    if(impl) return true;
+    if(!impl) return true;
     Guard G(impl->mutex);
     return impl->done && impl->seenEmpty;
 }

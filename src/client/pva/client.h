@@ -12,6 +12,8 @@
 #include <pv/pvData.h>
 #include <pv/bitSet.h>
 
+class epicsEvent;
+
 namespace epics {namespace pvAccess {
 class ChannelProvider;
 class Channel;
@@ -66,7 +68,7 @@ protected:
 };
 
 //! Information on put completion
-struct epicsShareClass PutEvent
+struct PutEvent
 {
     enum event_t {
         Fail,    //!< request ends in failure.  Check message
@@ -84,6 +86,8 @@ struct epicsShareClass GetEvent : public PutEvent
     epics::pvData::PVStructure::const_shared_pointer value;
 };
 
+struct MonitorSync;
+
 //! Handle for monitor subscription
 struct epicsShareClass Monitor
 {
@@ -97,21 +101,26 @@ struct epicsShareClass Monitor
     //! Immediate cancellation.
     //! Does not wait for remote confirmation.
     void cancel();
-    //! updates root, changed, overrun
-    //! return true if root!=NULL
+    /** updates root, changed, overrun
+     *
+     * @return true if root!=NULL
+     * @note MonitorEvent::Data will not be repeated until poll()==false.
+     */
     bool poll();
     //! true if all events received.
+    //! Check after poll()==false
     bool complete() const;
     epics::pvData::PVStructure::const_shared_pointer root;
     epics::pvData::BitSet changed,
                           overrun;
 
-protected:
+private:
     std::tr1::shared_ptr<Impl> impl;
+    friend struct MonitorSync;
 };
 
 //! Information on monitor subscription/queue change
-struct epicsShareClass MonitorEvent
+struct MonitorEvent
 {
     enum event_t {
         Fail=1,      //!< subscription ends in an error
@@ -120,17 +129,49 @@ struct epicsShareClass MonitorEvent
         Data=8,      //!< Data queue not empty.  Call Monitor::poll()
     } event;
     std::string message; // set for event=Fail
-    void *priv;
+};
+
+/** Subscription usable w/o callbacks
+ *
+ * Basic usage is to call wait().
+ * If true is returned, then the 'event', 'root', 'changed', and 'overrun'
+ * members have been updated with a new event.
+ * Test 'event.event' first to find out which kind of event has occured.
+ */
+struct epicsShareClass MonitorSync : public Monitor
+{
+    struct SImpl;
+    MonitorSync() {}
+    MonitorSync(const Monitor&, const std::tr1::shared_ptr<SImpl>&);
+    ~MonitorSync();
+
+    //! wait for new event
+    bool wait();
+    //! wait for new event
+    //! @return false on timeout
+    bool wait(double timeout);
+    //! check if new event is available
+    bool poll();
+
+    //! Abort one call to wait()
+    //! wait() will return with MonitorEvent::Fail
+    void wake();
+
+    //! most recent event
+    //! updated only during wait() or poll()
+    MonitorEvent event;
+private:
+    std::tr1::shared_ptr<SImpl> simpl;
 };
 
 //! information on connect/disconnect
-struct epicsShareClass ConnectEvent
+struct ConnectEvent
 {
     bool connected;
 };
 
 //! Thrown by blocking methods of ClientChannel on operation timeout
-struct epicsShareClass Timeout : public std::runtime_error
+struct Timeout : public std::runtime_error
 {
     Timeout();
 };
@@ -177,7 +218,7 @@ public:
     std::string name() const;
 
     //! callback for get() and rpc()
-    struct epicsShareClass GetCallback {
+    struct GetCallback {
         virtual ~GetCallback() {}
         //! get or rpc operation is complete
         virtual void getDone(const GetEvent& evt)=0;
@@ -216,7 +257,7 @@ public:
         epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
     //! callbacks for put()
-    struct epicsShareClass PutCallback {
+    struct PutCallback {
         virtual ~PutCallback() {}
         struct Args {
             Args(epics::pvData::BitSet& tosend) :tosend(tosend) {}
@@ -248,23 +289,23 @@ public:
                   double timeout = 3.0,
                   epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer())
     {
-        putValue(&value, ID, timeout, pvRequest);
+        putValue(static_cast<const void*>(&value), ID, timeout, pvRequest);
     }
 
     //! Put to the 'value' field and block until complete.
     //! Accepts untyped scalar value
     void putValue(const void* value, epics::pvData::ScalarType vtype,
-                  double timeout,
-                  epics::pvData::PVStructure::const_shared_pointer pvRequest);
+                  double timeout = 3.0,
+                  const epics::pvData::PVStructure::const_shared_pointer& pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
     //! Put to the 'value' field and block until complete.
     //! Accepts scalar array
     void putValue(const epics::pvData::shared_vector<const void>& value,
-                  double timeout,
-                  epics::pvData::PVStructure::const_shared_pointer pvRequest);
+                  double timeout = 3.0,
+                  const epics::pvData::PVStructure::const_shared_pointer& pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
     //! Monitor event notification
-    struct epicsShareClass MonitorCallback {
+    struct MonitorCallback {
         virtual ~MonitorCallback() {}
         /** New monitor event
          *
@@ -281,8 +322,20 @@ public:
     Monitor monitor(MonitorCallback *cb,
                           epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
+    /** Begin subscription w/o callbacks
+     *
+     * @param event If not NULL, then subscription events are signaled to this epicsEvent.  Test with poll().
+     *        Otherwise an internal epicsEvent is allocated for use with wait()
+     *
+     * @note For simple usage with a single MonitorSync, pass event=NULL and call wait().
+     *       If more than one MonitorSync is being created, then pass a custom epicsEvent and use poll() to test
+     *       which subscriptions have events pending.
+     */
+    MonitorSync monitor(const epics::pvData::PVStructure::const_shared_pointer& pvRequest = epics::pvData::PVStructure::const_shared_pointer(),
+                        epicsEvent *event =0);
+
     //! Connection state change CB
-    struct epicsShareClass ConnectCallback {
+    struct ConnectCallback {
         virtual ~ConnectCallback() {}
         virtual void connectEvent(const ConnectEvent& evt)=0;
     };

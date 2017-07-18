@@ -11,6 +11,7 @@ TESTPROD_HOST += spamme
 
 TESTPROD_HOST += miniget
 TESTPROD_HOST += miniput
+TESTPROD_HOST += minimonitor
 
 include $(TOP)/configure/RULES
 #----------------------------------------

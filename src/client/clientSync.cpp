@@ -48,7 +48,7 @@ struct GetWait : public pvac::ClientChannel::GetCallback,
 
     GetWait() {}
     virtual ~GetWait() {}
-    virtual void getDone(const pvac::GetEvent& evt)
+    virtual void getDone(const pvac::GetEvent& evt) OVERRIDE FINAL
     {
         {
             Guard G(mutex);
@@ -111,7 +111,7 @@ struct PutValCommon : public pvac::ClientChannel::PutCallback,
     PutValCommon() {}
     virtual ~PutValCommon() {}
 
-    virtual void putDone(const PutEvent& evt)
+    virtual void putDone(const PutEvent& evt) OVERRIDE FINAL
     {
         {
             Guard G(mutex);
@@ -134,7 +134,7 @@ struct PutValScalar : public PutValCommon
     PutValScalar(const void* value, pvd::ScalarType vtype) :value(value), vtype(vtype) {}
     virtual ~PutValScalar() {}
 
-    virtual void putBuild(const epics::pvData::StructureConstPtr& build, Args& args)
+    virtual void putBuild(const epics::pvData::StructureConstPtr& build, Args& args) OVERRIDE FINAL
     {
         pvd::PVStructurePtr root(pvd::getPVDataCreate()->createPVStructure(build));
         pvd::PVScalarPtr value(root->getSubField<pvd::PVScalar>("value"));
@@ -157,7 +157,7 @@ struct PutValArray : public PutValCommon
     PutValArray(const pvd::shared_vector<const void>& arr) :arr(arr) {}
     virtual ~PutValArray() {}
 
-    virtual void putBuild(const epics::pvData::StructureConstPtr& build, Args& args)
+    virtual void putBuild(const epics::pvData::StructureConstPtr& build, Args& args) OVERRIDE FINAL
     {
         pvd::PVStructurePtr root(pvd::getPVDataCreate()->createPVStructure(build));
         pvd::PVScalarArrayPtr value(root->getSubField<pvd::PVScalarArray>("value"));
@@ -177,7 +177,7 @@ void
 ClientChannel::putValue(const void* value,
                         pvd::ScalarType vtype,
                         double timeout,
-                        pvd::PVStructure::const_shared_pointer pvRequest)
+                        const epics::pvData::PVStructure::const_shared_pointer &pvRequest)
 {
     PutValScalar waiter(value, vtype);
     Operation op(put(&waiter, pvRequest));
@@ -191,7 +191,7 @@ ClientChannel::putValue(const void* value,
 void
 ClientChannel::putValue(const epics::pvData::shared_vector<const void>& value,
                         double timeout,
-                        epics::pvData::PVStructure::const_shared_pointer pvRequest)
+                        const epics::pvData::PVStructure::const_shared_pointer &pvRequest)
 {
     PutValArray waiter(value);
     Operation op(put(&waiter, pvRequest));
@@ -200,6 +200,103 @@ ClientChannel::putValue(const epics::pvData::shared_vector<const void>& value,
         return;
     else
         throw std::runtime_error(waiter.result.message);
+}
+
+struct MonitorSync::SImpl : public ClientChannel::MonitorCallback
+{
+    const bool ourevent;
+    epicsEvent * const event;
+
+    epicsMutex mutex;
+    bool hadevent;
+
+    MonitorEvent last;
+
+    // maintained to ensure we (MonitorCallback) outlive the subscription
+    Monitor sub;
+
+    SImpl(epicsEvent *event)
+        :ourevent(!event)
+        ,event(ourevent ? new epicsEvent : event)
+    {}
+    virtual ~SImpl()
+    {
+        sub.cancel();
+        if(ourevent)
+            delete event;
+    }
+
+    virtual void monitorEvent(const MonitorEvent& evt) OVERRIDE FINAL
+    {
+        {
+            Guard G(mutex);
+            last = evt;
+            hadevent = true;
+        }
+        event->signal();
+    }
+};
+
+MonitorSync::MonitorSync(const Monitor& mon, const std::tr1::shared_ptr<SImpl>& simpl)
+    :Monitor(mon.impl)
+    ,simpl(simpl)
+{
+    simpl->sub = mon;
+    event.event = MonitorEvent::Fail;
+}
+
+MonitorSync::~MonitorSync() {
+    std::cout<<"SYNC use_count="<<simpl.use_count()<<"\n";
+}
+
+bool MonitorSync::poll()
+{
+    if(!simpl) throw std::logic_error("No subscription");
+    Guard G(simpl->mutex);
+    event = simpl->last;
+    simpl->last.event = MonitorEvent::Fail;
+    bool ret = simpl->hadevent;
+    simpl->hadevent = false;
+    return ret;
+}
+
+bool MonitorSync::wait()
+{
+    if(!simpl) throw std::logic_error("No subscription");
+    simpl->event->wait();
+    Guard G(simpl->mutex);
+    event = simpl->last;
+    simpl->last.event = MonitorEvent::Fail;
+    bool ret = simpl->hadevent;
+    simpl->hadevent = false;
+    return ret;
+}
+
+bool MonitorSync::wait(double timeout)
+{
+    if(!simpl) throw std::logic_error("No subscription");
+    bool ret = simpl->event->wait(timeout);
+    if(ret) {
+        Guard G(simpl->mutex);
+        event = simpl->last;
+        simpl->last.event = MonitorEvent::Fail;
+        ret = simpl->hadevent;
+        simpl->hadevent = false;
+    }
+    return ret;
+}
+
+void MonitorSync::wake() {
+    if(simpl) simpl->event->signal();
+}
+
+MonitorSync
+ClientChannel::monitor(const epics::pvData::PVStructure::const_shared_pointer &pvRequest,
+                       epicsEvent *event)
+{
+    std::tr1::shared_ptr<MonitorSync::SImpl> simpl(new MonitorSync::SImpl(event));
+    Monitor mon(monitor(simpl.get(), pvRequest));
+    return MonitorSync(mon, simpl);
 }
 
 
