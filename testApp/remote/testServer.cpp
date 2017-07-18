@@ -2756,8 +2756,8 @@ struct TestServer
 
     TestServer(const epics::pvAccess::Configuration::shared_pointer& conf)
     {
-        ChannelProvider::shared_pointer prov(new MockServerChannelProvider);
-        static_cast<MockServerChannelProvider*>(prov.get())->initialize();
+        std::tr1::shared_ptr<MockServerChannelProvider> prov(new MockServerChannelProvider);
+        prov->initialize();
         context = ServerContext::create(ServerContext::Config()
                                         .config(conf)
                                         .provider(prov));
