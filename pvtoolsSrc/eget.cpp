@@ -1678,7 +1678,7 @@ int main (int argc, char *argv[])
         vector<string> pvs;
         vector<string> pvsAddress;
         vector<ChannelProvider::shared_pointer> providers;
-        vector<Destroyable::shared_pointer> operations;
+        vector<epics::pvAccess::Destroyable::shared_pointer> operations;
 
         if (validURI)
         {
