@@ -661,12 +661,12 @@ void PipelineServer::destroy()
 
 void PipelineServer::registerService(std::string const & serviceName, PipelineService::shared_pointer const & service)
 {
-    std::tr1::dynamic_pointer_cast<PipelineChannelProvider>(m_channelProviderImpl)->registerService(serviceName, service);
+    m_channelProviderImpl->registerService(serviceName, service);
 }
 
 void PipelineServer::unregisterService(std::string const & serviceName)
 {
-    std::tr1::dynamic_pointer_cast<PipelineChannelProvider>(m_channelProviderImpl)->unregisterService(serviceName);
+    m_channelProviderImpl->unregisterService(serviceName);
 }
 
 }
