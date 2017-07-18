@@ -10,8 +10,19 @@
 #define REQUESTER_H
 #include <string>
 
+#ifdef epicsExportSharedSymbols
+#   define requesterEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <pv/pvType.h>
 #include <pv/sharedPtr.h>
+
+#ifdef requesterEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef requesterEpicsExportSharedSymbols
+#endif
+
 
 #include <shareLib.h>
 
