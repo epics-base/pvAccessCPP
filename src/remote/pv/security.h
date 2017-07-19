@@ -14,7 +14,6 @@
 
 #include <string>
 #include <osiSock.h>
-#include <osdSock.h>
 
 #include <pv/status.h>
 #include <pv/pvData.h>

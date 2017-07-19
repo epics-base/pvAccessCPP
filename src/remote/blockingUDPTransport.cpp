@@ -14,7 +14,6 @@
 
 #include <epicsThread.h>
 #include <osiSock.h>
-#include <osdSock.h>
 
 #include <pv/lock.h>
 #include <pv/byteBuffer.h>
