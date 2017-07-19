@@ -1,7 +1,18 @@
 #ifndef SERVERCONTEXTIMPL_H
 #define SERVERCONTEXTIMPL_H
 
+#ifdef epicsExportSharedSymbols
+#   define serverContextImplEpicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <pv/thread.h>
+
+#ifdef serverContextImplEpicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#	undef serverContextImplEpicsExportSharedSymbols
+#endif
+
 #include <pv/blockingUDP.h>
 #include <pv/blockingTCP.h>
 #include <pv/beaconEmitter.h>
