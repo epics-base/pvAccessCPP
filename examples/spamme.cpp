@@ -276,7 +276,7 @@ struct SpamProvider : public pva::ChannelProvider,
 
 int main(int argc, char *argv[]) {
     try {
-        pva::ChannelProvider::shared_pointer provider(new SpamProvider("spam"));
+        std::tr1::shared_ptr<SpamProvider> provider(new SpamProvider("spam"));
         pva::ServerContext::shared_pointer server(pva::ServerContext::create(pva::ServerContext::Config()
                                                                              .provider(provider)
                                                                              .config(pva::ConfigurationBuilder()
