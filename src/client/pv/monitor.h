@@ -49,17 +49,10 @@ typedef std::tr1::shared_ptr<Monitor> MonitorPtr;
 class epicsShareClass MonitorElement {
 public:
     POINTER_DEFINITIONS(MonitorElement);
-    MonitorElement(){}
     MonitorElement(epics::pvData::PVStructurePtr const & pvStructurePtr);
     const epics::pvData::PVStructurePtr pvStructurePtr;
     const epics::pvData::BitSet::shared_pointer changedBitSet;
     const epics::pvData::BitSet::shared_pointer overrunBitSet;
-    // info to assist monitor debugging
-    enum state_t {
-        Free,   //!< data invalid.  eg. on internal free list
-        Queued, //!< data valid.  Owned by Monitor.  Waiting for Monitor::poll()
-        InUse   //!< data valid.  Owned by MonitorRequester.  Waiting for Monitor::release()
-    } state;
 
     class Ref;
 };

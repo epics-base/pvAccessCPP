@@ -22,6 +22,7 @@ Release 6.0.0 (UNRELEASED)
    The "pva" and "ca" providers are registered with the clients() singleton.
    epics::pvAccess::ServerContext() looks up names with the servers() singleton.
  - Removed deprecated epics::pvAccess::Properties
+ - The data members of epics::pvAccess::MonitorElement become const, preventing these pointers from being re-targeted.
 - Simplifications
  - use of the epics::pvAccess::ChannelRequester interface is optional
    and may be omitted when calling createChannel().
