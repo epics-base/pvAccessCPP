@@ -225,7 +225,7 @@ struct SpamChannel : public pva::Channel,
     virtual pva::Monitor::shared_pointer createMonitor(const pva::MonitorRequester::shared_pointer &requester,
                                                        const pvd::PVStructure::shared_pointer &pvRequest) OVERRIDE FINAL
     {
-        pva::Monitor::shared_pointer ret(new SpamMonitor(shared_from_this(), requester, pvRequest));
+        std::tr1::shared_ptr<SpamMonitor> ret(new SpamMonitor(shared_from_this(), requester, pvRequest));
         requester->monitorConnect(pvd::Status::Ok, ret, spamtype);
         return ret;
     }
@@ -262,7 +262,7 @@ struct SpamProvider : public pva::ChannelProvider,
                                                   pva::ChannelRequester::shared_pointer const & requester,
                                                   short priority, std::string const & address) OVERRIDE FINAL
     {
-        pva::Channel::shared_pointer ret;
+        std::tr1::shared_ptr<SpamChannel> ret;
         if(name==channelName) {
             ret.reset(new SpamChannel(shared_from_this(), channelName, requester));
         }
