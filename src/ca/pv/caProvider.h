@@ -20,7 +20,7 @@ class Configuration;
 namespace ca {
 
 class epicsShareClass CAChannelProvider :
-    public epics::pvAccess::ChannelProvider,
+    public ChannelProvider,
     public std::tr1::enable_shared_from_this<CAChannelProvider>
 {
 public:
@@ -83,11 +83,8 @@ private:
 };
 
 
-class epicsShareClass CAClientFactory {
-private:
-    static epics::pvAccess::ChannelProviderRegistry::shared_pointer channelRegistry;
-    static epics::pvAccess::ChannelProviderFactory::shared_pointer channelProvider;
-    static int numStart;
+class epicsShareClass CAClientFactory
+{
 public:
     static void start();
     static void stop();
