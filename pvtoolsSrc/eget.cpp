@@ -3,7 +3,6 @@
 #endif
 
 #include <iostream>
-#include <pv/clientFactory.h>
 #include <pv/pvAccess.h>
 
 #include <pv/caProvider.h>
@@ -1096,11 +1095,6 @@ public:
         return "ChannelGetRequesterImpl";
     }
 
-    virtual void message(std::string const & message, MessageType messageType)
-    {
-        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
-    }
-
     virtual void channelGetConnect(const epics::pvData::Status& status,
                                    ChannelGet::shared_pointer const & channelGet,
                                    epics::pvData::Structure::const_shared_pointer const & /*structure*/)
@@ -1202,11 +1196,6 @@ public:
     virtual string getRequesterName()
     {
         return "ChannelRPCRequesterImpl";
-    }
-
-    virtual void message(std::string const & message, MessageType messageType)
-    {
-        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelRPCConnect(const epics::pvData::Status& status, ChannelRPC::shared_pointer const & /*channelRPC*/)
@@ -1323,11 +1312,6 @@ public:
     virtual string getRequesterName()
     {
         return "MonitorRequesterImpl";
-    };
-
-    virtual void message(std::string const & message,MessageType messageType)
-    {
-        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, StructureConstPtr const & /*structure*/)
@@ -1353,6 +1337,13 @@ public:
         {
             std::cerr << "monitorConnect(" << dump_stack_only_on_debug(status) << ")" << std::endl;
         }
+    }
+
+    virtual void channelDisconnect(bool destroy)
+    {
+        if(!destroy)
+            std::cerr << std::setw(30) << std::left << m_channelName
+                      << ' ' << "*** disconnected" << std::endl;
     }
 
     virtual void monitorEvent(Monitor::shared_pointer const & monitor)
@@ -1464,7 +1455,6 @@ int main (int argc, char *argv[])
     //string urlEncodedRequest;
     vector< pair<string,string> > parameters;
     bool monitor = false;
-    bool quiet = false;
     string defaultProvider = DEFAULT_PROVIDER;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
@@ -1578,7 +1568,6 @@ int main (int argc, char *argv[])
 
             break;
         case 'q':               /* Quiet mode */
-            quiet = true;
             break;
         case 'd':               /* Debug log level */
             debug = true;
@@ -1664,8 +1653,6 @@ int main (int argc, char *argv[])
 
     bool allOK = true;
 
-    Requester::shared_pointer requester(new RequesterImpl("eget"));
-
     // parse URI
     // try to parse as URI if only one nPvs
     URI uri;
@@ -1682,14 +1669,16 @@ int main (int argc, char *argv[])
         serviceRequest = true;
     }
 
-    static string noAddress;
+    // register "ca" provider
+    epics::pvAccess::ca::CAClientFactory::start();
 
     // PVs mode
     if (!serviceRequest)
     {
         vector<string> pvs;
         vector<string> pvsAddress;
-        vector<string> providerNames;
+        vector<ChannelProvider::shared_pointer> providers;
+        vector<epics::pvAccess::Destroyable::shared_pointer> operations;
 
         if (validURI)
         {
@@ -1713,26 +1702,38 @@ int main (int argc, char *argv[])
             // skip trailing '/'
             pvs.push_back(uri.path.substr(1));
             pvsAddress.push_back(uri.host);
-            providerNames.push_back(uri.protocol);
+            providers.push_back(ChannelProviderRegistry::clients()->getProvider(uri.protocol));
+            if(!providers.back()) {
+                std::cerr<<"Unknown provider \""<<uri.protocol<<"\" for \""<<pvs.back()<<"\n";
+                allOK = false;
+            }
         }
         else
         {
-            for (int n = 0; optind < argc; n++, optind++)
+            std::vector<std::string> uris;
+
+            if(!fromStream) {
+                for (int n = 0; optind < argc; n++, optind++)
+                {
+                    uris.push_back(argv[optind]);
+                }
+            } else {
+                string cn;
+                while (true)
+                {
+                    *inputStream >> cn;
+                    if (!(*inputStream))
+                        break;
+                    uris.push_back(cn);
+                }
+            }
+
+            for (size_t n = 0; n<uris.size(); n++)
             {
                 URI uri;
-                bool validURI = URI::parse(argv[optind], uri);
+                bool validURI = URI::parse(uris[n], uri);
                 if (validURI)
                 {
-                    // TODO this is copy&pase code from above, clean it up
-                    // for now no only pva/ca schema is supported, without authority
-                    // TODO
-                    if (uri.protocol != "pva" && uri.protocol != "ca")
-                    {
-                        std::cerr << "invalid URI scheme '" << uri.protocol << "', only 'pva' and 'ca' are supported" << std::endl;
-                        // TODO
-                        return 1;
-                    }
-
                     if (uri.path.length() <= 1)
                     {
                         std::cerr << "invalid URI, empty path" << std::endl;
@@ -1743,16 +1744,24 @@ int main (int argc, char *argv[])
                     // skip trailing '/'
                     pvs.push_back(uri.path.substr(1));
                     pvsAddress.push_back(uri.host);
-                    providerNames.push_back(uri.protocol);
+                    providers.push_back(ChannelProviderRegistry::clients()->getProvider(uri.protocol));
                 }
                 else
                 {
-                    pvs.push_back(argv[optind]);
-                    pvsAddress.push_back(noAddress);
-                    providerNames.push_back(defaultProvider);
+                    uri.protocol = defaultProvider;
+                    pvs.push_back(uris[n]);
+                    pvsAddress.push_back(std::string());
+                    providers.push_back(ChannelProviderRegistry::clients()->getProvider(defaultProvider));
+                }
+
+                if(!providers.back()) {
+                    std::cerr<<"Unknown provider \""<<uri.protocol<<"\" for \""<<pvs.back()<<"\"\n";
+                    allOK = false;
                 }
             }
         }
+
+        nPvs = pvs.size();
 
         PVStructure::shared_pointer pvRequest =
             CreateRequest::create()->createRequest(request);
@@ -1761,20 +1770,17 @@ int main (int argc, char *argv[])
             return 1;
         }
 
-        // register "pva" and "ca" providers
-        ClientFactory::start();
-        epics::pvAccess::ca::CAClientFactory::start();
-
         // first connect to all, this allows resource (e.g. TCP connection) sharing
         vector<Channel::shared_pointer> channels(nPvs);
         for (int n = 0; n < nPvs; n++)
         {
-            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
-            if (pvsAddress[n].empty())
-                channels[n] = getChannelProviderRegistry()->getProvider(providerNames[n])->createChannel(pvs[n], channelRequesterImpl);
-            else
-                channels[n] = getChannelProviderRegistry()->getProvider(providerNames[n])->createChannel(pvs[n], channelRequesterImpl,
-                              ChannelProvider::PRIORITY_DEFAULT, pvsAddress[n]);
+            if(!providers[n]) continue;
+            channels[n] = providers[n]->createChannel(pvs[n], DefaultChannelRequester::build(),
+                                                      ChannelProvider::PRIORITY_DEFAULT, pvsAddress[n]);
+
+            if(!channels[n]) {
+                std::cerr<<"No such channel '"<<pvs[n]<<"'\n";
+            }
         }
 
         // TODO maybe unify for nPvs == 1?!
@@ -1790,160 +1796,74 @@ int main (int argc, char *argv[])
         }
 
         // for now a simple iterating sync implementation, guarantees order
-        int n = -1;
-        while (true)
+        for (int n = 0; n < nPvs; n++)
         {
-            Channel::shared_pointer channel;
+            Channel::shared_pointer channel(channels[n]);
 
-            if (!fromStream)
-            {
-                if (++n >= nPvs)
-                    break;
-                channel = channels[n];
-            }
-            else
-            {
-                string cn;
-                string ca;
-                string cp;
-
-                // read next channel name from stream
-                *inputStream >> cn;
-                if (!(*inputStream))
-                    break;
-
-                URI uri;
-                bool validURI = URI::parse(cn.c_str(), uri);
-                if (validURI)
-                {
-                    // TODO this is copy&pase code from above, clean it up
-                    // for now no only pva/ca schema is supported, without authority
-                    // TODO
-                    if (uri.protocol != "pva" && uri.protocol != "ca")
-                    {
-                        std::cerr << "invalid URI scheme '" << uri.protocol << "', only 'pva' and 'ca' are supported" << std::endl;
-                        // TODO
-                        return 1;
-                    }
-
-                    if (uri.path.length() <= 1)
-                    {
-                        std::cerr << "invalid URI, empty path" << std::endl;
-                        // TODO
-                        return 1;
-                    }
-
-                    // skip trailing '/'
-                    cn = uri.path.substr(1);
-                    ca = uri.host;
-                    cp = uri.protocol;
-                }
-                else
-                {
-                    // leave cn as it is, use default provider
-                    ca = noAddress;
-                    cp = defaultProvider;
-                }
-
-
-
-                TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
-                if (ca.empty())
-                    channel = getChannelProviderRegistry()->getProvider(cp)->createChannel(cn, channelRequesterImpl);
-                else
-                    channel = getChannelProviderRegistry()->getProvider(cp)->createChannel(cn, channelRequesterImpl,
-                              ChannelProvider::PRIORITY_DEFAULT, ca);
+            if(!channel) {
+                allOK = false;
+                continue;
             }
 
             if (monitor)
             {
-                TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
-                channelRequesterImpl->showDisconnectMessage();
-
-                // TODO remove this line, when CA provider will allow creation of monitors
-                // when channels is yet not connected
-                if (channelRequesterImpl->waitUntilConnected(timeOut))
-                {
-                    TR1::shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
-                    channel->createMonitor(monitorRequesterImpl, pvRequest);
-                }
-                else
-                {
-                    allOK = false;
-                    channel->destroy();
-                    std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
-                }
+                TR1::shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
+                operations.push_back(channel->createMonitor(monitorRequesterImpl, pvRequest));
             }
             else
             {
-                /*
-                TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
-                Channel::shared_pointer channel = provider->createChannel(pvs[n], channelRequesterImpl);
-                */
+                TR1::shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl;
 
-                TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
-
-                if (channelRequesterImpl->waitUntilConnected(timeOut))
+                // probe for value field
+                // but only if there is only one PV request (otherwise mode change makes a mess)
+                if (mode == ValueOnlyMode && nPvs == 1)
                 {
-                    TR1::shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl;
+                    getFieldRequesterImpl.reset(new GetFieldRequesterImpl(channel));
+                    // get all to be immune to bad clients not supporting selective getField request
+                    channel->getField(getFieldRequesterImpl, "");
+                }
 
-                    // probe for value field
-                    // but only if there is only one PV request (otherwise mode change makes a mess)
-                    if (mode == ValueOnlyMode && nPvs == 1)
+                if (getFieldRequesterImpl.get() == 0 ||
+                        getFieldRequesterImpl->waitUntilFieldGet(timeOut))
+                {
+                    // check probe
+                    if (getFieldRequesterImpl.get())
                     {
-                        getFieldRequesterImpl.reset(new GetFieldRequesterImpl(channel));
-                        // get all to be immune to bad clients not supporting selective getField request
-                        channel->getField(getFieldRequesterImpl, "");
-                    }
-
-                    if (getFieldRequesterImpl.get() == 0 ||
-                            getFieldRequesterImpl->waitUntilFieldGet(timeOut))
-                    {
-                        // check probe
-                        if (getFieldRequesterImpl.get())
+                        Structure::const_shared_pointer structure =
+                            TR1::dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
+                        if (structure.get() == 0 || structure->getField("value").get() == 0)
                         {
-                            Structure::const_shared_pointer structure =
-                                TR1::dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
-                            if (structure.get() == 0 || structure->getField("value").get() == 0)
-                            {
-                                // fallback to structure
-                                mode = StructureMode;
-                                pvRequest = CreateRequest::create()->createRequest("field()");
-                            }
-                        }
-
-                        TR1::shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(
-                            new ChannelGetRequesterImpl(channel->getChannelName(), false)
-                        );
-                        ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
-                        bool ok = getRequesterImpl->waitUntilGet(timeOut);
-                        allOK &= ok;
-                        if (ok)
-                        {
-                            if (collectValues)
-                            {
-                                collectedValues.push_back(getRequesterImpl->getPVStructure());
-                                collectedNames.push_back(channel->getChannelName());
-                            }
-                            else
-                            {
-                                // print immediately
-                                printValue(channel->getChannelName(), getRequesterImpl->getPVStructure(), fromStream);
-                            }
+                            // fallback to structure
+                            mode = StructureMode;
+                            pvRequest = CreateRequest::create()->createRequest("field()");
                         }
                     }
-                    else
+
+                    TR1::shared_ptr<ChannelGetRequesterImpl> getRequesterImpl(
+                        new ChannelGetRequesterImpl(channel->getChannelName(), false)
+                    );
+                    ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
+                    bool ok = getRequesterImpl->waitUntilGet(timeOut);
+                    allOK &= ok;
+                    if (ok)
                     {
-                        allOK = false;
-                        channel->destroy();
-                        std::cerr << "[" << channel->getChannelName() << "] failed to get channel introspection data" << std::endl;
+                        if (collectValues)
+                        {
+                            collectedValues.push_back(getRequesterImpl->getPVStructure());
+                            collectedNames.push_back(channel->getChannelName());
+                        }
+                        else
+                        {
+                            // print immediately
+                            printValue(channel->getChannelName(), getRequesterImpl->getPVStructure(), fromStream);
+                        }
                     }
                 }
                 else
                 {
                     allOK = false;
                     channel->destroy();
-                    std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
+                    std::cerr << "[" << channel->getChannelName() << "] failed to get channel introspection data" << std::endl;
                 }
             }
         }
@@ -1956,9 +1876,6 @@ int main (int argc, char *argv[])
             while (true)
                 epicsThreadSleep(timeOut);
         }
-
-        epics::pvAccess::ca::CAClientFactory::stop();
-        ClientFactory::stop();
     }
     // service RPC mode
     else
@@ -2098,58 +2015,45 @@ int main (int argc, char *argv[])
         }
 
 
-        ClientFactory::start();
-        ChannelProvider::shared_pointer provider = getChannelProviderRegistry()->getProvider("pva");
+        ChannelProvider::shared_pointer provider = ChannelProviderRegistry::clients()->getProvider("pva");
+        assert(provider);
 
-        TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
         Channel::shared_pointer channel =
-            authority.empty() ?
-            provider->createChannel(service, channelRequesterImpl) :
-            provider->createChannel(service, channelRequesterImpl,
+            provider->createChannel(service, DefaultChannelRequester::build(),
                                     ChannelProvider::PRIORITY_DEFAULT, authority);
 
-        if (channelRequesterImpl->waitUntilConnected(timeOut))
-        {
-            TR1::shared_ptr<ChannelRPCRequesterImpl> rpcRequesterImpl(new ChannelRPCRequesterImpl(channel->getChannelName()));
-            ChannelRPC::shared_pointer channelRPC = channel->createChannelRPC(rpcRequesterImpl, pvRequest);
+        TR1::shared_ptr<ChannelRPCRequesterImpl> rpcRequesterImpl(new ChannelRPCRequesterImpl(channel->getChannelName()));
+        ChannelRPC::shared_pointer channelRPC = channel->createChannelRPC(rpcRequesterImpl, pvRequest);
 
-            if (rpcRequesterImpl->waitUntilConnected(timeOut))
+        if (rpcRequesterImpl->waitUntilConnected(timeOut))
+        {
+            channelRPC->lastRequest();
+            channelRPC->request(arg);
+            allOK &= rpcRequesterImpl->waitUntilRPC(timeOut);
+            if (allOK)
             {
-                channelRPC->lastRequest();
-                channelRPC->request(arg);
-                allOK &= rpcRequesterImpl->waitUntilRPC(timeOut);
-                if (allOK)
+                if (dumpStructure)
                 {
-                    if (dumpStructure)
-                    {
-                        if (rpcRequesterImpl->getLastResponse().get() == 0)
-                            std::cout << "(null)" << std::endl;
-                        else
-                        {
-                            //std::cout << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
-                            pvutil_ostream myos(std::cout.rdbuf());
-                            myos << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
-                        }
-                    }
+                    if (rpcRequesterImpl->getLastResponse().get() == 0)
+                        std::cout << "(null)" << std::endl;
                     else
-                        formatNT(std::cout, rpcRequesterImpl->getLastResponse());
-                    std::cout << std::endl;
+                    {
+                        //std::cout << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
+                        pvutil_ostream myos(std::cout.rdbuf());
+                        myos << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
+                    }
                 }
-            }
-            else
-            {
-                allOK = false;
+                else
+                    formatNT(std::cout, rpcRequesterImpl->getLastResponse());
+                std::cout << std::endl;
             }
         }
         else
         {
             allOK = false;
-            std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
         }
 
         channel->destroy();
-
-        ClientFactory::stop();
     }
 
     if (cleanupAndReport)

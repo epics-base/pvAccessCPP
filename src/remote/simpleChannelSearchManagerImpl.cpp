@@ -134,27 +134,30 @@ void SimpleChannelSearchManagerImpl::unregisterSearchInstance(SearchInstance::sh
 {
     Lock guard(m_channelMutex);
     pvAccessID id = channel->getSearchInstanceID();
-    std::map<pvAccessID,SearchInstance::shared_pointer>::iterator channelsIter = m_channels.find(id);
+    m_channels_t::iterator channelsIter = m_channels.find(id);
     if(channelsIter != m_channels.end())
         m_channels.erase(id);
 }
 
-void SimpleChannelSearchManagerImpl::searchResponse(const GUID & guid, pvAccessID cid, int32_t /*seqNo*/, int8_t minorRevision, osiSockAddr* serverAddress)
+void SimpleChannelSearchManagerImpl::searchResponse(const ServerGUID & guid, pvAccessID cid, int32_t /*seqNo*/, int8_t minorRevision, osiSockAddr* serverAddress)
 {
     Lock guard(m_channelMutex);
-    std::map<pvAccessID,SearchInstance::shared_pointer>::iterator channelsIter = m_channels.find(cid);
+    m_channels_t::iterator channelsIter = m_channels.find(cid);
     if(channelsIter == m_channels.end())
     {
         guard.unlock();
+        Context::shared_pointer ctxt(m_context.lock());
+        // TODO: proper action if !ctxt???
+        if(!ctxt) return;
 
         // enable duplicate reports
-        SearchInstance::shared_pointer si = std::tr1::dynamic_pointer_cast<SearchInstance>(m_context.lock()->getChannel(cid));
+        SearchInstance::shared_pointer si = std::tr1::dynamic_pointer_cast<SearchInstance>(ctxt->getChannel(cid));
         if (si)
             si->searchResponse(guid, minorRevision, serverAddress);
     }
     else
     {
-        SearchInstance::shared_pointer si = channelsIter->second;
+        SearchInstance::shared_pointer si(channelsIter->second.lock());
 
         // remove from search list
         m_channels.erase(cid);
@@ -162,7 +165,8 @@ void SimpleChannelSearchManagerImpl::searchResponse(const GUID & guid, pvAccessI
         guard.unlock();
 
         // then notify SearchInstance
-        si->searchResponse(guid, minorRevision, serverAddress);
+        if(si)
+            si->searchResponse(guid, minorRevision, serverAddress);
     }
 }
 
@@ -275,10 +279,12 @@ void SimpleChannelSearchManagerImpl::boost()
 {
     Lock guard(m_channelMutex);
     Lock guard2(m_userValueMutex);
-    std::map<pvAccessID,SearchInstance::shared_pointer>::iterator channelsIter = m_channels.begin();
+    m_channels_t::iterator channelsIter = m_channels.begin();
     for(; channelsIter != m_channels.end(); channelsIter++)
     {
-        int32_t& userValue = channelsIter->second->getUserValue();
+        SearchInstance::shared_pointer inst(channelsIter->second.lock());
+        if(!inst) continue;
+        int32_t& userValue = inst->getUserValue();
         userValue = BOOST_VALUE;
     }
 }
@@ -306,9 +312,14 @@ void SimpleChannelSearchManagerImpl::callback()
     {
         Lock guard(m_channelMutex);
         toSend.reserve(m_channels.size());
-        std::map<pvAccessID,SearchInstance::shared_pointer>::iterator channelsIter = m_channels.begin();
-        for(; channelsIter != m_channels.end(); channelsIter++)
-            toSend.push_back(channelsIter->second);
+
+        for(m_channels_t::iterator channelsIter = m_channels.begin();
+            channelsIter != m_channels.end(); channelsIter++)
+        {
+            SearchInstance::shared_pointer inst(channelsIter->second.lock());
+            if(!inst) continue;
+            toSend.push_back(inst);
+        }
     }
 
     vector<SearchInstance::shared_pointer>::iterator siter = toSend.begin();

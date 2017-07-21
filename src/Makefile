@@ -3,11 +3,6 @@
 TOP = ..
 include $(TOP)/configure/CONFIG
 
-EPICS_PVA_MAJOR_VERSION = 5
-EPICS_PVA_MINOR_VERSION = 0
-EPICS_PVA_MAINTENANCE_VERSION = 1
-EPICS_PVA_DEVELOPMENT_FLAG = 1
-
 EXPANDVARS += EPICS_PVA_MAJOR_VERSION
 EXPANDVARS += EPICS_PVA_MINOR_VERSION
 EXPANDVARS += EPICS_PVA_MAINTENANCE_VERSION
@@ -27,23 +22,18 @@ include $(PVACCESS_SRC)/server/Makefile
 include $(PVACCESS_SRC)/rpcService/Makefile
 include $(PVACCESS_SRC)/rpcClient/Makefile
 include $(PVACCESS_SRC)/pipelineService/Makefile
-include $(PVACCESS_SRC)/ca/Makefile
 include $(PVACCESS_SRC)/mb/Makefile
-include $(PVACCESS_SRC)/ioc/Makefile
 
-LIBRARY = pvAccess
-
-SHRLIB_VERSION = $(EPICS_PVA_MAJOR_VERSION).$(EPICS_PVA_MINOR_VERSION).$(EPICS_PVA_MAINTENANCE_VERSION)
+LIBRARY += pvAccess
 
 pvAccess_LIBS += pvData
 ifdef WITH_MICROBENCH
-  pvAccess_LIBS += pvMB
+  LIB_LIBS += pvMB
 endif
-pvAccess_LIBS += ca
-pvAccess_LIBS += Com
+LIB_LIBS += Com
 
 # needed for Windows
-pvAccess_SYS_LIBS_WIN32 += ws2_32
+LIB_SYS_LIBS_WIN32 += ws2_32
 
 include $(TOP)/configure/RULES
 

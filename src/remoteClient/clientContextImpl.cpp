@@ -13,7 +13,6 @@
 #include <pv/lock.h>
 #include <pv/timer.h>
 #include <pv/bitSetUtil.h>
-#include <pv/queue.h>
 #include <pv/standardPVField.h>
 
 #define epicsExportSharedSymbols
@@ -32,7 +31,7 @@
 #include <pv/configuration.h>
 #include <pv/beaconHandler.h>
 #include <pv/logger.h>
-#include <pv/security.h>
+#include <pv/securityImpl.h>
 
 #include <pv/pvAccessMB.h>
 
@@ -47,12 +46,17 @@ using namespace epics::pvData;
 namespace epics {
 namespace pvAccess {
 
-string ClientContextImpl::PROVIDER_NAME = "pva";
 Status ChannelImpl::channelDestroyed(
     Status::STATUSTYPE_WARNING, "channel destroyed");
 Status ChannelImpl::channelDisconnected(
     Status::STATUSTYPE_WARNING, "channel disconnected");
 string emptyString;
+
+}}
+namespace {
+using namespace epics::pvAccess;
+
+class ChannelGetFieldRequestImpl;
 
 // TODO consider std::unordered_map
 //typedef std::tr1::unordered_map<pvAccessID, ResponseRequest::weak_pointer> IOIDResponseRequestMap;
@@ -63,26 +67,9 @@ typedef std::map<pvAccessID, ResponseRequest::weak_pointer> IOIDResponseRequestM
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
 
-struct delayed_destroyable_deleter
-{
-    template<class T> void operator()(T * p)
-    {
-        try
-        {
-            // new owner, this also allows to use shared_from_this() in destroy() method
-            std::tr1::shared_ptr<T> ptr(p);
-            ptr->destroy();
-        }
-        catch(std::exception &ex)
-        {
-            printf("delayed_destroyable_deleter: unhandled exception: %s", ex.what());
-        }
-        catch(...)
-        {
-            printf("delayed_destroyable_deleter: unhandled exception");
-        }
-    }
-};
+#define EXCEPTION_GUARD3(WEAK, PTR, code) {requester_type::shared_pointer PTR((WEAK).lock()); if(PTR) try { code; } \
+        catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
+                catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }}
 
 /**
  * Base channel request.
@@ -92,12 +79,10 @@ class BaseRequestImpl :
     public DataResponse,
     public SubscriptionRequest,
     public TransportSender,
-    public Destroyable,
-    public std::tr1::enable_shared_from_this<BaseRequestImpl>
+    public virtual epics::pvAccess::Destroyable
 {
 public:
-    typedef std::tr1::shared_ptr<BaseRequestImpl> shared_pointer;
-    typedef std::tr1::shared_ptr<const BaseRequestImpl> const_shared_pointer;
+    POINTER_DEFINITIONS(BaseRequestImpl);
 
     static PVDataCreatePtr pvDataCreate;
 
@@ -110,10 +95,6 @@ public:
     static Status invalidPutArrayStatus;
     static Status invalidBitSetLengthStatus;
     static Status pvRequestNull;
-
-    static PVStructure::shared_pointer nullPVStructure;
-    static Structure::const_shared_pointer nullStructure;
-    static BitSet::shared_pointer nullBitSet;
 
     static BitSet::shared_pointer createBitSetFor(
         PVStructure::shared_pointer const & pvStructure,
@@ -145,8 +126,6 @@ protected:
 
     ChannelImpl::shared_pointer m_channel;
 
-    Requester::shared_pointer m_requester;
-
     /* negative... */
     static const int NULL_REQUEST = -1;
     static const int PURE_DESTROY_REQUEST = -2;
@@ -158,9 +137,52 @@ protected:
 
     Mutex m_mutex;
 
-    // used to hold ownership until create is called (to support complete async usage)
-    ResponseRequest::shared_pointer m_thisPointer;
+    /* ownership here is a bit complicated...
+     *
+     * each instance maintains two shared_ptr/weak_ptr
+     * 1. internal - calls 'delete' when ref count reaches zero
+     * 2. external - wraps 'internal' ref.  calls ->destroy() and releases internal ref. when ref count reaches zero
+     *
+     * Any internal ref. loops must be broken by destroy()
+     *
+     * Only external refs. are returned by Channel::create*() or passed to *Requester methods.
+     *
+     * Internal refs. are held by internal relations which need to ensure memory is not
+     * prematurely free'd, but should not keep the channel/operation "alive".
+     * eg. A Channel holds an internal ref to ChannelGet
+     */
+    const BaseRequestImpl::weak_pointer m_this_internal,
+                                        m_this_external;
 
+    template<class subklass>
+    std::tr1::shared_ptr<subklass> internal_from_this() {
+        ResponseRequest::shared_pointer P(m_this_internal);
+        return std::tr1::static_pointer_cast<subklass>(P);
+    }
+    template<class subklass>
+    std::tr1::shared_ptr<subklass> external_from_this() {
+        ResponseRequest::shared_pointer P(m_this_external);
+        return std::tr1::static_pointer_cast<subklass>(P);
+    }
+public:
+    template<class subklass>
+    static
+    typename std::tr1::shared_ptr<subklass>
+    build(ChannelImpl::shared_pointer const & channel,
+                 const typename subklass::requester_type::shared_pointer& requester,
+                 const epics::pvData::PVStructure::shared_pointer& pvRequest)
+    {
+        std::tr1::shared_ptr<subklass> internal(new subklass(channel, requester, pvRequest)),
+                                       external(internal.get(),
+                                                epics::pvAccess::Destroyable::cleaner(internal));
+        // only we get to set these, but since this isn't the ctor, we aren't able to
+        // follow the rules.
+        const_cast<BaseRequestImpl::weak_pointer&>(internal->m_this_internal) = internal;
+        const_cast<BaseRequestImpl::weak_pointer&>(internal->m_this_external) = external;
+        internal->activate();
+        return external;
+    }
+protected:
     bool m_destroyed;
     bool m_initialized;
 
@@ -168,25 +190,23 @@ protected:
 
     AtomicBoolean m_subscribed;
 
-    virtual ~BaseRequestImpl() {};
-
-    BaseRequestImpl(ChannelImpl::shared_pointer const & channel, Requester::shared_pointer const & requester) :
+    BaseRequestImpl(ChannelImpl::shared_pointer const & channel) :
         m_channel(channel),
-        m_requester(requester),
         m_ioid(INVALID_IOID),
         m_pendingRequest(NULL_REQUEST),
         m_destroyed(false),
         m_initialized(false),
         m_subscribed()
-    {
-    }
+    {}
 
-    void activate() {
+    virtual ~BaseRequestImpl() {}
+
+    virtual void activate() {
         // register response request
         // ResponseRequest::shared_pointer to this instance must already exist
-        m_thisPointer = shared_from_this();
-        m_ioid = m_channel->getContext()->registerResponseRequest(m_thisPointer);
-        m_channel->registerResponseRequest(m_thisPointer);
+        shared_pointer self(m_this_internal);
+        m_ioid = m_channel->getContext()->registerResponseRequest(self);
+        m_channel->registerResponseRequest(self);
     }
 
     bool startRequest(int32 qos) {
@@ -212,19 +232,14 @@ protected:
 
 public:
 
-    // used to send message to this request
-    Requester::shared_pointer getRequester() {
-        return m_requester;
-    }
-
-    pvAccessID getIOID() const {
+    pvAccessID getIOID() const OVERRIDE FINAL {
         return m_ioid;
     }
 
     virtual void initResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) = 0;
     virtual void normalResponse(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer, int8 qos, const Status& status) = 0;
 
-    virtual void response(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer) {
+    virtual void response(Transport::shared_pointer const & transport, int8 version, ByteBuffer* payloadBuffer) OVERRIDE {
         transport->ensureData(1);
         int8 qos = payloadBuffer->getByte();
 
@@ -242,10 +257,6 @@ public:
                     m_initialized = true;
                     m_mutex.unlock();
                 }
-
-                // we are initialized now, release pointer
-                // this is safe since at least caller owns it
-                m_thisPointer.reset();
 
                 initResponse(transport, version, payloadBuffer, qos, status);
             }
@@ -275,7 +286,7 @@ public:
         }
     }
 
-    virtual void cancel() {
+    virtual void cancel() OVERRIDE {
 
         {
             Lock guard(m_mutex);
@@ -286,7 +297,7 @@ public:
         try
         {
             startRequest(PURE_CANCEL_REQUEST);
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<BaseRequestImpl>());
         } catch (std::exception& e) {
             // noop (do not complain if fails)
             LOG(logLevelWarn, "Ignore exception during ChanneGet::cancel: %s", e.what());
@@ -298,7 +309,7 @@ public:
         return m_channel;
     }
 
-    virtual void destroy() {
+    virtual void destroy() OVERRIDE {
         destroy(false);
     }
 
@@ -325,29 +336,26 @@ public:
             try
             {
                 startRequest(PURE_DESTROY_REQUEST);
-                m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+                m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<BaseRequestImpl>());
+            } catch (std::runtime_error& e) {
+                // assume from checkAndGetTransport() due to wrong channel state
             } catch (std::exception& e) {
-                // noop (do not complain if fails)
                 LOG(logLevelWarn, "Ignore exception during BaseRequestImpl::destroy: %s", e.what());
             }
 
         }
-
-        // in case this instance is destroyed uninitialized
-        m_thisPointer.reset();
     }
 
-    virtual void timeout() {
+    virtual void timeout() OVERRIDE FINAL {
         cancel();
         // TODO notify?
     }
 
-    void reportStatus(const Status& status) {
+    void reportStatus(Channel::ConnectionState status) OVERRIDE FINAL {
         // destroy, since channel (parent) was destroyed
-        // NOTE: by-ref compare, not nice
-        if (&status == &ChannelImpl::channelDestroyed)
+        if (status == Channel::DESTROYED)
             destroy();
-        else if (&status == &ChannelImpl::channelDisconnected)
+        else if (status == Channel::DISCONNECTED)
         {
             m_subscribed.clear();
             stopRequest();
@@ -355,19 +363,19 @@ public:
         // TODO notify?
     }
 
-    virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
+    virtual void resubscribeSubscription(Transport::shared_pointer const & transport) OVERRIDE {
         if (transport.get() != 0 && !m_subscribed.get() && startRequest(QOS_INIT))
         {
             m_subscribed.set();
-            transport->enqueueSendRequest(shared_from_this());
+            transport->enqueueSendRequest(internal_from_this<BaseRequestImpl>());
         }
     }
 
-    virtual void updateSubscription() {
+    virtual void updateSubscription() OVERRIDE FINAL {
         // default is noop
     }
 
-    virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+    virtual void send(ByteBuffer* buffer, TransportSendControl* control) OVERRIDE {
         int8 qos = getPendingRequest();
         if (qos == -1)
             return;
@@ -402,29 +410,25 @@ Status BaseRequestImpl::invalidPutArrayStatus(Status::STATUSTYPE_ERROR, "incompa
 Status BaseRequestImpl::invalidBitSetLengthStatus(Status::STATUSTYPE_ERROR, "invalid bit-set length");
 Status BaseRequestImpl::pvRequestNull(Status::STATUSTYPE_ERROR, "pvRequest == 0");
 
-PVStructure::shared_pointer BaseRequestImpl::nullPVStructure;
-Structure::const_shared_pointer BaseRequestImpl::nullStructure;
-BitSet::shared_pointer BaseRequestImpl::nullBitSet;
-
 PVACCESS_REFCOUNT_MONITOR_DEFINE(channelProcess);
 
 class ChannelProcessRequestImpl :
     public BaseRequestImpl,
     public ChannelProcess
 {
-private:
-    ChannelProcessRequester::shared_pointer m_callback;
+public:
+    requester_type::weak_pointer m_callback;
     PVStructure::shared_pointer m_pvRequest;
 
     ChannelProcessRequestImpl(ChannelImpl::shared_pointer const & channel, ChannelProcessRequester::shared_pointer const & callback, PVStructure::shared_pointer const & pvRequest) :
-        BaseRequestImpl(channel, callback),
+        BaseRequestImpl(channel),
         m_callback(callback),
         m_pvRequest(pvRequest)
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelProcess);
     }
 
-    void activate()
+    virtual void activate() OVERRIDE FINAL
     {
         BaseRequestImpl::activate();
 
@@ -435,23 +439,9 @@ private:
         try {
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
         } catch (std::runtime_error &rte) {
-            ChannelProcess::shared_pointer thisPointer = dynamic_pointer_cast<ChannelProcess>(shared_from_this());
-            EXCEPTION_GUARD(m_callback->channelProcessConnect(channelDestroyed, thisPointer));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelProcessConnect(channelDestroyed, external_from_this<ChannelProcessRequestImpl>()));
             BaseRequestImpl::destroy(true);
         }
-    }
-
-public:
-    static ChannelProcess::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelProcessRequester::shared_pointer const & callback, PVStructure::shared_pointer const & pvRequest)
-    {
-        // TODO use std::make_shared
-        std::tr1::shared_ptr<ChannelProcessRequestImpl> tp(
-            new ChannelProcessRequestImpl(channel, callback, pvRequest),
-            delayed_destroyable_deleter()
-        );
-        ChannelProcess::shared_pointer thisPointer = tp;
-        static_cast<ChannelProcessRequestImpl*>(thisPointer.get())->activate();
-        return thisPointer;
     }
 
     ~ChannelProcessRequestImpl()
@@ -459,7 +449,9 @@ public:
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelProcess);
     }
 
-    virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+    ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
+
+    virtual void send(ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
         int32 pendingRequest = getPendingRequest();
         if (pendingRequest < 0)
         {
@@ -481,71 +473,61 @@ public:
         stopRequest();
     }
 
-    virtual void initResponse(Transport::shared_pointer const & /*transport*/, int8 /*version*/, ByteBuffer* /*payloadBuffer*/, int8 /*qos*/, const Status& status) {
-        ChannelProcess::shared_pointer thisPtr = dynamic_pointer_cast<ChannelProcess>(shared_from_this());
-        EXCEPTION_GUARD(m_callback->channelProcessConnect(status, thisPtr));
+    virtual void initResponse(Transport::shared_pointer const & /*transport*/, int8 /*version*/, ByteBuffer* /*payloadBuffer*/, int8 /*qos*/, const Status& status) OVERRIDE FINAL {
+        EXCEPTION_GUARD3(m_callback, cb, cb->channelProcessConnect(status, external_from_this<ChannelProcessRequestImpl>()));
     }
 
-    virtual void normalResponse(Transport::shared_pointer const & /*transport*/, int8 /*version*/, ByteBuffer* /*payloadBuffer*/, int8 /*qos*/, const Status& status) {
-        ChannelProcess::shared_pointer thisPtr = dynamic_pointer_cast<ChannelProcess>(shared_from_this());
-        EXCEPTION_GUARD(m_callback->processDone(status, thisPtr));
+    virtual void normalResponse(Transport::shared_pointer const & /*transport*/, int8 /*version*/, ByteBuffer* /*payloadBuffer*/, int8 /*qos*/, const Status& status) OVERRIDE FINAL {
+        EXCEPTION_GUARD3(m_callback, cb, cb->processDone(status, external_from_this<ChannelProcessRequestImpl>()));
     }
 
-    virtual void process()
+    virtual void process() OVERRIDE FINAL
     {
-        ChannelProcess::shared_pointer thisPtr = dynamic_pointer_cast<ChannelProcess>(shared_from_this());
+        ChannelProcess::shared_pointer thisPtr(external_from_this<ChannelProcessRequestImpl>());
 
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_callback->processDone(destroyedStatus, thisPtr));
+                EXCEPTION_GUARD3(m_callback, cb, cb->processDone(destroyedStatus, thisPtr));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_callback->processDone(notInitializedStatus, thisPtr));
+                EXCEPTION_GUARD3(m_callback, cb, cb->processDone(notInitializedStatus, thisPtr));
                 return;
             }
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY : QOS_DEFAULT)) {
-            EXCEPTION_GUARD(m_callback->processDone(otherRequestPendingStatus, thisPtr));
+            EXCEPTION_GUARD3(m_callback, cb, cb->processDone(otherRequestPendingStatus, thisPtr));
             return;
         }
 
         try {
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<BaseRequestImpl>());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_callback->processDone(channelNotConnected, thisPtr));
+            EXCEPTION_GUARD3(m_callback, cb, cb->processDone(channelNotConnected, thisPtr));
         }
     }
 
-    virtual Channel::shared_pointer getChannel()
+    virtual Channel::shared_pointer getChannel() OVERRIDE FINAL
     {
         return BaseRequestImpl::getChannel();
     }
 
-    virtual void cancel()
+    virtual void cancel() OVERRIDE FINAL
     {
         BaseRequestImpl::cancel();
     }
 
-    virtual void destroy()
+    virtual void destroy() OVERRIDE FINAL
     {
         BaseRequestImpl::destroy();
     }
 
-    virtual void lastRequest()
+    virtual void lastRequest() OVERRIDE FINAL
     {
         BaseRequestImpl::lastRequest();
-    }
-
-    virtual void lock() {
-        // noop
-    }
-
-    virtual void unlock() {
-        // noop
     }
 };
 
@@ -561,8 +543,8 @@ class ChannelGetImpl :
     public BaseRequestImpl,
     public ChannelGet
 {
-private:
-    ChannelGetRequester::shared_pointer m_channelGetRequester;
+public:
+    ChannelGetRequester::weak_pointer m_callback;
 
     PVStructure::shared_pointer m_pvRequest;
 
@@ -571,20 +553,21 @@ private:
 
     Mutex m_structureMutex;
 
-    ChannelGetImpl(ChannelImpl::shared_pointer const & channel, ChannelGetRequester::shared_pointer const & channelGetRequester, PVStructure::shared_pointer const & pvRequest) :
-        BaseRequestImpl(channel, channelGetRequester),
-        m_channelGetRequester(channelGetRequester),
+    ChannelGetImpl(ChannelImpl::shared_pointer const & channel,
+                   ChannelGetRequester::shared_pointer const & requester,
+                   PVStructure::shared_pointer const & pvRequest) :
+        BaseRequestImpl(channel),
+        m_callback(requester),
         m_pvRequest(pvRequest)
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelGet);
     }
 
-    void activate()
+    virtual void activate() OVERRIDE FINAL
     {
         if (!m_pvRequest)
         {
-            ChannelGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelGet>(shared_from_this());
-            EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(pvRequestNull, thisPointer, nullStructure));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelGetConnect(pvRequestNull, external_from_this<ChannelGetImpl>(), StructureConstPtr()));
             return;
         }
 
@@ -596,30 +579,19 @@ private:
         try {
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
         } catch (std::runtime_error &rte) {
-            ChannelGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelGet>(shared_from_this());
-            EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(channelDestroyed, thisPointer, nullStructure));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelGetConnect(channelDestroyed, external_from_this<ChannelGetImpl>(), StructureConstPtr()));
             BaseRequestImpl::destroy(true);
         }
     }
 
-public:
-    static ChannelGet::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelGetRequester::shared_pointer const & channelGetRequester, PVStructure::shared_pointer const & pvRequest)
-    {
-        // TODO use std::make_shared
-        std::tr1::shared_ptr<ChannelGetImpl> tp(
-            new ChannelGetImpl(channel, channelGetRequester, pvRequest),
-            delayed_destroyable_deleter());
-        ChannelGet::shared_pointer thisPointer = tp;
-        static_cast<ChannelGetImpl*>(thisPointer.get())->activate();
-        return thisPointer;
-    }
-
-    ~ChannelGetImpl()
+    virtual ~ChannelGetImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelGet);
     }
 
-    virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+    ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
+
+    virtual void send(ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
         int32 pendingRequest = getPendingRequest();
         bool initStage = ((pendingRequest & QOS_INIT) != 0);
 
@@ -647,11 +619,10 @@ public:
         stopRequest();
     }
 
-    virtual void initResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
+    virtual void initResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) OVERRIDE FINAL {
         if (!status.isSuccess())
         {
-            ChannelGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelGet>(shared_from_this());
-            EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(status, thisPointer, nullStructure));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelGetConnect(status, external_from_this<ChannelGetImpl>(), StructureConstPtr()));
             return;
         }
 
@@ -663,19 +634,16 @@ public:
         }
 
         // notify
-        ChannelGet::shared_pointer thisChannelGet = dynamic_pointer_cast<ChannelGet>(shared_from_this());
-        EXCEPTION_GUARD(m_channelGetRequester->channelGetConnect(status, thisChannelGet, m_structure->getStructure()));
+        EXCEPTION_GUARD3(m_callback, cb, cb->channelGetConnect(status, external_from_this<ChannelGetImpl>(), m_structure->getStructure()));
     }
 
-    virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
+    virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) OVERRIDE FINAL {
 
         MB_POINT(channelGet, 8, "client channelGet->deserialize (start)");
 
-        ChannelGet::shared_pointer thisPtr = dynamic_pointer_cast<ChannelGet>(shared_from_this());
-
         if (!status.isSuccess())
         {
-            EXCEPTION_GUARD(m_channelGetRequester->getDone(status, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getDone(status, external_from_this<ChannelGetImpl>(), PVStructurePtr(), BitSetPtr()));
             return;
         }
 
@@ -688,24 +656,24 @@ public:
 
         MB_POINT(channelGet, 9, "client channelGet->deserialize (end), just before channelGet->getDone() is called");
 
-        EXCEPTION_GUARD(m_channelGetRequester->getDone(status, thisPtr, m_structure, m_bitSet));
+        EXCEPTION_GUARD3(m_callback, cb, cb->getDone(status, external_from_this<ChannelGetImpl>(), m_structure, m_bitSet));
     }
 
-    virtual void get() {
+    virtual void get() OVERRIDE FINAL {
 
         MB_INC_AUTO_ID(channelGet);
         MB_POINT(channelGet, 0, "client channelGet->get()");
 
-        ChannelGet::shared_pointer thisPtr = dynamic_pointer_cast<ChannelGet>(shared_from_this());
+        ChannelGet::shared_pointer thisPtr(external_from_this<ChannelGetImpl>());
 
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_channelGetRequester->getDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD3(m_callback, cb, cb->getDone(destroyedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelGetRequester->getDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD3(m_callback, cb, cb->getDone(notInitializedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
         }
@@ -717,51 +685,51 @@ public:
                             m_channel->checkAndGetTransport()->flushSendQueue();
                         } catch (std::runtime_error &rte) {
                             stopRequest();
-                            EXCEPTION_GUARD(m_channelGetRequester->getDone(channelNotConnected, thisPtr));
+                            EXCEPTION_GUARD3(m_callback, cb, cb->getDone(channelNotConnected, thisPtr));
                         }
                         return;
                     }
           */
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_GET : QOS_DEFAULT)) {
-            EXCEPTION_GUARD(m_channelGetRequester->getDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getDone(otherRequestPendingStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
         try {
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelGetImpl>());
             //TODO bulk hack m_channel->checkAndGetTransport()->enqueueOnlySendRequest(thisSender);
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelGetRequester->getDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
     }
 
-    virtual Channel::shared_pointer getChannel()
+    virtual Channel::shared_pointer getChannel() OVERRIDE FINAL
     {
         return BaseRequestImpl::getChannel();
     }
 
-    virtual void cancel()
+    virtual void cancel() OVERRIDE FINAL
     {
         BaseRequestImpl::cancel();
     }
 
-    virtual void destroy()
+    virtual void destroy() OVERRIDE FINAL
     {
         BaseRequestImpl::destroy();
     }
 
-    virtual void lastRequest()
+    virtual void lastRequest() OVERRIDE FINAL
     {
         BaseRequestImpl::lastRequest();
     }
 
-    virtual void lock()
+    virtual void lock() OVERRIDE FINAL
     {
         m_structureMutex.lock();
     }
 
-    virtual void unlock()
+    virtual void unlock() OVERRIDE FINAL
     {
         m_structureMutex.unlock();
     }
@@ -783,8 +751,8 @@ class ChannelPutImpl :
     public BaseRequestImpl,
     public ChannelPut
 {
-private:
-    ChannelPutRequester::shared_pointer m_channelPutRequester;
+public:
+    ChannelPutRequester::weak_pointer m_callback;
 
     PVStructure::shared_pointer m_pvRequest;
 
@@ -793,20 +761,21 @@ private:
 
     Mutex m_structureMutex;
 
-    ChannelPutImpl(ChannelImpl::shared_pointer const & channel, ChannelPutRequester::shared_pointer const & channelPutRequester, PVStructure::shared_pointer const & pvRequest) :
-        BaseRequestImpl(channel, channelPutRequester),
-        m_channelPutRequester(channelPutRequester),
+    ChannelPutImpl(ChannelImpl::shared_pointer const & channel,
+                   ChannelPutRequester::shared_pointer const & requester,
+                   PVStructure::shared_pointer const & pvRequest) :
+        BaseRequestImpl(channel),
+        m_callback(requester),
         m_pvRequest(pvRequest)
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelPut);
     }
 
-    void activate()
+    virtual void activate() OVERRIDE FINAL
     {
         if (!m_pvRequest)
         {
-            ChannelPut::shared_pointer thisPointer = dynamic_pointer_cast<ChannelPut>(shared_from_this());
-            EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(pvRequestNull, thisPointer, nullStructure));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelPutConnect(pvRequestNull, external_from_this<ChannelPutImpl>(), StructureConstPtr()));
             return;
         }
 
@@ -818,30 +787,19 @@ private:
         try {
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
         } catch (std::runtime_error &rte) {
-            ChannelPut::shared_pointer thisPointer = dynamic_pointer_cast<ChannelPut>(shared_from_this());
-            EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(channelDestroyed, thisPointer, nullStructure));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelPutConnect(channelDestroyed, external_from_this<ChannelPutImpl>(), StructureConstPtr()));
             BaseRequestImpl::destroy(true);
         }
     }
 
-public:
-    static ChannelPut::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelPutRequester::shared_pointer const & channelPutRequester, PVStructure::shared_pointer const & pvRequest)
-    {
-        // TODO use std::make_shared
-        std::tr1::shared_ptr<ChannelPutImpl> tp(
-            new ChannelPutImpl(channel, channelPutRequester, pvRequest),
-            delayed_destroyable_deleter());
-        ChannelPut::shared_pointer thisPointer = tp;
-        static_cast<ChannelPutImpl*>(thisPointer.get())->activate();
-        return thisPointer;
-    }
-
-    ~ChannelPutImpl()
+    virtual ~ChannelPutImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelPut);
     }
 
-    virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+    ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
+
+    virtual void send(ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
         int32 pendingRequest = getPendingRequest();
         if (pendingRequest < 0)
         {
@@ -874,11 +832,10 @@ public:
         stopRequest();
     }
 
-    virtual void initResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
+    virtual void initResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) OVERRIDE FINAL {
         if (!status.isSuccess())
         {
-            ChannelPut::shared_pointer thisChannelPut = dynamic_pointer_cast<ChannelPut>(shared_from_this());
-            EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(status, thisChannelPut, nullStructure));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelPutConnect(status, external_from_this<ChannelPutImpl>(), StructureConstPtr()));
             return;
         }
 
@@ -890,19 +847,18 @@ public:
         }
 
         // notify
-        ChannelPut::shared_pointer thisChannelPut = dynamic_pointer_cast<ChannelPut>(shared_from_this());
-        EXCEPTION_GUARD(m_channelPutRequester->channelPutConnect(status, thisChannelPut, m_structure->getStructure()));
+        EXCEPTION_GUARD3(m_callback, cb, cb->channelPutConnect(status, external_from_this<ChannelPutImpl>(), m_structure->getStructure()));
     }
 
-    virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+    virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 qos, const Status& status) OVERRIDE FINAL {
 
-        ChannelPut::shared_pointer thisPtr = dynamic_pointer_cast<ChannelPut>(shared_from_this());
+        ChannelPut::shared_pointer thisPtr(external_from_this<ChannelPutImpl>());
 
         if (qos & QOS_GET)
         {
             if (!status.isSuccess())
             {
-                EXCEPTION_GUARD(m_channelPutRequester->getDone(status, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD3(m_callback, cb, cb->getDone(status, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
 
@@ -912,74 +868,74 @@ public:
                 m_structure->deserialize(payloadBuffer, transport.get(), m_bitSet.get());
             }
 
-            EXCEPTION_GUARD(m_channelPutRequester->getDone(status, thisPtr, m_structure, m_bitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getDone(status, thisPtr, m_structure, m_bitSet));
         }
         else
         {
-            EXCEPTION_GUARD(m_channelPutRequester->putDone(status, thisPtr));
+            EXCEPTION_GUARD3(m_callback, cb, cb->putDone(status, thisPtr));
         }
     }
 
-    virtual void get() {
+    virtual void get() OVERRIDE FINAL {
 
-        ChannelPut::shared_pointer thisPtr = dynamic_pointer_cast<ChannelPut>(shared_from_this());
+        ChannelPut::shared_pointer thisPtr(external_from_this<ChannelPutImpl>());
 
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_channelPutRequester->getDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD3(m_callback, cb, cb->getDone(destroyedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelPutRequester->getDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD3(m_callback, cb, cb->getDone(notInitializedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_GET | QOS_DESTROY : QOS_GET)) {
-            EXCEPTION_GUARD(m_channelPutRequester->getDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getDone(otherRequestPendingStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
 
         try {
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelPutImpl>());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelPutRequester->getDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
     }
 
-    virtual void put(PVStructure::shared_pointer const & pvPutStructure, BitSet::shared_pointer const & pvPutBitSet) {
+    virtual void put(PVStructure::shared_pointer const & pvPutStructure, BitSet::shared_pointer const & pvPutBitSet) OVERRIDE FINAL {
 
-        ChannelPut::shared_pointer thisPtr = dynamic_pointer_cast<ChannelPut>(shared_from_this());
+        ChannelPut::shared_pointer thisPtr(external_from_this<ChannelPutImpl>());
 
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                m_channelPutRequester->putDone(destroyedStatus, thisPtr);
+                EXCEPTION_GUARD3(m_callback, cb, cb->putDone(destroyedStatus, thisPtr));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelPutRequester->putDone(notInitializedStatus, thisPtr));
+                EXCEPTION_GUARD3(m_callback, cb, cb->putDone(notInitializedStatus, thisPtr));
                 return;
             }
         }
 
         if (!(*m_structure->getStructure() == *pvPutStructure->getStructure()))
         {
-            EXCEPTION_GUARD(m_channelPutRequester->putDone(invalidPutStructureStatus, thisPtr));
+            EXCEPTION_GUARD3(m_callback, cb, cb->putDone(invalidPutStructureStatus, thisPtr));
             return;
         }
 
         if (pvPutBitSet->size() < m_bitSet->size())
         {
-            EXCEPTION_GUARD(m_channelPutRequester->putDone(invalidBitSetLengthStatus, thisPtr));
+            EXCEPTION_GUARD3(m_callback, cb, cb->putDone(invalidBitSetLengthStatus, thisPtr));
             return;
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY : QOS_DEFAULT)) {
-            m_channelPutRequester->putDone(otherRequestPendingStatus, thisPtr);
+            EXCEPTION_GUARD3(m_callback, cb, cb->putDone(otherRequestPendingStatus, thisPtr));
             return;
         }
 
@@ -988,39 +944,39 @@ public:
             *m_bitSet = *pvPutBitSet;
             m_structure->copyUnchecked(*pvPutStructure, *m_bitSet);
             unlock();
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelPutImpl>());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelPutRequester->putDone(channelNotConnected, thisPtr));
+            EXCEPTION_GUARD3(m_callback, cb, cb->putDone(channelNotConnected, thisPtr));
         }
     }
 
-    virtual Channel::shared_pointer getChannel()
+    virtual Channel::shared_pointer getChannel() OVERRIDE FINAL
     {
         return BaseRequestImpl::getChannel();
     }
 
-    virtual void cancel()
+    virtual void cancel() OVERRIDE FINAL
     {
         BaseRequestImpl::cancel();
     }
 
-    virtual void destroy()
+    virtual void destroy() OVERRIDE FINAL
     {
         BaseRequestImpl::destroy();
     }
 
-    virtual void lastRequest()
+    virtual void lastRequest() OVERRIDE FINAL
     {
         BaseRequestImpl::lastRequest();
     }
 
-    virtual void lock()
+    virtual void lock() OVERRIDE FINAL
     {
         m_structureMutex.lock();
     }
 
-    virtual void unlock()
+    virtual void unlock() OVERRIDE FINAL
     {
         m_structureMutex.unlock();
     }
@@ -1039,8 +995,8 @@ class ChannelPutGetImpl :
     public BaseRequestImpl,
     public ChannelPutGet
 {
-private:
-    ChannelPutGetRequester::shared_pointer m_channelPutGetRequester;
+public:
+    ChannelPutGetRequester::weak_pointer m_callback;
 
     PVStructure::shared_pointer m_pvRequest;
 
@@ -1054,20 +1010,21 @@ private:
 
     Mutex m_structureMutex;
 
-    ChannelPutGetImpl(ChannelImpl::shared_pointer const & channel, ChannelPutGetRequester::shared_pointer const & channelPutGetRequester, PVStructure::shared_pointer const & pvRequest) :
-        BaseRequestImpl(channel, channelPutGetRequester),
-        m_channelPutGetRequester(channelPutGetRequester),
+    ChannelPutGetImpl(ChannelImpl::shared_pointer const & channel,
+                      ChannelPutGetRequester::shared_pointer const & requester,
+                      PVStructure::shared_pointer const & pvRequest) :
+        BaseRequestImpl(channel),
+        m_callback(requester),
         m_pvRequest(pvRequest)
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelPutGet);
     }
 
-    void activate()
+    virtual void activate() OVERRIDE FINAL
     {
         if (!m_pvRequest)
         {
-            ChannelPutGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
-            EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(pvRequestNull, thisPointer, nullStructure, nullStructure));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelPutGetConnect(pvRequestNull, external_from_this<ChannelPutGetImpl>(), StructureConstPtr(), StructureConstPtr()));
             return;
         }
 
@@ -1076,30 +1033,20 @@ private:
         try {
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
         } catch (std::runtime_error &rte) {
-            ChannelPutGet::shared_pointer thisPointer = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
-            EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(channelDestroyed, thisPointer, nullStructure, nullStructure));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelPutGetConnect(channelDestroyed, external_from_this<ChannelPutGetImpl>(), StructureConstPtr(), StructureConstPtr()));
             BaseRequestImpl::destroy(true);
         }
     }
 
-public:
-    static ChannelPutGet::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelPutGetRequester::shared_pointer const & channelPutGetRequester, PVStructure::shared_pointer const & pvRequest)
-    {
-        // TODO use std::make_shared
-        std::tr1::shared_ptr<ChannelPutGetImpl> tp(
-            new ChannelPutGetImpl(channel, channelPutGetRequester, pvRequest),
-            delayed_destroyable_deleter());
-        ChannelPutGet::shared_pointer thisPointer = tp;
-        static_cast<ChannelPutGetImpl*>(thisPointer.get())->activate();
-        return thisPointer;
-    }
 
-    ~ChannelPutGetImpl()
+    virtual ~ChannelPutGetImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelPutGet);
     }
 
-    virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+    ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
+
+    virtual void send(ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
         int32 pendingRequest = getPendingRequest();
         if (pendingRequest < 0)
         {
@@ -1136,11 +1083,10 @@ public:
         stopRequest();
     }
 
-    virtual void initResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
+    virtual void initResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) OVERRIDE FINAL {
         if (!status.isSuccess())
         {
-            ChannelPutGet::shared_pointer thisChannelPutGet = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
-            EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(status, thisChannelPutGet, nullStructure, nullStructure));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelPutGetConnect(status, external_from_this<ChannelPutGetImpl>(), StructureConstPtr(), StructureConstPtr()));
             return;
         }
 
@@ -1153,20 +1099,19 @@ public:
         }
 
         // notify
-        ChannelPutGet::shared_pointer thisChannelPutGet = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
-        EXCEPTION_GUARD(m_channelPutGetRequester->channelPutGetConnect(status, thisChannelPutGet, m_putData->getStructure(), m_getData->getStructure()));
+        EXCEPTION_GUARD3(m_callback, cb, cb->channelPutGetConnect(status, external_from_this<ChannelPutGetImpl>(), m_putData->getStructure(), m_getData->getStructure()));
     }
 
 
-    virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+    virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 qos, const Status& status) OVERRIDE FINAL {
 
-        ChannelPutGet::shared_pointer thisPtr = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
+        ChannelPutGet::shared_pointer thisPtr(external_from_this<ChannelPutGetImpl>());
 
         if (qos & QOS_GET)
         {
             if (!status.isSuccess())
             {
-                EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(status, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD3(m_callback, cb, cb->getGetDone(status, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
 
@@ -1177,13 +1122,13 @@ public:
                 m_getData->deserialize(payloadBuffer, transport.get(), m_getDataBitSet.get());
             }
 
-            EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(status, thisPtr, m_getData, m_getDataBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getGetDone(status, thisPtr, m_getData, m_getDataBitSet));
         }
         else if (qos & QOS_GET_PUT)
         {
             if (!status.isSuccess())
             {
-                EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(status, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD3(m_callback, cb, cb->getPutDone(status, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
 
@@ -1194,13 +1139,13 @@ public:
                 m_putData->deserialize(payloadBuffer, transport.get(), m_putDataBitSet.get());
             }
 
-            EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(status, thisPtr, m_putData, m_putDataBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getPutDone(status, thisPtr, m_putData, m_putDataBitSet));
         }
         else
         {
             if (!status.isSuccess())
             {
-                EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(status, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD3(m_callback, cb, cb->putGetDone(status, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
 
@@ -1211,41 +1156,41 @@ public:
                 m_getData->deserialize(payloadBuffer, transport.get(), m_getDataBitSet.get());
             }
 
-            EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(status, thisPtr, m_getData, m_getDataBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->putGetDone(status, thisPtr, m_getData, m_getDataBitSet));
         }
     }
 
 
-    virtual void putGet(PVStructure::shared_pointer const & pvPutStructure, BitSet::shared_pointer const & bitSet) {
+    virtual void putGet(PVStructure::shared_pointer const & pvPutStructure, BitSet::shared_pointer const & bitSet) OVERRIDE FINAL {
 
-        ChannelPutGet::shared_pointer thisPtr = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
+        ChannelPutGet::shared_pointer thisPtr(external_from_this<ChannelPutGetImpl>());
 
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD3(m_callback, cb, cb->putGetDone(destroyedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD3(m_callback, cb, cb->putGetDone(notInitializedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
         }
 
         if (!(*m_putData->getStructure() == *pvPutStructure->getStructure()))
         {
-            EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(invalidPutStructureStatus, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->putGetDone(invalidPutStructureStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
         if (bitSet->size() < m_putDataBitSet->size())
         {
-            EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(invalidBitSetLengthStatus, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->putGetDone(invalidBitSetLengthStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY : QOS_DEFAULT)) {
-            EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->putGetDone(otherRequestPendingStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
@@ -1254,97 +1199,97 @@ public:
             *m_putDataBitSet = *bitSet;
             m_putData->copyUnchecked(*pvPutStructure, *m_putDataBitSet);
             unlock();
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelPutGetImpl>());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelPutGetRequester->putGetDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->putGetDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
     }
 
-    virtual void getGet() {
+    virtual void getGet() OVERRIDE FINAL {
 
-        ChannelPutGet::shared_pointer thisPtr = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
+        ChannelPutGet::shared_pointer thisPtr(external_from_this<ChannelPutGetImpl>());
 
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD3(m_callback, cb, cb->getGetDone(destroyedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD3(m_callback, cb, cb->getGetDone(notInitializedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_GET : QOS_GET)) {
-            EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getGetDone(otherRequestPendingStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
         try {
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelPutGetImpl>());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelPutGetRequester->getGetDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getGetDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
     }
 
-    virtual void getPut() {
+    virtual void getPut() OVERRIDE FINAL {
 
-        ChannelPutGet::shared_pointer thisPtr = dynamic_pointer_cast<ChannelPutGet>(shared_from_this());
+        ChannelPutGet::shared_pointer thisPtr(external_from_this<ChannelPutGetImpl>());
 
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                m_channelPutGetRequester->getPutDone(destroyedStatus, thisPtr, nullPVStructure, nullBitSet);
+                EXCEPTION_GUARD3(m_callback, cb, cb->getPutDone(destroyedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(notInitializedStatus, thisPtr, nullPVStructure, nullBitSet));
+                EXCEPTION_GUARD3(m_callback, cb, cb->getPutDone(notInitializedStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
                 return;
             }
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_GET_PUT : QOS_GET_PUT)) {
-            m_channelPutGetRequester->getPutDone(otherRequestPendingStatus, thisPtr, nullPVStructure, nullBitSet);
+            EXCEPTION_GUARD3(m_callback, cb, cb->getPutDone(otherRequestPendingStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
         try {
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelPutGetImpl>());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelPutGetRequester->getPutDone(channelNotConnected, thisPtr, nullPVStructure, nullBitSet));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getPutDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
     }
 
-    virtual Channel::shared_pointer getChannel()
+    virtual Channel::shared_pointer getChannel() OVERRIDE FINAL
     {
         return BaseRequestImpl::getChannel();
     }
 
-    virtual void cancel()
+    virtual void cancel() OVERRIDE FINAL
     {
         BaseRequestImpl::cancel();
     }
 
-    virtual void destroy()
+    virtual void destroy() OVERRIDE FINAL
     {
         BaseRequestImpl::destroy();
     }
 
-    virtual void lastRequest()
+    virtual void lastRequest() OVERRIDE FINAL
     {
         BaseRequestImpl::lastRequest();
     }
 
-    virtual void lock()
+    virtual void lock() OVERRIDE FINAL
     {
         m_structureMutex.lock();
     }
 
-    virtual void unlock()
+    virtual void unlock() OVERRIDE FINAL
     {
         m_structureMutex.unlock();
     }
@@ -1366,8 +1311,8 @@ class ChannelRPCImpl :
     public BaseRequestImpl,
     public ChannelRPC
 {
-private:
-    ChannelRPCRequester::shared_pointer m_channelRPCRequester;
+public:
+    ChannelRPCRequester::weak_pointer m_callback;
 
     PVStructure::shared_pointer m_pvRequest;
 
@@ -1375,20 +1320,21 @@ private:
 
     Mutex m_structureMutex;
 
-    ChannelRPCImpl(ChannelImpl::shared_pointer const & channel, ChannelRPCRequester::shared_pointer const & channelRPCRequester, PVStructure::shared_pointer const & pvRequest) :
-        BaseRequestImpl(channel, channelRPCRequester),
-        m_channelRPCRequester(channelRPCRequester),
+    ChannelRPCImpl(ChannelImpl::shared_pointer const & channel,
+                   ChannelRPCRequester::shared_pointer const & requester,
+                   PVStructure::shared_pointer const & pvRequest) :
+        BaseRequestImpl(channel),
+        m_callback(requester),
         m_pvRequest(pvRequest)
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelRPC);
     }
 
-    void activate()
+    virtual void activate() OVERRIDE FINAL
     {
         if (!m_pvRequest)
         {
-            ChannelRPC::shared_pointer thisPointer = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
-            EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(pvRequestNull, thisPointer));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelRPCConnect(pvRequestNull, external_from_this<ChannelRPCImpl>()));
             return;
         }
 
@@ -1398,30 +1344,19 @@ private:
         try {
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
         } catch (std::runtime_error &rte) {
-            ChannelRPC::shared_pointer thisPointer = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
-            EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(channelDestroyed, thisPointer));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelRPCConnect(channelDestroyed, external_from_this<ChannelRPCImpl>()));
             BaseRequestImpl::destroy(true);
         }
     }
 
-public:
-    static ChannelRPC::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelRPCRequester::shared_pointer const & channelRPCRequester, PVStructure::shared_pointer const & pvRequest)
-    {
-        // TODO use std::make_shared
-        std::tr1::shared_ptr<ChannelRPCImpl> tp(
-            new ChannelRPCImpl(channel, channelRPCRequester, pvRequest),
-            delayed_destroyable_deleter());
-        ChannelRPC::shared_pointer thisPointer = tp;
-        static_cast<ChannelRPCImpl*>(thisPointer.get())->activate();
-        return thisPointer;
-    }
-
-    ~ChannelRPCImpl()
+    virtual ~ChannelRPCImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelRPC);
     }
 
-    virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+    ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
+
+    virtual void send(ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
         int32 pendingRequest = getPendingRequest();
         if (pendingRequest < 0)
         {
@@ -1456,52 +1391,50 @@ public:
         stopRequest();
     }
 
-    virtual void initResponse(Transport::shared_pointer const & /*transport*/, int8 /*version*/, ByteBuffer* /*payloadBuffer*/, int8 /*qos*/, const Status& status) {
+    virtual void initResponse(Transport::shared_pointer const & /*transport*/, int8 /*version*/, ByteBuffer* /*payloadBuffer*/, int8 /*qos*/, const Status& status) OVERRIDE FINAL {
         if (!status.isSuccess())
         {
-            ChannelRPC::shared_pointer thisChannelRPC = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
-            EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(status, thisChannelRPC));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelRPCConnect(status, external_from_this<ChannelRPCImpl>()));
             return;
         }
 
         // notify
-        ChannelRPC::shared_pointer thisChannelRPC = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
-        EXCEPTION_GUARD(m_channelRPCRequester->channelRPCConnect(status, thisChannelRPC));
+        EXCEPTION_GUARD3(m_callback, cb, cb->channelRPCConnect(status, external_from_this<ChannelRPCImpl>()));
     }
 
-    virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
+    virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) OVERRIDE FINAL {
 
-        ChannelRPC::shared_pointer thisPtr = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
+        ChannelRPC::shared_pointer thisPtr(external_from_this<ChannelRPCImpl>());
 
         if (!status.isSuccess())
         {
-            EXCEPTION_GUARD(m_channelRPCRequester->requestDone(status, thisPtr, nullPVStructure));
+            EXCEPTION_GUARD3(m_callback, cb, cb->requestDone(status, thisPtr, PVStructurePtr()));
             return;
         }
 
 
         PVStructure::shared_pointer response(SerializationHelper::deserializeStructureFull(payloadBuffer, transport.get()));
-        EXCEPTION_GUARD(m_channelRPCRequester->requestDone(status, thisPtr, response));
+        EXCEPTION_GUARD3(m_callback, cb, cb->requestDone(status, thisPtr, response));
     }
 
-    virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument) {
+    virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument) OVERRIDE FINAL {
 
-        ChannelRPC::shared_pointer thisPtr = dynamic_pointer_cast<ChannelRPC>(shared_from_this());
+        ChannelRPC::shared_pointer thisPtr(external_from_this<ChannelRPCImpl>());
 
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_channelRPCRequester->requestDone(destroyedStatus, thisPtr, nullPVStructure));
+                EXCEPTION_GUARD3(m_callback, cb, cb->requestDone(destroyedStatus, thisPtr, PVStructurePtr()));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelRPCRequester->requestDone(notInitializedStatus, thisPtr, nullPVStructure));
+                EXCEPTION_GUARD3(m_callback, cb, cb->requestDone(notInitializedStatus, thisPtr, PVStructurePtr()));
                 return;
             }
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY : QOS_DEFAULT)) {
-            EXCEPTION_GUARD(m_channelRPCRequester->requestDone(otherRequestPendingStatus, thisPtr, nullPVStructure));
+            EXCEPTION_GUARD3(m_callback, cb, cb->requestDone(otherRequestPendingStatus, thisPtr, PVStructurePtr()));
             return;
         }
 
@@ -1510,39 +1443,39 @@ public:
             m_structure = pvArgument;
             m_structureMutex.unlock();
 
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelRPCImpl>());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelRPCRequester->requestDone(channelNotConnected, thisPtr, nullPVStructure));
+            EXCEPTION_GUARD3(m_callback, cb, cb->requestDone(channelNotConnected, thisPtr, PVStructurePtr()));
         }
     }
 
-    virtual Channel::shared_pointer getChannel()
+    virtual Channel::shared_pointer getChannel() OVERRIDE FINAL
     {
         return BaseRequestImpl::getChannel();
     }
 
-    virtual void cancel()
+    virtual void cancel() OVERRIDE FINAL
     {
         BaseRequestImpl::cancel();
     }
 
-    virtual void destroy()
+    virtual void destroy() OVERRIDE FINAL
     {
         BaseRequestImpl::destroy();
     }
 
-    virtual void lastRequest()
+    virtual void lastRequest() OVERRIDE FINAL
     {
         BaseRequestImpl::lastRequest();
     }
 
-    virtual void lock()
+    virtual void lock() OVERRIDE FINAL
     {
         m_structureMutex.lock();
     }
 
-    virtual void unlock()
+    virtual void unlock() OVERRIDE FINAL
     {
         m_structureMutex.unlock();
     }
@@ -1562,8 +1495,8 @@ class ChannelArrayImpl :
     public BaseRequestImpl,
     public ChannelArray
 {
-private:
-    ChannelArrayRequester::shared_pointer m_channelArrayRequester;
+public:
+    ChannelArrayRequester::weak_pointer m_callback;
 
     PVStructure::shared_pointer m_pvRequest;
 
@@ -1578,9 +1511,11 @@ private:
 
     Mutex m_structureMutex;
 
-    ChannelArrayImpl(ChannelImpl::shared_pointer const & channel, ChannelArrayRequester::shared_pointer const & channelArrayRequester, PVStructure::shared_pointer const & pvRequest) :
-        BaseRequestImpl(channel, channelArrayRequester),
-        m_channelArrayRequester(channelArrayRequester),
+    ChannelArrayImpl(ChannelImpl::shared_pointer const & channel,
+                     ChannelArrayRequester::shared_pointer const & requester,
+                     PVStructure::shared_pointer const & pvRequest) :
+        BaseRequestImpl(channel),
+        m_callback(requester),
         m_pvRequest(pvRequest),
         m_offset(0), m_count(0),
         m_length(0)
@@ -1588,12 +1523,11 @@ private:
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelArray);
     }
 
-    void activate()
+    virtual void activate() OVERRIDE FINAL
     {
         if (!m_pvRequest)
         {
-            ChannelArray::shared_pointer thisPointer = dynamic_pointer_cast<ChannelArray>(shared_from_this());
-            EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(pvRequestNull, thisPointer, Array::shared_pointer()));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelArrayConnect(pvRequestNull, external_from_this<ChannelArrayImpl>(), Array::shared_pointer()));
             return;
         }
 
@@ -1603,30 +1537,19 @@ private:
         try {
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
         } catch (std::runtime_error &rte) {
-            ChannelArray::shared_pointer thisPointer = dynamic_pointer_cast<ChannelArray>(shared_from_this());
-            EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(channelDestroyed, thisPointer, Array::shared_pointer()));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelArrayConnect(channelDestroyed, external_from_this<ChannelArrayImpl>(), Array::shared_pointer()));
             BaseRequestImpl::destroy(true);
         }
     }
 
-public:
-    static ChannelArray::shared_pointer create(ChannelImpl::shared_pointer const & channel, ChannelArrayRequester::shared_pointer const & channelArrayRequester, PVStructure::shared_pointer const & pvRequest)
-    {
-        // TODO use std::make_shared
-        std::tr1::shared_ptr<ChannelArrayImpl> tp(
-            new ChannelArrayImpl(channel, channelArrayRequester, pvRequest),
-            delayed_destroyable_deleter());
-        ChannelArray::shared_pointer thisPointer = tp;
-        static_cast<ChannelArrayImpl*>(thisPointer.get())->activate();
-        return thisPointer;
-    }
-
-    ~ChannelArrayImpl()
+    virtual ~ChannelArrayImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelArray);
     }
 
-    virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+    ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
+
+    virtual void send(ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
         int32 pendingRequest = getPendingRequest();
         if (pendingRequest < 0)
         {
@@ -1676,11 +1599,10 @@ public:
         stopRequest();
     }
 
-    virtual void initResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) {
+    virtual void initResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) OVERRIDE FINAL {
         if (!status.isSuccess())
         {
-            ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
-            EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(status, thisChannelArray, Array::shared_pointer()));
+            EXCEPTION_GUARD3(m_callback, cb, cb->channelArrayConnect(status, external_from_this<ChannelArrayImpl>(), Array::shared_pointer()));
             return;
         }
 
@@ -1692,19 +1614,18 @@ public:
         }
 
         // notify
-        ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
-        EXCEPTION_GUARD(m_channelArrayRequester->channelArrayConnect(status, thisChannelArray, m_arrayData->getArray()));
+        EXCEPTION_GUARD3(m_callback, cb, cb->channelArrayConnect(status, external_from_this<ChannelArrayImpl>(), m_arrayData->getArray()));
     }
 
-    virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 qos, const Status& status) {
+    virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 qos, const Status& status) OVERRIDE FINAL {
 
-        ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
+        ChannelArray::shared_pointer thisPtr(external_from_this<ChannelArrayImpl>());
 
         if (qos & QOS_GET)
         {
             if (!status.isSuccess())
             {
-                m_channelArrayRequester->getArrayDone(status, thisChannelArray, PVArray::shared_pointer());
+                EXCEPTION_GUARD3(m_callback, cb, cb->getArrayDone(status, thisPtr, PVArray::shared_pointer()));
                 return;
             }
 
@@ -1713,45 +1634,45 @@ public:
                 m_arrayData->deserialize(payloadBuffer, transport.get());
             }
 
-            EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(status, thisChannelArray, m_arrayData));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getArrayDone(status, thisPtr, m_arrayData));
         }
         else if (qos & QOS_GET_PUT)
         {
-            EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(status, thisChannelArray));
+            EXCEPTION_GUARD3(m_callback, cb, cb->setLengthDone(status, thisPtr));
         }
         else if (qos & QOS_PROCESS)
         {
             size_t length = SerializeHelper::readSize(payloadBuffer, transport.get());
 
-            EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(status, thisChannelArray, length));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getLengthDone(status, thisPtr, length));
         }
         else
         {
-            EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(status, thisChannelArray));
+            EXCEPTION_GUARD3(m_callback, cb, cb->putArrayDone(status, thisPtr));
         }
     }
 
 
-    virtual void getArray(size_t offset, size_t count, size_t stride) {
+    virtual void getArray(size_t offset, size_t count, size_t stride) OVERRIDE FINAL {
 
         // TODO stride == 0 check
 
-        ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
+        ChannelArray::shared_pointer thisPtr(external_from_this<ChannelArrayImpl>());
 
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(destroyedStatus, thisChannelArray, PVArray::shared_pointer()));
+                EXCEPTION_GUARD3(m_callback, cb, cb->getArrayDone(destroyedStatus, thisPtr, PVArray::shared_pointer()));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(notInitializedStatus, thisChannelArray, PVArray::shared_pointer()));
+                EXCEPTION_GUARD3(m_callback, cb, cb->getArrayDone(notInitializedStatus, thisPtr, PVArray::shared_pointer()));
                 return;
             }
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_GET : QOS_GET)) {
-            EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(otherRequestPendingStatus, thisChannelArray, PVArray::shared_pointer()));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getArrayDone(otherRequestPendingStatus, thisPtr, PVArray::shared_pointer()));
             return;
         }
 
@@ -1762,39 +1683,39 @@ public:
                 m_count = count;
                 m_stride = stride;
             }
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelArrayImpl>());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelArrayRequester->getArrayDone(channelNotConnected, thisChannelArray, PVArray::shared_pointer()));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getArrayDone(channelNotConnected, thisPtr, PVArray::shared_pointer()));
         }
     }
 
-    virtual void putArray(PVArray::shared_pointer const & putArray, size_t offset, size_t count, size_t stride) {
+    virtual void putArray(PVArray::shared_pointer const & putArray, size_t offset, size_t count, size_t stride) OVERRIDE FINAL {
 
         // TODO stride == 0 check
 
-        ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
+        ChannelArray::shared_pointer thisPtr(external_from_this<ChannelArrayImpl>());
 
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(destroyedStatus, thisChannelArray));
+                EXCEPTION_GUARD3(m_callback, cb, cb->putArrayDone(destroyedStatus, thisPtr));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(notInitializedStatus, thisChannelArray));
+                EXCEPTION_GUARD3(m_callback, cb, cb->putArrayDone(notInitializedStatus, thisPtr));
                 return;
             }
         }
 
         if (!(*m_arrayData->getArray() == *putArray->getArray()))
         {
-            EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(invalidPutArrayStatus, thisChannelArray));
+            EXCEPTION_GUARD3(m_callback, cb, cb->putArrayDone(invalidPutArrayStatus, thisPtr));
             return;
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY : QOS_DEFAULT)) {
-            EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(otherRequestPendingStatus, thisChannelArray));
+            EXCEPTION_GUARD3(m_callback, cb, cb->putArrayDone(otherRequestPendingStatus, thisPtr));
             return;
         }
 
@@ -1806,31 +1727,31 @@ public:
                 m_count = count;
                 m_stride = stride;
             }
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelArrayImpl>());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelArrayRequester->putArrayDone(channelNotConnected, thisChannelArray));
+            EXCEPTION_GUARD3(m_callback, cb, cb->putArrayDone(channelNotConnected, thisPtr));
         }
     }
 
-    virtual void setLength(size_t length) {
+    virtual void setLength(size_t length) OVERRIDE FINAL {
 
-        ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
+        ChannelArray::shared_pointer thisPtr(external_from_this<ChannelArrayImpl>());
 
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(destroyedStatus, thisChannelArray));
+                EXCEPTION_GUARD3(m_callback, cb, cb->setLengthDone(destroyedStatus, thisPtr));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(notInitializedStatus, thisChannelArray));
+                EXCEPTION_GUARD3(m_callback, cb, cb->setLengthDone(notInitializedStatus, thisPtr));
                 return;
             }
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_GET_PUT : QOS_GET_PUT)) {
-            EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(otherRequestPendingStatus, thisChannelArray));
+            EXCEPTION_GUARD3(m_callback, cb, cb->setLengthDone(otherRequestPendingStatus, thisPtr));
             return;
         }
 
@@ -1839,69 +1760,69 @@ public:
                 Lock lock(m_structureMutex);
                 m_length = length;
             }
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelArrayImpl>());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelArrayRequester->setLengthDone(channelNotConnected, thisChannelArray));
+            EXCEPTION_GUARD3(m_callback, cb, cb->setLengthDone(channelNotConnected, thisPtr));
         }
     }
 
 
-    virtual void getLength() {
+    virtual void getLength() OVERRIDE FINAL {
 
-        ChannelArray::shared_pointer thisChannelArray = dynamic_pointer_cast<ChannelArray>(shared_from_this());
+        ChannelArray::shared_pointer thisPtr(external_from_this<ChannelArrayImpl>());
 
         {
             Lock guard(m_mutex);
             if (m_destroyed) {
-                EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(destroyedStatus, thisChannelArray, 0));
+                EXCEPTION_GUARD3(m_callback, cb, cb->getLengthDone(destroyedStatus, thisPtr, 0));
                 return;
             }
             if (!m_initialized) {
-                EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(notInitializedStatus, thisChannelArray, 0));
+                EXCEPTION_GUARD3(m_callback, cb, cb->getLengthDone(notInitializedStatus, thisPtr, 0));
                 return;
             }
         }
 
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY | QOS_PROCESS : QOS_PROCESS)) {
-            EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(otherRequestPendingStatus, thisChannelArray, 0));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getLengthDone(otherRequestPendingStatus, thisPtr, 0));
             return;
         }
 
         try {
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelArrayImpl>());
         } catch (std::runtime_error &rte) {
             stopRequest();
-            EXCEPTION_GUARD(m_channelArrayRequester->getLengthDone(channelNotConnected, thisChannelArray, 0));
+            EXCEPTION_GUARD3(m_callback, cb, cb->getLengthDone(channelNotConnected, thisPtr, 0));
         }
     }
 
-    virtual Channel::shared_pointer getChannel()
+    virtual Channel::shared_pointer getChannel() OVERRIDE FINAL
     {
         return BaseRequestImpl::getChannel();
     }
 
-    virtual void cancel()
+    virtual void cancel() OVERRIDE FINAL
     {
         BaseRequestImpl::cancel();
     }
 
-    virtual void destroy()
+    virtual void destroy() OVERRIDE FINAL
     {
         BaseRequestImpl::destroy();
     }
 
-    virtual void lastRequest()
+    virtual void lastRequest() OVERRIDE FINAL
     {
         BaseRequestImpl::lastRequest();
     }
 
-    virtual void lock()
+    virtual void lock() OVERRIDE FINAL
     {
         m_structureMutex.lock();
     }
 
-    virtual void unlock()
+    virtual void unlock() OVERRIDE FINAL
     {
         m_structureMutex.unlock();
     }
@@ -1910,155 +1831,6 @@ public:
 
 
 
-
-
-
-
-
-PVACCESS_REFCOUNT_MONITOR_DEFINE(channelGetField);
-
-// NOTE: this instance is not returned as Request, so it must self-destruct
-class ChannelGetFieldRequestImpl :
-    public DataResponse,
-    public TransportSender,
-    public std::tr1::enable_shared_from_this<ChannelGetFieldRequestImpl>
-{
-public:
-    typedef std::tr1::shared_ptr<ChannelGetFieldRequestImpl> shared_pointer;
-    typedef std::tr1::shared_ptr<const ChannelGetFieldRequestImpl> const_shared_pointer;
-
-private:
-    ChannelImpl::shared_pointer m_channel;
-
-    GetFieldRequester::shared_pointer m_callback;
-    string m_subField;
-
-    pvAccessID m_ioid;
-
-    Mutex m_mutex;
-    bool m_destroyed;
-
-    ResponseRequest::shared_pointer m_thisPointer;
-
-    ChannelGetFieldRequestImpl(ChannelImpl::shared_pointer const & channel, GetFieldRequester::shared_pointer const & callback, string const & subField) :
-        m_channel(channel),
-        m_callback(callback),
-        m_subField(subField),
-        m_ioid(INVALID_IOID),
-        m_destroyed(false)
-    {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelGetField);
-    }
-
-    void activate()
-    {
-        // register response request
-        m_thisPointer = shared_from_this();
-        m_ioid = m_channel->getContext()->registerResponseRequest(m_thisPointer);
-        m_channel->registerResponseRequest(m_thisPointer);
-
-        // enqueue send request
-        try {
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
-        } catch (std::runtime_error &rte) {
-            EXCEPTION_GUARD(m_callback->getDone(BaseRequestImpl::channelNotConnected, FieldConstPtr()));
-        }
-    }
-
-public:
-    static shared_pointer create(ChannelImpl::shared_pointer const & channel, GetFieldRequester::shared_pointer const & callback, string const & subField)
-    {
-        shared_pointer thisPointer(new ChannelGetFieldRequestImpl(channel, callback, subField), delayed_destroyable_deleter());
-        thisPointer->activate();
-        return thisPointer;
-    }
-
-    ~ChannelGetFieldRequestImpl()
-    {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelGetField);
-    }
-
-    Requester::shared_pointer getRequester() {
-        return m_callback;
-    }
-
-    pvAccessID getIOID() const {
-        return m_ioid;
-    }
-
-    virtual void lock() {
-        // noop
-    }
-
-    virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
-        control->startMessage((int8)17, 8);
-        buffer->putInt(m_channel->getServerChannelID());
-        buffer->putInt(m_ioid);
-        SerializeHelper::serializeString(m_subField, buffer, control);
-    }
-
-
-    virtual Channel::shared_pointer getChannel()
-    {
-        return m_channel;
-    }
-
-    virtual void cancel() {
-        // TODO
-        // noop
-    }
-
-    virtual void timeout() {
-        cancel();
-    }
-
-    void reportStatus(const Status& status) {
-        // destroy, since channel (parent) was destroyed
-        if (&status == &ChannelImpl::channelDestroyed)
-            destroy();
-        // TODO notify?
-    }
-
-    virtual void unlock() {
-        // noop
-    }
-
-    virtual void destroy()
-    {
-        {
-            Lock guard(m_mutex);
-            if (m_destroyed)
-                return;
-            m_destroyed = true;
-        }
-
-        // unregister response request
-        m_channel->getContext()->unregisterResponseRequest(m_ioid);
-        m_channel->unregisterResponseRequest(m_ioid);
-
-        m_thisPointer.reset();
-    }
-
-    virtual void response(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer) {
-
-        Status status;
-        status.deserialize(payloadBuffer, transport.get());
-        if (status.isSuccess())
-        {
-            // deserialize Field...
-            FieldConstPtr field = transport->cachedDeserialize(payloadBuffer);
-            EXCEPTION_GUARD(m_callback->getDone(status, field));
-        }
-        else
-        {
-            EXCEPTION_GUARD(m_callback->getDone(status, FieldConstPtr()));
-        }
-
-        destroy();
-    }
-
-
-};
 
 
 
@@ -2088,12 +1860,12 @@ private:
     MonitorElementQueue m_monitorQueue;
 
 
-    MonitorRequester::shared_pointer m_callback;
+    MonitorRequester::weak_pointer m_callback;
 
     Mutex m_mutex;
 
-    BitSet::shared_pointer m_bitSet1;
-    BitSet::shared_pointer m_bitSet2;
+    BitSet m_bitSet1;
+    BitSet m_bitSet2;
     MonitorElement::shared_pointer m_overrunElement;
     bool m_overrunInProgress;
 
@@ -2117,7 +1889,7 @@ private:
 public:
 
     MonitorStrategyQueue(ChannelImpl::shared_pointer channel, pvAccessID ioid,
-                         MonitorRequester::shared_pointer const & callback,
+                         MonitorRequester::weak_pointer const & callback,
                          int32 queueSize,
                          bool pipeline, int32 ackAny) :
         m_queueSize(queueSize), m_lastStructure(),
@@ -2144,7 +1916,7 @@ public:
     {
     }
 
-    virtual void init(StructureConstPtr const & structure) {
+    virtual void init(StructureConstPtr const & structure) OVERRIDE FINAL {
         Lock guard(m_mutex);
 
         m_releasedCount = 0;
@@ -2168,7 +1940,7 @@ public:
     }
 
 
-    virtual void response(Transport::shared_pointer const & transport, ByteBuffer* payloadBuffer) {
+    virtual void response(Transport::shared_pointer const & transport, ByteBuffer* payloadBuffer) OVERRIDE FINAL {
 
         {
             // TODO do not lock deserialization
@@ -2180,24 +1952,20 @@ public:
                 BitSet::shared_pointer changedBitSet = m_overrunElement->changedBitSet;
                 BitSet::shared_pointer overrunBitSet = m_overrunElement->overrunBitSet;
 
-                // lazy init
-                if (m_bitSet1.get() == 0) m_bitSet1.reset(new BitSet(changedBitSet->size()));
-                if (m_bitSet2.get() == 0) m_bitSet2.reset(new BitSet(overrunBitSet->size()));
-
-                m_bitSet1->deserialize(payloadBuffer, transport.get());
-                pvStructure->deserialize(payloadBuffer, transport.get(), m_bitSet1.get());
-                m_bitSet2->deserialize(payloadBuffer, transport.get());
+                m_bitSet1.deserialize(payloadBuffer, transport.get());
+                pvStructure->deserialize(payloadBuffer, transport.get(), &m_bitSet1);
+                m_bitSet2.deserialize(payloadBuffer, transport.get());
 
                 // OR local overrun
                 // TODO this does not work perfectly if bitSet is compressed !!!
                 // uncompressed bitSets should be used !!!
-                overrunBitSet->or_and(*(changedBitSet.get()), *(m_bitSet1.get()));
+                overrunBitSet->or_and(*(changedBitSet.get()), m_bitSet1);
 
                 // OR remove change
-                *(changedBitSet.get()) |= *(m_bitSet1.get());
+                *(changedBitSet.get()) |= m_bitSet1;
 
                 // OR remote overrun
-                *(overrunBitSet.get()) |= *(m_bitSet2.get());
+                *(overrunBitSet.get()) |= m_bitSet2;
 
                 // m_up2datePVStructure is already set
 
@@ -2233,11 +2001,11 @@ public:
 
         if (!m_overrunInProgress)
         {
-            EXCEPTION_GUARD(m_callback->monitorEvent(shared_from_this()));
+            EXCEPTION_GUARD3(m_callback, cb, cb->monitorEvent(shared_from_this()));
         }
     }
 
-    virtual void unlisten()
+    virtual void unlisten() OVERRIDE FINAL
     {
         bool notifyUnlisten = false;
         {
@@ -2248,11 +2016,11 @@ public:
 
         if (notifyUnlisten)
         {
-            EXCEPTION_GUARD(m_callback->unlisten(shared_from_this()));
+            EXCEPTION_GUARD3(m_callback, cb, cb->unlisten(shared_from_this()));
         }
     }
 
-    virtual MonitorElement::shared_pointer poll() {
+    virtual MonitorElement::shared_pointer poll() OVERRIDE FINAL {
         Lock guard(m_mutex);
 
         if (m_monitorQueue.empty()) {
@@ -2260,7 +2028,7 @@ public:
             if (m_unlisten) {
                 m_unlisten = false;
                 guard.unlock();
-                EXCEPTION_GUARD(m_callback->unlisten(shared_from_this()));
+                EXCEPTION_GUARD3(m_callback, cb, cb->unlisten(shared_from_this()));
             }
             return m_nullMonitorElement;
         }
@@ -2271,7 +2039,7 @@ public:
     }
 
     // NOTE: a client must always call poll() after release() to check the presence of any new monitor elements
-    virtual void release(MonitorElement::shared_pointer const & monitorElement) {
+    virtual void release(MonitorElement::shared_pointer const & monitorElement) OVERRIDE FINAL {
 
         // fast sanity check check if monitorElement->pvStructurePtr->getStructure() matches
         // not to accept wrong structure (might happen on monitor reconnect with different type)
@@ -2313,8 +2081,10 @@ public:
                 try
                 {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+                } catch (std::runtime_error&) {
+                    // assume wrong connection state from checkAndGetTransport()
+                    m_reportQueueStateInProgress = false;
                 } catch (std::exception& e) {
-                    // noop (do not complain if fails)
                     LOG(logLevelWarn, "Ignore exception during MonitorStrategyQueue::release: %s", e.what());
                     m_reportQueueStateInProgress = false;
                 }
@@ -2322,7 +2092,7 @@ public:
         }
     }
 
-    virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+    virtual void send(ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
         control->startMessage((int8)CMD_MONITOR, 9);
         buffer->putInt(m_channel->getServerChannelID());
         buffer->putInt(m_ioid);
@@ -2339,17 +2109,7 @@ public:
         control->flush(true);
     }
 
-    virtual void lock()
-    {
-        // noop
-    }
-
-    virtual void unlock()
-    {
-        // noop
-    }
-
-    Status start() {
+    Status start() OVERRIDE FINAL {
         Lock guard(m_mutex);
         while (!m_monitorQueue.empty())
         {
@@ -2365,11 +2125,11 @@ public:
         return Status::Ok;
     }
 
-    Status stop() {
+    Status stop() OVERRIDE FINAL {
         return Status::Ok;
     }
 
-    void destroy() {
+    void destroy() OVERRIDE FINAL {
     }
 
 };
@@ -2382,8 +2142,8 @@ class ChannelMonitorImpl :
     public BaseRequestImpl,
     public Monitor
 {
-private:
-    MonitorRequester::shared_pointer m_monitorRequester;
+public:
+    MonitorRequester::weak_pointer m_callback;
     bool m_started;
 
     PVStructure::shared_pointer m_pvRequest;
@@ -2396,11 +2156,11 @@ private:
 
     ChannelMonitorImpl(
         ChannelImpl::shared_pointer const & channel,
-        MonitorRequester::shared_pointer const & monitorRequester,
+        MonitorRequester::shared_pointer const & requester,
         PVStructure::shared_pointer const & pvRequest)
         :
-        BaseRequestImpl(channel, monitorRequester),
-        m_monitorRequester(monitorRequester),
+        BaseRequestImpl(channel),
+        m_callback(requester),
         m_started(false),
         m_pvRequest(pvRequest),
         m_queueSize(2),
@@ -2410,12 +2170,11 @@ private:
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelMonitor);
     }
 
-    void activate()
+    virtual void activate() OVERRIDE FINAL
     {
         if (!m_pvRequest)
         {
-            Monitor::shared_pointer thisPointer = dynamic_pointer_cast<Monitor>(shared_from_this());
-            EXCEPTION_GUARD(m_monitorRequester->monitorConnect(pvRequestNull, thisPointer, StructureConstPtr()));
+            EXCEPTION_GUARD3(m_callback, cb, cb->monitorConnect(pvRequestNull, external_from_this<ChannelMonitorImpl>(), StructureConstPtr()));
             return;
         }
 
@@ -2464,7 +2223,7 @@ private:
         BaseRequestImpl::activate();
 
         std::tr1::shared_ptr<MonitorStrategyQueue> tp(
-            new MonitorStrategyQueue(m_channel, m_ioid, m_monitorRequester, m_queueSize,
+            new MonitorStrategyQueue(m_channel, m_ioid, m_callback, m_queueSize,
                                      m_pipeline, m_ackAny)
         );
         m_monitorStrategy = tp;
@@ -2473,45 +2232,29 @@ private:
         try {
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
         } catch (std::runtime_error &rte) {
-            Monitor::shared_pointer thisPointer = dynamic_pointer_cast<Monitor>(shared_from_this());
-            EXCEPTION_GUARD(m_monitorRequester->monitorConnect(channelDestroyed, thisPointer, StructureConstPtr()));
+            EXCEPTION_GUARD3(m_callback, cb, cb->monitorConnect(channelDestroyed, external_from_this<ChannelMonitorImpl>(), StructureConstPtr()));
             BaseRequestImpl::destroy(true);
         }
     }
 
     // override default impl. to provide pipeline QoS flag
-    virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
+    virtual void resubscribeSubscription(Transport::shared_pointer const & transport) OVERRIDE FINAL {
         if (transport.get() != 0 && !m_subscribed.get() &&
                 startRequest(m_pipeline ? (QOS_INIT | QOS_GET_PUT) : QOS_INIT))
         {
             m_subscribed.set();
-            transport->enqueueSendRequest(shared_from_this());
+            transport->enqueueSendRequest(internal_from_this<ChannelMonitorImpl>());
         }
     }
 
-public:
-    static Monitor::shared_pointer create(
-        ChannelImpl::shared_pointer const & channel,
-        MonitorRequester::shared_pointer const & monitorRequester,
-        PVStructure::shared_pointer const & pvRequest)
-    {
-        // TODO use std::make_shared
-        std::tr1::shared_ptr<ChannelMonitorImpl> tp(
-            new ChannelMonitorImpl(
-                channel, monitorRequester,
-                pvRequest),
-            delayed_destroyable_deleter());
-        Monitor::shared_pointer thisPointer = tp;
-        static_cast<ChannelMonitorImpl*>(thisPointer.get())->activate();
-        return thisPointer;
-    }
-
-    ~ChannelMonitorImpl()
+    virtual ~ChannelMonitorImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelMonitor);
     }
 
-    virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+    ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
+
+    virtual void send(ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
         int32 pendingRequest = getPendingRequest();
         if (pendingRequest < 0)
         {
@@ -2545,12 +2288,11 @@ public:
         int8 /*version*/,
         ByteBuffer* payloadBuffer,
         int8 /*qos*/,
-        const Status& status)
+        const Status& status) OVERRIDE FINAL
     {
         if (!status.isSuccess())
         {
-            Monitor::shared_pointer thisChannelMonitor = dynamic_pointer_cast<Monitor>(shared_from_this());
-            EXCEPTION_GUARD(m_monitorRequester->monitorConnect(status, thisChannelMonitor, StructureConstPtr()));
+            EXCEPTION_GUARD3(m_callback, cb, cb->monitorConnect(status, external_from_this<ChannelMonitorImpl>(), StructureConstPtr()));
             return;
         }
 
@@ -2563,8 +2305,7 @@ public:
         bool restoreStartedState = m_started;
 
         // notify
-        Monitor::shared_pointer thisChannelMonitor = dynamic_pointer_cast<Monitor>(shared_from_this());
-        EXCEPTION_GUARD(m_monitorRequester->monitorConnect(status, thisChannelMonitor, structure));
+        EXCEPTION_GUARD3(m_callback, cb, cb->monitorConnect(status, external_from_this<ChannelMonitorImpl>(), structure));
 
         if (restoreStartedState)
             start();
@@ -2575,7 +2316,7 @@ public:
         int8 /*version*/,
         ByteBuffer* payloadBuffer,
         int8 qos,
-        const Status& /*status*/)
+        const Status& /*status*/) OVERRIDE FINAL
     {
         if (qos & QOS_GET)
         {
@@ -2601,7 +2342,7 @@ public:
     virtual void response(
         Transport::shared_pointer const & transport,
         int8 version,
-        ByteBuffer* payloadBuffer)
+        ByteBuffer* payloadBuffer) OVERRIDE FINAL
     {
         transport->ensureData(1);
         int8 qos = payloadBuffer->getByte();
@@ -2635,7 +2376,7 @@ public:
 
     }
 
-    virtual Status start()
+    virtual Status start() OVERRIDE FINAL
     {
         Lock guard(m_mutex);
 
@@ -2652,7 +2393,7 @@ public:
 
         try
         {
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelMonitorImpl>());
             m_started = true;
             return Status::Ok;
         } catch (std::runtime_error &rte) {
@@ -2661,7 +2402,7 @@ public:
         }
     }
 
-    virtual Status stop()
+    virtual Status stop() OVERRIDE FINAL
     {
         Lock guard(m_mutex);
 
@@ -2678,7 +2419,7 @@ public:
 
         try
         {
-            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+            m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelMonitorImpl>());
             m_started = false;
             return Status::Ok;
         } catch (std::runtime_error &rte) {
@@ -2688,29 +2429,19 @@ public:
     }
 
 
-    virtual void destroy()
+    virtual void destroy() OVERRIDE FINAL
     {
         BaseRequestImpl::destroy();
     }
 
-    virtual MonitorElement::shared_pointer poll()
+    virtual MonitorElement::shared_pointer poll() OVERRIDE FINAL
     {
         return m_monitorStrategy->poll();
     }
 
-    virtual void release(MonitorElement::shared_pointer const & monitorElement)
+    virtual void release(MonitorElement::shared_pointer const & monitorElement) OVERRIDE FINAL
     {
         m_monitorStrategy->release(monitorElement);
-    }
-
-    virtual void lock()
-    {
-        // noop
-    }
-
-    virtual void unlock()
-    {
-        // noop
     }
 
 };
@@ -2753,7 +2484,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & /*transport*/, int8 /*version*/, int8 command,
-                                size_t /*payloadSize*/, epics::pvData::ByteBuffer* /*payloadBuffer*/)
+                                size_t /*payloadSize*/, epics::pvData::ByteBuffer* /*payloadBuffer*/) OVERRIDE FINAL
     {
         char ipAddrStr[48];
         ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
@@ -2777,7 +2508,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
-                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL
     {
         AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
@@ -2806,7 +2537,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
-                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL
     {
         AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
@@ -2848,13 +2579,13 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
-                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL
     {
         AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
         transport->ensureData(12+4+16+2);
 
-        GUID guid;
+        ServerGUID guid;
         payloadBuffer->get(guid.value, 0, sizeof(guid.value));
 
         int32 searchSequenceId = payloadBuffer->getInt();
@@ -2907,7 +2638,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
-                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL
     {
         AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
@@ -2995,7 +2726,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
-                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL
     {
         // reception timestamp
         TimeStamp timestamp;
@@ -3005,7 +2736,7 @@ public:
 
         transport->ensureData(12+2+2+16+2);
 
-        GUID guid;
+        ServerGUID guid;
         payloadBuffer->get(guid.value, 0, sizeof(guid.value));
 
         /*int8 qosCode =*/ payloadBuffer->getByte();
@@ -3064,7 +2795,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
-                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL
     {
         AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
@@ -3102,7 +2833,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
-                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL
     {
         AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
@@ -3125,7 +2856,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
-                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL
     {
         AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
@@ -3162,7 +2893,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
-                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL
     {
         AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
@@ -3214,7 +2945,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
-                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer)
+                                size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL
     {
         AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
@@ -3282,7 +3013,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
-                                size_t payloadSize, ByteBuffer* payloadBuffer)
+                                size_t payloadSize, ByteBuffer* payloadBuffer) OVERRIDE FINAL
     {
         if (command < 0 || command >= (int8)m_handlerTable.size())
         {
@@ -3331,20 +3062,19 @@ PVACCESS_REFCOUNT_MONITOR_DEFINE(remoteClientContext);
 
 class InternalClientContextImpl :
     public ClientContextImpl,
-    public virtual ChannelProvider,
-    public std::tr1::enable_shared_from_this<InternalClientContextImpl>
+    public ChannelProvider
 {
 public:
     POINTER_DEFINITIONS(InternalClientContextImpl);
 
-    virtual std::string getProviderName()
+    virtual std::string getProviderName() OVERRIDE FINAL
     {
-        return PROVIDER_NAME;
+        return "pva";
     }
 
     virtual ChannelFind::shared_pointer channelFind(
         std::string const & channelName,
-        ChannelFindRequester::shared_pointer const & channelFindRequester)
+        ChannelFindRequester::shared_pointer const & channelFindRequester) OVERRIDE FINAL
     {
         // TODO not implemented
 
@@ -3360,7 +3090,7 @@ public:
     }
 
     virtual ChannelFind::shared_pointer channelList(
-        ChannelListRequester::shared_pointer const & channelListRequester)
+        ChannelListRequester::shared_pointer const & channelListRequester) OVERRIDE FINAL
     {
         if (!channelListRequester.get())
             throw std::runtime_error("null requester");
@@ -3375,7 +3105,7 @@ public:
     virtual Channel::shared_pointer createChannel(
         std::string const & channelName,
         ChannelRequester::shared_pointer const & channelRequester,
-        short priority)
+        short priority) OVERRIDE FINAL
     {
         return createChannel(channelName, channelRequester, priority, emptyString);
     }
@@ -3384,7 +3114,7 @@ public:
         std::string const & channelName,
         ChannelRequester::shared_pointer const & channelRequester,
         short priority,
-        std::string const & addressesStr)
+        std::string const & addressesStr) OVERRIDE FINAL
     {
         auto_ptr<InetAddrVector> addresses;
         if (!addressesStr.empty())
@@ -3402,16 +3132,26 @@ public:
         // NOTE it's up to internal code to respond w/ error to requester and return 0 in case of errors
     }
 
-private:
+public:
     /**
      * Implementation of <code>Channel</code>.
      */
     class InternalChannelImpl :
         public ChannelImpl,
-        public std::tr1::enable_shared_from_this<InternalChannelImpl>,
         public TimerCallback
     {
+    public:
+        POINTER_DEFINITIONS(InternalChannelImpl);
     private:
+
+        const weak_pointer m_external_this, m_internal_this;
+
+        shared_pointer external_from_this() {
+            return shared_pointer(m_external_this);
+        }
+        shared_pointer internal_from_this() {
+            return shared_pointer(m_internal_this);
+        }
 
         /**
          * Context.
@@ -3431,7 +3171,13 @@ private:
         /**
          * Channel requester.
          */
-        ChannelRequester::shared_pointer m_requester;
+        ChannelRequester::weak_pointer m_requester;
+
+    public:
+        //! The in-progress GetField operation.
+        //! held here as the present API doesn't support cancellation
+        std::tr1::shared_ptr<ChannelGetFieldRequestImpl> m_getfield;
+    private:
 
         /**
          * Process priority.
@@ -3483,12 +3229,12 @@ private:
          * Server channel ID.
          */
         pvAccessID m_serverChannelID;
-
+public:
         /**
          * Context sync. mutex.
          */
         Mutex m_channelMutex;
-
+private:
         /**
          * Flag indicting what message to send.
          */
@@ -3500,7 +3246,7 @@ private:
         /**
          * @brief Server GUID.
          */
-        GUID m_guid;
+        ServerGUID m_guid;
 
         /**
          * Constructor.
@@ -3535,8 +3281,7 @@ private:
         void activate()
         {
             // register before issuing search request
-            ChannelImpl::shared_pointer thisPointer = shared_from_this();
-            m_context->registerChannel(thisPointer);
+            m_context->registerChannel(internal_from_this());
 
             // connect
             connect();
@@ -3551,46 +3296,44 @@ private:
                 short priority,
                 auto_ptr<InetAddrVector>& addresses)
         {
-            // TODO use std::make_shared
-            std::tr1::shared_ptr<InternalChannelImpl> tp(
-                new InternalChannelImpl(context, channelID, name, requester, priority, addresses),
-                delayed_destroyable_deleter());
-            ChannelImpl::shared_pointer thisPointer = tp;
-            static_cast<InternalChannelImpl*>(thisPointer.get())->activate();
-            return thisPointer;
+            std::tr1::shared_ptr<InternalChannelImpl> internal(
+                new InternalChannelImpl(context, channelID, name, requester, priority, addresses)),
+                    external(internal.get(), epics::pvAccess::Destroyable::cleaner(internal));
+            const_cast<weak_pointer&>(internal->m_internal_this) = internal;
+            const_cast<weak_pointer&>(internal->m_external_this) = external;
+            internal->activate();
+            return external;
         }
 
-        ~InternalChannelImpl()
+        virtual ~InternalChannelImpl()
         {
             PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channel);
         }
 
-        virtual void destroy()
+        virtual void destroy() OVERRIDE FINAL
         {
             destroy(false);
-        };
-
-        virtual string getRequesterName()
-        {
-            return getChannelName();
-        };
-
-        virtual void message(std::string const & message,MessageType messageType)
-        {
-            std::cout << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
         }
 
-        int32_t& getUserValue() {
+        virtual string getRequesterName() OVERRIDE FINAL
+        {
+            return getChannelName();
+        }
+
+    private:
+
+        // intentionally returning non-const reference
+        int32_t& getUserValue() OVERRIDE FINAL {
             return m_userValue;
         }
 
-        virtual ChannelProvider::shared_pointer getProvider()
+        virtual ChannelProvider::shared_pointer getProvider() OVERRIDE FINAL
         {
-            return m_context;
+            return m_context->external_from_this();
         }
 
         // NOTE: synchronization guarantees that <code>transport</code> is non-<code>0</code> and <code>state == CONNECTED</code>.
-        virtual std::string getRemoteAddress()
+        virtual std::string getRemoteAddress() OVERRIDE FINAL
         {
             Lock guard(m_channelMutex);
             if (m_connectionState != CONNECTED) {
@@ -3602,64 +3345,59 @@ private:
             }
         }
 
-        virtual std::string getChannelName()
+        virtual std::string getChannelName() OVERRIDE FINAL
         {
             return m_name;
         }
 
-        virtual ChannelRequester::shared_pointer getChannelRequester()
+        virtual ChannelRequester::shared_pointer getChannelRequester() OVERRIDE FINAL
         {
-            return m_requester;
+            return ChannelRequester::shared_pointer(m_requester);
         }
 
-        virtual ConnectionState getConnectionState()
+        virtual ConnectionState getConnectionState() OVERRIDE FINAL
         {
             Lock guard(m_channelMutex);
             return m_connectionState;
         }
 
-        virtual bool isConnected()
-        {
-            return getConnectionState() == CONNECTED;
-        }
-
-        virtual AccessRights getAccessRights(std::tr1::shared_ptr<epics::pvData::PVField> const &)
+        virtual AccessRights getAccessRights(std::tr1::shared_ptr<epics::pvData::PVField> const &) OVERRIDE FINAL
         {
             return readWrite;
         }
 
-        virtual pvAccessID getID() {
+        virtual pvAccessID getID() OVERRIDE FINAL {
             return m_channelID;
         }
 
-        pvAccessID getChannelID() {
+        pvAccessID getChannelID() OVERRIDE FINAL {
+            return m_channelID;
+        }
+public:
+        virtual ClientContextImpl* getContext() OVERRIDE FINAL {
+            return m_context.get();
+        }
+
+        virtual pvAccessID getSearchInstanceID() OVERRIDE FINAL {
             return m_channelID;
         }
 
-        virtual ClientContextImpl::shared_pointer getContext() {
-            return m_context;
-        }
-
-        virtual pvAccessID getSearchInstanceID() {
-            return m_channelID;
-        }
-
-        virtual string getSearchInstanceName() {
+        virtual string getSearchInstanceName() OVERRIDE FINAL {
             return m_name;
         }
 
-        virtual pvAccessID getServerChannelID() {
+        virtual pvAccessID getServerChannelID() OVERRIDE FINAL {
             Lock guard(m_channelMutex);
             return m_serverChannelID;
         }
 
-        virtual void registerResponseRequest(ResponseRequest::shared_pointer const & responseRequest)
+        virtual void registerResponseRequest(ResponseRequest::shared_pointer const & responseRequest) OVERRIDE FINAL
         {
             Lock guard(m_responseRequestsMutex);
             m_responseRequests[responseRequest->getIOID()] = ResponseRequest::weak_pointer(responseRequest);
         }
 
-        virtual void unregisterResponseRequest(pvAccessID ioid)
+        virtual void unregisterResponseRequest(pvAccessID ioid) OVERRIDE FINAL
         {
             if (ioid == INVALID_IOID) return;
             Lock guard(m_responseRequestsMutex);
@@ -3718,7 +3456,7 @@ private:
             }
 
             m_transport = transport;
-            m_transport->enqueueSendRequest(shared_from_this());
+            m_transport->enqueueSendRequest(internal_from_this());
         }
 
         virtual void cancel() {
@@ -3732,7 +3470,7 @@ private:
         /**
          * Create channel failed.
          */
-        virtual void createChannelFailed()
+        virtual void createChannelFailed() OVERRIDE FINAL
         {
             Lock guard(m_channelMutex);
 
@@ -3754,7 +3492,7 @@ private:
          * <code>sid</code> might not be valid, this depends on protocol revision.
          * @param sid
          */
-        virtual void connectionCompleted(pvAccessID sid/*,  rights*/)
+        virtual void connectionCompleted(pvAccessID sid/*,  rights*/) OVERRIDE FINAL
         {
             {
                 Lock guard(m_channelMutex);
@@ -3781,9 +3519,9 @@ private:
                     resubscribeSubscriptions();
                     setConnectionState(CONNECTED);
                 }
-                catch (...) {
+                catch (std::exception& e) {
+                    LOG(logLevelError, "connectionCompleted() %d '%s' unhandled exception: %s\n", sid, m_name.c_str(), e.what());
                     // noop
-                    // TODO at least log something??
                 }
 
                 // NOTE: always call cancel
@@ -3806,8 +3544,7 @@ private:
                 //throw std::runtime_error("Channel already destroyed.");
             }
 
-            // do destruction via context
-            m_context->destroyChannel(shared_from_this(), force);
+            destroyChannel(force);
         }
 
 
@@ -3818,15 +3555,17 @@ private:
          * @throws std::runtime_error
          * @throws IOException
          */
-        void destroyChannel(bool /*force*/) {
+        void destroyChannel(bool /*force*/) OVERRIDE FINAL {
             {
                 Lock guard(m_channelMutex);
 
                 if (m_connectionState == DESTROYED)
                     throw std::runtime_error("Channel already destroyed.");
 
+                m_getfield.reset();
+
                 // stop searching...
-                SearchInstance::shared_pointer thisChannelPointer = shared_from_this();
+                shared_pointer thisChannelPointer = internal_from_this();
                 m_context->getChannelSearchManager()->unregisterSearchInstance(thisChannelPointer);
                 cancel();
 
@@ -3847,7 +3586,7 @@ private:
                 setConnectionState(DESTROYED);
 
                 // unregister
-                m_context->unregisterChannel(shared_from_this());
+                m_context->unregisterChannel(thisChannelPointer);
             }
 
             // should be called without any lock hold
@@ -3870,7 +3609,7 @@ private:
 
             if (!initiateSearch) {
                 // stop searching...
-                m_context->getChannelSearchManager()->unregisterSearchInstance(shared_from_this());
+                m_context->getChannelSearchManager()->unregisterSearchInstance(internal_from_this());
                 cancel();
             }
             setConnectionState(DISCONNECTED);
@@ -3882,7 +3621,7 @@ private:
             {
                 if (remoteDestroy) {
                     m_issueCreateMessage = false;
-                    m_transport->enqueueSendRequest(shared_from_this());
+                    m_transport->enqueueSendRequest(internal_from_this());
                 }
 
                 m_transport->release(getID());
@@ -3894,7 +3633,7 @@ private:
 
         }
 
-        void channelDestroyedOnServer() {
+        void channelDestroyedOnServer() OVERRIDE FINAL {
             if (isConnected())
             {
                 disconnect(true, false);
@@ -3918,17 +3657,16 @@ private:
 
             if (!m_addresses.get())
             {
-                m_context->getChannelSearchManager()->registerSearchInstance(shared_from_this(), penalize);
+                m_context->getChannelSearchManager()->registerSearchInstance(internal_from_this(), penalize);
             }
             else if (!m_addresses->empty())
             {
-                TimerCallback::shared_pointer tc = std::tr1::dynamic_pointer_cast<TimerCallback>(shared_from_this());
-                m_context->getTimer()->scheduleAfterDelay(tc,
+                m_context->getTimer()->scheduleAfterDelay(internal_from_this(),
                         (m_addressIndex / m_addresses->size())*STATIC_SEARCH_BASE_DELAY_SEC);
             }
         }
 
-        virtual void callback() {
+        virtual void callback() OVERRIDE FINAL {
             // TODO cancellaction?!
             // TODO not in this timer thread !!!
             // TODO boost when a server (from address list) is started!!! IP vs address !!!
@@ -3938,15 +3676,15 @@ private:
                 m_addressIndex = m_addresses->size()*STATIC_SEARCH_MAX_MULTIPLIER;
 
             // NOTE: calls channelConnectFailed() on failure
-            static GUID guid = { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
+            static ServerGUID guid = { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
             searchResponse(guid, PVA_PROTOCOL_REVISION, &((*m_addresses)[ix]));
         }
 
-        virtual void timerStopped() {
+        virtual void timerStopped() OVERRIDE FINAL {
             // noop
         }
 
-        virtual void searchResponse(const GUID & guid, int8 minorRevision, osiSockAddr* serverAddress) {
+        virtual void searchResponse(const ServerGUID & guid, int8 minorRevision, osiSockAddr* serverAddress) OVERRIDE FINAL {
             Lock guard(m_channelMutex);
             Transport::shared_pointer transport = m_transport;
             if (transport.get())
@@ -3956,7 +3694,7 @@ private:
                 if (!sockAddrAreIdentical(transport->getRemoteAddress(), serverAddress) &&
                         !std::equal(guid.value, guid.value + 12, m_guid.value))
                 {
-                    EXCEPTION_GUARD(m_requester->message("More than one channel with name '" + m_name +
+                    EXCEPTION_GUARD3(m_requester, req, req->message("More than one channel with name '" + m_name +
                                                          "' detected, connected to: " + inetAddressToString(*transport->getRemoteAddress()) + ", ignored: " + inetAddressToString(*serverAddress), warningMessage));
                 }
 
@@ -3965,7 +3703,7 @@ private:
             }
 
             // NOTE: this creates a new or acquires an existing transport (implies increases usage count)
-            transport = m_context->getTransport(shared_from_this(), serverAddress, minorRevision, m_priority);
+            transport = m_context->getTransport(internal_from_this(), serverAddress, minorRevision, m_priority);
             if (!transport.get())
             {
                 createChannelFailed();
@@ -3980,21 +3718,21 @@ private:
             createChannel(transport);
         }
 
-        virtual void transportClosed() {
+        virtual void transportClosed() OVERRIDE FINAL {
             disconnect(true, false);
 
             // should be called without any lock hold
             reportChannelStateChange();
         }
 
-        virtual void transportChanged() {
+        virtual void transportChanged() OVERRIDE FINAL {
 //                    initiateSearch();
             // TODO
             // this will be called immediately after reconnect... bad...
 
         }
 
-        virtual Transport::shared_pointer checkAndGetTransport()
+        virtual Transport::shared_pointer checkAndGetTransport() OVERRIDE FINAL
         {
             Lock guard(m_channelMutex);
 
@@ -4005,7 +3743,7 @@ private:
             return m_transport;
         }
 
-        virtual Transport::shared_pointer checkDestroyedAndGetTransport()
+        virtual Transport::shared_pointer checkDestroyedAndGetTransport() OVERRIDE FINAL
         {
             Lock guard(m_channelMutex);
 
@@ -4017,13 +3755,13 @@ private:
                 return Transport::shared_pointer();
         }
 
-        virtual Transport::shared_pointer getTransport()
+        virtual Transport::shared_pointer getTransport() OVERRIDE FINAL
         {
             Lock guard(m_channelMutex);
             return m_transport;
         }
 
-        virtual void transportResponsive(Transport::shared_pointer const & /*transport*/) {
+        virtual void transportResponsive(Transport::shared_pointer const & /*transport*/) OVERRIDE FINAL {
             Lock guard(m_channelMutex);
             if (m_connectionState == DISCONNECTED)
             {
@@ -4034,7 +3772,7 @@ private:
             }
         }
 
-        void transportUnresponsive() {
+        void transportUnresponsive() OVERRIDE FINAL {
             /*
             {
                 Lock guard(m_channelMutex);
@@ -4080,10 +3818,18 @@ private:
 
         void reportChannelStateChange()
         {
-            Channel::shared_pointer thisPointer = shared_from_this();
+            // hack
+            // we should always use the external shared_ptr.
+            // however, this is already dead during destroy(),
+            // but we still want to give notification.
+            // so give the internal ref and hope it isn't stored...
+            shared_pointer self(m_external_this.lock());
+            if(!self)
+                self = internal_from_this();
 
             while (true)
             {
+                std::vector<ResponseRequest::weak_pointer> ops;
                 ConnectionState connectionState;
                 {
                     Lock guard(m_channelMutex);
@@ -4091,21 +3837,35 @@ private:
                         break;
                     connectionState = channelStateChangeQueue.front();
                     channelStateChangeQueue.pop();
+
+                    if(connectionState==Channel::DISCONNECTED || connectionState==Channel::DESTROYED) {
+                        Lock guard(m_responseRequestsMutex);
+                        ops.reserve(m_responseRequests.size());
+                        for(IOIDResponseRequestMap::const_iterator it = m_responseRequests.begin(),
+                                                                  end = m_responseRequests.end();
+                            it!=end; ++it)
+                        {
+                            ops.push_back(it->second);
+                        }
+                    }
                 }
 
-                EXCEPTION_GUARD(m_requester->channelStateChange(thisPointer, connectionState));
+                EXCEPTION_GUARD3(m_requester, req, req->channelStateChange(self, connectionState));
+
+                if(connectionState==Channel::DISCONNECTED || connectionState==Channel::DESTROYED) {
+                    for(size_t i=0, N=ops.size(); i<N; i++) {
+                        ResponseRequest::shared_pointer R(ops[i].lock());
+                        if(!R) continue;
+                        EXCEPTION_GUARD(R->getRequester()->channelDisconnect(connectionState==Channel::DESTROYED);)
+                    }
+                }
             }
 
 
         }
 
 
-        virtual void lock() {
-            // noop
-        }
-
-
-        virtual void send(ByteBuffer* buffer, TransportSendControl* control) {
+        virtual void send(ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
             m_channelMutex.lock();
             bool issueCreateMessage = m_issueCreateMessage;
             m_channelMutex.unlock();
@@ -4139,10 +3899,6 @@ private:
             }
         }
 
-        virtual void unlock() {
-            // noop
-        }
-
 
         /**
          * Disconnects (destroys) all channels pending IO.
@@ -4150,7 +3906,7 @@ private:
          */
         void disconnectPendingIO(bool destroy)
         {
-            Status& status = destroy ? channelDestroyed : channelDisconnected;
+            Channel::ConnectionState state = destroy ? Channel::DESTROYED : Channel::DISCONNECTED;
 
             Lock guard(m_responseRequestsMutex);
 
@@ -4170,7 +3926,7 @@ private:
             {
                 if((ptr = rrs[i].lock()))
                 {
-                    EXCEPTION_GUARD(ptr->reportStatus(status));
+                    EXCEPTION_GUARD(ptr->reportStatus(state));
                 }
             }
         }
@@ -4179,26 +3935,7 @@ private:
          * Resubscribe subscriptions.
          */
         // TODO to be called from non-transport thread !!!!!!
-        void resubscribeSubscriptions()
-        {
-            Lock guard(m_responseRequestsMutex);
-
-            Transport::shared_pointer transport = getTransport();
-
-            // NOTE: elements cannot be removed within rrs->updateSubscription callbacks
-            for (IOIDResponseRequestMap::iterator iter = m_responseRequests.begin();
-                    iter != m_responseRequests.end();
-                    iter++)
-            {
-                ResponseRequest::shared_pointer ptr = iter->second.lock();
-                if (ptr)
-                {
-                    SubscriptionRequest::shared_pointer rrs = dynamic_pointer_cast<SubscriptionRequest>(ptr);
-                    if (rrs)
-                        EXCEPTION_GUARD(rrs->resubscribeSubscription(transport));
-                }
-            }
-        }
+        void resubscribeSubscriptions();
 
         /**
          * Update subscriptions.
@@ -4228,67 +3965,58 @@ private:
             }
         }
 
-        virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField)
-        {
-            ChannelGetFieldRequestImpl::create(shared_from_this(), requester, subField);
-        }
+        virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField) OVERRIDE FINAL;
 
         virtual ChannelProcess::shared_pointer createChannelProcess(
-            ChannelProcessRequester::shared_pointer const & channelProcessRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest)
+            ChannelProcessRequester::shared_pointer const & requester,
+            epics::pvData::PVStructure::shared_pointer const & pvRequest) OVERRIDE FINAL
         {
-            return ChannelProcessRequestImpl::create(shared_from_this(), channelProcessRequester, pvRequest);
+            return BaseRequestImpl::build<ChannelProcessRequestImpl>(external_from_this(), requester, pvRequest);
         }
 
         virtual ChannelGet::shared_pointer createChannelGet(
-            ChannelGetRequester::shared_pointer const & channelGetRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest)
+            ChannelGetRequester::shared_pointer const & requester,
+            epics::pvData::PVStructure::shared_pointer const & pvRequest) OVERRIDE FINAL
         {
-            return ChannelGetImpl::create(shared_from_this(), channelGetRequester, pvRequest);
+            return BaseRequestImpl::build<ChannelGetImpl>(external_from_this(), requester, pvRequest);
         }
 
         virtual ChannelPut::shared_pointer createChannelPut(
-            ChannelPutRequester::shared_pointer const & channelPutRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest)
+            ChannelPutRequester::shared_pointer const & requester,
+            epics::pvData::PVStructure::shared_pointer const & pvRequest) OVERRIDE FINAL
         {
-            return ChannelPutImpl::create(shared_from_this(), channelPutRequester, pvRequest);
+            return BaseRequestImpl::build<ChannelPutImpl>(external_from_this(), requester, pvRequest);
         }
 
         virtual ChannelPutGet::shared_pointer createChannelPutGet(
-            ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest)
+            ChannelPutGetRequester::shared_pointer const & requester,
+            epics::pvData::PVStructure::shared_pointer const & pvRequest) OVERRIDE FINAL
         {
-            return ChannelPutGetImpl::create(shared_from_this(), channelPutGetRequester, pvRequest);
+            return BaseRequestImpl::build<ChannelPutGetImpl>(external_from_this(), requester, pvRequest);
         }
 
         virtual ChannelRPC::shared_pointer createChannelRPC(
-            ChannelRPCRequester::shared_pointer const & channelRPCRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest)
+            ChannelRPCRequester::shared_pointer const & requester,
+            epics::pvData::PVStructure::shared_pointer const & pvRequest) OVERRIDE FINAL
         {
-            return ChannelRPCImpl::create(shared_from_this(), channelRPCRequester, pvRequest);
+            return BaseRequestImpl::build<ChannelRPCImpl>(external_from_this(), requester, pvRequest);
         }
 
         virtual Monitor::shared_pointer createMonitor(
-            MonitorRequester::shared_pointer const & monitorRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest)
+            MonitorRequester::shared_pointer const & requester,
+            epics::pvData::PVStructure::shared_pointer const & pvRequest) OVERRIDE FINAL
         {
-            return ChannelMonitorImpl::create(shared_from_this(), monitorRequester, pvRequest);
+            return BaseRequestImpl::build<ChannelMonitorImpl>(external_from_this(), requester, pvRequest);
         }
 
         virtual ChannelArray::shared_pointer createChannelArray(
-            ChannelArrayRequester::shared_pointer const & channelArrayRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest)
+            ChannelArrayRequester::shared_pointer const & requester,
+            epics::pvData::PVStructure::shared_pointer const & pvRequest) OVERRIDE FINAL
         {
-            return ChannelArrayImpl::create(shared_from_this(), channelArrayRequester, pvRequest);
+            return BaseRequestImpl::build<ChannelArrayImpl>(external_from_this(), requester, pvRequest);
         }
 
-
-
-        virtual void printInfo() {
-            printInfo(std::cout);
-        }
-
-        virtual void printInfo(std::ostream& out) {
+        virtual void printInfo(std::ostream& out) OVERRIDE FINAL {
             //Lock lock(m_channelMutex);
 
             out << "CHANNEL  : " << m_name << std::endl;
@@ -4309,7 +4037,7 @@ public:
     InternalClientContextImpl(const Configuration::shared_pointer& conf) :
         m_addressList(""), m_autoAddressList(true), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
         m_broadcastPort(PVA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV),
-        m_namedLocker(), m_lastCID(0), m_lastIOID(0),
+        m_lastCID(0), m_lastIOID(0),
         m_version("pvAccess Client", "cpp",
                   EPICS_PVA_MAJOR_VERSION,
                   EPICS_PVA_MINOR_VERSION,
@@ -4326,30 +4054,30 @@ public:
         loadConfiguration();
     }
 
-    virtual Configuration::shared_pointer getConfiguration() {
+    virtual Configuration::const_shared_pointer getConfiguration() OVERRIDE FINAL {
         return m_configuration;
     }
 
-    virtual const Version& getVersion() {
+    virtual const Version& getVersion() OVERRIDE FINAL {
         return m_version;
     }
 
-    virtual Timer::shared_pointer getTimer()
+    virtual Timer::shared_pointer getTimer() OVERRIDE FINAL
     {
         return m_timer;
     }
 
-    virtual TransportRegistry::shared_pointer getTransportRegistry()
+    virtual TransportRegistry* getTransportRegistry() OVERRIDE FINAL
     {
-        return m_transportRegistry;
+        return &m_transportRegistry;
     }
 
-    virtual Transport::shared_pointer getSearchTransport()
+    virtual Transport::shared_pointer getSearchTransport() OVERRIDE FINAL
     {
         return m_searchTransport;
     }
 
-    virtual void initialize() {
+    virtual void initialize() OVERRIDE FINAL {
         Lock lock(m_contextMutex);
 
         if (m_contextState == CONTEXT_DESTROYED)
@@ -4362,11 +4090,7 @@ public:
         m_contextState = CONTEXT_INITIALIZED;
     }
 
-    virtual void printInfo() {
-        printInfo(std::cout);
-    }
-
-    virtual void printInfo(std::ostream& out) {
+    virtual void printInfo(std::ostream& out) OVERRIDE FINAL {
         Lock lock(m_contextMutex);
 
         out << "CLASS              : ::epics::pvAccess::ClientContextImpl" << std::endl;
@@ -4394,7 +4118,7 @@ public:
         }
     }
 
-    virtual void destroy()
+    virtual void destroy() OVERRIDE FINAL
     {
         {
             Lock guard(m_contextMutex);
@@ -4409,7 +4133,7 @@ public:
         internalDestroy();
     }
 
-    virtual void dispose()
+    virtual void dispose() OVERRIDE FINAL
     {
         try {
             destroy();
@@ -4420,11 +4144,18 @@ public:
         }
     }
 
-    ~InternalClientContextImpl()
+    virtual ~InternalClientContextImpl()
     {
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(remoteClientContext);
     }
 
+    const weak_pointer m_external_this, m_internal_this;
+    shared_pointer internal_from_this() const {
+        return shared_pointer(m_internal_this);
+    }
+    shared_pointer external_from_this() const {
+        return shared_pointer(m_external_this);
+    }
 private:
 
     void loadConfiguration() {
@@ -4446,11 +4177,12 @@ private:
 
         osiSockAttach();
         m_timer.reset(new Timer("pvAccess-client timer", lowPriority));
-        Context::shared_pointer thisPointer = shared_from_this();
+        InternalClientContextImpl::shared_pointer thisPointer = internal_from_this();
+        // stores weak_ptr
         m_connector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_connectionTimeout));
-        m_transportRegistry.reset(new TransportRegistry());
 
-        m_responseHandler.reset(new ClientResponseHandler(shared_from_this()));
+        // stores many weak_ptr
+        m_responseHandler.reset(new ClientResponseHandler(thisPointer));
 
         // preinitialize security plugins
         SecurityPluginRegistry::instance();
@@ -4515,8 +4247,13 @@ private:
         // wait for all transports to cleanly exit
         int tries = 40;
         epics::pvData::int32 transportCount;
-        while ((transportCount = m_transportRegistry->numberOfActiveTransports()) && tries--)
+        while ((transportCount = m_transportRegistry.numberOfActiveTransports()) && tries--)
             epicsThreadSleep(0.025);
+
+        {
+            Lock guard(m_beaconMapMutex);
+            m_beaconHandlers.clear();
+        }
 
         if (transportCount)
             LOG(logLevelDebug, "PVA client context destroyed with %d transport(s) active.", transportCount);
@@ -4551,7 +4288,7 @@ private:
     /**
      * Check channel name.
      */
-    void checkChannelName(std::string const & name) {
+    void checkChannelName(std::string const & name) OVERRIDE FINAL {
         if (name.empty())
             throw std::runtime_error("0 or empty channel name");
         else if (name.length() > MAX_CHANNEL_NAME_LENGTH)
@@ -4574,7 +4311,7 @@ private:
      * Register channel.
      * @param channel
      */
-    void registerChannel(ChannelImpl::shared_pointer const & channel)
+    void registerChannel(ChannelImpl::shared_pointer const & channel) OVERRIDE FINAL
     {
         Lock guard(m_cidMapMutex);
         m_channelsByCID[channel->getChannelID()] = ChannelImpl::weak_pointer(channel);
@@ -4584,7 +4321,7 @@ private:
      * Unregister channel.
      * @param channel
      */
-    void unregisterChannel(ChannelImpl::shared_pointer const & channel)
+    void unregisterChannel(ChannelImpl::shared_pointer const & channel) OVERRIDE FINAL
     {
         Lock guard(m_cidMapMutex);
         m_channelsByCID.erase(channel->getChannelID());
@@ -4595,7 +4332,7 @@ private:
      * @param channelID CID.
      * @return channel with given CID, <code>0</code> if non-existent.
      */
-    Channel::shared_pointer getChannel(pvAccessID channelID)
+    Channel::shared_pointer getChannel(pvAccessID channelID) OVERRIDE FINAL
     {
         Lock guard(m_cidMapMutex);
         CIDChannelMap::iterator it = m_channelsByCID.find(channelID);
@@ -4632,7 +4369,7 @@ private:
      * @param ioid    I/O ID.
      * @return request response with given I/O ID.
      */
-    ResponseRequest::shared_pointer getResponseRequest(pvAccessID ioid)
+    ResponseRequest::shared_pointer getResponseRequest(pvAccessID ioid) OVERRIDE FINAL
     {
         Lock guard(m_ioidMapMutex);
         IOIDResponseRequestMap::iterator it = m_pendingResponseRequests.find(ioid);
@@ -4645,7 +4382,7 @@ private:
      * @param request request to register.
      * @return request ID (IOID).
      */
-    pvAccessID registerResponseRequest(ResponseRequest::shared_pointer const & request)
+    pvAccessID registerResponseRequest(ResponseRequest::shared_pointer const & request) OVERRIDE FINAL
     {
         Lock guard(m_ioidMapMutex);
         pvAccessID ioid = generateIOID();
@@ -4658,7 +4395,7 @@ private:
      * @param request
      * @return removed object, can be <code>0</code>
      */
-    ResponseRequest::shared_pointer unregisterResponseRequest(pvAccessID ioid)
+    ResponseRequest::shared_pointer unregisterResponseRequest(pvAccessID ioid) OVERRIDE FINAL
     {
         if (ioid == INVALID_IOID) return ResponseRequest::shared_pointer();
 
@@ -4693,7 +4430,7 @@ private:
     /**
      * Called each time beacon anomaly is detected.
      */
-    virtual void newServerDetected()
+    virtual void newServerDetected() OVERRIDE FINAL
     {
         if (m_channelSearchManager)
             m_channelSearchManager->newServerDetected();
@@ -4705,7 +4442,7 @@ private:
      * @param responseFrom remote source address of received beacon.
      * @return beacon handler for particular server.
      */
-    BeaconHandler::shared_pointer getBeaconHandler(std::string const & protocol, osiSockAddr* responseFrom)
+    BeaconHandler::shared_pointer getBeaconHandler(std::string const & protocol, osiSockAddr* responseFrom) OVERRIDE FINAL
     {
         // TODO !!! protocol !!!
         if (protocol != "tcp")
@@ -4716,7 +4453,8 @@ private:
         BeaconHandler::shared_pointer handler;
         if (it == m_beaconHandlers.end())
         {
-            handler.reset(new BeaconHandler(shared_from_this(), protocol, responseFrom));
+            // stores weak_ptr
+            handler.reset(new BeaconHandler(internal_from_this(), protocol, responseFrom));
             m_beaconHandlers[*responseFrom] = handler;
         }
         else
@@ -4730,7 +4468,7 @@ private:
      * @param priority process priority.
      * @return transport for given address
      */
-    Transport::shared_pointer getTransport(TransportClient::shared_pointer const & client, osiSockAddr* serverAddress, int8 minorRevision, int16 priority)
+    Transport::shared_pointer getTransport(TransportClient::shared_pointer const & client, osiSockAddr* serverAddress, int8 minorRevision, int16 priority) OVERRIDE FINAL
     {
         try
         {
@@ -4739,10 +4477,9 @@ private:
             //static_pointer_cast<BlockingTCPTransport>(t)->setFlushStrategy(m_flushStrategy);
             return t;
         }
-        catch (...)
+        catch (std::exception& e)
         {
-            // TODO log
-            //printf("failed to get transport\n");
+            LOG(logLevelError, "getTransport() fails: %s\n", e.what());
             return Transport::shared_pointer();
         }
     }
@@ -4753,7 +4490,7 @@ private:
     // TODO no minor version with the addresses
     // TODO what if there is an channel with the same name, but on different host!
     ChannelImpl::shared_pointer createChannelInternal(std::string const & name, ChannelRequester::shared_pointer const & requester, short priority,
-            auto_ptr<InetAddrVector>& addresses) { // TODO addresses
+            auto_ptr<InetAddrVector>& addresses) OVERRIDE FINAL { // TODO addresses
 
         checkState();
         checkChannelName(name);
@@ -4769,11 +4506,16 @@ private:
         {
             try
             {
+                /* Note that our channels have an internal ref. to us.
+                 * Thus having active channels will *not* keep us alive.
+                 * Use code must explicitly keep our external ref. as well
+                 * as our channels.
+                 */
                 pvAccessID cid = generateCID();
-                return InternalChannelImpl::create(shared_from_this(), cid, name, requester, priority, addresses);
+                return InternalChannelImpl::create(internal_from_this(), cid, name, requester, priority, addresses);
             }
-            catch(...) {
-                // TODO
+            catch(std::exception& e) {
+                LOG(logLevelError, "createChannelInternal() exception: %s\n", e.what());
                 return ChannelImpl::shared_pointer();
             }
             // TODO namedLocker.releaseSynchronizationObject(name);
@@ -4785,38 +4527,9 @@ private:
         }
     }
 
-    /**
-     * Destroy channel.
-     * @param channel
-     * @param force
-     * @throws PVAException
-     * @throws std::runtime_error
-     */
-    void destroyChannel(ChannelImpl::shared_pointer const & channel, bool force) {
-
-        string name = channel->getChannelName();
-        bool lockAcquired = true; //namedLocker->acquireSynchronizationObject(name, LOCK_TIMEOUT);
-        if (lockAcquired)
-        {
-            try
-            {
-                channel->destroyChannel(force);
-            }
-            catch(...) {
-                // TODO
-            }
-            // TODO    namedLocker->releaseSynchronizationObject(channel.getChannelName());
-        }
-        else
-        {
-            // TODO is this OK?
-            throw std::runtime_error("Failed to obtain synchronization lock for '" + name + "', possible deadlock.");
-        }
-    }
-
-    virtual void configure(epics::pvData::PVStructure::shared_pointer configuration)
+    virtual void configure(epics::pvData::PVStructure::shared_pointer configuration) OVERRIDE FINAL
     {   // remove?
-        if (m_transportRegistry->numberOfActiveTransports() > 0)
+        if (m_transportRegistry.numberOfActiveTransports() > 0)
             throw std::runtime_error("Configure must be called when there is no transports active.");
 
         PVInt::shared_pointer pvStrategy = dynamic_pointer_cast<PVInt>(configuration->getSubField("strategy"));
@@ -4838,21 +4551,16 @@ private:
 
     }
 
-    virtual void flush()
+    virtual void flush() OVERRIDE FINAL
     {
-        m_transportRegistry->toArray(m_flushTransports);
+        m_transportRegistry.toArray(m_flushTransports);
         TransportRegistry::transportVector_t::const_iterator iter = m_flushTransports.begin();
         while (iter != m_flushTransports.end())
             (*iter++)->flushSendQueue();
         m_flushTransports.clear();
     }
 
-    virtual void poll()
-    {
-        // TODO
-    }
-
-    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins()
+    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins() OVERRIDE FINAL
     {
         return SecurityPluginRegistry::instance().getClientSecurityPlugins();
     }
@@ -4861,7 +4569,7 @@ private:
      * Get channel search manager.
      * @return channel search manager.
      */
-    ChannelSearchManager::shared_pointer getChannelSearchManager() {
+    ChannelSearchManager::shared_pointer getChannelSearchManager() OVERRIDE FINAL {
         return m_channelSearchManager;
     }
 
@@ -4923,22 +4631,12 @@ private:
      * PVA transport (virtual circuit) registry.
      * This registry contains all active transports - connections to PVA servers.
      */
-    TransportRegistry::shared_pointer m_transportRegistry;
+    TransportRegistry m_transportRegistry;
 
     /**
      * Response handler.
      */
     ClientResponseHandler::shared_pointer m_responseHandler;
-
-    /**
-     * Context instance.
-     */
-    NamedLockPattern<string> m_namedLocker;
-
-    /**
-     * Context instance.
-     */
-    static const int LOCK_TIMEOUT = 20 * 1000;    // 20s
 
     /**
      * Map of channels (keys are CIDs).
@@ -5016,11 +4714,204 @@ private:
     FlushStrategy m_flushStrategy;
 };
 
+PVACCESS_REFCOUNT_MONITOR_DEFINE(channelGetField);
+
+class ChannelGetFieldRequestImpl :
+    public DataResponse,
+    public TransportSender,
+    public epics::pvAccess::Destroyable,
+    public std::tr1::enable_shared_from_this<ChannelGetFieldRequestImpl>
+{
+public:
+    typedef GetFieldRequester requester_type;
+    POINTER_DEFINITIONS(ChannelGetFieldRequestImpl);
+
+    const InternalClientContextImpl::InternalChannelImpl::shared_pointer m_channel;
+
+    const GetFieldRequester::weak_pointer m_callback;
+    string m_subField;
+
+    pvAccessID m_ioid;
+
+    Mutex m_mutex;
+    bool m_destroyed;
+    bool m_notified;
+
+    ChannelGetFieldRequestImpl(InternalClientContextImpl::InternalChannelImpl::shared_pointer const & channel,
+                               GetFieldRequester::shared_pointer const & callback,
+                               std::string const & subField) :
+        m_channel(channel),
+        m_callback(callback),
+        m_subField(subField),
+        m_ioid(INVALID_IOID),
+        m_destroyed(false),
+        m_notified(false)
+    {
+        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelGetField);
+    }
+
+    void activate()
+    {
+        {
+            // register response request
+            ChannelGetFieldRequestImpl::shared_pointer self(shared_from_this());
+            m_ioid = m_channel->getContext()->registerResponseRequest(self);
+            m_channel->registerResponseRequest(self);
+            {
+                Lock L(m_channel->m_channelMutex);
+                m_channel->m_getfield.swap(self);
+            }
+            // self goes out of scope, may call GetFieldRequester::getDone() from dtor
+        }
+
+        // enqueue send request
+        try {
+            m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
+        } catch (std::runtime_error &rte) {
+            //notify(BaseRequestImpl::channelNotConnected, FieldConstPtr());
+        }
+    }
+
+public:
+    virtual ~ChannelGetFieldRequestImpl()
+    {
+        destroy();
+        notify(BaseRequestImpl::channelDestroyed, FieldConstPtr());
+
+        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelGetField);
+    }
+
+    void notify(const Status& sts, const FieldConstPtr& field)
+    {
+        {
+            Lock G(m_mutex);
+            if(m_notified)
+                return;
+            m_notified = true;
+        }
+        EXCEPTION_GUARD3(m_callback, cb, cb->getDone(sts, field));
+    }
+
+    ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL {
+        return m_callback.lock();
+    }
+
+    pvAccessID getIOID() const OVERRIDE FINAL {
+        return m_ioid;
+    }
+
+    virtual void send(ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
+        control->startMessage((int8)17, 8);
+        buffer->putInt(m_channel->getServerChannelID());
+        buffer->putInt(m_ioid);
+        SerializeHelper::serializeString(m_subField, buffer, control);
+    }
+
+
+    virtual Channel::shared_pointer getChannel()
+    {
+        return m_channel;
+    }
+
+    virtual void cancel() OVERRIDE FINAL {
+        // TODO
+        // noop
+    }
+
+    virtual void timeout() OVERRIDE FINAL {
+        cancel();
+    }
+
+    void reportStatus(Channel::ConnectionState status) OVERRIDE FINAL {
+        // destroy, since channel (parent) was destroyed
+        if (status == Channel::DESTROYED)
+            destroy();
+        // TODO notify?
+    }
+
+    virtual void destroy() OVERRIDE FINAL
+    {
+        {
+            Lock guard(m_mutex);
+            if (m_destroyed)
+                return;
+            m_destroyed = true;
+        }
+
+        {
+            Lock L(m_channel->m_channelMutex);
+            if(m_channel->m_getfield.get()==this)
+                m_channel->m_getfield.reset();
+        }
+
+        // unregister response request
+        m_channel->getContext()->unregisterResponseRequest(m_ioid);
+        m_channel->unregisterResponseRequest(m_ioid);
+    }
+
+    virtual void response(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer) OVERRIDE FINAL {
+
+        Status status;
+        FieldConstPtr field;
+        status.deserialize(payloadBuffer, transport.get());
+        if (status.isSuccess())
+        {
+            // deserialize Field...
+            field = transport->cachedDeserialize(payloadBuffer);
+        }
+        notify(status, field);
+
+        destroy();
+    }
+
+
+};
+
+
+void InternalClientContextImpl::InternalChannelImpl::getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField)
+{
+    ChannelGetFieldRequestImpl::shared_pointer self(new ChannelGetFieldRequestImpl(internal_from_this(), requester, subField));
+    self->activate();
+    // activate() stores self in channel
+}
+
+void InternalClientContextImpl::InternalChannelImpl::resubscribeSubscriptions()
+{
+    Lock guard(m_responseRequestsMutex);
+
+    Transport::shared_pointer transport = getTransport();
+
+    if(m_getfield) {
+        transport->enqueueSendRequest(m_getfield);
+    }
+
+    // NOTE: elements cannot be removed within rrs->updateSubscription callbacks
+    for (IOIDResponseRequestMap::iterator iter = m_responseRequests.begin();
+            iter != m_responseRequests.end();
+            iter++)
+    {
+        ResponseRequest::shared_pointer ptr = iter->second.lock();
+        if (ptr)
+        {
+            SubscriptionRequest::shared_pointer rrs = dynamic_pointer_cast<SubscriptionRequest>(ptr);
+            if (rrs)
+                EXCEPTION_GUARD(rrs->resubscribeSubscription(transport));
+        }
+    }
+}
+
+}//namespace
+namespace epics {
+namespace pvAccess {
+
 ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf)
 {
-    InternalClientContextImpl::shared_pointer t(new InternalClientContextImpl(conf), delayed_destroyable_deleter());
-    t->initialize();
-    return t;
+    InternalClientContextImpl::shared_pointer internal(new InternalClientContextImpl(conf)),
+                                              external(internal.get(), epics::pvAccess::Destroyable::cleaner(internal));
+    const_cast<InternalClientContextImpl::weak_pointer&>(internal->m_external_this) = external;
+    const_cast<InternalClientContextImpl::weak_pointer&>(internal->m_internal_this) = internal;
+    internal->initialize();
+    return external;
 }
 
 }

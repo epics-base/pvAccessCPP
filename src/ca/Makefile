@@ -1,11 +1,14 @@
-# This is a Makefile fragment, see ../Makefile
+TOP = ../..
+include $(TOP)/configure/CONFIG
 
-SRC_DIRS += $(PVACCESS_SRC)/ca
+LIBRARY += pvAccessCA
+pvAccessCA_LIBS += ca pvAccess pvData Com
 
 INC += pv/caProvider.h
-INC += pv/caChannel.h
 INC += pv/caStatus.h
 
-LIBSRCS += caProvider.cpp
-LIBSRCS += caChannel.cpp
-LIBSRCS += caStatus.cpp
+pvAccessCA_SRCS += caProvider.cpp
+pvAccessCA_SRCS += caChannel.cpp
+pvAccessCA_SRCS += caStatus.cpp
+
+include $(TOP)/configure/RULES

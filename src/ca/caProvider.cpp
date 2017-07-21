@@ -6,30 +6,37 @@
 
 #include <algorithm>
 
-/* for CA */
 #include <cadef.h>
 #include <epicsSignal.h>
+#include <epicsThread.h>
+#include <epicsExit.h>
+#include <pv/logger.h>
+#include <pv/configuration.h>
+#include <pv/pvAccess.h>
 
 #define epicsExportSharedSymbols
-#include <pv/logger.h>
 #include <pv/caProvider.h>
 #include <pv/caChannel.h>
 
-namespace epics {
-namespace pvAccess {
-namespace ca {
-
 using namespace epics::pvData;
 using namespace epics::pvAccess;
+using namespace epics::pvAccess::ca;
 
 #define EXCEPTION_GUARD(code) try { code; } \
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
 
-std::string CAChannelProvider::PROVIDER_NAME = "ca";
-
 CAChannelProvider::CAChannelProvider() : current_context(0), destroyed(false)
 {
+    initialize();
+}
+
+CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
+    : current_context(0)
+    , destroyed(false)
+{
+    // Ignoring Configuration as CA only allows config via. environment,
+    // and we don't want to change this here.
     initialize();
 }
 
@@ -41,7 +48,7 @@ CAChannelProvider::~CAChannelProvider()
 
 std::string CAChannelProvider::getProviderName()
 {
-    return PROVIDER_NAME;
+    return "ca";
 }
 
 ChannelFind::shared_pointer CAChannelProvider::channelFind(
@@ -168,108 +175,38 @@ void CAChannelProvider::initialize()
 }
 
 
-class CAChannelProviderFactory : public ChannelProviderFactory
+static
+void ca_factory_cleanup(void*)
 {
-private:
-    Mutex m_mutex;
-    CAChannelProvider::shared_pointer sharedProvider;
-public:
-    POINTER_DEFINITIONS(CAChannelProviderFactory);
-
-   virtual ~CAChannelProviderFactory()
-    {
-        Lock guard(m_mutex);
-        if (sharedProvider)
-        {
-            CAChannelProvider::shared_pointer provider;
-            sharedProvider.swap(provider);
-            // factroy cleans up also shared provider
-            provider->destroy();
-        }
+    try {
+        ChannelProviderRegistry::clients()->remove("ca");
+    } catch(std::exception& e) {
+        LOG(logLevelWarn, "Error when unregister \"ca\" factory");
     }
-
-    virtual std::string getFactoryName()
-    {
-        return CAChannelProvider::PROVIDER_NAME;
-    }
-
-    virtual ChannelProvider::shared_pointer sharedInstance()
-    {
-        Lock guard(m_mutex);
-        if (!sharedProvider)
-        {
-            try {
-                // TODO use std::make_shared
-                std::tr1::shared_ptr<CAChannelProvider> tp(new CAChannelProvider());
-                sharedProvider = tp;
-            } catch (std::exception &e) {
-                LOG(logLevelError, "Unhandled exception caught at %s:%d: %s", __FILE__, __LINE__, e.what());
-            } catch (...) {
-                LOG(logLevelError, "Unhandled exception caught at %s:%d.", __FILE__, __LINE__);
-            }
-        }
-        return sharedProvider;
-    }
-
-    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf)
-    {
-        // Ignoring configuration as CA only allows config via. environment,
-        // and we don't want to change this here.
-        try {
-            // TODO use std::make_shared
-            std::tr1::shared_ptr<CAChannelProvider> tp(new CAChannelProvider());
-            ChannelProvider::shared_pointer ni = tp;
-            return ni;
-        } catch (std::exception &e) {
-            LOG(logLevelError, "Unhandled exception caught at %s:%d: %s", __FILE__, __LINE__, e.what());
-            return ChannelProvider::shared_pointer();
-        } catch (...) {
-            LOG(logLevelError, "Unhandled exception caught at %s:%d.", __FILE__, __LINE__);
-            return ChannelProvider::shared_pointer();
-        }
-    }
-
-};
-
-static Mutex startStopMutex;
-
-ChannelProviderRegistry::shared_pointer CAClientFactory::channelRegistry;
-ChannelProviderFactory::shared_pointer  CAClientFactory::channelProvider;
-int CAClientFactory::numStart = 0;
-
+}
 
 void CAClientFactory::start()
 {
-    Lock guard(startStopMutex);
-std::cout << "CAClientFactory::start() numStart " << numStart << std::endl; 
-    ++numStart;
-    if(numStart>1) return;
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
-    channelProvider.reset(new CAChannelProviderFactory());
-    channelRegistry = ChannelProviderRegistry::getChannelProviderRegistry();
-std::cout << "channelRegistry::use_count " << channelRegistry.use_count() << std::endl;
-    channelRegistry->add(channelProvider);   
+
+    if(ChannelProviderRegistry::clients()->add<CAChannelProvider>("ca", false))
+        epicsAtExit(&ca_factory_cleanup, NULL);
 }
 
 void CAClientFactory::stop()
 {
-std::cout << "ClientFactory::stop() numStart " << numStart << std::endl; 
-std::cout << "channelRegistry::use_count " << channelRegistry.use_count() << std::endl;
-    Lock guard(startStopMutex);
-    if(numStart==0) return;
-    --numStart;
-    if(numStart>=1) return;
-    if (channelProvider)
-    {
-        channelRegistry->remove(CAChannelProvider::PROVIDER_NAME);
-        if(!channelProvider.unique()) {
-            LOG(logLevelWarn, "ClientFactory::stop() finds shared client context with %u remaining users",
-                (unsigned)channelProvider.use_count());
-        }
-        channelProvider.reset();
-        channelRegistry.reset();
-    }
+    // unregister now done with exit hook
 }
 
-}}}
+// perhaps useful during dynamic loading?
+extern "C" {
+void registerClientProvider_ca()
+{
+    try {
+        CAClientFactory::start();
+    } catch(std::exception& e){
+        std::cerr<<"Error loading ca: "<<e.what()<<"\n";
+    }
+}
+} // extern "C"

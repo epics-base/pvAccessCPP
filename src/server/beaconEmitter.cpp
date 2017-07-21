@@ -14,7 +14,7 @@
 #include <pv/beaconEmitter.h>
 #include <pv/serializationHelper.h>
 #include <pv/logger.h>
-#include <pv/serverContext.h>
+#include <pv/serverContextImpl.h>
 
 using namespace std;
 using namespace epics::pvData;
@@ -47,16 +47,6 @@ BeaconEmitter::~BeaconEmitter()
     // shared_from_this is not yet allows in destructor
     // be sure to call destroy() first !!!
     // destroy();
-}
-
-void BeaconEmitter::lock()
-{
-    //noop
-}
-
-void BeaconEmitter::unlock()
-{
-    //noop
 }
 
 void BeaconEmitter::send(ByteBuffer* buffer, TransportSendControl* control)

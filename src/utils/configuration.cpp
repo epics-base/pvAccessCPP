@@ -26,121 +26,6 @@ namespace pvAccess {
 using namespace epics::pvData;
 using namespace std;
 
-Properties::Properties() {}
-
-Properties::Properties(const string &fileName) : _fileName(fileName) {}
-
-const std::string &Properties::getProperty(const string &key) const
-{
-    _properties_t::const_iterator propertiesIterator = _properties.find(key);
-    if(propertiesIterator != _properties.end()) {
-        return propertiesIterator->second;
-    } else {
-        THROW_BASE_EXCEPTION(string("Property not found in the map: ") + key);
-    }
-}
-
-const std::string &Properties::getProperty(const string &key, const string &defaultValue) const
-{
-    _properties_t::const_iterator propertiesIterator = _properties.find(key);
-    if(propertiesIterator != _properties.end()) {
-        return propertiesIterator->second;
-    } else {
-        return defaultValue;
-    }
-}
-
-void Properties::load()
-{
-    load(_fileName);
-}
-
-void Properties::load(const string &fileName)
-{
-    ifstream strm(fileName.c_str());
-    load(strm);
-}
-
-namespace {
-string trim(const string& in)
-{
-    size_t A = in.find_first_not_of(" \t\r"),
-           B = in.find_last_not_of(" \t\r");
-    if(A==B)
-        return string();
-    else
-        return in.substr(A, B-A+1);
-}
-}
-
-void Properties::load(std::istream& strm)
-{
-    _properties_t newmap;
-
-    std::string line;
-    unsigned lineno = 0;
-    while(getline(strm, line).good()) {
-        lineno++;
-        size_t idx = line.find_first_not_of(" \t\r");
-        if(idx==line.npos || line[idx]=='#')
-            continue;
-
-        idx = line.find_first_of('=');
-        if(idx==line.npos) {
-            ostringstream msg;
-            msg<<"Malformed line "<<lineno<<" expected '='";
-            throw runtime_error(msg.str());
-        }
-
-        string key(trim(line.substr(0, idx))),
-               value(trim(line.substr(idx+1)));
-
-        if(key.empty()) {
-            ostringstream msg;
-            msg<<"Malformed line "<<lineno<<" expected name before '='";
-            throw runtime_error(msg.str());
-        }
-
-        newmap[key] = value;
-    }
-    if(strm.bad()) {
-        ostringstream msg;
-        msg<<"Malformed line "<<lineno<<" I/O error";
-        throw runtime_error(msg.str());
-    }
-    _properties.swap(newmap);
-}
-
-void Properties::store() const
-{
-    store(_fileName);
-}
-
-void Properties::store(const std::string& fname) const
-{
-    ofstream strm(fname.c_str());
-    store(strm);
-}
-
-void Properties::store(std::ostream& strm) const
-{
-    for(_properties_t::const_iterator it=_properties.begin(), end=_properties.end();
-            it!=end && strm.good(); ++it)
-    {
-        strm << it->first << " = " << it->second << "\n";
-    }
-}
-
-void Properties::list()
-{
-    for (std::map<std::string,std::string>::iterator propertiesIterator =  _properties.begin() ;
-            propertiesIterator != _properties.end();
-            propertiesIterator++ )
-    {
-        cout << "Key:" << propertiesIterator->first << ",Value: " << propertiesIterator->second << endl;
-    }
-}
-
 bool Configuration::getPropertyAsBoolean(const std::string &name, const bool defaultValue) const
 {
     string value = getPropertyAsString(name, defaultValue ? "1" : "0");
@@ -225,6 +110,12 @@ bool ConfigurationMap::tryGetPropertyAsString(const std::string& name, std::stri
     return true;
 }
 
+void ConfigurationMap::addKeys(keys_t& names) const
+{
+    for(properties_t::const_iterator it=properties.begin(); it!=properties.end(); ++it)
+        names.insert(it->first);
+}
+
 bool ConfigurationEnviron::tryGetPropertyAsString(const std::string& name, std::string* val) const
 {
     const char *env = getenv(name.c_str());
@@ -245,6 +136,12 @@ bool ConfigurationStack::tryGetPropertyAsString(const std::string& name, std::st
             return true;
     }
     return false;
+}
+
+void ConfigurationStack::addKeys(keys_t& names) const
+{
+    for(confs_t::const_iterator it=confs.begin(); it!=confs.end(); ++it)
+        (*it)->addKeys(names);
 }
 
 ConfigurationBuilder::ConfigurationBuilder() :stack(new ConfigurationStack) {}
@@ -300,7 +197,7 @@ void ConfigurationProviderImpl::registerConfiguration(const string &name, Config
     if(configsIter != _configs.end())
     {
         string msg = "configuration with name " + name + " already registered";
-        THROW_BASE_EXCEPTION(msg.c_str());
+        THROW_BASE_EXCEPTION(msg);
     }
     _configs[name] = configuration;
 }

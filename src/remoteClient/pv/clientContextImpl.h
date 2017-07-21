@@ -26,8 +26,6 @@
 
 #include <shareLib.h>
 
-class ChannelSearchManager;
-
 namespace epics {
 namespace pvAccess {
 
@@ -47,7 +45,7 @@ public:
     virtual void destroyChannel(bool force) = 0;
     virtual void connectionCompleted(pvAccessID sid/*,  rights*/) = 0;
     virtual void createChannelFailed() = 0;
-    virtual std::tr1::shared_ptr<ClientContextImpl> getContext() = 0;
+    virtual ClientContextImpl* getContext() = 0;
     virtual void channelDestroyedOnServer() = 0;
 
     virtual pvAccessID getServerChannelID() = 0;
@@ -67,8 +65,6 @@ class ClientContextImpl : public Context
 public:
     POINTER_DEFINITIONS(ClientContextImpl);
 
-    static std::string PROVIDER_NAME;
-
     /**
      * Get context implementation version.
      * @return version of the context implementation.
@@ -81,15 +77,9 @@ public:
     virtual void initialize() = 0; // public?
 
     /**
-     * Get channel provider implementation.
-     * @return the channel provider.
-     */
-    //virtual ChannelProvider::shared_pointer const & getProvider() = 0;
-
-    /**
      * Prints detailed information about the context to the standard output stream.
      */
-    virtual void printInfo() = 0;
+    virtual void printInfo() {printInfo(std::cout);}
 
     /**
      * Prints detailed information about the context to the specified output stream.
@@ -101,7 +91,7 @@ public:
      * Dispose (destroy) server context.
      * This calls <code>destroy()</code> and silently handles all exceptions.
      */
-    virtual void dispose() = 0;
+    virtual void dispose() EPICS_DEPRECATED = 0;
 
 
     virtual ChannelSearchManager::shared_pointer getChannelSearchManager() = 0;
@@ -110,8 +100,10 @@ public:
     virtual void registerChannel(ChannelImpl::shared_pointer const & channel) = 0;
     virtual void unregisterChannel(ChannelImpl::shared_pointer const & channel) = 0;
 
-    virtual void destroyChannel(ChannelImpl::shared_pointer const & channel, bool force) = 0;
-    virtual ChannelImpl::shared_pointer createChannelInternal(std::string const &name, ChannelRequester::shared_pointer const & requester, short priority, std::auto_ptr<InetAddrVector>& addresses) = 0;
+    virtual ChannelImpl::shared_pointer createChannelInternal(std::string const &name,
+                                                              ChannelRequester::shared_pointer const & requester,
+                                                              short priority,
+                                                              std::auto_ptr<InetAddrVector>& addresses) = 0;
 
     virtual ResponseRequest::shared_pointer getResponseRequest(pvAccessID ioid) = 0;
     virtual pvAccessID registerResponseRequest(ResponseRequest::shared_pointer const & request) = 0;
@@ -125,13 +117,13 @@ public:
     virtual std::tr1::shared_ptr<BeaconHandler> getBeaconHandler(std::string const & protocol, osiSockAddr* responseFrom) = 0;
 
     virtual void configure(epics::pvData::PVStructure::shared_pointer configuration) = 0;
-    virtual void flush() = 0;
-    virtual void poll() = 0;
+    virtual void flush() {}
+    virtual void poll() {}
 
     virtual void destroy() = 0;
 };
 
-epicsShareFunc ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf);
+ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf);
 
 }
 }

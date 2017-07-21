@@ -33,6 +33,7 @@
 #include <pv/pvaConstants.h>
 #include <pv/configuration.h>
 #include <pv/fairQueue.h>
+#include <pv/pvaDefs.h>
 
 /// TODO only here because of the Lockable
 #include <pv/pvAccess.h>
@@ -47,13 +48,6 @@ namespace pvAccess {
 //#define PVACCESS_REFCOUNT_MONITOR_DESTRUCT(name) LOG(logLevelDebug, #name "::~" #name);
 
 class TransportRegistry;
-
-/**
- * Globally unique ID.
- */
-typedef struct {
-    char value[12];
-} GUID;
 
 enum QoS {
     /**
@@ -93,8 +87,6 @@ enum QoS {
      */
     QOS_GET_PUT = 0x80
 };
-
-typedef epics::pvData::int32 pvAccessID;
 
 enum ApplicationCommands {
     CMD_BEACON = 0,
@@ -295,6 +287,9 @@ public:
      */
     virtual void close() = 0;
 
+    //! Call after close() to wait for any worker threads to exit
+    virtual void waitJoin() {}
+
     /**
      * Check connection status.
      * @return <code>true</code> if connected.
@@ -331,12 +326,12 @@ public:
     virtual epics::pvData::Timer::shared_pointer getTimer() = 0;
 
     //virtual TransportRegistry::shared_pointer getTransportRegistry() = 0;
-    virtual std::tr1::shared_ptr<TransportRegistry> getTransportRegistry() = 0;
+    virtual TransportRegistry* getTransportRegistry() = 0;
 
 
 
 
-    virtual Configuration::shared_pointer getConfiguration() = 0;
+    virtual Configuration::const_shared_pointer getConfiguration() = 0;
 
     /**
      * Get map of available security plug-ins.
@@ -566,13 +561,14 @@ public:
      * Report status to clients (e.g. disconnected).
      * @param status to report.
      */
-    virtual void reportStatus(epics::pvData::Status const & status) = 0;
+    virtual void reportStatus(Channel::ConnectionState status) = 0;
 
     /**
-     * Get request requester.
-     * @return request requester.
+     * used by MessageHandler and reportChannelStateChange().
+     *
+     * May return NULL
      */
-    virtual std::tr1::shared_ptr<epics::pvData::Requester> getRequester() = 0;
+    virtual std::tr1::shared_ptr<ChannelBaseRequester> getRequester() = 0;
 };
 
 /**
@@ -616,38 +612,6 @@ public:
     virtual void resubscribeSubscription(Transport::shared_pointer const & transport) = 0;
 };
 
-
-struct AtomicBoolean_null_deleter
-{
-    void operator()(void const *) const {}
-};
-
-// standard performance on set/clear, use of tr1::shared_ptr lock-free counter for get
-// alternative is to use boost::atomic
-class AtomicBoolean
-{
-public:
-    AtomicBoolean() : counter(static_cast<void*>(0), AtomicBoolean_null_deleter()) {};
-
-    void set() {
-        mutex.lock();
-        setp = counter;
-        mutex.unlock();
-    }
-    void clear() {
-        mutex.lock();
-        setp.reset();
-        mutex.unlock();
-    }
-
-    bool get() const {
-        return counter.use_count() == 2;
-    }
-private:
-    std::tr1::shared_ptr<void> counter;
-    std::tr1::shared_ptr<void> setp;
-    epics::pvData::Mutex mutex;
-};
 
 }
 }

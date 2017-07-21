@@ -50,17 +50,6 @@ std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray1";
 #define EXTRA_STRESS_TESTS 0
 #endif
 
-namespace {
-struct ScopedClientFactory {
-    ScopedClientFactory() {
-        ClientFactory::start();
-    }
-    ~ScopedClientFactory() {
-        ClientFactory::stop();
-    }
-};
-}
-
 int ChannelAccessIFTest::runAllTest() {
 
     testPlan(152+EXTRA_STRESS_TESTS);
@@ -76,17 +65,20 @@ int ChannelAccessIFTest::runAllTest() {
             .build());
 
     TestServer::shared_pointer tstserv(new TestServer(base_config));
-    tstserv->start();
-    testDiag("TestServer on ports TCP=%u UDP=%u\n",
+
+    testDiag("TestServer on ports TCP=%u UDP=%u",
              tstserv->getServerPort(),
              tstserv->getBroadcastPort());
     ConfigurationFactory::registerConfiguration("pvAccess-client",
             ConfigurationBuilder()
             .push_config(base_config)
+            //.add("EPICS_PVA_DEBUG", "3")
             .add("EPICS_PVA_BROADCAST_PORT", tstserv->getBroadcastPort())
             .push_map()
             .build());
-    ScopedClientFactory SCF;
+    epics::pvAccess::ClientFactory::start();
+
+    m_provider = ChannelProviderRegistry::clients()->getProvider("pva");
 
     test_implementation();
     test_providerName();
@@ -180,9 +172,9 @@ SyncChannelGetRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChann
     TR1::shared_ptr<SyncChannelGetRequesterImpl>
     channelGetReq(new SyncChannelGetRequesterImpl(channel->getChannelName(), debug));
 
-    PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(request);
+    PVStructure::shared_pointer pvRequest = createRequest(request);
 
-    channel->createChannelGet(channelGetReq,pvRequest);
+    ChannelGet::shared_pointer op(channel->createChannelGet(channelGetReq,pvRequest));
     bool succStatus = channelGetReq->waitUntilGetDone(getTimeoutSec());
     if (!succStatus) {
         std::cerr << "[" << channel->getChannelName() << "] failed to get. " << std::endl;
@@ -200,9 +192,9 @@ SyncChannelPutRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChann
     channelPutReq(new SyncChannelPutRequesterImpl(channel->getChannelName(), debug));
 
 
-    PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(request);
+    PVStructure::shared_pointer pvRequest = createRequest(request);
 
-    channel->createChannelPut(channelPutReq,pvRequest);
+    ChannelPut::shared_pointer op(channel->createChannelPut(channelPutReq,pvRequest));
     bool succStatus = channelPutReq->waitUntilConnected(getTimeoutSec());
 
     if (!succStatus) {
@@ -220,9 +212,9 @@ SyncChannelPutGetRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateCh
     TR1::shared_ptr<SyncChannelPutGetRequesterImpl>
     channelPutGetReq(new SyncChannelPutGetRequesterImpl(debug));
 
-    PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(request);
+    PVStructure::shared_pointer pvRequest = createRequest(request);
 
-    channel->createChannelPutGet(channelPutGetReq,pvRequest);
+    ChannelPutGet::shared_pointer op(channel->createChannelPutGet(channelPutGetReq,pvRequest));
     bool succStatus = channelPutGetReq->waitUntilConnected(getTimeoutSec());
 
     if (!succStatus) {
@@ -242,7 +234,7 @@ SyncChannelRPCRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChann
 
     PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(string());
 
-    channel->createChannelRPC(channelRPCReq, pvRequest);
+    ChannelRPC::shared_pointer op(channel->createChannelRPC(channelRPCReq, pvRequest));
     bool succStatus = channelRPCReq->waitUntilConnected(getTimeoutSec());
 
     if (!succStatus) {
@@ -258,9 +250,9 @@ SyncMonitorRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateChannelM
 {
     TR1::shared_ptr<SyncMonitorRequesterImpl> monitorReq(new SyncMonitorRequesterImpl(debug));
 
-    PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(request);
+    PVStructure::shared_pointer pvRequest = createRequest(request);
 
-    channel->createMonitor(monitorReq, pvRequest);
+    Monitor::shared_pointer op(channel->createMonitor(monitorReq, pvRequest));
     bool succStatus = monitorReq->waitUntilConnected(getTimeoutSec());
 
     if (!succStatus) {
@@ -276,7 +268,7 @@ SyncChannelArrayRequesterImpl::shared_pointer ChannelAccessIFTest::syncCreateCha
 {
     TR1::shared_ptr<SyncChannelArrayRequesterImpl> arrayReq(new SyncChannelArrayRequesterImpl(debug));
 
-    channel->createChannelArray(arrayReq, pvRequest);
+    ChannelArray::shared_pointer op(channel->createChannelArray(arrayReq, pvRequest));
     bool succStatus = arrayReq->waitUntilConnected(getTimeoutSec());
 
     if (!succStatus) {
@@ -352,6 +344,7 @@ void ChannelAccessIFTest::test_createChannel() {
 
     TR1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl());
     Channel::shared_pointer channel = getChannelProvider()->createChannel(TEST_COUNTER_CHANNEL_NAME, channelReq);
+    testDiag("Channel to '%s', wait for connect", TEST_COUNTER_CHANNEL_NAME.c_str());
     bool succStatus = channelReq->waitUntilStateChange(getTimeoutSec());
     if (!succStatus) {
         std::cerr << "[" << TEST_COUNTER_CHANNEL_NAME << "] failed to connect. " << std::endl;
@@ -517,6 +510,7 @@ void ChannelAccessIFTest::test_channelGetNoProcess() {
         return;
     }
 
+    testDiag("start Get");
     SyncChannelGetRequesterImpl::shared_pointer channelGetReq =  syncCreateChannelGet(channel,request);
 
     if (!channelGetReq.get()) {
@@ -1785,14 +1779,19 @@ void ChannelAccessIFTest::test_channelMonitor(int queueSize) {
            CURRENT_FUNCTION);
 
     monitorReq->getChannelMonitor()->start();
+    // Start will trigger one update with the initial value.
+    // As the timer for 'testCounter' is not synchronized, we may see a second update before
+    // waitUntilMonitor() returns
 
+    int ucnt;
     bool succStatus = monitorReq->waitUntilMonitor(getTimeoutSec());
     if (!succStatus) {
         testFail("%s: no monitoring event happened ", CURRENT_FUNCTION);
         return;
     }
     else {
-        testOk(monitorReq->getMonitorCounter() == 1, "%s: monitor event happened", CURRENT_FUNCTION);
+        ucnt = monitorReq->getMonitorCounter();
+        testOk(ucnt == 1 || ucnt == 2, "%s: monitor event happened %d", CURRENT_FUNCTION, monitorReq->getMonitorCounter());
         testOk(monitorReq->getChangedBitSet()->cardinality() == 1, "%s: monitor cardinality is 1", CURRENT_FUNCTION);
         testOk(monitorReq->getChangedBitSet()->get(0) == true, "%s: changeBitSet get(0) is true ", CURRENT_FUNCTION);
     }
@@ -1810,7 +1809,7 @@ void ChannelAccessIFTest::test_channelMonitor(int queueSize) {
     testOk(valueField->equals(*previousValue.get()) == true , "%s: value field equals to a previous value",
            CURRENT_FUNCTION);
 
-    for (int i = 2; i < 5; i++ ) {
+    for (int i = ucnt+1; i < ucnt+4; i++ ) {
 
         succStatus = monitorReq->waitUntilMonitor(getTimeoutSec());
         if (!succStatus) {
@@ -1818,7 +1817,7 @@ void ChannelAccessIFTest::test_channelMonitor(int queueSize) {
             return;
         }
 
-        testOk(monitorReq->getMonitorCounter() == i, "%s: monitor event happened for i=%d", CURRENT_FUNCTION, i);
+        testOk(monitorReq->getMonitorCounter() == i, "%s: monitor event happened for i=%d != %d", CURRENT_FUNCTION, i, monitorReq->getMonitorCounter());
 
         if (queueSize == 1 ) {
             testOk(monitorReq->getChangedBitSet()->cardinality() == 1, "%s: monitor cardinality is 1 (queue size = 1)",
@@ -2400,31 +2399,15 @@ PVStructure::shared_pointer ChannelAccessIFTest::createArrayPvRequest() {
     return pvRequest;
 }
 
-
-class ChannelAccessIFRemoteTest: public ChannelAccessIFTest  {
-
-public:
-
-    virtual ChannelProvider::shared_pointer getChannelProvider() {
-        return getChannelProviderRegistry()->getProvider(
-                   "pva");
-    }
-
-
-    virtual long getTimeoutSec() {
-        return 3;
-    }
-
-
-    virtual bool isLocal() {
-        return false;
-    }
-
-};
-
 MAIN(testChannelAccess)
 {
-    SET_LOG_LEVEL(logLevelError);
-    ChannelAccessIFRemoteTest caRemoteTest;
-    return caRemoteTest.runAllTest();
+    try{
+        SET_LOG_LEVEL(logLevelError);
+        ChannelAccessIFTest caRemoteTest;
+        return caRemoteTest.runAllTest();
+    }catch(std::exception& e){
+        PRINT_EXCEPTION(e);
+        std::cerr<<"Unhandled exception: "<<e.what()<<"\n";
+        return 1;
+    }
 }

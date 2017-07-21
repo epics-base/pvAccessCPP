@@ -47,12 +47,10 @@ namespace {
 struct BreakTransport : TransportSender
 {
     virtual ~BreakTransport() {}
-    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control)
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL
     {
         throw epics::pvAccess::detail::connection_closed_exception("Break");
     }
-    virtual void lock() {}
-    virtual void unlock() {}
 };
 } // namespace
 
@@ -67,10 +65,16 @@ const std::size_t AbstractCodec::MAX_ENSURE_DATA_SIZE = MAX_ENSURE_SIZE/2;
 const std::size_t AbstractCodec::MAX_ENSURE_BUFFER_SIZE = MAX_ENSURE_SIZE;
 const std::size_t AbstractCodec::MAX_ENSURE_DATA_BUFFER_SIZE = 1024;
 
+static
+size_t bufSizeSelect(size_t request)
+{
+    return std::max(request, size_t(MAX_TCP_RECV + AbstractCodec::MAX_ENSURE_DATA_BUFFER_SIZE));
+}
+
 AbstractCodec::AbstractCodec(
     bool serverFlag,
-    std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
-    std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
+    size_t sendBufferSize,
+    size_t receiveBufferSize,
     int32_t socketSendBufferSize,
     bool blockingProcessQueue):
     //PROTECTED
@@ -79,48 +83,30 @@ AbstractCodec::AbstractCodec(
     _senderThread(0),
     _writeMode(PROCESS_SEND_QUEUE),
     _writeOpReady(false),_lowLatency(false),
-    _socketBuffer(receiveBuffer),
-    _sendBuffer(sendBuffer),
+    _socketBuffer(bufSizeSelect(receiveBufferSize)),
+    _sendBuffer(bufSizeSelect(sendBufferSize)),
     //PRIVATE
     _storedPayloadSize(0), _storedPosition(0), _startPosition(0),
-    _maxSendPayloadSize(0),
+    _maxSendPayloadSize(_sendBuffer.getSize() - 2*PVA_MESSAGE_HEADER_SIZE),    // start msg + control
     _lastMessageStartPosition(std::numeric_limits<size_t>::max()),_lastSegmentedMessageType(0),
     _lastSegmentedMessageCommand(0), _nextMessagePayloadOffset(0),
     _byteOrderFlag(EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00),
     _clientServerFlag(serverFlag ? 0x40 : 0x00),
-    _socketSendBufferSize(0)
+    _socketSendBufferSize(socketSendBufferSize)
 {
-    if (receiveBuffer->getSize() < 2*MAX_ENSURE_SIZE)
+    if (_socketBuffer.getSize() < 2*MAX_ENSURE_SIZE)
         throw std::invalid_argument(
             "receiveBuffer.capacity() < 2*MAX_ENSURE_SIZE");
 
-    // require aligned buffer size
-    //(not condition, but simplifies alignment code)
-
-    if (receiveBuffer->getSize() % PVA_ALIGNMENT != 0)
-        throw std::invalid_argument(
-            "receiveBuffer.capacity() % PVAConstants.PVA_ALIGNMENT != 0");
-
-    if (sendBuffer->getSize() < 2*MAX_ENSURE_SIZE)
+    if (_sendBuffer.getSize() < 2*MAX_ENSURE_SIZE)
         throw std::invalid_argument("sendBuffer() < 2*MAX_ENSURE_SIZE");
 
-    // require aligned buffer size
-    //(not condition, but simplifies alignment code)
-    if (sendBuffer->getSize() % PVA_ALIGNMENT != 0)
-        throw std::invalid_argument(
-            "sendBuffer() % PVAConstants.PVA_ALIGNMENT != 0");
-
     // initialize to be empty
-    _socketBuffer->setPosition(_socketBuffer->getLimit());
-    _startPosition = _socketBuffer->getPosition();
+    _socketBuffer.setPosition(_socketBuffer.getLimit());
+    _startPosition = _socketBuffer.getPosition();
 
     // clear send
-    _sendBuffer->clear();
-
-    // start msg + control
-    _maxSendPayloadSize =
-        _sendBuffer->getSize() - 2*PVA_MESSAGE_HEADER_SIZE;
-    _socketSendBufferSize = socketSendBufferSize;
+    _sendBuffer.clear();
 }
 
 
@@ -144,19 +130,19 @@ void AbstractCodec::processRead() {
 void AbstractCodec::processHeader() {
 
     // magic code
-    int8_t magicCode = _socketBuffer->getByte();
+    int8_t magicCode = _socketBuffer.getByte();
 
     // version
-    _version = _socketBuffer->getByte();
+    _version = _socketBuffer.getByte();
 
     // flags
-    _flags = _socketBuffer->getByte();
+    _flags = _socketBuffer.getByte();
 
     // command
-    _command = _socketBuffer->getByte();
+    _command = _socketBuffer.getByte();
 
     // read payload size
-    _payloadSize = _socketBuffer->getInt();
+    _payloadSize = _socketBuffer.getInt();
 
     // check magic code
     if (magicCode != PVA_MAGIC)
@@ -186,8 +172,8 @@ void AbstractCodec::processReadNormal()  {
             }
 
             /*
-            hexDump("Header", (const int8*)_socketBuffer->getArray(),
-                    _socketBuffer->getPosition(), PVA_MESSAGE_HEADER_SIZE);
+            hexDump("Header", (const int8*)_socketBuffer.getArray(),
+                    _socketBuffer.getPosition(), PVA_MESSAGE_HEADER_SIZE);
 
             */
 
@@ -218,10 +204,9 @@ void AbstractCodec::processReadNormal()  {
                 }
 
                 _storedPayloadSize = _payloadSize;
-                _storedPosition = _socketBuffer->getPosition();
-                _storedLimit = _socketBuffer->getLimit();
-                _socketBuffer->setLimit(std::min<std::size_t>
-                                        (_storedPosition + _storedPayloadSize, _storedLimit));
+                _storedPosition = _socketBuffer.getPosition();
+                _storedLimit = _socketBuffer.getLimit();
+                _socketBuffer.setLimit(std::min(_storedPosition + _storedPayloadSize, _storedLimit));
                 bool postProcess = true;
                 try
                 {
@@ -269,9 +254,7 @@ void AbstractCodec::postProcessApplicationMessage()
     {
         // set position as whole message was read
         //(in case code haven't done so)
-        std::size_t newPosition =
-            alignedValue(
-                _storedPosition + _storedPayloadSize, PVA_ALIGNMENT);
+        std::size_t newPosition = _storedPosition + _storedPayloadSize;
 
         // aligned buffer size ensures that there is enough space
         //in buffer,
@@ -285,18 +268,13 @@ void AbstractCodec::postProcessApplicationMessage()
 
             // we only handle unused alignment bytes
             int bytesNotRead =
-                newPosition - _socketBuffer->getPosition();
+                newPosition - _socketBuffer.getPosition();
+            assert(bytesNotRead>=0);
 
-            if (bytesNotRead < PVA_ALIGNMENT)
+            if (bytesNotRead==0)
             {
-                // make alignment bytes as real payload to enable SPLIT
-                // no end-of-socket or segmented scenario can happen
-                // due to aligned buffer size
-                _storedPayloadSize += bytesNotRead;
                 // reveal currently existing padding
-                _socketBuffer->setLimit(_storedLimit);
-                ensureData(bytesNotRead);
-                _storedPayloadSize -= bytesNotRead;
+                _socketBuffer.setLimit(_storedLimit);
                 continue;
             }
 
@@ -309,8 +287,8 @@ void AbstractCodec::postProcessApplicationMessage()
             throw invalid_data_stream_exception(
                 "unprocessed read buffer");
         }
-        _socketBuffer->setLimit(_storedLimit);
-        _socketBuffer->setPosition(newPosition);
+        _socketBuffer.setLimit(_storedLimit);
+        _socketBuffer.setPosition(newPosition);
         break;
     }
 }
@@ -363,13 +341,13 @@ bool AbstractCodec::readToBuffer(
     bool persistent)  {
 
     // do we already have requiredBytes available?
-    std::size_t remainingBytes = _socketBuffer->getRemaining();
+    std::size_t remainingBytes = _socketBuffer.getRemaining();
     if (remainingBytes >= requiredBytes) {
         return true;
     }
 
     // assumption: remainingBytes < MAX_ENSURE_DATA_BUFFER_SIZE &&
-    //			   requiredBytes < (socketBuffer.capacity() - PVA_ALIGNMENT)
+    //			   requiredBytes < (socketBuffer.capacity() - 1)
 
     //
     // copy unread part to the beginning of the buffer
@@ -378,23 +356,22 @@ bool AbstractCodec::readToBuffer(
     //
 
     // a new start position, we are careful to preserve alignment
-    _startPosition =
-        MAX_ENSURE_SIZE + _socketBuffer->getPosition() % PVA_ALIGNMENT;
+    _startPosition = MAX_ENSURE_SIZE;
 
     std::size_t endPosition = _startPosition + remainingBytes;
 
     for (std::size_t i = _startPosition; i < endPosition; i++)
-        _socketBuffer->putByte(i, _socketBuffer->getByte());
+        _socketBuffer.putByte(i, _socketBuffer.getByte());
 
     // update buffer to the new position
-    _socketBuffer->setLimit(_socketBuffer->getSize());
-    _socketBuffer->setPosition(endPosition);
+    _socketBuffer.setLimit(_socketBuffer.getSize());
+    _socketBuffer.setPosition(endPosition);
 
     // read at least requiredBytes bytes
     std::size_t requiredPosition = _startPosition + requiredBytes;
-    while (_socketBuffer->getPosition() < requiredPosition)
+    while (_socketBuffer.getPosition() < requiredPosition)
     {
-        int bytesRead = read(_socketBuffer.get());
+        int bytesRead = read(&_socketBuffer);
 
         if (bytesRead < 0)
         {
@@ -409,8 +386,8 @@ bool AbstractCodec::readToBuffer(
             else
             {
                 // set pointers (aka flip)
-                _socketBuffer->setLimit(_socketBuffer->getPosition());
-                _socketBuffer->setPosition(_startPosition);
+                _socketBuffer.setLimit(_socketBuffer.getPosition());
+                _socketBuffer.setPosition(_startPosition);
 
                 return false;
             }
@@ -418,8 +395,8 @@ bool AbstractCodec::readToBuffer(
     }
 
     // set pointers (aka flip)
-    _socketBuffer->setLimit(_socketBuffer->getPosition());
-    _socketBuffer->setPosition(_startPosition);
+    _socketBuffer.setLimit(_socketBuffer.getPosition());
+    _socketBuffer.setPosition(_startPosition);
 
     return true;
 }
@@ -428,7 +405,7 @@ bool AbstractCodec::readToBuffer(
 void AbstractCodec::ensureData(std::size_t size) {
 
     // enough of data?
-    if (_socketBuffer->getRemaining() >= size)
+    if (_socketBuffer.getRemaining() >= size)
         return;
 
     // to large for buffer...
@@ -438,15 +415,14 @@ void AbstractCodec::ensureData(std::size_t size) {
             << ", but maximum " << MAX_ENSURE_DATA_SIZE << " is allowed.";
         LOG(logLevelWarn,
             "%s at %s:%d.,", msg.str().c_str(), __FILE__, __LINE__);
-        std::string s = msg.str();
-        throw std::invalid_argument(s);
+        throw std::invalid_argument(msg.str());
     }
 
     try
     {
 
         // subtract what was already processed
-        std::size_t pos = _socketBuffer->getPosition();
+        std::size_t pos = _socketBuffer.getPosition();
         _storedPayloadSize -= pos - _storedPosition;
 
         // SPLIT message case
@@ -462,9 +438,9 @@ void AbstractCodec::ensureData(std::size_t size) {
             _readMode = SPLIT;
             readToBuffer(size, true);
             _readMode = storedMode;
-            _storedPosition = _socketBuffer->getPosition();
-            _storedLimit = _socketBuffer->getLimit();
-            _socketBuffer->setLimit(
+            _storedPosition = _socketBuffer.getPosition();
+            _storedLimit = _socketBuffer.getLimit();
+            _socketBuffer.setLimit(
                 std::min<std::size_t>(
                     _storedPosition + _storedPayloadSize, _storedLimit));
 
@@ -485,26 +461,13 @@ void AbstractCodec::ensureData(std::size_t size) {
             //[0 to MAX_ENSURE_DATA_BUFFER_SIZE/2), if any
             // remaining is relative to payload since buffer is
             //bounded from outside
-            std::size_t remainingBytes = _socketBuffer->getRemaining();
+            std::size_t remainingBytes = _socketBuffer.getRemaining();
             for (std::size_t i = 0; i < remainingBytes; i++)
-                _socketBuffer->putByte(i, _socketBuffer->getByte());
+                _socketBuffer.putByte(i, _socketBuffer.getByte());
 
             // restore limit (there might be some data already present
             //and readToBuffer needs to know real limit)
-            _socketBuffer->setLimit(_storedLimit);
-
-            // remember alignment offset of end of the message (to be restored)
-            std::size_t storedAlignmentOffset =
-                _socketBuffer->getPosition() % PVA_ALIGNMENT;
-
-            // skip post-message alignment bytes
-            if (storedAlignmentOffset > 0)
-            {
-                std::size_t toSkip = PVA_ALIGNMENT - storedAlignmentOffset;
-                readToBuffer(toSkip, true);
-                std::size_t currentPos = _socketBuffer->getPosition();
-                _socketBuffer->setPosition(currentPos + toSkip);
-            }
+            _socketBuffer.setLimit(_storedLimit);
 
             // we expect segmented message, we expect header
             // that (and maybe some control packets) needs to be "removed"
@@ -515,27 +478,25 @@ void AbstractCodec::ensureData(std::size_t size) {
             _readMode = storedMode;
 
             // make sure we have all the data (maybe we run into SPLIT)
-            readToBuffer(size - remainingBytes + storedAlignmentOffset, true);
+            readToBuffer(size - remainingBytes, true);
 
-            // skip storedAlignmentOffset bytes (sender should padded start of
-            //segmented message)
             // SPLIT cannot mess with this, since start of the message,
             //i.e. current position, is always aligned
-            _socketBuffer->setPosition(
-                _socketBuffer->getPosition() + storedAlignmentOffset);
+            _socketBuffer.setPosition(
+                _socketBuffer.getPosition());
 
             // copy before position (i.e. start of the payload)
             for (int32_t i = remainingBytes - 1,
-                    j = _socketBuffer->getPosition() - 1; i >= 0; i--, j--)
-                _socketBuffer->putByte(j, _socketBuffer->getByte(i));
+                    j = _socketBuffer.getPosition() - 1; i >= 0; i--, j--)
+                _socketBuffer.putByte(j, _socketBuffer.getByte(i));
 
-            _startPosition = _socketBuffer->getPosition() - remainingBytes;
-            _socketBuffer->setPosition(_startPosition);
+            _startPosition = _socketBuffer.getPosition() - remainingBytes;
+            _socketBuffer.setPosition(_startPosition);
 
-            _storedPayloadSize += remainingBytes - storedAlignmentOffset;
+            _storedPayloadSize += remainingBytes;
             _storedPosition = _startPosition;
-            _storedLimit = _socketBuffer->getLimit();
-            _socketBuffer->setLimit(
+            _storedLimit = _socketBuffer.getLimit();
+            _socketBuffer.setLimit(
                 std::min<std::size_t>(
                     _storedPosition + _storedPayloadSize, _storedLimit));
 
@@ -567,23 +528,23 @@ std::size_t AbstractCodec::alignedValue(
 void AbstractCodec::alignData(std::size_t alignment) {
 
     std::size_t k = (alignment - 1);
-    std::size_t pos = _socketBuffer->getPosition();
+    std::size_t pos = _socketBuffer.getPosition();
     std::size_t newpos = (pos + k) & (~k);
     if (pos == newpos)
         return;
 
-    std::size_t diff = _socketBuffer->getLimit() - newpos;
+    std::size_t diff = _socketBuffer.getLimit() - newpos;
     if (diff > 0)
     {
-        _socketBuffer->setPosition(newpos);
+        _socketBuffer.setPosition(newpos);
         return;
     }
 
     ensureData(diff);
 
     // position has changed, recalculate
-    newpos = (_socketBuffer->getPosition() + k) & (~k);
-    _socketBuffer->setPosition(newpos);
+    newpos = (_socketBuffer.getPosition() + k) & (~k);
+    _socketBuffer.setPosition(newpos);
 }
 
 static const char PADDING_BYTES[] =
@@ -601,20 +562,14 @@ static const char PADDING_BYTES[] =
 void AbstractCodec::alignBuffer(std::size_t alignment) {
 
     std::size_t k = (alignment - 1);
-    std::size_t pos = _sendBuffer->getPosition();
+    std::size_t pos = _sendBuffer.getPosition();
     std::size_t newpos = (pos + k) & (~k);
     if (pos == newpos)
         return;
 
-    /*
-    // there is always enough of space
-    // since sendBuffer capacity % PVA_ALIGNMENT == 0
-    _sendBuffer->setPosition(newpos);
-    */
-
     // for safety reasons we really pad (override previous message data)
     std::size_t padCount = newpos - pos;
-    _sendBuffer->put(PADDING_BYTES, 0, padCount);
+    _sendBuffer.put(PADDING_BYTES, 0, padCount);
 }
 
 
@@ -626,18 +581,18 @@ void AbstractCodec::startMessage(
         std::numeric_limits<size_t>::max();		// TODO revise this
     ensureBuffer(
         PVA_MESSAGE_HEADER_SIZE + ensureCapacity + _nextMessagePayloadOffset);
-    _lastMessageStartPosition = _sendBuffer->getPosition();
-    _sendBuffer->putByte(PVA_MAGIC);
-    _sendBuffer->putByte(PVA_VERSION);
-    _sendBuffer->putByte(
+    _lastMessageStartPosition = _sendBuffer.getPosition();
+    _sendBuffer.putByte(PVA_MAGIC);
+    _sendBuffer.putByte(PVA_VERSION);
+    _sendBuffer.putByte(
         (_lastSegmentedMessageType | _byteOrderFlag | _clientServerFlag));	// data message
-    _sendBuffer->putByte(command);	// command
-    _sendBuffer->putInt(payloadSize);
+    _sendBuffer.putByte(command);	// command
+    _sendBuffer.putInt(payloadSize);
 
     // apply offset
     if (_nextMessagePayloadOffset > 0)
-        _sendBuffer->setPosition(
-            _sendBuffer->getPosition() + _nextMessagePayloadOffset);
+        _sendBuffer.setPosition(
+            _sendBuffer.getPosition() + _nextMessagePayloadOffset);
 }
 
 
@@ -648,11 +603,11 @@ void AbstractCodec::putControlMessage(
     _lastMessageStartPosition =
         std::numeric_limits<size_t>::max();		// TODO revise this
     ensureBuffer(PVA_MESSAGE_HEADER_SIZE);
-    _sendBuffer->putByte(PVA_MAGIC);
-    _sendBuffer->putByte(PVA_VERSION);
-    _sendBuffer->putByte((0x01 | _byteOrderFlag | _clientServerFlag));	// control message
-    _sendBuffer->putByte(command);	// command
-    _sendBuffer->putInt(data);		// data
+    _sendBuffer.putByte(PVA_MAGIC);
+    _sendBuffer.putByte(PVA_VERSION);
+    _sendBuffer.putByte((0x01 | _byteOrderFlag | _clientServerFlag));	// control message
+    _sendBuffer.putByte(command);	// command
+    _sendBuffer.putInt(data);		// data
 }
 
 
@@ -665,17 +620,14 @@ void AbstractCodec::endMessage(bool hasMoreSegments) {
 
     if (_lastMessageStartPosition != std::numeric_limits<size_t>::max())
     {
-        std::size_t lastPayloadBytePosition = _sendBuffer->getPosition();
-
-        // align
-        alignBuffer(PVA_ALIGNMENT);
+        std::size_t lastPayloadBytePosition = _sendBuffer.getPosition();
 
         // set paylaod size (non-aligned)
         std::size_t payloadSize =
             lastPayloadBytePosition -
             _lastMessageStartPosition - PVA_MESSAGE_HEADER_SIZE;
 
-        _sendBuffer->putInt(_lastMessageStartPosition + 4, payloadSize);
+        _sendBuffer.putInt(_lastMessageStartPosition + 4, payloadSize);
 
         // set segmented bit
         if (hasMoreSegments) {
@@ -683,15 +635,15 @@ void AbstractCodec::endMessage(bool hasMoreSegments) {
             if (_lastSegmentedMessageType == 0)
             {
                 std::size_t flagsPosition = _lastMessageStartPosition + 2;
-                epics::pvData::int8 type = _sendBuffer->getByte(flagsPosition);
+                epics::pvData::int8 type = _sendBuffer.getByte(flagsPosition);
                 // set first segment bit
-                _sendBuffer->putByte(flagsPosition, (type | 0x10));
+                _sendBuffer.putByte(flagsPosition, (type | 0x10));
                 // first + last segment bit == in-between segment
                 _lastSegmentedMessageType = type | 0x30;
                 _lastSegmentedMessageCommand =
-                    _sendBuffer->getByte(flagsPosition + 1);
+                    _sendBuffer.getByte(flagsPosition + 1);
             }
-            _nextMessagePayloadOffset = lastPayloadBytePosition % PVA_ALIGNMENT;
+            _nextMessagePayloadOffset = 0;
         }
         else
         {
@@ -700,7 +652,7 @@ void AbstractCodec::endMessage(bool hasMoreSegments) {
             {
                 std::size_t flagsPosition = _lastMessageStartPosition + 2;
                 // set last segment bit (by clearing first segment bit)
-                _sendBuffer->putByte(flagsPosition,
+                _sendBuffer.putByte(flagsPosition,
                                      (_lastSegmentedMessageType & 0xEF));
                 _lastSegmentedMessageType = 0;
             }
@@ -730,7 +682,7 @@ void AbstractCodec::endMessage(bool hasMoreSegments) {
 
 void AbstractCodec::ensureBuffer(std::size_t size) {
 
-    if (_sendBuffer->getRemaining() >= size)
+    if (_sendBuffer.getRemaining() >= size)
         return;
 
     // too large for buffer...
@@ -744,7 +696,7 @@ void AbstractCodec::ensureBuffer(std::size_t size) {
         throw std::invalid_argument(s);
     }
 
-    while (_sendBuffer->getRemaining() < size)
+    while (_sendBuffer.getRemaining() < size)
         flush(false);
 }
 
@@ -755,10 +707,10 @@ void AbstractCodec::flushSerializeBuffer() {
 
 void AbstractCodec::flushSendBuffer() {
 
-    _sendBuffer->flip();
+    _sendBuffer.flip();
 
     try {
-        send(_sendBuffer.get());
+        send(&_sendBuffer);
     } catch (io_exception &) {
         try {
             if (isOpen())
@@ -769,7 +721,7 @@ void AbstractCodec::flushSendBuffer() {
         throw connection_closed_exception("Failed to send buffer.");
     }
 
-    _sendBuffer->clear();
+    _sendBuffer.clear();
 
     _lastMessageStartPosition = std::numeric_limits<size_t>::max();
 }
@@ -880,7 +832,7 @@ void AbstractCodec::processSendQueue()
             if (sender.get() == 0)
             {
                 // flush
-                if (_sendBuffer->getPosition() > 0)
+                if (_sendBuffer.getPosition() > 0)
                     flush(true);
 
                 sendCompleted();	// do not schedule sending
@@ -894,7 +846,7 @@ void AbstractCodec::processSendQueue()
             try {
                 processSender(sender);
             } catch(...) {
-                if (_sendBuffer->getPosition() > 0)
+                if (_sendBuffer.getPosition() > 0)
                     flush(true);
                 sendCompleted();
                 throw;
@@ -903,7 +855,7 @@ void AbstractCodec::processSendQueue()
     }
 
     // flush
-    if (_sendBuffer->getPosition() > 0)
+    if (_sendBuffer.getPosition() > 0)
         flush(true);
 }
 
@@ -928,9 +880,9 @@ void AbstractCodec::processSender(
     ScopedLock lock(sender);
 
     try {
-        _lastMessageStartPosition = _sendBuffer->getPosition();
+        _lastMessageStartPosition = _sendBuffer.getPosition();
 
-        sender->send(_sendBuffer.get(), this);
+        sender->send(&_sendBuffer, this);
 
         // automatic end (to set payload size)
         endMessage(false);
@@ -963,10 +915,10 @@ void AbstractCodec::enqueueSendRequest(
 
     if (_senderThread == epicsThreadGetIdSelf() &&
             _sendQueue.empty() &&
-            _sendBuffer->getRemaining() >= requiredBufferSize)
+            _sendBuffer.getRemaining() >= requiredBufferSize)
     {
         processSender(sender);
-        if (_sendBuffer->getPosition() > 0)
+        if (_sendBuffer.getPosition() > 0)
         {
             if (_lowLatency)
                 flush(true);
@@ -986,9 +938,9 @@ void AbstractCodec::setRecipient(osiSockAddr const & sendTo) {
 
 void AbstractCodec::setByteOrder(int byteOrder)
 {
-    _socketBuffer->setEndianess(byteOrder);
+    _socketBuffer.setEndianess(byteOrder);
     // TODO sync
-    _sendBuffer->setEndianess(byteOrder);
+    _sendBuffer.setEndianess(byteOrder);
     _byteOrderFlag = EPICS_ENDIAN_BIG == byteOrder ? 0x80 : 0x00;
 }
 
@@ -1047,42 +999,22 @@ bool AbstractCodec::directDeserialize(ByteBuffer *existingBuffer, char* deserial
 //
 //
 
-BlockingAbstractCodec::BlockingAbstractCodec(
-    bool serverFlag,
-    std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
-    std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
-    int32_t socketSendBufferSize)
-    :AbstractCodec(serverFlag, receiveBuffer, sendBuffer, socketSendBufferSize, true)
-    ,_readThread(epics::pvData::Thread::Config(this, &BlockingAbstractCodec::receiveThread)
-                 .prio(epicsThreadPriorityCAServerLow)
-                 .name("TCP-rx")
-                 .autostart(false))
-    ,_sendThread(epics::pvData::Thread::Config(this, &BlockingAbstractCodec::sendThread)
-                 .prio(epicsThreadPriorityCAServerLow)
-                 .name("TCP-tx")
-                 .autostart(false))
+BlockingTCPTransportCodec::~BlockingTCPTransportCodec()
 {
-    _isOpen.getAndSet(true);
+    waitJoin();
 }
 
-BlockingAbstractCodec::~BlockingAbstractCodec()
-{
-    assert(!_isOpen.get());
-    _sendThread.exitWait();
-    _readThread.exitWait();
-}
-
-void BlockingAbstractCodec::readPollOne() {
+void BlockingTCPTransportCodec::readPollOne() {
     throw std::logic_error("should not be called for blocking IO");
 }
 
 
-void BlockingAbstractCodec::writePollOne() {
+void BlockingTCPTransportCodec::writePollOne() {
     throw std::logic_error("should not be called for blocking IO");
 }
 
 
-void BlockingAbstractCodec::close() {
+void BlockingTCPTransportCodec::close() {
 
     if (_isOpen.getAndSet(false))
     {
@@ -1101,26 +1033,41 @@ void BlockingAbstractCodec::close() {
     }
 }
 
-void BlockingAbstractCodec::internalClose(bool /*force*/)
+void BlockingTCPTransportCodec::waitJoin()
+{
+    assert(!_isOpen.get());
+    _sendThread.exitWait();
+    _readThread.exitWait();
+}
+
+void BlockingTCPTransportCodec::internalClose(bool /*force*/)
 {
     this->internalDestroy();
+
+    // TODO sync
+    if (_securitySession)
+        _securitySession->close();
+
+    if (IS_LOGGABLE(logLevelDebug))
+    {
+        LOG(logLevelDebug,
+            "TCP socket to %s is to be closed.",
+            inetAddressToString(_socketAddress).c_str());
+    }
 }
 
-void BlockingAbstractCodec::internalPostClose(bool /*force*/) {
-}
-
-bool BlockingAbstractCodec::terminated() {
+bool BlockingTCPTransportCodec::terminated() {
     return !isOpen();
 }
 
 
-bool BlockingAbstractCodec::isOpen() {
+bool BlockingTCPTransportCodec::isOpen() {
     return _isOpen.get();
 }
 
 
 // NOTE: must not be called from constructor (e.g. needs shared_from_this())
-void BlockingAbstractCodec::start() {
+void BlockingTCPTransportCodec::start() {
 
     _readThread.start();
 
@@ -1129,7 +1076,7 @@ void BlockingAbstractCodec::start() {
 }
 
 
-void BlockingAbstractCodec::receiveThread()
+void BlockingTCPTransportCodec::receiveThread()
 {
     Transport::shared_pointer ptr = this->shared_from_this();
 
@@ -1152,7 +1099,7 @@ void BlockingAbstractCodec::receiveThread()
 }
 
 
-void BlockingAbstractCodec::sendThread()
+void BlockingTCPTransportCodec::sendThread()
 {
     Transport::shared_pointer ptr = this->shared_from_this();
 
@@ -1178,7 +1125,7 @@ void BlockingAbstractCodec::sendThread()
 }
 
 
-void BlockingAbstractCodec::sendBufferFull(int tries) {
+void BlockingTCPTransportCodec::sendBufferFull(int tries) {
     // TODO constants
     epicsThreadSleep(std::max<double>(tries * 0.1, 1));
 }
@@ -1186,27 +1133,38 @@ void BlockingAbstractCodec::sendBufferFull(int tries) {
 
 //
 //
-//  BlockingSocketAbstractCodec
+//  BlockingTCPTransportCodec
 //
 //
 //
 
 
-BlockingSocketAbstractCodec::BlockingSocketAbstractCodec(
-    bool serverFlag,
-    SOCKET channel,
-    int32_t sendBufferSize,
-    int32_t receiveBufferSize):
-    BlockingAbstractCodec(
-        serverFlag,
-        std::tr1::shared_ptr<epics::pvData::ByteBuffer>(new ByteBuffer((std::max<std::size_t>((std::size_t)(
-                    MAX_TCP_RECV + MAX_ENSURE_DATA_BUFFER_SIZE), receiveBufferSize) +
-                (PVA_ALIGNMENT - 1)) & (~(PVA_ALIGNMENT - 1)))),
-        std::tr1::shared_ptr<epics::pvData::ByteBuffer>(new ByteBuffer((std::max<std::size_t>((std::size_t)( MAX_TCP_RECV +
-                MAX_ENSURE_DATA_BUFFER_SIZE), receiveBufferSize) + (PVA_ALIGNMENT - 1))
-                & (~(PVA_ALIGNMENT - 1)))), sendBufferSize),
-    _channel(channel)
+BlockingTCPTransportCodec::BlockingTCPTransportCodec(bool serverFlag, const Context::shared_pointer &context,
+    SOCKET channel, const ResponseHandler::shared_pointer &responseHandler,
+    size_t sendBufferSize,
+    size_t receiveBufferSize, int16 priority)
+    :AbstractCodec(
+         serverFlag,
+         sendBufferSize,
+         receiveBufferSize,
+         sendBufferSize,
+         true)
+    ,_readThread(epics::pvData::Thread::Config(this, &BlockingTCPTransportCodec::receiveThread)
+                 .prio(epicsThreadPriorityCAServerLow)
+                 .name("TCP-rx")
+                 .autostart(false))
+    ,_sendThread(epics::pvData::Thread::Config(this, &BlockingTCPTransportCodec::sendThread)
+                 .prio(epicsThreadPriorityCAServerLow)
+                 .name("TCP-tx")
+                 .autostart(false))
+    ,_channel(channel)
+    ,_context(context), _responseHandler(responseHandler)
+    ,_remoteTransportReceiveBufferSize(MAX_TCP_RECV)
+    ,_remoteTransportRevision(0), _priority(priority)
+    ,_verified(false)
 {
+    _isOpen.getAndSet(true);
+
     // get remote address
     osiSocklen_t saSize = sizeof(sockaddr);
     int retval = getpeername(_channel, &(_socketAddress.sa), &saSize);
@@ -1226,7 +1184,7 @@ BlockingSocketAbstractCodec::BlockingSocketAbstractCodec(
 }
 
 // must be called only once, when there will be no operation on socket (e.g. just before tx/rx thread exists)
-void BlockingSocketAbstractCodec::internalDestroy() {
+void BlockingTCPTransportCodec::internalDestroy() {
 
     if(_channel != INVALID_SOCKET) {
 
@@ -1262,15 +1220,17 @@ void BlockingSocketAbstractCodec::internalDestroy() {
         _channel = INVALID_SOCKET; //TODO: mutex to guard _channel
     }
 
+    Transport::shared_pointer thisSharedPtr = this->shared_from_this();
+    _context->getTransportRegistry()->remove(thisSharedPtr);
 }
 
 
-void BlockingSocketAbstractCodec::invalidDataStreamHandler() {
+void BlockingTCPTransportCodec::invalidDataStreamHandler() {
     close();
 }
 
 
-int BlockingSocketAbstractCodec::write(
+int BlockingTCPTransportCodec::write(
     epics::pvData::ByteBuffer *src) {
 
     std::size_t remaining;
@@ -1307,7 +1267,7 @@ int BlockingSocketAbstractCodec::write(
 }
 
 
-std::size_t BlockingSocketAbstractCodec::getSocketReceiveBufferSize()
+std::size_t BlockingTCPTransportCodec::getSocketReceiveBufferSize()
 const  {
 
     osiSocklen_t intLen = sizeof(int);
@@ -1328,7 +1288,7 @@ const  {
 }
 
 
-int BlockingSocketAbstractCodec::read(epics::pvData::ByteBuffer* dst) {
+int BlockingTCPTransportCodec::read(epics::pvData::ByteBuffer* dst) {
 
     std::size_t remaining;
     while((remaining=dst->getRemaining()) > 0) {
@@ -1370,22 +1330,6 @@ int BlockingSocketAbstractCodec::read(epics::pvData::ByteBuffer* dst) {
     }
 
     return 0;
-}
-
-
-void BlockingTCPTransportCodec::internalClose(bool force) {
-    BlockingSocketAbstractCodec::internalClose(force);
-
-    // TODO sync
-    if (_securitySession)
-        _securitySession->close();
-
-    if (IS_LOGGABLE(logLevelDebug))
-    {
-        LOG(logLevelDebug,
-            "TCP socket to %s is to be closed.",
-            inetAddressToString(_socketAddress).c_str());
-    }
 }
 
 
@@ -1436,9 +1380,6 @@ public:
         // send immediately
         control->flush(true);
     }
-
-    void lock() {}
-    void unlock() {}
 
 private:
     PVField::shared_pointer _data;

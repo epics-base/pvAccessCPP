@@ -22,6 +22,7 @@
 #	undef beaconHandlerEpicsExportSharedSymbols
 #endif
 
+#include <pv/pvaDefs.h>
 #include <pv/remote.h>
 #include <pv/pvAccess.h>
 
@@ -56,7 +57,7 @@ public:
     void beaconNotify(osiSockAddr* from,
                       epics::pvData::int8 remoteTransportRevision,
                       epics::pvData::TimeStamp* timestamp,
-                      GUID const &guid,
+                      ServerGUID const &guid,
                       epics::pvData::int16 sequentalID,
                       epics::pvData::int16 changeCount,
                       epics::pvData::PVFieldPtr data);
@@ -80,7 +81,7 @@ private:
     /**
      * Server GUID.
      */
-    GUID _serverGUID;
+    ServerGUID _serverGUID;
     /**
      * Server startup timestamp.
      */
@@ -101,7 +102,7 @@ private:
      */
     bool updateBeacon(epics::pvData::int8 remoteTransportRevision,
                       epics::pvData::TimeStamp* timestamp,
-                      GUID const &guid,
+                      ServerGUID const &guid,
                       epics::pvData::int16 sequentalID,
                       epics::pvData::int16 changeCount);
     /**

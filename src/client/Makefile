@@ -2,6 +2,13 @@
 
 SRC_DIRS += $(PVACCESS_SRC)/client
 
+INC += pv/monitor.h
 INC += pv/pvAccess.h
+INC += pva/client.h
 
-LIBSRCS += pvAccess.cpp
+pvAccess_SRCS += pvAccess.cpp
+pvAccess_SRCS += client.cpp
+pvAccess_SRCS += clientSync.cpp
+pvAccess_SRCS += clientGet.cpp
+pvAccess_SRCS += clientRPC.cpp
+pvAccess_SRCS += clientMonitor.cpp

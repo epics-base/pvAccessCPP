@@ -14,6 +14,7 @@
 #   undef epicsExportSharedSymbols
 #endif
 #include <pv/pvData.h>
+#include <pv/valueBuilder.h>
 #ifdef rpcClientEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
 #	undef rpcClientEpicsExportSharedSymbols
@@ -44,19 +45,18 @@ public:
      * Create a RPCClient.
      *
      * @param  serviceName  the service name
-     * @return              the RPCClient interface
-     */
-    static shared_pointer create(const std::string & serviceName);
-
-    /**
-     * Create a RPCClient.
-     *
-     * @param  serviceName  the service name
      * @param  pvRequest    the pvRequest for the ChannelRPC
      * @return              the RPCClient interface
      */
     static shared_pointer create(const std::string & serviceName,
-                                 epics::pvData::PVStructure::shared_pointer const & pvRequest);
+                                 epics::pvData::PVStructure::shared_pointer const & pvRequest = epics::pvData::PVStructure::shared_pointer());
+
+    RPCClient(const std::string & serviceName,
+              epics::pvData::PVStructure::shared_pointer const & pvRequest,
+              const ChannelProvider::shared_pointer& provider = ChannelProvider::shared_pointer(),
+              const std::string& address = std::string());
+
+    ~RPCClient() {destroy();}
 
     /**
      * Performs complete blocking RPC call, opening a channel and connecting to the
@@ -69,7 +69,7 @@ public:
      * @throws RPCRequestException exception thrown on error on timeout.
      */
     static epics::pvData::PVStructure::shared_pointer sendRequest(const std::string & serviceName,
-            epics::pvData::PVStructure::shared_pointer const &request, double timeOut = RPCCLIENT_DEFAULT_TIMEOUT);
+            epics::pvData::PVStructure::shared_pointer const &request, double timeOut = RPCCLIENT_DEFAULT_TIMEOUT) EPICS_DEPRECATED;
 
 
 
@@ -136,15 +136,19 @@ public:
      */
     epics::pvData::PVStructure::shared_pointer waitResponse(double timeout = RPCCLIENT_DEFAULT_TIMEOUT);
 
-    virtual ~RPCClient() {}
+private:
 
-protected:
-    RPCClient(const std::string & serviceName,
-              epics::pvData::PVStructure::shared_pointer const & pvRequest);
-
-    std::string m_serviceName;
+    const std::string m_serviceName;
+    ChannelProvider::shared_pointer m_provider;
     Channel::shared_pointer m_channel;
-    epics::pvData::PVStructure::shared_pointer m_pvRequest;
+    ChannelRPC::shared_pointer m_rpc;
+    const epics::pvData::PVStructure::shared_pointer m_pvRequest;
+
+    struct RPCRequester;
+    std::tr1::shared_ptr<RPCRequester> m_rpc_requester;
+
+    RPCClient(const RPCClient&);
+    RPCClient& operator=(const RPCClient&);
 };
 
 }

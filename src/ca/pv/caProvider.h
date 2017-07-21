@@ -16,6 +16,7 @@
 
 namespace epics {
 namespace pvAccess {
+class Configuration;
 namespace ca {
 
 class epicsShareClass CAChannelProvider :
@@ -25,9 +26,8 @@ class epicsShareClass CAChannelProvider :
 public:
     POINTER_DEFINITIONS(CAChannelProvider);
 
-    static std::string PROVIDER_NAME;
-
     CAChannelProvider();
+    CAChannelProvider(const std::tr1::shared_ptr<Configuration>&);
     virtual ~CAChannelProvider();
 
     /* --------------- epics::pvAccess::ChannelProvider --------------- */

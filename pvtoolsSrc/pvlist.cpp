@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <map>
+#include <iterator>
 #include <vector>
 #include <string>
 #include <istream>
@@ -38,6 +39,8 @@ using namespace std;
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
+
+namespace {
 
 /// Byte to hexchar mapping.
 static const char lookup[] = {
@@ -138,7 +141,7 @@ bool processSearchResponse(osiSockAddr const & responseFrom, ByteBuffer & receiv
         return false;
 
 
-    epics::pvAccess::GUID guid;
+    epics::pvAccess::ServerGUID guid;
     receiveBuffer.get(guid.value, 0, sizeof(guid.value));
 
     /*int32 searchSequenceId = */receiveBuffer.getInt();
@@ -461,6 +464,7 @@ void usage (void)
              , DEFAULT_TIMEOUT);
 }
 
+}//namespace
 
 /*+**************************************************************************
  *
@@ -481,7 +485,6 @@ int main (int argc, char *argv[])
 {
     int opt;                    /* getopt() current option */
     bool debug = false;
-    bool quiet = false;
     double timeOut = DEFAULT_TIMEOUT;
     // char fieldSeparator = ' ';
     bool printInfo = false;
@@ -517,7 +520,6 @@ int main (int argc, char *argv[])
             }
             break;
         case 'q':               /* Quiet mode */
-            quiet = true;
             break;
         case 'd':               /* Debug log level */
             debug = true;
@@ -588,14 +590,8 @@ int main (int argc, char *argv[])
 
     bool allOK = true;
 
-    //if (!quiet)
-    //    fprintf(stderr, "Searching...\n");
-
     if (noArgs || byGUIDSearch)
         discoverServers(timeOut);
-
-    //if (!quiet)
-    //    fprintf(stderr, "done.\n");
 
     // just list all the discovered servers
     if (noArgs)
@@ -656,32 +652,53 @@ int main (int argc, char *argv[])
                 }
             }
 
-            // TODO for now we call eget utility
-            // TODO timeOut
-            string cmd = "eget -";
-            if (debug)
-                cmd += 'd';
-            if (quiet)
-                cmd += 'q';
-            if (printInfo)
-                cmd += 'N';
-            cmd += "s pva://" + serverAddress + "/server?op=";
-            if (printInfo)
-                cmd += "info";
-            else
-                cmd += "channels";
+            StructureConstPtr argstype(getFieldCreate()->createFieldBuilder()
+                                       ->setId("epics:nt/NTURI:1.0")
+                                       ->add("scheme", pvString)
+                                       ->add("path", pvString)
+                                       ->addNestedStructure("query")
+                                           ->add("op", pvString)
+                                       ->endNested()
+                                       ->createStructure());
 
-            FILE* egetpipe = popen (cmd.c_str(), "w");
-            if (!egetpipe)
-            {
-                char errStr[64];
-                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                fprintf(stderr, "Failed to exec 'eget': %s\n", errStr);
-                allOK = false;
+            PVStructure::shared_pointer args(getPVDataCreate()->createPVStructure(argstype));
+
+            args->getSubFieldT<PVString>("scheme")->put("pva");
+            args->getSubFieldT<PVString>("path")->put("server");
+            args->getSubFieldT<PVString>("query.op")->put(printInfo ? "info" : "channels");
+
+            if(debug) {
+                std::cerr<<"Query to "<<serverAddress<<"\n"<<args<<"\n";
             }
 
-            pclose(egetpipe);
+            PVStructure::shared_pointer ret;
+            try {
+                RPCClient rpc("server",
+                              createRequest("field()"),
+                              ChannelProvider::shared_pointer(),
+                              serverAddress);
 
+                if(debug)
+                    std::cerr<<"Execute\n";
+                ret = rpc.request(args, timeOut, true);
+            } catch(std::exception& e) {
+                std::cerr<<"Error: "<<e.what()<<"\n";
+                return 1;
+            }
+
+            if(!printInfo) {
+                PVStringArray::shared_pointer pvs(ret->getSubField<PVStringArray>("value"));
+
+                PVStringArray::const_svector val(pvs->view());
+
+                std::copy(val.begin(),
+                          val.end(),
+                          std::ostream_iterator<std::string>(std::cout, "\n"));
+
+                return allOK ? 0 : 1;
+            }
+
+            std::cout<<ret<<"\n";
         }
     }
 

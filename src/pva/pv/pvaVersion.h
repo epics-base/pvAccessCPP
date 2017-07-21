@@ -24,6 +24,12 @@
 
 #include "pv/pvaVersionNum.h"
 
+#ifndef VERSION_INT
+#  define VERSION_INT(V,R,M,P) ( ((V)<<24) | ((R)<<16) | ((M)<<8) | (P))
+#endif
+
+#define PVACCESS_VERSION_INT VERSION_INT(EPICS_PVA_MAJOR_VERSION, EPICS_PVA_MINOR_VERSION, EPICS_PVA_MAINTENANCE_VERSION, 0)
+
 namespace epics {
 namespace pvAccess {
 

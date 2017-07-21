@@ -7,7 +7,7 @@
 #include <string>
 
 #include <epicsSignal.h>
-
+#include <epicsExit.h>
 #include <pv/lock.h>
 
 #define epicsExportSharedSymbols
@@ -15,94 +15,51 @@
 #include <pv/clientFactory.h>
 #include <pv/clientContextImpl.h>
 
-namespace epics {
-namespace pvAccess {
-
 using namespace epics::pvData;
+using namespace epics::pvAccess;
 
-class ChannelProviderFactoryImpl : public ChannelProviderFactory
+static
+void pva_factory_cleanup(void*)
 {
-private:
-    Mutex m_mutex;
-    ChannelProvider::shared_pointer m_shared_provider;
-
-public:
-    POINTER_DEFINITIONS(ChannelProviderFactoryImpl);
-
-    virtual ~ChannelProviderFactoryImpl()
-    {
-        Lock guard(m_mutex);
-        if (m_shared_provider)
-        {
-            ChannelProvider::shared_pointer provider;
-            m_shared_provider.swap(provider);
-            // factroy cleans up also shared provider
-            provider->destroy();
-        }
+    try {
+        ChannelProviderRegistry::clients()->remove("pva");
+    } catch(std::exception& e) {
+        LOG(logLevelWarn, "Error when unregister \"pva\" factory");
     }
-
-    virtual std::string getFactoryName()
-    {
-        return ClientContextImpl::PROVIDER_NAME;
-    }
-
-    virtual ChannelProvider::shared_pointer sharedInstance()
-    {
-        Lock guard(m_mutex);
-        if (!m_shared_provider)
-        {
-            epics::pvAccess::Configuration::shared_pointer def;
-            m_shared_provider = createClientProvider(def);
-        }
-        return m_shared_provider;
-    }
-
-    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<epics::pvAccess::Configuration>& conf)
-    {
-        Lock guard(m_mutex);
-        return createClientProvider(conf);
-    }
-};
-
-static Mutex startStopMutex;
-
-ChannelProviderRegistryPtr ClientFactory::channelRegistry;
-ChannelProviderFactoryPtr ClientFactory::channelProvider;
-int ClientFactory::numStart = 0;
+}
 
 void ClientFactory::start()
 {
-   Lock guard(startStopMutex);
-std::cout << "ClientFactory::start() numStart " << numStart << std::endl; 
-    ++numStart;
-    if(numStart>1) return;
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
-    channelProvider.reset(new ChannelProviderFactoryImpl());
-    channelRegistry = ChannelProviderRegistry::getChannelProviderRegistry();
-std::cout << "channelRegistry::use_count " << channelRegistry.use_count() << std::endl;
-    channelRegistry->add(channelProvider);
+
+    if(ChannelProviderRegistry::clients()->add("pva", createClientProvider, false))
+        epicsAtExit(&pva_factory_cleanup, NULL);
 }
 
 void ClientFactory::stop()
 {
-std::cout << "ClientFactory::stop() numStart " << numStart << std::endl; 
-std::cout << "channelRegistry::use_count " << channelRegistry.use_count() << std::endl;
-    Lock guard(startStopMutex);
-    if(numStart==0) return;
-    --numStart;
-    if(numStart>=1) return;
-
-    if (channelProvider)
-    {
-        channelRegistry->remove(ClientContextImpl::PROVIDER_NAME);
-        if(!channelProvider.unique()) {
-            LOG(logLevelWarn, "ClientFactory::stop() finds shared client context with %u remaining users",
-                (unsigned)channelProvider.use_count());
-        }
-        channelProvider.reset();
-        channelRegistry.reset();
-    }
+    // unregister now done with exit hook
 }
 
-}}
+// automatically register on load
+namespace {
+struct pvaloader
+{
+    pvaloader() {
+        ClientFactory::start();
+    }
+} pvaloaderinstance;
+} // namespace
+
+// perhaps useful during dynamic loading?
+extern "C" {
+void registerClientProvider_pva()
+{
+    try {
+        ClientFactory::start();
+    } catch(std::exception& e){
+        std::cerr<<"Error loading pva: "<<e.what()<<"\n";
+    }
+}
+} // extern "C"

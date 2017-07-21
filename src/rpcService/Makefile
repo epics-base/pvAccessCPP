@@ -5,5 +5,5 @@ SRC_DIRS += $(PVACCESS_SRC)/rpcService
 INC += pv/rpcService.h
 INC += pv/rpcServer.h
 
-LIBSRCS += rpcService.cpp
-LIBSRCS += rpcServer.cpp
+pvAccess_SRCS += rpcService.cpp
+pvAccess_SRCS += rpcServer.cpp

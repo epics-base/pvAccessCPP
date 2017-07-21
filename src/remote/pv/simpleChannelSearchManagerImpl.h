@@ -22,6 +22,7 @@
 #endif
 
 #include <pv/channelSearchManager.h>
+#include <pv/remote.h>
 
 namespace epics {
 namespace pvAccess {
@@ -95,7 +96,7 @@ public:
      * @param minorRevision	server minor PVA revision.
      * @param serverAddress	server address.
      */
-    void searchResponse(const GUID & guid, pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress);
+    void searchResponse(const ServerGUID & guid, pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress);
     /**
      * New server detected.
      * Boost searching of all channels.
@@ -157,7 +158,8 @@ private:
     /**
      * Set of registered channels.
      */
-    std::map<pvAccessID,SearchInstance::shared_pointer> m_channels;
+    typedef std::map<pvAccessID,SearchInstance::weak_pointer> m_channels_t;
+    m_channels_t m_channels;
 
     /**
      * Time of last frame send.

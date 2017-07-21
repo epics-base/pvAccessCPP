@@ -51,40 +51,6 @@ public:
     bool query_indicated;
 };
 
-class RequesterImpl :
-    public epics::pvData::Requester
-{
-public:
-    RequesterImpl(std::string const & requesterName);
-    virtual std::string getRequesterName();
-    virtual void message(std::string const & message, epics::pvData::MessageType messageType);
-
-private:
-    std::string m_requesterName;
-};
-
-class ChannelRequesterImpl :
-    public epics::pvAccess::ChannelRequester
-{
-private:
-    epics::pvData::Event m_event;
-    bool printOnlyErrors;
-    bool showDisconnectMsg;
-
-public:
-
-    ChannelRequesterImpl(bool printOnlyErrors = false);
-
-    virtual std::string getRequesterName();
-    virtual void message(std::string const & message, epics::pvData::MessageType messageType);
-
-    virtual void channelCreated(const epics::pvData::Status& status, epics::pvAccess::Channel::shared_pointer const & channel);
-    virtual void channelStateChange(epics::pvAccess::Channel::shared_pointer const & channel, epics::pvAccess::Channel::ConnectionState connectionState);
-
-    bool waitUntilConnected(double timeOut);
-    void showDisconnectMessage(bool show = true);
-};
-
 class GetFieldRequesterImpl :
     public epics::pvAccess::GetFieldRequester
 {
@@ -99,7 +65,6 @@ public:
     GetFieldRequesterImpl(epics::pvAccess::Channel::shared_pointer channel);
 
     virtual std::string getRequesterName();
-    virtual void message(std::string const & message, epics::pvData::MessageType messageType);
 
     virtual void getDone(const epics::pvData::Status& status, epics::pvData::FieldConstPtr const & field);
 

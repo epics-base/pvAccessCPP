@@ -5,5 +5,5 @@ SRC_DIRS += $(PVACCESS_SRC)/pipelineService
 INC += pv/pipelineService.h
 INC += pv/pipelineServer.h
 
-LIBSRCS += pipelineService.cpp
-LIBSRCS += pipelineServer.cpp
+pvAccess_SRCS += pipelineService.cpp
+pvAccess_SRCS += pipelineServer.cpp

@@ -59,9 +59,6 @@ public:
 
     virtual ~BeaconEmitter();
 
-    void lock();
-    void unlock();
-
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 
     void timerStopped();
@@ -113,7 +110,7 @@ private:
     /**
      * Server GUID.
      */
-    GUID _guid;
+    ServerGUID _guid;
 
     /**
      * Fast (at startup) beacon period (in sec).

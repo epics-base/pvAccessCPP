@@ -7,9 +7,10 @@
 #include <epicsVersion.h>
 
 #include <pv/standardField.h>
+#include <pv/logger.h>
+#include <pv/pvAccess.h>
 
 #define epicsExportSharedSymbols
-#include <pv/logger.h>
 #include <pv/caChannel.h>
 #include <pv/caStatus.h>
 
@@ -284,12 +285,12 @@ void CAChannel::activate(short priority)
         channelProvider->registerChannel(shared_from_this());
 
         // TODO be sure that ca_connection_handler is not called before this call
-        EXCEPTION_GUARD(channelRequester->channelCreated(Status::Ok, shared_from_this()));
+        channelRequester->channelCreated(Status::Ok, shared_from_this());
     }
     else
     {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
-        EXCEPTION_GUARD(channelRequester->channelCreated(errorStatus, shared_from_this()));
+        channelRequester->channelCreated(errorStatus, shared_from_this());
     }
 }
 
@@ -398,16 +399,6 @@ AccessRights CAChannel::getAccessRights(epics::pvData::PVField::shared_pointer c
 }
 
 
-ChannelProcess::shared_pointer CAChannel::createChannelProcess(
-    ChannelProcessRequester::shared_pointer const & channelProcessRequester,
-    epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-{
-    Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
-    ChannelProcess::shared_pointer nullChannelProcess;
-    EXCEPTION_GUARD(channelProcessRequester->channelProcessConnect(errorStatus, nullChannelProcess));
-    return nullChannelProcess;
-}
-
 ChannelGet::shared_pointer CAChannel::createChannelGet(
     ChannelGetRequester::shared_pointer const & channelGetRequester,
     epics::pvData::PVStructure::shared_pointer const & pvRequest)
@@ -423,46 +414,12 @@ ChannelPut::shared_pointer CAChannel::createChannelPut(
     return CAChannelPut::create(shared_from_this(), channelPutRequester, pvRequest);
 }
 
-ChannelPutGet::shared_pointer CAChannel::createChannelPutGet(
-    ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
-    epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-{
-    Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
-    ChannelPutGet::shared_pointer nullChannelPutGet;
-    EXCEPTION_GUARD(channelPutGetRequester->channelPutGetConnect(errorStatus, nullChannelPutGet,
-                    Structure::const_shared_pointer(), Structure::const_shared_pointer()));
-    return nullChannelPutGet;
-}
-
-
-ChannelRPC::shared_pointer CAChannel::createChannelRPC(
-    ChannelRPCRequester::shared_pointer const & channelRPCRequester,
-    epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-{
-    Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
-    ChannelRPC::shared_pointer nullChannelRPC;
-    EXCEPTION_GUARD(channelRPCRequester->channelRPCConnect(errorStatus, nullChannelRPC));
-    return nullChannelRPC;
-}
-
 
 Monitor::shared_pointer CAChannel::createMonitor(
     MonitorRequester::shared_pointer const & monitorRequester,
     epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
     return CAChannelMonitor::create(shared_from_this(), monitorRequester, pvRequest);
-}
-
-
-ChannelArray::shared_pointer CAChannel::createChannelArray(
-    ChannelArrayRequester::shared_pointer const & channelArrayRequester,
-    epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/)
-{
-    Status errorStatus(Status::STATUSTYPE_ERROR, "not supported");
-    ChannelArray::shared_pointer nullChannelArray;
-    EXCEPTION_GUARD(channelArrayRequester->channelArrayConnect(errorStatus, nullChannelArray,
-                    Array::const_shared_pointer()));
-    return nullChannelArray;
 }
 
 
@@ -480,7 +437,7 @@ void CAChannel::printInfo(std::ostream& out)
 }
 
 
-/* --------------- epics::pvData::Destroyable --------------- */
+/* --------------- Destroyable --------------- */
 
 
 void CAChannel::destroy()
@@ -614,6 +571,7 @@ void CAChannelGet::activate()
 
 /* --------------- epics::pvAccess::ChannelGet --------------- */
 
+namespace {
 
 static void ca_get_handler(struct event_handler_args args)
 {
@@ -978,6 +936,8 @@ static copyDBRtoPVStructure copyFuncTable[] =
     copy_DBR_CTRL<dbr_ctrl_double, dbr_double_t, PVDouble, PVDoubleArray>          // DBR_CTRL_DOUBLE
 };
 
+} // namespace
+
 void CAChannelGet::getDone(struct event_handler_args &args)
 {
     if (args.status == ECA_NORMAL)
@@ -1053,30 +1013,13 @@ void CAChannelGet::lastRequest()
     lastRequestFlag = true;
 }
 
-/* --------------- epics::pvData::Destroyable --------------- */
+/* --------------- Destroyable --------------- */
 
 
 void CAChannelGet::destroy()
 {
     // TODO
 }
-
-
-/* --------------- epics::pvData::Lockable --------------- */
-
-
-void CAChannelGet::lock()
-{
-    // TODO
-}
-
-
-void CAChannelGet::unlock()
-{
-    // TODO
-}
-
-
 
 
 
@@ -1131,6 +1074,7 @@ void CAChannelPut::activate()
 
 /* --------------- epics::pvAccess::ChannelPut --------------- */
 
+namespace {
 
 static void ca_put_handler(struct event_handler_args args)
 {
@@ -1291,6 +1235,8 @@ static doPut doPutFuncTable[] =
     doPut_pvStructure<dbr_double_t, pvDouble, PVDouble, PVDoubleArray>,          // DBR_DOUBLE
 };
 
+} // namespace
+
 void CAChannelPut::putDone(struct event_handler_args &args)
 {
     if (args.status == ECA_NORMAL)
@@ -1303,7 +1249,6 @@ void CAChannelPut::putDone(struct event_handler_args &args)
         EXCEPTION_GUARD(channelPutRequester->putDone(errorStatus, shared_from_this()));
     }
 }
-
 
 void CAChannelPut::put(PVStructure::shared_pointer const & pvPutStructure,
                        BitSet::shared_pointer const & /*putBitSet*/)
@@ -1399,29 +1344,13 @@ void CAChannelPut::lastRequest()
     lastRequestFlag = true;
 }
 
-/* --------------- epics::pvData::Destroyable --------------- */
+/* --------------- Destroyable --------------- */
 
 
 void CAChannelPut::destroy()
 {
     // TODO
 }
-
-
-/* --------------- epics::pvData::Lockable --------------- */
-
-
-void CAChannelPut::lock()
-{
-    // TODO
-}
-
-
-void CAChannelPut::unlock()
-{
-    // TODO
-}
-
 
 
 
@@ -1460,17 +1389,11 @@ CAChannelMonitor::CAChannelMonitor(CAChannel::shared_pointer const & _channel,
     monitorRequester(_monitorRequester),
     getType(getDBRType(pvRequest, _channel->getNativeType())),
     pvStructure(createPVStructure(_channel, getType, pvRequest)),
-    changedBitSet(new BitSet(static_cast<uint32>(pvStructure->getStructure()->getNumberFields()))),
-    overrunBitSet(new BitSet(static_cast<uint32>(pvStructure->getStructure()->getNumberFields()))),
     count(0),
-    element(new MonitorElement())
+    element(new MonitorElement(pvStructure))
 {
     // TODO
-    changedBitSet->set(0);
-
-    element->pvStructurePtr = pvStructure;
-    element->changedBitSet = changedBitSet;
-    element->overrunBitSet = overrunBitSet;
+    element->changedBitSet->set(0);
 }
 
 void CAChannelMonitor::activate()
@@ -1599,7 +1522,7 @@ void CAChannelMonitor::cancel()
     // noop
 }
 
-/* --------------- epics::pvData::Destroyable --------------- */
+/* --------------- Destroyable --------------- */
 
 
 void CAChannelMonitor::destroy()

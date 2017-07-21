@@ -25,7 +25,8 @@
 #	undef securityEpicsExportSharedSymbols
 #endif
 
-#include <pv/remote.h>
+#include <pv/pvaDefs.h>
+#include <pv/pvaConstants.h>
 #include <pv/serializationHelper.h>
 #include <pv/logger.h>
 
@@ -410,26 +411,6 @@ public:
     virtual std::string getDescription() const {
         return "CA client security plug-in";
     }
-};
-
-class AuthNZHandler :
-    public AbstractResponseHandler,
-    private epics::pvData::NoDefaultMethods
-{
-public:
-    AuthNZHandler(Context* context) :
-        AbstractResponseHandler(context, "authNZ message")
-    {
-    }
-
-    virtual ~AuthNZHandler() {}
-
-    virtual void handleResponse(osiSockAddr* responseFrom,
-                                Transport::shared_pointer const & transport,
-                                epics::pvData::int8 version,
-                                epics::pvData::int8 command,
-                                size_t payloadSize,
-                                epics::pvData::ByteBuffer* payloadBuffer);
 };
 
 class epicsShareClass SecurityPluginRegistry :

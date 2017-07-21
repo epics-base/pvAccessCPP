@@ -1,0 +1,74 @@
+digraph clientowner {
+  ChannelProvider;
+  Channel;
+  ChannelRequester [shape=box];
+  External [shape=box];
+
+  Channel;
+  ChannelRequester [shape=box];
+  ChannelGet;
+  ChannelGetRequester [shape=box];
+  ChannelPut;
+  ChannelPutRequester [shape=box];
+  Monitor;
+  MonitorRequester [shape=box];
+  ChannelRPC;
+  ChannelRPCRequester [shape=box];
+  ChannelProcess;
+  ChannelProcessRequester [shape=box];
+  ChannelPutGet;
+  ChannelPutGetRequester [shape=box];
+  ChannelArray;
+  ChannelArrayRequester [shape=box];
+
+  Channel -> ChannelProvider [color=green, style=dashed];
+  ChannelProvider -> Channel [color=green, style=dashed];
+
+  # Operation -> Requester  weak ref
+  Channel -> ChannelRequester [color=green, style=dashed];
+  ChannelGet -> ChannelGetRequester [color=green, style=dashed];
+  ChannelPut -> ChannelPutRequester [color=green, style=dashed];
+  Monitor -> MonitorRequester [color=green, style=dashed];
+  ChannelRPC -> ChannelRPCRequester [color=green, style=dashed];
+  ChannelProcess -> ChannelProcessRequester [color=green, style=dashed];
+  ChannelPutGet -> ChannelPutGetRequester [color=green, style=dashed];
+  ChannelArray -> ChannelArrayRequester [color=green, style=dashed];
+
+  # Channel -> Operation  weak ref
+  Channel -> ChannelGet [color=green, style=dashed];
+  Channel -> ChannelPut [color=green, style=dashed];
+  Channel -> Monitor [color=green, style=dashed];
+  Channel -> ChannelRPC [color=green, style=dashed];
+  Channel -> ChannelProcess [color=green, style=dashed];
+  Channel -> ChannelPutGet [color=green, style=dashed];
+  Channel -> ChannelArray [color=green, style=dashed];
+
+  # Operation -> Channel  strong ref
+  ChannelGet -> Channel [color=red, style=dashed];
+  ChannelPut -> Channel [color=red, style=dashed];
+  Monitor -> Channel [color=red, style=dashed];
+  ChannelRPC -> Channel [color=red, style=dashed];
+  ChannelProcess -> Channel [color=red, style=dashed];
+  ChannelPutGet -> Channel [color=red, style=dashed];
+  ChannelArray -> Channel [color=red, style=dashed];
+
+  # user code ownership
+  External -> ChannelProvider [color=red];
+  External -> ChannelRequester [color=red];
+  External -> ChannelGetRequester [color=red];
+  External -> ChannelPutRequester [color=red];
+  External -> MonitorRequester [color=red];
+  External -> ChannelRPCRequester [color=red];
+  External -> ChannelProcessRequester [color=red];
+  External -> ChannelPutGetRequester [color=red];
+  External -> ChannelArrayRequester [color=red];
+
+  ChannelRequester -> Channel [color=red];
+  ChannelGetRequester -> ChannelGet [color=red];
+  ChannelPutRequester -> ChannelPut [color=red];
+  MonitorRequester    -> Monitor [color=red];
+  ChannelRPCRequester -> ChannelRPC [color=red];
+  ChannelProcessRequester -> ChannelProcess [color=red];
+  ChannelPutGetRequester -> ChannelPutGet [color=red];
+  ChannelArrayRequester -> ChannelArray [color=red];
+}

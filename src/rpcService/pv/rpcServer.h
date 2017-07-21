@@ -28,25 +28,24 @@
 namespace epics {
 namespace pvAccess {
 
+class ServerContext;
+class RPCChannelProvider;
+
+//! Serves (only) RPCServiceAsync and RPCService instances.
 class epicsShareClass RPCServer :
     public std::tr1::enable_shared_from_this<RPCServer>
 {
 private:
 
-    ServerContextImpl::shared_pointer m_serverContext;
-    ChannelProviderFactory::shared_pointer m_channelProviderFactory;
-    ChannelProvider::shared_pointer m_channelProviderImpl;
-
-    // TODO no thread poll implementation
+    std::tr1::shared_ptr<ServerContext> m_serverContext;
+    std::tr1::shared_ptr<RPCChannelProvider> m_channelProviderImpl;
 
 public:
     POINTER_DEFINITIONS(RPCServer);
 
-    RPCServer();
+    explicit RPCServer(const Configuration::const_shared_pointer& conf = Configuration::const_shared_pointer());
 
     virtual ~RPCServer();
-
-    void registerService(std::string const & serviceName, RPCService::shared_pointer const & service);
 
     void registerService(std::string const & serviceName, RPCServiceAsync::shared_pointer const & service);
 
@@ -65,12 +64,13 @@ public:
      */
     void printInfo();
 
+    const std::tr1::shared_ptr<ServerContext>& getServer() const { return m_serverContext; }
 };
 
 epicsShareFunc Channel::shared_pointer createRPCChannel(ChannelProvider::shared_pointer const & provider,
         std::string const & channelName,
         ChannelRequester::shared_pointer const & channelRequester,
-        Service::shared_pointer const & rpcService);
+        RPCServiceAsync::shared_pointer const & rpcService);
 
 }
 }

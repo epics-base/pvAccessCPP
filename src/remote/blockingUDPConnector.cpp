@@ -16,6 +16,22 @@
 using namespace std;
 using namespace epics::pvData;
 
+namespace {
+struct closer {
+    epics::pvAccess::Transport::shared_pointer P;
+    closer(const epics::pvAccess::Transport::shared_pointer& P) :P(P) {}
+    void operator()(epics::pvAccess::Transport*) {
+        try{
+            P->close();
+        }catch(...){
+            P.reset();
+            throw;
+        }
+        P.reset();
+    }
+};
+}
+
 namespace epics {
 namespace pvAccess {
 
@@ -72,7 +88,12 @@ Transport::shared_pointer BlockingUDPConnector::connect(TransportClient::shared_
     BlockingUDPTransport::shared_pointer transport(new BlockingUDPTransport(_serverFlag, responseHandler,
             socket, bindAddress, transportRevision));
 
-    return Transport::shared_pointer(transport);
+    // the worker thread holds a strong ref, which is released by transport->close()
+    // note: casting to Transport* to prevent iOS version of shared_ptr from trying (and failing)
+    //       to setup shared_from_this() using the wrapped pointer
+    Transport::shared_pointer ret(static_cast<Transport*>(transport.get()), closer(transport));
+
+    return ret;
 }
 
 }

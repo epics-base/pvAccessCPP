@@ -8,6 +8,7 @@
 #define PVACCESS_H
 
 #include <vector>
+#include <set>
 
 #ifdef epicsExportSharedSymbols
 #   define pvAccessEpicsExportSharedSymbols
@@ -17,8 +18,6 @@
 #include <pv/pvData.h>
 #include <pv/createRequest.h>
 #include <pv/status.h>
-#include <pv/destroyable.h>
-#include <pv/monitor.h>
 #include <pv/bitSet.h>
 
 #ifdef pvAccessEpicsExportSharedSymbols
@@ -27,10 +26,38 @@
 #endif
 
 #include <pv/pvaVersion.h>
+#include <pv/destroyable.h>
+#include <pv/monitor.h>
 
 #include <shareLib.h>
 
+/* C++11 keywords
+ @code
+ struct Base {
+   virtual void foo();
+ };
+ struct Class : public Base {
+   virtual void foo() OVERRIDE FINAL;
+ };
+ @endcode
+ */
+#ifndef FINAL
+#  if __cplusplus>=201103L
+#    define FINAL final
+#  else
+#    define FINAL
+#  endif
+#endif
+#ifndef OVERRIDE
+#  if __cplusplus>=201103L
+#    define OVERRIDE override
+#  else
+#    define OVERRIDE
+#  endif
+#endif
+
 namespace epics {
+//! Holds all PVA related
 namespace pvAccess {
 class Configuration;
 
@@ -38,12 +65,6 @@ using epics::pvData::Requester;
 using epics::pvData::RequesterPtr;
 using epics::pvData::MessageType;
 using epics::pvData::getMessageTypeName;
-
-using epics::pvData::MonitorElement;
-using epics::pvData::MonitorElementPtr;
-using epics::pvData::MonitorElementPtrArray;
-using epics::pvData::Monitor;
-using epics::pvData::MonitorRequester;
 
 // TODO add write-only?
 // change names
@@ -71,10 +92,10 @@ class epicsShareClass Lockable
 public:
     POINTER_DEFINITIONS(Lockable);
 
-    virtual ~Lockable() {};
+    virtual ~Lockable() {}
 
-    virtual void lock() = 0;
-    virtual void unlock() = 0;
+    virtual void lock() {}
+    virtual void unlock() {}
 };
 
 /**
@@ -116,7 +137,6 @@ private:
     bool locked;
 };
 
-
 class Channel;
 class ChannelProvider;
 class ChannelArrayRequester;
@@ -127,12 +147,36 @@ class ChannelPutRequester;
 class ChannelPutGetRequester;
 class ChannelRPCRequester;
 
+//! Base for all Requesters (callbacks to client)
+struct epicsShareClass ChannelBaseRequester : virtual public epics::pvData::Requester
+{
+    POINTER_DEFINITIONS(ChannelBaseRequester);
+
+    virtual ~ChannelBaseRequester() {}
+
+    /** Notification when underlying Channel becomes DISCONNECTED or DESTORYED
+     *
+     * (re)connection is notified through a sub-class *Connect() method.
+     *
+     * Any in-progress get()/put()/request()/start() is implicitly cancel()'d or stop()'d
+     * before this method is called.
+     *
+     * Ownership of any PVStructures passed to completion callbacks (eg. ChannelGetRequester::getDone() )
+     * is returned the operation
+     *
+     * @param destroy true for final disconnect.
+     */
+    virtual void channelDisconnect(bool destroy) {}
+};
+
 /**
- * Base interface for all channel requests.
+ * Base interface for all channel requests (aka. Operations).
  */
-class epicsShareClass ChannelRequest : public epics::pvData::Destroyable, public Lockable, private epics::pvData::NoDefaultMethods {
+class epicsShareClass ChannelRequest : public virtual Destroyable, public Lockable, private epics::pvData::NoDefaultMethods {
 public:
     POINTER_DEFINITIONS(ChannelRequest);
+
+    virtual ~ChannelRequest() {}
 
     /**
      * Get a channel instance this request belongs to.
@@ -158,6 +202,42 @@ public:
 };
 
 /**
+ * @brief Callback implemented by monitor clients.
+ *
+ * Requester for ChannelMonitor.
+ * @author mrk
+ */
+class epicsShareClass MonitorRequester : public ChannelBaseRequester {
+    public:
+    POINTER_DEFINITIONS(MonitorRequester);
+    typedef Monitor operation_type;
+
+    virtual ~MonitorRequester(){}
+    /**
+     * Underlying Channel is connected and operation setup is complete.
+     * Call start() to begin subscription updates.
+     *
+     * @param status Completion status.
+     * @param monitor The monitor
+     * @param structure The structure defining the data.
+     */
+    virtual void monitorConnect(epics::pvData::Status const & status,
+        MonitorPtr const & monitor, epics::pvData::StructureConstPtr const & structure) = 0;
+    /**
+     * Monitor queue is not empty.
+     *
+     * The requester must call Monitor.poll to get data.
+     * @param monitor The monitor.
+     */
+    virtual void monitorEvent(MonitorPtr const & monitor) = 0;
+    /**
+     * No more subscription update will be sent.
+     * @param monitor The monitor.
+     */
+    virtual void unlisten(MonitorPtr const & monitor) = 0;
+};
+
+/**
  * Request to put and get Array Data.
  * The data is either taken from or put in the PVArray returned by ChannelArrayRequester.channelArrayConnect.
  */
@@ -166,10 +246,16 @@ public:
     POINTER_DEFINITIONS(ChannelArray);
     typedef ChannelArrayRequester requester_type;
 
+    virtual ~ChannelArray() {}
+
     /**
      * put to the remote array.
+     *
+     * Ownership of the PVArray is transferred to the ChannelArray until ChannelArrayRequester::putArrayDone()
+     * or ChannelArrayRequester::channelDisconnect() is called.
+     *
      * @param putArray array to put.
-     * @param offset The offset in the remote array, i.e. the PVArray returned by ChannelArrayRequester.channelArrayConnect.
+     * @param offset The offset in the remote array, i.e. the PVArray returned by ChannelArrayRequester::channelArrayConnect.
      * @param count The number of elements to put, 0 means "entire array".
      * @param stride 1 means all the elements from offset to count, 2 means every other, 3 means every third, etc.
      */
@@ -179,7 +265,11 @@ public:
 
     /**
      * get from the remote array.
-     * @param offset The offset in the remote array, i.e. the PVArray returned by ChannelArrayRequester.channelArrayConnect.
+     *
+     * Ownership of the PVArray previously passed to ChannelArrayRequester::getArrayDone()
+     * is returned to the ChannelArray from the ChannelArrayRequester.
+     *
+     * @param offset The offset in the remote array, i.e. the PVArray returned by ChannelArrayRequester::channelArrayConnect.
      * @param count The number of elements to get, 0 means "till the end of an array".
      * @param stride 1 means all the elements from offset to count, 2 means every other, 3 means every third, etc.
      */
@@ -200,16 +290,20 @@ public:
 /**
  * The Requester for a ChannelArray.
  */
-class epicsShareClass ChannelArrayRequester : virtual public Requester {
+class epicsShareClass ChannelArrayRequester : public ChannelBaseRequester {
 public:
     POINTER_DEFINITIONS(ChannelArrayRequester);
     typedef ChannelArray operation_type;
 
+    virtual ~ChannelArrayRequester() {}
+
     /**
-     * The client and server have both completed the createChannelArray request.
+     * Underlying Channel is connected and operation setup is complete.
+     * May call putArray(), getArray(), getLength(), or setLength() to execute.
+     *
      * @param status Completion status.
-     * @param channelArray The channelArray interface or <code>null</code> if the request failed.
-     * @param pvArray The PVArray that holds the data or <code>null</code> if the request failed.
+     * @param channelArray The channelArray interface or nullptr if the request failed.
+     * @param pvArray The PVArray that holds the data or nullptr if the request failed.
      */
     virtual void channelArrayConnect(
         const epics::pvData::Status& status,
@@ -218,6 +312,9 @@ public:
 
     /**
      * The request is done. This is always called with no locks held.
+     *
+     * Ownership of PVArray passed to ChannelArray::putArray() returns to ChannelArrayRequester
+     *
      * @param status Completion status.
      * @param channelArray The channelArray interface.
      */
@@ -227,9 +324,13 @@ public:
 
     /**
      * The request is done. This is always called with no locks held.
+     *
+     * Ownership of the PVArray is transfered to the ChannelArrayRequester until
+     * a subsequent call to ChannelArray::getArray() or ChannelArrayRequester::channelDisconnect().
+     *
      * @param status Completion status.
      * @param channelArray The channelArray interface.
-     * @param pvArray The PVArray that holds the data or <code>null</code> if the request failed.
+     * @param pvArray The PVArray that holds the data or nullptr if the request failed.
      */
     virtual void getArrayDone(
         const epics::pvData::Status& status,
@@ -261,10 +362,12 @@ public:
 /**
  *
  */
-class epicsShareClass ChannelFind : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
+class epicsShareClass ChannelFind : public Destroyable, private epics::pvData::NoDefaultMethods {
 public:
     POINTER_DEFINITIONS(ChannelFind);
     typedef ChannelFindRequester requester_type;
+
+    virtual ~ChannelFind() {}
 
     virtual std::tr1::shared_ptr<ChannelProvider> getChannelProvider() = 0;
     virtual void cancel() = 0;
@@ -278,7 +381,7 @@ public:
     POINTER_DEFINITIONS(ChannelFindRequester);
     typedef ChannelFind operation_type;
 
-    virtual ~ChannelFindRequester() {};
+    virtual ~ChannelFindRequester() {}
 
     /**
      * @param status Completion status.
@@ -297,7 +400,7 @@ public:
     POINTER_DEFINITIONS(ChannelListRequester);
     typedef ChannelFind operation_type;
 
-    virtual ~ChannelListRequester() {};
+    virtual ~ChannelListRequester() {}
 
     /**
      * @param status Completion status.
@@ -317,9 +420,15 @@ public:
     POINTER_DEFINITIONS(ChannelGet);
     typedef ChannelGetRequester requester_type;
 
+    virtual ~ChannelGet() {}
+
     /**
      * Get data from the channel.
-     * Completion status is reported by calling ChannelGetRequester.getDone() callback.
+     *
+     * Ownership of the PVStructure passed to ChannelGetRequester::getDone() is
+     * returned to the ChannelGet.
+     *
+     * Completion status is reported by calling ChannelGetRequester::getDone() callback.
      */
     virtual void get() = 0;
 };
@@ -328,16 +437,18 @@ public:
 /**
  * Requester for channelGet.
  */
-class epicsShareClass ChannelGetRequester : virtual public Requester {
+class epicsShareClass ChannelGetRequester : public ChannelBaseRequester {
 public:
     POINTER_DEFINITIONS(ChannelGetRequester);
     typedef ChannelGet operation_type;
 
+    virtual ~ChannelGetRequester() {}
+
     /**
      * The client and server have both completed the createChannelGet request.
      * @param status Completion status.
-     * @param channelGet The channelGet interface or <code>null</code> if the request failed.
-     * @param structure The introspection interface of requested get structure or <code>null</code> if the request failed.
+     * @param channelGet The channelGet interface or nullptr if the request failed.
+     * @param structure The introspection interface of requested get structure or nullptr if the request failed.
      */
     virtual void channelGetConnect(
         const epics::pvData::Status& status,
@@ -346,10 +457,14 @@ public:
 
     /**
      * The request is done. This is always called with no locks held.
+     *
+     * Ownership of the PVStructure is passed to the ChannelGetRequester until a subsequent call to
+     * ChannelGet::get() or ChannelGetRequester::channelDisconnect()
+     *
      * @param status Completion status.
      * @param channelGet The channelGet interface.
-     * @param pvStructure The PVStructure that holds the data or <code>null</code> if the request failed.
-     * @param bitSet The bitSet for that shows what data has changed or <code>null</code> if the request failed.
+     * @param pvStructure The PVStructure that holds the data or nullptr if the request failed.
+     * @param bitSet The bitSet for that shows what data has changed or nullptr if the request failed.
      */
     virtual void getDone(
         const epics::pvData::Status& status,
@@ -367,6 +482,8 @@ public:
     POINTER_DEFINITIONS(ChannelProcess);
     typedef ChannelProcessRequester requester_type;
 
+    virtual ~ChannelProcess() {}
+
     /**
      * Issue a process request.
      * Completion status is reported by calling ChannelProcessRequester.processDone() callback.
@@ -378,15 +495,17 @@ public:
 /**
  * Requester for channelProcess.
  */
-class epicsShareClass ChannelProcessRequester : virtual public Requester {
+class epicsShareClass ChannelProcessRequester : public ChannelBaseRequester {
 public:
     POINTER_DEFINITIONS(ChannelProcessRequester);
     typedef ChannelProcess operation_type;
 
+    virtual ~ChannelProcessRequester() {}
+
     /**
      * The client and server have both completed the createChannelProcess request.
      * @param status Completion status.
-     * @param channelProcess The channelProcess interface or <code>null</code> if the client could not become
+     * @param channelProcess The channelProcess interface or nullptr if the client could not become
      * the record processor.
      */
     virtual void channelProcessConnect(
@@ -412,9 +531,17 @@ public:
     POINTER_DEFINITIONS(ChannelPut);
     typedef ChannelPutRequester requester_type;
 
+    virtual ~ChannelPut() {}
+
     /**
      * Put data to a channel.
-     * Completion status is reported by calling ChannelPutRequester.putDone() callback.
+     *
+     * Completion status is reported by calling ChannelPutRequester::putDone()
+     *
+     * Ownership of the PVStructure is transfered to the ChannelPut until
+     * ChannelPutRequester::putDone() or ChannelPutRequester::channelDisconnect()
+     * is called.
+     *
      * @param pvPutStructure The PVStructure that holds the putData.
      * @param putBitSet putPVStructure bit-set (selects what fields to put).
      */
@@ -424,6 +551,8 @@ public:
 
     /**
      * Get the current data.
+     *
+     * Ownership transfer as with ChannelGet::get()
      */
     virtual void get() = 0;
 
@@ -432,16 +561,18 @@ public:
 /**
  * Requester for ChannelPut.
  */
-class epicsShareClass ChannelPutRequester : virtual public Requester {
+class epicsShareClass ChannelPutRequester : public ChannelBaseRequester {
 public:
     POINTER_DEFINITIONS(ChannelPutRequester);
     typedef ChannelPut operation_type;
+
+    virtual ~ChannelPutRequester() {}
 
     /**
      * The client and server have both processed the createChannelPut request.
      * @param status Completion status.
      * @param channelPut The channelPut interface or null if the request failed.
-     * @param structure The introspection interface of requested put/get structure or <code>null</code> if the request failed.
+     * @param structure The introspection interface of requested put/get structure or nullptr if the request failed.
      */
     virtual void channelPutConnect(
         const epics::pvData::Status& status,
@@ -459,10 +590,13 @@ public:
 
     /**
      * The get request is done. This is always called with no locks held.
+     *
+     * Ownership transfer as with ChannelGetRequester::getDone()
+     *
      * @param status Completion status.
      * @param channelPut The channelPut interface.
-     * @param pvStructure The PVStructure that holds the data or <code>null</code> if the request failed.
-     * @param bitSet The bitSet for that shows what data has changed or <code>null</code> if the request failed.
+     * @param pvStructure The PVStructure that holds the data or nullptr if the request failed.
+     * @param bitSet The bitSet for that shows what data has changed or nullptr if the request failed.
      */
     virtual void getDone(
         const epics::pvData::Status& status,
@@ -480,6 +614,8 @@ class epicsShareClass ChannelPutGet : public ChannelRequest {
 public:
     POINTER_DEFINITIONS(ChannelPutGet);
     typedef ChannelPutGetRequester requester_type;
+
+    virtual ~ChannelPutGet() {}
 
     /**
      * Issue a put/get request. If process was requested when the ChannelPutGet was created this is a put, process, get.
@@ -508,18 +644,20 @@ public:
 /**
  * Requester for ChannelPutGet.
  */
-class epicsShareClass ChannelPutGetRequester : virtual public Requester
+class epicsShareClass ChannelPutGetRequester : public ChannelBaseRequester
 {
 public:
     POINTER_DEFINITIONS(ChannelPutGetRequester);
     typedef ChannelPutGet operation_type;
 
+    virtual ~ChannelPutGetRequester() {}
+
     /**
      * The client and server have both completed the createChannelPutGet request.
      * @param status Completion status.
      * @param channelPutGet The channelPutGet interface or null if the request failed.
-     * @param putStructure The put structure introspection data or <code>null</code> if the request failed.
-     * @param getStructure The get structure introspection data or <code>null</code> if the request failed.
+     * @param putStructure The put structure introspection data or nullptr if the request failed.
+     * @param getStructure The get structure introspection data or nullptr if the request failed.
      */
     virtual void channelPutGetConnect(
         const epics::pvData::Status& status,
@@ -531,8 +669,8 @@ public:
      * The putGet request is done. This is always called with no locks held.
      * @param status Completion status.
      * @param channelPutGet The channelPutGet interface.
-     * @param pvGetStructure The PVStructure that holds the getData or <code>null</code> if the request failed.
-     * @param getBitSet getPVStructure changed bit-set or <code>null</code> if the request failed.
+     * @param pvGetStructure The PVStructure that holds the getData or nullptr if the request failed.
+     * @param getBitSet getPVStructure changed bit-set or nullptr if the request failed.
      */
     virtual void putGetDone(
         const epics::pvData::Status& status,
@@ -544,8 +682,8 @@ public:
      * The getPut request is done. This is always called with no locks held.
      * @param status Completion status.
      * @param channelPutGet The channelPutGet interface.
-     * @param pvPutStructure The PVStructure that holds the putData or <code>null</code> if the request failed.
-     * @param putBitSet putPVStructure changed bit-set or <code>null</code> if the request failed.
+     * @param pvPutStructure The PVStructure that holds the putData or nullptr if the request failed.
+     * @param putBitSet putPVStructure changed bit-set or nullptr if the request failed.
      */
     virtual void getPutDone(
         const epics::pvData::Status& status,
@@ -557,8 +695,8 @@ public:
      * The getGet request is done. This is always called with no locks held.
      * @param status Completion status.
      * @param channelPutGet The channelPutGet interface.
-     * @param pvGetStructure The PVStructure that holds the getData or <code>null</code> if the request failed.
-     * @param getBitSet getPVStructure changed bit-set or <code>null</code> if the request failed.
+     * @param pvGetStructure The PVStructure that holds the getData or nullptr if the request failed.
+     * @param getBitSet getPVStructure changed bit-set or nullptr if the request failed.
      */
     virtual void getGetDone(
         const epics::pvData::Status& status,
@@ -569,16 +707,27 @@ public:
 
 
 /**
- * Requester for channelGet.
+ * Handle for an RPC operation
  */
 class epicsShareClass ChannelRPC : public ChannelRequest {
 public:
     POINTER_DEFINITIONS(ChannelRPC);
     typedef ChannelRPCRequester requester_type;
 
+    virtual ~ChannelRPC() {}
+
     /**
      * Issue an RPC request to the channel.
-     * Completion status is reported by calling ChannelRPCRequester.requestDone() callback.
+     *
+     * Completion status is reported by calling ChannelRPCRequester::requestDone() callback,
+     * which may be called from this method.
+     *
+     * @pre The underlying Channel must be connected, and this ChannelRPC valid.
+     *      Otherwise the ChannelRPCRequester::requestDone() is called with an error.
+     *
+     * @post After calling request(), the requestDone() callback will be called at some later time.
+     *       May call ChannelRPC::cancel() to request to abort() this operation.
+     *
      * @param pvArgument The argument structure for an RPC request.
      */
     virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument) = 0;
@@ -586,44 +735,61 @@ public:
 
 
 /**
- * Requester for channelGet.
+ * Notifications associated with Channel::createChannelRPC()
+ *
+ * No locks may be held while calling these methods.
  */
-class epicsShareClass ChannelRPCRequester : virtual public Requester {
+class epicsShareClass ChannelRPCRequester : public ChannelBaseRequester {
 public:
     POINTER_DEFINITIONS(ChannelRPCRequester);
     typedef ChannelRPC operation_type;
 
+    virtual ~ChannelRPCRequester() {}
+
     /**
-     * The client and server have both completed the createChannelGet request.
-     * @param status Completion status.
-     * @param channelRPC The channelRPC interface or <code>null</code> if the request failed.
+     * RPC creation request satisfied.
+     *
+     * Must check status.isOk().
+     *
+     * On Success, a non-NULL 'operation' is provided.
+     * This is the same pointer which was, or will be, returned from Channel::createChannelRPC().
+     *
+     * It is allowed to call ChannelRPC::request() from within this method.
      */
     virtual void channelRPCConnect(
         const epics::pvData::Status& status,
-        ChannelRPC::shared_pointer const & channelRPC) = 0;
+        ChannelRPC::shared_pointer const & operation) = 0;
 
     /**
-     * The request is done. This is always called with no locks held.
-     * @param status Completion status.
-     * @param channelRPC The channelRPC interface.
-     * @param pvResponse The response data for the RPC request or <code>null</code> if the request failed.
+     * RPC request (execution) completed.
+     *
+     * Must check status.isOk().
+     *
+     * On Success, a non-NULL 'pvResponse' is provided.
+     *
+     * It is allowed to call ChannelRPC::request() from within this method.
      */
     virtual void requestDone(
         const epics::pvData::Status& status,
-        ChannelRPC::shared_pointer const & channelRPC,
+        ChannelRPC::shared_pointer const & operation,
         epics::pvData::PVStructure::shared_pointer const & pvResponse) = 0;
 };
 
 
 /**
- * Requester for a getStructure request.
+ * Completion notification for Channel::getField()
  */
-class epicsShareClass GetFieldRequester : virtual public Requester {
+class epicsShareClass GetFieldRequester : public ChannelBaseRequester {
 public:
     POINTER_DEFINITIONS(GetFieldRequester);
 
+    virtual ~GetFieldRequester() {}
+
     /**
-     * The client and server have both completed the getStructure request.
+     * Check status.isOk() to determine success.
+     * On success the 'field' will be non-NULL.
+     * On failure 'field' will be NULL.
+     *
      * @param status Completion status.
      * @param field The Structure for the request.
      */
@@ -637,18 +803,26 @@ public:
 class ChannelRequester;
 
 /**
- * Interface for accessing a channel.
- * A channel is created via a call to ChannelAccess.createChannel(std::string channelName).
+ * The interface through which Operations (get, put, monitor, ...) are initiated.
+ *
+ * Handle for a Channel returned by ChannelProvider::createChannel()
+ *
+ * At any given moment a Channel may be CONNECTED or DISCONNECTED.  (NEVER_CONNECTED and DESTORYED are special cases of DISCONNECTED)
+ *
+ * A Channel is required to honor calls to Channel::create*() methods while in the disconnected state.
+ *
+ * A Channel is required to maintain a strong reference (shared_ptr<>) to the ChannelProvider through which it was created.
  */
 class epicsShareClass Channel :
     public Requester,
-    public epics::pvData::Destroyable,
+    public Destroyable,
     private epics::pvData::NoDefaultMethods {
 public:
     POINTER_DEFINITIONS(Channel);
     typedef ChannelRequester requester_type;
 
-    virtual ~Channel() {}
+    Channel();
+    virtual ~Channel();
 
     virtual std::string getRequesterName();
     virtual void message(std::string const & message, epics::pvData::MessageType messageType);
@@ -663,148 +837,200 @@ public:
     static const char* ConnectionStateNames[];
 
     /**
-     * Get the the channel provider of this channel.
-     * @return The channel provider.
+     * The ChannelProvider from which this Channel was requested.
+     * May never be NULL.
      */
     virtual std::tr1::shared_ptr<ChannelProvider> getProvider() = 0;
-//            virtual ChannelProvider::shared_pointer getProvider() = 0;
 
     /**
      * Returns the channel's remote address, signal name, etc...
      * For example:
      *     - client side channel would return server's address, e.g. "/192.168.1.101:5064"
      *     - server side channel would return underlying bus address, e.g. "#C0 S1".
-     * @return the channel's address.
+     *
+     * The value returned here will changed depending on the connection status.
+     * A disconnected channel should return an empty() string.
      **/
     virtual std::string getRemoteAddress() = 0;
 
     /**
-     * Returns the connection state of this channel.
-     * @return the <code>ConnectionState</code> value.
+     * Poll the connection state in more detail
      **/
-    virtual ConnectionState getConnectionState() = 0;
+    virtual ConnectionState getConnectionState();
 
     /**
-     * Get the channel name.
-     * @return The name.
+     * The name passed to ChannelProvider::createChannel()
      */
     virtual std::string getChannelName() = 0;
 
     /**
-     * Get the channel Requester.
-     * @return The Requester.
+     * The ChannelRequester passed to ChannelProvider::createChannel()
+     *
+     * @throws std::tr1::bad_weak_ptr
      */
-//            virtual ChannelRequester::shared_pointer getChannelRequester() = 0;
     virtual std::tr1::shared_ptr<ChannelRequester> getChannelRequester() = 0;
 
     /**
-     * Is the channel connected?
-     * @return (false,true) means (not, is) connected.
+     * Poll connection state
      */
-    virtual bool isConnected() { return getConnectionState()==CONNECTED; }
+    virtual bool isConnected();
 
     /**
-     * Get a Field which describes the subField.
-     * GetFieldRequester.getDone is called after both client and server have processed the getField request.
-     * This is for clients that want to introspect a PVRecord via channel access.
+     * Initiate a request to retrieve a description of the structure of this Channel.
+     *
+     * While the type described by calls to getField() should match what is provided for all operations except RPC.
+     *
+     * GetFieldRequester::getDone() will be called before getField() returns, or at some time afterwards.
+     *
      * @param Requester The Requester.
-     * @param subField The name of the subField.
-     * If this is null or an empty std::string the returned Field is for the entire record.
+     * @param subField Empty string, or the field name of a sub-structure.
      */
-    virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField) = 0;
+    virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField);
 
     /**
-     * Get the access rights for a field of a PVStructure created via a call to createPVStructure.
-     * MATEJ Channel access can store this info via auxInfo.
+     * Not useful...
+     *
      * @param pvField The field for which access rights is desired.
      * @return The access rights.
      */
-    virtual AccessRights getAccessRights(epics::pvData::PVField::shared_pointer const & pvField) = 0;
+    virtual AccessRights getAccessRights(epics::pvData::PVField::shared_pointer const & pvField);
 
     /**
-     * Create a ChannelProcess.
-     * ChannelProcessRequester.channelProcessReady is called after both client and server are ready for
-     * the client to make a process request.
-     * @param channelProcessRequester The interface for notifying when this request is complete
-     * and when channel completes processing.
-     * @param pvRequest Additional options (e.g. triggering).
-     * @return <code>ChannelProcess</code> instance.
+     * Initiate a request for a Process action.
+     *
+     * ChannelProcessRequester::channelProcessConnect() may be called before createChannelProcess() returns, or at some time afterwards.
+     *
+     * Failure is indicated by a call to channelProcessConnect with !Error::isOk()
+     *
+     * @pre The Channel need not be CONNECTED
+     *
+     * @post The returned ChannelProcess will hold a strong reference to the provided ChannelProcessRequester.
+     *
+     * @post Returned shared_ptr<ChannelProcess> will have unique()==true.
+     *
+     * @return A non-NULL ChannelProcess unless channelProcessConnect() called with an Error
      */
     virtual ChannelProcess::shared_pointer createChannelProcess(
-        ChannelProcessRequester::shared_pointer const & channelProcessRequester,
+        ChannelProcessRequester::shared_pointer const & requester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     /**
-     * Create a ChannelGet.
-     * ChannelGetRequester.channelGetReady is called after both client and server are ready for
-     * the client to make a get request.
-     * @param channelGetRequester The interface for notifying when this request is complete
-     * and when a channel get completes.
-     * @param pvRequest A structure describing the desired set of fields from the remote PVRecord.
-     * This has the same form as a pvRequest to PVCopyFactory.create.
-     * @return <code>ChannelGet</code> instance.
+     * Initiate a request for a Get action.
+     *
+     * ChannelGetRequester::channelGetConnect() may be called before createChannelGet() returns, or at some time afterwards.
+     *
+     * Failure is indicated by a call to channelProcessConnect with !Error::isOk()
+     *
+     * @pre The Channel need not be CONNECTED
+     *
+     * @post The returned ChannelGet will hold a strong reference to the provided ChannelGetRequester.
+     *
+     * @post Returned shared_ptr<ChannelGet> will have unique()==true.
+     *
+     * @return A non-NULL ChannelGet unless channelGetConnect() called with an Error
      */
     virtual ChannelGet::shared_pointer createChannelGet(
-        ChannelGetRequester::shared_pointer const & channelGetRequester,
+        ChannelGetRequester::shared_pointer const & requester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     /**
-     * Create a ChannelPut.
-     * ChannelPutRequester.channelPutReady is called after both client and server are ready for
-     * the client to make a put request.
-     * @param channelPutRequester The interface for notifying when this request is complete
-     * and when a channel get completes.
-     * @param pvRequest A structure describing the desired set of fields from the remote PVRecord.
-     * This has the same form as a pvRequest to PVCopyFactory.create.
-     * @return <code>ChannelPut</code> instance.
+     * Initiate a request for a Put action.
+     *
+     * ChannelPutRequester::channelPutConnect() may be called before createChannelPut() returns, or at some time afterwards.
+     *
+     * Failure is indicated by a call to channelProcessConnect with !Error::isOk()
+     *
+     * @pre The Channel need not be CONNECTED
+     *
+     * @post The returned ChannelPut will hold a strong reference to the provided ChannelPutRequester.
+     *
+     * @post Returned shared_ptr<ChannelPut> will have unique()==true.
+     *
+     * @return A non-NULL ChannelPut unless channelPutConnect() called with an Error
      */
     virtual ChannelPut::shared_pointer createChannelPut(
-        ChannelPutRequester::shared_pointer const & channelPutRequester,
+        ChannelPutRequester::shared_pointer const & requester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     /**
-     * Create a ChannelPutGet.
-     * ChannelPutGetRequester.channelPutGetReady is called after both client and server are ready for
-     * the client to make a putGet request.
-     * @param channelPutGetRequester The interface for notifying when this request is complete
-     * and when a channel get completes.
-     * @param pvRequest A structure describing the desired set of fields from the remote PVRecord.
-     * This has the same form as a pvRequest to PVCopyFactory.create.
-     * @return <code>ChannelPutGet</code> instance.
+     * Initiate a request for a PutGet action.
+     *
+     * ChannelPutGetRequester::channelPutGetConnect() may be called before createChannelPutGet() returns, or at some time afterwards.
+     *
+     * Failure is indicated by a call to channelProcessConnect with !Error::isOk()
+     *
+     * @pre The Channel need not be CONNECTED
+     *
+     * @post The returned ChannelPutGet will hold a strong reference to the provided ChannelPutGetRequester.
+     *
+     * @post Returned shared_ptr<ChannelPutGet> will have unique()==true.
+     *
+     * @return A non-NULL ChannelPutGet unless channelPutGetConnect() called with an Error
      */
     virtual ChannelPutGet::shared_pointer createChannelPutGet(
-        ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
+        ChannelPutGetRequester::shared_pointer const & requester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     /**
-     * Create a ChannelRPC (Remote Procedure Call).
-     * @param channelRPCRequester The Requester.
-     * @param pvRequest Request options.
-     * @return <code>ChannelRPC</code> instance.
+     * Initiate a request for a RPC action.
+     *
+     * ChannelRPCRequester::channelRPCConnect() may be called before createChannelRPC() returns, or at some time afterwards.
+     *
+     * Failure is indicated by a call to channelProcessConnect with !Error::isOk()
+     *
+     * @pre The Channel need not be CONNECTED
+     *
+     * @post The returned ChannelRPC will hold a strong reference to the provided ChannelRPCRequester.
+     *
+     * @post Returned shared_ptr<ChannelRPC> will have unique()==true.
+     *
+     * @return A non-NULL ChannelRPC unless channelRPCConnect() called with an Error
      */
     virtual ChannelRPC::shared_pointer createChannelRPC(
-        ChannelRPCRequester::shared_pointer const & channelRPCRequester,
+        ChannelRPCRequester::shared_pointer const & requester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     /**
-     * Create a Monitor.
-     * @param monitorRequester The Requester.
-     * @param pvRequest A structure describing the desired set of fields from the remote PVRecord.
-     * This has the same form as a pvRequest to PVCopyFactory.create.
-     * @return <code>Monitor</code> instance.
+     * Initiate a request for a Monitor action.
+     *
+     * MonitorRequester::channelMonitorConnect() may be called before createMonitor() returns, or at some time afterwards.
+     *
+     * Failure is indicated by a call to monitorConnect with !Error::isOk()
+     *
+     * @pre The Channel need not be CONNECTED
+     *
+     * @post The returned Monitor will hold a strong reference to the provided MonitorRequester.
+     *
+     * @post Returned shared_ptr<Monitor> will have unique()==true.
+     *
+     * @return A non-NULL Monitor unless monitorConnect() called with an Error
      */
     virtual Monitor::shared_pointer createMonitor(
-        MonitorRequester::shared_pointer const & monitorRequester,
+        MonitorRequester::shared_pointer const & requester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     /**
+     * Initiate a request for a Array (get) action.
+     *
+     * ChannelArrayRequester::channelArrayConnect() may be called before createChannelArray() returns, or at some time afterwards.
+     *
+     * Failure is indicated by a call to channelArrayConnect with !Error::isOk()
+     *
+     * @pre The Channel need not be CONNECTED
+     *
+     * @post The returned ChannelArray will hold a strong reference to the provided MonitorRequester.
+     *
+     * @post Returned shared_ptr<ChannelArray> will have unique()==true.
+     *
+     * @return A non-NULL ChannelArray unless channelArrayConnect() called with an Error
+     *
      * Create a ChannelArray.
      * @param channelArrayRequester The ChannelArrayRequester
      * @param pvRequest Additional options (e.g. triggering).
      * @return <code>ChannelArray</code> instance.
      */
     virtual ChannelArray::shared_pointer createChannelArray(
-        ChannelArrayRequester::shared_pointer const & channelArrayRequester,
+        ChannelArrayRequester::shared_pointer const & requester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     /**
@@ -821,26 +1047,59 @@ public:
 
 
 /**
- * Listener for connect state changes.
+ * Event notifications associated with Channel life-cycle.
+ *
+ * See ChannelProvider::createChannel()
  */
 class epicsShareClass ChannelRequester : public virtual Requester {
 public:
     POINTER_DEFINITIONS(ChannelRequester);
     typedef Channel operation_type;
 
+    virtual ~ChannelRequester() {}
+
     /**
-     * A channel has been created. This may be called multiple times if there are multiple providers.
+     * The request made with ChannelProvider::createChannel() is satisfied.
+     *
+     * Will be called at most once for each call to createChannel().
+     *
+     * The Channel passed here must be the same as was returned by createChannel(), if it has returned.
+     * Note that this method may be called before createChanel() returns.
+     *
+     * Status::isOk() indicates that the Channel is valid.
+     * Calls to Channel methods can be made from this method, and later until Channel::destroy() is called.
+     *
+     * !Status::isOk() indicates that the Channel is not available.
+     * No calls to the Channel are permitted.
+     * channelStateChange() will never be called.
+     *
+     * Caller must hold no locks.
+     *
      * @param status Completion status.
      * @param channel The channel.
      */
     virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel) = 0;
 
     /**
-     * A channel connection state change has occurred.
+     * Called occasionally after channelCreated() with Status::isOk() to give notification of
+     * connection state changes.
+     *
+     * Caller must hold no locks.
+     *
      * @param c The channel.
      * @param connectionState The new connection state.
      */
     virtual void channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState) = 0;
+};
+
+//! Used when ChannelProvider::createChannel() is passed a NULL ChannelRequester
+struct epicsShareClass DefaultChannelRequester : public ChannelRequester
+{
+    virtual ~DefaultChannelRequester() {}
+    virtual std::string getRequesterName() OVERRIDE FINAL;
+    virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel) OVERRIDE FINAL;
+    virtual void channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState) OVERRIDE FINAL;
+    static ChannelRequester::shared_pointer build();
 };
 
 /**
@@ -851,10 +1110,11 @@ enum FlushStrategy {
 };
 
 /**
- * Interface implemented by code that can provide access to the record
- * to which a channel connects.
+ * An instance of a Client or Server.
+ *
+ * Uniquely configurable (via ChannelProviderFactory::newInstance(Configuration*)
  */
-class epicsShareClass ChannelProvider : public epics::pvData::Destroyable, private epics::pvData::NoDefaultMethods {
+class epicsShareClass ChannelProvider : public Destroyable, private epics::pvData::NoDefaultMethods {
 public:
     POINTER_DEFINITIONS(ChannelProvider);
 
@@ -871,6 +1131,8 @@ public:
     /** OPI priority. */
     static const short PRIORITY_OPI = PRIORITY_MIN;
 
+    virtual ~ChannelProvider() {}
+
     /**
      * Get the provider name.
      * @return The name.
@@ -878,45 +1140,68 @@ public:
     virtual std::string getProviderName() = 0;
 
     /**
-     * Find a channel.
-     * @param channelName The channel name.
-     * @param channelFindRequester The Requester.
-     * @return An interface for the find.
+     * Test to see if this provider has the named channel.
+     *
+     * May call ChannelFindRequester::channelFindResult() before returning, or at some time later.
+     * If an exception is thrown, then channelFindResult() will never be called.
+     *
+     * @param name The channel name.
+     * @param requester The Requester.
+     * @return An unique()==true handle for the pending response.  May only return NULL if channelFindResult() called with an Error
      */
-    virtual ChannelFind::shared_pointer channelFind(std::string const & channelName,
-            ChannelFindRequester::shared_pointer const & channelFindRequester) = 0;
+    virtual ChannelFind::shared_pointer channelFind(std::string const & name,
+            ChannelFindRequester::shared_pointer const & requester) = 0;
 
     /**
-     * Find channels.
-     * @param channelFindRequester The Requester.
-     * @return An interface for the find.
+     * Request a list of all valid channel names for this provider.
+     *
+     * May call ChannelListRequester::channelListResult() before returning, or at some time later.
+     * If an exception is thrown, then channelListResult() will never be called.
+     *
+     * @param requester The Requester.
+     * @return An unique()==true handle for the pending response.  May only return NULL if channelFindResult() called with an Error
      */
-    virtual ChannelFind::shared_pointer channelList(ChannelListRequester::shared_pointer const & channelListRequester) = 0;
+    virtual ChannelFind::shared_pointer channelList(ChannelListRequester::shared_pointer const & requester);
 
     /**
-     * Create a channel.
-     * @param channelName The name of the channel.
-     * @param channelRequester The Requester.
+     * See longer form
+     */
+    virtual Channel::shared_pointer createChannel(std::string const & name,
+                                                  ChannelRequester::shared_pointer const & requester = DefaultChannelRequester::build(),
+                                                  short priority = PRIORITY_DEFAULT);
+
+    /**
+     * Request a Channel.
+     *
+     * Channel creation is immediate.
+     * ChannelRequester::channelCreated() will be called before returning.
+     * The shared_ptr which is passed to channelCreated() will also be returned.
+     *
+     * Failures during channel creation are delivered to ChannelRequester::channelCreated() with Status::isSuccess()==false.
+     *
+     * @post The returned Channel will hold a strong reference to the provided ChannelRequester
+     * and to the ChannelProvider through which it is created.
+     *
+     * @post The shared_ptr passed to ChannelRequester::channelCreated() is unique.  See @ref providers_ownership_unique
+     *
+     * @post The new Channel will _not_ hold a strong reference to this ChannelProvider.
+     *       This provider must be kept alive in order to keep the Channel from being destoryed.
+     *
+     * @param name The name of the channel.
+     * @param requester Will receive notifications about channel state changes
      * @param priority channel priority, must be <code>PRIORITY_MIN</code> <= priority <= <code>PRIORITY_MAX</code>.
-     * @return <code>Channel</code> instance. If channel does not exist <code>null</code> is returned and <code>channelRequester</code> notified.
+     * @param address Implementation dependent condition.  eg. A network address to bypass the search phase.  Pass an empty() string for default behavour.
+     * @return A non-NULL Channel unless channelCreated() called with an Error
      */
-    virtual Channel::shared_pointer createChannel(std::string const & channelName,ChannelRequester::shared_pointer const & channelRequester,
-            short priority = PRIORITY_DEFAULT) = 0;
-
-    /**
-     * Create a channel.
-     * @param channelName The name of the channel.
-     * @param channelRequester The Requester.
-     * @param priority channel priority, must be <code>PRIORITY_MIN</code> <= priority <= <code>PRIORITY_MAX</code>.
-     * @param address address (or list of addresses) where to look for a channel. Implementation independed std::string.
-     * @return <code>Channel</code> instance. If channel does not exist <code>null</code> is returned and <code>channelRequester</code> notified.
-     */
-    virtual Channel::shared_pointer createChannel(std::string const & channelName,ChannelRequester::shared_pointer const & channelRequester,
+    virtual Channel::shared_pointer createChannel(std::string const & name,ChannelRequester::shared_pointer const & requester,
             short priority, std::string const & address) = 0;
 
+    //! @deprecated Changing of Configuration after start is not supported
     virtual void configure(epics::pvData::PVStructure::shared_pointer /*configuration*/) EPICS_DEPRECATED {};
-    virtual void flush() {};
-    virtual void poll() {};
+    //! @deprecated No function
+    virtual void flush() EPICS_DEPRECATED {};
+    //! @deprecated No function
+    virtual void poll() EPICS_DEPRECATED {};
 
 };
 
@@ -927,7 +1212,7 @@ class epicsShareClass ChannelProviderFactory : private epics::pvData::NoDefaultM
 public:
     POINTER_DEFINITIONS(ChannelProviderFactory);
 
-    virtual ~ChannelProviderFactory() {};
+    virtual ~ChannelProviderFactory() {}
 
     /**
      * Get factory name (i.e. name of the provider).
@@ -967,28 +1252,29 @@ struct SimpleChannelProviderFactory : public ChannelProviderFactory
     SimpleChannelProviderFactory(const std::string& name) :pname(name) {}
     virtual ~SimpleChannelProviderFactory() {}
 
-    virtual std::string getFactoryName() { return pname; }
+    virtual std::string getFactoryName() OVERRIDE FINAL { return pname; }
 
-    virtual ChannelProvider::shared_pointer sharedInstance()
+    virtual ChannelProvider::shared_pointer sharedInstance() OVERRIDE FINAL
     {
         epics::pvData::Lock L(sharedM);
-        if(!shared) {
-            std::tr1::shared_ptr<Configuration> empty;
-            shared.reset(new Provider(empty));
+        ChannelProvider::shared_pointer ret(shared.lock());
+        if(!ret) {
+            std::tr1::shared_ptr<Provider> inst(new Provider(std::tr1::shared_ptr<Configuration>()));
+            shared = ret = inst;
         }
-        return shared;
+        return ret;
     }
 
-    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf)
+    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf) OVERRIDE FINAL
     {
-        ChannelProvider::shared_pointer ret(new Provider(conf));
+        std::tr1::shared_ptr<Provider> ret(new Provider(conf));
         return ret;
     }
 
 private:
     const std::string pname;
     epics::pvData::Mutex sharedM;
-    std::tr1::shared_ptr<Provider> shared;
+    ChannelProvider::weak_pointer shared;
 };
 
 /**
@@ -998,17 +1284,22 @@ class epicsShareClass ChannelProviderRegistry {
 public:
     POINTER_DEFINITIONS(ChannelProviderRegistry);
 
-    ~ChannelProviderRegistry();
-
     typedef std::vector<std::string> stringVector_t;
 
-    /**
-     * Get a shared instance of the single instance of ChannelProviderRegistry.
-     * The caller must keep the shared instance until the caller no longer needs
-     * the registry. The first call creates the single instance.
-     * @return The interface for ChannelProviderRegistry
-     */
-    static ChannelProviderRegistry::shared_pointer getChannelProviderRegistry();
+
+    //! Create a custom registry
+    static ChannelProviderRegistry::shared_pointer build();
+    //! The global registry for "clients".
+    //! Register providers which will be used within this process.
+    //! Typically providers which access data outside of the process.
+    //! Associated with EPICS_PVA_PROVIDER_NAMES
+    static ChannelProviderRegistry::shared_pointer clients();
+    //! The global registry for "servers".
+    //! Register providers which will be used outside of this process (via ServerContext).
+    //! Typically providers which access data within the process.
+    //! Associated with EPICS_PVAS_PROVIDER_NAMES
+    static ChannelProviderRegistry::shared_pointer servers();
+
     /**
      * Get a shared instance of the provider with the specified name.
      * @param providerName The name of the provider.
@@ -1021,95 +1312,95 @@ public:
      * @param providerName The name of the provider.
      * @return The interface for the provider or null if the provider is not known.
      */
-    ChannelProvider::shared_pointer createProvider(std::string const & providerName);
-
-    /**
-     * Creates a new instanceof the provider with the specified name.
-     * @param providerName The name of the provider.
-     * @return The interface for the provider or null if the provider is not known.
-     */
     ChannelProvider::shared_pointer createProvider(std::string const & providerName,
-                                                           const std::tr1::shared_ptr<Configuration>& conf);
+                                                           const std::tr1::shared_ptr<Configuration>& conf = std::tr1::shared_ptr<Configuration>());
 
     /**
      * Fetch provider factor with the specified name.
      * @param providerName The name of the provider.
      * @return The factor or null if the provider is not known.
      */
-    ChannelProviderFactory::shared_pointer getFactory(std::string const & providerName);
+    virtual ChannelProviderFactory::shared_pointer getFactory(std::string const & providerName);
 
+    typedef std::set<std::string> provider_name_set;
     /**
-     * Get a array of the names of all the known providers.
-     * @return The names. Be sure to delete vector instance.
+     * Find currently registered provider names.
      */
-    std::auto_ptr<stringVector_t> getProviderNames();
-
-
-    static ChannelProviderRegistry::shared_pointer build() {
-        ChannelProviderRegistry::shared_pointer ret(new ChannelProviderRegistry);
-        return ret;
-    }
+    virtual void getProviderNames(provider_name_set& names);
 
     //! Add new factory.  if replace=false and name already in use, return false with no change
     //! in other cases insert provided factory and return true.
-    bool add(const ChannelProviderFactory::shared_pointer& fact, bool replace=true);
+    virtual bool add(const ChannelProviderFactory::shared_pointer& fact, bool replace=true);
 
     //! Add a new Provider which will be built using SimpleChannelProviderFactory<Provider>
     template<class Provider>
-    bool add(const std::string& name, bool replace=true)
+    ChannelProviderFactory::shared_pointer add(const std::string& name, bool replace=true)
     {
         typedef SimpleChannelProviderFactory<Provider> Factory;
         typename Factory::shared_pointer fact(new Factory(name));
-        return add(fact, replace);
+        return add(fact, replace) ? fact : typename Factory::shared_pointer();
     }
 
-    //! Attempt to remove named factory.  Return Factory which was removed, or NULL if not found.
+    typedef ChannelProvider::shared_pointer (*factoryfn_t)(const std::tr1::shared_ptr<Configuration>&);
+
+    ChannelProviderFactory::shared_pointer add(const std::string& name, factoryfn_t, bool replace=true);
+
+    //! Attempt to remove a factory with the given name.  Return Factory which was removed, or NULL if not found.
     ChannelProviderFactory::shared_pointer remove(const std::string& name);
 
+    //! Attempt to remove a factory.  Return true if Factory was previously registered, and now removed.
+    virtual bool remove(const ChannelProviderFactory::shared_pointer& factory);
+
     //! Drop all factories
-    void clear()
-    {
-        providers.clear();
-    }
+    virtual void clear();
 
 private:
-//    ChannelProviderRegistry() {}
-    ChannelProviderRegistry();
-    
+    // ctor is hidden to ensure explict compile errors from a hypothetical sub-class
+    // we no longer support sub-classing by outside code
+    ChannelProviderRegistry() {}
+    friend struct CompatRegistry;
 
     epics::pvData::Mutex mutex;
     typedef std::map<std::string, ChannelProviderFactory::shared_pointer> providers_t;
     providers_t providers;
 };
 
-// THE FOLLOWING SHOULD NOT BE CALLED
-epicsShareFunc ChannelProviderRegistry::shared_pointer getChannelProviderRegistry() EPICS_DEPRECATED;
-epicsShareFunc void registerChannelProviderFactory(
-     ChannelProviderFactory::shared_pointer const & channelProviderFactory) EPICS_DEPRECATED;
-epicsShareFunc void unregisterChannelProviderFactory(
-     ChannelProviderFactory::shared_pointer const & channelProviderFactory) EPICS_DEPRECATED;
-epicsShareFunc void unregisterAllChannelProviderFactory() EPICS_DEPRECATED;
+/* Deprecated in favor of either ChannelProviderRegistry::clients() or ChannelProviderRegistry::servers()
+ *
+ * These functions have been removed as a signal that the shared_ptr ownership symantics of ChannelProvider
+ * and friends has changed.
+ */
+#if __GNUC__>4 || (__GNUC__==4&&__GNUC_MINOR__>=3)
 
+#define gCPRMSG __attribute__((error("ChannelProvider shared_ptr ownership rules have changed.")))
+
+epicsShareFunc ChannelProviderRegistry::shared_pointer getChannelProviderRegistry() gCPRMSG;
+// Shorthand for getChannelProviderRegistry()->add(channelProviderFactory);
+epicsShareFunc void registerChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) gCPRMSG;
+// Shorthand for getChannelProviderRegistry()->remove(channelProviderFactory);
+epicsShareFunc void unregisterChannelProviderFactory(ChannelProviderFactory::shared_pointer const & channelProviderFactory) gCPRMSG;
+// Shorthand for getChannelProviderRegistry()->clear();
+epicsShareFunc void unregisterAllChannelProviderFactory() gCPRMSG;
+
+#undef gCPRMSG
+
+#endif // __GNUC__
 
 /**
  * @brief Pipeline (streaming) support API (optional).
  * This is used by pvAccess to implement pipeline (streaming) monitors.
  */
-class epicsShareClass PipelineMonitor : public virtual Monitor {
-public:
-    POINTER_DEFINITIONS(PipelineMonitor);
-    virtual ~PipelineMonitor() {}
-
-    /**
-     * Report remote queue status.
-     * @param freeElements number of free elements.
-     */
-    virtual void reportRemoteQueueStatus(epics::pvData::int32 freeElements) = 0;
-};
+typedef Monitor PipelineMonitor;
 
 
 }
 }
+
+// compatibility
+namespace epics { namespace pvData {
+using epics::pvAccess::MonitorRequester;
+}}
+
 
 #endif  /* PVACCESS_H */
 

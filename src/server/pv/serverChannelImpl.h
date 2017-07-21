@@ -7,18 +7,7 @@
 #ifndef SERVERCHANNEL_H_
 #define SERVERCHANNEL_H_
 
-#ifdef epicsExportSharedSymbols
-#   define serverChannelImplEpicsExportSharedSymbols
-#   undef epicsExportSharedSymbols
-#endif
-
 #include <pv/destroyable.h>
-
-#ifdef serverChannelImplEpicsExportSharedSymbols
-#   define epicsExportSharedSymbols
-#	undef serverChannelImplEpicsExportSharedSymbols
-#endif
-
 #include <pv/remote.h>
 #include <pv/clientContextImpl.h>
 #include <pv/security.h>
@@ -38,7 +27,10 @@ public:
      * @param sid channel SID.
      * @param css channel security session.
      */
-    ServerChannelImpl(Channel::shared_pointer const & channel, pvAccessID cid, pvAccessID sid, ChannelSecuritySession::shared_pointer const & css);
+    ServerChannelImpl(Channel::shared_pointer const & channel,
+                      const ChannelRequester::shared_pointer& requester,
+                      pvAccessID cid, pvAccessID sid,
+                      ChannelSecuritySession::shared_pointer const & css);
     /*
      * Destructor.
      */
@@ -60,7 +52,7 @@ public:
      * Get channel SID.
      * @return channel SID.
      */
-    pvAccessID getSID() const;
+    virtual pvAccessID getSID() const OVERRIDE FINAL;
 
     /**
      * Get ChannelSecuritySession instance.
@@ -73,7 +65,7 @@ public:
      * @param id request ID.
      * @param request request to be registered.
      */
-    void registerRequest(pvAccessID id, epics::pvData::Destroyable::shared_pointer const & request);
+    void registerRequest(pvAccessID id, Destroyable::shared_pointer const & request);
 
     /**
      * Unregister request.
@@ -86,12 +78,12 @@ public:
      * @param id request ID.
      * @return request with given ID, <code>null</code> if there is no request with such ID.
      */
-    epics::pvData::Destroyable::shared_pointer getRequest(pvAccessID id);
+    Destroyable::shared_pointer getRequest(pvAccessID id);
 
     /**
      * Destroy server channel.
      */
-    void destroy();
+    virtual void destroy() OVERRIDE FINAL;
 
     /**
      * Prints detailed information about the process variable to the standard output stream.
@@ -110,6 +102,8 @@ private:
      */
     Channel::shared_pointer _channel;
 
+    ChannelRequester::shared_pointer _requester;
+
     /**
      * Channel CID.
      */
@@ -120,10 +114,11 @@ private:
      */
     pvAccessID _sid;
 
+    typedef std::map<pvAccessID, Destroyable::shared_pointer> _requests_t;
     /**
      * Requests.
      */
-    std::map<pvAccessID, epics::pvData::Destroyable::shared_pointer> _requests;
+    _requests_t _requests;
 
     /**
      * Destroy state.
@@ -139,11 +134,6 @@ private:
      * Channel security session.
      */
     ChannelSecuritySession::shared_pointer _channelSecuritySession;
-
-    /**
-     * Destroy all registered requests.
-     */
-    void destroyAllRequests();
 };
 
 }

@@ -1,5 +1,4 @@
 #include <iostream>
-#include <pv/clientFactory.h>
 #include <pv/pvAccess.h>
 
 #include <stdio.h>
@@ -16,6 +15,7 @@
 #include <fstream>
 #include <sstream>
 
+#include <pv/pvaDefs.h>
 #include <pv/event.h>
 #include <epicsExit.h>
 
@@ -28,7 +28,7 @@ namespace TR1 = std::tr1;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
-//EnumMode enumMode = AutoEnum;
+namespace {
 
 size_t fromString(PVFieldPtr const & pv, StringArray const & from, size_t fromStartIndex);
 
@@ -357,38 +357,6 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
         std::cout << std::endl << *(pv.get()) << std::endl << std::endl;
 }
 
-struct AtomicBoolean_null_deleter
-{
-    void operator()(void const *) const {}
-};
-
-// standard performance on set/clear, use of TR1::shared_ptr lock-free counter for get
-// alternative is to use boost::atomic
-class AtomicBoolean
-{
-public:
-    AtomicBoolean() : counter(static_cast<void*>(0), AtomicBoolean_null_deleter()) {};
-
-    void set() {
-        mutex.lock();
-        setp = counter;
-        mutex.unlock();
-    }
-    void clear() {
-        mutex.lock();
-        setp.reset();
-        mutex.unlock();
-    }
-
-    bool get() const {
-        return counter.use_count() == 2;
-    }
-private:
-    TR1::shared_ptr<void> counter;
-    TR1::shared_ptr<void> setp;
-    epics::pvData::Mutex mutex;
-};
-
 class ChannelPutRequesterImpl : public ChannelPutRequester
 {
 private:
@@ -410,11 +378,6 @@ public:
     virtual string getRequesterName()
     {
         return "ChannelPutRequesterImpl";
-    }
-
-    virtual void message(std::string const & message, MessageType messageType)
-    {
-        std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
     }
 
     virtual void channelPutConnect(const epics::pvData::Status& status,
@@ -528,21 +491,7 @@ public:
 
 };
 
-/*+**************************************************************************
- *
- * Function:	main
- *
- * Description:	pvput main()
- * 		Evaluate command line options, set up PVA, connect the
- * 		channels, print the data as requested
- *
- * Arg(s) In:	[options] <pv-name> <values>...
- *
- * Arg(s) Out:	none
- *
- * Return(s):	Standard return code (0=success, 1=error)
- *
- **************************************************************************-*/
+} // namespace
 
 int main (int argc, char *argv[])
 {
@@ -654,12 +603,9 @@ int main (int argc, char *argv[])
     URI uri;
     bool validURI = URI::parse(pv, uri);
 
-    TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
-
     string providerName(defaultProvider);
     string pvName(pv);
     string address(noAddress);
-    bool usingDefaultProvider = true;
     if (validURI)
     {
         if (uri.path.length() <= 1)
@@ -670,15 +616,13 @@ int main (int argc, char *argv[])
         providerName = uri.protocol;
         pvName = uri.path.substr(1);
         address = uri.host;
-        usingDefaultProvider = false;
     }
 
-    if ((providerName != "pva") && (providerName != "ca"))
-    {
-        std::cerr << "invalid "
-                  << (usingDefaultProvider ? "default provider" : "URI scheme")
-                  << " '" << providerName
-                  << "', only 'pva' and 'ca' are supported" << std::endl;
+    epics::pvAccess::ca::CAClientFactory::start();
+
+    ChannelProvider::shared_pointer provider(ChannelProviderRegistry::clients()->getProvider(providerName));
+    if(!provider) {
+        std::cerr << "Unknown provider '"<<providerName<<"'\n";
         return 1;
     }
 
@@ -713,11 +657,11 @@ int main (int argc, char *argv[])
             values.push_back(argv[optind]);
     }
 
-    Requester::shared_pointer requester(new RequesterImpl("pvput"));
-
-    PVStructure::shared_pointer pvRequest = CreateRequest::create()->createRequest(request);
-    if(pvRequest.get()==NULL) {
-        fprintf(stderr, "failed to parse request string\n");
+    PVStructure::shared_pointer pvRequest;
+    try {
+        pvRequest = createRequest(request);
+    } catch(std::exception& e){
+        fprintf(stderr, "failed to parse request string: %s\n", e.what());
         return 1;
     }
 
@@ -727,72 +671,55 @@ int main (int argc, char *argv[])
     terseSeparator(fieldSeparator);
     setEnumPrintMode(enumMode);
 
-    ClientFactory::start();
-    epics::pvAccess::ca::CAClientFactory::start();
-
     bool allOK = true;
 
     try
     {
-        do
-        {
-            // first connect
-            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl(quiet));
+        // first connect
 
-            Channel::shared_pointer channel;
-            if (address.empty())
-                channel = getChannelProviderRegistry()->getProvider(
-                              providerName)->createChannel(pvName, channelRequesterImpl);
-            else
-                channel = getChannelProviderRegistry()->getProvider(
-                              providerName)->createChannel(pvName, channelRequesterImpl,
-                                      ChannelProvider::PRIORITY_DEFAULT, address);
-
-            if (channelRequesterImpl->waitUntilConnected(timeOut))
-            {
-                TR1::shared_ptr<ChannelPutRequesterImpl> putRequesterImpl(new ChannelPutRequesterImpl(channel->getChannelName()));
-                if (mode != TerseMode && !quiet)
-                    std::cout << "Old : ";
-                ChannelPut::shared_pointer channelPut = channel->createChannelPut(putRequesterImpl, pvRequest);
-                allOK &= putRequesterImpl->waitUntilDone(timeOut);
-                if (allOK)
-                {
-                    if (mode != TerseMode && !quiet)
-                        printValue(pvName, putRequesterImpl->getStructure());
-
-                    // convert value from string
-                    // since we access structure from another thread, we need to lock
-                    {
-                        ScopedLock lock(channelPut);
-                        fromString(putRequesterImpl->getStructure(), values);
-                    }
-
-                    // we do a put
-                    putRequesterImpl->resetEvent();
-                    // note on bitSet: we get all, we set all
-                    channelPut->put(putRequesterImpl->getStructure(), putRequesterImpl->getBitSet());
-                    allOK &= putRequesterImpl->waitUntilDone(timeOut);
-
-                    if (allOK)
-                    {
-                        // and than a get again to verify put
-                        if (mode != TerseMode && !quiet) std::cout << "New : ";
-                        putRequesterImpl->resetEvent();
-                        channelPut->get();
-                        allOK &= putRequesterImpl->waitUntilDone(timeOut);
-                        if (allOK && !quiet)
-                            printValue(pvName, putRequesterImpl->getStructure());
-                    }
-                }
-            }
-            else
-            {
-                allOK = false;
-                std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
-            }
-            channel->destroy();
+        Channel::shared_pointer channel;
+        try {
+            channel = provider->createChannel(pvName, DefaultChannelRequester::build(),
+                                  ChannelProvider::PRIORITY_DEFAULT, address);
+        } catch(std::exception& e){
+            std::cerr<<"Provider " << providerName<< " Failed to create channel \""<<pvName<<"\"\n";
+            return 1;
         }
-        while (false);
+
+        TR1::shared_ptr<ChannelPutRequesterImpl> putRequesterImpl(new ChannelPutRequesterImpl(channel->getChannelName()));
+        if (mode != TerseMode && !quiet)
+            std::cout << "Old : ";
+        ChannelPut::shared_pointer channelPut = channel->createChannelPut(putRequesterImpl, pvRequest);
+        allOK &= putRequesterImpl->waitUntilDone(timeOut);
+        if (allOK)
+        {
+            if (mode != TerseMode && !quiet)
+                printValue(pvName, putRequesterImpl->getStructure());
+
+            // convert value from string
+            // since we access structure from another thread, we need to lock
+            {
+                ScopedLock lock(channelPut);
+                fromString(putRequesterImpl->getStructure(), values);
+            }
+
+            // we do a put
+            putRequesterImpl->resetEvent();
+            // note on bitSet: we get all, we set all
+            channelPut->put(putRequesterImpl->getStructure(), putRequesterImpl->getBitSet());
+            allOK &= putRequesterImpl->waitUntilDone(timeOut);
+
+            if (allOK)
+            {
+                // and than a get again to verify put
+                if (mode != TerseMode && !quiet) std::cout << "New : ";
+                putRequesterImpl->resetEvent();
+                channelPut->get();
+                allOK &= putRequesterImpl->waitUntilDone(timeOut);
+                if (allOK && !quiet)
+                    printValue(pvName, putRequesterImpl->getStructure());
+            }
+        }
     } catch (std::out_of_range& oor) {
         allOK = false;
         std::cerr << "parse error: not enough values" << std::endl;
@@ -803,9 +730,6 @@ int main (int argc, char *argv[])
         allOK = false;
         std::cerr << "unknown exception caught" << std::endl;
     }
-
-    epics::pvAccess::ca::CAClientFactory::stop();
-    ClientFactory::stop();
 
     return allOK ? 0 : 1;
 }

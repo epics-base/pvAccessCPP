@@ -1,0 +1,26 @@
+sudo: false
+dist: trusty
+language: c++
+compiler:
+  - gcc
+addons:
+  apt:
+    packages:
+    - libreadline6-dev
+    - libncurses5-dev
+    - perl
+    - clang
+    - g++-mingw-w64-i686
+env:
+ - BRBASE=3.16
+ - BRBASE=3.16 CMPLR=clang
+ - BRBASE=3.16 USR_CXXFLAGS=-std=c++11
+ - BRBASE=3.16 USR_CXXFLAGS=-std=c++11 CMPLR=clang
+ - BRBASE=3.16 WINE=32 TEST=NO STATIC=YES
+ - BRBASE=3.16 WINE=32 TEST=NO STATIC=NO
+ - BRBASE=3.15
+ - BRBASE=3.14
+install:
+ - ./ci/travis-prepare.sh
+script:
+ - ./ci/travis-build.sh

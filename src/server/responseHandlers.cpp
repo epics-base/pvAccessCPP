@@ -39,7 +39,7 @@
 #include <pv/logger.h>
 #include <pv/pvAccessMB.h>
 #include <pv/rpcServer.h>
-#include <pv/security.h>
+#include <pv/securityImpl.h>
 
 using std::string;
 using std::ostringstream;
@@ -426,16 +426,6 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/,
     }
 }
 
-void ServerChannelFindRequesterImpl::lock()
-{
-    // noop
-}
-
-void ServerChannelFindRequesterImpl::unlock()
-{
-    // noop
-}
-
 void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
     control->startMessage((int8)4, 12+4+16+2);
@@ -505,6 +495,10 @@ private:
     epics::pvData::Event _waitEvent;
 
 };
+
+}}
+namespace {
+using namespace epics::pvAccess;
 
 // TODO move out to a separate class
 class ServerRPCService : public RPCService {
@@ -680,6 +674,10 @@ std::string ServerRPCService::helpString =
 //        "\t\t\t (no arguments)\n"
     "\n";
 
+}
+namespace epics {
+namespace pvAccess {
+
 std::string ServerCreateChannelHandler::SERVER_CHANNEL_NAME = "server";
 
 void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
@@ -803,7 +801,7 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
                 pvAccessID sid = casTransport->preallocateChannelSID();
                 try
                 {
-                    serverChannel.reset(new ServerChannelImpl(channel, _cid, sid, _css));
+                    serverChannel.reset(new ServerChannelImpl(channel, shared_from_this(), _cid, sid, _css));
 
                     // ack allocation and register
                     casTransport->registerChannel(sid, serverChannel);
@@ -833,7 +831,7 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
         }
         catch (std::exception& e)
         {
-            LOG(logLevelDebug, "Exception caught when creating channel: %s", _channelName.c_str());
+            LOG(logLevelDebug, "Exception caught when creating channel '%s': %s", _channelName.c_str(), e.what());
             {
                 Lock guard(_mutex);
                 _status = Status(Status::STATUSTYPE_FATAL, "failed to create channel", e.what());
@@ -904,16 +902,6 @@ string ServerChannelRequesterImpl::getRequesterName()
 void ServerChannelRequesterImpl::message(std::string const & message, MessageType messageType)
 {
     LOG(logLevelDebug, "[%s] %s", getMessageTypeName(messageType).c_str(), message.c_str());
-}
-
-void ServerChannelRequesterImpl::lock()
-{
-    //noop
-}
-
-void ServerChannelRequesterImpl::unlock()
-{
-    //noop
 }
 
 void ServerChannelRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
@@ -1201,16 +1189,6 @@ ChannelGet::shared_pointer ServerChannelGetRequesterImpl::getChannelGet()
     return _channelGet;
 }
 
-void ServerChannelGetRequesterImpl::lock()
-{
-    // noop
-}
-
-void ServerChannelGetRequesterImpl::unlock()
-{
-    // noop
-}
-
 // TODO get rid of all these mutex-es
 void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
@@ -1450,16 +1428,6 @@ void ServerChannelPutRequesterImpl::getDone(const Status& status, ChannelPut::sh
     }
     TransportSender::shared_pointer thisSender = shared_from_this();
     _transport->enqueueSendRequest(thisSender);
-}
-
-void ServerChannelPutRequesterImpl::lock()
-{
-    //noop
-}
-
-void ServerChannelPutRequesterImpl::unlock()
-{
-    //noop
 }
 
 void ServerChannelPutRequesterImpl::destroy()
@@ -1772,16 +1740,6 @@ void ServerChannelPutGetRequesterImpl::putGetDone(const Status& status, ChannelP
     _transport->enqueueSendRequest(thisSender);
 }
 
-void ServerChannelPutGetRequesterImpl::lock()
-{
-    // noop
-}
-
-void ServerChannelPutGetRequesterImpl::unlock()
-{
-    // noop
-}
-
 void ServerChannelPutGetRequesterImpl::destroy()
 {
     // keep a reference to ourselves as the owner
@@ -1890,8 +1848,8 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
     AbstractServerResponseHandler::handleResponse(responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
-    // NOTE: we do not explicitly check if transport is OK
     ChannelHostingTransport::shared_pointer casTransport = dynamic_pointer_cast<ChannelHostingTransport>(transport);
+    assert(!!casTransport);
 
     transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
     const pvAccessID sid = payloadBuffer->getInt();
@@ -1932,10 +1890,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
             int32 nfree = payloadBuffer->getInt();
             ServerMonitorRequesterImpl::shared_pointer request = static_pointer_cast<ServerMonitorRequesterImpl>(channel->getRequest(ioid));
 
-            Monitor::shared_pointer mp = request->getChannelMonitor();
-            PipelineMonitor* pmp = dynamic_cast<PipelineMonitor*>(mp.get());
-            if (pmp)
-                pmp->reportRemoteQueueStatus(nfree);
+            request->getChannelMonitor()->reportRemoteQueueStatus(nfree);
         }
 
     }
@@ -1957,10 +1912,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
         {
             transport->ensureData(4);
             int32 nfree = payloadBuffer->getInt();
-            Monitor::shared_pointer mp = request->getChannelMonitor();
-            PipelineMonitor* pmp = dynamic_cast<PipelineMonitor*>(mp.get());
-            if (pmp)
-                pmp->reportRemoteQueueStatus(nfree);
+            request->getChannelMonitor()->reportRemoteQueueStatus(nfree);
             return;
             // note: not possible to ack and destroy
         }
@@ -2073,16 +2025,6 @@ void ServerMonitorRequesterImpl::monitorEvent(Monitor::shared_pointer const & /*
     // multiple ((BlockingServerTCPTransport)transport).enqueueMonitorSendRequest(this);
     TransportSender::shared_pointer thisSender = shared_from_this();
     _transport->enqueueSendRequest(thisSender);
-}
-
-void ServerMonitorRequesterImpl::lock()
-{
-    //noop
-}
-
-void ServerMonitorRequesterImpl::unlock()
-{
-    //noop
 }
 
 void ServerMonitorRequesterImpl::destroy()
@@ -2440,16 +2382,6 @@ void ServerChannelArrayRequesterImpl::getLengthDone(const Status& status, Channe
     _transport->enqueueSendRequest(thisSender);
 }
 
-void ServerChannelArrayRequesterImpl::lock()
-{
-    // noop
-}
-
-void ServerChannelArrayRequesterImpl::unlock()
-{
-    // noop
-}
-
 void ServerChannelArrayRequesterImpl::destroy()
 {
     // keep a reference to ourselves as the owner
@@ -2749,16 +2681,6 @@ void ServerChannelProcessRequesterImpl::processDone(const Status& status, Channe
     _transport->enqueueSendRequest(thisSender);
 }
 
-void ServerChannelProcessRequesterImpl::lock()
-{
-    // noop
-}
-
-void ServerChannelProcessRequesterImpl::unlock()
-{
-    // noop
-}
-
 void ServerChannelProcessRequesterImpl::destroy()
 {
     // keep a reference to ourselves as the owner
@@ -2872,16 +2794,6 @@ void ServerGetFieldRequesterImpl::getDone(const Status& status, FieldConstPtr co
     }
     TransportSender::shared_pointer thisSender = shared_from_this();
     _transport->enqueueSendRequest(thisSender);
-}
-
-void ServerGetFieldRequesterImpl::lock()
-{
-    //noop
-}
-
-void ServerGetFieldRequesterImpl::unlock()
-{
-    //noop
 }
 
 void ServerGetFieldRequesterImpl::destroy()
@@ -2999,9 +2911,8 @@ ChannelRPCRequester::shared_pointer ServerChannelRPCRequesterImpl::create(
 {
     // TODO use std::make_shared
     std::tr1::shared_ptr<ServerChannelRPCRequesterImpl> tp(new ServerChannelRPCRequesterImpl(context, channel, ioid, transport));
-    ChannelRPCRequester::shared_pointer thisPointer = tp;
-    static_cast<ServerChannelRPCRequesterImpl*>(thisPointer.get())->activate(pvRequest);
-    return thisPointer;
+    tp->activate(pvRequest);
+    return tp;
 }
 
 void ServerChannelRPCRequesterImpl::activate(PVStructure::shared_pointer const & pvRequest)
@@ -3039,16 +2950,6 @@ void ServerChannelRPCRequesterImpl::requestDone(const Status& status, ChannelRPC
     }
     TransportSender::shared_pointer thisSender = shared_from_this();
     _transport->enqueueSendRequest(thisSender);
-}
-
-void ServerChannelRPCRequesterImpl::lock()
-{
-    // noop
-}
-
-void ServerChannelRPCRequesterImpl::unlock()
-{
-    // noop
 }
 
 void ServerChannelRPCRequesterImpl::destroy()

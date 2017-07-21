@@ -5,7 +5,7 @@
 int main()
 {
     epics::pvAccess::ClientFactory::start();
-    epics::pvAccess::getChannelProviderRegistry()->getProvider("pva");
+    epics::pvAccess::ChannelProviderRegistry::clients()->getProvider("pva");
     epics::pvAccess::ClientFactory::stop();
 
     //epicsThreadSleep ( 3.0 );

@@ -1,5 +1,4 @@
 #include <iostream>
-#include <pv/clientFactory.h>
 #include <pv/pvAccess.h>
 #include <pv/caProvider.h>
 
@@ -137,26 +136,24 @@ int main (int argc, char *argv[])
 
     bool allOK = true;
 
+    epics::pvAccess::ca::CAClientFactory::start();
+
     {
         std::vector<std::string> pvNames;
         std::vector<std::string> pvAddresses;
-        std::vector<std::string> providerNames;
+        std::vector<ChannelProvider::shared_pointer> providers;
 
         pvNames.reserve(nPvs);
         pvAddresses.reserve(nPvs);
-        providerNames.reserve(nPvs);
 
         for (int n = 0; n < nPvs; n++)
         {
             URI uri;
             bool validURI = URI::parse(pvs[n], uri);
 
-            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
-
             std::string providerName(defaultProvider);
             std::string pvName(pvs[n]);
             std::string address(noAddress);
-            bool usingDefaultProvider = true;
             if (validURI)
             {
                 if (uri.path.length() <= 1)
@@ -167,82 +164,58 @@ int main (int argc, char *argv[])
                 providerName = uri.protocol;
                 pvName = uri.path.substr(1);
                 address = uri.host;
-                usingDefaultProvider = false;
             }
 
-            if ((providerName != "pva") && (providerName != "ca"))
-            {
-                std::cerr << "invalid "
-                          << (usingDefaultProvider ? "default provider" : "URI scheme")
-                          << " '" << providerName
-                          << "', only 'pva' and 'ca' are supported" << std::endl;
-                return 1;
-            }
             pvNames.push_back(pvName);
             pvAddresses.push_back(address);
-            providerNames.push_back(providerName);
+            providers.push_back(ChannelProviderRegistry::clients()->getProvider(providerName));
+            if(!providers.back())
+            {
+                std::cerr << "unknown provider name '" << providerName
+                          << "', only 'pva' and 'ca' are supported" << std::endl;
+                allOK = false;
+            }
         }
-
-        ClientFactory::start();
-        epics::pvAccess::ca::CAClientFactory::start();
 
         // first connect to all, this allows resource (e.g. TCP connection) sharing
         vector<Channel::shared_pointer> channels(nPvs);
         for (int n = 0; n < nPvs; n++)
         {
-            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl(new ChannelRequesterImpl());
-            if (pvAddresses[n].empty())
-                channels[n] = getChannelProviderRegistry()->getProvider(
-                                  providerNames[n])->createChannel(pvNames[n], channelRequesterImpl);
-            else
-                channels[n] = getChannelProviderRegistry()->getProvider(
-                                  providerNames[n])->createChannel(pvNames[n], channelRequesterImpl,
-                                          ChannelProvider::PRIORITY_DEFAULT, pvAddresses[n]);
+            if(!providers[n]) continue;
+            channels[n] = providers[n]->createChannel(pvNames[n], DefaultChannelRequester::build(),
+                                                      ChannelProvider::PRIORITY_DEFAULT, pvAddresses[n]);
         }
 
         // for now a simple iterating sync implementation, guarantees order
         for (int n = 0; n < nPvs; n++)
         {
             Channel::shared_pointer channel = channels[n];
-            TR1::shared_ptr<ChannelRequesterImpl> channelRequesterImpl = TR1::dynamic_pointer_cast<ChannelRequesterImpl>(channel->getChannelRequester());
 
-            if (channelRequesterImpl->waitUntilConnected(timeOut))
+            TR1::shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl(new GetFieldRequesterImpl(channel));
+            channel->getField(getFieldRequesterImpl, "");
+
+            if (getFieldRequesterImpl->waitUntilFieldGet(timeOut))
             {
-                TR1::shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl(new GetFieldRequesterImpl(channel));
-                channel->getField(getFieldRequesterImpl, "");
+                Structure::const_shared_pointer structure =
+                    TR1::dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
 
-                if (getFieldRequesterImpl->waitUntilFieldGet(timeOut))
+                channel->printInfo();
+                if (structure)
                 {
-                    Structure::const_shared_pointer structure =
-                        TR1::dynamic_pointer_cast<const Structure>(getFieldRequesterImpl->getField());
-
-                    channel->printInfo();
-                    if (structure)
-                    {
-                        std::cout << *structure << std::endl << std::endl;
-                    }
-                    else
-                    {
-                        std::cout << "(null introspection data)" << std::endl << std::endl;
-                    }
+                    std::cout << *structure << std::endl << std::endl;
                 }
                 else
                 {
-                    allOK = false;
-                    channel->destroy();
-                    std::cerr << "[" << channel->getChannelName() << "] failed to get channel introspection data" << std::endl;
+                    std::cout << "(null introspection data)" << std::endl << std::endl;
                 }
             }
             else
             {
                 allOK = false;
-                channel->destroy();
-                std::cerr << "[" << channel->getChannelName() << "] connection timeout" << std::endl;
+                std::cerr << "[" << channel->getChannelName() << "] failed to get channel introspection data" << std::endl;
             }
         }
 
-        epics::pvAccess::ca::CAClientFactory::stop();
-        ClientFactory::stop();
     }
 
     if (cleanupAndReport)

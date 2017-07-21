@@ -28,14 +28,15 @@
 namespace epics {
 namespace pvAccess {
 
+class PipelineChannelProvider;
+
 class epicsShareClass PipelineServer :
     public std::tr1::enable_shared_from_this<PipelineServer>
 {
 private:
 
-    ServerContextImpl::shared_pointer m_serverContext;
-    ChannelProviderFactory::shared_pointer m_channelProviderFactory;
-    ChannelProvider::shared_pointer m_channelProviderImpl;
+    ServerContext::shared_pointer m_serverContext;
+    std::tr1::shared_ptr<PipelineChannelProvider> m_channelProviderImpl;
 
     // TODO no thread poll implementation
 

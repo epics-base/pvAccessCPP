@@ -4,6 +4,9 @@
 
 #include <pv/serverContext.h>
 #include <epicsExit.h>
+#include <testMain.h>
+
+#include <epicsUnitTest.h>
 
 using namespace epics::pvAccess;
 using namespace epics::pvData;
@@ -17,7 +20,7 @@ public:
         return "local";
     };
 
-    TestChannelProvider(const std::tr1::shared_ptr<Configuration>&) {}
+    TestChannelProvider() {}
 
     ChannelFind::shared_pointer channelFind(std::string const & /*channelName*/,
                                             ChannelFindRequester::shared_pointer const & channelFindRequester)
@@ -60,25 +63,27 @@ public:
 
 void testServerContext()
 {
-    ServerContextImpl::shared_pointer ctx = ServerContextImpl::create();
+    ChannelProvider::shared_pointer prov(new TestChannelProvider);
+    ServerContext::shared_pointer ctx(ServerContext::create(ServerContext::Config()
+                                                                .provider(prov)));
+    ServerContext::weak_pointer wctx(ctx);
 
-    ChannelProviderRegistry::shared_pointer ca(ChannelProviderRegistry::build());
-    ca->add<TestChannelProvider>("local");
-    ctx->initialize(ca);
+    testOk(ctx.unique(), "# ServerContext::create() returned non-unique instance use_count=%u", (unsigned)ctx.use_count());
 
     ctx->printInfo();
 
     ctx->run(1);
 
-    ctx->destroy();
+    ctx.reset();
+
+    testOk(!wctx.lock(), "# ServerContext cleanup leaves use_count=%u", (unsigned)wctx.use_count());
 }
 
-int main()
+MAIN(testServerContext)
 {
+    testPlan(0);
+
     testServerContext();
 
-    cout << "Done" << endl;
-
-    //epicsExitCallAtExits();
-    return (0);
+    return testDone();
 }

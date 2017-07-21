@@ -1926,8 +1926,6 @@ private:
     bool m_continuous;
     PVStructure::shared_pointer m_pvStructure;
     PVStructure::shared_pointer m_ccopy;
-    BitSet::shared_pointer m_changedBitSet;
-    BitSet::shared_pointer m_overrunBitSet;
     Mutex m_lock;
     enum QueueState { MM_STATE_FULL, MM_STATE_TAKEN, MM_STATE_FREE };
     QueueState m_state ;
@@ -1935,7 +1933,6 @@ private:
 
 
     MonitorElement::shared_pointer m_thisPtr;
-    MonitorElement::shared_pointer m_nullMonitor;
 
 protected:
     MockMonitor(std::string const & channelName, MonitorRequester::shared_pointer const & monitorRequester,
@@ -1945,11 +1942,9 @@ protected:
         m_continuous(false),
         m_pvStructure(getRequestedStructure(pvStructure, pvRequest)),
         m_ccopy(getPVDataCreate()->createPVStructure(m_pvStructure->getStructure())),
-        m_changedBitSet(new BitSet(m_pvStructure->getNumberFields())),
-        m_overrunBitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_lock(),
         m_state(MM_STATE_FREE),
-        m_thisPtr(new MonitorElement())
+        m_thisPtr(new MonitorElement(m_ccopy))
     {
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockMonitor);
 
@@ -1958,11 +1953,7 @@ protected:
             m_continuous = pvScalar->getAs<epics::pvData::boolean>();
 
         // we always send all
-        m_changedBitSet->set(0);
-
-        m_thisPtr->pvStructurePtr = m_ccopy;
-        m_thisPtr->changedBitSet = m_changedBitSet;
-        m_thisPtr->overrunBitSet = m_overrunBitSet;
+        m_thisPtr->changedBitSet->set(0);
     }
 
 public:
@@ -2034,13 +2025,13 @@ public:
 
                 if (m_state == MM_STATE_FULL || m_state == MM_STATE_TAKEN)      // "queue" full
                 {
-                    m_overrunBitSet->set(0);
+                    m_thisPtr->overrunBitSet->set(0);
                     copy();
                     return;
                 }
                 else
                 {
-                    m_overrunBitSet->clear(0);
+                    m_thisPtr->overrunBitSet->clear(0);
                     m_state = MM_STATE_FULL;
                     copy();
                 }
@@ -2058,7 +2049,7 @@ public:
         Lock xx(m_lock);
         if (m_state != MM_STATE_FULL)
         {
-            return m_nullMonitor;
+            return MonitorElement::shared_pointer();
         }
         else
         {
@@ -2755,73 +2746,26 @@ private:
 
 string MockServerChannelProvider::PROVIDER_NAME = "local";
 
-class MockChannelProviderFactory : public ChannelProviderFactory
-{
-public:
-    POINTER_DEFINITIONS(MockChannelProviderFactory);
-
-    virtual std::string getFactoryName()
-    {
-        return MockServerChannelProvider::PROVIDER_NAME;
-    }
-
-    virtual ChannelProvider::shared_pointer sharedInstance()
-    {
-        // no shared instance support for mock...
-        return newInstance();
-    }
-
-    virtual ChannelProvider::shared_pointer newInstance()
-    {
-        MockServerChannelProvider::shared_pointer channelProvider(new MockServerChannelProvider());
-        channelProvider->initialize();
-        return channelProvider;
-    }
-
-};
-
-struct TestServer : public Runnable
+struct TestServer
 {
     POINTER_DEFINITIONS(TestServer);
 
     static TestServer::shared_pointer ctx;
 
-    epics::pvAccess::Configuration::shared_pointer conf;
-    ServerContextImpl::shared_pointer context;
-    Event startup;
-    epics::pvData::Thread runner;
-    MockChannelProviderFactory::shared_pointer factory;
+    ServerContext::shared_pointer context;
 
     TestServer(const epics::pvAccess::Configuration::shared_pointer& conf)
-        :conf(conf)
-        ,runner(epics::pvData::Thread::Config(this).name("TestServer").autostart(false))
-        ,factory(new MockChannelProviderFactory())
     {
-        registerChannelProviderFactory(factory);
-
-        context = ServerContextImpl::create(conf);
-        context->initialize(getChannelProviderRegistry());
-    }
-    void start(bool inSameThread = false)
-    {
-        if (inSameThread)
-        {
-            context->run(conf->getPropertyAsInteger("timeToRun", 0)); // default is no timeout
-        }
-        else
-        {
-            runner.start();
-            startup.wait(); // wait for thread to start
-        }
+        std::tr1::shared_ptr<MockServerChannelProvider> prov(new MockServerChannelProvider);
+        prov->initialize();
+        context = ServerContext::create(ServerContext::Config()
+                                        .config(conf)
+                                        .provider(prov));
     }
 
     ~TestServer()
     {
         context->shutdown();
-        runner.exitWait();
-        context->destroy();
-
-        unregisterChannelProviderFactory(factory);
 
         structureChangedListeners.clear();
         {
@@ -2829,9 +2773,6 @@ struct TestServer : public Runnable
             structureStore.clear();
         }
         ctx.reset();
-
-        unregisterChannelProviderFactory(factory);
-
 
         shutdownSimADCs();
     }
@@ -2844,11 +2785,7 @@ struct TestServer : public Runnable
     {
         return context->getBroadcastPort();
     }
-    virtual void run()
-    {
-        startup.signal();
-        context->run(conf->getPropertyAsInteger("timeToRun", 0)); // default is no timeout
-    }
+
     void waitForShutdown() {
         context->shutdown();
     }
@@ -2932,7 +2869,7 @@ int main(int argc, char *argv[])
                                    .build()));
     TestServer::ctx = srv;
     srv->context->printInfo();
-    srv->start(true);
+    srv->context->run(epics::pvData::castUnsafe<epicsUInt32>(timeToRun));
 
     cout << "Done" << endl;
 

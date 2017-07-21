@@ -52,10 +52,6 @@ public:
 
     virtual AccessRights getAccessRights(epics::pvData::PVField::shared_pointer const & pvField);
 
-    virtual ChannelProcess::shared_pointer createChannelProcess(
-        ChannelProcessRequester::shared_pointer const & channelProcessRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest);
-
     virtual ChannelGet::shared_pointer createChannelGet(
         ChannelGetRequester::shared_pointer const & channelGetRequester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest);
@@ -64,25 +60,13 @@ public:
         ChannelPutRequester::shared_pointer const & channelPutRequester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
-    virtual ChannelPutGet::shared_pointer createChannelPutGet(
-        ChannelPutGetRequester::shared_pointer const & channelPutGetRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest);
-
-    virtual ChannelRPC::shared_pointer createChannelRPC(
-        ChannelRPCRequester::shared_pointer const & channelRPCRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest);
-
     virtual Monitor::shared_pointer createMonitor(
         MonitorRequester::shared_pointer const & monitorRequester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
-    virtual ChannelArray::shared_pointer createChannelArray(
-        ChannelArrayRequester::shared_pointer const & channelArrayRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest);
-
     virtual void printInfo(std::ostream& out);
 
-    /* --------------- epics::pvData::Destroyable --------------- */
+    /* --------------- Destroyable --------------- */
 
     virtual void destroy();
 
@@ -148,14 +132,9 @@ public:
     virtual void cancel();
     virtual void lastRequest();
 
-    /* --------------- epics::pvData::Destroyable --------------- */
+    /* --------------- Destroyable --------------- */
 
     virtual void destroy();
-
-    /* --------------- epics::pvData::Lockable --------------- */
-
-    virtual void lock();
-    virtual void unlock();
 
 private:
 
@@ -208,14 +187,9 @@ public:
     virtual void cancel();
     virtual void lastRequest();
 
-    /* --------------- epics::pvData::Destroyable --------------- */
+    /* --------------- Destroyable --------------- */
 
     virtual void destroy();
-
-    /* --------------- epics::pvData::Lockable --------------- */
-
-    virtual void lock();
-    virtual void unlock();
 
 private:
 
@@ -263,7 +237,7 @@ public:
 
     virtual void cancel();
 
-    /* --------------- epics::pvData::Destroyable --------------- */
+    /* --------------- Destroyable --------------- */
 
     virtual void destroy();
 

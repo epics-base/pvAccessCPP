@@ -12,6 +12,7 @@
 #include <sstream>
 #include <fstream>
 #include <map>
+#include <set>
 
 #ifdef epicsExportSharedSymbols
 #   define configurationEpicsExportSharedSymbols
@@ -35,44 +36,6 @@ union osiSockAddr; // defined in osiSock;
 
 namespace epics {
 namespace pvAccess {
-
-class epicsShareClass Properties
-{
-public:
-    Properties() EPICS_DEPRECATED;
-    Properties(const std::string &fileName) EPICS_DEPRECATED;
-
-    inline void setProperty(const std::string &key,const std::string &value)
-    {
-        _properties[key] = value;
-    }
-    const std::string& getProperty(const std::string &key) const;
-    const std::string& getProperty(const std::string &key, const std::string &defaultValue) const;
-    inline bool hasProperty(const std::string &key) const
-    {
-        return _properties.find(key) != _properties.end();
-    }
-
-    void store() const;
-    void store(const std::string &fileName) const;
-    void store(std::ostream& strm) const;
-    void load();
-    void load(const std::string &fileName);
-    void load(std::istream& strm);
-    void list();
-
-    inline size_t size() const {
-        return _properties.size();
-    }
-private:
-    typedef std::map<std::string,std::string> _properties_t;
-    _properties_t _properties;
-    std::string _fileName;
-public:
-    inline const _properties_t& map() const {
-        return _properties;
-    }
-};
 
 class ConfigurationStack;
 
@@ -152,9 +115,21 @@ public:
 
     bool hasProperty(const std::string &name) const;
 
+    typedef std::set<std::string> keys_t;
+    /** Return a (partial) list of available key names.
+     *  Does not include key names from the ConfigurationEnviron
+     */
+    keys_t keys() const
+    {
+        keys_t ret;
+        addKeys(ret);
+        return ret;
+    }
+
 protected:
     friend class ConfigurationStack;
     virtual bool tryGetPropertyAsString(const std::string& name, std::string* val) const = 0;
+    virtual void addKeys(keys_t&) const {}
 };
 
 //! Lookup configuration strings from an in memory store
@@ -167,6 +142,7 @@ public:
     ConfigurationMap(const properties_t& p) :properties(p) {}
 private:
     virtual bool tryGetPropertyAsString(const std::string& name, std::string* val) const;
+    virtual void addKeys(keys_t&) const;
 };
 
 //! Lookup configuration strings from the process environment
@@ -185,6 +161,7 @@ class epicsShareClass ConfigurationStack : public Configuration
     typedef std::vector<std::tr1::shared_ptr<Configuration> > confs_t;
     confs_t confs;
     virtual bool tryGetPropertyAsString(const std::string& name, std::string* val) const;
+    virtual void addKeys(keys_t&) const;
 public:
     inline void push_back(const confs_t::value_type& conf) {
         confs.push_back(conf);

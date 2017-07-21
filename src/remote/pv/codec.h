@@ -39,6 +39,31 @@
 #include <pv/namedLockPattern.h>
 #include <pv/inetAddressUtil.h>
 
+/* C++11 keywords
+ @code
+ struct Base {
+   virtual void foo();
+ };
+ struct Class : public Base {
+   virtual void foo() OVERRIDE FINAL FINAL;
+ };
+ @endcode
+ */
+#ifndef FINAL
+#  if __cplusplus>=201103L
+#    define FINAL final
+#  else
+#    define FINAL
+#  endif
+#endif
+#ifndef OVERRIDE
+#  if __cplusplus>=201103L
+#    define OVERRIDE override
+#  else
+#    define OVERRIDE
+#  endif
+#endif
+
 
 namespace epics {
 namespace pvAccess {
@@ -150,8 +175,8 @@ public:
 
     AbstractCodec(
         bool serverFlag,
-        std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
-        std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
+        size_t sendBufferSize,
+        size_t receiveBufferSize,
         int32_t socketSendBufferSize,
         bool blockingProcessQueue);
 
@@ -167,48 +192,47 @@ public:
     virtual int write(epics::pvData::ByteBuffer* src) = 0;
     virtual int read(epics::pvData::ByteBuffer* dst) = 0;
     virtual bool isOpen() = 0;
-    virtual void close() = 0;
 
 
     virtual ~AbstractCodec()
     {
     }
 
-    void alignBuffer(std::size_t alignment);
-    void ensureData(std::size_t size);
-    void alignData(std::size_t alignment);
-    void startMessage(
-        epics::pvData::int8 command,
-        std::size_t ensureCapacity = 0,
-        epics::pvData::int32 payloadSize = 0);
+    virtual void alignBuffer(std::size_t alignment) OVERRIDE FINAL;
+    virtual void ensureData(std::size_t size) OVERRIDE FINAL;
+    virtual void alignData(std::size_t alignment) OVERRIDE FINAL;
+    virtual void startMessage(
+            epics::pvData::int8 command,
+            std::size_t ensureCapacity = 0,
+            epics::pvData::int32 payloadSize = 0) OVERRIDE FINAL;
     void putControlMessage(
-        epics::pvData::int8 command,
-        epics::pvData::int32 data);
-    void endMessage();
-    void ensureBuffer(std::size_t size);
-    void flushSerializeBuffer();
-    void flush(bool lastMessageCompleted);
+            epics::pvData::int8 command,
+            epics::pvData::int32 data);
+    virtual void endMessage() OVERRIDE FINAL;
+    virtual void ensureBuffer(std::size_t size) OVERRIDE FINAL;
+    virtual void flushSerializeBuffer() OVERRIDE FINAL;
+    virtual void flush(bool lastMessageCompleted) OVERRIDE FINAL;
     void processWrite();
     void processRead();
     void processSendQueue();
-    void enqueueSendRequest(TransportSender::shared_pointer const & sender);
+    virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender) OVERRIDE FINAL;
     void enqueueSendRequest(TransportSender::shared_pointer const & sender,
                             std::size_t requiredBufferSize);
     void setSenderThread();
-    void setRecipient(osiSockAddr const & sendTo);
-    void setByteOrder(int byteOrder);
+    virtual void setRecipient(osiSockAddr const & sendTo) OVERRIDE FINAL;
+    virtual void setByteOrder(int byteOrder) OVERRIDE FINAL;
 
     static std::size_t alignedValue(std::size_t value, std::size_t alignment);
 
-    bool directSerialize(
-        epics::pvData::ByteBuffer * /*existingBuffer*/,
-        const char* /*toSerialize*/,
-        std::size_t /*elementCount*/, std::size_t /*elementSize*/);
+    virtual bool directSerialize(
+            epics::pvData::ByteBuffer * /*existingBuffer*/,
+            const char* /*toSerialize*/,
+            std::size_t /*elementCount*/, std::size_t /*elementSize*/) OVERRIDE;
 
 
-    bool directDeserialize(epics::pvData::ByteBuffer * /*existingBuffer*/,
-                           char* /*deserializeTo*/,
-                           std::size_t /*elementCount*/, std::size_t /*elementSize*/);
+    virtual bool directDeserialize(epics::pvData::ByteBuffer * /*existingBuffer*/,
+                                   char* /*deserializeTo*/,
+                                   std::size_t /*elementCount*/, std::size_t /*elementSize*/) OVERRIDE;
 
     bool sendQueueEmpty() const {
         return _sendQueue.empty();
@@ -235,8 +259,8 @@ protected:
     bool _writeOpReady;
     bool _lowLatency;
 
-    std::tr1::shared_ptr<epics::pvData::ByteBuffer> _socketBuffer;
-    std::tr1::shared_ptr<epics::pvData::ByteBuffer> _sendBuffer;
+    epics::pvData::ByteBuffer _socketBuffer;
+    epics::pvData::ByteBuffer _sendBuffer;
 
     fair_queue<TransportSender> _sendQueue;
 
@@ -256,7 +280,7 @@ private:
     std::size_t _storedLimit;
     std::size_t _startPosition;
 
-    std::size_t _maxSendPayloadSize;
+    const std::size_t _maxSendPayloadSize;
     std::size_t _lastMessageStartPosition;
     std::size_t _lastSegmentedMessageType;
     int8_t _lastSegmentedMessageCommand;
@@ -264,42 +288,163 @@ private:
 
     epics::pvData::int8 _byteOrderFlag;
     epics::pvData::int8 _clientServerFlag;
-    int32_t _socketSendBufferSize;
+    const size_t _socketSendBufferSize;
 };
 
 
-class epicsShareClass BlockingAbstractCodec:
+class BlockingTCPTransportCodec:
     public AbstractCodec,
-    public std::tr1::enable_shared_from_this<BlockingAbstractCodec>
+    public SecurityPluginControl,
+    public std::tr1::enable_shared_from_this<BlockingTCPTransportCodec>
 {
 
 public:
 
-    POINTER_DEFINITIONS(BlockingAbstractCodec);
+    POINTER_DEFINITIONS(BlockingTCPTransportCodec);
 
-    BlockingAbstractCodec(
-        bool serverFlag,
-        std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & receiveBuffer,
-        std::tr1::shared_ptr<epics::pvData::ByteBuffer> const & sendBuffer,
-        int32_t socketSendBufferSize);
-    virtual ~BlockingAbstractCodec();
+    BlockingTCPTransportCodec(
+            bool serverFlag,
+            Context::shared_pointer const & context,
+            SOCKET channel,
+            ResponseHandler::shared_pointer const & responseHandler,
+            size_t sendBufferSize,
+            size_t receiveBufferSize,
+            epics::pvData::int16 priority);
+    virtual ~BlockingTCPTransportCodec();
 
-    void readPollOne();
-    void writePollOne();
-    void scheduleSend() {}
-    void sendCompleted() {}
-    void close();
-    bool terminated();
-    bool isOpen();
+    virtual void readPollOne() OVERRIDE FINAL;
+    virtual void writePollOne() OVERRIDE FINAL;
+    virtual void scheduleSend() OVERRIDE FINAL {}
+    virtual void sendCompleted() OVERRIDE FINAL {}
+    virtual void close() OVERRIDE FINAL;
+    virtual void waitJoin() OVERRIDE FINAL;
+    virtual bool terminated() OVERRIDE FINAL;
+    virtual bool isOpen() OVERRIDE FINAL;
     void start();
+
+    virtual int read(epics::pvData::ByteBuffer* dst) OVERRIDE FINAL;
+    virtual int write(epics::pvData::ByteBuffer* src) OVERRIDE FINAL;
+    virtual const osiSockAddr* getLastReadBufferSocketAddress() OVERRIDE FINAL  {
+        return &_socketAddress;
+    }
+    virtual void invalidDataStreamHandler() OVERRIDE FINAL;
+    virtual std::size_t getSocketReceiveBufferSize() const OVERRIDE FINAL;
+
+    virtual std::string getType() const OVERRIDE FINAL {
+        return std::string("tcp");
+    }
+
+
+    void internalDestroy();
+
+    virtual void processControlMessage() OVERRIDE FINAL {
+        if (_command == 2)
+        {
+            // check 7-th bit
+            setByteOrder(_flags < 0 ? EPICS_ENDIAN_BIG : EPICS_ENDIAN_LITTLE);
+        }
+    }
+
+
+    virtual void processApplicationMessage() OVERRIDE FINAL {
+        _responseHandler->handleResponse(&_socketAddress, shared_from_this(),
+                                         _version, _command, _payloadSize, &_socketBuffer);
+    }
+
+
+    virtual const osiSockAddr* getRemoteAddress() const OVERRIDE FINAL {
+        return &_socketAddress;
+    }
+
+    virtual const std::string& getRemoteName() const OVERRIDE FINAL {
+        return _socketName;
+    }
+
+    virtual epics::pvData::int8 getRevision() const OVERRIDE FINAL {
+        return PVA_PROTOCOL_REVISION;
+    }
+
+
+    virtual std::size_t getReceiveBufferSize() const OVERRIDE FINAL {
+        return _socketBuffer.getSize();
+    }
+
+
+    virtual epics::pvData::int16 getPriority() const OVERRIDE FINAL {
+        return _priority;
+    }
+
+
+    virtual void setRemoteRevision(epics::pvData::int8 revision) OVERRIDE FINAL {
+        _remoteTransportRevision = revision;
+    }
+
+
+    virtual void setRemoteTransportReceiveBufferSize(
+        std::size_t remoteTransportReceiveBufferSize) OVERRIDE FINAL {
+        _remoteTransportReceiveBufferSize = remoteTransportReceiveBufferSize;
+    }
+
+
+    virtual void setRemoteTransportSocketReceiveBufferSize(
+        std::size_t socketReceiveBufferSize) OVERRIDE FINAL {
+        _remoteTransportSocketReceiveBufferSize = socketReceiveBufferSize;
+    }
+
+
+    std::tr1::shared_ptr<const epics::pvData::Field>
+    virtual cachedDeserialize(epics::pvData::ByteBuffer* buffer) OVERRIDE FINAL
+    {
+        return _incomingIR.deserialize(buffer, this);
+    }
+
+
+    virtual void cachedSerialize(
+        const std::tr1::shared_ptr<const epics::pvData::Field>& field,
+        epics::pvData::ByteBuffer* buffer) OVERRIDE FINAL
+    {
+        _outgoingIR.serialize(field, buffer, this);
+    }
+
+
+    virtual void flushSendQueue() OVERRIDE FINAL { }
+
+
+    virtual bool isClosed() OVERRIDE FINAL {
+        return !isOpen();
+    }
+
+
+    void activate() {
+        Transport::shared_pointer thisSharedPtr = shared_from_this();
+        _context->getTransportRegistry()->put(thisSharedPtr);
+
+        start();
+    }
+
+    virtual bool verify(epics::pvData::int32 timeoutMs) OVERRIDE;
+
+    virtual void verified(epics::pvData::Status const & status) OVERRIDE;
+
+    bool isVerified() const {
+        return _verified;    // TODO sync
+    }
+
+    virtual std::tr1::shared_ptr<SecuritySession> getSecuritySession() const OVERRIDE FINAL {
+        // TODO sync
+        return _securitySession;
+    }
+
+    virtual void authNZMessage(epics::pvData::PVField::shared_pointer const & data) OVERRIDE FINAL;
+
+    virtual void sendSecurityPluginMessage(epics::pvData::PVField::shared_pointer const & data) OVERRIDE FINAL;
 
 private:
     void receiveThread();
     void sendThread();
 
 protected:
-    void sendBufferFull(int tries);
-    virtual void internalDestroy() = 0;
+    virtual void sendBufferFull(int tries) OVERRIDE FINAL;
 
     /**
      * Called to any resources just before closing transport
@@ -313,191 +458,17 @@ protected:
      * @param[in] force   flag indicating if forced (e.g. forced
      * disconnect) is required
      */
-    virtual void internalPostClose(bool force);
+    virtual void internalPostClose(bool force) {}
 
 private:
     AtomicValue<bool> _isOpen;
     epics::pvData::Thread _readThread, _sendThread;
     epics::pvData::Event _shutdownEvent;
-};
-
-
-class epicsShareClass BlockingSocketAbstractCodec:
-    public BlockingAbstractCodec
-{
-
-public:
-
-    BlockingSocketAbstractCodec(
-        bool serverFlag,
-        SOCKET channel,
-        int32_t sendBufferSize,
-        int32_t receiveBufferSize);
-
-    int read(epics::pvData::ByteBuffer* dst);
-    int write(epics::pvData::ByteBuffer* src);
-    const osiSockAddr* getLastReadBufferSocketAddress()  {
-        return &_socketAddress;
-    }
-    void invalidDataStreamHandler();
-    std::size_t getSocketReceiveBufferSize() const;
-
 protected:
-
-    void internalDestroy();
-
     SOCKET _channel;
     osiSockAddr _socketAddress;
     std::string _socketName;
-};
-
-
-class  BlockingTCPTransportCodec :
-    public BlockingSocketAbstractCodec,
-    public SecurityPluginControl
-
-{
-
-public:
-
-    std::string getType() const  {
-        return std::string("tcp");
-    }
-
-
-    void internalDestroy()  {
-        BlockingSocketAbstractCodec::internalDestroy();
-        Transport::shared_pointer thisSharedPtr = this->shared_from_this();
-        _context->getTransportRegistry()->remove(thisSharedPtr);
-    }
-
-
-    void changedTransport() {}
-
-
-    void processControlMessage()  {
-        if (_command == 2)
-        {
-            // check 7-th bit
-            setByteOrder(_flags < 0 ? EPICS_ENDIAN_BIG : EPICS_ENDIAN_LITTLE);
-        }
-    }
-
-
-    void processApplicationMessage()  {
-        _responseHandler->handleResponse(&_socketAddress, shared_from_this(),
-                                         _version, _command, _payloadSize, _socketBuffer.get());
-    }
-
-
-    const osiSockAddr* getRemoteAddress() const  {
-        return &_socketAddress;
-    }
-
-    const std::string& getRemoteName() const {
-        return _socketName;
-    }
-
-    epics::pvData::int8 getRevision() const  {
-        return PVA_PROTOCOL_REVISION;
-    }
-
-
-    std::size_t getReceiveBufferSize() const  {
-        return _socketBuffer->getSize();
-    }
-
-
-    epics::pvData::int16 getPriority() const  {
-        return _priority;
-    }
-
-
-    void setRemoteRevision(epics::pvData::int8 revision)  {
-        _remoteTransportRevision = revision;
-    }
-
-
-    void setRemoteTransportReceiveBufferSize(
-        std::size_t remoteTransportReceiveBufferSize)  {
-        _remoteTransportReceiveBufferSize = remoteTransportReceiveBufferSize;
-    }
-
-
-    void setRemoteTransportSocketReceiveBufferSize(
-        std::size_t socketReceiveBufferSize)  {
-        _remoteTransportSocketReceiveBufferSize = socketReceiveBufferSize;
-    }
-
-
-    std::tr1::shared_ptr<const epics::pvData::Field>
-    cachedDeserialize(epics::pvData::ByteBuffer* buffer)
-    {
-        return _incomingIR.deserialize(buffer, this);
-    }
-
-
-    void cachedSerialize(
-        const std::tr1::shared_ptr<const epics::pvData::Field>& field,
-        epics::pvData::ByteBuffer* buffer)
-    {
-        _outgoingIR.serialize(field, buffer, this);
-    }
-
-
-    void flushSendQueue() { };
-
-
-    bool isClosed()  {
-        return !isOpen();
-    }
-
-
-    void activate() {
-        Transport::shared_pointer thisSharedPtr = shared_from_this();
-        _context->getTransportRegistry()->put(thisSharedPtr);
-
-        start();
-    }
-
-    bool verify(epics::pvData::int32 timeoutMs);
-
-    void verified(epics::pvData::Status const & status);
-
-    bool isVerified() const {
-        return _verified;    // TODO sync
-    }
-
-    std::tr1::shared_ptr<SecuritySession> getSecuritySession() const {
-        // TODO sync
-        return _securitySession;
-    }
-
-    void authNZMessage(epics::pvData::PVField::shared_pointer const & data);
-
-    void sendSecurityPluginMessage(epics::pvData::PVField::shared_pointer const & data);
-
 protected:
-
-    BlockingTCPTransportCodec(
-        bool serverFlag,
-        Context::shared_pointer const & context,
-        SOCKET channel,
-        ResponseHandler::shared_pointer const & responseHandler,
-        int32_t sendBufferSize,
-        int32_t receiveBufferSize,
-        epics::pvData::int16 priority
-    ):
-        BlockingSocketAbstractCodec(serverFlag, channel, sendBufferSize, receiveBufferSize),
-        _context(context), _responseHandler(responseHandler),
-        _remoteTransportReceiveBufferSize(MAX_TCP_RECV),
-        _remoteTransportRevision(0), _priority(priority),
-        _verified(false)
-    {
-    }
-
-    virtual void internalClose(bool force);
-
     Context::shared_pointer _context;
 
     IntrospectionRegistry _incomingIR;
@@ -515,11 +486,9 @@ private:
     bool _verified;
     epics::pvData::Mutex _verifiedMutex;
     epics::pvData::Event _verifiedEvent;
-
 };
 
-
-class epicsShareClass BlockingServerTCPTransportCodec :
+class BlockingServerTCPTransportCodec :
     public BlockingTCPTransportCodec,
     public ChannelHostingTransport,
     public TransportSender {
@@ -554,38 +523,32 @@ public:
 
 public:
 
-    bool acquire(std::tr1::shared_ptr<TransportClient> const & /*client*/)
+    virtual bool acquire(std::tr1::shared_ptr<TransportClient> const & /*client*/) OVERRIDE FINAL
     {
         return false;
     }
 
-    void release(pvAccessID /*clientId*/) {}
+    virtual void release(pvAccessID /*clientId*/) OVERRIDE FINAL {}
 
-    pvAccessID preallocateChannelSID();
+    virtual void changedTransport() OVERRIDE {}
 
-    void depreallocateChannelSID(pvAccessID /*sid*/) {
+    virtual pvAccessID preallocateChannelSID() OVERRIDE FINAL;
+
+    virtual void depreallocateChannelSID(pvAccessID /*sid*/) OVERRIDE FINAL {
         // noop
     }
 
-    void registerChannel(
-        pvAccessID sid,
-        ServerChannel::shared_pointer const & channel);
+    virtual void registerChannel(
+            pvAccessID sid,
+            ServerChannel::shared_pointer const & channel) OVERRIDE FINAL;
 
-    void unregisterChannel(pvAccessID sid);
+    virtual void unregisterChannel(pvAccessID sid) OVERRIDE FINAL;
 
-    ServerChannel::shared_pointer getChannel(pvAccessID sid);
+    virtual ServerChannel::shared_pointer getChannel(pvAccessID sid) OVERRIDE FINAL;
 
-    int getChannelCount();
+    virtual int getChannelCount() OVERRIDE FINAL;
 
-    void lock() {
-        // noop
-    }
-
-    void unlock() {
-        // noop
-    }
-
-    bool verify(epics::pvData::int32 timeoutMs) {
+    virtual bool verify(epics::pvData::int32 timeoutMs) OVERRIDE FINAL {
 
         TransportSender::shared_pointer transportSender =
             std::tr1::dynamic_pointer_cast<TransportSender>(shared_from_this());
@@ -598,30 +561,30 @@ public:
         return verifiedStatus;
     }
 
-    void verified(epics::pvData::Status const & status) {
+    virtual void verified(epics::pvData::Status const & status) OVERRIDE FINAL {
         _verificationStatusMutex.lock();
         _verificationStatus = status;
         _verificationStatusMutex.unlock();
         BlockingTCPTransportCodec::verified(status);
     }
 
-    void aliveNotification() {
+    virtual void aliveNotification() OVERRIDE FINAL {
         // noop on server-side
     }
 
-    void authNZInitialize(void *);
+    virtual void authNZInitialize(void *) OVERRIDE FINAL;
 
-    void authenticationCompleted(epics::pvData::Status const & status);
+    virtual void authenticationCompleted(epics::pvData::Status const & status) OVERRIDE FINAL;
 
-    void send(epics::pvData::ByteBuffer* buffer,
-              TransportSendControl* control);
+    virtual void send(epics::pvData::ByteBuffer* buffer,
+                      TransportSendControl* control) OVERRIDE FINAL;
 
-    virtual ~BlockingServerTCPTransportCodec();
+    virtual ~BlockingServerTCPTransportCodec() OVERRIDE FINAL;
 
 protected:
 
     void destroyAllChannels();
-    virtual void internalClose(bool force);
+    virtual void internalClose(bool force) OVERRIDE FINAL;
 
 private:
 
@@ -648,7 +611,7 @@ private:
 
 };
 
-class epicsShareClass BlockingClientTCPTransportCodec :
+class BlockingClientTCPTransportCodec :
     public BlockingTCPTransportCodec,
     public TransportSender,
     public epics::pvData::TimerCallback {
@@ -695,41 +658,33 @@ public:
 
     void start();
 
-    virtual ~BlockingClientTCPTransportCodec();
+    virtual ~BlockingClientTCPTransportCodec() OVERRIDE FINAL;
 
-    virtual void timerStopped() {
+    virtual void timerStopped() OVERRIDE FINAL {
         // noop
     }
 
-    virtual void callback();
+    virtual void callback() OVERRIDE FINAL;
 
-    bool acquire(TransportClient::shared_pointer const & client);
+    virtual bool acquire(TransportClient::shared_pointer const & client) OVERRIDE FINAL;
 
-    void release(pvAccessID clientId);
+    virtual void release(pvAccessID clientId) OVERRIDE FINAL;
 
-    void changedTransport();
+    virtual void changedTransport() OVERRIDE FINAL;
 
-    void lock() {
-        // noop
-    }
+    virtual void aliveNotification() OVERRIDE FINAL;
 
-    void unlock() {
-        // noop
-    }
+    virtual void send(epics::pvData::ByteBuffer* buffer,
+                      TransportSendControl* control) OVERRIDE FINAL;
 
-    void aliveNotification();
+    virtual void authNZInitialize(void *) OVERRIDE FINAL;
 
-    void send(epics::pvData::ByteBuffer* buffer,
-              TransportSendControl* control);
-
-    void authNZInitialize(void *);
-
-    void authenticationCompleted(epics::pvData::Status const & status);
+    virtual void authenticationCompleted(epics::pvData::Status const & status) OVERRIDE FINAL;
 
 protected:
 
-    virtual void internalClose(bool force);
-    virtual void internalPostClose(bool force);
+    virtual void internalClose(bool force) OVERRIDE FINAL;
+    virtual void internalPostClose(bool force) OVERRIDE FINAL;
 
 private:
 

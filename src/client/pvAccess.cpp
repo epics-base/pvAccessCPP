@@ -14,6 +14,9 @@ namespace pvAccess {
 
 const char* Channel::ConnectionStateNames[] = { "NEVER_CONNECTED", "CONNECTED", "DISCONNECTED", "DESTROYED" };
 
+Channel::Channel() {}
+Channel::~Channel() {}
+
 std::string Channel::getRequesterName()
 {
     std::tr1::shared_ptr<ChannelRequester> req(getChannelRequester());
@@ -30,6 +33,21 @@ void Channel::message(std::string const & message, epics::pvData::MessageType me
                  <<": on Destroy'd Channel \""<<getChannelName()
                  <<"\" : "<<message;
     }
+}
+
+Channel::ConnectionState Channel::getConnectionState() { return CONNECTED; }
+
+bool Channel::isConnected() { return getConnectionState()==CONNECTED; }
+
+void Channel::getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField)
+{
+    requester->getDone(pvd::Status(pvd::Status::STATUSTYPE_FATAL, "Not Implemented")
+                       ,pvd::FieldConstPtr());
+}
+
+AccessRights Channel::getAccessRights(epics::pvData::PVField::shared_pointer const & pvField)
+{
+    return readWrite;
 }
 
 ChannelProcess::shared_pointer Channel::createChannelProcess(
@@ -81,7 +99,7 @@ ChannelRPC::shared_pointer Channel::createChannelRPC(
 }
 
 pvd::Monitor::shared_pointer Channel::createMonitor(
-        epics::pvData::MonitorRequester::shared_pointer const & requester,
+        epics::pvAccess::MonitorRequester::shared_pointer const & requester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
     pvd::Monitor::shared_pointer ret;
@@ -100,5 +118,32 @@ ChannelArray::shared_pointer Channel::createChannelArray(
     return ret;
 }
 
+std::string DefaultChannelRequester::getRequesterName() { return "DefaultChannelRequester"; }
+
+void DefaultChannelRequester::channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel)
+{
+    if(!status.isSuccess()) {
+        std::ostringstream strm;
+        status.dump(strm);
+        throw std::runtime_error(strm.str());
+    }
 }
+
+void DefaultChannelRequester::channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState)
+{ /* no-op */ }
+
+ChannelRequester::shared_pointer DefaultChannelRequester::build()
+{
+    ChannelRequester::shared_pointer ret(new DefaultChannelRequester);
+    return ret;
 }
+
+
+MonitorElement::MonitorElement(epics::pvData::PVStructurePtr const & pvStructurePtr)
+    : pvStructurePtr(pvStructurePtr)
+    ,changedBitSet(epics::pvData::BitSet::create(static_cast<epics::pvData::uint32>(pvStructurePtr->getNumberFields())))
+    ,overrunBitSet(epics::pvData::BitSet::create(static_cast<epics::pvData::uint32>(pvStructurePtr->getNumberFields())))
+    ,state(Free)
+{}
+
+}} // namespace epics::pvAccess
