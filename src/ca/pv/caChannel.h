@@ -7,7 +7,10 @@
 #ifndef CACHANNEL_H
 #define CACHANNEL_H
 
+#include <queue>
+
 #include <pv/pvAccess.h>
+
 
 /* for CA */
 #include <cadef.h>
@@ -17,6 +20,13 @@
 namespace epics {
 namespace pvAccess {
 namespace ca {
+
+class CAChannelPut;
+typedef std::tr1::shared_ptr<CAChannelPut> CAChannelPutPtr;
+class CAChannelGet;
+typedef std::tr1::shared_ptr<CAChannelGet> CAChannelGetPtr;
+class CAChannelMonitor;
+typedef std::tr1::shared_ptr<CAChannelMonitor> CAChannelMonitorPtr;
 
 class CAChannel :
     public Channel,
@@ -74,9 +84,6 @@ public:
 
     void threadAttach();
 
-    void registerRequest(ChannelRequest::shared_pointer const & request);
-    void unregisterRequest(ChannelRequest::shared_pointer const & request);
-
 private:
 
     CAChannel(std::string const & channelName,
@@ -95,15 +102,13 @@ private:
     epics::pvData::Structure::const_shared_pointer structure;
 
     epics::pvData::Mutex requestsMutex;
-    // TODO std::unordered_map
-    // void* is not the nicest thing, but there is no fast weak_ptr::operator==
-    typedef std::map<void*, ChannelRequest::weak_pointer> RequestsList;
-    RequestsList requests;
 
     // synced on requestsMutex
     bool destroyed;
+    std::queue<CAChannelPutPtr> putQueue;
+    std::queue<CAChannelGetPtr> getQueue;
+    std::queue<CAChannelMonitorPtr> monitorQueue;
 };
-
 
 
 class CAChannelGet :
@@ -114,7 +119,7 @@ class CAChannelGet :
 public:
     POINTER_DEFINITIONS(CAChannelGet);
 
-    static ChannelGet::shared_pointer create(CAChannel::shared_pointer const & channel,
+    static CAChannelGet::shared_pointer create(CAChannel::shared_pointer const & channel,
             ChannelGetRequester::shared_pointer const & channelGetRequester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
@@ -136,15 +141,17 @@ public:
 
     virtual void destroy();
 
+    void activate();
+
 private:
 
     CAChannelGet(CAChannel::shared_pointer const & _channel,
                  ChannelGetRequester::shared_pointer const & _channelGetRequester,
                  epics::pvData::PVStructure::shared_pointer const & pvRequest);
-    void activate();
-
+    
     CAChannel::shared_pointer channel;
     ChannelGetRequester::shared_pointer channelGetRequester;
+    epics::pvData::PVStructure::shared_pointer pvRequest;
     chtype getType;
 
     epics::pvData::PVStructure::shared_pointer pvStructure;
@@ -164,7 +171,7 @@ class CAChannelPut :
 public:
     POINTER_DEFINITIONS(CAChannelPut);
 
-    static ChannelPut::shared_pointer create(CAChannel::shared_pointer const & channel,
+    static CAChannelPut::shared_pointer create(CAChannel::shared_pointer const & channel,
             ChannelPutRequester::shared_pointer const & channelPutRequester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
@@ -191,15 +198,17 @@ public:
 
     virtual void destroy();
 
+     void activate();
+
 private:
 
     CAChannelPut(CAChannel::shared_pointer const & _channel,
                  ChannelPutRequester::shared_pointer const & _channelPutRequester,
                  epics::pvData::PVStructure::shared_pointer const & pvRequest);
-    void activate();
-
+   
     CAChannel::shared_pointer channel;
     ChannelPutRequester::shared_pointer channelPutRequester;
+    epics::pvData::PVStructure::shared_pointer pvRequest;
     chtype getType;
 
     epics::pvData::PVStructure::shared_pointer pvStructure;
@@ -207,8 +216,11 @@ private:
 
     // TODO AtomicBoolean !!!
     bool lastRequestFlag;
+    bool block;
 };
 
+class CACMonitorQueue;
+typedef std::tr1::shared_ptr<CACMonitorQueue> CACMonitorQueuePtr;
 
 class CAChannelMonitor :
     public Monitor,
@@ -218,7 +230,7 @@ class CAChannelMonitor :
 public:
     POINTER_DEFINITIONS(CAChannelMonitor);
 
-    static Monitor::shared_pointer create(CAChannel::shared_pointer const & channel,
+    static CAChannelMonitor::shared_pointer create(CAChannel::shared_pointer const & channel,
             MonitorRequester::shared_pointer const & monitorRequester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
@@ -240,31 +252,22 @@ public:
     /* --------------- Destroyable --------------- */
 
     virtual void destroy();
-
+    void activate();
 private:
 
     CAChannelMonitor(CAChannel::shared_pointer const & _channel,
                      MonitorRequester::shared_pointer const & _monitorRequester,
                      epics::pvData::PVStructure::shared_pointer const & pvRequest);
-    void activate();
+    
 
     CAChannel::shared_pointer channel;
     MonitorRequester::shared_pointer monitorRequester;
+    epics::pvData::PVStructure::shared_pointer pvRequest;
     chtype getType;
 
     epics::pvData::PVStructure::shared_pointer pvStructure;
-    epics::pvData::BitSet::shared_pointer changedBitSet;
-    epics::pvData::BitSet::shared_pointer overrunBitSet;
     evid eventID;
-
-    epics::pvData::Mutex mutex;
-    int count;
-
-    MonitorElement::shared_pointer element;
-    MonitorElement::shared_pointer nullElement;
-
-    // TODO remove
-    Monitor::shared_pointer thisPointer;
+    CACMonitorQueuePtr monitorQueue;
 };
 
 }
