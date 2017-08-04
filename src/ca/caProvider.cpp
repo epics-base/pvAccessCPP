@@ -180,6 +180,7 @@ void ca_factory_cleanup(void*)
 {
     try {
         ChannelProviderRegistry::clients()->remove("ca");
+        ca_context_destroy(); 
     } catch(std::exception& e) {
         LOG(logLevelWarn, "Error when unregister \"ca\" factory");
     }
