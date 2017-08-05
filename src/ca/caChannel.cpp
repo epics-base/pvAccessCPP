@@ -681,9 +681,13 @@ void CAChannelGet::channelCreated(const Status& status,Channel::shared_pointer c
 {
     chtype newType = getDBRType(pvRequest, channel->getNativeType());
     if(newType!=getType) {
-         pvStructure.reset();
-         activate();
+        getType = getDBRType(pvRequest, channel->getNativeType());
+        pvStructure = createPVStructure(channel, getType, pvRequest);
+        bitSet = BitSetPtr(new BitSet(pvStructure->getStructure()->getNumberFields()));
+        bitSet->set(0);
     }
+    EXCEPTION_GUARD(channelGetRequester->channelGetConnect(Status::Ok, shared_from_this(),
+                    pvStructure->getStructure()));
 }
 
 void CAChannelGet::channelStateChange(
@@ -1175,7 +1179,6 @@ void CAChannelPut::activate()
     getType = getDBRType(pvRequest,channel->getNativeType());
     pvStructure = createPVStructure(channel, getType, pvRequest);
     bitSet = BitSetPtr(new BitSet(pvStructure->getStructure()->getNumberFields()));
-    // NOTE: we require value type, we can only put value field
     PVStringPtr pvString = pvRequest->getSubField<PVString>("record._options.block");
     if(pvString) {
         std::string val = pvString->get();
@@ -1192,9 +1195,18 @@ void CAChannelPut::channelCreated(const Status& status,Channel::shared_pointer c
 {
     chtype newType = getDBRType(pvRequest, channel->getNativeType());
     if(newType!=getType) {
-         pvStructure.reset();
-         activate();
+        getType = getDBRType(pvRequest, channel->getNativeType());
+        pvStructure = createPVStructure(channel, getType, pvRequest);
+        bitSet = BitSetPtr(new BitSet(pvStructure->getStructure()->getNumberFields()));
+        PVStringPtr pvString = pvRequest->getSubField<PVString>("record._options.block");
+        if(pvString) {
+            std::string val = pvString->get();
+            if(val.compare("true")==0) block = true;
+        }
+        bitSet->set(0);
     }
+    EXCEPTION_GUARD(channelPutRequester->channelPutConnect(Status::Ok, shared_from_this(),
+                    pvStructure->getStructure()));
 }
 
 void CAChannelPut::channelStateChange(
@@ -1676,9 +1688,24 @@ void CAChannelMonitor::channelCreated(const Status& status,Channel::shared_point
 {
     chtype newType = getDBRType(pvRequest, channel->getNativeType());
     if(newType!=getType) {
-         pvStructure.reset();
-         activate();
+        getType = getDBRType(pvRequest, channel->getNativeType());
+        pvStructure = createPVStructure(channel, getType, pvRequest);
+        int32 queueSize = 2;
+        PVStructurePtr pvOptions = pvRequest->getSubField<PVStructure>("record._options");
+        if (pvOptions) {
+            PVStringPtr pvString = pvOptions->getSubField<PVString>("queueSize");
+            if (pvString) {
+                int size;
+                std::stringstream ss;
+                ss << pvString->get();
+                ss >> size;
+                if (size > 1) queueSize = size;
+            }
+        }
+        monitorQueue = CACMonitorQueuePtr(new CACMonitorQueue(queueSize));
     }
+    EXCEPTION_GUARD(monitorRequester->monitorConnect(Status::Ok, shared_from_this(),
+                    pvStructure->getStructure()));
 }
 
 void CAChannelMonitor::channelStateChange(
