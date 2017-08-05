@@ -1166,9 +1166,9 @@ CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & channel,
 :
     channel(channel),
     channelPutRequester(channelPutRequester),
-    pvRequest(pvRequest),    
-    lastRequestFlag(false),
-    block(false)
+    pvRequest(pvRequest), 
+    block(false),   
+    lastRequestFlag(false)
 {
     
 }
@@ -1647,6 +1647,9 @@ CAChannelMonitorPtr CAChannelMonitor::create(
 
 CAChannelMonitor::~CAChannelMonitor()
 {
+    if(!isStarted) return;
+    channel->threadAttach();
+    ca_clear_subscription(eventID);
 }
 
 CAChannelMonitor::CAChannelMonitor(
@@ -1656,8 +1659,8 @@ CAChannelMonitor::CAChannelMonitor(
 :
     channel(channel),
     monitorRequester(monitorRequester),
-    pvRequest(pvRequest)
-    
+    pvRequest(pvRequest),
+    isStarted(false)
 {
 }
 
@@ -1747,6 +1750,11 @@ void CAChannelMonitor::subscriptionEvent(struct event_handler_args &args)
 
 epics::pvData::Status CAChannelMonitor::start()
 {
+    Status status = Status::Ok;
+    if(isStarted) {
+        status = Status(Status::STATUSTYPE_WARNING,"already started");
+        return status;
+    }
     channel->threadAttach();
 
     /*
@@ -1768,24 +1776,26 @@ epics::pvData::Status CAChannelMonitor::start()
          &eventID);
     if (result == ECA_NORMAL)
     {
+        isStarted = true;
         monitorQueue->start();
         ca_flush_io();
-        return Status::Ok;
-    }
-    else
-    {
+        return status;
+    } else {
+        isStarted = false;
         return Status(Status::STATUSTYPE_ERROR, string(ca_message(result)));
     }
 }
 
 epics::pvData::Status CAChannelMonitor::stop()
 {
+    if(!isStarted) return Status(Status::STATUSTYPE_WARNING,"already stopped");
     channel->threadAttach();
 
     int result = ca_clear_subscription(eventID);
 
     if (result == ECA_NORMAL)
     {
+        isStarted = false;
         monitorQueue->stop();
         return Status::Ok;
     }
@@ -1819,8 +1829,10 @@ void CAChannelMonitor::cancel()
 
 void CAChannelMonitor::destroy()
 {
+    if(!isStarted) return;
     channel->threadAttach();
     ca_clear_subscription(eventID);
+    isStarted = false;
 }
 
 }}}

@@ -179,13 +179,11 @@ private:
     CAChannel::shared_pointer channel;
     ChannelGetRequester::shared_pointer channelGetRequester;
     epics::pvData::PVStructure::shared_pointer pvRequest;
-    chtype getType;
+    bool lastRequestFlag;
 
+    chtype getType;
     epics::pvData::PVStructure::shared_pointer pvStructure;
     epics::pvData::BitSet::shared_pointer bitSet;
-
-    // TODO AtomicBoolean !!!
-    bool lastRequestFlag;
 };
 
 
@@ -248,14 +246,12 @@ private:
     CAChannel::shared_pointer channel;
     ChannelPutRequester::shared_pointer channelPutRequester;
     epics::pvData::PVStructure::shared_pointer pvRequest;
-    chtype getType;
+    bool block;
+    bool lastRequestFlag;
 
+    chtype getType;
     epics::pvData::PVStructure::shared_pointer pvStructure;
     epics::pvData::BitSet::shared_pointer bitSet;
-
-    // TODO AtomicBoolean !!!
-    bool lastRequestFlag;
-    bool block;
 };
 
 class CACMonitorQueue;
@@ -311,6 +307,7 @@ private:
     CAChannelPtr channel;
     MonitorRequester::shared_pointer monitorRequester;
     epics::pvData::PVStructure::shared_pointer pvRequest;
+    bool isStarted;
     chtype getType;
 
     epics::pvData::PVStructure::shared_pointer pvStructure;
