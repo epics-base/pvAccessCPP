@@ -14,6 +14,8 @@
 #include <pv/configuration.h>
 #include <pv/pvAccess.h>
 
+#define epicsExportSharedSymbols
+#include <pv/caProvider.h>
 #include "caProviderPvt.h"
 #include "caChannel.h"
 
