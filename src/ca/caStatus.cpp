@@ -4,7 +4,7 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#include "caStatus.h"
+#include <pv/caStatus.h>
 
 namespace epics {
 namespace pvAccess {

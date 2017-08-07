@@ -12,7 +12,7 @@
 #include <pv/pvAccess.h>
 
 #include "caChannel.h"
-#include "caStatus.h"
+#include <pv/caStatus.h>
 
 using namespace epics::pvData;
 using std::string;
