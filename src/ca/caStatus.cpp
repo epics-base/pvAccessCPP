@@ -4,9 +4,7 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#define epicsExportSharedSymbols
-
-#include <pv/caStatus.h>
+#include "caStatus.h"
 
 namespace epics {
 namespace pvAccess {

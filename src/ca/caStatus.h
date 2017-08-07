@@ -9,8 +9,6 @@
 
 #include <string>
 
-#include <shareLib.h>
-
 namespace epics {
 namespace pvAccess {
 namespace ca {
@@ -20,8 +18,8 @@ enum AlarmStatus {
     dbStatus,confStatus,undefinedStatus,clientStatus
 };
 
-epicsShareExtern std::string dbrStatus2alarmMessage[];
-epicsShareExtern int dbrStatus2alarmStatus[];
+extern std::string dbrStatus2alarmMessage[];
+extern int dbrStatus2alarmStatus[];
 
 }
 }

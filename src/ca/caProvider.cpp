@@ -14,13 +14,15 @@
 #include <pv/configuration.h>
 #include <pv/pvAccess.h>
 
-#define epicsExportSharedSymbols
-#include <pv/caProvider.h>
-#include <pv/caChannel.h>
+#include "caProviderPvt.h"
+#include "caChannel.h"
+
+
+namespace epics {
+namespace pvAccess {
+namespace ca {
 
 using namespace epics::pvData;
-using namespace epics::pvAccess;
-using namespace epics::pvAccess::ca;
 
 #define EXCEPTION_GUARD(code) try { code; } \
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
@@ -211,3 +213,8 @@ void registerClientProvider_ca()
     }
 }
 } // extern "C"
+
+}
+}
+}
+

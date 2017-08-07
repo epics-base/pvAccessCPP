@@ -11,9 +11,8 @@
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
 
-#define epicsExportSharedSymbols
-#include <pv/caChannel.h>
-#include <pv/caStatus.h>
+#include "caChannel.h"
+#include "caStatus.h"
 
 using namespace epics::pvData;
 using std::string;

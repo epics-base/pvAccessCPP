@@ -16,7 +16,7 @@
 /* for CA */
 #include <cadef.h>
 
-#include <pv/caProvider.h>
+#include "caProviderPvt.h"
 
 namespace epics {
 namespace pvAccess {

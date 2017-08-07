@@ -5,7 +5,6 @@ LIBRARY += pvAccessCA
 pvAccessCA_LIBS += ca pvAccess pvData Com
 
 INC += pv/caProvider.h
-INC += pv/caStatus.h
 
 pvAccessCA_SRCS += caProvider.cpp
 pvAccessCA_SRCS += caChannel.cpp
