@@ -3912,23 +3912,15 @@ public:
 
             m_needSubscriptionUpdate = true;
 
-            int count = 0;
-            std::vector<ResponseRequest::weak_pointer> rrs(m_responseRequests.size());
             for (IOIDResponseRequestMap::iterator iter = m_responseRequests.begin();
                     iter != m_responseRequests.end();
                     iter++)
             {
-                rrs[count++] = iter->second;
+                ResponseRequest::shared_pointer ptr(iter->second.lock());
+                if(ptr)
+                    EXCEPTION_GUARD(ptr->reportStatus(state));
             }
 
-            ResponseRequest::shared_pointer ptr;
-            for (int i = 0; i< count; i++)
-            {
-                if((ptr = rrs[i].lock()))
-                {
-                    EXCEPTION_GUARD(ptr->reportStatus(state));
-                }
-            }
         }
 
         /**

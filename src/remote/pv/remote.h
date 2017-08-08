@@ -16,7 +16,6 @@
 #include <string>
 
 #include <osiSock.h>
-#include <osdSock.h>
 
 #include <pv/serialize.h>
 #include <pv/pvType.h>

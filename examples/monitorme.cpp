@@ -258,7 +258,7 @@ int main(int argc, char *argv[]) {
 
             pvac::ClientChannel chan(provider.connect(pv));
 
-            mon->mon = chan.monitor(mon.get());
+            mon->mon = chan.monitor(mon.get(), pvReq);
 
             monitors.push_back(mon);
         }
