@@ -105,11 +105,11 @@ std::ostream& terse(std::ostream& o, PVField::shared_pointer const & pv)
 
 std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure const & pvEnumT)
 {
-    PVInt::shared_pointer pvIndex = pvEnumT.getSubField<PVInt>("index");
+    PVInt::const_shared_pointer pvIndex = pvEnumT.getSubField<PVInt>("index");
     if (!pvIndex)
         throw std::runtime_error("enum_t structure does not have 'int index' field");
 
-    PVStringArray::shared_pointer pvChoices = pvEnumT.getSubField<PVStringArray>("choices");
+    PVStringArray::const_shared_pointer pvChoices = pvEnumT.getSubField<PVStringArray>("choices");
     if (!pvChoices)
         throw std::runtime_error("enum_t structure does not have 'string choices[]' field");
 
