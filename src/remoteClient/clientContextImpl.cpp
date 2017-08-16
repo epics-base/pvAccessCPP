@@ -3912,15 +3912,25 @@ public:
 
             m_needSubscriptionUpdate = true;
 
+            // make a copy so that ResponseRequest::reportStatus() can
+            // remove itself from m_responseRequests
+            size_t count = 0;
+            std::vector<ResponseRequest::weak_pointer> rrs(m_responseRequests.size());
             for (IOIDResponseRequestMap::iterator iter = m_responseRequests.begin();
                     iter != m_responseRequests.end();
                     iter++)
             {
-                ResponseRequest::shared_pointer ptr(iter->second.lock());
-                if(ptr)
-                    EXCEPTION_GUARD(ptr->reportStatus(state));
+                rrs[count++] = iter->second;
             }
 
+            ResponseRequest::shared_pointer ptr;
+            for (size_t i = 0; i< count; i++)
+            {
+                if((ptr = rrs[i].lock()))
+                {
+                    EXCEPTION_GUARD(ptr->reportStatus(state));
+                }
+            }
         }
 
         /**
