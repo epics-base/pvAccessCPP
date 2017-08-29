@@ -302,6 +302,8 @@ public:
 
     POINTER_DEFINITIONS(BlockingTCPTransportCodec);
 
+    static size_t num_instances;
+
     BlockingTCPTransportCodec(
             bool serverFlag,
             Context::shared_pointer const & context,

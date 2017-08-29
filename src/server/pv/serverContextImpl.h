@@ -32,6 +32,8 @@ public:
     typedef std::tr1::shared_ptr<ServerContextImpl> shared_pointer;
     typedef std::tr1::shared_ptr<const ServerContextImpl> const_shared_pointer;
 
+    static size_t num_instances;
+
     ServerContextImpl();
     virtual ~ServerContextImpl();
 

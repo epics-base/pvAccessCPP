@@ -14,6 +14,7 @@
 #include <pv/timer.h>
 #include <pv/bitSetUtil.h>
 #include <pv/standardPVField.h>
+#include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
 #include <pv/pvAccess.h>
@@ -165,6 +166,9 @@ protected:
         return std::tr1::static_pointer_cast<subklass>(P);
     }
 public:
+    static size_t num_instances;
+    static size_t num_active;
+
     template<class subklass>
     static
     typename std::tr1::shared_ptr<subklass>
@@ -180,6 +184,7 @@ public:
         const_cast<BaseRequestImpl::weak_pointer&>(internal->m_this_internal) = internal;
         const_cast<BaseRequestImpl::weak_pointer&>(internal->m_this_external) = external;
         internal->activate();
+        REFTRACE_INCREMENT(num_active);
         return external;
     }
 protected:
@@ -197,9 +202,13 @@ protected:
         m_destroyed(false),
         m_initialized(false),
         m_subscribed()
-    {}
+    {
+        REFTRACE_INCREMENT(num_instances);
+    }
 
-    virtual ~BaseRequestImpl() {}
+    virtual ~BaseRequestImpl() {
+        REFTRACE_DECREMENT(num_instances);
+    }
 
     virtual void activate() {
         // register response request
@@ -344,6 +353,8 @@ public:
             }
 
         }
+
+        REFTRACE_DECREMENT(num_active);
     }
 
     virtual void timeout() OVERRIDE FINAL {
@@ -396,6 +407,8 @@ public:
 
 };
 
+size_t BaseRequestImpl::num_instances;
+size_t BaseRequestImpl::num_active;
 
 
 PVDataCreatePtr BaseRequestImpl::pvDataCreate = getPVDataCreate();
@@ -3248,6 +3261,11 @@ private:
          */
         ServerGUID m_guid;
 
+    public:
+        static size_t num_instances;
+        static size_t num_active;
+    private:
+
         /**
          * Constructor.
          * @param context
@@ -3275,6 +3293,7 @@ private:
             m_serverChannelID(0xFFFFFFFF),
             m_issueCreateMessage(true)
         {
+            REFTRACE_INCREMENT(num_instances);
             PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channel);
         }
 
@@ -3285,6 +3304,8 @@ private:
 
             // connect
             connect();
+
+            REFTRACE_INCREMENT(num_active);
         }
 
     public:
@@ -3307,11 +3328,15 @@ private:
 
         virtual ~InternalChannelImpl()
         {
+            REFTRACE_DECREMENT(num_instances);
+
             PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channel);
         }
 
         virtual void destroy() OVERRIDE FINAL
         {
+            REFTRACE_DECREMENT(num_active);
+
             destroy(false);
         }
 
@@ -4035,6 +4060,7 @@ public:
 
 
 public:
+    static size_t num_instances;
 
     InternalClientContextImpl(const Configuration::shared_pointer& conf) :
         m_addressList(""), m_autoAddressList(true), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
@@ -4049,6 +4075,8 @@ public:
         m_configuration(conf),
         m_flushStrategy(DELAYED)
     {
+        REFTRACE_INCREMENT(num_instances);
+
         PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(remoteClientContext);
         MB_INIT;
         if(!m_configuration) m_configuration = ConfigurationFactory::getConfiguration("pvAccess-client");
@@ -4148,6 +4176,7 @@ public:
 
     virtual ~InternalClientContextImpl()
     {
+        REFTRACE_DECREMENT(num_instances);
         PVACCESS_REFCOUNT_MONITOR_DESTRUCT(remoteClientContext);
     }
 
@@ -4716,6 +4745,10 @@ private:
     FlushStrategy m_flushStrategy;
 };
 
+size_t InternalClientContextImpl::num_instances;
+size_t InternalClientContextImpl::InternalChannelImpl::num_instances;
+size_t InternalClientContextImpl::InternalChannelImpl::num_active;
+
 PVACCESS_REFCOUNT_MONITOR_DEFINE(channelGetField);
 
 class ChannelGetFieldRequestImpl :
@@ -4908,6 +4941,11 @@ namespace pvAccess {
 
 ChannelProvider::shared_pointer createClientProvider(const Configuration::shared_pointer& conf)
 {
+    registerRefCounter("InternalClientContextImpl", &InternalClientContextImpl::num_instances);
+    registerRefCounter("InternalChannelImpl", &InternalClientContextImpl::InternalChannelImpl::num_instances);
+    registerRefCounter("InternalChannelImpl (Active)", &InternalClientContextImpl::InternalChannelImpl::num_active);
+    registerRefCounter("BaseRequestImpl", &BaseRequestImpl::num_instances);
+    registerRefCounter("BaseRequestImpl (Active)", &BaseRequestImpl::num_active);
     InternalClientContextImpl::shared_pointer internal(new InternalClientContextImpl(conf)),
                                               external(internal.get(), epics::pvAccess::Destroyable::cleaner(internal));
     const_cast<InternalClientContextImpl::weak_pointer&>(internal->m_external_this) = external;

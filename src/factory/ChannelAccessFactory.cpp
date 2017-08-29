@@ -12,10 +12,13 @@
 #include <pv/lock.h>
 #include <pv/noDefaultMethods.h>
 #include <pv/pvData.h>
+#include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
 #include <pv/pvAccess.h>
 #include <pv/factory.h>
+#include "pv/codec.h"
+#include <pv/serverContextImpl.h>
 
 using namespace epics::pvData;
 using std::string;
@@ -156,6 +159,9 @@ epicsThreadOnceId providerRegOnce = EPICS_THREAD_ONCE_INIT;
 void providerRegInit(void*)
 {
     providerRegGbl = new providerRegGbl_t;
+    registerRefCounter("ServerContext (PVA)", &ServerContextImpl::num_instances);
+    registerRefCounter("BlockingTCPTransportCodec", &detail::BlockingTCPTransportCodec::num_instances);
+    registerRefCounter("ChannelRequester", &ChannelRequester::num_instances);
 }
 
 } // namespace
