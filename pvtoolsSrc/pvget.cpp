@@ -24,6 +24,7 @@
 #include <pv/logger.h>
 #include <pv/lock.h>
 #include <pv/event.h>
+#include <pv/reftrack.h>
 
 #include "pvutils.cpp"
 
@@ -355,6 +356,7 @@ int main (int argc, char *argv[])
     istream* inputStream = 0;
     ifstream ifs;
     bool fromStream = false;
+    epics::RefMonitor refmon;
 
     double timeOut = -1.0;
     bool explicit_timeout = false;
@@ -363,7 +365,7 @@ int main (int argc, char *argv[])
 
     // ================ Parse Arguments
 
-    while ((opt = getopt(argc, argv, ":hvr:w:tmp:qdcF:f:ni")) != -1) {
+    while ((opt = getopt(argc, argv, ":hvRr:w:tmp:qdcF:f:ni")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
@@ -378,6 +380,9 @@ int main (int argc, char *argv[])
             fprintf(stdout, "%s\n", version.getVersionString().c_str());
             return 0;
         }
+        case 'R':
+            refmon.start(5.0);
+            break;
         case 'w':               /* Set PVA timeout value */
             if((epicsScanDouble(optarg, &timeOut)) != 1 || timeOut <= 0.0)
             {
@@ -607,6 +612,14 @@ int main (int argc, char *argv[])
                 break;
             }
         }
+    }
+
+    if(refmon.running()) {
+        refmon.stop();
+        // drop refs to operations, but keep ref to ClientProvider
+        ops.clear();
+        // show final counts
+        refmon.current();
     }
 
     // ========================== All done now
