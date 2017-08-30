@@ -26,6 +26,8 @@ class CAChannelProvider :
 public:
     POINTER_DEFINITIONS(CAChannelProvider);
 
+    static size_t num_instances;
+
     CAChannelProvider();
     CAChannelProvider(const std::tr1::shared_ptr<Configuration>&);
     virtual ~CAChannelProvider();

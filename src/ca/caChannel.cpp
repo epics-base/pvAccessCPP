@@ -10,6 +10,7 @@
 #include <pv/standardField.h>
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
+#include <pv/reftrack.h>
 
 #include "caChannel.h"
 #include <pv/caStatus.h>
@@ -344,6 +345,8 @@ void CAChannel::disconnected()
     EXCEPTION_GUARD(channelRequester->channelStateChange(shared_from_this(), Channel::DISCONNECTED));
 }
 
+size_t CAChannel::num_instances;
+
 CAChannel::CAChannel(std::string const & _channelName,
                      CAChannelProvider::shared_pointer const & _channelProvider,
                      ChannelRequester::shared_pointer const & _channelRequester) :
@@ -355,6 +358,7 @@ CAChannel::CAChannel(std::string const & _channelName,
     elementCount(0),
     destroyed(false)
 {
+    REFTRACE_INCREMENT(num_instances);
     PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(caChannel);
 }
 
@@ -431,6 +435,7 @@ CAChannel::~CAChannel()
     /* Clear CA Channel */
     threadAttach();
     ca_clear_channel(channelID);
+    REFTRACE_DECREMENT(num_instances);
 }
 
 
@@ -647,6 +652,7 @@ static chtype getDBRType(PVStructure::shared_pointer const & pvRequest, chtype n
     return nativeType;
 }
 
+size_t CAChannelGet::num_instances;
 
 CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & channel,
     ChannelGetRequester::shared_pointer const & channelGetRequester,
@@ -657,11 +663,12 @@ CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & channel,
     pvRequest(pvRequest),  
     lastRequestFlag(false)
 {
-    
+    REFTRACE_INCREMENT(num_instances);
 }
 
 CAChannelGet::~CAChannelGet()
 {
+    REFTRACE_DECREMENT(num_instances);
 }
 
 void CAChannelGet::activate()
@@ -1156,8 +1163,10 @@ CAChannelPutPtr CAChannelPut::create(
 
 CAChannelPut::~CAChannelPut()
 {
+    REFTRACE_DECREMENT(num_instances);
 }
 
+size_t CAChannelPut::num_instances;
 
 CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & channel,
     ChannelPutRequester::shared_pointer const & channelPutRequester,
@@ -1169,7 +1178,7 @@ CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & channel,
     block(false),   
     lastRequestFlag(false)
 {
-    
+    REFTRACE_INCREMENT(num_instances);
 }
 
 void CAChannelPut::activate()
@@ -1649,7 +1658,10 @@ CAChannelMonitor::~CAChannelMonitor()
     if(!isStarted) return;
     channel->threadAttach();
     ca_clear_subscription(eventID);
+    REFTRACE_DECREMENT(num_instances);
 }
+
+size_t CAChannelMonitor::num_instances;
 
 CAChannelMonitor::CAChannelMonitor(
     CAChannel::shared_pointer const & channel,
@@ -1661,6 +1673,7 @@ CAChannelMonitor::CAChannelMonitor(
     pvRequest(pvRequest),
     isStarted(false)
 {
+    REFTRACE_INCREMENT(num_instances);
 }
 
 void CAChannelMonitor::activate()

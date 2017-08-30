@@ -13,6 +13,7 @@
 #include <pv/logger.h>
 #include <pv/configuration.h>
 #include <pv/pvAccess.h>
+#include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
 #include <pv/caProvider.h>
@@ -30,8 +31,11 @@ using namespace epics::pvData;
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
 
+size_t CAChannelProvider::num_instances;
+
 CAChannelProvider::CAChannelProvider() : current_context(0), destroyed(false)
 {
+    REFTRACE_INCREMENT(num_instances);
     initialize();
 }
 
@@ -39,6 +43,7 @@ CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
     : current_context(0)
     , destroyed(false)
 {
+    REFTRACE_INCREMENT(num_instances);
     // Ignoring Configuration as CA only allows config via. environment,
     // and we don't want to change this here.
     initialize();
@@ -48,6 +53,7 @@ CAChannelProvider::~CAChannelProvider()
 {
     // call destroy() to destroy CA context
     destroy();
+    REFTRACE_DECREMENT(num_instances);
 }
 
 std::string CAChannelProvider::getProviderName()
@@ -194,6 +200,11 @@ void CAClientFactory::start()
 {
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
+    registerRefCounter("CAChannelProvider", &CAChannelProvider::num_instances);
+    registerRefCounter("CAChannel", &CAChannel::num_instances);
+    registerRefCounter("CAChannelGet", &CAChannelGet::num_instances);
+    registerRefCounter("CAChannelPut", &CAChannelPut::num_instances);
+    registerRefCounter("CAChannelMonitor", &CAChannelMonitor::num_instances);
 
     if(ChannelProviderRegistry::clients()->add<CAChannelProvider>("ca", false))
         epicsAtExit(&ca_factory_cleanup, NULL);
