@@ -17,12 +17,12 @@
 #include <epicsEvent.h>
 #include <epicsMutex.h>
 #include <epicsGuard.h>
+#include <epicsGetopt.h>
 
-//! [Headers]
 #include <pv/configuration.h>
 #include <pv/caProvider.h>
+#include <pv/reftrack.h>
 #include <pva/client.h>
-//! [Headers]
 
 namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
@@ -92,36 +92,35 @@ struct Getter : public pvac::ClientChannel::GetCallback,
 
 int main(int argc, char *argv[]) {
     try {
+        epics::RefMonitor refmon;
         double waitTime = -1.0;
         std::string providerName("pva");
         typedef std::vector<std::string> pvs_t;
         pvs_t pvs;
 
-        for(int i=1; i<argc; i++) {
-            if(argv[i][0]=='-') {
-                if(strcmp(argv[i], "-P")==0 || strcmp(argv[i], "--provider")==0) {
-                    if(i<argc-1) {
-                        providerName = argv[++i];
-                    } else {
-                        std::cerr << "--provider requires value\n";
-                        return 1;
-                    }
-                } else if(strcmp(argv[i], "-T")==0 || strcmp(argv[i], "--timeout")==0) {
-                    if(i<argc-1) {
-                        waitTime = pvd::castUnsafe<double, std::string>(argv[++i]);
-                    } else {
-                        std::cerr << "--timeout requires value\n";
-                        return 1;
-                    }
-                } else {
-                    std::cerr<<"Unknown argument: "<<argv[i]<<"\n";
-                }
-
-            } else {
-                pvs.push_back(argv[i]);
+        int opt;
+        while((opt = getopt(argc, argv, "hRp:w:")) != -1) {
+            switch(opt) {
+            case 'R':
+                refmon.start(5.0);
+                break;
+            case 'p':
+                providerName = optarg;
+                break;
+            case 'w':
+                waitTime = pvd::castUnsafe<double, std::string>(optarg);
+                break;
+            case 'h':
+                std::cout<<"Usage: "<<argv[0]<<" [-p <provider>] [-w <timeout>] [-R] <pvname> ...\n";
+                return 0;
+            default:
+                std::cerr<<"Unknown argument: "<<opt<<"\n";
+                return -1;
             }
-
         }
+
+        for(int i=optind; i<argc; i++)
+            pvs.push_back(argv[i]);
 
 #ifdef USE_SIGNAL
         signal(SIGINT, alldone);
@@ -161,6 +160,14 @@ int main(int argc, char *argv[]) {
             done.wait();
         else
             done.wait(waitTime);
+
+        if(refmon.running()) {
+            refmon.stop();
+            // drop refs to operations, but keep ref to ClientProvider
+            gets.clear();
+            // show final counts
+            refmon.current();
+        }
 
     } catch(std::exception& e){
         std::cerr<<"Error: "<<e.what()<<"\n";
