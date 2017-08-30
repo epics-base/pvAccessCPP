@@ -34,15 +34,15 @@
 
 #include <epicsExport.h>
 
-using std::cout;
-using std::endl;
 namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
 
-static pvd::Mutex the_server_lock;
-static pva::ServerContext::shared_pointer the_server;
+namespace {
 
-static void startitup() {
+pvd::Mutex the_server_lock;
+pva::ServerContext::shared_pointer the_server;
+
+void startitup() {
     the_server = pva::ServerContext::create(pva::ServerContext::Config()
                                             .config(pva::ConfigurationBuilder()
                                                     // default to all providers instead of just "local"
@@ -54,7 +54,7 @@ static void startitup() {
                                                     .build()));
 }
 
-static void startPVAServer(const char *names)
+void startPVAServer(const char *names)
 {
     try {
         if(names && names[0]!='\0') {
@@ -74,7 +74,7 @@ static void startPVAServer(const char *names)
     }
 }
 
-static void stopPVAServer()
+void stopPVAServer()
 {
     try {
         pvd::Lock G(the_server_lock);
@@ -88,7 +88,7 @@ static void stopPVAServer()
     }
 }
 
-static void statusPVAServer()
+void statusPVAServer()
 {
     try {
         pvd::Lock G(the_server_lock);
@@ -103,7 +103,7 @@ static void statusPVAServer()
     }
 }
 
-static void initStartPVAServer(initHookState state)
+void initStartPVAServer(initHookState state)
 {
     pvd::Lock G(the_server_lock);
     if(state==initHookAfterIocRunning && !the_server) {
@@ -115,13 +115,15 @@ static void initStartPVAServer(initHookState state)
 }
 
 
-static void registerStartPVAServer(void)
+void registerStartPVAServer(void)
 {
     epics::iocshRegister<const char*, &startPVAServer>("startPVAServer", "provider names");
     epics::iocshRegister<&statusPVAServer>("statusPVAServer");
     epics::iocshRegister<&stopPVAServer>("stopPVAServer");
     initHookRegister(&initStartPVAServer);
 }
+
+} // namespace
 
 extern "C" {
     epicsExportRegistrar(registerStartPVAServer);
