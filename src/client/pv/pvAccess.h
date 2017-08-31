@@ -835,6 +835,8 @@ public:
     POINTER_DEFINITIONS(Channel);
     typedef ChannelRequester requester_type;
 
+    static size_t num_instances;
+
     Channel();
     virtual ~Channel();
 

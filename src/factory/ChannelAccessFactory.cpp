@@ -165,6 +165,7 @@ void providerRegInit(void*)
     registerRefCounter("ServerChannelImpl", &ServerChannelImpl::num_instances);
     registerRefCounter("BlockingTCPTransportCodec", &detail::BlockingTCPTransportCodec::num_instances);
     registerRefCounter("ChannelProvider (ABC)", &ChannelProvider::num_instances);
+    registerRefCounter("Channel (ABC)", &Channel::num_instances);
     registerRefCounter("ChannelRequester (ABC)", &ChannelRequester::num_instances);
     registerRefCounter("ChannelBaseRequester (ABC)", &ChannelBaseRequester::num_instances);
     registerRefCounter("ChannelRequest (ABC)", &ChannelRequest::num_instances);

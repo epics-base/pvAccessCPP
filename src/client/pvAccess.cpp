@@ -14,10 +14,12 @@ namespace pvd = epics::pvData;
 namespace epics {
 namespace pvAccess {
 
+size_t Channel::num_instances;
+
 const char* Channel::ConnectionStateNames[] = { "NEVER_CONNECTED", "CONNECTED", "DISCONNECTED", "DESTROYED" };
 
-Channel::Channel() {}
-Channel::~Channel() {}
+Channel::Channel() {REFTRACE_INCREMENT(num_instances);}
+Channel::~Channel() {REFTRACE_DECREMENT(num_instances);}
 
 std::string Channel::getRequesterName()
 {
