@@ -152,7 +152,10 @@ struct epicsShareClass ChannelBaseRequester : virtual public epics::pvData::Requ
 {
     POINTER_DEFINITIONS(ChannelBaseRequester);
 
-    virtual ~ChannelBaseRequester() {}
+    static size_t num_instances;
+
+    ChannelBaseRequester();
+    virtual ~ChannelBaseRequester();
 
     /** Notification when underlying Channel becomes DISCONNECTED or DESTORYED
      *
@@ -167,6 +170,10 @@ struct epicsShareClass ChannelBaseRequester : virtual public epics::pvData::Requ
      * @param destroy true for final disconnect.
      */
     virtual void channelDisconnect(bool destroy) {}
+
+private:
+    ChannelBaseRequester(const ChannelBaseRequester&);
+    ChannelBaseRequester& operator=(const ChannelBaseRequester&);
 };
 
 /**
@@ -176,7 +183,10 @@ class epicsShareClass ChannelRequest : public virtual Destroyable, public Lockab
 public:
     POINTER_DEFINITIONS(ChannelRequest);
 
-    virtual ~ChannelRequest() {}
+    static size_t num_instances;
+
+    ChannelRequest();
+    virtual ~ChannelRequest();
 
     /**
      * Get a channel instance this request belongs to.
@@ -199,6 +209,10 @@ public:
      * When last request will be completed (regardless of completion status) the remote and local instance will be destroyed.
      */
     virtual void lastRequest() = 0;
+
+private:
+    ChannelRequest(const ChannelRequest&);
+    ChannelRequest& operator=(const ChannelRequest&);
 };
 
 /**
@@ -1051,7 +1065,10 @@ public:
  *
  * See ChannelProvider::createChannel()
  */
-class epicsShareClass ChannelRequester : public virtual Requester {
+class epicsShareClass ChannelRequester : public virtual Requester
+{
+    ChannelRequester(const ChannelRequester&);
+    ChannelRequester& operator=(const ChannelRequester&);
 public:
     POINTER_DEFINITIONS(ChannelRequester);
     typedef Channel operation_type;
@@ -1117,7 +1134,10 @@ enum FlushStrategy {
  *
  * Uniquely configurable (via ChannelProviderFactory::newInstance(Configuration*)
  */
-class epicsShareClass ChannelProvider : public Destroyable, private epics::pvData::NoDefaultMethods {
+class epicsShareClass ChannelProvider : public Destroyable, private epics::pvData::NoDefaultMethods
+{
+    ChannelProvider(const ChannelProvider&);
+    ChannelProvider& operator=(const ChannelProvider&);
 public:
     POINTER_DEFINITIONS(ChannelProvider);
 
@@ -1134,7 +1154,10 @@ public:
     /** OPI priority. */
     static const short PRIORITY_OPI = PRIORITY_MIN;
 
-    virtual ~ChannelProvider() {}
+    static size_t num_instances;
+
+    ChannelProvider();
+    virtual ~ChannelProvider();
 
     /**
      * Get the provider name.

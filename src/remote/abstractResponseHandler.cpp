@@ -9,6 +9,7 @@
 #include <osiSock.h>
 
 #include <pv/byteBuffer.h>
+#include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
 #include <pv/remote.h>
@@ -21,6 +22,18 @@ using namespace epics::pvData;
 
 namespace epics {
 namespace pvAccess {
+
+size_t ResponseHandler::num_instances;
+
+ResponseHandler::ResponseHandler()
+{
+    REFTRACE_INCREMENT(num_instances);
+}
+
+ResponseHandler::~ResponseHandler()
+{
+    REFTRACE_DECREMENT(num_instances);
+}
 
 void AbstractResponseHandler::handleResponse(osiSockAddr* responseFrom,
         Transport::shared_pointer const & transport, int8 version, int8 command,

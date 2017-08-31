@@ -120,6 +120,41 @@ ChannelArray::shared_pointer Channel::createChannelArray(
     return ret;
 }
 
+size_t ChannelProvider::num_instances;
+
+ChannelProvider::ChannelProvider()
+{
+    REFTRACE_INCREMENT(num_instances);
+}
+
+ChannelProvider::~ChannelProvider()
+{
+    REFTRACE_DECREMENT(num_instances);
+}
+
+size_t ChannelBaseRequester::num_instances;
+
+ChannelBaseRequester::ChannelBaseRequester()
+{
+    REFTRACE_INCREMENT(num_instances);
+}
+
+ChannelBaseRequester::~ChannelBaseRequester()
+{
+    REFTRACE_DECREMENT(num_instances);
+}
+
+size_t ChannelRequest::num_instances;
+
+ChannelRequest::ChannelRequest()
+{
+    REFTRACE_INCREMENT(num_instances);
+}
+
+ChannelRequest::~ChannelRequest()
+{
+    REFTRACE_DECREMENT(num_instances);
+}
 
 size_t ChannelRequester::num_instances;
 

@@ -20,6 +20,7 @@
 #include <pv/factory.h>
 #include "pv/codec.h"
 #include <pv/serverContextImpl.h>
+#include <pv/serverChannelImpl.h>
 
 using namespace epics::pvData;
 using std::string;
@@ -160,9 +161,14 @@ epicsThreadOnceId providerRegOnce = EPICS_THREAD_ONCE_INIT;
 void providerRegInit(void*)
 {
     providerRegGbl = new providerRegGbl_t;
-    registerRefCounter("ServerContext (PVA)", &ServerContextImpl::num_instances);
+    registerRefCounter("ServerContextImpl", &ServerContextImpl::num_instances);
+    registerRefCounter("ServerChannelImpl", &ServerChannelImpl::num_instances);
     registerRefCounter("BlockingTCPTransportCodec", &detail::BlockingTCPTransportCodec::num_instances);
-    registerRefCounter("ChannelRequester", &ChannelRequester::num_instances);
+    registerRefCounter("ChannelProvider (ABC)", &ChannelProvider::num_instances);
+    registerRefCounter("ChannelRequester (ABC)", &ChannelRequester::num_instances);
+    registerRefCounter("ChannelBaseRequester (ABC)", &ChannelBaseRequester::num_instances);
+    registerRefCounter("ChannelRequest (ABC)", &ChannelRequest::num_instances);
+    registerRefCounter("ResponseHandler (ABC)", &ResponseHandler::num_instances);
 }
 
 } // namespace

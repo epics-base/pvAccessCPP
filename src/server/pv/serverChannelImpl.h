@@ -20,6 +20,8 @@ class ServerChannelImpl : public ServerChannel
 public:
     POINTER_DEFINITIONS(ServerChannelImpl);
 
+    static size_t num_instances;
+
     /**
      * Create server channel for given process variable.
      * @param channel local channel.
