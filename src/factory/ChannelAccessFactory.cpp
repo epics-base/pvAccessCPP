@@ -13,6 +13,7 @@
 #include <pv/noDefaultMethods.h>
 #include <pv/pvData.h>
 #include <pv/reftrack.h>
+#include <pv/timer.h>
 
 #define epicsExportSharedSymbols
 #include <pv/pvAccess.h>
