@@ -619,10 +619,11 @@ void initializeUDPTransports(bool serverFlag,
         if (!autoAddressList)
             autoBCastAddr.clear();
 
-        auto_ptr<InetAddrVector> list(getSocketAddressList(addressList, sendPort, &autoBCastAddr));
-        if (list.get() && list->size())
+        InetAddrVector list;
+        getSocketAddressList(list, addressList, sendPort, &autoBCastAddr);
+        if (!list.empty())
         {
-            sendTransport->setSendAddresses(*list);
+            sendTransport->setSendAddresses(list);
         }
         /*
         else
@@ -667,9 +668,8 @@ void initializeUDPTransports(bool serverFlag,
     //
     // set ignore address list
     //
-    auto_ptr<InetAddrVector> ignoreAddressVector;
-    if (!ignoreAddressList.empty())
-        ignoreAddressVector.reset(getSocketAddressList(ignoreAddressList, 0, 0));
+    InetAddrVector ignoreAddressVector;
+    getSocketAddressList(ignoreAddressVector, ignoreAddressList, 0, 0);
 
     //
     // Setup UDP trasport(s) (per interface)
@@ -700,8 +700,7 @@ void initializeUDPTransports(bool serverFlag,
                 continue;
             listenLocalAddress = *transport->getRemoteAddress();
 
-            if (ignoreAddressVector.get() && ignoreAddressVector->size())
-                transport->setIgnoredAddresses(*ignoreAddressVector);
+            transport->setIgnoredAddresses(ignoreAddressVector);
 
             tappedNIF.push_back(listenLocalAddress);
 
@@ -740,8 +739,7 @@ void initializeUDPTransports(bool serverFlag,
                     */
                     // NOTE: search responses all always send from sendTransport
 
-                    if (ignoreAddressVector.get() && ignoreAddressVector->size())
-                        transport2->setIgnoredAddresses(*ignoreAddressVector);
+                    transport2->setIgnoredAddresses(ignoreAddressVector);
 
                     tappedNIF.push_back(bcastAddress);
                 }

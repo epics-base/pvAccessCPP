@@ -3,6 +3,7 @@
 TOP = ..
 include $(TOP)/configure/CONFIG
 
+USR_CPPFLAGS += -I$(TOP)/src/utils
 USR_CPPFLAGS += -I$(TOP)/src/server
 USR_CPPFLAGS += -I$(TOP)/src/remote
 USR_CPPFLAGS += -I$(TOP)/src/remoteClient

@@ -3129,13 +3129,8 @@ public:
         short priority,
         std::string const & addressesStr) OVERRIDE FINAL
     {
-        auto_ptr<InetAddrVector> addresses;
-        if (!addressesStr.empty())
-        {
-            addresses.reset(getSocketAddressList(addressesStr, PVA_SERVER_PORT));
-            if (addresses->empty())
-                addresses.reset();
-        }
+        InetAddrVector addresses;
+        getSocketAddressList(addresses, addressesStr, PVA_SERVER_PORT);
 
         Channel::shared_pointer channel = createChannelInternal(channelName, channelRequester, priority, addresses);
         if (channel.get())
@@ -3200,7 +3195,7 @@ public:
         /**
          * List of fixed addresses, if <code<0</code> name resolution will be used.
          */
-        auto_ptr<InetAddrVector> m_addresses;
+        InetAddrVector m_addresses;
 
         /**
          * @brief m_addressIndex Index of currently used address (rollover pointer in a list).
@@ -3279,7 +3274,7 @@ private:
             string const & name,
             ChannelRequester::shared_pointer const & requester,
             short priority,
-            auto_ptr<InetAddrVector>& addresses) :
+            const InetAddrVector& addresses) :
             m_context(context),
             m_channelID(channelID),
             m_name(name),
@@ -3315,7 +3310,7 @@ private:
                 string const & name,
                 ChannelRequester::shared_pointer requester,
                 short priority,
-                auto_ptr<InetAddrVector>& addresses)
+                const InetAddrVector& addresses)
         {
             std::tr1::shared_ptr<InternalChannelImpl> internal(
                 new InternalChannelImpl(context, channelID, name, requester, priority, addresses)),
@@ -3680,14 +3675,14 @@ public:
 
             m_allowCreation = true;
 
-            if (!m_addresses.get())
+            if (m_addresses.empty())
             {
                 m_context->getChannelSearchManager()->registerSearchInstance(internal_from_this(), penalize);
             }
-            else if (!m_addresses->empty())
+            else
             {
                 m_context->getTimer()->scheduleAfterDelay(internal_from_this(),
-                        (m_addressIndex / m_addresses->size())*STATIC_SEARCH_BASE_DELAY_SEC);
+                        (m_addressIndex / m_addresses.size())*STATIC_SEARCH_BASE_DELAY_SEC);
             }
         }
 
@@ -3695,14 +3690,15 @@ public:
             // TODO cancellaction?!
             // TODO not in this timer thread !!!
             // TODO boost when a server (from address list) is started!!! IP vs address !!!
-            int ix = m_addressIndex % m_addresses->size();
+            int ix = m_addressIndex % m_addresses.size();
             m_addressIndex++;
-            if (m_addressIndex >= static_cast<int>(m_addresses->size()*(STATIC_SEARCH_MAX_MULTIPLIER+1)))
-                m_addressIndex = m_addresses->size()*STATIC_SEARCH_MAX_MULTIPLIER;
+            if (m_addressIndex >= static_cast<int>(m_addresses.size()*(STATIC_SEARCH_MAX_MULTIPLIER+1)))
+                m_addressIndex = m_addresses.size()*STATIC_SEARCH_MAX_MULTIPLIER;
 
             // NOTE: calls channelConnectFailed() on failure
             static ServerGUID guid = { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
-            searchResponse(guid, PVA_PROTOCOL_REVISION, &((*m_addresses)[ix]));
+            // m_addresses[ix] is modified by the following
+            searchResponse(guid, PVA_PROTOCOL_REVISION, &m_addresses[ix]);
         }
 
         virtual void timerStopped() OVERRIDE FINAL {
@@ -4521,7 +4517,7 @@ private:
     // TODO no minor version with the addresses
     // TODO what if there is an channel with the same name, but on different host!
     ChannelImpl::shared_pointer createChannelInternal(std::string const & name, ChannelRequester::shared_pointer const & requester, short priority,
-            auto_ptr<InetAddrVector>& addresses) OVERRIDE FINAL { // TODO addresses
+            const InetAddrVector& addresses) OVERRIDE FINAL { // TODO addresses
 
         checkState();
         checkChannelName(name);

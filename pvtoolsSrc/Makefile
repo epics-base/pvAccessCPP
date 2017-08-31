@@ -2,6 +2,7 @@ TOP=..
 
 include $(TOP)/configure/CONFIG
 
+USR_CPPFLAGS += -I$(TOP)/src/utils
 USR_CPPFLAGS += -I$(TOP)/src/remote
 
 PROD_HOST += pvget

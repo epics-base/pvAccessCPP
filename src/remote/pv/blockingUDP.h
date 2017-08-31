@@ -303,12 +303,11 @@ public:
         return &_bindAddress;
     }
 
-    bool isBroadcastAddress(const osiSockAddr* address, InetAddrVector *broadcastAddresses)
+    bool isBroadcastAddress(const osiSockAddr* address, const InetAddrVector& broadcastAddresses)
     {
-        if (broadcastAddresses)
-            for (size_t i = 0; i < broadcastAddresses->size(); i++)
-                if ((*broadcastAddresses)[i].ia.sin_addr.s_addr == address->ia.sin_addr.s_addr)
-                    return true;
+        for (size_t i = 0; i < broadcastAddresses.size(); i++)
+            if (broadcastAddresses[i].ia.sin_addr.s_addr == address->ia.sin_addr.s_addr)
+                return true;
         return false;
     }
 
@@ -318,9 +317,10 @@ public:
      */
     void setSendAddresses(const InetAddrVector& addresses) {
         std::vector<bool> isuni(addresses.size(), false);
-        std::auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(_channel, 0));
+        InetAddrVector broadcastAddresses;
+        getBroadcastAddresses(broadcastAddresses, _channel, 0);
         for(size_t i=0, N=addresses.size(); i<N; i++)
-            isuni[i] = !isBroadcastAddress(&addresses[i], broadcastAddresses.get())
+            isuni[i] = !isBroadcastAddress(&addresses[i], broadcastAddresses)
                     && !isMulticastAddress(&addresses[i]);
         _sendAddresses = addresses;
         _isSendAddressUnicast.swap(isuni);

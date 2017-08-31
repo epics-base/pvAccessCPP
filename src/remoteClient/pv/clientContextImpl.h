@@ -103,7 +103,7 @@ public:
     virtual ChannelImpl::shared_pointer createChannelInternal(std::string const &name,
                                                               ChannelRequester::shared_pointer const & requester,
                                                               short priority,
-                                                              std::auto_ptr<InetAddrVector>& addresses) = 0;
+                                                              const InetAddrVector& addresses) = 0;
 
     virtual ResponseRequest::shared_pointer getResponseRequest(pvAccessID ioid) = 0;
     virtual pvAccessID registerResponseRequest(ResponseRequest::shared_pointer const & request) = 0;
