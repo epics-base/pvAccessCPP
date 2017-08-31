@@ -253,26 +253,15 @@ public:
      * Set ignore list.
      * @param address list of ignored addresses.
      */
-    void setIgnoredAddresses(InetAddrVector* addresses) {
-        if (addresses)
-        {
-            if (!_ignoredAddresses) _ignoredAddresses = new InetAddrVector;
-            *_ignoredAddresses = *addresses;
-        }
-        else
-        {
-            if (_ignoredAddresses) {
-                delete _ignoredAddresses;
-                _ignoredAddresses = 0;
-            }
-        }
+    void setIgnoredAddresses(const InetAddrVector& addresses) {
+        _ignoredAddresses = addresses;
     }
 
     /**
      * Get list of ignored addresses.
      * @return ignored addresses.
      */
-    InetAddrVector* getIgnoredAddresses() const {
+    const InetAddrVector& getIgnoredAddresses() const {
         return _ignoredAddresses;
     }
 
@@ -280,26 +269,15 @@ public:
      * Set tapped NIF list.
      * @param NIF address list to tap.
      */
-    void setTappedNIF(InetAddrVector* addresses) {
-        if (addresses)
-        {
-            if (!_tappedNIF) _tappedNIF = new InetAddrVector;
-            *_tappedNIF = *addresses;
-        }
-        else
-        {
-            if (_tappedNIF) {
-                delete _tappedNIF;
-                _tappedNIF = 0;
-            }
-        }
+    void setTappedNIF(const InetAddrVector& addresses) {
+        _tappedNIF = addresses;
     }
 
     /**
      * Get list of tapped NIF addresses.
      * @return tapped NIF addresses.
      */
-    InetAddrVector* getTappedNIF() const {
+    const InetAddrVector& getTappedNIF() const {
         return _tappedNIF;
     }
 
@@ -313,7 +291,7 @@ public:
      * Get list of send addresses.
      * @return send addresses.
      */
-    InetAddrVector* getSendAddresses() {
+    const InetAddrVector& getSendAddresses() {
         return _sendAddresses;
     }
 
@@ -338,26 +316,14 @@ public:
      * Set list of send addresses.
      * @param addresses list of send addresses, non-<code>null</code>.
      */
-    void setSendAddresses(InetAddrVector* addresses) {
-        if (addresses)
-        {
-            if (!_sendAddresses) _sendAddresses = new InetAddrVector;
-            *_sendAddresses = *addresses;
-
-            std::auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(_channel, 0));
-            _isSendAddressUnicast.resize(_sendAddresses->size());
-            for (std::size_t i = 0; i < _sendAddresses->size(); i++)
-                _isSendAddressUnicast[i] =
-                    !isBroadcastAddress(&(*_sendAddresses)[i], broadcastAddresses.get()) &&
-                    !isMulticastAddress(&(*_sendAddresses)[i]);
-        }
-        else
-        {
-            if (_sendAddresses) {
-                delete _sendAddresses;
-                _sendAddresses = 0;
-            }
-        }
+    void setSendAddresses(const InetAddrVector& addresses) {
+        std::vector<bool> isuni(addresses.size(), false);
+        std::auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(_channel, 0));
+        for(size_t i=0, N=addresses.size(); i<N; i++)
+            isuni[i] = !isBroadcastAddress(&addresses[i], broadcastAddresses.get())
+                    && !isMulticastAddress(&addresses[i]);
+        _sendAddresses = addresses;
+        _isSendAddressUnicast.swap(isuni);
     }
 
     void join(const osiSockAddr & mcastAddr, const osiSockAddr & nifAddr);
@@ -408,19 +374,19 @@ private:
     /**
      * Send addresses.
      */
-    InetAddrVector* _sendAddresses;
+    InetAddrVector _sendAddresses;
 
     std::vector<bool> _isSendAddressUnicast;
 
     /**
      * Ignore addresses.
      */
-    InetAddrVector* _ignoredAddresses;
+    InetAddrVector _ignoredAddresses;
 
     /**
      * Tapped NIF addresses.
      */
-    InetAddrVector* _tappedNIF;
+    InetAddrVector _tappedNIF;
 
     /**
      * Send address.

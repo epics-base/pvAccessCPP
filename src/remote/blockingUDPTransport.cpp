@@ -88,12 +88,6 @@ BlockingUDPTransport::~BlockingUDPTransport() {
     PVACCESS_REFCOUNT_MONITOR_DESTRUCT(blockingUDPTransport);
 
     close(true); // close the socket and stop the thread.
-
-    // TODO use auto_ptr class members
-
-    if (_sendAddresses) delete _sendAddresses;
-    if (_ignoredAddresses) delete _ignoredAddresses;
-    if (_tappedNIF) delete _tappedNIF;
 }
 
 void BlockingUDPTransport::start() {
@@ -233,15 +227,12 @@ void BlockingUDPTransport::run() {
             if(likely(bytesRead>0)) {
                 // successfully got datagram
                 bool ignore = false;
-                if(likely(_ignoredAddresses!=0))
+                for(size_t i = 0; i <_ignoredAddresses.size(); i++)
                 {
-                    for(size_t i = 0; i <_ignoredAddresses->size(); i++)
+                    if(_ignoredAddresses[i].ia.sin_addr.s_addr==fromAddress.ia.sin_addr.s_addr)
                     {
-                        if((*_ignoredAddresses)[i].ia.sin_addr.s_addr==fromAddress.ia.sin_addr.s_addr)
-                        {
-                            ignore = true;
-                            break;
-                        }
+                        ignore = true;
+                        break;
                     }
                 }
 
@@ -352,7 +343,7 @@ bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & trans
         if (unlikely(command == CMD_ORIGIN_TAG))
         {
             // enabled?
-            if (_tappedNIF)
+            if (!_tappedNIF.empty())
             {
                 // 128-bit IPv6 address
                 osiSockAddr originNIFAddress;
@@ -370,9 +361,9 @@ bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & trans
                     if (originNIFAddress.ia.sin_addr.s_addr != htonl(INADDR_ANY))
                     {
                         bool accept = false;
-                        for(size_t i = 0; i < _tappedNIF->size(); i++)
+                        for(size_t i = 0; i < _tappedNIF.size(); i++)
                         {
-                            if((*_tappedNIF)[i].ia.sin_addr.s_addr == originNIFAddress.ia.sin_addr.s_addr)
+                            if(_tappedNIF[i].ia.sin_addr.s_addr == originNIFAddress.ia.sin_addr.s_addr)
                             {
                                 accept = true;
                                 break;
@@ -452,12 +443,12 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, const osiSockAddr& address) 
 }
 
 bool BlockingUDPTransport::send(ByteBuffer* buffer, InetAddressType target) {
-    if(!_sendAddresses) return false;
+    if(_sendAddresses.empty()) return false;
 
     buffer->flip();
 
     bool allOK = true;
-    for(size_t i = 0; i<_sendAddresses->size(); i++) {
+    for(size_t i = 0; i<_sendAddresses.size(); i++) {
 
         // filter
         if (target != inetAddressType_all)
@@ -468,18 +459,18 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, InetAddressType target) {
         if (IS_LOGGABLE(logLevelDebug))
         {
             LOG(logLevelDebug, "Sending %d bytes to %s.",
-                buffer->getRemaining(), inetAddressToString((*_sendAddresses)[i]).c_str());
+                buffer->getRemaining(), inetAddressToString(_sendAddresses[i]).c_str());
         }
 
         int retval = sendto(_channel, buffer->getArray(),
-                            buffer->getLimit(), 0, &((*_sendAddresses)[i].sa),
+                            buffer->getLimit(), 0, &(_sendAddresses[i].sa),
                             sizeof(sockaddr));
         if(unlikely(retval<0))
         {
             char errStr[64];
             epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
             LOG(logLevelDebug, "Socket sendto to %s error: %s.",
-                inetAddressToString((*_sendAddresses)[i]).c_str(), errStr);
+                inetAddressToString(_sendAddresses[i]).c_str(), errStr);
             allOK = false;
         }
     }
@@ -631,7 +622,7 @@ void initializeUDPTransports(bool serverFlag,
         auto_ptr<InetAddrVector> list(getSocketAddressList(addressList, sendPort, &autoBCastAddr));
         if (list.get() && list->size())
         {
-            sendTransport->setSendAddresses(list.get());
+            sendTransport->setSendAddresses(*list);
         }
         /*
         else
@@ -645,7 +636,7 @@ void initializeUDPTransports(bool serverFlag,
     else if (autoAddressList)
     {
         // set default (auto) address list
-        sendTransport->setSendAddresses(&autoBCastAddr);
+        sendTransport->setSendAddresses(autoBCastAddr);
     }
 
 
@@ -653,14 +644,14 @@ void initializeUDPTransports(bool serverFlag,
     udpTransports.push_back(sendTransport);
 
     // debug output of broadcast addresses
-    InetAddrVector* blist = sendTransport->getSendAddresses();
-    if (!blist || !blist->size())
+    const InetAddrVector& blist = sendTransport->getSendAddresses();
+    if (blist.empty())
         LOG(logLevelError,
             "No broadcast addresses found or specified - empty address list!");
     else
-        for (size_t i = 0; i < blist->size(); i++)
+        for (size_t i = 0; i < blist.size(); i++)
             LOG(logLevelDebug,
-                "Broadcast address #%d: %s.", i, inetAddressToString((*blist)[i]).c_str());
+                "Broadcast address #%d: %s.", i, inetAddressToString(blist[i]).c_str());
 
 
     // TODO configurable local NIF, address
@@ -710,7 +701,7 @@ void initializeUDPTransports(bool serverFlag,
             listenLocalAddress = *transport->getRemoteAddress();
 
             if (ignoreAddressVector.get() && ignoreAddressVector->size())
-                transport->setIgnoredAddresses(ignoreAddressVector.get());
+                transport->setIgnoredAddresses(*ignoreAddressVector);
 
             tappedNIF.push_back(listenLocalAddress);
 
@@ -750,7 +741,7 @@ void initializeUDPTransports(bool serverFlag,
                     // NOTE: search responses all always send from sendTransport
 
                     if (ignoreAddressVector.get() && ignoreAddressVector->size())
-                        transport2->setIgnoredAddresses(ignoreAddressVector.get());
+                        transport2->setIgnoredAddresses(*ignoreAddressVector);
 
                     tappedNIF.push_back(bcastAddress);
                 }
@@ -805,7 +796,7 @@ void initializeUDPTransports(bool serverFlag,
         if (!localMulticastTransport)
             throw std::runtime_error("Failed to bind UDP socket.");
 
-        localMulticastTransport->setTappedNIF(&tappedNIF);
+        localMulticastTransport->setTappedNIF(tappedNIF);
         localMulticastTransport->join(group, loAddr);
         localMulticastTransport->start();
         udpTransports.push_back(localMulticastTransport);
