@@ -3,7 +3,6 @@
 SRC_DIRS += $(PVACCESS_SRC)/utils
 
 INC += pv/hexDump.h
-INC += pv/inetAddressUtil.h
 INC += pv/logger.h
 INC += pv/introspectionRegistry.h
 INC += pv/namedLockPattern.h
