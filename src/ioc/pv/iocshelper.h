@@ -53,9 +53,9 @@ template<int N>
 struct iocshFuncInfo{
     iocshFuncDef def;
     std::string name;
-    iocshArg *argarr[N];
-    iocshArg args[N];
-    std::string argnames[N];
+    iocshArg *argarr[N+1];
+    iocshArg args[N+1];
+    std::string argnames[N+1];
     iocshFuncInfo(const std::string& n) :name(n) {
         def.name = name.c_str();
         def.nargs = N;
