@@ -12,6 +12,7 @@
 #include <pv/pvAccess.h>
 #include <pv/reftrack.h>
 
+#define epicsExportSharedSymbols
 #include "caChannel.h"
 #include <pv/caStatus.h>
 

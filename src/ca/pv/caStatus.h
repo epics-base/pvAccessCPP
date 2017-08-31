@@ -8,6 +8,7 @@
 #define CASTATUS_H
 
 #include <string>
+#include <shareLib.h>
 
 namespace epics {
 namespace pvAccess {
@@ -18,8 +19,8 @@ enum AlarmStatus {
     dbStatus,confStatus,undefinedStatus,clientStatus
 };
 
-extern std::string dbrStatus2alarmMessage[];
-extern int dbrStatus2alarmStatus[];
+epicsShareExtern std::string dbrStatus2alarmMessage[];
+epicsShareExtern int dbrStatus2alarmStatus[];
 
 }
 }
