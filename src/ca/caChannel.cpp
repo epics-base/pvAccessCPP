@@ -16,6 +16,8 @@
 
 using namespace epics::pvData;
 using std::string;
+using std::cout;
+using std::endl;
 
 namespace epics {
 namespace pvAccess {
@@ -36,7 +38,8 @@ CAChannel::shared_pointer CAChannel::create(CAChannelProvider::shared_pointer co
         short priority,
         ChannelRequester::shared_pointer const & channelRequester)
 {
-    CAChannel::shared_pointer thisPtr(new CAChannel(channelName, channelProvider, channelRequester));
+    CAChannelPtr thisPtr(
+        new CAChannel(channelName, channelProvider, channelRequester));
     thisPtr->activate(priority);
     return thisPtr;
 }
@@ -247,7 +250,8 @@ void CAChannel::connected()
             "value,timeStamp,alarm,display" :
             "value,timeStamp,alarm,display,valueAlarm,control" :
             "value,timeStamp,alarm";
-        Structure::const_shared_pointer structure = createStructure(shared_from_this(), allProperties);
+        Structure::const_shared_pointer structure = createStructure(
+            shared_from_this(), allProperties);
 
         // TODO we need only Structure here
         this->structure = structure;
@@ -300,7 +304,11 @@ void CAChannel::connected()
          monitorQ.front()->channelCreated(Status::Ok,shared_from_this());
          monitorQ.pop();
     }
-    EXCEPTION_GUARD(channelRequester->channelStateChange(shared_from_this(), Channel::CONNECTED));
+    ChannelRequester::shared_pointer req(channelRequester.lock());
+    if(req) {
+        EXCEPTION_GUARD(req->channelStateChange(
+             shared_from_this(), Channel::CONNECTED));
+    }
 }
 
 void CAChannel::disconnected()
@@ -341,7 +349,11 @@ void CAChannel::disconnected()
          monitorQ.front()->channelDisconnect(false);
          monitorQ.pop();
     }
-    EXCEPTION_GUARD(channelRequester->channelStateChange(shared_from_this(), Channel::DISCONNECTED));
+    ChannelRequester::shared_pointer req(channelRequester.lock());
+    if(req) {
+        EXCEPTION_GUARD(req->channelStateChange(
+             shared_from_this(), Channel::DISCONNECTED));
+    }
 }
 
 CAChannel::CAChannel(std::string const & _channelName,
@@ -356,10 +368,15 @@ CAChannel::CAChannel(std::string const & _channelName,
     destroyed(false)
 {
     PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(caChannel);
+    if(CAClientFactory::getDebug()>0) {
+          cout<< "CAChannel::CAChannel " << channelName << endl;
+    }
 }
 
 void CAChannel::activate(short priority)
 {
+    ChannelRequester::shared_pointer req(channelRequester.lock());
+    if(!req) return;
     int result = ca_create_channel(channelName.c_str(),
                                    ca_connection_handler,
                                    this,
@@ -367,15 +384,10 @@ void CAChannel::activate(short priority)
                                    &channelID);
     if (result == ECA_NORMAL)
     {
-        channelProvider->registerChannel(shared_from_this());
-
-        // TODO be sure that ca_connection_handler is not called before this call
-        channelRequester->channelCreated(Status::Ok, shared_from_this());
-    }
-    else
-    {
+       req->channelCreated(Status::Ok, shared_from_this());
+    } else {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
-        channelRequester->channelCreated(errorStatus, shared_from_this());
+        req->channelCreated(errorStatus, shared_from_this());
     }
 }
 
@@ -418,6 +430,9 @@ void CAChannel::addChannelMonitor(const CAChannelMonitorPtr & monitor)
 
 CAChannel::~CAChannel()
 {
+    if(CAClientFactory::getDebug()>0) {
+        cout << "CAChannel::~CAChannel() " << channelName << endl;
+    }
     PVACCESS_REFCOUNT_MONITOR_DESTRUCT(caChannel);
     {
         Lock lock(requestsMutex);
@@ -425,9 +440,6 @@ CAChannel::~CAChannel()
             return;
         destroyed = true;
     }
-
-    channelProvider->unregisterChannel(this);
-
     /* Clear CA Channel */
     threadAttach();
     ca_clear_channel(channelID);
@@ -459,7 +471,7 @@ Structure::const_shared_pointer CAChannel::getStructure()
 
 std::tr1::shared_ptr<ChannelProvider> CAChannel::getProvider()
 {
-    return channelProvider;
+    return channelProvider.lock();
 }
 
 
@@ -491,7 +503,7 @@ std::string CAChannel::getChannelName()
 
 std::tr1::shared_ptr<ChannelRequester> CAChannel::getChannelRequester()
 {
-    return channelRequester;
+    return channelRequester.lock();
 }
 
 void CAChannel::getField(GetFieldRequester::shared_pointer const & requester,
@@ -586,24 +598,17 @@ void CAChannel::printInfo(std::ostream& out)
 
 void CAChannel::destroy()
 {
-    Lock lock(requestsMutex);
-    {
-        if (destroyed) return;
-        destroyed = true;
-    }
-
-    channelProvider->unregisterChannel(shared_from_this());
-
-    /* Clear CA Channel */
-    threadAttach();
-    ca_clear_channel(channelID);
+std::cerr << "Why is CAChannel::destroy() being called\n";
 }
 
 /* ---------------------------------------------------------- */
 
 void CAChannel::threadAttach()
 {
-    std::tr1::static_pointer_cast<CAChannelProvider>(channelProvider)->threadAttach();
+    CAChannelProviderPtr provider(channelProvider.lock());
+    if(provider) {
+        std::tr1::static_pointer_cast<CAChannelProvider>(provider)->threadAttach();
+    }
 }
 
 
@@ -657,35 +662,51 @@ CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & channel,
     pvRequest(pvRequest),  
     lastRequestFlag(false)
 {
-    
+    if(CAClientFactory::getDebug()>0) {
+        cout << "CAChannelGet::CAChannelGet() " << channel->getChannelName() << endl;
+    }
 }
 
 CAChannelGet::~CAChannelGet()
 {
+    if(CAClientFactory::getDebug()>0) {
+        string channelName("unknown");
+        CAChannelPtr caChannel(channel.lock());
+        if(caChannel) channelName = caChannel->getChannelName();
+        std::cout << "CAChannelGet::~CAChannelGet() " << channelName << endl;
+    }
 }
 
 void CAChannelGet::activate()
 {
+    CAChannelPtr caChannel(channel.lock());
+    if(!caChannel) return;
+    ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
+    if(!getRequester) return;
     if(pvStructure) throw  std::runtime_error("CAChannelGet::activate() was called twice");
-    getType = getDBRType(pvRequest, channel->getNativeType());
-    pvStructure = createPVStructure(channel, getType, pvRequest);
+    getType = getDBRType(pvRequest, caChannel->getNativeType());
+    pvStructure = createPVStructure(caChannel, getType, pvRequest);
     bitSet = BitSetPtr(new BitSet(pvStructure->getStructure()->getNumberFields()));
     bitSet->set(0);
-    channel->addChannelGet(shared_from_this());
-    EXCEPTION_GUARD(channelGetRequester->channelGetConnect(Status::Ok, shared_from_this(),
+    caChannel->addChannelGet(shared_from_this());
+    EXCEPTION_GUARD(getRequester->channelGetConnect(Status::Ok, shared_from_this(),
                     pvStructure->getStructure()));
 }
 
 void CAChannelGet::channelCreated(const Status& status,Channel::shared_pointer const & cl)
 {
-    chtype newType = getDBRType(pvRequest, channel->getNativeType());
+    CAChannelPtr caChannel(channel.lock());
+    if(!caChannel) return;
+    ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
+    if(!getRequester) return;
+    chtype newType = getDBRType(pvRequest, caChannel->getNativeType());
     if(newType!=getType) {
-        getType = getDBRType(pvRequest, channel->getNativeType());
-        pvStructure = createPVStructure(channel, getType, pvRequest);
+        getType = getDBRType(pvRequest, caChannel->getNativeType());
+        pvStructure = createPVStructure(caChannel, getType, pvRequest);
         bitSet = BitSetPtr(new BitSet(pvStructure->getStructure()->getNumberFields()));
         bitSet->set(0);
     }
-    EXCEPTION_GUARD(channelGetRequester->channelGetConnect(Status::Ok, shared_from_this(),
+    EXCEPTION_GUARD(getRequester->channelGetConnect(Status::Ok, shared_from_this(),
                     pvStructure->getStructure()));
 }
 
@@ -693,14 +714,18 @@ void CAChannelGet::channelStateChange(
      Channel::shared_pointer const & channel,
      Channel::ConnectionState connectionState)
 {
+    ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
+    if(!getRequester) return;
     if(connectionState==Channel::DISCONNECTED || connectionState==Channel::DESTROYED) {
-        EXCEPTION_GUARD(channelGetRequester->channelDisconnect(connectionState==Channel::DESTROYED);)
+        EXCEPTION_GUARD(getRequester->channelDisconnect(connectionState==Channel::DESTROYED);)
     }
 }
 
 void CAChannelGet::channelDisconnect(bool destroy)
 {
-    EXCEPTION_GUARD(channelGetRequester->channelDisconnect(destroy);)
+    ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
+    if(!getRequester) return;
+    EXCEPTION_GUARD(getRequester->channelDisconnect(destroy);)
 }
 
 /* --------------- epics::pvAccess::ChannelGet --------------- */
@@ -1067,6 +1092,8 @@ static copyDBRtoPVStructure copyFuncTable[] =
 
 void CAChannelGet::getDone(struct event_handler_args &args)
 {
+    ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
+    if(!getRequester) return;
     if (args.status == ECA_NORMAL)
     {
         copyDBRtoPVStructure copyFunc = copyFuncTable[getType];
@@ -1078,19 +1105,23 @@ void CAChannelGet::getDone(struct event_handler_args &args)
             std::cout << "no copy func implemented" << std::endl;
         }
 
-        EXCEPTION_GUARD(channelGetRequester->getDone(Status::Ok, shared_from_this(), pvStructure, bitSet));
+        EXCEPTION_GUARD(getRequester->getDone(Status::Ok, shared_from_this(), pvStructure, bitSet));
     }
     else
     {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(args.status)));
-        EXCEPTION_GUARD(channelGetRequester->getDone(errorStatus, shared_from_this(), PVStructure::shared_pointer(), BitSet::shared_pointer()));
+        EXCEPTION_GUARD(getRequester->getDone(errorStatus, shared_from_this(), PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
 }
 
 
 void CAChannelGet::get()
 {
-    channel->threadAttach();
+    CAChannelPtr caChannel(channel.lock());
+    if(!caChannel) return;
+    ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
+    if(!getRequester) return;
+    caChannel->threadAttach();
 
     /*
     From R3.14.12 onwards ca_array_get_callback() replies will give a CA client application the current number
@@ -1102,7 +1133,7 @@ void CAChannelGet::get()
 
     int result = ca_array_get_callback(getType,
          0,
-         channel->getChannelID(), ca_get_handler, this);
+         caChannel->getChannelID(), ca_get_handler, this);
     if (result == ECA_NORMAL)
     {
         ca_flush_io();
@@ -1110,7 +1141,7 @@ void CAChannelGet::get()
     else
     {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
-        EXCEPTION_GUARD(channelGetRequester->getDone(errorStatus, shared_from_this(), PVStructure::shared_pointer(), BitSet::shared_pointer()));
+        EXCEPTION_GUARD(getRequester->getDone(errorStatus, shared_from_this(), PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
 
     if (lastRequestFlag)
@@ -1122,7 +1153,7 @@ void CAChannelGet::get()
 
 Channel::shared_pointer CAChannelGet::getChannel()
 {
-    return channel;
+    return channel.lock();
 }
 
 void CAChannelGet::cancel()
@@ -1156,6 +1187,12 @@ CAChannelPutPtr CAChannelPut::create(
 
 CAChannelPut::~CAChannelPut()
 {
+    if(CAClientFactory::getDebug()>0) {
+        string channelName("unknown");
+        CAChannelPtr caChannel(channel.lock());
+        if(caChannel) channelName = caChannel->getChannelName();
+        std::cout << "CAChannelPut::~CAChannelPut() " << channelName << endl;
+    }
 }
 
 
@@ -1169,14 +1206,20 @@ CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & channel,
     block(false),   
     lastRequestFlag(false)
 {
-    
+    if(CAClientFactory::getDebug()>0) {
+        cout << "CAChannelPut::CAChannePut() " << channel->getChannelName() << endl;
+    }
 }
 
 void CAChannelPut::activate()
 {
+    CAChannelPtr caChannel(channel.lock());
+    if(!caChannel) return;
+    ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
+    if(!putRequester) return;
     if(pvStructure) throw  std::runtime_error("CAChannelPut::activate() was called twice");
-    getType = getDBRType(pvRequest,channel->getNativeType());
-    pvStructure = createPVStructure(channel, getType, pvRequest);
+    getType = getDBRType(pvRequest,caChannel->getNativeType());
+    pvStructure = createPVStructure(caChannel, getType, pvRequest);
     bitSet = BitSetPtr(new BitSet(pvStructure->getStructure()->getNumberFields()));
     PVStringPtr pvString = pvRequest->getSubField<PVString>("record._options.block");
     if(pvString) {
@@ -1184,18 +1227,22 @@ void CAChannelPut::activate()
         if(val.compare("true")==0) block = true;
     }
     bitSet->set(pvStructure->getSubFieldT("value")->getFieldOffset());
-    channel->addChannelPut(shared_from_this());
-    EXCEPTION_GUARD(channelPutRequester->channelPutConnect(Status::Ok, shared_from_this(),
+    caChannel->addChannelPut(shared_from_this());
+    EXCEPTION_GUARD(putRequester->channelPutConnect(Status::Ok, shared_from_this(),
                     pvStructure->getStructure()));
 }
 
 
 void CAChannelPut::channelCreated(const Status& status,Channel::shared_pointer const & c)
 {
-    chtype newType = getDBRType(pvRequest, channel->getNativeType());
+    CAChannelPtr caChannel(channel.lock());
+    if(!caChannel) return;
+    ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
+    if(!putRequester) return;
+    chtype newType = getDBRType(pvRequest, caChannel->getNativeType());
     if(newType!=getType) {
-        getType = getDBRType(pvRequest, channel->getNativeType());
-        pvStructure = createPVStructure(channel, getType, pvRequest);
+        getType = getDBRType(pvRequest, caChannel->getNativeType());
+        pvStructure = createPVStructure(caChannel, getType, pvRequest);
         bitSet = BitSetPtr(new BitSet(pvStructure->getStructure()->getNumberFields()));
         PVStringPtr pvString = pvRequest->getSubField<PVString>("record._options.block");
         if(pvString) {
@@ -1204,7 +1251,7 @@ void CAChannelPut::channelCreated(const Status& status,Channel::shared_pointer c
         }
         bitSet->set(0);
     }
-    EXCEPTION_GUARD(channelPutRequester->channelPutConnect(Status::Ok, shared_from_this(),
+    EXCEPTION_GUARD(putRequester->channelPutConnect(Status::Ok, shared_from_this(),
                     pvStructure->getStructure()));
 }
 
@@ -1212,14 +1259,18 @@ void CAChannelPut::channelStateChange(
      Channel::shared_pointer const & channel,
      Channel::ConnectionState connectionState)
 {
+    ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
+    if(!putRequester) return;
     if(connectionState==Channel::DISCONNECTED || connectionState==Channel::DESTROYED) {
-        EXCEPTION_GUARD(channelPutRequester->channelDisconnect(connectionState==Channel::DESTROYED);)
+        EXCEPTION_GUARD(putRequester->channelDisconnect(connectionState==Channel::DESTROYED);)
     }
 }
 
 void CAChannelPut::channelDisconnect(bool destroy)
 {
-    EXCEPTION_GUARD(channelPutRequester->channelDisconnect(destroy);)
+    ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
+    if(!putRequester) return;
+    EXCEPTION_GUARD(putRequester->channelDisconnect(destroy);)
 }
 
 /* --------------- epics::pvAccess::ChannelPut --------------- */
@@ -1423,43 +1474,49 @@ static doPut doPutFuncTable[] =
 
 void CAChannelPut::putDone(struct event_handler_args &args)
 {
+    ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
+    if(!putRequester) return;
     if (args.status == ECA_NORMAL)
     {
-        EXCEPTION_GUARD(channelPutRequester->putDone(Status::Ok, shared_from_this()));
+        EXCEPTION_GUARD(putRequester->putDone(Status::Ok, shared_from_this()));
     }
     else
     {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(args.status)));
-        EXCEPTION_GUARD(channelPutRequester->putDone(errorStatus, shared_from_this()));
+        EXCEPTION_GUARD(putRequester->putDone(errorStatus, shared_from_this()));
     }
 }
 
 void CAChannelPut::put(PVStructure::shared_pointer const & pvPutStructure,
                        BitSet::shared_pointer const & /*putBitSet*/)
 {
-    channel->threadAttach();
-    doPut putFunc = doPutFuncTable[channel->getNativeType()];
+    CAChannelPtr caChannel(channel.lock());
+    if(!caChannel) return;
+    ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
+    if(!putRequester) return;
+    caChannel->threadAttach();
+    doPut putFunc = doPutFuncTable[caChannel->getNativeType()];
     if (putFunc)
     {
         // TODO now we always put all 
         
         if(block) {
-            int result = putFunc(channel, this, pvPutStructure);
+            int result = putFunc(caChannel, this, pvPutStructure);
             if (result != ECA_NORMAL)
             {
                 Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
-                EXCEPTION_GUARD(channelPutRequester->putDone(errorStatus, shared_from_this()));
+                EXCEPTION_GUARD(putRequester->putDone(errorStatus, shared_from_this()));
             }
         } else {
-            int result = putFunc(channel,NULL, pvPutStructure);
+            int result = putFunc(caChannel,NULL, pvPutStructure);
             if (result == ECA_NORMAL)
             {
-                EXCEPTION_GUARD(channelPutRequester->putDone(Status::Ok, shared_from_this()));
+                EXCEPTION_GUARD(putRequester->putDone(Status::Ok, shared_from_this()));
             }
             else
             {
                 Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
-                EXCEPTION_GUARD(channelPutRequester->putDone(errorStatus, shared_from_this()));
+                EXCEPTION_GUARD(putRequester->putDone(errorStatus, shared_from_this()));
             }
         }
     }
@@ -1477,6 +1534,8 @@ void CAChannelPut::put(PVStructure::shared_pointer const & pvPutStructure,
 
 void CAChannelPut::getDone(struct event_handler_args &args)
 {
+    ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
+    if(!putRequester) return;
     if (args.status == ECA_NORMAL)
     {
         copyDBRtoPVStructure copyFunc = copyFuncTable[getType];
@@ -1488,12 +1547,12 @@ void CAChannelPut::getDone(struct event_handler_args &args)
             std::cout << "no copy func implemented" << std::endl;
         }
 
-        EXCEPTION_GUARD(channelPutRequester->getDone(Status::Ok, shared_from_this(), pvStructure, bitSet));
+        EXCEPTION_GUARD(putRequester->getDone(Status::Ok, shared_from_this(), pvStructure, bitSet));
     }
     else
     {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(args.status)));
-        EXCEPTION_GUARD(channelPutRequester->getDone(errorStatus, shared_from_this(),
+        EXCEPTION_GUARD(putRequester->getDone(errorStatus, shared_from_this(),
                         PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
 
@@ -1505,10 +1564,14 @@ void CAChannelPut::getDone(struct event_handler_args &args)
 
 void CAChannelPut::get()
 {
-    channel->threadAttach();
+    CAChannelPtr caChannel(channel.lock());
+    if(!caChannel) return;
+    ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
+    if(!putRequester) return;
+    caChannel->threadAttach();
 
-    int result = ca_array_get_callback(getType, channel->getElementCount(),
-                                       channel->getChannelID(), ca_put_get_handler, this);
+    int result = ca_array_get_callback(getType, caChannel->getElementCount(),
+                                       caChannel->getChannelID(), ca_put_get_handler, this);
     if (result == ECA_NORMAL)
     {
         ca_flush_io();
@@ -1516,7 +1579,7 @@ void CAChannelPut::get()
     else
     {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
-        EXCEPTION_GUARD(channelPutRequester->getDone(errorStatus, shared_from_this(),
+        EXCEPTION_GUARD(putRequester->getDone(errorStatus, shared_from_this(),
                         PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
 }
@@ -1527,7 +1590,7 @@ void CAChannelPut::get()
 
 Channel::shared_pointer CAChannelPut::getChannel()
 {
-    return channel;
+    return channel.lock();
 }
 
 void CAChannelPut::cancel()
@@ -1646,8 +1709,16 @@ CAChannelMonitorPtr CAChannelMonitor::create(
 
 CAChannelMonitor::~CAChannelMonitor()
 {
+    if(CAClientFactory::getDebug()>0) {
+        string channelName("unknown");
+        CAChannelPtr caChannel(channel.lock());
+        if(caChannel) channelName = caChannel->getChannelName();
+        std::cout << "CAChannelMonitor::~CAChannelMonitor() " << channelName << endl;
+    }
+    CAChannelPtr caChannel(channel.lock());
+    if(!caChannel) return;
     if(!isStarted) return;
-    channel->threadAttach();
+    caChannel->threadAttach();
     ca_clear_subscription(eventID);
 }
 
@@ -1661,13 +1732,20 @@ CAChannelMonitor::CAChannelMonitor(
     pvRequest(pvRequest),
     isStarted(false)
 {
+    if(CAClientFactory::getDebug()>0) {
+        cout << "CAChannelMonitor::CAChannelMonitor() " << channel->getChannelName() << endl;
+    }
 }
 
 void CAChannelMonitor::activate()
 {
+    CAChannelPtr caChannel(channel.lock());
+    if(!caChannel) return;
+    MonitorRequester::shared_pointer requester(monitorRequester.lock());
+    if(!requester) return;
     if(pvStructure) throw  std::runtime_error("CAChannelMonitor::activate() was called twice");
-    getType = getDBRType(pvRequest, channel->getNativeType());
-    pvStructure = createPVStructure(channel, getType, pvRequest);
+    getType = getDBRType(pvRequest, caChannel->getNativeType());
+    pvStructure = createPVStructure(caChannel, getType, pvRequest);
     int32 queueSize = 2;
     PVStructurePtr pvOptions = pvRequest->getSubField<PVStructure>("record._options");
     if (pvOptions) {
@@ -1681,17 +1759,21 @@ void CAChannelMonitor::activate()
         }
     }
     monitorQueue = CACMonitorQueuePtr(new CACMonitorQueue(queueSize));
-    channel->addChannelMonitor(shared_from_this());
-    EXCEPTION_GUARD(monitorRequester->monitorConnect(Status::Ok, shared_from_this(),
+    caChannel->addChannelMonitor(shared_from_this());
+    EXCEPTION_GUARD(requester->monitorConnect(Status::Ok, shared_from_this(),
                     pvStructure->getStructure()));
 }
 
 void CAChannelMonitor::channelCreated(const Status& status,Channel::shared_pointer const & c)
 {
-    chtype newType = getDBRType(pvRequest, channel->getNativeType());
+    CAChannelPtr caChannel(channel.lock());
+    if(!caChannel) return;
+    MonitorRequester::shared_pointer requester(monitorRequester.lock());
+    if(!requester) return;
+    chtype newType = getDBRType(pvRequest, caChannel->getNativeType());
     if(newType!=getType) {
-        getType = getDBRType(pvRequest, channel->getNativeType());
-        pvStructure = createPVStructure(channel, getType, pvRequest);
+        getType = getDBRType(pvRequest, caChannel->getNativeType());
+        pvStructure = createPVStructure(caChannel, getType, pvRequest);
         int32 queueSize = 2;
         PVStructurePtr pvOptions = pvRequest->getSubField<PVStructure>("record._options");
         if (pvOptions) {
@@ -1706,7 +1788,7 @@ void CAChannelMonitor::channelCreated(const Status& status,Channel::shared_point
         }
         monitorQueue = CACMonitorQueuePtr(new CACMonitorQueue(queueSize));
     }
-    EXCEPTION_GUARD(monitorRequester->monitorConnect(Status::Ok, shared_from_this(),
+    EXCEPTION_GUARD(requester->monitorConnect(Status::Ok, shared_from_this(),
                     pvStructure->getStructure()));
 }
 
@@ -1714,19 +1796,25 @@ void CAChannelMonitor::channelStateChange(
      Channel::shared_pointer const & channel,
      Channel::ConnectionState connectionState)
 {
+    MonitorRequester::shared_pointer requester(monitorRequester.lock());
+    if(!requester) return;
     if(connectionState==Channel::DISCONNECTED || connectionState==Channel::DESTROYED) {
-        EXCEPTION_GUARD(monitorRequester->channelDisconnect(connectionState==Channel::DESTROYED);)
+        EXCEPTION_GUARD(requester->channelDisconnect(connectionState==Channel::DESTROYED);)
     }
 }
 
 
 void CAChannelMonitor::channelDisconnect(bool destroy)
 {
-    EXCEPTION_GUARD(monitorRequester->channelDisconnect(destroy);)
+    MonitorRequester::shared_pointer requester(monitorRequester.lock());
+    if(!requester) return;
+    EXCEPTION_GUARD(requester->channelDisconnect(destroy);)
 }
 
 void CAChannelMonitor::subscriptionEvent(struct event_handler_args &args)
 {
+    MonitorRequester::shared_pointer requester(monitorRequester.lock());
+    if(!requester) return;
     if (args.status == ECA_NORMAL)
     {
         copyDBRtoPVStructure copyFunc = copyFuncTable[getType];
@@ -1734,7 +1822,7 @@ void CAChannelMonitor::subscriptionEvent(struct event_handler_args &args)
             copyFunc(args.dbr, args.count, pvStructure);
             monitorQueue->event(pvStructure);
             // call monitorRequester even if queue is full
-            monitorRequester->monitorEvent(shared_from_this());
+            requester->monitorEvent(shared_from_this());
         } else {
             std::cout << "no copy func implemented" << std::endl;
             
@@ -1743,18 +1831,20 @@ void CAChannelMonitor::subscriptionEvent(struct event_handler_args &args)
     else
     {
         //Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(args.status)));
-        //EXCEPTION_GUARD(channelMonitorRequester->MonitorDone(errorStatus));
+        //EXCEPTION_GUARD(requester->MonitorDone(errorStatus));
     }
 }
 
 epics::pvData::Status CAChannelMonitor::start()
 {
     Status status = Status::Ok;
+    CAChannelPtr caChannel(channel.lock());
+    if(!caChannel) return status;
     if(isStarted) {
         status = Status(Status::STATUSTYPE_WARNING,"already started");
         return status;
     }
-    channel->threadAttach();
+    caChannel->threadAttach();
 
     /*
     From R3.14.12 onwards when using the IOC server and the C++ client libraries monitor callbacks
@@ -1770,7 +1860,7 @@ epics::pvData::Status CAChannelMonitor::start()
     // TODO DBE_PROPERTY support
     int result = ca_create_subscription(getType,
          0,
-         channel->getChannelID(), DBE_VALUE,
+         caChannel->getChannelID(), DBE_VALUE,
          ca_subscription_handler, this,
          &eventID);
     if (result == ECA_NORMAL)
@@ -1787,8 +1877,11 @@ epics::pvData::Status CAChannelMonitor::start()
 
 epics::pvData::Status CAChannelMonitor::stop()
 {
+    Status status = Status::Ok;
+    CAChannelPtr caChannel(channel.lock());
+    if(!caChannel) return status;
     if(!isStarted) return Status(Status::STATUSTYPE_WARNING,"already stopped");
-    channel->threadAttach();
+    caChannel->threadAttach();
 
     int result = ca_clear_subscription(eventID);
 
@@ -1828,8 +1921,10 @@ void CAChannelMonitor::cancel()
 
 void CAChannelMonitor::destroy()
 {
+    CAChannelPtr caChannel(channel.lock());
+    if(!caChannel) return;
     if(!isStarted) return;
-    channel->threadAttach();
+    caChannel->threadAttach();
     ca_clear_subscription(eventID);
     isStarted = false;
 }

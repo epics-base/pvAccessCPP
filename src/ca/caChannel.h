@@ -109,8 +109,8 @@ private:
 
     std::string channelName;
 
-    CAChannelProvider::shared_pointer channelProvider;
-    ChannelRequester::shared_pointer channelRequester;
+    CAChannelProviderWPtr channelProvider;
+    ChannelRequester::weak_pointer channelRequester;
 
     chid channelID;
     chtype channelType;
@@ -176,8 +176,8 @@ private:
                  ChannelGetRequester::shared_pointer const & _channelGetRequester,
                  epics::pvData::PVStructure::shared_pointer const & pvRequest);
     
-    CAChannel::shared_pointer channel;
-    ChannelGetRequester::shared_pointer channelGetRequester;
+    CAChannelWPtr channel;
+    ChannelGetRequester::weak_pointer channelGetRequester;
     epics::pvData::PVStructure::shared_pointer pvRequest;
     bool lastRequestFlag;
 
@@ -243,8 +243,8 @@ private:
                  ChannelPutRequester::shared_pointer const & _channelPutRequester,
                  epics::pvData::PVStructure::shared_pointer const & pvRequest);
    
-    CAChannel::shared_pointer channel;
-    ChannelPutRequester::shared_pointer channelPutRequester;
+    CAChannelWPtr channel;
+    ChannelPutRequester::weak_pointer channelPutRequester;
     epics::pvData::PVStructure::shared_pointer pvRequest;
     bool block;
     bool lastRequestFlag;
@@ -304,8 +304,8 @@ private:
                      epics::pvData::PVStructure::shared_pointer const & pvRequest);
     
 
-    CAChannelPtr channel;
-    MonitorRequester::shared_pointer monitorRequester;
+    CAChannelWPtr channel;
+    MonitorRequester::weak_pointer monitorRequester;
     epics::pvData::PVStructure::shared_pointer pvRequest;
     bool isStarted;
     chtype getType;

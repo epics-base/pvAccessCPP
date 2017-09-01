@@ -30,15 +30,20 @@ using namespace epics::pvData;
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
 
-CAChannelProvider::CAChannelProvider() : current_context(0), destroyed(false)
+
+int CAClientFactory::debug = 1;
+CAChannelProvider::CAChannelProvider() 
+    : current_context(0)
 {
     initialize();
 }
 
 CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
     : current_context(0)
-    , destroyed(false)
 {
+    if(CAClientFactory::getDebug()>0) {
+          std::cout<< "CAChannelProvider::CAChannelProvider\n";
+    }
     // Ignoring Configuration as CA only allows config via. environment,
     // and we don't want to change this here.
     initialize();
@@ -46,8 +51,7 @@ CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
 
 CAChannelProvider::~CAChannelProvider()
 {
-    // call destroy() to destroy CA context
-    destroy();
+    if(CAClientFactory::getDebug()>0) std::cout << "CAChannelProvider::~CAChannelProvider()\n";
 }
 
 std::string CAChannelProvider::getProviderName()
@@ -121,47 +125,12 @@ void CAChannelProvider::poll()
 
 void CAChannelProvider::destroy()
 {
-    Lock lock(channelsMutex);
-    {
-        if (destroyed)
-            return;
-        destroyed = true;
-
-        while (!channels.empty())
-        {
-            Channel::shared_pointer channel = channels.begin()->second.lock();
-            if (channel)
-                channel->destroy();
-            else
-                channels.erase(channels.begin());
-        }
-    }
-
-    /* Destroy CA Context */
-    ca_context_destroy();
+    std::cerr << "CAChannelProvider::destroy() should not be called\n";
 }
 
 void CAChannelProvider::threadAttach()
 {
     ca_attach_context(current_context);
-}
-
-void CAChannelProvider::registerChannel(Channel::shared_pointer const & channel)
-{
-    Lock lock(channelsMutex);
-    channels[channel.get()] = Channel::weak_pointer(channel);
-}
-
-void CAChannelProvider::unregisterChannel(Channel::shared_pointer const & channel)
-{
-    Lock lock(channelsMutex);
-    channels.erase(channel.get());
-}
-
-void CAChannelProvider::unregisterChannel(Channel* pchannel)
-{
-    Lock lock(channelsMutex);
-    channels.erase(pchannel);
 }
 
 void CAChannelProvider::initialize()
@@ -182,6 +151,7 @@ void CAChannelProvider::initialize()
 static
 void ca_factory_cleanup(void*)
 {
+std::cout << "ca_factory_cleanup\n";
     try {
         ChannelProviderRegistry::clients()->remove("ca");
         ca_context_destroy(); 
@@ -204,17 +174,6 @@ void CAClientFactory::stop()
     // unregister now done with exit hook
 }
 
-// perhaps useful during dynamic loading?
-extern "C" {
-void registerClientProvider_ca()
-{
-    try {
-        CAClientFactory::start();
-    } catch(std::exception& e){
-        std::cerr<<"Error loading ca: "<<e.what()<<"\n";
-    }
-}
-} // extern "C"
 
 }
 }
