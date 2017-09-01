@@ -13,6 +13,7 @@
 #include <pv/logger.h>
 #include <pv/configuration.h>
 #include <pv/pvAccess.h>
+#include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
 #include <pv/caProvider.h>
@@ -30,17 +31,19 @@ using namespace epics::pvData;
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
 
-
-int CAClientFactory::debug = 1;
+size_t CAChannelProvider::num_instances;
+int CAClientFactory::debug = 0;
 CAChannelProvider::CAChannelProvider() 
     : current_context(0)
 {
+    REFTRACE_INCREMENT(num_instances);
     initialize();
 }
 
 CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
     : current_context(0)
 {
+    REFTRACE_INCREMENT(num_instances);
     if(CAClientFactory::getDebug()>0) {
           std::cout<< "CAChannelProvider::CAChannelProvider\n";
     }
@@ -52,6 +55,7 @@ CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
 CAChannelProvider::~CAChannelProvider()
 {
     if(CAClientFactory::getDebug()>0) std::cout << "CAChannelProvider::~CAChannelProvider()\n";
+    REFTRACE_DECREMENT(num_instances);
 }
 
 std::string CAChannelProvider::getProviderName()
@@ -151,7 +155,9 @@ void CAChannelProvider::initialize()
 static
 void ca_factory_cleanup(void*)
 {
-std::cout << "ca_factory_cleanup\n";
+    if(CAClientFactory::getDebug()>0) {
+          std::cout << "ca_factory_cleanup\n";
+    }
     try {
         ChannelProviderRegistry::clients()->remove("ca");
         ca_context_destroy(); 
@@ -164,6 +170,11 @@ void CAClientFactory::start()
 {
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
+    registerRefCounter("CAChannelProvider", &CAChannelProvider::num_instances);
+    registerRefCounter("CAChannel", &CAChannel::num_instances);
+    registerRefCounter("CAChannelGet", &CAChannelGet::num_instances);
+    registerRefCounter("CAChannelPut", &CAChannelPut::num_instances);
+    registerRefCounter("CAChannelMonitor", &CAChannelMonitor::num_instances);
 
     if(ChannelProviderRegistry::clients()->add<CAChannelProvider>("ca", false))
         epicsAtExit(&ca_factory_cleanup, NULL);

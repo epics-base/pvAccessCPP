@@ -46,6 +46,8 @@ class CAChannel :
 public:
     POINTER_DEFINITIONS(CAChannel);
 
+    static size_t num_instances;
+
     static shared_pointer create(CAChannelProvider::shared_pointer const & channelProvider,
                                  std::string const & channelName,
                                  short priority,
@@ -139,6 +141,8 @@ class CAChannelGet :
 public:
     POINTER_DEFINITIONS(CAChannelGet);
 
+    static size_t num_instances;
+
     static CAChannelGet::shared_pointer create(CAChannel::shared_pointer const & channel,
             ChannelGetRequester::shared_pointer const & channelGetRequester,
             epics::pvData::PVStructure::shared_pointer const & pvRequest);
@@ -197,6 +201,8 @@ class CAChannelPut :
 
 public:
     POINTER_DEFINITIONS(CAChannelPut);
+
+    static size_t num_instances;
 
     static CAChannelPut::shared_pointer create(CAChannel::shared_pointer const & channel,
             ChannelPutRequester::shared_pointer const & channelPutRequester,
@@ -266,6 +272,8 @@ class CAChannelMonitor :
 
 public:
     POINTER_DEFINITIONS(CAChannelMonitor);
+
+    static size_t num_instances;
 
     static CAChannelMonitor::shared_pointer create(CAChannel::shared_pointer const & channel,
             MonitorRequester::shared_pointer const & monitorRequester,

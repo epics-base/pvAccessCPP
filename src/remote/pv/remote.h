@@ -374,15 +374,9 @@ public:
                    epics::pvData::ByteBuffer* payloadBuffer) = 0;
 };
 
-/**
- * Base (abstract) channel access response handler.
- */
 class AbstractResponseHandler : public ResponseHandler {
 public:
-    /**
-     * @param description
-     */
-    AbstractResponseHandler(Context* context, std::string description) :
+    AbstractResponseHandler(Context* context, const std::string& description) :
         _description(description),
         _debugLevel(context->getConfiguration()->getPropertyAsInteger(PVACCESS_DEBUG, 0)) {
     }

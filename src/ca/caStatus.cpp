@@ -4,13 +4,14 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#define epicsExportSharedSymbols
 #include <pv/caStatus.h>
 
 namespace epics {
 namespace pvAccess {
 namespace ca {
 
-std::string dbrStatus2alarmMessage[] = {
+epicsShareDef std::string dbrStatus2alarmMessage[] = {
     "NO_ALARM",     // 0 ..
     "READ_ALARM",
     "WRITE_ALARM",
@@ -35,7 +36,7 @@ std::string dbrStatus2alarmMessage[] = {
     "WRITE_ACCESS_ALARM"        // .. 21
 };
 
-int dbrStatus2alarmStatus[] = {
+epicsShareDef int dbrStatus2alarmStatus[] = {
     noStatus,           //"NO_ALARM"
     driverStatus,       //"READ_ALARM",
     driverStatus,       //"WRITE_ALARM",

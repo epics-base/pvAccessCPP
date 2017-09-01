@@ -1056,7 +1056,10 @@ public:
     POINTER_DEFINITIONS(ChannelRequester);
     typedef Channel operation_type;
 
-    virtual ~ChannelRequester() {}
+    static size_t num_instances;
+
+    ChannelRequester();
+    virtual ~ChannelRequester();
 
     /**
      * The request made with ChannelProvider::createChannel() is satisfied.

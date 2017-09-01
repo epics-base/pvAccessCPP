@@ -27,6 +27,7 @@
 #include <pv/lock.h>
 #include <pv/timer.h>
 #include <pv/event.h>
+#include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
 #include <pv/blockingTCP.h>
@@ -1001,6 +1002,8 @@ bool AbstractCodec::directDeserialize(ByteBuffer *existingBuffer, char* deserial
 
 BlockingTCPTransportCodec::~BlockingTCPTransportCodec()
 {
+    REFTRACE_DECREMENT(num_instances);
+
     waitJoin();
 }
 
@@ -1138,6 +1141,7 @@ void BlockingTCPTransportCodec::sendBufferFull(int tries) {
 //
 //
 
+size_t BlockingTCPTransportCodec::num_instances;
 
 BlockingTCPTransportCodec::BlockingTCPTransportCodec(bool serverFlag, const Context::shared_pointer &context,
     SOCKET channel, const ResponseHandler::shared_pointer &responseHandler,
@@ -1163,6 +1167,8 @@ BlockingTCPTransportCodec::BlockingTCPTransportCodec(bool serverFlag, const Cont
     ,_remoteTransportRevision(0), _priority(priority)
     ,_verified(false)
 {
+    REFTRACE_INCREMENT(num_instances);
+
     _isOpen.getAndSet(true);
 
     // get remote address

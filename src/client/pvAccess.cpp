@@ -4,6 +4,8 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#include <pv/reftrack.h>
+
 #define epicsExportSharedSymbols
 #include <pv/pvAccess.h>
 
@@ -116,6 +118,19 @@ ChannelArray::shared_pointer Channel::createChannelArray(
     requester->channelArrayConnect(pvd::Status(pvd::Status::STATUSTYPE_FATAL, "Not Implemented"),
                                    ret, pvd::Array::const_shared_pointer());
     return ret;
+}
+
+
+size_t ChannelRequester::num_instances;
+
+ChannelRequester::ChannelRequester()
+{
+    REFTRACE_INCREMENT(num_instances);
+}
+
+ChannelRequester::~ChannelRequester()
+{
+    REFTRACE_DECREMENT(num_instances);
 }
 
 std::string DefaultChannelRequester::getRequesterName() { return "DefaultChannelRequester"; }

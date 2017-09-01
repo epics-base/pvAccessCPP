@@ -10,7 +10,9 @@
 #include <pv/standardField.h>
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
+#include <pv/reftrack.h>
 
+#define epicsExportSharedSymbols
 #include "caChannel.h"
 #include <pv/caStatus.h>
 
@@ -356,6 +358,8 @@ void CAChannel::disconnected()
     }
 }
 
+size_t CAChannel::num_instances;
+
 CAChannel::CAChannel(std::string const & _channelName,
                      CAChannelProvider::shared_pointer const & _channelProvider,
                      ChannelRequester::shared_pointer const & _channelRequester) :
@@ -367,6 +371,7 @@ CAChannel::CAChannel(std::string const & _channelName,
     elementCount(0),
     destroyed(false)
 {
+    REFTRACE_INCREMENT(num_instances);
     PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(caChannel);
     if(CAClientFactory::getDebug()>0) {
           cout<< "CAChannel::CAChannel " << channelName << endl;
@@ -443,6 +448,7 @@ CAChannel::~CAChannel()
     /* Clear CA Channel */
     threadAttach();
     ca_clear_channel(channelID);
+    REFTRACE_DECREMENT(num_instances);
 }
 
 
@@ -652,6 +658,7 @@ static chtype getDBRType(PVStructure::shared_pointer const & pvRequest, chtype n
     return nativeType;
 }
 
+size_t CAChannelGet::num_instances;
 
 CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & channel,
     ChannelGetRequester::shared_pointer const & channelGetRequester,
@@ -662,6 +669,7 @@ CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & channel,
     pvRequest(pvRequest),  
     lastRequestFlag(false)
 {
+    REFTRACE_INCREMENT(num_instances);
     if(CAClientFactory::getDebug()>0) {
         cout << "CAChannelGet::CAChannelGet() " << channel->getChannelName() << endl;
     }
@@ -675,6 +683,7 @@ CAChannelGet::~CAChannelGet()
         if(caChannel) channelName = caChannel->getChannelName();
         std::cout << "CAChannelGet::~CAChannelGet() " << channelName << endl;
     }
+    REFTRACE_DECREMENT(num_instances);
 }
 
 void CAChannelGet::activate()
@@ -1193,8 +1202,10 @@ CAChannelPut::~CAChannelPut()
         if(caChannel) channelName = caChannel->getChannelName();
         std::cout << "CAChannelPut::~CAChannelPut() " << channelName << endl;
     }
+    REFTRACE_DECREMENT(num_instances);
 }
 
+size_t CAChannelPut::num_instances;
 
 CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & channel,
     ChannelPutRequester::shared_pointer const & channelPutRequester,
@@ -1206,6 +1217,7 @@ CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & channel,
     block(false),   
     lastRequestFlag(false)
 {
+    REFTRACE_INCREMENT(num_instances);
     if(CAClientFactory::getDebug()>0) {
         cout << "CAChannelPut::CAChannePut() " << channel->getChannelName() << endl;
     }
@@ -1720,7 +1732,10 @@ CAChannelMonitor::~CAChannelMonitor()
     if(!isStarted) return;
     caChannel->threadAttach();
     ca_clear_subscription(eventID);
+    REFTRACE_DECREMENT(num_instances);
 }
+
+size_t CAChannelMonitor::num_instances;
 
 CAChannelMonitor::CAChannelMonitor(
     CAChannel::shared_pointer const & channel,
@@ -1732,6 +1747,7 @@ CAChannelMonitor::CAChannelMonitor(
     pvRequest(pvRequest),
     isStarted(false)
 {
+    REFTRACE_INCREMENT(num_instances);
     if(CAClientFactory::getDebug()>0) {
         cout << "CAChannelMonitor::CAChannelMonitor() " << channel->getChannelName() << endl;
     }

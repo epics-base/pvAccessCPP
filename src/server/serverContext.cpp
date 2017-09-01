@@ -9,6 +9,7 @@
 #include <pv/lock.h>
 #include <pv/timer.h>
 #include <pv/thread.h>
+#include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
 #include <pv/responseHandlers.h>
@@ -27,6 +28,8 @@ namespace pvAccess {
 const Version ServerContextImpl::VERSION("pvAccess Server", "cpp",
         EPICS_PVA_MAJOR_VERSION, EPICS_PVA_MINOR_VERSION, EPICS_PVA_MAINTENANCE_VERSION, EPICS_PVA_DEVELOPMENT_FLAG);
 
+size_t ServerContextImpl::num_instances;
+
 ServerContextImpl::ServerContextImpl():
     _beaconAddressList(),
     _ignoreAddressList(),
@@ -43,6 +46,8 @@ ServerContextImpl::ServerContextImpl():
     _beaconServerStatusProvider(),
     _startTime()
 {
+    REFTRACE_INCREMENT(num_instances);
+
     epicsTimeGetCurrent(&_startTime);
 
     // TODO maybe there is a better place for this (when there will be some factory)
@@ -63,6 +68,7 @@ ServerContextImpl::~ServerContextImpl()
     {
         std::cerr<<"Error in: ServerContextImpl::dispose: "<<e.what()<<"\n";
     }
+    REFTRACE_DECREMENT(num_instances);
 }
 
 const ServerGUID& ServerContextImpl::getGUID()

@@ -18,9 +18,11 @@
 #include <epicsEvent.h>
 #include <epicsMutex.h>
 #include <epicsGuard.h>
+#include <epicsGetopt.h>
 
 #include <pv/configuration.h>
 #include <pv/caProvider.h>
+#include <pv/reftrack.h>
 #include <pv/thread.h>
 #include <pva/client.h>
 
@@ -184,44 +186,39 @@ struct MonTracker : public pvac::ClientChannel::MonitorCallback,
 
 int main(int argc, char *argv[]) {
     try {
+        epics::RefMonitor refmon;
         double waitTime = -1.0;
         std::string providerName("pva"),
                     requestStr("field()");
         typedef std::vector<std::string> pvs_t;
         pvs_t pvs;
 
-        for(int i=1; i<argc; i++) {
-            if(argv[i][0]=='-') {
-                if(strcmp(argv[i], "-P")==0 || strcmp(argv[i], "--provider")==0) {
-                    if(i<argc-1) {
-                        providerName = argv[++i];
-                    } else {
-                        std::cout << "--provider requires value\n";
-                        return 1;
-                    }
-                } else if(strcmp(argv[i], "-T")==0 || strcmp(argv[i], "--timeout")==0) {
-                    if(i<argc-1) {
-                        waitTime = pvd::castUnsafe<double, std::string>(argv[++i]);
-                    } else {
-                        std::cout << "--timeout requires value\n";
-                        return 1;
-                    }
-                } else if(strcmp(argv[i], "-r")==0 || strcmp(argv[i], "--request")==0) {
-                    if(i<argc-1) {
-                        requestStr = argv[++i];
-                    } else {
-                        std::cout << "--request requires value\n";
-                        return 1;
-                    }
-                } else {
-                    std::cout<<"Unknown argument: "<<argv[i]<<"\n";
-                }
-
-            } else {
-                pvs.push_back(argv[i]);
+        int opt;
+        while((opt = getopt(argc, argv, "hRp:w:r:")) != -1) {
+            switch(opt) {
+            case 'R':
+                refmon.start(5.0);
+                break;
+            case 'p':
+                providerName = optarg;
+                break;
+            case 'w':
+                waitTime = pvd::castUnsafe<double, std::string>(optarg);
+                break;
+            case 'r':
+                requestStr = optarg;
+                break;
+            case 'h':
+                std::cout<<"Usage: "<<argv[0]<<" [-p <provider>] [-w <timeout>] [-r <request>] [-R] <pvname> ...\n";
+                return 0;
+            default:
+                std::cerr<<"Unknown argument: "<<opt<<"\n";
+                return -1;
             }
-
         }
+
+        for(int i=optind; i<argc; i++)
+            pvs.push_back(argv[i]);
 
 #ifdef USE_SIGNAL
         signal(SIGINT, sigdone);
@@ -274,6 +271,14 @@ int main(int argc, char *argv[]) {
                     break; // timeout
                 }
             }
+        }
+
+        if(refmon.running()) {
+            refmon.stop();
+            // drop refs to operations, but keep ref to ClientProvider
+            monitors.clear();
+            // show final counts
+            refmon.current();
         }
 
     } catch(std::exception& e){
