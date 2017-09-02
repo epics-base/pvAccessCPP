@@ -42,7 +42,6 @@ void getBroadcastAddresses(InetAddrVector& ret,
     ellInit(&as);
     osiSockAddr serverAddr;
     memset(&serverAddr, 0, sizeof(osiSockAddr));
-    InetAddrVector * v = new InetAddrVector;
     osiSockDiscoverBroadcastAddresses(&as, sock, &serverAddr);
     for(ELLNODE * n = ellFirst(&as); n != NULL; n = ellNext(n))
     {
@@ -54,7 +53,7 @@ void getBroadcastAddresses(InetAddrVector& ret,
     ellFree(&as);
     // add fallback address
     if (!ret.size())
-        addDefaultBroadcastAddress(v, defaultPort);
+        addDefaultBroadcastAddress(&ret, defaultPort);
 }
 
 void encodeAsIPv6Address(ByteBuffer* buffer, const osiSockAddr* address) {
