@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
         }
 
         // build "pvRequest" which asks for all fields
-        pvd::PVStructure::const_shared_pointer pvReq(pvd::createRequest("field()"));
+        pvd::PVStructure::const_shared_pointer pvReq(pvd::createRequest(request));
 
         // explicitly select configuration from process environment
         pva::Configuration::shared_pointer conf(pva::ConfigurationBuilder()
