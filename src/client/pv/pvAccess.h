@@ -925,6 +925,8 @@ public:
      * @post Returned shared_ptr<ChannelProcess> will have unique()==true.
      *
      * @return A non-NULL ChannelProcess unless channelProcessConnect() called with an Error
+     *
+     * @note The default implementation proxies using createChannelPut() and ChannelPut::put() with no data (empty bit set)
      */
     virtual ChannelProcess::shared_pointer createChannelProcess(
         ChannelProcessRequester::shared_pointer const & requester,
@@ -944,6 +946,8 @@ public:
      * @post Returned shared_ptr<ChannelGet> will have unique()==true.
      *
      * @return A non-NULL ChannelGet unless channelGetConnect() called with an Error
+     *
+     * @note The default implementation proxies to createChannelPut()
      */
     virtual ChannelGet::shared_pointer createChannelGet(
         ChannelGetRequester::shared_pointer const & requester,
@@ -963,6 +967,8 @@ public:
      * @post Returned shared_ptr<ChannelPut> will have unique()==true.
      *
      * @return A non-NULL ChannelPut unless channelPutConnect() called with an Error
+     *
+     * @note The default implementation yields a not implemented error
      */
     virtual ChannelPut::shared_pointer createChannelPut(
         ChannelPutRequester::shared_pointer const & requester,
@@ -982,6 +988,8 @@ public:
      * @post Returned shared_ptr<ChannelPutGet> will have unique()==true.
      *
      * @return A non-NULL ChannelPutGet unless channelPutGetConnect() called with an Error
+     *
+     * @note The default implementation yields a not implemented error
      */
     virtual ChannelPutGet::shared_pointer createChannelPutGet(
         ChannelPutGetRequester::shared_pointer const & requester,
@@ -1001,6 +1009,8 @@ public:
      * @post Returned shared_ptr<ChannelRPC> will have unique()==true.
      *
      * @return A non-NULL ChannelRPC unless channelRPCConnect() called with an Error
+     *
+     * @note The default implementation yields a not implemented error
      */
     virtual ChannelRPC::shared_pointer createChannelRPC(
         ChannelRPCRequester::shared_pointer const & requester,
@@ -1020,6 +1030,8 @@ public:
      * @post Returned shared_ptr<Monitor> will have unique()==true.
      *
      * @return A non-NULL Monitor unless monitorConnect() called with an Error
+     *
+     * @note The default implementation yields a not implemented error
      */
     virtual Monitor::shared_pointer createMonitor(
         MonitorRequester::shared_pointer const & requester,
@@ -1044,6 +1056,8 @@ public:
      * @param channelArrayRequester The ChannelArrayRequester
      * @param pvRequest Additional options (e.g. triggering).
      * @return <code>ChannelArray</code> instance.
+     *
+     * @note The default implementation yields a not implemented error
      */
     virtual ChannelArray::shared_pointer createChannelArray(
         ChannelArrayRequester::shared_pointer const & requester,

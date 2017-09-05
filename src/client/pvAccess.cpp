@@ -4,6 +4,8 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#include <epicsMutex.h>
+#include <epicsGuard.h>
 #include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
@@ -54,22 +56,226 @@ AccessRights Channel::getAccessRights(epics::pvData::PVField::shared_pointer con
     return readWrite;
 }
 
+namespace {
+/* allow createChannelProcess() to use a ChannelPut w/o data */
+struct Process2PutProxy : public ChannelProcess
+{
+    struct Req : public ChannelPutRequester
+    {
+        const ChannelProcessRequester::weak_pointer requester; // was passed to createChannelProcess()
+        const std::tr1::weak_ptr<Process2PutProxy> operation; // enclosing Process2PutProxy
+
+        epicsMutex mutex;
+        epics::pvData::PVStructurePtr dummy;
+
+        Req(const ChannelProcessRequester::weak_pointer& req,
+            const std::tr1::weak_ptr<Process2PutProxy>& op)
+            :requester(req), operation(op)
+        {}
+        virtual ~Req() {}
+
+        virtual std::string getRequesterName() OVERRIDE FINAL {
+            ChannelProcessRequester::shared_pointer req(requester.lock());
+            return req ? req->getRequesterName() : "";
+        }
+
+        virtual void channelDisconnect(bool destroy) OVERRIDE FINAL {
+            epics::pvData::PVStructurePtr dummy;
+            {
+                epicsGuard<epicsMutex> G(mutex);
+                this->dummy.swap(dummy);
+            }
+            ChannelProcessRequester::shared_pointer req(requester.lock());
+            if(req)
+                req->channelDisconnect(destroy);
+        }
+
+        virtual void channelPutConnect(
+            const epics::pvData::Status& status,
+            ChannelPut::shared_pointer const & channelPut,
+            epics::pvData::Structure::const_shared_pointer const & structure) OVERRIDE FINAL
+        {
+            epics::pvData::PVStructurePtr dummy(epics::pvData::getPVDataCreate()->createPVStructure(structure));
+            ChannelProcessRequester::shared_pointer req(requester.lock());
+            std::tr1::shared_ptr<Process2PutProxy> op(operation.lock());
+            if(!op) return;
+            {
+                epicsGuard<epicsMutex> G(mutex);
+                this->dummy = dummy;
+                op->op = channelPut;
+            }
+            if(req)
+                req->channelProcessConnect(status, op);
+        }
+
+        virtual void putDone(
+            const epics::pvData::Status& status,
+            ChannelPut::shared_pointer const & channelPut) OVERRIDE FINAL
+        {
+            ChannelProcessRequester::shared_pointer req(requester.lock());
+            std::tr1::shared_ptr<Process2PutProxy> op(operation.lock());
+            if(req && op)
+                req->processDone(status, op);
+        }
+
+        virtual void getDone(
+            const epics::pvData::Status& status,
+            ChannelPut::shared_pointer const & channelPut,
+            epics::pvData::PVStructure::shared_pointer const & pvStructure,
+            epics::pvData::BitSet::shared_pointer const & bitSet) OVERRIDE FINAL
+        { /* never called */ }
+    };
+
+    ChannelPut::shared_pointer op; // the op we wrap
+    std::tr1::shared_ptr<Req> op_request; // keep our Req alive
+
+    epics::pvData::BitSetPtr empty;
+
+    Process2PutProxy() :empty(new epics::pvData::BitSet) {}
+    virtual ~Process2PutProxy() {}
+
+    virtual void destroy() OVERRIDE FINAL
+    { op->destroy(); }
+    virtual std::tr1::shared_ptr<Channel> getChannel() OVERRIDE FINAL
+    { return op->getChannel(); }
+    virtual void cancel() OVERRIDE FINAL
+    { op->cancel(); }
+    virtual void lastRequest() OVERRIDE FINAL
+    { op->lastRequest(); }
+    virtual void process() OVERRIDE FINAL
+    {
+        epics::pvData::PVStructurePtr blob;
+        {
+            epicsGuard<epicsMutex> G(op_request->mutex);
+            blob = op_request->dummy;
+        }
+        if(!blob) {
+            ChannelProcessRequester::shared_pointer req(op_request->requester.lock());
+            ChannelProcess::shared_pointer op(op_request->operation.lock());
+            req->processDone(epics::pvData::Status::error("Not connected"), op);
+        } else {
+            empty->clear();
+            op->put(blob, empty);
+        }
+    }
+};
+}//namespace
+
 ChannelProcess::shared_pointer Channel::createChannelProcess(
         ChannelProcessRequester::shared_pointer const & requester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
-    ChannelProcess::shared_pointer ret;
-    requester->channelProcessConnect(pvd::Status(pvd::Status::STATUSTYPE_FATAL, "Not Implemented"), ret);
+    std::tr1::shared_ptr<Process2PutProxy> ret(new Process2PutProxy);
+    ret->op_request.reset(new Process2PutProxy::Req(requester, ret));
+
+    ChannelPut::shared_pointer op(createChannelPut(ret->op_request, pvRequest));
+    if(!op) {
+        ret.reset();
+    } else {
+        epicsGuard<epicsMutex> G(ret->op_request->mutex);
+        ret->op = op;
+    }
+
     return ret;
 }
+
+namespace {
+/** Allow createChannelGet() to use createChannelPut()
+ */
+struct Get2PutProxy : public ChannelGet
+{
+    struct Req : public ChannelPutRequester
+    {
+        const ChannelGetRequester::weak_pointer requester; // was passed to createChannelGet()
+        const std::tr1::weak_ptr<Get2PutProxy> operation; // enclosing Get2PutProxy
+
+        epicsMutex mutex;
+
+        Req(const ChannelGetRequester::weak_pointer& req,
+            const std::tr1::weak_ptr<Get2PutProxy>& op)
+            :requester(req), operation(op)
+        {}
+        virtual ~Req() {}
+
+        virtual std::string getRequesterName() OVERRIDE FINAL {
+            ChannelGetRequester::shared_pointer req(requester.lock());
+            return req ? req->getRequesterName() : "";
+        }
+
+        virtual void channelDisconnect(bool destroy) OVERRIDE FINAL {
+            ChannelGetRequester::shared_pointer req(requester.lock());
+            if(req)
+                req->channelDisconnect(destroy);
+        }
+
+        virtual void channelPutConnect(
+            const epics::pvData::Status& status,
+            ChannelPut::shared_pointer const & channelPut,
+            epics::pvData::Structure::const_shared_pointer const & structure) OVERRIDE FINAL
+        {
+            ChannelGetRequester::shared_pointer req(requester.lock());
+            std::tr1::shared_ptr<Get2PutProxy> op(operation.lock());
+            if(!op) return;
+            {
+                epicsGuard<epicsMutex> G(mutex);
+                op->op = channelPut;
+            }
+            if(req)
+                req->channelGetConnect(status, op, structure);
+        }
+
+        virtual void putDone(
+            const epics::pvData::Status& status,
+            ChannelPut::shared_pointer const & channelPut) OVERRIDE FINAL
+        { /* never called */ }
+
+        virtual void getDone(
+            const epics::pvData::Status& status,
+            ChannelPut::shared_pointer const & channelPut,
+            epics::pvData::PVStructure::shared_pointer const & pvStructure,
+            epics::pvData::BitSet::shared_pointer const & bitSet) OVERRIDE FINAL
+        {
+            ChannelGetRequester::shared_pointer req(requester.lock());
+            std::tr1::shared_ptr<Get2PutProxy> op(operation.lock());
+            if(req && op)
+                req->getDone(status, op, pvStructure, bitSet);
+        }
+    };
+
+    ChannelPut::shared_pointer op; // the put we wrap
+    std::tr1::shared_ptr<Get2PutProxy::Req> op_request; // keep our Req alive
+
+    Get2PutProxy() {}
+    virtual ~Get2PutProxy() {}
+
+    virtual void destroy() OVERRIDE FINAL
+    { op->destroy(); }
+    virtual std::tr1::shared_ptr<Channel> getChannel() OVERRIDE FINAL
+    { return op->getChannel(); }
+    virtual void cancel() OVERRIDE FINAL
+    { op->cancel(); }
+    virtual void lastRequest() OVERRIDE FINAL
+    { op->lastRequest(); }
+    virtual void get() OVERRIDE FINAL
+    { op->get(); }
+};
+}// namespace
 
 ChannelGet::shared_pointer Channel::createChannelGet(
         ChannelGetRequester::shared_pointer const & requester,
         epics::pvData::PVStructure::shared_pointer const & pvRequest)
 {
-    ChannelGet::shared_pointer ret;
-    requester->channelGetConnect(pvd::Status(pvd::Status::STATUSTYPE_FATAL, "Not Implemented"),
-                                 ret, pvd::StructureConstPtr());
+    std::tr1::shared_ptr<Get2PutProxy> ret(new Get2PutProxy);
+    ret->op_request.reset(new Get2PutProxy::Req(requester, ret));
+
+    ChannelPut::shared_pointer op(createChannelPut(ret->op_request, pvRequest));
+    if(!op) {
+        ret.reset();
+    } else {
+        epicsGuard<epicsMutex> G(ret->op_request->mutex);
+        ret->op = op;
+    }
+
     return ret;
 }
 
