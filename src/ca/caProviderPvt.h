@@ -19,6 +19,8 @@ namespace pvAccess {
 class Configuration;
 namespace ca {
 
+#define DEBUG_LEVEL 0
+
 class CAChannelProvider;
 typedef std::tr1::shared_ptr<CAChannelProvider> CAChannelProviderPtr;
 typedef std::tr1::weak_ptr<CAChannelProvider> CAChannelProviderWPtr;
@@ -63,6 +65,7 @@ public:
     virtual void poll();
 
     virtual void destroy();
+
 
     /* ---------------------------------------------------------------- */
 

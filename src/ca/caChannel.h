@@ -24,7 +24,6 @@ namespace ca {
 
 class CAChannel;
 typedef std::tr1::shared_ptr<CAChannel> CAChannelPtr;
-typedef std::tr1::weak_ptr<CAChannel> CAChannelWPtr;
 class CAChannelPut;
 typedef std::tr1::shared_ptr<CAChannelPut> CAChannelPutPtr;
 typedef std::tr1::weak_ptr<CAChannelPut> CAChannelPutWPtr;
@@ -180,7 +179,7 @@ private:
                  ChannelGetRequester::shared_pointer const & _channelGetRequester,
                  epics::pvData::PVStructure::shared_pointer const & pvRequest);
     
-    CAChannelWPtr channel;
+    CAChannelPtr channel;
     ChannelGetRequester::weak_pointer channelGetRequester;
     epics::pvData::PVStructure::shared_pointer pvRequest;
     bool lastRequestFlag;
@@ -249,7 +248,7 @@ private:
                  ChannelPutRequester::shared_pointer const & _channelPutRequester,
                  epics::pvData::PVStructure::shared_pointer const & pvRequest);
    
-    CAChannelWPtr channel;
+    CAChannelPtr channel;
     ChannelPutRequester::weak_pointer channelPutRequester;
     epics::pvData::PVStructure::shared_pointer pvRequest;
     bool block;
@@ -312,7 +311,7 @@ private:
                      epics::pvData::PVStructure::shared_pointer const & pvRequest);
     
 
-    CAChannelWPtr channel;
+    CAChannelPtr channel;
     MonitorRequester::weak_pointer monitorRequester;
     epics::pvData::PVStructure::shared_pointer pvRequest;
     bool isStarted;

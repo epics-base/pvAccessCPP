@@ -32,7 +32,7 @@ using namespace epics::pvData;
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
 
 size_t CAChannelProvider::num_instances;
-int CAClientFactory::debug = 0;
+
 CAChannelProvider::CAChannelProvider() 
     : current_context(0)
 {
@@ -41,10 +41,10 @@ CAChannelProvider::CAChannelProvider()
 }
 
 CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
-    : current_context(0)
+    :  current_context(0)
 {
     REFTRACE_INCREMENT(num_instances);
-    if(CAClientFactory::getDebug()>0) {
+    if(DEBUG_LEVEL>0) {
           std::cout<< "CAChannelProvider::CAChannelProvider\n";
     }
     // Ignoring Configuration as CA only allows config via. environment,
@@ -54,7 +54,7 @@ CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
 
 CAChannelProvider::~CAChannelProvider()
 {
-    if(CAClientFactory::getDebug()>0) std::cout << "CAChannelProvider::~CAChannelProvider()\n";
+    if(DEBUG_LEVEL>0) std::cout << "CAChannelProvider::~CAChannelProvider()\n";
     REFTRACE_DECREMENT(num_instances);
 }
 
@@ -155,9 +155,7 @@ void CAChannelProvider::initialize()
 static
 void ca_factory_cleanup(void*)
 {
-    if(CAClientFactory::getDebug()>0) {
-          std::cout << "ca_factory_cleanup\n";
-    }
+    if(DEBUG_LEVEL>0) std::cout << "ca_factory_cleanup\n";
     try {
         ChannelProviderRegistry::clients()->remove("ca");
         ca_context_destroy(); 
