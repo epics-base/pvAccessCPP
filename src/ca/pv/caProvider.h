@@ -12,7 +12,6 @@
 
 namespace epics {
 namespace pvAccess {
-class Configuration;
 namespace ca {
 
 /**

@@ -368,8 +368,7 @@ CAChannel::CAChannel(std::string const & _channelName,
     channelRequester(_channelRequester),
     channelID(0),
     channelType(0),
-    elementCount(0),
-    destroyed(false)
+    elementCount(0)
 {
     REFTRACE_INCREMENT(num_instances);
     PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(caChannel);
@@ -439,12 +438,6 @@ CAChannel::~CAChannel()
         cout << "CAChannel::~CAChannel() " << channelName << endl;
     }
     PVACCESS_REFCOUNT_MONITOR_DESTRUCT(caChannel);
-    {
-        Lock lock(requestsMutex);
-        if (destroyed)
-            return;
-        destroyed = true;
-    }
     /* Clear CA Channel */
     threadAttach();
     ca_clear_channel(channelID);
@@ -599,14 +592,6 @@ void CAChannel::printInfo(std::ostream& out)
 }
 
 
-/* --------------- Destroyable --------------- */
-
-
-void CAChannel::destroy()
-{
-std::cerr << "Why is CAChannel::destroy() being called\n";
-}
-
 /* ---------------------------------------------------------- */
 
 void CAChannel::threadAttach()
@@ -666,8 +651,7 @@ CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & channel,
   :
     channel(channel),
     channelGetRequester(channelGetRequester),
-    pvRequest(pvRequest),  
-    lastRequestFlag(false)
+    pvRequest(pvRequest)
 {
     REFTRACE_INCREMENT(num_instances);
     if(DEBUG_LEVEL>0) {
@@ -1145,8 +1129,6 @@ void CAChannelGet::get()
         EXCEPTION_GUARD(getRequester->getDone(errorStatus, shared_from_this(), PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
 
-    if (lastRequestFlag)
-        destroy();
 }
 
 
@@ -1164,17 +1146,12 @@ void CAChannelGet::cancel()
 
 void CAChannelGet::lastRequest()
 {
-    // TODO sync !!!
-    lastRequestFlag = true;
+    std::cout << "CAChannelGet::lastRequest() "
+              << channel->getChannelName() 
+              << " does not do anything"
+              << endl;
 }
 
-/* --------------- Destroyable --------------- */
-
-
-void CAChannelGet::destroy()
-{
-    // TODO
-}
 
 
 CAChannelPutPtr CAChannelPut::create(
@@ -1203,8 +1180,7 @@ CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & channel,
     channel(channel),
     channelPutRequester(channelPutRequester),
     pvRequest(pvRequest), 
-    block(false),   
-    lastRequestFlag(false)
+    block(false)
 {
     REFTRACE_INCREMENT(num_instances);
     if(DEBUG_LEVEL>0) {
@@ -1521,9 +1497,6 @@ void CAChannelPut::put(PVStructure::shared_pointer const & pvPutStructure,
         std::cout << "no put func implemented" << std::endl;
     }
 
-    // TODO here???!!!
-    if (lastRequestFlag)
-        destroy();
 }
 
 
@@ -1551,9 +1524,6 @@ void CAChannelPut::getDone(struct event_handler_args &args)
                         PVStructure::shared_pointer(), BitSet::shared_pointer()));
     }
 
-    // TODO here???!!!
-    if (lastRequestFlag)
-        destroy();
 }
 
 
@@ -1593,17 +1563,12 @@ void CAChannelPut::cancel()
 
 void CAChannelPut::lastRequest()
 {
-    // TODO sync !!!
-    lastRequestFlag = true;
+   std::cout << "CAChannelPut::lastRequest() "
+              << channel->getChannelName() 
+              << " does not do anything"
+              << endl;
 }
 
-/* --------------- Destroyable --------------- */
-
-
-void CAChannelPut::destroy()
-{
-    // TODO
-}
 
 /* --------------- Monitor --------------- */
 
@@ -1900,15 +1865,5 @@ void CAChannelMonitor::cancel()
     // noop
 }
 
-/* --------------- Destroyable --------------- */
-
-
-void CAChannelMonitor::destroy()
-{
-    if(!isStarted) return;
-    channel->threadAttach();
-    ca_clear_subscription(eventID);
-    isStarted = false;
-}
 
 }}}

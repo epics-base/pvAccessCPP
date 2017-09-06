@@ -11,12 +11,10 @@
 
 #include <pv/caProvider.h>
 #include <pv/pvAccess.h>
-#include <map>
 
 
 namespace epics {
 namespace pvAccess {
-class Configuration;
 namespace ca {
 
 #define DEBUG_LEVEL 0
@@ -64,20 +62,15 @@ public:
     virtual void flush();
     virtual void poll();
 
-    virtual void destroy();
-
+    virtual void destroy() EPICS_DEPRECATED {};
 
     /* ---------------------------------------------------------------- */
 
     void threadAttach();
 
 private:
-
     void initialize();
-
     ca_client_context* current_context;
-
-    epics::pvData::Mutex channelsMutex;
 };
 
 }

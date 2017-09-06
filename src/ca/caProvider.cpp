@@ -127,10 +127,6 @@ void CAChannelProvider::poll()
 {
 }
 
-void CAChannelProvider::destroy()
-{
-    std::cerr << "CAChannelProvider::destroy() should not be called\n";
-}
 
 void CAChannelProvider::threadAttach()
 {
@@ -139,6 +135,7 @@ void CAChannelProvider::threadAttach()
 
 void CAChannelProvider::initialize()
 {
+    if(DEBUG_LEVEL>0) std::cout << "CAChannelProvider::initialize()\n";
     /* Create Channel Access */
     int result = ca_context_create(ca_enable_preemptive_callback);
     if (result != ECA_NORMAL) {
@@ -166,6 +163,11 @@ void ca_factory_cleanup(void*)
 
 void CAClientFactory::start()
 {
+    if(DEBUG_LEVEL>0) std::cout << "CAClientFactory::start()\n";
+    if(ChannelProviderRegistry::clients()->getProvider("ca")) {
+         // do not start twice
+         return;
+    }
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
     registerRefCounter("CAChannelProvider", &CAChannelProvider::num_instances);
@@ -175,7 +177,9 @@ void CAClientFactory::start()
     registerRefCounter("CAChannelMonitor", &CAChannelMonitor::num_instances);
 
     if(ChannelProviderRegistry::clients()->add<CAChannelProvider>("ca", false))
+    {
         epicsAtExit(&ca_factory_cleanup, NULL);
+    }
 }
 
 void CAClientFactory::stop()

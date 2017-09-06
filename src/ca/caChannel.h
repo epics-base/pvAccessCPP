@@ -90,7 +90,7 @@ public:
 
     /* --------------- Destroyable --------------- */
 
-    virtual void destroy();
+    virtual void destroy() EPICS_DEPRECATED {};
 
     /* ---------------------------------------------------------------- */
 
@@ -120,7 +120,6 @@ private:
 
     epics::pvData::Mutex requestsMutex;
 
-    bool destroyed;
     std::queue<CAChannelPutPtr> putQueue;
     std::queue<CAChannelGetPtr> getQueue;
     std::queue<CAChannelMonitorPtr> monitorQueue;
@@ -169,7 +168,7 @@ public:
     /* --------------- ChannelBaseRequester --------------- */
     virtual void channelDisconnect(bool destroy);
    /* --------------- Destroyable --------------- */
-    virtual void destroy();
+    virtual void destroy() EPICS_DEPRECATED {};
 
     void activate();
 
@@ -182,7 +181,6 @@ private:
     CAChannelPtr channel;
     ChannelGetRequester::weak_pointer channelGetRequester;
     epics::pvData::PVStructure::shared_pointer pvRequest;
-    bool lastRequestFlag;
 
     chtype getType;
     epics::pvData::PVStructure::shared_pointer pvStructure;
@@ -238,7 +236,7 @@ public:
     virtual void channelDisconnect(bool destroy);
     /* --------------- Destroyable --------------- */
 
-    virtual void destroy();
+    virtual void destroy() EPICS_DEPRECATED {};
 
      void activate();
 
@@ -252,7 +250,6 @@ private:
     ChannelPutRequester::weak_pointer channelPutRequester;
     epics::pvData::PVStructure::shared_pointer pvRequest;
     bool block;
-    bool lastRequestFlag;
 
     chtype getType;
     epics::pvData::PVStructure::shared_pointer pvStructure;
@@ -302,7 +299,7 @@ public:
     /* --------------- ChannelBaseRequester --------------- */
     virtual void channelDisconnect(bool destroy);
     /* --------------- Destroyable --------------- */
-    virtual void destroy();
+    virtual void destroy() EPICS_DEPRECATED {};
     void activate();
 private:
 
