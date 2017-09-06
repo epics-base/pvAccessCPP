@@ -72,7 +72,10 @@ struct GetPutter : public pva::ChannelPutRequester,
     }
 
     virtual std::string getRequesterName() OVERRIDE FINAL
-    { return "GetPutter"; }
+    {
+        Guard G(mutex);
+        return op ? op->getChannel()->getRequesterName() : "<dead>";
+    }
 
     virtual void channelPutConnect(
         const epics::pvData::Status& status,

@@ -89,7 +89,10 @@ struct Monitor::Impl : public pva::MonitorRequester
     }
 
     virtual std::string getRequesterName() OVERRIDE FINAL
-    { return "RPCer"; }
+    {
+        Guard G(mutex);
+        return chan ? chan->getRequesterName() : "<dead>";
+    }
 
 
     virtual void monitorConnect(pvd::Status const & status,
