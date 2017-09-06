@@ -152,7 +152,10 @@ struct epicsShareClass ChannelBaseRequester : virtual public epics::pvData::Requ
 {
     POINTER_DEFINITIONS(ChannelBaseRequester);
 
-    virtual ~ChannelBaseRequester() {}
+    static size_t num_instances;
+
+    ChannelBaseRequester();
+    virtual ~ChannelBaseRequester();
 
     /** Notification when underlying Channel becomes DISCONNECTED or DESTORYED
      *
@@ -167,6 +170,10 @@ struct epicsShareClass ChannelBaseRequester : virtual public epics::pvData::Requ
      * @param destroy true for final disconnect.
      */
     virtual void channelDisconnect(bool destroy) {}
+
+private:
+    ChannelBaseRequester(const ChannelBaseRequester&);
+    ChannelBaseRequester& operator=(const ChannelBaseRequester&);
 };
 
 /**
@@ -176,7 +183,10 @@ class epicsShareClass ChannelRequest : public virtual Destroyable, public Lockab
 public:
     POINTER_DEFINITIONS(ChannelRequest);
 
-    virtual ~ChannelRequest() {}
+    static size_t num_instances;
+
+    ChannelRequest();
+    virtual ~ChannelRequest();
 
     /**
      * Get a channel instance this request belongs to.
@@ -199,6 +209,10 @@ public:
      * When last request will be completed (regardless of completion status) the remote and local instance will be destroyed.
      */
     virtual void lastRequest() = 0;
+
+private:
+    ChannelRequest(const ChannelRequest&);
+    ChannelRequest& operator=(const ChannelRequest&);
 };
 
 /**
@@ -821,6 +835,8 @@ public:
     POINTER_DEFINITIONS(Channel);
     typedef ChannelRequester requester_type;
 
+    static size_t num_instances;
+
     Channel();
     virtual ~Channel();
 
@@ -909,6 +925,8 @@ public:
      * @post Returned shared_ptr<ChannelProcess> will have unique()==true.
      *
      * @return A non-NULL ChannelProcess unless channelProcessConnect() called with an Error
+     *
+     * @note The default implementation proxies using createChannelPut() and ChannelPut::put() with no data (empty bit set)
      */
     virtual ChannelProcess::shared_pointer createChannelProcess(
         ChannelProcessRequester::shared_pointer const & requester,
@@ -928,6 +946,8 @@ public:
      * @post Returned shared_ptr<ChannelGet> will have unique()==true.
      *
      * @return A non-NULL ChannelGet unless channelGetConnect() called with an Error
+     *
+     * @note The default implementation proxies to createChannelPut()
      */
     virtual ChannelGet::shared_pointer createChannelGet(
         ChannelGetRequester::shared_pointer const & requester,
@@ -947,6 +967,8 @@ public:
      * @post Returned shared_ptr<ChannelPut> will have unique()==true.
      *
      * @return A non-NULL ChannelPut unless channelPutConnect() called with an Error
+     *
+     * @note The default implementation yields a not implemented error
      */
     virtual ChannelPut::shared_pointer createChannelPut(
         ChannelPutRequester::shared_pointer const & requester,
@@ -966,6 +988,8 @@ public:
      * @post Returned shared_ptr<ChannelPutGet> will have unique()==true.
      *
      * @return A non-NULL ChannelPutGet unless channelPutGetConnect() called with an Error
+     *
+     * @note The default implementation yields a not implemented error
      */
     virtual ChannelPutGet::shared_pointer createChannelPutGet(
         ChannelPutGetRequester::shared_pointer const & requester,
@@ -985,6 +1009,8 @@ public:
      * @post Returned shared_ptr<ChannelRPC> will have unique()==true.
      *
      * @return A non-NULL ChannelRPC unless channelRPCConnect() called with an Error
+     *
+     * @note The default implementation yields a not implemented error
      */
     virtual ChannelRPC::shared_pointer createChannelRPC(
         ChannelRPCRequester::shared_pointer const & requester,
@@ -1004,6 +1030,8 @@ public:
      * @post Returned shared_ptr<Monitor> will have unique()==true.
      *
      * @return A non-NULL Monitor unless monitorConnect() called with an Error
+     *
+     * @note The default implementation yields a not implemented error
      */
     virtual Monitor::shared_pointer createMonitor(
         MonitorRequester::shared_pointer const & requester,
@@ -1028,6 +1056,8 @@ public:
      * @param channelArrayRequester The ChannelArrayRequester
      * @param pvRequest Additional options (e.g. triggering).
      * @return <code>ChannelArray</code> instance.
+     *
+     * @note The default implementation yields a not implemented error
      */
     virtual ChannelArray::shared_pointer createChannelArray(
         ChannelArrayRequester::shared_pointer const & requester,
@@ -1051,7 +1081,10 @@ public:
  *
  * See ChannelProvider::createChannel()
  */
-class epicsShareClass ChannelRequester : public virtual Requester {
+class epicsShareClass ChannelRequester : public virtual Requester
+{
+    ChannelRequester(const ChannelRequester&);
+    ChannelRequester& operator=(const ChannelRequester&);
 public:
     POINTER_DEFINITIONS(ChannelRequester);
     typedef Channel operation_type;
@@ -1117,7 +1150,10 @@ enum FlushStrategy {
  *
  * Uniquely configurable (via ChannelProviderFactory::newInstance(Configuration*)
  */
-class epicsShareClass ChannelProvider : public Destroyable, private epics::pvData::NoDefaultMethods {
+class epicsShareClass ChannelProvider : public Destroyable, private epics::pvData::NoDefaultMethods
+{
+    ChannelProvider(const ChannelProvider&);
+    ChannelProvider& operator=(const ChannelProvider&);
 public:
     POINTER_DEFINITIONS(ChannelProvider);
 
@@ -1134,7 +1170,10 @@ public:
     /** OPI priority. */
     static const short PRIORITY_OPI = PRIORITY_MIN;
 
-    virtual ~ChannelProvider() {}
+    static size_t num_instances;
+
+    ChannelProvider();
+    virtual ~ChannelProvider();
 
     /**
      * Get the provider name.

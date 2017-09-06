@@ -34,26 +34,26 @@ void addDefaultBroadcastAddress(InetAddrVector* v, unsigned short p) {
     v->push_back(pNewNode);
 }
 
-InetAddrVector* getBroadcastAddresses(SOCKET sock,
-                                      unsigned short defaultPort) {
+void getBroadcastAddresses(InetAddrVector& ret,
+                           SOCKET sock,
+                           unsigned short defaultPort) {
+    ret.clear();
     ELLLIST as;
     ellInit(&as);
     osiSockAddr serverAddr;
     memset(&serverAddr, 0, sizeof(osiSockAddr));
-    InetAddrVector * v = new InetAddrVector;
     osiSockDiscoverBroadcastAddresses(&as, sock, &serverAddr);
     for(ELLNODE * n = ellFirst(&as); n != NULL; n = ellNext(n))
     {
         osiSockAddrNode * sn = (osiSockAddrNode *)n;
         sn->addr.ia.sin_port = htons(defaultPort);
         // TODO discover possible duplicates
-        v->push_back(sn->addr);
+        ret.push_back(sn->addr);
     }
     ellFree(&as);
     // add fallback address
-    if (!v->size())
-        addDefaultBroadcastAddress(v, defaultPort);
-    return v;
+    if (!ret.size())
+        addDefaultBroadcastAddress(&ret, defaultPort);
 }
 
 void encodeAsIPv6Address(ByteBuffer* buffer, const osiSockAddr* address) {
@@ -101,13 +101,10 @@ bool isMulticastAddress(const osiSockAddr* address) {
     return msB >= 224 && msB <= 239;
 }
 
-osiSockAddr* intToIPv4Address(int32 addr) {
-    osiSockAddr* ret = new osiSockAddr;
-    ret->ia.sin_family = AF_INET;
-    ret->ia.sin_addr.s_addr = htonl(addr);
-    ret->ia.sin_port = 0;
-
-    return ret;
+void intToIPv4Address(osiSockAddr& ret, int32 addr) {
+    ret.ia.sin_family = AF_INET;
+    ret.ia.sin_addr.s_addr = htonl(addr);
+    ret.ia.sin_port = 0;
 }
 
 int32 ipv4AddressToInt(const osiSockAddr& addr) {
@@ -148,9 +145,10 @@ int32 parseInetAddress(const string & addr) {
     return htonl(retAddr);
 }
 
-InetAddrVector* getSocketAddressList(const std::string & list, int defaultPort,
+void getSocketAddressList(InetAddrVector& ret,
+                          const std::string & list, int defaultPort,
                                      const InetAddrVector* appendList) {
-    InetAddrVector* iav = new InetAddrVector();
+    ret.clear();
 
     // skip leading spaces
     size_t len = list.length();
@@ -164,21 +162,20 @@ InetAddrVector* getSocketAddressList(const std::string & list, int defaultPort,
         string address = list.substr(subStart, (subEnd-subStart));
         osiSockAddr addr;
         if (aToIPAddr(address.c_str(), defaultPort, &addr.ia) == 0)
-            iav->push_back(addr);
+            ret.push_back(addr);
         subStart = list.find_first_not_of(" \t\r\n\v", subEnd);
     }
 
     if(subStart!=std::string::npos && subStart<len) {
         osiSockAddr addr;
         if (aToIPAddr(list.substr(subStart).c_str(), defaultPort, &addr.ia) == 0)
-            iav->push_back(addr);
+            ret.push_back(addr);
     }
 
     if(appendList!=NULL) {
         for(size_t i = 0; i<appendList->size(); i++)
-            iav->push_back((*appendList)[i]);
+            ret.push_back((*appendList)[i]);
     }
-    return iav;
 }
 
 string inetAddressToString(const osiSockAddr &addr,
@@ -214,7 +211,14 @@ int getLoopbackNIF(osiSockAddr &loAddr, string const & localNIF, unsigned short 
     return 1;
 }
 
-
+ifaceNode::ifaceNode()
+{
+    memset(&ifaceAddr, 0, sizeof(ifaceAddr));
+    memset(&ifaceBCast, 0, sizeof(ifaceBCast));
+    memset(&ifaceDest, 0, sizeof(ifaceDest));
+    // redundant as AF_UNSPEC==0
+    ifaceAddr.sa.sa_family = ifaceBCast.sa.sa_family = ifaceDest.sa.sa_family = AF_UNSPEC;
+}
 
 #include <osiSock.h>
 //#include <epicsAssert.h>
@@ -374,7 +378,7 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
                 errlogPrintf ("discoverInterfaces(): net intf \"%s\": bcast addr fetch fail\n", pIfreqList->ifr_name);
                 continue;
             }
-            node.ifaceBCast.sa = pIfreqList->ifr_broadaddr;
+            node.ifaceBCast.sa = node.ifaceDest.sa = pIfreqList->ifr_broadaddr;
             /*ifDepenDebugPrintf ( ( "found broadcast addr = %x\n", ntohl ( pNewNode->addr.ia.sin_addr.s_addr ) ) );*/
         }
 #if defined (IFF_POINTOPOINT)
@@ -384,16 +388,12 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
                 /*ifDepenDebugPrintf ( ("discoverInterfaces(): net intf \"%s\": pt to pt addr fetch fail\n", pIfreqList->ifr_name) );*/
                 continue;
             }
-            node.ifaceBCast.sa = pIfreqList->ifr_dstaddr;
+            node.ifaceDest.sa = pIfreqList->ifr_dstaddr;
         }
 #endif
         else {
-            // if it is a match, accept the interface even if it does not support broadcast (i.e. 127.0.0.1)
-            if (match) {
-                memset(&node.ifaceBCast, 0, sizeof(node.ifaceBCast));
-                node.ifaceBCast.sa.sa_family = AF_UNSPEC;
-            }
-            else
+            // if it is a match, accept the interface even if it does not support broadcast (i.e. 127.0.0.1 or point to point)
+            if (!match)
             {
                 /*ifDepenDebugPrintf ( ( "discoverInterfaces(): net intf \"%s\": not point to point or bcast?\n", pIfreqList->ifr_name ) );*/
                 continue;

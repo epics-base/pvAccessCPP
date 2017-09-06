@@ -4,6 +4,8 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#include <pv/reftrack.h>
+
 #define epicsExportSharedSymbols
 #include <pv/serverChannelImpl.h>
 
@@ -11,6 +13,8 @@ using namespace epics::pvData;
 
 namespace epics {
 namespace pvAccess {
+
+size_t ServerChannelImpl::num_instances;
 
 ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer const & channel,
                                      const ChannelRequester::shared_pointer &requester,
@@ -23,6 +27,7 @@ ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer const & channel,
     _destroyed(false),
     _channelSecuritySession(css)
 {
+    REFTRACE_INCREMENT(num_instances);
     if (!channel.get())
     {
         THROW_BASE_EXCEPTION("non-null channel required");
@@ -109,6 +114,7 @@ void ServerChannelImpl::destroy()
 ServerChannelImpl::~ServerChannelImpl()
 {
     destroy();
+    REFTRACE_DECREMENT(num_instances);
 }
 
 void ServerChannelImpl::printInfo()

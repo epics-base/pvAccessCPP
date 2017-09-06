@@ -24,15 +24,26 @@ namespace pvAccess {
 typedef std::vector<osiSockAddr> InetAddrVector;
 
 /**
- * Returns a vector containing all the IPv4 broadcast addresses on this machine.
+ * Populate a vector containing all the IPv4 broadcast addresses on this machine.
  * IPv6 doesn't have a local broadcast address.
  * Conversion of the defaultPort to network byte order performed by
  * the function.
  */
-epicsShareFunc InetAddrVector* getBroadcastAddresses(SOCKET sock, unsigned short defaultPort);
+epicsShareFunc void getBroadcastAddresses(InetAddrVector& ret, SOCKET sock, unsigned short defaultPort);
 
+/** interface description
+ *   ifaceAddr - Local address of interface.  Will never be AF_UNSPEC
+ *   ifaceBCast - Broadcast address of interface.
+ *                AF_UNSPEC for loopback and point to point (eg. some VPNs)
+ *                !WIN32 bind this to receive bcasts.
+ *   ifaceDest -  Destination/Peer for point to point.
+ *                Copy of ifaceBCast for bcast.
+ *                AF_UNSPEC for loopback.
+ *                send UDP searches to this address
+ */
 struct ifaceNode {
-    osiSockAddr ifaceAddr, ifaceBCast;
+    osiSockAddr ifaceAddr, ifaceBCast, ifaceDest;
+    ifaceNode();
 };
 typedef std::vector<ifaceNode> IfaceNodeVector;
 epicsShareFunc int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *pMatchAddr = 0);
@@ -66,10 +77,10 @@ epicsShareFunc bool isMulticastAddress(const osiSockAddr* address);
 
 /**
  * Convert an integer into an IPv4 INET address.
+ * @param ret address stored here
  * @param addr integer representation of a given address.
- * @return IPv4 INET address.
  */
-epicsShareFunc osiSockAddr* intToIPv4Address(epics::pvData::int32 addr);
+epicsShareFunc void intToIPv4Address(osiSockAddr& ret, epics::pvData::int32 addr);
 
 /**
  * Convert an IPv4 INET address to an integer.
@@ -79,14 +90,15 @@ epicsShareFunc osiSockAddr* intToIPv4Address(epics::pvData::int32 addr);
 epicsShareFunc epics::pvData::int32 ipv4AddressToInt(const osiSockAddr& addr);
 
 /**
- * Parse space delimited addresss[:port] string and return array of <code>InetSocketAddress</code>.
+ * Parse space delimited addresss[:port] string and populate array of <code>InetSocketAddress</code>.
+ * @param ret results stored hre
  * @param list  space delimited addresss[:port] string.
  * @param defaultPort   port take if not specified.
  * @param appendList    list to be appended.
  * @return  array of <code>InetSocketAddress</code>.
  */
-epicsShareFunc InetAddrVector* getSocketAddressList(const std::string & list, int defaultPort,
-        const InetAddrVector* appendList = NULL);
+epicsShareFunc void getSocketAddressList(InetAddrVector& ret, const std::string & list, int defaultPort,
+                                         const InetAddrVector* appendList = NULL);
 
 epicsShareFunc std::string inetAddressToString(const osiSockAddr &addr,
         bool displayPort = true, bool displayHex = false);

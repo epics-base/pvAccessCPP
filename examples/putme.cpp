@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
         }
 
         // build "pvRequest" which asks for all fields
-        pvd::PVStructure::const_shared_pointer pvReq(pvd::createRequest("field()"));
+        pvd::PVStructure::const_shared_pointer pvReq(pvd::createRequest(request));
 
         // explicitly select configuration from process environment
         pva::Configuration::shared_pointer conf(pva::ConfigurationBuilder()
@@ -212,6 +212,7 @@ int main(int argc, char *argv[]) {
         signal(SIGQUIT, alldone);
 #endif
 
+        int ret = 0;
         {
             Guard G(mutex);
             while(waitingFor) {
@@ -220,16 +221,17 @@ int main(int argc, char *argv[]) {
                     done.wait();
                 } else if(!done.wait(waitTime)) {
                     std::cerr<<"Timeout\n";
+                    ret = 1;
                     break; // timeout
                 }
             }
         }
 
 
+        return ret;
     } catch(std::exception& e){
         PRINT_EXCEPTION(e);
         std::cerr<<"Error: "<<e.what()<<"\n";
-        return 1;
+        return 2;
     }
-    return 0;
 }

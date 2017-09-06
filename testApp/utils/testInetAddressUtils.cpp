@@ -21,24 +21,25 @@ void test_getSocketAddressList()
 {
     testDiag("Test getSocketAddressList()");
 
-    auto_ptr<InetAddrVector> vec(getSocketAddressList("127.0.0.1   10.10.12.11:1234 192.168.3.4", 555));
+    InetAddrVector vec;
+    getSocketAddressList(vec, "127.0.0.1   10.10.12.11:1234 192.168.3.4", 555);
 
-    testOk1(static_cast<size_t>(3) == vec->size());
+    testOk1(static_cast<size_t>(3) == vec.size());
 
     osiSockAddr addr;
-    addr = vec->at(0);
+    addr = vec.at(0);
     testOk1(AF_INET == addr.ia.sin_family);
     testOk1(htons(555) == addr.ia.sin_port);
     testOk1(htonl(0x7F000001) == addr.ia.sin_addr.s_addr);
     testOk1("127.0.0.1:555" == inetAddressToString(addr));
 
-    addr = vec->at(1);
+    addr = vec.at(1);
     testOk1(AF_INET == addr.ia.sin_family);
     testOk1(htons(1234) == addr.ia.sin_port);
     testOk1(htonl(0x0A0A0C0B) == addr.ia.sin_addr.s_addr);
     testOk1("10.10.12.11:1234" == inetAddressToString(addr));
 
-    addr = vec->at(2);
+    addr = vec.at(2);
     testOk1(AF_INET == addr.ia.sin_family);
     testOk1(htons(555) == addr.ia.sin_port);
     testOk1(htonl(0xC0A80304) == addr.ia.sin_addr.s_addr);
@@ -47,29 +48,30 @@ void test_getSocketAddressList()
 
 
 
-    auto_ptr<InetAddrVector> vec1(getSocketAddressList("172.16.55.160", 6789, vec.get()));
+    InetAddrVector vec1;
+    getSocketAddressList(vec1, "172.16.55.160", 6789, &vec);
 
-    testOk1(static_cast<size_t>(4) == vec1->size());
+    testOk1(static_cast<size_t>(4) == vec1.size());
 
-    addr = vec1->at(0);
+    addr = vec1.at(0);
     testOk1(AF_INET == addr.ia.sin_family);
     testOk1(htons(6789) == addr.ia.sin_port);
     testOk1(htonl(0xAC1037A0) == addr.ia.sin_addr.s_addr);
     testOk1("172.16.55.160:6789" == inetAddressToString(addr));
 
-    addr = vec1->at(1);
+    addr = vec1.at(1);
     testOk1(AF_INET == addr.ia.sin_family);
     testOk1(htons(555) == addr.ia.sin_port);
     testOk1(htonl(0x7F000001) == addr.ia.sin_addr.s_addr);
     testOk1("127.0.0.1:555" == inetAddressToString(addr));
 
-    addr = vec1->at(2);
+    addr = vec1.at(2);
     testOk1(AF_INET == addr.ia.sin_family);
     testOk1(htons(1234) == addr.ia.sin_port);
     testOk1(htonl(0x0A0A0C0B) == addr.ia.sin_addr.s_addr);
     testOk1("10.10.12.11:1234" == inetAddressToString(addr));
 
-    addr = vec1->at(3);
+    addr = vec1.at(3);
     testOk1(AF_INET == addr.ia.sin_family);
     testOk1(htons(555) == addr.ia.sin_port);
     testOk1(htonl(0xC0A80304) == addr.ia.sin_addr.s_addr);
@@ -77,31 +79,34 @@ void test_getSocketAddressList()
 
 
     // empty
-    auto_ptr<InetAddrVector> vec2(getSocketAddressList("", 1111));
-    testOk1(static_cast<size_t>(0) == vec2->size());
+    InetAddrVector vec2;
+    getSocketAddressList(vec2, "", 1111);
+    testOk1(static_cast<size_t>(0) == vec2.size());
 
     // just spaces
-    auto_ptr<InetAddrVector> vec3(getSocketAddressList("   ", 1111));
-    testOk1(static_cast<size_t>(0) == vec3->size());
+    InetAddrVector vec3;
+    getSocketAddressList(vec3, "   ", 1111);
+    testOk1(static_cast<size_t>(0) == vec3.size());
 
     // leading spaces
-    auto_ptr<InetAddrVector> vec4(getSocketAddressList("     127.0.0.1   10.10.12.11:1234 192.168.3.4", 555));
+    InetAddrVector vec4;
+    getSocketAddressList(vec4, "     127.0.0.1   10.10.12.11:1234 192.168.3.4", 555);
 
-    testOk1(static_cast<size_t>(3) == vec4->size());
+    testOk1(static_cast<size_t>(3) == vec4.size());
 
-    addr = vec4->at(0);
+    addr = vec4.at(0);
     testOk1(AF_INET == addr.ia.sin_family);
     testOk1(htons(555) == addr.ia.sin_port);
     testOk1(htonl(0x7F000001) == addr.ia.sin_addr.s_addr);
     testOk1("127.0.0.1:555" == inetAddressToString(addr));
 
-    addr = vec4->at(1);
+    addr = vec4.at(1);
     testOk1(AF_INET == addr.ia.sin_family);
     testOk1(htons(1234) == addr.ia.sin_port);
     testOk1(htonl(0x0A0A0C0B) == addr.ia.sin_addr.s_addr);
     testOk1("10.10.12.11:1234" == inetAddressToString(addr));
 
-    addr = vec4->at(2);
+    addr = vec4.at(2);
     testOk1(AF_INET == addr.ia.sin_family);
     testOk1(htons(555) == addr.ia.sin_port);
     testOk1(htonl(0xC0A80304) == addr.ia.sin_addr.s_addr);
@@ -112,28 +117,28 @@ void test_ipv4AddressToInt()
 {
     testDiag("Test ipv4AddressToInt()");
 
-    auto_ptr<InetAddrVector> vec(getSocketAddressList("127.0.0.1   10.10.12.11:1234 192.168.3.4", 555));
+    InetAddrVector vec;
+    getSocketAddressList(vec, "127.0.0.1   10.10.12.11:1234 192.168.3.4", 555);
 
-    testOk1(static_cast<size_t>(3) == vec->size());
+    testOk1(static_cast<size_t>(3) == vec.size());
 
-    testOk1((int32)0x7F000001 == ipv4AddressToInt((vec->at(0))));
-    testOk1((int32)0x0A0A0C0B == ipv4AddressToInt((vec->at(1))));
-    testOk1((int32)0xC0A80304 == ipv4AddressToInt((vec->at(2))));
+    testOk1((int32)0x7F000001 == ipv4AddressToInt((vec.at(0))));
+    testOk1((int32)0x0A0A0C0B == ipv4AddressToInt((vec.at(1))));
+    testOk1((int32)0xC0A80304 == ipv4AddressToInt((vec.at(2))));
 }
 
 void test_intToIPv4Address()
 {
     testDiag("Test intToIPv4Address()");
 
-    auto_ptr<osiSockAddr> paddr(intToIPv4Address(0x7F000001));
-    testOk1((uintptr_t)0 != (uintptr_t)paddr.get());
-    testOk1(AF_INET == paddr->ia.sin_family);
-    testOk1("127.0.0.1:0" == inetAddressToString(*paddr.get()));
+    osiSockAddr addr;
+    intToIPv4Address(addr, 0x7F000001);
+    testOk1(AF_INET == addr.ia.sin_family);
+    testOk1("127.0.0.1:0" == inetAddressToString(addr));
 
-    paddr.reset(intToIPv4Address(0x0A0A0C0B));
-    testOk1((uintptr_t)0 != (uintptr_t)paddr.get());
-    testOk1(AF_INET == paddr->ia.sin_family);
-    testOk1("10.10.12.11:0" == inetAddressToString(*paddr.get()));
+    intToIPv4Address(addr, 0x0A0A0C0B);
+    testOk1(AF_INET == addr.ia.sin_family);
+    testOk1("10.10.12.11:0" == inetAddressToString(addr));
 }
 
 void test_encodeAsIPv6Address()
@@ -147,9 +152,8 @@ void test_encodeAsIPv6Address()
                    (char)0x0A, (char)0x0A, (char)0x0C, (char)0x0B
                  };
 
-    auto_ptr<osiSockAddr> paddr(intToIPv4Address(0x0A0A0C0B));
-    testOk1((uintptr_t)0 != (uintptr_t)paddr.get());
-    osiSockAddr addr = *paddr;
+    osiSockAddr addr;
+    intToIPv4Address(addr, 0x0A0A0C0B);
 
     encodeAsIPv6Address(buff.get(), &addr);
     testOk1(static_cast<size_t>(16) == buff->getPosition());
@@ -161,16 +165,17 @@ void test_isMulticastAddress()
 {
     testDiag("Test test_isMulticastAddress()");
 
-    auto_ptr<InetAddrVector> vec(getSocketAddressList("127.0.0.1 255.255.255.255 0.0.0.0 224.0.0.0 239.255.255.255 235.3.6.3", 0));
+    InetAddrVector vec;
+    getSocketAddressList(vec, "127.0.0.1 255.255.255.255 0.0.0.0 224.0.0.0 239.255.255.255 235.3.6.3", 0);
 
-    testOk1(static_cast<size_t>(6) == vec->size());
+    testOk1(static_cast<size_t>(6) == vec.size());
 
-    testOk1(!isMulticastAddress(&vec->at(0)));
-    testOk1(!isMulticastAddress(&vec->at(1)));
-    testOk1(!isMulticastAddress(&vec->at(2)));
-    testOk1(isMulticastAddress(&vec->at(3)));
-    testOk1(isMulticastAddress(&vec->at(4)));
-    testOk1(isMulticastAddress(&vec->at(5)));
+    testOk1(!isMulticastAddress(&vec.at(0)));
+    testOk1(!isMulticastAddress(&vec.at(1)));
+    testOk1(!isMulticastAddress(&vec.at(2)));
+    testOk1(isMulticastAddress(&vec.at(3)));
+    testOk1(isMulticastAddress(&vec.at(4)));
+    testOk1(isMulticastAddress(&vec.at(5)));
 }
 
 void test_getBroadcastAddresses()
@@ -180,15 +185,16 @@ void test_getBroadcastAddresses()
     osiSockAttach();
 
     SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    auto_ptr<InetAddrVector> broadcasts(getBroadcastAddresses(socket, 6678));
+    InetAddrVector broadcasts;
+    getBroadcastAddresses(broadcasts, socket, 6678);
     // at least one is expected, in case of no network connection a fallback address is returned
-    testOk1(static_cast<size_t>(0) < broadcasts->size());
+    testOk1(static_cast<size_t>(0) < broadcasts.size());
     //testDiag("getBroadcastAddresses() returned %zu entry/-ies.", broadcasts->size());
     epicsSocketDestroy(socket);
 
     // debug
-    for(size_t i = 0; i<broadcasts->size(); i++) {
-        testDiag("%s", inetAddressToString(broadcasts->at(i)).c_str());
+    for(size_t i = 0; i<broadcasts.size(); i++) {
+        testDiag("%s", inetAddressToString(broadcasts[i]).c_str());
     }
 
 }
@@ -229,7 +235,7 @@ void test_multicastLoopback()
     SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     testOk1(socket != INVALID_SOCKET);
     if (socket == INVALID_SOCKET)
-        return;
+        testAbort("Can't allocate socket");
 
     unsigned short port = 5555;
 
@@ -246,7 +252,7 @@ void test_multicastLoopback()
     {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-        fprintf(stderr, "Failed to bind: %s\n", errStr);
+        testFail("Failed to bind: %s\n", errStr);
         epicsSocketDestroy(socket);
         return;
     }
@@ -270,7 +276,7 @@ void test_multicastLoopback()
     {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-        fprintf(stderr, "Error setting IP_ADD_MEMBERSHIP: %s\n", errStr);
+        testFail("Error setting IP_ADD_MEMBERSHIP: %s\n", errStr);
     }
     testOk(status == 0, "IP_ADD_MEMBERSHIP set");
 
@@ -288,7 +294,7 @@ void test_multicastLoopback()
     {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-        fprintf(stderr, "Error setting IP_MULTICAST_IF: %s\n", errStr);
+        testFail("Error setting IP_MULTICAST_IF: %s\n", errStr);
     }
     testOk(status == 0, "IP_MULTICAST_IF set");
 
@@ -300,7 +306,7 @@ void test_multicastLoopback()
     {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-        fprintf(stderr, "Error setting IP_MULTICAST_LOOP: %s\n", errStr);
+        testFail("Error setting IP_MULTICAST_LOOP: %s\n", errStr);
     }
     testOk(status == 0, "IP_MULTICAST_LOOP set");
 
@@ -317,7 +323,7 @@ void test_multicastLoopback()
     {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-        fprintf(stderr, "Multicast send error: %s\n", errStr);
+        testFail("Multicast send error: %s\n", errStr);
     }
     testOk((size_t)status == len, "Multicast send");
 
@@ -334,7 +340,7 @@ void test_multicastLoopback()
     {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-        fprintf(stderr, "Error setting SO_RCVTIMEO: %s\n", errStr);
+        testFail("Error setting SO_RCVTIMEO: %s\n", errStr);
     }
     testOk(status == 0, "SO_RCVTIMEO set");
 
@@ -350,7 +356,7 @@ void test_multicastLoopback()
     {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-        fprintf(stderr, "Multicast recv error: %s\n", errStr);
+        testFail("Multicast recv error: %s\n", errStr);
     }
     testOk((size_t)status == len, "Multicast recv");
     testOk(strncmp(rxbuff, txbuff, len) == 0, "Multicast content matches");
@@ -362,7 +368,7 @@ void test_multicastLoopback()
 
 MAIN(testInetAddressUtils)
 {
-    testPlan(83);
+    testPlan(80);
     testDiag("Tests for InetAddress utils");
 
     test_getSocketAddressList();

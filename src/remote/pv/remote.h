@@ -356,7 +356,10 @@ class ResponseHandler {
 public:
     POINTER_DEFINITIONS(ResponseHandler);
 
-    virtual ~ResponseHandler() {}
+    static size_t num_instances;
+
+    ResponseHandler();
+    virtual ~ResponseHandler();
 
     /**
      * Handle response.

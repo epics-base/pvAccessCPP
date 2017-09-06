@@ -228,7 +228,8 @@ bool discoverServers(double timeOut)
     int broadcastPort = configuration->getPropertyAsInteger("EPICS_PVA_BROADCAST_PORT", PVA_BROADCAST_PORT);
 
     // quary broadcast addresses of all IFs
-    auto_ptr<InetAddrVector> broadcastAddresses(getBroadcastAddresses(socket, broadcastPort));
+    InetAddrVector broadcastAddresses;
+    getBroadcastAddresses(broadcastAddresses, socket, broadcastPort);
 
     // set broadcast address list
     if (!addressList.empty())
@@ -236,18 +237,19 @@ bool discoverServers(double timeOut)
         // if auto is true, add it to specified list
         InetAddrVector* appendList = 0;
         if (autoAddressList)
-            appendList = broadcastAddresses.get();
+            appendList = &broadcastAddresses;
 
-        auto_ptr<InetAddrVector> list(getSocketAddressList(addressList, broadcastPort, appendList));
-        if (list.get() && list->size()) {
+        InetAddrVector list;
+        getSocketAddressList(list, addressList, broadcastPort, appendList);
+        if (!list.empty()) {
             // delete old list and take ownership of a new one
             broadcastAddresses = list;
         }
     }
 
-    for (size_t i = 0; broadcastAddresses.get() && i < broadcastAddresses->size(); i++)
+    for (size_t i = 0; i < broadcastAddresses.size(); i++)
         LOG(logLevelDebug,
-            "Broadcast address #%d: %s.", i, inetAddressToString((*broadcastAddresses)[i]).c_str());
+            "Broadcast address #%d: %s.", i, inetAddressToString(broadcastAddresses[i]).c_str());
 
     // ---
 
@@ -330,11 +332,11 @@ bool discoverServers(double timeOut)
     sendBuffer.putShort((int16_t)0);	// count
 
     bool oneOK = false;
-    for (size_t i = 0; i < broadcastAddresses->size(); i++)
+    for (size_t i = 0; i < broadcastAddresses.size(); i++)
     {
         // send the packet
         status = ::sendto(socket, sendBuffer.getArray(), sendBuffer.getPosition(), 0,
-                          &((*broadcastAddresses)[i].sa), sizeof(sockaddr));
+                          &broadcastAddresses[i].sa, sizeof(sockaddr));
         if (status < 0)
         {
             char errStr[64];
@@ -409,11 +411,11 @@ bool discoverServers(double timeOut)
             {
                 // TODO duplicate code
                 bool oneOK = false;
-                for (size_t i = 0; i < broadcastAddresses->size(); i++)
+                for (size_t i = 0; i < broadcastAddresses.size(); i++)
                 {
                     // send the packet
                     status = ::sendto(socket, sendBuffer.getArray(), sendBuffer.getPosition(), 0,
-                                      &((*broadcastAddresses)[i].sa), sizeof(sockaddr));
+                                      &broadcastAddresses[i].sa, sizeof(sockaddr));
                     if (status < 0)
                     {
                         char errStr[64];
