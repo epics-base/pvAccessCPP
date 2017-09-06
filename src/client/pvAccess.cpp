@@ -7,6 +7,7 @@
 #include <epicsMutex.h>
 #include <epicsGuard.h>
 #include <pv/reftrack.h>
+#include <pv/valueBuilder.h>
 
 #define epicsExportSharedSymbols
 #include <pv/pvAccess.h>
@@ -163,10 +164,23 @@ struct Process2PutProxy : public ChannelProcess
 
 ChannelProcess::shared_pointer Channel::createChannelProcess(
         ChannelProcessRequester::shared_pointer const & requester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest)
+        epics::pvData::PVStructure::shared_pointer const & pvRequestx)
 {
+    pvd::PVStructure::shared_pointer pvRequest(pvRequestx);
     std::tr1::shared_ptr<Process2PutProxy> ret(new Process2PutProxy);
     ret->op_request.reset(new Process2PutProxy::Req(requester, ret));
+
+    // inject record._options.process=true if client hasn't provided
+    if(!pvRequest->getSubField("record._options.process"))
+    {
+        pvRequest = pvd::ValueBuilder(*pvRequest)
+                     .addNested("record")
+                         .addNested("_options")
+                            .add<pvd::pvString>("process", "true")
+                         .endNested()
+                     .endNested()
+                     .buildPVStructure();
+    }
 
     ChannelPut::shared_pointer op(createChannelPut(ret->op_request, pvRequest));
     if(!op) {
