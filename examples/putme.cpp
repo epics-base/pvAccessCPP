@@ -212,6 +212,7 @@ int main(int argc, char *argv[]) {
         signal(SIGQUIT, alldone);
 #endif
 
+        int ret = 0;
         {
             Guard G(mutex);
             while(waitingFor) {
@@ -220,16 +221,17 @@ int main(int argc, char *argv[]) {
                     done.wait();
                 } else if(!done.wait(waitTime)) {
                     std::cerr<<"Timeout\n";
+                    ret = 1;
                     break; // timeout
                 }
             }
         }
 
 
+        return ret;
     } catch(std::exception& e){
         PRINT_EXCEPTION(e);
         std::cerr<<"Error: "<<e.what()<<"\n";
-        return 1;
+        return 2;
     }
-    return 0;
 }

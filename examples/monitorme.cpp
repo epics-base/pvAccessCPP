@@ -260,6 +260,7 @@ int main(int argc, char *argv[]) {
             monitors.push_back(mon);
         }
 
+        int ret = 0;
         {
             Guard G(mutex);
             while(waitingFor) {
@@ -268,6 +269,7 @@ int main(int argc, char *argv[]) {
                     done.wait();
                 } else if(!done.wait(waitTime)) {
                     std::cerr<<"Timeout\n";
+                    ret = 1;
                     break; // timeout
                 }
             }
@@ -281,10 +283,10 @@ int main(int argc, char *argv[]) {
             refmon.current();
         }
 
+        monwork.close();
+        return ret;
     } catch(std::exception& e){
         std::cout<<"Error: "<<e.what()<<"\n";
-        return 1;
+        return 2;
     }
-    monwork.close();
-    return 0;
 }
