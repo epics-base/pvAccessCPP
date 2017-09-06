@@ -708,9 +708,11 @@ void initializeUDPTransports(bool serverFlag,
 
             BlockingUDPTransport::shared_pointer transport2;
 
-            if(node.ifaceBCast.ia.sin_family == AF_UNSPEC ||
+            if(node.ifaceBCast.sa.sa_family == AF_UNSPEC ||
                     node.ifaceBCast.ia.sin_addr.s_addr == listenLocalAddress.ia.sin_addr.s_addr) {
-                LOG(logLevelWarn, "Unable to find broadcast address of interface %s.", inetAddressToString(node.ifaceAddr, false).c_str());
+                // warning if not point-to-point
+                LOG(node.ifaceDest.sa.sa_family == AF_UNSPEC ? logLevelDebug : logLevelWarn,
+                    "Unable to find broadcast address of interface %s.", inetAddressToString(node.ifaceAddr, false).c_str());
             }
 #if !defined(_WIN32)
             else
