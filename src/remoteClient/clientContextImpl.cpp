@@ -2874,23 +2874,23 @@ public:
         AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
         transport->ensureData(5);
+        int32 ioid = payloadBuffer->getInt();
+        MessageType type = (MessageType)payloadBuffer->getByte();
 
-        // TODO optimize
-        ResponseRequest::shared_pointer rr = _context.lock()->getResponseRequest(payloadBuffer->getInt());
-        if (rr.get())
+        string message = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+
+        bool shown = false;
+        ResponseRequest::shared_pointer rr = _context.lock()->getResponseRequest(ioid);
+        if (rr)
         {
-            DataResponse::shared_pointer nrr = dynamic_pointer_cast<DataResponse>(rr);
-            if (nrr.get())
-            {
-                Requester::shared_pointer requester = nrr->getRequester();
-                if (requester.get()) {
-                    MessageType type = (MessageType)payloadBuffer->getByte();
-                    string message = SerializeHelper::deserializeString(payloadBuffer, transport.get());
-                    requester->message(message, type);
-                }
+            Requester::shared_pointer requester = rr->getRequester();
+            if (requester) {
+                requester->message(message, type);
+                shown = true;
             }
         }
-
+        if(!shown)
+            std::cerr<<"Orphaned server message "<<type<<" : "<<message<<"\n";
     }
 };
 

@@ -94,7 +94,7 @@ BaseChannelRequesterMessageTransportSender::BaseChannelRequesterMessageTransport
 
 void BaseChannelRequesterMessageTransportSender::send(ByteBuffer* buffer, TransportSendControl* control)
 {
-    control->startMessage((int8)18, sizeof(int32)/sizeof(int8) + 1);
+    control->startMessage((int8)CMD_MESSAGE, sizeof(int32)/sizeof(int8) + 1);
     buffer->putInt(_ioid);
     buffer->putByte((int8)_messageType);
     epics::pvData::SerializeHelper::serializeString(_message, buffer, control);

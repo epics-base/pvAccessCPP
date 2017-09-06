@@ -129,6 +129,7 @@ ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer c
     m_handlerTable[CMD_GET_FIELD].reset(new ServerGetFieldHandler(context)); /* 17 - get field response */
     m_handlerTable[CMD_MESSAGE] = badResponse; /* 18 - message to Requester */
     m_handlerTable[CMD_MULTIPLE_DATA] = badResponse; /* 19 - grouped monitors */
+
     m_handlerTable[CMD_RPC].reset(new ServerRPCHandler(context)); /* 20 - RPC response */
     m_handlerTable[CMD_CANCEL_REQUEST].reset(new ServerCancelRequestHandler(context)); /* 21 - cancel request */
 }
