@@ -602,10 +602,10 @@ void initializeUDPTransports(bool serverFlag,
     {
         ifaceNode node = *iter;
 
-        if (node.ifaceBCast.ia.sin_family != AF_UNSPEC)
+        if (node.ifaceDest.ia.sin_family != AF_UNSPEC)
         {
-            node.ifaceBCast.ia.sin_port = htons(sendPort);
-            autoBCastAddr.push_back(node.ifaceBCast);
+            node.ifaceDest.ia.sin_port = htons(sendPort);
+            autoBCastAddr.push_back(node.ifaceDest);
         }
     }
 
@@ -681,9 +681,10 @@ void initializeUDPTransports(bool serverFlag,
     {
         ifaceNode node = *iter;
 
-        LOG(logLevelDebug, "Setting up UDP for interface %s, broadcast %s.",
+        LOG(logLevelDebug, "Setting up UDP for interface %s, broadcast %s, dest %s.",
             inetAddressToString(node.ifaceAddr, false).c_str(),
-            inetAddressToString(node.ifaceBCast, false).c_str());
+            inetAddressToString(node.ifaceBCast, false).c_str(),
+            inetAddressToString(node.ifaceDest, false).c_str());
         try
         {
             // where to bind (listen) address

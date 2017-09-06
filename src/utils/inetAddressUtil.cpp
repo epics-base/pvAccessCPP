@@ -211,7 +211,14 @@ int getLoopbackNIF(osiSockAddr &loAddr, string const & localNIF, unsigned short 
     return 1;
 }
 
-
+ifaceNode::ifaceNode()
+{
+    memset(&ifaceAddr, 0, sizeof(ifaceAddr));
+    memset(&ifaceBCast, 0, sizeof(ifaceBCast));
+    memset(&ifaceDest, 0, sizeof(ifaceDest));
+    // redundant as AF_UNSPEC==0
+    ifaceAddr.sa.sa_family = ifaceBCast.sa.sa_family = ifaceDest.sa.sa_family = AF_UNSPEC;
+}
 
 #include <osiSock.h>
 //#include <epicsAssert.h>
@@ -371,7 +378,7 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
                 errlogPrintf ("discoverInterfaces(): net intf \"%s\": bcast addr fetch fail\n", pIfreqList->ifr_name);
                 continue;
             }
-            node.ifaceBCast.sa = pIfreqList->ifr_broadaddr;
+            node.ifaceBCast.sa = node.ifaceDest.sa = pIfreqList->ifr_broadaddr;
             /*ifDepenDebugPrintf ( ( "found broadcast addr = %x\n", ntohl ( pNewNode->addr.ia.sin_addr.s_addr ) ) );*/
         }
 #if defined (IFF_POINTOPOINT)
@@ -381,16 +388,12 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
                 /*ifDepenDebugPrintf ( ("discoverInterfaces(): net intf \"%s\": pt to pt addr fetch fail\n", pIfreqList->ifr_name) );*/
                 continue;
             }
-            node.ifaceBCast.sa = pIfreqList->ifr_dstaddr;
+            node.ifaceDest.sa = pIfreqList->ifr_dstaddr;
         }
 #endif
         else {
-            // if it is a match, accept the interface even if it does not support broadcast (i.e. 127.0.0.1)
-            if (match) {
-                memset(&node.ifaceBCast, 0, sizeof(node.ifaceBCast));
-                node.ifaceBCast.sa.sa_family = AF_UNSPEC;
-            }
-            else
+            // if it is a match, accept the interface even if it does not support broadcast (i.e. 127.0.0.1 or point to point)
+            if (!match)
             {
                 /*ifDepenDebugPrintf ( ( "discoverInterfaces(): net intf \"%s\": not point to point or bcast?\n", pIfreqList->ifr_name ) );*/
                 continue;
