@@ -1,30 +1,35 @@
 #include <iostream>
-
-#include <stdio.h>
-#include <epicsStdlib.h>
-#include <epicsGetopt.h>
-#include <epicsThread.h>
-#include <pv/logger.h>
-#include <pv/lock.h>
-#include <pv/convert.h>
-
-#include <pv/pvAccess.h>
-#include <pva/client.h>
-#include <pv/json.h>
-
 #include <vector>
 #include <string>
 #include <istream>
 #include <fstream>
 #include <sstream>
 
-#include <pv/pvaDefs.h>
-#include <pv/event.h>
+#include <stdio.h>
 #include <epicsExit.h>
 
-#include "pvutils.cpp"
+#include <epicsStdlib.h>
+#include <epicsGetopt.h>
+#include <epicsThread.h>
+
+#include <pv/logger.h>
+#include <pv/lock.h>
+#include <pv/convert.h>
+#include <pv/pvdVersion.h>
+
+#include <pva/client.h>
+
+#if EPICS_VERSION_INT>=VERSION_INT(3,15,0,1)
+#  include <pv/json.h>
+#  define USE_JSON
+#endif
+
+#include <pv/pvaDefs.h>
+#include <pv/event.h>
 
 #include <pv/caProvider.h>
+
+#include "pvutils.cpp"
 
 using namespace std;
 namespace TR1 = std::tr1;
@@ -72,16 +77,32 @@ void usage (bool details=false)
              "  -n: Force enum interpretation of values as numbers\n"
              "  -s: Force enum interpretation of values as strings\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT, DEFAULT_PROVIDER);
-    if(details)
+    if(details) {
+        fprintf (stderr,
+#ifdef USE_JSON
+                 " JSON support is present\n"
+#else
+                 " no JSON support (needs EPICS Base >=3.15.0.1)\n";
+#endif
+                 );
         fprintf (stderr,
                  "\nExamples:\n"
                  "\n"
-                 "  pvput double01 1.234\n\n"
+                 "  pvput double01 1.234\n"
                  "equivalent to:\n"
-                 "  pvput double01 value=1.234\n\n"
+                 "  pvput double01 value=1.234\n"
                  );
+#ifdef USE_JSON
+        fprintf (stderr,
+                 "\n"
+                 "Field values may be given with JSON syntax.  eg. and array:\n"
+                 "\n"
+                 "  pvput arr:pv \"[1.0, 2.0]\"\n"
+                 "equivalent to:\n"
+                 "  pvput arr:pv value=\"[1.0, 2.0]\"\n");
+#endif
+    }
 }
-
 
 void printValue(std::string const & channelName, PVStructure::const_shared_pointer const & pv)
 {
@@ -141,6 +162,78 @@ void printValue(std::string const & channelName, PVStructure::const_shared_point
         std::cout << std::endl << *(pv.get()) << std::endl << std::endl;
 }
 
+void early(const char *inp, unsigned pos)
+{
+    fprintf(stderr, "Unexpected end of input: %s\n", inp);
+    throw std::runtime_error("Unexpected end of input");
+}
+
+// rudimentory parser for json array
+// needed as long as Base < 3.15 is supported.
+// for consistency, used with all version
+void jarray(shared_vector<std::string>& out, const char *inp)
+{
+    assert(inp[0]=='[');
+    const char * const orig = inp;
+    inp++;
+
+    while(true) {
+        // starting a new token
+
+        for(; *inp==' '; inp++) {} // skip leading whitespace
+
+        if(*inp=='\0') early(inp, inp-orig);
+
+        if(isalnum(*inp) || *inp=='+' || *inp=='-') {
+            // number
+
+            const char *start = inp;
+
+            while(isalnum(*inp) || *inp=='.' || *inp=='+' || *inp=='-')
+                inp++;
+
+            if(*inp=='\0') early(inp, inp-orig);
+
+            // inp points to first char after token
+
+            out.push_back(std::string(start, inp-start));
+
+        } else if(*inp=='"') {
+            // quoted string
+
+            const char *start = ++inp; // skip quote
+
+            while(*inp!='\0' && *inp!='"')
+                inp++;
+
+            if(*inp=='\0') early(inp, inp-orig);
+
+            // inp points to trailing "
+
+            out.push_back(std::string(start, inp-start));
+
+            inp++; // skip trailing "
+
+        } else if(*inp==']') {
+            // no-op
+        } else {
+            fprintf(stderr, "Unknown token '%c' in \"%s\"", *inp, inp);
+            throw std::runtime_error("Unknown token");
+        }
+
+        for(; *inp==' '; inp++) {} // skip trailing whitespace
+
+        if(*inp==',') inp++;
+        else if(*inp==']') break;
+        else {
+            fprintf(stderr, "Unknown token '%c' in \"%s\"", *inp, inp);
+            throw std::runtime_error("Unknown token");
+        }
+    }
+
+    std::cerr<<"jarray "<<out<<"\n";
+}
+
 struct Putter : public pvac::ClientChannel::PutCallback
 {
     epicsEvent wait;
@@ -157,6 +250,8 @@ struct Putter : public pvac::ClientChannel::PutCallback
     typedef std::vector<KV_t> pairs_t;
     pairs_t pairs;
 
+    shared_vector<std::string> jarr;
+
     virtual void putBuild(const epics::pvData::StructureConstPtr& build, Args& args)
     {
         PVStructurePtr root(getPVDataCreate()->createPVStructure(build));
@@ -164,12 +259,27 @@ struct Putter : public pvac::ClientChannel::PutCallback
         if(pairs.empty()) {
             std::istringstream strm(jblob);
             parseJSON(strm, root, &args.tosend);
+
         } else {
             for(pairs_t::const_iterator it=pairs.begin(), end=pairs.end(); it!=end; ++it)
             {
                 PVFieldPtr fld(root->getSubField(it->first));
                 if(!fld) {
-                    fprintf(stderr, "%s : Error: no such field\n", it->first.c_str());
+                    fprintf(stderr, "%s : Warning: no such field\n", it->first.c_str());
+                    // ignore
+
+                } else if(it->second[0]=='[') {
+                    shared_vector<std::string> arr;
+                    jarray(arr, it->second.c_str());
+
+                    PVScalarArray* afld(dynamic_cast<PVScalarArray*>(fld.get()));
+                    if(!afld) {
+                        fprintf(stderr, "%s : Error not a scalar array field\n", it->first.c_str());
+                        throw std::runtime_error("Not a scalar array field");
+                    }
+                    afld->putFrom(freeze(arr));
+                    args.tosend.set(afld->getFieldOffset());
+
                 } else if(it->second[0]=='{' || it->second[0]=='[') {
                     std::istringstream strm(it->second);
                     parseJSON(strm, fld, &args.tosend);
@@ -374,6 +484,10 @@ int main (int argc, char *argv[])
         return 1;
     } else if(values[0][0]=='{') {
         // write entire blob
+#ifndef USE_JSON
+        fprintf(stderr, "JSON syntax not supported by this build.\n");
+        return 1;
+#endif
         thework.jblob = values[0];
     } else {
         for(size_t i=0, N=values.size(); i<N; i++)
@@ -391,6 +505,12 @@ int main (int argc, char *argv[])
                                                        values[i].substr(sep+1)));
             }
         }
+#ifndef USE_JSON
+        if(!thework.pairs.back().second.empty() && thework.pairs.back().second[0]=='{') {
+            fprintf(stderr, "JSON syntax not supported by this build.\n");
+            return 1;
+        }
+#endif
     }
 
     PVStructure::shared_pointer pvRequest;
