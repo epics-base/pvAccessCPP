@@ -73,7 +73,7 @@ void printUserTag(bool flag)
     printUserTagFlag = flag;
 }
 
-std::ostream& terse(std::ostream& o, PVField::shared_pointer const & pv)
+std::ostream& terse(std::ostream& o, PVField::const_shared_pointer const & pv)
 {
     Type type = pv->getField()->getType();
     switch (type)
@@ -82,19 +82,19 @@ std::ostream& terse(std::ostream& o, PVField::shared_pointer const & pv)
         o << *(pv.get());
         return o;
     case structure:
-        return terseStructure(o, TR1::static_pointer_cast<PVStructure>(pv));
+        return terseStructure(o, TR1::static_pointer_cast<const PVStructure>(pv));
         break;
     case scalarArray:
-        return terseScalarArray(o, TR1::static_pointer_cast<PVScalarArray>(pv));
+        return terseScalarArray(o, TR1::static_pointer_cast<const PVScalarArray>(pv));
         break;
     case structureArray:
-        return terseStructureArray(o, TR1::static_pointer_cast<PVStructureArray>(pv));
+        return terseStructureArray(o, TR1::static_pointer_cast<const PVStructureArray>(pv));
         break;
     case union_:
-        return terseUnion(o, TR1::static_pointer_cast<PVUnion>(pv));
+        return terseUnion(o, TR1::static_pointer_cast<const PVUnion>(pv));
         break;
     case unionArray:
-        return terseUnionArray(o, TR1::static_pointer_cast<PVUnionArray>(pv));
+        return terseUnionArray(o, TR1::static_pointer_cast<const PVUnionArray>(pv));
         break;
     default:
         std::ostringstream msg("unknown Field type: ");
@@ -127,45 +127,29 @@ std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure const & pvE
     return o;
 }
 
-std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvEnumT)
+std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure::const_shared_pointer const & pvEnumT)
 {
     return printEnumT(o, *pvEnumT);
 }
 
-std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvTimeT)
+std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::const_shared_pointer const & pvTimeT)
 {
-#define TIMETEXTLEN 32
-    char timeText[TIMETEXTLEN];
+    char timeText[32];
     epicsTimeStamp epicsTS;
-    int32 userTag;
 
-    PVTimeStamp pvTimeStamp;
-    if (pvTimeStamp.attach(pvTimeT))
-    {
-        TimeStamp ts;
-        pvTimeStamp.get(ts);
+    PVScalar::const_shared_pointer secf(pvTimeT->getSubField<PVScalar>("secondsPastEpoch")),
+                                   nsecf(pvTimeT->getSubField<PVScalar>("nanoseconds")),
+                                   tagf(pvTimeT->getSubField<PVScalar>("userTag"));
 
-        userTag = ts.getUserTag();
+    epicsTS.secPastEpoch = secf ? secf->getAs<int64>() : 0;
+    epicsTS.nsec = nsecf ? nsecf->getAs<int32>() : 0;
 
-        if (ts.getSecondsPastEpoch() == 0 &&
-                ts.getNanoseconds() == 0)
-        {
-            o << "<undefined>";
-            if (printUserTagFlag)
-                o << separator << userTag;
-            return o;
-        }
+    epicsTS.secPastEpoch += POSIX_TIME_AT_EPICS_EPOCH;
 
-        epicsTS.secPastEpoch = ts.getEpicsSecondsPastEpoch();
-        epicsTS.nsec = ts.getNanoseconds();
-    }
-    else
-        throw std::runtime_error("invalid time_t structure");
-
-    epicsTimeToStrftime(timeText, TIMETEXTLEN, "%Y-%m-%dT%H:%M:%S.%03f", &epicsTS);
+    epicsTimeToStrftime(timeText, sizeof(timeText), "%Y-%m-%dT%H:%M:%S.%03f", &epicsTS);
     o << timeText;
-    if (printUserTagFlag)
-        o << separator << userTag;
+    if (printUserTagFlag && tagf)
+        o << separator << tagf->getAs<int32>();
 
     return o;
 }
@@ -189,17 +173,17 @@ const char* statusNames[] = {
     "CLIENT"  // 7
 };
 
-std::ostream& printAlarmT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvAlarmT)
+std::ostream& printAlarmT(std::ostream& o, epics::pvData::PVStructure::const_shared_pointer const & pvAlarmT)
 {
-    PVInt::shared_pointer pvSeverity = pvAlarmT->getSubField<PVInt>("severity");
+    PVInt::const_shared_pointer pvSeverity = pvAlarmT->getSubField<PVInt>("severity");
     if (!pvSeverity)
         throw std::runtime_error("alarm_t structure does not have 'int severity' field");
 
-    PVInt::shared_pointer pvStatus = pvAlarmT->getSubField<PVInt>("status");
+    PVInt::const_shared_pointer pvStatus = pvAlarmT->getSubField<PVInt>("status");
     if (!pvStatus)
         throw std::runtime_error("alarm_t structure does not have 'int status' field");
 
-    PVString::shared_pointer pvMessage = pvAlarmT->getSubField<PVString>("message");
+    PVString::const_shared_pointer pvMessage = pvAlarmT->getSubField<PVString>("message");
     if (!pvMessage)
         throw std::runtime_error("alarm_t structure does not have 'string message' field");
 
@@ -224,7 +208,7 @@ std::ostream& printAlarmT(std::ostream& o, epics::pvData::PVStructure::shared_po
 }
 
 
-bool isTType(epics::pvData::PVStructure::shared_pointer const & pvStructure)
+bool isTType(epics::pvData::PVStructure::const_shared_pointer const & pvStructure)
 {
     // "forget" about Ttype if disabled
     if (!formatTTypesFlag)
@@ -236,7 +220,7 @@ bool isTType(epics::pvData::PVStructure::shared_pointer const & pvStructure)
             id == "alarm_t");
 }
 
-bool formatTType(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvStructure)
+bool formatTType(std::ostream& o, epics::pvData::PVStructure::const_shared_pointer const & pvStructure)
 {
     // special t-types support (enum_t and time_t, etc.)
     if (formatTTypesFlag)
@@ -263,7 +247,7 @@ bool formatTType(std::ostream& o, epics::pvData::PVStructure::shared_pointer con
 }
 
 
-std::ostream& terseStructure(std::ostream& o, PVStructure::shared_pointer const & pvStructure)
+std::ostream& terseStructure(std::ostream& o, PVStructure::const_shared_pointer const & pvStructure)
 {
     if (!pvStructure)
     {
@@ -289,7 +273,7 @@ std::ostream& terseStructure(std::ostream& o, PVStructure::shared_pointer const 
     return o;
 }
 
-std::ostream& terseUnion(std::ostream& o, PVUnion::shared_pointer const & pvUnion)
+std::ostream& terseUnion(std::ostream& o, PVUnion::const_shared_pointer const & pvUnion)
 {
     if (!pvUnion || !pvUnion->get())
     {
@@ -300,7 +284,7 @@ std::ostream& terseUnion(std::ostream& o, PVUnion::shared_pointer const & pvUnio
     return terse(o, pvUnion->get());
 }
 
-std::ostream& terseScalarArray(std::ostream& o, PVScalarArray::shared_pointer const & pvArray)
+std::ostream& terseScalarArray(std::ostream& o, const PVScalarArray::const_shared_pointer &pvArray)
 {
     size_t length = pvArray->getLength();
     if (arrayCountFlag)
@@ -331,7 +315,7 @@ std::ostream& terseScalarArray(std::ostream& o, PVScalarArray::shared_pointer co
     */
 }
 
-std::ostream& terseStructureArray(std::ostream& o, PVStructureArray::shared_pointer const & pvArray)
+std::ostream& terseStructureArray(std::ostream& o, PVStructureArray::const_shared_pointer const & pvArray)
 {
     size_t length = pvArray->getLength();
     if (arrayCountFlag)
@@ -357,7 +341,7 @@ std::ostream& terseStructureArray(std::ostream& o, PVStructureArray::shared_poin
     return o;
 }
 
-std::ostream& terseUnionArray(std::ostream& o, PVUnionArray::shared_pointer const & pvArray)
+std::ostream& terseUnionArray(std::ostream& o, PVUnionArray::const_shared_pointer const & pvArray)
 {
     size_t length = pvArray->getLength();
     if (arrayCountFlag)

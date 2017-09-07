@@ -9,25 +9,25 @@ void convertStructureArray(std::string*, epics::pvData::PVStructureArray * pvdat
 
 void terseSeparator(char c);
 void terseArrayCount(bool flag);
-std::ostream& terse(std::ostream& o, epics::pvData::PVField::shared_pointer const & pv);
-std::ostream& terseUnion(std::ostream& o, epics::pvData::PVUnion::shared_pointer const & pvUnion);
-std::ostream& terseStructure(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvStructure);
-std::ostream& terseScalarArray(std::ostream& o, epics::pvData::PVScalarArray::shared_pointer const & pvArray);
-std::ostream& terseStructureArray(std::ostream& o, epics::pvData::PVStructureArray::shared_pointer const & pvArray);
-std::ostream& terseUnionArray(std::ostream& o, epics::pvData::PVUnionArray::shared_pointer const & pvArray);
+std::ostream& terse(std::ostream& o, epics::pvData::PVField::const_shared_pointer const & pv);
+std::ostream& terseUnion(std::ostream& o, epics::pvData::PVUnion::const_shared_pointer const & pvUnion);
+std::ostream& terseStructure(std::ostream& o, const epics::pvData::PVStructure::const_shared_pointer &pvStructure);
+std::ostream& terseScalarArray(std::ostream& o, epics::pvData::PVScalarArray::const_shared_pointer const & pvArray);
+std::ostream& terseStructureArray(std::ostream& o, epics::pvData::PVStructureArray::const_shared_pointer const & pvArray);
+std::ostream& terseUnionArray(std::ostream& o, epics::pvData::PVUnionArray::const_shared_pointer const & pvArray);
 
 enum EnumMode { AutoEnum, NumberEnum, StringEnum };
 void setEnumPrintMode(EnumMode mode);
 
 void formatTTypes(bool flag);
-bool isTType(epics::pvData::PVStructure::shared_pointer const & pvStructure);
-bool formatTType(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvStructure);
+bool isTType(epics::pvData::PVStructure::const_shared_pointer const & pvStructure);
+bool formatTType(std::ostream& o, const epics::pvData::PVStructure::const_shared_pointer &pvStructure);
 
 void printUserTag(bool flag);
 
 std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure const & pvEnumT);
-std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvEnumT);
-std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::shared_pointer const & pvTimeT);
+std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure::const_shared_pointer const & pvEnumT);
+std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::const_shared_pointer const & pvTimeT);
 
 bool starts_with(const std::string& str, const std::string& part);
 
