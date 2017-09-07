@@ -48,9 +48,14 @@ PrintMode mode = ValueOnlyMode;
 
 char fieldSeparator = ' ';
 
-void usage (void)
+bool debug = false;
+
+void usage (bool details=false)
 {
-    fprintf (stderr, "\nUsage: pvput [options] <PV name> <values>...\n\n"
+    fprintf (stderr,
+             "Usage: pvput [options] <PV name> <json_map>\n\n"
+             "       pvput [options] <PV name> <field>=<value> ...\n"
+             "\n"
              "  -h: Help: Print this message\n"
              "  -v: Print version and exit\n"
              "\noptions:\n"
@@ -66,8 +71,15 @@ void usage (void)
              "  default: Auto - try value as enum string, then as index number\n"
              "  -n: Force enum interpretation of values as numbers\n"
              "  -s: Force enum interpretation of values as strings\n"
-             "\nexample: pvput double01 1.234\n\n"
              , DEFAULT_REQUEST, DEFAULT_TIMEOUT, DEFAULT_PROVIDER);
+    if(details)
+        fprintf (stderr,
+                 "\nExamples:\n"
+                 "\n"
+                 "  pvput double01 1.234\n\n"
+                 "equivalent to:\n"
+                 "  pvput double01 value=1.234\n\n"
+                 );
 }
 
 
@@ -151,7 +163,7 @@ struct Putter : public pvac::ClientChannel::PutCallback
 
         if(pairs.empty()) {
             std::istringstream strm(jblob);
-            parseJSON(strm, root);
+            parseJSON(strm, root, &args.tosend);
         } else {
             for(pairs_t::const_iterator it=pairs.begin(), end=pairs.end(); it!=end; ++it)
             {
@@ -160,21 +172,22 @@ struct Putter : public pvac::ClientChannel::PutCallback
                     fprintf(stderr, "%s : Error: no such field\n", it->first.c_str());
                 } else if(it->second[0]=='{' || it->second[0]=='[') {
                     std::istringstream strm(it->second);
-                    parseJSON(strm, fld);
+                    parseJSON(strm, fld, &args.tosend);
                 } else {
                     PVScalarPtr sfld(std::tr1::dynamic_pointer_cast<PVScalar>(fld));
                     if(!sfld) {
                         fprintf(stderr, "%s : Error: need a scalar field\n", it->first.c_str());
                     } else {
                         sfld->putFrom(it->second);
+                        args.tosend.set(sfld->getFieldOffset());
                     }
                 }
             }
         }
 
         args.root = root;
-        //TODO: track fields actually set
-        args.tosend.set(0);
+        if(debug)
+            std::cout<<"To be sent: "<<args.tosend<<"\n"<<args.root;
     }
 
     virtual void putDone(const pvac::PutEvent& evt)
@@ -195,7 +208,6 @@ struct Putter : public pvac::ClientChannel::PutCallback
 int main (int argc, char *argv[])
 {
     int opt;                    /* getopt() current option */
-    bool debug = false;
     bool quiet = false;
 
     istream* inputStream = 0;
@@ -208,7 +220,7 @@ int main (int argc, char *argv[])
     while ((opt = getopt(argc, argv, ":hvr:w:tp:qdF:f:ns")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
-            usage();
+            usage(true);
             return 0;
         case 'v':               /* Print version */
         {
@@ -406,11 +418,21 @@ int main (int argc, char *argv[])
         printValue(pvName, chan.get(timeOut, pvRequest));
     }
 
-    pvac::Operation op(chan.put(&thework, pvRequest));
+    {
+        pvac::Operation op(chan.put(&thework, pvRequest));
 
-    if(!thework.wait.wait(timeOut)) {
-        fprintf(stderr, "Put timeout\n");
-        return 1;
+        epicsGuard<epicsMutex> G(thework.lock);
+        while(!thework.done) {
+            epicsGuardRelease<epicsMutex> U(G);
+            if(!thework.wait.wait(timeOut)) {
+                fprintf(stderr, "Put timeout\n");
+                return 1;
+            }
+        }
+    }
+
+    if(thework.result==pvac::PutEvent::Fail) {
+        fprintf(stderr, "Error: %s\n", thework.message.c_str());
     }
 
     if (mode != TerseMode && !quiet) {
@@ -418,5 +440,5 @@ int main (int argc, char *argv[])
     }
     printValue(pvName, chan.get(timeOut, pvRequest));
 
-    return 0;
+    return thework.result!=pvac::PutEvent::Success;
 }
