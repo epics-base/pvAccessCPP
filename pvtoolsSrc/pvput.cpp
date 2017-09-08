@@ -247,7 +247,6 @@ void jarray(shared_vector<std::string>& out, const char *inp)
         }
     }
 
-    std::cerr<<"jarray "<<out<<"\n";
 }
 
 struct Putter : public pvac::ClientChannel::PutCallback
