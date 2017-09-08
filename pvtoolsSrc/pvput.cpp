@@ -58,8 +58,15 @@ bool debug = false;
 void usage (bool details=false)
 {
     fprintf (stderr,
-             "Usage: pvput [options] <PV name> <json_map>\n\n"
+             "Usage: pvput [options] <PV name> <value>\n"
+             "       pvput [options] <PV name> <size/ignored> <value> [<value> ...]\n"
              "       pvput [options] <PV name> <field>=<value> ...\n"
+             "       pvput [options] <PV name> <json_array>\n");
+#ifdef USE_JSON
+    fprintf (stderr,
+             "       pvput [options] <PV name> <json_map>\n");
+#endif
+    fprintf (stderr,
              "\n"
              "  -h: Help: Print this message\n"
              "  -v: Print version and exit\n"
@@ -80,26 +87,35 @@ void usage (bool details=false)
     if(details) {
         fprintf (stderr,
 #ifdef USE_JSON
-                 " JSON support is present\n"
+                 "\n JSON support is present\n"
 #else
-                 " no JSON support (needs EPICS Base >=3.15.0.1)\n";
+                 "\n no JSON support (needs EPICS Base >=3.15.0.1)\n"
 #endif
                  );
         fprintf (stderr,
                  "\nExamples:\n"
                  "\n"
-                 "  pvput double01 1.234\n"
-                 "equivalent to:\n"
+                 "  pvput double01 1.234       # shorthand\n"
                  "  pvput double01 value=1.234\n"
+                 "\n"
+                 "  pvput arr:pv X 1.0 2.0  # shorthand  (X is arbitrary and ignored)\n"
+                 "  pvput arr:pv \"[1.0, 2.0]\"            # shorthand\n"
+                 "  pvput arr:pv value=\"[1.0, 2.0]\"\n"
                  );
 #ifdef USE_JSON
         fprintf (stderr,
                  "\n"
-                 "Field values may be given with JSON syntax.  eg. and array:\n"
+                 "Field values may be given with JSON syntax.\n"
                  "\n"
-                 "  pvput arr:pv \"[1.0, 2.0]\"\n"
-                 "equivalent to:\n"
-                 "  pvput arr:pv value=\"[1.0, 2.0]\"\n");
+                 "Complete structure\n"
+                 "\n"
+                 "  pvput double01 '{\"value\":1.234}'\n"
+                 "\n"
+                 "Sub-structure(s)\n"
+                 "\n"
+                 "  pvput group:pv some='{\"value\":1.234}' other='{\"value\":\"a string\"}'\n"
+                 "\n"
+                 );
 #endif
     }
 }
@@ -244,7 +260,8 @@ struct Putter : public pvac::ClientChannel::PutCallback
 
     Putter() :done(false) {}
 
-    std::string jblob;
+    typedef shared_vector<std::string> bare_t;
+    bare_t bare;
 
     typedef std::pair<std::string, std::string> KV_t;
     typedef std::vector<KV_t> pairs_t;
@@ -254,13 +271,68 @@ struct Putter : public pvac::ClientChannel::PutCallback
 
     virtual void putBuild(const epics::pvData::StructureConstPtr& build, Args& args)
     {
+        if(debug) std::cerr<<"Server defined structure\n"<<build;
         PVStructurePtr root(getPVDataCreate()->createPVStructure(build));
 
-        if(pairs.empty()) {
-            std::istringstream strm(jblob);
+        if(bare.size()==1 && bare[0][0]=='{') {
+            if(debug) fprintf(stderr, "In JSON top mode\n");
+#ifdef USE_JSON
+            std::istringstream strm(bare[0]);
             parseJSON(strm, root, &args.tosend);
+#else
+#endif
+
+        } else if(pairs.empty()) {
+            if(debug) fprintf(stderr, "In plain value mode\n");
+
+            PVFieldPtr fld(root->getSubField("value"));
+            Type ftype = fld->getField()->getType();
+
+            if(ftype==scalar) {
+                if(bare.size()!=1) {
+                    throw std::runtime_error("Can't assign multiple values to scalar");
+                }
+                PVScalar* sfld(static_cast<PVScalar*>(fld.get()));
+                sfld->putFrom(bare[0]);
+                args.tosend.set(sfld->getFieldOffset());
+
+            } else if(ftype==scalarArray) {
+                PVScalarArray* sfld(static_cast<PVScalarArray*>(fld.get()));
+
+                // first element is "length" which we ignore for compatibility
+                bare.slice(1);
+
+                sfld->putFrom(freeze(bare));
+                args.tosend.set(sfld->getFieldOffset());
+
+            } else if(ftype==structure && fld->getField()->getID()=="enum_t") {
+                if(bare.size()!=1) {
+                    throw std::runtime_error("Can't assign multiple values to enum");
+                }
+                PVStructure* sfld(static_cast<PVStructure*>(fld.get()));
+
+                PVScalar* idxfld(sfld->getSubFieldT<PVScalar>("index").get());
+                PVStringArray::const_svector choices(sfld->getSubFieldT<PVStringArray>("choices")->view());
+
+                bool found=false;
+                for(size_t i=0; i<choices.size(); i++) {
+                    if(bare[0]==choices[i]) {
+                        idxfld->putFrom(i);
+                        found=true;
+                    }
+                }
+
+                if(!found) {
+                    // try to parse as integer
+                    idxfld->putFrom(bare[0]);
+                }
+
+                args.tosend.set(idxfld->getFieldOffset());
+            }
 
         } else {
+            if(debug) fprintf(stderr, "In field=value mode\n");
+
             for(pairs_t::const_iterator it=pairs.begin(), end=pairs.end(); it!=end; ++it)
             {
                 PVFieldPtr fld(root->getSubField(it->first));
@@ -282,7 +354,11 @@ struct Putter : public pvac::ClientChannel::PutCallback
 
                 } else if(it->second[0]=='{' || it->second[0]=='[') {
                     std::istringstream strm(it->second);
+#ifdef USE_JSON
                     parseJSON(strm, fld, &args.tosend);
+#else
+                    throw std::runtime_error("JSON support not built");
+#endif
                 } else {
                     PVScalarPtr sfld(std::tr1::dynamic_pointer_cast<PVScalar>(fld));
                     if(!sfld) {
@@ -478,39 +554,38 @@ int main (int argc, char *argv[])
 
     Putter thework;
 
-    if(values[0][0]=='{' && values.size()>1) {
-        usage();
-        fprintf(stderr, "\nMissing quotes around JSON?\n");
-        return 1;
-    } else if(values[0][0]=='{') {
-        // write entire blob
+    for(size_t i=0, N=values.size(); i<N; i++)
+    {
+        size_t sep = values[i].find_first_of('=');
+        if(sep==std::string::npos) {
+            thework.bare.push_back(values[i]);
 #ifndef USE_JSON
-        fprintf(stderr, "JSON syntax not supported by this build.\n");
-        return 1;
-#endif
-        thework.jblob = values[0];
-    } else {
-        for(size_t i=0, N=values.size(); i<N; i++)
-        {
-            size_t sep = values[i].find_first_of('=');
-            if(sep==std::string::npos && i==0 && N==1) {
-                // implicit prefix 'value=';
-                thework.pairs.push_back(std::make_pair("value", values[i]));
-            } else if(sep==std::string::npos && N>1) {
-                usage();
-                fprintf(stderr, "\nexpected field=value got '%s'\n", values[i].c_str());
+            if(!thework.bare.back().empty() && thework.bare.back()[0]=='{') {
+                fprintf(stderr, "JSON syntax not supported by this build.\n");
                 return 1;
-            } else {
-                thework.pairs.push_back(std::make_pair(values[i].substr(0, sep),
-                                                       values[i].substr(sep+1)));
             }
-        }
-#ifndef USE_JSON
-        if(!thework.pairs.back().second.empty() && thework.pairs.back().second[0]=='{') {
-            fprintf(stderr, "JSON syntax not supported by this build.\n");
-            return 1;
-        }
 #endif
+        } else {
+            thework.pairs.push_back(std::make_pair(values[i].substr(0, sep),
+                                                   values[i].substr(sep+1)));
+#ifndef USE_JSON
+            if(!thework.pairs.back().second.empty() && thework.pairs.back().second[0]=='{') {
+                fprintf(stderr, "JSON syntax not supported by this build.\n");
+                return 1;
+            }
+#endif
+        }
+    }
+
+    if(!thework.bare.empty() && !thework.pairs.empty()) {
+        usage();
+        fprintf(stderr, "\nCan't mix bare values and field=value pairs\n");
+        return 1;
+
+    } else if(thework.bare.size()==1 && thework.bare[0][0]=='[') {
+        // treat plain "[...]" as "value=[...]"
+        thework.pairs.push_back(std::make_pair("value", thework.bare[0]));
+        thework.bare.clear();
     }
 
     PVStructure::shared_pointer pvRequest;
