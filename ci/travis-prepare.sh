@@ -65,5 +65,5 @@ cat << EOF > pvDataCPP/configure/RELEASE.local
 EPICS_BASE=$HOME/.source/epics-base
 EOF
 
-make -j2 -C epics-base
-make -j2 -C pvDataCPP
+make -j2 -C epics-base $EXTRA
+make -j2 -C pvDataCPP $EXTRA

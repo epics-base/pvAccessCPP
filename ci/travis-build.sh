@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e -x
 
-make -j2
+make -j2 $EXTRA
 
 if [ "$TEST" != "NO" ]
 then
