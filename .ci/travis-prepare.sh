@@ -80,12 +80,14 @@ else
   git clone --quiet --depth 5 --branch core/"${BRCORE:-master}" https://github.com/${REPOBASE:-epics-base}/epics-base.git epics-base
   ( cd epics-base && git log -n1 )
   add_base_module libcom "${BRLIBCOM:-master}"
+  add_base_module ca "${BRCA:-master}"
+  add_base_module database "${BRDATABASE:-master}"
   add_gh_module pvData ${REPOPVD:-epics-base} pvDataCPP ${BRPVD:-master}
 fi
 
-if [ -e configure/RELEASE.local ]
+if [ -e $CURDIR/configure/RELEASE.local ]
 then
-  cat configure/RELEASE.local
+  cat $CURDIR/configure/RELEASE.local
 fi
 
 EPICS_HOST_ARCH=`sh epics-base/startup/EpicsHostArch`
