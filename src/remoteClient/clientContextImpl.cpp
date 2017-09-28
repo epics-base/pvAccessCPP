@@ -2001,8 +2001,10 @@ public:
 
             // deserialize changedBitSet and data, and overrun bit set
             changedBitSet->deserialize(payloadBuffer, transport.get());
-            if (m_up2datePVStructure && m_up2datePVStructure.get() != pvStructure.get())
+            if (m_up2datePVStructure && m_up2datePVStructure.get() != pvStructure.get()) {
+                assert(pvStructure->getStructure().get()==m_up2datePVStructure->getStructure().get()); // TODO: missing some type change (pvStructure w/ fewer fields)
                 pvStructure->copyUnchecked(*m_up2datePVStructure, *changedBitSet, true);
+            }
             pvStructure->deserialize(payloadBuffer, transport.get(), changedBitSet.get());
             overrunBitSet->deserialize(payloadBuffer, transport.get());
 
