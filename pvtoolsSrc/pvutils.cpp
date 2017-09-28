@@ -144,7 +144,7 @@ std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::const_shar
     epicsTS.secPastEpoch = secf ? secf->getAs<int64>() : 0;
     epicsTS.nsec = nsecf ? nsecf->getAs<int32>() : 0;
 
-    epicsTS.secPastEpoch += POSIX_TIME_AT_EPICS_EPOCH;
+    epicsTS.secPastEpoch -= POSIX_TIME_AT_EPICS_EPOCH;
 
     epicsTimeToStrftime(timeText, sizeof(timeText), "%Y-%m-%dT%H:%M:%S.%03f", &epicsTS);
     o << timeText;
