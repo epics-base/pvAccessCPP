@@ -1935,19 +1935,21 @@ public:
         m_releasedCount = 0;
         m_reportQueueStateInProgress = false;
 
-        // reuse on reconnect
-        if (m_lastStructure.get() == 0 ||
-                *(m_lastStructure.get()) != *(structure.get()))
         {
             while (!m_monitorQueue.empty())
                 m_monitorQueue.pop();
+
             m_freeQueue.clear();
+
+            m_up2datePVStructure.reset();
+
             for (int32 i = 0; i < m_queueSize; i++)
             {
                 PVStructure::shared_pointer pvStructure = getPVDataCreate()->createPVStructure(structure);
                 MonitorElement::shared_pointer monitorElement(new MonitorElement(pvStructure));
                 m_freeQueue.push_back(monitorElement);
             }
+
             m_lastStructure = structure;
         }
     }
@@ -2002,7 +2004,7 @@ public:
             // deserialize changedBitSet and data, and overrun bit set
             changedBitSet->deserialize(payloadBuffer, transport.get());
             if (m_up2datePVStructure && m_up2datePVStructure.get() != pvStructure.get()) {
-                assert(pvStructure->getStructure().get()==m_up2datePVStructure->getStructure().get()); // TODO: missing some type change (pvStructure w/ fewer fields)
+                assert(pvStructure->getStructure().get()==m_up2datePVStructure->getStructure().get());
                 pvStructure->copyUnchecked(*m_up2datePVStructure, *changedBitSet, true);
             }
             pvStructure->deserialize(payloadBuffer, transport.get(), changedBitSet.get());
