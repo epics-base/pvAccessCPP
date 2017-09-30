@@ -322,10 +322,9 @@ MonitorSync::MonitorSync(const Monitor& mon, const std::tr1::shared_ptr<SImpl>& 
 }
 
 MonitorSync::~MonitorSync() {
-    std::cout<<"SYNC use_count="<<simpl.use_count()<<"\n";
 }
 
-bool MonitorSync::poll()
+bool MonitorSync::test()
 {
     if(!simpl) throw std::logic_error("No subscription");
     Guard G(simpl->mutex);

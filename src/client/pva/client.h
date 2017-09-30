@@ -152,7 +152,7 @@ struct epicsShareClass MonitorSync : public Monitor
     //! @return false on timeout
     bool wait(double timeout);
     //! check if new event is available
-    bool poll();
+    bool test();
 
     //! Abort one call to wait()
     //! wait() will return with MonitorEvent::Fail
@@ -315,7 +315,7 @@ public:
      *        Otherwise an internal epicsEvent is allocated for use with wait()
      *
      * @note For simple usage with a single MonitorSync, pass event=NULL and call wait().
-     *       If more than one MonitorSync is being created, then pass a custom epicsEvent and use poll() to test
+     *       If more than one MonitorSync is being created, then pass a custom epicsEvent and use test() to find
      *       which subscriptions have events pending.
      */
     MonitorSync monitor(const epics::pvData::PVStructure::const_shared_pointer& pvRequest = epics::pvData::PVStructure::const_shared_pointer(),
