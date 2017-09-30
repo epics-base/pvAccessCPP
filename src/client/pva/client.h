@@ -365,6 +365,7 @@ public:
      */
     ClientProvider(const std::string& providerName,
                    const std::tr1::shared_ptr<epics::pvAccess::Configuration>& conf = std::tr1::shared_ptr<epics::pvAccess::Configuration>());
+    explicit ClientProvider(const std::tr1::shared_ptr<epics::pvAccess::ChannelProvider>& provider);
     ~ClientProvider();
 
     /** Get a new Channel

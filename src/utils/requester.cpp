@@ -35,7 +35,7 @@ string getMessageTypeName(MessageType messageType)
 
 void Requester::message(std::string const & message,MessageType messageType)
 {
-    std::cerr << "[" << getRequesterName() << "] message(" << message << ", " << getMessageTypeName(messageType) << ")\n";
+    std::cerr << "[" << getRequesterName() << "] " << getMessageTypeName(messageType) << " : " << message << "\n";
 }
 
 }}

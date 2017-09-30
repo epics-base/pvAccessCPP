@@ -83,7 +83,10 @@ struct RPCer : public pva::ChannelRPCRequester,
     }
 
     virtual std::string getRequesterName() OVERRIDE FINAL
-    { return "RPCer"; }
+    {
+        Guard G(mutex);
+        return op ? op->getChannel()->getRequesterName() : "<dead>";
+    }
 
     virtual void channelRPCConnect(
         const epics::pvData::Status& status,

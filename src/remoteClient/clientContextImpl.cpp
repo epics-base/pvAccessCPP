@@ -1935,19 +1935,21 @@ public:
         m_releasedCount = 0;
         m_reportQueueStateInProgress = false;
 
-        // reuse on reconnect
-        if (m_lastStructure.get() == 0 ||
-                *(m_lastStructure.get()) != *(structure.get()))
         {
             while (!m_monitorQueue.empty())
                 m_monitorQueue.pop();
+
             m_freeQueue.clear();
+
+            m_up2datePVStructure.reset();
+
             for (int32 i = 0; i < m_queueSize; i++)
             {
                 PVStructure::shared_pointer pvStructure = getPVDataCreate()->createPVStructure(structure);
                 MonitorElement::shared_pointer monitorElement(new MonitorElement(pvStructure));
                 m_freeQueue.push_back(monitorElement);
             }
+
             m_lastStructure = structure;
         }
     }
@@ -2001,8 +2003,10 @@ public:
 
             // deserialize changedBitSet and data, and overrun bit set
             changedBitSet->deserialize(payloadBuffer, transport.get());
-            if (m_up2datePVStructure && m_up2datePVStructure.get() != pvStructure.get())
+            if (m_up2datePVStructure && m_up2datePVStructure.get() != pvStructure.get()) {
+                assert(pvStructure->getStructure().get()==m_up2datePVStructure->getStructure().get());
                 pvStructure->copyUnchecked(*m_up2datePVStructure, *changedBitSet, true);
+            }
             pvStructure->deserialize(payloadBuffer, transport.get(), changedBitSet.get());
             overrunBitSet->deserialize(payloadBuffer, transport.get());
 
@@ -2874,23 +2878,23 @@ public:
         AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
         transport->ensureData(5);
+        int32 ioid = payloadBuffer->getInt();
+        MessageType type = (MessageType)payloadBuffer->getByte();
 
-        // TODO optimize
-        ResponseRequest::shared_pointer rr = _context.lock()->getResponseRequest(payloadBuffer->getInt());
-        if (rr.get())
+        string message = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+
+        bool shown = false;
+        ResponseRequest::shared_pointer rr = _context.lock()->getResponseRequest(ioid);
+        if (rr)
         {
-            DataResponse::shared_pointer nrr = dynamic_pointer_cast<DataResponse>(rr);
-            if (nrr.get())
-            {
-                Requester::shared_pointer requester = nrr->getRequester();
-                if (requester.get()) {
-                    MessageType type = (MessageType)payloadBuffer->getByte();
-                    string message = SerializeHelper::deserializeString(payloadBuffer, transport.get());
-                    requester->message(message, type);
-                }
+            Requester::shared_pointer requester = rr->getRequester();
+            if (requester) {
+                requester->message(message, type);
+                shown = true;
             }
         }
-
+        if(!shown)
+            std::cerr<<"Orphaned server message "<<type<<" : "<<message<<"\n";
     }
 };
 

@@ -190,6 +190,15 @@ ClientProvider::ClientProvider(const std::string& providerName,
         THROW_EXCEPTION2(std::invalid_argument, providerName);
 }
 
+ClientProvider::ClientProvider(const std::tr1::shared_ptr<epics::pvAccess::ChannelProvider>& provider)
+    :impl(new Impl)
+{
+    impl->provider = provider;
+
+    if(!impl->provider)
+        THROW_EXCEPTION2(std::invalid_argument, "null ChannelProvider");
+}
+
 ClientProvider::~ClientProvider() {}
 
 ClientChannel
