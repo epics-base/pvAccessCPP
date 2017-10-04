@@ -327,6 +327,8 @@ struct Putter : public pvac::ClientChannel::PutCallback
                 }
 
                 args.tosend.set(idxfld->getFieldOffset());
+            } else {
+                throw std::runtime_error("Don't know how to set field .value");
             }
 
         } else {

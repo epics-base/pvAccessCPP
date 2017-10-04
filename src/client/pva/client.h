@@ -6,6 +6,7 @@
 #define PVATESTCLIENT_H
 
 #include <stdexcept>
+#include <list>
 
 #include <epicsMutex.h>
 
@@ -151,7 +152,7 @@ struct epicsShareClass MonitorSync : public Monitor
     //! @return false on timeout
     bool wait(double timeout);
     //! check if new event is available
-    bool poll();
+    bool test();
 
     //! Abort one call to wait()
     //! wait() will return with MonitorEvent::Fail
@@ -175,6 +176,10 @@ struct Timeout : public std::runtime_error
 {
     Timeout();
 };
+
+namespace detail {
+class PutBuilder;
+}
 
 /** Represents a single channel
  *
@@ -282,27 +287,9 @@ public:
     Operation put(PutCallback* cb,
                       epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
-    //! Put to the 'value' field and block until complete.
-    //! Accepts a scalar value
-    template<epics::pvData::ScalarType ID>
-    inline void putValue(typename epics::pvData::meta::arg_type<typename epics::pvData::ScalarTypeTraits<ID>::type>::type value,
-                  double timeout = 3.0,
-                  epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer())
-    {
-        putValue(static_cast<const void*>(&value), ID, timeout, pvRequest);
-    }
-
-    //! Put to the 'value' field and block until complete.
-    //! Accepts untyped scalar value
-    void putValue(const void* value, epics::pvData::ScalarType vtype,
-                  double timeout = 3.0,
-                  const epics::pvData::PVStructure::const_shared_pointer& pvRequest = epics::pvData::PVStructure::const_shared_pointer());
-
-    //! Put to the 'value' field and block until complete.
-    //! Accepts scalar array
-    void putValue(const epics::pvData::shared_vector<const void>& value,
-                  double timeout = 3.0,
-                  const epics::pvData::PVStructure::const_shared_pointer& pvRequest = epics::pvData::PVStructure::const_shared_pointer());
+    //! Synchronious put operation
+    inline
+    detail::PutBuilder put(const epics::pvData::PVStructure::const_shared_pointer &pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
     //! Monitor event notification
     struct MonitorCallback {
@@ -328,7 +315,7 @@ public:
      *        Otherwise an internal epicsEvent is allocated for use with wait()
      *
      * @note For simple usage with a single MonitorSync, pass event=NULL and call wait().
-     *       If more than one MonitorSync is being created, then pass a custom epicsEvent and use poll() to test
+     *       If more than one MonitorSync is being created, then pass a custom epicsEvent and use test() to find
      *       which subscriptions have events pending.
      */
     MonitorSync monitor(const epics::pvData::PVStructure::const_shared_pointer& pvRequest = epics::pvData::PVStructure::const_shared_pointer(),
@@ -348,6 +335,59 @@ public:
 private:
     std::tr1::shared_ptr<epics::pvAccess::Channel> getChannel();
 };
+
+namespace detail {
+
+//! Helper to accumulate values to for a Put operation.
+//! Make sure to call exec() to begin operation.
+class epicsShareClass PutBuilder {
+    ClientChannel& channel;
+    epics::pvData::PVStructure::const_shared_pointer request;
+
+    template<typename V>
+    struct triple {
+        std::string name;
+        bool required;
+        V value;
+        triple(const std::string& name, const V& value, bool required =true)
+            :name(name), required(required), value(value)
+        {}
+    };
+
+    typedef std::list<triple<epics::pvData::AnyScalar> > scalars_t;
+    scalars_t scalars;
+
+    typedef std::list<triple<epics::pvData::shared_vector<const void> > > arrays_t;
+    arrays_t arrays;
+
+    struct Exec;
+
+    friend class pvac::ClientChannel;
+    PutBuilder(ClientChannel& channel, const epics::pvData::PVStructure::const_shared_pointer& request)
+        :channel(channel), request(request)
+    {}
+public:
+    PutBuilder& set(const std::string& name, const epics::pvData::AnyScalar& value, bool required=true) {
+        scalars.push_back(scalars_t::value_type(name, value, required));
+        return *this;
+    }
+    template<typename T>
+    PutBuilder& set(const std::string& name, T value, bool required=true) {
+        return set(name, epics::pvData::AnyScalar(value), required);
+    }
+    PutBuilder& set(const std::string& name, const epics::pvData::shared_vector<const void>& value, bool required=true) {
+        arrays.push_back(arrays_t::value_type(name, value, required));
+        return *this;
+    }
+    template<typename T>
+    PutBuilder& set(const std::string& name, const epics::pvData::shared_vector<const T>& value, bool required=true) {
+        return set(name, epics::pvData::static_shared_vector_cast<const void>(value), required);
+    }
+    void exec(double timeout=3.0);
+};
+
+
+}// namespace detail
 
 //! Central client context.
 class epicsShareClass ClientProvider
@@ -384,6 +424,14 @@ public:
     //! Clear channel cache
     void disconnect();
 };
+
+
+
+detail::PutBuilder
+ClientChannel::put(const epics::pvData::PVStructure::const_shared_pointer& pvRequest)
+{
+    return detail::PutBuilder(*this, pvRequest);
+}
 
 //! @}
 

@@ -71,12 +71,19 @@ pvac::ClientChannel::get(double timeout,
                        pvd::PVStructure::const_shared_pointer pvRequest)
 {
     GetWait waiter;
-    Operation op(get(&waiter, pvRequest));
-    waiter.wait(timeout);
-    if(waiter.result.event==pvac::GetEvent::Success)
+    {
+        Operation op(get(&waiter, pvRequest));
+        waiter.wait(timeout);
+    }
+    switch(waiter.result.event) {
+    case GetEvent::Success:
         return waiter.result.value;
-    else
+    case GetEvent::Fail:
         throw std::runtime_error(waiter.result.message);
+    default:
+    case GetEvent::Cancel: // cancel implies timeout, which should already be thrown
+        THROW_EXCEPTION2(std::logic_error, "Cancelled!?!?");
+    }
 }
 
 pvd::PVStructure::const_shared_pointer
@@ -126,81 +133,150 @@ struct PutValCommon : public pvac::ClientChannel::PutCallback,
     }
 };
 
-struct PutValScalar : public PutValCommon
-{
-    const void* value;
-    pvd::ScalarType vtype;
-
-    PutValScalar(const void* value, pvd::ScalarType vtype) :value(value), vtype(vtype) {}
-    virtual ~PutValScalar() {}
-
-    virtual void putBuild(const epics::pvData::StructureConstPtr& build, Args& args) OVERRIDE FINAL
-    {
-        pvd::PVStructurePtr root(pvd::getPVDataCreate()->createPVStructure(build));
-        pvd::PVScalarPtr value(root->getSubField<pvd::PVScalar>("value"));
-        if(value) {
-            value->putFrom(this->value, vtype);
-            args.tosend.set(value->getFieldOffset());
-        } else {
-            // TODO: handle enum
-            throw std::runtime_error("PV has no scalar 'value' sub-field");
-        }
-        args.root = root;
-    }
-
-};
-
-struct PutValArray : public PutValCommon
-{
-    pvd::shared_vector<const void> arr;
-
-    PutValArray(const pvd::shared_vector<const void>& arr) :arr(arr) {}
-    virtual ~PutValArray() {}
-
-    virtual void putBuild(const epics::pvData::StructureConstPtr& build, Args& args) OVERRIDE FINAL
-    {
-        pvd::PVStructurePtr root(pvd::getPVDataCreate()->createPVStructure(build));
-        pvd::PVScalarArrayPtr value(root->getSubField<pvd::PVScalarArray>("value"));
-        if(value) {
-            value->putFrom(arr);
-            args.tosend.set(value->getFieldOffset());
-        } else {
-            throw std::runtime_error("PV has no scalar array 'value' sub-field");
-        }
-        args.root = root;
-    }
-
-};
 } //namespace
 
-void
-ClientChannel::putValue(const void* value,
-                        pvd::ScalarType vtype,
-                        double timeout,
-                        const epics::pvData::PVStructure::const_shared_pointer &pvRequest)
+namespace detail {
+
+struct PutBuilder::Exec : public pvac::ClientChannel::PutCallback,
+                          public WaitCommon
 {
-    PutValScalar waiter(value, vtype);
-    Operation op(put(&waiter, pvRequest));
-    waiter.wait(timeout);
-    if(waiter.result.event==PutEvent::Success)
-        return;
-    else
-        throw std::runtime_error(waiter.result.message);
+    detail::PutBuilder& builder;
+    pvac::PutEvent result;
+
+    Exec(detail::PutBuilder& builder)
+        :builder(builder)
+    {}
+    virtual ~Exec() {}
+
+    virtual void putBuild(const epics::pvData::StructureConstPtr& build, Args& args) OVERRIDE FINAL
+    {
+        pvd::PVDataCreatePtr create(pvd::getPVDataCreate());
+        pvd::PVStructurePtr root(create->createPVStructure(build));
+
+        for(PutBuilder::scalars_t::const_iterator it = builder.scalars.begin(), end = builder.scalars.end();
+            it!=end; ++it)
+        {
+            if(it->value.empty())
+                continue;
+
+            pvd::PVFieldPtr fld(root->getSubField(it->name));
+            if(!fld && it->required)
+                throw std::runtime_error(std::string("Server does not have required field ")+it->name);
+            else if(!fld)
+                continue; // !it->required
+
+            const pvd::FieldConstPtr& ftype(fld->getField());
+            if(ftype->getType()==pvd::union_) {
+                const pvd::Union *utype = static_cast<const pvd::Union*>(ftype.get());
+                pvd::PVUnion *ufld = static_cast<pvd::PVUnion*>(fld.get());
+
+                if(utype->isVariant()) {
+                    pvd::PVScalarPtr scalar(create->createPVScalar(it->value.type()));
+
+                    scalar->putFrom(it->value);
+                    ufld->set(scalar);
+
+                } else {
+                    // attempt automagic assignment to descriminating union
+                    pvd::int32 idx = utype->guess(pvd::scalar, it->value.type());
+
+                    if(idx==-1)
+                        throw std::runtime_error(std::string("Unable to descriminate union field ")+it->name);
+
+                    ufld->select<pvd::PVScalar>(idx)->putFrom(it->value);
+                }
+
+            } else if(ftype->getType()==pvd::scalar) {
+                static_cast<pvd::PVScalar*>(fld.get())->putFrom(it->value);
+
+            } else {
+                throw std::runtime_error(std::string("Type mis-match assigning scalar to field ")+it->name);
+
+            }
+
+            args.tosend.set(fld->getFieldOffset());
+        }
+
+        for(PutBuilder::arrays_t::const_iterator it = builder.arrays.begin(), end = builder.arrays.end();
+            it!=end; ++it)
+        {
+            if(it->value.empty())
+                continue;
+
+            pvd::PVFieldPtr fld(root->getSubField(it->name));
+            if(!fld && it->required)
+                throw std::runtime_error(std::string("Server does not have required field ")+it->name);
+            else if(!fld)
+                continue; // !it->required
+
+            const pvd::FieldConstPtr& ftype(fld->getField());
+            if(ftype->getType()==pvd::union_) {
+                const pvd::Union *utype = static_cast<const pvd::Union*>(ftype.get());
+                pvd::PVUnion *ufld = static_cast<pvd::PVUnion*>(fld.get());
+
+                if(utype->isVariant()) {
+                    pvd::PVScalarArrayPtr scalar(create->createPVScalarArray(it->value.original_type()));
+
+                    scalar->putFrom(it->value);
+                    ufld->set(scalar);
+
+                } else {
+                    // attempt automagic assignment to descriminating union
+                    pvd::int32 idx = utype->guess(pvd::scalarArray, it->value.original_type());
+
+                    if(idx==-1)
+                        throw std::runtime_error(std::string("Unable to descriminate union field ")+it->name);
+
+                    ufld->select<pvd::PVScalarArray>(idx)->putFrom(it->value);
+                }
+
+            } else if(ftype->getType()==pvd::scalarArray) {
+                static_cast<pvd::PVScalarArray*>(fld.get())->putFrom(it->value);
+
+                // TODO
+            } else {
+                throw std::runtime_error(std::string("Type mis-match assigning scalar to field ")+it->name);
+
+            }
+
+            args.tosend.set(fld->getFieldOffset());
+        }
+
+        args.root = root;
+    }
+
+    virtual void putDone(const PutEvent& evt) OVERRIDE FINAL
+    {
+        {
+            Guard G(mutex);
+            if(done) {
+                LOG(pva::logLevelWarn, "oops, double event to PutCallback");
+            } else {
+                result = evt;
+                done = true;
+            }
+        }
+        event.signal();
+    }
+};
+
+void PutBuilder::exec(double timeout)
+{
+    Exec work(*this);
+    {
+        Operation op(channel.put(&work, request));
+        work.wait(timeout);
+    }
+    switch(work.result.event) {
+    case PutEvent::Success: return;
+    case PutEvent::Fail:
+        throw std::runtime_error(work.result.message);
+    case PutEvent::Cancel:
+        THROW_EXCEPTION2(std::logic_error, "Cancelled!?!");
+    }
 }
 
-void
-ClientChannel::putValue(const epics::pvData::shared_vector<const void>& value,
-                        double timeout,
-                        const epics::pvData::PVStructure::const_shared_pointer &pvRequest)
-{
-    PutValArray waiter(value);
-    Operation op(put(&waiter, pvRequest));
-    waiter.wait(timeout);
-    if(waiter.result.event==PutEvent::Success)
-        return;
-    else
-        throw std::runtime_error(waiter.result.message);
-}
+} // namespace detail
 
 struct MonitorSync::SImpl : public ClientChannel::MonitorCallback
 {
@@ -246,10 +322,9 @@ MonitorSync::MonitorSync(const Monitor& mon, const std::tr1::shared_ptr<SImpl>& 
 }
 
 MonitorSync::~MonitorSync() {
-    std::cout<<"SYNC use_count="<<simpl.use_count()<<"\n";
 }
 
-bool MonitorSync::poll()
+bool MonitorSync::test()
 {
     if(!simpl) throw std::logic_error("No subscription");
     Guard G(simpl->mutex);

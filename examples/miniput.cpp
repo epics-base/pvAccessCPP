@@ -22,7 +22,9 @@ int main(int argc, char *argv[])
 
         std::cout<<"Before "<<channel.name()<<" : "<<channel.get()<<"\n";
 
-        channel.putValue<epics::pvData::pvString>(argv[2]);
+        channel.put()
+                .set("value", argv[2])
+                .exec();
 
         std::cout<<"After  "<<channel.name()<<" : "<<channel.get()<<"\n";
 
