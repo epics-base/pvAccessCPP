@@ -286,7 +286,7 @@ struct Putter : public pvac::ClientChannel::PutCallback
 
             PVFieldPtr fld(root->getSubField("value"));
             if(!fld)
-                throw std::runtime_error("Structure has not .value");
+                throw std::runtime_error("Structure has no .value");
             Type ftype = fld->getField()->getType();
 
             if(ftype==scalar) {
