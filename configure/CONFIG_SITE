@@ -27,9 +27,3 @@ ifdef WITH_COVERAGE
 USR_CPPFLAGS += --coverage
 USR_LDFLAGS += --coverage
 endif
-
-ifdef WITH_MICROBENCH
-USR_CPPFLAGS += -DWITH_MICROBENCH
-MBLIB = pvMB
-endif
-

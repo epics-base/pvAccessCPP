@@ -3,9 +3,6 @@ include $(TOP)/configure/CONFIG
 
 LIBRARY += pvAccessCA
 pvAccessCA_LIBS += ca pvAccess pvData
-ifdef WITH_MICROBENCH
-  LIB_LIBS += pvMB
-endif
 LIB_LIBS += Com
 
 SHRLIB_VERSION ?= $(EPICS_PVA_MAJOR_VERSION).$(EPICS_PVA_MINOR_VERSION).$(EPICS_PVA_MAINTENANCE_VERSION)
