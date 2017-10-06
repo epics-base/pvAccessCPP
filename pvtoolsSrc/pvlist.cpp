@@ -449,9 +449,9 @@ bool discoverServers(double timeOut)
 void usage (void)
 {
     fprintf (stderr, "\nUsage: pvlist [options] [<server address or GUID starting with '0x'>]...\n\n"
-             "  -h: Help: Print this message\n"
-             "  -v: Print version and exit\n"
              "\noptions:\n"
+             "  -h: Help: Print this message\n"
+             "  -V: Print version and exit\n"
              "  -i                 Print server info (when server address list/GUID is given)\n"
              "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
              "  -q:                Quiet mode, print only error messages\n"
@@ -498,12 +498,12 @@ int main (int argc, char *argv[])
     */
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hvw:qdF:f:i")) != -1) {
+    while ((opt = getopt(argc, argv, ":hVw:qdF:f:i")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
             return 0;
-        case 'v':               /* Print version */
+        case 'V':               /* Print version */
         {
             Version version("pvlist", "cpp",
                     EPICS_PVA_MAJOR_VERSION,
