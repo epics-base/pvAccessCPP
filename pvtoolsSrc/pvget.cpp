@@ -53,15 +53,16 @@ char fieldSeparator = ' ';
 void usage (void)
 {
     fprintf (stderr, "\nUsage: pvget [options] <PV name>...\n\n"
-             "  -h: Help: Print this message\n"
-             "  -v: Print version and exit\n"
              "\noptions:\n"
+             "  -h: Help: Print this message\n"
+             "  -V: Print version and exit\n"
              "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
              "  -w <sec>:          Wait time, specifies timeout, default is 3 seconds for get, inf. for monitor\n"
              "  -t:                Terse mode - print only value, without names\n"
              "  -i:                Do not format standard types (enum_t, time_t, ...)\n"
              "  -m:                Monitor mode\n"
              "  -p <provider>:     Set default provider name, default is '%s'\n"
+             "  -v:                Show entire structure\n"
              "  -q:                Quiet mode, print only error messages\n"
              "  -d:                Enable debug output\n"
              "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
@@ -365,12 +366,15 @@ int main (int argc, char *argv[])
 
     // ================ Parse Arguments
 
-    while ((opt = getopt(argc, argv, ":hvRr:w:tmp:qdcF:f:ni")) != -1) {
+    while ((opt = getopt(argc, argv, ":hvVRr:w:tmp:qdcF:f:ni")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
             return 0;
-        case 'v':               /* Print version */
+        case 'v':
+            mode = StructureMode;
+            break;
+        case 'V':               /* Print version */
         {
             Version version("pvget", "cpp",
                     EPICS_PVA_MAJOR_VERSION,

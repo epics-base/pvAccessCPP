@@ -10,7 +10,7 @@ USR_CPPFLAGS += -I$(TOP)/src/remoteClient
 
 PVACCESS_TEST = $(TOP)/testApp
 
-PROD_LIBS += pvAccess pvData $(MBLIB) Com
+PROD_LIBS += pvAccess pvData Com
 
 include $(PVACCESS_TEST)/utils/Makefile
 include $(PVACCESS_TEST)/remote/Makefile

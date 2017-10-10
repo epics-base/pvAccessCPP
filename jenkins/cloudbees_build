@@ -21,14 +21,7 @@ installE4 () {
     local module=$1
     local branch=$2
 
-    # If microbench version does not exist, try without
-    if [ "${MB}" = "WITH_MICROBENCH" ]; then
-        if ! wget -nv https://openepics.ci.cloudbees.com/job/e4-cpp-${module}-${branch}-build/BASE=${BASE},MB=WITH_MICROBENCH/lastSuccessfulBuild/artifact/${module}.CB-dist.tar.gz; then
-            wget -nv https://openepics.ci.cloudbees.com/job/e4-cpp-${module}-${branch}-build/BASE=${BASE},MB=NO_MICROBENCH/lastSuccessfulBuild/artifact/${module}.CB-dist.tar.gz
-        fi
-    else
-        wget -nv https://openepics.ci.cloudbees.com/job/e4-cpp-${module}-${branch}-build/BASE=${BASE},MB=NO_MICROBENCH/lastSuccessfulBuild/artifact/${module}.CB-dist.tar.gz
-    fi
+    wget -nv https://openepics.ci.cloudbees.com/job/e4-cpp-${module}-${branch}-build/BASE=${BASE}/lastSuccessfulBuild/artifact/${module}.CB-dist.tar.gz
     tar -xzf ${module}.CB-dist.tar.gz
 }
 
@@ -37,7 +30,6 @@ installE4 () {
 
 DEFAULT_BASE=3.15.4
 BASE=${BASE:-${DEFAULT_BASE}}
-MB=${MB:-"NO_MICROBENCH"}
 
 ###########################################
 # Dependent module branches
@@ -54,10 +46,8 @@ rm -fr ${STUFF}
 mkdir -p ${STUFF}
 cd ${STUFF}
 
-installTool Boost 1.61.0
 installTool Base ${BASE}
 
-installE4 pvCommon ${PVCOMMON_BRANCH}
 installE4 pvData ${PVDATA_BRANCH}
 
 ###########################################
@@ -73,13 +63,6 @@ export PATH=${STUFF}/bin:${PATH}
 cat > configure/RELEASE.local << EOF
 EPICS_BASE=${EPICS_BASE}
 EOF
-
-if [ "${MB}" = "WITH_MICROBENCH" ]; then
-	# must use TAB characters here
-	cat > configure/CONFIG_SITE.local <<- EOF
-	WITH_MICROBENCH=1
-	EOF
-fi
 
 make distclean all
 

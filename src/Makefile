@@ -27,10 +27,9 @@ include $(PVACCESS_SRC)/mb/Makefile
 LIBRARY += pvAccess
 
 pvAccess_LIBS += pvData
-ifdef WITH_MICROBENCH
-  LIB_LIBS += pvMB
-endif
 LIB_LIBS += Com
+
+SHRLIB_VERSION ?= $(EPICS_PVA_MAJOR_VERSION).$(EPICS_PVA_MINOR_VERSION).$(EPICS_PVA_MAINTENANCE_VERSION)
 
 # needed for Windows
 LIB_SYS_LIBS_WIN32 += ws2_32

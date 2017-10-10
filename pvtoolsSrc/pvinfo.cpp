@@ -34,9 +34,9 @@ const string noAddress;
 void usage (void)
 {
     fprintf (stderr, "\nUsage: pvinfo [options] <PV name>...\n\n"
-             "  -h: Help: Print this message\n"
-             "  -v: Print version and exit\n"
              "\noptions:\n"
+             "  -h: Help: Print this message\n"
+             "  -V: Print version and exit\n"
              "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
              "  -p <provider>:     Set default provider name, default is '%s'\n"
              "  -d:                Enable debug output\n"
@@ -70,12 +70,12 @@ int main (int argc, char *argv[])
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
-    while ((opt = getopt(argc, argv, ":hvw:p:dc")) != -1) {
+    while ((opt = getopt(argc, argv, ":hVw:p:dc")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
             return 0;
-        case 'v':               /* Print version */
+        case 'V':               /* Print version */
         {
             Version version("pvinfo", "cpp",
                     EPICS_PVA_MAJOR_VERSION,

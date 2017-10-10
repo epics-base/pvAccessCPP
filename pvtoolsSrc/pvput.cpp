@@ -68,13 +68,14 @@ void usage (bool details=false)
 #endif
     fprintf (stderr,
              "\n"
+             "\noptions:\n"
              "  -h: Help: Print this message\n"
              "  -v: Print version and exit\n"
-             "\noptions:\n"
              "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
              "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
              "  -t:                Terse mode - print only successfully written value, without names\n"
              "  -p <provider>:     Set default provider name, default is '%s'\n"
+             "  -v:                Show entire structure\n"
              "  -q:                Quiet mode, print only error messages\n"
              "  -d:                Enable debug output\n"
              "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
@@ -406,12 +407,15 @@ int main (int argc, char *argv[])
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
     putenv(const_cast<char*>("POSIXLY_CORRECT="));            /* Behave correct on GNU getopt systems; e.g. handle negative numbers */
 
-    while ((opt = getopt(argc, argv, ":hvr:w:tp:qdF:f:ns")) != -1) {
+    while ((opt = getopt(argc, argv, ":hvVr:w:tp:qdF:f:ns")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage(true);
             return 0;
-        case 'v':               /* Print version */
+        case 'v':
+            mode = StructureMode;
+            break;
+        case 'V':               /* Print version */
         {
             Version version("pvput", "cpp",
                     EPICS_PVA_MAJOR_VERSION,

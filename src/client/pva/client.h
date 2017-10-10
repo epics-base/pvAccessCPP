@@ -311,11 +311,12 @@ public:
 
     /** Begin subscription w/o callbacks
      *
-     * @param event If not NULL, then subscription events are signaled to this epicsEvent.  Test with poll().
-     *        Otherwise an internal epicsEvent is allocated for use with wait()
+     * @param event If not NULL, then subscription events are signaled to this epicsEvent.
+     *        Use MonitorSync::test() to see if a subscription has an event waiting.
+     *        Otherwise an internal epicsEvent is allocated for use with MonitorSync::wait()
      *
-     * @note For simple usage with a single MonitorSync, pass event=NULL and call wait().
-     *       If more than one MonitorSync is being created, then pass a custom epicsEvent and use test() to find
+     * @note For simple usage with a single MonitorSync, pass event=NULL and call MonitorSync::wait().
+     *       If more than one MonitorSync is being created, then pass a custom epicsEvent and use MonitorSync::test() to find
      *       which subscriptions have events pending.
      */
     MonitorSync monitor(const epics::pvData::PVStructure::const_shared_pointer& pvRequest = epics::pvData::PVStructure::const_shared_pointer(),

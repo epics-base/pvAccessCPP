@@ -20,7 +20,7 @@ pvlist_SRCS += pvlist.cpp
 PROD_HOST += eget
 eget_SRCS += eget.cpp
 
-PROD_LIBS += pvAccessCA pvAccess pvData $(MBLIB) ca Com
+PROD_LIBS += pvAccessCA pvAccess pvData ca Com
 
 PROD_SYS_LIBS_WIN32 += ws2_32
 
