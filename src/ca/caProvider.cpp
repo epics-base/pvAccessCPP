@@ -36,14 +36,12 @@ size_t CAChannelProvider::num_instances;
 CAChannelProvider::CAChannelProvider() 
     : current_context(0)
 {
-    REFTRACE_INCREMENT(num_instances);
     initialize();
 }
 
 CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
     :  current_context(0)
 {
-    REFTRACE_INCREMENT(num_instances);
     if(DEBUG_LEVEL>0) {
           std::cout<< "CAChannelProvider::CAChannelProvider\n";
     }
@@ -55,7 +53,6 @@ CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
 CAChannelProvider::~CAChannelProvider()
 {
     if(DEBUG_LEVEL>0) std::cout << "CAChannelProvider::~CAChannelProvider()\n";
-    REFTRACE_DECREMENT(num_instances);
 }
 
 std::string CAChannelProvider::getProviderName()

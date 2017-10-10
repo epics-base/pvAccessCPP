@@ -29,11 +29,6 @@ namespace ca {
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
 
-#define PVACCESS_REFCOUNT_MONITOR_DEFINE(name)
-#define PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(name)
-#define PVACCESS_REFCOUNT_MONITOR_DESTRUCT(name)
-
-PVACCESS_REFCOUNT_MONITOR_DEFINE(caChannel);
 
 CAChannel::shared_pointer CAChannel::create(CAChannelProvider::shared_pointer const & channelProvider,
         std::string const & channelName,
@@ -370,8 +365,6 @@ CAChannel::CAChannel(std::string const & _channelName,
     channelType(0),
     elementCount(0)
 {
-    REFTRACE_INCREMENT(num_instances);
-    PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(caChannel);
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::CAChannel " << channelName << endl;
     }
@@ -437,11 +430,9 @@ CAChannel::~CAChannel()
     if(DEBUG_LEVEL>0) {
         cout << "CAChannel::~CAChannel() " << channelName << endl;
     }
-    PVACCESS_REFCOUNT_MONITOR_DESTRUCT(caChannel);
     /* Clear CA Channel */
     threadAttach();
     ca_clear_channel(channelID);
-    REFTRACE_DECREMENT(num_instances);
 }
 
 
@@ -653,7 +644,6 @@ CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & channel,
     channelGetRequester(channelGetRequester),
     pvRequest(pvRequest)
 {
-    REFTRACE_INCREMENT(num_instances);
     if(DEBUG_LEVEL>0) {
         cout << "CAChannelGet::CAChannelGet() " << channel->getChannelName() << endl;
     }
@@ -664,7 +654,6 @@ CAChannelGet::~CAChannelGet()
     if(DEBUG_LEVEL>0) {
         std::cout << "CAChannelGet::~CAChannelGet() " <<  channel->getChannelName() << endl;
     }
-    REFTRACE_DECREMENT(num_instances);
 }
 
 void CAChannelGet::activate()
@@ -1168,7 +1157,6 @@ CAChannelPut::~CAChannelPut()
     if(DEBUG_LEVEL>0) {
         std::cout << "CAChannelPut::~CAChannelPut() " << channel->getChannelName() << endl;
     }
-    REFTRACE_DECREMENT(num_instances);
 }
 
 size_t CAChannelPut::num_instances;
@@ -1182,7 +1170,6 @@ CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & channel,
     pvRequest(pvRequest), 
     block(false)
 {
-    REFTRACE_INCREMENT(num_instances);
     if(DEBUG_LEVEL>0) {
         cout << "CAChannelPut::CAChannePut() " << channel->getChannelName() << endl;
     }
@@ -1673,7 +1660,6 @@ CAChannelMonitor::~CAChannelMonitor()
     if(!isStarted) return;
     channel->threadAttach();
     ca_clear_subscription(eventID);
-    REFTRACE_DECREMENT(num_instances);
 }
 
 size_t CAChannelMonitor::num_instances;
@@ -1688,7 +1674,6 @@ CAChannelMonitor::CAChannelMonitor(
     pvRequest(pvRequest),
     isStarted(false)
 {
-    REFTRACE_INCREMENT(num_instances);
     if(DEBUG_LEVEL>0) {
         cout << "CAChannelMonitor::CAChannelMonitor() " << channel->getChannelName() << endl;
     }
