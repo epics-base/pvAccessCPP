@@ -11,13 +11,17 @@
 
 #include <pv/caProvider.h>
 #include <pv/pvAccess.h>
-#include <map>
 
 
 namespace epics {
 namespace pvAccess {
-class Configuration;
 namespace ca {
+
+#define DEBUG_LEVEL 0
+
+class CAChannelProvider;
+typedef std::tr1::shared_ptr<CAChannelProvider> CAChannelProviderPtr;
+typedef std::tr1::weak_ptr<CAChannelProvider> CAChannelProviderWPtr;
 
 class CAChannelProvider :
     public ChannelProvider,
@@ -58,30 +62,15 @@ public:
     virtual void flush();
     virtual void poll();
 
-    virtual void destroy();
+    virtual void destroy() EPICS_DEPRECATED {};
 
     /* ---------------------------------------------------------------- */
 
     void threadAttach();
 
-    void registerChannel(Channel::shared_pointer const & channel);
-    void unregisterChannel(Channel::shared_pointer const & channel);
-    void unregisterChannel(Channel* pchannel);
-
 private:
-
     void initialize();
-
     ca_client_context* current_context;
-
-    epics::pvData::Mutex channelsMutex;
-    // TODO std::unordered_map
-    // void* is not the nicest thing, but there is no fast weak_ptr::operator==
-    typedef std::map<void*, Channel::weak_pointer> ChannelList;
-    ChannelList channels;
-
-    // synced on channelsMutex
-    bool destroyed;
 };
 
 }

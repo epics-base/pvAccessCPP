@@ -33,17 +33,18 @@ using namespace epics::pvData;
 
 size_t CAChannelProvider::num_instances;
 
-CAChannelProvider::CAChannelProvider() : current_context(0), destroyed(false)
+CAChannelProvider::CAChannelProvider() 
+    : current_context(0)
 {
-    REFTRACE_INCREMENT(num_instances);
     initialize();
 }
 
 CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
-    : current_context(0)
-    , destroyed(false)
+    :  current_context(0)
 {
-    REFTRACE_INCREMENT(num_instances);
+    if(DEBUG_LEVEL>0) {
+          std::cout<< "CAChannelProvider::CAChannelProvider\n";
+    }
     // Ignoring Configuration as CA only allows config via. environment,
     // and we don't want to change this here.
     initialize();
@@ -51,9 +52,7 @@ CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
 
 CAChannelProvider::~CAChannelProvider()
 {
-    // call destroy() to destroy CA context
-    destroy();
-    REFTRACE_DECREMENT(num_instances);
+    if(DEBUG_LEVEL>0) std::cout << "CAChannelProvider::~CAChannelProvider()\n";
 }
 
 std::string CAChannelProvider::getProviderName()
@@ -125,53 +124,15 @@ void CAChannelProvider::poll()
 {
 }
 
-void CAChannelProvider::destroy()
-{
-    Lock lock(channelsMutex);
-    {
-        if (destroyed)
-            return;
-        destroyed = true;
-
-        while (!channels.empty())
-        {
-            Channel::shared_pointer channel = channels.begin()->second.lock();
-            if (channel)
-                channel->destroy();
-            else
-                channels.erase(channels.begin());
-        }
-    }
-
-    /* Destroy CA Context */
-    ca_context_destroy();
-}
 
 void CAChannelProvider::threadAttach()
 {
     ca_attach_context(current_context);
 }
 
-void CAChannelProvider::registerChannel(Channel::shared_pointer const & channel)
-{
-    Lock lock(channelsMutex);
-    channels[channel.get()] = Channel::weak_pointer(channel);
-}
-
-void CAChannelProvider::unregisterChannel(Channel::shared_pointer const & channel)
-{
-    Lock lock(channelsMutex);
-    channels.erase(channel.get());
-}
-
-void CAChannelProvider::unregisterChannel(Channel* pchannel)
-{
-    Lock lock(channelsMutex);
-    channels.erase(pchannel);
-}
-
 void CAChannelProvider::initialize()
 {
+    if(DEBUG_LEVEL>0) std::cout << "CAChannelProvider::initialize()\n";
     /* Create Channel Access */
     int result = ca_context_create(ca_enable_preemptive_callback);
     if (result != ECA_NORMAL) {
@@ -188,6 +149,7 @@ void CAChannelProvider::initialize()
 static
 void ca_factory_cleanup(void*)
 {
+    if(DEBUG_LEVEL>0) std::cout << "ca_factory_cleanup\n";
     try {
         ChannelProviderRegistry::clients()->remove("ca");
         ca_context_destroy(); 
@@ -198,6 +160,11 @@ void ca_factory_cleanup(void*)
 
 void CAClientFactory::start()
 {
+    if(DEBUG_LEVEL>0) std::cout << "CAClientFactory::start()\n";
+    if(ChannelProviderRegistry::clients()->getProvider("ca")) {
+         // do not start twice
+         return;
+    }
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
     registerRefCounter("CAChannelProvider", &CAChannelProvider::num_instances);
@@ -207,7 +174,9 @@ void CAClientFactory::start()
     registerRefCounter("CAChannelMonitor", &CAChannelMonitor::num_instances);
 
     if(ChannelProviderRegistry::clients()->add<CAChannelProvider>("ca", false))
+    {
         epicsAtExit(&ca_factory_cleanup, NULL);
+    }
 }
 
 void CAClientFactory::stop()
@@ -215,17 +184,6 @@ void CAClientFactory::stop()
     // unregister now done with exit hook
 }
 
-// perhaps useful during dynamic loading?
-extern "C" {
-void registerClientProvider_ca()
-{
-    try {
-        CAClientFactory::start();
-    } catch(std::exception& e){
-        std::cerr<<"Error loading ca: "<<e.what()<<"\n";
-    }
-}
-} // extern "C"
 
 }
 }

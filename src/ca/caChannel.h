@@ -24,7 +24,6 @@ namespace ca {
 
 class CAChannel;
 typedef std::tr1::shared_ptr<CAChannel> CAChannelPtr;
-typedef std::tr1::weak_ptr<CAChannel> CAChannelWPtr;
 class CAChannelPut;
 typedef std::tr1::shared_ptr<CAChannelPut> CAChannelPutPtr;
 typedef std::tr1::weak_ptr<CAChannelPut> CAChannelPutWPtr;
@@ -91,7 +90,7 @@ public:
 
     /* --------------- Destroyable --------------- */
 
-    virtual void destroy();
+    virtual void destroy() EPICS_DEPRECATED {};
 
     /* ---------------------------------------------------------------- */
 
@@ -111,8 +110,8 @@ private:
 
     std::string channelName;
 
-    CAChannelProvider::shared_pointer channelProvider;
-    ChannelRequester::shared_pointer channelRequester;
+    CAChannelProviderWPtr channelProvider;
+    ChannelRequester::weak_pointer channelRequester;
 
     chid channelID;
     chtype channelType;
@@ -121,7 +120,6 @@ private:
 
     epics::pvData::Mutex requestsMutex;
 
-    bool destroyed;
     std::queue<CAChannelPutPtr> putQueue;
     std::queue<CAChannelGetPtr> getQueue;
     std::queue<CAChannelMonitorPtr> monitorQueue;
@@ -170,7 +168,7 @@ public:
     /* --------------- ChannelBaseRequester --------------- */
     virtual void channelDisconnect(bool destroy);
    /* --------------- Destroyable --------------- */
-    virtual void destroy();
+    virtual void destroy() EPICS_DEPRECATED {};
 
     void activate();
 
@@ -180,10 +178,9 @@ private:
                  ChannelGetRequester::shared_pointer const & _channelGetRequester,
                  epics::pvData::PVStructure::shared_pointer const & pvRequest);
     
-    CAChannel::shared_pointer channel;
-    ChannelGetRequester::shared_pointer channelGetRequester;
+    CAChannelPtr channel;
+    ChannelGetRequester::weak_pointer channelGetRequester;
     epics::pvData::PVStructure::shared_pointer pvRequest;
-    bool lastRequestFlag;
 
     chtype getType;
     epics::pvData::PVStructure::shared_pointer pvStructure;
@@ -239,7 +236,7 @@ public:
     virtual void channelDisconnect(bool destroy);
     /* --------------- Destroyable --------------- */
 
-    virtual void destroy();
+    virtual void destroy() EPICS_DEPRECATED {};
 
      void activate();
 
@@ -249,11 +246,10 @@ private:
                  ChannelPutRequester::shared_pointer const & _channelPutRequester,
                  epics::pvData::PVStructure::shared_pointer const & pvRequest);
    
-    CAChannel::shared_pointer channel;
-    ChannelPutRequester::shared_pointer channelPutRequester;
+    CAChannelPtr channel;
+    ChannelPutRequester::weak_pointer channelPutRequester;
     epics::pvData::PVStructure::shared_pointer pvRequest;
     bool block;
-    bool lastRequestFlag;
 
     chtype getType;
     epics::pvData::PVStructure::shared_pointer pvStructure;
@@ -303,7 +299,7 @@ public:
     /* --------------- ChannelBaseRequester --------------- */
     virtual void channelDisconnect(bool destroy);
     /* --------------- Destroyable --------------- */
-    virtual void destroy();
+    virtual void destroy() EPICS_DEPRECATED {};
     void activate();
 private:
 
@@ -313,7 +309,7 @@ private:
     
 
     CAChannelPtr channel;
-    MonitorRequester::shared_pointer monitorRequester;
+    MonitorRequester::weak_pointer monitorRequester;
     epics::pvData::PVStructure::shared_pointer pvRequest;
     bool isStarted;
     chtype getType;
