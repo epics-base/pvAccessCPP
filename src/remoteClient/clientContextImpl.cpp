@@ -3152,6 +3152,8 @@ public:
         public ChannelImpl,
         public TimerCallback
     {
+        InternalChannelImpl(InternalChannelImpl&);
+        InternalChannelImpl& operator=(const InternalChannelImpl&);
     public:
         POINTER_DEFINITIONS(InternalChannelImpl);
     private:
@@ -3334,8 +3336,6 @@ private:
 
         virtual void destroy() OVERRIDE FINAL
         {
-            REFTRACE_DECREMENT(num_active);
-
             destroy(false);
         }
 
@@ -3567,6 +3567,7 @@ public:
                     return;
                 //throw std::runtime_error("Channel already destroyed.");
             }
+            REFTRACE_DECREMENT(num_active);
 
             destroyChannel(force);
         }
