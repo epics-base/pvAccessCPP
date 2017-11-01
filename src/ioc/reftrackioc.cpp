@@ -6,12 +6,14 @@
 
 #include <exception>
 
+#include <iocsh.h>
+
 #include <pv/reftrack.h>
 #include <pv/iocshelper.h>
 
-#include <iocsh.h>
-
 #include <epicsExport.h>
+
+#include <pv/iocreftrack.h>
 
 namespace {
 
@@ -75,6 +77,10 @@ void refmon(double period, int lvl)
     }
 }
 
+} // namespace
+
+namespace epics {namespace pvAccess {
+
 void refTrackRegistrar()
 {
     epics::iocshRegister<int, &refshow>("refshow", "detail level");
@@ -83,8 +89,9 @@ void refTrackRegistrar()
     epics::iocshRegister<double, int, &refmon>("refmon", "update period", "detail level");
 }
 
-} // namespace
+}}
 
 extern "C" {
+    using namespace epics::pvAccess;
     epicsExportRegistrar(refTrackRegistrar);
 }

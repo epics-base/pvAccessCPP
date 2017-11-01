@@ -10,7 +10,9 @@ SHRLIB_VERSION ?= $(EPICS_PVA_MAJOR_VERSION).$(EPICS_PVA_MINOR_VERSION).$(EPICS_
 
 INC += pv/syncChannelFind.h
 INC += pv/iocshelper.h
+INC += pv/iocreftrack.h
 
+DBD += PVACommonRegister.dbd
 DBD += PVAServerRegister.dbd
 DBD += PVAClientRegister.dbd
 

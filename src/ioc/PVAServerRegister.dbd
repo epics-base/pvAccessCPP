@@ -1,2 +1,2 @@
 registrar("registerStartPVAServer")
-registrar("refTrackRegistrar")
+include "PVACommonRegister.dbd"
