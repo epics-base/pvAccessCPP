@@ -454,6 +454,25 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
             }
 
             str<<"\n";
+
+            if(!casTransport || lvl<2)
+                return;
+
+            typedef std::vector<ServerChannel::shared_pointer> channels_t;
+            channels_t channels;
+            casTransport->getChannels(channels);
+
+            for(channels_t::const_iterator it(channels.begin()), end(channels.end()); it!=end; ++it)
+            {
+                const ServerChannelImpl *channel(static_cast<const ServerChannelImpl*>(it->get()));
+                const Channel::shared_pointer& providerChan(channel->getChannel());
+                if(!providerChan)
+                    continue;
+
+                str<<"  "<<providerChan->getChannelName()
+                   <<(providerChan->isConnected()?"":" closed")
+                   <<"\n";
+            }
         }
     }
 }

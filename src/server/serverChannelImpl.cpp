@@ -34,11 +34,6 @@ ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer const & channel,
     }
 }
 
-Channel::shared_pointer ServerChannelImpl::getChannel()
-{
-    return _channel;
-}
-
 pvAccessID ServerChannelImpl::getCID() const
 {
     return _cid;

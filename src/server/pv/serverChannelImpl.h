@@ -42,7 +42,7 @@ public:
      * Get local channel.
      * @return local channel.
      */
-    Channel::shared_pointer getChannel();
+    const Channel::shared_pointer& getChannel() const { return _channel; }
 
     /**
      * Get channel CID.

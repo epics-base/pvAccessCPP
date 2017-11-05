@@ -1470,6 +1470,15 @@ size_t BlockingServerTCPTransportCodec::getChannelCount() const {
     return _channels.size();
 }
 
+void BlockingServerTCPTransportCodec::getChannels(std::vector<ServerChannel::shared_pointer>& channels) const
+{
+    Lock lock(_channelsMutex);
+    for(_channels_t::const_iterator it(_channels.begin()), end(_channels.end());
+        it!=end; ++it)
+    {
+        channels.push_back(it->second);
+    }
+}
 
 void BlockingServerTCPTransportCodec::send(ByteBuffer* buffer,
         TransportSendControl* control) {

@@ -548,6 +548,8 @@ public:
 
     virtual ServerChannel::shared_pointer getChannel(pvAccessID sid) OVERRIDE FINAL;
 
+    void getChannels(std::vector<ServerChannel::shared_pointer>& channels) const;
+
     virtual size_t getChannelCount() const OVERRIDE FINAL;
 
     virtual bool verify(epics::pvData::int32 timeoutMs) OVERRIDE FINAL {
@@ -596,10 +598,11 @@ private:
     */
     pvAccessID _lastChannelSID;
 
+    typedef std::map<pvAccessID, ServerChannel::shared_pointer> _channels_t;
     /**
     * Channel table (SID -> channel mapping).
     */
-    std::map<pvAccessID, ServerChannel::shared_pointer> _channels;
+    _channels_t _channels;
 
     mutable epics::pvData::Mutex _channelsMutex;
 
