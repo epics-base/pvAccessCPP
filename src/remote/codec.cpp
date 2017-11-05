@@ -1464,10 +1464,10 @@ BlockingServerTCPTransportCodec::getChannel(pvAccessID sid) {
 }
 
 
-int BlockingServerTCPTransportCodec::getChannelCount() {
+size_t BlockingServerTCPTransportCodec::getChannelCount() const {
 
     Lock lock(_channelsMutex);
-    return static_cast<int>(_channels.size());
+    return _channels.size();
 }
 
 

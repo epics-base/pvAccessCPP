@@ -524,7 +524,7 @@ public:
      * Get channel count.
      * @return channel count.
      */
-    virtual int getChannelCount() = 0;
+    virtual size_t getChannelCount() const = 0;
 };
 
 /**

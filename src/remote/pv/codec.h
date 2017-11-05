@@ -363,7 +363,7 @@ public:
     }
 
     virtual epics::pvData::int8 getRevision() const OVERRIDE FINAL {
-        return PVA_PROTOCOL_REVISION;
+        return std::min(PVA_PROTOCOL_REVISION, _remoteTransportRevision);
     }
 
 
@@ -548,7 +548,7 @@ public:
 
     virtual ServerChannel::shared_pointer getChannel(pvAccessID sid) OVERRIDE FINAL;
 
-    virtual int getChannelCount() OVERRIDE FINAL;
+    virtual size_t getChannelCount() const OVERRIDE FINAL;
 
     virtual bool verify(epics::pvData::int32 timeoutMs) OVERRIDE FINAL {
 
@@ -600,7 +600,7 @@ private:
     */
     std::map<pvAccessID, ServerChannel::shared_pointer> _channels;
 
-    epics::pvData::Mutex _channelsMutex;
+    mutable epics::pvData::Mutex _channelsMutex;
 
     epics::pvData::Status _verificationStatus;
     epics::pvData::Mutex _verificationStatusMutex;

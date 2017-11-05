@@ -61,13 +61,14 @@ public:
     /**
      * Prints detailed information about the context to the standard output stream.
      */
-    void printInfo();
+    void printInfo(int lvl =0);
 
     /**
      * Prints detailed information about the context to the specified output stream.
+     * @param lvl detail level
      * @param str stream to which to print the info
      */
-    virtual void printInfo(std::ostream& str) = 0;
+    virtual void printInfo(std::ostream& str, int lvl=0) = 0;
 
     void dispose() EPICS_DEPRECATED;
 

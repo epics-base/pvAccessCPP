@@ -15,6 +15,7 @@
 #include <pv/responseHandlers.h>
 #include <pv/logger.h>
 #include <pv/serverContextImpl.h>
+#include <pv/codec.h>
 #include <pv/security.h>
 
 using namespace std;
@@ -404,30 +405,57 @@ void ServerContextImpl::destroyAllTransports()
     }
 }
 
-void ServerContext::printInfo()
+void ServerContext::printInfo(int lvl)
 {
-    printInfo(cout);
+    printInfo(cout, lvl);
 }
 
-void ServerContextImpl::printInfo(ostream& str)
+void ServerContextImpl::printInfo(ostream& str, int lvl)
 {
-    Lock guard(_mutex);
-    str << "VERSION : " << getVersion().getVersionString() << endl
-        << "PROVIDER_NAMES : ";
-    for(std::vector<ChannelProvider::shared_pointer>::const_iterator it = _channelProviders.begin();
-        it != _channelProviders.end(); ++it)
-    {
-        str<<(*it)->getProviderName()<<", ";
+    if(lvl==0) {
+        Lock guard(_mutex);
+        str << "VERSION : " << getVersion().getVersionString() << endl
+            << "PROVIDER_NAMES : ";
+        for(std::vector<ChannelProvider::shared_pointer>::const_iterator it = _channelProviders.begin();
+            it != _channelProviders.end(); ++it)
+        {
+            str<<(*it)->getProviderName()<<", ";
+        }
+        str << endl
+            << "BEACON_ADDR_LIST : " << _beaconAddressList << endl
+            << "AUTO_BEACON_ADDR_LIST : " << _autoBeaconAddressList << endl
+            << "BEACON_PERIOD : " << _beaconPeriod << endl
+            << "BROADCAST_PORT : " << _broadcastPort << endl
+            << "SERVER_PORT : " << _serverPort << endl
+            << "RCV_BUFFER_SIZE : " << _receiveBufferSize << endl
+            << "IGNORE_ADDR_LIST: " << _ignoreAddressList << endl
+            << "INTF_ADDR_LIST : " << inetAddressToString(_ifaceAddr, false) << endl;
+
+    } else {
+        // lvl > 0
+
+        TransportRegistry::transportVector_t transports;
+        _transportRegistry.toArray(transports);
+
+        str<<"Clients:\n";
+        for(TransportRegistry::transportVector_t::const_iterator it(transports.begin()), end(transports.end());
+            it!=end; ++it)
+        {
+            const Transport::shared_pointer& transport(*it);
+
+            str<<"client "<<transport->getType()<<"://"<<transport->getRemoteName()
+              <<" ver="<<unsigned(transport->getRevision())
+              <<" "<<(transport->isClosed()?"closed!":"");
+
+            const detail::BlockingServerTCPTransportCodec *casTransport = dynamic_cast<const detail::BlockingServerTCPTransportCodec*>(transport.get());
+
+            if(casTransport) {
+              str<<" "<<(casTransport ? casTransport->getChannelCount() : size_t(-1))<<" channels";
+            }
+
+            str<<"\n";
+        }
     }
-    str << endl
-        << "BEACON_ADDR_LIST : " << _beaconAddressList << endl
-        << "AUTO_BEACON_ADDR_LIST : " << _autoBeaconAddressList << endl
-        << "BEACON_PERIOD : " << _beaconPeriod << endl
-        << "BROADCAST_PORT : " << _broadcastPort << endl
-        << "SERVER_PORT : " << _serverPort << endl
-        << "RCV_BUFFER_SIZE : " << _receiveBufferSize << endl
-        << "IGNORE_ADDR_LIST: " << _ignoreAddressList << endl
-        << "INTF_ADDR_LIST : " << inetAddressToString(_ifaceAddr, false) << endl;
 }
 
 void ServerContext::dispose()

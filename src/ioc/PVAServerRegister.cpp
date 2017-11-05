@@ -88,7 +88,7 @@ void stopPVAServer()
     }
 }
 
-void statusPVAServer()
+void pvasr(int lvl)
 {
     try {
         pvd::Lock G(the_server_lock);
@@ -96,7 +96,7 @@ void statusPVAServer()
             std::cout<<"PVA server not running\n";
             return;
         } else {
-            the_server->printInfo();
+            the_server->printInfo(lvl);
         }
     }catch(std::exception& e){
         std::cout<<"Error: "<<e.what()<<"\n";
@@ -118,8 +118,8 @@ void initStartPVAServer(initHookState state)
 void registerStartPVAServer(void)
 {
     epics::iocshRegister<const char*, &startPVAServer>("startPVAServer", "provider names");
-    epics::iocshRegister<&statusPVAServer>("statusPVAServer");
     epics::iocshRegister<&stopPVAServer>("stopPVAServer");
+    epics::iocshRegister<int, &pvasr>("pvasr", "detail");
     initHookRegister(&initStartPVAServer);
 }
 

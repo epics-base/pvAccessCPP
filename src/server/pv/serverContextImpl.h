@@ -43,7 +43,7 @@ public:
     void initialize();
     void run(epics::pvData::uint32 seconds) OVERRIDE FINAL;
     void shutdown() OVERRIDE FINAL;
-    void printInfo(std::ostream& str) OVERRIDE FINAL;
+    void printInfo(std::ostream& str, int lvl) OVERRIDE FINAL;
     void setBeaconServerStatusProvider(BeaconServerStatusProvider::shared_pointer const & beaconServerStatusProvider) OVERRIDE FINAL;
     //**************** derived from Context ****************//
     epics::pvData::Timer::shared_pointer getTimer() OVERRIDE FINAL;
