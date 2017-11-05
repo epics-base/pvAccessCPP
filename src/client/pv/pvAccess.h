@@ -1319,6 +1319,44 @@ private:
     ChannelProvider::weak_pointer shared;
 };
 
+//! Helper for ChannelProviders which access a singleton resource (eg. process database).
+//! Only one concurrent instance will be created.
+//! Requires the existance of a ctor
+//!   Provider(const std::tr1::shared_ptr<const Configuration>& conf)
+template<class Provider>
+struct SingletonChannelProviderFactory : public ChannelProviderFactory
+{
+    SingletonChannelProviderFactory(const std::string& name,
+                                    const std::tr1::shared_ptr<const Configuration>& conf = std::tr1::shared_ptr<const Configuration>())
+        :pname(name), config(conf)
+    {}
+    virtual ~SingletonChannelProviderFactory() {}
+
+    virtual std::string getFactoryName() OVERRIDE FINAL { return pname; }
+
+    virtual ChannelProvider::shared_pointer sharedInstance() OVERRIDE FINAL
+    {
+        epics::pvData::Lock L(sharedM);
+        ChannelProvider::shared_pointer ret(shared.lock());
+        if(!ret) {
+            std::tr1::shared_ptr<Provider> inst(new Provider(config));
+            shared = ret = inst;
+        }
+        return ret;
+    }
+
+    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf) OVERRIDE FINAL
+    {
+        (void)conf; // ignore and use our Configuration
+        return sharedInstance();
+    }
+private:
+    const std::string pname;
+    epics::pvData::Mutex sharedM;
+    ChannelProvider::weak_pointer shared;
+    const std::tr1::shared_ptr<const Configuration> config;
+};
+
 /**
  * Interface for locating channel providers.
  */
@@ -1386,6 +1424,17 @@ public:
     typedef ChannelProvider::shared_pointer (*factoryfn_t)(const std::tr1::shared_ptr<Configuration>&);
 
     ChannelProviderFactory::shared_pointer add(const std::string& name, factoryfn_t, bool replace=true);
+
+    //! Add a new Provider which will be built using SingletonChannelProviderFactory<Provider>
+    template<class Provider>
+    ChannelProviderFactory::shared_pointer addSingleton(const std::string& name,
+                                                        const std::tr1::shared_ptr<const Configuration>& conf = std::tr1::shared_ptr<const Configuration>(),
+                                                        bool replace=true)
+    {
+        typedef SingletonChannelProviderFactory<Provider> Factory;
+        typename Factory::shared_pointer fact(new Factory(name, conf));
+        return add(fact, replace) ? fact : typename Factory::shared_pointer();
+    }
 
     //! Attempt to remove a factory with the given name.  Return Factory which was removed, or NULL if not found.
     ChannelProviderFactory::shared_pointer remove(const std::string& name);
