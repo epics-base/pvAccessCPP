@@ -1597,20 +1597,14 @@ void BlockingServerTCPTransportCodec::authenticationCompleted(epics::pvData::Sta
 
 epics::pvData::Status BlockingServerTCPTransportCodec::invalidSecurityPluginNameStatus(Status::STATUSTYPE_ERROR, "invalid security plug-in name");
 
-void BlockingServerTCPTransportCodec::authNZInitialize(void *arg)
+void BlockingServerTCPTransportCodec::authNZInitialize(const std::string& securityPluginName,
+                                                       const epics::pvData::PVField::shared_pointer& data)
 {
-    struct InitData {
-        std::string securityPluginName;
-        PVField::shared_pointer data;
-    };
-
-    InitData* initData = static_cast<InitData*>(arg);
-
     // check if plug-in name is valid
     SecurityPlugin::shared_pointer securityPlugin;
 
     map<string, SecurityPlugin::shared_pointer>::iterator spIter =
-        _context->getSecurityPlugins().find(initData->securityPluginName);
+        _context->getSecurityPlugins().find(securityPluginName);
     if (spIter != _context->getSecurityPlugins().end())
         securityPlugin = spIter->second;
     if (!securityPlugin)
@@ -1638,7 +1632,7 @@ void BlockingServerTCPTransportCodec::authNZInitialize(void *arg)
     {
         char ipAddrStr[48];
         ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-        LOG(logLevelDebug, "Accepted security plug-in '%s' for PVA client: %s.", initData->securityPluginName.c_str(), ipAddrStr);
+        LOG(logLevelDebug, "Accepted security plug-in '%s' for PVA client: %s.", securityPluginName.c_str(), ipAddrStr);
     }
 
     try
@@ -1646,11 +1640,11 @@ void BlockingServerTCPTransportCodec::authNZInitialize(void *arg)
         // create session
         SecurityPluginControl::shared_pointer spc = std::tr1::dynamic_pointer_cast<SecurityPluginControl>(shared_from_this());
         // TODO sync
-        _securitySession = securityPlugin->createSession(_socketAddress, spc, initData->data);
+        _securitySession = securityPlugin->createSession(_socketAddress, spc, data);
     } catch (SecurityException &se) {
         if (IS_LOGGABLE(logLevelDebug))
         {
-            LOG(logLevelDebug, "Security plug-in '%s' failed to create a session for PVA client: %s.", initData->securityPluginName.c_str(), _socketName.c_str());
+            LOG(logLevelDebug, "Security plug-in '%s' failed to create a session for PVA client: %s.", securityPluginName.c_str(), _socketName.c_str());
         }
         Status status(Status::STATUSTYPE_ERROR, se.what());
         verified(status);
@@ -1915,16 +1909,15 @@ void BlockingClientTCPTransportCodec::send(ByteBuffer* buffer,
 }
 
 
-void BlockingClientTCPTransportCodec::authNZInitialize(void *arg)
+void BlockingClientTCPTransportCodec::authNZInitialize(const std::vector<std::string>& offeredSecurityPlugins)
 {
-    vector<string>* offeredSecurityPlugins = static_cast< vector<string>* >(arg);
-    if (!offeredSecurityPlugins->empty())
+    if (!offeredSecurityPlugins.empty())
     {
         map<string, SecurityPlugin::shared_pointer>& availableSecurityPlugins =
             _context->getSecurityPlugins();
 
-        for (vector<string>::const_iterator offeredSP = offeredSecurityPlugins->begin();
-                offeredSP != offeredSecurityPlugins->end(); offeredSP++)
+        for (vector<string>::const_iterator offeredSP = offeredSecurityPlugins.begin();
+                offeredSP != offeredSecurityPlugins.end(); offeredSP++)
         {
             map<string, SecurityPlugin::shared_pointer>::iterator spi = availableSecurityPlugins.find(*offeredSP);
             if (spi != availableSecurityPlugins.end())

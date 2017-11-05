@@ -140,10 +140,6 @@ public:
         // noop
     }
 
-    virtual void authNZInitialize(void*) {
-        // noop
-    }
-
     virtual void authNZMessage(epics::pvData::PVField::shared_pointer const & data) {
         // noop
     }

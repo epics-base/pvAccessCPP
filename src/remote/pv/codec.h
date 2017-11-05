@@ -574,7 +574,8 @@ public:
         // noop on server-side
     }
 
-    virtual void authNZInitialize(void *) OVERRIDE FINAL;
+    void authNZInitialize(const std::string& securityPluginName,
+                          const epics::pvData::PVField::shared_pointer& data);
 
     virtual void authenticationCompleted(epics::pvData::Status const & status) OVERRIDE FINAL;
 
@@ -679,7 +680,7 @@ public:
     virtual void send(epics::pvData::ByteBuffer* buffer,
                       TransportSendControl* control) OVERRIDE FINAL;
 
-    virtual void authNZInitialize(void *) OVERRIDE FINAL;
+    void authNZInitialize(const std::vector<std::string>& offeredSecurityPlugins);
 
     virtual void authenticationCompleted(epics::pvData::Status const & status) OVERRIDE FINAL;
 

@@ -25,6 +25,7 @@
 #include <pv/inetAddressUtil.h>
 #include <pv/hexDump.h>
 #include <pv/remote.h>
+#include <pv/codec.h>
 #include <pv/channelSearchManager.h>
 #include <pv/serializationHelper.h>
 #include <pv/simpleChannelSearchManagerImpl.h>
@@ -2834,7 +2835,11 @@ public:
                 SerializeHelper::deserializeString(payloadBuffer, transport.get())
             );
 
-        transport->authNZInitialize(&offeredSecurityPlugins);
+        epics::pvAccess::detail::BlockingClientTCPTransportCodec* cliTransport(static_cast<epics::pvAccess::detail::BlockingClientTCPTransportCodec*>(transport.get()));
+        //TODO: simplify byzantine class heirarchy...
+        assert(cliTransport);
+
+        cliTransport->authNZInitialize(offeredSecurityPlugins);
     }
 };
 

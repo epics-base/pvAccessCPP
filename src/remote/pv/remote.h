@@ -296,12 +296,6 @@ public:
     virtual bool isClosed() = 0;
 
     /**
-     * Used to initialize authNZ (select security plug-in).
-     * @param data
-     */
-    virtual void authNZInitialize(void*) = 0;
-
-    /**
      * Pass data to the active security plug-in session.
      * @param data the data (any data), can be <code>null</code>.
      */

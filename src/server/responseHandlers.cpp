@@ -38,6 +38,7 @@
 #include <pv/serializationHelper.h>
 #include <pv/logger.h>
 #include <pv/pvAccessMB.h>
+#include <pv/codec.h>
 #include <pv/rpcServer.h>
 #include <pv/securityImpl.h>
 
@@ -183,12 +184,11 @@ void ServerConnectionValidationHandler::handleResponse(
     if (payloadBuffer->getRemaining())
         data = SerializationHelper::deserializeFull(payloadBuffer, transport.get());
 
-    struct {
-        std::string securityPluginName;
-        PVField::shared_pointer data;
-    } initData = { securityPluginName, data };
+    detail::BlockingServerTCPTransportCodec* casTransport(static_cast<detail::BlockingServerTCPTransportCodec*>(transport.get()));
+    //TODO: simplify byzantine class heirarchy...
+    assert(casTransport);
 
-    transport->authNZInitialize(&initData);
+    casTransport->authNZInitialize(securityPluginName, data);
 }
 
 
