@@ -59,6 +59,7 @@ struct Monitor::Impl : public pva::MonitorRequester
         }catch(std::exception& e){
             if(!this->cb || evt==MonitorEvent::Fail) {
                 LOG(pva::logLevelError, "Unhandled exception in ClientChannel::MonitorCallback::monitorEvent(): %s", e.what());
+                return;
             } else {
                event.event = MonitorEvent::Fail;
                event.message = e.what();
@@ -76,16 +77,22 @@ struct Monitor::Impl : public pva::MonitorRequester
 
     void cancel()
     {
-        Guard G(mutex);
+        operation_type::shared_pointer temp;
+        {
+            Guard G(mutex);
 
-        last.reset();
+            last.reset();
 
-        if(started) {
-            op->stop();
-            started = false;
+            if(started && op) {
+                op->stop();
+                started = false;
+            }
+            temp.swap(op);
+
+            callEvent(G, MonitorEvent::Cancel);
         }
-        op->destroy();
-        callEvent(G, MonitorEvent::Cancel);
+        if(temp)
+            temp->destroy();
     }
 
     virtual std::string getRequesterName() OVERRIDE FINAL
