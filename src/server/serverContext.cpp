@@ -432,7 +432,7 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
             << "INTF_ADDR_LIST : " << inetAddressToString(_ifaceAddr, false) << endl;
 
     } else {
-        // lvl > 0
+        // lvl >= 1
 
         TransportRegistry::transportVector_t transports;
         _transportRegistry.toArray(transports);
@@ -457,6 +457,7 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
 
             if(!casTransport || lvl<2)
                 return;
+            // lvl >= 2
 
             typedef std::vector<ServerChannel::shared_pointer> channels_t;
             channels_t channels;
@@ -470,8 +471,12 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
                     continue;
 
                 str<<"  "<<providerChan->getChannelName()
-                   <<(providerChan->isConnected()?"":" closed")
-                   <<"\n";
+                   <<(providerChan->isConnected()?"":" closed");
+                if(lvl>=3) {
+                    str<<"\t: ";
+                    providerChan->printInfo(str);
+                }
+                str<<"\n";
             }
         }
     }
