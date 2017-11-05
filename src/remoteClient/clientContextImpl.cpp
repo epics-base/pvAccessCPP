@@ -424,7 +424,6 @@ Status BaseRequestImpl::invalidPutArrayStatus(Status::STATUSTYPE_ERROR, "incompa
 Status BaseRequestImpl::invalidBitSetLengthStatus(Status::STATUSTYPE_ERROR, "invalid bit-set length");
 Status BaseRequestImpl::pvRequestNull(Status::STATUSTYPE_ERROR, "pvRequest == 0");
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(channelProcess);
 
 class ChannelProcessRequestImpl :
     public BaseRequestImpl,
@@ -439,7 +438,6 @@ public:
         m_callback(callback),
         m_pvRequest(pvRequest)
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelProcess);
     }
 
     virtual void activate() OVERRIDE FINAL
@@ -460,7 +458,6 @@ public:
 
     ~ChannelProcessRequestImpl()
     {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelProcess);
     }
 
     ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
@@ -551,7 +548,6 @@ public:
 
 
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(channelGet);
 
 class ChannelGetImpl :
     public BaseRequestImpl,
@@ -574,7 +570,6 @@ public:
         m_callback(requester),
         m_pvRequest(pvRequest)
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelGet);
     }
 
     virtual void activate() OVERRIDE FINAL
@@ -600,7 +595,6 @@ public:
 
     virtual ~ChannelGetImpl()
     {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelGet);
     }
 
     ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
@@ -608,8 +602,6 @@ public:
     virtual void send(ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
         int32 pendingRequest = getPendingRequest();
         bool initStage = ((pendingRequest & QOS_INIT) != 0);
-
-        MB_POINT_CONDITIONAL(channelGet, 1, "client channelGet->serialize (start)", !initStage);
 
         if (pendingRequest < 0)
         {
@@ -627,8 +619,6 @@ public:
             // pvRequest
             SerializationHelper::serializePVRequest(buffer, control, m_pvRequest);
         }
-
-        MB_POINT_CONDITIONAL(channelGet, 2, "client channelGet->serialize (end)", !initStage);
 
         stopRequest();
     }
@@ -653,8 +643,6 @@ public:
 
     virtual void normalResponse(Transport::shared_pointer const & transport, int8 /*version*/, ByteBuffer* payloadBuffer, int8 /*qos*/, const Status& status) OVERRIDE FINAL {
 
-        MB_POINT(channelGet, 8, "client channelGet->deserialize (start)");
-
         if (!status.isSuccess())
         {
             EXCEPTION_GUARD3(m_callback, cb, cb->getDone(status, external_from_this<ChannelGetImpl>(), PVStructurePtr(), BitSetPtr()));
@@ -668,15 +656,10 @@ public:
             m_structure->deserialize(payloadBuffer, transport.get(), m_bitSet.get());
         }
 
-        MB_POINT(channelGet, 9, "client channelGet->deserialize (end), just before channelGet->getDone() is called");
-
         EXCEPTION_GUARD3(m_callback, cb, cb->getDone(status, external_from_this<ChannelGetImpl>(), m_structure, m_bitSet));
     }
 
     virtual void get() OVERRIDE FINAL {
-
-        MB_INC_AUTO_ID(channelGet);
-        MB_POINT(channelGet, 0, "client channelGet->get()");
 
         ChannelGet::shared_pointer thisPtr(external_from_this<ChannelGetImpl>());
 
@@ -756,11 +739,6 @@ public:
 
 
 
-
-
-
-PVACCESS_REFCOUNT_MONITOR_DEFINE(channelPut);
-
 class ChannelPutImpl :
     public BaseRequestImpl,
     public ChannelPut
@@ -782,7 +760,6 @@ public:
         m_callback(requester),
         m_pvRequest(pvRequest)
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelPut);
     }
 
     virtual void activate() OVERRIDE FINAL
@@ -808,7 +785,6 @@ public:
 
     virtual ~ChannelPutImpl()
     {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelPut);
     }
 
     ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
@@ -1003,8 +979,6 @@ public:
 
 
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(channelPutGet);
-
 class ChannelPutGetImpl :
     public BaseRequestImpl,
     public ChannelPutGet
@@ -1031,7 +1005,6 @@ public:
         m_callback(requester),
         m_pvRequest(pvRequest)
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelPutGet);
     }
 
     virtual void activate() OVERRIDE FINAL
@@ -1055,7 +1028,6 @@ public:
 
     virtual ~ChannelPutGetImpl()
     {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelPutGet);
     }
 
     ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
@@ -1319,8 +1291,6 @@ public:
 
 
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(channelRPC);
-
 class ChannelRPCImpl :
     public BaseRequestImpl,
     public ChannelRPC
@@ -1341,7 +1311,6 @@ public:
         m_callback(requester),
         m_pvRequest(pvRequest)
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelRPC);
     }
 
     virtual void activate() OVERRIDE FINAL
@@ -1365,7 +1334,6 @@ public:
 
     virtual ~ChannelRPCImpl()
     {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelRPC);
     }
 
     ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
@@ -1503,8 +1471,6 @@ public:
 
 
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(channelArray);
-
 class ChannelArrayImpl :
     public BaseRequestImpl,
     public ChannelArray
@@ -1534,7 +1500,6 @@ public:
         m_offset(0), m_count(0),
         m_length(0)
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelArray);
     }
 
     virtual void activate() OVERRIDE FINAL
@@ -1558,7 +1523,6 @@ public:
 
     virtual ~ChannelArrayImpl()
     {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelArray);
     }
 
     ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
@@ -2154,7 +2118,6 @@ public:
 
 
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(channelMonitor);
 
 class ChannelMonitorImpl :
     public BaseRequestImpl,
@@ -2185,7 +2148,6 @@ public:
         m_pipeline(false),
         m_ackAny(0)
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelMonitor);
     }
 
     virtual void activate() OVERRIDE FINAL
@@ -2267,7 +2229,6 @@ public:
 
     virtual ~ChannelMonitorImpl()
     {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelMonitor);
     }
 
     ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
@@ -3054,8 +3015,6 @@ public:
 
 
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(channel);
-
 
 /**
  * Context state enum.
@@ -3079,8 +3038,6 @@ enum ContextState {
 
 
 
-
-PVACCESS_REFCOUNT_MONITOR_DEFINE(remoteClientContext);
 
 class InternalClientContextImpl :
     public ClientContextImpl,
@@ -3300,7 +3257,6 @@ private:
             m_issueCreateMessage(true)
         {
             REFTRACE_INCREMENT(num_instances);
-            PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channel);
         }
 
         void activate()
@@ -3335,8 +3291,6 @@ private:
         virtual ~InternalChannelImpl()
         {
             REFTRACE_DECREMENT(num_instances);
-
-            PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channel);
         }
 
         virtual void destroy() OVERRIDE FINAL
@@ -4083,8 +4037,6 @@ public:
     {
         REFTRACE_INCREMENT(num_instances);
 
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(remoteClientContext);
-        MB_INIT;
         if(!m_configuration) m_configuration = ConfigurationFactory::getConfiguration("pvAccess-client");
         m_flushTransports.reserve(64);
         loadConfiguration();
@@ -4183,7 +4135,6 @@ public:
     virtual ~InternalClientContextImpl()
     {
         REFTRACE_DECREMENT(num_instances);
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(remoteClientContext);
     }
 
     const weak_pointer m_external_this, m_internal_this;
@@ -4755,8 +4706,6 @@ size_t InternalClientContextImpl::num_instances;
 size_t InternalClientContextImpl::InternalChannelImpl::num_instances;
 size_t InternalClientContextImpl::InternalChannelImpl::num_active;
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(channelGetField);
-
 class ChannelGetFieldRequestImpl :
     public DataResponse,
     public TransportSender,
@@ -4787,9 +4736,7 @@ public:
         m_ioid(INVALID_IOID),
         m_destroyed(false),
         m_notified(false)
-    {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(channelGetField);
-    }
+    {}
 
     void activate()
     {
@@ -4818,8 +4765,6 @@ public:
     {
         destroy();
         notify(BaseRequestImpl::channelDestroyed, FieldConstPtr());
-
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(channelGetField);
     }
 
     void notify(const Status& sts, const FieldConstPtr& field)

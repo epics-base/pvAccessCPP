@@ -7,11 +7,7 @@
 #ifndef _PVACCESSMB_H_
 #define _PVACCESSMB_H_
 
-#ifdef WITH_MICROBENCH
-
-#include <pv/mb.h>
-
-#else
+/* this header is deprecated */
 
 #define MB_DECLARE(NAME, SIZE)
 #define MB_DECLARE_EXTERN(NAME)
@@ -36,9 +32,5 @@
 #define MB_PRINT_OPT(NAME, STAGE_ONLY, SKIP_FIRST_N_SAMPLES, STREAM)
 
 #define MB_INIT
-
-#endif
-
-MB_DECLARE_EXTERN(channelGet);
 
 #endif

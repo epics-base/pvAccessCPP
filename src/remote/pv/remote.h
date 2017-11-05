@@ -40,12 +40,6 @@
 namespace epics {
 namespace pvAccess {
 
-#define PVACCESS_REFCOUNT_MONITOR_DEFINE(name)
-#define PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(name)
-#define PVACCESS_REFCOUNT_MONITOR_DESTRUCT(name)
-//#define PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(name) LOG(logLevelDebug, #name "::" #name);
-//#define PVACCESS_REFCOUNT_MONITOR_DESTRUCT(name) LOG(logLevelDebug, #name "::~" #name);
-
 class TransportRegistry;
 
 enum QoS {

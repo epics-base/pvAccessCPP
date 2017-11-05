@@ -557,8 +557,6 @@ class ChannelProcessRequesterImpl : public ChannelProcessRequester
 
 };
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(mockChannelProcess);
-
 class MockChannelProcess :
     public ChannelProcess,
     public std::tr1::enable_shared_from_this<MockChannelProcess>
@@ -576,8 +574,6 @@ protected:
                        PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & /*pvRequest*/) :
         m_channel(channel), m_channelProcessRequester(channelProcessRequester), m_pvStructure(pvStructure)
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelProcess);
-
         PVFieldPtr ts = pvStructure->getSubField("timeStamp");
         if (ts) m_timeStamp.attach(ts);
 
@@ -623,7 +619,6 @@ public:
 
     virtual ~MockChannelProcess()
     {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockChannelProcess);
     }
 
 
@@ -803,7 +798,6 @@ static ChannelProcess::shared_pointer getChannelProcess(
 
 
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(mockChannelGet);
 
 class MockChannelGet :
     public ChannelGet,
@@ -832,8 +826,6 @@ protected:
         m_bitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_channelProcess(getChannelProcess(channel, pvRequest))
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelGet);
-
         PVScalar::shared_pointer pvScalar = pvRequest->getSubField<PVScalar>("record._options.alwaysSendAll");
         if (pvScalar)
             m_alwaysSendAll = pvScalar->getAs<epics::pvData::boolean>();
@@ -864,7 +856,6 @@ public:
 
     virtual ~MockChannelGet()
     {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockChannelGet);
     }
 
     virtual void get()
@@ -941,8 +932,6 @@ public:
 
 
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(mockChannelPut);
-
 class MockChannelPut :
     public ChannelPut,
     public std::tr1::enable_shared_from_this<MockChannelPut>
@@ -966,8 +955,7 @@ protected:
         m_bitSet(new BitSet(m_pvStructure->getNumberFields())),
         m_channelProcess(getChannelProcess(channel, pvRequest))
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelPut);
-        m_bitSet->set(0); // TODO
+        m_bitSet->set(0);
     }
 
 public:
@@ -989,7 +977,6 @@ public:
 
     virtual ~MockChannelPut()
     {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockChannelPut);
     }
 
 
@@ -1058,8 +1045,6 @@ public:
 
 
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(mockChannelPutGet);
-
 class MockChannelPutGet :
     public ChannelPutGet,
     public std::tr1::enable_shared_from_this<ChannelPutGet>
@@ -1088,8 +1073,6 @@ protected:
         m_channelProcess(getChannelProcess(channel, pvRequest))
 
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelPutGet);
-
         // always all
         m_getBitSet->set(0);
     }
@@ -1112,7 +1095,6 @@ public:
 
     virtual ~MockChannelPutGet()
     {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockChannelPutGet);
     }
 
     virtual void putGet(PVStructure::shared_pointer const & pvPutStructure, BitSet::shared_pointer const & putBitSet)
@@ -1223,8 +1205,6 @@ static bool handleHelp(
 }
 
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(mockChannelRPC);
-
 class MockChannelRPC :
     public ChannelRPC,
     public std::tr1::enable_shared_from_this<ChannelRPC>
@@ -1241,7 +1221,6 @@ protected:
                    PVStructure::shared_pointer const & /*pvRequest*/) :
         m_channelRPCRequester(channelRPCRequester), m_channel(channel), m_pvStructure(pvStructure)
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelRPC);
     }
 
 public:
@@ -1257,7 +1236,6 @@ public:
 
     virtual ~MockChannelRPC()
     {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockChannelRPC);
     }
 
     virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument)
@@ -1610,8 +1588,6 @@ public:
 
 
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(mockChannelArray);
-
 class MockChannelArray :
     public ChannelArray,
     public std::tr1::enable_shared_from_this<ChannelArray>
@@ -1629,8 +1605,6 @@ protected:
                      PVStructure::shared_pointer const & pvStructure, PVStructure::shared_pointer const & /*pvRequest*/) :
         m_channel(channel), m_channelArrayRequester(channelArrayRequester)
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannelArray);
-
         m_pvStructureArray = pvStructure->getSubField<PVArray>("value");
         if (m_pvStructureArray.get())
             m_pvArray = std::tr1::dynamic_pointer_cast<PVArray>(
@@ -1658,7 +1632,6 @@ public:
 
     virtual ~MockChannelArray()
     {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockChannelArray);
     }
 
     template<typename APVF>
@@ -1907,13 +1880,10 @@ public:
 
 private:
     std::string m_method;
-}
-
-#define TRACE_METHOD() TraceLog trace(CURRENT_FUNCTION);
+};
 
 
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(mockMonitor);
 
 class MockMonitor :
     public Monitor,
@@ -1946,8 +1916,6 @@ protected:
         m_state(MM_STATE_FREE),
         m_thisPtr(new MonitorElement(m_ccopy))
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockMonitor);
-
         PVScalar::shared_pointer pvScalar = pvRequest->getSubField<PVScalar>("record._options.velocious");
         if (pvScalar)
             m_continuous = pvScalar->getAs<epics::pvData::boolean>();
@@ -1978,7 +1946,6 @@ public:
 
     virtual ~MockMonitor()
     {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockMonitor);
     }
 
     void copy()
@@ -1991,7 +1958,6 @@ public:
     }
     virtual Status start()
     {
-        //TRACE_METHOD();
 
         {
             Lock xx(m_lock);
@@ -2016,7 +1982,6 @@ public:
 
     virtual void structureChanged()
     {
-        //TRACE_METHOD();
 
         if (m_active.get())
         {
@@ -2044,8 +2009,6 @@ public:
 
     virtual MonitorElement::shared_pointer poll()
     {
-        //TRACE_METHOD();
-
         Lock xx(m_lock);
         if (m_state != MM_STATE_FULL)
         {
@@ -2060,8 +2023,6 @@ public:
 
     virtual void release(MonitorElement::shared_pointer const & /*monitorElement*/)
     {
-        //TRACE_METHOD();
-
         Lock xx(m_lock);
         if (m_state == MM_STATE_TAKEN)
         {
@@ -2109,8 +2070,6 @@ public:
 };
 
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(mockChannel);
-
 class MockChannel :
     public Channel,
     public std::tr1::enable_shared_from_this<MockChannel>
@@ -2136,8 +2095,6 @@ protected:
         m_remoteAddress(remoteAddress),
         m_pvStructure()
     {
-        PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(mockChannel);
-
         if (structureStore.find(m_name) != structureStore.end())
             m_pvStructure = structureStore[m_name];
 
@@ -2376,9 +2333,7 @@ public:
     }
 
     virtual ~MockChannel()
-    {
-        PVACCESS_REFCOUNT_MONITOR_DESTRUCT(mockChannel);
-    }
+    {}
 
     virtual void destroy()
     {

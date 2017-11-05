@@ -104,8 +104,6 @@ void ServerBadResponse::handleResponse(osiSockAddr* responseFrom,
 
 ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer const & context)
 {
-    MB_INIT;
-
     ResponseHandler::shared_pointer badResponse(new ServerBadResponse(context));
     m_handlerTable.resize(CMD_CANCEL_REQUEST+1);
 
@@ -1026,9 +1024,6 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
     }
     else
     {
-        MB_INC_AUTO_ID(channelGet);
-        MB_POINT(channelGet, 3, "server channelGet->deserialize request (start)");
-
         const bool lastRequest = (QOS_DESTROY & qosCode) != 0;
 
         ServerChannelGetRequesterImpl::shared_pointer request = static_pointer_cast<ServerChannelGetRequesterImpl>(channel->getRequest(ioid));
@@ -1053,8 +1048,6 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
                 request->destroy();
             return;
         }
-
-        MB_POINT(channelGet, 4, "server channelGet->deserialize request (end)");
 
         ChannelGet::shared_pointer channelGet = request->getChannelGet();
         if (lastRequest)
@@ -1145,7 +1138,6 @@ void ServerChannelGetRequesterImpl::channelGetConnect(const Status& status, Chan
 void ServerChannelGetRequesterImpl::getDone(const Status& status, ChannelGet::shared_pointer const & /*channelGet*/,
         PVStructure::shared_pointer const & pvStructure, BitSet::shared_pointer const & bitSet)
 {
-    MB_POINT(channelGet, 5, "server channelGet->getDone()");
     {
         Lock guard(_mutex);
         _status = status;
@@ -1228,14 +1220,10 @@ void ServerChannelGetRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
         }
         else
         {
-            MB_POINT(channelGet, 6, "server channelGet->serialize response (start)");
-            {
-                ScopedLock lock(channelGet);
+            ScopedLock lock(channelGet);
 
-                _bitSet->serialize(buffer, control);
-                _pvStructure->serialize(buffer, control, _bitSet.get());
-            }
-            MB_POINT(channelGet, 7, "server channelGet->serialize response (end)");
+            _bitSet->serialize(buffer, control);
+            _pvStructure->serialize(buffer, control, _bitSet.get());
         }
     }
 

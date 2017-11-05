@@ -42,8 +42,6 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
 // reserve some space for CMD_ORIGIN_TAG message
 #define RECEIVE_BUFFER_PRE_RESERVE (PVA_MESSAGE_HEADER_SIZE + 16)
 
-PVACCESS_REFCOUNT_MONITOR_DEFINE(blockingUDPTransport);
-
 BlockingUDPTransport::BlockingUDPTransport(bool serverFlag,
         ResponseHandler::shared_pointer const & responseHandler, SOCKET channel,
         osiSockAddr& bindAddress,
@@ -63,7 +61,6 @@ BlockingUDPTransport::BlockingUDPTransport(bool serverFlag,
     _clientServerWithEndianFlag(
         (serverFlag ? 0x40 : 0x00) | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00))
 {
-    PVACCESS_REFCOUNT_MONITOR_CONSTRUCT(blockingUDPTransport);
     assert(_responseHandler.get());
 
     osiSocklen_t sockLen = sizeof(sockaddr);
@@ -85,7 +82,6 @@ BlockingUDPTransport::BlockingUDPTransport(bool serverFlag,
 }
 
 BlockingUDPTransport::~BlockingUDPTransport() {
-    PVACCESS_REFCOUNT_MONITOR_DESTRUCT(blockingUDPTransport);
 
     close(true); // close the socket and stop the thread.
 }
