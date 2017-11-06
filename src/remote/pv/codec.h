@@ -363,7 +363,8 @@ public:
     }
 
     virtual epics::pvData::int8 getRevision() const OVERRIDE FINAL {
-        return std::min(PVA_PROTOCOL_REVISION, _remoteTransportRevision);
+        return PVA_PROTOCOL_REVISION < _remoteTransportRevision
+                ? PVA_PROTOCOL_REVISION : _remoteTransportRevision;
     }
 
 
