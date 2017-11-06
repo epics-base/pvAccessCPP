@@ -10,12 +10,12 @@ namespace pvAccess {
 
 
 class AuthNZHandler :
-    public AbstractResponseHandler,
+    public ResponseHandler,
     private epics::pvData::NoDefaultMethods
 {
 public:
     AuthNZHandler(Context* context) :
-        AbstractResponseHandler(context, "authNZ message")
+        ResponseHandler(context, "authNZ message")
     {
     }
 

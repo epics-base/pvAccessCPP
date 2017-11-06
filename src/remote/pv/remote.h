@@ -346,7 +346,7 @@ public:
 
     static size_t num_instances;
 
-    ResponseHandler();
+    ResponseHandler(Context* context, const std::string& description);
     virtual ~ResponseHandler();
 
     /**
@@ -362,21 +362,7 @@ public:
     virtual void
     handleResponse(osiSockAddr* responseFrom, Transport::shared_pointer const & transport,
                    epics::pvData::int8 version, epics::pvData::int8 command, std::size_t payloadSize,
-                   epics::pvData::ByteBuffer* payloadBuffer) = 0;
-};
-
-class AbstractResponseHandler : public ResponseHandler {
-public:
-    AbstractResponseHandler(Context* context, const std::string& description) :
-        _description(description),
-        _debugLevel(context->getConfiguration()->getPropertyAsInteger(PVACCESS_DEBUG, 0)) {
-    }
-
-    virtual ~AbstractResponseHandler() {}
-
-    virtual void handleResponse(osiSockAddr* responseFrom, Transport::shared_pointer const & transport,
-                                epics::pvData::int8 version, epics::pvData::int8 command, std::size_t payloadSize,
-                                epics::pvData::ByteBuffer* payloadBuffer);
+                   epics::pvData::ByteBuffer* payloadBuffer);
 
 protected:
     /**

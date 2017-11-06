@@ -59,7 +59,7 @@ void AuthNZHandler::handleResponse(osiSockAddr* responseFrom,
                                    size_t payloadSize,
                                    epics::pvData::ByteBuffer* payloadBuffer)
 {
-    AbstractResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
+    ResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
     epics::pvData::PVField::shared_pointer data =
         SerializationHelper::deserializeFull(payloadBuffer, transport.get());

@@ -25,7 +25,9 @@ namespace pvAccess {
 
 size_t ResponseHandler::num_instances;
 
-ResponseHandler::ResponseHandler()
+ResponseHandler::ResponseHandler(Context* context, const std::string& description)
+    :_description(description)
+    ,_debugLevel(context->getConfiguration()->getPropertyAsInteger(PVACCESS_DEBUG, 0))
 {
     REFTRACE_INCREMENT(num_instances);
 }
@@ -35,7 +37,7 @@ ResponseHandler::~ResponseHandler()
     REFTRACE_DECREMENT(num_instances);
 }
 
-void AbstractResponseHandler::handleResponse(osiSockAddr* responseFrom,
+void ResponseHandler::handleResponse(osiSockAddr* responseFrom,
         Transport::shared_pointer const & transport, int8 version, int8 command,
         size_t payloadSize, ByteBuffer* payloadBuffer) {
     if(_debugLevel >= 3) {   // TODO make a constant of sth (0 - off, 1 - debug, 2 - more/trace, 3 - messages)

@@ -103,6 +103,7 @@ void ServerBadResponse::handleResponse(osiSockAddr* responseFrom,
 }
 
 ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer const & context)
+    :ResponseHandler(context.get(), "ServerResponseHandler")
 {
     ResponseHandler::shared_pointer badResponse(new ServerBadResponse(context));
     m_handlerTable.resize(CMD_CANCEL_REQUEST+1);

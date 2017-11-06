@@ -19,12 +19,12 @@ namespace pvAccess {
 
 /**
  */
-class AbstractServerResponseHandler : public AbstractResponseHandler {
+class AbstractServerResponseHandler : public ResponseHandler {
 protected:
     ServerContextImpl::shared_pointer _context;
 public:
     AbstractServerResponseHandler(ServerContextImpl::shared_pointer const & context, std::string description) :
-        AbstractResponseHandler(context.get(), description), _context(context) {
+        ResponseHandler(context.get(), description), _context(context) {
     }
 
     virtual ~AbstractServerResponseHandler() {

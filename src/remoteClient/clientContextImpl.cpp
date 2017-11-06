@@ -2427,12 +2427,12 @@ public:
 
 
 
-class AbstractClientResponseHandler : public AbstractResponseHandler {
+class AbstractClientResponseHandler : public ResponseHandler {
 protected:
     ClientContextImpl::weak_pointer _context;
 public:
     AbstractClientResponseHandler(ClientContextImpl::shared_pointer const & context, string const & description) :
-        AbstractResponseHandler(context.get(), description), _context(ClientContextImpl::weak_pointer(context)) {
+        ResponseHandler(context.get(), description), _context(ClientContextImpl::weak_pointer(context)) {
     }
 
     virtual ~AbstractClientResponseHandler() {
@@ -2964,7 +2964,9 @@ public:
     /**
      * @param context
      */
-    ClientResponseHandler(ClientContextImpl::shared_pointer const & context) {
+    ClientResponseHandler(ClientContextImpl::shared_pointer const & context)
+        :ResponseHandler(context.get(), "ClientResponseHandler")
+    {
         ResponseHandler::shared_pointer badResponse(new BadResponse(context));
         ResponseHandler::shared_pointer dataResponse(new DataResponseHandler(context));
 
