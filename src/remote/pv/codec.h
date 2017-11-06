@@ -493,7 +493,6 @@ private:
 
 class BlockingServerTCPTransportCodec :
     public BlockingTCPTransportCodec,
-    public ChannelHostingTransport,
     public TransportSender {
 
 public:
@@ -535,23 +534,21 @@ public:
 
     virtual void changedTransport() OVERRIDE {}
 
-    virtual pvAccessID preallocateChannelSID() OVERRIDE FINAL;
+    pvAccessID preallocateChannelSID();
 
-    virtual void depreallocateChannelSID(pvAccessID /*sid*/) OVERRIDE FINAL {
-        // noop
-    }
+    void depreallocateChannelSID(pvAccessID /*sid*/) {}
 
-    virtual void registerChannel(
+    void registerChannel(
             pvAccessID sid,
-            ServerChannel::shared_pointer const & channel) OVERRIDE FINAL;
+            ServerChannel::shared_pointer const & channel);
 
-    virtual void unregisterChannel(pvAccessID sid) OVERRIDE FINAL;
+    void unregisterChannel(pvAccessID sid);
 
-    virtual ServerChannel::shared_pointer getChannel(pvAccessID sid) OVERRIDE FINAL;
+    ServerChannel::shared_pointer getChannel(pvAccessID sid);
 
     void getChannels(std::vector<ServerChannel::shared_pointer>& channels) const;
 
-    virtual size_t getChannelCount() const OVERRIDE FINAL;
+    size_t getChannelCount() const;
 
     virtual bool verify(epics::pvData::int32 timeoutMs) OVERRIDE FINAL {
 

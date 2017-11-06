@@ -468,54 +468,6 @@ public:
 };
 
 /**
- * Interface defining a transport that hosts server channels.
- */
-class ChannelHostingTransport {
-public:
-    POINTER_DEFINITIONS(ChannelHostingTransport);
-
-    virtual ~ChannelHostingTransport() {}
-
-    /**
-     * Preallocate new channel SID.
-     * @return new channel server id (SID).
-     */
-    virtual pvAccessID preallocateChannelSID() = 0;
-
-    /**
-     * De-preallocate new channel SID.
-     * @param sid preallocated channel SID.
-     */
-    virtual void depreallocateChannelSID(pvAccessID sid) = 0;
-
-    /**
-     * Register a new channel.
-     * @param sid preallocated channel SID.
-     * @param channel channel to register.
-     */
-    virtual void registerChannel(pvAccessID sid, ServerChannel::shared_pointer const & channel) =0;
-
-    /**
-     * Unregister a new channel (and deallocates its handle).
-     * @param sid SID
-     */
-    virtual void unregisterChannel(pvAccessID sid) = 0;
-
-    /**
-     * Get channel by its SID.
-     * @param sid channel SID
-     * @return channel with given SID, <code>null</code> otherwise
-     */
-    virtual ServerChannel::shared_pointer getChannel(pvAccessID sid) = 0;
-
-    /**
-     * Get channel count.
-     * @return channel count.
-     */
-    virtual size_t getChannelCount() const = 0;
-};
-
-/**
  * A request that expects an response.
  * Responses identified by its I/O ID.
  */
