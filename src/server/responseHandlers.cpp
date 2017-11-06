@@ -756,10 +756,10 @@ void ServerCreateChannelHandler::disconnect(Transport::shared_pointer const & tr
     transport->close();
 }
 
-ServerChannelRequesterImpl::ServerChannelRequesterImpl(Transport::shared_pointer const & transport,
+ServerChannelRequesterImpl::ServerChannelRequesterImpl(const Transport::shared_pointer &transport,
         const string channelName, const pvAccessID cid, ChannelSecuritySession::shared_pointer const & css) :
     _serverChannel(),
-    _transport(transport),
+    _transport(std::tr1::static_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport)),
     _channelName(channelName),
     _cid(cid),
     _css(css),
@@ -782,33 +782,28 @@ ChannelRequester::shared_pointer ServerChannelRequesterImpl::create(
 
 void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::shared_pointer const & channel)
 {
-    if(Transport::shared_pointer transport = _transport.lock())
+    if(detail::BlockingServerTCPTransportCodec::shared_pointer transport = _transport.lock())
     {
         ServerChannel::shared_pointer serverChannel;
         try
         {
             if (status.isSuccess())
             {
-                // NOTE: we do not explicitly check if transport OK
-                detail::BlockingServerTCPTransportCodec::shared_pointer casTransport = dynamic_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport);
-                if (!casTransport.get())
-                    THROW_BASE_EXCEPTION("transport is unable to host channels");
-
                 //
                 // create a new channel instance
                 //
-                pvAccessID sid = casTransport->preallocateChannelSID();
+                pvAccessID sid = transport->preallocateChannelSID();
                 try
                 {
                     serverChannel.reset(new ServerChannelImpl(channel, shared_from_this(), _cid, sid, _css));
 
                     // ack allocation and register
-                    casTransport->registerChannel(sid, serverChannel);
+                    transport->registerChannel(sid, serverChannel);
 
                 } catch (...)
                 {
                     // depreallocate and rethrow
-                    casTransport->depreallocateChannelSID(sid);
+                    transport->depreallocateChannelSID(sid);
                     throw;
                 }
             }
@@ -862,12 +857,8 @@ void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer cons
     if(isConnected==Channel::CONNECTED || isConnected==Channel::NEVER_CONNECTED)
         return;
 
-    if(Transport::shared_pointer transport = _transport.lock())
+    if(detail::BlockingServerTCPTransportCodec::shared_pointer transport = _transport.lock())
     {
-        detail::BlockingServerTCPTransportCodec::shared_pointer casTransport = dynamic_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport);
-        if (!casTransport)
-            return;
-
         ServerChannelImpl::shared_pointer channel;
         {
             Lock guard(_mutex);
@@ -881,7 +872,7 @@ void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer cons
         channel->destroy();
 
         // .. and unregister
-        casTransport->unregisterChannel(channel->getSID());
+        transport->unregisterChannel(channel->getSID());
 
         // send response back
         TransportSender::shared_pointer sr(new ServerDestroyChannelHandlerTransportSender(channel->getCID(), channel->getSID()));
@@ -891,7 +882,7 @@ void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer cons
 
 string ServerChannelRequesterImpl::getRequesterName()
 {
-    Transport::shared_pointer transport = _transport.lock();
+    detail::BlockingServerTCPTransportCodec::shared_pointer transport = _transport.lock();
     if (transport)
         return transport->getRemoteName();
     else
@@ -913,7 +904,7 @@ void ServerChannelRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
         status = _status;
     }
 
-    if (Transport::shared_pointer transport = _transport.lock())
+    if (detail::BlockingServerTCPTransportCodec::shared_pointer transport = _transport.lock())
     {
         // error response
         if (!serverChannel)
@@ -948,7 +939,7 @@ void ServerDestroyChannelHandler::handleResponse(osiSockAddr* responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
     // NOTE: we do not explicitly check if transport OK
-    detail::BlockingServerTCPTransportCodec::shared_pointer casTransport = dynamic_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport);
+    detail::BlockingServerTCPTransportCodec* casTransport(static_cast<detail::BlockingServerTCPTransportCodec*>(transport.get()));
 
 
     transport->ensureData(8);
@@ -989,7 +980,7 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
     // NOTE: we do not explicitly check if transport is OK
-    detail::BlockingServerTCPTransportCodec::shared_pointer casTransport = dynamic_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport);
+    detail::BlockingServerTCPTransportCodec* casTransport(static_cast<detail::BlockingServerTCPTransportCodec*>(transport.get()));
 
     transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
     const pvAccessID sid = payloadBuffer->getInt();
@@ -1244,7 +1235,7 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
 
 
     // NOTE: we do not explicitly check if transport is OK
-    detail::BlockingServerTCPTransportCodec::shared_pointer casTransport = dynamic_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport);
+    detail::BlockingServerTCPTransportCodec* casTransport(static_cast<detail::BlockingServerTCPTransportCodec*>(transport.get()));
 
     transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
     const pvAccessID sid = payloadBuffer->getInt();
@@ -1514,7 +1505,7 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
     // NOTE: we do not explicitly check if transport is OK
-    detail::BlockingServerTCPTransportCodec::shared_pointer casTransport = dynamic_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport);
+    detail::BlockingServerTCPTransportCodec* casTransport(static_cast<detail::BlockingServerTCPTransportCodec*>(transport.get()));
 
     transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
     const pvAccessID sid = payloadBuffer->getInt();
@@ -1837,7 +1828,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
     AbstractServerResponseHandler::handleResponse(responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
-    detail::BlockingServerTCPTransportCodec::shared_pointer casTransport = dynamic_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport);
+    detail::BlockingServerTCPTransportCodec* casTransport(static_cast<detail::BlockingServerTCPTransportCodec*>(transport.get()));
     assert(!!casTransport);
 
     transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
@@ -2132,7 +2123,7 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
     // NOTE: we do not explicitly check if transport is OK
-    detail::BlockingServerTCPTransportCodec::shared_pointer casTransport = dynamic_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport);
+    detail::BlockingServerTCPTransportCodec* casTransport(static_cast<detail::BlockingServerTCPTransportCodec*>(transport.get()));
 
     transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
     const pvAccessID sid = payloadBuffer->getInt();
@@ -2464,7 +2455,7 @@ void ServerDestroyRequestHandler::handleResponse(osiSockAddr* responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
     // NOTE: we do not explicitly check if transport is OK
-    detail::BlockingServerTCPTransportCodec::shared_pointer casTransport = dynamic_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport);
+    detail::BlockingServerTCPTransportCodec* casTransport(static_cast<detail::BlockingServerTCPTransportCodec*>(transport.get()));
 
     transport->ensureData(2*sizeof(int32)/sizeof(int8));
     const pvAccessID sid = payloadBuffer->getInt();
@@ -2504,7 +2495,7 @@ void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
     // NOTE: we do not explicitly check if transport is OK
-    detail::BlockingServerTCPTransportCodec::shared_pointer casTransport = dynamic_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport);
+    detail::BlockingServerTCPTransportCodec* casTransport(static_cast<detail::BlockingServerTCPTransportCodec*>(transport.get()));
 
     transport->ensureData(2*sizeof(int32)/sizeof(int8));
     const pvAccessID sid = payloadBuffer->getInt();
@@ -2549,7 +2540,7 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
     // NOTE: we do not explicitly check if transport is OK
-    detail::BlockingServerTCPTransportCodec::shared_pointer casTransport = dynamic_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport);
+    detail::BlockingServerTCPTransportCodec* casTransport(static_cast<detail::BlockingServerTCPTransportCodec*>(transport.get()));
 
     transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
     const pvAccessID sid = payloadBuffer->getInt();
@@ -2729,7 +2720,7 @@ void ServerGetFieldHandler::handleResponse(osiSockAddr* responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
     // NOTE: we do not explicitly check if transport is OK
-    detail::BlockingServerTCPTransportCodec::shared_pointer casTransport = dynamic_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport);
+    detail::BlockingServerTCPTransportCodec* casTransport(static_cast<detail::BlockingServerTCPTransportCodec*>(transport.get()));
 
     transport->ensureData(2*sizeof(int32)/sizeof(int8));
     const pvAccessID sid = payloadBuffer->getInt();
@@ -2809,7 +2800,7 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
     // NOTE: we do not explicitly check if transport is OK
-    detail::BlockingServerTCPTransportCodec::shared_pointer casTransport = dynamic_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport);
+    detail::BlockingServerTCPTransportCodec* casTransport(static_cast<detail::BlockingServerTCPTransportCodec*>(transport.get()));
 
     transport->ensureData(2*sizeof(int32)/sizeof(int8)+1);
     const pvAccessID sid = payloadBuffer->getInt();

@@ -212,6 +212,10 @@ private:
     std::vector<ChannelProvider::shared_pointer> _providers;
 };
 
+namespace detail {
+class BlockingServerTCPTransportCodec;
+}
+
 class ServerChannelRequesterImpl :
     public ChannelRequester,
     public TransportSender,
@@ -237,7 +241,7 @@ public:
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 private:
     ServerChannel::weak_pointer _serverChannel;
-    Transport::weak_pointer _transport;
+    std::tr1::weak_ptr<detail::BlockingServerTCPTransportCodec> _transport;
     const std::string _channelName;
     const pvAccessID _cid;
     ChannelSecuritySession::shared_pointer const & _css;
