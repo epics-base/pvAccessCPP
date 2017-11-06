@@ -78,7 +78,7 @@ typedef std::map<pvAccessID, ResponseRequest::weak_pointer> IOIDResponseRequestM
  * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
  */
 class BaseRequestImpl :
-    public DataResponse,
+    public ResponseRequest,
     public TransportSender,
     public virtual epics::pvAccess::Destroyable
 {
@@ -2472,14 +2472,14 @@ public:
 };
 
 
-class DataResponseHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+class ResponseRequestHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
 public:
-    DataResponseHandler(ClientContextImpl::shared_pointer const & context) :
+    ResponseRequestHandler(ClientContextImpl::shared_pointer const & context) :
         AbstractClientResponseHandler(context, "Data response")
     {
     }
 
-    virtual ~DataResponseHandler() {
+    virtual ~ResponseRequestHandler() {
     }
 
     virtual void handleResponse(osiSockAddr* responseFrom,
@@ -2493,7 +2493,7 @@ public:
         ResponseRequest::shared_pointer rr = _context.lock()->getResponseRequest(payloadBuffer->getInt());
         if (rr.get())
         {
-            DataResponse::shared_pointer nrr = dynamic_pointer_cast<DataResponse>(rr);
+            ResponseRequest::shared_pointer nrr = dynamic_pointer_cast<ResponseRequest>(rr);
             if (nrr.get())
                 nrr->response(transport, version, payloadBuffer);
         }
@@ -2501,14 +2501,14 @@ public:
 };
 
 
-class MultipleDataResponseHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+class MultipleResponseRequestHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
 public:
-    MultipleDataResponseHandler(ClientContextImpl::shared_pointer const & context) :
+    MultipleResponseRequestHandler(ClientContextImpl::shared_pointer const & context) :
         AbstractClientResponseHandler(context, "Multiple data response")
     {
     }
 
-    virtual ~MultipleDataResponseHandler() {
+    virtual ~MultipleResponseRequestHandler() {
     }
 
     virtual void handleResponse(osiSockAddr* responseFrom,
@@ -2531,7 +2531,7 @@ public:
             ResponseRequest::shared_pointer rr = context->getResponseRequest(ioid);
             if (rr.get())
             {
-                DataResponse::shared_pointer nrr = dynamic_pointer_cast<DataResponse>(rr);
+                ResponseRequest::shared_pointer nrr = dynamic_pointer_cast<ResponseRequest>(rr);
                 if (nrr.get())
                     nrr->response(transport, version, payloadBuffer);
                 else
@@ -2965,7 +2965,7 @@ public:
         :ResponseHandler(context.get(), "ClientResponseHandler")
     {
         ResponseHandler::shared_pointer badResponse(new BadResponse(context));
-        ResponseHandler::shared_pointer dataResponse(new DataResponseHandler(context));
+        ResponseHandler::shared_pointer dataResponse(new ResponseRequestHandler(context));
 
         m_handlerTable.resize(CMD_CANCEL_REQUEST+1);
 
@@ -2988,7 +2988,7 @@ public:
         m_handlerTable[CMD_PROCESS] = dataResponse; /* 16 - process response */
         m_handlerTable[CMD_GET_FIELD] = dataResponse; /* 17 - get field response */
         m_handlerTable[CMD_MESSAGE].reset(new MessageHandler(context)); /* 18 - message to Requester */
-        m_handlerTable[CMD_MULTIPLE_DATA].reset(new MultipleDataResponseHandler(context)); /* 19 - grouped monitors */
+        m_handlerTable[CMD_MULTIPLE_DATA].reset(new MultipleResponseRequestHandler(context)); /* 19 - grouped monitors */
         m_handlerTable[CMD_RPC] = dataResponse; /* 20 - RPC response */
         m_handlerTable[CMD_CANCEL_REQUEST] = badResponse; /* 21 - cancel request */
     }
@@ -4706,7 +4706,7 @@ size_t InternalClientContextImpl::InternalChannelImpl::num_instances;
 size_t InternalClientContextImpl::InternalChannelImpl::num_active;
 
 class ChannelGetFieldRequestImpl :
-    public DataResponse,
+    public ResponseRequest,
     public TransportSender,
     public epics::pvAccess::Destroyable,
     public std::tr1::enable_shared_from_this<ChannelGetFieldRequestImpl>

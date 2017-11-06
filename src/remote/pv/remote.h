@@ -473,15 +473,6 @@ public:
      * May return NULL
      */
     virtual std::tr1::shared_ptr<ChannelBaseRequester> getRequester() = 0;
-};
-
-/**
- */
-class DataResponse : public ResponseRequest {
-public:
-    POINTER_DEFINITIONS(DataResponse);
-
-    virtual ~DataResponse() {}
 
     /**
      * Notification response.
