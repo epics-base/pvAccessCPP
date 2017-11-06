@@ -48,7 +48,7 @@ public:
     void unregisterRequest(pvAccessID id);
 
     void installGetField(const GetFieldRequester::shared_pointer& gf);
-    void completeGetField();
+    void completeGetField(GetFieldRequester *req);
 
     //! may return NULL
     Destroyable::shared_pointer getRequest(pvAccessID id);

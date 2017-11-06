@@ -687,6 +687,7 @@ public:
     void destroy();
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
 private:
+    bool done;
     epics::pvData::Status _status;
     epics::pvData::FieldConstPtr _field;
 };

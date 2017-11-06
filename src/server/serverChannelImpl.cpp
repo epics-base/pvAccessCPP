@@ -121,12 +121,13 @@ void ServerChannel::installGetField(const GetFieldRequester::shared_pointer& gf)
     }
 }
 
-void ServerChannel::completeGetField()
+void ServerChannel::completeGetField(GetFieldRequester *req)
 {
     GetFieldRequester::shared_pointer prev;
     {
         epicsGuard<epicsMutex> G(_mutex);
-        prev.swap(_active_requester);
+        if(_active_requester.get()==req)
+            prev.swap(_active_requester);
     }
 }
 

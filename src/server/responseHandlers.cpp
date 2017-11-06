@@ -2783,20 +2783,25 @@ void ServerGetFieldHandler::getFieldFailureResponse(Transport::shared_pointer co
 ServerGetFieldRequesterImpl::ServerGetFieldRequesterImpl(
     ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel,
     const pvAccessID ioid, Transport::shared_pointer const & transport) :
-    BaseChannelRequester(context, channel, ioid, transport), _field()
+    BaseChannelRequester(context, channel, ioid, transport), done(false)
 {
 }
 
 void ServerGetFieldRequesterImpl::getDone(const Status& status, FieldConstPtr const & field)
 {
+    bool twice;
     {
         Lock guard(_mutex);
         _status = status;
         _field = field;
+        twice = done;
+        done = true;
     }
-    TransportSender::shared_pointer thisSender = shared_from_this();
-    _transport->enqueueSendRequest(thisSender);
-    _channel->completeGetField();
+    if(!twice) {
+        TransportSender::shared_pointer thisSender = shared_from_this();
+        _transport->enqueueSendRequest(thisSender);
+    }
+    _channel->completeGetField(this);
 }
 
 void ServerGetFieldRequesterImpl::destroy()
