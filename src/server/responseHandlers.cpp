@@ -104,34 +104,51 @@ void ServerBadResponse::handleResponse(osiSockAddr* responseFrom,
 
 ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer const & context)
     :ResponseHandler(context.get(), "ServerResponseHandler")
+    ,handle_bad(context)
+    ,handle_beacon(context, "Beacon")
+    ,handle_validation(context)
+    ,handle_echo(context)
+    ,handle_search(context)
+    ,handle_authnz(context.get())
+    ,handle_create(context)
+    ,handle_destroy(context)
+    ,handle_get(context)
+    ,handle_put(context)
+    ,handle_putget(context)
+    ,handle_monitor(context)
+    ,handle_array(context)
+    ,handle_close(context)
+    ,handle_process(context)
+    ,handle_getfield(context)
+    ,handle_rpc(context)
+    ,handle_cancel(context)
+    ,m_handlerTable(CMD_CANCEL_REQUEST+1, &handle_bad)
 {
-    ResponseHandler::shared_pointer badResponse(new ServerBadResponse(context));
-    m_handlerTable.resize(CMD_CANCEL_REQUEST+1);
 
-    m_handlerTable[CMD_BEACON].reset(new ServerNoopResponse(context, "Beacon")); /*  0 */
-    m_handlerTable[CMD_CONNECTION_VALIDATION].reset(new ServerConnectionValidationHandler(context)); /*  1 */
-    m_handlerTable[CMD_ECHO].reset(new ServerEchoHandler(context)); /*  2 */
-    m_handlerTable[CMD_SEARCH].reset(new ServerSearchHandler(context)); /*  3 */
-    m_handlerTable[CMD_SEARCH_RESPONSE] = badResponse;
-    m_handlerTable[CMD_AUTHNZ].reset(new AuthNZHandler(context.get())); /*  5 */
-    m_handlerTable[CMD_ACL_CHANGE] = badResponse; /*  6 - access right change */
-    m_handlerTable[CMD_CREATE_CHANNEL].reset(new ServerCreateChannelHandler(context)); /*  7 */
-    m_handlerTable[CMD_DESTROY_CHANNEL].reset(new ServerDestroyChannelHandler(context)); /*  8 */
-    m_handlerTable[CMD_CONNECTION_VALIDATED] = badResponse; /*  9 */
+    m_handlerTable[CMD_BEACON] = &handle_beacon; /*  0 */
+    m_handlerTable[CMD_CONNECTION_VALIDATION] = &handle_validation; /*  1 */
+    m_handlerTable[CMD_ECHO] = &handle_echo; /*  2 */
+    m_handlerTable[CMD_SEARCH] = &handle_search; /*  3 */
+    m_handlerTable[CMD_SEARCH_RESPONSE] = &handle_bad;
+    m_handlerTable[CMD_AUTHNZ] = &handle_authnz; /*  5 */
+    m_handlerTable[CMD_ACL_CHANGE] = &handle_bad; /*  6 - access right change */
+    m_handlerTable[CMD_CREATE_CHANNEL] = &handle_create; /*  7 */
+    m_handlerTable[CMD_DESTROY_CHANNEL] = &handle_destroy; /*  8 */
+    m_handlerTable[CMD_CONNECTION_VALIDATED] = &handle_bad; /*  9 */
 
-    m_handlerTable[CMD_GET].reset(new ServerGetHandler(context)); /* 10 - get response */
-    m_handlerTable[CMD_PUT].reset(new ServerPutHandler(context)); /* 11 - put response */
-    m_handlerTable[CMD_PUT_GET].reset(new ServerPutGetHandler(context)); /* 12 - put-get response */
-    m_handlerTable[CMD_MONITOR].reset(new ServerMonitorHandler(context)); /* 13 - monitor response */
-    m_handlerTable[CMD_ARRAY].reset(new ServerArrayHandler(context)); /* 14 - array response */
-    m_handlerTable[CMD_DESTROY_REQUEST].reset(new ServerDestroyRequestHandler(context)); /* 15 - destroy request */
-    m_handlerTable[CMD_PROCESS].reset(new ServerProcessHandler(context)); /* 16 - process response */
-    m_handlerTable[CMD_GET_FIELD].reset(new ServerGetFieldHandler(context)); /* 17 - get field response */
-    m_handlerTable[CMD_MESSAGE] = badResponse; /* 18 - message to Requester */
-    m_handlerTable[CMD_MULTIPLE_DATA] = badResponse; /* 19 - grouped monitors */
+    m_handlerTable[CMD_GET] = &handle_get; /* 10 - get response */
+    m_handlerTable[CMD_PUT] = &handle_put; /* 11 - put response */
+    m_handlerTable[CMD_PUT_GET] = &handle_putget; /* 12 - put-get response */
+    m_handlerTable[CMD_MONITOR] = &handle_monitor; /* 13 - monitor response */
+    m_handlerTable[CMD_ARRAY] = &handle_array; /* 14 - array response */
+    m_handlerTable[CMD_DESTROY_REQUEST] = &handle_close; /* 15 - destroy request */
+    m_handlerTable[CMD_PROCESS] = &handle_process; /* 16 - process response */
+    m_handlerTable[CMD_GET_FIELD] = &handle_getfield; /* 17 - get field response */
+    m_handlerTable[CMD_MESSAGE] = &handle_bad; /* 18 - message to Requester */
+    m_handlerTable[CMD_MULTIPLE_DATA] = &handle_bad; /* 19 - grouped monitors */
 
-    m_handlerTable[CMD_RPC].reset(new ServerRPCHandler(context)); /* 20 - RPC response */
-    m_handlerTable[CMD_CANCEL_REQUEST].reset(new ServerCancelRequestHandler(context)); /* 21 - cancel request */
+    m_handlerTable[CMD_RPC] = &handle_rpc; /* 20 - RPC response */
+    m_handlerTable[CMD_CANCEL_REQUEST] = &handle_cancel; /* 21 - cancel request */
 }
 
 void ServerResponseHandler::handleResponse(osiSockAddr* responseFrom,

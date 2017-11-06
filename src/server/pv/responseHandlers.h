@@ -13,6 +13,7 @@
 #include <pv/remote.h>
 #include <pv/serverChannelImpl.h>
 #include <pv/baseChannelRequester.h>
+#include <pv/securityImpl.h>
 
 namespace epics {
 namespace pvAccess {
@@ -46,27 +47,6 @@ public:
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
                                 std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
-};
-
-/**
- * PVAS request handler - main handler which dispatches requests to appropriate handlers.
- */
-class ServerResponseHandler : public ResponseHandler {
-public:
-    ServerResponseHandler(ServerContextImpl::shared_pointer const & context);
-
-    virtual ~ServerResponseHandler() {
-    }
-
-    virtual void handleResponse(osiSockAddr* responseFrom,
-                                Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
-private:
-    /**
-     * Table of response handlers for each command ID.
-     */
-    std::vector<ResponseHandler::shared_pointer> m_handlerTable;
-
 };
 
 /**
@@ -785,6 +765,48 @@ private:
     epics::pvData::PVStructure::shared_pointer _pvResponse;
     epics::pvData::Status _status;
 };
+
+
+/**
+ * PVAS request handler - main handler which dispatches requests to appropriate handlers.
+ */
+class ServerResponseHandler : public ResponseHandler {
+public:
+    ServerResponseHandler(ServerContextImpl::shared_pointer const & context);
+
+    virtual ~ServerResponseHandler() {
+    }
+
+    virtual void handleResponse(osiSockAddr* responseFrom,
+                                Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+private:
+    ServerBadResponse handle_bad;
+
+    ServerNoopResponse handle_beacon;
+    ServerConnectionValidationHandler handle_validation;
+    ServerEchoHandler handle_echo;
+    ServerSearchHandler handle_search;
+    AuthNZHandler handle_authnz;
+    ServerCreateChannelHandler handle_create;
+    ServerDestroyChannelHandler handle_destroy;
+    ServerGetHandler handle_get;
+    ServerPutHandler handle_put;
+    ServerPutGetHandler handle_putget;
+    ServerMonitorHandler handle_monitor;
+    ServerArrayHandler handle_array;
+    ServerDestroyRequestHandler handle_close;
+    ServerProcessHandler handle_process;
+    ServerGetFieldHandler handle_getfield;
+    ServerRPCHandler handle_rpc;
+    ServerCancelRequestHandler handle_cancel;
+    /**
+     * Table of response handlers for each command ID.
+     */
+    std::vector<ResponseHandler*> m_handlerTable;
+
+};
+
 }
 }
 
