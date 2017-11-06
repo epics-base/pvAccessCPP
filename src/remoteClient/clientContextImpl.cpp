@@ -4613,7 +4613,7 @@ private:
     /**
      * PVA connector (creates PVA virtual circuit).
      */
-    auto_ptr<BlockingTCPConnector> m_connector;
+    epics::auto_ptr<BlockingTCPConnector> m_connector;
 
     /**
      * PVA transport (virtual circuit) registry.

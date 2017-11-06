@@ -2687,16 +2687,16 @@ private:
     Channel::shared_pointer m_mpChannel;
 
     ProcessAction m_scan1Hz;
-    auto_ptr<epics::pvData::Thread> m_scan1HzThread;
+    epics::auto_ptr<epics::pvData::Thread> m_scan1HzThread;
 
     ProcessAction m_scan10Hz;
-    auto_ptr<epics::pvData::Thread> m_scan10HzThread;
+    epics::auto_ptr<epics::pvData::Thread> m_scan10HzThread;
 
     ADCAction m_adcAction;
-    auto_ptr<epics::pvData::Thread> m_adcThread;
+    epics::auto_ptr<epics::pvData::Thread> m_adcThread;
 
     NTNDArrayAction m_imgAction;
-    auto_ptr<epics::pvData::Thread> m_imgThread;
+    epics::auto_ptr<epics::pvData::Thread> m_imgThread;
 };
 
 string MockServerChannelProvider::PROVIDER_NAME = "local";

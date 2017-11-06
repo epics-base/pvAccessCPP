@@ -90,7 +90,7 @@ typedef std::vector<osiSockAddr*> osiSockAddrVector_t;
 int main(int argc, char *argv[])
 {
     registry = new TransportRegistry();
-    auto_ptr<TransportRegistry::transportVector_t> transportArrayOut;
+    epics::auto_ptr<TransportRegistry::transportVector_t> transportArrayOut;
     std::vector<Transport::shared_pointer> transportArrayIn (address_max * priority_max);
     osiSockAddrVector_t addrArray (address_max);
     //address

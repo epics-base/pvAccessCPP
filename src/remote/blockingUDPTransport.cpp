@@ -559,7 +559,7 @@ void initializeUDPTransports(bool serverFlag,
                              const std::string& ignoreAddressList)
 {
     TransportClient::shared_pointer nullTransportClient;
-    auto_ptr<BlockingUDPConnector> connector(new BlockingUDPConnector(serverFlag, true, true));
+    epics::auto_ptr<BlockingUDPConnector> connector(new BlockingUDPConnector(serverFlag, true, true));
 
     //
     // Create UDP transport for sending (to all network interfaces)

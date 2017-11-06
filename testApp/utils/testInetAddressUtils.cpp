@@ -145,7 +145,7 @@ void test_encodeAsIPv6Address()
 {
     testDiag("Test encodeAsIPv6Address()");
 
-    auto_ptr<ByteBuffer> buff(new ByteBuffer(32, EPICS_ENDIAN_LITTLE));
+    epics::auto_ptr<ByteBuffer> buff(new ByteBuffer(32, EPICS_ENDIAN_LITTLE));
 
     char src[] = { (char)0, (char)0, (char)0, (char)0, (char)0, (char)0,
                    (char)0, (char)0, (char)0, (char)0, (char)0xFF, (char)0xFF,
