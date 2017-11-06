@@ -965,7 +965,7 @@ void ServerDestroyChannelHandler::handleResponse(osiSockAddr* responseFrom,
     const pvAccessID cid = payloadBuffer->getInt();
 
     // get channel by SID
-    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = casTransport->getChannel(sid);
     if (channel.get() == NULL)
     {
         if (!transport->isClosed())
@@ -1007,7 +1007,7 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
     // mode
     const int8 qosCode = payloadBuffer->getByte();
 
-    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = casTransport->getChannel(sid);
     if (channel.get() == NULL)
     {
         BaseChannelRequester::sendFailureMessage((int8)CMD_GET, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
@@ -1262,7 +1262,7 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
     // mode
     const int8 qosCode = payloadBuffer->getByte();
 
-    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = casTransport->getChannel(sid);
     if (!channel.get())
     {
         BaseChannelRequester::sendFailureMessage((int8)CMD_PUT, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
@@ -1532,7 +1532,7 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
     // mode
     const int8 qosCode = payloadBuffer->getByte();
 
-    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = casTransport->getChannel(sid);
     if (!channel.get())
     {
         BaseChannelRequester::sendFailureMessage((int8)CMD_PUT_GET, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
@@ -1856,7 +1856,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
     // mode
     const int8 qosCode = payloadBuffer->getByte();
 
-    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = casTransport->getChannel(sid);
     if (!channel.get())
     {
         BaseChannelRequester::sendFailureMessage((int8)CMD_MONITOR, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
@@ -2150,7 +2150,7 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
     // mode
     const int8 qosCode = payloadBuffer->getByte();
 
-    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = casTransport->getChannel(sid);
     if (!channel.get())
     {
         BaseChannelRequester::sendFailureMessage((int8)CMD_ARRAY, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
@@ -2479,7 +2479,7 @@ void ServerDestroyRequestHandler::handleResponse(osiSockAddr* responseFrom,
     const pvAccessID sid = payloadBuffer->getInt();
     const pvAccessID ioid = payloadBuffer->getInt();
 
-    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = casTransport->getChannel(sid);
     if (!channel.get())
     {
         failureResponse(transport, ioid, BaseChannelRequester::badCIDStatus);
@@ -2519,7 +2519,7 @@ void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
     const pvAccessID sid = payloadBuffer->getInt();
     const pvAccessID ioid = payloadBuffer->getInt();
 
-    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = casTransport->getChannel(sid);
     if (!channel.get())
     {
         failureResponse(transport, ioid, BaseChannelRequester::badCIDStatus);
@@ -2567,7 +2567,7 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
     // mode
     const int8 qosCode = payloadBuffer->getByte();
 
-    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = casTransport->getChannel(sid);
     if (!channel.get())
     {
         BaseChannelRequester::sendFailureMessage((int8)CMD_PROCESS, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
@@ -2744,7 +2744,7 @@ void ServerGetFieldHandler::handleResponse(osiSockAddr* responseFrom,
     const pvAccessID sid = payloadBuffer->getInt();
     const pvAccessID ioid = payloadBuffer->getInt();
 
-    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = casTransport->getChannel(sid);
     if (!channel.get())
     {
         getFieldFailureResponse(transport, ioid, BaseChannelRequester::badCIDStatus);
@@ -2827,7 +2827,7 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
     // mode
     const int8 qosCode = payloadBuffer->getByte();
 
-    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = casTransport->getChannel(sid);
     if (!channel.get())
     {
         BaseChannelRequester::sendFailureMessage((int8)CMD_RPC, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
