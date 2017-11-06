@@ -113,7 +113,7 @@ public:
 
 class SecurityPlugin;
 
-class epicsShareClass SecurityException: public std::runtime_error {
+class SecurityException: public std::runtime_error {
 public:
     explicit SecurityException(std::string const & what): std::runtime_error(what) {}
 };

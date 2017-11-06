@@ -136,20 +136,20 @@ private:
 
 
 
-class epicsShareClass io_exception: public std::runtime_error {
+class io_exception: public std::runtime_error {
 public:
     explicit io_exception(const std::string &s): std::runtime_error(s) {}
 };
 
 
-class epicsShareClass invalid_data_stream_exception: public std::runtime_error {
+class invalid_data_stream_exception: public std::runtime_error {
 public:
     explicit invalid_data_stream_exception(
         const std::string &s): std::runtime_error(s) {}
 };
 
 
-class epicsShareClass connection_closed_exception: public std::runtime_error {
+class connection_closed_exception: public std::runtime_error {
 public:
     explicit connection_closed_exception(const std::string &s): std::runtime_error(s) {}
 };
