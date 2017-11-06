@@ -2754,20 +2754,24 @@ void ServerGetFieldHandler::handleResponse(osiSockAddr* responseFrom,
     string subField = SerializeHelper::deserializeString(payloadBuffer, transport.get());
 
     // issue request
-    // TODO use std::make_shared
-    std::tr1::shared_ptr<ServerGetFieldRequesterImpl> tp(new ServerGetFieldRequesterImpl(_context, channel, ioid, transport));
-    GetFieldRequester::shared_pointer gfr = tp;
+    GetFieldRequester::shared_pointer req;
+    {
+        std::tr1::shared_ptr<ServerGetFieldRequesterImpl> tp(new ServerGetFieldRequesterImpl(_context, channel, ioid, transport));
+        req = tp;
+    }
 
     // asCheck
     Status asStatus = channel->getChannelSecuritySession()->authorizeGetField(ioid, subField);
     if (!asStatus.isSuccess())
     {
-        gfr->getDone(asStatus, FieldConstPtr());
+        req->getDone(asStatus, FieldConstPtr());
         return;
     }
 
+    channel->installGetField(req);
+
     // TODO exception check
-    channel->getChannel()->getField(gfr, subField);
+    channel->getChannel()->getField(req, subField);
 }
 
 void ServerGetFieldHandler::getFieldFailureResponse(Transport::shared_pointer const & transport, const pvAccessID ioid, const Status& errorStatus)
@@ -2792,6 +2796,7 @@ void ServerGetFieldRequesterImpl::getDone(const Status& status, FieldConstPtr co
     }
     TransportSender::shared_pointer thisSender = shared_from_this();
     _transport->enqueueSendRequest(thisSender);
+    _channel->completeGetField();
 }
 
 void ServerGetFieldRequesterImpl::destroy()

@@ -108,5 +108,27 @@ void ServerChannel::printInfo(FILE *fd) const
     fprintf(fd,"CHANNEL      : %s\n", typeid(*_channel).name());
 }
 
+void ServerChannel::installGetField(const GetFieldRequester::shared_pointer& gf)
+{
+    GetFieldRequester::shared_pointer prev;
+    {
+        epicsGuard<epicsMutex> G(_mutex);
+        prev.swap(_active_requester);
+        _active_requester = gf;
+    }
+    if(prev) {
+        prev->getDone(Status::error("Aborted"), FieldConstPtr());
+    }
+}
+
+void ServerChannel::completeGetField()
+{
+    GetFieldRequester::shared_pointer prev;
+    {
+        epicsGuard<epicsMutex> G(_mutex);
+        prev.swap(_active_requester);
+    }
+}
+
 }
 }

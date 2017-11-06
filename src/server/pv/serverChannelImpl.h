@@ -47,6 +47,9 @@ public:
 
     void unregisterRequest(pvAccessID id);
 
+    void installGetField(const GetFieldRequester::shared_pointer& gf);
+    void completeGetField();
+
     //! may return NULL
     Destroyable::shared_pointer getRequest(pvAccessID id);
 
@@ -56,14 +59,14 @@ public:
 
     void printInfo(FILE *fd) const;
 private:
-    /**
-     * Local channel.
-     */
     const Channel::shared_pointer _channel;
 
     const ChannelRequester::shared_pointer _requester;
 
     const pvAccessID _cid, _sid;
+
+    //! keep alive in-progress GetField()
+    GetFieldRequester::shared_pointer _active_requester;
 
     typedef std::map<pvAccessID, Destroyable::shared_pointer> _requests_t;
     _requests_t _requests;
