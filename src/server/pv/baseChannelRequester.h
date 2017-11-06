@@ -42,8 +42,8 @@ public:
     static const epics::pvData::Status notAChannelRequestStatus;
 protected:
     const pvAccessID _ioid;
-    Transport::shared_pointer _transport;
-    std::tr1::shared_ptr<ServerChannel> _channel;
+    const Transport::shared_pointer _transport;
+    const std::tr1::shared_ptr<ServerChannel> _channel;
     epics::pvData::Mutex _mutex;
 private:
     ServerContextImpl::shared_pointer _context;
