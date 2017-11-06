@@ -493,29 +493,6 @@ public:
 
 };
 
-/**
- * A request that expects an response multiple responses.
- * Responses identified by its I/O ID.
- * This interface needs to be extended (to provide method called on response).
- */
-class SubscriptionRequest { /*: public ResponseRequest*/
-public:
-    POINTER_DEFINITIONS(SubscriptionRequest);
-
-    virtual ~SubscriptionRequest() {}
-
-    /**
-     * Update (e.g. after some time of unresponsiveness) - report current value.
-     */
-    virtual void updateSubscription() = 0;
-
-    /**
-     * Rescubscribe (e.g. when server was restarted)
-     * @param transport new transport to be used.
-     */
-    virtual void resubscribeSubscription(Transport::shared_pointer const & transport) = 0;
-};
-
 
 }
 }

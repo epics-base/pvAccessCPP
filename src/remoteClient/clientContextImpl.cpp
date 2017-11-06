@@ -79,7 +79,6 @@ typedef std::map<pvAccessID, ResponseRequest::weak_pointer> IOIDResponseRequestM
  */
 class BaseRequestImpl :
     public DataResponse,
-    public SubscriptionRequest,
     public TransportSender,
     public virtual epics::pvAccess::Destroyable
 {
@@ -375,7 +374,7 @@ public:
         // TODO notify?
     }
 
-    virtual void resubscribeSubscription(Transport::shared_pointer const & transport) OVERRIDE {
+    virtual void resubscribeSubscription(Transport::shared_pointer const & transport) {
         if (transport.get() != 0 && !m_subscribed.get() && startRequest(QOS_INIT))
         {
             m_subscribed.set();
@@ -383,9 +382,7 @@ public:
         }
     }
 
-    virtual void updateSubscription() OVERRIDE FINAL {
-        // default is noop
-    }
+    void updateSubscription() {}
 
     virtual void send(ByteBuffer* buffer, TransportSendControl* control) OVERRIDE {
         int8 qos = getPendingRequest();
@@ -3947,7 +3944,7 @@ public:
                 ResponseRequest::shared_pointer ptr = iter->second.lock();
                 if (ptr)
                 {
-                    SubscriptionRequest::shared_pointer rrs = dynamic_pointer_cast<SubscriptionRequest>(ptr);
+                    BaseRequestImpl::shared_pointer rrs = dynamic_pointer_cast<BaseRequestImpl>(ptr);
                     if (rrs)
                         EXCEPTION_GUARD(rrs->updateSubscription());
                 }
@@ -4881,7 +4878,7 @@ void InternalClientContextImpl::InternalChannelImpl::resubscribeSubscriptions()
         ResponseRequest::shared_pointer ptr = iter->second.lock();
         if (ptr)
         {
-            SubscriptionRequest::shared_pointer rrs = dynamic_pointer_cast<SubscriptionRequest>(ptr);
+            BaseRequestImpl::shared_pointer rrs = dynamic_pointer_cast<BaseRequestImpl>(ptr);
             if (rrs)
                 EXCEPTION_GUARD(rrs->resubscribeSubscription(transport));
         }
