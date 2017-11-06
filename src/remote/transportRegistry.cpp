@@ -64,25 +64,25 @@ Transport::shared_pointer TransportRegistry::get(std::string const & /*type*/, c
     return Transport::shared_pointer();
 }
 
-std::auto_ptr<TransportRegistry::transportVector_t>
-TransportRegistry::get(std::string const & /*type*/, const osiSockAddr* address)
+void
+TransportRegistry::get(std::string const & /*type*/, const osiSockAddr* address, transportVector_t& output)
 {
     Lock guard(_mutex);
     transportsMap_t::iterator transportsIter = _transports.find(address);
     if(transportsIter != _transports.end())
     {
-        prioritiesMapSharedPtr_t priorities = transportsIter->second;
-        std::auto_ptr<transportVector_t> transportArray(new transportVector_t(priorities->size()));
-        int32 i = 0;
+        prioritiesMapSharedPtr_t& priorities = transportsIter->second;
+
+        size_t i = output.size();
+        output.resize(output.size() + priorities->size());
+
         for(prioritiesMap_t::iterator prioritiesIter = priorities->begin();
                 prioritiesIter != priorities->end();
                 prioritiesIter++, i++)
         {
-            (*transportArray)[i] = prioritiesIter->second;
+            output[i] = prioritiesIter->second;
         }
-        return transportArray;
     }
-    return std::auto_ptr<transportVector_t>();
 }
 
 Transport::shared_pointer TransportRegistry::remove(Transport::shared_pointer const & transport)
@@ -121,41 +121,6 @@ int32 TransportRegistry::numberOfActiveTransports()
 {
     Lock guard(_mutex);
     return _transportCount;
-}
-
-
-std::auto_ptr<TransportRegistry::transportVector_t>
-TransportRegistry::toArray(std::string const & /*type*/)
-{
-    // TODO support type
-    return toArray();
-}
-
-
-std::auto_ptr<TransportRegistry::transportVector_t>
-TransportRegistry::toArray()
-{
-    Lock guard(_mutex);
-    if (_transportCount == 0)
-        return std::auto_ptr<transportVector_t>(0);
-
-    std::auto_ptr<transportVector_t> transportArray(new transportVector_t(_transportCount));
-
-    int32 i = 0;
-    for (transportsMap_t::iterator transportsIter = _transports.begin();
-            transportsIter != _transports.end();
-            transportsIter++)
-    {
-        prioritiesMapSharedPtr_t priorities = transportsIter->second;
-        for (prioritiesMap_t::iterator prioritiesIter = priorities->begin();
-                prioritiesIter != priorities->end();
-                prioritiesIter++, i++)
-        {
-            (*transportArray)[i] = prioritiesIter->second;
-        }
-    }
-
-    return transportArray;
 }
 
 void TransportRegistry::toArray(transportVector_t & transportArray)

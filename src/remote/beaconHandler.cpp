@@ -87,15 +87,12 @@ bool BeaconHandler::updateBeacon(int8 /*remoteTransportRevision*/, TimeStamp* /*
 
 void BeaconHandler::changedTransport()
 {
-    auto_ptr<TransportRegistry::transportVector_t> transports =
-        _context.lock()->getTransportRegistry()->get(_protocol, &_responseFrom);
-    if (!transports.get())
-        return;
+    TransportRegistry::transportVector_t transports;
+    _context.lock()->getTransportRegistry()->get(_protocol, &_responseFrom, transports);
 
     // notify all
-    for (TransportRegistry::transportVector_t::iterator iter = transports->begin();
-            iter != transports->end();
-            iter++)
+    for (TransportRegistry::transportVector_t::iterator iter(transports.begin()), end(transports.end());
+         iter != end; iter++)
     {
         (*iter)->changedTransport();
     }

@@ -46,14 +46,11 @@ public:
 
     void put(Transport::shared_pointer const & transport);
     Transport::shared_pointer get(std::string const & type, const osiSockAddr* address, const epics::pvData::int16 priority);
-    std::auto_ptr<transportVector_t> get(std::string const & type, const osiSockAddr* address);
+    void get(std::string const & type, const osiSockAddr* address, transportVector_t&output);
     Transport::shared_pointer remove(Transport::shared_pointer const & transport);
     void clear();
     epics::pvData::int32 numberOfActiveTransports();
 
-    // TODO note type not supported
-    std::auto_ptr<transportVector_t> toArray(std::string const & type);
-    std::auto_ptr<transportVector_t> toArray();
     // optimized to avoid reallocation, adds to array
     void toArray(transportVector_t & transportArray);
 
