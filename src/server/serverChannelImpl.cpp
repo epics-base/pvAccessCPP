@@ -34,19 +34,9 @@ ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer const & channel,
     }
 }
 
-pvAccessID ServerChannelImpl::getCID() const
-{
-    return _cid;
-}
-
 pvAccessID ServerChannelImpl::getSID() const
 {
     return _sid;
-}
-
-ChannelSecuritySession::shared_pointer ServerChannelImpl::getChannelSecuritySession() const
-{
-    return _channelSecuritySession;
 }
 
 void ServerChannelImpl::registerRequest(const pvAccessID id, Destroyable::shared_pointer const & request)
@@ -112,12 +102,12 @@ ServerChannelImpl::~ServerChannelImpl()
     REFTRACE_DECREMENT(num_instances);
 }
 
-void ServerChannelImpl::printInfo()
+void ServerChannelImpl::printInfo() const
 {
     printInfo(stdout);
 }
 
-void ServerChannelImpl::printInfo(FILE *fd)
+void ServerChannelImpl::printInfo(FILE *fd) const
 {
     fprintf(fd,"CLASS        : %s\n", typeid(*this).name());
     fprintf(fd,"CHANNEL      : %s\n", typeid(*_channel).name());

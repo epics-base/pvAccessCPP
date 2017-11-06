@@ -9,7 +9,6 @@
 
 #include <pv/destroyable.h>
 #include <pv/remote.h>
-#include <pv/clientContextImpl.h>
 #include <pv/security.h>
 
 namespace epics {
@@ -33,109 +32,47 @@ public:
                       const ChannelRequester::shared_pointer& requester,
                       pvAccessID cid, pvAccessID sid,
                       ChannelSecuritySession::shared_pointer const & css);
-    /*
-     * Destructor.
-     */
     virtual ~ServerChannelImpl();
 
-    /**
-     * Get local channel.
-     * @return local channel.
-     */
     const Channel::shared_pointer& getChannel() const { return _channel; }
 
-    /**
-     * Get channel CID.
-     * @return channel CID.
-     */
-    pvAccessID getCID() const;
+    pvAccessID getCID() const { return _cid; }
 
-    /**
-     * Get channel SID.
-     * @return channel SID.
-     */
     virtual pvAccessID getSID() const OVERRIDE FINAL;
 
-    /**
-     * Get ChannelSecuritySession instance.
-     * @return the ChannelSecuritySession instance.
-     */
-    ChannelSecuritySession::shared_pointer getChannelSecuritySession() const;
+    ChannelSecuritySession::shared_pointer getChannelSecuritySession() const
+    { return _channelSecuritySession; }
 
-    /**
-     * Register request
-     * @param id request ID.
-     * @param request request to be registered.
-     */
     void registerRequest(pvAccessID id, Destroyable::shared_pointer const & request);
 
-    /**
-     * Unregister request.
-     * @param id request ID.
-     */
     void unregisterRequest(pvAccessID id);
 
-    /**
-     * Get request by its ID.
-     * @param id request ID.
-     * @return request with given ID, <code>null</code> if there is no request with such ID.
-     */
+    //! may return NULL
     Destroyable::shared_pointer getRequest(pvAccessID id);
 
-    /**
-     * Destroy server channel.
-     */
     virtual void destroy() OVERRIDE FINAL;
 
-    /**
-     * Prints detailed information about the process variable to the standard output stream.
-     */
-    void printInfo();
+    void printInfo() const;
 
-    /**
-     * Prints detailed information about the process variable to the specified output
-     * stream.
-     * @param fd the output stream.
-     */
-    void printInfo(FILE *fd);
+    void printInfo(FILE *fd) const;
 private:
     /**
      * Local channel.
      */
-    Channel::shared_pointer _channel;
+    const Channel::shared_pointer _channel;
 
-    ChannelRequester::shared_pointer _requester;
+    const ChannelRequester::shared_pointer _requester;
 
-    /**
-     * Channel CID.
-     */
-    pvAccessID _cid;
-
-    /**
-     * Channel SID.
-     */
-    pvAccessID _sid;
+    const pvAccessID _cid, _sid;
 
     typedef std::map<pvAccessID, Destroyable::shared_pointer> _requests_t;
-    /**
-     * Requests.
-     */
     _requests_t _requests;
 
-    /**
-     * Destroy state.
-     */
     bool _destroyed;
 
-    /**
-     * Mutex
-     */
-    epics::pvData::Mutex _mutex;
+    mutable epics::pvData::Mutex _mutex;
 
-    /**
-     * Channel security session.
-     */
-    ChannelSecuritySession::shared_pointer _channelSecuritySession;
+    const ChannelSecuritySession::shared_pointer _channelSecuritySession;
 };
 
 }
