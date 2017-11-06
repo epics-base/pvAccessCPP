@@ -8,7 +8,6 @@
 #include <pv/transportRegistry.h>
 
 using namespace epics::pvData;
-using namespace std;
 
 namespace epics {
 namespace pvAccess {
@@ -65,14 +64,15 @@ Transport::shared_pointer TransportRegistry::get(std::string const & /*type*/, c
     return Transport::shared_pointer();
 }
 
-auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::get(std::string const & /*type*/, const osiSockAddr* address)
+std::auto_ptr<TransportRegistry::transportVector_t>
+TransportRegistry::get(std::string const & /*type*/, const osiSockAddr* address)
 {
     Lock guard(_mutex);
     transportsMap_t::iterator transportsIter = _transports.find(address);
     if(transportsIter != _transports.end())
     {
         prioritiesMapSharedPtr_t priorities = transportsIter->second;
-        auto_ptr<transportVector_t> transportArray(new transportVector_t(priorities->size()));
+        std::auto_ptr<transportVector_t> transportArray(new transportVector_t(priorities->size()));
         int32 i = 0;
         for(prioritiesMap_t::iterator prioritiesIter = priorities->begin();
                 prioritiesIter != priorities->end();
@@ -82,7 +82,7 @@ auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::get(std::strin
         }
         return transportArray;
     }
-    return auto_ptr<transportVector_t>();
+    return std::auto_ptr<transportVector_t>();
 }
 
 Transport::shared_pointer TransportRegistry::remove(Transport::shared_pointer const & transport)
@@ -124,20 +124,22 @@ int32 TransportRegistry::numberOfActiveTransports()
 }
 
 
-auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::toArray(std::string const & /*type*/)
+std::auto_ptr<TransportRegistry::transportVector_t>
+TransportRegistry::toArray(std::string const & /*type*/)
 {
     // TODO support type
     return toArray();
 }
 
 
-auto_ptr<TransportRegistry::transportVector_t> TransportRegistry::toArray()
+std::auto_ptr<TransportRegistry::transportVector_t>
+TransportRegistry::toArray()
 {
     Lock guard(_mutex);
     if (_transportCount == 0)
-        return auto_ptr<transportVector_t>(0);
+        return std::auto_ptr<transportVector_t>(0);
 
-    auto_ptr<transportVector_t> transportArray(new transportVector_t(_transportCount));
+    std::auto_ptr<transportVector_t> transportArray(new transportVector_t(_transportCount));
 
     int32 i = 0;
     for (transportsMap_t::iterator transportsIter = _transports.begin();

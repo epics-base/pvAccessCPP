@@ -460,7 +460,7 @@ static void threadRunner(void* usr)
 /// owned by a shared_ptr instance.
 void RPCServer::runInNewThread(int seconds)
 {
-    std::auto_ptr<ThreadRunnerParam> param(new ThreadRunnerParam());
+    epics::auto_ptr<ThreadRunnerParam> param(new ThreadRunnerParam());
     param->server = shared_from_this();
     param->timeToRun = seconds;
 

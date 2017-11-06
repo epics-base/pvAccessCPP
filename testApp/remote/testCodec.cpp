@@ -424,14 +424,14 @@ public:
     bool _disconnected;
     int _forcePayloadRead;
 
-    std::auto_ptr<epics::pvData::ByteBuffer> _readBuffer;
+    epics::auto_ptr<epics::pvData::ByteBuffer> _readBuffer;
     epics::pvData::ByteBuffer _writeBuffer;
 
     std::vector<PVAMessage> _receivedAppMessages;
     std::vector<PVAMessage> _receivedControlMessages;
 
-    std::auto_ptr<ReadPollOneCallback> _readPollOneCallback;
-    std::auto_ptr<WritePollOneCallback> _writePollOneCallback;
+    epics::auto_ptr<ReadPollOneCallback> _readPollOneCallback;
+    epics::auto_ptr<WritePollOneCallback> _writePollOneCallback;
 
     osiSockAddr _dummyAddress;
 
@@ -1424,12 +1424,8 @@ private:
 
                         codec._readBuffer->setLimit(splitAt);
 
-                        std::auto_ptr<ReadPollOneCallback>
-                        readPollOneCallback(
-                            new ReadPollOneCallbackForTestSegmentedSplitMessage
-                            (codec, realReadBufferEnd));
-
-                        codec._readPollOneCallback = readPollOneCallback;
+                        codec._readPollOneCallback.reset(new ReadPollOneCallbackForTestSegmentedSplitMessage
+                                                         (codec, realReadBufferEnd));
 
 
                         int32_t payloadSizeSum =
@@ -2042,13 +2038,9 @@ private:
 
                         codec._readBuffer->setLimit(splitAt);
 
-                        std::auto_ptr<ReadPollOneCallback>
-                        readPollOneCallback( new
-                                             ReadPollOneCallbackForTestSegmentedSplitConnectionLoss
-                                             (codec));
-
-
-                        codec._readPollOneCallback = readPollOneCallback;
+                        codec._readPollOneCallback.reset(new
+                                                         ReadPollOneCallbackForTestSegmentedSplitConnectionLoss
+                                                         (codec));
 
                         int32_t payloadSizeSum =
                             payloadSize1+payloadSize2+payloadSize3;
@@ -2628,17 +2620,13 @@ private:
         codec._readBuffer.reset(
             new ByteBuffer(11*DEFAULT_BUFFER_SIZE));
 
-        std::auto_ptr<WritePollOneCallback>
-        writePollOneCallback(
-            new WritePollOneCallbackForTestSendHugeMessagePartes
-            (codec));
-
         std::tr1::shared_ptr<TransportSender> sender =
             std::tr1::shared_ptr<TransportSender>(
                 new TransportSenderForTestSendHugeMessagePartes(
                     codec, bytesToSent));
 
-        codec._writePollOneCallback = writePollOneCallback;
+        codec._writePollOneCallback.reset(new WritePollOneCallbackForTestSendHugeMessagePartes
+                                          (codec));
 
 
         // process

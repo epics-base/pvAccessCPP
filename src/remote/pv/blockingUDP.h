@@ -420,7 +420,7 @@ private:
     /**
      * Thread ID
      */
-    std::auto_ptr<epicsThread> _thread;
+    epics::auto_ptr<epicsThread> _thread;
 
     epics::pvData::int8 _clientServerWithEndianFlag;
 
