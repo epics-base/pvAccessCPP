@@ -465,7 +465,7 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
 
             for(channels_t::const_iterator it(channels.begin()), end(channels.end()); it!=end; ++it)
             {
-                const ServerChannelImpl *channel(static_cast<const ServerChannelImpl*>(it->get()));
+                const ServerChannel *channel(static_cast<const ServerChannel*>(it->get()));
                 const Channel::shared_pointer& providerChan(channel->getChannel());
                 if(!providerChan)
                     continue;

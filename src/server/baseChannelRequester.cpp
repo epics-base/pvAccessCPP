@@ -26,7 +26,7 @@ const int32 BaseChannelRequester::NULL_REQUEST = -1;
 
 BaseChannelRequester::BaseChannelRequester(
     ServerContextImpl::shared_pointer const & context,
-    ServerChannelImpl::shared_pointer const & channel,
+    ServerChannel::shared_pointer const & channel,
     const pvAccessID ioid,
     Transport::shared_pointer const & transport) :
     _ioid(ioid),

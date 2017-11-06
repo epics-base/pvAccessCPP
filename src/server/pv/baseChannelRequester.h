@@ -15,10 +15,12 @@
 namespace epics {
 namespace pvAccess {
 
+class ServerChannel;
+
 class BaseChannelRequester :  virtual public epics::pvData::Requester, public Destroyable
 {
 public:
-    BaseChannelRequester(ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+    BaseChannelRequester(ServerContextImpl::shared_pointer const & context, std::tr1::shared_ptr<ServerChannel> const & channel,
                          const pvAccessID ioid, Transport::shared_pointer const & transport);
     virtual ~BaseChannelRequester() {};
 
@@ -41,7 +43,7 @@ public:
 protected:
     const pvAccessID _ioid;
     Transport::shared_pointer _transport;
-    ServerChannelImpl::shared_pointer _channel;
+    std::tr1::shared_ptr<ServerChannel> _channel;
     epics::pvData::Mutex _mutex;
 private:
     ServerContextImpl::shared_pointer _context;

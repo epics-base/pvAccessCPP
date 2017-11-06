@@ -813,7 +813,7 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
                 pvAccessID sid = transport->preallocateChannelSID();
                 try
                 {
-                    serverChannel.reset(new ServerChannelImpl(channel, shared_from_this(), _cid, sid, _css));
+                    serverChannel.reset(new ServerChannel(channel, shared_from_this(), _cid, sid, _css));
 
                     // ack allocation and register
                     transport->registerChannel(sid, serverChannel);
@@ -877,10 +877,10 @@ void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer cons
 
     if(detail::BlockingServerTCPTransportCodec::shared_pointer transport = _transport.lock())
     {
-        ServerChannelImpl::shared_pointer channel;
+        ServerChannel::shared_pointer channel;
         {
             Lock guard(_mutex);
-            channel= dynamic_pointer_cast<ServerChannelImpl>(_serverChannel.lock());
+            channel= dynamic_pointer_cast<ServerChannel>(_serverChannel.lock());
         }
 
         if (!channel)
@@ -938,7 +938,7 @@ void ServerChannelRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
         // OK
         else
         {
-            ServerChannelImpl::shared_pointer serverChannelImpl = dynamic_pointer_cast<ServerChannelImpl>(serverChannel);
+            ServerChannel::shared_pointer serverChannelImpl = dynamic_pointer_cast<ServerChannel>(serverChannel);
             control->startMessage((int8)CMD_CREATE_CHANNEL, 2*sizeof(int32)/sizeof(int8));
             buffer->putInt(serverChannelImpl->getCID());
             buffer->putInt(serverChannelImpl->getSID());
@@ -965,7 +965,7 @@ void ServerDestroyChannelHandler::handleResponse(osiSockAddr* responseFrom,
     const pvAccessID cid = payloadBuffer->getInt();
 
     // get channel by SID
-    ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
     if (channel.get() == NULL)
     {
         if (!transport->isClosed())
@@ -1007,7 +1007,7 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
     // mode
     const int8 qosCode = payloadBuffer->getByte();
 
-    ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
     if (channel.get() == NULL)
     {
         BaseChannelRequester::sendFailureMessage((int8)CMD_GET, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
@@ -1095,13 +1095,13 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
 	    throw; \
     }
 
-ServerChannelGetRequesterImpl::ServerChannelGetRequesterImpl(ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid, Transport::shared_pointer const & transport) :
+ServerChannelGetRequesterImpl::ServerChannelGetRequesterImpl(ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel, const pvAccessID ioid, Transport::shared_pointer const & transport) :
     BaseChannelRequester(context, channel, ioid, transport)
 
 {
 }
 
-ChannelGetRequester::shared_pointer ServerChannelGetRequesterImpl::create(ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid, Transport::shared_pointer const & transport,
+ChannelGetRequester::shared_pointer ServerChannelGetRequesterImpl::create(ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel, const pvAccessID ioid, Transport::shared_pointer const & transport,
         PVStructure::shared_pointer const & pvRequest)
 {
     // TODO use std::make_shared
@@ -1262,7 +1262,7 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
     // mode
     const int8 qosCode = payloadBuffer->getByte();
 
-    ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
     if (!channel.get())
     {
         BaseChannelRequester::sendFailureMessage((int8)CMD_PUT, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
@@ -1355,13 +1355,13 @@ void ServerPutHandler::handleResponse(osiSockAddr* responseFrom,
     }
 }
 
-ServerChannelPutRequesterImpl::ServerChannelPutRequesterImpl(ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+ServerChannelPutRequesterImpl::ServerChannelPutRequesterImpl(ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel,
         const pvAccessID ioid, Transport::shared_pointer const & transport):
     BaseChannelRequester(context, channel, ioid, transport)
 {
 }
 
-ChannelPutRequester::shared_pointer ServerChannelPutRequesterImpl::create(ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+ChannelPutRequester::shared_pointer ServerChannelPutRequesterImpl::create(ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel,
         const pvAccessID ioid, Transport::shared_pointer const & transport, PVStructure::shared_pointer const & pvRequest)
 {
     // TODO use std::make_shared
@@ -1532,7 +1532,7 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
     // mode
     const int8 qosCode = payloadBuffer->getByte();
 
-    ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
     if (!channel.get())
     {
         BaseChannelRequester::sendFailureMessage((int8)CMD_PUT_GET, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
@@ -1638,13 +1638,13 @@ void ServerPutGetHandler::handleResponse(osiSockAddr* responseFrom,
     }
 }
 
-ServerChannelPutGetRequesterImpl::ServerChannelPutGetRequesterImpl(ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+ServerChannelPutGetRequesterImpl::ServerChannelPutGetRequesterImpl(ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel,
         const pvAccessID ioid, Transport::shared_pointer const & transport):
     BaseChannelRequester(context, channel, ioid, transport), _channelPutGet(), _pvPutStructure(), _pvGetStructure()
 {
 }
 
-ChannelPutGetRequester::shared_pointer ServerChannelPutGetRequesterImpl::create(ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+ChannelPutGetRequester::shared_pointer ServerChannelPutGetRequesterImpl::create(ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel,
         const pvAccessID ioid, Transport::shared_pointer const & transport,PVStructure::shared_pointer const & pvRequest)
 {
     // TODO use std::make_shared
@@ -1856,7 +1856,7 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
     // mode
     const int8 qosCode = payloadBuffer->getByte();
 
-    ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
     if (!channel.get())
     {
         BaseChannelRequester::sendFailureMessage((int8)CMD_MONITOR, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
@@ -1953,14 +1953,14 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
 }
 
 ServerMonitorRequesterImpl::ServerMonitorRequesterImpl(
-    ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+    ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel,
     const pvAccessID ioid, Transport::shared_pointer const & transport):
     BaseChannelRequester(context, channel, ioid, transport), _channelMonitor(), _structure(), _unlisten(false)
 {
 }
 
 MonitorRequester::shared_pointer ServerMonitorRequesterImpl::create(
-    ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+    ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel,
     const pvAccessID ioid, Transport::shared_pointer const & transport,PVStructure::shared_pointer const & pvRequest)
 {
     // TODO use std::make_shared
@@ -2150,7 +2150,7 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
     // mode
     const int8 qosCode = payloadBuffer->getByte();
 
-    ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
     if (!channel.get())
     {
         BaseChannelRequester::sendFailureMessage((int8)CMD_ARRAY, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
@@ -2278,14 +2278,14 @@ void ServerArrayHandler::handleResponse(osiSockAddr* responseFrom,
 }
 
 ServerChannelArrayRequesterImpl::ServerChannelArrayRequesterImpl(
-    ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+    ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel,
     const pvAccessID ioid, Transport::shared_pointer const & transport):
     BaseChannelRequester(context, channel, ioid, transport)
 {
 }
 
 ChannelArrayRequester::shared_pointer ServerChannelArrayRequesterImpl::create(
-    ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+    ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel,
     const pvAccessID ioid, Transport::shared_pointer const & transport,PVStructure::shared_pointer const & pvRequest)
 {
     // TODO use std::make_shared
@@ -2479,7 +2479,7 @@ void ServerDestroyRequestHandler::handleResponse(osiSockAddr* responseFrom,
     const pvAccessID sid = payloadBuffer->getInt();
     const pvAccessID ioid = payloadBuffer->getInt();
 
-    ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
     if (!channel.get())
     {
         failureResponse(transport, ioid, BaseChannelRequester::badCIDStatus);
@@ -2519,7 +2519,7 @@ void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
     const pvAccessID sid = payloadBuffer->getInt();
     const pvAccessID ioid = payloadBuffer->getInt();
 
-    ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
     if (!channel.get())
     {
         failureResponse(transport, ioid, BaseChannelRequester::badCIDStatus);
@@ -2567,7 +2567,7 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
     // mode
     const int8 qosCode = payloadBuffer->getByte();
 
-    ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
     if (!channel.get())
     {
         BaseChannelRequester::sendFailureMessage((int8)CMD_PROCESS, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
@@ -2626,14 +2626,14 @@ void ServerProcessHandler::handleResponse(osiSockAddr* responseFrom,
 }
 
 ServerChannelProcessRequesterImpl::ServerChannelProcessRequesterImpl(
-    ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+    ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel,
     const pvAccessID ioid, Transport::shared_pointer const & transport):
     BaseChannelRequester(context, channel, ioid, transport), _channelProcess()
 {
 }
 
 ChannelProcessRequester::shared_pointer ServerChannelProcessRequesterImpl::create(
-    ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+    ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel,
     const pvAccessID ioid, Transport::shared_pointer const & transport,PVStructure::shared_pointer const & pvRequest)
 {
     // TODO use std::make_shared
@@ -2744,7 +2744,7 @@ void ServerGetFieldHandler::handleResponse(osiSockAddr* responseFrom,
     const pvAccessID sid = payloadBuffer->getInt();
     const pvAccessID ioid = payloadBuffer->getInt();
 
-    ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
     if (!channel.get())
     {
         getFieldFailureResponse(transport, ioid, BaseChannelRequester::badCIDStatus);
@@ -2777,7 +2777,7 @@ void ServerGetFieldHandler::getFieldFailureResponse(Transport::shared_pointer co
 }
 
 ServerGetFieldRequesterImpl::ServerGetFieldRequesterImpl(
-    ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+    ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel,
     const pvAccessID ioid, Transport::shared_pointer const & transport) :
     BaseChannelRequester(context, channel, ioid, transport), _field()
 {
@@ -2827,7 +2827,7 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
     // mode
     const int8 qosCode = payloadBuffer->getByte();
 
-    ServerChannelImpl::shared_pointer channel = static_pointer_cast<ServerChannelImpl>(casTransport->getChannel(sid));
+    ServerChannel::shared_pointer channel = static_pointer_cast<ServerChannel>(casTransport->getChannel(sid));
     if (!channel.get())
     {
         BaseChannelRequester::sendFailureMessage((int8)CMD_RPC, transport, ioid, qosCode, BaseChannelRequester::badCIDStatus);
@@ -2895,7 +2895,7 @@ void ServerRPCHandler::handleResponse(osiSockAddr* responseFrom,
 }
 
 ServerChannelRPCRequesterImpl::ServerChannelRPCRequesterImpl(
-    ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+    ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel,
     const pvAccessID ioid, Transport::shared_pointer const & transport):
     BaseChannelRequester(context, channel, ioid, transport),
     _channelRPC(), _pvResponse()
@@ -2904,7 +2904,7 @@ ServerChannelRPCRequesterImpl::ServerChannelRPCRequesterImpl(
 }
 
 ChannelRPCRequester::shared_pointer ServerChannelRPCRequesterImpl::create(
-    ServerContextImpl::shared_pointer const & context, ServerChannelImpl::shared_pointer const & channel,
+    ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel,
     const pvAccessID ioid, Transport::shared_pointer const & transport, PVStructure::shared_pointer const & pvRequest)
 {
     // TODO use std::make_shared

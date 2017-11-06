@@ -162,7 +162,7 @@ void providerRegInit(void*)
 {
     providerRegGbl = new providerRegGbl_t;
     registerRefCounter("ServerContextImpl", &ServerContextImpl::num_instances);
-    registerRefCounter("ServerChannelImpl", &ServerChannelImpl::num_instances);
+    registerRefCounter("ServerChannel", &ServerChannel::num_instances);
     registerRefCounter("BlockingTCPTransportCodec", &detail::BlockingTCPTransportCodec::num_instances);
     registerRefCounter("ChannelProvider (ABC)", &ChannelProvider::num_instances);
     registerRefCounter("Channel (ABC)", &Channel::num_instances);

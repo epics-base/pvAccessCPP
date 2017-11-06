@@ -67,6 +67,9 @@
 
 namespace epics {
 namespace pvAccess {
+
+class ServerChannel;
+
 namespace detail {
 
 #ifdef PVA_CODEC_USE_ATOMIC
@@ -540,13 +543,13 @@ public:
 
     void registerChannel(
             pvAccessID sid,
-            ServerChannel::shared_pointer const & channel);
+            std::tr1::shared_ptr<ServerChannel> const & channel);
 
     void unregisterChannel(pvAccessID sid);
 
-    ServerChannel::shared_pointer getChannel(pvAccessID sid);
+    std::tr1::shared_ptr<ServerChannel> getChannel(pvAccessID sid);
 
-    void getChannels(std::vector<ServerChannel::shared_pointer>& channels) const;
+    void getChannels(std::vector<std::tr1::shared_ptr<ServerChannel> >& channels) const;
 
     size_t getChannelCount() const;
 
@@ -596,7 +599,7 @@ private:
     */
     pvAccessID _lastChannelSID;
 
-    typedef std::map<pvAccessID, ServerChannel::shared_pointer> _channels_t;
+    typedef std::map<pvAccessID, std::tr1::shared_ptr<ServerChannel> > _channels_t;
     /**
     * Channel table (SID -> channel mapping).
     */

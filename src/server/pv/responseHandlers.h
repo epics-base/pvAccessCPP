@@ -293,12 +293,12 @@ public:
     typedef std::tr1::shared_ptr<const ServerChannelGetRequesterImpl> const_shared_pointer;
 protected:
     ServerChannelGetRequesterImpl(ServerContextImpl::shared_pointer const & context,
-                                  ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+                                  std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
                                   Transport::shared_pointer const & transport);
     void activate(epics::pvData::PVStructure::shared_pointer const & pvRequest);
 public:
     static ChannelGetRequester::shared_pointer create(ServerContextImpl::shared_pointer const & context,
-            ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+            std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
             Transport::shared_pointer const & transport,
             epics::pvData::PVStructure::shared_pointer const & pvRequest);
     virtual ~ServerChannelGetRequesterImpl() {}
@@ -349,12 +349,12 @@ public:
     typedef std::tr1::shared_ptr<const ServerChannelPutRequesterImpl> const_shared_pointer;
 protected:
     ServerChannelPutRequesterImpl(ServerContextImpl::shared_pointer const & context,
-                                  ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+                                  std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
                                   Transport::shared_pointer const & transport);
     void activate(epics::pvData::PVStructure::shared_pointer const & pvRequest);
 public:
     static ChannelPutRequester::shared_pointer create(ServerContextImpl::shared_pointer const & context,
-            ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+            std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
             Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     virtual ~ServerChannelPutRequesterImpl() {}
@@ -403,12 +403,12 @@ public:
     typedef std::tr1::shared_ptr<const ServerChannelPutGetRequesterImpl> const_shared_pointer;
 protected:
     ServerChannelPutGetRequesterImpl(ServerContextImpl::shared_pointer const & context,
-                                     ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+                                     std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
                                      Transport::shared_pointer const & transport);
     void activate(epics::pvData::PVStructure::shared_pointer const & pvRequest);
 public:
     static ChannelPutGetRequester::shared_pointer create(ServerContextImpl::shared_pointer const & context,
-            ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+            std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
             Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
     virtual ~ServerChannelPutGetRequesterImpl() {}
 
@@ -472,12 +472,12 @@ public:
     typedef std::tr1::shared_ptr<const ServerMonitorRequesterImpl> const_shared_pointer;
 protected:
     ServerMonitorRequesterImpl(ServerContextImpl::shared_pointer const & context,
-                               ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+                               std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
                                Transport::shared_pointer const & transport);
     void activate(epics::pvData::PVStructure::shared_pointer const & pvRequest);
 public:
     static MonitorRequester::shared_pointer create(ServerContextImpl::shared_pointer const & context,
-            ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+            std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
             Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
     virtual ~ServerMonitorRequesterImpl() {}
 
@@ -525,12 +525,12 @@ public:
     typedef std::tr1::shared_ptr<const ServerChannelArrayRequesterImpl> const_shared_pointer;
 protected:
     ServerChannelArrayRequesterImpl(ServerContextImpl::shared_pointer const & context,
-                                    ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+                                    std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
                                     Transport::shared_pointer const & transport);
     void activate(epics::pvData::PVStructure::shared_pointer const & pvRequest);
 public:
     static ChannelArrayRequester::shared_pointer create(ServerContextImpl::shared_pointer const & context,
-            ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+            std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
             Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
     virtual ~ServerChannelArrayRequesterImpl() {}
 
@@ -627,12 +627,12 @@ public:
     typedef std::tr1::shared_ptr<const ServerChannelProcessRequesterImpl> const_shared_pointer;
 protected:
     ServerChannelProcessRequesterImpl(ServerContextImpl::shared_pointer const & context,
-                                      ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+                                      std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
                                       Transport::shared_pointer const & transport);
     void activate(epics::pvData::PVStructure::shared_pointer const & pvRequest);
 public:
     static ChannelProcessRequester::shared_pointer create(ServerContextImpl::shared_pointer const & context,
-            ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+            std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
             Transport::shared_pointer const & transport, epics::pvData::PVStructure::shared_pointer const & pvRequest);
     virtual ~ServerChannelProcessRequesterImpl() {}
 
@@ -679,7 +679,7 @@ public:
     typedef std::tr1::shared_ptr<const ServerGetFieldRequesterImpl> const_shared_pointer;
 
     ServerGetFieldRequesterImpl(ServerContextImpl::shared_pointer const & context,
-                                ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+                                std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
                                 Transport::shared_pointer const & transport);
 
     virtual ~ServerGetFieldRequesterImpl() {}
@@ -741,12 +741,12 @@ public:
     typedef std::tr1::shared_ptr<const ServerChannelRPCRequesterImpl> const_shared_pointer;
 protected:
     ServerChannelRPCRequesterImpl(ServerContextImpl::shared_pointer const & context,
-                                  ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+                                  std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
                                   Transport::shared_pointer const & transport);
     void activate(epics::pvData::PVStructure::shared_pointer const & pvRequest);
 public:
     static ChannelRPCRequester::shared_pointer create(ServerContextImpl::shared_pointer const & context,
-            ServerChannelImpl::shared_pointer const & channel, const pvAccessID ioid,
+            std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
             Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
     virtual ~ServerChannelRPCRequesterImpl() {}
 

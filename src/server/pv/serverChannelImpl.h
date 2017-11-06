@@ -14,10 +14,10 @@
 namespace epics {
 namespace pvAccess {
 
-class ServerChannelImpl : public ServerChannel
+class ServerChannel
 {
 public:
-    POINTER_DEFINITIONS(ServerChannelImpl);
+    POINTER_DEFINITIONS(ServerChannel);
 
     static size_t num_instances;
 
@@ -28,17 +28,17 @@ public:
      * @param sid channel SID.
      * @param css channel security session.
      */
-    ServerChannelImpl(Channel::shared_pointer const & channel,
+    ServerChannel(Channel::shared_pointer const & channel,
                       const ChannelRequester::shared_pointer& requester,
                       pvAccessID cid, pvAccessID sid,
                       ChannelSecuritySession::shared_pointer const & css);
-    virtual ~ServerChannelImpl();
+    ~ServerChannel();
 
     const Channel::shared_pointer& getChannel() const { return _channel; }
 
     pvAccessID getCID() const { return _cid; }
 
-    virtual pvAccessID getSID() const OVERRIDE FINAL;
+    pvAccessID getSID() const { return _sid; }
 
     ChannelSecuritySession::shared_pointer getChannelSecuritySession() const
     { return _channelSecuritySession; }
@@ -50,7 +50,7 @@ public:
     //! may return NULL
     Destroyable::shared_pointer getRequest(pvAccessID id);
 
-    virtual void destroy() OVERRIDE FINAL;
+    void destroy();
 
     void printInfo() const;
 

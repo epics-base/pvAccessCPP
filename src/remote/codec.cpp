@@ -39,6 +39,7 @@
 #include <pv/likely.h>
 #include <pv/codec.h>
 #include <pv/serializationHelper.h>
+#include <pv/serverChannelImpl.h>
 
 using namespace std;
 using namespace epics::pvData;

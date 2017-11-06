@@ -435,24 +435,6 @@ public:
 
 };
 
-class ServerChannel {
-public:
-    POINTER_DEFINITIONS(ServerChannel);
-
-    virtual ~ServerChannel() {}
-    /**
-     * Get channel SID.
-     * @return channel SID.
-     */
-    virtual pvAccessID getSID() const = 0;
-
-    /**
-     * Destroy server channel.
-     * This method MUST BE called if overriden.
-     */
-    virtual void destroy() = 0;
-};
-
 /**
  * A request that expects an response.
  * Responses identified by its I/O ID.

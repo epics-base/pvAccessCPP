@@ -14,12 +14,12 @@ using namespace epics::pvData;
 namespace epics {
 namespace pvAccess {
 
-size_t ServerChannelImpl::num_instances;
+size_t ServerChannel::num_instances;
 
-ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer const & channel,
-                                     const ChannelRequester::shared_pointer &requester,
-                                     pvAccessID cid, pvAccessID sid,
-                                     ChannelSecuritySession::shared_pointer const & css):
+ServerChannel::ServerChannel(Channel::shared_pointer const & channel,
+                             const ChannelRequester::shared_pointer &requester,
+                             pvAccessID cid, pvAccessID sid,
+                             ChannelSecuritySession::shared_pointer const & css):
     _channel(channel),
     _requester(requester),
     _cid(cid),
@@ -34,19 +34,14 @@ ServerChannelImpl::ServerChannelImpl(Channel::shared_pointer const & channel,
     }
 }
 
-pvAccessID ServerChannelImpl::getSID() const
-{
-    return _sid;
-}
-
-void ServerChannelImpl::registerRequest(const pvAccessID id, Destroyable::shared_pointer const & request)
+void ServerChannel::registerRequest(const pvAccessID id, Destroyable::shared_pointer const & request)
 {
     Lock guard(_mutex);
     if(_destroyed) throw std::logic_error("Can't registerRequest() for destory'd server channel");
     _requests[id] = request;
 }
 
-void ServerChannelImpl::unregisterRequest(const pvAccessID id)
+void ServerChannel::unregisterRequest(const pvAccessID id)
 {
     Lock guard(_mutex);
     _requests_t::iterator iter = _requests.find(id);
@@ -56,7 +51,7 @@ void ServerChannelImpl::unregisterRequest(const pvAccessID id)
     }
 }
 
-Destroyable::shared_pointer ServerChannelImpl::getRequest(const pvAccessID id)
+Destroyable::shared_pointer ServerChannel::getRequest(const pvAccessID id)
 {
     Lock guard(_mutex);
     _requests_t::iterator iter = _requests.find(id);
@@ -67,7 +62,7 @@ Destroyable::shared_pointer ServerChannelImpl::getRequest(const pvAccessID id)
     return Destroyable::shared_pointer();
 }
 
-void ServerChannelImpl::destroy()
+void ServerChannel::destroy()
 {
     Lock guard(_mutex);
 
@@ -96,18 +91,18 @@ void ServerChannelImpl::destroy()
     _channel->destroy();
 }
 
-ServerChannelImpl::~ServerChannelImpl()
+ServerChannel::~ServerChannel()
 {
     destroy();
     REFTRACE_DECREMENT(num_instances);
 }
 
-void ServerChannelImpl::printInfo() const
+void ServerChannel::printInfo() const
 {
     printInfo(stdout);
 }
 
-void ServerChannelImpl::printInfo(FILE *fd) const
+void ServerChannel::printInfo(FILE *fd) const
 {
     fprintf(fd,"CLASS        : %s\n", typeid(*this).name());
     fprintf(fd,"CHANNEL      : %s\n", typeid(*_channel).name());
