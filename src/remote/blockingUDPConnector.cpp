@@ -35,7 +35,7 @@ struct closer {
 namespace epics {
 namespace pvAccess {
 
-Transport::shared_pointer BlockingUDPConnector::connect(TransportClient::shared_pointer const & /*client*/,
+Transport::shared_pointer BlockingUDPConnector::connect(std::tr1::shared_ptr<ClientChannelImpl> const & /*client*/,
         ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& bindAddress,
         int8 transportRevision, int16 /*priority*/) {
 

@@ -318,7 +318,7 @@ public:
     }
 
     bool acquire(
-        std::tr1::shared_ptr<TransportClient> const & client)
+        std::tr1::shared_ptr<ClientChannelImpl> const & client)
     {
         return false;
     }

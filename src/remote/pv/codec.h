@@ -528,7 +528,7 @@ public:
 
 public:
 
-    virtual bool acquire(std::tr1::shared_ptr<TransportClient> const & /*client*/) OVERRIDE FINAL
+    virtual bool acquire(std::tr1::shared_ptr<ClientChannelImpl> const & /*client*/) OVERRIDE FINAL
     {
         return false;
     }
@@ -633,7 +633,7 @@ protected:
         ResponseHandler::shared_pointer const & responseHandler,
         int32_t sendBufferSize,
         int32_t receiveBufferSize,
-        TransportClient::shared_pointer const & client,
+        std::tr1::shared_ptr<ClientChannelImpl> const & client,
         epics::pvData::int8 remoteTransportRevision,
         float heartbeatInterval,
         int16_t priority);
@@ -645,7 +645,7 @@ public:
         ResponseHandler::shared_pointer const & responseHandler,
         int32_t sendBufferSize,
         int32_t receiveBufferSize,
-        TransportClient::shared_pointer const & client,
+        std::tr1::shared_ptr<ClientChannelImpl> const & client,
         int8_t remoteTransportRevision,
         float heartbeatInterval,
         int16_t priority )
@@ -673,7 +673,7 @@ public:
 
     virtual void callback() OVERRIDE FINAL;
 
-    virtual bool acquire(TransportClient::shared_pointer const & client) OVERRIDE FINAL;
+    virtual bool acquire(std::tr1::shared_ptr<ClientChannelImpl> const & client) OVERRIDE FINAL;
 
     virtual void release(pvAccessID clientId) OVERRIDE FINAL;
 
@@ -699,7 +699,7 @@ private:
      * Owners (users) of the transport.
      */
     // TODO consider using TR1 hash map
-    typedef std::map<pvAccessID, TransportClient::weak_pointer> TransportClientMap_t;
+    typedef std::map<pvAccessID, std::tr1::weak_ptr<ClientChannelImpl> > TransportClientMap_t;
     TransportClientMap_t _owners;
 
     /**

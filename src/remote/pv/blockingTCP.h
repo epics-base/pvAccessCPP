@@ -42,6 +42,8 @@
 namespace epics {
 namespace pvAccess {
 
+class ClientChannelImpl;
+
 /**
  * Channel Access TCP connector.
  * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
@@ -56,7 +58,7 @@ public:
 
     virtual ~BlockingTCPConnector();
 
-    virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
+    virtual Transport::shared_pointer connect(std::tr1::shared_ptr<ClientChannelImpl> const & client,
             ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& address,
             epics::pvData::int8 transportRevision, epics::pvData::int16 priority);
 private:

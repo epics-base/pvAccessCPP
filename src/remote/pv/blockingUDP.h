@@ -36,6 +36,7 @@
 namespace epics {
 namespace pvAccess {
 
+class ClientChannelImpl;
 class BlockingUDPConnector;
 
 enum InetAddressType { inetAddressType_all, inetAddressType_unicast, inetAddressType_broadcast_multicast };
@@ -238,7 +239,7 @@ public:
         return epics::pvData::getFieldCreate()->deserialize(buffer, this);
     }
 
-    virtual bool acquire(std::tr1::shared_ptr<TransportClient> const & /*client*/)
+    virtual bool acquire(std::tr1::shared_ptr<ClientChannelImpl> const & /*client*/)
     {
         return false;
     }
@@ -447,7 +448,7 @@ public:
     /**
      * NOTE: transport client is ignored for broadcast (UDP).
      */
-    virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
+    virtual Transport::shared_pointer connect(std::tr1::shared_ptr<ClientChannelImpl> const & client,
             ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& bindAddress,
             epics::pvData::int8 transportRevision, epics::pvData::int16 priority);
 

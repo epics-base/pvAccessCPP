@@ -32,14 +32,13 @@ namespace pvAccess {
 class BeaconHandler;
 class ClientContextImpl;
 
-class ChannelImpl :
+class ClientChannelImpl :
     public Channel,
-    public TransportClient,
     public TransportSender,
     public SearchInstance
 {
 public:
-    POINTER_DEFINITIONS(ChannelImpl);
+    POINTER_DEFINITIONS(ClientChannelImpl);
 
     virtual pvAccessID getChannelID() = 0;
     virtual void destroyChannel(bool force) = 0;
@@ -48,12 +47,17 @@ public:
     virtual ClientContextImpl* getContext() = 0;
     virtual void channelDestroyedOnServer() = 0;
 
+    virtual pvAccessID getID() =0;
     virtual pvAccessID getServerChannelID() = 0;
     virtual void registerResponseRequest(ResponseRequest::shared_pointer const & responseRequest) = 0;
     virtual void unregisterResponseRequest(pvAccessID ioid) = 0;
     virtual Transport::shared_pointer checkAndGetTransport() = 0;
     virtual Transport::shared_pointer checkDestroyedAndGetTransport() = 0;
     virtual Transport::shared_pointer getTransport() = 0;
+    virtual void transportUnresponsive() =0;
+    virtual void transportChanged() =0;
+    virtual void transportClosed() =0;
+    virtual void transportResponsive(Transport::shared_pointer const & /*transport*/) =0;
 
     static epics::pvData::Status channelDestroyed;
     static epics::pvData::Status channelDisconnected;
@@ -97,10 +101,10 @@ public:
     virtual ChannelSearchManager::shared_pointer getChannelSearchManager() = 0;
     virtual void checkChannelName(std::string const & name) = 0;
 
-    virtual void registerChannel(ChannelImpl::shared_pointer const & channel) = 0;
-    virtual void unregisterChannel(ChannelImpl::shared_pointer const & channel) = 0;
+    virtual void registerChannel(ClientChannelImpl::shared_pointer const & channel) = 0;
+    virtual void unregisterChannel(ClientChannelImpl::shared_pointer const & channel) = 0;
 
-    virtual ChannelImpl::shared_pointer createChannelInternal(std::string const &name,
+    virtual ClientChannelImpl::shared_pointer createChannelInternal(std::string const &name,
                                                               ChannelRequester::shared_pointer const & requester,
                                                               short priority,
                                                               const InetAddrVector& addresses) = 0;
@@ -110,7 +114,7 @@ public:
     virtual ResponseRequest::shared_pointer unregisterResponseRequest(pvAccessID ioid) = 0;
 
 
-    virtual Transport::shared_pointer getTransport(TransportClient::shared_pointer const & client, osiSockAddr* serverAddress, epics::pvData::int8 minorRevision, epics::pvData::int16 priority) = 0;
+    virtual Transport::shared_pointer getTransport(ClientChannelImpl::shared_pointer const & client, osiSockAddr* serverAddress, epics::pvData::int8 minorRevision, epics::pvData::int16 priority) = 0;
 
     virtual void newServerDetected() = 0;
 

@@ -48,9 +48,9 @@ using namespace epics::pvData;
 namespace epics {
 namespace pvAccess {
 
-Status ChannelImpl::channelDestroyed(
+Status ClientChannelImpl::channelDestroyed(
     Status::STATUSTYPE_WARNING, "channel destroyed");
-Status ChannelImpl::channelDisconnected(
+Status ClientChannelImpl::channelDisconnected(
     Status::STATUSTYPE_WARNING, "channel disconnected");
 string emptyString;
 
@@ -125,7 +125,7 @@ public:
 
 protected:
 
-    ChannelImpl::shared_pointer m_channel;
+    ClientChannelImpl::shared_pointer m_channel;
 
     /* negative... */
     static const int NULL_REQUEST = -1;
@@ -172,7 +172,7 @@ public:
     template<class subklass>
     static
     typename std::tr1::shared_ptr<subklass>
-    build(ChannelImpl::shared_pointer const & channel,
+    build(ClientChannelImpl::shared_pointer const & channel,
                  const typename subklass::requester_type::shared_pointer& requester,
                  const epics::pvData::PVStructure::shared_pointer& pvRequest)
     {
@@ -195,7 +195,7 @@ protected:
 
     AtomicBoolean m_subscribed;
 
-    BaseRequestImpl(ChannelImpl::shared_pointer const & channel) :
+    BaseRequestImpl(ClientChannelImpl::shared_pointer const & channel) :
         m_channel(channel),
         m_ioid(INVALID_IOID),
         m_pendingRequest(NULL_REQUEST),
@@ -430,7 +430,7 @@ public:
     requester_type::weak_pointer m_callback;
     PVStructure::shared_pointer m_pvRequest;
 
-    ChannelProcessRequestImpl(ChannelImpl::shared_pointer const & channel, ChannelProcessRequester::shared_pointer const & callback, PVStructure::shared_pointer const & pvRequest) :
+    ChannelProcessRequestImpl(ClientChannelImpl::shared_pointer const & channel, ChannelProcessRequester::shared_pointer const & callback, PVStructure::shared_pointer const & pvRequest) :
         BaseRequestImpl(channel),
         m_callback(callback),
         m_pvRequest(pvRequest)
@@ -560,7 +560,7 @@ public:
 
     Mutex m_structureMutex;
 
-    ChannelGetImpl(ChannelImpl::shared_pointer const & channel,
+    ChannelGetImpl(ClientChannelImpl::shared_pointer const & channel,
                    ChannelGetRequester::shared_pointer const & requester,
                    PVStructure::shared_pointer const & pvRequest) :
         BaseRequestImpl(channel),
@@ -750,7 +750,7 @@ public:
 
     Mutex m_structureMutex;
 
-    ChannelPutImpl(ChannelImpl::shared_pointer const & channel,
+    ChannelPutImpl(ClientChannelImpl::shared_pointer const & channel,
                    ChannelPutRequester::shared_pointer const & requester,
                    PVStructure::shared_pointer const & pvRequest) :
         BaseRequestImpl(channel),
@@ -995,7 +995,7 @@ public:
 
     Mutex m_structureMutex;
 
-    ChannelPutGetImpl(ChannelImpl::shared_pointer const & channel,
+    ChannelPutGetImpl(ClientChannelImpl::shared_pointer const & channel,
                       ChannelPutGetRequester::shared_pointer const & requester,
                       PVStructure::shared_pointer const & pvRequest) :
         BaseRequestImpl(channel),
@@ -1301,7 +1301,7 @@ public:
 
     Mutex m_structureMutex;
 
-    ChannelRPCImpl(ChannelImpl::shared_pointer const & channel,
+    ChannelRPCImpl(ClientChannelImpl::shared_pointer const & channel,
                    ChannelRPCRequester::shared_pointer const & requester,
                    PVStructure::shared_pointer const & pvRequest) :
         BaseRequestImpl(channel),
@@ -1488,7 +1488,7 @@ public:
 
     Mutex m_structureMutex;
 
-    ChannelArrayImpl(ChannelImpl::shared_pointer const & channel,
+    ChannelArrayImpl(ClientChannelImpl::shared_pointer const & channel,
                      ChannelArrayRequester::shared_pointer const & requester,
                      PVStructure::shared_pointer const & pvRequest) :
         BaseRequestImpl(channel),
@@ -1853,7 +1853,7 @@ private:
     bool m_reportQueueStateInProgress;
 
     // TODO check for cyclic-ref
-    ChannelImpl::shared_pointer m_channel;
+    ClientChannelImpl::shared_pointer m_channel;
     pvAccessID m_ioid;
 
     bool m_pipeline;
@@ -1863,7 +1863,7 @@ private:
 
 public:
 
-    MonitorStrategyQueue(ChannelImpl::shared_pointer channel, pvAccessID ioid,
+    MonitorStrategyQueue(ClientChannelImpl::shared_pointer channel, pvAccessID ioid,
                          MonitorRequester::weak_pointer const & callback,
                          int32 queueSize,
                          bool pipeline, int32 ackAny) :
@@ -2133,7 +2133,7 @@ public:
     int32 m_ackAny;
 
     ChannelMonitorImpl(
-        ChannelImpl::shared_pointer const & channel,
+        ClientChannelImpl::shared_pointer const & channel,
         MonitorRequester::shared_pointer const & requester,
         PVStructure::shared_pointer const & pvRequest)
         :
@@ -2885,7 +2885,7 @@ public:
         status.deserialize(payloadBuffer, transport.get());
 
         // TODO optimize
-        ChannelImpl::shared_pointer channel = static_pointer_cast<ChannelImpl>(_context.lock()->getChannel(cid));
+        ClientChannelImpl::shared_pointer channel = static_pointer_cast<ClientChannelImpl>(_context.lock()->getChannel(cid));
         if (channel.get())
         {
             // failed check
@@ -2934,7 +2934,7 @@ public:
         /*pvAccessID sid =*/ payloadBuffer->getInt();
 
         // TODO optimize
-        ChannelImpl::shared_pointer channel = static_pointer_cast<ChannelImpl>(_context.lock()->getChannel(cid));
+        ClientChannelImpl::shared_pointer channel = static_pointer_cast<ClientChannelImpl>(_context.lock()->getChannel(cid));
         if (channel.get())
             channel->channelDestroyedOnServer();
     }
@@ -3110,7 +3110,7 @@ public:
      * Implementation of <code>Channel</code>.
      */
     class InternalChannelImpl :
-        public ChannelImpl,
+        public ClientChannelImpl,
         public TimerCallback
     {
         InternalChannelImpl(InternalChannelImpl&);
@@ -3271,7 +3271,7 @@ private:
 
     public:
 
-        static ChannelImpl::shared_pointer create(InternalClientContextImpl::shared_pointer context,
+        static ClientChannelImpl::shared_pointer create(InternalClientContextImpl::shared_pointer context,
                 pvAccessID channelID,
                 string const & name,
                 ChannelRequester::shared_pointer requester,
@@ -3756,7 +3756,7 @@ public:
             }
         }
 
-        void transportUnresponsive() OVERRIDE FINAL {
+        virtual void transportUnresponsive() OVERRIDE FINAL {
             /*
             {
                 Lock guard(m_channelMutex);
@@ -4250,7 +4250,7 @@ private:
         Lock guard(m_cidMapMutex);
 
         int count = 0;
-        std::vector<ChannelImpl::weak_pointer> channels(m_channelsByCID.size());
+        std::vector<ClientChannelImpl::weak_pointer> channels(m_channelsByCID.size());
         for (CIDChannelMap::iterator iter = m_channelsByCID.begin();
                 iter != m_channelsByCID.end();
                 iter++)
@@ -4261,7 +4261,7 @@ private:
         guard.unlock();
 
 
-        ChannelImpl::shared_pointer ptr;
+        ClientChannelImpl::shared_pointer ptr;
         for (int i = 0; i < count; i++)
         {
             ptr = channels[i].lock();
@@ -4298,17 +4298,17 @@ private:
      * Register channel.
      * @param channel
      */
-    void registerChannel(ChannelImpl::shared_pointer const & channel) OVERRIDE FINAL
+    void registerChannel(ClientChannelImpl::shared_pointer const & channel) OVERRIDE FINAL
     {
         Lock guard(m_cidMapMutex);
-        m_channelsByCID[channel->getChannelID()] = ChannelImpl::weak_pointer(channel);
+        m_channelsByCID[channel->getChannelID()] = ClientChannelImpl::weak_pointer(channel);
     }
 
     /**
      * Unregister channel.
      * @param channel
      */
-    void unregisterChannel(ChannelImpl::shared_pointer const & channel) OVERRIDE FINAL
+    void unregisterChannel(ClientChannelImpl::shared_pointer const & channel) OVERRIDE FINAL
     {
         Lock guard(m_cidMapMutex);
         m_channelsByCID.erase(channel->getChannelID());
@@ -4455,7 +4455,7 @@ private:
      * @param priority process priority.
      * @return transport for given address
      */
-    Transport::shared_pointer getTransport(TransportClient::shared_pointer const & client, osiSockAddr* serverAddress, int8 minorRevision, int16 priority) OVERRIDE FINAL
+    Transport::shared_pointer getTransport(ClientChannelImpl::shared_pointer const & client, osiSockAddr* serverAddress, int8 minorRevision, int16 priority) OVERRIDE FINAL
     {
         try
         {
@@ -4476,7 +4476,7 @@ private:
      */
     // TODO no minor version with the addresses
     // TODO what if there is an channel with the same name, but on different host!
-    ChannelImpl::shared_pointer createChannelInternal(std::string const & name, ChannelRequester::shared_pointer const & requester, short priority,
+    ClientChannelImpl::shared_pointer createChannelInternal(std::string const & name, ChannelRequester::shared_pointer const & requester, short priority,
             const InetAddrVector& addresses) OVERRIDE FINAL { // TODO addresses
 
         checkState();
@@ -4503,7 +4503,7 @@ private:
             }
             catch(std::exception& e) {
                 LOG(logLevelError, "createChannelInternal() exception: %s\n", e.what());
-                return ChannelImpl::shared_pointer();
+                return ClientChannelImpl::shared_pointer();
             }
             // TODO namedLocker.releaseSynchronizationObject(name);
         }
@@ -4629,7 +4629,7 @@ private:
      * Map of channels (keys are CIDs).
      */
     // TODO consider std::unordered_map
-    typedef std::map<pvAccessID, ChannelImpl::weak_pointer> CIDChannelMap;
+    typedef std::map<pvAccessID, ClientChannelImpl::weak_pointer> CIDChannelMap;
     CIDChannelMap m_channelsByCID;
 
     /**

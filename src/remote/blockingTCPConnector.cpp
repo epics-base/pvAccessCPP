@@ -68,7 +68,7 @@ SOCKET BlockingTCPConnector::tryConnect(osiSockAddr& address, int tries) {
     return INVALID_SOCKET;
 }
 
-Transport::shared_pointer BlockingTCPConnector::connect(TransportClient::shared_pointer const & client,
+Transport::shared_pointer BlockingTCPConnector::connect(std::tr1::shared_ptr<ClientChannelImpl> const & client,
         ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& address,
         int8 transportRevision, int16 priority) {
 

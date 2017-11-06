@@ -41,6 +41,7 @@ namespace epics {
 namespace pvAccess {
 
 class TransportRegistry;
+class ClientChannelImpl;
 
 enum QoS {
     /**
@@ -150,7 +151,7 @@ public:
     virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) = 0;
 };
 
-class TransportClient;
+class ClientChannelImpl;
 class SecuritySession;
 
 /**
@@ -167,15 +168,15 @@ public:
      * @param client client (channel) acquiring the transport
      * @return <code>true</code> if transport was granted, <code>false</code> otherwise.
      */
-    //virtual bool acquire(TransportClient::shared_pointer const & client) = 0;
-    virtual bool acquire(std::tr1::shared_ptr<TransportClient> const & client) = 0;
+    //virtual bool acquire(ClientChannelImpl::shared_pointer const & client) = 0;
+    virtual bool acquire(std::tr1::shared_ptr<ClientChannelImpl> const & client) = 0;
 
     /**
      * Releases transport.
      * @param client client (channel) releasing the transport
      */
     virtual void release(pvAccessID clientId) = 0;
-    //virtual void release(TransportClient::shared_pointer const & client) = 0;
+    //virtual void release(ClientChannelImpl::shared_pointer const & client) = 0;
 
     /**
      * Get protocol type (tcp, udp, ssl, etc.).
@@ -377,43 +378,6 @@ protected:
 };
 
 /**
- * Client (user) of the transport.
- */
-class TransportClient {
-public:
-    POINTER_DEFINITIONS(TransportClient);
-
-    virtual ~TransportClient() {
-    }
-
-    // ID used to allow fast/efficient lookup
-    virtual pvAccessID getID() = 0;
-
-    /**
-     * Notification of unresponsive transport (e.g. no heartbeat detected) .
-     */
-    virtual void transportUnresponsive() = 0;
-
-    /**
-     * Notification of responsive transport (e.g. heartbeat detected again),
-     * called to discard <code>transportUnresponsive</code> notification.
-     * @param transport responsive transport.
-     */
-    virtual void transportResponsive(Transport::shared_pointer const & transport) = 0;
-
-    /**
-     * Notification of network change (server restarted).
-     */
-    virtual void transportChanged() = 0;
-
-    /**
-     * Notification of forcefully closed transport.
-     */
-    virtual void transportClosed() = 0;
-
-};
-
-/**
  * Interface defining socket connector (Connector-Transport pattern).
  */
 class Connector {
@@ -429,7 +393,7 @@ public:
      * @param[in] priority process priority.
      * @return transport instance.
      */
-    virtual Transport::shared_pointer connect(TransportClient::shared_pointer const & client,
+    virtual Transport::shared_pointer connect(std::tr1::shared_ptr<ClientChannelImpl> const & client,
             ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& address,
             epics::pvData::int8 transportRevision, epics::pvData::int16 priority) = 0;
 

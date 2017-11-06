@@ -40,6 +40,7 @@
 #include <pv/codec.h>
 #include <pv/serializationHelper.h>
 #include <pv/serverChannelImpl.h>
+#include <pv/clientContextImpl.h>
 
 using namespace std;
 using namespace epics::pvData;
@@ -1671,7 +1672,7 @@ BlockingClientTCPTransportCodec::BlockingClientTCPTransportCodec(
     ResponseHandler::shared_pointer const & responseHandler,
     int32_t sendBufferSize,
     int32_t receiveBufferSize,
-    TransportClient::shared_pointer const & client,
+    ClientChannelImpl::shared_pointer const & client,
     epics::pvData::int8 /*remoteTransportRevision*/,
     float heartbeatInterval,
     int16_t priority ) :
@@ -1740,7 +1741,7 @@ void BlockingClientTCPTransportCodec::unresponsiveTransport() {
 
         TransportClientMap_t::iterator it = _owners.begin();
         for(; it!=_owners.end(); it++) {
-            TransportClient::shared_pointer client = it->second.lock();
+            ClientChannelImpl::shared_pointer client = it->second.lock();
             if (client)
             {
                 EXCEPTION_GUARD(client->transportUnresponsive());
@@ -1749,7 +1750,7 @@ void BlockingClientTCPTransportCodec::unresponsiveTransport() {
     }
 }
 
-bool BlockingClientTCPTransportCodec::acquire(TransportClient::shared_pointer const & client) {
+bool BlockingClientTCPTransportCodec::acquire(ClientChannelImpl::shared_pointer const & client) {
     Lock lock(_mutex);
     if(isClosed()) return false;
 
@@ -1758,8 +1759,8 @@ bool BlockingClientTCPTransportCodec::acquire(TransportClient::shared_pointer co
         LOG(logLevelDebug, "Acquiring transport to %s.", _socketName.c_str());
     }
 
-    _owners[client->getID()] = TransportClient::weak_pointer(client);
-    //_owners.insert(TransportClient::weak_pointer(client));
+    _owners[client->getID()] = ClientChannelImpl::weak_pointer(client);
+    //_owners.insert(ClientChannelImpl::weak_pointer(client));
 
     return true;
 }
@@ -1798,7 +1799,7 @@ void BlockingClientTCPTransportCodec::closedNotifyClients() {
 
         TransportClientMap_t::iterator it = _owners.begin();
         for(; it!=_owners.end(); it++) {
-            TransportClient::shared_pointer client = it->second.lock();
+            ClientChannelImpl::shared_pointer client = it->second.lock();
             if (client)
             {
                 EXCEPTION_GUARD(client->transportClosed());
@@ -1810,7 +1811,7 @@ void BlockingClientTCPTransportCodec::closedNotifyClients() {
     _owners.clear();
 }
 
-//void BlockingClientTCPTransportCodec::release(TransportClient::shared_pointer const & client) {
+//void BlockingClientTCPTransportCodec::release(ClientChannelImpl::shared_pointer const & client) {
 void BlockingClientTCPTransportCodec::release(pvAccessID clientID) {
     Lock lock(_mutex);
     if(isClosed()) return;
@@ -1821,7 +1822,7 @@ void BlockingClientTCPTransportCodec::release(pvAccessID clientID) {
     }
 
     _owners.erase(clientID);
-    //_owners.erase(TransportClient::weak_pointer(client));
+    //_owners.erase(ClientChannelImpl::weak_pointer(client));
 
     // not used anymore, close it
     // TODO consider delayed destruction (can improve performance!!!)
@@ -1845,7 +1846,7 @@ void BlockingClientTCPTransportCodec::responsiveTransport() {
         Transport::shared_pointer thisSharedPtr = shared_from_this();
         TransportClientMap_t::iterator it = _owners.begin();
         for(; it!=_owners.end(); it++) {
-            TransportClient::shared_pointer client = it->second.lock();
+            ClientChannelImpl::shared_pointer client = it->second.lock();
             if (client)
             {
                 EXCEPTION_GUARD(client->transportResponsive(thisSharedPtr));
@@ -1860,7 +1861,7 @@ void BlockingClientTCPTransportCodec::changedTransport() {
     Lock lock(_mutex);
     TransportClientMap_t::iterator it = _owners.begin();
     for(; it!=_owners.end(); it++) {
-        TransportClient::shared_pointer client = it->second.lock();
+        ClientChannelImpl::shared_pointer client = it->second.lock();
         if (client)
         {
             EXCEPTION_GUARD(client->transportChanged());

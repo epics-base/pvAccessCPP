@@ -558,7 +558,7 @@ void initializeUDPTransports(bool serverFlag,
                              const std::string& addressList,
                              const std::string& ignoreAddressList)
 {
-    TransportClient::shared_pointer nullTransportClient;
+    std::tr1::shared_ptr<ClientChannelImpl> nullTransportClient;
     epics::auto_ptr<BlockingUDPConnector> connector(new BlockingUDPConnector(serverFlag, true, true));
 
     //
