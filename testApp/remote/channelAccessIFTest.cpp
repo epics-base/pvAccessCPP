@@ -1755,7 +1755,7 @@ void ChannelAccessIFTest::test_channelMonitorWithInvalidRequesterAndRequest() {
 
 void ChannelAccessIFTest::test_channelMonitor(int queueSize) {
 
-    testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
+    testDiag("BEGIN TEST %s: queueSize=%d", CURRENT_FUNCTION, queueSize);
     ostringstream ostream;
     ostream << queueSize;
     string request = "record[queueSize=";

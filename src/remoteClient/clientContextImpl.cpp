@@ -73,6 +73,9 @@ typedef std::map<pvAccessID, ResponseRequest::weak_pointer> IOIDResponseRequestM
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }}
 
+#define SEND_MESSAGE(WEAK, PTR, MSG, MTYPE) \
+do{requester_type::shared_pointer PTR((WEAK).lock()); if(PTR) (PTR)->message(MSG, MTYPE); }while(0)
+
 /**
  * Base channel request.
  * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
@@ -2154,18 +2157,25 @@ public:
 
         PVStructurePtr pvOptions = m_pvRequest->getSubField<PVStructure>("record._options");
         if (pvOptions) {
-            PVStringPtr pvString = pvOptions->getSubField<PVString>("queueSize");
-            if (pvString) {
-                int32 size;
-                std::stringstream ss;
-                ss << pvString->get();
-                ss >> size;
-                if (size > 1)
-                    m_queueSize = size;
+            PVScalarPtr option(pvOptions->getSubField<PVScalar>("queueSize"));
+            if (option) {
+                try {
+                    m_queueSize = option->getAs<int32>();
+                    if(m_queueSize<2)
+                        m_queueSize = 2;
+                }catch(std::runtime_error& e){
+                    SEND_MESSAGE(m_callback, cb, "Invalid queueSize=", warningMessage);
+                }
             }
-            pvString = pvOptions->getSubField<PVString>("pipeline");
-            if (pvString)
-                m_pipeline = (pvString->get() == "true");
+
+            option = pvOptions->getSubField<PVScalar>("pipeline");
+            if (option) {
+                try {
+                    m_pipeline = option->getAs<boolean>();
+                }catch(std::runtime_error& e){
+                    SEND_MESSAGE(m_callback, cb, "Invalid pipeline=", warningMessage);
+                }
+            }
 
             // pipeline options
             if (m_pipeline)
@@ -2173,23 +2183,40 @@ public:
                 // defaults to queueSize/2
                 m_ackAny = m_queueSize/2;
 
-                pvString = pvOptions->getSubField<PVString>("ackAny");
-                if (pvString) {
-                    int32 size;
-                    string sval = pvString->get();
-                    string::size_type slen = sval.length();
-                    bool percentage = (slen > 0) && (sval[slen-1] == '%');
-                    if (percentage)
-                        sval = sval.substr(0, slen-1);
-                    std::stringstream ss;
-                    ss << sval;
-                    ss >> size;
-                    if (percentage)
-                        size = (m_queueSize * size) / 100;
-                    if (size <= 0)
+                bool done = false;
+                int32 size;
+
+                option = pvOptions->getSubField<PVScalar>("ackAny");
+                if (option) {
+                    if(option->getScalar()->getScalarType()==pvString) {
+                        std::string sval(option->getAs<std::string>());
+
+                        if(!sval.empty() && sval[sval.size()-1]=='%') {
+                            try {
+                                double percent = castUnsafe<double>(sval.substr(0, sval.size()-1));
+                                size = (m_queueSize * percent) / 100.0;
+                                done = true;
+                            }catch(std::runtime_error&){
+                                SEND_MESSAGE(m_callback, cb, "ackAny= invalid precentage", warningMessage);
+                            }
+                        }
+                    }
+
+                    if(!done) {
+                        try {
+                            size = option->getAs<int32>();
+                            done = true;
+                        }catch(std::runtime_error&){
+                            SEND_MESSAGE(m_callback, cb, "ackAny= invalid value", warningMessage);
+                        }
+                    }
+
+                    if(!done) {
+                    } else if (size <= 0) {
                         m_ackAny = 1;
-                    else
+                    } else {
                         m_ackAny = (m_ackAny <= m_queueSize) ? size : m_queueSize;
+                    }
                 }
             }
         }
@@ -2221,9 +2248,7 @@ public:
         }
     }
 
-    virtual ~ChannelMonitorImpl()
-    {
-    }
+    virtual ~ChannelMonitorImpl() {}
 
     ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
 
