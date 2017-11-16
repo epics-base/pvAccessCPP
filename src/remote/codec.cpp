@@ -321,7 +321,7 @@ void AbstractCodec::processReadSegmented() {
             if (!notFirstSegment)
             {
                 LOG(logLevelWarn,
-                    "Not-a-first segmented message expected from the client at"
+                    "Protocol Violation: Not-a-first segmented message expected from the client at"
                     " %s:%d: %s, disconnecting...",
                     __FILE__, __LINE__, inetAddressToString(*getLastReadBufferSocketAddress()).c_str());
                 invalidDataStreamHandler();
