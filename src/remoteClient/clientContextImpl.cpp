@@ -470,7 +470,7 @@ public:
         control->startMessage((int8)CMD_PROCESS, 9);
         buffer->putInt(m_channel->getServerChannelID());
         buffer->putInt(m_ioid);
-        buffer->putByte((int8)m_pendingRequest);
+        buffer->putByte((int8)pendingRequest);
 
         if (pendingRequest & QOS_INIT)
         {
@@ -609,7 +609,7 @@ public:
         control->startMessage((int8)CMD_GET, 9);
         buffer->putInt(m_channel->getServerChannelID());
         buffer->putInt(m_ioid);
-        buffer->putByte((int8)m_pendingRequest);
+        buffer->putByte((int8)pendingRequest);
 
         if (initStage)
         {
@@ -797,7 +797,7 @@ public:
         control->startMessage((int8)CMD_PUT, 9);
         buffer->putInt(m_channel->getServerChannelID());
         buffer->putInt(m_ioid);
-        buffer->putByte((int8)m_pendingRequest);
+        buffer->putByte((int8)pendingRequest);
 
         if (pendingRequest & QOS_INIT)
         {
@@ -1346,8 +1346,8 @@ public:
         control->startMessage((int8)CMD_RPC, 9);
         buffer->putInt(m_channel->getServerChannelID());
         buffer->putInt(m_ioid);
-        if ((m_pendingRequest & QOS_INIT) == 0)
-            buffer->putByte((int8)m_pendingRequest);
+        if ((pendingRequest & QOS_INIT) == 0)
+            buffer->putByte((int8)pendingRequest);
 
         if (pendingRequest & QOS_INIT)
         {
@@ -1535,7 +1535,7 @@ public:
         control->startMessage((int8)CMD_ARRAY, 9);
         buffer->putInt(m_channel->getServerChannelID());
         buffer->putInt(m_ioid);
-        buffer->putByte((int8)m_pendingRequest);
+        buffer->putByte((int8)pendingRequest);
 
         if (pendingRequest & QOS_INIT)
         {
