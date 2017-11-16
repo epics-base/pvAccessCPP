@@ -274,9 +274,8 @@ public:
                 if (status.isSuccess())
                 {
                     // once created set destroy flag
-                    m_mutex.lock();
+                    Lock G(m_mutex);
                     m_initialized = true;
-                    m_mutex.unlock();
                 }
 
                 initResponse(transport, version, payloadBuffer, qos, status);
@@ -287,10 +286,9 @@ public:
 
                 if (qos & QOS_DESTROY)
                 {
-                    m_mutex.lock();
+                    Lock G(m_mutex);
                     m_initialized = false;
                     destroyReq = true;
-                    m_mutex.unlock();
                 }
 
                 normalResponse(transport, version, payloadBuffer, qos, status);
@@ -340,11 +338,13 @@ public:
 
     virtual void destroy(bool createRequestFailed) {
 
+        bool initd;
         {
             Lock guard(m_mutex);
             if (m_destroyed)
                 return;
             m_destroyed = true;
+            initd = m_initialized;
         }
 
         // unregister response request
@@ -352,7 +352,7 @@ public:
         m_channel->unregisterResponseRequest(m_ioid);
 
         // destroy remote instance
-        if (!createRequestFailed && m_initialized)
+        if (!createRequestFailed && initd)
         {
             try
             {
@@ -2350,9 +2350,8 @@ public:
             status.deserialize(payloadBuffer, transport.get());
             if (status.isSuccess())
             {
-                m_mutex.lock();
+                Lock G(m_mutex);
                 m_initialized = true;
-                m_mutex.unlock();
             }
             initResponse(transport, version, payloadBuffer, qos, status);
         }
@@ -2361,9 +2360,10 @@ public:
             Status status;
             status.deserialize(payloadBuffer, transport.get());
 
-            m_mutex.lock();
-            m_initialized = false;
-            m_mutex.unlock();
+            {
+                Lock G(m_mutex);
+                m_initialized = false;
+            }
 
             normalResponse(transport, version, payloadBuffer, qos, status);
         }
