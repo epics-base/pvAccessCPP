@@ -2296,6 +2296,8 @@ public:
             dynamic_pointer_cast<const Structure>(
                 transport->cachedDeserialize(payloadBuffer)
             );
+        if(!structure)
+            throw std::runtime_error("initResponse() w/o Structure");
         m_monitorStrategy->init(structure);
 
         bool restoreStartedState = m_started;
