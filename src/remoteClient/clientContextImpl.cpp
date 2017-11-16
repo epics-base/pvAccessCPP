@@ -2448,30 +2448,6 @@ public:
 };
 
 
-class BadResponse : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
-public:
-    BadResponse(ClientContextImpl::shared_pointer const & context) :
-        AbstractClientResponseHandler(context, "Bad response")
-    {
-    }
-
-    virtual ~BadResponse() {
-    }
-
-    virtual void handleResponse(osiSockAddr* responseFrom,
-                                Transport::shared_pointer const & /*transport*/, int8 /*version*/, int8 command,
-                                size_t /*payloadSize*/, epics::pvData::ByteBuffer* /*payloadBuffer*/) OVERRIDE FINAL
-    {
-        char ipAddrStr[48];
-        ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
-
-        LOG(logLevelInfo,
-            "Undecipherable message (bad response type %d) from %s.",
-            command, ipAddrStr);
-    }
-};
-
-
 class ResponseRequestHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
 public:
     ResponseRequestHandler(ClientContextImpl::shared_pointer const & context) :
@@ -2964,18 +2940,18 @@ public:
     ClientResponseHandler(ClientContextImpl::shared_pointer const & context)
         :ResponseHandler(context.get(), "ClientResponseHandler")
     {
-        ResponseHandler::shared_pointer badResponse(new BadResponse(context));
+        ResponseHandler::shared_pointer ignoreResponse(new NoopResponse(context, "Ignore"));
         ResponseHandler::shared_pointer dataResponse(new ResponseRequestHandler(context));
 
         m_handlerTable.resize(CMD_CANCEL_REQUEST+1);
 
         m_handlerTable[CMD_BEACON].reset(new BeaconResponseHandler(context)); /*  0 */
         m_handlerTable[CMD_CONNECTION_VALIDATION].reset(new ClientConnectionValidationHandler(context)); /*  1 */
-        m_handlerTable[CMD_ECHO].reset(new NoopResponse(context, "Echo")); /*  2 */
+        m_handlerTable[CMD_ECHO] = ignoreResponse; /*  2 */
         m_handlerTable[CMD_SEARCH].reset(new SearchHandler(context)); /*  3 */
         m_handlerTable[CMD_SEARCH_RESPONSE].reset(new SearchResponseHandler(context)); /*  4 */
         m_handlerTable[CMD_AUTHNZ].reset(new AuthNZHandler(context.get())); /*  5 */
-        m_handlerTable[CMD_ACL_CHANGE].reset(new NoopResponse(context, "Access rights change")); /*  6 */
+        m_handlerTable[CMD_ACL_CHANGE] = ignoreResponse; /*  6 */
         m_handlerTable[CMD_CREATE_CHANNEL].reset(new CreateChannelHandler(context)); /*  7 */
         m_handlerTable[CMD_DESTROY_CHANNEL].reset(new DestroyChannelHandler(context)); /*  8 */
         m_handlerTable[CMD_CONNECTION_VALIDATED].reset(new ClientConnectionValidatedHandler(context)); /*  9 */
@@ -2984,13 +2960,13 @@ public:
         m_handlerTable[CMD_PUT_GET] = dataResponse; /* 12 - put-get response */
         m_handlerTable[CMD_MONITOR] = dataResponse; /* 13 - monitor response */
         m_handlerTable[CMD_ARRAY] = dataResponse; /* 14 - array response */
-        m_handlerTable[CMD_DESTROY_REQUEST] = badResponse; /* 15 - destroy request */
+        m_handlerTable[CMD_DESTROY_REQUEST] = ignoreResponse; /* 15 - destroy request */
         m_handlerTable[CMD_PROCESS] = dataResponse; /* 16 - process response */
         m_handlerTable[CMD_GET_FIELD] = dataResponse; /* 17 - get field response */
         m_handlerTable[CMD_MESSAGE].reset(new MessageHandler(context)); /* 18 - message to Requester */
         m_handlerTable[CMD_MULTIPLE_DATA].reset(new MultipleResponseRequestHandler(context)); /* 19 - grouped monitors */
         m_handlerTable[CMD_RPC] = dataResponse; /* 20 - RPC response */
-        m_handlerTable[CMD_CANCEL_REQUEST] = badResponse; /* 21 - cancel request */
+        m_handlerTable[CMD_CANCEL_REQUEST] = ignoreResponse; /* 21 - cancel request */
     }
 
     virtual void handleResponse(osiSockAddr* responseFrom,
