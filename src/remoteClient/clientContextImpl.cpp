@@ -2241,7 +2241,7 @@ public:
         control->startMessage((int8)CMD_MONITOR, 9);
         buffer->putInt(m_channel->getServerChannelID());
         buffer->putInt(m_ioid);
-        buffer->putByte((int8)m_pendingRequest);
+        buffer->putByte((int8)pendingRequest);
 
         if (pendingRequest & QOS_INIT)
         {
