@@ -4786,7 +4786,7 @@ public:
     }
 
     virtual void send(ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
-        control->startMessage((int8)17, 8);
+        control->startMessage((int8)CMD_GET_FIELD, 8);
         buffer->putInt(m_channel->getServerChannelID());
         buffer->putInt(m_ioid);
         SerializeHelper::serializeString(m_subField, buffer, control);
