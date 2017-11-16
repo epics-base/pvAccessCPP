@@ -128,18 +128,21 @@ public:
 
 protected:
 
-    ClientChannelImpl::shared_pointer m_channel;
+    const ClientChannelImpl::shared_pointer m_channel;
 
     /* negative... */
     static const int NULL_REQUEST = -1;
     static const int PURE_DESTROY_REQUEST = -2;
     static const int PURE_CANCEL_REQUEST = -3;
 
+    // const after activate()
     pvAccessID m_ioid;
 
+private:
     // holds: NULL_REQUEST, PURE_DESTROY_REQUEST, PURE_CANCEL_REQUEST, or
     // a mask of QOS_*
     int32 m_pendingRequest;
+protected:
 
     Mutex m_mutex;
 
@@ -439,15 +442,14 @@ class ChannelProcessRequestImpl :
     public ChannelProcess
 {
 public:
-    requester_type::weak_pointer m_callback;
-    PVStructure::shared_pointer m_pvRequest;
+    const requester_type::weak_pointer m_callback;
+    const PVStructure::shared_pointer m_pvRequest;
 
     ChannelProcessRequestImpl(ClientChannelImpl::shared_pointer const & channel, ChannelProcessRequester::shared_pointer const & callback, PVStructure::shared_pointer const & pvRequest) :
         BaseRequestImpl(channel),
         m_callback(callback),
         m_pvRequest(pvRequest)
-    {
-    }
+    {}
 
     virtual void activate() OVERRIDE FINAL
     {
@@ -465,9 +467,7 @@ public:
         }
     }
 
-    ~ChannelProcessRequestImpl()
-    {
-    }
+    virtual ~ChannelProcessRequestImpl() {}
 
     ChannelBaseRequester::shared_pointer getRequester() OVERRIDE FINAL { return m_callback.lock(); }
 
@@ -561,9 +561,9 @@ class ChannelGetImpl :
     public ChannelGet
 {
 public:
-    ChannelGetRequester::weak_pointer m_callback;
+    const ChannelGetRequester::weak_pointer m_callback;
 
-    PVStructure::shared_pointer m_pvRequest;
+    const PVStructure::shared_pointer m_pvRequest;
 
     PVStructure::shared_pointer m_structure;
     BitSet::shared_pointer m_bitSet;
@@ -749,9 +749,9 @@ class ChannelPutImpl :
     public ChannelPut
 {
 public:
-    ChannelPutRequester::weak_pointer m_callback;
+    const ChannelPutRequester::weak_pointer m_callback;
 
-    PVStructure::shared_pointer m_pvRequest;
+    const PVStructure::shared_pointer m_pvRequest;
 
     PVStructure::shared_pointer m_structure;
     BitSet::shared_pointer m_bitSet;
@@ -987,9 +987,9 @@ class ChannelPutGetImpl :
     public ChannelPutGet
 {
 public:
-    ChannelPutGetRequester::weak_pointer m_callback;
+    const ChannelPutGetRequester::weak_pointer m_callback;
 
-    PVStructure::shared_pointer m_pvRequest;
+    const PVStructure::shared_pointer m_pvRequest;
 
     // put data container
     PVStructure::shared_pointer m_putData;
@@ -1297,9 +1297,9 @@ class ChannelRPCImpl :
     public ChannelRPC
 {
 public:
-    ChannelRPCRequester::weak_pointer m_callback;
+    const ChannelRPCRequester::weak_pointer m_callback;
 
-    PVStructure::shared_pointer m_pvRequest;
+    const PVStructure::shared_pointer m_pvRequest;
 
     PVStructure::shared_pointer m_structure;
 
@@ -1475,9 +1475,9 @@ class ChannelArrayImpl :
     public ChannelArray
 {
 public:
-    ChannelArrayRequester::weak_pointer m_callback;
+    const ChannelArrayRequester::weak_pointer m_callback;
 
-    PVStructure::shared_pointer m_pvRequest;
+    const PVStructure::shared_pointer m_pvRequest;
 
     // data container
     PVArray::shared_pointer m_arrayData;
@@ -1828,14 +1828,14 @@ class MonitorStrategyQueue :
 {
 private:
 
-    int32 m_queueSize;
+    const int32 m_queueSize;
 
     StructureConstPtr m_lastStructure;
     FreeElementQueue m_freeQueue;
     MonitorElementQueue m_monitorQueue;
 
 
-    MonitorRequester::weak_pointer m_callback;
+    const MonitorRequester::weak_pointer m_callback;
 
     Mutex m_mutex;
 
@@ -1853,11 +1853,11 @@ private:
     bool m_reportQueueStateInProgress;
 
     // TODO check for cyclic-ref
-    ClientChannelImpl::shared_pointer m_channel;
-    pvAccessID m_ioid;
+    const ClientChannelImpl::shared_pointer m_channel;
+    const pvAccessID m_ioid;
 
-    bool m_pipeline;
-    int32 m_ackAny;
+    const bool m_pipeline;
+    const int32 m_ackAny;
 
     bool m_unlisten;
 
@@ -1887,9 +1887,7 @@ public:
         //m_monitorQueue.reserve(m_queueSize);
     }
 
-    virtual ~MonitorStrategyQueue()
-    {
-    }
+    virtual ~MonitorStrategyQueue() {}
 
     virtual void init(StructureConstPtr const & structure) OVERRIDE FINAL {
         Lock guard(m_mutex);
@@ -2121,10 +2119,10 @@ class ChannelMonitorImpl :
     public Monitor
 {
 public:
-    MonitorRequester::weak_pointer m_callback;
+    const MonitorRequester::weak_pointer m_callback;
     bool m_started;
 
-    PVStructure::shared_pointer m_pvRequest;
+    const PVStructure::shared_pointer m_pvRequest;
 
     std::tr1::shared_ptr<MonitorStrategy> m_monitorStrategy;
 
@@ -2692,11 +2690,9 @@ class BeaconResponseHandler : public AbstractClientResponseHandler, private epic
 public:
     BeaconResponseHandler(ClientContextImpl::shared_pointer const & context) :
         AbstractClientResponseHandler(context, "Beacon")
-    {
-    }
+    {}
 
-    virtual ~BeaconResponseHandler() {
-    }
+    virtual ~BeaconResponseHandler() {}
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
@@ -2761,11 +2757,9 @@ class ClientConnectionValidationHandler : public AbstractClientResponseHandler, 
 public:
     ClientConnectionValidationHandler(ClientContextImpl::shared_pointer context) :
         AbstractClientResponseHandler(context, "Connection validation")
-    {
-    }
+    {}
 
-    virtual ~ClientConnectionValidationHandler() {
-    }
+    virtual ~ClientConnectionValidationHandler() {}
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
@@ -2803,11 +2797,9 @@ class ClientConnectionValidatedHandler : public AbstractClientResponseHandler, p
 public:
     ClientConnectionValidatedHandler(ClientContextImpl::shared_pointer context) :
         AbstractClientResponseHandler(context, "Connection validated")
-    {
-    }
+    {}
 
-    virtual ~ClientConnectionValidatedHandler() {
-    }
+    virtual ~ClientConnectionValidatedHandler() {}
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
@@ -2826,11 +2818,9 @@ class MessageHandler : public AbstractClientResponseHandler, private epics::pvDa
 public:
     MessageHandler(ClientContextImpl::shared_pointer const & context) :
         AbstractClientResponseHandler(context, "Message")
-    {
-    }
+    {}
 
-    virtual ~MessageHandler() {
-    }
+    virtual ~MessageHandler() {}
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
@@ -2863,11 +2853,9 @@ class CreateChannelHandler : public AbstractClientResponseHandler, private epics
 public:
     CreateChannelHandler(ClientContextImpl::shared_pointer const & context) :
         AbstractClientResponseHandler(context, "Create channel")
-    {
-    }
+    {}
 
-    virtual ~CreateChannelHandler() {
-    }
+    virtual ~CreateChannelHandler() {}
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
@@ -2915,11 +2903,9 @@ class DestroyChannelHandler : public AbstractClientResponseHandler, private epic
 public:
     DestroyChannelHandler(ClientContextImpl::shared_pointer const & context) :
         AbstractClientResponseHandler(context, "Destroy channel")
-    {
-    }
+    {}
 
-    virtual ~DestroyChannelHandler() {
-    }
+    virtual ~DestroyChannelHandler() {}
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, int8 version, int8 command,
@@ -2953,8 +2939,7 @@ private:
 
 public:
 
-    virtual ~ClientResponseHandler() {
-    }
+    virtual ~ClientResponseHandler() {}
 
     /**
      * @param context
@@ -3129,22 +3114,22 @@ public:
         /**
          * Context.
          */
-        std::tr1::shared_ptr<InternalClientContextImpl> m_context;
+        const std::tr1::shared_ptr<InternalClientContextImpl> m_context;
 
         /**
          * Client channel ID.
          */
-        pvAccessID m_channelID;
+        const pvAccessID m_channelID;
 
         /**
          * Channel name.
          */
-        string m_name;
+        const string m_name;
 
         /**
          * Channel requester.
          */
-        ChannelRequester::weak_pointer m_requester;
+        const ChannelRequester::weak_pointer m_requester;
 
     public:
         //! The in-progress GetField operation.
@@ -3155,7 +3140,7 @@ public:
         /**
          * Process priority.
          */
-        short m_priority;
+        const short m_priority;
 
         /**
          * List of fixed addresses, if <code<0</code> name resolution will be used.
@@ -4718,6 +4703,7 @@ public:
     const GetFieldRequester::weak_pointer m_callback;
     string m_subField;
 
+    // const after activate()
     pvAccessID m_ioid;
 
     Mutex m_mutex;
