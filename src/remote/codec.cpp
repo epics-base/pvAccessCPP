@@ -197,8 +197,8 @@ void AbstractCodec::processReadNormal()  {
                     if (_payloadSize == 0)
                         continue;
 
-                    LOG(logLevelWarn,
-                        "Not-a-first segmented message received in normal mode"
+                    LOG(logLevelError,
+                        "Protocol Violation: Not-a-first segmented message received in normal mode"
                         " from the client at %s:%d: %s, disconnecting...",
                         __FILE__, __LINE__, inetAddressToString(*getLastReadBufferSocketAddress()).c_str());
                     invalidDataStreamHandler();
