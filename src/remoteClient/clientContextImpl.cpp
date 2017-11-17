@@ -10,6 +10,7 @@
 #include <queue>
 #include <stdexcept>
 
+#include <osiSock.h>
 #include <pv/lock.h>
 #include <pv/timer.h>
 #include <pv/bitSetUtil.h>

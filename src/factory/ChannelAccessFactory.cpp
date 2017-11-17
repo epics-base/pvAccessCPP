@@ -7,6 +7,7 @@
 #include <map>
 #include <vector>
 
+#include <osiSock.h>
 #include <epicsThread.h>
 
 #include <pv/lock.h>
