@@ -2170,7 +2170,7 @@ public:
             option = pvOptions->getSubField<PVScalar>("pipeline");
             if (option) {
                 try {
-                    m_pipeline = option->getAs<boolean>();
+                    m_pipeline = option->getAs<epics::pvData::boolean>();
                 }catch(std::runtime_error& e){
                     SEND_MESSAGE(m_callback, cb, "Invalid pipeline=", warningMessage);
                 }
