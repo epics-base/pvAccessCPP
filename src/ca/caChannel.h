@@ -24,6 +24,9 @@ namespace ca {
 
 class CAChannel;
 typedef std::tr1::shared_ptr<CAChannel> CAChannelPtr;
+class CAChannelGetField;
+typedef std::tr1::shared_ptr<CAChannelGetField> CAChannelGetFieldPtr;
+typedef std::tr1::weak_ptr<CAChannelGetField> CAChannelGetFieldWPtr;
 class CAChannelPut;
 typedef std::tr1::shared_ptr<CAChannelPut> CAChannelPutPtr;
 typedef std::tr1::weak_ptr<CAChannelPut> CAChannelPutWPtr;
@@ -34,8 +37,18 @@ class CAChannelMonitor;
 typedef std::tr1::shared_ptr<CAChannelMonitor> CAChannelMonitorPtr;
 typedef std::tr1::weak_ptr<CAChannelMonitor> CAChannelMonitorWPtr;
 
-typedef std::tr1::shared_ptr<ChannelBaseRequester> ChannelBaseRequesterPtr;
-typedef std::tr1::weak_ptr<ChannelBaseRequester> ChannelBaseRequesterWPtr;
+class CAChannelGetField :
+    public std::tr1::enable_shared_from_this<CAChannelGetField>
+{
+public:
+    POINTER_DEFINITIONS(CAChannelGetField);
+    CAChannelGetField(GetFieldRequester::shared_pointer const & requester,std::string const & subField);
+    ~CAChannelGetField();
+    void callRequester(CAChannelPtr const & caChannel);
+private:
+    GetFieldRequester::weak_pointer getFieldRequester;
+    std::string subField;
+};
 
 class CAChannel :
     public Channel,
@@ -116,10 +129,12 @@ private:
     chid channelID;
     chtype channelType;
     unsigned elementCount;
+    bool firstConnect;
     epics::pvData::Structure::const_shared_pointer structure;
 
     epics::pvData::Mutex requestsMutex;
 
+    std::queue<CAChannelGetFieldPtr> getFieldQueue;
     std::queue<CAChannelPutPtr> putQueue;
     std::queue<CAChannelGetPtr> getQueue;
     std::queue<CAChannelMonitorPtr> monitorQueue;
