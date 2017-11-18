@@ -129,7 +129,6 @@ private:
     chid channelID;
     chtype channelType;
     unsigned elementCount;
-    bool firstConnect;
     epics::pvData::Structure::const_shared_pointer structure;
 
     epics::pvData::Mutex requestsMutex;
