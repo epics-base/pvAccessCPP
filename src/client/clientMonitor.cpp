@@ -9,10 +9,11 @@
 #include <pv/current_function.h>
 #include <pv/pvData.h>
 #include <pv/bitSet.h>
+#include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
 #include "pv/logger.h"
-#include "pva/client.h"
+#include "clientpvt.h"
 #include "pv/pvAccess.h"
 
 namespace pvd = epics::pvData;
@@ -34,13 +35,15 @@ struct Monitor::Impl : public pva::MonitorRequester
 
     pva::MonitorElement::Ref last;
 
+    static size_t num_instances;
+
     Impl(ClientChannel::MonitorCallback* cb)
         :started(false)
         ,done(false)
         ,seenEmpty(false)
         ,cb(cb)
-    {}
-    virtual ~Impl() {cancel();}
+    {REFTRACE_INCREMENT(num_instances);}
+    virtual ~Impl() {cancel();REFTRACE_DECREMENT(num_instances);}
 
     void callEvent(Guard& G, MonitorEvent::event_t evt = MonitorEvent::Fail)
     {
@@ -160,6 +163,8 @@ struct Monitor::Impl : public pva::MonitorRequester
     }
 };
 
+size_t Monitor::Impl::num_instances;
+
 Monitor::Monitor(const std::tr1::shared_ptr<Impl>& impl)
     :impl(impl)
 {}
@@ -222,6 +227,15 @@ ClientChannel::monitor(MonitorCallback *cb,
     }
 
     return Monitor(ret);
+}
+
+namespace detail {
+
+void registerRefTrackMonitor()
+{
+    epics::registerRefCounter("pvac::Monitor::Impl", &Monitor::Impl::num_instances);
+}
+
 }
 
 }//namespace pvac

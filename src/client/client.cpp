@@ -8,10 +8,11 @@
 
 #include <pv/pvData.h>
 #include <pv/bitSet.h>
+#include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
 #include "pv/logger.h"
-#include "pva/client.h"
+#include "clientpvt.h"
 #include "pv/pvAccess.h"
 #include "pv/configuration.h"
 
@@ -34,7 +35,10 @@ struct ClientChannel::Impl : public pva::ChannelRequester
     typedef std::vector<ClientChannel::ConnectCallback*> listeners_t;
     listeners_t listeners;
 
-    virtual ~Impl() {}
+    static size_t num_instances;
+
+    Impl() {REFTRACE_INCREMENT(num_instances);}
+    virtual ~Impl() {REFTRACE_DECREMENT(num_instances);}
 
     virtual std::string getRequesterName() OVERRIDE FINAL { return "ClientChannel::Impl"; }
 
@@ -67,6 +71,8 @@ struct ClientChannel::Impl : public pva::ChannelRequester
         }
     }
 };
+
+size_t ClientChannel::Impl::num_instances;
 
 ClientChannel::Options::Options()
     :priority(0)
@@ -151,18 +157,37 @@ void ClientChannel::removeConnectListener(ConnectCallback* cb)
     }
 }
 
+static
+void register_reftrack()
+{
+    static volatile int done;
+    if(done) return;
+    done = 1;
+    // done is an optimization, duplicate calls to registerRef* are no-ops
+    pvac::detail::registerRefTrack();
+    pvac::detail::registerRefTrackGet();
+    pvac::detail::registerRefTrackMonitor();
+    pvac::detail::registerRefTrackRPC();
+}
+
 std::tr1::shared_ptr<epics::pvAccess::Channel>
 ClientChannel::getChannel()
 { return impl->channel; }
 
 struct ClientProvider::Impl
 {
+    static size_t num_instances;
+    Impl() {register_reftrack(); REFTRACE_INCREMENT(num_instances);}
+    ~Impl() {REFTRACE_DECREMENT(num_instances);}
+
     pva::ChannelProvider::shared_pointer provider;
 
     epicsMutex mutex;
     typedef std::map<std::pair<std::string, ClientChannel::Options>, std::tr1::weak_ptr<ClientChannel::Impl> > channels_t;
     channels_t channels;
 };
+
+size_t ClientProvider::Impl::num_instances;
 
 ClientProvider::ClientProvider(const std::string& providerName,
                                        const std::tr1::shared_ptr<epics::pvAccess::Configuration>& conf)
@@ -238,6 +263,16 @@ void ClientProvider::disconnect()
 {
     Guard G(impl->mutex);
     impl->channels.clear();
+}
+
+namespace detail {
+
+void registerRefTrack()
+{
+    epics::registerRefCounter("pvac::ClientChannel::Impl", &ClientChannel::Impl::num_instances);
+    epics::registerRefCounter("pvac::ClientProvider::Impl", &ClientProvider::Impl::num_instances);
+}
+
 }
 
 } //namespace pvac

@@ -8,6 +8,7 @@
 
 #include <pv/pvData.h>
 #include <pv/bitSet.h>
+#include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
 #include "pv/logger.h"
@@ -34,9 +35,12 @@ struct RPCer : public pva::ChannelRPCRequester,
 
     pvd::PVStructure::const_shared_pointer args;
 
+    static size_t num_instances;
+
     RPCer(pvac::ClientChannel::GetCallback* cb,
-          const pvd::PVStructure::const_shared_pointer& args) :started(false), cb(cb), args(args) {}
-    virtual ~RPCer() {cancel();}
+          const pvd::PVStructure::const_shared_pointer& args) :started(false), cb(cb), args(args)
+      {REFTRACE_INCREMENT(num_instances);}
+    virtual ~RPCer() {cancel();REFTRACE_DECREMENT(num_instances);}
 
     void callEvent(Guard& G, pvac::GetEvent::event_t evt = pvac::GetEvent::Fail)
     {
@@ -136,6 +140,8 @@ struct RPCer : public pva::ChannelRPCRequester,
     }
 };
 
+size_t RPCer::num_instances;
+
 }//namespace
 
 namespace pvac {
@@ -157,6 +163,15 @@ ClientChannel::rpc(GetCallback* cb,
     }
 
     return Operation(ret);
+}
+
+namespace detail {
+
+void registerRefTrackRPC()
+{
+    epics::registerRefCounter("pvac::RPCer", &RPCer::num_instances);
+}
+
 }
 
 }//namespace pvac

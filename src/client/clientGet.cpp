@@ -10,10 +10,11 @@
 #include <pv/current_function.h>
 #include <pv/pvData.h>
 #include <pv/bitSet.h>
+#include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
 #include "pv/logger.h"
-#include "pva/client.h"
+#include "clientpvt.h"
 #include "pv/pvAccess.h"
 
 namespace pvd = epics::pvData;
@@ -35,9 +36,13 @@ struct GetPutter : public pva::ChannelPutRequester,
     pvac::ClientChannel::PutCallback *putcb;
     pvac::GetEvent event;
 
-    GetPutter(pvac::ClientChannel::GetCallback* cb) :started(false), getcb(cb), putcb(0) {}
-    GetPutter(pvac::ClientChannel::PutCallback* cb) :started(false), getcb(0), putcb(cb) {}
-    virtual ~GetPutter() {cancel();}
+    static size_t num_instances;
+
+    GetPutter(pvac::ClientChannel::GetCallback* cb) :started(false), getcb(cb), putcb(0)
+    {REFTRACE_INCREMENT(num_instances);}
+    GetPutter(pvac::ClientChannel::PutCallback* cb) :started(false), getcb(0), putcb(cb)
+    {REFTRACE_INCREMENT(num_instances);}
+    virtual ~GetPutter() {cancel();REFTRACE_DECREMENT(num_instances);}
 
     void callEvent(Guard& G, pvac::GetEvent::event_t evt = pvac::GetEvent::Fail)
     {
@@ -172,6 +177,8 @@ struct GetPutter : public pva::ChannelPutRequester,
     }
 };
 
+size_t GetPutter::num_instances;
+
 } //namespace
 
 namespace pvac {
@@ -210,6 +217,15 @@ ClientChannel::put(PutCallback* cb,
     }
 
     return Operation(ret);
+
+}
+
+namespace detail {
+
+void registerRefTrackGet()
+{
+    epics::registerRefCounter("pvac::GetPutter", &GetPutter::num_instances);
+}
 
 }
 

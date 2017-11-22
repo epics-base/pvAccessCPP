@@ -179,6 +179,7 @@ struct Timeout : public std::runtime_error
 
 namespace detail {
 class PutBuilder;
+void registerRefTrack();
 }
 
 /** Represents a single channel
@@ -195,6 +196,7 @@ class epicsShareClass ClientChannel
     struct Impl;
     std::tr1::shared_ptr<Impl> impl;
     friend class ClientProvider;
+    friend void detail::registerRefTrack();
 
     ClientChannel(const std::tr1::shared_ptr<Impl>& i) :impl(i) {}
 public:
@@ -395,6 +397,7 @@ class epicsShareClass ClientProvider
 {
     struct Impl;
     std::tr1::shared_ptr<Impl> impl;
+    friend void detail::registerRefTrack();
 public:
 
     /** Use named provider.
