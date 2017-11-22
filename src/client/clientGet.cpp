@@ -25,7 +25,8 @@ typedef epicsGuardRelease<epicsMutex> UnGuard;
 namespace {
 
 struct GetPutter : public pva::ChannelPutRequester,
-                   public pvac::Operation::Impl
+                   public pvac::Operation::Impl,
+                   public pvac::detail::wrapped_shared_from_this<GetPutter>
 {
     mutable epicsMutex mutex;
 
@@ -42,7 +43,7 @@ struct GetPutter : public pva::ChannelPutRequester,
     {REFTRACE_INCREMENT(num_instances);}
     GetPutter(pvac::ClientChannel::PutCallback* cb) :started(false), getcb(0), putcb(cb)
     {REFTRACE_INCREMENT(num_instances);}
-    virtual ~GetPutter() {cancel();REFTRACE_DECREMENT(num_instances);}
+    virtual ~GetPutter() {REFTRACE_DECREMENT(num_instances);}
 
     void callEvent(Guard& G, pvac::GetEvent::event_t evt = pvac::GetEvent::Fail)
     {
@@ -69,6 +70,7 @@ struct GetPutter : public pva::ChannelPutRequester,
         return op ? op->getChannel()->getChannelName() : "<dead>";
     }
 
+    // called automatically via wrapped_shared_from_this
     virtual void cancel() OVERRIDE FINAL
     {
         Guard G(mutex);
@@ -191,11 +193,12 @@ ClientChannel::get(ClientChannel::GetCallback* cb,
     if(!pvRequest)
         pvRequest = pvd::createRequest("field()");
 
-    std::tr1::shared_ptr<GetPutter> ret(new GetPutter(cb));
+    std::tr1::shared_ptr<GetPutter> ret(GetPutter::build(cb));
 
     {
         Guard G(ret->mutex);
-        ret->op = getChannel()->createChannelPut(ret, std::tr1::const_pointer_cast<pvd::PVStructure>(pvRequest));
+        ret->op = getChannel()->createChannelPut(ret->internal_shared_from_this(),
+                                                 std::tr1::const_pointer_cast<pvd::PVStructure>(pvRequest));
     }
 
     return Operation(ret);
@@ -209,11 +212,12 @@ ClientChannel::put(PutCallback* cb,
     if(!pvRequest)
         pvRequest = pvd::createRequest("field()");
 
-    std::tr1::shared_ptr<GetPutter> ret(new GetPutter(cb));
+    std::tr1::shared_ptr<GetPutter> ret(GetPutter::build(cb));
 
     {
         Guard G(ret->mutex);
-        ret->op = getChannel()->createChannelPut(ret, std::tr1::const_pointer_cast<pvd::PVStructure>(pvRequest));
+        ret->op = getChannel()->createChannelPut(ret->internal_shared_from_this(),
+                                                 std::tr1::const_pointer_cast<pvd::PVStructure>(pvRequest));
     }
 
     return Operation(ret);

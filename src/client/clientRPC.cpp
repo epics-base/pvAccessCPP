@@ -12,7 +12,7 @@
 
 #define epicsExportSharedSymbols
 #include "pv/logger.h"
-#include "pva/client.h"
+#include "clientpvt.h"
 #include "pv/pvAccess.h"
 
 namespace pvd = epics::pvData;
@@ -23,7 +23,8 @@ typedef epicsGuardRelease<epicsMutex> UnGuard;
 namespace {
 
 struct RPCer : public pva::ChannelRPCRequester,
-               public pvac::Operation::Impl
+               public pvac::Operation::Impl,
+               public pvac::detail::wrapped_shared_from_this<RPCer>
 {
     mutable epicsMutex mutex;
 
@@ -40,7 +41,7 @@ struct RPCer : public pva::ChannelRPCRequester,
     RPCer(pvac::ClientChannel::GetCallback* cb,
           const pvd::PVStructure::const_shared_pointer& args) :started(false), cb(cb), args(args)
       {REFTRACE_INCREMENT(num_instances);}
-    virtual ~RPCer() {cancel();REFTRACE_DECREMENT(num_instances);}
+    virtual ~RPCer() {REFTRACE_DECREMENT(num_instances);}
 
     void callEvent(Guard& G, pvac::GetEvent::event_t evt = pvac::GetEvent::Fail)
     {
@@ -79,6 +80,7 @@ struct RPCer : public pva::ChannelRPCRequester,
         return op ? op->getChannel()->getChannelName() : "<dead>";
     }
 
+    // called automatically via wrapped_shared_from_this
     virtual void cancel()
     {
         Guard G(mutex);
@@ -155,11 +157,12 @@ ClientChannel::rpc(GetCallback* cb,
     if(!pvRequest)
         pvRequest = pvd::createRequest("field()");
 
-    std::tr1::shared_ptr<RPCer> ret(new RPCer(cb, arguments));
+    std::tr1::shared_ptr<RPCer> ret(RPCer::build(cb, arguments));
 
     {
         Guard G(ret->mutex);
-        ret->op = getChannel()->createChannelRPC(ret, std::tr1::const_pointer_cast<pvd::PVStructure>(pvRequest));
+        ret->op = getChannel()->createChannelRPC(ret->internal_shared_from_this(),
+                                                 std::tr1::const_pointer_cast<pvd::PVStructure>(pvRequest));
     }
 
     return Operation(ret);

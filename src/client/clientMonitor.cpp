@@ -23,7 +23,8 @@ typedef epicsGuardRelease<epicsMutex> UnGuard;
 
 namespace pvac {
 
-struct Monitor::Impl : public pva::MonitorRequester
+struct Monitor::Impl : public pva::MonitorRequester,
+                       public pvac::detail::wrapped_shared_from_this<Monitor::Impl>
 {
     mutable epicsMutex mutex;
     pva::Channel::shared_pointer chan;
@@ -43,7 +44,7 @@ struct Monitor::Impl : public pva::MonitorRequester
         ,seenEmpty(false)
         ,cb(cb)
     {REFTRACE_INCREMENT(num_instances);}
-    virtual ~Impl() {cancel();REFTRACE_DECREMENT(num_instances);}
+    virtual ~Impl() {REFTRACE_DECREMENT(num_instances);}
 
     void callEvent(Guard& G, MonitorEvent::event_t evt = MonitorEvent::Fail)
     {
@@ -78,6 +79,7 @@ struct Monitor::Impl : public pva::MonitorRequester
         }
     }
 
+    // called automatically via wrapped_shared_from_this
     void cancel()
     {
         operation_type::shared_pointer temp;
@@ -218,12 +220,13 @@ ClientChannel::monitor(MonitorCallback *cb,
     if(!pvRequest)
         pvRequest = pvd::createRequest("field()");
 
-    std::tr1::shared_ptr<Monitor::Impl> ret(new Monitor::Impl(cb));
+    std::tr1::shared_ptr<Monitor::Impl> ret(Monitor::Impl::build(cb));
     ret->chan = getChannel();
 
     {
         Guard G(ret->mutex);
-        ret->op = ret->chan->createMonitor(ret, std::tr1::const_pointer_cast<pvd::PVStructure>(pvRequest));
+        ret->op = ret->chan->createMonitor(ret->internal_shared_from_this(),
+                                           std::tr1::const_pointer_cast<pvd::PVStructure>(pvRequest));
     }
 
     return Monitor(ret);

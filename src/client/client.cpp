@@ -27,7 +27,8 @@ Timeout::Timeout()
     :std::runtime_error("Timeout")
 {}
 
-struct ClientChannel::Impl : public pva::ChannelRequester
+struct ClientChannel::Impl : public pva::ChannelRequester,
+                             public pvac::detail::wrapped_shared_from_this<ClientChannel::Impl>
 {
     epicsMutex mutex;
     pva::Channel::shared_pointer channel;
@@ -40,6 +41,15 @@ struct ClientChannel::Impl : public pva::ChannelRequester
     Impl() {REFTRACE_INCREMENT(num_instances);}
     virtual ~Impl() {REFTRACE_DECREMENT(num_instances);}
 
+    // called automatically via wrapped_shared_from_this
+    void cancel()
+    {
+        // ClientChannel destroy implicitly removes all callbacks,
+        // but doesn't destroy the Channel or cancel Operations
+        Guard G(mutex);
+        listeners.clear();
+    }
+
     virtual std::string getRequesterName() OVERRIDE FINAL { return "ClientChannel::Impl"; }
 
     virtual void channelCreated(const pvd::Status& status, pva::Channel::shared_pointer const & channel) OVERRIDE FINAL {}
@@ -49,7 +59,7 @@ struct ClientChannel::Impl : public pva::ChannelRequester
         listeners_t notify;
         {
             Guard G(mutex);
-            notify = listeners;
+            notify = listeners; // copy vector
         }
         ConnectEvent evt;
         evt.connected = connectionState==pva::Channel::CONNECTED;
@@ -103,13 +113,14 @@ void Operation::cancel()
 ClientChannel::ClientChannel(const std::tr1::shared_ptr<pva::ChannelProvider>& provider,
                   const std::string& name,
                   const Options& opt)
-    :impl(new Impl)
+    :impl(Impl::build())
 {
     if(name.empty())
         THROW_EXCEPTION2(std::logic_error, "empty channel name not allowed");
     if(!provider)
         THROW_EXCEPTION2(std::logic_error, "NULL ChannelProvider");
-    impl->channel = provider->createChannel(name, impl, opt.priority, opt.address);
+    impl->channel = provider->createChannel(name, impl->internal_shared_from_this(),
+                                            opt.priority, opt.address);
     if(!impl->channel)
         throw std::runtime_error("ChannelProvider failed to create Channel");
 }
