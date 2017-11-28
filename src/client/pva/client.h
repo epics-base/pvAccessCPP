@@ -193,7 +193,10 @@ void registerRefTrack();
  */
 class epicsShareClass ClientChannel
 {
+public:
+    // public only as a workaround for old gcc
     struct Impl;
+private:
     std::tr1::shared_ptr<Impl> impl;
     friend class ClientProvider;
     friend void detail::registerRefTrack();
