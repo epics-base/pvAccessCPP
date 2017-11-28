@@ -126,6 +126,9 @@ struct Monitor::Impl : public pva::MonitorRequester,
             pvd::Status sts(operation->start());
             if(sts.isSuccess()) {
                 started = true;
+                /* storing raw pointer to operation, which is expected
+                 * to outlive our 'op'.
+                 */
                 last.attach(operation);
             } else {
                 event.message = sts.getMessage();
