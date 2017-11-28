@@ -39,6 +39,7 @@ BlockingTCPAcceptor::BlockingTCPAcceptor(
                 epicsThreadStackMedium),
             epicsThreadPriorityMedium)
 {
+    memset(&_bindAddress, 0, sizeof(_bindAddress));
     _bindAddress.ia.sin_family = AF_INET;
     _bindAddress.ia.sin_port = htons(port);
     _bindAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);

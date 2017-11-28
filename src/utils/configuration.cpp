@@ -89,6 +89,7 @@ bool Configuration::getPropertyAsAddress(const std::string& name, osiSockAddr* a
 
     if(val.empty()) return false;
 
+    memset(addr, 0, sizeof(*addr));
     addr->ia.sin_family = AF_INET;
     if(aToIPAddr(val.c_str(), dftport, &addr->ia))
         return false;

@@ -27,6 +27,7 @@ namespace pvAccess {
 
 void addDefaultBroadcastAddress(InetAddrVector* v, unsigned short p) {
     osiSockAddr pNewNode;
+    memset(&pNewNode, 0, sizeof(pNewNode));
     pNewNode.ia.sin_family = AF_INET;
     // TODO this does not work in case of no active interfaces, should return 127.0.0.1 then
     pNewNode.ia.sin_addr.s_addr = htonl(INADDR_BROADCAST);
@@ -102,6 +103,7 @@ bool isMulticastAddress(const osiSockAddr* address) {
 }
 
 void intToIPv4Address(osiSockAddr& ret, int32 addr) {
+    memset(&ret, 0, sizeof(ret));
     ret.ia.sin_family = AF_INET;
     ret.ia.sin_addr.s_addr = htonl(addr);
     ret.ia.sin_port = 0;
@@ -205,6 +207,7 @@ int getLoopbackNIF(osiSockAddr &loAddr, string const & localNIF, unsigned short 
     }
 
     // fallback
+    memset(&loAddr, 0, sizeof(loAddr));
     loAddr.ia.sin_family = AF_INET;
     loAddr.ia.sin_port = ntohs(port);
     loAddr.ia.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
@@ -514,6 +517,7 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
             const unsigned bcast = pIfinfo->iiBroadcastAddress.AddressIn.sin_addr.s_addr;
             const unsigned addr = pIfinfo->iiAddress.AddressIn.sin_addr.s_addr;
             unsigned result = (addr & mask) | (bcast &~mask);
+            memset(&node.ifaceBCast, 0, sizeof(node.ifaceBCast));
             node.ifaceBCast.ia.sin_family = AF_INET;
             node.ifaceBCast.ia.sin_addr.s_addr = result;
             node.ifaceBCast.ia.sin_port = htons ( 0 );

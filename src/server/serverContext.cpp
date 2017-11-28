@@ -126,6 +126,7 @@ void ServerContextImpl::loadConfiguration()
         SET_LOG_LEVEL(logLevelDebug);
 
     // TODO multiple addresses
+    memset(&_ifaceAddr, 0, sizeof(_ifaceAddr));
     _ifaceAddr.ia.sin_family = AF_INET;
     _ifaceAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
     _ifaceAddr.ia.sin_port = 0;

@@ -147,6 +147,7 @@ bool processSearchResponse(osiSockAddr const & responseFrom, ByteBuffer & receiv
     /*int32 searchSequenceId = */receiveBuffer.getInt();
 
     osiSockAddr serverAddress;
+    memset(&serverAddress, 0, sizeof(serverAddress));
     serverAddress.ia.sin_family = AF_INET;
 
     // 128-bit IPv6 address
@@ -265,6 +266,7 @@ bool discoverServers(double timeOut)
     }
 
     osiSockAddr bindAddr;
+    memset(&bindAddr, 0, sizeof(bindAddr));
     bindAddr.ia.sin_family = AF_INET;
     bindAddr.ia.sin_port = htons(0);
     bindAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);

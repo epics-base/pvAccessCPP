@@ -254,6 +254,7 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     payloadBuffer->getShort();
 
     osiSockAddr responseAddress;
+    memset(&responseAddress, 0, sizeof(responseAddress));
     responseAddress.ia.sin_family = AF_INET;
 
     // 128-bit IPv6 address

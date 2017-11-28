@@ -243,6 +243,7 @@ void test_multicastLoopback()
     epicsSocketEnableAddressUseForDatagramFanout(socket);
 
     osiSockAddr bindAddr;
+    memset(&bindAddr, 0, sizeof(bindAddr));
     bindAddr.ia.sin_family = AF_INET;
     bindAddr.ia.sin_port = ntohs(port);
     bindAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);

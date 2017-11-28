@@ -343,6 +343,8 @@ bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & trans
             {
                 // 128-bit IPv6 address
                 osiSockAddr originNIFAddress;
+                memset(&originNIFAddress, 0, sizeof(originNIFAddress));
+
                 if (decodeAsIPv6Address(receiveBuffer, &originNIFAddress))
                 {
                     originNIFAddress.ia.sin_family = AF_INET;
@@ -566,6 +568,7 @@ void initializeUDPTransports(bool serverFlag,
     //
 
     osiSockAddr anyAddress;
+    memset(&anyAddress, 0, sizeof(anyAddress));
     anyAddress.ia.sin_family = AF_INET;
     anyAddress.ia.sin_port = htons(0);
     anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -685,6 +688,7 @@ void initializeUDPTransports(bool serverFlag,
         {
             // where to bind (listen) address
             osiSockAddr listenLocalAddress;
+            memset(&listenLocalAddress, 0, sizeof(listenLocalAddress));
             listenLocalAddress.ia.sin_family = AF_INET;
             listenLocalAddress.ia.sin_port = htons(listenPort);
             listenLocalAddress.ia.sin_addr.s_addr = node.ifaceAddr.ia.sin_addr.s_addr;
@@ -721,6 +725,7 @@ void initializeUDPTransports(bool serverFlag,
                  */
 
                 osiSockAddr bcastAddress;
+                memset(&bcastAddress, 0, sizeof(bcastAddress));
                 bcastAddress.ia.sin_family = AF_INET;
                 bcastAddress.ia.sin_port = htons(listenPort);
                 bcastAddress.ia.sin_addr.s_addr = node.ifaceBCast.ia.sin_addr.s_addr;

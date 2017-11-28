@@ -2564,6 +2564,7 @@ public:
         int32 searchSequenceId = payloadBuffer->getInt();
 
         osiSockAddr serverAddress;
+        memset(&serverAddress, 0, sizeof(serverAddress));
         serverAddress.ia.sin_family = AF_INET;
 
         // 128-bit IPv6 address
@@ -2627,6 +2628,7 @@ public:
         payloadBuffer->getShort();
 
         osiSockAddr responseAddress;
+        memset(&responseAddress, 0, sizeof(responseAddress));
         responseAddress.ia.sin_family = AF_INET;
 
         // 128-bit IPv6 address
@@ -2715,6 +2717,7 @@ public:
         int16 changeCount = payloadBuffer->getShort();
 
         osiSockAddr serverAddress;
+        memset(&serverAddress, 0, sizeof(serverAddress));
         serverAddress.ia.sin_family = AF_INET;
 
         // 128-bit IPv6 address
