@@ -1040,7 +1040,6 @@ void usage (void)
              "  -i:                  Do not format standard types (enum_t, time_t, ...)\n"
              "  -t:                  Terse mode\n"
              "  -T:                  Transpose vector, table, matrix\n"
-             "  -m:                  Monitor mode\n"
              "  -x:                  Use column-major order to decode matrix\n"
              "  -p <provider>:       Set default provider name, default is '%s'\n"
              "  -q:                  Quiet mode, print only error messages\n"
@@ -1299,128 +1298,6 @@ public:
 
 
 
-class MonitorRequesterImpl : public MonitorRequester
-{
-private:
-
-    string m_channelName;
-
-public:
-
-    MonitorRequesterImpl(std::string channelName) : m_channelName(channelName) {};
-
-    virtual string getRequesterName()
-    {
-        return "MonitorRequesterImpl";
-    }
-
-    virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, StructureConstPtr const & /*structure*/)
-    {
-        if (status.isSuccess())
-        {
-            /*
-            string str;
-            structure->toString(&str);
-            std::cout << str << std::endl;
-            */
-
-            Status startStatus = monitor->start();
-            // show error
-            // TODO and exit
-            if (!startStatus.isSuccess())
-            {
-                std::cerr << "[" << m_channelName << "] channel monitor start: " << startStatus << std::endl;
-            }
-
-        }
-        else
-        {
-            std::cerr << "monitorConnect(" << dump_stack_only_on_debug(status) << ")" << std::endl;
-        }
-    }
-
-    virtual void channelDisconnect(bool destroy)
-    {
-        if(!destroy)
-            std::cerr << std::setw(30) << std::left << m_channelName
-                      << ' ' << "*** disconnected" << std::endl;
-    }
-
-    virtual void monitorEvent(Monitor::shared_pointer const & monitor)
-    {
-
-        MonitorElement::shared_pointer element;
-        while ((element = monitor->poll()))
-        {
-            if (mode == ValueOnlyMode)
-            {
-                PVField::shared_pointer value = element->pvStructurePtr->getSubField("value");
-                if (value.get() == 0)
-                {
-                    std::cerr << "no 'value' field" << std::endl;
-                    dumpValue(m_channelName, element->pvStructurePtr);
-                }
-                else
-                {
-                    Type valueType = value->getField()->getType();
-                    if (valueType != scalar && valueType != scalarArray)
-                    {
-                        // switch to structure mode, unless it's T-type
-                        if (valueType == structure && isTType(TR1::static_pointer_cast<PVStructure>(value)))
-                        {
-                            if (fieldSeparator == ' ')
-                                std::cout << std::setw(30) << std::left << m_channelName;
-                            else
-                                std::cout << m_channelName;
-                            std::cout << fieldSeparator;
-
-                            formatTType(std::cout, TR1::static_pointer_cast<PVStructure>(value));
-                            std::cout << std::endl;
-                        }
-                        else
-                            dumpValue(m_channelName, element->pvStructurePtr);
-                    }
-                    else
-                    {
-                        if (fieldSeparator == ' ')
-                            std::cout << std::setw(30) << std::left << m_channelName;
-                        else
-                            std::cout << m_channelName;
-                        std::cout << fieldSeparator;
-
-                        terse(std::cout, value) << std::endl;
-                    }
-                }
-            }
-            else if (mode == TerseMode)
-            {
-                if (fieldSeparator == ' ')
-                    std::cout << std::setw(30) << std::left << m_channelName;
-                else
-                    std::cout << m_channelName;
-                std::cout << fieldSeparator;
-
-                terseStructure(std::cout, element->pvStructurePtr) << std::endl;
-            }
-            else
-            {
-                dumpValue(m_channelName, element->pvStructurePtr);
-            }
-
-            monitor->release(element);
-        }
-
-    }
-
-    virtual void unlisten(Monitor::shared_pointer const & /*monitor*/)
-    {
-        //std::cerr << "unlisten" << std::endl;
-        // TODO
-        epicsExit(0);
-    }
-};
-
-
 /*+**************************************************************************
  *
  * Function:	main
@@ -1454,7 +1331,6 @@ int main (int argc, char *argv[])
     string service;
     //string urlEncodedRequest;
     vector< pair<string,string> > parameters;
-    bool monitor = false;
     string defaultProvider = DEFAULT_PROVIDER;
 
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
@@ -1549,7 +1425,8 @@ int main (int argc, char *argv[])
             transpose = true;
             break;
         case 'm':               /* Monitor mode */
-            monitor = true;
+            std::cerr<<"Monitor mode is broken and has been disabled until fixed\n";
+            exit(1);
             break;
         case 'x':               /* Column-major order mode */
             columnMajor = true;
@@ -1805,12 +1682,6 @@ int main (int argc, char *argv[])
                 continue;
             }
 
-            if (monitor)
-            {
-                TR1::shared_ptr<MonitorRequesterImpl> monitorRequesterImpl(new MonitorRequesterImpl(channel->getChannelName()));
-                operations.push_back(channel->createMonitor(monitorRequesterImpl, pvRequest));
-            }
-            else
             {
                 TR1::shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl;
 
@@ -1871,11 +1742,6 @@ int main (int argc, char *argv[])
         if (collectValues)
             printValues(freeze(collectedNames), collectedValues);
 
-        if (allOK && monitor)
-        {
-            while (true)
-                epicsThreadSleep(timeOut);
-        }
     }
     // service RPC mode
     else
