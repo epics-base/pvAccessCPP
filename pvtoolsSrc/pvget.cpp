@@ -611,8 +611,7 @@ int main (int argc, char *argv[])
                 Tracker::doneEvt.wait();
             else if(!Tracker::doneEvt.wait(timeOut)) {
                 allOK = false;
-                if(debugFlag)
-                    std::cerr<<"Timeout\n";
+                std::cerr<<"Timeout\n";
                 break;
             }
         }
