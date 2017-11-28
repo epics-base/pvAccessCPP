@@ -2182,11 +2182,11 @@ public:
                 // defaults to queueSize/2
                 m_ackAny = m_queueSize/2;
 
-                bool done = false;
-                int32 size;
-
                 option = pvOptions->getSubField<PVScalar>("ackAny");
                 if (option) {
+                    bool done = false;
+                    int32 size = -1; /* -1 only to silence warning, should never be used */
+
                     if(option->getScalar()->getScalarType()==pvString) {
                         std::string sval(option->getAs<std::string>());
 
