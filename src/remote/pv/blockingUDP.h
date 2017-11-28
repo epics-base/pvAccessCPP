@@ -60,84 +60,77 @@ public:
 
     virtual ~BlockingUDPTransport();
 
-    virtual bool isClosed() {
+    virtual bool isClosed() OVERRIDE FINAL {
         return _closed.get();
     }
 
-    /*
-    void setReplyTransport(const Transport::shared_pointer& T)
-    {
-        _replyTransport = T;
-    }
-    */
-
-    virtual const osiSockAddr* getRemoteAddress() const {
+    virtual const osiSockAddr* getRemoteAddress() const OVERRIDE FINAL {
         return &_remoteAddress;
     }
 
-    virtual const std::string& getRemoteName() const {
+    virtual const std::string& getRemoteName() const OVERRIDE FINAL {
         return _remoteName;
     }
 
-    virtual std::string getType() const {
+    virtual std::string getType() const OVERRIDE FINAL {
         return std::string("udp");
     }
 
-    virtual std::size_t getReceiveBufferSize() const {
+    virtual std::size_t getReceiveBufferSize() const OVERRIDE FINAL {
         return _receiveBuffer.getSize();
     }
 
-    virtual std::size_t getSocketReceiveBufferSize() const;
+    virtual std::size_t getSocketReceiveBufferSize() const OVERRIDE FINAL;
 
-    virtual epics::pvData::int16 getPriority() const {
+    virtual epics::pvData::int16 getPriority() const OVERRIDE FINAL {
         return PVA_DEFAULT_PRIORITY;
     }
 
-    virtual epics::pvData::int8 getRevision() const {
+    virtual epics::pvData::int8 getRevision() const OVERRIDE FINAL {
         return PVA_PROTOCOL_REVISION;
     }
 
-    virtual void setRemoteRevision(epics::pvData::int8 /*revision*/) {
+    virtual void setRemoteRevision(epics::pvData::int8 /*revision*/) OVERRIDE FINAL {
         // noop
     }
 
     virtual void setRemoteTransportReceiveBufferSize(
-        std::size_t /*receiveBufferSize*/) {
+        std::size_t /*receiveBufferSize*/) OVERRIDE FINAL {
         // noop for UDP (limited by 64k; MAX_UDP_SEND for PVA)
     }
 
     virtual void setRemoteTransportSocketReceiveBufferSize(
-        std::size_t /*socketReceiveBufferSize*/) {
+        std::size_t /*socketReceiveBufferSize*/) OVERRIDE FINAL {
         // noop for UDP (limited by 64k; MAX_UDP_SEND for PVA)
     }
 
-    virtual void aliveNotification() {
+    virtual void aliveNotification() OVERRIDE FINAL {
         // noop
     }
 
-    virtual void changedTransport() {
+    virtual void changedTransport() OVERRIDE FINAL {
         // noop
     }
 
-    virtual bool verify(epics::pvData::int32 /*timeoutMs*/) {
+    virtual bool verify(epics::pvData::int32 /*timeoutMs*/) OVERRIDE FINAL {
         // noop
         return true;
     }
 
-    virtual void verified(epics::pvData::Status const & /*status*/) {
+    virtual void verified(epics::pvData::Status const & /*status*/) OVERRIDE FINAL {
         // noop
     }
 
-    virtual void authNZMessage(epics::pvData::PVField::shared_pointer const & data) {
+    virtual void authNZMessage(epics::pvData::PVField::shared_pointer const & data) OVERRIDE FINAL {
         // noop
     }
 
-    virtual std::tr1::shared_ptr<SecuritySession> getSecuritySession() const {
+    virtual std::tr1::shared_ptr<SecuritySession> getSecuritySession() const OVERRIDE FINAL {
         return std::tr1::shared_ptr<SecuritySession>();
     }
 
     // NOTE: this is not yet used for UDP
-    virtual void setByteOrder(int byteOrder)  {
+    virtual void setByteOrder(int byteOrder) OVERRIDE FINAL  {
         // called from receive thread... or before processing
         _receiveBuffer.setEndianess(byteOrder);
 
@@ -145,93 +138,93 @@ public:
         _sendBuffer.setEndianess(byteOrder);
     }
 
-    virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender);
+    virtual void enqueueSendRequest(TransportSender::shared_pointer const & sender) OVERRIDE FINAL;
 
-    virtual void flushSendQueue();
+    virtual void flushSendQueue() OVERRIDE FINAL;
 
     void start();
 
-    virtual void close();
+    virtual void close() OVERRIDE FINAL;
 
-    virtual void ensureData(std::size_t size) {
+    virtual void ensureData(std::size_t size) OVERRIDE FINAL {
         if (_receiveBuffer.getRemaining() < size)
             throw std::underflow_error("no more data in UDP packet");
     }
 
-    virtual void alignData(std::size_t alignment) {
+    virtual void alignData(std::size_t alignment) OVERRIDE FINAL {
         _receiveBuffer.align(alignment);
     }
 
     virtual bool directSerialize(epics::pvData::ByteBuffer* /*existingBuffer*/, const char* /*toSerialize*/,
-                                 std::size_t /*elementCount*/, std::size_t /*elementSize*/)
+                                 std::size_t /*elementCount*/, std::size_t /*elementSize*/) OVERRIDE FINAL
     {
         return false;
     }
 
     virtual bool directDeserialize(epics::pvData::ByteBuffer* /*existingBuffer*/, char* /*deserializeTo*/,
-                                   std::size_t /*elementCount*/, std::size_t /*elementSize*/)
+                                   std::size_t /*elementCount*/, std::size_t /*elementSize*/) OVERRIDE FINAL
     {
         return false;
     }
 
-    virtual void startMessage(epics::pvData::int8 command, std::size_t ensureCapacity, epics::pvData::int32 payloadSize = 0);
-    virtual void endMessage();
+    virtual void startMessage(epics::pvData::int8 command, std::size_t ensureCapacity, epics::pvData::int32 payloadSize = 0) OVERRIDE FINAL;
+    virtual void endMessage() OVERRIDE FINAL;
 
-    virtual void flush(bool /*lastMessageCompleted*/) {
+    virtual void flush(bool /*lastMessageCompleted*/) OVERRIDE FINAL {
         // noop since all UDP requests are sent immediately
     }
 
-    virtual void setRecipient(const osiSockAddr& sendTo) {
+    virtual void setRecipient(const osiSockAddr& sendTo) OVERRIDE FINAL {
         _sendToEnabled = true;
         _sendTo = sendTo;
     }
 
-    virtual void setLocalMulticastAddress(const osiSockAddr& sendTo) {
+    void setLocalMulticastAddress(const osiSockAddr& sendTo) {
         _localMulticastAddressEnabled = true;
         _localMulticastAddress = sendTo;
     }
 
-    virtual bool hasLocalMulticastAddress() const {
+    bool hasLocalMulticastAddress() const {
         return _localMulticastAddressEnabled;
     }
 
-    virtual const osiSockAddr& getLocalMulticastAddress() const {
+    const osiSockAddr& getLocalMulticastAddress() const {
         return _localMulticastAddress;
     }
 
-    virtual void flushSerializeBuffer() {
+    virtual void flushSerializeBuffer() OVERRIDE FINAL {
         // noop
     }
 
-    virtual void ensureBuffer(std::size_t /*size*/) {
+    virtual void ensureBuffer(std::size_t /*size*/) OVERRIDE FINAL {
         // noop
     }
 
-    virtual void alignBuffer(std::size_t alignment) {
+    virtual void alignBuffer(std::size_t alignment) OVERRIDE FINAL {
         _sendBuffer.align(alignment);
     }
 
     virtual void cachedSerialize(
-        const std::tr1::shared_ptr<const epics::pvData::Field>& field, epics::pvData::ByteBuffer* buffer)
+        const std::tr1::shared_ptr<const epics::pvData::Field>& field, epics::pvData::ByteBuffer* buffer) OVERRIDE FINAL
     {
         // no cache
         field->serialize(buffer, this);
     }
 
     virtual std::tr1::shared_ptr<const epics::pvData::Field>
-    cachedDeserialize(epics::pvData::ByteBuffer* buffer)
+    cachedDeserialize(epics::pvData::ByteBuffer* buffer) OVERRIDE FINAL
     {
         // no cache
         // TODO
         return epics::pvData::getFieldCreate()->deserialize(buffer, this);
     }
 
-    virtual bool acquire(std::tr1::shared_ptr<ClientChannelImpl> const & /*client*/)
+    virtual bool acquire(std::tr1::shared_ptr<ClientChannelImpl> const & /*client*/) OVERRIDE FINAL
     {
         return false;
     }
 
-    virtual void release(pvAccessID /*clientId*/) {}
+    virtual void release(pvAccessID /*clientId*/) OVERRIDE FINAL {}
 
     /**
      * Set ignore list.
