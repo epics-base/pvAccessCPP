@@ -49,16 +49,14 @@ class ClientChannelImpl;
  * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
  * @version $Id: BlockingTCPConnector.java,v 1.1 2010/05/03 14:45:47 mrkraimer Exp $
  */
-class BlockingTCPConnector : public Connector {
+class BlockingTCPConnector {
 public:
     POINTER_DEFINITIONS(BlockingTCPConnector);
 
     BlockingTCPConnector(Context::shared_pointer const & context, int receiveBufferSize,
                          float beaconInterval);
 
-    virtual ~BlockingTCPConnector();
-
-    virtual Transport::shared_pointer connect(std::tr1::shared_ptr<ClientChannelImpl> const & client,
+    Transport::shared_pointer connect(std::tr1::shared_ptr<ClientChannelImpl> const & client,
             ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& address,
             epics::pvData::int8 transportRevision, epics::pvData::int16 priority);
 private:

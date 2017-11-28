@@ -44,32 +44,19 @@ enum InetAddressType { inetAddressType_all, inetAddressType_unicast, inetAddress
 class BlockingUDPTransport : public epics::pvData::NoDefaultMethods,
     public Transport,
     public TransportSendControl,
-    public std::tr1::enable_shared_from_this<BlockingUDPTransport>,
     public epicsThreadRunable
 {
 public:
     POINTER_DEFINITIONS(BlockingUDPTransport);
 
 private:
+    std::tr1::weak_ptr<BlockingUDPTransport> internal_this;
     friend class BlockingUDPConnector;
     BlockingUDPTransport(bool serverFlag,
                          ResponseHandler::shared_pointer const & responseHandler,
                          SOCKET channel, osiSockAddr &bindAddress,
                          short remoteTransportRevision);
 public:
-
-    static shared_pointer create(bool serverFlag,
-                                 ResponseHandler::shared_pointer const & responseHandler,
-                                 SOCKET channel, osiSockAddr& bindAddress,
-                                 short remoteTransportRevision) EPICS_DEPRECATED
-    {
-        shared_pointer thisPointer(
-            new BlockingUDPTransport(serverFlag, responseHandler,
-        channel, bindAddress,
-        remoteTransportRevision)
-        );
-        return thisPointer;
-    }
 
     virtual ~BlockingUDPTransport();
 
@@ -428,7 +415,6 @@ private:
 };
 
 class BlockingUDPConnector :
-    public Connector,
     private epics::pvData::NoDefaultMethods {
 public:
     POINTER_DEFINITIONS(BlockingUDPConnector);
@@ -442,13 +428,10 @@ public:
         _broadcast(broadcast) {
     }
 
-    virtual ~BlockingUDPConnector() {
-    }
-
     /**
      * NOTE: transport client is ignored for broadcast (UDP).
      */
-    virtual Transport::shared_pointer connect(std::tr1::shared_ptr<ClientChannelImpl> const & client,
+    BlockingUDPTransport::shared_pointer connect(std::tr1::shared_ptr<ClientChannelImpl> const & client,
             ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& bindAddress,
             epics::pvData::int8 transportRevision, epics::pvData::int16 priority);
 

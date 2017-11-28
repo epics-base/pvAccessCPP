@@ -33,9 +33,6 @@ BlockingTCPConnector::BlockingTCPConnector(
 {
 }
 
-BlockingTCPConnector::~BlockingTCPConnector() {
-}
-
 SOCKET BlockingTCPConnector::tryConnect(osiSockAddr& address, int tries) {
 
     char strBuffer[64];
