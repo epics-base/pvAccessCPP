@@ -1366,6 +1366,8 @@ public:
 
     typedef std::vector<std::string> stringVector_t;
 
+    virtual ~ChannelProviderRegistry() {}
+
 
     //! Create a custom registry
     static ChannelProviderRegistry::shared_pointer build();

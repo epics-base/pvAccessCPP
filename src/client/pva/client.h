@@ -193,8 +193,10 @@ void registerRefTrack();
  */
 class epicsShareClass ClientChannel
 {
+#if defined(__GNUC__) && (__GNUC__ * 100 + __GNUC_MINOR__ < 305)
 public:
-    // public only as a workaround for old gcc
+    // Impl is public only as a workaround on older GCC
+#endif
     struct Impl;
 private:
     std::tr1::shared_ptr<Impl> impl;
