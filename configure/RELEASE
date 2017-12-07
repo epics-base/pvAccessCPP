@@ -1,26 +1,42 @@
-# pvAccessCPP RELEASE - Location of external support modules
+# RELEASE - Location of external support modules
 #
-# IF YOU CHANGE this file or any file it includes you must
-# subsequently do a "gnumake rebuild" in the application's
-# top level directory.
+# IF YOU CHANGE ANY PATHS in this file or make API changes to
+# any modules it refers to, you should do a "make rebuild" in
+# this application's top level directory.
 #
-# The build process does not check dependencies against files
-# that are outside this application, thus you should also do a
-# "gnumake rebuild" in the top level directory after EPICS_BASE
-# or any other external module pointed to below is rebuilt.
+# The EPICS build process does not check dependencies against
+# any files from outside the application, so it is safest to
+# rebuild it completely if any modules it depends on change.
 #
 # Host- or target-specific settings can be given in files named
 #  RELEASE.$(EPICS_HOST_ARCH).Common
 #  RELEASE.Common.$(T_A)
 #  RELEASE.$(EPICS_HOST_ARCH).$(T_A)
-
-# EPICS V4 Developers: Do not edit the locations in this file!
 #
-# Create a file RELEASE.local pointing to your PVDATA, PVCOMMON
-# and EPICS_BASE build directories, e.g.
-#   PVCOMMON = /home/install/epicsV4/pvCommonCPP
-#   PVDATA = /home/install/epicsV4/pvDataCPP
-#   EPICS_BASE = /home/install/epics/base
+# This file is parsed by both GNUmake and an EPICS Perl script,
+# so it may ONLY contain definititions of paths to other support
+# modules, variable definitions that are used in module paths,
+# and include statements that pull in other RELEASE files.
+# Variables may be used before their values have been set.
+# Build variables that are NOT used in paths should be set in
+# the CONFIG_SITE file.
 
+# Variables and paths to dependent modules:
+#MODULES = /path/to/modules
+#MYMODULE = $(MODULES)/my-module
+
+# If building the EPICS modules individually, set these:
+#EPICS_PVDATA = $(MODULES)/pvData
+#EPICS_DATABASE = $(MODULES)/database
+#EPICS_CA = $(MODULES)/ca
+#EPICS_LIBCOM = $(MODULES)/libcom
+#EPICS_BASE = $(MODULES)/core
+
+# Set RULES here if you want to use build rules from elsewhere:
+#RULES = $(MODULES)/build-rules
+
+# These allow developers to override the RELEASE variable settings
+# without having to modify the configure/RELEASE file itself.
 -include $(TOP)/../RELEASE.local
+-include $(TOP)/../RELEASE.$(EPICS_HOST_ARCH).local
 -include $(TOP)/configure/RELEASE.local
