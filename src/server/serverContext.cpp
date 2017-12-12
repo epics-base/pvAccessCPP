@@ -369,7 +369,7 @@ void ServerContextImpl::destroyAllTransports()
     if (size == 0)
         return;
 
-    LOG(logLevelInfo, "Server context still has %d transport(s) active and closing...", size);
+    LOG(logLevelDebug, "Server context still has %d transport(s) active and closing...", size);
 
     for (size_t i = 0; i < size; i++)
     {
