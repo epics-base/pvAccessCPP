@@ -194,7 +194,7 @@ private:
     
     CAChannelPtr channel;
     ChannelGetRequester::weak_pointer channelGetRequester;
-    epics::pvData::PVStructure::weak_pointer pvRequestWeak;
+    const epics::pvData::PVStructure::shared_pointer pvRequest;
 
     chtype getType;
     epics::pvData::PVStructure::shared_pointer pvStructure;
@@ -262,7 +262,7 @@ private:
    
     CAChannelPtr channel;
     ChannelPutRequester::weak_pointer channelPutRequester;
-    epics::pvData::PVStructure::weak_pointer pvRequestWeak;
+    const epics::pvData::PVStructure::shared_pointer pvRequest;
     bool block;
 
     chtype getType;
@@ -324,7 +324,7 @@ private:
 
     CAChannelPtr channel;
     MonitorRequester::weak_pointer monitorRequester;
-    epics::pvData::PVStructure::weak_pointer pvRequestWeak;
+    const epics::pvData::PVStructure::shared_pointer pvRequest;
     bool isStarted;
     chtype getType;
 

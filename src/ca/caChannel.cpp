@@ -729,7 +729,7 @@ CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & channel,
   :
     channel(channel),
     channelGetRequester(channelGetRequester),
-    pvRequestWeak(pvRequest)
+    pvRequest(pvRequest)
 {
     if(DEBUG_LEVEL>0) {
         cout << "CAChannelGet::CAChannelGet() " << channel->getChannelName() << endl;
@@ -745,13 +745,11 @@ CAChannelGet::~CAChannelGet()
 
 void CAChannelGet::activate()
 {
-    if(DEBUG_LEVEL>0) {
-        std::cout << "CAChannelGet::activate " <<  channel->getChannelName() << endl;
-    }
     ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
+    if(DEBUG_LEVEL>0) {
+        std::cout << "CAChannelGet::activate " <<  channel->getChannelName() << " requester "<<getRequester<<"\n";
+    }
     if(!getRequester) return;
-    PVStructurePtr pvRequest(pvRequestWeak.lock());
-    if(!pvRequest) return;
     if(pvStructure) throw  std::runtime_error("CAChannelGet::activate() was called twice");
     getType = getDBRType(pvRequest, channel->getNativeType());
     pvStructure = createPVStructure(channel, getType, pvRequest);
@@ -771,8 +769,6 @@ void CAChannelGet::channelCreated(const Status& status,Channel::shared_pointer c
     }
     ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
     if(!getRequester) return;
-    PVStructurePtr pvRequest(pvRequestWeak.lock());
-    if(!pvRequest) return;
     chtype newType = getDBRType(pvRequest, channel->getNativeType());
     if(newType!=getType) {
         getType = getDBRType(pvRequest, channel->getNativeType());
@@ -1272,7 +1268,7 @@ CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & channel,
 :
     channel(channel),
     channelPutRequester(channelPutRequester),
-    pvRequestWeak(pvRequest), 
+    pvRequest(pvRequest),
     block(false)
 {
     if(DEBUG_LEVEL>0) {
@@ -1287,8 +1283,6 @@ void CAChannelPut::activate()
     }
     ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
     if(!putRequester) return;
-    PVStructurePtr pvRequest(pvRequestWeak.lock());
-    if(!pvRequest) return;
     if(pvStructure) throw  std::runtime_error("CAChannelPut::activate() was called twice");
     getType = getDBRType(pvRequest,channel->getNativeType());
     pvStructure = createPVStructure(channel, getType, pvRequest);
@@ -1314,8 +1308,6 @@ void CAChannelPut::channelCreated(const Status& status,Channel::shared_pointer c
     }
     ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
     if(!putRequester) return;
-    PVStructurePtr pvRequest(pvRequestWeak.lock());
-    if(!pvRequest) return;
     chtype newType = getDBRType(pvRequest, channel->getNativeType());
     if(newType!=getType) {
         getType = getDBRType(pvRequest, channel->getNativeType());
@@ -1801,7 +1793,7 @@ CAChannelMonitor::CAChannelMonitor(
 :
     channel(channel),
     monitorRequester(monitorRequester),
-    pvRequestWeak(pvRequest),
+    pvRequest(pvRequest),
     isStarted(false)
 {
     if(DEBUG_LEVEL>0) {
@@ -1816,8 +1808,6 @@ void CAChannelMonitor::activate()
     }
     MonitorRequester::shared_pointer requester(monitorRequester.lock());
     if(!requester) return;
-    PVStructurePtr pvRequest(pvRequestWeak.lock());
-    if(!pvRequest) return;
     if(pvStructure) throw  std::runtime_error("CAChannelMonitor::activate() was called twice");
     getType = getDBRType(pvRequest, channel->getNativeType());
     pvStructure = createPVStructure(channel, getType, pvRequest);
@@ -1848,8 +1838,6 @@ void CAChannelMonitor::channelCreated(const Status& status,Channel::shared_point
     }
     MonitorRequester::shared_pointer requester(monitorRequester.lock());
     if(!requester) return;
-    PVStructurePtr pvRequest(pvRequestWeak.lock());
-    if(!pvRequest) return;
     chtype newType = getDBRType(pvRequest, channel->getNativeType());
     if(newType!=getType) {
         getType = getDBRType(pvRequest, channel->getNativeType());
