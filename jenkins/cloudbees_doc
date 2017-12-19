@@ -21,14 +21,7 @@ installE4 () {
     local module=$1
     local branch=$2
 
-    # If microbench version does not exist, try without
-    if [ "${MB}" = "WITH_MICROBENCH" ]; then
-        if wget -nv https://openepics.ci.cloudbees.com/job/e4-cpp-${module}-${branch}-build/BASE=${BASE},MB=WITH_MICROBENCH/lastSuccessfulBuild/artifact/${module}.CB-dist.tar.gz; then
-            wget -nv https://openepics.ci.cloudbees.com/job/e4-cpp-${module}-${branch}-build/BASE=${BASE},MB=NO_MICROBENCH/lastSuccessfulBuild/artifact/${module}.CB-dist.tar.gz
-        fi
-    else
-        wget -nv https://openepics.ci.cloudbees.com/job/e4-cpp-${module}-${branch}-build/BASE=${BASE},MB=NO_MICROBENCH/lastSuccessfulBuild/artifact/${module}.CB-dist.tar.gz
-    fi
+    wget -nv https://openepics.ci.cloudbees.com/job/e4-cpp-${module}-${branch}-build/BASE=${BASE}/lastSuccessfulBuild/artifact/${module}.CB-dist.tar.gz
     tar -xzf ${module}.CB-dist.tar.gz
 }
 
@@ -38,7 +31,6 @@ installE4 () {
 BASE=3.15.4
 PUBLISH=${PUBLISH:-NO}
 BRANCH=${BRANCH:-master}
-MB=NO_MICROBENCH
 
 ###########################################
 # Fetch and unpack dependencies

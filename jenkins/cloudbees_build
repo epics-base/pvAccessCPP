@@ -71,6 +71,6 @@ make distclean all
 make runtests
 
 ###########################################
-# Create distribution
+# Create cache
 
-tar --exclude=test* -czf pvAccess.CB-dist.tar.gz bin lib include dbd LICENSE COPYRIGHT
+tar --exclude=test* -czf pvAccess.CB-dist.tar.gz bin lib include dbd cfg LICENSE COPYRIGHT
