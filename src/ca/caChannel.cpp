@@ -374,7 +374,8 @@ CAChannel::CAChannel(std::string const & _channelName,
     channelRequester(_channelRequester),
     channelID(0),
     channelType(0),
-    elementCount(0)
+    elementCount(0),
+    channelCreated(false)
 {
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::CAChannel " << channelName << endl;
@@ -395,12 +396,45 @@ void CAChannel::activate(short priority)
                                    &channelID);
     if (result == ECA_NORMAL)
     {
+       channelCreated = true;
+       CAChannelProviderPtr provider(channelProvider.lock());
+       if(provider) provider->addChannel(shared_from_this());
        req->channelCreated(Status::Ok, shared_from_this());
     } else {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
         req->channelCreated(errorStatus, shared_from_this());
     }
 }
+
+CAChannel::~CAChannel()
+{
+    if(DEBUG_LEVEL>0) {
+        cout << "CAChannel::~CAChannel() " << channelName << endl;
+    }
+    disconnectChannel();
+}
+
+void CAChannel::disconnectChannel()
+{
+    if(DEBUG_LEVEL>0) {
+        cout << "CAChannel::disconnectChannel() "
+             << channelName 
+             << " channelCreated " << (channelCreated ? "true" : "false")
+             << endl;
+    }
+    bool disconnect = true;
+    {
+        Lock lock(requestsMutex);
+        if(!channelCreated) disconnect = false;
+        channelCreated = false;
+    }
+    if(!disconnect) return;
+    /* Clear CA Channel */
+    threadAttach();
+    ca_clear_channel(channelID);
+}
+
+
 
 void CAChannel::addChannelGet(const CAChannelGetPtr & get)
 {
@@ -447,17 +481,6 @@ void CAChannel::addChannelMonitor(const CAChannelMonitorPtr & monitor)
     }
     monitorList.push_back(monitor);
 }
-
-CAChannel::~CAChannel()
-{
-    if(DEBUG_LEVEL>0) {
-        cout << "CAChannel::~CAChannel() " << channelName << endl;
-    }
-    /* Clear CA Channel */
-    threadAttach();
-    ca_clear_channel(channelID);
-}
-
 
 chid CAChannel::getChannelID()
 {

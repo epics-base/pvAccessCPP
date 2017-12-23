@@ -22,8 +22,7 @@ namespace epics {
 namespace pvAccess {
 namespace ca {
 
-class CAChannel;
-typedef std::tr1::shared_ptr<CAChannel> CAChannelPtr;
+
 class CAChannelGetField;
 typedef std::tr1::shared_ptr<CAChannelGetField> CAChannelGetFieldPtr;
 typedef std::tr1::weak_ptr<CAChannelGetField> CAChannelGetFieldWPtr;
@@ -60,7 +59,7 @@ public:
 
     static size_t num_instances;
 
-    static shared_pointer create(CAChannelProvider::shared_pointer const & channelProvider,
+    static CAChannelPtr create(CAChannelProvider::shared_pointer const & channelProvider,
                                  std::string const & channelName,
                                  short priority,
                                  ChannelRequester::shared_pointer const & channelRequester);
@@ -112,6 +111,7 @@ public:
     void addChannelGet(const CAChannelGetPtr & get);
     void addChannelPut(const CAChannelPutPtr & get);
     void addChannelMonitor(const CAChannelMonitorPtr & get);
+    void disconnectChannel();
 
 
 private:
@@ -129,6 +129,7 @@ private:
     chid channelID;
     chtype channelType;
     unsigned elementCount;
+    bool channelCreated;
     epics::pvData::Structure::const_shared_pointer structure;
 
     epics::pvData::Mutex requestsMutex;
