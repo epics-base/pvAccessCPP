@@ -103,17 +103,22 @@ void pvasr(int lvl)
     }
 }
 
+void pva_server_cleanup(void *)
+{
+    stopPVAServer();
+}
+
 void initStartPVAServer(initHookState state)
 {
     pvd::Lock G(the_server_lock);
     if(state==initHookAfterIocRunning && !the_server) {
+        epicsAtExit(&pva_server_cleanup, 0);
         startitup();
 
     } else if(state==initHookAtIocPause) {
         the_server.reset();
     }
 }
-
 
 void registerStartPVAServer(void)
 {
