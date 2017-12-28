@@ -395,7 +395,7 @@ bool BlockingUDPTransport::send(const char* buffer, size_t length, const osiSock
 {
     if (IS_LOGGABLE(logLevelDebug))
     {
-        LOG(logLevelDebug, "Sending %d bytes to %s.",
+        LOG(logLevelDebug, "Sending %zu bytes to %s.",
             length, inetAddressToString(address).c_str());
     }
 
@@ -419,7 +419,7 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, const osiSockAddr& address) 
 
     if (IS_LOGGABLE(logLevelDebug))
     {
-        LOG(logLevelDebug, "Sending %d bytes to %s.",
+        LOG(logLevelDebug, "Sending %zu bytes to %s.",
             buffer->getRemaining(), inetAddressToString(address).c_str());
     }
 
@@ -456,7 +456,7 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, InetAddressType target) {
 
         if (IS_LOGGABLE(logLevelDebug))
         {
-            LOG(logLevelDebug, "Sending %d bytes to %s.",
+            LOG(logLevelDebug, "Sending %zu bytes to %s.",
                 buffer->getRemaining(), inetAddressToString(_sendAddresses[i]).c_str());
         }
 
@@ -586,7 +586,7 @@ void initializeUDPTransports(bool serverFlag,
     if (listenPort == 0)
     {
         listenPort = ntohs(sendTransport->getRemoteAddress()->ia.sin_port);
-        LOG(logLevelDebug, "Dynamic listen UDP port set to %d.", listenPort);
+        LOG(logLevelDebug, "Dynamic listen UDP port set to %u.", (unsigned)listenPort);
     }
 
     // TODO current implementation shares the port (aka beacon and search port)
@@ -651,7 +651,7 @@ void initializeUDPTransports(bool serverFlag,
     else
         for (size_t i = 0; i < blist.size(); i++)
             LOG(logLevelDebug,
-                "Broadcast address #%d: %s.", i, inetAddressToString(blist[i]).c_str());
+                "Broadcast address #%zu: %s.", i, inetAddressToString(blist[i]).c_str());
 
 
     // TODO configurable local NIF, address
