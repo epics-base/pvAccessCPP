@@ -77,8 +77,6 @@ public:
     ) = 0;
 };
 
-typedef RPCServiceAsync Service EPICS_DEPRECATED;
-
 class epicsShareClass RPCService :
     public RPCServiceAsync
 {

@@ -62,10 +62,6 @@ public:
         short priority,
         std::string const & address);
 
-    virtual void configure(epics::pvData::PVStructure::shared_pointer configuration);
-    virtual void flush();
-    virtual void poll();
-
     virtual void destroy() EPICS_DEPRECATED {};
 
     void addChannel(const CAChannelPtr & get);

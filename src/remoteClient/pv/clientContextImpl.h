@@ -91,12 +91,6 @@ public:
      */
     virtual void printInfo(std::ostream& out) = 0;
 
-    /**
-     * Dispose (destroy) server context.
-     * This calls <code>destroy()</code> and silently handles all exceptions.
-     */
-    virtual void dispose() EPICS_DEPRECATED = 0;
-
 
     virtual ChannelSearchManager::shared_pointer getChannelSearchManager() = 0;
     virtual void checkChannelName(std::string const & name) = 0;
@@ -119,10 +113,6 @@ public:
     virtual void newServerDetected() = 0;
 
     virtual std::tr1::shared_ptr<BeaconHandler> getBeaconHandler(std::string const & protocol, osiSockAddr* responseFrom) = 0;
-
-    virtual void configure(epics::pvData::PVStructure::shared_pointer configuration) = 0;
-    virtual void flush() {}
-    virtual void poll() {}
 
     virtual void destroy() = 0;
 };

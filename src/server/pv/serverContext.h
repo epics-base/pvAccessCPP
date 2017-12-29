@@ -56,8 +56,6 @@ public:
 
     virtual void shutdown() = 0;
 
-    void destroy() EPICS_DEPRECATED { this->shutdown(); }
-
     /**
      * Prints detailed information about the context to the standard output stream.
      */
@@ -69,8 +67,6 @@ public:
      * @param str stream to which to print the info
      */
     virtual void printInfo(std::ostream& str, int lvl=0) = 0;
-
-    void dispose() EPICS_DEPRECATED;
 
     virtual epicsTimeStamp& getStartTime() = 0;
 

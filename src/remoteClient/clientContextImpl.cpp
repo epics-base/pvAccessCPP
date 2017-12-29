@@ -4017,8 +4017,7 @@ public:
                   EPICS_PVA_MAINTENANCE_VERSION,
                   EPICS_PVA_DEVELOPMENT_FLAG),
         m_contextState(CONTEXT_NOT_INITIALIZED),
-        m_configuration(conf),
-        m_flushStrategy(DELAYED)
+        m_configuration(conf)
     {
         REFTRACE_INCREMENT(num_instances);
 
@@ -4104,17 +4103,6 @@ public:
         }
 
         internalDestroy();
-    }
-
-    virtual void dispose() OVERRIDE FINAL
-    {
-        try {
-            destroy();
-        } catch (std::exception& ex) {
-            printf("dispose(): %s\n", ex.what()); // tODO remove
-        } catch (...) {
-            /* TODO log with low level */
-        }
     }
 
     virtual ~InternalClientContextImpl()
@@ -4446,8 +4434,6 @@ private:
         try
         {
             Transport::shared_pointer t = m_connector->connect(client, m_responseHandler, *serverAddress, minorRevision, priority);
-            // TODO !!!
-            //static_pointer_cast<BlockingTCPTransport>(t)->setFlushStrategy(m_flushStrategy);
             return t;
         }
         catch (std::exception& e)
@@ -4498,39 +4484,6 @@ private:
             // TODO is this OK?
             throw std::runtime_error("Failed to obtain synchronization lock for '" + name + "', possible deadlock.");
         }
-    }
-
-    virtual void configure(epics::pvData::PVStructure::shared_pointer configuration) OVERRIDE FINAL
-    {   // remove?
-        if (m_transportRegistry.numberOfActiveTransports() > 0)
-            throw std::runtime_error("Configure must be called when there is no transports active.");
-
-        PVInt::shared_pointer pvStrategy = dynamic_pointer_cast<PVInt>(configuration->getSubField("strategy"));
-        if (pvStrategy.get())
-        {
-            int32 value = pvStrategy->get();
-            switch (value)
-            {
-            case IMMEDIATE:
-            case DELAYED:
-            case USER_CONTROLED:
-                m_flushStrategy = static_cast<FlushStrategy>(value);
-                break;
-            default:
-                // TODO report warning
-                break;
-            }
-        }
-
-    }
-
-    virtual void flush() OVERRIDE FINAL
-    {
-        m_transportRegistry.toArray(m_flushTransports);
-        TransportRegistry::transportVector_t::const_iterator iter = m_flushTransports.begin();
-        while (iter != m_flushTransports.end())
-            (*iter++)->flushSendQueue();
-        m_flushTransports.clear();
     }
 
     std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins() OVERRIDE FINAL
@@ -4683,8 +4636,6 @@ private:
     Configuration::shared_pointer m_configuration;
 
     TransportRegistry::transportVector_t m_flushTransports;
-
-    FlushStrategy m_flushStrategy;
 };
 
 size_t InternalClientContextImpl::num_instances;

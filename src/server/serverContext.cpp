@@ -67,7 +67,7 @@ ServerContextImpl::~ServerContextImpl()
     }
     catch(std::exception& e)
     {
-        std::cerr<<"Error in: ServerContextImpl::dispose: "<<e.what()<<"\n";
+        std::cerr<<"Error in: ServerContextImpl::~ServerContextImpl: "<<e.what()<<"\n";
     }
     REFTRACE_DECREMENT(num_instances);
 }
@@ -480,22 +480,6 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
                 str<<"\n";
             }
         }
-    }
-}
-
-void ServerContext::dispose()
-{
-    try
-    {
-        shutdown();
-    }
-    catch(std::exception& e)
-    {
-        std::cerr<<"Error in: ServerContextImpl::dispose: "<<e.what()<<"\n";
-    }
-    catch(...)
-    {
-        std::cerr<<"Oh no, something when wrong in ServerContextImpl::dispose!\n";
     }
 }
 

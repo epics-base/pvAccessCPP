@@ -150,19 +150,6 @@ void CAChannelProvider::addChannel(const CAChannelPtr & channel)
     caChannelList.push_back(channel);
 }
 
-void CAChannelProvider::configure(epics::pvData::PVStructure::shared_pointer /*configuration*/)
-{
-}
-
-void CAChannelProvider::flush()
-{
-}
-
-void CAChannelProvider::poll()
-{
-}
-
-
 void CAChannelProvider::threadAttach()
 {
     ca_attach_context(current_context);
