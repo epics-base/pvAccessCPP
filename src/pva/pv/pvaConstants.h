@@ -73,13 +73,13 @@ const epics::pvData::int16 INVALID_DATA_TYPE = static_cast<epics::pvData::int16>
 const epics::pvData::int32 INVALID_IOID = 0;
 
 /** Default PVA provider name. */
-const std::string PVACCESS_DEFAULT_PROVIDER = "local";
+#define PVACCESS_DEFAULT_PROVIDER "local"
 
 /** "All-providers registered" PVA provider name. */
-const std::string PVACCESS_ALL_PROVIDERS = "<all>";
+#define PVACCESS_ALL_PROVIDERS "<all>"
 
 /** Name of the system env. variable to turn on debugging. */
-const std::string PVACCESS_DEBUG = "EPICS_PVA_DEBUG";
+#define PVACCESS_DEBUG "EPICS_PVA_DEBUG"
 }
 }
 
