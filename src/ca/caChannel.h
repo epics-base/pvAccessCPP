@@ -100,10 +100,6 @@ public:
 
     virtual void printInfo(std::ostream& out);
 
-    /* --------------- Destroyable --------------- */
-
-    virtual void destroy() EPICS_DEPRECATED {};
-
     /* ---------------------------------------------------------------- */
 
     void threadAttach();
@@ -115,6 +111,10 @@ public:
 
 
 private:
+
+    /* --------------- Destroyable --------------- */
+
+    virtual void destroy() {}
 
     CAChannel(std::string const & channelName,
               CAChannelProvider::shared_pointer const & channelProvider,
@@ -182,12 +182,12 @@ public:
     virtual std::string getRequesterName() { return "CAChannelGet";}
     /* --------------- ChannelBaseRequester --------------- */
     virtual void channelDisconnect(bool destroy);
-   /* --------------- Destroyable --------------- */
-    virtual void destroy() EPICS_DEPRECATED {};
 
     void activate();
 
 private:
+    /* --------------- Destroyable --------------- */
+     virtual void destroy() {}
 
     CAChannelGet(CAChannel::shared_pointer const & _channel,
                  ChannelGetRequester::shared_pointer const & _channelGetRequester,
@@ -249,13 +249,13 @@ public:
     virtual std::string getRequesterName() { return "CAChannelPut";}
     /* --------------- ChannelBaseRequester --------------- */
     virtual void channelDisconnect(bool destroy);
-    /* --------------- Destroyable --------------- */
-
-    virtual void destroy() EPICS_DEPRECATED {};
 
      void activate();
 
 private:
+     /* --------------- Destroyable --------------- */
+
+     virtual void destroy() {}
 
     CAChannelPut(CAChannel::shared_pointer const & _channel,
                  ChannelPutRequester::shared_pointer const & _channelPutRequester,
@@ -313,10 +313,10 @@ public:
     virtual std::string getRequesterName() { return "CAChannelMonitor";}
     /* --------------- ChannelBaseRequester --------------- */
     virtual void channelDisconnect(bool destroy);
-    /* --------------- Destroyable --------------- */
-    virtual void destroy() EPICS_DEPRECATED {};
     void activate();
 private:
+    /* --------------- Destroyable --------------- */
+    virtual void destroy() {}
 
     CAChannelMonitor(CAChannel::shared_pointer const & _channel,
                      MonitorRequester::shared_pointer const & _monitorRequester,

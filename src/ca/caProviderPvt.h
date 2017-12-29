@@ -61,9 +61,6 @@ public:
         ChannelRequester::shared_pointer const & channelRequester,
         short priority,
         std::string const & address);
-
-    virtual void destroy() EPICS_DEPRECATED {};
-
     void addChannel(const CAChannelPtr & get);
 
     /* ---------------------------------------------------------------- */
@@ -72,6 +69,7 @@ public:
     
 
 private:
+    virtual void destroy() EPICS_DEPRECATED {}
     void initialize();
     ca_client_context* current_context;
     epics::pvData::Mutex channelListMutex;
