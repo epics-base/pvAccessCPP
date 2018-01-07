@@ -66,6 +66,8 @@ bool pvAccessIsLoggable(pvAccessLogLevel level)
     return level >= g_pvAccessLogLevel;
 }
 
+namespace {
+
 class FileLogger : public NoDefaultMethods {
 public:
     FileLogger(std::string const & name) {
@@ -89,16 +91,18 @@ private:
 
 };
 
-static FileLogger* fileLogger = NULL;
+FileLogger* fileLogger = NULL;
 
-static void errLogFileListener(void* /*pPrivate*/, const char *message) {
+void errLogFileListener(void* /*pPrivate*/, const char *message) {
     fileLogger->logMessage(message);
 }
 
-static void exitFileLoggerHandler(void* /*pPrivate*/) {
+void exitFileLoggerHandler(void* /*pPrivate*/) {
     errlogFlush();
     delete fileLogger;
 }
+
+} // namespace
 
 void createFileLogger(std::string const & fname) {
     static Mutex mutex;
