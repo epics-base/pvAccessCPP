@@ -19,10 +19,6 @@ namespace ca {
 
 #define DEBUG_LEVEL 0
 
-class CAChannel;
-typedef std::tr1::shared_ptr<CAChannel> CAChannelPtr;
-typedef std::tr1::weak_ptr<CAChannel> CAChannelWPtr;
-
 class CAChannelProvider;
 typedef std::tr1::shared_ptr<CAChannelProvider> CAChannelProviderPtr;
 typedef std::tr1::weak_ptr<CAChannelProvider> CAChannelProviderWPtr;
@@ -68,18 +64,13 @@ public:
 
     virtual void destroy() EPICS_DEPRECATED {};
 
-    void addChannel(const CAChannelPtr & get);
-
     /* ---------------------------------------------------------------- */
 
     void threadAttach();
-    
 
 private:
     void initialize();
     ca_client_context* current_context;
-    epics::pvData::Mutex channelListMutex;
-    std::vector<CAChannelWPtr> caChannelList;
 };
 
 }

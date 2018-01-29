@@ -52,28 +52,7 @@ CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
 
 CAChannelProvider::~CAChannelProvider()
 {
-    if(DEBUG_LEVEL>0) {
-         std::cout << "CAChannelProvider::~CAChannelProvider()"
-            << " caChannelList.size() " << caChannelList.size()
-            << std::endl;
-    }
-    std::queue<CAChannelPtr> channelQ;
-    {
-         Lock lock(channelListMutex);
-         for(size_t i=0; i< caChannelList.size(); ++i) {
-             CAChannelPtr caChannel(caChannelList[i].lock());
-             if(caChannel) channelQ.push(caChannel);
-         }
-    }
-    while(!channelQ.empty()) {
-       if(DEBUG_LEVEL>0) {
-           std::cout << "disconnectAllChannels calling disconnectChannel "
-                     << channelQ.front()->getChannelName()
-                      << std::endl;
-       }  
-       channelQ.front()->disconnectChannel();
-       channelQ.pop();
-    }
+    if(DEBUG_LEVEL>0) std::cout << "CAChannelProvider::~CAChannelProvider()\n";
 }
 
 std::string CAChannelProvider::getProviderName()
@@ -133,23 +112,6 @@ Channel::shared_pointer CAChannelProvider::createChannel(
     return CAChannel::create(shared_from_this(), channelName, priority, channelRequester);
 }
 
-void CAChannelProvider::addChannel(const CAChannelPtr & channel)
-{
-    if(DEBUG_LEVEL>0) {
-         std::cout << "CAChannelProvider::addChannel "
-             << channel->getChannelName()
-             << std::endl;
-    }
-    Lock lock(channelListMutex);
-    for(size_t i=0; i< caChannelList.size(); ++i) {
-         if(!(caChannelList[i].lock())) {
-             caChannelList[i] = channel;
-             return;
-         }
-    }
-    caChannelList.push_back(channel);
-}
-
 void CAChannelProvider::configure(epics::pvData::PVStructure::shared_pointer /*configuration*/)
 {
 }
@@ -174,11 +136,13 @@ void CAChannelProvider::initialize()
     /* Create Channel Access */
     int result = ca_context_create(ca_enable_preemptive_callback);
     if (result != ECA_NORMAL) {
-        throw std::runtime_error(
-            std::string("CA error %s occurred while trying to start channel access:")
-            + ca_message(result));
+        throw std::runtime_error(std::string("CA error %s occurred while trying "
+                                             "to start channel access:") + ca_message(result));
     }
+
     current_context = ca_current_context();
+
+    // TODO create a ca_poll thread, if ca_disable_preemptive_callback
 }
 
 
@@ -190,7 +154,7 @@ void ca_factory_cleanup(void*)
         ChannelProviderRegistry::clients()->remove("ca");
         ca_context_destroy(); 
     } catch(std::exception& e) {
-        LOG(logLevelWarn, "Error on unregistering \"ca\" factory: %s", e.what());
+        LOG(logLevelWarn, "Error when unregister \"ca\" factory");
     }
 }
 
@@ -209,7 +173,7 @@ void CAClientFactory::start()
     registerRefCounter("CAChannelPut", &CAChannelPut::num_instances);
     registerRefCounter("CAChannelMonitor", &CAChannelMonitor::num_instances);
 
-    if(ChannelProviderRegistry::clients()->add<CAChannelProvider>("ca", true))
+    if(ChannelProviderRegistry::clients()->add<CAChannelProvider>("ca", false))
     {
         epicsAtExit(&ca_factory_cleanup, NULL);
     }
