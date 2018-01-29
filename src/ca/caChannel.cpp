@@ -422,13 +422,10 @@ void CAChannel::disconnectChannel()
              << " channelCreated " << (channelCreated ? "true" : "false")
              << endl;
     }
-    bool disconnect = true;
     {
         Lock lock(requestsMutex);
-        if(!channelCreated) disconnect = false;
-        channelCreated = false;
+        if(!channelCreated) return;
     }
-    if(!disconnect) return;
     /* Clear CA Channel */
     threadAttach();
     ca_clear_channel(channelID);
