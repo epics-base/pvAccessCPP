@@ -32,20 +32,6 @@ void setenv(char * a, char * b, int c)
 using namespace epics::pvAccess;
 using namespace epics::pvData;
 
-static const char indata[] =
-    "hello =    world  \n"
-    "  # oops\n"
-    " #dd=da\n"
-    " empty =  \n"
-    " this   =   is a test\n\n"
-    ;
-
-static const char expectdata[] =
-    "empty = \n"
-    "hello = world\n"
-    "this = is a test\n"
-    ;
-
 static void showEnv(const char *name)
 {
     testDiag("%s = \"%s\"", name, getenv(name));

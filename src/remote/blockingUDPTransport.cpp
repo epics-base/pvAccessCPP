@@ -207,7 +207,7 @@ void BlockingUDPTransport::run() {
 
     osiSockAddr fromAddress;
     osiSocklen_t addrStructSize = sizeof(sockaddr);
-    Transport::shared_pointer thisTransport = shared_from_this();
+    Transport::shared_pointer thisTransport(internal_this);
 
     try {
 
@@ -395,7 +395,7 @@ bool BlockingUDPTransport::send(const char* buffer, size_t length, const osiSock
 {
     if (IS_LOGGABLE(logLevelDebug))
     {
-        LOG(logLevelDebug, "Sending %d bytes to %s.",
+        LOG(logLevelDebug, "Sending %zu bytes to %s.",
             length, inetAddressToString(address).c_str());
     }
 
@@ -419,7 +419,7 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, const osiSockAddr& address) 
 
     if (IS_LOGGABLE(logLevelDebug))
     {
-        LOG(logLevelDebug, "Sending %d bytes to %s.",
+        LOG(logLevelDebug, "Sending %zu bytes to %s.",
             buffer->getRemaining(), inetAddressToString(address).c_str());
     }
 
@@ -456,7 +456,7 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, InetAddressType target) {
 
         if (IS_LOGGABLE(logLevelDebug))
         {
-            LOG(logLevelDebug, "Sending %d bytes to %s.",
+            LOG(logLevelDebug, "Sending %zu bytes to %s.",
                 buffer->getRemaining(), inetAddressToString(_sendAddresses[i]).c_str());
         }
 
@@ -573,10 +573,10 @@ void initializeUDPTransports(bool serverFlag,
     anyAddress.ia.sin_port = htons(0);
     anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    sendTransport = static_pointer_cast<BlockingUDPTransport>(connector->connect(
+    sendTransport = connector->connect(
                         nullTransportClient, responseHandler,
                         anyAddress, PVA_PROTOCOL_REVISION,
-                        PVA_DEFAULT_PRIORITY));
+                        PVA_DEFAULT_PRIORITY);
     if (!sendTransport)
     {
         THROW_BASE_EXCEPTION("Failed to initialize UDP transport.");
@@ -586,7 +586,7 @@ void initializeUDPTransports(bool serverFlag,
     if (listenPort == 0)
     {
         listenPort = ntohs(sendTransport->getRemoteAddress()->ia.sin_port);
-        LOG(logLevelDebug, "Dynamic listen UDP port set to %d.", listenPort);
+        LOG(logLevelDebug, "Dynamic listen UDP port set to %u.", (unsigned)listenPort);
     }
 
     // TODO current implementation shares the port (aka beacon and search port)
@@ -651,7 +651,7 @@ void initializeUDPTransports(bool serverFlag,
     else
         for (size_t i = 0; i < blist.size(); i++)
             LOG(logLevelDebug,
-                "Broadcast address #%d: %s.", i, inetAddressToString(blist[i]).c_str());
+                "Broadcast address #%zu: %s.", i, inetAddressToString(blist[i]).c_str());
 
 
     // TODO configurable local NIF, address
@@ -693,10 +693,10 @@ void initializeUDPTransports(bool serverFlag,
             listenLocalAddress.ia.sin_port = htons(listenPort);
             listenLocalAddress.ia.sin_addr.s_addr = node.ifaceAddr.ia.sin_addr.s_addr;
 
-            BlockingUDPTransport::shared_pointer transport = static_pointer_cast<BlockingUDPTransport>(connector->connect(
+            BlockingUDPTransport::shared_pointer transport = connector->connect(
                         nullTransportClient, responseHandler,
                         listenLocalAddress, PVA_PROTOCOL_REVISION,
-                        PVA_DEFAULT_PRIORITY));
+                        PVA_DEFAULT_PRIORITY);
             if (!transport)
                 continue;
             listenLocalAddress = *transport->getRemoteAddress();
@@ -730,10 +730,10 @@ void initializeUDPTransports(bool serverFlag,
                 bcastAddress.ia.sin_port = htons(listenPort);
                 bcastAddress.ia.sin_addr.s_addr = node.ifaceBCast.ia.sin_addr.s_addr;
 
-                transport2 = static_pointer_cast<BlockingUDPTransport>(connector->connect(
+                transport2 = connector->connect(
                                  nullTransportClient, responseHandler,
                                  bcastAddress, PVA_PROTOCOL_REVISION,
-                                 PVA_DEFAULT_PRIORITY));
+                                 PVA_DEFAULT_PRIORITY);
                 if (transport2)
                 {
                     /* The other wrinkle is that nothing should be sent from this second
@@ -786,7 +786,7 @@ void initializeUDPTransports(bool serverFlag,
     try
     {
         // NOTE: multicast receiver socket must be "bound" to INADDR_ANY or multicast address
-        localMulticastTransport = static_pointer_cast<BlockingUDPTransport>(connector->connect(
+        localMulticastTransport = connector->connect(
                                       nullTransportClient, responseHandler,
 #if !defined(_WIN32)
                                       group,
@@ -794,7 +794,7 @@ void initializeUDPTransports(bool serverFlag,
                                       anyAddress,
 #endif
                                       PVA_PROTOCOL_REVISION,
-                                      PVA_DEFAULT_PRIORITY));
+                                      PVA_DEFAULT_PRIORITY);
         if (!localMulticastTransport)
             throw std::runtime_error("Failed to bind UDP socket.");
 

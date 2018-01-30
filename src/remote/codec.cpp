@@ -1569,7 +1569,7 @@ void BlockingServerTCPTransportCodec::destroyAllChannels() {
     {
         LOG(
             logLevelDebug,
-            "Transport to %s still has %zd channel(s) active and closing...",
+            "Transport to %s still has %zu channel(s) active and closing...",
             _socketName.c_str(), _channels.size());
     }
 
@@ -1600,7 +1600,7 @@ void BlockingServerTCPTransportCodec::authenticationCompleted(epics::pvData::Sta
         string errorMessage = "Re-authentication failed: " + status.getMessage();
         if (!status.getStackDump().empty())
             errorMessage += "\n" + status.getStackDump();
-        LOG(logLevelInfo, errorMessage.c_str());
+        LOG(logLevelInfo, "%s", errorMessage.c_str());
 
         close();
     }
@@ -1793,7 +1793,7 @@ void BlockingClientTCPTransportCodec::closedNotifyClients() {
         {
             LOG(
                 logLevelDebug,
-                "Transport to %s still has %d client(s) active and closing...",
+                "Transport to %s still has %zu client(s) active and closing...",
                 _socketName.c_str(), refs);
         }
 

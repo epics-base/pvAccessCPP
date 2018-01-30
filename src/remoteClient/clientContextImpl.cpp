@@ -4230,7 +4230,7 @@ private:
         }
 
         if (transportCount)
-            LOG(logLevelDebug, "PVA client context destroyed with %d transport(s) active.", transportCount);
+            LOG(logLevelDebug, "PVA client context destroyed with %u transport(s) active.", (unsigned)transportCount);
     }
 
     void destroyAllChannels() {

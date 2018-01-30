@@ -378,28 +378,6 @@ protected:
 };
 
 /**
- * Interface defining socket connector (Connector-Transport pattern).
- */
-class Connector {
-public:
-    virtual ~Connector() {}
-
-    /**
-     * Connect.
-     * @param[in] client    client requesting connection (transport).
-     * @param[in] address           address of the server.
-     * @param[in] responseHandler   reponse handler.
-     * @param[in] transportRevision transport revision to be used.
-     * @param[in] priority process priority.
-     * @return transport instance.
-     */
-    virtual Transport::shared_pointer connect(std::tr1::shared_ptr<ClientChannelImpl> const & client,
-            ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& address,
-            epics::pvData::int8 transportRevision, epics::pvData::int16 priority) = 0;
-
-};
-
-/**
  * A request that expects an response.
  * Responses identified by its I/O ID.
  */

@@ -250,7 +250,7 @@ bool discoverServers(double timeOut)
 
     for (size_t i = 0; i < broadcastAddresses.size(); i++)
         LOG(logLevelDebug,
-            "Broadcast address #%d: %s.", i, inetAddressToString(broadcastAddresses[i]).c_str());
+            "Broadcast address #%zu: %s.", i, inetAddressToString(broadcastAddresses[i]).c_str());
 
     // ---
 

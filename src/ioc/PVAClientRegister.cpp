@@ -11,35 +11,9 @@
 
 /* Author: Marty Kraimer */
 
-#include <cstddef>
-#include <cstdlib>
-#include <cstddef>
-#include <string>
-#include <cstdio>
-#include <memory>
-#include <iostream>
-
-#include <iocsh.h>
-#include <epicsExit.h>
-
-#include <pv/pvAccess.h>
-#include <pv/clientFactory.h>
-
 #include <epicsExport.h>
 
-using namespace epics::pvAccess;
-
-static void stopPVAClient(void*)
-{
-    ClientFactory::stop();
-}
-
-static void registerStartPVAClient(void)
-{
-    ClientFactory::start();
-    epicsAtExit(stopPVAClient, 0);
-}
-
+static void registerStartPVAClient(void) {}
 
 extern "C" {
     epicsExportRegistrar(registerStartPVAClient);
