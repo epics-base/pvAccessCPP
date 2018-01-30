@@ -425,6 +425,7 @@ void CAChannel::disconnectChannel()
     {
         Lock lock(requestsMutex);
         if(!channelCreated) return;
+        channelCreated = false;
     }
     /* Clear CA Channel */
     threadAttach();
