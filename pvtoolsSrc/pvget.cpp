@@ -565,6 +565,8 @@ int main (int argc, char *argv[])
                 std::cerr<<"Provider "<<uri.protocol<<" can't create channel \""<<pvs[n]<<"\"\n";
                 return 1;
             }
+            if(!channel)
+                continue;
             chan_cache[pvs[n]] = channel;
         } else {
             channel = it->second;

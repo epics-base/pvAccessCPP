@@ -190,6 +190,7 @@ int main (int argc, char *argv[])
         for (int n = 0; n < nPvs; n++)
         {
             Channel::shared_pointer channel = channels[n];
+            if(!channel) continue;
 
             TR1::shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl(new GetFieldRequesterImpl(channel));
             channel->getField(getFieldRequesterImpl, "");
