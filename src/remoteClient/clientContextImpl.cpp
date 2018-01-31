@@ -22,7 +22,6 @@
 #include <pv/pvaConstants.h>
 #include <pv/blockingUDP.h>
 #include <pv/blockingTCP.h>
-#include <pv/namedLockPattern.h>
 #include <pv/inetAddressUtil.h>
 #include <pv/hexDump.h>
 #include <pv/remote.h>

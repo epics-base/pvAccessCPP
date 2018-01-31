@@ -33,7 +33,6 @@
 #include <pv/blockingTCP.h>
 #include <pv/remote.h>
 #include <pv/inetAddressUtil.h>
-#include <pv/namedLockPattern.h>
 #include <pv/hexDump.h>
 #include <pv/logger.h>
 #include <pv/likely.h>

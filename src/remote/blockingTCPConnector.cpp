@@ -13,7 +13,6 @@
 #define epicsExportSharedSymbols
 #include <pv/blockingTCP.h>
 #include <pv/remote.h>
-#include <pv/namedLockPattern.h>
 #include <pv/logger.h>
 #include <pv/codec.h>
 

@@ -36,7 +36,6 @@
 #include <pv/security.h>
 #include <pv/transportRegistry.h>
 #include <pv/introspectionRegistry.h>
-#include <pv/namedLockPattern.h>
 #include <pv/inetAddressUtil.h>
 
 /* C++11 keywords
