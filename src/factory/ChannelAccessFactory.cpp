@@ -9,6 +9,7 @@
 
 #include <osiSock.h>
 #include <epicsThread.h>
+#include <epicsSignal.h>
 
 #include <pv/lock.h>
 #include <pv/noDefaultMethods.h>
@@ -18,6 +19,7 @@
 
 #define epicsExportSharedSymbols
 #include <pv/pvAccess.h>
+#include <pv/clientContextImpl.h>
 #include <pv/factory.h>
 #include "pv/codec.h"
 #include <pv/serverContextImpl.h>
@@ -161,7 +163,12 @@ epicsThreadOnceId providerRegOnce = EPICS_THREAD_ONCE_INIT;
 
 void providerRegInit(void*)
 {
+    epicsSignalInstallSigAlarmIgnore();
+    epicsSignalInstallSigPipeIgnore();
+
     providerRegGbl = new providerRegGbl_t;
+    providerRegGbl->clients->add("pva", createClientProvider);
+
     registerRefCounter("ServerContextImpl", &ServerContextImpl::num_instances);
     registerRefCounter("ServerChannel", &ServerChannel::num_instances);
     registerRefCounter("BlockingTCPTransportCodec", &detail::BlockingTCPTransportCodec::num_instances);
