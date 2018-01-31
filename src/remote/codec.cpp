@@ -1599,7 +1599,7 @@ void BlockingServerTCPTransportCodec::authenticationCompleted(epics::pvData::Sta
         string errorMessage = "Re-authentication failed: " + status.getMessage();
         if (!status.getStackDump().empty())
             errorMessage += "\n" + status.getStackDump();
-        LOG(logLevelInfo, errorMessage.c_str());
+        LOG(logLevelInfo, "%s", errorMessage.c_str());
 
         close();
     }
