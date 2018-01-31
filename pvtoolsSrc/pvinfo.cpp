@@ -181,15 +181,25 @@ int main (int argc, char *argv[])
         vector<Channel::shared_pointer> channels(nPvs);
         for (int n = 0; n < nPvs; n++)
         {
-            if(!providers[n]) continue;
+            if(!providers[n])
+			{
+				std::cerr << "Invalid provider for " << pvs[n] << std::endl;
+				continue;
+			}
             channels[n] = providers[n]->createChannel(pvNames[n], DefaultChannelRequester::build(),
                                                       ChannelProvider::PRIORITY_DEFAULT, pvAddresses[n]);
+			if ( !channels[n] )
+			{
+				std::cerr << "Unable to create channel for '" << pvs[n] << std::endl;
+			}
         }
 
         // for now a simple iterating sync implementation, guarantees order
         for (int n = 0; n < nPvs; n++)
         {
             Channel::shared_pointer channel = channels[n];
+			if ( !channel )
+				continue;
 
             TR1::shared_ptr<GetFieldRequesterImpl> getFieldRequesterImpl(new GetFieldRequesterImpl(channel));
             channel->getField(getFieldRequesterImpl, "");
