@@ -126,7 +126,7 @@ struct MonitorEvent
     enum event_t {
         Fail=1,      //!< subscription ends in an error
         Cancel=2,    //!< subscription ends in cancellation
-        Disconnect=4,//!< subscription interrupted to do lose of communication
+        Disconnect=4,//!< subscription interrupted due to loss of communication
         Data=8,      //!< Data queue not empty.  Call Monitor::poll()
     } event;
     std::string message; // set for event=Fail
