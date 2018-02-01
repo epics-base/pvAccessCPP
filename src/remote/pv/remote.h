@@ -157,11 +157,14 @@ class SecuritySession;
 /**
  * Interface defining transport (connection).
  */
-class Transport : public epics::pvData::DeserializableControl {
+class epicsShareClass Transport : public epics::pvData::DeserializableControl {
 public:
     POINTER_DEFINITIONS(Transport);
 
-    virtual ~Transport() {}
+    static size_t num_instances;
+
+    Transport();
+    virtual ~Transport();
 
     /**
      * Acquires transport.

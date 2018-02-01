@@ -58,6 +58,19 @@ struct BreakTransport : TransportSender
 
 namespace epics {
 namespace pvAccess {
+
+size_t Transport::num_instances;
+
+Transport::Transport()
+{
+    REFTRACE_INCREMENT(num_instances);
+}
+
+Transport::~Transport()
+{
+    REFTRACE_DECREMENT(num_instances);
+}
+
 namespace detail {
 
 const std::size_t AbstractCodec::MAX_MESSAGE_PROCESS = 100;
@@ -994,6 +1007,7 @@ bool AbstractCodec::directDeserialize(ByteBuffer *existingBuffer, char* deserial
 {
     return false;
 }
+
 //
 //
 //  BlockingAbstractCodec
