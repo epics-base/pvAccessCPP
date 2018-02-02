@@ -171,7 +171,6 @@ public:
      * @param client client (channel) acquiring the transport
      * @return <code>true</code> if transport was granted, <code>false</code> otherwise.
      */
-    //virtual bool acquire(ClientChannelImpl::shared_pointer const & client) = 0;
     virtual bool acquire(std::tr1::shared_ptr<ClientChannelImpl> const & client) = 0;
 
     /**
@@ -179,7 +178,6 @@ public:
      * @param client client (channel) releasing the transport
      */
     virtual void release(pvAccessID clientId) = 0;
-    //virtual void release(ClientChannelImpl::shared_pointer const & client) = 0;
 
     /**
      * Get protocol type (tcp, udp, ssl, etc.).
@@ -312,7 +310,6 @@ public:
 
     virtual epics::pvData::Timer::shared_pointer getTimer() = 0;
 
-    //virtual TransportRegistry::shared_pointer getTransportRegistry() = 0;
     virtual TransportRegistry* getTransportRegistry() = 0;
 
 
