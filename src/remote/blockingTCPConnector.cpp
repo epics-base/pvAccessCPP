@@ -46,17 +46,23 @@ SOCKET BlockingTCPConnector::tryConnect(osiSockAddr& address, int tries) {
         if (socket == INVALID_SOCKET)
         {
             epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-            LOG(logLevelWarn, "Socket create error: %s.", strBuffer);
-            return INVALID_SOCKET;
+            std::ostringstream temp;
+            temp<<"Socket create error: "<<strBuffer;
+            THROW_EXCEPTION2(std::runtime_error, temp.str());
         }
         else {
+            // TODO: use non-blocking connect() to have controllable timeout
             if(::connect(socket, &address.sa, sizeof(sockaddr))==0) {
                 return socket;
             }
             else {
-                epicsSocketDestroy (socket);
                 epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                LOG(logLevelDebug, "Socket connect error: %s.", strBuffer);
+                char saddr[32];
+                sockAddrToDottedIP(&address.sa, saddr, sizeof(saddr));
+                epicsSocketDestroy (socket);
+                std::ostringstream temp;
+                temp<<"error connecting to "<<saddr<<" : "<<strBuffer;
+                throw std::runtime_error(temp.str());
             }
         }
     }
@@ -93,15 +99,6 @@ Transport::shared_pointer BlockingTCPConnector::connect(std::tr1::shared_ptr<Cli
         LOG(logLevelDebug, "Connecting to PVA server: %s.", ipAddrStr);
 
         socket = tryConnect(address, 3);
-
-        // verify
-        if(socket==INVALID_SOCKET) {
-            LOG(logLevelDebug,
-                "Connection to PVA server %s failed.", ipAddrStr);
-            std::ostringstream temp;
-            temp<<"Failed to verify TCP connection to '"<<ipAddrStr<<"'.";
-            THROW_BASE_EXCEPTION(temp.str().c_str());
-        }
 
         LOG(logLevelDebug, "Socket connected to PVA server: %s.", ipAddrStr);
 
