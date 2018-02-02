@@ -355,8 +355,8 @@ public:
         return std::string("TCP");
     }
 
-    const osiSockAddr* getRemoteAddress() const  {
-        return &dummyAddr;
+    const osiSockAddr& getRemoteAddress() const  {
+        return dummyAddr;
     }
     std::string dummyRemoteName;
     const std::string& getRemoteName() const {

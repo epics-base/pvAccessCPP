@@ -3663,11 +3663,11 @@ public:
             {
                 // GUID check case: same server listening on different NIF
 
-                if (!sockAddrAreIdentical(transport->getRemoteAddress(), serverAddress) &&
+                if (!sockAddrAreIdentical(&transport->getRemoteAddress(), serverAddress) &&
                         !std::equal(guid.value, guid.value + 12, m_guid.value))
                 {
                     EXCEPTION_GUARD3(m_requester, req, req->message("More than one channel with name '" + m_name +
-                                                         "' detected, connected to: " + inetAddressToString(*transport->getRemoteAddress()) + ", ignored: " + inetAddressToString(*serverAddress), warningMessage));
+                                                         "' detected, connected to: " + inetAddressToString(transport->getRemoteAddress()) + ", ignored: " + inetAddressToString(*serverAddress), warningMessage));
                 }
 
                 // do not pass (create transports) with we already have one

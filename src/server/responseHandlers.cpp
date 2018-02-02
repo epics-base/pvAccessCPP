@@ -719,7 +719,7 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
     {
 
         char host[100];
-        sockAddrToDottedIP(&transport->getRemoteAddress()->sa,host,100);
+        sockAddrToDottedIP(&transport->getRemoteAddress().sa,host,100);
         LOG(logLevelDebug,"Zero length channel name, disconnecting client: %s", host);
         disconnect(transport);
         return;
@@ -727,7 +727,7 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
     else if (channelName.size() > MAX_CHANNEL_NAME_LENGTH)
     {
         char host[100];
-        sockAddrToDottedIP(&transport->getRemoteAddress()->sa,host,100);
+        sockAddrToDottedIP(&transport->getRemoteAddress().sa,host,100);
         LOG(logLevelDebug,"Unreasonable channel name length, disconnecting client: %s", host);
         disconnect(transport);
         return;

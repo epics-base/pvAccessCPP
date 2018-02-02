@@ -187,11 +187,7 @@ public:
      */
     virtual std::string getType() const = 0;
 
-    /**
-     * Get remote address.
-     * @return remote address, can never be null.
-     */
-    virtual const osiSockAddr* getRemoteAddress() const = 0;
+    virtual const osiSockAddr& getRemoteAddress() const = 0;
 
     virtual const std::string& getRemoteName() const = 0;
 

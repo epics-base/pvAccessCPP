@@ -356,8 +356,8 @@ public:
     }
 
 
-    virtual const osiSockAddr* getRemoteAddress() const OVERRIDE FINAL {
-        return &_socketAddress;
+    virtual const osiSockAddr& getRemoteAddress() const OVERRIDE FINAL {
+        return _socketAddress;
     }
 
     virtual const std::string& getRemoteName() const OVERRIDE FINAL {

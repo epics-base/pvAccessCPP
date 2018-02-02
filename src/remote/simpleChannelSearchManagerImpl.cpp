@@ -50,7 +50,7 @@ SimpleChannelSearchManagerImpl::create(Context::shared_pointer const & context)
 
 SimpleChannelSearchManagerImpl::SimpleChannelSearchManagerImpl(Context::shared_pointer const & context) :
     m_context(context),
-    m_responseAddress(*context->getSearchTransport()->getRemoteAddress()),
+    m_responseAddress(context->getSearchTransport()->getRemoteAddress()),
     m_canceled(),
     m_sequenceNumber(0),
     m_sendBuffer(MAX_UDP_UNFRAGMENTED_SEND),

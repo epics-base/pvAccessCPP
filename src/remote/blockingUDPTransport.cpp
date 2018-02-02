@@ -585,7 +585,7 @@ void initializeUDPTransports(bool serverFlag,
     // to allow automatic assignment of listen port (for testing)
     if (listenPort == 0)
     {
-        listenPort = ntohs(sendTransport->getRemoteAddress()->ia.sin_port);
+        listenPort = ntohs(sendTransport->getRemoteAddress().ia.sin_port);
         LOG(logLevelDebug, "Dynamic listen UDP port set to %u.", (unsigned)listenPort);
     }
 
@@ -699,7 +699,7 @@ void initializeUDPTransports(bool serverFlag,
                         PVA_DEFAULT_PRIORITY);
             if (!transport)
                 continue;
-            listenLocalAddress = *transport->getRemoteAddress();
+            listenLocalAddress = transport->getRemoteAddress();
 
             transport->setIgnoredAddresses(ignoreAddressVector);
 

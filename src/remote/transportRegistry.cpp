@@ -112,7 +112,7 @@ Transport::shared_pointer TransportRegistry::get(const osiSockAddr& address, epi
 
 void TransportRegistry::install(const Transport::shared_pointer& ptr)
 {
-    const Key key(*ptr->getRemoteAddress(), ptr->getPriority());
+    const Key key(ptr->getRemoteAddress(), ptr->getPriority());
 
     pvd::Lock G(_mutex);
 
