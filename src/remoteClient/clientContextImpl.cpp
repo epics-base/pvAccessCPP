@@ -4458,29 +4458,17 @@ private:
         if (priority < ChannelProvider::PRIORITY_MIN || priority > ChannelProvider::PRIORITY_MAX)
             throw std::range_error("priority out of bounds");
 
-        bool lockAcquired = true; // TODO namedLocker->acquireSynchronizationObject(name, LOCK_TIMEOUT);
-        if (lockAcquired)
-        {
-            try
-            {
-                /* Note that our channels have an internal ref. to us.
-                 * Thus having active channels will *not* keep us alive.
-                 * Use code must explicitly keep our external ref. as well
-                 * as our channels.
-                 */
-                pvAccessID cid = generateCID();
-                return InternalChannelImpl::create(internal_from_this(), cid, name, requester, priority, addresses);
-            }
-            catch(std::exception& e) {
-                LOG(logLevelError, "createChannelInternal() exception: %s\n", e.what());
-                return ClientChannelImpl::shared_pointer();
-            }
-            // TODO namedLocker.releaseSynchronizationObject(name);
-        }
-        else
-        {
-            // TODO is this OK?
-            throw std::runtime_error("Failed to obtain synchronization lock for '" + name + "', possible deadlock.");
+        try {
+            /* Note that our channels have an internal ref. to us.
+             * Thus having active channels will *not* keep us alive.
+             * Use code must explicitly keep our external ref. as well
+             * as our channels.
+             */
+            pvAccessID cid = generateCID();
+            return InternalChannelImpl::create(internal_from_this(), cid, name, requester, priority, addresses);
+        } catch(std::exception& e) {
+            LOG(logLevelError, "createChannelInternal() exception: %s\n", e.what());
+            return ClientChannelImpl::shared_pointer();
         }
     }
 

@@ -15,6 +15,8 @@
 #   undef epicsExportSharedSymbols
 #endif
 
+#include <compilerDependencies.h>
+
 #include <pv/lock.h>
 #include <pv/pvType.h>
 #include <pv/sharedPtr.h>
@@ -35,7 +37,7 @@ namespace pvAccess {
  * NamedLockPattern
  */
 template <class Key, class Compare = std::less<Key> >
-class NamedLockPattern
+class EPICS_DEPRECATED NamedLockPattern
 {
 public:
     /**
