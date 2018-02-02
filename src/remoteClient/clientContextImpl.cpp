@@ -4436,7 +4436,7 @@ private:
         }
         catch (std::exception& e)
         {
-            LOG(logLevelError, "getTransport() fails: %s\n", e.what());
+            LOG(logLevelDebug, "getTransport() fails: %s", e.what());
             return Transport::shared_pointer();
         }
     }
