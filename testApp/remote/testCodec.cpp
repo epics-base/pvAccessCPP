@@ -113,6 +113,9 @@ public:
         _writeBuffer(sendBufferSize),
         _dummyAddress()
     {
+        dummyAddr.ia.sin_family = AF_INET;
+        dummyAddr.ia.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        dummyAddr.ia.sin_port = htons(42);
     }
 
 
@@ -353,7 +356,7 @@ public:
     }
 
     const osiSockAddr* getRemoteAddress() const  {
-        return 0;
+        return &dummyAddr;
     }
     std::string dummyRemoteName;
     const std::string& getRemoteName() const {
@@ -412,6 +415,7 @@ public:
     }
 
 
+    osiSockAddr dummyAddr;
     std::size_t _closedCount;
     std::size_t _invalidDataStreamCount;
     std::size_t _scheduleSendCount;

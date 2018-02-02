@@ -189,7 +189,7 @@ public:
 
     /**
      * Get remote address.
-     * @return remote address, can be null.
+     * @return remote address, can never be null.
      */
     virtual const osiSockAddr* getRemoteAddress() const = 0;
 

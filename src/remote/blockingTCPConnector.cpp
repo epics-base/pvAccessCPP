@@ -26,7 +26,6 @@ BlockingTCPConnector::BlockingTCPConnector(
     int receiveBufferSize,
     float heartbeatInterval) :
     _context(context),
-    _namedLocker(),
     _receiveBufferSize(receiveBufferSize),
     _heartbeatInterval(heartbeatInterval)
 {
@@ -75,8 +74,13 @@ Transport::shared_pointer BlockingTCPConnector::connect(std::tr1::shared_ptr<Cli
 
     Context::shared_pointer context = _context.lock();
 
-    // first try to check cache w/o named lock...
-    Transport::shared_pointer transport = context->getTransportRegistry()->get("TCP", &address, priority);
+    TransportRegistry::Reservation rsvp(context->getTransportRegistry(),
+                                        address, priority);
+    // we are now blocking any connect() to this destination (address and prio)
+    // concurrent connect() to other destination is allowed.
+    // This prevents us from opening duplicate connections.
+
+    Transport::shared_pointer transport = context->getTransportRegistry()->get(address, priority);
     if(transport.get()) {
         LOG(logLevelDebug,
             "Reusing existing connection to PVA server: %s.",
@@ -85,110 +89,82 @@ Transport::shared_pointer BlockingTCPConnector::connect(std::tr1::shared_ptr<Cli
             return transport;
     }
 
-    /* TODO: bound map<> size
-     * Lazy creates a lock for each 'address' ever encountered.
-     */
-    bool lockAcquired = _namedLocker.acquireSynchronizationObject(&address, LOCK_TIMEOUT);
-    if(lockAcquired) {
-        try {
-            // ... transport created during waiting in lock
-            transport = context->getTransportRegistry()->get("TCP", &address, priority);
-            if(transport.get()) {
-                LOG(logLevelDebug,
-                    "Reusing existing connection to PVA server: %s.",
-                    ipAddrStr);
-                if (transport->acquire(client))
-                    return transport;
-            }
+    try {
+        LOG(logLevelDebug, "Connecting to PVA server: %s.", ipAddrStr);
 
-            LOG(logLevelDebug, "Connecting to PVA server: %s.", ipAddrStr);
+        socket = tryConnect(address, 3);
 
-            socket = tryConnect(address, 3);
-
-            // verify
-            if(socket==INVALID_SOCKET) {
-                LOG(logLevelDebug,
-                    "Connection to PVA server %s failed.", ipAddrStr);
-                std::ostringstream temp;
-                temp<<"Failed to verify TCP connection to '"<<ipAddrStr<<"'.";
-                THROW_BASE_EXCEPTION(temp.str().c_str());
-            }
-
-            LOG(logLevelDebug, "Socket connected to PVA server: %s.", ipAddrStr);
-
-            // enable TCP_NODELAY (disable Nagle's algorithm)
-            int optval = 1; // true
-            int retval = ::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY,
-                                      (char *)&optval, sizeof(int));
-            if(retval<0) {
-                char errStr[64];
-                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                LOG(logLevelWarn, "Error setting TCP_NODELAY: %s.", errStr);
-            }
-
-            // enable TCP_KEEPALIVE
-            retval = ::setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE,
-                                  (char *)&optval, sizeof(int));
-            if(retval<0)
-            {
-                char errStr[64];
-                epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-                LOG(logLevelWarn, "Error setting SO_KEEPALIVE: %s.", errStr);
-            }
-
-            // TODO tune buffer sizes?! Win32 defaults are 8k, which is OK
-
-            // create transport
-            // TODO introduce factory
-            // get TCP send buffer size
-            osiSocklen_t intLen = sizeof(int);
-            int _socketSendBufferSize;
-            retval = getsockopt(socket, SOL_SOCKET, SO_SNDBUF, (char *)&_socketSendBufferSize, &intLen);
-            if(retval<0) {
-                char strBuffer[64];
-                epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-                LOG(logLevelDebug, "Error getting SO_SNDBUF: %s.", strBuffer);
-            }
-
-            transport = detail::BlockingClientTCPTransportCodec::create(
-                            context, socket, responseHandler, _receiveBufferSize, _socketSendBufferSize,
-                            client, transportRevision, _heartbeatInterval, priority);
-
-            // verify
-            if(!transport->verify(5000)) {
-                LOG(
-                    logLevelDebug,
-                    "Connection to PVA server %s failed to be validated, closing it.",
-                    ipAddrStr);
-
-                std::ostringstream temp;
-                temp<<"Failed to verify TCP connection to '"<<ipAddrStr<<"'.";
-                THROW_BASE_EXCEPTION(temp.str().c_str());
-            }
-
-            LOG(logLevelDebug, "Connected to PVA server: %s.", ipAddrStr);
-
-            _namedLocker.releaseSynchronizationObject(&address);
-            return transport;
-        } catch(std::exception&) {
-            if(transport.get())
-                transport->close();
-            else if(socket!=INVALID_SOCKET) epicsSocketDestroy(socket);
-            _namedLocker.releaseSynchronizationObject(&address);
-            throw;
-        } catch(...) {
-            if(transport.get())
-                transport->close();
-            else if(socket!=INVALID_SOCKET) epicsSocketDestroy(socket);
-            _namedLocker.releaseSynchronizationObject(&address);
-            throw;
+        // verify
+        if(socket==INVALID_SOCKET) {
+            LOG(logLevelDebug,
+                "Connection to PVA server %s failed.", ipAddrStr);
+            std::ostringstream temp;
+            temp<<"Failed to verify TCP connection to '"<<ipAddrStr<<"'.";
+            THROW_BASE_EXCEPTION(temp.str().c_str());
         }
-    }
-    else {
-        std::ostringstream temp;
-        temp<<"Failed to obtain synchronization lock for '"<<ipAddrStr;
-        temp<<"', possible deadlock.";
-        THROW_BASE_EXCEPTION(temp.str().c_str());
+
+        LOG(logLevelDebug, "Socket connected to PVA server: %s.", ipAddrStr);
+
+        // enable TCP_NODELAY (disable Nagle's algorithm)
+        int optval = 1; // true
+        int retval = ::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY,
+                                  (char *)&optval, sizeof(int));
+        if(retval<0) {
+            char errStr[64];
+            epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+            LOG(logLevelWarn, "Error setting TCP_NODELAY: %s.", errStr);
+        }
+
+        // enable TCP_KEEPALIVE
+        retval = ::setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE,
+                              (char *)&optval, sizeof(int));
+        if(retval<0)
+        {
+            char errStr[64];
+            epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
+            LOG(logLevelWarn, "Error setting SO_KEEPALIVE: %s.", errStr);
+        }
+
+        // TODO tune buffer sizes?! Win32 defaults are 8k, which is OK
+
+        // create transport
+        // TODO introduce factory
+        // get TCP send buffer size
+        osiSocklen_t intLen = sizeof(int);
+        int _socketSendBufferSize;
+        retval = getsockopt(socket, SOL_SOCKET, SO_SNDBUF, (char *)&_socketSendBufferSize, &intLen);
+        if(retval<0) {
+            char strBuffer[64];
+            epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
+            LOG(logLevelDebug, "Error getting SO_SNDBUF: %s.", strBuffer);
+        }
+
+        // create() also adds to context connection pool _context->getTransportRegistry()
+        transport = detail::BlockingClientTCPTransportCodec::create(
+                    context, socket, responseHandler, _receiveBufferSize, _socketSendBufferSize,
+                    client, transportRevision, _heartbeatInterval, priority);
+
+        // verify
+        if(!transport->verify(5000)) {
+            LOG(
+                        logLevelDebug,
+                        "Connection to PVA server %s failed to be validated, closing it.",
+                        ipAddrStr);
+
+            std::ostringstream temp;
+            temp<<"Failed to verify TCP connection to '"<<ipAddrStr<<"'.";
+            THROW_BASE_EXCEPTION(temp.str().c_str());
+        }
+
+        LOG(logLevelDebug, "Connected to PVA server: %s.", ipAddrStr);
+
+        return transport;
+    } catch(std::exception&) {
+        if(transport.get())
+            transport->close();
+        else if(socket!=INVALID_SOCKET)
+            epicsSocketDestroy(socket);
+        throw;
     }
 }
 

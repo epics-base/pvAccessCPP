@@ -9,6 +9,7 @@
 
 #include <map>
 #include <vector>
+#include <list>
 #include <iostream>
 
 #ifdef epicsExportSharedSymbols
@@ -36,33 +37,51 @@ namespace pvAccess {
 
 class TransportRegistry {
 public:
-    typedef std::tr1::shared_ptr<TransportRegistry> shared_pointer;
-    typedef std::tr1::shared_ptr<const TransportRegistry> const_shared_pointer;
+    class Reservation;
+private:
+    struct Key {
+        osiSockAddr addr;
+        epics::pvData::int16 prio;
+        Key(const osiSockAddr& a, epics::pvData::int16 p) :addr(a), prio(p) {}
+        bool operator<(const Key& o) const;
+    };
+
+    typedef std::map<Key, Transport::shared_pointer> transports_t;
+    typedef std::map<Key, std::tr1::shared_ptr<epics::pvData::Mutex> > locks_t;
+
+public:
+    POINTER_DEFINITIONS(TransportRegistry);
 
     typedef std::vector<Transport::shared_pointer> transportVector_t;
 
-    TransportRegistry();
-    virtual ~TransportRegistry();
+    class Reservation {
+        TransportRegistry* const owner;
+        const Key key;
+        std::tr1::shared_ptr<epics::pvData::Mutex> mutex;
+    public:
 
-    void put(Transport::shared_pointer const & transport);
-    Transport::shared_pointer get(std::string const & type, const osiSockAddr* address, const epics::pvData::int16 priority);
-    void get(std::string const & type, const osiSockAddr* address, transportVector_t&output);
+        // ctor blocks until no concurrent connect() in progress (success or failure)
+        Reservation(TransportRegistry *owner, const osiSockAddr& address, epics::pvData::int16 prio);
+        ~Reservation();
+    };
+
+    TransportRegistry() {}
+    ~TransportRegistry();
+
+    Transport::shared_pointer get(const osiSockAddr& address, epics::pvData::int16 prio);
+    void install(const Transport::shared_pointer& ptr);
     Transport::shared_pointer remove(Transport::shared_pointer const & transport);
     void clear();
-    epics::pvData::int32 numberOfActiveTransports();
+    size_t size();
 
     // optimized to avoid reallocation, adds to array
-    void toArray(transportVector_t & transportArray);
+    void toArray(transportVector_t & transportArray, const osiSockAddr *dest=0);
 
 private:
-    //TODO if unordered map is used instead of map we can use sockAddrAreIdentical routine from osiSock.h
-    // NOTE: pointers are used to osiSockAddr (to save memory), since it guaranteed that their reference is valid as long as Transport
-    typedef std::map<const epics::pvData::int16,Transport::shared_pointer> prioritiesMap_t;
-    typedef std::tr1::shared_ptr<prioritiesMap_t> prioritiesMapSharedPtr_t;
-    typedef std::map<const osiSockAddr*,prioritiesMapSharedPtr_t,comp_osiSockAddrPtr> transportsMap_t;
+    transports_t transports;
+    // per destination mutex to serialize concurrent connect() attempts
+    locks_t locks;
 
-    transportsMap_t _transports;
-    epics::pvData::int32 _transportCount;
     epics::pvData::Mutex _mutex;
 };
 

@@ -6,68 +6,79 @@
 
 #define epicsExportSharedSymbols
 #include <pv/transportRegistry.h>
+#include <pv/logger.h>
 
-using namespace epics::pvData;
+namespace pvd = epics::pvData;
 
 namespace epics {
 namespace pvAccess {
 
-TransportRegistry::TransportRegistry(): _transports(), _transportCount(0), _mutex()
-{
 
+bool TransportRegistry::Key::operator<(const Key& o) const
+{
+    if(addr.sa.sa_family<o.addr.sa.sa_family)
+        return true;
+    if(addr.sa.sa_family>o.addr.sa.sa_family)
+        return false;
+    if(addr.ia.sin_addr.s_addr<o.addr.ia.sin_addr.s_addr)
+        return true;
+    if(addr.ia.sin_addr.s_addr>o.addr.ia.sin_addr.s_addr)
+        return false;
+    if(addr.ia.sin_port<o.addr.ia.sin_port)
+        return true;
+    if(addr.ia.sin_port>o.addr.ia.sin_port)
+        return false;
+    if(prio<o.prio)
+        return true;
+    return false;
+}
+
+TransportRegistry::Reservation::Reservation(TransportRegistry *owner,
+                                            const osiSockAddr& address,
+                                            pvd::int16 prio)
+    :owner(owner)
+    ,key(address, prio)
+{
+    {
+        pvd::Lock G(owner->_mutex);
+
+        std::tr1::shared_ptr<pvd::Mutex>& lock = owner->locks[key]; // fetch or alloc
+        if(!lock)
+            lock.reset(new pvd::Mutex());
+
+        mutex = lock;
+    }
+
+    mutex->lock();
+}
+
+TransportRegistry::Reservation::~Reservation()
+{
+    mutex->unlock();
+
+    pvd::Lock G(owner->_mutex);
+
+    assert(mutex.use_count()>=2);
+
+    if(mutex.use_count()==2) {
+        // no other concurrent connect(), so can drop this lock
+        owner->locks.erase(key);
+    }
+
+    assert(mutex.use_count()==1);
 }
 
 TransportRegistry::~TransportRegistry()
 {
+    pvd::Lock G(_mutex);
+    if(!transports.empty())
+        LOG(logLevelWarn, "TransportRegistry destroyed while not empty");
 }
-
-void TransportRegistry::put(Transport::shared_pointer const & transport)
-{
-    Lock guard(_mutex);
-    //const string type = transport.getType();
-    const int16 priority = transport->getPriority();
-    const osiSockAddr* address = transport->getRemoteAddress();
-
-    transportsMap_t::iterator transportsIter = _transports.find(address);
-    prioritiesMapSharedPtr_t priorities;
-    if(transportsIter == _transports.end())
-    {
-        priorities.reset(new prioritiesMap_t());
-        _transports[address] = priorities;
-        _transportCount++;
-    }
-    else
-    {
-        priorities = transportsIter->second;
-        prioritiesMap_t::iterator prioritiesIter = priorities->find(priority);
-        if(prioritiesIter == priorities->end()) //only increase transportCount if not replacing
-        {
-            _transportCount++;
-        }
-    }
-    (*priorities)[priority] = transport;
-}
-
-Transport::shared_pointer TransportRegistry::get(std::string const & /*type*/, const osiSockAddr* address, const int16 priority)
-{
-    Lock guard(_mutex);
-    transportsMap_t::iterator transportsIter = _transports.find(address);
-    if(transportsIter != _transports.end())
-    {
-        prioritiesMapSharedPtr_t priorities = transportsIter->second;
-        prioritiesMap_t::iterator prioritiesIter = priorities->find(priority);
-        if(prioritiesIter != priorities->end())
-        {
-            return prioritiesIter->second;
-        }
-    }
-    return Transport::shared_pointer();
-}
-
+/*
 void
-TransportRegistry::get(std::string const & /*type*/, const osiSockAddr* address, transportVector_t& output)
+TransportRegistry::get(const osiSockAddr* address, transportVector_t& output)
 {
-    Lock guard(_mutex);
+    pvd::Lock guard(_mutex);
     transportsMap_t::iterator transportsIter = _transports.find(address);
     if(transportsIter != _transports.end())
     {
@@ -84,64 +95,106 @@ TransportRegistry::get(std::string const & /*type*/, const osiSockAddr* address,
         }
     }
 }
+*/
+
+Transport::shared_pointer TransportRegistry::get(const osiSockAddr& address, epics::pvData::int16 prio)
+{
+    const Key key(address, prio);
+
+    pvd::Lock G(_mutex);
+
+    transports_t::iterator it(transports.find(key));
+    if(it!=transports.end()) {
+        return it->second;
+    }
+    return Transport::shared_pointer();
+}
+
+void TransportRegistry::install(const Transport::shared_pointer& ptr)
+{
+    const Key key(*ptr->getRemoteAddress(), ptr->getPriority());
+
+    pvd::Lock G(_mutex);
+
+    std::pair<transports_t::iterator, bool> itpair(transports.insert(std::make_pair(key, ptr)));
+    if(!itpair.second)
+        THROW_EXCEPTION2(std::logic_error, "Refuse to insert dup");
+}
 
 Transport::shared_pointer TransportRegistry::remove(Transport::shared_pointer const & transport)
 {
-    Lock guard(_mutex);
-    const int16 priority = transport->getPriority();
-    const osiSockAddr* address = transport->getRemoteAddress();
-    Transport::shared_pointer retTransport;
-    transportsMap_t::iterator transportsIter = _transports.find(address);
-    if(transportsIter != _transports.end())
+    assert(!!transport);
+    Transport::shared_pointer ret;
+
+    pvd::Lock guard(_mutex);
+    for(transports_t::iterator it(transports.begin()), end(transports.end());
+        it != end; ++it)
     {
-        prioritiesMapSharedPtr_t priorities = transportsIter->second;
-        prioritiesMap_t::iterator prioritiesIter = priorities->find(priority);
-        if(prioritiesIter != priorities->end())
-        {
-            retTransport = prioritiesIter->second;
-            priorities->erase(prioritiesIter);
-            _transportCount--;
-            if(priorities->size() == 0)
-            {
-                _transports.erase(transportsIter);
-            }
+        Transport::shared_pointer& tr = it->second;
+
+        if(transport.get() == tr.get()) {
+            ret.swap(it->second);
+            transports.erase(it);
         }
     }
-    return retTransport;
+    return ret;
 }
+
+#define LEAK_CHECK(PTR, NAME) if((PTR) && !(PTR).unique()) { std::cerr<<"Leaking Transport " NAME " use_count="<<(PTR).use_count()<<"\n"<<show_referrers(PTR, false);}
 
 void TransportRegistry::clear()
 {
-    Lock guard(_mutex);
-    _transports.clear();
-    _transportCount = 0;
-}
+    transports_t temp;
+    {
+        pvd::Lock guard(_mutex);
+        transports.swap(temp);
+    }
 
-int32 TransportRegistry::numberOfActiveTransports()
-{
-    Lock guard(_mutex);
-    return _transportCount;
-}
-
-void TransportRegistry::toArray(transportVector_t & transportArray)
-{
-    Lock guard(_mutex);
-    if (_transportCount == 0)
+    if(temp.empty())
         return;
 
-    transportArray.reserve(transportArray.size() + _transportCount);
+    LOG(logLevelDebug, "Context still has %zu transport(s) active and closing...", temp.size());
 
-    for (transportsMap_t::iterator transportsIter = _transports.begin();
-            transportsIter != _transports.end();
-            transportsIter++)
+    for(transports_t::iterator it(temp.begin()), end(temp.end());
+        it != end; ++it)
     {
-        prioritiesMapSharedPtr_t priorities = transportsIter->second;
-        for (prioritiesMap_t::iterator prioritiesIter = priorities->begin();
-                prioritiesIter != priorities->end();
-                prioritiesIter++)
-        {
-            transportArray.push_back(prioritiesIter->second);
+        it->second->close();
+    }
+
+    for(transports_t::iterator it(temp.begin()), end(temp.end());
+        it != end; ++it)
+    {
+        const Transport::shared_pointer& transport = it->second;
+        transport->waitJoin();
+        LEAK_CHECK(transport, "tcp transport")
+        if(!transport.unique()) {
+            LOG(logLevelError, "Closed transport %s still has use_count=%u",
+                transport->getRemoteName().c_str(),
+                (unsigned)transport.use_count());
         }
+    }
+}
+
+size_t TransportRegistry::size()
+{
+    pvd::Lock guard(_mutex);
+    return transports.size();
+}
+
+void TransportRegistry::toArray(transportVector_t & transportArray, const osiSockAddr *dest)
+{
+    pvd::Lock guard(_mutex);
+
+    transportArray.reserve(transportArray.size() + transports.size());
+
+    for(transports_t::const_iterator it(transports.begin()), end(transports.end());
+        it != end; ++it)
+    {
+        const Key& key = it->first;
+        const Transport::shared_pointer& tr = it->second;
+
+        if(!dest || sockAddrAreIdentical(dest, &key.addr))
+            transportArray.push_back(tr);
     }
 }
 

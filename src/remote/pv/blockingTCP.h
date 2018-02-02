@@ -36,7 +36,6 @@
 #include <pv/remote.h>
 #include <pv/transportRegistry.h>
 #include <pv/introspectionRegistry.h>
-#include <pv/namedLockPattern.h>
 #include <pv/inetAddressUtil.h>
 
 namespace epics {
@@ -69,11 +68,6 @@ private:
      * Context instance.
      */
     Context::weak_pointer _context;
-
-    /**
-     * named lock
-     */
-    NamedLockPattern<const osiSockAddr*, comp_osiSockAddrPtr> _namedLocker;
 
     /**
      * Receive buffer size.

@@ -2730,14 +2730,16 @@ public:
         int16 port = payloadBuffer->getShort();
         serverAddress.ia.sin_port = htons(port);
 
-        string protocol = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+        string protocol(SerializeHelper::deserializeString(payloadBuffer, transport.get()));
+        if(protocol!="tcp")
+            return;
 
         // TODO optimize
         ClientContextImpl::shared_pointer context = _context.lock();
         if (!context)
             return;
 
-        std::tr1::shared_ptr<epics::pvAccess::BeaconHandler> beaconHandler = context->getBeaconHandler(protocol, responseFrom);
+        std::tr1::shared_ptr<epics::pvAccess::BeaconHandler> beaconHandler = context->getBeaconHandler(responseFrom);
         // currently we care only for servers used by this context
         if (!beaconHandler)
             return;
@@ -4208,7 +4210,7 @@ private:
         // wait for all transports to cleanly exit
         int tries = 40;
         epics::pvData::int32 transportCount;
-        while ((transportCount = m_transportRegistry.numberOfActiveTransports()) && tries--)
+        while ((transportCount = m_transportRegistry.size()) && tries--)
             epicsThreadSleep(0.025);
 
         {
@@ -4403,19 +4405,15 @@ private:
      * @param responseFrom remote source address of received beacon.
      * @return beacon handler for particular server.
      */
-    BeaconHandler::shared_pointer getBeaconHandler(std::string const & protocol, osiSockAddr* responseFrom) OVERRIDE FINAL
+    BeaconHandler::shared_pointer getBeaconHandler(osiSockAddr* responseFrom) OVERRIDE FINAL
     {
-        // TODO !!! protocol !!!
-        if (protocol != "tcp")
-            return BeaconHandler::shared_pointer();
-
         Lock guard(m_beaconMapMutex);
         AddressBeaconHandlerMap::iterator it = m_beaconHandlers.find(*responseFrom);
         BeaconHandler::shared_pointer handler;
         if (it == m_beaconHandlers.end())
         {
             // stores weak_ptr
-            handler.reset(new BeaconHandler(internal_from_this(), protocol, responseFrom));
+            handler.reset(new BeaconHandler(internal_from_this(), responseFrom));
             m_beaconHandlers[*responseFrom] = handler;
         }
         else

@@ -422,7 +422,7 @@ public:
 
     void activate() {
         Transport::shared_pointer thisSharedPtr = shared_from_this();
-        _context->getTransportRegistry()->put(thisSharedPtr);
+        _context->getTransportRegistry()->install(thisSharedPtr);
 
         start();
     }

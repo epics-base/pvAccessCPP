@@ -112,7 +112,7 @@ public:
 
     virtual void newServerDetected() = 0;
 
-    virtual std::tr1::shared_ptr<BeaconHandler> getBeaconHandler(std::string const & protocol, osiSockAddr* responseFrom) = 0;
+    virtual std::tr1::shared_ptr<BeaconHandler> getBeaconHandler(osiSockAddr* responseFrom) = 0;
 
     virtual void destroy() = 0;
 };
