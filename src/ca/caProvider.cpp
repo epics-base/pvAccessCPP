@@ -64,6 +64,7 @@ CAChannelProvider::~CAChannelProvider()
              CAChannelPtr caChannel(caChannelList[i].lock());
              if(caChannel) channelQ.push(caChannel);
          }
+         caChannelList.clear();
     }
     while(!channelQ.empty()) {
        if(DEBUG_LEVEL>0) {
@@ -74,6 +75,9 @@ CAChannelProvider::~CAChannelProvider()
        channelQ.front()->disconnectChannel();
        channelQ.pop();
     }
+    attachContext();
+    ca_flush_io();
+    ca_context_destroy();
 }
 
 std::string CAChannelProvider::getProviderName()
@@ -115,10 +119,10 @@ Channel::shared_pointer CAChannelProvider::createChannel(
     ChannelRequester::shared_pointer const & channelRequester,
     short priority)
 {
-    threadAttach();
-
     static std::string emptyString;
-    return createChannel(channelName, channelRequester, priority, emptyString);
+    Channel::shared_pointer channel(
+        createChannel(channelName, channelRequester, priority, emptyString));
+    return channel;
 }
 
 Channel::shared_pointer CAChannelProvider::createChannel(
@@ -163,9 +167,15 @@ void CAChannelProvider::poll()
 }
 
 
-void CAChannelProvider::threadAttach()
+void CAChannelProvider::attachContext()
 {
-    ca_attach_context(current_context);
+    if(ca_current_context()) return;
+    int result = ca_attach_context(current_context);
+    if (result != ECA_NORMAL) {
+        std::cout <<
+            "CA error %s occurred while calling ca_attach_context:"
+            << ca_message(result) << std::endl;
+    }
 }
 
 void CAChannelProvider::initialize()
@@ -179,19 +189,6 @@ void CAChannelProvider::initialize()
             + ca_message(result));
     }
     current_context = ca_current_context();
-}
-
-
-static
-void ca_factory_cleanup(void*)
-{
-    if(DEBUG_LEVEL>0) std::cout << "ca_factory_cleanup\n";
-    try {
-        ChannelProviderRegistry::clients()->remove("ca");
-        ca_context_destroy(); 
-    } catch(std::exception& e) {
-        LOG(logLevelWarn, "Error on unregistering \"ca\" factory: %s", e.what());
-    }
 }
 
 void CAClientFactory::start()
@@ -209,9 +206,9 @@ void CAClientFactory::start()
     registerRefCounter("CAChannelPut", &CAChannelPut::num_instances);
     registerRefCounter("CAChannelMonitor", &CAChannelMonitor::num_instances);
 
-    if(ChannelProviderRegistry::clients()->add<CAChannelProvider>("ca", true))
+    if(!ChannelProviderRegistry::clients()->add<CAChannelProvider>("ca", true))
     {
-        epicsAtExit(&ca_factory_cleanup, NULL);
+         throw std::runtime_error("CAClientFactory::start failed");
     }
 }
 

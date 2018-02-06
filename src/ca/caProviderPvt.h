@@ -68,12 +68,11 @@ public:
 
     virtual void destroy() EPICS_DEPRECATED {};
 
-    void addChannel(const CAChannelPtr & get);
+    void addChannel(const CAChannelPtr & channel);
 
     /* ---------------------------------------------------------------- */
 
-    void threadAttach();
-    
+    void attachContext();
 
 private:
     void initialize();
