@@ -102,19 +102,14 @@ void TransportRegistry::install(const Transport::shared_pointer& ptr)
 Transport::shared_pointer TransportRegistry::remove(Transport::shared_pointer const & transport)
 {
     assert(!!transport);
+    const Key key(transport->getRemoteAddress(), transport->getPriority());
     Transport::shared_pointer ret;
 
     pvd::Lock guard(_mutex);
-    for(transports_t::iterator it(transports.begin()), end(transports.end());
-        it != end; ++it)
-    {
-        Transport::shared_pointer& tr = it->second;
-
-        if(transport.get() == tr.get()) {
-            ret.swap(it->second);
-            transports.erase(it);
-            break;
-        }
+    transports_t::iterator it(transports.find(key));
+    if(it!=transports.end()) {
+        ret.swap(it->second);
+        transports.erase(it);
     }
     return ret;
 }
