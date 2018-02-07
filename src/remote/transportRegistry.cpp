@@ -74,28 +74,6 @@ TransportRegistry::~TransportRegistry()
     if(!transports.empty())
         LOG(logLevelWarn, "TransportRegistry destroyed while not empty");
 }
-/*
-void
-TransportRegistry::get(const osiSockAddr* address, transportVector_t& output)
-{
-    pvd::Lock guard(_mutex);
-    transportsMap_t::iterator transportsIter = _transports.find(address);
-    if(transportsIter != _transports.end())
-    {
-        prioritiesMapSharedPtr_t& priorities = transportsIter->second;
-
-        size_t i = output.size();
-        output.resize(output.size() + priorities->size());
-
-        for(prioritiesMap_t::iterator prioritiesIter = priorities->begin();
-                prioritiesIter != priorities->end();
-                prioritiesIter++, i++)
-        {
-            output[i] = prioritiesIter->second;
-        }
-    }
-}
-*/
 
 Transport::shared_pointer TransportRegistry::get(const osiSockAddr& address, epics::pvData::int16 prio)
 {
