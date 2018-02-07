@@ -135,6 +135,7 @@ Transport::shared_pointer TransportRegistry::remove(Transport::shared_pointer co
         if(transport.get() == tr.get()) {
             ret.swap(it->second);
             transports.erase(it);
+            break;
         }
     }
     return ret;
