@@ -58,19 +58,6 @@ public:
 
     ~RPCClient() {destroy();}
 
-    /**
-     * Performs complete blocking RPC call, opening a channel and connecting to the
-     * service and sending the request.
-     *
-     * @param serviceName         the name of the service to connect to
-     * @param request             the request sent to the service
-     * @param timeout             the timeout (in seconds), 0 means forever.
-     * @return                    the result of the RPC call.
-     * @throws RPCRequestException exception thrown on error on timeout.
-     */
-    static epics::pvData::PVStructure::shared_pointer sendRequest(const std::string & serviceName,
-            epics::pvData::PVStructure::shared_pointer const &request, double timeOut = RPCCLIENT_DEFAULT_TIMEOUT) EPICS_DEPRECATED;
-
 
 
     /**

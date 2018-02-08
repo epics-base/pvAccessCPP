@@ -1237,14 +1237,6 @@ public:
      */
     virtual Channel::shared_pointer createChannel(std::string const & name,ChannelRequester::shared_pointer const & requester,
             short priority, std::string const & address) = 0;
-
-    //! @deprecated Changing of Configuration after start is not supported
-    virtual void configure(epics::pvData::PVStructure::shared_pointer /*configuration*/) EPICS_DEPRECATED {};
-    //! @deprecated No function
-    virtual void flush() EPICS_DEPRECATED {};
-    //! @deprecated No function
-    virtual void poll() EPICS_DEPRECATED {};
-
 };
 
 /**

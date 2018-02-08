@@ -67,7 +67,7 @@ ServerContextImpl::~ServerContextImpl()
     }
     catch(std::exception& e)
     {
-        std::cerr<<"Error in: ServerContextImpl::dispose: "<<e.what()<<"\n";
+        std::cerr<<"Error in: ServerContextImpl::~ServerContextImpl: "<<e.what()<<"\n";
     }
     REFTRACE_DECREMENT(num_instances);
 }
@@ -369,41 +369,8 @@ void ServerContextImpl::destroyAllTransports()
     if (size == 0)
         return;
 
-    LOG(logLevelDebug, "Server context still has %zu transport(s) active and closing...", size);
-
-    for (size_t i = 0; i < size; i++)
-    {
-        const Transport::shared_pointer& transport = transports[i];
-        try
-        {
-            transport->close();
-        }
-        catch (std::exception &e)
-        {
-            // do all exception safe, log in case of an error
-            LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what());
-        }
-        catch (...)
-        {
-            // do all exception safe, log in case of an error
-            LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__);
-        }
-    }
-
     // now clear all (release)
     _transportRegistry.clear();
-
-    for (size_t i = 0; i < size; i++)
-    {
-        const Transport::shared_pointer& transport = transports[i];
-        transport->waitJoin();
-        LEAK_CHECK(transport, "tcp transport")
-        if(!transport.unique()) {
-            LOG(logLevelError, "Closed transport %s still has use_count=%u",
-                transport->getRemoteName().c_str(),
-                (unsigned)transport.use_count());
-        }
-    }
 }
 
 void ServerContext::printInfo(int lvl)
@@ -480,22 +447,6 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
                 str<<"\n";
             }
         }
-    }
-}
-
-void ServerContext::dispose()
-{
-    try
-    {
-        shutdown();
-    }
-    catch(std::exception& e)
-    {
-        std::cerr<<"Error in: ServerContextImpl::dispose: "<<e.what()<<"\n";
-    }
-    catch(...)
-    {
-        std::cerr<<"Oh no, something when wrong in ServerContextImpl::dispose!\n";
     }
 }
 

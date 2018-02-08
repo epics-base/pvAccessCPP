@@ -64,8 +64,8 @@ public:
         return _closed.get();
     }
 
-    virtual const osiSockAddr* getRemoteAddress() const OVERRIDE FINAL {
-        return &_remoteAddress;
+    virtual const osiSockAddr& getRemoteAddress() const OVERRIDE FINAL {
+        return _remoteAddress;
     }
 
     virtual const std::string& getRemoteName() const OVERRIDE FINAL {

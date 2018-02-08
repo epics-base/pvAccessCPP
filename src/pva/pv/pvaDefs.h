@@ -15,9 +15,6 @@ struct ServerGUID {
     char value[12];
 };
 
-// 'GUID' can be ambigious on windows/mingw
-typedef ServerGUID GUID EPICS_DEPRECATED;
-
 typedef epicsInt32 pvAccessID;
 
 class AtomicBoolean

@@ -66,8 +66,6 @@ public:
     virtual void flush();
     virtual void poll();
 
-    virtual void destroy() EPICS_DEPRECATED {};
-
     void addChannel(const CAChannelPtr & channel);
 
     /* ---------------------------------------------------------------- */
@@ -75,6 +73,7 @@ public:
     void attachContext();
 
 private:
+    virtual void destroy() EPICS_DEPRECATED {};
     void initialize();
     ca_client_context* current_context;
     epics::pvData::Mutex channelListMutex;

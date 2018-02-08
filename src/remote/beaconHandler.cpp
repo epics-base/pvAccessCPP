@@ -16,10 +16,8 @@ namespace epics {
 namespace pvAccess {
 
 BeaconHandler::BeaconHandler(Context::shared_pointer const & context,
-                             std::string const & protocol,
                              const osiSockAddr* responseFrom) :
     _context(Context::weak_pointer(context)),
-    _protocol(protocol),
     _responseFrom(*responseFrom),
     _mutex(),
     _serverGUID(),
@@ -88,7 +86,7 @@ bool BeaconHandler::updateBeacon(int8 /*remoteTransportRevision*/, TimeStamp* /*
 void BeaconHandler::changedTransport()
 {
     TransportRegistry::transportVector_t transports;
-    _context.lock()->getTransportRegistry()->get(_protocol, &_responseFrom, transports);
+    _context.lock()->getTransportRegistry()->toArray(transports, &_responseFrom);
 
     // notify all
     for (TransportRegistry::transportVector_t::iterator iter(transports.begin()), end(transports.end());

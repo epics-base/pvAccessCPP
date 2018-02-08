@@ -269,13 +269,5 @@ RPCClient::shared_pointer RPCClient::create(const std::string & serviceName,
     return RPCClient::shared_pointer(new RPCClient(serviceName, pvRequest));
 }
 
-pvd::PVStructure::shared_pointer RPCClient::sendRequest(const std::string & serviceName,
-        pvd::PVStructure::shared_pointer const & queryRequest,
-        double timeOut)
-{
-    RPCClient client(serviceName, queryRequest);
-    return client.request(queryRequest, timeOut);
-}
-
 
 }}// namespace epics::pvAccess

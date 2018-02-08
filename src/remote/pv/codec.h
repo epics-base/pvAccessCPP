@@ -356,8 +356,8 @@ public:
     }
 
 
-    virtual const osiSockAddr* getRemoteAddress() const OVERRIDE FINAL {
-        return &_socketAddress;
+    virtual const osiSockAddr& getRemoteAddress() const OVERRIDE FINAL {
+        return _socketAddress;
     }
 
     virtual const std::string& getRemoteName() const OVERRIDE FINAL {
@@ -422,7 +422,7 @@ public:
 
     void activate() {
         Transport::shared_pointer thisSharedPtr = shared_from_this();
-        _context->getTransportRegistry()->put(thisSharedPtr);
+        _context->getTransportRegistry()->install(thisSharedPtr);
 
         start();
     }

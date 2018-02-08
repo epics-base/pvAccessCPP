@@ -112,9 +112,6 @@ void get_all()
             i != channelGetList.end();
             i++)
         (*i)->get();
-
-    // we assume all channels are from the same provider
-    if (bulkMode) provider->flush();
 }
 
 
@@ -321,7 +318,6 @@ void runTest()
         Channel::shared_pointer channel = provider->createChannel(*i, channelRequesterImpl);
         channels.push_back(channel);
     }
-    if (bulkMode) provider->flush();
 
     bool differentConnectionsWarningIssued = false;
     string theRemoteAddress;
@@ -355,7 +351,6 @@ void runTest()
                 new ChannelGetRequesterImpl(channel->getChannelName())
             );
             ChannelGet::shared_pointer channelGet = channel->createChannelGet(getRequesterImpl, pvRequest);
-            if (bulkMode) provider->flush();
 
             bool allOK = getRequesterImpl->waitUntilConnected(timeOut);
 

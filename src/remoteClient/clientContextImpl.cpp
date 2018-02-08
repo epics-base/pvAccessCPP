@@ -2730,14 +2730,16 @@ public:
         int16 port = payloadBuffer->getShort();
         serverAddress.ia.sin_port = htons(port);
 
-        string protocol = SerializeHelper::deserializeString(payloadBuffer, transport.get());
+        string protocol(SerializeHelper::deserializeString(payloadBuffer, transport.get()));
+        if(protocol!="tcp")
+            return;
 
         // TODO optimize
         ClientContextImpl::shared_pointer context = _context.lock();
         if (!context)
             return;
 
-        std::tr1::shared_ptr<epics::pvAccess::BeaconHandler> beaconHandler = context->getBeaconHandler(protocol, responseFrom);
+        std::tr1::shared_ptr<epics::pvAccess::BeaconHandler> beaconHandler = context->getBeaconHandler(responseFrom);
         // currently we care only for servers used by this context
         if (!beaconHandler)
             return;
@@ -3661,11 +3663,11 @@ public:
             {
                 // GUID check case: same server listening on different NIF
 
-                if (!sockAddrAreIdentical(transport->getRemoteAddress(), serverAddress) &&
+                if (!sockAddrAreIdentical(&transport->getRemoteAddress(), serverAddress) &&
                         !std::equal(guid.value, guid.value + 12, m_guid.value))
                 {
                     EXCEPTION_GUARD3(m_requester, req, req->message("More than one channel with name '" + m_name +
-                                                         "' detected, connected to: " + inetAddressToString(*transport->getRemoteAddress()) + ", ignored: " + inetAddressToString(*serverAddress), warningMessage));
+                                                         "' detected, connected to: " + inetAddressToString(transport->getRemoteAddress()) + ", ignored: " + inetAddressToString(*serverAddress), warningMessage));
                 }
 
                 // do not pass (create transports) with we already have one
@@ -4017,8 +4019,7 @@ public:
                   EPICS_PVA_MAINTENANCE_VERSION,
                   EPICS_PVA_DEVELOPMENT_FLAG),
         m_contextState(CONTEXT_NOT_INITIALIZED),
-        m_configuration(conf),
-        m_flushStrategy(DELAYED)
+        m_configuration(conf)
     {
         REFTRACE_INCREMENT(num_instances);
 
@@ -4104,17 +4105,6 @@ public:
         }
 
         internalDestroy();
-    }
-
-    virtual void dispose() OVERRIDE FINAL
-    {
-        try {
-            destroy();
-        } catch (std::exception& ex) {
-            printf("dispose(): %s\n", ex.what()); // tODO remove
-        } catch (...) {
-            /* TODO log with low level */
-        }
     }
 
     virtual ~InternalClientContextImpl()
@@ -4220,7 +4210,7 @@ private:
         // wait for all transports to cleanly exit
         int tries = 40;
         epics::pvData::int32 transportCount;
-        while ((transportCount = m_transportRegistry.numberOfActiveTransports()) && tries--)
+        while ((transportCount = m_transportRegistry.size()) && tries--)
             epicsThreadSleep(0.025);
 
         {
@@ -4415,19 +4405,15 @@ private:
      * @param responseFrom remote source address of received beacon.
      * @return beacon handler for particular server.
      */
-    BeaconHandler::shared_pointer getBeaconHandler(std::string const & protocol, osiSockAddr* responseFrom) OVERRIDE FINAL
+    BeaconHandler::shared_pointer getBeaconHandler(osiSockAddr* responseFrom) OVERRIDE FINAL
     {
-        // TODO !!! protocol !!!
-        if (protocol != "tcp")
-            return BeaconHandler::shared_pointer();
-
         Lock guard(m_beaconMapMutex);
         AddressBeaconHandlerMap::iterator it = m_beaconHandlers.find(*responseFrom);
         BeaconHandler::shared_pointer handler;
         if (it == m_beaconHandlers.end())
         {
             // stores weak_ptr
-            handler.reset(new BeaconHandler(internal_from_this(), protocol, responseFrom));
+            handler.reset(new BeaconHandler(internal_from_this(), responseFrom));
             m_beaconHandlers[*responseFrom] = handler;
         }
         else
@@ -4446,13 +4432,11 @@ private:
         try
         {
             Transport::shared_pointer t = m_connector->connect(client, m_responseHandler, *serverAddress, minorRevision, priority);
-            // TODO !!!
-            //static_pointer_cast<BlockingTCPTransport>(t)->setFlushStrategy(m_flushStrategy);
             return t;
         }
         catch (std::exception& e)
         {
-            LOG(logLevelError, "getTransport() fails: %s\n", e.what());
+            LOG(logLevelDebug, "getTransport() fails: %s", e.what());
             return Transport::shared_pointer();
         }
     }
@@ -4474,63 +4458,18 @@ private:
         if (priority < ChannelProvider::PRIORITY_MIN || priority > ChannelProvider::PRIORITY_MAX)
             throw std::range_error("priority out of bounds");
 
-        bool lockAcquired = true; // TODO namedLocker->acquireSynchronizationObject(name, LOCK_TIMEOUT);
-        if (lockAcquired)
-        {
-            try
-            {
-                /* Note that our channels have an internal ref. to us.
-                 * Thus having active channels will *not* keep us alive.
-                 * Use code must explicitly keep our external ref. as well
-                 * as our channels.
-                 */
-                pvAccessID cid = generateCID();
-                return InternalChannelImpl::create(internal_from_this(), cid, name, requester, priority, addresses);
-            }
-            catch(std::exception& e) {
-                LOG(logLevelError, "createChannelInternal() exception: %s\n", e.what());
-                return ClientChannelImpl::shared_pointer();
-            }
-            // TODO namedLocker.releaseSynchronizationObject(name);
+        try {
+            /* Note that our channels have an internal ref. to us.
+             * Thus having active channels will *not* keep us alive.
+             * Use code must explicitly keep our external ref. as well
+             * as our channels.
+             */
+            pvAccessID cid = generateCID();
+            return InternalChannelImpl::create(internal_from_this(), cid, name, requester, priority, addresses);
+        } catch(std::exception& e) {
+            LOG(logLevelError, "createChannelInternal() exception: %s\n", e.what());
+            return ClientChannelImpl::shared_pointer();
         }
-        else
-        {
-            // TODO is this OK?
-            throw std::runtime_error("Failed to obtain synchronization lock for '" + name + "', possible deadlock.");
-        }
-    }
-
-    virtual void configure(epics::pvData::PVStructure::shared_pointer configuration) OVERRIDE FINAL
-    {   // remove?
-        if (m_transportRegistry.numberOfActiveTransports() > 0)
-            throw std::runtime_error("Configure must be called when there is no transports active.");
-
-        PVInt::shared_pointer pvStrategy = dynamic_pointer_cast<PVInt>(configuration->getSubField("strategy"));
-        if (pvStrategy.get())
-        {
-            int32 value = pvStrategy->get();
-            switch (value)
-            {
-            case IMMEDIATE:
-            case DELAYED:
-            case USER_CONTROLED:
-                m_flushStrategy = static_cast<FlushStrategy>(value);
-                break;
-            default:
-                // TODO report warning
-                break;
-            }
-        }
-
-    }
-
-    virtual void flush() OVERRIDE FINAL
-    {
-        m_transportRegistry.toArray(m_flushTransports);
-        TransportRegistry::transportVector_t::const_iterator iter = m_flushTransports.begin();
-        while (iter != m_flushTransports.end())
-            (*iter++)->flushSendQueue();
-        m_flushTransports.clear();
     }
 
     std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins() OVERRIDE FINAL
@@ -4683,8 +4622,6 @@ private:
     Configuration::shared_pointer m_configuration;
 
     TransportRegistry::transportVector_t m_flushTransports;
-
-    FlushStrategy m_flushStrategy;
 };
 
 size_t InternalClientContextImpl::num_instances;

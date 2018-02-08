@@ -40,7 +40,7 @@ public:
     /**
      * Constructor.
      */
-    BeaconHandler(Context::shared_pointer const & context, std::string const & protocol,
+    BeaconHandler(Context::shared_pointer const & context,
                   const osiSockAddr* responseFrom);
 
     virtual ~BeaconHandler();
@@ -66,10 +66,6 @@ private:
      * Context instance.
      */
     Context::weak_pointer _context;
-    /**
-     * The procotol (transport), "tcp" for pvAccess TCP/IP.
-     */
-    std::string _protocol;
     /**
      * Remote address.
      */

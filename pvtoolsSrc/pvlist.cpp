@@ -531,32 +531,6 @@ int main (int argc, char *argv[])
         case 'i':               /* Print server info */
             printInfo = true;
             break;
-        /*
-        case 'F':               // Store this for output formatting
-        fieldSeparator = (char) *optarg;
-        break;
-        case 'f':               // Use input stream as input
-        {
-        string fileName = optarg;
-        if (fileName == "-")
-            inputStream = &cin;
-        else
-        {
-            ifs.open(fileName.c_str(), ifstream::in);
-            if (!ifs)
-            {
-                fprintf(stderr,
-                        "Failed to open file '%s'.\n",
-                        fileName.c_str());
-                return 1;
-            }
-            else
-                inputStream = &ifs;
-        }
-
-        fromStream = true;
-        break;
-        }*/
         case '?':
             fprintf(stderr,
                     "Unrecognized option: '-%c'. ('pvlist -h' for help.)\n",
