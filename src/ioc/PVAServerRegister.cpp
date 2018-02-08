@@ -46,7 +46,7 @@ void startitup() {
     the_server = pva::ServerContext::create(pva::ServerContext::Config()
                                             .config(pva::ConfigurationBuilder()
                                                     // default to all providers instead of just "local"
-                                                    .add("EPICS_PVAS_PROVIDER_NAMES", PVACCESS_ALL_PROVIDERS)
+                                                    .add("EPICS_PVAS_PROVIDER_NAMES", pva::PVACCESS_ALL_PROVIDERS)
                                                     .push_map()
                                                     // prefer to use EPICS_PVAS_PROVIDER_NAMES
                                                     // from environment
