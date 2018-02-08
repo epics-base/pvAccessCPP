@@ -1586,7 +1586,7 @@ void BlockingServerTCPTransportCodec::destroyAllChannels() {
             _socketName.c_str(), _channels.size());
     }
 
-    std::map<pvAccessID, ServerChannel::shared_pointer>::iterator it = _channels.begin();
+    _channels_t::iterator it(_channels.begin());
     for(; it!=_channels.end(); it++)
         it->second->destroy();
 
