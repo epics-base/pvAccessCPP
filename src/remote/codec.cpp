@@ -1586,11 +1586,11 @@ void BlockingServerTCPTransportCodec::destroyAllChannels() {
             _socketName.c_str(), _channels.size());
     }
 
-    _channels_t::iterator it(_channels.begin());
-    for(; it!=_channels.end(); it++)
-        it->second->destroy();
+    _channels_t temp;
+    temp.swap(_channels);
 
-    _channels.clear();
+    for(_channels_t::iterator it(temp.begin()), end(temp.end()); it!=end; ++it)
+        it->second->destroy();
 }
 
 void BlockingServerTCPTransportCodec::internalClose(bool force) {
