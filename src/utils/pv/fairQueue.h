@@ -72,9 +72,7 @@ public:
         } enode;
         unsigned Qcnt;
         value_type holder;
-#ifndef NDEBUG
         fair_queue *owner;
-#endif
 
         friend class fair_queue;
 
@@ -82,9 +80,7 @@ public:
         entry& operator=(const entry&);
     public:
         entry() :Qcnt(0), holder()
-#ifndef NDEBUG
             , owner(NULL)
-#endif
         {
             enode.node.next = enode.node.previous = NULL;
             enode.self = this;
@@ -93,9 +89,7 @@ public:
             // nodes should be removed from the list before deletion
             assert(!enode.node.next && !enode.node.previous);
             assert(Qcnt==0 && !holder);
-#ifndef NDEBUG
             assert(!owner);
-#endif
         }
     };
 
