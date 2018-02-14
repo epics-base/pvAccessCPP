@@ -92,6 +92,7 @@ public:
         ~entry() {
             // nodes should be removed from the list before deletion
             assert(!enode.node.next && !enode.node.previous);
+            assert(Qcnt==0 && !holder);
 #ifndef NDEBUG
             assert(!owner);
 #endif
@@ -144,6 +145,7 @@ public:
 
     bool pop_front_try(value_type& ret)
     {
+        ret.reset();
         guard_t G(mutex);
         ELLNODE *cur = ellGet(&list); // pop_front
 
@@ -165,7 +167,6 @@ public:
             }
             return true;
         } else {
-            ret.reset();
             return false;
         }
     }
