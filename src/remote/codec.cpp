@@ -337,7 +337,7 @@ void AbstractCodec::processReadSegmented() {
                     " %s:%d: %s, disconnecting...",
                     __FILE__, __LINE__, inetAddressToString(*getLastReadBufferSocketAddress()).c_str());
                 invalidDataStreamHandler();
-                throw new invalid_data_stream_exception(
+                throw invalid_data_stream_exception(
                     "not-a-first segmented message expected");
             }
 
