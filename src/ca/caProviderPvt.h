@@ -73,7 +73,7 @@ public:
     void attachContext();
 
 private:
-    virtual void destroy() EPICS_DEPRECATED {};
+    virtual void destroy() EPICS_DEPRECATED {}
     void initialize();
     ca_client_context* current_context;
     epics::pvData::Mutex channelListMutex;
