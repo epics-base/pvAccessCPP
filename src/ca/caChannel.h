@@ -102,7 +102,7 @@ public:
 
     /* ---------------------------------------------------------------- */
 
-    void threadAttach();
+    void attachContext();
 
     void addChannelGet(const CAChannelGetPtr & get);
     void addChannelPut(const CAChannelPutPtr & get);

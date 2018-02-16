@@ -61,12 +61,16 @@ public:
         ChannelRequester::shared_pointer const & channelRequester,
         short priority,
         std::string const & address);
-    void addChannel(const CAChannelPtr & get);
+
+    virtual void configure(epics::pvData::PVStructure::shared_pointer configuration);
+    virtual void flush();
+    virtual void poll();
+
+    void addChannel(const CAChannelPtr & channel);
 
     /* ---------------------------------------------------------------- */
 
-    void threadAttach();
-    
+    void attachContext();
 
 private:
     virtual void destroy() EPICS_DEPRECATED {}
