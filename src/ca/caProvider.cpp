@@ -169,7 +169,11 @@ void CAChannelProvider::poll()
 
 void CAChannelProvider::attachContext()
 {
-    if(ca_current_context()) return;
+    ca_client_context* thread_context = ca_current_context();
+    if (thread_context == current_context) return;
+    if (thread_context != NULL) {
+        throw std::runtime_error("CAChannelProvider: Foreign CA context in use");
+    }
     int result = ca_attach_context(current_context);
     if (result != ECA_NORMAL) {
         std::cout <<
