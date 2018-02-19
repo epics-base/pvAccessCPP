@@ -783,7 +783,8 @@ void CAChannelGet::activate()
     bitSet = BitSetPtr(new BitSet(pvStructure->getStructure()->getNumberFields()));
     pvCopy = PVCopy::create(
           createPVStructure(channel, getType, pvRequest),
-          pvRequest,"");
+          CreateRequest::create()->createRequest("field()"),
+          "");
     channel->addChannelGet(shared_from_this());
     if(channel->getConnectionState()==Channel::CONNECTED) {
          EXCEPTION_GUARD(getRequester->channelGetConnect(Status::Ok, shared_from_this(),
@@ -804,7 +805,10 @@ void CAChannelGet::channelCreated(const Status& status,Channel::shared_pointer c
         getType = getDBRType(pvRequest, channel->getNativeType());
         pvStructure = createPVStructure(channel, getType, pvRequest);
         bitSet = BitSetPtr(new BitSet(pvStructure->getStructure()->getNumberFields()));
-        pvCopy = PVCopy::create(pvStructure,pvRequest,"");
+        pvCopy = PVCopy::create(
+          createPVStructure(channel, getType, pvRequest),
+          CreateRequest::create()->createRequest("field()"),
+          "");
     }
     EXCEPTION_GUARD(getRequester->channelGetConnect(Status::Ok, shared_from_this(),
                     pvStructure->getStructure()));
@@ -1845,7 +1849,8 @@ void CAChannelMonitor::activate()
     activeElement = MonitorElementPtr(new MonitorElement(pvStructure));
     pvCopy = PVCopy::create(
           createPVStructure(channel, getType, pvRequest),
-          pvRequest,"");
+          CreateRequest::create()->createRequest("field()"),
+          "");
     int32 queueSize = 2;
     PVStructurePtr pvOptions = pvRequest->getSubField<PVStructure>("record._options");
     if (pvOptions) {
@@ -1880,8 +1885,9 @@ void CAChannelMonitor::channelCreated(const Status& status,Channel::shared_point
         pvStructure = createPVStructure(channel, getType, pvRequest);
         activeElement = MonitorElementPtr(new MonitorElement(pvStructure));
         pvCopy = PVCopy::create(
-            createPVStructure(channel, getType, pvRequest),
-            pvRequest,"");
+          createPVStructure(channel, getType, pvRequest),
+          CreateRequest::create()->createRequest("field()"),
+          "");
         int32 queueSize = 2;
         PVStructurePtr pvOptions = pvRequest->getSubField<PVStructure>("record._options");
         if (pvOptions) {
