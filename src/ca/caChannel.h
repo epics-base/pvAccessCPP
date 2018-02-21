@@ -197,7 +197,7 @@ private:
     CAChannelPtr channel;
     ChannelGetRequester::weak_pointer channelGetRequester;
     const epics::pvData::PVStructure::shared_pointer pvRequest;
-    volatile bool firstTime;
+    bool firstTime;
 
     chtype getType;
     epics::pvData::PVCopyPtr pvCopy;
@@ -332,7 +332,7 @@ private:
     bool isStarted;
     chtype getType;
 
-    volatile bool firstTime;
+    bool firstTime;
     epics::pvData::PVCopyPtr pvCopy;
     epics::pvData::PVStructure::shared_pointer pvStructure;
     epics::pvData::MonitorElementPtr activeElement;
