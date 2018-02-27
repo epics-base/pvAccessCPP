@@ -321,6 +321,7 @@ struct Putter : public pvac::ClientChannel::PutCallback
                     if(bare[0]==choices[i]) {
                         idxfld->putFrom<int64>(i);
                         found=true;
+                        break;
                     }
                 }
 
