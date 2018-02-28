@@ -196,16 +196,29 @@ bool Monitor::poll()
     Guard G(impl->mutex);
 
     if(!impl->done && impl->last.next()) {
-        root = impl->last->pvStructurePtr;
+        const epics::pvData::PVStructurePtr& ptr = impl->last->pvStructurePtr;
         changed = *impl->last->changedBitSet;
         overrun = *impl->last->overrunBitSet;
 
+        /* copy the exposed PVStructure for two reasons.
+         * 1. Prevent accidental use of shared container after release()
+         * 2. Allows caller to cache results of getSubField() until root.get() changes.
+         */
+        if(!root || (void*)root->getField().get()!=(void*)ptr->getField().get()) {
+            // initial connection, or new type
+            root = pvd::getPVDataCreate()->createPVStructure(ptr); // also calls copyUnchecked()
+        } else {
+            // same type
+            const_cast<pvd::PVStructure&>(*root).copyUnchecked(*ptr, changed);
+        }
+
+        impl->seenEmpty = false;
     } else {
-        root.reset();
         changed.clear();
         overrun.clear();
+        impl->seenEmpty = true;
     }
-    return impl->seenEmpty = !!root;
+    return !impl->seenEmpty;
 }
 
 bool Monitor::complete() const

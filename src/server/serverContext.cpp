@@ -362,13 +362,6 @@ void ServerContextImpl::shutdown()
 
 void ServerContextImpl::destroyAllTransports()
 {
-    TransportRegistry::transportVector_t transports;
-    _transportRegistry.toArray(transports);
-
-    size_t size = transports.size();
-    if (size == 0)
-        return;
-
     // now clear all (release)
     _transportRegistry.clear();
 }

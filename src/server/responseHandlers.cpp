@@ -2035,7 +2035,7 @@ void ServerMonitorRequesterImpl::destroy()
 
     // hold a reference to channelMonitor so that _channelMonitor.reset()
     // does not call ~Monitor (external code) while we are holding a lock
-    Monitor::shared_pointer monitor = _channelMonitor;
+    Monitor::shared_pointer monitor(_channelMonitor);
     {
         Lock guard(_mutex);
         _channel->unregisterRequest(_ioid);

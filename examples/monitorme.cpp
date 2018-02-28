@@ -175,6 +175,8 @@ struct MonTracker : public pvac::ClientChannel::MonitorCallback,
             if(n==2) {
                 // too many updates, re-queue to balance with others
                 monwork.push(shared_from_this(), evt);
+            } else if(n==0) {
+                std::cerr<<"Spurious Data event "<<name<<"\n";
             }
         }
             break;
@@ -212,7 +214,7 @@ int main(int argc, char *argv[]) {
                 std::cout<<"Usage: "<<argv[0]<<" [-p <provider>] [-w <timeout>] [-r <request>] [-R] <pvname> ...\n";
                 return 0;
             default:
-                std::cerr<<"Unknown argument: "<<opt<<"\n";
+                std::cerr<<"Unknown argument: "<<(char)opt<<"\n";
                 return -1;
             }
         }

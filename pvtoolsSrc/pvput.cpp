@@ -269,6 +269,8 @@ struct Putter : public pvac::ClientChannel::PutCallback
 
     shared_vector<std::string> jarr;
 
+    PVStructure::const_shared_pointer current;
+
     virtual void putBuild(const epics::pvData::StructureConstPtr& build, Args& args)
     {
         if(debug) std::cerr<<"Server defined structure\n"<<build;
@@ -314,13 +316,14 @@ struct Putter : public pvac::ClientChannel::PutCallback
                 PVStructure* sfld(static_cast<PVStructure*>(fld.get()));
 
                 PVScalar* idxfld(sfld->getSubFieldT<PVScalar>("index").get());
-                PVStringArray::const_svector choices(sfld->getSubFieldT<PVStringArray>("choices")->view());
+                PVStringArray::const_svector choices(current->getSubFieldT<PVStringArray>("value.choices")->view());
 
                 bool found=false;
                 for(size_t i=0; i<choices.size(); i++) {
                     if(bare[0]==choices[i]) {
                         idxfld->putFrom<int64>(i);
                         found=true;
+                        break;
                     }
                 }
 
@@ -615,9 +618,11 @@ int main (int argc, char *argv[])
 
     pvac::ClientChannel chan(ctxt.connect(pvName));
 
+    thework.current = chan.get(timeOut, pvRequest);
+
     if (mode != TerseMode && !quiet) {
         std::cout << "Old : ";
-        printValue(pvName, chan.get(timeOut, pvRequest));
+        printValue(pvName, thework.current);
     }
 
     {

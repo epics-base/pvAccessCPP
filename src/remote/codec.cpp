@@ -337,7 +337,7 @@ void AbstractCodec::processReadSegmented() {
                     " %s:%d: %s, disconnecting...",
                     __FILE__, __LINE__, inetAddressToString(*getLastReadBufferSocketAddress()).c_str());
                 invalidDataStreamHandler();
-                throw new invalid_data_stream_exception(
+                throw invalid_data_stream_exception(
                     "not-a-first segmented message expected");
             }
 
@@ -1586,11 +1586,11 @@ void BlockingServerTCPTransportCodec::destroyAllChannels() {
             _socketName.c_str(), _channels.size());
     }
 
-    std::map<pvAccessID, ServerChannel::shared_pointer>::iterator it = _channels.begin();
-    for(; it!=_channels.end(); it++)
-        it->second->destroy();
+    _channels_t temp;
+    temp.swap(_channels);
 
-    _channels.clear();
+    for(_channels_t::iterator it(temp.begin()), end(temp.end()); it!=end; ++it)
+        it->second->destroy();
 }
 
 void BlockingServerTCPTransportCodec::internalClose(bool force) {

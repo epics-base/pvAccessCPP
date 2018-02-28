@@ -41,6 +41,7 @@ void alldone(int num)
 #endif
 
 pvd::Structure::const_shared_pointer spamtype(pvd::getFieldCreate()->createFieldBuilder()
+                                              ->setId("epics:nt/NTScalar:1.0")
                                               ->add("value", pvd::pvInt)
                                               ->createStructure());
 

@@ -104,13 +104,31 @@ struct epicsShareClass Monitor
     void cancel();
     /** updates root, changed, overrun
      *
-     * @return true if root!=NULL
+     * @return true if a new update was extracted from the queue.
+     * @note This method does not block.
      * @note MonitorEvent::Data will not be repeated until poll()==false.
+     * @post root!=NULL (after version 6.0.0)
+     * @post root!=NULL iff poll()==true  (In version 6.0.0)
      */
     bool poll();
     //! true if all events received.
     //! Check after poll()==false
     bool complete() const;
+    /** Monitor update data.
+     *
+     * After version 6.0.0
+     *
+     * Initially NULL, becomes !NULL the first time poll()==true.
+     * The PVStructure pointed to be root will presist until
+     * Monitor reconnect w/ type change.  This can be detected
+     * by comparing `root.get()`.  references to root may be cached
+     * subject to this test.
+     *
+     * In version 6.0.0
+     *
+     * NULL except after poll()==true.  poll()==false sets root=NULL.
+     * references to root should not be stored between calls to poll().
+     */
     epics::pvData::PVStructure::const_shared_pointer root;
     epics::pvData::BitSet changed,
                           overrun;

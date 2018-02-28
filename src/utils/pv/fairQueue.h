@@ -72,9 +72,7 @@ public:
         } enode;
         unsigned Qcnt;
         value_type holder;
-#ifndef NDEBUG
         fair_queue *owner;
-#endif
 
         friend class fair_queue;
 
@@ -82,9 +80,7 @@ public:
         entry& operator=(const entry&);
     public:
         entry() :Qcnt(0), holder()
-#ifndef NDEBUG
             , owner(NULL)
-#endif
         {
             enode.node.next = enode.node.previous = NULL;
             enode.self = this;
@@ -92,9 +88,8 @@ public:
         ~entry() {
             // nodes should be removed from the list before deletion
             assert(!enode.node.next && !enode.node.previous);
-#ifndef NDEBUG
+            assert(Qcnt==0 && !holder);
             assert(!owner);
-#endif
         }
     };
 
@@ -144,6 +139,7 @@ public:
 
     bool pop_front_try(value_type& ret)
     {
+        ret.reset();
         guard_t G(mutex);
         ELLNODE *cur = ellGet(&list); // pop_front
 
@@ -165,7 +161,6 @@ public:
             }
             return true;
         } else {
-            ret.reset();
             return false;
         }
     }

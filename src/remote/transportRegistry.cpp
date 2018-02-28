@@ -74,28 +74,6 @@ TransportRegistry::~TransportRegistry()
     if(!transports.empty())
         LOG(logLevelWarn, "TransportRegistry destroyed while not empty");
 }
-/*
-void
-TransportRegistry::get(const osiSockAddr* address, transportVector_t& output)
-{
-    pvd::Lock guard(_mutex);
-    transportsMap_t::iterator transportsIter = _transports.find(address);
-    if(transportsIter != _transports.end())
-    {
-        prioritiesMapSharedPtr_t& priorities = transportsIter->second;
-
-        size_t i = output.size();
-        output.resize(output.size() + priorities->size());
-
-        for(prioritiesMap_t::iterator prioritiesIter = priorities->begin();
-                prioritiesIter != priorities->end();
-                prioritiesIter++, i++)
-        {
-            output[i] = prioritiesIter->second;
-        }
-    }
-}
-*/
 
 Transport::shared_pointer TransportRegistry::get(const osiSockAddr& address, epics::pvData::int16 prio)
 {
@@ -124,19 +102,14 @@ void TransportRegistry::install(const Transport::shared_pointer& ptr)
 Transport::shared_pointer TransportRegistry::remove(Transport::shared_pointer const & transport)
 {
     assert(!!transport);
+    const Key key(transport->getRemoteAddress(), transport->getPriority());
     Transport::shared_pointer ret;
 
     pvd::Lock guard(_mutex);
-    for(transports_t::iterator it(transports.begin()), end(transports.end());
-        it != end; ++it)
-    {
-        Transport::shared_pointer& tr = it->second;
-
-        if(transport.get() == tr.get()) {
-            ret.swap(it->second);
-            transports.erase(it);
-            break;
-        }
+    transports_t::iterator it(transports.find(key));
+    if(it!=transports.end()) {
+        ret.swap(it->second);
+        transports.erase(it);
     }
     return ret;
 }

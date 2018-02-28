@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
                 std::cout<<"Usage: "<<argv[0]<<" [-p <provider>] [-w <timeout>] [-R] <pvname> ...\n";
                 return 0;
             default:
-                std::cerr<<"Unknown argument: "<<opt<<"\n";
+                std::cerr<<"Unknown argument: "<<(int)opt<<"\n";
                 return -1;
             }
         }

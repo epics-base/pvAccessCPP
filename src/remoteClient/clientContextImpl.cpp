@@ -3828,7 +3828,9 @@ public:
                     for(size_t i=0, N=ops.size(); i<N; i++) {
                         ResponseRequest::shared_pointer R(ops[i].lock());
                         if(!R) continue;
-                        EXCEPTION_GUARD(R->getRequester()->channelDisconnect(connectionState==Channel::DESTROYED);)
+                        ChannelBaseRequester::shared_pointer req(R->getRequester());
+                        if(!req) continue;
+                        EXCEPTION_GUARD(req->channelDisconnect(connectionState==Channel::DESTROYED);)
                     }
                 }
             }
