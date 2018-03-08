@@ -259,19 +259,39 @@ struct Get2PutProxy : public ChannelGet
     ChannelPut::shared_pointer op; // the put we wrap
     std::tr1::shared_ptr<Get2PutProxy::Req> op_request; // keep our Req alive
 
+    ChannelPut::shared_pointer OP() {
+        epicsGuard<epicsMutex> G(op_request->mutex);
+        return op;
+    }
+
     Get2PutProxy() {}
     virtual ~Get2PutProxy() {}
 
     virtual void destroy() OVERRIDE FINAL
-    { op->destroy(); }
+    {
+        ChannelPut::shared_pointer O(OP());
+        if(O) O->destroy();
+    }
     virtual std::tr1::shared_ptr<Channel> getChannel() OVERRIDE FINAL
-    { return op->getChannel(); }
+    {
+        ChannelPut::shared_pointer O(OP());
+        return O ? O->getChannel() : std::tr1::shared_ptr<Channel>();
+    }
     virtual void cancel() OVERRIDE FINAL
-    { op->cancel(); }
+    {
+        ChannelPut::shared_pointer O(OP());
+        if(O) O->cancel();
+    }
     virtual void lastRequest() OVERRIDE FINAL
-    { op->lastRequest(); }
+    {
+        ChannelPut::shared_pointer O(OP());
+        if(O) O->lastRequest();
+    }
     virtual void get() OVERRIDE FINAL
-    { op->get(); }
+    {
+        ChannelPut::shared_pointer O(OP());
+        if(O) O->get();
+    }
 };
 }// namespace
 
