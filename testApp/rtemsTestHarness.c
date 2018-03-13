@@ -5,7 +5,6 @@
 
 #include "rtemsNetworking.h"
 
-#include <epicsExit.h>
 #include <osdTime.h>
 
 rtems_task
@@ -33,5 +32,4 @@ Init (rtems_task_argument ignored)
   
   extern void pvAccessAllTests(void);
   pvAccessAllTests();
-  epicsExit(0);
 }
