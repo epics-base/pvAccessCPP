@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <epicsThread.h>
 #include <epicsUnitTest.h>
+#include <epicsExit.h>
 
 /* utils */
 int testAtomicBoolean(void);
@@ -31,5 +32,5 @@ void pvAccessAllTests(void)
     runTest(testCodec);
     runTest(testChannelAccess);
 
+    epicsExit(0);   /* Trigger test harness */
 }
-

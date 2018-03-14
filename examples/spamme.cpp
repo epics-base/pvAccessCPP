@@ -247,9 +247,9 @@ struct SpamProvider : public pva::ChannelProvider,
     virtual pva::ChannelFind::shared_pointer channelFind(std::string const & name,
                                                     pva::ChannelFindRequester::shared_pointer const & requester) OVERRIDE FINAL
     {
-        std::cerr<<"XXX "<<name<<"\n";
+        std::cerr<<"XXX '"<<name<<"'\n";
         pva::ChannelFind::shared_pointer ret;
-        if(name==this->channelName) {
+        if(name.size()>=this->channelName.size() && strncmp(name.c_str(), this->channelName.c_str(), this->channelName.size())==0) {
             ret = shared_from_this();
         }
         std::cout<<__FUNCTION__<<" "<<name<<" found="<<!!ret<<"\n";
@@ -264,7 +264,7 @@ struct SpamProvider : public pva::ChannelProvider,
                                                   short priority, std::string const & address) OVERRIDE FINAL
     {
         std::tr1::shared_ptr<SpamChannel> ret;
-        if(name==channelName) {
+        if(name.size()>=this->channelName.size() && strncmp(name.c_str(), this->channelName.c_str(), this->channelName.size())==0) {
             ret.reset(new SpamChannel(shared_from_this(), channelName, requester));
         }
         std::cout<<__FUNCTION__<<" "<<name<<" connect "<<ret.get()<<"\n";

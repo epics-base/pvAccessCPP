@@ -1,37 +1,12 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <rtems/rtems_bsdnet.h>
-#include <rtems/error.h>
+/*
+ * Copyright information and license terms for this software can be
+ * found in the file LICENSE that is included with the distribution
+ */
 
-#include "rtemsNetworking.h"
+extern void pvAccessAllTests(void);
 
-#include <epicsExit.h>
-#include <osdTime.h>
-
-rtems_task
-Init (rtems_task_argument ignored)
+int main(int argc, char **argv)
 {
-  rtems_bsdnet_initialize_network ();
-  //rtems_bsdnet_show_if_stats ();
-
-  rtems_time_of_day timeOfDay;
-  if (rtems_clock_get(RTEMS_CLOCK_GET_TOD,&timeOfDay) != RTEMS_SUCCESSFUL) {
-    timeOfDay.year = 2014;
-    timeOfDay.month = 1;
-    timeOfDay.day = 1;
-    timeOfDay.hour = 0;
-    timeOfDay.minute = 0;
-    timeOfDay.second = 0;
-    timeOfDay.ticks = 0;
-
-    rtems_status_code ret = rtems_clock_set(&timeOfDay);
-    if (ret != RTEMS_SUCCESSFUL) {
-      printf("**** Can't set time %s\n", rtems_status_text(ret));
-    }
-  }
-  osdTimeRegister();
-  
-  extern void pvAccessAllTests(void);
-  pvAccessAllTests();
-  epicsExit(0);
+    pvAccessAllTests();  /* calls epicsExit(0) */
+    return 0;
 }
