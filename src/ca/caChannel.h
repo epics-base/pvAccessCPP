@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <pv/pvAccess.h>
+#include <pv/pvCopy.h>
 
 
 /* for CA */
@@ -196,8 +197,10 @@ private:
     CAChannelPtr channel;
     ChannelGetRequester::weak_pointer channelGetRequester;
     const epics::pvData::PVStructure::shared_pointer pvRequest;
+    bool firstTime;
 
     chtype getType;
+    epics::pvData::PVCopyPtr pvCopy;
     epics::pvData::PVStructure::shared_pointer pvStructure;
     epics::pvData::BitSet::shared_pointer bitSet;
 };
@@ -329,7 +332,10 @@ private:
     bool isStarted;
     chtype getType;
 
+    bool firstTime;
+    epics::pvData::PVCopyPtr pvCopy;
     epics::pvData::PVStructure::shared_pointer pvStructure;
+    epics::pvData::MonitorElementPtr activeElement;
     evid eventID;
     CACMonitorQueuePtr monitorQueue;
 };
