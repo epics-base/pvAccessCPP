@@ -25,6 +25,7 @@
 #include <pv/caProvider.h>
 #include <pva/client.h>
 //! [Headers]
+#include <pv/epicsException.h>
 
 namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
