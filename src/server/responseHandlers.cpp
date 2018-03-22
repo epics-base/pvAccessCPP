@@ -1985,7 +1985,7 @@ void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor::s
     {
         Lock guard(_mutex);
         _status = status;
-        _channelMonitor = monitor; //TODO inconsistent locking for _channelMonitor
+        _channelMonitor = monitor;
         _structure = structure;
     }
     TransportSender::shared_pointer thisSender = shared_from_this();
@@ -2053,7 +2053,7 @@ void ServerMonitorRequesterImpl::destroy()
 
 Monitor::shared_pointer ServerMonitorRequesterImpl::getChannelMonitor()
 {
-    //Lock guard(_mutex);
+    Lock guard(_mutex);
     return _channelMonitor;
 }
 
@@ -2082,14 +2082,14 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
     }
     else
     {
-        Monitor::shared_pointer monitor = _channelMonitor;
+        Monitor::shared_pointer monitor(_channelMonitor);
         if (!monitor)
             return;
 
         // TODO asCheck ?
 
-        MonitorElement::shared_pointer element = monitor->poll();
-        if (element.get())
+        MonitorElement::Ref element(monitor);
+        if (element)
         {
             control->startMessage((int8)CMD_MONITOR, sizeof(int32)/sizeof(int8) + 1);
             buffer->putInt(_ioid);
@@ -2106,7 +2106,7 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
                 element->overrunBitSet->serialize(buffer, control);
             }
 
-            monitor->release(element);
+            element.reset();
 
             // TODO if we try to proces several monitors at once, then fairness suffers
             // TODO compbine several monitors into one message (reduces payload)
