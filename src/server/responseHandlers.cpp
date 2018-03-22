@@ -2043,11 +2043,12 @@ void ServerMonitorRequesterImpl::destroy()
         // asCheck
         _channel->getChannelSecuritySession()->release(_ioid);
 
-        if (_channelMonitor)
-        {
-            _channelMonitor->destroy();
+        if (_channelMonitor) {
             _channelMonitor.reset();
         }
+    }
+    if(monitor) {
+        monitor->destroy();
     }
 }
 
