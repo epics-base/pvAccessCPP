@@ -28,8 +28,7 @@ public:
         ResponseHandler(context.get(), description), _context(context) {
     }
 
-    virtual ~AbstractServerResponseHandler() {
-    }
+    virtual ~AbstractServerResponseHandler() {}
 };
 
 /**
@@ -46,7 +45,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 };
 
 /**
@@ -61,7 +60,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 };
 
 /**
@@ -87,7 +86,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 };
 
 class EchoTransportSender : public TransportSender {
@@ -96,10 +95,9 @@ public:
         memcpy(&_echoFrom, echoFrom, sizeof(osiSockAddr));
     }
 
-    virtual ~EchoTransportSender() {
-    }
+    virtual ~EchoTransportSender() {}
 
-    virtual void send(epics::pvData::ByteBuffer* /*buffer*/, TransportSendControl* control) {
+    virtual void send(epics::pvData::ByteBuffer* /*buffer*/, TransportSendControl* control) OVERRIDE FINAL {
         control->startMessage(CMD_ECHO, 0);
         control->setRecipient(_echoFrom);
         // TODO content
@@ -127,7 +125,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 
 private:
     std::vector<ChannelProvider::shared_pointer> _providers;
@@ -146,12 +144,12 @@ public:
     void clear();
     ServerChannelFindRequesterImpl* set(std::string _name, epics::pvData::int32 searchSequenceId,
                                         epics::pvData::int32 cid, osiSockAddr const & sendTo, bool responseRequired, bool serverSearch);
-    void channelFindResult(const epics::pvData::Status& status, ChannelFind::shared_pointer const & channelFind, bool wasFound);
+    virtual void channelFindResult(const epics::pvData::Status& status, ChannelFind::shared_pointer const & channelFind, bool wasFound) OVERRIDE FINAL;
 
-    void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 
-    void callback();
-    void timerStopped();
+    virtual void callback() OVERRIDE FINAL;
+    virtual void timerStopped() OVERRIDE FINAL;
 
 private:
     ServerGUID _guid;
@@ -183,7 +181,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 
 private:
     static std::string SERVER_CHANNEL_NAME;
@@ -214,11 +212,11 @@ public:
     static ChannelRequester::shared_pointer create(ChannelProvider::shared_pointer const & provider,
             Transport::shared_pointer const & transport, const std::string channelName,
             const pvAccessID cid, ChannelSecuritySession::shared_pointer const & css);
-    void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel);
-    void channelStateChange(Channel::shared_pointer const & c, const Channel::ConnectionState isConnected);
-    std::string getRequesterName();
-    void message(std::string const & message, epics::pvData::MessageType messageType);
-    void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
+    virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel) OVERRIDE FINAL;
+    virtual void channelStateChange(Channel::shared_pointer const & c, const Channel::ConnectionState isConnected) OVERRIDE FINAL;
+    virtual std::string getRequesterName() OVERRIDE FINAL;
+    virtual void message(std::string const & message, epics::pvData::MessageType messageType) OVERRIDE FINAL;
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 private:
     ServerChannel::weak_pointer _serverChannel;
     std::tr1::weak_ptr<detail::BlockingServerTCPTransportCodec> _transport;
@@ -243,7 +241,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 };
 
 
@@ -254,7 +252,7 @@ public:
     }
 
     virtual ~ServerDestroyChannelHandlerTransportSender() {}
-    void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) {
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
         control->startMessage((epics::pvData::int8)CMD_DESTROY_CHANNEL, 2*sizeof(epics::pvData::int32)/sizeof(epics::pvData::int8));
         buffer->putInt(_sid);
         buffer->putInt(_cid);
@@ -279,7 +277,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 };
 
 class ServerChannelGetRequesterImpl :
@@ -302,16 +300,16 @@ public:
             Transport::shared_pointer const & transport,
             epics::pvData::PVStructure::shared_pointer const & pvRequest);
     virtual ~ServerChannelGetRequesterImpl() {}
-    void channelGetConnect(const epics::pvData::Status& status, ChannelGet::shared_pointer const & channelGet,
-                           epics::pvData::Structure::const_shared_pointer const & structure);
-    void getDone(const epics::pvData::Status& status, ChannelGet::shared_pointer const & channelGet,
-                 epics::pvData::PVStructure::shared_pointer const & pvStructure,
-                 epics::pvData::BitSet::shared_pointer const & bitSet);
-    void destroy();
+    virtual void channelGetConnect(const epics::pvData::Status& status, ChannelGet::shared_pointer const & channelGet,
+                                   epics::pvData::Structure::const_shared_pointer const & structure) OVERRIDE FINAL;
+    virtual void getDone(const epics::pvData::Status& status, ChannelGet::shared_pointer const & channelGet,
+                         epics::pvData::PVStructure::shared_pointer const & pvStructure,
+                         epics::pvData::BitSet::shared_pointer const & bitSet) OVERRIDE FINAL;
+    virtual void destroy() OVERRIDE FINAL;
 
     ChannelGet::shared_pointer getChannelGet();
 
-    void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 private:
     // Note: this forms a reference loop, which is broken in destroy()
     ChannelGet::shared_pointer _channelGet;
@@ -335,7 +333,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 };
 
 class ServerChannelPutRequesterImpl :
@@ -358,10 +356,13 @@ public:
             Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
 
     virtual ~ServerChannelPutRequesterImpl() {}
-    void channelPutConnect(const epics::pvData::Status& status, ChannelPut::shared_pointer const & channelPut, epics::pvData::Structure::const_shared_pointer const & structure);
-    void putDone(const epics::pvData::Status& status, ChannelPut::shared_pointer const & channelPut);
-    void getDone(const epics::pvData::Status& status, ChannelPut::shared_pointer const & channelPut, epics::pvData::PVStructure::shared_pointer const & pvStructure, epics::pvData::BitSet::shared_pointer const & bitSet);
-    void destroy();
+    virtual void channelPutConnect(const epics::pvData::Status& status, ChannelPut::shared_pointer const & channelPut,
+                                   epics::pvData::Structure::const_shared_pointer const & structure) OVERRIDE FINAL;
+    virtual void putDone(const epics::pvData::Status& status, ChannelPut::shared_pointer const & channelPut) OVERRIDE FINAL;
+    virtual void getDone(const epics::pvData::Status& status, ChannelPut::shared_pointer const & channelPut,
+                         epics::pvData::PVStructure::shared_pointer const & pvStructure,
+                         epics::pvData::BitSet::shared_pointer const & bitSet) OVERRIDE FINAL;
+    virtual void destroy() OVERRIDE FINAL;
 
     ChannelPut::shared_pointer getChannelPut();
     epics::pvData::BitSet::shared_pointer getPutBitSet();
@@ -389,7 +390,7 @@ public:
     virtual ~ServerPutGetHandler() {}
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 };
 
 class ServerChannelPutGetRequesterImpl :
@@ -412,26 +413,26 @@ public:
             Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
     virtual ~ServerChannelPutGetRequesterImpl() {}
 
-    void channelPutGetConnect(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
-                              epics::pvData::Structure::const_shared_pointer const & putStructure,
-                              epics::pvData::Structure::const_shared_pointer const & getStructure);
-    void getGetDone(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
-                    epics::pvData::PVStructure::shared_pointer const & pvStructure,
-                    epics::pvData::BitSet::shared_pointer const & bitSet);
-    void getPutDone(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
-                    epics::pvData::PVStructure::shared_pointer const & pvStructure,
-                    epics::pvData::BitSet::shared_pointer const & bitSet);
-    void putGetDone(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
-                    epics::pvData::PVStructure::shared_pointer const & pvStructure,
-                    epics::pvData::BitSet::shared_pointer const & bitSet);
-    void destroy();
+    virtual void channelPutGetConnect(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
+                                      epics::pvData::Structure::const_shared_pointer const & putStructure,
+                                      epics::pvData::Structure::const_shared_pointer const & getStructure) OVERRIDE FINAL;
+    virtual void getGetDone(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
+                            epics::pvData::PVStructure::shared_pointer const & pvStructure,
+                            epics::pvData::BitSet::shared_pointer const & bitSet) OVERRIDE FINAL;
+    virtual void getPutDone(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
+                            epics::pvData::PVStructure::shared_pointer const & pvStructure,
+                            epics::pvData::BitSet::shared_pointer const & bitSet) OVERRIDE FINAL;
+    virtual void putGetDone(const epics::pvData::Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
+                            epics::pvData::PVStructure::shared_pointer const & pvStructure,
+                            epics::pvData::BitSet::shared_pointer const & bitSet) OVERRIDE FINAL;
+    virtual void destroy() OVERRIDE FINAL;
 
     ChannelPutGet::shared_pointer getChannelPutGet();
 
     epics::pvData::PVStructure::shared_pointer getPutGetPVStructure();
     epics::pvData::BitSet::shared_pointer getPutGetBitSet();
 
-    void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 private:
     // Note: this forms a reference loop, which is broken in destroy()
     ChannelPutGet::shared_pointer _channelPutGet;
@@ -457,7 +458,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 };
 
 
@@ -481,13 +482,15 @@ public:
             Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
     virtual ~ServerMonitorRequesterImpl() {}
 
-    void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, epics::pvData::StructureConstPtr const & structure);
-    void unlisten(Monitor::shared_pointer const & monitor);
-    void monitorEvent(Monitor::shared_pointer const & monitor);
-    void destroy();
+    virtual void monitorConnect(const epics::pvData::Status& status,
+                                Monitor::shared_pointer const & monitor,
+                                epics::pvData::StructureConstPtr const & structure) OVERRIDE FINAL;
+    virtual void unlisten(Monitor::shared_pointer const & monitor) OVERRIDE FINAL;
+    virtual void monitorEvent(Monitor::shared_pointer const & monitor) OVERRIDE FINAL;
+    virtual void destroy() OVERRIDE FINAL;
 
     Monitor::shared_pointer getChannelMonitor();
-    void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 private:
     // Note: this forms a reference loop, which is broken in destroy()
     Monitor::shared_pointer _channelMonitor;
@@ -511,7 +514,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 };
 
 class ServerChannelArrayRequesterImpl :
@@ -534,19 +537,25 @@ public:
             Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
     virtual ~ServerChannelArrayRequesterImpl() {}
 
-    void channelArrayConnect(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray, epics::pvData::Array::const_shared_pointer const & array);
-    void getArrayDone(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray,
-                      epics::pvData::PVArray::shared_pointer const & pvArray);
-    void putArrayDone(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray);
-    void setLengthDone(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray);
-    void getLengthDone(const epics::pvData::Status& status, ChannelArray::shared_pointer const & channelArray,
-                       std::size_t length);
-    void destroy();
+    virtual void channelArrayConnect(const epics::pvData::Status& status,
+                                     ChannelArray::shared_pointer const & channelArray,
+                                     epics::pvData::Array::const_shared_pointer const & array) OVERRIDE FINAL;
+    virtual void getArrayDone(const epics::pvData::Status& status,
+                              ChannelArray::shared_pointer const & channelArray,
+                              epics::pvData::PVArray::shared_pointer const & pvArray) OVERRIDE FINAL;
+    virtual void putArrayDone(const epics::pvData::Status& status,
+                              ChannelArray::shared_pointer const & channelArray) OVERRIDE FINAL;
+    virtual void setLengthDone(const epics::pvData::Status& status,
+                               ChannelArray::shared_pointer const & channelArray) OVERRIDE FINAL;
+    virtual void getLengthDone(const epics::pvData::Status& status,
+                               ChannelArray::shared_pointer const & channelArray,
+                               std::size_t length) OVERRIDE FINAL;
+    virtual void destroy() OVERRIDE FINAL;
 
     ChannelArray::shared_pointer getChannelArray();
 
     epics::pvData::PVArray::shared_pointer getPVArray();
-    void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 
 private:
     // Note: this forms a reference loop, which is broken in destroy()
@@ -571,7 +580,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 private:
 
     void failureResponse(Transport::shared_pointer const & transport, pvAccessID ioid, const epics::pvData::Status& errorStatus);
@@ -592,7 +601,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 private:
 
     void failureResponse(Transport::shared_pointer const & transport, pvAccessID ioid, const epics::pvData::Status& errorStatus);
@@ -613,7 +622,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 };
 
 class ServerChannelProcessRequesterImpl :
@@ -636,12 +645,12 @@ public:
             Transport::shared_pointer const & transport, epics::pvData::PVStructure::shared_pointer const & pvRequest);
     virtual ~ServerChannelProcessRequesterImpl() {}
 
-    void channelProcessConnect(const epics::pvData::Status& status, ChannelProcess::shared_pointer const & channelProcess);
-    void processDone(const epics::pvData::Status& status, ChannelProcess::shared_pointer const & channelProcess);
-    void destroy();
+    virtual void channelProcessConnect(const epics::pvData::Status& status, ChannelProcess::shared_pointer const & channelProcess) OVERRIDE FINAL;
+    virtual void processDone(const epics::pvData::Status& status, ChannelProcess::shared_pointer const & channelProcess) OVERRIDE FINAL;
+    virtual void destroy() OVERRIDE FINAL;
 
     ChannelProcess::shared_pointer getChannelProcess();
-    void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 
 private:
     // Note: this forms a reference loop, which is broken in destroy()
@@ -663,7 +672,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 private:
     void getFieldFailureResponse(Transport::shared_pointer const & transport, const pvAccessID ioid, const epics::pvData::Status& errorStatus);
 };
@@ -683,9 +692,9 @@ public:
                                 Transport::shared_pointer const & transport);
 
     virtual ~ServerGetFieldRequesterImpl() {}
-    void getDone(const epics::pvData::Status& status, epics::pvData::FieldConstPtr const & field);
-    void destroy();
-    void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
+    virtual void getDone(const epics::pvData::Status& status, epics::pvData::FieldConstPtr const & field) OVERRIDE FINAL;
+    virtual void destroy() OVERRIDE FINAL;
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 private:
     bool done;
     epics::pvData::Status _status;
@@ -701,7 +710,7 @@ public:
     }
     virtual ~ServerGetFieldHandlerTransportSender() {}
 
-    void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) {
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
         control->startMessage((epics::pvData::int8)CMD_GET_FIELD, sizeof(epics::pvData::int32)/sizeof(epics::pvData::int8));
         buffer->putInt(_ioid);
         _status.serialize(buffer, control);
@@ -728,7 +737,7 @@ public:
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 };
 
 class ServerChannelRPCRequesterImpl :
@@ -751,15 +760,17 @@ public:
             Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
     virtual ~ServerChannelRPCRequesterImpl() {}
 
-    void channelRPCConnect(const epics::pvData::Status& status, ChannelRPC::shared_pointer const & channelRPC);
-    void requestDone(const epics::pvData::Status& status, ChannelRPC::shared_pointer const & channelRPC, epics::pvData::PVStructure::shared_pointer const & pvResponse);
-    void destroy();
+    virtual void channelRPCConnect(const epics::pvData::Status& status, ChannelRPC::shared_pointer const & channelRPC) OVERRIDE FINAL;
+    virtual void requestDone(const epics::pvData::Status& status,
+                             ChannelRPC::shared_pointer const & channelRPC,
+                             epics::pvData::PVStructure::shared_pointer const & pvResponse) OVERRIDE FINAL;
+    virtual void destroy() OVERRIDE FINAL;
     /**
      * @return the channelRPC
      */
     ChannelRPC::shared_pointer getChannelRPC();
 
-    void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 private:
     // Note: this forms a reference loop, which is broken in destroy()
     ChannelRPC::shared_pointer _channelRPC;
@@ -775,12 +786,11 @@ class ServerResponseHandler : public ResponseHandler {
 public:
     ServerResponseHandler(ServerContextImpl::shared_pointer const & context);
 
-    virtual ~ServerResponseHandler() {
-    }
+    virtual ~ServerResponseHandler() {}
 
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer);
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 private:
     ServerBadResponse handle_bad;
 
