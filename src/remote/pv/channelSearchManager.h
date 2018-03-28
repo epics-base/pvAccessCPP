@@ -20,6 +20,7 @@
 #endif
 
 #include <pv/pvaDefs.h>
+#include <pv/remote.h>
 
 namespace epics {
 namespace pvAccess {
@@ -49,34 +50,56 @@ public:
     virtual void searchResponse(const ServerGUID & guid, int8_t minorRevision, osiSockAddr* serverAddress) = 0;
 };
 
-class ChannelSearchManager {
+
+class MockTransportSendControl: public TransportSendControl
+{
+public:
+    void endMessage() {}
+    void flush(bool /*lastMessageCompleted*/) {}
+    void setRecipient(const osiSockAddr& /*sendTo*/) {}
+    void startMessage(epics::pvData::int8 /*command*/, std::size_t /*ensureCapacity*/, epics::pvData::int32 /*payloadSize*/) {}
+    void ensureBuffer(std::size_t /*size*/) {}
+    void alignBuffer(std::size_t /*alignment*/) {}
+    void flushSerializeBuffer() {}
+    void cachedSerialize(const std::tr1::shared_ptr<const epics::pvData::Field>& field, epics::pvData::ByteBuffer* buffer)
+    {
+        // no cache
+        field->serialize(buffer, this);
+    }
+    virtual bool directSerialize(epics::pvData::ByteBuffer* /*existingBuffer*/, const char* /*toSerialize*/,
+                                 std::size_t /*elementCount*/, std::size_t /*elementSize*/)
+    {
+        return false;
+    }
+};
+
+class ChannelSearchManager :
+        public epics::pvData::TimerCallback,
+        public std::tr1::enable_shared_from_this<ChannelSearchManager>
+{
 public:
     POINTER_DEFINITIONS(ChannelSearchManager);
 
+    virtual ~ChannelSearchManager();
     /**
-     * Destructor
+     * Cancel.
      */
-    virtual ~ChannelSearchManager() {};
-
+    void cancel();
     /**
      * Get number of registered channels.
      * @return number of registered channels.
      */
-    virtual int32_t registeredCount() = 0;
-
+    int32_t registeredCount();
     /**
      * Register channel.
-     * @param channel
+     * @param channel to register.
      */
-    virtual void registerSearchInstance(SearchInstance::shared_pointer const & channel, bool penalize = false) = 0;
-
-
+    void registerSearchInstance(SearchInstance::shared_pointer const & channel, bool penalize = false);
     /**
      * Unregister channel.
-     * @param channel
+     * @param channel to unregister.
      */
-    virtual void unregisterSearchInstance(SearchInstance::shared_pointer const & channel) = 0;
-
+    void unregisterSearchInstance(SearchInstance::shared_pointer const & channel);
     /**
      * Search response from server (channel found).
      * @param guid  server GUID.
@@ -85,19 +108,110 @@ public:
      * @param minorRevision	server minor PVA revision.
      * @param serverAddress	server address.
      */
-    virtual void searchResponse(const ServerGUID & guid, pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress) = 0;
-
+    void searchResponse(const ServerGUID & guid, pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress);
     /**
      * New server detected.
      * Boost searching of all channels.
      */
-    virtual void newServerDetected() = 0;
+    void newServerDetected();
+
+    /// Timer callback.
+    virtual void callback() OVERRIDE FINAL;
+
+    /// Timer stooped callback.
+    virtual void timerStopped() OVERRIDE FINAL;
 
     /**
-     * Cancel.
+     * Private constructor.
+     * @param context
      */
-    virtual void cancel() = 0;
+    ChannelSearchManager(Context::shared_pointer const & context);
+    void activate();
 
+private:
+
+    bool generateSearchRequestMessage(SearchInstance::shared_pointer const & channel, bool allowNewFrame, bool flush);
+
+    static bool generateSearchRequestMessage(SearchInstance::shared_pointer const & channel,
+            epics::pvData::ByteBuffer* byteBuffer, TransportSendControl* control);
+
+    void boost();
+
+    void initializeSendBuffer();
+    void flushSendBuffer();
+
+    static bool isPowerOfTwo(int32_t x);
+
+    /**
+     * Context.
+     */
+    Context::weak_pointer m_context;
+
+    /**
+     * Response address.
+     */
+    osiSockAddr m_responseAddress;
+
+    /**
+     * Canceled flag.
+     */
+    AtomicBoolean m_canceled;
+
+    /**
+     * Search (datagram) sequence number.
+     */
+    int32_t m_sequenceNumber;
+
+    /**
+     * Send byte buffer (frame)
+     */
+    epics::pvData::ByteBuffer m_sendBuffer;
+
+    /**
+     * Set of registered channels.
+     */
+    typedef std::map<pvAccessID,SearchInstance::weak_pointer> m_channels_t;
+    m_channels_t m_channels;
+
+    /**
+     * Time of last frame send.
+     */
+    int64_t m_lastTimeSent;
+
+    /**
+     * Mock transport send control
+     */
+    MockTransportSendControl m_mockTransportSendControl;
+
+    /**
+     * This instance mutex.
+     */
+    epics::pvData::Mutex m_channelMutex;
+
+    /**
+     * User value lock.
+     */
+    epics::pvData::Mutex m_userValueMutex;
+
+    /**
+     * m_channels mutex.
+     */
+    epics::pvData::Mutex m_mutex;
+
+    static const int DATA_COUNT_POSITION;
+    static const int CAST_POSITION;
+    static const int PAYLOAD_POSITION;
+
+    static const double ATOMIC_PERIOD;
+    static const int PERIOD_JITTER_MS;
+
+    static const int DEFAULT_USER_VALUE;
+    static const int BOOST_VALUE;
+    static const int MAX_COUNT_VALUE;
+    static const int MAX_FALLBACK_COUNT_VALUE;
+
+    static const int MAX_FRAMES_AT_ONCE;
+    static const int DELAY_BETWEEN_FRAMES_MS;
 };
 
 }

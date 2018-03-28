@@ -28,7 +28,7 @@
 #include <pv/codec.h>
 #include <pv/channelSearchManager.h>
 #include <pv/serializationHelper.h>
-#include <pv/simpleChannelSearchManagerImpl.h>
+#include <pv/channelSearchManager.h>
 #include <pv/clientContextImpl.h>
 #include <pv/configuration.h>
 #include <pv/beaconHandler.h>
@@ -4152,7 +4152,7 @@ private:
         // stores many weak_ptr
         m_responseHandler.reset(new ClientResponseHandler(thisPointer));
 
-        m_channelSearchManager.reset(new SimpleChannelSearchManagerImpl(thisPointer));
+        m_channelSearchManager.reset(new ChannelSearchManager(thisPointer));
 
         // preinitialize security plugins
         SecurityPluginRegistry::instance();
@@ -4586,7 +4586,7 @@ private:
      * Channel search manager.
      * Manages UDP search requests.
      */
-    SimpleChannelSearchManagerImpl::shared_pointer m_channelSearchManager;
+    ChannelSearchManager::shared_pointer m_channelSearchManager;
 
     /**
      * Beacon handler map.
