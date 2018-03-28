@@ -32,11 +32,11 @@ public:
     /**
      * Destructor
      */
-    virtual ~SearchInstance() {};
+    virtual ~SearchInstance() {}
 
     virtual pvAccessID getSearchInstanceID() = 0;
 
-    virtual std::string getSearchInstanceName() = 0;
+    virtual const std::string& getSearchInstanceName() = 0;
 
     virtual int32_t& getUserValue() = 0;
 

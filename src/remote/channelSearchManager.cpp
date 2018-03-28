@@ -258,7 +258,7 @@ bool ChannelSearchManager::generateSearchRequestMessage(SearchInstance::shared_p
         return false;
     */
 
-    const std::string name = channel->getSearchInstanceName();
+    const std::string& name(channel->getSearchInstanceName());
     // not nice...
     const int addedPayloadSize = sizeof(int32)/sizeof(int8) + (1 + sizeof(int32)/sizeof(int8) + name.length());
     if(((int)requestMessage->getRemaining()) < addedPayloadSize)

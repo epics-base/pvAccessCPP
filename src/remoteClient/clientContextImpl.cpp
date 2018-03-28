@@ -3355,7 +3355,7 @@ public:
             return m_channelID;
         }
 
-        virtual string getSearchInstanceName() OVERRIDE FINAL {
+        virtual const string& getSearchInstanceName() OVERRIDE FINAL {
             return m_name;
         }
 
