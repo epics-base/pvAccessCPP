@@ -4145,12 +4145,14 @@ private:
 
         osiSockAttach();
         m_timer.reset(new Timer("pvAccess-client timer", lowPriority));
-        InternalClientContextImpl::shared_pointer thisPointer = internal_from_this();
+        InternalClientContextImpl::shared_pointer thisPointer(internal_from_this());
         // stores weak_ptr
         m_connector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_connectionTimeout));
 
         // stores many weak_ptr
         m_responseHandler.reset(new ClientResponseHandler(thisPointer));
+
+        m_channelSearchManager.reset(new SimpleChannelSearchManagerImpl(thisPointer));
 
         // preinitialize security plugins
         SecurityPluginRegistry::instance();
@@ -4158,39 +4160,32 @@ private:
         // TODO put memory barrier here... (if not already called within a lock?)
 
         // setup UDP transport
-        initializeUDPTransport();
+        {
+
+            // query broadcast addresses of all IFs
+            SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, 0);
+            if (socket == INVALID_SOCKET)
+            {
+                throw std::logic_error("Failed to create a socket to introspect network interfaces.");
+            }
+
+            IfaceNodeVector ifaceList;
+            if (discoverInterfaces(ifaceList, socket, 0) || ifaceList.size() == 0)
+            {
+                LOG(logLevelError, "Failed to introspect interfaces or no network interfaces available.");
+            }
+            epicsSocketDestroy (socket);
+
+            initializeUDPTransports(false, m_udpTransports, ifaceList, m_responseHandler, m_searchTransport,
+                                    m_broadcastPort, m_autoAddressList, m_addressList, std::string());
+
+        }
 
         // setup search manager
-        m_channelSearchManager = SimpleChannelSearchManagerImpl::create(thisPointer);
+        // Starts timer
+        m_channelSearchManager->activate();
 
         // TODO what if initialization failed!!!
-    }
-
-    /**
-     * Initialized UDP transport (broadcast socket and repeater connection).
-     */
-    bool initializeUDPTransport() {
-
-        // query broadcast addresses of all IFs
-        SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, 0);
-        if (socket == INVALID_SOCKET)
-        {
-            LOG(logLevelError, "Failed to create a socket to introspect network interfaces.");
-            return false;
-        }
-
-        IfaceNodeVector ifaceList;
-        if (discoverInterfaces(ifaceList, socket, 0) || ifaceList.size() == 0)
-        {
-            LOG(logLevelError, "Failed to introspect interfaces or no network interfaces available.");
-            return false;
-        }
-        epicsSocketDestroy (socket);
-
-        initializeUDPTransports(false, m_udpTransports, ifaceList, m_responseHandler, m_searchTransport,
-                                m_broadcastPort, m_autoAddressList, m_addressList, std::string());
-
-        return true;
     }
 
     void internalDestroy() {
@@ -4591,7 +4586,7 @@ private:
      * Channel search manager.
      * Manages UDP search requests.
      */
-    ChannelSearchManager::shared_pointer m_channelSearchManager;
+    SimpleChannelSearchManagerImpl::shared_pointer m_channelSearchManager;
 
     /**
      * Beacon handler map.

@@ -63,11 +63,6 @@ public:
      * Constructor.
      * @param context
      */
-    static shared_pointer create(Context::shared_pointer const & context);
-    /**
-     * Constructor.
-     * @param context
-     */
     virtual ~SimpleChannelSearchManagerImpl();
     /**
      * Cancel.
@@ -109,14 +104,14 @@ public:
     /// Timer stooped callback.
     void timerStopped();
 
-private:
-
     /**
      * Private constructor.
      * @param context
      */
     SimpleChannelSearchManagerImpl(Context::shared_pointer const & context);
     void activate();
+
+private:
 
     bool generateSearchRequestMessage(SearchInstance::shared_pointer const & channel, bool allowNewFrame, bool flush);
 
