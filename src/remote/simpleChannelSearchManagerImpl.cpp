@@ -15,6 +15,7 @@
 #include <pv/pvaConstants.h>
 #include <pv/blockingUDP.h>
 #include <pv/serializeHelper.h>
+#include <pv/logger.h>
 
 using namespace std;
 using namespace epics::pvData;
@@ -75,18 +76,17 @@ void SimpleChannelSearchManagerImpl::activate()
     // add some jitter so that all the clients do not send at the same time
     double period = ATOMIC_PERIOD + (rand() % (2*PERIOD_JITTER_MS+1) - PERIOD_JITTER_MS)/(double)1000;
 
-    Context::shared_pointer context = m_context.lock();
-    if (context.get())
+    Context::shared_pointer context(m_context.lock());
+    if (context)
         context->getTimer()->schedulePeriodic(shared_from_this(), period, period);
-
-    //new Thread(this, "pvAccess immediate-search").start();
 }
 
 SimpleChannelSearchManagerImpl::~SimpleChannelSearchManagerImpl()
 {
-    // shared_from_this() is not allowed from destructor
-    // be sure to call cancel() first
-    // cancel();
+    Lock guard(m_mutex);
+    if (!m_canceled.get()) {
+        LOG(logLevelWarn, "Logic error: SimpleChannelSearchManagerImpl destroyed w/o cancel()");
+    }
 }
 
 void SimpleChannelSearchManagerImpl::cancel()
@@ -97,8 +97,8 @@ void SimpleChannelSearchManagerImpl::cancel()
         return;
     m_canceled.set();
 
-    Context::shared_pointer context = m_context.lock();
-    if (context.get())
+    Context::shared_pointer context(m_context.lock());
+    if (context)
         context->getTimer()->cancel(shared_from_this());
 }
 

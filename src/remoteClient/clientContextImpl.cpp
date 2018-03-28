@@ -2586,7 +2586,10 @@ public:
 
         // reads CIDs
         // TODO optimize
-        std::tr1::shared_ptr<epics::pvAccess::ChannelSearchManager> csm = _context.lock()->getChannelSearchManager();
+        ClientContextImpl::shared_pointer context(_context.lock());
+        if(!context)
+            return;
+        std::tr1::shared_ptr<epics::pvAccess::ChannelSearchManager> csm = context->getChannelSearchManager();
         int16 count = payloadBuffer->getShort();
         for (int i = 0; i < count; i++)
         {
