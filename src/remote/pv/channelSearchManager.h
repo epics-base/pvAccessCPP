@@ -51,28 +51,6 @@ public:
 };
 
 
-class MockTransportSendControl: public TransportSendControl
-{
-public:
-    void endMessage() {}
-    void flush(bool /*lastMessageCompleted*/) {}
-    void setRecipient(const osiSockAddr& /*sendTo*/) {}
-    void startMessage(epics::pvData::int8 /*command*/, std::size_t /*ensureCapacity*/, epics::pvData::int32 /*payloadSize*/) {}
-    void ensureBuffer(std::size_t /*size*/) {}
-    void alignBuffer(std::size_t /*alignment*/) {}
-    void flushSerializeBuffer() {}
-    void cachedSerialize(const std::tr1::shared_ptr<const epics::pvData::Field>& field, epics::pvData::ByteBuffer* buffer)
-    {
-        // no cache
-        field->serialize(buffer, this);
-    }
-    virtual bool directSerialize(epics::pvData::ByteBuffer* /*existingBuffer*/, const char* /*toSerialize*/,
-                                 std::size_t /*elementCount*/, std::size_t /*elementSize*/)
-    {
-        return false;
-    }
-};
-
 class ChannelSearchManager :
         public epics::pvData::TimerCallback,
         public std::tr1::enable_shared_from_this<ChannelSearchManager>
@@ -177,11 +155,6 @@ private:
      * Time of last frame send.
      */
     int64_t m_lastTimeSent;
-
-    /**
-     * Mock transport send control
-     */
-    MockTransportSendControl m_mockTransportSendControl;
 
     /**
      * This instance mutex.

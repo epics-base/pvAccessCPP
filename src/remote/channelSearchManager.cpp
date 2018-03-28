@@ -20,6 +20,33 @@
 using namespace std;
 using namespace epics::pvData;
 
+namespace {
+namespace pva = epics::pvAccess;
+
+class MockTransportSendControl: public pva::TransportSendControl
+{
+public:
+    void endMessage() {}
+    void flush(bool /*lastMessageCompleted*/) {}
+    void setRecipient(const osiSockAddr& /*sendTo*/) {}
+    void startMessage(epics::pvData::int8 /*command*/, std::size_t /*ensureCapacity*/, epics::pvData::int32 /*payloadSize*/) {}
+    void ensureBuffer(std::size_t /*size*/) {}
+    void alignBuffer(std::size_t /*alignment*/) {}
+    void flushSerializeBuffer() {}
+    void cachedSerialize(const std::tr1::shared_ptr<const epics::pvData::Field>& field, epics::pvData::ByteBuffer* buffer)
+    {
+        // no cache
+        field->serialize(buffer, this);
+    }
+    virtual bool directSerialize(epics::pvData::ByteBuffer* /*existingBuffer*/, const char* /*toSerialize*/,
+                                 std::size_t /*elementCount*/, std::size_t /*elementSize*/)
+    {
+        return false;
+    }
+};
+
+}// namespace
+
 namespace epics {
 namespace pvAccess {
 
@@ -49,7 +76,6 @@ ChannelSearchManager::ChannelSearchManager(Context::shared_pointer const & conte
     m_sendBuffer(MAX_UDP_UNFRAGMENTED_SEND),
     m_channels(),
     m_lastTimeSent(),
-    m_mockTransportSendControl(),
     m_channelMutex(),
     m_userValueMutex(),
     m_mutex()
@@ -197,8 +223,9 @@ void ChannelSearchManager::initializeSendBuffer()
     // TODO now only TCP is supported
     // note: this affects DATA_COUNT_POSITION
     m_sendBuffer.putByte((int8_t)1);
-    // TODO "tcp" constant
-    SerializeHelper::serializeString("tcp", &m_sendBuffer, &m_mockTransportSendControl);
+
+    MockTransportSendControl control;
+    SerializeHelper::serializeString("tcp", &m_sendBuffer, &control);
     m_sendBuffer.putShort((int16_t)0);	// count
 }
 
@@ -248,14 +275,16 @@ bool ChannelSearchManager::generateSearchRequestMessage(SearchInstance::shared_p
 bool ChannelSearchManager::generateSearchRequestMessage(SearchInstance::shared_pointer const & channel,
         bool allowNewFrame, bool flush)
 {
+    MockTransportSendControl control;
+
     Lock guard(m_mutex);
-    bool success = generateSearchRequestMessage(channel, &m_sendBuffer, &m_mockTransportSendControl);
+    bool success = generateSearchRequestMessage(channel, &m_sendBuffer, &control);
     // buffer full, flush
     if(!success)
     {
         flushSendBuffer();
         if(allowNewFrame)
-            generateSearchRequestMessage(channel, &m_sendBuffer, &m_mockTransportSendControl);
+            generateSearchRequestMessage(channel, &m_sendBuffer, &control);
         if (flush)
             flushSendBuffer();
         return true;
