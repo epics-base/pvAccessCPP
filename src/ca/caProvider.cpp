@@ -66,6 +66,7 @@ CAChannelProvider::~CAChannelProvider()
          }
          caChannelList.clear();
     }
+    attachContext();
     while(!channelQ.empty()) {
        if(DEBUG_LEVEL>0) {
            std::cout << "disconnectAllChannels calling disconnectChannel "
@@ -75,7 +76,6 @@ CAChannelProvider::~CAChannelProvider()
        channelQ.front()->disconnectChannel();
        channelQ.pop();
     }
-    attachContext();
     ca_flush_io();
     ca_context_destroy();
 }

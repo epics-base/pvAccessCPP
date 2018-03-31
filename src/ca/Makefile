@@ -11,10 +11,9 @@ SHRLIB_VERSION ?= $(EPICS_PVA_MAJOR_VERSION).$(EPICS_PVA_MINOR_VERSION).$(EPICS_
 LIB_SYS_LIBS_WIN32 += ws2_32
 
 INC += pv/caProvider.h
-INC += pv/caStatus.h
 
 pvAccessCA_SRCS += caProvider.cpp
 pvAccessCA_SRCS += caChannel.cpp
-pvAccessCA_SRCS += caStatus.cpp
+pvAccessCA_SRCS += dbdToPv.cpp
 
 include $(TOP)/configure/RULES
