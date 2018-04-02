@@ -259,11 +259,6 @@ private:
      */
     void loadConfiguration();
 
-    /**
-     * Destroy all transports.
-     */
-    void destroyAllTransports();
-
     Configuration::const_shared_pointer configuration;
 
     epicsTimeStamp _startTime;

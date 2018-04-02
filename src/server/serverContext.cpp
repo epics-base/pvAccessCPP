@@ -346,7 +346,7 @@ void ServerContextImpl::shutdown()
     }
 
     // this will also destroy all channels
-    destroyAllTransports();
+    _transportRegistry.clear();
 
     // drop timer queue
     LEAK_CHECK(_timer, "_timer")
@@ -358,12 +358,6 @@ void ServerContextImpl::shutdown()
     _responseHandler.reset();
 
     _runEvent.signal();
-}
-
-void ServerContextImpl::destroyAllTransports()
-{
-    // now clear all (release)
-    _transportRegistry.clear();
 }
 
 void ServerContext::printInfo(int lvl)
