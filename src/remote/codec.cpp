@@ -1045,9 +1045,6 @@ void BlockingTCPTransportCodec::close() {
         // Break sender from queue wait
         BreakTransport::shared_pointer B(new BreakTransport);
         enqueueSendRequest(B);
-
-        // post close
-        internalPostClose();
     }
 }
 
@@ -1776,15 +1773,10 @@ void BlockingClientTCPTransportCodec::internalClose() {
 
     TimerCallbackPtr tcb = std::tr1::dynamic_pointer_cast<TimerCallback>(shared_from_this());
     _context->getTimer()->cancel(tcb);
-}
-
-void BlockingClientTCPTransportCodec::internalPostClose() {
-    BlockingTCPTransportCodec::internalPostClose();
 
     // _owners cannot change when transport is closed
     closedNotifyClients();
 }
-
 /**
  * Notifies clients about disconnect.
  */

@@ -449,14 +449,10 @@ protected:
     virtual void sendBufferFull(int tries) OVERRIDE FINAL;
 
     /**
-     * Called from close(). prior to signaling worker shutdown.
+     * Called from close(). after start of shutdown (isOpen()==false)
+     * but before worker thread shutdown.
      */
     virtual void internalClose();
-
-    /**
-     * Called from close(). after signaling worker shutdown.
-     */
-    virtual void internalPostClose() {}
 
 private:
     AtomicValue<bool> _isOpen;
@@ -683,7 +679,6 @@ public:
 protected:
 
     virtual void internalClose() OVERRIDE FINAL;
-    virtual void internalPostClose() OVERRIDE FINAL;
 
 private:
 
