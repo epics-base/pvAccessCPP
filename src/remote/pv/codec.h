@@ -338,9 +338,6 @@ public:
         return std::string("tcp");
     }
 
-
-    void internalDestroy();
-
     virtual void processControlMessage() OVERRIDE FINAL {
         if (_command == 2)
         {

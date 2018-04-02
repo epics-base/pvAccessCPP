@@ -1060,7 +1060,42 @@ void BlockingTCPTransportCodec::waitJoin()
 
 void BlockingTCPTransportCodec::internalClose(bool /*force*/)
 {
-    this->internalDestroy();
+    if(_channel != INVALID_SOCKET) {
+
+        epicsSocketSystemCallInterruptMechanismQueryInfo info  =
+            epicsSocketSystemCallInterruptMechanismQuery ();
+        switch ( info )
+        {
+        case esscimqi_socketCloseRequired:
+            epicsSocketDestroy ( _channel );
+            break;
+        case esscimqi_socketBothShutdownRequired:
+        {
+            /*int status =*/ ::shutdown ( _channel, SHUT_RDWR );
+            /*
+            if ( status ) {
+                char sockErrBuf[64];
+                epicsSocketConvertErrnoToString (
+                    sockErrBuf, sizeof ( sockErrBuf ) );
+            LOG(logLevelDebug,
+                "TCP socket to %s failed to shutdown: %s.",
+                inetAddressToString(_socketAddress).c_str(), sockErrBuf);
+            }
+            */
+            epicsSocketDestroy ( _channel );
+        }
+        break;
+        case esscimqi_socketSigAlarmRequired:
+        // not supported anymore anyway
+        default:
+            epicsSocketDestroy(_channel);
+        }
+
+        _channel = INVALID_SOCKET; //TODO: mutex to guard _channel
+    }
+
+    Transport::shared_pointer thisSharedPtr = this->shared_from_this();
+    _context->getTransportRegistry()->remove(thisSharedPtr);
 
     // TODO sync
     if (_securitySession)
@@ -1202,47 +1237,6 @@ BlockingTCPTransportCodec::BlockingTCPTransportCodec(bool serverFlag, const Cont
         _socketName = ipAddrStr;
     }
 
-}
-
-// must be called only once, when there will be no operation on socket (e.g. just before tx/rx thread exists)
-void BlockingTCPTransportCodec::internalDestroy() {
-
-    if(_channel != INVALID_SOCKET) {
-
-        epicsSocketSystemCallInterruptMechanismQueryInfo info  =
-            epicsSocketSystemCallInterruptMechanismQuery ();
-        switch ( info )
-        {
-        case esscimqi_socketCloseRequired:
-            epicsSocketDestroy ( _channel );
-            break;
-        case esscimqi_socketBothShutdownRequired:
-        {
-            /*int status =*/ ::shutdown ( _channel, SHUT_RDWR );
-            /*
-            if ( status ) {
-                char sockErrBuf[64];
-                epicsSocketConvertErrnoToString (
-                    sockErrBuf, sizeof ( sockErrBuf ) );
-            LOG(logLevelDebug,
-                "TCP socket to %s failed to shutdown: %s.",
-                inetAddressToString(_socketAddress).c_str(), sockErrBuf);
-            }
-            */
-            epicsSocketDestroy ( _channel );
-        }
-        break;
-        case esscimqi_socketSigAlarmRequired:
-        // not supported anymore anyway
-        default:
-            epicsSocketDestroy(_channel);
-        }
-
-        _channel = INVALID_SOCKET; //TODO: mutex to guard _channel
-    }
-
-    Transport::shared_pointer thisSharedPtr = this->shared_from_this();
-    _context->getTransportRegistry()->remove(thisSharedPtr);
 }
 
 
