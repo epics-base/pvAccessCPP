@@ -142,10 +142,11 @@ private:
      */
     BeaconServerStatusProvider::shared_pointer _serverStatusProvider;
 
-    /**
-     * Timer.
+    /** Timer is referenced by server context, which also references us.
+     *  We will also be queuing ourselves, and be referenced by Timer.
+     *  So keep only a weak ref to Timer to avoid possible ref. loop.
      */
-    epics::pvData::Timer::shared_pointer _timer;
+    epics::pvData::Timer::weak_pointer _timer;
 };
 
 }
