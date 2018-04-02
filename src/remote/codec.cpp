@@ -1060,7 +1060,7 @@ void BlockingTCPTransportCodec::waitJoin()
 
 void BlockingTCPTransportCodec::internalClose(bool /*force*/)
 {
-    if(_channel != INVALID_SOCKET) {
+    {
 
         epicsSocketSystemCallInterruptMechanismQueryInfo info  =
             epicsSocketSystemCallInterruptMechanismQuery ();
@@ -1090,8 +1090,6 @@ void BlockingTCPTransportCodec::internalClose(bool /*force*/)
         default:
             epicsSocketDestroy(_channel);
         }
-
-        _channel = INVALID_SOCKET; //TODO: mutex to guard _channel
     }
 
     Transport::shared_pointer thisSharedPtr = this->shared_from_this();

@@ -466,8 +466,8 @@ private:
     AtomicValue<bool> _isOpen;
     epics::pvData::Thread _readThread, _sendThread;
     epics::pvData::Event _shutdownEvent;
+    const SOCKET _channel;
 protected:
-    SOCKET _channel;
     osiSockAddr _socketAddress;
     std::string _socketName;
 protected:
