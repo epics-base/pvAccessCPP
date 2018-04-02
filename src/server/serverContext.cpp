@@ -307,6 +307,12 @@ void ServerContextImpl::run(uint32 seconds)
 
 void ServerContextImpl::shutdown()
 {
+    if(!_timer)
+        return; // already shutdown
+
+    // abort pending timers and prevent new timers from starting
+    _timer->close();
+
     // stop responding to search requests
     for (BlockingUDPTransportVector::const_iterator iter = _udpTransports.begin();
             iter != _udpTransports.end(); iter++)
