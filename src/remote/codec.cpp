@@ -1040,14 +1040,14 @@ void BlockingTCPTransportCodec::close() {
         // wakeup processSendQueue
 
         // clean resources (close socket)
-        internalClose(true);
+        internalClose();
 
         // Break sender from queue wait
         BreakTransport::shared_pointer B(new BreakTransport);
         enqueueSendRequest(B);
 
         // post close
-        internalPostClose(true);
+        internalPostClose();
     }
 }
 
@@ -1058,7 +1058,7 @@ void BlockingTCPTransportCodec::waitJoin()
     _readThread.exitWait();
 }
 
-void BlockingTCPTransportCodec::internalClose(bool /*force*/)
+void BlockingTCPTransportCodec::internalClose()
 {
     {
 
@@ -1585,9 +1585,9 @@ void BlockingServerTCPTransportCodec::destroyAllChannels() {
         it->second->destroy();
 }
 
-void BlockingServerTCPTransportCodec::internalClose(bool force) {
+void BlockingServerTCPTransportCodec::internalClose() {
     Transport::shared_pointer thisSharedPtr = shared_from_this();
-    BlockingTCPTransportCodec::internalClose(force);
+    BlockingTCPTransportCodec::internalClose();
     destroyAllChannels();
 }
 
@@ -1771,15 +1771,15 @@ bool BlockingClientTCPTransportCodec::acquire(ClientChannelImpl::shared_pointer 
 }
 
 // _mutex is held when this method is called
-void BlockingClientTCPTransportCodec::internalClose(bool forced) {
-    BlockingTCPTransportCodec::internalClose(forced);
+void BlockingClientTCPTransportCodec::internalClose() {
+    BlockingTCPTransportCodec::internalClose();
 
     TimerCallbackPtr tcb = std::tr1::dynamic_pointer_cast<TimerCallback>(shared_from_this());
     _context->getTimer()->cancel(tcb);
 }
 
-void BlockingClientTCPTransportCodec::internalPostClose(bool forced) {
-    BlockingTCPTransportCodec::internalPostClose(forced);
+void BlockingClientTCPTransportCodec::internalPostClose() {
+    BlockingTCPTransportCodec::internalPostClose();
 
     // _owners cannot change when transport is closed
     closedNotifyClients();

@@ -449,18 +449,14 @@ protected:
     virtual void sendBufferFull(int tries) OVERRIDE FINAL;
 
     /**
-     * Called to any resources just before closing transport
-     * @param[in] force   flag indicating if forced (e.g. forced
-     * disconnect) is required
+     * Called from close(). prior to signaling worker shutdown.
      */
-    virtual void internalClose(bool force);
+    virtual void internalClose();
 
     /**
-     * Called to any resources just after closing transport and without any locks held on transport
-     * @param[in] force   flag indicating if forced (e.g. forced
-     * disconnect) is required
+     * Called from close(). after signaling worker shutdown.
      */
-    virtual void internalPostClose(bool force) {}
+    virtual void internalPostClose() {}
 
 private:
     AtomicValue<bool> _isOpen;
@@ -586,7 +582,7 @@ public:
 protected:
 
     void destroyAllChannels();
-    virtual void internalClose(bool force) OVERRIDE FINAL;
+    virtual void internalClose() OVERRIDE FINAL;
 
 private:
 
@@ -686,8 +682,8 @@ public:
 
 protected:
 
-    virtual void internalClose(bool force) OVERRIDE FINAL;
-    virtual void internalPostClose(bool force) OVERRIDE FINAL;
+    virtual void internalClose() OVERRIDE FINAL;
+    virtual void internalPostClose() OVERRIDE FINAL;
 
 private:
 
