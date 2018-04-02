@@ -22,9 +22,6 @@
 using namespace epics::pvData;
 using std::string;
 using std::ostringstream;
-using std::cout;
-using std::cerr;
-using std::endl;
 
 namespace epics {
 namespace pvAccess {
@@ -117,7 +114,23 @@ void DbdToPv::activate(
     chid channelID = caChannel->getChannelID();
     chtype channelType = ca_field_type(channelID);
     caValueType = (channelType==DBR_ENUM ? DBR_ENUM : getDbrType(dbr2ST[channelType]));
-    PVStructurePtr fieldPVStructure = pvRequest->getSubField<PVStructure>("field");
+    if(!pvRequest) {
+        string mess(caChannel->getChannelName());
+            mess += " DbdToPv::activate pvRequest is null";
+            throw  std::runtime_error(mess);
+    } 
+    PVStructurePtr fieldPVStructure;
+    if(pvRequest->getPVFields().size()==0) {
+         fieldPVStructure = pvRequest;
+    } else {
+         fieldPVStructure = pvRequest->getSubField<PVStructure>("field");
+    }
+    if(!fieldPVStructure) {
+        ostringstream mess;
+        mess << caChannel->getChannelName()
+          << " DbdToPv::activate illegal pvRequest " << pvRequest;
+        throw std::runtime_error(mess.str());
+    } 
     if(fieldPVStructure->getPVFields().size()==0) 
     {
         fieldRequested = true;
@@ -253,7 +266,6 @@ void DbdToPv::activate(
 
 void DbdToPv::descriptionConnected(struct connection_handler_args args)
 {
-cout << "DbdToPv::descriptionConnected\n";
     if (args.op != CA_OP_CONN_UP) return;
     ca_array_get_callback(DBR_STRING,
          0,
@@ -262,7 +274,6 @@ cout << "DbdToPv::descriptionConnected\n";
 
 void DbdToPv::getDescriptionDone(struct event_handler_args &args)
 {
-cout << "DbdToPv::getDescriptionDone\n";
     if(args.status!=ECA_NORMAL) return;
     const dbr_string_t *value = static_cast<const dbr_string_t *>(dbr_value_ptr(args.dbr,DBR_STRING));
     description = string(*value);
