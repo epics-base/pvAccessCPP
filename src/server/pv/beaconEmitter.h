@@ -95,7 +95,7 @@ private:
     /**
      * Protocol.
      */
-    std::string _protocol;
+    const std::string _protocol;
 
     /**
      * Transport.
@@ -110,22 +110,22 @@ private:
     /**
      * Server GUID.
      */
-    ServerGUID _guid;
+    const ServerGUID _guid;
 
     /**
      * Fast (at startup) beacon period (in sec).
      */
-    double _fastBeaconPeriod;
+    const double _fastBeaconPeriod;
 
     /**
      * Slow (after beaconCountLimit is reached) beacon period (in sec).
      */
-    double _slowBeaconPeriod;
+    const double _slowBeaconPeriod;
 
     /**
      * Limit on number of beacons issued.
      */
-    epics::pvData::int16 _beaconCountLimit;
+    const epics::pvData::int16 _beaconCountLimit;
 
     /**
      * Server address.
@@ -135,7 +135,7 @@ private:
     /**
      * Server port.
      */
-    epics::pvData::int32 _serverPort;
+    const epics::pvData::int32 _serverPort;
 
     /**
      * Server status provider implementation (optional).
