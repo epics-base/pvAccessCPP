@@ -64,16 +64,7 @@ public:
     virtual epics::pvData::PVField::shared_pointer getServerStatusData();
 
 private:
-    /**
-     * Initialize
-     */
-    void initialize();
-
-
-private:
     epics::pvData::PVStructure::shared_pointer _status;
-    std::tr1::shared_ptr<ServerContext> _context;
-    //ServerContext::shared_pointer _context;
 };
 
 }
