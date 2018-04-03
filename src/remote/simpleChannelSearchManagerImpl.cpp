@@ -15,6 +15,7 @@
 #include <pv/pvaConstants.h>
 #include <pv/blockingUDP.h>
 #include <pv/serializeHelper.h>
+#include <pv/logger.h>
 
 using namespace std;
 using namespace epics::pvData;
@@ -40,17 +41,9 @@ const int SimpleChannelSearchManagerImpl::MAX_FRAMES_AT_ONCE = 10;
 const int SimpleChannelSearchManagerImpl::DELAY_BETWEEN_FRAMES_MS = 50;
 
 
-SimpleChannelSearchManagerImpl::shared_pointer
-SimpleChannelSearchManagerImpl::create(Context::shared_pointer const & context)
-{
-    SimpleChannelSearchManagerImpl::shared_pointer thisPtr(new SimpleChannelSearchManagerImpl(context));
-    thisPtr->activate();
-    return thisPtr;
-}
-
 SimpleChannelSearchManagerImpl::SimpleChannelSearchManagerImpl(Context::shared_pointer const & context) :
     m_context(context),
-    m_responseAddress(context->getSearchTransport()->getRemoteAddress()),
+    m_responseAddress(), // initialized in activate()
     m_canceled(),
     m_sequenceNumber(0),
     m_sendBuffer(MAX_UDP_UNFRAGMENTED_SEND),
@@ -61,32 +54,31 @@ SimpleChannelSearchManagerImpl::SimpleChannelSearchManagerImpl(Context::shared_p
     m_userValueMutex(),
     m_mutex()
 {
-
-    // initialize send buffer
-    initializeSendBuffer();
-
-
     // initialize random seed with some random value
     srand ( time(NULL) );
 }
 
 void SimpleChannelSearchManagerImpl::activate()
 {
+    m_responseAddress = Context::shared_pointer(m_context)->getSearchTransport()->getRemoteAddress();
+
+    // initialize send buffer
+    initializeSendBuffer();
+
     // add some jitter so that all the clients do not send at the same time
     double period = ATOMIC_PERIOD + (rand() % (2*PERIOD_JITTER_MS+1) - PERIOD_JITTER_MS)/(double)1000;
 
-    Context::shared_pointer context = m_context.lock();
-    if (context.get())
+    Context::shared_pointer context(m_context.lock());
+    if (context)
         context->getTimer()->schedulePeriodic(shared_from_this(), period, period);
-
-    //new Thread(this, "pvAccess immediate-search").start();
 }
 
 SimpleChannelSearchManagerImpl::~SimpleChannelSearchManagerImpl()
 {
-    // shared_from_this() is not allowed from destructor
-    // be sure to call cancel() first
-    // cancel();
+    Lock guard(m_mutex);
+    if (!m_canceled.get()) {
+        LOG(logLevelWarn, "Logic error: SimpleChannelSearchManagerImpl destroyed w/o cancel()");
+    }
 }
 
 void SimpleChannelSearchManagerImpl::cancel()
@@ -97,8 +89,8 @@ void SimpleChannelSearchManagerImpl::cancel()
         return;
     m_canceled.set();
 
-    Context::shared_pointer context = m_context.lock();
-    if (context.get())
+    Context::shared_pointer context(m_context.lock());
+    if (context)
         context->getTimer()->cancel(shared_from_this());
 }
 
