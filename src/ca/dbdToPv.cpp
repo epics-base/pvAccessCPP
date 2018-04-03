@@ -442,20 +442,20 @@ Status DbdToPv::getFromDBD(
        }
     }
     chtype type = args.type;
-    dbr_short_t	status{0};
-    dbr_short_t	severity(0);
-    epicsTimeStamp stamp{0,0};
+    dbr_short_t	status = 0;
+    dbr_short_t	severity = 0;
+    epicsTimeStamp stamp = {0,0};
     if(caRequestType>=DBR_CTRL_STRING) {
         string units;
         string format;
-        double upper_disp_limit;
-        double lower_disp_limit;
-        double upper_alarm_limit;	
-        double upper_warning_limit;
-        double lower_warning_limit;
-        double lower_alarm_limit;
-        double upper_ctrl_limit;
-        double lower_ctrl_limit;
+        double upper_disp_limit = 0.0;
+        double lower_disp_limit = 0.0;
+        double upper_alarm_limit = 0.0;
+        double upper_warning_limit = 0.0;
+        double lower_warning_limit = 0.0;
+        double lower_alarm_limit = 0.0;
+        double upper_ctrl_limit = 0.0;
+        double lower_ctrl_limit = 0.0;
         switch(type) {
             case DBR_CTRL_CHAR:
             {
