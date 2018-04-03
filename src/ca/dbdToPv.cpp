@@ -8,6 +8,7 @@
 #include <epicsVersion.h>
 #include <sstream>
 #include <alarm.h>
+#include <alarmString.h>
 
 #include <pv/standardField.h>
 #include <pv/logger.h>
