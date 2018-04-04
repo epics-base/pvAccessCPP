@@ -17,6 +17,7 @@
 
 #include <pv/lock.h>
 #include <pv/byteBuffer.h>
+#include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
 #include <pv/blockingUDP.h>
@@ -41,6 +42,8 @@ inline int sendto(int s, const char *buf, size_t len, int flags, const struct so
 
 // reserve some space for CMD_ORIGIN_TAG message
 #define RECEIVE_BUFFER_PRE_RESERVE (PVA_MESSAGE_HEADER_SIZE + 16)
+
+size_t BlockingUDPTransport::num_instances;
 
 BlockingUDPTransport::BlockingUDPTransport(bool serverFlag,
         ResponseHandler::shared_pointer const & responseHandler, SOCKET channel,
@@ -79,9 +82,12 @@ BlockingUDPTransport::BlockingUDPTransport(bool serverFlag,
         sockAddrToDottedIP(&_remoteAddress.sa, strBuffer, sizeof(strBuffer));
         _remoteName = strBuffer;
     }
+
+    REFTRACE_INCREMENT(num_instances);
 }
 
 BlockingUDPTransport::~BlockingUDPTransport() {
+    REFTRACE_DECREMENT(num_instances);
 
     close(true); // close the socket and stop the thread.
 }

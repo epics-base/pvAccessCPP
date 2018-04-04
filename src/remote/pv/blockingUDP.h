@@ -49,6 +49,8 @@ class BlockingUDPTransport : public epics::pvData::NoDefaultMethods,
 public:
     POINTER_DEFINITIONS(BlockingUDPTransport);
 
+    static size_t num_instances;
+
 private:
     std::tr1::weak_ptr<BlockingUDPTransport> internal_this;
     friend class BlockingUDPConnector;
