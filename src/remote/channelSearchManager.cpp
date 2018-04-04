@@ -152,9 +152,7 @@ void ChannelSearchManager::unregisterSearchInstance(SearchInstance::shared_point
 {
     Lock guard(m_channelMutex);
     pvAccessID id = channel->getSearchInstanceID();
-    m_channels_t::iterator channelsIter = m_channels.find(id);
-    if(channelsIter != m_channels.end())
-        m_channels.erase(id);
+    m_channels.erase(id);
 }
 
 void ChannelSearchManager::searchResponse(const ServerGUID & guid, pvAccessID cid, int32_t /*seqNo*/, int8_t minorRevision, osiSockAddr* serverAddress)
