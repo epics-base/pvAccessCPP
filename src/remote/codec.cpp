@@ -1142,8 +1142,6 @@ void BlockingTCPTransportCodec::receiveThread()
                 __FILE__, __LINE__);
         }
     }
-
-    this->_shutdownEvent.signal();
 }
 
 
