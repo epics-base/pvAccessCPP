@@ -1771,12 +1771,8 @@ void BlockingClientTCPTransportCodec::internalClose() {
     _context->getTimer()->cancel(tcb);
 
     // _owners cannot change when transport is closed
-    closedNotifyClients();
-}
-/**
- * Notifies clients about disconnect.
- */
-void BlockingClientTCPTransportCodec::closedNotifyClients() {
+
+    // Notifies clients about disconnect.
 
     // check if still acquired
     size_t refs = _owners.size();
