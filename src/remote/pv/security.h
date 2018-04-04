@@ -423,12 +423,14 @@ public:
         return thisInstance;
     }
 
-    Context::securityPlugins_t& getClientSecurityPlugins()
+    typedef std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > securityPlugins_t;
+
+    securityPlugins_t& getClientSecurityPlugins()
     {
         return m_clientSecurityPlugins;
     }
 
-    Context::securityPlugins_t& getServerSecurityPlugins()
+    securityPlugins_t& getServerSecurityPlugins()
     {
         return m_serverSecurityPlugins;
     }
@@ -448,8 +450,8 @@ public:
 private:
     SecurityPluginRegistry();
 
-    Context::securityPlugins_t m_clientSecurityPlugins;
-    Context::securityPlugins_t m_serverSecurityPlugins;
+    securityPlugins_t m_clientSecurityPlugins;
+    securityPlugins_t m_serverSecurityPlugins;
 };
 
 }
