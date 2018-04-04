@@ -2057,14 +2057,18 @@ public:
 
             if (sendAck)
             {
+                guard.unlock();
+
                 try
                 {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error&) {
                     // assume wrong connection state from checkAndGetTransport()
+                    guard.lock();
                     m_reportQueueStateInProgress = false;
                 } catch (std::exception& e) {
                     LOG(logLevelWarn, "Ignore exception during MonitorStrategyQueue::release: %s", e.what());
+                    guard.lock();
                     m_reportQueueStateInProgress = false;
                 }
             }
@@ -2389,12 +2393,19 @@ public:
         if (!startRequest(QOS_PROCESS | QOS_GET))
             return BaseRequestImpl::otherRequestPendingStatus;
 
+        bool restore = m_started;
+        m_started = true;
+
+        guard.unlock();
+
         try
         {
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelMonitorImpl>());
-            m_started = true;
             return Status::Ok;
         } catch (std::runtime_error &rte) {
+            guard.lock();
+
+            m_started = restore;
             abortRequest();
             return BaseRequestImpl::channelNotConnected;
         }
@@ -2415,12 +2426,19 @@ public:
         if (!startRequest(QOS_PROCESS))
             return BaseRequestImpl::otherRequestPendingStatus;
 
+        bool restore = m_started;
+        m_started = false;
+
+        guard.unlock();
+
         try
         {
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelMonitorImpl>());
-            m_started = false;
             return Status::Ok;
         } catch (std::runtime_error &rte) {
+            guard.lock();
+
+            m_started = restore;
             abortRequest();
             return BaseRequestImpl::channelNotConnected;
         }
