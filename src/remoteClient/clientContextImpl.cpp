@@ -11,6 +11,8 @@
 #include <stdexcept>
 
 #include <osiSock.h>
+#include <epicsGuard.h>
+
 #include <pv/lock.h>
 #include <pv/timer.h>
 #include <pv/bitSetUtil.h>
@@ -915,6 +917,7 @@ public:
             }
         }
 
+        // TODO: m_structure and m_bitSet guarded by m_structureMutex?  (as below)
         if (!(*m_structure->getStructure() == *pvPutStructure->getStructure()))
         {
             EXCEPTION_GUARD3(m_callback, cb, cb->putDone(invalidPutStructureStatus, thisPtr));
@@ -933,10 +936,11 @@ public:
         }
 
         try {
-            lock();
-            *m_bitSet = *pvPutBitSet;
-            m_structure->copyUnchecked(*pvPutStructure, *m_bitSet);
-            unlock();
+            {
+                epicsGuard<ChannelPutImpl> G(*this);
+                *m_bitSet = *pvPutBitSet;
+                m_structure->copyUnchecked(*pvPutStructure, *m_bitSet);
+            }
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelPutImpl>());
         } catch (std::runtime_error &rte) {
             abortRequest();
@@ -1182,10 +1186,11 @@ public:
         }
 
         try {
-            lock();
-            *m_putDataBitSet = *bitSet;
-            m_putData->copyUnchecked(*pvPutStructure, *m_putDataBitSet);
-            unlock();
+            {
+                epicsGuard<ChannelPutGetImpl> G(*this);
+                *m_putDataBitSet = *bitSet;
+                m_putData->copyUnchecked(*pvPutStructure, *m_putDataBitSet);
+            }
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelPutGetImpl>());
         } catch (std::runtime_error &rte) {
             abortRequest();
@@ -1420,9 +1425,10 @@ public:
         }
 
         try {
-            m_structureMutex.lock();
-            m_structure = pvArgument;
-            m_structureMutex.unlock();
+            {
+                epicsGuard<epicsMutex> G(m_structureMutex);
+                m_structure = pvArgument;
+            }
 
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelRPCImpl>());
         } catch (std::runtime_error &rte) {
