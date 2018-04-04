@@ -1850,9 +1850,6 @@ private:
     MonitorElement::shared_pointer m_overrunElement;
     bool m_overrunInProgress;
 
-
-    MonitorElement::shared_pointer m_nullMonitorElement;
-
     PVStructure::shared_pointer m_up2datePVStructure;
 
     int32 m_releasedCount;
@@ -1878,7 +1875,6 @@ public:
         m_monitorQueue(),
         m_callback(callback), m_mutex(),
         m_bitSet1(), m_bitSet2(), m_overrunInProgress(false),
-        m_nullMonitorElement(),
         m_releasedCount(0),
         m_reportQueueStateInProgress(false),
         m_channel(channel), m_ioid(ioid),
@@ -2013,10 +2009,10 @@ public:
                 guard.unlock();
                 EXCEPTION_GUARD3(m_callback, cb, cb->unlisten(shared_from_this()));
             }
-            return m_nullMonitorElement;
+            return MonitorElement::shared_pointer();
         }
 
-        MonitorElement::shared_pointer retVal = m_monitorQueue.front();
+        MonitorElement::shared_pointer retVal(m_monitorQueue.front());
         m_monitorQueue.pop();
         return retVal;
     }
