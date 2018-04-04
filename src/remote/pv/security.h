@@ -188,6 +188,8 @@ public:
      * @param remoteAddress
      * @return a new session.
      * @throws SecurityException
+     *
+     * @warning a Ref. loop is created if the SecuritySession stores a pointer to 'control'
      */
     // authentication must be done immediately when connection is established (timeout 3seconds),
     // later on authentication process can be repeated
