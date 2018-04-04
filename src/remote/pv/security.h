@@ -423,12 +423,12 @@ public:
         return thisInstance;
     }
 
-    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getClientSecurityPlugins()
+    Context::securityPlugins_t& getClientSecurityPlugins()
     {
         return m_clientSecurityPlugins;
     }
 
-    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getServerSecurityPlugins()
+    Context::securityPlugins_t& getServerSecurityPlugins()
     {
         return m_serverSecurityPlugins;
     }
@@ -448,8 +448,8 @@ public:
 private:
     SecurityPluginRegistry();
 
-    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > m_clientSecurityPlugins;
-    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > m_serverSecurityPlugins;
+    Context::securityPlugins_t m_clientSecurityPlugins;
+    Context::securityPlugins_t m_serverSecurityPlugins;
 };
 
 }

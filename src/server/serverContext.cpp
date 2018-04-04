@@ -540,7 +540,7 @@ epicsTimeStamp& ServerContextImpl::getStartTime()
 }
 
 
-std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& ServerContextImpl::getSecurityPlugins()
+const Context::securityPlugins_t& ServerContextImpl::getSecurityPlugins()
 {
     return SecurityPluginRegistry::instance().getServerSecurityPlugins();
 }

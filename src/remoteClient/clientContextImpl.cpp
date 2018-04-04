@@ -4472,7 +4472,7 @@ private:
         }
     }
 
-    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins() OVERRIDE FINAL
+    const securityPlugins_t& getSecurityPlugins() OVERRIDE FINAL
     {
         return SecurityPluginRegistry::instance().getClientSecurityPlugins();
     }

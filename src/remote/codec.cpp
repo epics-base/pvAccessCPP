@@ -1518,12 +1518,11 @@ void BlockingServerTCPTransportCodec::send(ByteBuffer* buffer,
         buffer->putShort(0x7FFF);
 
         // list of authNZ plugin names
-        map<string, SecurityPlugin::shared_pointer>& securityPlugins = _context->getSecurityPlugins();
+        const Context::securityPlugins_t& securityPlugins = _context->getSecurityPlugins();
         vector<string> validSPNames;
         validSPNames.reserve(securityPlugins.size());
 
-        for (map<string, SecurityPlugin::shared_pointer>::const_iterator iter =
-                    securityPlugins.begin();
+        for (Context::securityPlugins_t::const_iterator iter(securityPlugins.begin());
                 iter != securityPlugins.end(); iter++)
         {
             SecurityPlugin::shared_pointer securityPlugin = iter->second;
@@ -1616,8 +1615,7 @@ void BlockingServerTCPTransportCodec::authNZInitialize(const std::string& securi
     // check if plug-in name is valid
     SecurityPlugin::shared_pointer securityPlugin;
 
-    map<string, SecurityPlugin::shared_pointer>::iterator spIter =
-        _context->getSecurityPlugins().find(securityPluginName);
+    Context::securityPlugins_t::const_iterator spIter(_context->getSecurityPlugins().find(securityPluginName));
     if (spIter != _context->getSecurityPlugins().end())
         securityPlugin = spIter->second;
     if (!securityPlugin)
@@ -1921,13 +1919,12 @@ void BlockingClientTCPTransportCodec::authNZInitialize(const std::vector<std::st
 {
     if (!offeredSecurityPlugins.empty())
     {
-        map<string, SecurityPlugin::shared_pointer>& availableSecurityPlugins =
-            _context->getSecurityPlugins();
+        const Context::securityPlugins_t& availableSecurityPlugins(_context->getSecurityPlugins());
 
         for (vector<string>::const_iterator offeredSP = offeredSecurityPlugins.begin();
                 offeredSP != offeredSecurityPlugins.end(); offeredSP++)
         {
-            map<string, SecurityPlugin::shared_pointer>::iterator spi = availableSecurityPlugins.find(*offeredSP);
+            Context::securityPlugins_t::const_iterator spi(availableSecurityPlugins.find(*offeredSP));
             if (spi != availableSecurityPlugins.end())
             {
                 SecurityPlugin::shared_pointer securityPlugin = spi->second;
