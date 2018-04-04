@@ -3452,10 +3452,6 @@ public:
             m_transport->enqueueSendRequest(internal_from_this());
         }
 
-        virtual void cancel() {
-            // noop
-        }
-
         virtual void timeout() {
             createChannelFailed();
         }
@@ -3466,9 +3462,6 @@ public:
         virtual void createChannelFailed() OVERRIDE FINAL
         {
             Lock guard(m_channelMutex);
-
-            cancel();
-
             // release transport if active
             if (m_transport)
             {
@@ -3496,7 +3489,6 @@ public:
                     if (m_connectionState == DESTROYED)
                     {
                         // end connection request
-                        cancel();
                         return;
                     }
 
@@ -3516,10 +3508,6 @@ public:
                     LOG(logLevelError, "connectionCompleted() %d '%s' unhandled exception: %s\n", sid, m_name.c_str(), e.what());
                     // noop
                 }
-
-                // NOTE: always call cancel
-                // end connection request
-                cancel();
             }
 
             // should be called without any lock hold
@@ -3561,7 +3549,6 @@ public:
                 // stop searching...
                 shared_pointer thisChannelPointer = internal_from_this();
                 m_context->getChannelSearchManager()->unregisterSearchInstance(thisChannelPointer);
-                cancel();
 
                 disconnectPendingIO(true);
 
@@ -3604,7 +3591,6 @@ public:
             if (!initiateSearch) {
                 // stop searching...
                 m_context->getChannelSearchManager()->unregisterSearchInstance(internal_from_this());
-                cancel();
             }
             setConnectionState(DISCONNECTED);
 
