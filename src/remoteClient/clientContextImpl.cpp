@@ -2466,7 +2466,7 @@ public:
 
 class AbstractClientResponseHandler : public ResponseHandler {
 protected:
-    ClientContextImpl::weak_pointer _context;
+    const ClientContextImpl::weak_pointer _context;
 public:
     AbstractClientResponseHandler(ClientContextImpl::shared_pointer const & context, string const & description) :
         ResponseHandler(context.get(), description), _context(ClientContextImpl::weak_pointer(context)) {
