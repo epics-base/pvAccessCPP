@@ -1126,13 +1126,23 @@ void BlockingTCPTransportCodec::start() {
 
 void BlockingTCPTransportCodec::receiveThread()
 {
-    Transport::shared_pointer ptr = this->shared_from_this();
+    /* This innocuous ref. is an important hack.
+     * The code behind Transport::close() will cause
+     * channels and operations to drop references
+     * to this transport.  This ref. keeps it from
+     * being destroyed way down the call stack, from
+     * which it is apparently not possible to return
+     * safely.  Rather than try to untangle this
+     * knot, just keep this ref...
+     */
+    Transport::shared_pointer ptr(this->shared_from_this());
 
     while (this->isOpen())
     {
         try {
             this->processRead();
         } catch (std::exception &e) {
+            PRINT_EXCEPTION(e);
             LOG(logLevelError,
                 "an exception caught while in receiveThread at %s:%d: %s",
                 __FILE__, __LINE__, e.what());
@@ -1147,7 +1157,8 @@ void BlockingTCPTransportCodec::receiveThread()
 
 void BlockingTCPTransportCodec::sendThread()
 {
-    Transport::shared_pointer ptr = this->shared_from_this();
+    // cf. the comment in receiveThread()
+    Transport::shared_pointer ptr(this->shared_from_this());
 
     this->setSenderThread();
 
@@ -1158,6 +1169,7 @@ void BlockingTCPTransportCodec::sendThread()
         } catch (connection_closed_exception &cce) {
             // noop
         } catch (std::exception &e) {
+            PRINT_EXCEPTION(e);
             LOG(logLevelWarn,
                 "an exception caught while in sendThread at %s:%d: %s",
                 __FILE__, __LINE__, e.what());
