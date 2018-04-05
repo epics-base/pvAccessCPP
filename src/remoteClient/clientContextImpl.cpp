@@ -4080,7 +4080,36 @@ public:
             m_contextState = CONTEXT_DESTROYED;
         }
 
-        internalDestroy();
+        //
+        // cleanup
+        //
+
+        // this will also close all PVA transports
+        destroyAllChannels();
+
+        // stop UDPs
+        for (BlockingUDPTransportVector::const_iterator iter = m_udpTransports.begin();
+                iter != m_udpTransports.end(); iter++)
+            (*iter)->close();
+        m_udpTransports.clear();
+
+        // stop UDPs
+        if (m_searchTransport)
+            m_searchTransport->close();
+
+        // wait for all transports to cleanly exit
+        int tries = 40;
+        epics::pvData::int32 transportCount;
+        while ((transportCount = m_transportRegistry.size()) && tries--)
+            epicsThreadSleep(0.025);
+
+        {
+            Lock guard(m_beaconMapMutex);
+            m_beaconHandlers.clear();
+        }
+
+        if (transportCount)
+            LOG(logLevelDebug, "PVA client context destroyed with %u transport(s) active.", (unsigned)transportCount);
     }
 
     virtual ~InternalClientContextImpl()
@@ -4157,40 +4186,6 @@ private:
         m_channelSearchManager->activate();
 
         // TODO what if initialization failed!!!
-    }
-
-    void internalDestroy() {
-
-        //
-        // cleanup
-        //
-
-        // this will also close all PVA transports
-        destroyAllChannels();
-
-        // stop UDPs
-        for (BlockingUDPTransportVector::const_iterator iter = m_udpTransports.begin();
-                iter != m_udpTransports.end(); iter++)
-            (*iter)->close();
-        m_udpTransports.clear();
-
-        // stop UDPs
-        if (m_searchTransport)
-            m_searchTransport->close();
-
-        // wait for all transports to cleanly exit
-        int tries = 40;
-        epics::pvData::int32 transportCount;
-        while ((transportCount = m_transportRegistry.size()) && tries--)
-            epicsThreadSleep(0.025);
-
-        {
-            Lock guard(m_beaconMapMutex);
-            m_beaconHandlers.clear();
-        }
-
-        if (transportCount)
-            LOG(logLevelDebug, "PVA client context destroyed with %u transport(s) active.", (unsigned)transportCount);
     }
 
     void destroyAllChannels() {
