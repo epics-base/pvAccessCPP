@@ -3305,11 +3305,15 @@ private:
 
         virtual void destroy() OVERRIDE FINAL
         {
+            // Hack.  Prevent Transport from being dtor'd while m_channelMutex is held
+            Transport::shared_pointer old_transport;
             {
                 Lock guard(m_channelMutex);
                 if (m_connectionState == DESTROYED)
                     return;
                 REFTRACE_DECREMENT(num_active);
+
+                old_transport = m_transport;
 
                 m_getfield.reset();
 
@@ -3441,7 +3445,11 @@ public:
 
         void disconnect() {
             {
+                // Hack.  Prevent Transport from being dtor'd while m_channelMutex is held
+                Transport::shared_pointer old_transport;
                 Lock guard(m_channelMutex);
+                old_transport = m_transport;
+
                 // if not destroyed...
                 if (m_connectionState == DESTROYED)
                     throw std::runtime_error("Channel destroyed.");
@@ -3462,12 +3470,14 @@ public:
          */
         virtual void createChannelFailed() OVERRIDE FINAL
         {
+            // Hack.  Prevent Transport from being dtor'd while m_channelMutex is held
+            Transport::shared_pointer old_transport;
             Lock guard(m_channelMutex);
             // release transport if active
             if (m_transport)
             {
                 m_transport->release(getID());
-                m_transport.reset();
+                old_transport.swap(m_transport);
             }
 
             // ... and search again, with penalty
@@ -3607,9 +3617,12 @@ public:
         }
 
         virtual void searchResponse(const ServerGUID & guid, int8 minorRevision, osiSockAddr* serverAddress) OVERRIDE FINAL {
+            // Hack.  Prevent Transport from being dtor'd while m_channelMutex is held
+            Transport::shared_pointer old_transport;
+
             Lock guard(m_channelMutex);
-            Transport::shared_pointer transport = m_transport;
-            if (transport.get())
+            Transport::shared_pointer transport(m_transport);
+            if (transport)
             {
                 // GUID check case: same server listening on different NIF
 
@@ -3626,7 +3639,7 @@ public:
 
             // NOTE: this creates a new or acquires an existing transport (implies increases usage count)
             transport = m_context->getTransport(internal_from_this(), serverAddress, minorRevision, m_priority);
-            if (!transport.get())
+            if (!transport)
             {
                 createChannelFailed();
                 return;
@@ -3646,7 +3659,7 @@ public:
                 m_allowCreation = false;
 
                 // check existing transport
-                if (m_transport.get() && m_transport.get() != transport.get())
+                if (m_transport && m_transport.get() != transport.get())
                 {
                     disconnectPendingIO(false);
 
@@ -3659,7 +3672,10 @@ public:
                     return;
                 }
 
-                m_transport = transport;
+                // rotate: transport -> m_transport -> old_transport ->
+                old_transport.swap(m_transport);
+                m_transport.swap(transport);
+
                 m_transport->enqueueSendRequest(internal_from_this());
             }
         }
