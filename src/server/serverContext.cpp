@@ -39,7 +39,7 @@ ServerContextImpl::ServerContextImpl():
     _broadcastPort(PVA_BROADCAST_PORT),
     _serverPort(PVA_SERVER_PORT),
     _receiveBufferSize(MAX_TCP_RECV),
-    _timer(new Timer("pvAccess-server timer", lowerPriority)),
+    _timer(new Timer("PVAS timers", lowerPriority)),
     _beaconEmitter(),
     _acceptor(),
     _transportRegistry(),
