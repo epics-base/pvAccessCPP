@@ -3420,38 +3420,6 @@ public:
             reportChannelStateChange();
         }
 
-        /**
-         * Create a channel, i.e. submit create channel request to the server.
-         * This method is called after search is complete.
-         * @param transport
-         */
-        void createChannel(Transport::shared_pointer const & transport)
-        {
-            Lock guard(m_channelMutex);
-
-            // do not allow duplicate creation to the same transport
-            if (!m_allowCreation)
-                return;
-            m_allowCreation = false;
-
-            // check existing transport
-            if (m_transport.get() && m_transport.get() != transport.get())
-            {
-                disconnectPendingIO(false);
-
-                m_transport->release(getID());
-            }
-            else if (m_transport.get() == transport.get())
-            {
-                // request to sent create request to same transport, ignore
-                // this happens when server is slower (processing search requests) than client generating it
-                return;
-            }
-
-            m_transport = transport;
-            m_transport->enqueueSendRequest(internal_from_this());
-        }
-
         virtual void timeout() {
             createChannelFailed();
         }
@@ -3696,7 +3664,31 @@ public:
             std::copy(guid.value, guid.value + 12, m_guid.value);
 
             // create channel
-            createChannel(transport);
+            {
+                Lock guard(m_channelMutex);
+
+                // do not allow duplicate creation to the same transport
+                if (!m_allowCreation)
+                    return;
+                m_allowCreation = false;
+
+                // check existing transport
+                if (m_transport.get() && m_transport.get() != transport.get())
+                {
+                    disconnectPendingIO(false);
+
+                    m_transport->release(getID());
+                }
+                else if (m_transport.get() == transport.get())
+                {
+                    // request to sent create request to same transport, ignore
+                    // this happens when server is slower (processing search requests) than client generating it
+                    return;
+                }
+
+                m_transport = transport;
+                m_transport->enqueueSendRequest(internal_from_this());
+            }
         }
 
         virtual void transportClosed() OVERRIDE FINAL {
