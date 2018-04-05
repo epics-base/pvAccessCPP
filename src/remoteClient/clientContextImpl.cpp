@@ -3305,7 +3305,40 @@ private:
 
         virtual void destroy() OVERRIDE FINAL
         {
-            destroy(false);
+            {
+                Lock guard(m_channelMutex);
+                if (m_connectionState == DESTROYED)
+                    return;
+                REFTRACE_DECREMENT(num_active);
+
+                m_getfield.reset();
+
+                // stop searching...
+                shared_pointer thisChannelPointer = internal_from_this();
+                m_context->getChannelSearchManager()->unregisterSearchInstance(thisChannelPointer);
+
+                disconnectPendingIO(true);
+
+                if (m_connectionState == CONNECTED)
+                {
+                    disconnect(false, true);
+                }
+                else if (m_transport)
+                {
+                    // unresponsive state, do not forget to release transport
+                    m_transport->release(getID());
+                    m_transport.reset();
+                }
+
+
+                setConnectionState(DESTROYED);
+
+                // unregister
+                m_context->unregisterChannel(thisChannelPointer);
+            }
+
+            // should be called without any lock hold
+            reportChannelStateChange();
         }
 
         virtual string getRequesterName() OVERRIDE FINAL
@@ -3476,66 +3509,6 @@ public:
                     LOG(logLevelError, "connectionCompleted() %d '%s' unhandled exception: %s\n", sid, m_name.c_str(), e.what());
                     // noop
                 }
-            }
-
-            // should be called without any lock hold
-            reportChannelStateChange();
-        }
-
-        /**
-         * @param force force destruction regardless of reference count (not used now)
-         */
-        void destroy(bool force) {
-            {
-                Lock guard(m_channelMutex);
-                if (m_connectionState == DESTROYED)
-                    return;
-                //throw std::runtime_error("Channel already destroyed.");
-            }
-            REFTRACE_DECREMENT(num_active);
-
-            destroyChannel(force);
-        }
-
-
-        /**
-         * Actual destroy method, to be called <code>CAJContext</code>.
-         * @param force force destruction regardless of reference count
-         * @throws PVAException
-         * @throws std::runtime_error
-         * @throws IOException
-         */
-        void destroyChannel(bool /*force*/) OVERRIDE FINAL {
-            {
-                Lock guard(m_channelMutex);
-
-                if (m_connectionState == DESTROYED)
-                    throw std::runtime_error("Channel already destroyed.");
-
-                m_getfield.reset();
-
-                // stop searching...
-                shared_pointer thisChannelPointer = internal_from_this();
-                m_context->getChannelSearchManager()->unregisterSearchInstance(thisChannelPointer);
-
-                disconnectPendingIO(true);
-
-                if (m_connectionState == CONNECTED)
-                {
-                    disconnect(false, true);
-                }
-                else if (m_transport)
-                {
-                    // unresponsive state, do not forget to release transport
-                    m_transport->release(getID());
-                    m_transport.reset();
-                }
-
-
-                setConnectionState(DESTROYED);
-
-                // unregister
-                m_context->unregisterChannel(thisChannelPointer);
             }
 
             // should be called without any lock hold
