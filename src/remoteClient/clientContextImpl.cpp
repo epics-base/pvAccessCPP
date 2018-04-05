@@ -4084,6 +4084,8 @@ public:
         // cleanup
         //
 
+        m_timer->close();
+
         // this will also close all PVA transports
         destroyAllChannels();
 
