@@ -64,6 +64,17 @@ struct epicsShareClass Operation
     //! Does not wait for remote confirmation.
     void cancel();
 
+    bool valid() const { return !!impl; }
+
+#if __cplusplus>=201103L
+    explicit operator bool() const { return valid(); }
+#else
+private:
+    typedef bool (Operation::*bool_type)() const;
+public:
+    operator bool_type() const { return valid() ? &Operation::valid : 0; }
+#endif
+
 protected:
     std::tr1::shared_ptr<Impl> impl;
 };
@@ -132,6 +143,17 @@ struct epicsShareClass Monitor
     epics::pvData::PVStructure::const_shared_pointer root;
     epics::pvData::BitSet changed,
                           overrun;
+
+    bool valid() const { return !!impl; }
+
+#if __cplusplus>=201103L
+    explicit operator bool() const { return valid(); }
+#else
+private:
+    typedef bool (Monitor::*bool_type)() const;
+public:
+    operator bool_type() const { return valid() ? &Monitor::valid : 0; }
+#endif
 
 private:
     std::tr1::shared_ptr<Impl> impl;
@@ -246,6 +268,17 @@ public:
 
     //! Channel name or an empty string
     std::string name() const;
+
+    bool valid() const { return !!impl; }
+
+#if __cplusplus>=201103L
+    explicit operator bool() const { return valid(); }
+#else
+private:
+    typedef bool (ClientChannel::*bool_type)() const;
+public:
+    operator bool_type() const { return valid() ? &ClientChannel::valid : 0; }
+#endif
 
     //! callback for get() and rpc()
     struct GetCallback {
@@ -450,6 +483,17 @@ public:
 
     //! Clear channel cache
     void disconnect();
+
+    bool valid() const { return !!impl; }
+
+#if __cplusplus>=201103L
+    explicit operator bool() const { return valid(); }
+#else
+private:
+    typedef bool (ClientProvider::*bool_type)() const;
+public:
+    operator bool_type() const { return valid() ? &ClientProvider::valid : 0; }
+#endif
 };
 
 
