@@ -177,6 +177,13 @@ struct GetPutter : public pva::ChannelPutRequester,
 
         callEvent(G, status.isSuccess()? pvac::GetEvent::Success : pvac::GetEvent::Fail);
     }
+
+    virtual void show(std::ostream &strm) const
+    {
+        strm << "Operation(Get/Put"
+                "\"" << name() <<"\""
+             ")";
+    }
 };
 
 size_t GetPutter::num_instances;

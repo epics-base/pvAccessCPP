@@ -5,6 +5,7 @@
 #ifndef PVATESTCLIENT_H
 #define PVATESTCLIENT_H
 
+#include <ostream>
 #include <stdexcept>
 #include <list>
 
@@ -53,6 +54,7 @@ struct epicsShareClass Operation
         virtual ~Impl() {}
         virtual std::string name() const =0;
         virtual void cancel() =0;
+        virtual void show(std::ostream&) const =0;
     };
 
     Operation() {}
@@ -78,6 +80,7 @@ public:
     void reset() { impl.reset(); }
 
 protected:
+    friend ::std::ostream& operator<<(::std::ostream& strm, const Operation& op);
     std::tr1::shared_ptr<Impl> impl;
 };
 
@@ -161,6 +164,7 @@ public:
 
 private:
     std::tr1::shared_ptr<Impl> impl;
+    friend ::std::ostream& operator<<(::std::ostream& strm, const Monitor& op);
     friend struct MonitorSync;
 };
 
@@ -246,6 +250,7 @@ private:
     std::tr1::shared_ptr<Impl> impl;
     friend class ClientProvider;
     friend void detail::registerRefTrack();
+    friend ::std::ostream& operator<<(::std::ostream& strm, const ClientChannel& op);
 
     ClientChannel(const std::tr1::shared_ptr<Impl>& i) :impl(i) {}
 public:
@@ -397,6 +402,7 @@ public:
     //! Remove from list of listeners
     void removeConnectListener(ConnectCallback*);
 
+    void show(std::ostream& strm) const;
 private:
     std::tr1::shared_ptr<epics::pvAccess::Channel> getChannel();
 };
@@ -460,6 +466,7 @@ class epicsShareClass ClientProvider
     struct Impl;
     std::tr1::shared_ptr<Impl> impl;
     friend void detail::registerRefTrack();
+    friend ::std::ostream& operator<<(::std::ostream& strm, const ClientProvider& op);
 public:
 
     /** Use named provider.
@@ -511,6 +518,11 @@ ClientChannel::put(const epics::pvData::PVStructure::const_shared_pointer& pvReq
 {
     return detail::PutBuilder(*this, pvRequest);
 }
+
+epicsShareExtern ::std::ostream& operator<<(::std::ostream& strm, const Operation& op);
+epicsShareExtern ::std::ostream& operator<<(::std::ostream& strm, const Monitor& op);
+epicsShareExtern ::std::ostream& operator<<(::std::ostream& strm, const ClientChannel& op);
+epicsShareExtern ::std::ostream& operator<<(::std::ostream& strm, const ClientProvider& op);
 
 //! @}
 
