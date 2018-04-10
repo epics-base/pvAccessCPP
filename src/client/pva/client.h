@@ -75,6 +75,8 @@ public:
     operator bool_type() const { return valid() ? &Operation::valid : 0; }
 #endif
 
+    void reset() { impl.reset(); }
+
 protected:
     std::tr1::shared_ptr<Impl> impl;
 };
@@ -154,6 +156,8 @@ private:
 public:
     operator bool_type() const { return valid() ? &Monitor::valid : 0; }
 #endif
+
+    void reset() { impl.reset(); }
 
 private:
     std::tr1::shared_ptr<Impl> impl;
@@ -279,6 +283,8 @@ private:
 public:
     operator bool_type() const { return valid() ? &ClientChannel::valid : 0; }
 #endif
+
+    void reset() { impl.reset(); }
 
     //! callback for get() and rpc()
     struct GetCallback {
@@ -494,6 +500,8 @@ private:
 public:
     operator bool_type() const { return valid() ? &ClientProvider::valid : 0; }
 #endif
+
+    void reset() { impl.reset(); }
 };
 
 
