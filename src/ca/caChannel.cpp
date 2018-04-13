@@ -38,10 +38,10 @@ CAChannel::shared_pointer CAChannel::create(CAChannelProvider::shared_pointer co
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::create " << channelName << endl;
     }
-    CAChannelPtr thisPtr(
+    CAChannelPtr caChannel(
         new CAChannel(channelName, channelProvider, channelRequester));
-    thisPtr->activate(priority);
-    return thisPtr;
+    caChannel->activate(priority);
+    return caChannel;
 }
 
 static void ca_connection_handler(struct connection_handler_args args)
@@ -487,6 +487,8 @@ void CAChannelGet::channelStateChange(
     throw  std::runtime_error(mess);
 }
 
+std::string CAChannelGet::getRequesterName() { return "CAChannelGet";}
+
 void CAChannelGet::channelDisconnect(bool destroy)
 {
     if(DEBUG_LEVEL>0) {
@@ -497,8 +499,6 @@ void CAChannelGet::channelDisconnect(bool destroy)
     EXCEPTION_GUARD(getRequester->channelDisconnect(destroy);)
     if(!destroy) channel->addChannelGet(shared_from_this());
 }
-
-/* --------------- epics::pvAccess::ChannelGet --------------- */
 
 namespace {
 
@@ -621,6 +621,8 @@ void CAChannelPut::channelStateChange(
     mess += channel->getChannelName();
     throw  std::runtime_error(mess);
 }
+
+std::string CAChannelPut::getRequesterName() { return "CAChannelPut";}
 
 void CAChannelPut::channelDisconnect(bool destroy)
 {
@@ -866,6 +868,7 @@ void CAChannelMonitor::channelStateChange(
     throw  std::runtime_error(mess);
 }
 
+std::string CAChannelMonitor::getRequesterName() { return "CAChannelMonitor";}
 
 void CAChannelMonitor::channelDisconnect(bool destroy)
 {

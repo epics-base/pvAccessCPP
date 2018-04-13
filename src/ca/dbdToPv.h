@@ -73,17 +73,11 @@ class DbdToPv
 {
 public:
     POINTER_DEFINITIONS(DbdToPv);
-    /** @brief 
-     *
-     */
     static DbdToPvPtr create(
         CAChannelPtr const & caChannel,
         epics::pvData::PVStructurePtr const & pvRequest,
         IOType ioType
     );
-    /** @brief
-     *
-     */
     epics::pvData::PVStructurePtr createPVStructure();
     chtype getRequestType();
     epics::pvData::Status getFromDBD(
@@ -100,10 +94,8 @@ public:
     void descriptionConnected(struct connection_handler_args args);
     void getDescriptionDone(struct event_handler_args &args);
     void putDone(struct event_handler_args &args);
-    
 private:
     DbdToPv(IOType ioType);
-
     void activate(
         CAChannelPtr const & caChannel,
         epics::pvData::PVStructurePtr const & pvRequest
@@ -119,6 +111,7 @@ private:
     bool firstTime;
     chtype caValueType;
     chtype caRequestType;
+    unsigned long maxElements;
     epicsTimeStamp caTimeStamp;
     CaAlarm caAlarm;
     CaDisplay caDisplay;
