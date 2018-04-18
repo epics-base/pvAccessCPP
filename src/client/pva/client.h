@@ -80,7 +80,7 @@ public:
     void reset() { impl.reset(); }
 
 protected:
-    friend ::std::ostream& operator<<(::std::ostream& strm, const Operation& op);
+    friend epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const Operation& op);
     std::tr1::shared_ptr<Impl> impl;
 };
 
@@ -164,7 +164,7 @@ public:
 
 private:
     std::tr1::shared_ptr<Impl> impl;
-    friend ::std::ostream& operator<<(::std::ostream& strm, const Monitor& op);
+    friend epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const Monitor& op);
     friend struct MonitorSync;
 };
 
@@ -250,7 +250,7 @@ private:
     std::tr1::shared_ptr<Impl> impl;
     friend class ClientProvider;
     friend void detail::registerRefTrack();
-    friend ::std::ostream& operator<<(::std::ostream& strm, const ClientChannel& op);
+    friend epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const ClientChannel& op);
 
     ClientChannel(const std::tr1::shared_ptr<Impl>& i) :impl(i) {}
 public:
@@ -466,7 +466,7 @@ class epicsShareClass ClientProvider
     struct Impl;
     std::tr1::shared_ptr<Impl> impl;
     friend void detail::registerRefTrack();
-    friend ::std::ostream& operator<<(::std::ostream& strm, const ClientProvider& op);
+    friend epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const ClientProvider& op);
 public:
 
     /** Use named provider.
@@ -519,10 +519,10 @@ ClientChannel::put(const epics::pvData::PVStructure::const_shared_pointer& pvReq
     return detail::PutBuilder(*this, pvRequest);
 }
 
-epicsShareExtern ::std::ostream& operator<<(::std::ostream& strm, const Operation& op);
-epicsShareExtern ::std::ostream& operator<<(::std::ostream& strm, const Monitor& op);
-epicsShareExtern ::std::ostream& operator<<(::std::ostream& strm, const ClientChannel& op);
-epicsShareExtern ::std::ostream& operator<<(::std::ostream& strm, const ClientProvider& op);
+epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const Operation& op);
+epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const Monitor& op);
+epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const ClientChannel& op);
+epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const ClientProvider& op);
 
 //! @}
 
