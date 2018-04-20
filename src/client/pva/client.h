@@ -481,6 +481,8 @@ public:
     explicit ClientProvider(const std::tr1::shared_ptr<epics::pvAccess::ChannelProvider>& provider);
     ~ClientProvider();
 
+    std::string name() const;
+
     /** Get a new Channel
      *
      * Does not block.

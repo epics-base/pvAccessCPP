@@ -279,6 +279,12 @@ ClientProvider::ClientProvider(const std::tr1::shared_ptr<epics::pvAccess::Chann
 
 ClientProvider::~ClientProvider() {}
 
+std::string
+ClientProvider::name() const
+{
+    return impl->provider->getProviderName();
+}
+
 ClientChannel
 ClientProvider::connect(const std::string& name,
                             const ClientChannel::Options& conf)
