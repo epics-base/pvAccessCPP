@@ -8,7 +8,6 @@ void convertArray(std::string*, epics::pvData::PVScalarArray * pv, int notFirst)
 void convertStructureArray(std::string*, epics::pvData::PVStructureArray * pvdata, int notFirst);
 
 void terseSeparator(char c);
-void terseArrayCount(bool flag);
 std::ostream& terse(std::ostream& o, epics::pvData::PVField::const_shared_pointer const & pv);
 std::ostream& terseUnion(std::ostream& o, epics::pvData::PVUnion::const_shared_pointer const & pvUnion);
 std::ostream& terseStructure(std::ostream& o, const epics::pvData::PVStructure::const_shared_pointer &pvStructure);
@@ -17,13 +16,9 @@ std::ostream& terseStructureArray(std::ostream& o, epics::pvData::PVStructureArr
 std::ostream& terseUnionArray(std::ostream& o, epics::pvData::PVUnionArray::const_shared_pointer const & pvArray);
 
 enum EnumMode { AutoEnum, NumberEnum, StringEnum };
-void setEnumPrintMode(EnumMode mode);
 
-void formatTTypes(bool flag);
 bool isTType(epics::pvData::PVStructure::const_shared_pointer const & pvStructure);
 bool formatTType(std::ostream& o, const epics::pvData::PVStructure::const_shared_pointer &pvStructure);
-
-void printUserTag(bool flag);
 
 std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure const & pvEnumT);
 std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure::const_shared_pointer const & pvEnumT);

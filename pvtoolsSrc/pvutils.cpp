@@ -50,28 +50,11 @@ void terseSeparator(char c)
 }
 
 char arrayCountFlag = true;
-void terseArrayCount(bool flag)
-{
-    arrayCountFlag = flag;
-}
 
 EnumMode enumMode = AutoEnum;
-void setEnumPrintMode(EnumMode mode)
-{
-    enumMode = mode;
-}
 
 bool formatTTypesFlag = true;
-void formatTTypes(bool flag)
-{
-    formatTTypesFlag = flag;
-}
-
 bool printUserTagFlag = true;
-void printUserTag(bool flag)
-{
-    printUserTagFlag = flag;
-}
 
 std::ostream& terse(std::ostream& o, PVField::const_shared_pointer const & pv)
 {

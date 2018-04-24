@@ -1416,7 +1416,7 @@ int main (int argc, char *argv[])
             dumpStructure = true;
             break;
         case 'i':               /* T-types format mode */
-            formatTTypes(false);
+            formatTTypesFlag = false;
             break;
         case 't':               /* Terse mode */
             mode = TerseMode;
@@ -1478,7 +1478,7 @@ int main (int argc, char *argv[])
             break;
         }
         case 'n':
-            setEnumPrintMode(NumberEnum);
+            enumMode = NumberEnum;
             break;
         case '?':
             fprintf(stderr,
@@ -1526,7 +1526,7 @@ int main (int argc, char *argv[])
 
     std::cout << std::boolalpha;
     terseSeparator(fieldSeparator);
-    terseArrayCount(false);
+    arrayCountFlag = false;
 
     bool allOK = true;
 

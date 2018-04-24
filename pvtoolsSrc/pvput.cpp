@@ -610,7 +610,6 @@ int main (int argc, char *argv[])
 
     std::cout << std::boolalpha;
     terseSeparator(fieldSeparator);
-    setEnumPrintMode(enumMode);
 
     epics::pvAccess::ca::CAClientFactory::start();
 

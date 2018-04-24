@@ -427,7 +427,7 @@ int main (int argc, char *argv[])
             mode = TerseMode;
             break;
         case 'i':               /* T-types format mode */
-            formatTTypes(false);
+            formatTTypesFlag = false;
             break;
         case 'm':               /* Monitor mode */
             monitor = true;
@@ -468,7 +468,7 @@ int main (int argc, char *argv[])
             break;
         }
         case 'n':
-            setEnumPrintMode(NumberEnum);
+            enumMode = NumberEnum;
             break;
         case '?':
             fprintf(stderr,
