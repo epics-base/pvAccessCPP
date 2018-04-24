@@ -43,11 +43,7 @@ std::ostream& operator<<(std::ostream& o, const dump_stack_only_on_debug& d)
     return o;
 }
 
-char separator = ' ';
-void terseSeparator(char c)
-{
-    separator = c;
-}
+char fieldSeparator = ' ';
 
 char arrayCountFlag = true;
 
@@ -132,7 +128,7 @@ std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::const_shar
     epicsTimeToStrftime(timeText, sizeof(timeText), "%Y-%m-%dT%H:%M:%S.%03f", &epicsTS);
     o << timeText;
     if (printUserTagFlag && tagf)
-        o << separator << tagf->getAs<int32>();
+        o << fieldSeparator << tagf->getAs<int32>();
 
     return o;
 }
@@ -175,14 +171,14 @@ std::ostream& printAlarmT(std::ostream& o, epics::pvData::PVStructure::const_sha
         o << v;
     else
         o << severityNames[v];
-    o << separator;
+    o << fieldSeparator;
 
     v = pvStatus->get();
     if (v < 0 || v > 7)
         o << v;
     else
         o << statusNames[v];
-    o << separator;
+    o << fieldSeparator;
     if (pvMessage->get().empty())
         o << "<no message>";
     else
@@ -249,7 +245,7 @@ std::ostream& terseStructure(std::ostream& o, PVStructure::const_shared_pointer 
         if (first)
             first = false;
         else
-            o << separator;
+            o << fieldSeparator;
 
         terse(o, fieldsData[i]);
     }
@@ -277,7 +273,7 @@ std::ostream& terseScalarArray(std::ostream& o, const PVScalarArray::const_share
             o << '0';
             return o;
         }
-        o << length << separator;
+        o << length << fieldSeparator;
     }
 
     bool first = true;
@@ -285,7 +281,7 @@ std::ostream& terseScalarArray(std::ostream& o, const PVScalarArray::const_share
         if (first)
             first = false;
         else
-            o << separator;
+            o << fieldSeparator;
 
         pvArray->dumpValue(o, i);
     }
@@ -308,7 +304,7 @@ std::ostream& terseStructureArray(std::ostream& o, PVStructureArray::const_share
             o << '0';
             return o;
         }
-        o << length << separator;
+        o << length << fieldSeparator;
     }
 
     PVStructureArray::const_svector data = pvArray->view();
@@ -317,7 +313,7 @@ std::ostream& terseStructureArray(std::ostream& o, PVStructureArray::const_share
         if (first)
             first = false;
         else
-            o << separator;
+            o << fieldSeparator;
 
         terseStructure(o, data[i]);
     }
@@ -334,7 +330,7 @@ std::ostream& terseUnionArray(std::ostream& o, PVUnionArray::const_shared_pointe
             o << '0';
             return o;
         }
-        o << length << separator;
+        o << length << fieldSeparator;
     }
 
     PVUnionArray::const_svector data = pvArray->view();
@@ -343,7 +339,7 @@ std::ostream& terseUnionArray(std::ostream& o, PVUnionArray::const_shared_pointe
         if (first)
             first = false;
         else
-            o << separator;
+            o << fieldSeparator;
 
         terseUnion(o, data[i]);
     }

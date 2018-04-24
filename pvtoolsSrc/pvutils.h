@@ -7,7 +7,6 @@ void convertStructure(std::string* buffer, epics::pvData::PVStructure *data, int
 void convertArray(std::string*, epics::pvData::PVScalarArray * pv, int notFirst);
 void convertStructureArray(std::string*, epics::pvData::PVStructureArray * pvdata, int notFirst);
 
-void terseSeparator(char c);
 std::ostream& terse(std::ostream& o, epics::pvData::PVField::const_shared_pointer const & pv);
 std::ostream& terseUnion(std::ostream& o, epics::pvData::PVUnion::const_shared_pointer const & pvUnion);
 std::ostream& terseStructure(std::ostream& o, const epics::pvData::PVStructure::const_shared_pointer &pvStructure);

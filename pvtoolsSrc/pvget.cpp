@@ -48,8 +48,6 @@ string defaultProvider("pva");
 enum PrintMode { ValueOnlyMode, StructureMode, TerseMode };
 PrintMode mode = ValueOnlyMode;
 
-char fieldSeparator = ' ';
-
 void usage (void)
 {
     fprintf (stderr, "\nUsage: pvget [options] <PV name>...\n\n"
@@ -531,7 +529,6 @@ int main (int argc, char *argv[])
     SET_LOG_LEVEL(debugFlag ? logLevelDebug : logLevelError);
 
     std::cout << std::boolalpha;
-    terseSeparator(fieldSeparator);
 
     // ================ Connect channels and start operations
 

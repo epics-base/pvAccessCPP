@@ -36,8 +36,6 @@ using namespace epics::pvAccess;
 enum PrintMode { ValueOnlyMode, StructureMode, TerseMode };
 PrintMode mode = ValueOnlyMode;
 
-char fieldSeparator = ' ';
-
 bool columnMajor = false;
 
 bool transpose = false;
@@ -242,7 +240,7 @@ void formatTable(std::ostream& o,
         {
             for (size_t i = 0; i < numColumns; i++)
             {
-                if (separator == ' ')
+                if (fieldSeparator == ' ')
                 {
                     int width = std::max(labels[i].size()+padding, maxColumnLength);
                     o << std::setw(width) << std::right;
@@ -250,7 +248,7 @@ void formatTable(std::ostream& o,
                 }
                 else if (i > 0)
                 {
-                    o << separator;
+                    o << fieldSeparator;
                 }
 
                 o << labels[i];
@@ -263,7 +261,7 @@ void formatTable(std::ostream& o,
         {
             for (size_t i = 0; i < numColumns; i++)
             {
-                if (separator == ' ' && (showHeader || numColumns > 1))
+                if (fieldSeparator == ' ' && (showHeader || numColumns > 1))
                 {
                     int width = std::max(labels[i].size()+padding, maxColumnLength);
                     o << setw(width) << std::right;
@@ -271,7 +269,7 @@ void formatTable(std::ostream& o,
                 }
                 else if (i > 0)
                 {
-                    o << separator;
+                    o << fieldSeparator;
                 }
 
                 PVScalarArrayPtr array = columnData[i];
@@ -297,7 +295,7 @@ void formatTable(std::ostream& o,
         {
             if (showHeader && labels.size())
             {
-                if (separator == ' ')
+                if (fieldSeparator == ' ')
                 {
                     o << std::setw(maxLabelColumnLength) << std::left;
                 }
@@ -306,12 +304,12 @@ void formatTable(std::ostream& o,
 
             for (size_t r = 0; r < maxValues; r++)
             {
-                if (separator == ' ' && (showHeader || numColumns > 1))
+                if (fieldSeparator == ' ' && (showHeader || numColumns > 1))
                 {
                     o << std::setw(maxColumnLength) << std::right;
                 }
                 else if (showHeader || r > 0)
-                    o << separator;
+                    o << fieldSeparator;
 
                 PVScalarArrayPtr array = columnData[i];
                 if (array.get() && r < array->getLength())
@@ -433,10 +431,10 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
         {
             for (int32 c = 0; c < cols; c++)
             {
-                if (separator == ' ' && cols > 1)
+                if (fieldSeparator == ' ' && cols > 1)
                     o << std::setw(maxColumnLength) << std::right;
                 else if (c > 0)
-                    o << separator;
+                    o << fieldSeparator;
 
                 if (columnMajor)
                     value->dumpValue(o, r + c * rows);
@@ -459,10 +457,10 @@ void formatNTMatrix(std::ostream& o, PVStructurePtr const & pvStruct)
         {
             for (int32 r = 0; r < rows; r++)
             {
-                if (separator == ' ' && rows > 1)
+                if (fieldSeparator == ' ' && rows > 1)
                     o << std::setw(maxColumnLength) << std::right;
                 else if (r > 0)
-                    o << separator;
+                    o << fieldSeparator;
 
                 if (columnMajor)
                     value->dumpValue(o, ix++);
@@ -540,7 +538,7 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
         {
             for (size_t i = 0; i < numColumns; i++)
             {
-                if (separator == ' ')
+                if (fieldSeparator == ' ')
                 {
                     int width = std::max(nameData[i].size()+padding, maxColumnLength);
                     o << std::setw(width) << std::right;
@@ -548,7 +546,7 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
                 }
                 else if (i > 0)
                 {
-                    o << separator;
+                    o << fieldSeparator;
                 }
 
                 o << nameData[i];
@@ -559,7 +557,7 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
         // then values
         for (size_t i = 0; i < numColumns; i++)
         {
-            if (separator == ' ' && showHeader)
+            if (fieldSeparator == ' ' && showHeader)
             {
                 int width = std::max(nameData[i].size()+padding, maxColumnLength);
                 o << std::setw(width) << std::right;
@@ -567,7 +565,7 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
             }
             else if (i > 0)
             {
-                o << separator;
+                o << fieldSeparator;
             }
             array->dumpValue(o, i);
         }
@@ -586,20 +584,20 @@ void formatNTNameValue(std::ostream& o, PVStructurePtr const & pvStruct)
         {
             if (showHeader)
             {
-                if (separator == ' ')
+                if (fieldSeparator == ' ')
                 {
                     o << std::setw(maxLabelColumnLength) << std::left;
                 }
                 o << nameData[i];
             }
 
-            if (separator == ' ' && showHeader)
+            if (fieldSeparator == ' ' && showHeader)
             {
                 o << std::setw(maxColumnLength) << std::right;
             }
             else if (showHeader)
             {
-                o << separator;
+                o << fieldSeparator;
             }
 
             array->dumpValue(o, i);
@@ -899,7 +897,7 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
     if (forceTerseWithName)
     {
         if (!channelName.empty())
-            std::cout << channelName << separator;
+            std::cout << channelName << fieldSeparator;
         terseStructure(std::cout, pv) << std::endl;
     }
     else if (mode == ValueOnlyMode)
@@ -1044,7 +1042,7 @@ void usage (void)
              "  -p <provider>:       Set default provider name, default is '%s'\n"
              "  -q:                  Quiet mode, print only error messages\n"
              "  -d:                  Enable debug output\n"
-             "  -F <ofs>:            Use <ofs> as an alternate output field separator\n"
+             "  -F <ofs>:            Use <ofs> as an alternate output field fieldSeparator\n"
              "  -f <input file>:     Use <input file> as an input that provides a list PV name(s) to be read, use '-' for stdin\n"
              "  -c:                  Wait for clean shutdown and report used instance count (for expert users)\n"
              " enum format:\n"
@@ -1525,7 +1523,6 @@ int main (int argc, char *argv[])
     SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
 
     std::cout << std::boolalpha;
-    terseSeparator(fieldSeparator);
     arrayCountFlag = false;
 
     bool allOK = true;
