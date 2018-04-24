@@ -305,14 +305,7 @@ struct MonitorRequesterImpl : public MonitorRequester, public Tracker
                     }
                     else
                     {
-                        if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
-                            std::cout << std::setw(30) << std::left << m_channelName;
-                        else
-                            std::cout << m_channelName;
-
-                        std::cout << fieldSeparator;
-
-                        terse(std::cout, value) << '\n';
+                        printMonitoredValue (value, element);
                     }
                 }
             }
@@ -343,6 +336,35 @@ struct MonitorRequesterImpl : public MonitorRequester, public Tracker
         if(debugFlag)
             std::cerr << "unlisten" << m_channelName << '\n';
         done();
+    }
+
+private:
+    // For value type scalar or scalarArray when mode is ValueOnlyMode
+    void printMonitoredValue (PVField::shared_pointer value, MonitorElement* element)
+    {
+        PVStructure::shared_pointer timeStamp(element->pvStructurePtr->getSubField<PVStructure>("timeStamp"));
+        PVStructure::shared_pointer alarm(element->pvStructurePtr->getSubField<PVStructure>("alarm"));
+
+        if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
+            std::cout << std::setw(30) << std::left;
+
+        std::cout << m_channelName << fieldSeparator;
+
+        if (timeStamp)
+           terseStructure(std::cout, timeStamp)  << " ";
+
+        terse(std::cout, value) << " ";
+
+        if (alarm)
+        {
+            PVScalar::shared_pointer pvSeverity(alarm->getSubField<PVScalar>("severity"));
+
+            bool inAlarm = !pvSeverity ? false : (pvSeverity->getAs<uint32>()!=0);
+            if (inAlarm)
+               terseStructure(std::cout, alarm);
+        }
+
+        std::cout<< '\n';
     }
 };
 
@@ -565,8 +587,6 @@ int main (int argc, char *argv[])
                 std::cerr<<"Provider "<<uri.protocol<<" can't create channel \""<<pvs[n]<<"\"\n";
                 return 1;
             }
-            if(!channel)
-                continue;
             chan_cache[pvs[n]] = channel;
         } else {
             channel = it->second;
