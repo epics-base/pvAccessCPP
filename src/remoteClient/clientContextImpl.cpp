@@ -4102,6 +4102,8 @@ public:
 
         m_timer->close();
 
+        m_channelSearchManager->cancel();
+
         // this will also close all PVA transports
         destroyAllChannels();
 
