@@ -611,16 +611,16 @@ int main (int argc, char *argv[])
             const ServerEntry& entry = iter->second;
 
             cout << "GUID 0x" << entry.guid << " version " << (int)entry.version << ": "
-                 << entry.protocol << "@[";
+                 << entry.protocol << "@[ ";
 
             size_t count = entry.addresses.size();
             for (size_t i = 0; i < count; i++)
             {
                 cout << inetAddressToString(entry.addresses[i]);
                 if (i < (count-1))
-                    cout << ", ";
+                    cout << " ";
             }
-            cout << ']' << endl;
+            cout << " ]" << endl;
         }
     }
     else
