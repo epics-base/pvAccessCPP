@@ -39,7 +39,7 @@ ServerContextImpl::ServerContextImpl():
     _broadcastPort(PVA_BROADCAST_PORT),
     _serverPort(PVA_SERVER_PORT),
     _receiveBufferSize(MAX_TCP_RECV),
-    _timer(new Timer("pvAccess-server timer", lowerPriority)),
+    _timer(new Timer("PVAS timers", lowerPriority)),
     _beaconEmitter(),
     _acceptor(),
     _transportRegistry(),
@@ -307,6 +307,12 @@ void ServerContextImpl::run(uint32 seconds)
 
 void ServerContextImpl::shutdown()
 {
+    if(!_timer)
+        return; // already shutdown
+
+    // abort pending timers and prevent new timers from starting
+    _timer->close();
+
     // stop responding to search requests
     for (BlockingUDPTransportVector::const_iterator iter = _udpTransports.begin();
             iter != _udpTransports.end(); iter++)
@@ -346,7 +352,7 @@ void ServerContextImpl::shutdown()
     }
 
     // this will also destroy all channels
-    destroyAllTransports();
+    _transportRegistry.clear();
 
     // drop timer queue
     LEAK_CHECK(_timer, "_timer")
@@ -358,12 +364,6 @@ void ServerContextImpl::shutdown()
     _responseHandler.reset();
 
     _runEvent.signal();
-}
-
-void ServerContextImpl::destroyAllTransports()
-{
-    // now clear all (release)
-    _transportRegistry.clear();
 }
 
 void ServerContext::printInfo(int lvl)
@@ -540,7 +540,7 @@ epicsTimeStamp& ServerContextImpl::getStartTime()
 }
 
 
-std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& ServerContextImpl::getSecurityPlugins()
+const Context::securityPlugins_t& ServerContextImpl::getSecurityPlugins()
 {
     return SecurityPluginRegistry::instance().getServerSecurityPlugins();
 }

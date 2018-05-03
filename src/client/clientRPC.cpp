@@ -140,6 +140,13 @@ struct RPCer : public pva::ChannelRPCRequester,
 
         callEvent(G, status.isSuccess()? pvac::GetEvent::Success : pvac::GetEvent::Fail);
     }
+
+    virtual void show(std::ostream &strm) const
+    {
+        strm << "Operation(RPC"
+                "\"" << name() <<"\""
+             ")";
+    }
 };
 
 size_t RPCer::num_instances;

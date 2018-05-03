@@ -24,6 +24,7 @@
 #include "pv/codec.h"
 #include <pv/serverContextImpl.h>
 #include <pv/serverChannelImpl.h>
+#include <pv/blockingUDP.h>
 
 using namespace epics::pvData;
 using std::string;
@@ -173,6 +174,7 @@ void providerRegInit(void*)
     registerRefCounter("ServerChannel", &ServerChannel::num_instances);
     registerRefCounter("Transport (ABC)", &Transport::num_instances);
     registerRefCounter("BlockingTCPTransportCodec", &detail::BlockingTCPTransportCodec::num_instances);
+    registerRefCounter("BlockingUDPTransport", &BlockingUDPTransport::num_instances);
     registerRefCounter("ChannelProvider (ABC)", &ChannelProvider::num_instances);
     registerRefCounter("Channel (ABC)", &Channel::num_instances);
     registerRefCounter("ChannelRequester (ABC)", &ChannelRequester::num_instances);

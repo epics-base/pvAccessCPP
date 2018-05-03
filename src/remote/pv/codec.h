@@ -338,9 +338,6 @@ public:
         return std::string("tcp");
     }
 
-
-    void internalDestroy();
-
     virtual void processControlMessage() OVERRIDE FINAL {
         if (_command == 2)
         {
@@ -452,25 +449,16 @@ protected:
     virtual void sendBufferFull(int tries) OVERRIDE FINAL;
 
     /**
-     * Called to any resources just before closing transport
-     * @param[in] force   flag indicating if forced (e.g. forced
-     * disconnect) is required
+     * Called from close(). after start of shutdown (isOpen()==false)
+     * but before worker thread shutdown.
      */
-    virtual void internalClose(bool force);
-
-    /**
-     * Called to any resources just after closing transport and without any locks held on transport
-     * @param[in] force   flag indicating if forced (e.g. forced
-     * disconnect) is required
-     */
-    virtual void internalPostClose(bool force) {}
+    virtual void internalClose();
 
 private:
     AtomicValue<bool> _isOpen;
     epics::pvData::Thread _readThread, _sendThread;
-    epics::pvData::Event _shutdownEvent;
+    const SOCKET _channel;
 protected:
-    SOCKET _channel;
     osiSockAddr _socketAddress;
     std::string _socketName;
 protected:
@@ -589,7 +577,7 @@ public:
 protected:
 
     void destroyAllChannels();
-    virtual void internalClose(bool force) OVERRIDE FINAL;
+    virtual void internalClose() OVERRIDE FINAL;
 
 private:
 
@@ -689,8 +677,7 @@ public:
 
 protected:
 
-    virtual void internalClose(bool force) OVERRIDE FINAL;
-    virtual void internalPostClose(bool force) OVERRIDE FINAL;
+    virtual void internalClose() OVERRIDE FINAL;
 
 private:
 

@@ -41,7 +41,6 @@ public:
     POINTER_DEFINITIONS(ClientChannelImpl);
 
     virtual pvAccessID getChannelID() = 0;
-    virtual void destroyChannel(bool force) = 0;
     virtual void connectionCompleted(pvAccessID sid/*,  rights*/) = 0;
     virtual void createChannelFailed() = 0;
     virtual ClientContextImpl* getContext() = 0;

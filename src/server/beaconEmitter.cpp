@@ -109,12 +109,16 @@ void BeaconEmitter::timerStopped()
 
 void BeaconEmitter::destroy()
 {
-    _timer->cancel(shared_from_this());
+    Timer::shared_pointer timer(_timer.lock());
+    if(timer)
+        timer->cancel(shared_from_this());
 }
 
 void BeaconEmitter::start()
 {
-    _timer->scheduleAfterDelay(shared_from_this(), 0.0);
+    Timer::shared_pointer timer(_timer.lock());
+    if(timer)
+        timer->scheduleAfterDelay(shared_from_this(), 0.0);
 }
 
 void BeaconEmitter::reschedule()
@@ -122,7 +126,9 @@ void BeaconEmitter::reschedule()
     const double period = (_beaconSequenceID >= _beaconCountLimit) ? _slowBeaconPeriod : _fastBeaconPeriod;
     if (period > 0)
     {
-        _timer->scheduleAfterDelay(shared_from_this(), period);
+        Timer::shared_pointer timer(_timer.lock());
+        if(timer)
+            timer->scheduleAfterDelay(shared_from_this(), period);
     }
 }
 

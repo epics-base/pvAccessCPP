@@ -3,6 +3,8 @@
  * found in the file LICENSE that is included with the distribution
  */
 
+#include <typeinfo>
+
 #include <epicsMutex.h>
 #include <epicsGuard.h>
 #include <epicsEvent.h>
@@ -197,6 +199,17 @@ void ClientChannel::removeConnectListener(ConnectCallback* cb)
     }
 }
 
+
+void ClientChannel::show(std::ostream& strm) const
+{
+    if(impl) {
+        strm<<typeid(*impl->channel.get()).name()<<" : ";
+        impl->channel->printInfo(strm);
+    } else {
+        strm<<"NULL Channel";
+    }
+}
+
 static
 void register_reftrack()
 {
@@ -266,6 +279,12 @@ ClientProvider::ClientProvider(const std::tr1::shared_ptr<epics::pvAccess::Chann
 
 ClientProvider::~ClientProvider() {}
 
+std::string
+ClientProvider::name() const
+{
+    return impl->provider->getProviderName();
+}
+
 ClientChannel
 ClientProvider::connect(const std::string& name,
                             const ClientChannel::Options& conf)
@@ -303,6 +322,43 @@ void ClientProvider::disconnect()
 {
     Guard G(impl->mutex);
     impl->channels.clear();
+}
+
+::std::ostream& operator<<(::std::ostream& strm, const Operation& op)
+{
+    if(op.impl) {
+        op.impl->show(strm);
+    } else {
+        strm << "Operation()";
+    }
+    return strm;
+}
+
+::std::ostream& operator<<(::std::ostream& strm, const ClientChannel& op)
+{
+    if(op.impl) {
+        strm << "ClientChannel("
+             << typeid(*op.impl->channel.get()).name()<<", "
+                "\"" << op.impl->channel->getChannelName() <<"\", "
+                "\"" << op.impl->channel->getProvider()->getProviderName() <<"\", "
+                "connected="<<(op.impl->channel->isConnected()?"true":"false")
+             <<"\")";
+    } else {
+        strm << "ClientChannel()";
+    }
+    return strm;
+}
+
+::std::ostream& operator<<(::std::ostream& strm, const ClientProvider& op)
+{
+    if(op.impl) {
+        strm << "ClientProvider("
+             << typeid(*op.impl->provider.get()).name()<<", "
+                "\""<<op.impl->provider->getProviderName()<<"\")";
+    } else {
+        strm << "ClientProvider()";
+    }
+    return strm;
 }
 
 namespace detail {

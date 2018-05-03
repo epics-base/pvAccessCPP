@@ -51,8 +51,6 @@ const string noAddress;
 enum PrintMode { ValueOnlyMode, StructureMode, TerseMode };
 PrintMode mode = ValueOnlyMode;
 
-char fieldSeparator = ' ';
-
 bool debug = false;
 
 void usage (bool details=false)
@@ -609,8 +607,6 @@ int main (int argc, char *argv[])
     SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
 
     std::cout << std::boolalpha;
-    terseSeparator(fieldSeparator);
-    setEnumPrintMode(enumMode);
 
     epics::pvAccess::ca::CAClientFactory::start();
 

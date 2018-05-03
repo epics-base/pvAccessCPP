@@ -188,6 +188,8 @@ public:
      * @param remoteAddress
      * @return a new session.
      * @throws SecurityException
+     *
+     * @warning a Ref. loop is created if the SecuritySession stores a pointer to 'control'
      */
     // authentication must be done immediately when connection is established (timeout 3seconds),
     // later on authentication process can be repeated
@@ -423,12 +425,14 @@ public:
         return thisInstance;
     }
 
-    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getClientSecurityPlugins()
+    typedef std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > securityPlugins_t;
+
+    securityPlugins_t& getClientSecurityPlugins()
     {
         return m_clientSecurityPlugins;
     }
 
-    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getServerSecurityPlugins()
+    securityPlugins_t& getServerSecurityPlugins()
     {
         return m_serverSecurityPlugins;
     }
@@ -448,8 +452,8 @@ public:
 private:
     SecurityPluginRegistry();
 
-    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > m_clientSecurityPlugins;
-    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > m_serverSecurityPlugins;
+    securityPlugins_t m_clientSecurityPlugins;
+    securityPlugins_t m_serverSecurityPlugins;
 };
 
 }

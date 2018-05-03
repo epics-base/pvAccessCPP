@@ -5,6 +5,7 @@
 #ifndef PVATESTCLIENT_H
 #define PVATESTCLIENT_H
 
+#include <ostream>
 #include <stdexcept>
 #include <list>
 
@@ -53,6 +54,7 @@ struct epicsShareClass Operation
         virtual ~Impl() {}
         virtual std::string name() const =0;
         virtual void cancel() =0;
+        virtual void show(std::ostream&) const =0;
     };
 
     Operation() {}
@@ -64,7 +66,21 @@ struct epicsShareClass Operation
     //! Does not wait for remote confirmation.
     void cancel();
 
+    bool valid() const { return !!impl; }
+
+#if __cplusplus>=201103L
+    explicit operator bool() const { return valid(); }
+#else
+private:
+    typedef bool (Operation::*bool_type)() const;
+public:
+    operator bool_type() const { return valid() ? &Operation::valid : 0; }
+#endif
+
+    void reset() { impl.reset(); }
+
 protected:
+    friend epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const Operation& op);
     std::tr1::shared_ptr<Impl> impl;
 };
 
@@ -133,8 +149,22 @@ struct epicsShareClass Monitor
     epics::pvData::BitSet changed,
                           overrun;
 
+    bool valid() const { return !!impl; }
+
+#if __cplusplus>=201103L
+    explicit operator bool() const { return valid(); }
+#else
+private:
+    typedef bool (Monitor::*bool_type)() const;
+public:
+    operator bool_type() const { return valid() ? &Monitor::valid : 0; }
+#endif
+
+    void reset() { impl.reset(); }
+
 private:
     std::tr1::shared_ptr<Impl> impl;
+    friend epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const Monitor& op);
     friend struct MonitorSync;
 };
 
@@ -220,6 +250,7 @@ private:
     std::tr1::shared_ptr<Impl> impl;
     friend class ClientProvider;
     friend void detail::registerRefTrack();
+    friend epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const ClientChannel& op);
 
     ClientChannel(const std::tr1::shared_ptr<Impl>& i) :impl(i) {}
 public:
@@ -246,6 +277,19 @@ public:
 
     //! Channel name or an empty string
     std::string name() const;
+
+    bool valid() const { return !!impl; }
+
+#if __cplusplus>=201103L
+    explicit operator bool() const { return valid(); }
+#else
+private:
+    typedef bool (ClientChannel::*bool_type)() const;
+public:
+    operator bool_type() const { return valid() ? &ClientChannel::valid : 0; }
+#endif
+
+    void reset() { impl.reset(); }
 
     //! callback for get() and rpc()
     struct GetCallback {
@@ -358,6 +402,7 @@ public:
     //! Remove from list of listeners
     void removeConnectListener(ConnectCallback*);
 
+    void show(std::ostream& strm) const;
 private:
     std::tr1::shared_ptr<epics::pvAccess::Channel> getChannel();
 };
@@ -421,6 +466,7 @@ class epicsShareClass ClientProvider
     struct Impl;
     std::tr1::shared_ptr<Impl> impl;
     friend void detail::registerRefTrack();
+    friend epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const ClientProvider& op);
 public:
 
     /** Use named provider.
@@ -434,6 +480,8 @@ public:
                    const std::tr1::shared_ptr<epics::pvAccess::Configuration>& conf = std::tr1::shared_ptr<epics::pvAccess::Configuration>());
     explicit ClientProvider(const std::tr1::shared_ptr<epics::pvAccess::ChannelProvider>& provider);
     ~ClientProvider();
+
+    std::string name() const;
 
     /** Get a new Channel
      *
@@ -450,6 +498,19 @@ public:
 
     //! Clear channel cache
     void disconnect();
+
+    bool valid() const { return !!impl; }
+
+#if __cplusplus>=201103L
+    explicit operator bool() const { return valid(); }
+#else
+private:
+    typedef bool (ClientProvider::*bool_type)() const;
+public:
+    operator bool_type() const { return valid() ? &ClientProvider::valid : 0; }
+#endif
+
+    void reset() { impl.reset(); }
 };
 
 
@@ -459,6 +520,11 @@ ClientChannel::put(const epics::pvData::PVStructure::const_shared_pointer& pvReq
 {
     return detail::PutBuilder(*this, pvRequest);
 }
+
+epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const Operation& op);
+epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const Monitor& op);
+epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const ClientChannel& op);
+epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const ClientProvider& op);
 
 //! @}
 

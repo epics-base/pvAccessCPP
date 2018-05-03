@@ -317,11 +317,12 @@ public:
 
     virtual Configuration::const_shared_pointer getConfiguration() = 0;
 
+    typedef std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > securityPlugins_t;
     /**
      * Get map of available security plug-ins.
      * @return the map of available security plug-ins
      */
-    virtual std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins() = 0;
+    virtual const securityPlugins_t& getSecurityPlugins() = 0;
 
 
     ///

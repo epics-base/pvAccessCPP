@@ -490,7 +490,6 @@ int main (int argc, char *argv[])
     int opt;                    /* getopt() current option */
     bool debug = false;
     double timeOut = DEFAULT_TIMEOUT;
-    // char fieldSeparator = ' ';
     bool printInfo = false;
 
     /*

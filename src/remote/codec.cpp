@@ -1040,14 +1040,11 @@ void BlockingTCPTransportCodec::close() {
         // wakeup processSendQueue
 
         // clean resources (close socket)
-        internalClose(true);
+        internalClose();
 
         // Break sender from queue wait
         BreakTransport::shared_pointer B(new BreakTransport);
         enqueueSendRequest(B);
-
-        // post close
-        internalPostClose(true);
     }
 }
 
@@ -1058,9 +1055,42 @@ void BlockingTCPTransportCodec::waitJoin()
     _readThread.exitWait();
 }
 
-void BlockingTCPTransportCodec::internalClose(bool /*force*/)
+void BlockingTCPTransportCodec::internalClose()
 {
-    this->internalDestroy();
+    {
+
+        epicsSocketSystemCallInterruptMechanismQueryInfo info  =
+            epicsSocketSystemCallInterruptMechanismQuery ();
+        switch ( info )
+        {
+        case esscimqi_socketCloseRequired:
+            epicsSocketDestroy ( _channel );
+            break;
+        case esscimqi_socketBothShutdownRequired:
+        {
+            /*int status =*/ ::shutdown ( _channel, SHUT_RDWR );
+            /*
+            if ( status ) {
+                char sockErrBuf[64];
+                epicsSocketConvertErrnoToString (
+                    sockErrBuf, sizeof ( sockErrBuf ) );
+            LOG(logLevelDebug,
+                "TCP socket to %s failed to shutdown: %s.",
+                inetAddressToString(_socketAddress).c_str(), sockErrBuf);
+            }
+            */
+            epicsSocketDestroy ( _channel );
+        }
+        break;
+        case esscimqi_socketSigAlarmRequired:
+        // not supported anymore anyway
+        default:
+            epicsSocketDestroy(_channel);
+        }
+    }
+
+    Transport::shared_pointer thisSharedPtr = this->shared_from_this();
+    _context->getTransportRegistry()->remove(thisSharedPtr);
 
     // TODO sync
     if (_securitySession)
@@ -1096,13 +1126,23 @@ void BlockingTCPTransportCodec::start() {
 
 void BlockingTCPTransportCodec::receiveThread()
 {
-    Transport::shared_pointer ptr = this->shared_from_this();
+    /* This innocuous ref. is an important hack.
+     * The code behind Transport::close() will cause
+     * channels and operations to drop references
+     * to this transport.  This ref. keeps it from
+     * being destroyed way down the call stack, from
+     * which it is apparently not possible to return
+     * safely.  Rather than try to untangle this
+     * knot, just keep this ref...
+     */
+    Transport::shared_pointer ptr(this->shared_from_this());
 
     while (this->isOpen())
     {
         try {
             this->processRead();
         } catch (std::exception &e) {
+            PRINT_EXCEPTION(e);
             LOG(logLevelError,
                 "an exception caught while in receiveThread at %s:%d: %s",
                 __FILE__, __LINE__, e.what());
@@ -1112,14 +1152,13 @@ void BlockingTCPTransportCodec::receiveThread()
                 __FILE__, __LINE__);
         }
     }
-
-    this->_shutdownEvent.signal();
 }
 
 
 void BlockingTCPTransportCodec::sendThread()
 {
-    Transport::shared_pointer ptr = this->shared_from_this();
+    // cf. the comment in receiveThread()
+    Transport::shared_pointer ptr(this->shared_from_this());
 
     this->setSenderThread();
 
@@ -1130,6 +1169,7 @@ void BlockingTCPTransportCodec::sendThread()
         } catch (connection_closed_exception &cce) {
             // noop
         } catch (std::exception &e) {
+            PRINT_EXCEPTION(e);
             LOG(logLevelWarn,
                 "an exception caught while in sendThread at %s:%d: %s",
                 __FILE__, __LINE__, e.what());
@@ -1202,47 +1242,6 @@ BlockingTCPTransportCodec::BlockingTCPTransportCodec(bool serverFlag, const Cont
         _socketName = ipAddrStr;
     }
 
-}
-
-// must be called only once, when there will be no operation on socket (e.g. just before tx/rx thread exists)
-void BlockingTCPTransportCodec::internalDestroy() {
-
-    if(_channel != INVALID_SOCKET) {
-
-        epicsSocketSystemCallInterruptMechanismQueryInfo info  =
-            epicsSocketSystemCallInterruptMechanismQuery ();
-        switch ( info )
-        {
-        case esscimqi_socketCloseRequired:
-            epicsSocketDestroy ( _channel );
-            break;
-        case esscimqi_socketBothShutdownRequired:
-        {
-            /*int status =*/ ::shutdown ( _channel, SHUT_RDWR );
-            /*
-            if ( status ) {
-                char sockErrBuf[64];
-                epicsSocketConvertErrnoToString (
-                    sockErrBuf, sizeof ( sockErrBuf ) );
-            LOG(logLevelDebug,
-                "TCP socket to %s failed to shutdown: %s.",
-                inetAddressToString(_socketAddress).c_str(), sockErrBuf);
-            }
-            */
-            epicsSocketDestroy ( _channel );
-        }
-        break;
-        case esscimqi_socketSigAlarmRequired:
-        // not supported anymore anyway
-        default:
-            epicsSocketDestroy(_channel);
-        }
-
-        _channel = INVALID_SOCKET; //TODO: mutex to guard _channel
-    }
-
-    Transport::shared_pointer thisSharedPtr = this->shared_from_this();
-    _context->getTransportRegistry()->remove(thisSharedPtr);
 }
 
 
@@ -1529,12 +1528,11 @@ void BlockingServerTCPTransportCodec::send(ByteBuffer* buffer,
         buffer->putShort(0x7FFF);
 
         // list of authNZ plugin names
-        map<string, SecurityPlugin::shared_pointer>& securityPlugins = _context->getSecurityPlugins();
+        const Context::securityPlugins_t& securityPlugins = _context->getSecurityPlugins();
         vector<string> validSPNames;
         validSPNames.reserve(securityPlugins.size());
 
-        for (map<string, SecurityPlugin::shared_pointer>::const_iterator iter =
-                    securityPlugins.begin();
+        for (Context::securityPlugins_t::const_iterator iter(securityPlugins.begin());
                 iter != securityPlugins.end(); iter++)
         {
             SecurityPlugin::shared_pointer securityPlugin = iter->second;
@@ -1593,9 +1591,9 @@ void BlockingServerTCPTransportCodec::destroyAllChannels() {
         it->second->destroy();
 }
 
-void BlockingServerTCPTransportCodec::internalClose(bool force) {
+void BlockingServerTCPTransportCodec::internalClose() {
     Transport::shared_pointer thisSharedPtr = shared_from_this();
-    BlockingTCPTransportCodec::internalClose(force);
+    BlockingTCPTransportCodec::internalClose();
     destroyAllChannels();
 }
 
@@ -1627,8 +1625,7 @@ void BlockingServerTCPTransportCodec::authNZInitialize(const std::string& securi
     // check if plug-in name is valid
     SecurityPlugin::shared_pointer securityPlugin;
 
-    map<string, SecurityPlugin::shared_pointer>::iterator spIter =
-        _context->getSecurityPlugins().find(securityPluginName);
+    Context::securityPlugins_t::const_iterator spIter(_context->getSecurityPlugins().find(securityPluginName));
     if (spIter != _context->getSecurityPlugins().end())
         securityPlugin = spIter->second;
     if (!securityPlugin)
@@ -1779,24 +1776,15 @@ bool BlockingClientTCPTransportCodec::acquire(ClientChannelImpl::shared_pointer 
 }
 
 // _mutex is held when this method is called
-void BlockingClientTCPTransportCodec::internalClose(bool forced) {
-    BlockingTCPTransportCodec::internalClose(forced);
+void BlockingClientTCPTransportCodec::internalClose() {
+    BlockingTCPTransportCodec::internalClose();
 
     TimerCallbackPtr tcb = std::tr1::dynamic_pointer_cast<TimerCallback>(shared_from_this());
     _context->getTimer()->cancel(tcb);
-}
-
-void BlockingClientTCPTransportCodec::internalPostClose(bool forced) {
-    BlockingTCPTransportCodec::internalPostClose(forced);
 
     // _owners cannot change when transport is closed
-    closedNotifyClients();
-}
 
-/**
- * Notifies clients about disconnect.
- */
-void BlockingClientTCPTransportCodec::closedNotifyClients() {
+    // Notifies clients about disconnect.
 
     // check if still acquired
     size_t refs = _owners.size();
@@ -1937,13 +1925,12 @@ void BlockingClientTCPTransportCodec::authNZInitialize(const std::vector<std::st
 {
     if (!offeredSecurityPlugins.empty())
     {
-        map<string, SecurityPlugin::shared_pointer>& availableSecurityPlugins =
-            _context->getSecurityPlugins();
+        const Context::securityPlugins_t& availableSecurityPlugins(_context->getSecurityPlugins());
 
         for (vector<string>::const_iterator offeredSP = offeredSecurityPlugins.begin();
                 offeredSP != offeredSecurityPlugins.end(); offeredSP++)
         {
-            map<string, SecurityPlugin::shared_pointer>::iterator spi = availableSecurityPlugins.find(*offeredSP);
+            Context::securityPlugins_t::const_iterator spi(availableSecurityPlugins.find(*offeredSP));
             if (spi != availableSecurityPlugins.end())
             {
                 SecurityPlugin::shared_pointer securityPlugin = spi->second;

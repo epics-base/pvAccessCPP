@@ -1,7 +1,32 @@
 /** @page pvarelease_notes Release Notes
 
-Release 6.0.0 (UNRELEASED)
+Release 6.1.0 (UNRELEASED)
 ==========================
+
+- Deprecations
+ - pv/namedLockPattern.h
+- Removals
+ - Remove deprecated methods configure(), flush(), and poll() from ChannelProvider.
+ - Remove RPCClient::sendRequest()
+ - Remove RPCService::destroy() and dispose()
+ - Typedefs GUID, Service
+- Fixes
+ - pvAccessLog() add EPICS_PRINTF_STYLE()
+ - ioc: shutdown PVA server via epicsAtExit()
+ - fix 'pva' provider registration during static linking
+ - Various fixes related to shared_ptr loop breaking.
+ - Several *NULL bugs.
+ - PVA client context: avoid lock order violations
+- Changes
+ - pvac::Monitor - shallow copy into Monitor::root
+ - pvget -m shows time and alarm if available (thanks to Andrew Starritt)
+- Additions
+ - pvput to NTEnum via. string now supported
+ - pvac::* add valid() method and boolean cast shorthand.  Also reset() and operator<<(ostream, ...)
+ - Add pvac::ClientProvider::named()
+
+Release 6.0.0 (Dec 2017)
+========================
 
 - Incompatible changes
  - Requires pvDataCPP >=7.0.0 due to headers moved from pvDataCPP into this module: requester.h, destoryable.h, and monitor.h

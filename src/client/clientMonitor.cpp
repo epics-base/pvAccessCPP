@@ -248,6 +248,20 @@ ClientChannel::monitor(MonitorCallback *cb,
     return Monitor(ret);
 }
 
+::std::ostream& operator<<(::std::ostream& strm, const Monitor& op)
+{
+    if(op.impl) {
+        strm << "Monitor("
+                "\"" << op.impl->chan->getChannelName() <<"\", "
+                "\"" << op.impl->chan->getProvider()->getProviderName() <<"\", "
+                "connected="<<(op.impl->chan->isConnected()?"true":"false")
+             <<"\")";
+    } else {
+        strm << "Monitor()";
+    }
+    return strm;
+}
+
 namespace detail {
 
 void registerRefTrackMonitor()

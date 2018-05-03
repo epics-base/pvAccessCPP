@@ -95,7 +95,7 @@ private:
     /**
      * Protocol.
      */
-    std::string _protocol;
+    const std::string _protocol;
 
     /**
      * Transport.
@@ -110,22 +110,22 @@ private:
     /**
      * Server GUID.
      */
-    ServerGUID _guid;
+    const ServerGUID _guid;
 
     /**
      * Fast (at startup) beacon period (in sec).
      */
-    double _fastBeaconPeriod;
+    const double _fastBeaconPeriod;
 
     /**
      * Slow (after beaconCountLimit is reached) beacon period (in sec).
      */
-    double _slowBeaconPeriod;
+    const double _slowBeaconPeriod;
 
     /**
      * Limit on number of beacons issued.
      */
-    epics::pvData::int16 _beaconCountLimit;
+    const epics::pvData::int16 _beaconCountLimit;
 
     /**
      * Server address.
@@ -135,17 +135,18 @@ private:
     /**
      * Server port.
      */
-    epics::pvData::int32 _serverPort;
+    const epics::pvData::int32 _serverPort;
 
     /**
      * Server status provider implementation (optional).
      */
     BeaconServerStatusProvider::shared_pointer _serverStatusProvider;
 
-    /**
-     * Timer.
+    /** Timer is referenced by server context, which also references us.
+     *  We will also be queuing ourselves, and be referenced by Timer.
+     *  So keep only a weak ref to Timer to avoid possible ref. loop.
      */
-    epics::pvData::Timer::shared_pointer _timer;
+    epics::pvData::Timer::weak_pointer _timer;
 };
 
 }

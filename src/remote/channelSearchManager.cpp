@@ -11,7 +11,7 @@
 #include <pv/timeStamp.h>
 
 #define epicsExportSharedSymbols
-#include <pv/simpleChannelSearchManagerImpl.h>
+#include <pv/channelSearchManager.h>
 #include <pv/pvaConstants.h>
 #include <pv/blockingUDP.h>
 #include <pv/serializeHelper.h>
@@ -20,28 +20,55 @@
 using namespace std;
 using namespace epics::pvData;
 
+namespace {
+namespace pva = epics::pvAccess;
+
+class MockTransportSendControl: public pva::TransportSendControl
+{
+public:
+    void endMessage() {}
+    void flush(bool /*lastMessageCompleted*/) {}
+    void setRecipient(const osiSockAddr& /*sendTo*/) {}
+    void startMessage(epics::pvData::int8 /*command*/, std::size_t /*ensureCapacity*/, epics::pvData::int32 /*payloadSize*/) {}
+    void ensureBuffer(std::size_t /*size*/) {}
+    void alignBuffer(std::size_t /*alignment*/) {}
+    void flushSerializeBuffer() {}
+    void cachedSerialize(const std::tr1::shared_ptr<const epics::pvData::Field>& field, epics::pvData::ByteBuffer* buffer)
+    {
+        // no cache
+        field->serialize(buffer, this);
+    }
+    virtual bool directSerialize(epics::pvData::ByteBuffer* /*existingBuffer*/, const char* /*toSerialize*/,
+                                 std::size_t /*elementCount*/, std::size_t /*elementSize*/)
+    {
+        return false;
+    }
+};
+
+}// namespace
+
 namespace epics {
 namespace pvAccess {
 
-const int SimpleChannelSearchManagerImpl::DATA_COUNT_POSITION = PVA_MESSAGE_HEADER_SIZE + 4+1+3+16+2+1+4;
-const int SimpleChannelSearchManagerImpl::CAST_POSITION = PVA_MESSAGE_HEADER_SIZE + 4;
-const int SimpleChannelSearchManagerImpl::PAYLOAD_POSITION = 4;
+const int ChannelSearchManager::DATA_COUNT_POSITION = PVA_MESSAGE_HEADER_SIZE + 4+1+3+16+2+1+4;
+const int ChannelSearchManager::CAST_POSITION = PVA_MESSAGE_HEADER_SIZE + 4;
+const int ChannelSearchManager::PAYLOAD_POSITION = 4;
 
 // 225ms +/- 25ms random
-const double SimpleChannelSearchManagerImpl::ATOMIC_PERIOD = 0.225;
-const int SimpleChannelSearchManagerImpl::PERIOD_JITTER_MS = 25;
+const double ChannelSearchManager::ATOMIC_PERIOD = 0.225;
+const int ChannelSearchManager::PERIOD_JITTER_MS = 25;
 
-const int SimpleChannelSearchManagerImpl::DEFAULT_USER_VALUE = 1;
-const int SimpleChannelSearchManagerImpl::BOOST_VALUE = 1;
+const int ChannelSearchManager::DEFAULT_USER_VALUE = 1;
+const int ChannelSearchManager::BOOST_VALUE = 1;
 // must be power of two (so that search is done)
-const int SimpleChannelSearchManagerImpl::MAX_COUNT_VALUE = 1 << 8;
-const int SimpleChannelSearchManagerImpl::MAX_FALLBACK_COUNT_VALUE = (1 << 7) + 1;
+const int ChannelSearchManager::MAX_COUNT_VALUE = 1 << 8;
+const int ChannelSearchManager::MAX_FALLBACK_COUNT_VALUE = (1 << 7) + 1;
 
-const int SimpleChannelSearchManagerImpl::MAX_FRAMES_AT_ONCE = 10;
-const int SimpleChannelSearchManagerImpl::DELAY_BETWEEN_FRAMES_MS = 50;
+const int ChannelSearchManager::MAX_FRAMES_AT_ONCE = 10;
+const int ChannelSearchManager::DELAY_BETWEEN_FRAMES_MS = 50;
 
 
-SimpleChannelSearchManagerImpl::SimpleChannelSearchManagerImpl(Context::shared_pointer const & context) :
+ChannelSearchManager::ChannelSearchManager(Context::shared_pointer const & context) :
     m_context(context),
     m_responseAddress(), // initialized in activate()
     m_canceled(),
@@ -49,7 +76,6 @@ SimpleChannelSearchManagerImpl::SimpleChannelSearchManagerImpl(Context::shared_p
     m_sendBuffer(MAX_UDP_UNFRAGMENTED_SEND),
     m_channels(),
     m_lastTimeSent(),
-    m_mockTransportSendControl(),
     m_channelMutex(),
     m_userValueMutex(),
     m_mutex()
@@ -58,7 +84,7 @@ SimpleChannelSearchManagerImpl::SimpleChannelSearchManagerImpl(Context::shared_p
     srand ( time(NULL) );
 }
 
-void SimpleChannelSearchManagerImpl::activate()
+void ChannelSearchManager::activate()
 {
     m_responseAddress = Context::shared_pointer(m_context)->getSearchTransport()->getRemoteAddress();
 
@@ -73,15 +99,15 @@ void SimpleChannelSearchManagerImpl::activate()
         context->getTimer()->schedulePeriodic(shared_from_this(), period, period);
 }
 
-SimpleChannelSearchManagerImpl::~SimpleChannelSearchManagerImpl()
+ChannelSearchManager::~ChannelSearchManager()
 {
     Lock guard(m_mutex);
     if (!m_canceled.get()) {
-        LOG(logLevelWarn, "Logic error: SimpleChannelSearchManagerImpl destroyed w/o cancel()");
+        LOG(logLevelWarn, "Logic error: ChannelSearchManager destroyed w/o cancel()");
     }
 }
 
-void SimpleChannelSearchManagerImpl::cancel()
+void ChannelSearchManager::cancel()
 {
     Lock guard(m_mutex);
 
@@ -94,13 +120,13 @@ void SimpleChannelSearchManagerImpl::cancel()
         context->getTimer()->cancel(shared_from_this());
 }
 
-int32_t SimpleChannelSearchManagerImpl::registeredCount()
+int32_t ChannelSearchManager::registeredCount()
 {
     Lock guard(m_channelMutex);
     return static_cast<int32_t>(m_channels.size());
 }
 
-void SimpleChannelSearchManagerImpl::registerSearchInstance(SearchInstance::shared_pointer const & channel, bool penalize)
+void ChannelSearchManager::registerSearchInstance(SearchInstance::shared_pointer const & channel, bool penalize)
 {
     if (m_canceled.get())
         return;
@@ -122,16 +148,14 @@ void SimpleChannelSearchManagerImpl::registerSearchInstance(SearchInstance::shar
         callback();
 }
 
-void SimpleChannelSearchManagerImpl::unregisterSearchInstance(SearchInstance::shared_pointer const & channel)
+void ChannelSearchManager::unregisterSearchInstance(SearchInstance::shared_pointer const & channel)
 {
     Lock guard(m_channelMutex);
     pvAccessID id = channel->getSearchInstanceID();
-    m_channels_t::iterator channelsIter = m_channels.find(id);
-    if(channelsIter != m_channels.end())
-        m_channels.erase(id);
+    m_channels.erase(id);
 }
 
-void SimpleChannelSearchManagerImpl::searchResponse(const ServerGUID & guid, pvAccessID cid, int32_t /*seqNo*/, int8_t minorRevision, osiSockAddr* serverAddress)
+void ChannelSearchManager::searchResponse(const ServerGUID & guid, pvAccessID cid, int32_t /*seqNo*/, int8_t minorRevision, osiSockAddr* serverAddress)
 {
     Lock guard(m_channelMutex);
     m_channels_t::iterator channelsIter = m_channels.find(cid);
@@ -162,13 +186,13 @@ void SimpleChannelSearchManagerImpl::searchResponse(const ServerGUID & guid, pvA
     }
 }
 
-void SimpleChannelSearchManagerImpl::newServerDetected()
+void ChannelSearchManager::newServerDetected()
 {
     boost();
     callback();
 }
 
-void SimpleChannelSearchManagerImpl::initializeSendBuffer()
+void ChannelSearchManager::initializeSendBuffer()
 {
     // for now OK, since it is only set here
     m_sequenceNumber++;
@@ -197,12 +221,13 @@ void SimpleChannelSearchManagerImpl::initializeSendBuffer()
     // TODO now only TCP is supported
     // note: this affects DATA_COUNT_POSITION
     m_sendBuffer.putByte((int8_t)1);
-    // TODO "tcp" constant
-    SerializeHelper::serializeString("tcp", &m_sendBuffer, &m_mockTransportSendControl);
+
+    MockTransportSendControl control;
+    SerializeHelper::serializeString("tcp", &m_sendBuffer, &control);
     m_sendBuffer.putShort((int16_t)0);	// count
 }
 
-void SimpleChannelSearchManagerImpl::flushSendBuffer()
+void ChannelSearchManager::flushSendBuffer()
 {
     Lock guard(m_mutex);
 
@@ -219,7 +244,7 @@ void SimpleChannelSearchManagerImpl::flushSendBuffer()
 }
 
 
-bool SimpleChannelSearchManagerImpl::generateSearchRequestMessage(SearchInstance::shared_pointer const & channel,
+bool ChannelSearchManager::generateSearchRequestMessage(SearchInstance::shared_pointer const & channel,
         ByteBuffer* requestMessage, TransportSendControl* control)
 {
     epics::pvData::int16 dataCount = requestMessage->getShort(DATA_COUNT_POSITION);
@@ -231,7 +256,7 @@ bool SimpleChannelSearchManagerImpl::generateSearchRequestMessage(SearchInstance
         return false;
     */
 
-    const std::string name = channel->getSearchInstanceName();
+    const std::string& name(channel->getSearchInstanceName());
     // not nice...
     const int addedPayloadSize = sizeof(int32)/sizeof(int8) + (1 + sizeof(int32)/sizeof(int8) + name.length());
     if(((int)requestMessage->getRemaining()) < addedPayloadSize)
@@ -245,17 +270,19 @@ bool SimpleChannelSearchManagerImpl::generateSearchRequestMessage(SearchInstance
     return true;
 }
 
-bool SimpleChannelSearchManagerImpl::generateSearchRequestMessage(SearchInstance::shared_pointer const & channel,
+bool ChannelSearchManager::generateSearchRequestMessage(SearchInstance::shared_pointer const & channel,
         bool allowNewFrame, bool flush)
 {
+    MockTransportSendControl control;
+
     Lock guard(m_mutex);
-    bool success = generateSearchRequestMessage(channel, &m_sendBuffer, &m_mockTransportSendControl);
+    bool success = generateSearchRequestMessage(channel, &m_sendBuffer, &control);
     // buffer full, flush
     if(!success)
     {
         flushSendBuffer();
         if(allowNewFrame)
-            generateSearchRequestMessage(channel, &m_sendBuffer, &m_mockTransportSendControl);
+            generateSearchRequestMessage(channel, &m_sendBuffer, &control);
         if (flush)
             flushSendBuffer();
         return true;
@@ -267,7 +294,7 @@ bool SimpleChannelSearchManagerImpl::generateSearchRequestMessage(SearchInstance
     return flush;
 }
 
-void SimpleChannelSearchManagerImpl::boost()
+void ChannelSearchManager::boost()
 {
     Lock guard(m_channelMutex);
     Lock guard2(m_userValueMutex);
@@ -281,7 +308,7 @@ void SimpleChannelSearchManagerImpl::boost()
     }
 }
 
-void SimpleChannelSearchManagerImpl::callback()
+void ChannelSearchManager::callback()
 {
     // high-frequency beacon anomaly trigger guard
     {
@@ -346,12 +373,12 @@ void SimpleChannelSearchManagerImpl::callback()
         flushSendBuffer();
 }
 
-bool SimpleChannelSearchManagerImpl::isPowerOfTwo(int32_t x)
+bool ChannelSearchManager::isPowerOfTwo(int32_t x)
 {
     return ((x > 0) && (x & (x - 1)) == 0);
 }
 
-void SimpleChannelSearchManagerImpl::timerStopped()
+void ChannelSearchManager::timerStopped()
 {
 }
 

@@ -11,6 +11,8 @@
 #include <stdexcept>
 
 #include <osiSock.h>
+#include <epicsGuard.h>
+
 #include <pv/lock.h>
 #include <pv/timer.h>
 #include <pv/bitSetUtil.h>
@@ -28,7 +30,7 @@
 #include <pv/codec.h>
 #include <pv/channelSearchManager.h>
 #include <pv/serializationHelper.h>
-#include <pv/simpleChannelSearchManagerImpl.h>
+#include <pv/channelSearchManager.h>
 #include <pv/clientContextImpl.h>
 #include <pv/configuration.h>
 #include <pv/beaconHandler.h>
@@ -915,6 +917,7 @@ public:
             }
         }
 
+        // TODO: m_structure and m_bitSet guarded by m_structureMutex?  (as below)
         if (!(*m_structure->getStructure() == *pvPutStructure->getStructure()))
         {
             EXCEPTION_GUARD3(m_callback, cb, cb->putDone(invalidPutStructureStatus, thisPtr));
@@ -933,10 +936,11 @@ public:
         }
 
         try {
-            lock();
-            *m_bitSet = *pvPutBitSet;
-            m_structure->copyUnchecked(*pvPutStructure, *m_bitSet);
-            unlock();
+            {
+                epicsGuard<ChannelPutImpl> G(*this);
+                *m_bitSet = *pvPutBitSet;
+                m_structure->copyUnchecked(*pvPutStructure, *m_bitSet);
+            }
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelPutImpl>());
         } catch (std::runtime_error &rte) {
             abortRequest();
@@ -1182,10 +1186,11 @@ public:
         }
 
         try {
-            lock();
-            *m_putDataBitSet = *bitSet;
-            m_putData->copyUnchecked(*pvPutStructure, *m_putDataBitSet);
-            unlock();
+            {
+                epicsGuard<ChannelPutGetImpl> G(*this);
+                *m_putDataBitSet = *bitSet;
+                m_putData->copyUnchecked(*pvPutStructure, *m_putDataBitSet);
+            }
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelPutGetImpl>());
         } catch (std::runtime_error &rte) {
             abortRequest();
@@ -1420,9 +1425,10 @@ public:
         }
 
         try {
-            m_structureMutex.lock();
-            m_structure = pvArgument;
-            m_structureMutex.unlock();
+            {
+                epicsGuard<epicsMutex> G(m_structureMutex);
+                m_structure = pvArgument;
+            }
 
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelRPCImpl>());
         } catch (std::runtime_error &rte) {
@@ -1844,9 +1850,6 @@ private:
     MonitorElement::shared_pointer m_overrunElement;
     bool m_overrunInProgress;
 
-
-    MonitorElement::shared_pointer m_nullMonitorElement;
-
     PVStructure::shared_pointer m_up2datePVStructure;
 
     int32 m_releasedCount;
@@ -1872,7 +1875,6 @@ public:
         m_monitorQueue(),
         m_callback(callback), m_mutex(),
         m_bitSet1(), m_bitSet2(), m_overrunInProgress(false),
-        m_nullMonitorElement(),
         m_releasedCount(0),
         m_reportQueueStateInProgress(false),
         m_channel(channel), m_ioid(ioid),
@@ -2007,10 +2009,10 @@ public:
                 guard.unlock();
                 EXCEPTION_GUARD3(m_callback, cb, cb->unlisten(shared_from_this()));
             }
-            return m_nullMonitorElement;
+            return MonitorElement::shared_pointer();
         }
 
-        MonitorElement::shared_pointer retVal = m_monitorQueue.front();
+        MonitorElement::shared_pointer retVal(m_monitorQueue.front());
         m_monitorQueue.pop();
         return retVal;
     }
@@ -2055,14 +2057,18 @@ public:
 
             if (sendAck)
             {
+                guard.unlock();
+
                 try
                 {
                     m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
                 } catch (std::runtime_error&) {
                     // assume wrong connection state from checkAndGetTransport()
+                    guard.lock();
                     m_reportQueueStateInProgress = false;
                 } catch (std::exception& e) {
                     LOG(logLevelWarn, "Ignore exception during MonitorStrategyQueue::release: %s", e.what());
+                    guard.lock();
                     m_reportQueueStateInProgress = false;
                 }
             }
@@ -2387,12 +2393,19 @@ public:
         if (!startRequest(QOS_PROCESS | QOS_GET))
             return BaseRequestImpl::otherRequestPendingStatus;
 
+        bool restore = m_started;
+        m_started = true;
+
+        guard.unlock();
+
         try
         {
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelMonitorImpl>());
-            m_started = true;
             return Status::Ok;
         } catch (std::runtime_error &rte) {
+            guard.lock();
+
+            m_started = restore;
             abortRequest();
             return BaseRequestImpl::channelNotConnected;
         }
@@ -2413,12 +2426,19 @@ public:
         if (!startRequest(QOS_PROCESS))
             return BaseRequestImpl::otherRequestPendingStatus;
 
+        bool restore = m_started;
+        m_started = false;
+
+        guard.unlock();
+
         try
         {
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelMonitorImpl>());
-            m_started = false;
             return Status::Ok;
         } catch (std::runtime_error &rte) {
+            guard.lock();
+
+            m_started = restore;
             abortRequest();
             return BaseRequestImpl::channelNotConnected;
         }
@@ -2446,7 +2466,7 @@ public:
 
 class AbstractClientResponseHandler : public ResponseHandler {
 protected:
-    ClientContextImpl::weak_pointer _context;
+    const ClientContextImpl::weak_pointer _context;
 public:
     AbstractClientResponseHandler(ClientContextImpl::shared_pointer const & context, string const & description) :
         ResponseHandler(context.get(), description), _context(ClientContextImpl::weak_pointer(context)) {
@@ -3285,7 +3305,44 @@ private:
 
         virtual void destroy() OVERRIDE FINAL
         {
-            destroy(false);
+            // Hack.  Prevent Transport from being dtor'd while m_channelMutex is held
+            Transport::shared_pointer old_transport;
+            {
+                Lock guard(m_channelMutex);
+                if (m_connectionState == DESTROYED)
+                    return;
+                REFTRACE_DECREMENT(num_active);
+
+                old_transport = m_transport;
+
+                m_getfield.reset();
+
+                // stop searching...
+                shared_pointer thisChannelPointer = internal_from_this();
+                m_context->getChannelSearchManager()->unregisterSearchInstance(thisChannelPointer);
+
+                disconnectPendingIO(true);
+
+                if (m_connectionState == CONNECTED)
+                {
+                    disconnect(false, true);
+                }
+                else if (m_transport)
+                {
+                    // unresponsive state, do not forget to release transport
+                    m_transport->release(getID());
+                    m_transport.reset();
+                }
+
+
+                setConnectionState(DESTROYED);
+
+                // unregister
+                m_context->unregisterChannel(thisChannelPointer);
+            }
+
+            // should be called without any lock hold
+            reportChannelStateChange();
         }
 
         virtual string getRequesterName() OVERRIDE FINAL
@@ -3355,7 +3412,7 @@ public:
             return m_channelID;
         }
 
-        virtual string getSearchInstanceName() OVERRIDE FINAL {
+        virtual const string& getSearchInstanceName() OVERRIDE FINAL {
             return m_name;
         }
 
@@ -3388,7 +3445,11 @@ public:
 
         void disconnect() {
             {
+                // Hack.  Prevent Transport from being dtor'd while m_channelMutex is held
+                Transport::shared_pointer old_transport;
                 Lock guard(m_channelMutex);
+                old_transport = m_transport;
+
                 // if not destroyed...
                 if (m_connectionState == DESTROYED)
                     throw std::runtime_error("Channel destroyed.");
@@ -3400,42 +3461,6 @@ public:
             reportChannelStateChange();
         }
 
-        /**
-         * Create a channel, i.e. submit create channel request to the server.
-         * This method is called after search is complete.
-         * @param transport
-         */
-        void createChannel(Transport::shared_pointer const & transport)
-        {
-            Lock guard(m_channelMutex);
-
-            // do not allow duplicate creation to the same transport
-            if (!m_allowCreation)
-                return;
-            m_allowCreation = false;
-
-            // check existing transport
-            if (m_transport.get() && m_transport.get() != transport.get())
-            {
-                disconnectPendingIO(false);
-
-                m_transport->release(getID());
-            }
-            else if (m_transport.get() == transport.get())
-            {
-                // request to sent create request to same transport, ignore
-                // this happens when server is slower (processing search requests) than client generating it
-                return;
-            }
-
-            m_transport = transport;
-            m_transport->enqueueSendRequest(internal_from_this());
-        }
-
-        virtual void cancel() {
-            // noop
-        }
-
         virtual void timeout() {
             createChannelFailed();
         }
@@ -3445,15 +3470,14 @@ public:
          */
         virtual void createChannelFailed() OVERRIDE FINAL
         {
+            // Hack.  Prevent Transport from being dtor'd while m_channelMutex is held
+            Transport::shared_pointer old_transport;
             Lock guard(m_channelMutex);
-
-            cancel();
-
             // release transport if active
             if (m_transport)
             {
                 m_transport->release(getID());
-                m_transport.reset();
+                old_transport.swap(m_transport);
             }
 
             // ... and search again, with penalty
@@ -3476,7 +3500,6 @@ public:
                     if (m_connectionState == DESTROYED)
                     {
                         // end connection request
-                        cancel();
                         return;
                     }
 
@@ -3496,71 +3519,6 @@ public:
                     LOG(logLevelError, "connectionCompleted() %d '%s' unhandled exception: %s\n", sid, m_name.c_str(), e.what());
                     // noop
                 }
-
-                // NOTE: always call cancel
-                // end connection request
-                cancel();
-            }
-
-            // should be called without any lock hold
-            reportChannelStateChange();
-        }
-
-        /**
-         * @param force force destruction regardless of reference count (not used now)
-         */
-        void destroy(bool force) {
-            {
-                Lock guard(m_channelMutex);
-                if (m_connectionState == DESTROYED)
-                    return;
-                //throw std::runtime_error("Channel already destroyed.");
-            }
-            REFTRACE_DECREMENT(num_active);
-
-            destroyChannel(force);
-        }
-
-
-        /**
-         * Actual destroy method, to be called <code>CAJContext</code>.
-         * @param force force destruction regardless of reference count
-         * @throws PVAException
-         * @throws std::runtime_error
-         * @throws IOException
-         */
-        void destroyChannel(bool /*force*/) OVERRIDE FINAL {
-            {
-                Lock guard(m_channelMutex);
-
-                if (m_connectionState == DESTROYED)
-                    throw std::runtime_error("Channel already destroyed.");
-
-                m_getfield.reset();
-
-                // stop searching...
-                shared_pointer thisChannelPointer = internal_from_this();
-                m_context->getChannelSearchManager()->unregisterSearchInstance(thisChannelPointer);
-                cancel();
-
-                disconnectPendingIO(true);
-
-                if (m_connectionState == CONNECTED)
-                {
-                    disconnect(false, true);
-                }
-                else if (m_transport)
-                {
-                    // unresponsive state, do not forget to release transport
-                    m_transport->release(getID());
-                    m_transport.reset();
-                }
-
-
-                setConnectionState(DESTROYED);
-
-                // unregister
-                m_context->unregisterChannel(thisChannelPointer);
             }
 
             // should be called without any lock hold
@@ -3584,7 +3542,6 @@ public:
             if (!initiateSearch) {
                 // stop searching...
                 m_context->getChannelSearchManager()->unregisterSearchInstance(internal_from_this());
-                cancel();
             }
             setConnectionState(DISCONNECTED);
 
@@ -3660,9 +3617,12 @@ public:
         }
 
         virtual void searchResponse(const ServerGUID & guid, int8 minorRevision, osiSockAddr* serverAddress) OVERRIDE FINAL {
+            // Hack.  Prevent Transport from being dtor'd while m_channelMutex is held
+            Transport::shared_pointer old_transport;
+
             Lock guard(m_channelMutex);
-            Transport::shared_pointer transport = m_transport;
-            if (transport.get())
+            Transport::shared_pointer transport(m_transport);
+            if (transport)
             {
                 // GUID check case: same server listening on different NIF
 
@@ -3679,7 +3639,7 @@ public:
 
             // NOTE: this creates a new or acquires an existing transport (implies increases usage count)
             transport = m_context->getTransport(internal_from_this(), serverAddress, minorRevision, m_priority);
-            if (!transport.get())
+            if (!transport)
             {
                 createChannelFailed();
                 return;
@@ -3690,7 +3650,34 @@ public:
             std::copy(guid.value, guid.value + 12, m_guid.value);
 
             // create channel
-            createChannel(transport);
+            {
+                Lock guard(m_channelMutex);
+
+                // do not allow duplicate creation to the same transport
+                if (!m_allowCreation)
+                    return;
+                m_allowCreation = false;
+
+                // check existing transport
+                if (m_transport && m_transport.get() != transport.get())
+                {
+                    disconnectPendingIO(false);
+
+                    m_transport->release(getID());
+                }
+                else if (m_transport.get() == transport.get())
+                {
+                    // request to sent create request to same transport, ignore
+                    // this happens when server is slower (processing search requests) than client generating it
+                    return;
+                }
+
+                // rotate: transport -> m_transport -> old_transport ->
+                old_transport.swap(m_transport);
+                m_transport.swap(transport);
+
+                m_transport->enqueueSendRequest(internal_from_this());
+            }
         }
 
         virtual void transportClosed() OVERRIDE FINAL {
@@ -4109,7 +4096,40 @@ public:
             m_contextState = CONTEXT_DESTROYED;
         }
 
-        internalDestroy();
+        //
+        // cleanup
+        //
+
+        m_timer->close();
+
+        m_channelSearchManager->cancel();
+
+        // this will also close all PVA transports
+        destroyAllChannels();
+
+        // stop UDPs
+        for (BlockingUDPTransportVector::const_iterator iter = m_udpTransports.begin();
+                iter != m_udpTransports.end(); iter++)
+            (*iter)->close();
+        m_udpTransports.clear();
+
+        // stop UDPs
+        if (m_searchTransport)
+            m_searchTransport->close();
+
+        // wait for all transports to cleanly exit
+        int tries = 40;
+        epics::pvData::int32 transportCount;
+        while ((transportCount = m_transportRegistry.size()) && tries--)
+            epicsThreadSleep(0.025);
+
+        {
+            Lock guard(m_beaconMapMutex);
+            m_beaconHandlers.clear();
+        }
+
+        if (transportCount)
+            LOG(logLevelDebug, "PVA client context destroyed with %u transport(s) active.", (unsigned)transportCount);
     }
 
     virtual ~InternalClientContextImpl()
@@ -4152,7 +4172,7 @@ private:
         // stores many weak_ptr
         m_responseHandler.reset(new ClientResponseHandler(thisPointer));
 
-        m_channelSearchManager.reset(new SimpleChannelSearchManagerImpl(thisPointer));
+        m_channelSearchManager.reset(new ChannelSearchManager(thisPointer));
 
         // preinitialize security plugins
         SecurityPluginRegistry::instance();
@@ -4186,40 +4206,6 @@ private:
         m_channelSearchManager->activate();
 
         // TODO what if initialization failed!!!
-    }
-
-    void internalDestroy() {
-
-        //
-        // cleanup
-        //
-
-        // this will also close all PVA transports
-        destroyAllChannels();
-
-        // stop UDPs
-        for (BlockingUDPTransportVector::const_iterator iter = m_udpTransports.begin();
-                iter != m_udpTransports.end(); iter++)
-            (*iter)->close();
-        m_udpTransports.clear();
-
-        // stop UDPs
-        if (m_searchTransport)
-            m_searchTransport->close();
-
-        // wait for all transports to cleanly exit
-        int tries = 40;
-        epics::pvData::int32 transportCount;
-        while ((transportCount = m_transportRegistry.size()) && tries--)
-            epicsThreadSleep(0.025);
-
-        {
-            Lock guard(m_beaconMapMutex);
-            m_beaconHandlers.clear();
-        }
-
-        if (transportCount)
-            LOG(logLevelDebug, "PVA client context destroyed with %u transport(s) active.", (unsigned)transportCount);
     }
 
     void destroyAllChannels() {
@@ -4472,7 +4458,7 @@ private:
         }
     }
 
-    std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> >& getSecurityPlugins() OVERRIDE FINAL
+    const securityPlugins_t& getSecurityPlugins() OVERRIDE FINAL
     {
         return SecurityPluginRegistry::instance().getClientSecurityPlugins();
     }
@@ -4586,7 +4572,7 @@ private:
      * Channel search manager.
      * Manages UDP search requests.
      */
-    SimpleChannelSearchManagerImpl::shared_pointer m_channelSearchManager;
+    ChannelSearchManager::shared_pointer m_channelSearchManager;
 
     /**
      * Beacon handler map.

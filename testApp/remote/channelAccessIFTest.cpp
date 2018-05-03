@@ -628,9 +628,9 @@ void ChannelAccessIFTest::test_channelGetIntProcessInternal(Channel::shared_poin
         pvTimeStamp.get(timeStamp);
         double deltaT = TimeStamp::diff(timeStamp, previousTimestamp);
 
-        testOk((previousValue +1)/*%11*/ == value->get(), "%s: testing the counter value change",
-               testMethodName.c_str());
-        testOk(deltaT > 0.9 && deltaT < 2.0,
+        testOk((previousValue +1) == value->get(), "%s: testing the counter value change %d == %d",
+               testMethodName.c_str(), previousValue +1, (int)value->get());
+        testOk(deltaT > 0.1 && deltaT < 20.0,
                "%s: timestamp change was %g", testMethodName.c_str(), deltaT);
     }
 
@@ -1608,9 +1608,9 @@ void ChannelAccessIFTest::test_channelPutGetIntProcess() {
 
         //cout << "Testing1:" << testValue << " == " << getValuePtr->get() << endl;
         //cout << "Testing2:" << timeStamp.getSecondsPastEpoch() << ">" << previousTimestampSec << endl;
-        testOk( testValue == getValuePtr->get(), "%s: testing the counter value change",
-                CURRENT_FUNCTION);
-        testOk(deltaT > 0.9 && deltaT < 2.0,
+        testOk( testValue == getValuePtr->get(), "%s: testing the counter value change %d == %d",
+                CURRENT_FUNCTION, testValue, (int)getValuePtr->get());
+        testOk(deltaT > 0.1 && deltaT < 20.0,
                "%s: timestamp change is %g", CURRENT_FUNCTION, deltaT);
     }
 
