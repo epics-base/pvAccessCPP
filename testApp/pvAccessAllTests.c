@@ -19,6 +19,9 @@ int testInetAddressUtils(void);
 int testCodec(void);
 int testChannelAccess(void);
 
+/* ca */
+int testCaProvider(void);
+
 void pvAccessAllTests(void)
 {
     testHarness();
@@ -31,6 +34,8 @@ void pvAccessAllTests(void)
     /* remote */
     runTest(testCodec);
     runTest(testChannelAccess);
+    /* ca */
+    runTest(testCaProvider);
 
     epicsExit(0);   /* Trigger test harness */
 }
