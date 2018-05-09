@@ -10,11 +10,10 @@ USR_CPPFLAGS += -I$(TOP)/src/remoteClient
 
 PVACCESS_TEST = $(TOP)/testApp
 
-PROD_LIBS += pvAccess pvAccessCA pvData Com
+PROD_LIBS += pvAccess pvData Com
 
 include $(PVACCESS_TEST)/utils/Makefile
 include $(PVACCESS_TEST)/remote/Makefile
-include $(PVACCESS_TEST)/ca/Makefile
 
 # pvAccessAllTests runs all the test programs in a known working order.
 testHarness_SRCS += pvAccessAllTests.c

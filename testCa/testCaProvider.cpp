@@ -7,13 +7,13 @@
 
 #include <cstddef>
 #include <cstdlib>
-#include <cstddef>
 #include <string>
 #include <cstring>
 #include <cstdio>
 
-#include <epicsUnitTest.h>
+#include <dbUnitTest.h>
 #include <testMain.h>
+
 
 #include <pv/thread.h>
 #include <pv/pvAccess.h>
@@ -355,14 +355,16 @@ void TestChannelPut::connect()
 void TestChannelPut::waitConnect(double timeout)
 {
     if(waitForConnect.wait(timeout)) return;
-    throw std::runtime_error(testChannel->getChannelName() + " TestChannelPut::waitConnect failed ");
+    throw std::runtime_error(testChannel->getChannelName() 
+        + " TestChannelPut::waitConnect failed ");
 }
 
 
 void TestChannelPut::put(string const & value)
 {
     PVFieldPtr pvField(pvStructure->getSubField("value"));
-    if(!pvField) throw std::runtime_error(testChannel->getChannelName() + " TestChannelPut::put no value ");
+    if(!pvField) throw std::runtime_error(testChannel->getChannelName() 
+         + " TestChannelPut::put no value ");
     FieldConstPtr field(pvField->getField());
     Type type(field->getType());
     if(type==scalar) {
@@ -372,7 +374,8 @@ void TestChannelPut::put(string const & value)
         channelPut->put(pvStructure,bitSet);
         return;
     }
-    throw std::runtime_error(testChannel->getChannelName() + " TestChannelPut::put not supported  type");
+    throw std::runtime_error(testChannel->getChannelName() 
+        + " TestChannelPut::put not supported  type");
 }
 
 class TestChannelMonitor;
@@ -476,7 +479,8 @@ void TestChannelMonitor::unlisten(MonitorPtr const & monitor)
 void TestChannelMonitor::connect()
 {
     channelMonitor = testChannel->getChannel()->createMonitor(shared_from_this(),pvRequest);
-    if(!channelMonitor) throw std::runtime_error(testChannel->getChannelName() + " TestChannelMonitor::connect failed ");
+    if(!channelMonitor) throw std::runtime_error(testChannel->getChannelName()
+         + " TestChannelMonitor::connect failed ");
 }
 
 void TestChannelMonitor::waitConnect(double timeout)
@@ -485,7 +489,8 @@ void TestChannelMonitor::waitConnect(double timeout)
          channelMonitor->start();
          return;
     }
-    throw std::runtime_error(testChannel->getChannelName() + " TestChannelMonitor::waitConnect failed ");
+    throw std::runtime_error(testChannel->getChannelName()
+       + " TestChannelMonitor::waitConnect failed ");
 }
 
 void TestChannelMonitor::stopEvents()
@@ -636,19 +641,20 @@ void TestIoc::start()
 
 void TestIoc::run()
 {
-    system("softIoc -d ../ca/testCaProvider.db");
+    system("softIoc -d ../testCaProvider.db");
 }
 
 MAIN(testCaProvider)
 {
+
+    TestIocPtr testIoc(new TestIoc());
+    testIoc->start();  
     testPlan(11);
     testDiag("===Test caProvider===");
     CAClientFactory::start();
     ChannelProviderRegistry::shared_pointer reg(ChannelProviderRegistry::clients());
     ChannelProvider::shared_pointer channelProvider(reg->getProvider("ca"));
     try{  
-        TestIocPtr testIoc(new TestIoc());
-        testIoc->start();  
         if(!channelProvider) {
             throw std::runtime_error(" provider ca  not registered");
         }
@@ -672,6 +678,7 @@ MAIN(testCaProvider)
         scalarout = TestClient::create(channelName,pvRequest);
         testOk(scalarout!=NULL,"DBRexit not null");
         scalarout->put("1");
+        scalarout->stopEvents();
     }catch(std::exception& e){
         PRINT_EXCEPTION(e);
         testAbort("Unexpected Exception: %s", e.what());
