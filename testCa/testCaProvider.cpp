@@ -40,7 +40,7 @@
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 using namespace epics::pvAccess::ca;
-using std::string;
+using namespace std;
 
 class TestChannel;
 typedef std::tr1::shared_ptr<TestChannel> TestChannelPtr;
@@ -374,6 +374,37 @@ void TestChannelPut::put(string const & value)
         channelPut->put(pvStructure,bitSet);
         return;
     }
+    if(type==scalarArray) {
+        PVScalarArrayPtr pvScalarArray(std::tr1::static_pointer_cast<PVScalarArray>(pvField));
+        std::vector<string> values;
+        size_t pos = 0;
+        size_t n = 1;
+        while(true)
+        {
+            size_t offset = value.find(" ",pos);
+            if(offset==string::npos) {
+                values.push_back(value.substr(pos));
+                break;
+            }
+            values.push_back(value.substr(pos,offset-pos));
+            pos = offset+1;
+            n++;    
+        }
+        pvScalarArray->setLength(n);
+        getConvert()->fromStringArray(pvScalarArray,0,n,values,0);       
+        bitSet->set(pvField->getFieldOffset());
+        channelPut->put(pvStructure,bitSet);
+        return;
+    }
+    if(type==structure) {
+       PVScalarPtr pvScalar(pvStructure->getSubField<PVScalar>("value.index"));
+       if(pvScalar) {
+          getConvert()->fromString(pvScalar,value);
+          bitSet->set(pvScalar->getFieldOffset());
+          channelPut->put(pvStructure,bitSet);
+          return;
+       }
+    }
     throw std::runtime_error(testChannel->getChannelName() 
         + " TestChannelPut::put not supported  type");
 }
@@ -564,6 +595,9 @@ void TestClient::getDone(
    testOk(pvStructure->getSubField("value")!=NULL,"value not null");
    testOk(pvStructure->getSubField("timeStamp")!=NULL,"timeStamp not null");
    testOk(pvStructure->getSubField("alarm")!=NULL,"alarm not null");
+   std::cout << testChannel->getChannelName() + " TestClient::getDone"
+             << " bitSet " << *bitSet
+             << " pvStructure\n" << pvStructure << "\n";
    waitForGet.signal();
 }
 
@@ -583,7 +617,9 @@ void TestClient::monitorEvent(
 
 void TestClient::get()
 {
+cout << "TestClient::get() calling get\n";
     testChannelGet->get();
+cout << "TestClient::get() calling waitGet\n";
     waitGet(5.0);
 }
 
@@ -641,7 +677,7 @@ void TestIoc::start()
 
 void TestIoc::run()
 {
-    system("softIoc -d ../testCaProvider.db");
+    system("$EPICS_BASE/bin/$EPICS_HOST_ARCH/softIoc -d ../testCaProvider.db");
 }
 
 MAIN(testCaProvider)
@@ -649,7 +685,7 @@ MAIN(testCaProvider)
 
     TestIocPtr testIoc(new TestIoc());
     testIoc->start();  
-    testPlan(11);
+    testPlan(56);
     testDiag("===Test caProvider===");
     CAClientFactory::start();
     ChannelProviderRegistry::shared_pointer reg(ChannelProviderRegistry::clients());
@@ -659,26 +695,98 @@ MAIN(testCaProvider)
             throw std::runtime_error(" provider ca  not registered");
         }
         string channelName;
-        channelName = "DBRdoubleout";
         string request("value,alarm,timeStamp");
         PVStructurePtr pvRequest(createRequest(request));
-        TestClientPtr scalarout(TestClient::create(channelName,pvRequest));
-        testOk(scalarout!=NULL,"DBRdoubleout not null");
-        scalarout->put("1.5");
-        scalarout->get();
-        scalarout->stopEvents();
+        TestClientPtr client;
+
+        channelName = "DBRlongout";
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("5");
+        client->get();
+        client->stopEvents();
+        channelName = "DBRdoubleout";
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("1.5");
+        client->get();
+        client->stopEvents();
         channelName = "DBRstringout";
-        scalarout = TestClient::create(channelName,pvRequest);
-        testOk(scalarout!=NULL,"DBRstringout not null");
-        scalarout->put("test");
-        scalarout->get();
-        scalarout->stopEvents();
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("test");
+        client->get();
+        client->stopEvents();
+        channelName = "DBRbyteArray";
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("1 2 3");
+        client->get();
+        client->stopEvents();
+        channelName = "DBRshortArray";
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("1 2 3");
+        client->get();
+        client->stopEvents();
+        channelName = "DBRintArray";
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("1 2 3");
+        client->get();
+        channelName = "DBRubyteArray";
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("1 2 3");
+        client->get();
+        client->stopEvents();
+        channelName = "DBRushortArray";
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("1 2 3");
+        client->get();
+        client->stopEvents();
+        channelName = "DBRuintArray";
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("1 2 3");
+        client->get();
+        channelName = "DBRfloatArray";
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("1 2 3");
+        client->get();
+        client->stopEvents();
+        channelName = "DBRdoubleArray";
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("1 2 3");
+        client->get();
+        client->stopEvents();
+        channelName = "DBRstringArray";
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("aa bb cc");
+        client->get();
+        client->stopEvents();
+        channelName = "DBRmbbout";
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("2");
+        client->get();
+        client->stopEvents();
+        channelName =  "DBRbinaryout";
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("1");
+        client->get();
+        client->stopEvents();
         // put to record that makes IOC exit
         channelName = "DBRexit";
-        scalarout = TestClient::create(channelName,pvRequest);
-        testOk(scalarout!=NULL,"DBRexit not null");
-        scalarout->put("1");
-        scalarout->stopEvents();
+        client = TestClient::create(channelName,pvRequest);
+        if(!client) throw std::runtime_error(channelName + " client null");
+        client->put("1");
+        client->stopEvents();
     }catch(std::exception& e){
         PRINT_EXCEPTION(e);
         testAbort("Unexpected Exception: %s", e.what());
