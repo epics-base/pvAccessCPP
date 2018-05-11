@@ -13,6 +13,7 @@ TESTPROD_HOST += testCaProvider
 testCaProvider_SRCS  += testCaProvider.cpp
 testHarness_SRCS += testCaProvider.cpp
 TESTS += testCaProvider
+testHarness_SRCS += pvCaAllTests.c
 
 
 # Name the application caTestHarness
