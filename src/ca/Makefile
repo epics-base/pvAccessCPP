@@ -2,8 +2,7 @@ TOP = ../..
 include $(TOP)/configure/CONFIG
 
 LIBRARY += pvAccessCA
-pvAccessCA_LIBS += ca pvAccess pvData
-LIB_LIBS += Com
+pvAccessCA_LIBS += pvAccess pvData ca Com
 
 SHRLIB_VERSION ?= $(EPICS_PVA_MAJOR_VERSION).$(EPICS_PVA_MINOR_VERSION).$(EPICS_PVA_MAINTENANCE_VERSION)
 

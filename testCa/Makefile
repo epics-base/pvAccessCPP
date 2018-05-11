@@ -7,7 +7,7 @@ USR_CPPFLAGS += -I$(TOP)/src/ca
 
 CAPROVIDER_TEST = $(TOP)/testCa
 
-PROD_LIBS += pvAccess pvAccessCA pvData Com
+PROD_LIBS += pvAccess pvAccessCA pvData ca Com
 
 TESTPROD_HOST += testCaProvider
 testCaProvider_SRCS  += testCaProvider.cpp
