@@ -677,7 +677,19 @@ void TestIoc::start()
 
 void TestIoc::run()
 {
-    system("$EPICS_BASE/bin/$EPICS_HOST_ARCH/softIoc -d ../testCaProvider.db");
+    char * base;
+    base = getenv("EPICS_BASE");
+    if(base==NULL) throw std::runtime_error("TestIoc::run $EPICS_BASE not defined");
+    char * arch;
+    arch = getenv("EPICS_HOST_ARCH");
+    if(arch==NULL) throw std::runtime_error("TestIoc::run $$EPICS_HOST_ARCH not defined");
+    if(system("$EPICS_BASE/bin/$EPICS_HOST_ARCH/softIoc -d ../testCaProvider.db")!=0) {
+        string message(base);
+        message += "/bin/";
+        message += arch;
+        message += "/softIoc -d ../testCaProvider.db not started";
+        throw std::runtime_error(message);
+    }
 }
 
 MAIN(testCaProvider)
