@@ -15,6 +15,8 @@ testHarness_SRCS += testCaProvider.cpp
 TESTS += testCaProvider
 testHarness_SRCS += pvCaAllTests.c
 
+# testCaProvider needs EPICS_HOST_ARCH set in the environment
+export EPICS_HOST_ARCH
 
 # Name the application caTestHarness
 caTestHarness_SRCS = $(testHarness_SRCS)

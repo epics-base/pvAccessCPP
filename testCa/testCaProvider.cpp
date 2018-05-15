@@ -11,7 +11,7 @@
 #include <cstring>
 #include <cstdio>
 
-#include <dbUnitTest.h>
+#include <epicsUnitTest.h>
 #include <testMain.h>
 
 
@@ -25,17 +25,6 @@
 #include <pv/lock.h>
 #include <pv/pvIntrospect.h>
 #include <pv/pvData.h>
-#include <pv/standardField.h>
-#include <pv/standardPVField.h>
-#include <pv/alarm.h>
-#include <pv/control.h>
-#include <pv/display.h>
-#include <pv/timeStamp.h>
-#include <pv/pvAlarm.h>
-#include <pv/pvControl.h>
-#include <pv/pvDisplay.h>
-#include <pv/pvEnumerated.h>
-#include <pv/pvTimeStamp.h>
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
@@ -800,8 +789,7 @@ MAIN(testCaProvider)
         client->put("1");
         client->stopEvents();
     }catch(std::exception& e){
-        PRINT_EXCEPTION(e);
-        testAbort("Unexpected Exception: %s", e.what());
+        testFail("caught un-expected exception: %s", e.what());
     }
     return testDone();;
 }
