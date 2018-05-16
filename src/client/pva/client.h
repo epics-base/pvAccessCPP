@@ -92,8 +92,7 @@ struct PutEvent
         Cancel,  //!< request cancelled before completion
         Success, //!< It worked!
     } event;
-    std::string message;
-    void *priv;
+    std::string message; //!< Check when event==Fail
 };
 
 //! Information on get/rpc completion
@@ -177,15 +176,19 @@ struct MonitorEvent
         Disconnect=4,//!< subscription interrupted due to loss of communication
         Data=8,      //!< Data queue not empty.  Call Monitor::poll()
     } event;
-    std::string message; // set for event=Fail
+    std::string message; //!< set for event=Fail
 };
 
 /** Subscription usable w/o callbacks
  *
- * Basic usage is to call wait().
+ * Basic usage is to call wait() or test().
  * If true is returned, then the 'event', 'root', 'changed', and 'overrun'
  * members have been updated with a new event.
  * Test 'event.event' first to find out which kind of event has occured.
+ *
+ * Note that wait()/test() methods are distinct from base class poll().
+ * wait()/test() check for the arrival of MonitorEvent
+ * while poll() checks for the availability of data (eg. following a Data event).
  */
 struct epicsShareClass MonitorSync : public Monitor
 {
@@ -195,15 +198,19 @@ struct epicsShareClass MonitorSync : public Monitor
     ~MonitorSync();
 
     //! wait for new event
+    //! @returns true when a new event was received.
+    //!          false if wake() was called.
     bool wait();
     //! wait for new event
     //! @return false on timeout
     bool wait(double timeout);
-    //! check if new event is available
+    //! check if new event is immediately available.
+    //! Does not block.
     bool test();
 
-    //! Abort one call to wait()
-    //! wait() will return with MonitorEvent::Fail
+    //! Abort one call to wait(), either concurrent or future.
+    //! Calls are queued.
+    //! wait() will return with MonitorEvent::Fail.
     void wake();
 
     //! most recent event
@@ -352,7 +359,6 @@ public:
 
     //! Initiate request to change PV
     //! @param cb Completion notification callback.  Must outlive Operation (call Operation::cancel() to force release)
-    //! TODO: produce bitset to mask fields being set
     Operation put(PutCallback* cb,
                       epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
@@ -374,7 +380,7 @@ public:
     };
 
     //! Begin subscription
-    //! @param cb Completion notification callback.  Must outlive Operation (call Operation::cancel() to force release)
+    //! @param cb Completion notification callback.  Must outlive Monitor (call Monitor::cancel() to force release)
     Monitor monitor(MonitorCallback *cb,
                           epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
 
