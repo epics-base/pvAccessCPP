@@ -119,9 +119,8 @@ Channel::shared_pointer CAChannelProvider::createChannel(
     ChannelRequester::shared_pointer const & channelRequester,
     short priority)
 {
-    static std::string emptyString;
     Channel::shared_pointer channel(
-        createChannel(channelName, channelRequester, priority, emptyString));
+        createChannel(channelName, channelRequester, priority, std::string()));
     return channel;
 }
 

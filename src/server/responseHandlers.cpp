@@ -226,7 +226,7 @@ void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
 
 /****************************************************************************************/
 
-std::string ServerSearchHandler::SUPPORTED_PROTOCOL = "tcp";
+const std::string ServerSearchHandler::SUPPORTED_PROTOCOL = "tcp";
 
 ServerSearchHandler::ServerSearchHandler(ServerContextImpl::shared_pointer const & context) :
     AbstractServerResponseHandler(context, "Search request")
@@ -527,7 +527,7 @@ private:
     static Structure::const_shared_pointer channelListStructure;
     static Structure::const_shared_pointer infoStructure;
 
-    static std::string helpString;
+    static const std::string helpString;
 
     ServerContextImpl::shared_pointer m_serverContext;
 
@@ -680,7 +680,7 @@ Structure::const_shared_pointer ServerRPCService::infoStructure =
     createStructure();
 
 
-std::string ServerRPCService::helpString =
+const std::string ServerRPCService::helpString =
     "pvAccess server RPC service.\n"
     "arguments:\n"
     "\tstring op\toperation to execute\n"
@@ -695,7 +695,7 @@ std::string ServerRPCService::helpString =
 namespace epics {
 namespace pvAccess {
 
-std::string ServerCreateChannelHandler::SERVER_CHANNEL_NAME = "server";
+const std::string ServerCreateChannelHandler::SERVER_CHANNEL_NAME = "server";
 
 void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
         Transport::shared_pointer const & transport, int8 version, int8 command,

@@ -937,8 +937,6 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
         dumpValue(channelName, pv);
 }
 
-static string emptyString;
-
 // only in ValueOnlyMode
 // NOTE: names might be empty
 void printValues(shared_vector<const string> const & names, vector<PVStructure::shared_pointer> const & values)

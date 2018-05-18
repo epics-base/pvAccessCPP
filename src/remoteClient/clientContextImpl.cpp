@@ -54,7 +54,6 @@ Status ClientChannelImpl::channelDestroyed(
     Status::STATUSTYPE_WARNING, "channel destroyed");
 Status ClientChannelImpl::channelDisconnected(
     Status::STATUSTYPE_WARNING, "channel disconnected");
-string emptyString;
 
 }}
 namespace {
@@ -3096,7 +3095,7 @@ public:
         ChannelRequester::shared_pointer const & channelRequester,
         short priority) OVERRIDE FINAL
     {
-        return createChannel(channelName, channelRequester, priority, emptyString);
+        return createChannel(channelName, channelRequester, priority, std::string());
     }
 
     virtual Channel::shared_pointer createChannel(

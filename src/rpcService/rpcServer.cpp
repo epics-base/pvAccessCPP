@@ -248,9 +248,9 @@ class RPCChannelProvider :
 public:
     POINTER_DEFINITIONS(RPCChannelProvider);
 
-    static string PROVIDER_NAME;
+    static const string PROVIDER_NAME;
 
-    static Status noSuchChannelStatus;
+    static const Status noSuchChannelStatus;
 
     // TODO thread pool support
 
@@ -413,8 +413,8 @@ private:
     epics::pvData::Mutex m_mutex;
 };
 
-string RPCChannelProvider::PROVIDER_NAME("rpcService");
-Status RPCChannelProvider::noSuchChannelStatus(Status::STATUSTYPE_ERROR, "no such channel");
+const string RPCChannelProvider::PROVIDER_NAME("rpcService");
+const Status RPCChannelProvider::noSuchChannelStatus(Status::STATUSTYPE_ERROR, "no such channel");
 
 
 RPCServer::RPCServer(const Configuration::const_shared_pointer &conf)

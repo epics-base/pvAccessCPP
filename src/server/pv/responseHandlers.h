@@ -118,7 +118,7 @@ public:
     // TODO
     static std::map<std::string, std::tr1::weak_ptr<ChannelProvider> > s_channelNameToProvider;
 
-    static std::string SUPPORTED_PROTOCOL;
+    static const std::string SUPPORTED_PROTOCOL;
 
     ServerSearchHandler(ServerContextImpl::shared_pointer const & context);
     virtual ~ServerSearchHandler() {}
@@ -181,7 +181,7 @@ public:
 
 private:
     // Name of the magic "server" PV used to implement channelList() and server info
-    static std::string SERVER_CHANNEL_NAME;
+    static const std::string SERVER_CHANNEL_NAME;
 
     void disconnect(Transport::shared_pointer const & transport);
 };
