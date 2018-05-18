@@ -229,7 +229,7 @@ void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
 std::string ServerSearchHandler::SUPPORTED_PROTOCOL = "tcp";
 
 ServerSearchHandler::ServerSearchHandler(ServerContextImpl::shared_pointer const & context) :
-    AbstractServerResponseHandler(context, "Search request"), _providers(context->getChannelProviders())
+    AbstractServerResponseHandler(context, "Search request")
 {
     // initialize random seed with some random value
     srand ( time(NULL) );
@@ -332,15 +332,14 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 
             if (allowed)
             {
-                // TODO object pool!!!
+                const std::vector<ChannelProvider::shared_pointer>& _providers = _context->getChannelProviders();
+
                 int providerCount = _providers.size();
                 std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(new ServerChannelFindRequesterImpl(_context, providerCount));
                 tp->set(name, searchSequenceId, cid, responseAddress, responseRequired, false);
-                // TODO use std::make_shared
-                ChannelFindRequester::shared_pointer spr = tp;
 
                 for (int i = 0; i < providerCount; i++)
-                    _providers[i]->channelFind(name, spr);
+                    _providers[i]->channelFind(name, tp);
             }
         }
     }
@@ -575,7 +574,7 @@ public:
             PVStringArray::shared_pointer allChannelNames = result->getSubFieldT<PVStringArray>("value");
 
             ChannelListRequesterImpl::shared_pointer listListener(new ChannelListRequesterImpl());
-            std::vector<ChannelProvider::shared_pointer>& providers = m_serverContext->getChannelProviders();
+            const std::vector<ChannelProvider::shared_pointer>& providers = m_serverContext->getChannelProviders();
 
             size_t providerCount = providers.size();
             for (size_t i = 0; i < providerCount; i++)
@@ -763,6 +762,8 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
     }
     else
     {
+        const std::vector<ChannelProvider::shared_pointer>& _providers(_context->getChannelProviders());
+
         if (_providers.size() == 1)
             ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid, css);
         else

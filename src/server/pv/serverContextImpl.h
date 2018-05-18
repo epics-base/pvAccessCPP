@@ -129,7 +129,7 @@ public:
      * Get channel providers.
      * @return channel providers.
      */
-    virtual std::vector<ChannelProvider::shared_pointer>& getChannelProviders() OVERRIDE FINAL;
+    virtual const std::vector<ChannelProvider::shared_pointer>& getChannelProviders() OVERRIDE FINAL;
 
     /**
      * Return <code>true</code> if channel provider name is provided by configuration (e.g. system env. var.).
@@ -224,9 +224,7 @@ private:
      */
     ResponseHandler::shared_pointer _responseHandler;
 
-    /**
-     * Channel provider.
-     */
+    // const after loadConfiguration()
     std::vector<ChannelProvider::shared_pointer> _channelProviders;
 
     /**
