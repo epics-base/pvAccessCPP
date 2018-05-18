@@ -497,7 +497,7 @@ const osiSockAddr* ServerContextImpl::getServerInetAddress()
     return NULL;
 }
 
-BlockingUDPTransport::shared_pointer ServerContextImpl::getBroadcastTransport()
+const BlockingUDPTransport::shared_pointer& ServerContextImpl::getBroadcastTransport()
 {
     return _broadcastTransport;
 }

@@ -123,7 +123,7 @@ public:
      * Broadcast (UDP send) transport.
      * @return broadcast transport.
      */
-    BlockingUDPTransport::shared_pointer getBroadcastTransport();
+    const BlockingUDPTransport::shared_pointer& getBroadcastTransport();
 
     /**
      * Get channel providers.
@@ -188,9 +188,6 @@ private:
      */
     epics::pvData::int32 _receiveBufferSize;
 
-    /**
-     * Timer.
-     */
     epics::pvData::Timer::shared_pointer _timer;
 
     /**
@@ -198,14 +195,11 @@ private:
      */
     BlockingUDPTransportVector _udpTransports;
 
-    /**
-     * UDP socket used to sending.
+    /** UDP socket used to sending.
+     * constant after ServerContextImpl::initialize()
      */
     BlockingUDPTransport::shared_pointer _broadcastTransport;
 
-    /**
-     * Beacon emitter.
-     */
     BeaconEmitter::shared_pointer _beaconEmitter;
 
     /**
@@ -219,22 +213,13 @@ private:
      */
     TransportRegistry _transportRegistry;
 
-    /**
-     * Response handler.
-     */
     ResponseHandler::shared_pointer _responseHandler;
 
     // const after loadConfiguration()
     std::vector<ChannelProvider::shared_pointer> _channelProviders;
 
-    /**
-     * Run mutex.
-     */
     epics::pvData::Mutex _mutex;
 
-    /**
-     * Run event.
-     */
     epics::pvData::Event _runEvent;
 
     /**
@@ -242,19 +227,10 @@ private:
      */
     BeaconServerStatusProvider::shared_pointer _beaconServerStatusProvider;
 
-    /**
-     * Generate ServerGUID.
-     */
     void generateGUID();
 
-    /**
-     * Initialize logger.
-     */
     void initializeLogger();
 
-    /**
-     * Load configuration.
-     */
     void loadConfiguration();
 
     Configuration::const_shared_pointer configuration;
