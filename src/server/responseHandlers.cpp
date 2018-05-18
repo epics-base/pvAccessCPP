@@ -283,6 +283,7 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     const int32 count = payloadBuffer->getShort() & 0xFFFF;
 
     // TODO DoS attack?
+    //   You bet!  With a reply address encoded in the request we don't even need a forged UDP header.
     const bool responseRequired = (QOS_REPLY_REQUIRED & qosCode) != 0;
 
     //

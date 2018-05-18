@@ -50,6 +50,8 @@ public:
 namespace epics {
 namespace pvAccess {
 
+// these are byte offset in a CMD_SEARCH request message
+// used to mangle a buffer to support incremental construction.  (ick!!!)
 const int ChannelSearchManager::DATA_COUNT_POSITION = PVA_MESSAGE_HEADER_SIZE + 4+1+3+16+2+1+4;
 const int ChannelSearchManager::CAST_POSITION = PVA_MESSAGE_HEADER_SIZE + 4;
 const int ChannelSearchManager::PAYLOAD_POSITION = 4;
