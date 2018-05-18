@@ -4,10 +4,6 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#if defined(_WIN32) && !defined(NOMINMAX)
-#define NOMINMAX
-#endif
-
 #include <sstream>
 #include <time.h>
 #include <stdlib.h>

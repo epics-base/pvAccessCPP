@@ -2,10 +2,6 @@
  * testServer.cpp
  */
 
-#if defined(_WIN32) && !defined(NOMINMAX)
-#define NOMINMAX
-#endif
-
 // disable buggy boost enable_shared_from_this assert code
 #define BOOST_DISABLE_ASSERTS
 

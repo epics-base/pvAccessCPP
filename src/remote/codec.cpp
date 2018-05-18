@@ -4,11 +4,6 @@
 * in file LICENSE that is included with this distribution.
 */
 
-#if defined(_WIN32) && !defined(NOMINMAX)
-#define NOMINMAX
-#endif
-
-
 #include <map>
 #include <string>
 #include <vector>
