@@ -137,6 +137,9 @@ public:
      */
     bool isChannelProviderNamePreconfigured();
 
+    // used by ServerChannelFindRequesterImpl
+    typedef std::map<std::string, std::tr1::weak_ptr<ChannelProvider> > s_channelNameToProvider_t;
+    s_channelNameToProvider_t s_channelNameToProvider;
 private:
 
     /**
@@ -218,7 +221,9 @@ private:
     // const after loadConfiguration()
     std::vector<ChannelProvider::shared_pointer> _channelProviders;
 
+public:
     epics::pvData::Mutex _mutex;
+private:
 
     epics::pvData::Event _runEvent;
 

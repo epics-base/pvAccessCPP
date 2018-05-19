@@ -400,8 +400,6 @@ ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(std::string 
     return this;
 }
 
-std::map<string, std::tr1::weak_ptr<ChannelProvider> > ServerSearchHandler::s_channelNameToProvider;
-
 void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/, ChannelFind::shared_pointer const & channelFind, bool wasFound)
 {
     // TODO status
@@ -427,7 +425,8 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/,
     {
         if (wasFound && _expectedResponseCount > 1)
         {
-            ServerSearchHandler::s_channelNameToProvider[_name] = channelFind->getChannelProvider();
+            Lock L(_context->_mutex);
+            _context->s_channelNameToProvider[_name] = channelFind->getChannelProvider();
         }
         _wasFound = wasFound;
         
@@ -760,11 +759,20 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
     else
     {
         const std::vector<ChannelProvider::shared_pointer>& _providers(_context->getChannelProviders());
+        ServerContextImpl::s_channelNameToProvider_t::const_iterator it;
 
         if (_providers.size() == 1)
             ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid, css);
-        else
-            ServerChannelRequesterImpl::create(ServerSearchHandler::s_channelNameToProvider[channelName].lock(), transport, channelName, cid, css);     // TODO !!!!
+        else {
+            ChannelProvider::shared_pointer prov;
+            {
+                Lock L(_context->_mutex);
+                if((it = _context->s_channelNameToProvider.find(channelName)) != _context->s_channelNameToProvider.end())
+                    prov = it->second.lock();
+            }
+            if(prov)
+                ServerChannelRequesterImpl::create(prov, transport, channelName, cid, css);
+        }
     }
 }
 

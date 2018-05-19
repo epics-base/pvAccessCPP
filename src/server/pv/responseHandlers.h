@@ -115,9 +115,6 @@ private:
 class ServerSearchHandler : public AbstractServerResponseHandler
 {
 public:
-    // TODO
-    static std::map<std::string, std::tr1::weak_ptr<ChannelProvider> > s_channelNameToProvider;
-
     static const std::string SUPPORTED_PROTOCOL;
 
     ServerSearchHandler(ServerContextImpl::shared_pointer const & context);
