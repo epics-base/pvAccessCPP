@@ -7,6 +7,7 @@ INC += pv/pvAccess.h
 INC += pva/client.h
 
 pvAccess_SRCS += pvAccess.cpp
+pvAccess_SRCS += monitor.cpp
 pvAccess_SRCS += client.cpp
 pvAccess_SRCS += clientSync.cpp
 pvAccess_SRCS += clientGet.cpp

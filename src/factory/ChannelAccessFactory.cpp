@@ -198,6 +198,8 @@ struct providerRegGbl_t {
 
 epicsThreadOnceId providerRegOnce = EPICS_THREAD_ONCE_INIT;
 
+} // namespace
+
 void providerRegInit(void*)
 {
     epicsSignalInstallSigAlarmIgnore();
@@ -217,9 +219,8 @@ void providerRegInit(void*)
     registerRefCounter("ChannelBaseRequester (ABC)", &ChannelBaseRequester::num_instances);
     registerRefCounter("ChannelRequest (ABC)", &ChannelRequest::num_instances);
     registerRefCounter("ResponseHandler (ABC)", &ResponseHandler::num_instances);
+    registerRefCounter("MonitorFIFO", &MonitorFIFO::num_instances);
 }
-
-} // namespace
 
 ChannelProviderRegistry::shared_pointer ChannelProviderRegistry::clients()
 {
