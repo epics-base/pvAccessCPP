@@ -27,6 +27,9 @@ TESTPROD_HOST += testServerContext
 testServerContext_SRCS += testServerContext.cpp
 TESTS += testServerContext
 
+TESTPROD_HOST += testmonitorfifo
+testmonitorfifo_SRCS += testmonitorfifo.cpp
+TESTS += testmonitorfifo
 
 PROD_HOST += testServer
 testServer_SRCS += testServer.cpp
