@@ -7,6 +7,8 @@
 #ifndef RESPONSEHANDLERS_H_
 #define RESPONSEHANDLERS_H_
 
+#include <list>
+
 #include <pv/timer.h>
 
 #include <pv/serverContext.h>
@@ -470,7 +472,7 @@ protected:
                                Transport::shared_pointer const & transport);
     void activate(epics::pvData::PVStructure::shared_pointer const & pvRequest);
 public:
-    static MonitorRequester::shared_pointer create(ServerContextImpl::shared_pointer const & context,
+    static shared_pointer create(ServerContextImpl::shared_pointer const & context,
             std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
             Transport::shared_pointer const & transport,epics::pvData::PVStructure::shared_pointer const & pvRequest);
     virtual ~ServerMonitorRequesterImpl() {}
@@ -484,12 +486,21 @@ public:
 
     Monitor::shared_pointer getChannelMonitor();
     virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
+    void ack(size_t cnt);
 private:
     // Note: this forms a reference loop, which is broken in destroy()
     Monitor::shared_pointer _channelMonitor;
     epics::pvData::StructureConstPtr _structure;
     epics::pvData::Status _status;
+    // when _pipeline==true
+    // _window_open + _window_closed.size() are together the congestion control window.
+    // _window_open are the number of elements which we can send w/o further ack's
+    size_t _window_open;
+    // The elements we have sent, but have not been acknowledged
+    typedef std::list<epics::pvData::MonitorElementPtr> window_t;
+    window_t _window_closed;
     bool _unlisten;
+    bool _pipeline; // const after activate()
 };
 
 
