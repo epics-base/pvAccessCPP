@@ -115,10 +115,7 @@ private:
 class ServerSearchHandler : public AbstractServerResponseHandler
 {
 public:
-    // TODO
-    static std::map<std::string, std::tr1::weak_ptr<ChannelProvider> > s_channelNameToProvider;
-
-    static std::string SUPPORTED_PROTOCOL;
+    static const std::string SUPPORTED_PROTOCOL;
 
     ServerSearchHandler(ServerContextImpl::shared_pointer const & context);
     virtual ~ServerSearchHandler() {}
@@ -126,9 +123,6 @@ public:
     virtual void handleResponse(osiSockAddr* responseFrom,
                                 Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
                                 std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
-
-private:
-    std::vector<ChannelProvider::shared_pointer> _providers;
 };
 
 
@@ -173,10 +167,9 @@ private:
 class ServerCreateChannelHandler : public AbstractServerResponseHandler
 {
 public:
-    ServerCreateChannelHandler(ServerContextImpl::shared_pointer const & context) :
-        AbstractServerResponseHandler(context, "Create channel request") {
-        _providers = context->getChannelProviders();
-    }
+    ServerCreateChannelHandler(ServerContextImpl::shared_pointer const & context)
+        :AbstractServerResponseHandler(context, "Create channel request")
+    {}
     virtual ~ServerCreateChannelHandler() {}
 
     virtual void handleResponse(osiSockAddr* responseFrom,
@@ -184,10 +177,10 @@ public:
                                 std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
 
 private:
-    static std::string SERVER_CHANNEL_NAME;
+    // Name of the magic "server" PV used to implement channelList() and server info
+    static const std::string SERVER_CHANNEL_NAME;
 
     void disconnect(Transport::shared_pointer const & transport);
-    std::vector<ChannelProvider::shared_pointer> _providers;
 };
 
 namespace detail {

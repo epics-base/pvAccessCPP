@@ -67,8 +67,6 @@ string toHex(int8* ba, size_t len) {
 }
 
 
-static string emptyString;
-
 std::size_t readSize(ByteBuffer* buffer) {
     int8 b = buffer->getByte();
     if(b==-1)
@@ -94,7 +92,7 @@ string deserializeString(ByteBuffer* buffer) {
         return str;
     }
     else
-        return emptyString;
+        return std::string();
 }
 
 struct ServerEntry {

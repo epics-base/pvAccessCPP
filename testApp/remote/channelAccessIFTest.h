@@ -16,12 +16,12 @@ public:
 
 protected:
 
-    static std::string TEST_COUNTER_CHANNEL_NAME;
-    static std::string TEST_SIMPLECOUNTER_CHANNEL_NAME;
-    static std::string TEST_CHANNEL_NAME;
-    static std::string TEST_VALUEONLY_CHANNEL_NAME;
-    static std::string TEST_SUMRPC_CHANNEL_NAME;
-    static std::string TEST_ARRAY_CHANNEL_NAME;
+    static const std::string TEST_COUNTER_CHANNEL_NAME;
+    static const std::string TEST_SIMPLECOUNTER_CHANNEL_NAME;
+    static const std::string TEST_CHANNEL_NAME;
+    static const std::string TEST_VALUEONLY_CHANNEL_NAME;
+    static const std::string TEST_SUMRPC_CHANNEL_NAME;
+    static const std::string TEST_ARRAY_CHANNEL_NAME;
 
 
     ChannelProvider::shared_pointer getChannelProvider() { return m_provider; }

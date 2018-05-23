@@ -454,9 +454,9 @@ class PipelineChannelProvider :
 public:
     POINTER_DEFINITIONS(PipelineChannelProvider);
 
-    static string PROVIDER_NAME;
+    static const string PROVIDER_NAME;
 
-    static Status noSuchChannelStatus;
+    static const Status noSuchChannelStatus;
 
     // TODO thread pool support
 
@@ -619,8 +619,8 @@ private:
     epics::pvData::Mutex m_mutex;
 };
 
-string PipelineChannelProvider::PROVIDER_NAME("PipelineService");
-Status PipelineChannelProvider::noSuchChannelStatus(Status::STATUSTYPE_ERROR, "no such channel");
+const string PipelineChannelProvider::PROVIDER_NAME("PipelineService");
+const Status PipelineChannelProvider::noSuchChannelStatus(Status::STATUSTYPE_ERROR, "no such channel");
 
 PipelineServer::PipelineServer()
     :m_channelProviderImpl(new PipelineChannelProvider)

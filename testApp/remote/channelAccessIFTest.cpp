@@ -32,17 +32,17 @@ namespace TR1 = std::tr1;
 
 
 // int value, 1Hz increment by one
-std::string ChannelAccessIFTest::TEST_COUNTER_CHANNEL_NAME = "testCounter";
+const std::string ChannelAccessIFTest::TEST_COUNTER_CHANNEL_NAME = "testCounter";
 // int value, increment on process
-std::string ChannelAccessIFTest::TEST_SIMPLECOUNTER_CHANNEL_NAME = "testSimpleCounter";
+const std::string ChannelAccessIFTest::TEST_SIMPLECOUNTER_CHANNEL_NAME = "testSimpleCounter";
 // double value, NTScalar
-std::string ChannelAccessIFTest::TEST_CHANNEL_NAME = "testValue";
+const std::string ChannelAccessIFTest::TEST_CHANNEL_NAME = "testValue";
 // double value
-std::string ChannelAccessIFTest::TEST_VALUEONLY_CHANNEL_NAME = "testValueOnly";
+const std::string ChannelAccessIFTest::TEST_VALUEONLY_CHANNEL_NAME = "testValueOnly";
 // RPC sum service: int a + int b -> int c
-std::string ChannelAccessIFTest::TEST_SUMRPC_CHANNEL_NAME = "testSum";
+const std::string ChannelAccessIFTest::TEST_SUMRPC_CHANNEL_NAME = "testSum";
 // double[] value
-std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray1";
+const std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray1";
 
 #ifdef ENABLE_STRESS_TESTS
 #define EXTRA_STRESS_TESTS 5

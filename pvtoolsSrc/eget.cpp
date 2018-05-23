@@ -1,6 +1,3 @@
-#if defined(_WIN32) && !defined(NOMINMAX)
-#define NOMINMAX
-#endif
 
 #include <iostream>
 #include <pv/pvAccess.h>
@@ -936,8 +933,6 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
     else
         dumpValue(channelName, pv);
 }
-
-static string emptyString;
 
 // only in ValueOnlyMode
 // NOTE: names might be empty

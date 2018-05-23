@@ -4,10 +4,6 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#if defined(_WIN32) && !defined(NOMINMAX)
-#define NOMINMAX
-#endif
-
 #include <sstream>
 #include <time.h>
 #include <stdlib.h>
@@ -226,10 +222,10 @@ void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
 
 /****************************************************************************************/
 
-std::string ServerSearchHandler::SUPPORTED_PROTOCOL = "tcp";
+const std::string ServerSearchHandler::SUPPORTED_PROTOCOL = "tcp";
 
 ServerSearchHandler::ServerSearchHandler(ServerContextImpl::shared_pointer const & context) :
-    AbstractServerResponseHandler(context, "Search request"), _providers(context->getChannelProviders())
+    AbstractServerResponseHandler(context, "Search request")
 {
     // initialize random seed with some random value
     srand ( time(NULL) );
@@ -283,6 +279,7 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     const int32 count = payloadBuffer->getShort() & 0xFFFF;
 
     // TODO DoS attack?
+    //   You bet!  With a reply address encoded in the request we don't even need a forged UDP header.
     const bool responseRequired = (QOS_REPLY_REQUIRED & qosCode) != 0;
 
     //
@@ -332,15 +329,14 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 
             if (allowed)
             {
-                // TODO object pool!!!
+                const std::vector<ChannelProvider::shared_pointer>& _providers = _context->getChannelProviders();
+
                 int providerCount = _providers.size();
                 std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(new ServerChannelFindRequesterImpl(_context, providerCount));
                 tp->set(name, searchSequenceId, cid, responseAddress, responseRequired, false);
-                // TODO use std::make_shared
-                ChannelFindRequester::shared_pointer spr = tp;
 
                 for (int i = 0; i < providerCount; i++)
-                    _providers[i]->channelFind(name, spr);
+                    _providers[i]->channelFind(name, tp);
             }
         }
     }
@@ -404,8 +400,6 @@ ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(std::string 
     return this;
 }
 
-std::map<string, std::tr1::weak_ptr<ChannelProvider> > ServerSearchHandler::s_channelNameToProvider;
-
 void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/, ChannelFind::shared_pointer const & channelFind, bool wasFound)
 {
     // TODO status
@@ -431,7 +425,8 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/,
     {
         if (wasFound && _expectedResponseCount > 1)
         {
-            ServerSearchHandler::s_channelNameToProvider[_name] = channelFind->getChannelProvider();
+            Lock L(_context->_mutex);
+            _context->s_channelNameToProvider[_name] = channelFind->getChannelProvider();
         }
         _wasFound = wasFound;
         
@@ -528,7 +523,7 @@ private:
     static Structure::const_shared_pointer channelListStructure;
     static Structure::const_shared_pointer infoStructure;
 
-    static std::string helpString;
+    static const std::string helpString;
 
     ServerContextImpl::shared_pointer m_serverContext;
 
@@ -575,7 +570,7 @@ public:
             PVStringArray::shared_pointer allChannelNames = result->getSubFieldT<PVStringArray>("value");
 
             ChannelListRequesterImpl::shared_pointer listListener(new ChannelListRequesterImpl());
-            std::vector<ChannelProvider::shared_pointer>& providers = m_serverContext->getChannelProviders();
+            const std::vector<ChannelProvider::shared_pointer>& providers = m_serverContext->getChannelProviders();
 
             size_t providerCount = providers.size();
             for (size_t i = 0; i < providerCount; i++)
@@ -681,7 +676,7 @@ Structure::const_shared_pointer ServerRPCService::infoStructure =
     createStructure();
 
 
-std::string ServerRPCService::helpString =
+const std::string ServerRPCService::helpString =
     "pvAccess server RPC service.\n"
     "arguments:\n"
     "\tstring op\toperation to execute\n"
@@ -696,7 +691,7 @@ std::string ServerRPCService::helpString =
 namespace epics {
 namespace pvAccess {
 
-std::string ServerCreateChannelHandler::SERVER_CHANNEL_NAME = "server";
+const std::string ServerCreateChannelHandler::SERVER_CHANNEL_NAME = "server";
 
 void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
         Transport::shared_pointer const & transport, int8 version, int8 command,
@@ -763,10 +758,21 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
     }
     else
     {
+        const std::vector<ChannelProvider::shared_pointer>& _providers(_context->getChannelProviders());
+        ServerContextImpl::s_channelNameToProvider_t::const_iterator it;
+
         if (_providers.size() == 1)
             ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid, css);
-        else
-            ServerChannelRequesterImpl::create(ServerSearchHandler::s_channelNameToProvider[channelName].lock(), transport, channelName, cid, css);     // TODO !!!!
+        else {
+            ChannelProvider::shared_pointer prov;
+            {
+                Lock L(_context->_mutex);
+                if((it = _context->s_channelNameToProvider.find(channelName)) != _context->s_channelNameToProvider.end())
+                    prov = it->second.lock();
+            }
+            if(prov)
+                ServerChannelRequesterImpl::create(prov, transport, channelName, cid, css);
+        }
     }
 }
 

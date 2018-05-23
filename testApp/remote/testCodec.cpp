@@ -2,11 +2,6 @@
 * testCodec.cpp
 */
 
-#if defined(_WIN32) && !defined(NOMINMAX)
-#define NOMINMAX
-#endif
-
-
 #include <epicsExit.h>
 #include <epicsUnitTest.h>
 #include <testMain.h>

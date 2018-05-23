@@ -497,12 +497,12 @@ const osiSockAddr* ServerContextImpl::getServerInetAddress()
     return NULL;
 }
 
-BlockingUDPTransport::shared_pointer ServerContextImpl::getBroadcastTransport()
+const BlockingUDPTransport::shared_pointer& ServerContextImpl::getBroadcastTransport()
 {
     return _broadcastTransport;
 }
 
-std::vector<ChannelProvider::shared_pointer>& ServerContextImpl::getChannelProviders()
+const std::vector<ChannelProvider::shared_pointer>& ServerContextImpl::getChannelProviders()
 {
     return _channelProviders;
 }

@@ -2,10 +2,6 @@
  * testServer.cpp
  */
 
-#if defined(_WIN32) && !defined(NOMINMAX)
-#define NOMINMAX
-#endif
-
 // disable buggy boost enable_shared_from_this assert code
 #define BOOST_DISABLE_ASSERTS
 
@@ -2515,7 +2511,7 @@ public:
     typedef std::tr1::shared_ptr<MockServerChannelProvider> shared_pointer;
     typedef std::tr1::shared_ptr<const MockServerChannelProvider> const_shared_pointer;
 
-    static string PROVIDER_NAME;
+    static const string PROVIDER_NAME;
 
     MockServerChannelProvider() :
         m_mockChannelFind(),
@@ -2699,7 +2695,7 @@ private:
     epics::auto_ptr<epics::pvData::Thread> m_imgThread;
 };
 
-string MockServerChannelProvider::PROVIDER_NAME = "local";
+const string MockServerChannelProvider::PROVIDER_NAME = "local";
 
 struct TestServer
 {
