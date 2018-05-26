@@ -131,12 +131,6 @@ record(stringin,"DBRstringin") {
 
 record(bo,"DBRbinaryout") {
     field(DESC, "bo")
-    field(OUT, "DBRbi.VAL PP NMS")
-    field(ZNAM,"zero")
-    field(ONAM,"one")
-}
-record(bi,"DBRbinaryin") {
-    field(DESC, "bi")
     field(ZNAM,"zero")
     field(ONAM,"one")
 }
