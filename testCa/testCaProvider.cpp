@@ -26,6 +26,9 @@
 #include <pv/pvIntrospect.h>
 #include <pv/pvData.h>
 
+// DEBUG must be 0 to run under the automated test harness
+#define DEBUG 0
+
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 using namespace epics::pvAccess::ca;
@@ -584,7 +587,7 @@ void TestClient::getDone(
    testOk(pvStructure->getSubField("value")!=NULL,"value not null");
    testOk(pvStructure->getSubField("timeStamp")!=NULL,"timeStamp not null");
    testOk(pvStructure->getSubField("alarm")!=NULL,"alarm not null");
-   std::cout << testChannel->getChannelName() + " TestClient::getDone"
+   if (DEBUG) std::cout << testChannel->getChannelName() + " TestClient::getDone"
              << " bitSet " << *bitSet
              << " pvStructure\n" << pvStructure << "\n";
    waitForGet.signal();
@@ -599,35 +602,38 @@ void TestClient::monitorEvent(
         PVStructure::shared_pointer const & pvStructure,
         BitSet::shared_pointer const & bitSet)
 {
-   std::cout << testChannel->getChannelName() + " TestClient::monitorEvent"
+   if (DEBUG) std::cout << testChannel->getChannelName() + " TestClient::monitorEvent"
              << " bitSet " << *bitSet
              << " pvStructure\n" << pvStructure << "\n";
 }
 
 void TestClient::get()
 {
-cout << "TestClient::get() calling get\n";
+    testDiag("TestClient::get %s",
+        testChannel->getChannelName().c_str());
     testChannelGet->get();
-cout << "TestClient::get() calling waitGet\n";
+   if (DEBUG) cout << "TestClient::get() calling waitGet\n";
     waitGet(5.0);
 }
 
 void TestClient::waitGet(double timeout)
 {
-    if(waitForGet.wait(timeout)) return;
-    throw std::runtime_error(testChannel->getChannelName() + " TestClient::waitGet failed ");
+    testOk(waitForGet.wait(timeout),
+        "waitGet(%s) succeeded", testChannel->getChannelName().c_str());
 }
 
 void TestClient::put(string const & value)
 {
+    testDiag("TestClient::put %s := %s",
+        testChannel->getChannelName().c_str(), value.c_str());
     testChannelPut->put(value);
     waitPut(5.0);
 }
 
 void TestClient::waitPut(double timeout)
 {
-    if(waitForPut.wait(timeout)) return;
-    throw std::runtime_error(testChannel->getChannelName() + " TestClient::waitPut failed ");
+    testOk(waitForPut.wait(timeout),
+        "waitPut(%s) succeeded", testChannel->getChannelName().c_str());
 }
 
 void TestClient::stopEvents()
@@ -686,7 +692,7 @@ MAIN(testCaProvider)
 
     TestIocPtr testIoc(new TestIoc());
     testIoc->start();  
-    testPlan(56);
+    testPlan(84);
     testDiag("===Test caProvider===");
     CAClientFactory::start();
     ChannelProviderRegistry::shared_pointer reg(ChannelProviderRegistry::clients());
