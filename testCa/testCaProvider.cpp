@@ -15,7 +15,8 @@
 #include <testMain.h>
 #include <epicsVersion.h>
 
-#if defined(VERSION_INT) && EPICS_VERSION_INT >= VERSION_INT(3,15,0,1)
+#ifdef EPICS_VERSION_INT
+  #if EPICS_VERSION_INT >= VERSION_INT(3,15,0,1)
     #define USE_DBUNITTEST
     // USE_TYPED_RSET prevents deprecation warnings
     #define USE_TYPED_RSET
@@ -25,8 +26,11 @@
     #include <dbUnitTest.h>
 
     extern "C" int testIoc_registerRecordDeviceDriver(struct dbBase *pbase);
-#else
-    #define EXIT_TESTS 1
+  #endif
+#endif
+
+#ifndef EXIT_TESTS
+  #define EXIT_TESTS 1
 #endif
 
 #include <pv/thread.h>
