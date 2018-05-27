@@ -13,7 +13,21 @@
 
 #include <epicsUnitTest.h>
 #include <testMain.h>
+#include <epicsVersion.h>
 
+    #if defined(VERSION_INT) && EPICS_VERSION_INT >= VERSION_INT(3,15,0,1)
+    #define USE_DBUNITTEST
+    // USE_TYPED_RSET prevents deprecation warnings
+    #define USE_TYPED_RSET
+    #define EXIT_TESTS 0
+    #include <dbAccess.h>
+    #include <errlog.h>
+    #include <dbUnitTest.h>
+
+    extern "C" int testIoc_registerRecordDeviceDriver(struct dbBase *pbase);
+#else
+    #define EXIT_TESTS 1
+#endif
 
 #include <pv/thread.h>
 #include <pv/pvAccess.h>
@@ -651,8 +665,11 @@ public:
     virtual void run();
     static TestIocPtr create();
     void start();
+    void shutdown();
 private:
+#ifndef USE_DBUNITTEST
     std::auto_ptr<epicsThread> thread;
+#endif
 };
 
 TestIocPtr TestIoc::create()
@@ -662,16 +679,30 @@ TestIocPtr TestIoc::create()
 
 void TestIoc::start()
 {
+#ifdef USE_DBUNITTEST
+    testdbPrepare();
+    testdbReadDatabase("testIoc.dbd", NULL, NULL);
+    testIoc_registerRecordDeviceDriver(pdbbase);
+    testdbReadDatabase("testCaProvider.db", NULL, NULL);
+    eltc(0);
+    testIocInitOk();
+    eltc(1);
+#else
      thread =  std::auto_ptr<epicsThread>(new epicsThread(
         *this,
         "testIoc",
         epicsThreadGetStackSize(epicsThreadStackSmall),
         epicsThreadPriorityLow));
     thread->start();  
+#endif
 }
 
 void TestIoc::run()
 {
+#ifndef USE_DBUNITTEST
+    // Base-3.14 doesn't provide the dbUnitTest APIs.
+    // This code only works on workstation targets, it runs the
+    // softIoc from Base as a separate process, using system().
     char * base;
     base = getenv("EPICS_BASE");
     if(base==NULL) throw std::runtime_error("TestIoc::run $EPICS_BASE not defined");
@@ -685,6 +716,15 @@ void TestIoc::run()
         message += "/softIoc -d ../testCaProvider.db not started";
         throw std::runtime_error(message);
     }
+#endif
+}
+
+void TestIoc::shutdown()
+{
+#ifdef USE_DBUNITTEST
+    testIocShutdownOk();
+    testdbCleanup();
+#endif
 }
 
 MAIN(testCaProvider)
@@ -692,12 +732,12 @@ MAIN(testCaProvider)
 
     TestIocPtr testIoc(new TestIoc());
     testIoc->start();  
-    testPlan(84);
+    testPlan(84 + EXIT_TESTS);
     testDiag("===Test caProvider===");
     CAClientFactory::start();
     ChannelProviderRegistry::shared_pointer reg(ChannelProviderRegistry::clients());
-    ChannelProvider::shared_pointer channelProvider(reg->getProvider("ca"));
     try{  
+        ChannelProvider::shared_pointer channelProvider(reg->getProvider("ca"));
         if(!channelProvider) {
             throw std::runtime_error(" provider ca  not registered");
         }
@@ -788,15 +828,18 @@ MAIN(testCaProvider)
         client->put("1");
         client->get();
         client->stopEvents();
+#ifndef USE_DBUNITTEST
         // put to record that makes IOC exit
         channelName = "DBRexit";
         client = TestClient::create(channelName,pvRequest);
         if(!client) throw std::runtime_error(channelName + " client null");
         client->put("1");
         client->stopEvents();
+#endif
     }catch(std::exception& e){
         testFail("caught un-expected exception: %s", e.what());
     }
+    testIoc->shutdown();
     return testDone();;
 }
 
