@@ -709,6 +709,8 @@ void TestIoc::run()
     char * arch;
     arch = getenv("EPICS_HOST_ARCH");
     if(arch==NULL) throw std::runtime_error("TestIoc::run $$EPICS_HOST_ARCH not defined");
+    setenv("EPICS_CA_ADDR_LIST", "localhost", 1);
+    setenv("EPICS_CA_AUTO_ADDR_LIST", "NO", 1);
     if(system("$EPICS_BASE/bin/$EPICS_HOST_ARCH/softIoc -x test -d ../testCaProvider.db")!=0) {
         string message(base);
         message += "/bin/";
