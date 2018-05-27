@@ -16,7 +16,7 @@
 #include <epicsVersion.h>
 
 #ifdef EPICS_VERSION_INT
-  #if EPICS_VERSION_INT >= VERSION_INT(3,15,0,1)
+  #if EPICS_VERSION_INT >= VERSION_INT(3,16,2,0)
     #define USE_DBUNITTEST
     // USE_TYPED_RSET prevents deprecation warnings
     #define USE_TYPED_RSET
@@ -704,8 +704,9 @@ void TestIoc::start()
 void TestIoc::run()
 {
 #ifndef USE_DBUNITTEST
-    // Base-3.14 doesn't provide the dbUnitTest APIs.
-    // This code only works on workstation targets, it runs the
+    // Base-3.14 doesn't provide the dbUnitTest APIs, and the CA
+    // tests with an embedded IOC fail with a Base before 3.16.2.
+    // This version only works on workstation targets, it runs the
     // softIoc from Base as a separate process, using system().
     char * base;
     base = getenv("EPICS_BASE");

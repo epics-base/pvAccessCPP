@@ -12,7 +12,7 @@ TESTPROD_HOST += testCaProvider
 testCaProvider_SRCS  += testCaProvider.cpp
 caTestHarness_SRCS += testCaProvider.cpp
 TESTS += testCaProvider
-ifdef BASE_3_15
+ifdef BASE_3_16
   testCaProvider_SRCS  += testIoc_registerRecordDeviceDriver.cpp
   REGRDDFLAGS = -l
 else
@@ -20,8 +20,8 @@ else
   export EPICS_HOST_ARCH
 endif
 
-ifdef BASE_3_15
-  # Embedded OSes need dbUnitTest, Base-3.15 and higher only
+ifdef BASE_3_16
+  # Embedded OSes need Base-3.16.2 or higher to pass tests
 
   # The test collection is caTestHarness
   caTestHarness_SRCS += pvCaAllTests.c
@@ -41,7 +41,7 @@ TESTSCRIPTS_HOST += $(TESTS:%=%.t)
 
 include $(TOP)/configure/RULES
 
-ifdef BASE_3_15
+ifdef BASE_3_16
   $(COMMON_DIR)/testIoc.dbd: $(EPICS_BASE)/dbd/softIoc.dbd
 	$(CP) $< $@
 endif
