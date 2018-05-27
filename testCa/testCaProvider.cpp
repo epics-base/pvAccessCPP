@@ -13,7 +13,21 @@
 
 #include <epicsUnitTest.h>
 #include <testMain.h>
+#include <epicsVersion.h>
 
+#if defined(VERSION_INT) && EPICS_VERSION_INT >= VERSION_INT(3,15,0,1)
+    #define USE_DBUNITTEST
+    // USE_TYPED_RSET prevents deprecation warnings
+    #define USE_TYPED_RSET
+    #define EXIT_TESTS 0
+    #include <dbAccess.h>
+    #include <errlog.h>
+    #include <dbUnitTest.h>
+
+    extern "C" int testIoc_registerRecordDeviceDriver(struct dbBase *pbase);
+#else
+    #define EXIT_TESTS 1
+#endif
 
 #include <pv/thread.h>
 #include <pv/pvAccess.h>
@@ -25,6 +39,9 @@
 #include <pv/lock.h>
 #include <pv/pvIntrospect.h>
 #include <pv/pvData.h>
+
+// DEBUG must be 0 to run under the automated test harness
+#define DEBUG 0
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
@@ -584,7 +601,7 @@ void TestClient::getDone(
    testOk(pvStructure->getSubField("value")!=NULL,"value not null");
    testOk(pvStructure->getSubField("timeStamp")!=NULL,"timeStamp not null");
    testOk(pvStructure->getSubField("alarm")!=NULL,"alarm not null");
-   std::cout << testChannel->getChannelName() + " TestClient::getDone"
+   if (DEBUG) std::cout << testChannel->getChannelName() + " TestClient::getDone"
              << " bitSet " << *bitSet
              << " pvStructure\n" << pvStructure << "\n";
    waitForGet.signal();
@@ -599,35 +616,38 @@ void TestClient::monitorEvent(
         PVStructure::shared_pointer const & pvStructure,
         BitSet::shared_pointer const & bitSet)
 {
-   std::cout << testChannel->getChannelName() + " TestClient::monitorEvent"
+   if (DEBUG) std::cout << testChannel->getChannelName() + " TestClient::monitorEvent"
              << " bitSet " << *bitSet
              << " pvStructure\n" << pvStructure << "\n";
 }
 
 void TestClient::get()
 {
-cout << "TestClient::get() calling get\n";
+    testDiag("TestClient::get %s",
+        testChannel->getChannelName().c_str());
     testChannelGet->get();
-cout << "TestClient::get() calling waitGet\n";
+   if (DEBUG) cout << "TestClient::get() calling waitGet\n";
     waitGet(5.0);
 }
 
 void TestClient::waitGet(double timeout)
 {
-    if(waitForGet.wait(timeout)) return;
-    throw std::runtime_error(testChannel->getChannelName() + " TestClient::waitGet failed ");
+    testOk(waitForGet.wait(timeout),
+        "waitGet(%s) succeeded", testChannel->getChannelName().c_str());
 }
 
 void TestClient::put(string const & value)
 {
+    testDiag("TestClient::put %s := %s",
+        testChannel->getChannelName().c_str(), value.c_str());
     testChannelPut->put(value);
     waitPut(5.0);
 }
 
 void TestClient::waitPut(double timeout)
 {
-    if(waitForPut.wait(timeout)) return;
-    throw std::runtime_error(testChannel->getChannelName() + " TestClient::waitPut failed ");
+    testOk(waitForPut.wait(timeout),
+        "waitPut(%s) succeeded", testChannel->getChannelName().c_str());
 }
 
 void TestClient::stopEvents()
@@ -645,8 +665,11 @@ public:
     virtual void run();
     static TestIocPtr create();
     void start();
+    void shutdown();
 private:
+#ifndef USE_DBUNITTEST
     std::auto_ptr<epicsThread> thread;
+#endif
 };
 
 TestIocPtr TestIoc::create()
@@ -656,141 +679,116 @@ TestIocPtr TestIoc::create()
 
 void TestIoc::start()
 {
+#ifdef USE_DBUNITTEST
+    testdbPrepare();
+    testdbReadDatabase("testIoc.dbd", NULL, NULL);
+    testIoc_registerRecordDeviceDriver(pdbbase);
+    testdbReadDatabase("testCaProvider.db", NULL, NULL);
+    eltc(0);
+    testIocInitOk();
+    eltc(1);
+#else
      thread =  std::auto_ptr<epicsThread>(new epicsThread(
         *this,
         "testIoc",
         epicsThreadGetStackSize(epicsThreadStackSmall),
         epicsThreadPriorityLow));
     thread->start();  
+#endif
 }
 
 void TestIoc::run()
 {
+#ifndef USE_DBUNITTEST
+    // Base-3.14 doesn't provide the dbUnitTest APIs.
+    // This code only works on workstation targets, it runs the
+    // softIoc from Base as a separate process, using system().
     char * base;
     base = getenv("EPICS_BASE");
     if(base==NULL) throw std::runtime_error("TestIoc::run $EPICS_BASE not defined");
     char * arch;
     arch = getenv("EPICS_HOST_ARCH");
     if(arch==NULL) throw std::runtime_error("TestIoc::run $$EPICS_HOST_ARCH not defined");
-    if(system("$EPICS_BASE/bin/$EPICS_HOST_ARCH/softIoc -d ../testCaProvider.db")!=0) {
+    setenv("EPICS_CA_ADDR_LIST", "localhost", 1);
+    setenv("EPICS_CA_AUTO_ADDR_LIST", "NO", 1);
+    if(system("$EPICS_BASE/bin/$EPICS_HOST_ARCH/softIoc -x test -d ../testCaProvider.db")!=0) {
         string message(base);
         message += "/bin/";
         message += arch;
         message += "/softIoc -d ../testCaProvider.db not started";
         throw std::runtime_error(message);
     }
+#endif
+}
+
+void TestIoc::shutdown()
+{
+#ifdef USE_DBUNITTEST
+    testIocShutdownOk();
+    testdbCleanup();
+#endif
+}
+
+void checkClient(const string &channelName, const string &putValue)
+{
+    string request("value,alarm,timeStamp");
+    PVStructurePtr pvRequest(createRequest(request));
+    TestClientPtr client = TestClient::create(channelName,pvRequest);
+    if (!client)
+        testAbort("NULL client for %s", channelName.c_str());
+    client->put(putValue);
+    client->get();
+    client->stopEvents();
 }
 
 MAIN(testCaProvider)
 {
+    testPlan(84 + EXIT_TESTS);
 
     TestIocPtr testIoc(new TestIoc());
     testIoc->start();  
-    testPlan(56);
+
     testDiag("===Test caProvider===");
     CAClientFactory::start();
     ChannelProviderRegistry::shared_pointer reg(ChannelProviderRegistry::clients());
-    ChannelProvider::shared_pointer channelProvider(reg->getProvider("ca"));
-    try{  
-        if(!channelProvider) {
-            throw std::runtime_error(" provider ca  not registered");
-        }
-        string channelName;
-        string request("value,alarm,timeStamp");
-        PVStructurePtr pvRequest(createRequest(request));
-        TestClientPtr client;
+    try {
+        ChannelProvider::shared_pointer channelProvider(reg->getProvider("ca"));
+        if (!channelProvider)
+            testAbort("Channel provider 'ca' not registered");
 
-        channelName = "DBRlongout";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
-        client->put("5");
-        client->get();
-        client->stopEvents();
-        channelName = "DBRdoubleout";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
-        client->put("1.5");
-        client->get();
-        client->stopEvents();
-        channelName = "DBRstringout";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
-        client->put("test");
-        client->get();
-        client->stopEvents();
-        channelName = "DBRbyteArray";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
-        client->put("1 2 3");
-        client->get();
-        client->stopEvents();
-        channelName = "DBRshortArray";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
-        client->put("1 2 3");
-        client->get();
-        client->stopEvents();
-        channelName = "DBRintArray";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
-        client->put("1 2 3");
-        client->get();
-        channelName = "DBRubyteArray";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
-        client->put("1 2 3");
-        client->get();
-        client->stopEvents();
-        channelName = "DBRushortArray";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
-        client->put("1 2 3");
-        client->get();
-        client->stopEvents();
-        channelName = "DBRuintArray";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
-        client->put("1 2 3");
-        client->get();
-        channelName = "DBRfloatArray";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
-        client->put("1 2 3");
-        client->get();
-        client->stopEvents();
-        channelName = "DBRdoubleArray";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
-        client->put("1 2 3");
-        client->get();
-        client->stopEvents();
-        channelName = "DBRstringArray";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
-        client->put("aa bb cc");
-        client->get();
-        client->stopEvents();
-        channelName = "DBRmbbout";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
-        client->put("2");
-        client->get();
-        client->stopEvents();
-        channelName =  "DBRbinaryout";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
-        client->put("1");
-        client->get();
-        client->stopEvents();
+        checkClient("DBRlongout", "5");
+        checkClient("DBRdoubleout", "1.5");
+        checkClient("DBRstringout", "test");
+        checkClient("DBRbyteArray", "1 2 3");
+        checkClient("DBRshortArray", "1 2 3");
+        checkClient("DBRintArray", "1 2 3");
+        checkClient("DBRubyteArray", "1 2 3");
+        checkClient("DBRushortArray", "1 2 3");
+        checkClient("DBRuintArray", "1 2 3");
+        checkClient("DBRfloatArray", "1 2 3");
+        checkClient("DBRdoubleArray", "1 2 3");
+        checkClient("DBRstringArray", "aa bb cc");
+        checkClient("DBRmbbout", "2");
+        checkClient("DBRbinaryout", "1");
+
+#ifndef USE_DBUNITTEST
         // put to record that makes IOC exit
-        channelName = "DBRexit";
-        client = TestClient::create(channelName,pvRequest);
-        if(!client) throw std::runtime_error(channelName + " client null");
+        string channelName = "test:exit";
+        string request("value");
+        PVStructurePtr pvRequest(createRequest(request));
+        TestClientPtr client = TestClient::create(channelName,pvRequest);
+        if (!client)
+            testAbort("NULL client for %s", channelName.c_str());
         client->put("1");
         client->stopEvents();
-    }catch(std::exception& e){
-        testFail("caught un-expected exception: %s", e.what());
+#endif
     }
+    catch (std::exception& e) {
+        testAbort("caught un-expected exception: %s", e.what());
+    }
+
+    testIoc->shutdown();
+
     return testDone();;
 }
 
