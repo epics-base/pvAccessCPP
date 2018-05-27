@@ -39,12 +39,6 @@ record(calc, "DBRcalcin")
     field(LLSV, "MAJOR")
 }
 
-record(sub, "DBRexit")
-{
-    field(DESC, "exit")
-    field(SNAM, "exit")
-}
-
 record(longin,"DBRlongin") {
     field(DESC, "longin")
     field(EGU, "volts")

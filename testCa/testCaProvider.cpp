@@ -709,7 +709,7 @@ void TestIoc::run()
     char * arch;
     arch = getenv("EPICS_HOST_ARCH");
     if(arch==NULL) throw std::runtime_error("TestIoc::run $$EPICS_HOST_ARCH not defined");
-    if(system("$EPICS_BASE/bin/$EPICS_HOST_ARCH/softIoc -d ../testCaProvider.db")!=0) {
+    if(system("$EPICS_BASE/bin/$EPICS_HOST_ARCH/softIoc -x test -d ../testCaProvider.db")!=0) {
         string message(base);
         message += "/bin/";
         message += arch;
@@ -830,7 +830,7 @@ MAIN(testCaProvider)
         client->stopEvents();
 #ifndef USE_DBUNITTEST
         // put to record that makes IOC exit
-        channelName = "DBRexit";
+        channelName = "test:exit";
         client = TestClient::create(channelName,pvRequest);
         if(!client) throw std::runtime_error(channelName + " client null");
         client->put("1");
