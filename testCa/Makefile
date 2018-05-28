@@ -15,10 +15,10 @@ TESTS += testCaProvider
 ifdef BASE_3_16
   testCaProvider_SRCS  += testIoc_registerRecordDeviceDriver.cpp
   REGRDDFLAGS = -l
-else
-  # testCaProvider needs EPICS_HOST_ARCH set in the environment
-  export EPICS_HOST_ARCH
 endif
+
+# Ensure EPICS_HOST_ARCH is set in the environment
+export EPICS_HOST_ARCH
 
 ifdef BASE_3_16
   # Embedded OSes need Base-3.16.2 or higher to pass tests
