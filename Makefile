@@ -22,7 +22,7 @@ testApp_DEPEND_DIRS = src
 
 
 DIRS += testCa
-testCa_DEPEND_DIRS = src
+testCa_DEPEND_DIRS = src src/ca
 
 
 DIRS += examples

@@ -15,7 +15,8 @@
 #include <testMain.h>
 #include <epicsVersion.h>
 
-#if defined(VERSION_INT) && EPICS_VERSION_INT >= VERSION_INT(3,15,0,1)
+#ifdef EPICS_VERSION_INT
+  #if EPICS_VERSION_INT >= VERSION_INT(3,16,2,0)
     #define USE_DBUNITTEST
     // USE_TYPED_RSET prevents deprecation warnings
     #define USE_TYPED_RSET
@@ -25,8 +26,11 @@
     #include <dbUnitTest.h>
 
     extern "C" int testIoc_registerRecordDeviceDriver(struct dbBase *pbase);
-#else
-    #define EXIT_TESTS 1
+  #endif
+#endif
+
+#ifndef EXIT_TESTS
+  #define EXIT_TESTS 1
 #endif
 
 #include <pv/thread.h>
@@ -669,6 +673,8 @@ public:
 private:
 #ifndef USE_DBUNITTEST
     std::auto_ptr<epicsThread> thread;
+    const char *base;
+    const char *arch;
 #endif
 };
 
@@ -688,7 +694,16 @@ void TestIoc::start()
     testIocInitOk();
     eltc(1);
 #else
-     thread =  std::auto_ptr<epicsThread>(new epicsThread(
+    base = getenv("EPICS_BASE");
+    if (!base)
+        testAbort("Environment variable $EPICS_BASE not defined");
+    arch = getenv("EPICS_HOST_ARCH");
+    if (!arch)
+        testAbort("Environment variable $EPICS_HOST_ARCH not defined");
+    setenv("EPICS_CA_ADDR_LIST", "localhost", 1);
+    setenv("EPICS_CA_AUTO_ADDR_LIST", "NO", 1);
+
+    thread =  std::auto_ptr<epicsThread>(new epicsThread(
         *this,
         "testIoc",
         epicsThreadGetStackSize(epicsThreadStackSmall),
@@ -700,17 +715,10 @@ void TestIoc::start()
 void TestIoc::run()
 {
 #ifndef USE_DBUNITTEST
-    // Base-3.14 doesn't provide the dbUnitTest APIs.
-    // This code only works on workstation targets, it runs the
+    // Base-3.14 doesn't provide the dbUnitTest APIs, and the CA
+    // tests with an embedded IOC fail with a Base before 3.16.2.
+    // This version only works on workstation targets, it runs the
     // softIoc from Base as a separate process, using system().
-    char * base;
-    base = getenv("EPICS_BASE");
-    if(base==NULL) throw std::runtime_error("TestIoc::run $EPICS_BASE not defined");
-    char * arch;
-    arch = getenv("EPICS_HOST_ARCH");
-    if(arch==NULL) throw std::runtime_error("TestIoc::run $$EPICS_HOST_ARCH not defined");
-    setenv("EPICS_CA_ADDR_LIST", "localhost", 1);
-    setenv("EPICS_CA_AUTO_ADDR_LIST", "NO", 1);
     if(system("$EPICS_BASE/bin/$EPICS_HOST_ARCH/softIoc -x test -d ../testCaProvider.db")!=0) {
         string message(base);
         message += "/bin/";
