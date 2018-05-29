@@ -9,21 +9,21 @@ USR_CPPFLAGS += -I$(TOP)/src/ca
 PROD_LIBS += pvAccess pvAccessCA pvData $(EPICS_BASE_IOC_LIBS)
 
 TESTPROD_HOST += testCaProvider
-testCaProvider_SRCS  += testCaProvider.cpp
-caTestHarness_SRCS += testCaProvider.cpp
+testCaProvider_SRCS += testCaProvider.cpp
 TESTS += testCaProvider
 ifdef BASE_3_16
-  testCaProvider_SRCS  += testIoc_registerRecordDeviceDriver.cpp
+  testCaProvider_SRCS += testIoc_registerRecordDeviceDriver.cpp
   REGRDDFLAGS = -l
-else
-  # testCaProvider needs EPICS_HOST_ARCH set in the environment
-  export EPICS_HOST_ARCH
 endif
+caTestHarness_SRCS += $(testCaProvider_SRCS)
+
+# Ensure EPICS_HOST_ARCH is set in the environment
+export EPICS_HOST_ARCH
 
 ifdef BASE_3_16
   # Embedded OSes need Base-3.16.2 or higher to pass tests
 
-  # The test collection is caTestHarness
+  # Code that runs all tests in the collection
   caTestHarness_SRCS += pvCaAllTests.c
 
   # Build for vxWorks
