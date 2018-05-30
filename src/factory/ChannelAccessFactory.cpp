@@ -122,6 +122,42 @@ ChannelProviderFactory::shared_pointer ChannelProviderRegistry::add(const std::s
     return add(F, replace) ? F : ChannelProviderFactory::shared_pointer();
 }
 
+namespace {
+//! A ChannelProviderFactory based around a single pre-created ChannelProvider instance.
+//! Only a weak ref to this instance is kept, so the instance must be kept active
+//! through some external means
+struct InstanceChannelProviderFactory : public ChannelProviderFactory
+{
+    InstanceChannelProviderFactory(const std::tr1::shared_ptr<ChannelProvider>& provider)
+        :name(provider->getProviderName())
+        ,provider(provider)
+    {}
+    virtual ~InstanceChannelProviderFactory() {}
+    virtual std::string getFactoryName() OVERRIDE FINAL
+    {
+        return name;
+    }
+    virtual ChannelProvider::shared_pointer sharedInstance() OVERRIDE FINAL
+    {
+        return provider.lock();
+    }
+    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<Configuration>& conf) OVERRIDE FINAL
+    {
+        return provider.lock();
+    }
+private:
+    const std::string name;
+    const ChannelProvider::weak_pointer provider;
+};
+}//namespace
+
+ChannelProviderFactory::shared_pointer ChannelProviderRegistry::addSingleton(const ChannelProvider::shared_pointer& provider,
+                                                                             bool replace)
+{
+    std::tr1::shared_ptr<InstanceChannelProviderFactory> F(new InstanceChannelProviderFactory(provider));
+    return add(F, replace) ? F : std::tr1::shared_ptr<InstanceChannelProviderFactory>();
+}
+
 ChannelProviderFactory::shared_pointer ChannelProviderRegistry::remove(const std::string& name)
 {
     Lock G(mutex);

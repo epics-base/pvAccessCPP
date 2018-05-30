@@ -1430,6 +1430,13 @@ public:
         return add(fact, replace) ? fact : typename Factory::shared_pointer();
     }
 
+    //! Add a pre-created Provider instance.
+    //! Only a weak ref to this instance is kept, so the instance must be kept active
+    //! through some external means
+    //! @since 6.1.0
+    ChannelProviderFactory::shared_pointer addSingleton(const ChannelProvider::shared_pointer& provider,
+                                                        bool replace=true);
+
     //! Attempt to remove a factory with the given name.  Return Factory which was removed, or NULL if not found.
     ChannelProviderFactory::shared_pointer remove(const std::string& name);
 
