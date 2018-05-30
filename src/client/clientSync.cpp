@@ -295,6 +295,7 @@ struct MonitorSync::SImpl : public ClientChannel::MonitorCallback
     SImpl(epicsEvent *event)
         :ourevent(!event)
         ,event(ourevent ? new epicsEvent : event)
+        ,hadevent(false)
     {}
     virtual ~SImpl()
     {
