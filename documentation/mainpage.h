@@ -8,6 +8,7 @@
 - @ref pvarelease_notes
 - API documentation
  - @ref pvac page
+ - @ref pvas page
  - @ref providers page
  - @ref pvtools
 
@@ -21,7 +22,7 @@
  - @ref examples_getme
  - @ref examples_putme
  - @ref examples_monitorme
-
+ - @ref examples_mailbox
 */
 
 #endif /* MAINPAGE_H */

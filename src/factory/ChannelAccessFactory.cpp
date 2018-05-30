@@ -29,6 +29,10 @@
 using namespace epics::pvData;
 using std::string;
 
+namespace pvas {
+void registerRefTrackServer();
+}
+
 namespace epics {
 namespace pvAccess {
 
@@ -220,6 +224,7 @@ void providerRegInit(void*)
     registerRefCounter("ChannelRequest (ABC)", &ChannelRequest::num_instances);
     registerRefCounter("ResponseHandler (ABC)", &ResponseHandler::num_instances);
     registerRefCounter("MonitorFIFO", &MonitorFIFO::num_instances);
+    pvas::registerRefTrackServer();
 }
 
 ChannelProviderRegistry::shared_pointer ChannelProviderRegistry::clients()

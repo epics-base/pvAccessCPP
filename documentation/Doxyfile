@@ -768,6 +768,7 @@ WARN_LOGFILE           =
 INPUT                  = ../src/client/pv \
                          ../src/client/pva \
                          ../src/server/pv \
+                         ../src/server/pva \
                          ../src/rpcClient/pv \
                          ../src/rpcService/pv \
                          ../src/utils/pv \
