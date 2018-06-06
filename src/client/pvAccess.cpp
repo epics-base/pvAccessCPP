@@ -430,11 +430,33 @@ ChannelRequester::shared_pointer DefaultChannelRequester::build()
     return ret;
 }
 
-
 MonitorElement::MonitorElement(epics::pvData::PVStructurePtr const & pvStructurePtr)
     : pvStructurePtr(pvStructurePtr)
     ,changedBitSet(epics::pvData::BitSet::create(static_cast<epics::pvData::uint32>(pvStructurePtr->getNumberFields())))
     ,overrunBitSet(epics::pvData::BitSet::create(static_cast<epics::pvData::uint32>(pvStructurePtr->getNumberFields())))
 {}
+
+}} // namespace epics::pvAccess
+
+namespace {
+
+struct DummyChannelFind : public epics::pvAccess::ChannelFind {
+    epics::pvAccess::ChannelProvider::weak_pointer provider;
+    DummyChannelFind(const epics::pvAccess::ChannelProvider::shared_pointer& provider) : provider(provider) {}
+    virtual ~DummyChannelFind() {}
+    virtual void destroy() OVERRIDE FINAL {}
+    virtual epics::pvAccess::ChannelProvider::shared_pointer getChannelProvider() OVERRIDE FINAL { return provider.lock(); }
+    virtual void cancel() OVERRIDE FINAL {}
+};
+
+}
+
+namespace epics {namespace pvAccess {
+
+ChannelFind::shared_pointer ChannelFind::buildDummy(const ChannelProvider::shared_pointer& provider)
+{
+    std::tr1::shared_ptr<DummyChannelFind> ret(new DummyChannelFind(provider));
+    return ret;
+}
 
 }} // namespace epics::pvAccess

@@ -385,6 +385,10 @@ public:
 
     virtual std::tr1::shared_ptr<ChannelProvider> getChannelProvider() = 0;
     virtual void cancel() = 0;
+
+    //! Allocate a no-op ChannelFind.  This is sufficient for most, if not all, ChannelProvider implementations.
+    //! Holds only a weak_ptr<ChannelProvider>
+    static ChannelFind::shared_pointer buildDummy(const std::tr1::shared_ptr<ChannelProvider>& provider);
 };
 
 /**
