@@ -35,12 +35,14 @@ typedef std::tr1::shared_ptr<ValueAlarmDbd> ValueAlarmDbdPtr;
 
 struct CaAlarm
 {
+    CaAlarm() : status(0), severity(0) {}
     dbr_short_t	status;
     dbr_short_t	severity;
 };
 
 struct CaDisplay
 {
+    CaDisplay() : lower_disp_limit(0),upper_disp_limit(0) {}
     double      lower_disp_limit;
     double      upper_disp_limit;
     std::string units;
@@ -49,12 +51,15 @@ struct CaDisplay
 
 struct CaControl
 {
+    CaControl() : upper_ctrl_limit(0),lower_ctrl_limit(0) {}
     double upper_ctrl_limit;
     double lower_ctrl_limit;
 };
 
 struct CaValueAlarm
 {
+    CaValueAlarm() : upper_alarm_limit(0),upper_warning_limit(0),lower_warning_limit(0),lower_alarm_limit(0)
+    {}
     double upper_alarm_limit;	
     double upper_warning_limit;
     double lower_warning_limit;

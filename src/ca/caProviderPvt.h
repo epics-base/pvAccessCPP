@@ -17,7 +17,10 @@ namespace epics {
 namespace pvAccess {
 namespace ca {
 
-#define DEBUG_LEVEL 0
+#define DEBUG_LEVEL 1
+
+class StopMonitorThread;
+typedef std::tr1::shared_ptr<StopMonitorThread> StopMonitorThreadPtr;
 
 class CAChannel;
 typedef std::tr1::shared_ptr<CAChannel> CAChannelPtr;
@@ -66,22 +69,18 @@ public:
     virtual void flush();
     virtual void poll();
 
-    void addChannel(const CAChannelPtr & channel);
-
-    /* ---------------------------------------------------------------- */
-
     void attachContext();
-
+    void addChannel(const CAChannelPtr & channel);
 private:
+    
     virtual void destroy() EPICS_DEPRECATED {}
     void initialize();
     ca_client_context* current_context;
     epics::pvData::Mutex channelListMutex;
     std::vector<CAChannelWPtr> caChannelList;
+    StopMonitorThreadPtr stopMonitorThread;
 };
 
-}
-}
-}
+}}}
 
 #endif  /* CAPROVIDERPVT_H */
