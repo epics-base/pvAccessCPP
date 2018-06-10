@@ -109,7 +109,7 @@ class epicsShareClass Monitor : public virtual Destroyable{
     virtual void reportRemoteQueueStatus(epics::pvData::int32 freeElements) {}
 };
 
-/** A smart pointer to extract a MonitorElement from a Monitor queue
+/** A (single ownership) smart pointer to extract a MonitorElement from a Monitor queue
  *
  * To fetch a single element
  @code
@@ -147,6 +147,23 @@ public:
     Ref(Monitor& M) :mon(&M), elem(mon->poll()) {}
     Ref(const Monitor::shared_pointer& M) :mon(M.get()), elem(mon->poll()) {}
     ~Ref() { reset(); }
+#if __cplusplus>=201103L
+    Ref(Ref&& o) :mon(o.mon), elem(o.elem) {
+        o.mon = 0;
+        o.elem.reset();
+    }
+#endif
+    void swap(Ref& o) {
+        std::swap(mon , o.mon);
+        std::swap(elem, o.elem);
+    }
+    //! analogous to auto_ptr<>::release() but given a different name
+    //! to avoid being confused with Monitor::release()
+    MonitorElementPtr letGo() {
+        MonitorElementPtr ret;
+        elem.swap(ret);
+        return ret;
+    }
     void attach(Monitor& M) {
         reset();
         mon = &M;
@@ -182,6 +199,8 @@ public:
 
     inline bool operator==(const Ref& o) const { return elem==o.elem; }
     inline bool operator!=(const Ref& o) const { return !(*this==o); }
+
+    EPICS_NOT_COPYABLE(Ref)
 };
 
 #if __cplusplus>=201103L

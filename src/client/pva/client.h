@@ -475,6 +475,8 @@ class epicsShareClass ClientProvider
     friend epicsShareFunc ::std::ostream& operator<<(::std::ostream& strm, const ClientProvider& op);
 public:
 
+    //! Construct a null provider.  All methods throw.  May later be assigned from a valid ClientProvider
+    ClientProvider() {}
     /** Use named provider.
      *
      * @param providerName ChannelProvider name, may be prefixed with "clients:" or "servers:" to query

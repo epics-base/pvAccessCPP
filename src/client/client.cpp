@@ -282,6 +282,7 @@ ClientProvider::~ClientProvider() {}
 std::string
 ClientProvider::name() const
 {
+    if(!impl) throw std::logic_error("Dead Provider");
     return impl->provider->getProviderName();
 }
 
@@ -289,6 +290,7 @@ ClientChannel
 ClientProvider::connect(const std::string& name,
                             const ClientChannel::Options& conf)
 {
+    if(!impl) throw std::logic_error("Dead Provider");
     Guard G(impl->mutex);
     Impl::channels_t::key_type K(name, conf);
     Impl::channels_t::iterator it(impl->channels.find(K));
@@ -309,6 +311,7 @@ ClientProvider::connect(const std::string& name,
 bool ClientProvider::disconnect(const std::string& name,
                                     const ClientChannel::Options& conf)
 {
+    if(!impl) throw std::logic_error("Dead Provider");
     Guard G(impl->mutex);
 
     Impl::channels_t::iterator it(impl->channels.find(std::make_pair(name, conf)));
@@ -320,6 +323,7 @@ bool ClientProvider::disconnect(const std::string& name,
 
 void ClientProvider::disconnect()
 {
+    if(!impl) throw std::logic_error("Dead Provider");
     Guard G(impl->mutex);
     impl->channels.clear();
 }

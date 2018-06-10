@@ -23,6 +23,9 @@ CHECK_RELEASE = YES
 -include $(TOP)/../CONFIG_SITE.local
 -include $(TOP)/configure/CONFIG_SITE.local
 
+# MSVC - skip defining min()/max() macros
+USR_CPPFLAGS_WIN32 += -DNOMINMAX
+
 ifdef WITH_COVERAGE
 USR_CPPFLAGS += --coverage
 USR_LDFLAGS += --coverage
