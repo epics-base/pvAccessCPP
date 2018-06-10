@@ -137,7 +137,9 @@ void CAChannel::activate(short priority)
 CAChannel::~CAChannel()
 {
     if(DEBUG_LEVEL>0) {
-        cout << "CAChannel::~CAChannel() " << channelName << endl;
+        cout << "CAChannel::~CAChannel() " << channelName 
+             << " channelCreated " << (channelCreated ? "true" : "false")
+             << endl;
     }
     {
         Lock lock(requestsMutex);
@@ -725,7 +727,8 @@ CAChannelMonitor::~CAChannelMonitor()
             << endl;
     }
     if(isStarted)  stop();
-    stopMonitorThread->waitForNoEvents();
+    stopMonitorThread->addNoEventsCallback(&waitForNoEvents);
+    waitForNoEvents.wait();
 }
 
 void CAChannelMonitor::activate()
@@ -800,6 +803,7 @@ epics::pvData::Status CAChannelMonitor::start()
     }
     channel->attachContext();
     monitorQueue->start();
+    isStarted = true;
     int result = ca_create_subscription(dbdToPv->getRequestType(),
          0,
          channel->getChannelID(), DBE_VALUE,
@@ -807,7 +811,6 @@ epics::pvData::Status CAChannelMonitor::start()
          &eventID);
     if (result == ECA_NORMAL)
     {
-        isStarted = true;
         result = ca_flush_io();
     }
     if (result == ECA_NORMAL) return status;

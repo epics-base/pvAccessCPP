@@ -34,7 +34,6 @@ StopMonitorThreadPtr StopMonitorThread::get()
 StopMonitorThread::StopMonitorThread()
 : isStop(false),
   isAttachContext(false),
-  isWaitForNoEvents(false),
   current_context(NULL)
 {
 }
@@ -74,26 +73,18 @@ void StopMonitorThread::stop()
 
 void StopMonitorThread::callStop(evid pevid)
 {
-    {
-        Lock xx(mutex);
-        evidQueue.push(&(*pevid));
-    }
+    Lock xx(mutex);
+    evidQueue.push(&(*pevid));
     waitForCommand.signal();
 }
 
-void StopMonitorThread::waitForNoEvents()
+void StopMonitorThread::addNoEventsCallback(Event * event)
 {
-    while(true)
-    {
-        {
-            Lock xx(mutex);
-            if(evidQueue.size()==0) return;
-            isWaitForNoEvents = true;
-        }
-        waitForCommand.signal();
-        noMoreEvents.wait();
-    }
+    Lock xx(mutex);
+    noEventsCallbackQueue.push(event);
+    waitForCommand.signal(); 
 }
+
 
 void StopMonitorThread::run()
 {
@@ -112,7 +103,7 @@ void StopMonitorThread::run()
              isAttachContext = false;
          }
          if(evidQueue.size()>0)
-         {   
+         {
              while(!evidQueue.empty())
              {
                  evid pvid = evidQueue.front();
@@ -125,10 +116,14 @@ void StopMonitorThread::run()
                  }
              }
          }
-         if(isWaitForNoEvents)
+         if(noEventsCallbackQueue.size()>0)
          {
-              isWaitForNoEvents = false;
-              noMoreEvents.signal();
+             while(!noEventsCallbackQueue.empty())
+             {
+                  Event * event = noEventsCallbackQueue.front();
+                  noEventsCallbackQueue.pop();
+                  event->signal();
+             }
          }
          if(isStop) {
              waitForStop.signal();

@@ -20,8 +20,10 @@ namespace epics {
 namespace pvAccess {
 namespace ca {
 
+
 class StopMonitorThread;
 typedef std::tr1::shared_ptr<StopMonitorThread> StopMonitorThreadPtr;
+
 
 class StopMonitorThread :
      public epicsThreadRunable
@@ -34,7 +36,7 @@ public:
     static StopMonitorThreadPtr get();
     void callStop(evid pevid);
     void attachContext(ca_client_context* current_context);
-    void waitForNoEvents();
+    void addNoEventsCallback(epics::pvData::Event * event);
 private:
     StopMonitorThread();
 
@@ -42,11 +44,10 @@ private:
     epics::pvData::Mutex mutex;
     epics::pvData::Event waitForCommand;
     epics::pvData::Event waitForStop;
-    epics::pvData::Event noMoreEvents;
     std::queue<evid> evidQueue;
+    std::queue<epics::pvData::Event *> noEventsCallbackQueue;
     bool isStop;
     bool isAttachContext;
-    bool isWaitForNoEvents;
     ca_client_context* current_context;
 };
 

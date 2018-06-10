@@ -219,6 +219,7 @@ private:
     StopMonitorThreadPtr stopMonitorThread;
 
     DbdToPvPtr dbdToPv;
+    epics::pvData::Event waitForNoEvents;
     epics::pvData::PVStructure::shared_pointer pvStructure;
     epics::pvData::MonitorElementPtr activeElement;
     evid eventID;

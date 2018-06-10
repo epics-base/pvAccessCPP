@@ -17,7 +17,7 @@ namespace epics {
 namespace pvAccess {
 namespace ca {
 
-#define DEBUG_LEVEL 1
+#define DEBUG_LEVEL 0
 
 class StopMonitorThread;
 typedef std::tr1::shared_ptr<StopMonitorThread> StopMonitorThreadPtr;
