@@ -15,7 +15,7 @@
 #include <pv/pvAccess.h>
 #include <pv/reftrack.h>
 
-#include "stopMonitorThread.h"
+#include "monitorEventThread.h"
 
 #define epicsExportSharedSymbols
 #include <pv/caProvider.h>
@@ -43,7 +43,7 @@ CAChannelProvider::CAChannelProvider()
 
 CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
     :  current_context(0),
-       stopMonitorThread(StopMonitorThread::get())
+       monitorEventThread(MonitorEventThread::get())
 {
     if(DEBUG_LEVEL>0) {
           std::cout<< "CAChannelProvider::CAChannelProvider\n";
@@ -77,11 +77,12 @@ CAChannelProvider::~CAChannelProvider()
        channelQ.front()->disconnectChannel();
        channelQ.pop();
     }
-    stopMonitorThread->stop();
+    monitorEventThread->stop();
     if(DEBUG_LEVEL>0) {
         std::cout << "CAChannelProvider::~CAChannelProvider() calling ca_context_destroy\n";
     }
     ca_context_destroy();
+std::cout << "CAChannelProvider::~CAChannelProvider() returning\n";
 }
 
 std::string CAChannelProvider::getProviderName()
@@ -187,7 +188,6 @@ void CAChannelProvider::attachContext()
 void CAChannelProvider::initialize()
 {
     if(DEBUG_LEVEL>0) std::cout << "CAChannelProvider::initialize()\n";
-    StopMonitorThreadPtr thread(StopMonitorThread::get());
     int result = ca_context_create(ca_enable_preemptive_callback);
     if (result != ECA_NORMAL) {
         std::string mess("CAChannelProvider::initialize error calling ca_context_create ");
@@ -195,7 +195,11 @@ void CAChannelProvider::initialize()
         throw std::runtime_error(mess);
     }
     current_context = ca_current_context();
-    thread->attachContext(current_context);
+}
+
+ca_client_context * CAChannelProvider::get_ca_client_context()
+{
+    return current_context;
 }
 
 void CAClientFactory::start()
@@ -218,13 +222,21 @@ void CAClientFactory::start()
     }
 }
 
+ca_client_context * CAClientFactory::get_ca_client_context()
+{
+   if(DEBUG_LEVEL>0) std::cout << "CAClientFactory::get_ca_client_context\n";
+   ChannelProvider::shared_pointer channelProvider(
+         ChannelProviderRegistry::clients()->getProvider("ca"));
+   if(!channelProvider) throw  std::runtime_error("CAClientFactory::start() was not called");
+   CAChannelProviderPtr cacChannelProvider
+       = std::tr1::static_pointer_cast<CAChannelProvider>(channelProvider);
+   return cacChannelProvider->get_ca_client_context();
+}
+
 void CAClientFactory::stop()
 {
     // unregister now done with exit hook
 }
 
-
-}
-}
-}
+}}}
 

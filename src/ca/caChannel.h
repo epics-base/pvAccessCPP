@@ -23,8 +23,12 @@ namespace epics {
 namespace pvAccess {
 namespace ca {
 
-class StopMonitorThread;
-typedef std::tr1::shared_ptr<StopMonitorThread> StopMonitorThreadPtr;
+class NotifyRequester;
+typedef std::tr1::shared_ptr<NotifyRequester> NotifyRequesterPtr;
+
+class MonitorEventThread;
+typedef std::tr1::shared_ptr<MonitorEventThread> MonitorEventThreadPtr;
+
 
 class CAChannelGetField;
 typedef std::tr1::shared_ptr<CAChannelGetField> CAChannelGetFieldPtr;
@@ -96,6 +100,7 @@ private:
               CAChannelProvider::shared_pointer const & channelProvider,
               ChannelRequester::shared_pointer const & channelRequester);
     void activate(short priority);
+    void addMonitor(CAChannelMonitorPtr const & monitor);
 
     std::string channelName;
     CAChannelProviderWPtr channelProvider;
@@ -108,6 +113,7 @@ private:
     std::queue<CAChannelPutPtr> putQueue;
     std::queue<CAChannelGetPtr> getQueue;
     std::queue<CAChannelMonitorPtr> monitorQueue;
+    std::vector<CAChannelMonitorWPtr> monitorlist;
 };
 
 
@@ -207,6 +213,7 @@ public:
     virtual void cancel();
     virtual std::string getRequesterName();
     void activate();
+    void notifyClient();
 private:
     virtual void destroy() {}
     CAChannelMonitor(CAChannel::shared_pointer const & _channel,
@@ -216,13 +223,15 @@ private:
     MonitorRequester::weak_pointer monitorRequester;
     const epics::pvData::PVStructure::shared_pointer pvRequest;
     bool isStarted;
-    StopMonitorThreadPtr stopMonitorThread;
+    NotifyRequesterPtr notifyRequester;
+    MonitorEventThreadPtr monitorEventThread;
+    evid pevid;
 
     DbdToPvPtr dbdToPv;
-    epics::pvData::Event waitForNoEvents;
+    epics::pvData::Mutex mutex;
     epics::pvData::PVStructure::shared_pointer pvStructure;
     epics::pvData::MonitorElementPtr activeElement;
-    evid eventID;
+    
     CACMonitorQueuePtr monitorQueue;
 };
 

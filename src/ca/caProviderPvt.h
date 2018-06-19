@@ -19,8 +19,9 @@ namespace ca {
 
 #define DEBUG_LEVEL 0
 
-class StopMonitorThread;
-typedef std::tr1::shared_ptr<StopMonitorThread> StopMonitorThreadPtr;
+class MonitorEventThread;
+typedef std::tr1::shared_ptr<MonitorEventThread> MonitorEventThreadPtr;
+
 
 class CAChannel;
 typedef std::tr1::shared_ptr<CAChannel> CAChannelPtr;
@@ -71,6 +72,7 @@ public:
 
     void attachContext();
     void addChannel(const CAChannelPtr & channel);
+    ca_client_context* get_ca_client_context();
 private:
     
     virtual void destroy() EPICS_DEPRECATED {}
@@ -78,7 +80,7 @@ private:
     ca_client_context* current_context;
     epics::pvData::Mutex channelListMutex;
     std::vector<CAChannelWPtr> caChannelList;
-    StopMonitorThreadPtr stopMonitorThread;
+    MonitorEventThreadPtr monitorEventThread;
 };
 
 }}}

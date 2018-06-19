@@ -77,7 +77,10 @@ DbdToPv::DbdToPv(IOType ioType)
    caValueType(-1),
    caRequestType(-1),
    maxElements(0)
-{}
+{
+   caTimeStamp.secPastEpoch = 0;
+   caTimeStamp.nsec = 0;
+}
 
 static ScalarType dbr2ST[] =
 {
