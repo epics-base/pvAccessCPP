@@ -27,33 +27,34 @@ PVStructure::shared_pointer SerializationHelper::deserializePVRequest(ByteBuffer
     return deserializeStructureFull(buffer, control);
 }
 
-PVStructure::shared_pointer SerializationHelper::deserializeStructureAndCreatePVStructure(ByteBuffer* buffer, DeserializableControl* control)
-{
-    return deserializeStructureAndCreatePVStructure(buffer, control, PVStructure::shared_pointer());
-}
-
 PVStructure::shared_pointer SerializationHelper::deserializeStructureAndCreatePVStructure(ByteBuffer* buffer, DeserializableControl* control, PVStructure::shared_pointer const & existingStructure)
 {
     FieldConstPtr field = control->cachedDeserialize(buffer);
-    if (field.get() == 0)
+    if (!field)
         return PVStructure::shared_pointer();
 
-    if (existingStructure.get() != 0 && *(field.get()) == *(existingStructure->getField()))
+    if (existingStructure && *field == *existingStructure->getField())
         return existingStructure;
-    else
+    else if(field->getType()==structure)
         return _pvDataCreate->createPVStructure(std::tr1::static_pointer_cast<const Structure>(field));
+    else
+        throw std::runtime_error("deserializeStructureAndCreatePVStructure expects a Structure");
 }
 
 PVStructure::shared_pointer SerializationHelper::deserializeStructureFull(ByteBuffer* buffer, DeserializableControl* control)
 {
-    return std::tr1::static_pointer_cast<PVStructure>(deserializeFull(buffer, control));
+    PVField::shared_pointer ret(deserializeFull(buffer, control));
+    if(!ret) return PVStructure::shared_pointer();
+    else if(ret->getField()->getType()!=structure)
+        throw std::runtime_error("deserializeStructureFull expects a Structure");
+    return std::tr1::static_pointer_cast<PVStructure>(ret);
 }
 
 PVField::shared_pointer SerializationHelper::deserializeFull(ByteBuffer* buffer, DeserializableControl* control)
 {
     PVField::shared_pointer pvField;
     FieldConstPtr field = control->cachedDeserialize(buffer);
-    if (field.get() != 0)
+    if (field)
     {
         pvField = _pvDataCreate->createPVField(field);
         pvField->deserialize(buffer, control);
@@ -80,7 +81,7 @@ void SerializationHelper::serializeStructureFull(ByteBuffer* buffer, Serializabl
 
 void SerializationHelper::serializeFull(ByteBuffer* buffer, SerializableControl* control, PVField::shared_pointer const & pvField)
 {
-    if (pvField.get() == 0)
+    if (!pvField)
     {
         serializeNullField(buffer, control);
     }
