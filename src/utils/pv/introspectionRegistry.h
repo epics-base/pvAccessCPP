@@ -51,23 +51,8 @@ public:
      * Resets registry, i.e. must be done when transport is changed (server restarted).
      */
     void reset();
-    /**
-     * Get introspection interface for given ID.
-     *
-     * @param id id of the introspection interface to get
-     *
-     * @return <code>Field</code> instance for given ID.
-     */
-    epics::pvData::FieldConstPtr getIntrospectionInterface(const epics::pvData::int16 id);
 
-    /**
-     * Registers introspection interface with given ID. Always INCOMING.
-     *
-     * @param id id of the introspection interface to register
-     * @param field introspection interface to register
-     */
-    void registerIntrospectionInterface(const epics::pvData::int16 id, epics::pvData::FieldConstPtr const & field);
-
+private:
     /**
      * Registers introspection interface and get it's ID. Always OUTGOING.
      * If it is already registered only preassigned ID is returned.
@@ -79,7 +64,7 @@ public:
      * @return id of given introspection interface
      */
     epics::pvData::int16 registerIntrospectionInterface(epics::pvData::FieldConstPtr const & field, bool& existing);
-
+public:
     /**
      * Serializes introspection interface
      *

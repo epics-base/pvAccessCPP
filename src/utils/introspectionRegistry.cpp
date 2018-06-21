@@ -36,21 +36,6 @@ void IntrospectionRegistry::reset()
     _registry.clear();
 }
 
-FieldConstPtr IntrospectionRegistry::getIntrospectionInterface(const int16 id)
-{
-    registryMap_t::iterator registryIter = _registry.find(id);
-    if(registryIter == _registry.end())
-    {
-        return FieldConstPtr();
-    }
-    return registryIter->second;
-}
-
-void IntrospectionRegistry::registerIntrospectionInterface(const int16 id, FieldConstPtr const & field)
-{
-    _registry[id] = field;
-}
-
 int16 IntrospectionRegistry::registerIntrospectionInterface(FieldConstPtr const & field, bool& existing)
 {
     int16 key;
@@ -127,8 +112,17 @@ FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, Deserializa
     }
     else if (typeCode == ONLY_ID_TYPE_CODE)
     {
-        control->ensureData(sizeof(int16)/sizeof(int8));
-        return getIntrospectionInterface(buffer->getShort());
+        control->ensureData(sizeof(int16));
+        int16 id = buffer->getShort();
+
+        registryMap_t::iterator registryIter = _registry.find(id);
+        if(registryIter == _registry.end())
+        {
+            // peer gave us an id which we don't remember.
+            // This isn't recoverable.
+            throw std::runtime_error("IntrospectionRegistry miss.");
+        }
+        return registryIter->second;
     }
     // could also be a mask
     if(typeCode == IntrospectionRegistry::FULL_WITH_ID_TYPE_CODE)
@@ -136,7 +130,7 @@ FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, Deserializa
         control->ensureData(sizeof(int16)/sizeof(int8));
         const short key = buffer->getShort();
         FieldConstPtr field = _fieldCreate->deserialize(buffer, control);
-        registerIntrospectionInterface(key, field);
+        _registry[key] = field;
         return field;
     }
 
