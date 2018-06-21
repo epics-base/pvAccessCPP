@@ -23,6 +23,7 @@
 
 #include <osiSock.h>
 #include <osiProcess.h>
+#include <epicsAssert.h>
 
 #include <pv/byteBuffer.h>
 #include <pv/timer.h>
@@ -58,6 +59,7 @@ static BitSet::shared_pointer createBitSetFor(
     PVStructure::shared_pointer const & pvStructure,
     BitSet::shared_pointer const & existingBitSet)
 {
+    assert(pvStructure);
     int pvStructureSize = pvStructure->getNumberFields();
     if (existingBitSet.get() && static_cast<int32>(existingBitSet->size()) >= pvStructureSize)
     {

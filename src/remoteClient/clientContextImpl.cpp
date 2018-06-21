@@ -12,6 +12,7 @@
 
 #include <osiSock.h>
 #include <epicsGuard.h>
+#include <epicsAssert.h>
 
 #include <pv/lock.h>
 #include <pv/timer.h>
@@ -105,6 +106,7 @@ public:
         PVStructure::shared_pointer const & pvStructure,
         BitSet::shared_pointer const & existingBitSet)
     {
+        assert(pvStructure);
         int pvStructureSize = pvStructure->getNumberFields();
         if (existingBitSet.get() && static_cast<int32>(existingBitSet->size()) >= pvStructureSize)
         {
