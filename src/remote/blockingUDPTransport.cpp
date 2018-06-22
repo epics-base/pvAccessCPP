@@ -172,18 +172,15 @@ void BlockingUDPTransport::enqueueSendRequest(TransportSender::shared_pointer co
 
     _sendToEnabled = false;
     _sendBuffer.clear();
-    sender->lock();
-    try {
+    {
+        epicsGuard<TransportSender> G(*sender);
         sender->send(&_sendBuffer, this);
-        sender->unlock();
-        endMessage();
-        if(!_sendToEnabled)
-            send(&_sendBuffer);
-        else
-            send(&_sendBuffer, _sendTo);
-    } catch(...) {
-        sender->unlock();
     }
+    endMessage();
+    if(!_sendToEnabled)
+        send(&_sendBuffer);
+    else
+        send(&_sendBuffer, _sendTo);
 }
 
 
