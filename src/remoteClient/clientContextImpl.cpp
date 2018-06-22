@@ -67,13 +67,9 @@ class ChannelGetFieldRequestImpl;
 typedef std::map<pvAccessID, ResponseRequest::weak_pointer> IOIDResponseRequestMap;
 
 
-#define EXCEPTION_GUARD(code) try { code; } \
-        catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
-                catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
+#define EXCEPTION_GUARD(code) do { code; } while(0)
 
-#define EXCEPTION_GUARD3(WEAK, PTR, code) {requester_type::shared_pointer PTR((WEAK).lock()); if(PTR) try { code; } \
-        catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
-                catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }}
+#define EXCEPTION_GUARD3(WEAK, PTR, code) do{requester_type::shared_pointer PTR((WEAK).lock()); if(PTR) { code; }}while(0)
 
 #define SEND_MESSAGE(WEAK, PTR, MSG, MTYPE) \
 do{requester_type::shared_pointer PTR((WEAK).lock()); if(PTR) (PTR)->message(MSG, MTYPE); }while(0)
@@ -273,41 +269,32 @@ public:
         Status status;
         status.deserialize(payloadBuffer, transport.get());
 
-        try
+        if (qos & QOS_INIT)
         {
-            if (qos & QOS_INIT)
+            if (status.isSuccess())
             {
-                if (status.isSuccess())
-                {
-                    // once created set destroy flag
-                    Lock G(m_mutex);
-                    m_initialized = true;
-                }
-
-                initResponse(transport, version, payloadBuffer, qos, status);
+                // once created set destroy flag
+                Lock G(m_mutex);
+                m_initialized = true;
             }
-            else
+
+            initResponse(transport, version, payloadBuffer, qos, status);
+        }
+        else
+        {
+            bool destroyReq = false;
+
+            if (qos & QOS_DESTROY)
             {
-                bool destroyReq = false;
-
-                if (qos & QOS_DESTROY)
-                {
-                    Lock G(m_mutex);
-                    m_initialized = false;
-                    destroyReq = true;
-                }
-
-                normalResponse(transport, version, payloadBuffer, qos, status);
-
-                if (destroyReq)
-                    destroy();
+                Lock G(m_mutex);
+                m_initialized = false;
+                destroyReq = true;
             }
-        }
-        catch (std::exception &e) {
-            LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what());
-        }
-        catch (...) {
-            LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__);
+
+            normalResponse(transport, version, payloadBuffer, qos, status);
+
+            if (destroyReq)
+                destroy();
         }
     }
 
@@ -2508,11 +2495,13 @@ public:
         transport->ensureData(4);
         // TODO check and optimize?
         ResponseRequest::shared_pointer rr = _context.lock()->getResponseRequest(payloadBuffer->getInt());
-        if (rr.get())
+        if (rr)
         {
-            ResponseRequest::shared_pointer nrr = dynamic_pointer_cast<ResponseRequest>(rr);
-            if (nrr.get())
-                nrr->response(transport, version, payloadBuffer);
+            rr->response(transport, version, payloadBuffer);
+        } else {
+            // oh no, we can't complete parsing this message!
+            // This might contain updates to our introspectionRegistry, which will lead to failures later on.
+            // TODO: seperate message parsing from user Operation lifetime...
         }
     }
 };
@@ -2546,13 +2535,9 @@ public:
                 return;
 
             ResponseRequest::shared_pointer rr = context->getResponseRequest(ioid);
-            if (rr.get())
+            if (rr)
             {
-                ResponseRequest::shared_pointer nrr = dynamic_pointer_cast<ResponseRequest>(rr);
-                if (nrr.get())
-                    nrr->response(transport, version, payloadBuffer);
-                else
-                    return; // we cannot deserialize, we are lost in stream, we must stop
+                rr->response(transport, version, payloadBuffer);
             }
             else
                 return; // we cannot deserialize, we are lost in stream, we must stop
@@ -3821,7 +3806,7 @@ public:
                         if(!R) continue;
                         ChannelBaseRequester::shared_pointer req(R->getRequester());
                         if(!req) continue;
-                        EXCEPTION_GUARD(req->channelDisconnect(connectionState==Channel::DESTROYED);)
+                        EXCEPTION_GUARD(req->channelDisconnect(connectionState==Channel::DESTROYED););
                     }
                 }
             }

@@ -1136,6 +1136,7 @@ void BlockingTCPTransportCodec::receiveThread()
     {
         try {
             this->processRead();
+            continue;
         } catch (std::exception &e) {
             PRINT_EXCEPTION(e);
             LOG(logLevelError,
@@ -1146,6 +1147,8 @@ void BlockingTCPTransportCodec::receiveThread()
                 "unknown exception caught while in receiveThread at %s:%d.",
                 __FILE__, __LINE__);
         }
+        // exception
+        close();
     }
 }
 
@@ -1161,6 +1164,7 @@ void BlockingTCPTransportCodec::sendThread()
     {
         try {
             this->processWrite();
+            continue;
         } catch (connection_closed_exception &cce) {
             // noop
         } catch (std::exception &e) {
@@ -1173,6 +1177,8 @@ void BlockingTCPTransportCodec::sendThread()
                 "unknown exception caught while in sendThread at %s:%d.",
                 __FILE__, __LINE__);
         }
+        // exception
+        close();
     }
     _sendQueue.clear();
 }
