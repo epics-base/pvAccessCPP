@@ -1,4 +1,4 @@
-#<a name="main"></a>pvAccessCPP: ca provider
+# pvAccessCPP: ca provider
 
 2018.06.25
 
