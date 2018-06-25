@@ -39,7 +39,7 @@ Each **DBRecord** instance has a record name that is unique with in the local ar
 A channel name is a **recordname.fieldName**.
 If the fieldname is not specified then **.VAL** is assumed
 
-###example database
+### example database
 
 The following:
 
@@ -51,7 +51,7 @@ mrk> softIoc -d testCaProvider.db
 
 Starts an EPICS IOC that is used for all examples in this document.
 
-###examples
+### examples
 
 ```
 mrk> caget -d DBR_TIME_FLOAT DBRdoubleout
@@ -178,7 +178,7 @@ by the server.
 
 Lets discuss the various fields.
 
-###value
+### value
 
 This can be a scalar, scalarArray, or an enumerated structure.
 
@@ -219,11 +219,11 @@ mrk>
 ```
 
 
-###alarm,timeStamp,display,control, and valueAlarm
+### alarm,timeStamp,display,control, and valueAlarm
 
 Each of these is one of the property structures defined in pvData.
 
-####Examples
+#### Examples
 
 ```
 mrk> pvget -p ca -r alarm -i DBRdoubleout
@@ -276,7 +276,7 @@ structure
 
 ## <a name="S-dbd_to_pvdata"></a>DBD to pvData
 
-###Type Conversion
+### Type Conversion
 
 Three type systems are involved in accessing data in a **DBRecord** and converting it to/from pvData:
 
@@ -311,7 +311,7 @@ Notes:
 * DBF_ULONG promoted to DBR_DOUBLE 
 * qsrv provides full access to all DBF types, but the IOC must have qsrv installed. 
 
-###Accessing data in a DBRecord
+### Accessing data in a DBRecord
 
 An IOC database is a memory resident database of **DBRecord** instances.
 
@@ -386,7 +386,7 @@ For example the enum methods are only implemented by records that have the defin
 ```
  
 
-###Channel Access Data
+### Channel Access Data
 
 A client can access any public field of a **DBRecord**;
 Each **DBRecord** instance has a record name that is unique within the local area network.
@@ -518,7 +518,7 @@ struct dbr_ctrl_enum{
 };
 ```
 
-###PVData for a DBRrecord via ca provider
+### PVData for a DBRrecord via ca provider
 
 **pvAccessCPP/src/ca** has files **dbdToPv.h** and **dbdToPv.cpp**.
 This is the code that converts between DBD data and pvData.
