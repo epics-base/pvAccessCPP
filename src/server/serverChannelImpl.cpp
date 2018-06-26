@@ -64,16 +64,29 @@ Destroyable::shared_pointer ServerChannel::getRequest(const pvAccessID id)
 
 void ServerChannel::destroy()
 {
-    Lock guard(_mutex);
-
-    if (_destroyed) return;
-    _destroyed = true;
-
-    // destroy all requests
-    // take ownership of _requests locally to prevent
-    // removal via unregisterRequest() during iteration
     _requests_t reqs;
-    _requests.swap(reqs);
+    {
+        Lock guard(_mutex);
+
+        if (_destroyed) return;
+        _destroyed = true;
+
+        // destroy all requests
+        // take ownership of _requests locally to prevent
+        // removal via unregisterRequest() during iteration
+        _requests.swap(reqs);
+
+        // close channel security session
+        // TODO try catch
+        _channelSecuritySession->close();
+
+        // ... and the channel
+        // TODO try catch
+        _channel->destroy();
+    }
+    // unlock our before destroy.
+    // our mutex is subordinate to operation mutex
+
     for(_requests_t::const_iterator it=reqs.begin(), end=reqs.end(); it!=end; ++it)
     {
         const _requests_t::mapped_type& req = it->second;
@@ -81,14 +94,6 @@ void ServerChannel::destroy()
         req->destroy();
         // May still be in the send queue
     }
-
-    // close channel security session
-    // TODO try catch
-    _channelSecuritySession->close();
-
-    // ... and the channel
-    // TODO try catch
-    _channel->destroy();
 }
 
 ServerChannel::~ServerChannel()
