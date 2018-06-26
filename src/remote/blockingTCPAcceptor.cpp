@@ -165,16 +165,18 @@ void BlockingTCPAcceptor::run() {
 
     while(socketOpen) {
 
+        SOCKET sock;
         {
             Lock guard(_mutex);
             if (_destroyed)
                 break;
+            sock = _serverSocketChannel;
         }
 
         osiSockAddr address;
         osiSocklen_t len = sizeof(sockaddr);
 
-        SOCKET newClient = epicsSocketAccept(_serverSocketChannel, &address.sa, &len);
+        SOCKET newClient = epicsSocketAccept(sock, &address.sa, &len);
         if(newClient!=INVALID_SOCKET) {
             // accept succeeded
             ipAddrToDottedIP(&address.ia, ipAddrStr, sizeof(ipAddrStr));
