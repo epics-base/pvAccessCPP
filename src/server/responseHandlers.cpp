@@ -2154,7 +2154,6 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
         }
         else
         {
-            // TODO CAS
             bool unlisten;
             window_t window;
             {
@@ -2167,7 +2166,10 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
                 }
             }
 
-            window.clear(); // calls Monitor::release()
+            for(window_t::iterator it(window.begin()), end(window.end()); it!=end; ++it) {
+                monitor->release(*it);
+            }
+            window.clear();
 
             if (unlisten)
             {
