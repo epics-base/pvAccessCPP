@@ -1074,9 +1074,11 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
     }
 }
 
-#define INIT_EXCEPTION_GUARD(cmd, code) \
+#define INIT_EXCEPTION_GUARD(cmd, var, code) \
     try { \
- 	    code; \
+        operation_type::shared_pointer op(code); \
+        epicsGuard<epicsMutex> G(_mutex); \
+        var = op; \
     } \
     catch (std::exception &e) { \
         Status status(Status::STATUSTYPE_FATAL, e.what()); \
@@ -1126,7 +1128,7 @@ void ServerChannelGetRequesterImpl::activate(PVStructure::shared_pointer const &
     ChannelGetRequester::shared_pointer thisPointer = shared_from_this();
     Destroyable::shared_pointer thisDestroyable = shared_from_this();
     _channel->registerRequest(_ioid, thisDestroyable);
-    INIT_EXCEPTION_GUARD(CMD_GET, _channelGet = _channel->getChannel()->createChannelGet(thisPointer, pvRequest));
+    INIT_EXCEPTION_GUARD(CMD_GET, _channelGet, _channel->getChannel()->createChannelGet(thisPointer, pvRequest));
 }
 
 void ServerChannelGetRequesterImpl::channelGetConnect(const Status& status, ChannelGet::shared_pointer const & channelGet, Structure::const_shared_pointer const & structure)
@@ -1386,7 +1388,7 @@ void ServerChannelPutRequesterImpl::activate(PVStructure::shared_pointer const &
     ChannelPutRequester::shared_pointer thisPointer = shared_from_this();
     Destroyable::shared_pointer thisDestroyable = shared_from_this();
     _channel->registerRequest(_ioid, thisDestroyable);
-    INIT_EXCEPTION_GUARD(CMD_PUT, _channelPut = _channel->getChannel()->createChannelPut(thisPointer, pvRequest));
+    INIT_EXCEPTION_GUARD(CMD_PUT, _channelPut, _channel->getChannel()->createChannelPut(thisPointer, pvRequest));
 }
 
 void ServerChannelPutRequesterImpl::channelPutConnect(const Status& status, ChannelPut::shared_pointer const & channelPut, Structure::const_shared_pointer const & structure)
@@ -1669,7 +1671,7 @@ void ServerChannelPutGetRequesterImpl::activate(PVStructure::shared_pointer cons
     ChannelPutGetRequester::shared_pointer thisPointer = shared_from_this();
     Destroyable::shared_pointer thisDestroyable = shared_from_this();
     _channel->registerRequest(_ioid, thisDestroyable);
-    INIT_EXCEPTION_GUARD(CMD_PUT_GET, _channelPutGet = _channel->getChannel()->createChannelPutGet(thisPointer, pvRequest));
+    INIT_EXCEPTION_GUARD(CMD_PUT_GET, _channelPutGet, _channel->getChannel()->createChannelPutGet(thisPointer, pvRequest));
 }
 
 void ServerChannelPutGetRequesterImpl::channelPutGetConnect(const Status& status, ChannelPutGet::shared_pointer const & channelPutGet,
@@ -1985,7 +1987,7 @@ void ServerMonitorRequesterImpl::activate(PVStructure::shared_pointer const & pv
     MonitorRequester::shared_pointer thisPointer = shared_from_this();
     Destroyable::shared_pointer thisDestroyable = shared_from_this();
     _channel->registerRequest(_ioid, thisDestroyable);
-    INIT_EXCEPTION_GUARD(CMD_MONITOR, _channelMonitor = _channel->getChannel()->createMonitor(thisPointer, pvRequest));
+    INIT_EXCEPTION_GUARD(CMD_MONITOR, _channelMonitor, _channel->getChannel()->createMonitor(thisPointer, pvRequest));
 }
 
 void ServerMonitorRequesterImpl::monitorConnect(const Status& status, Monitor::shared_pointer const & monitor, epics::pvData::StructureConstPtr const & structure)
@@ -2311,7 +2313,7 @@ void ServerChannelArrayRequesterImpl::activate(PVStructure::shared_pointer const
     ChannelArrayRequester::shared_pointer thisPointer = shared_from_this();
     Destroyable::shared_pointer thisDestroyable = shared_from_this();
     _channel->registerRequest(_ioid, thisDestroyable);
-    INIT_EXCEPTION_GUARD(CMD_ARRAY, _channelArray = _channel->getChannel()->createChannelArray(thisPointer, pvRequest));
+    INIT_EXCEPTION_GUARD(CMD_ARRAY, _channelArray, _channel->getChannel()->createChannelArray(thisPointer, pvRequest));
 }
 
 void ServerChannelArrayRequesterImpl::channelArrayConnect(const Status& status, ChannelArray::shared_pointer const & channelArray, Array::const_shared_pointer const & array)
@@ -2659,7 +2661,7 @@ void ServerChannelProcessRequesterImpl::activate(PVStructure::shared_pointer con
     ChannelProcessRequester::shared_pointer thisPointer = shared_from_this();
     Destroyable::shared_pointer thisDestroyable = shared_from_this();
     _channel->registerRequest(_ioid, thisDestroyable);
-    INIT_EXCEPTION_GUARD(CMD_PROCESS, _channelProcess = _channel->getChannel()->createChannelProcess(thisPointer, pvRequest));
+    INIT_EXCEPTION_GUARD(CMD_PROCESS, _channelProcess, _channel->getChannel()->createChannelProcess(thisPointer, pvRequest));
 }
 
 void ServerChannelProcessRequesterImpl::channelProcessConnect(const Status& status, ChannelProcess::shared_pointer const & channelProcess)
@@ -2939,7 +2941,7 @@ void ServerChannelRPCRequesterImpl::activate(PVStructure::shared_pointer const &
     ChannelRPCRequester::shared_pointer thisPointer = shared_from_this();
     Destroyable::shared_pointer thisDestroyable = shared_from_this();
     _channel->registerRequest(_ioid, thisDestroyable);
-    INIT_EXCEPTION_GUARD(CMD_RPC, _channelRPC = _channel->getChannel()->createChannelRPC(thisPointer, pvRequest));
+    INIT_EXCEPTION_GUARD(CMD_RPC, _channelRPC, _channel->getChannel()->createChannelRPC(thisPointer, pvRequest));
 }
 
 void ServerChannelRPCRequesterImpl::channelRPCConnect(const Status& status, ChannelRPC::shared_pointer const & channelRPC)
