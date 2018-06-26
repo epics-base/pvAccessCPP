@@ -8,8 +8,9 @@
 #define CAPROVIDER_H
 
 #include <shareLib.h>
-#include <cadef.h>
 #include <pv/pvAccess.h>
+
+struct ca_client_context;
 
 namespace epics {
 namespace pvAccess {
@@ -39,7 +40,7 @@ public:
      * This can be called by an application specific auxiliary thread.
      * See ca documentation. Not for casual use.
      */
-    static ca_client_context * get_ca_client_context();
+    static struct ca_client_context * get_ca_client_context();
     /** @brief stop provider ca
      *
      * This does nothing since epicsAtExit is used to destroy the instance.
