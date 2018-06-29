@@ -105,7 +105,6 @@ struct GetPutter : public pva::ChannelPutRequester,
             callEvent(G);
 
         } else if(getcb){
-            channelPut->lastRequest();
             channelPut->get();
             started = true;
 
@@ -130,7 +129,6 @@ struct GetPutter : public pva::ChannelPutRequester,
             }
             // check putcb again after UnGuard
             if(putcb) {
-                channelPut->lastRequest();
                 channelPut->put(std::tr1::const_pointer_cast<pvd::PVStructure>(args.root), tosend);
                 started = true;
             }
