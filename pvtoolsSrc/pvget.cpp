@@ -81,7 +81,7 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
         if (value.get() == 0)
         {
             std::cerr << "no 'value' field\n";
-            pvutil_ostream myos(std::cout.rdbuf());
+            pvutil_ostream myos(std::cout);
             myos << channelName << "\n" << *(pv.get()) << "\n\n";
         }
         else
@@ -99,7 +99,7 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
                 }
                 else
                 {
-                    pvutil_ostream myos(std::cout.rdbuf());
+                    pvutil_ostream myos(std::cout);
                     myos << channelName << '\n' << *(pv.get()) << "\n\n";
                 }
             }
@@ -120,7 +120,7 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
         terseStructure(std::cout, pv) << '\n';
     else
     {
-        pvutil_ostream myos(std::cout.rdbuf());
+        pvutil_ostream myos(std::cout);
         myos << channelName << '\n' << *(pv.get()) << "\n\n";
     }
 }
@@ -278,7 +278,7 @@ struct MonitorRequesterImpl : public MonitorRequester, public Tracker
                 {
                     std::cerr << "no 'value' field" << '\n';
                     std::cout << m_channelName << '\n';
-                    pvutil_ostream myos(std::cout.rdbuf());
+                    pvutil_ostream myos(std::cout);
                     myos << *(element->pvStructurePtr.get()) << "\n\n";
                 }
                 else
@@ -297,7 +297,7 @@ struct MonitorRequesterImpl : public MonitorRequester, public Tracker
                         else
                         {
                             std::cout << m_channelName << '\n';
-                            pvutil_ostream myos(std::cout.rdbuf());
+                            pvutil_ostream myos(std::cout);
                             myos << *(element->pvStructurePtr.get()) << "\n\n";
                         }
                     }
@@ -321,7 +321,7 @@ struct MonitorRequesterImpl : public MonitorRequester, public Tracker
             else
             {
                 std::cout << m_channelName << '\n';
-                pvutil_ostream myos(std::cout.rdbuf());
+                pvutil_ostream myos(std::cout);
                 myos << *(element->pvStructurePtr.get()) << "\n\n";
             }
 

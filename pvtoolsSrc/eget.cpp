@@ -863,7 +863,7 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
             {
                 std::cerr << "non-normative type" << std::endl;
                 //o << *(pv.get()) << std::endl;
-                pvutil_ostream myos(std::cout.rdbuf());
+                pvutil_ostream myos(std::cout);
                 myos << *(pv.get()) << std::endl;
             }
 
@@ -872,7 +872,7 @@ void formatNT(std::ostream& o, PVFieldPtr const & pv)
     }
 
     // no ID, just dump
-    pvutil_ostream myos(std::cout.rdbuf());
+    pvutil_ostream myos(std::cout);
     myos << *(pv.get()) << std::endl;
 }
 
@@ -882,7 +882,7 @@ void dumpValue(std::string const & channelName, PVField::shared_pointer const & 
         std::cout << channelName << std::endl;
     //std::cout << *(pv.get()) << std::endl << std::endl;
 
-    pvutil_ostream myos(std::cout.rdbuf());
+    pvutil_ostream myos(std::cout);
     if (pv->getField()->getType() == structure)
         myos << *(TR1::static_pointer_cast<PVStructure>(pv).get()) << std::endl << std::endl;
     else
@@ -1897,7 +1897,7 @@ int main (int argc, char *argv[])
                     else
                     {
                         //std::cout << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
-                        pvutil_ostream myos(std::cout.rdbuf());
+                        pvutil_ostream myos(std::cout);
                         myos << *(rpcRequesterImpl->getLastResponse().get()) << std::endl;
                     }
                 }

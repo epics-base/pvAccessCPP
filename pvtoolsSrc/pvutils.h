@@ -83,13 +83,14 @@ std::ostream& operator<<(std::ostream& os, const dump_stack_only_on_debug& d);
 #include <ostream>
 #include <iostream>
 
-// usage: pvutil_ostream myos(std::cout.rdbuf());
+// usage: pvutil_ostream myos(std::cout);
 
-class pvutil_ostream : private std::ostream
+class pvutil_ostream
 {
+    std::ostream& strm;
 public:
-    pvutil_ostream(std::streambuf* sb)
-        : std::ostream(sb)
+    pvutil_ostream(std::ostream& os)
+        : strm(os)
     {}
 
     template <typename T>
@@ -99,11 +100,6 @@ public:
 
     // Additional overload to handle ostream specific io manipulators
     friend pvutil_ostream& operator<<(pvutil_ostream&, std::ostream& (*)(std::ostream&));
-
-    // Accessor function to get a reference to the ostream
-    std::ostream& get_ostream() {
-        return *this;
-    }
 };
 
 
@@ -111,7 +107,7 @@ template <typename T>
 inline pvutil_ostream&
 operator<<(pvutil_ostream& out, const T& value)
 {
-    static_cast<std::ostream&>(out) << value;
+    out.strm << value;
     return out;
 }
 
@@ -119,7 +115,7 @@ operator<<(pvutil_ostream& out, const T& value)
 inline pvutil_ostream&
 operator<<(pvutil_ostream& out, std::ostream& (*func)(std::ostream&))
 {
-    static_cast<std::ostream&>(out) << func;
+    out.strm << func;
     return out;
 }
 
@@ -143,7 +139,7 @@ operator<<(pvutil_ostream& o, const epics::pvData::PVStructure::shared_pointer &
     {
         o << epics::pvData::format::indent() << value->getStructure()->getID()
           << ' ' << value->getFieldName() << ' '; //" # ";
-        formatTType(o, value);
+        formatTType(o.strm, value);
         o << std::endl;
         //dumpPVStructure(o, *value, false);
         return o;
@@ -161,7 +157,7 @@ operator<<(pvutil_ostream& o, const epics::pvData::PVStructureArray::shared_poin
     size_t length = value->getLength();
     if (length > 0)
     {
-        epics::pvData::format::indent_scope s(o);
+        epics::pvData::format::indent_scope s(o.strm);
 
         epics::pvData::PVStructureArray::const_svector data(value->view());
         for (size_t i = 0; i < length; i++)
@@ -183,7 +179,7 @@ operator<<(pvutil_ostream& o, const epics::pvData::PVUnionArray::shared_pointer 
     size_t length = value->getLength();
     if (length > 0)
     {
-        epics::pvData::format::indent_scope s(o);
+        epics::pvData::format::indent_scope s(o.strm);
 
         epics::pvData::PVUnionArray::const_svector data(value->view());
         for (size_t i = 0; i < length; i++)
@@ -203,7 +199,7 @@ operator<<(pvutil_ostream& o, const epics::pvData::PVUnion::shared_pointer & val
     o << epics::pvData::format::indent() << value->getUnion()->getID()
       << ' ' << value->getFieldName() << std::endl;
     {
-        epics::pvData::format::indent_scope s(o);
+        epics::pvData::format::indent_scope s(o.strm);
 
         epics::pvData::PVFieldPtr fieldField = value->get();
         if (fieldField.get() == NULL)
@@ -246,7 +242,7 @@ dumpPVStructure(pvutil_ostream& o, const epics::pvData::PVStructure & value, boo
     }
 
     {
-        epics::pvData::format::indent_scope s(o);
+        epics::pvData::format::indent_scope s(o.strm);
 
         epics::pvData::PVFieldPtrArray const & fieldsData = value.getPVFields();
         if (fieldsData.size() != 0) {
