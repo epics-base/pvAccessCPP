@@ -10,9 +10,12 @@
 #include <pv/destroyable.h>
 #include <pv/remote.h>
 #include <pv/security.h>
+#include <pv/baseChannelRequester.h>
 
 namespace epics {
 namespace pvAccess {
+
+class BaseChannelRequester;
 
 class ServerChannel
 {
@@ -43,7 +46,7 @@ public:
     ChannelSecuritySession::shared_pointer getChannelSecuritySession() const
     { return _channelSecuritySession; }
 
-    void registerRequest(pvAccessID id, Destroyable::shared_pointer const & request);
+    void registerRequest(pvAccessID id, const std::tr1::shared_ptr<BaseChannelRequester>& request);
 
     void unregisterRequest(pvAccessID id);
 
@@ -51,7 +54,7 @@ public:
     void completeGetField(GetFieldRequester *req);
 
     //! may return NULL
-    Destroyable::shared_pointer getRequest(pvAccessID id);
+    std::tr1::shared_ptr<BaseChannelRequester> getRequest(pvAccessID id);
 
     void destroy();
 
@@ -68,7 +71,7 @@ private:
     //! keep alive in-progress GetField()
     GetFieldRequester::shared_pointer _active_requester;
 
-    typedef std::map<pvAccessID, Destroyable::shared_pointer> _requests_t;
+    typedef std::map<pvAccessID, std::tr1::shared_ptr<BaseChannelRequester> > _requests_t;
     _requests_t _requests;
 
     bool _destroyed;

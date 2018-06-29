@@ -1125,9 +1125,8 @@ ChannelGetRequester::shared_pointer ServerChannelGetRequesterImpl::create(Server
 void ServerChannelGetRequesterImpl::activate(PVStructure::shared_pointer const & pvRequest)
 {
     startRequest(QOS_INIT);
-    ChannelGetRequester::shared_pointer thisPointer = shared_from_this();
-    Destroyable::shared_pointer thisDestroyable = shared_from_this();
-    _channel->registerRequest(_ioid, thisDestroyable);
+    shared_pointer thisPointer(shared_from_this());
+    _channel->registerRequest(_ioid, thisPointer);
     INIT_EXCEPTION_GUARD(CMD_GET, _channelGet, _channel->getChannel()->createChannelGet(thisPointer, pvRequest));
 }
 
@@ -1385,9 +1384,8 @@ ChannelPutRequester::shared_pointer ServerChannelPutRequesterImpl::create(Server
 void ServerChannelPutRequesterImpl::activate(PVStructure::shared_pointer const & pvRequest)
 {
     startRequest(QOS_INIT);
-    ChannelPutRequester::shared_pointer thisPointer = shared_from_this();
-    Destroyable::shared_pointer thisDestroyable = shared_from_this();
-    _channel->registerRequest(_ioid, thisDestroyable);
+    shared_pointer thisPointer(shared_from_this());
+    _channel->registerRequest(_ioid, thisPointer);
     INIT_EXCEPTION_GUARD(CMD_PUT, _channelPut, _channel->getChannel()->createChannelPut(thisPointer, pvRequest));
 }
 
@@ -1668,9 +1666,8 @@ ChannelPutGetRequester::shared_pointer ServerChannelPutGetRequesterImpl::create(
 void ServerChannelPutGetRequesterImpl::activate(PVStructure::shared_pointer const & pvRequest)
 {
     startRequest(QOS_INIT);
-    ChannelPutGetRequester::shared_pointer thisPointer = shared_from_this();
-    Destroyable::shared_pointer thisDestroyable = shared_from_this();
-    _channel->registerRequest(_ioid, thisDestroyable);
+    shared_pointer thisPointer(shared_from_this());
+    _channel->registerRequest(_ioid, thisPointer);
     INIT_EXCEPTION_GUARD(CMD_PUT_GET, _channelPutGet, _channel->getChannel()->createChannelPutGet(thisPointer, pvRequest));
 }
 
@@ -1994,9 +1991,8 @@ void ServerMonitorRequesterImpl::activate(PVStructure::shared_pointer const & pv
         }
     }
     startRequest(QOS_INIT);
-    MonitorRequester::shared_pointer thisPointer = shared_from_this();
-    Destroyable::shared_pointer thisDestroyable = shared_from_this();
-    _channel->registerRequest(_ioid, thisDestroyable);
+    shared_pointer thisPointer(shared_from_this());
+    _channel->registerRequest(_ioid, thisPointer);
     INIT_EXCEPTION_GUARD(CMD_MONITOR, _channelMonitor, _channel->getChannel()->createMonitor(thisPointer, pvRequest));
 }
 
@@ -2385,9 +2381,8 @@ ChannelArrayRequester::shared_pointer ServerChannelArrayRequesterImpl::create(
 void ServerChannelArrayRequesterImpl::activate(PVStructure::shared_pointer const & pvRequest)
 {
     startRequest(QOS_INIT);
-    ChannelArrayRequester::shared_pointer thisPointer = shared_from_this();
-    Destroyable::shared_pointer thisDestroyable = shared_from_this();
-    _channel->registerRequest(_ioid, thisDestroyable);
+    shared_pointer thisPointer(shared_from_this());
+    _channel->registerRequest(_ioid, thisPointer);
     INIT_EXCEPTION_GUARD(CMD_ARRAY, _channelArray, _channel->getChannel()->createChannelArray(thisPointer, pvRequest));
 }
 
@@ -2607,25 +2602,26 @@ void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
     const pvAccessID ioid = payloadBuffer->getInt();
 
     ServerChannel::shared_pointer channel = casTransport->getChannel(sid);
-    if (!channel.get())
+    if (!channel)
     {
         failureResponse(transport, ioid, BaseChannelRequester::badCIDStatus);
         return;
     }
 
-    Destroyable::shared_pointer request = channel->getRequest(ioid);
-    if (!request.get())
+    BaseChannelRequester::shared_pointer request(channel->getRequest(ioid));
+    if (!request)
     {
         failureResponse(transport, ioid, BaseChannelRequester::badIOIDStatus);
         return;
     }
 
     ChannelRequest::shared_pointer cr = dynamic_pointer_cast<ChannelRequest>(request);
-    if (!cr.get())
+    if (!cr)
     {
         failureResponse(transport, ioid, BaseChannelRequester::notAChannelRequestStatus);
         return;
     }
+    // never gets here
 
     // cancel
     cr->cancel();
@@ -2733,9 +2729,8 @@ ChannelProcessRequester::shared_pointer ServerChannelProcessRequesterImpl::creat
 void ServerChannelProcessRequesterImpl::activate(PVStructure::shared_pointer const & pvRequest)
 {
     startRequest(QOS_INIT);
-    ChannelProcessRequester::shared_pointer thisPointer = shared_from_this();
-    Destroyable::shared_pointer thisDestroyable = shared_from_this();
-    _channel->registerRequest(_ioid, thisDestroyable);
+    shared_pointer thisPointer(shared_from_this());
+    _channel->registerRequest(_ioid, thisPointer);
     INIT_EXCEPTION_GUARD(CMD_PROCESS, _channelProcess, _channel->getChannel()->createChannelProcess(thisPointer, pvRequest));
 }
 
@@ -3013,9 +3008,8 @@ ChannelRPCRequester::shared_pointer ServerChannelRPCRequesterImpl::create(
 void ServerChannelRPCRequesterImpl::activate(PVStructure::shared_pointer const & pvRequest)
 {
     startRequest(QOS_INIT);
-    ChannelRPCRequester::shared_pointer thisPointer = shared_from_this();
-    Destroyable::shared_pointer thisDestroyable = shared_from_this();
-    _channel->registerRequest(_ioid, thisDestroyable);
+    shared_pointer thisPointer(shared_from_this());
+    _channel->registerRequest(_ioid, thisPointer);
     INIT_EXCEPTION_GUARD(CMD_RPC, _channelRPC, _channel->getChannel()->createChannelRPC(thisPointer, pvRequest));
 }
 

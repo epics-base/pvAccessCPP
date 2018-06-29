@@ -34,7 +34,7 @@ ServerChannel::ServerChannel(Channel::shared_pointer const & channel,
     }
 }
 
-void ServerChannel::registerRequest(const pvAccessID id, Destroyable::shared_pointer const & request)
+void ServerChannel::registerRequest(const pvAccessID id, const std::tr1::shared_ptr<BaseChannelRequester> & request)
 {
     Lock guard(_mutex);
     if(_destroyed) throw std::logic_error("Can't registerRequest() for destory'd server channel");
@@ -51,7 +51,7 @@ void ServerChannel::unregisterRequest(const pvAccessID id)
     }
 }
 
-Destroyable::shared_pointer ServerChannel::getRequest(const pvAccessID id)
+std::tr1::shared_ptr<BaseChannelRequester> ServerChannel::getRequest(const pvAccessID id)
 {
     Lock guard(_mutex);
     _requests_t::iterator iter = _requests.find(id);
@@ -59,7 +59,7 @@ Destroyable::shared_pointer ServerChannel::getRequest(const pvAccessID id)
     {
         return iter->second;
     }
-    return Destroyable::shared_pointer();
+    return BaseChannelRequester::shared_pointer();
 }
 
 void ServerChannel::destroy()

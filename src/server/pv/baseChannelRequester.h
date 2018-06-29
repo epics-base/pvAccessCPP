@@ -20,6 +20,7 @@ class ServerChannel;
 class BaseChannelRequester :  virtual public epics::pvData::Requester, public Destroyable
 {
 public:
+    POINTER_DEFINITIONS(BaseChannelRequester);
     BaseChannelRequester(ServerContextImpl::shared_pointer const & context, std::tr1::shared_ptr<ServerChannel> const & channel,
                          const pvAccessID ioid, Transport::shared_pointer const & transport);
     virtual ~BaseChannelRequester() {};
