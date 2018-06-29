@@ -303,6 +303,7 @@ public:
     virtual void destroy() OVERRIDE FINAL;
 
     ChannelGet::shared_pointer getChannelGet();
+    virtual std::tr1::shared_ptr<ChannelRequest> getOperation() OVERRIDE FINAL { return getChannelGet(); }
 
     virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 private:
@@ -360,6 +361,8 @@ public:
     virtual void destroy() OVERRIDE FINAL;
 
     ChannelPut::shared_pointer getChannelPut();
+    virtual std::tr1::shared_ptr<ChannelRequest> getOperation() OVERRIDE FINAL { return getChannelPut(); }
+
     epics::pvData::BitSet::shared_pointer getPutBitSet();
     epics::pvData::PVStructure::shared_pointer getPutPVStructure();
     void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
@@ -423,6 +426,7 @@ public:
     virtual void destroy() OVERRIDE FINAL;
 
     ChannelPutGet::shared_pointer getChannelPutGet();
+    virtual std::tr1::shared_ptr<ChannelRequest> getOperation() OVERRIDE FINAL { return getChannelPutGet(); }
 
     epics::pvData::PVStructure::shared_pointer getPutGetPVStructure();
     epics::pvData::BitSet::shared_pointer getPutGetBitSet();
@@ -485,6 +489,8 @@ public:
     virtual void destroy() OVERRIDE FINAL;
 
     Monitor::shared_pointer getChannelMonitor();
+    virtual std::tr1::shared_ptr<ChannelRequest> getOperation() OVERRIDE FINAL { return std::tr1::shared_ptr<ChannelRequest>(); }
+
     virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
     void ack(size_t cnt);
 private:
@@ -557,6 +563,7 @@ public:
     virtual void destroy() OVERRIDE FINAL;
 
     ChannelArray::shared_pointer getChannelArray();
+    virtual std::tr1::shared_ptr<ChannelRequest> getOperation() OVERRIDE FINAL { return getChannelArray(); }
 
     epics::pvData::PVArray::shared_pointer getPVArray();
     virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
@@ -654,6 +661,8 @@ public:
     virtual void destroy() OVERRIDE FINAL;
 
     ChannelProcess::shared_pointer getChannelProcess();
+    virtual std::tr1::shared_ptr<ChannelRequest> getOperation() OVERRIDE FINAL { return getChannelProcess(); }
+
     virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 
 private:
@@ -694,6 +703,8 @@ public:
     ServerGetFieldRequesterImpl(ServerContextImpl::shared_pointer const & context,
                                 std::tr1::shared_ptr<ServerChannel> const & channel, const pvAccessID ioid,
                                 Transport::shared_pointer const & transport);
+
+    virtual std::tr1::shared_ptr<ChannelRequest> getOperation() OVERRIDE FINAL { return std::tr1::shared_ptr<ChannelRequest>(); }
 
     virtual ~ServerGetFieldRequesterImpl() {}
     virtual void getDone(const epics::pvData::Status& status, epics::pvData::FieldConstPtr const & field) OVERRIDE FINAL;
@@ -773,6 +784,7 @@ public:
      * @return the channelRPC
      */
     ChannelRPC::shared_pointer getChannelRPC();
+    virtual std::tr1::shared_ptr<ChannelRequest> getOperation() OVERRIDE FINAL { return getChannelRPC(); }
 
     virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 private:

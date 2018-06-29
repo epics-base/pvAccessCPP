@@ -2615,17 +2615,14 @@ void ServerCancelRequestHandler::handleResponse(osiSockAddr* responseFrom,
         return;
     }
 
-    ChannelRequest::shared_pointer cr = dynamic_pointer_cast<ChannelRequest>(request);
+    ChannelRequest::shared_pointer cr = dynamic_pointer_cast<ChannelRequest>(request->getOperation());
     if (!cr)
     {
         failureResponse(transport, ioid, BaseChannelRequester::notAChannelRequestStatus);
         return;
     }
-    // never gets here
 
-    // cancel
     cr->cancel();
-
 }
 
 void ServerCancelRequestHandler::failureResponse(Transport::shared_pointer const & transport, pvAccessID ioid, const Status& errorStatus)
