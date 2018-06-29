@@ -178,7 +178,7 @@ struct GetPutter : public pva::ChannelPutRequester,
             event.message.clear();
         }
         event.value = pvStructure;
-        // assume bitSet->get(0)==true as we only make one request
+        event.valid = bitSet;
 
         callEvent(G, status.isSuccess()? pvac::GetEvent::Success : pvac::GetEvent::Fail);
     }

@@ -100,6 +100,9 @@ struct epicsShareClass GetEvent : public PutEvent
 {
     //! New data. NULL unless event==Success
     epics::pvData::PVStructure::const_shared_pointer value;
+    //! Mask of fields in value which have been initialized by the server
+    //! @since 6.1.0
+    epics::pvData::BitSet::const_shared_pointer valid;
 };
 
 struct MonitorSync;
