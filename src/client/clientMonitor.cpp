@@ -84,6 +84,9 @@ struct Monitor::Impl : public pva::MonitorRequester,
     {
         operation_type::shared_pointer temp;
         {
+            // keepalive for safety in case callback wants to destroy us
+            std::tr1::shared_ptr<Monitor::Impl> keepalive(internal_shared_from_this());
+
             Guard G(mutex);
 
             last.reset();
@@ -111,6 +114,7 @@ struct Monitor::Impl : public pva::MonitorRequester,
                                 pva::MonitorPtr const & operation,
                                 pvd::StructureConstPtr const & structure) OVERRIDE FINAL
     {
+        std::tr1::shared_ptr<Monitor::Impl> keepalive(internal_shared_from_this());
         Guard G(mutex);
         if(!cb || started || done) return;
 
@@ -140,6 +144,7 @@ struct Monitor::Impl : public pva::MonitorRequester,
 
     virtual void channelDisconnect(bool destroy) OVERRIDE FINAL
     {
+        std::tr1::shared_ptr<Monitor::Impl> keepalive(internal_shared_from_this());
         Guard G(mutex);
         if(!cb || done) return;
         event.message = "Disconnect";
@@ -149,6 +154,7 @@ struct Monitor::Impl : public pva::MonitorRequester,
 
     virtual void monitorEvent(pva::MonitorPtr const & monitor) OVERRIDE FINAL
     {
+        std::tr1::shared_ptr<Monitor::Impl> keepalive(internal_shared_from_this());
         Guard G(mutex);
         if(!cb || done) return;
         event.message.clear();
@@ -158,6 +164,7 @@ struct Monitor::Impl : public pva::MonitorRequester,
 
     virtual void unlisten(pva::MonitorPtr const & monitor) OVERRIDE FINAL
     {
+        std::tr1::shared_ptr<Monitor::Impl> keepalive(internal_shared_from_this());
         Guard G(mutex);
         if(!cb || done) return;
         done = true;

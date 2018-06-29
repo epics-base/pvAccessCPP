@@ -16,6 +16,7 @@ namespace pvac{namespace detail{
 template<typename Base>
 struct wrapped_shared_from_this {
 private:
+    // const after build()
     std::tr1::weak_ptr<Base> myselfptr;
 
     struct canceller {

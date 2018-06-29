@@ -83,6 +83,7 @@ struct RPCer : public pva::ChannelRPCRequester,
     // called automatically via wrapped_shared_from_this
     virtual void cancel()
     {
+        std::tr1::shared_ptr<RPCer> keepalive(internal_shared_from_this());
         Guard G(mutex);
         if(started && op) op->cancel();
         callEvent(G, pvac::GetEvent::Cancel);
@@ -98,6 +99,7 @@ struct RPCer : public pva::ChannelRPCRequester,
         const epics::pvData::Status& status,
         pva::ChannelRPC::shared_pointer const & operation)
     {
+        std::tr1::shared_ptr<RPCer> keepalive(internal_shared_from_this());
         Guard G(mutex);
         if(!cb || started) return;
 
@@ -117,6 +119,7 @@ struct RPCer : public pva::ChannelRPCRequester,
 
     virtual void channelDisconnect(bool destroy) OVERRIDE FINAL
     {
+        std::tr1::shared_ptr<RPCer> keepalive(internal_shared_from_this());
         Guard G(mutex);
         event.message = "Disconnect";
 
@@ -128,6 +131,7 @@ struct RPCer : public pva::ChannelRPCRequester,
         pva::ChannelRPC::shared_pointer const & operation,
         epics::pvData::PVStructure::shared_pointer const & pvResponse)
     {
+        std::tr1::shared_ptr<RPCer> keepalive(internal_shared_from_this());
         Guard G(mutex);
         if(!cb) return;
 

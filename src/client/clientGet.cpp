@@ -39,9 +39,9 @@ struct GetPutter : public pva::ChannelPutRequester,
 
     static size_t num_instances;
 
-    GetPutter(pvac::ClientChannel::GetCallback* cb) :started(false), getcb(cb), putcb(0)
+    explicit GetPutter(pvac::ClientChannel::GetCallback* cb) :started(false), getcb(cb), putcb(0)
     {REFTRACE_INCREMENT(num_instances);}
-    GetPutter(pvac::ClientChannel::PutCallback* cb) :started(false), getcb(0), putcb(cb)
+    explicit GetPutter(pvac::ClientChannel::PutCallback* cb) :started(false), getcb(0), putcb(cb)
     {REFTRACE_INCREMENT(num_instances);}
     virtual ~GetPutter() {REFTRACE_DECREMENT(num_instances);}
 
@@ -73,6 +73,8 @@ struct GetPutter : public pva::ChannelPutRequester,
     // called automatically via wrapped_shared_from_this
     virtual void cancel() OVERRIDE FINAL
     {
+        // keepalive for safety in case callback wants to destroy us
+        std::tr1::shared_ptr<GetPutter> keepalive(internal_shared_from_this());
         Guard G(mutex);
         if(started && op) op->cancel();
         callEvent(G, pvac::GetEvent::Cancel);
@@ -89,6 +91,7 @@ struct GetPutter : public pva::ChannelPutRequester,
         pva::ChannelPut::shared_pointer const & channelPut,
         epics::pvData::Structure::const_shared_pointer const & structure) OVERRIDE FINAL
     {
+        std::tr1::shared_ptr<GetPutter> keepalive(internal_shared_from_this());
         Guard G(mutex);
         if(started) return;
         if(!putcb && !getcb) return;
@@ -146,6 +149,7 @@ struct GetPutter : public pva::ChannelPutRequester,
         const epics::pvData::Status& status,
         pva::ChannelPut::shared_pointer const & channelPut) OVERRIDE FINAL
     {
+        std::tr1::shared_ptr<GetPutter> keepalive(internal_shared_from_this());
         Guard G(mutex);
         if(!putcb) return;
 
@@ -164,6 +168,7 @@ struct GetPutter : public pva::ChannelPutRequester,
         epics::pvData::PVStructure::shared_pointer const & pvStructure,
         epics::pvData::BitSet::shared_pointer const & bitSet) OVERRIDE FINAL
     {
+        std::tr1::shared_ptr<GetPutter> keepalive(internal_shared_from_this());
         Guard G(mutex);
         if(!getcb) return;
 
