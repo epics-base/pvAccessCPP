@@ -8,6 +8,7 @@
 #include <pv/pvUnitTest.h>
 #include <testMain.h>
 #include <epicsMutex.h>
+#include <epicsGuard.h>
 
 #include <pv/pvAccess.h>
 #include <pv/current_function.h>
