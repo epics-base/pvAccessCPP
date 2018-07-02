@@ -20,6 +20,12 @@
 #define epicsExportSharedSymbols
 #include <pv/inetAddressUtil.h>
 
+// RTEMS 4.9 doesn't define this, but does implement SIOCGIFNETMASK
+// and stores under the ifr_addr union member.
+#ifndef ifr_netmask
+#  define ifr_netmask ifr_addr
+#endif
+
 using namespace std;
 using namespace epics::pvData;
 
