@@ -604,10 +604,17 @@ void initializeUDPTransports(bool serverFlag,
     {
         ifaceNode node = *iter;
 
-        if (node.ifaceDest.ia.sin_family != AF_UNSPEC)
+        // in practice, interface will have either destination (PPP)
+        // or broadcast, but never both.
+        if (node.validP2P && node.peer.ia.sin_family != AF_UNSPEC)
         {
-            node.ifaceDest.ia.sin_port = htons(sendPort);
-            autoBCastAddr.push_back(node.ifaceDest);
+            node.peer.ia.sin_port = htons(sendPort);
+            autoBCastAddr.push_back(node.peer);
+        }
+        if (node.validBcast && node.bcast.ia.sin_family != AF_UNSPEC)
+        {
+            node.bcast.ia.sin_port = htons(sendPort);
+            autoBCastAddr.push_back(node.bcast);
         }
     }
 
@@ -683,10 +690,11 @@ void initializeUDPTransports(bool serverFlag,
     {
         ifaceNode node = *iter;
 
-        LOG(logLevelDebug, "Setting up UDP for interface %s, broadcast %s, dest %s.",
-            inetAddressToString(node.ifaceAddr, false).c_str(),
-            inetAddressToString(node.ifaceBCast, false).c_str(),
-            inetAddressToString(node.ifaceDest, false).c_str());
+        LOG(logLevelDebug, "Setting up UDP for interface %s/%s, broadcast %s, dest %s.",
+            inetAddressToString(node.addr, false).c_str(),
+            node.validBcast ? inetAddressToString(node.mask, false).c_str() : "<none>",
+            node.validBcast ? inetAddressToString(node.bcast, false).c_str() : "<none>",
+            node.validP2P ? inetAddressToString(node.peer, false).c_str() : "<none>");
         try
         {
             // where to bind (listen) address
@@ -694,7 +702,7 @@ void initializeUDPTransports(bool serverFlag,
             memset(&listenLocalAddress, 0, sizeof(listenLocalAddress));
             listenLocalAddress.ia.sin_family = AF_INET;
             listenLocalAddress.ia.sin_port = htons(listenPort);
-            listenLocalAddress.ia.sin_addr.s_addr = node.ifaceAddr.ia.sin_addr.s_addr;
+            listenLocalAddress.ia.sin_addr.s_addr = node.addr.ia.sin_addr.s_addr;
 
             BlockingUDPTransport::shared_pointer transport = connector->connect(
                         nullTransportClient, responseHandler,
@@ -711,11 +719,11 @@ void initializeUDPTransports(bool serverFlag,
 
             BlockingUDPTransport::shared_pointer transport2;
 
-            if(node.ifaceBCast.sa.sa_family == AF_UNSPEC ||
-                    node.ifaceBCast.ia.sin_addr.s_addr == listenLocalAddress.ia.sin_addr.s_addr) {
+            if(!node.validBcast || node.bcast.sa.sa_family != AF_INET ||
+                    node.bcast.ia.sin_addr.s_addr == listenLocalAddress.ia.sin_addr.s_addr) {
                 // warning if not point-to-point
-                LOG(node.ifaceDest.sa.sa_family == AF_UNSPEC ? logLevelDebug : logLevelWarn,
-                    "Unable to find broadcast address of interface %s.", inetAddressToString(node.ifaceAddr, false).c_str());
+                LOG(node.bcast.sa.sa_family != AF_INET ? logLevelDebug : logLevelWarn,
+                    "Unable to find broadcast address of interface %s.", inetAddressToString(node.addr, false).c_str());
             }
 #if !defined(_WIN32)
             else
@@ -731,7 +739,7 @@ void initializeUDPTransports(bool serverFlag,
                 memset(&bcastAddress, 0, sizeof(bcastAddress));
                 bcastAddress.ia.sin_family = AF_INET;
                 bcastAddress.ia.sin_port = htons(listenPort);
-                bcastAddress.ia.sin_addr.s_addr = node.ifaceBCast.ia.sin_addr.s_addr;
+                bcastAddress.ia.sin_addr.s_addr = node.bcast.ia.sin_addr.s_addr;
 
                 transport2 = connector->connect(
                                  nullTransportClient, responseHandler,

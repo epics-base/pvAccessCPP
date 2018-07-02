@@ -31,18 +31,14 @@ typedef std::vector<osiSockAddr> InetAddrVector;
  */
 epicsShareFunc void getBroadcastAddresses(InetAddrVector& ret, SOCKET sock, unsigned short defaultPort);
 
-/** interface description
- *   ifaceAddr - Local address of interface.  Will never be AF_UNSPEC
- *   ifaceBCast - Broadcast address of interface.
- *                AF_UNSPEC for loopback and point to point (eg. some VPNs)
- *                !WIN32 bind this to receive bcasts.
- *   ifaceDest -  Destination/Peer for point to point.
- *                Copy of ifaceBCast for bcast.
- *                AF_UNSPEC for loopback.
- *                send UDP searches to this address
- */
 struct ifaceNode {
-    osiSockAddr ifaceAddr, ifaceBCast, ifaceDest;
+    osiSockAddr addr, //!< Our address
+                peer, //!< point to point peer
+                bcast,//!< sub-net broadcast address
+                mask; //!< Net mask
+    bool loopback,
+         validP2P, //!< true if peer has been set.
+         validBcast; //!< true if bcast and mask have been set
     ifaceNode();
 };
 typedef std::vector<ifaceNode> IfaceNodeVector;
