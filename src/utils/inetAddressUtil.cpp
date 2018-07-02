@@ -26,38 +26,6 @@ using namespace epics::pvData;
 namespace epics {
 namespace pvAccess {
 
-void addDefaultBroadcastAddress(InetAddrVector* v, unsigned short p) {
-    osiSockAddr pNewNode;
-    memset(&pNewNode, 0, sizeof(pNewNode));
-    pNewNode.ia.sin_family = AF_INET;
-    // TODO this does not work in case of no active interfaces, should return 127.0.0.1 then
-    pNewNode.ia.sin_addr.s_addr = htonl(INADDR_BROADCAST);
-    pNewNode.ia.sin_port = htons(p);
-    v->push_back(pNewNode);
-}
-
-void getBroadcastAddresses(InetAddrVector& ret,
-                           SOCKET sock,
-                           unsigned short defaultPort) {
-    ret.clear();
-    ELLLIST as;
-    ellInit(&as);
-    osiSockAddr serverAddr;
-    memset(&serverAddr, 0, sizeof(osiSockAddr));
-    osiSockDiscoverBroadcastAddresses(&as, sock, &serverAddr);
-    for(ELLNODE * n = ellFirst(&as); n != NULL; n = ellNext(n))
-    {
-        osiSockAddrNode * sn = (osiSockAddrNode *)n;
-        sn->addr.ia.sin_port = htons(defaultPort);
-        // TODO discover possible duplicates
-        ret.push_back(sn->addr);
-    }
-    ellFree(&as);
-    // add fallback address
-    if (!ret.size())
-        addDefaultBroadcastAddress(&ret, defaultPort);
-}
-
 void encodeAsIPv6Address(ByteBuffer* buffer, const osiSockAddr* address) {
     // IPv4 compatible IPv6 address
     // first 80-bit are 0

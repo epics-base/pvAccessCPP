@@ -23,14 +23,6 @@ namespace pvAccess {
 
 typedef std::vector<osiSockAddr> InetAddrVector;
 
-/**
- * Populate a vector containing all the IPv4 broadcast addresses on this machine.
- * IPv6 doesn't have a local broadcast address.
- * Conversion of the defaultPort to network byte order performed by
- * the function.
- */
-epicsShareFunc void getBroadcastAddresses(InetAddrVector& ret, SOCKET sock, unsigned short defaultPort);
-
 struct ifaceNode {
     osiSockAddr addr, //!< Our address
                 peer, //!< point to point peer

@@ -178,27 +178,6 @@ void test_isMulticastAddress()
     testOk1(isMulticastAddress(&vec.at(5)));
 }
 
-void test_getBroadcastAddresses()
-{
-    testDiag("Test getBroadcastAddresses()");
-
-    osiSockAttach();
-
-    SOCKET socket = epicsSocketCreate(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    InetAddrVector broadcasts;
-    getBroadcastAddresses(broadcasts, socket, 6678);
-    // at least one is expected, in case of no network connection a fallback address is returned
-    testOk1(static_cast<size_t>(0) < broadcasts.size());
-    //testDiag("getBroadcastAddresses() returned %zu entry/-ies.", broadcasts->size());
-    epicsSocketDestroy(socket);
-
-    // debug
-    for(size_t i = 0; i<broadcasts.size(); i++) {
-        testDiag("%s", inetAddressToString(broadcasts[i]).c_str());
-    }
-
-}
-
 void test_getLoopbackNIF()
 {
     testDiag("Test getLoopbackNIF()");
@@ -369,7 +348,7 @@ void test_multicastLoopback()
 
 MAIN(testInetAddressUtils)
 {
-    testPlan(80);
+    testPlan(79);
     testDiag("Tests for InetAddress utils");
 
     test_getSocketAddressList();
@@ -377,7 +356,6 @@ MAIN(testInetAddressUtils)
     test_intToIPv4Address();
     test_encodeAsIPv6Address();
     test_isMulticastAddress();
-    test_getBroadcastAddresses();
     test_getLoopbackNIF();
 
     test_multicastLoopback();
