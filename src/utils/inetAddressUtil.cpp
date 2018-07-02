@@ -338,6 +338,9 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
             }
         }
 
+        ifaceNode node;
+        node.ifaceAddr.sa = pIfreqList->ifr_addr;
+
         status = socket_ioctl ( socket, SIOCGIFFLAGS, pIfreqList );
         if ( status ) {
             errlogPrintf ("discoverInterfaces(): net intf flags fetch for \"%s\" failed\n", pIfreqList->ifr_name);
@@ -361,9 +364,6 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
                 continue;
             }
         }
-
-        ifaceNode node;
-        node.ifaceAddr.sa = pIfreqList->ifr_addr;
 
         /*
          * If this is an interface that supports
