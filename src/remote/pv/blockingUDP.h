@@ -290,19 +290,10 @@ public:
         return false;
     }
 
-    /**
-     * Set list of send addresses.
-     * @param addresses list of send addresses, non-<code>null</code>.
-     */
-    void setSendAddresses(const InetAddrVector& addresses) {
-        std::vector<bool> isuni(addresses.size(), false);
-        InetAddrVector broadcastAddresses;
-        getBroadcastAddresses(broadcastAddresses, _channel, 0);
-        for(size_t i=0, N=addresses.size(); i<N; i++)
-            isuni[i] = !isBroadcastAddress(&addresses[i], broadcastAddresses)
-                    && !isMulticastAddress(&addresses[i]);
-        _sendAddresses = addresses;
-        _isSendAddressUnicast.swap(isuni);
+    // consumes arguments
+    void setSendAddresses(InetAddrVector& addresses, std::vector<bool>& address_types) {
+        _sendAddresses.swap(addresses);
+        _isSendAddressUnicast.swap(address_types);
     }
 
     void join(const osiSockAddr & mcastAddr, const osiSockAddr & nifAddr);

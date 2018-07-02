@@ -621,48 +621,40 @@ void initializeUDPTransports(bool serverFlag,
     //
     // set send address list
     //
-
-    if (!addressList.empty())
     {
-        // if auto is true, add it to specified list
-        if (!autoAddressList)
-            autoBCastAddr.clear();
-
         InetAddrVector list;
-        getSocketAddressList(list, addressList, sendPort, &autoBCastAddr);
-        if (!list.empty())
-        {
-            sendTransport->setSendAddresses(list);
-        }
-        /*
-        else
-        {
-            // fallback
-            // set default (auto) address list
-            sendTransport->setSendAddresses(&autoBCastAddr);
-        }
-        */
-    }
-    else if (autoAddressList)
-    {
-        // set default (auto) address list
-        sendTransport->setSendAddresses(autoBCastAddr);
-    }
+        getSocketAddressList(list, addressList, sendPort, autoAddressList ? &autoBCastAddr : NULL);
 
+        std::vector<bool> isunicast(list.size());
+
+        if (list.empty()) {
+            LOG(logLevelError,
+                "No broadcast addresses found or specified - empty address list!");
+        }
+
+        for (size_t i = 0; i < list.size(); i++) {
+
+            isunicast[i] = !isMulticastAddress(&list[i]);
+
+            for (IfaceNodeVector::const_iterator iter = ifaceList.begin(); isunicast[i] && iter != ifaceList.end(); iter++)
+            {
+                ifaceNode node = *iter;
+                // compare with all iface bcasts
+                if(node.validBcast && list[i].ia.sin_family==iter->bcast.ia.sin_family
+                        && list[i].ia.sin_addr.s_addr==iter->bcast.ia.sin_addr.s_addr) {
+                    isunicast[i] = false;
+                }
+            }
+            LOG(logLevelDebug,
+                "Broadcast address #%zu: %s. (%sunicast)", i, inetAddressToString(list[i]).c_str(),
+                isunicast[i]?"":"not ");
+        }
+
+        sendTransport->setSendAddresses(list, isunicast);
+    }
 
     sendTransport->start();
     udpTransports.push_back(sendTransport);
-
-    // debug output of broadcast addresses
-    const InetAddrVector& blist = sendTransport->getSendAddresses();
-    if (blist.empty())
-        LOG(logLevelError,
-            "No broadcast addresses found or specified - empty address list!");
-    else
-        for (size_t i = 0; i < blist.size(); i++)
-            LOG(logLevelDebug,
-                "Broadcast address #%zu: %s.", i, inetAddressToString(blist[i]).c_str());
-
 
     // TODO configurable local NIF, address
     osiSockAddr loAddr;
