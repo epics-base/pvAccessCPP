@@ -199,7 +199,7 @@ ifaceNode::ifaceNode()
 }
 
 static
-void checkNode(const ifaceNode& node)
+void checkNode(ifaceNode& node)
 {
     if(node.validBcast) {
         /* Cross-check between addr, mask, and bcast to detect incorrect broadcast
@@ -210,9 +210,16 @@ void checkNode(const ifaceNode& node)
                bcast= ntohl(node.bcast.ia.sin_addr.s_addr),
                bcast_expect = (addr & mask) | ~mask;
 
+        if(bcast == ntohl(INADDR_BROADCAST)) {
+            // translate global broadcast to iface broadcast.
+            // Windows (at least) will give us this sometimes.
+            bcast = bcast_expect;
+            node.bcast.ia.sin_addr.s_addr = htonl(bcast);
+        }
+
         if(bcast != bcast_expect) {
-            errlogPrintf("Detected inconsistent broadcast address on interface %08x/%08x.  expect %08x found ~%08x.",
-                         addr, mask, bcast_expect, bcast);
+            errlogPrintf("Warning: Inconsistent broadcast address on interface %08x/%08x.  expect %08x found %08x.\n",
+                         (unsigned)addr, (unsigned)mask, (unsigned)bcast_expect, (unsigned)bcast);
         }
     }
 }
