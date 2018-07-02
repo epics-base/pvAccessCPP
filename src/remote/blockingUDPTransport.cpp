@@ -625,6 +625,25 @@ void initializeUDPTransports(bool serverFlag,
         InetAddrVector list;
         getSocketAddressList(list, addressList, sendPort, autoAddressList ? &autoBCastAddr : NULL);
 
+        // avoid duplicates in address list
+        {
+            InetAddrVector dedup;
+
+            for (InetAddrVector::const_iterator iter = list.begin(); iter != list.end(); iter++)
+            {
+                bool match = false;
+
+                for(InetAddrVector::const_iterator inner = dedup.begin(); !match && inner != dedup.end(); inner++)
+                {
+                    match = iter->ia.sin_family==inner->ia.sin_family && iter->ia.sin_addr.s_addr==inner->ia.sin_addr.s_addr;
+                }
+
+                if(!match)
+                    dedup.push_back(*iter);
+            }
+            list.swap(dedup);
+        }
+
         std::vector<bool> isunicast(list.size());
 
         if (list.empty()) {
