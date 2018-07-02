@@ -228,7 +228,22 @@ bool discoverServers(double timeOut)
 
     // quary broadcast addresses of all IFs
     InetAddrVector broadcastAddresses;
-    getBroadcastAddresses(broadcastAddresses, socket, broadcastPort);
+    {
+        IfaceNodeVector ifaces;
+        if(discoverInterfaces(ifaces, socket, 0)) {
+            fprintf(stderr, "Unable to populate interface list\n");
+            return false;
+        }
+
+        for(IfaceNodeVector::const_iterator it(ifaces.begin()), end(ifaces.end()); it!=end; ++it)
+        {
+            if(it->validBcast && it->bcast.sa.sa_family == AF_INET) {
+                osiSockAddr bcast = it->bcast;
+                bcast.ia.sin_port = htons(broadcastPort);
+                broadcastAddresses.push_back(bcast);
+            }
+        }
+    }
 
     // set broadcast address list
     if (!addressList.empty())
