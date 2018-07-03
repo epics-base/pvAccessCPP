@@ -88,40 +88,6 @@ int32 ipv4AddressToInt(const osiSockAddr& addr) {
     return (int32)ntohl(addr.ia.sin_addr.s_addr);
 }
 
-int32 parseInetAddress(const string & addr) {
-    int32 retAddr;
-
-    size_t dot = addr.find('.');
-    if(dot==std::string::npos) THROW_BASE_EXCEPTION("Not an IPv4 address.");
-    int byte = atoi(addr.substr(0, dot).c_str());
-    if(byte<0||byte>255) THROW_BASE_EXCEPTION("Not an IPv4 address.");
-    retAddr = byte;
-
-    int num = dot+1;
-    dot = addr.find('.', num);
-    if(dot==std::string::npos) THROW_BASE_EXCEPTION("Not an IPv4 address.");
-    byte = atoi(addr.substr(num, dot-num).c_str());
-    if(byte<0||byte>255) THROW_BASE_EXCEPTION("Not an IPv4 address.");
-    retAddr <<= 8;
-    retAddr |= byte;
-
-    num = dot+1;
-    dot = addr.find('.', num);
-    if(dot==std::string::npos) THROW_BASE_EXCEPTION("Not an IPv4 address.");
-    byte = atoi(addr.substr(num, dot-num).c_str());
-    if(byte<0||byte>255) THROW_BASE_EXCEPTION("Not an IPv4 address.");
-    retAddr <<= 8;
-    retAddr |= byte;
-
-    num = dot+1;
-    byte = atoi(addr.substr(num).c_str());
-    if(byte<0||byte>255) THROW_BASE_EXCEPTION("Not an IPv4 address.");
-    retAddr <<= 8;
-    retAddr |= byte;
-
-    return htonl(retAddr);
-}
-
 void getSocketAddressList(InetAddrVector& ret,
                           const std::string & list, int defaultPort,
                                      const InetAddrVector* appendList) {
