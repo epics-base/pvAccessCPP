@@ -6,6 +6,11 @@
 #include <epicsMutex.h>
 #include <epicsGuard.h>
 
+#include <epicsAtomic.h>
+
+#include <pv/sharedPtr.h>
+#include <pv/sharedVector.h>
+
 #define epicsExportSharedSymbols
 #include "pva/server.h"
 #include "pv/pvAccess.h"
