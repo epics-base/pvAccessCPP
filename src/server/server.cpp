@@ -10,6 +10,11 @@
 
 #include <pv/sharedPtr.h>
 #include <pv/sharedVector.h>
+#include <pv/pvData.h>
+#include <pv/bitSet.h>
+#include <pv/createRequest.h>
+#include <pv/status.h>
+#include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
 #include "pva/server.h"
