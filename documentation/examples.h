@@ -55,3 +55,9 @@ This example demonstrates a client which sets up a persistent Monitor operation.
 @include monitorme.cpp
 
 */
+/** @page examples_mailbox Server Mailbox Example
+This example creates a server with one or more pvas::SharedPV::buildMailbox()
+instances.
+
+@include mailbox.cpp
+*/

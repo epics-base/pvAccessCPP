@@ -25,9 +25,14 @@
 #include <pv/serverContextImpl.h>
 #include <pv/serverChannelImpl.h>
 #include <pv/blockingUDP.h>
+#include <sharedstateimpl.h>
 
 using namespace epics::pvData;
 using std::string;
+
+namespace pvas {
+void registerRefTrackServer();
+}
 
 namespace epics {
 namespace pvAccess {
@@ -220,6 +225,10 @@ void providerRegInit(void*)
     registerRefCounter("ChannelRequest (ABC)", &ChannelRequest::num_instances);
     registerRefCounter("ResponseHandler (ABC)", &ResponseHandler::num_instances);
     registerRefCounter("MonitorFIFO", &MonitorFIFO::num_instances);
+    pvas::registerRefTrackServer();
+    registerRefCounter("pvas::SharedChannel", &pvas::SharedChannel::num_instances);
+    registerRefCounter("pvas::SharedPut", &pvas::SharedPut::num_instances);
+    registerRefCounter("pvas::SharedRPC", &pvas::SharedRPC::num_instances);
 }
 
 ChannelProviderRegistry::shared_pointer ChannelProviderRegistry::clients()

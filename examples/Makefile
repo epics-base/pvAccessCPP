@@ -16,6 +16,15 @@ monitorme_SRCS = monitorme.cpp
 TESTPROD_HOST += spamme
 spamme_SRCS = spamme.cpp
 
+TESTPROD_HOST += mailbox
+mailbox_SRCS += mailbox.cpp
+
+TESTPROD_HOST += epicschat
+epicschat_SRCS += epicschat.cpp
+
+TESTPROD_HOST += lazycounter
+lazycounter_SRCS += lazycounter.cpp
+
 TESTPROD_HOST += miniget
 miniget_SRCS = miniget.cpp
 

@@ -31,6 +31,10 @@ TESTPROD_HOST += testmonitorfifo
 testmonitorfifo_SRCS += testmonitorfifo.cpp
 TESTS += testmonitorfifo
 
+TESTPROD_HOST += testsharedstate
+testsharedstate_SRCS += testsharedstate.cpp
+TESTS += testsharedstate
+
 PROD_HOST += testServer
 testServer_SRCS += testServer.cpp
 
