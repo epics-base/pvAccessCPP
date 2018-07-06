@@ -8,7 +8,6 @@
 #include <epicsMutex.h>
 #include <epicsGuard.h>
 #include <errlog.h>
-#include <epicsAtomic.h>
 
 #include <shareLib.h>
 #include <pv/sharedPtr.h>

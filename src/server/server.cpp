@@ -6,8 +6,6 @@
 #include <epicsMutex.h>
 #include <epicsGuard.h>
 
-#include <epicsAtomic.h>
-
 #include <pv/sharedPtr.h>
 #include <pv/sharedVector.h>
 #include <pv/pvData.h>
