@@ -12,6 +12,9 @@
 #include <shareLib.h>
 #include <pv/sharedPtr.h>
 #include <pv/noDefaultMethods.h>
+#include <pv/sharedVector.h>
+#include <pv/bitSet.h>
+#include <pv/pvData.h>
 
 #define epicsExportSharedSymbols
 #include "sharedstateimpl.h"
