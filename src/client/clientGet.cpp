@@ -117,7 +117,7 @@ struct GetPutter : public pva::ChannelPutRequester,
                 cb->putBuild(structure, args);
                 if(!args.root)
                     throw std::logic_error("No put value provided");
-                else if(args.root->getStructure().get()!=structure.get())
+                else if(*args.root->getStructure()!=*structure)
                     throw std::logic_error("Provided put value with wrong type");
             }catch(std::exception& e){
                 if(putcb) {
