@@ -229,6 +229,7 @@ void providerRegInit(void*)
     registerRefCounter("pvas::SharedChannel", &pvas::SharedChannel::num_instances);
     registerRefCounter("pvas::SharedPut", &pvas::SharedPut::num_instances);
     registerRefCounter("pvas::SharedRPC", &pvas::SharedRPC::num_instances);
+    registerRefCounter("pvas::SharedPV", &pvas::SharedPV::num_instances);
 }
 
 ChannelProviderRegistry::shared_pointer ChannelProviderRegistry::clients()

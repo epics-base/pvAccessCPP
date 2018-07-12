@@ -27,6 +27,7 @@ class Channel;
 class ChannelRequester;
 class ChannelBaseRequester;
 class GetFieldRequester;
+void providerRegInit(void*);
 }} // epics::pvAccess
 
 namespace pvas {
@@ -163,6 +164,7 @@ public:
     int isDebug() const;
 
 private:
+    friend void epics::pvAccess::providerRegInit(void*);
     static size_t num_instances;
 
     weak_pointer internal_self; // const after build()
