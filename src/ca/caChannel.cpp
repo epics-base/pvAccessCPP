@@ -10,8 +10,9 @@
 #include <pv/standardField.h>
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
-#include <pv/reftrack.h>
 #include "monitorEventThread.h"
+#include "getDoneThread.h"
+#include "putDoneThread.h"
 
 #define epicsExportSharedSymbols
 #include "caChannel.h"
@@ -94,8 +95,6 @@ void CAChannel::disconnected()
              shared_from_this(), Channel::DISCONNECTED));
     }
 }
-
-size_t CAChannel::num_instances;
 
 CAChannel::CAChannel(std::string const & channelName,
                      CAChannelProvider::shared_pointer const & channelProvider,
@@ -402,9 +401,6 @@ void CAChannel::attachContext()
     throw  std::runtime_error(mess);
 }
 
-
-size_t CAChannelGet::num_instances;
-
 CAChannelGetPtr CAChannelGet::create(
     CAChannel::shared_pointer const & channel,
     ChannelGetRequester::shared_pointer const & channelGetRequester,
@@ -422,7 +418,9 @@ CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & channel,
   :
     channel(channel),
     channelGetRequester(channelGetRequester),
-    pvRequest(pvRequest)
+    pvRequest(pvRequest),
+    getStatus(Status::Ok),
+    getDoneThread(GetDoneThread::get())
 {}
 
 CAChannelGet::~CAChannelGet()
@@ -442,9 +440,13 @@ void CAChannelGet::activate()
     dbdToPv = DbdToPv::create(channel,pvRequest,getIO);
     pvStructure = dbdToPv->createPVStructure();
     bitSet = BitSetPtr(new BitSet(pvStructure->getStructure()->getNumberFields()));
+    notifyGetRequester = NotifyGetRequesterPtr(new NotifyGetRequester());
+    notifyGetRequester->setChannelGet(shared_from_this());
     EXCEPTION_GUARD(getRequester->channelGetConnect(Status::Ok, shared_from_this(),
                     pvStructure->getStructure()));
 }
+
+
 
 std::string CAChannelGet::getRequesterName() { return "CAChannelGet";}
 
@@ -467,8 +469,15 @@ void CAChannelGet::getDone(struct event_handler_args &args)
     
     ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
     if(!getRequester) return;
-    Status status = dbdToPv->getFromDBD(pvStructure,bitSet,args);
-    EXCEPTION_GUARD(getRequester->getDone(status, shared_from_this(), pvStructure, bitSet));
+    getStatus = dbdToPv->getFromDBD(pvStructure,bitSet,args);
+    getDoneThread->getDone(notifyGetRequester);
+}
+
+void CAChannelGet::notifyClient()
+{
+    ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
+    if(!getRequester) return;
+    EXCEPTION_GUARD(getRequester->getDone(getStatus, shared_from_this(), pvStructure, bitSet));
 }
 
 void CAChannelGet::get()
@@ -491,7 +500,8 @@ void CAChannelGet::get()
     {
         string mess("CAChannelGet::get ");
         mess += channel->getChannelName() + " message " + ca_message(result);
-        throw  std::runtime_error(mess);
+        getStatus = Status(Status::STATUSTYPE_ERROR,mess);
+        notifyClient();
     }
 }
 
@@ -507,8 +517,6 @@ void CAChannelGet::cancel()
 void CAChannelGet::lastRequest()
 {
 }
-
-size_t CAChannelPut::num_instances;
 
 CAChannelPutPtr CAChannelPut::create(
     CAChannel::shared_pointer const & channel,
@@ -528,7 +536,11 @@ CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & channel,
     channel(channel),
     channelPutRequester(channelPutRequester),
     pvRequest(pvRequest),
-    block(false)
+    block(false),
+    isPut(false),
+    getStatus(Status::Ok),
+    putStatus(Status::Ok),
+    putDoneThread(PutDoneThread::get())
 {}
 
 CAChannelPut::~CAChannelPut()
@@ -554,6 +566,8 @@ void CAChannelPut::activate()
         std::string val = pvString->get();
         if(val.compare("true")==0) block = true;
     }
+    notifyPutRequester = NotifyPutRequesterPtr(new NotifyPutRequester());
+    notifyPutRequester->setChannelPut(shared_from_this());
     EXCEPTION_GUARD(putRequester->channelPutConnect(Status::Ok, shared_from_this(),
                     pvStructure->getStructure()));
 }
@@ -564,6 +578,12 @@ std::string CAChannelPut::getRequesterName() { return "CAChannelPut";}
 /* --------------- epics::pvAccess::ChannelPut --------------- */
 
 namespace {
+
+static void ca_put_handler(struct event_handler_args args)
+{
+    CAChannelPut *channelPut = static_cast<CAChannelPut*>(args.usr);
+    channelPut->putDone(args);
+}
 
 static void ca_put_get_handler(struct event_handler_args args)
 {
@@ -582,10 +602,32 @@ void CAChannelPut::put(PVStructure::shared_pointer const & pvPutStructure,
     }
     ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
     if(!putRequester) return;
-    Status status = dbdToPv->putToDBD(channel,pvPutStructure,block);
-    EXCEPTION_GUARD(putRequester->putDone(status, shared_from_this()));
+    {
+       Lock lock(mutex);    
+       isPut = true;
+    }
+    putStatus = dbdToPv->putToDBD(channel,pvPutStructure,block,&ca_put_handler,this);
+    if(!block || !putStatus.isOK()) {
+        EXCEPTION_GUARD(putRequester->putDone(putStatus, shared_from_this()));
+    }
 }
 
+
+void CAChannelPut::putDone(struct event_handler_args &args)
+{
+     if(DEBUG_LEVEL>1) {
+        cout << "CAChannelPut::putDone " << channel->getChannelName() << endl;
+    }
+    ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
+    if(!putRequester) return;
+    if(args.status!=ECA_NORMAL)
+    {
+        putStatus = Status(Status::STATUSTYPE_ERROR, string(ca_message(args.status)));
+    } else {
+        putStatus = Status::Ok;
+    }
+    putDoneThread->putDone(notifyPutRequester);
+}
 
 void CAChannelPut::getDone(struct event_handler_args &args)
 {
@@ -595,8 +637,19 @@ void CAChannelPut::getDone(struct event_handler_args &args)
     
     ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
     if(!putRequester) return;
-    Status status = dbdToPv->getFromDBD(pvStructure,bitSet,args);
-    EXCEPTION_GUARD(putRequester->getDone(status, shared_from_this(), pvStructure, bitSet));
+    getStatus = dbdToPv->getFromDBD(pvStructure,bitSet,args);
+    putDoneThread->putDone(notifyPutRequester);
+}
+
+void CAChannelPut::notifyClient()
+{
+    ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
+    if(!putRequester) return;
+    if(isPut) {
+        EXCEPTION_GUARD(putRequester->putDone(putStatus, shared_from_this()));
+    } else {
+        EXCEPTION_GUARD(putRequester->getDone(getStatus, shared_from_this(), pvStructure, bitSet));
+    }
 }
 
 
@@ -607,6 +660,11 @@ void CAChannelPut::get()
     }
     ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
     if(!putRequester) return;
+    {
+       Lock lock(mutex);    
+       isPut = false;
+    }
+
     channel->attachContext();
     bitSet->clear();
     int result = ca_array_get_callback(dbdToPv->getRequestType(),
@@ -620,7 +678,8 @@ void CAChannelPut::get()
     {
         string mess("CAChannelPut::get ");
         mess += channel->getChannelName() + " message " +ca_message(result);
-        throw  std::runtime_error(mess);
+        Status status(Status::STATUSTYPE_ERROR,mess);
+        EXCEPTION_GUARD(putRequester->getDone(status, shared_from_this(), pvStructure, bitSet));
     }
 }
 
@@ -716,8 +775,6 @@ public:
      }
 };
 
-size_t CAChannelMonitor::num_instances;
-
 CAChannelMonitorPtr CAChannelMonitor::create(
     CAChannel::shared_pointer const & channel,
     MonitorRequester::shared_pointer const & monitorRequester,
@@ -775,9 +832,8 @@ void CAChannelMonitor::activate()
             if (size > 1) queueSize = size;
         }
     }
-    notifyRequester = NotifyRequesterPtr(new NotifyRequester());
-    
-    notifyRequester->setChannelMonitor(shared_from_this());
+    notifyMonitorRequester = NotifyMonitorRequesterPtr(new NotifyMonitorRequester());
+    notifyMonitorRequester->setChannelMonitor(shared_from_this());
     monitorQueue = CACMonitorQueuePtr(new CACMonitorQueue(queueSize));
     EXCEPTION_GUARD(requester->monitorConnect(Status::Ok, shared_from_this(),
                     pvStructure->getStructure()));
@@ -806,7 +862,7 @@ void CAChannelMonitor::subscriptionEvent(struct event_handler_args &args)
         } else {
             *(activeElement->overrunBitSet) |= *(activeElement->changedBitSet);
         }
-        monitorEventThread->event(notifyRequester);
+        monitorEventThread->event(notifyMonitorRequester);
     }
     else
     {
@@ -815,6 +871,18 @@ void CAChannelMonitor::subscriptionEvent(struct event_handler_args &args)
         mess += ca_message(args.status);
         throw  std::runtime_error(mess);
     }
+}
+
+
+void CAChannelMonitor::notifyClient()
+{
+    {
+         Lock lock(mutex);
+         if(!isStarted) return;
+    }
+    MonitorRequester::shared_pointer requester(monitorRequester.lock());
+    if(!requester) return;
+    requester->monitorEvent(shared_from_this());
 }
 
 Status CAChannelMonitor::start()
@@ -865,17 +933,6 @@ Status CAChannelMonitor::stop()
     int result = ca_clear_subscription(pevid);
     if(result==ECA_NORMAL) return Status::Ok;
     return Status(Status::STATUSTYPE_ERROR,string(ca_message(result)));
-}
-
-void CAChannelMonitor::notifyClient()
-{
-    {
-         Lock lock(mutex);
-         if(!isStarted) return;
-    }
-    MonitorRequester::shared_pointer requester(monitorRequester.lock());
-    if(!requester) return;
-    requester->monitorEvent(shared_from_this());
 }
 
 

@@ -1,6 +1,6 @@
 # pvAccessCPP: ca provider
 
-2018.06.25
+2018.07.09
 
 Editors:
 
@@ -610,26 +610,26 @@ Any code that uses **ca** must call **CAClientFactory::start()** before making a
 
 ca_context_create is called for the thread that calls CAClientFactory::start().
 
-Client code can create an Auxillary Thread by calling:
-
-```
-ca_client_context* current_context = CAClientFactory::get_ca_client_context();
-int result = ca_attach_context(current_context);
-
-```
+If the client creates auxillary threads the make pvAccess client requests then the auxillary threads will automatically become
+a **ca** auxilary thread.
 
 
 [Deadlock in ca_clear_subscription()](https://bugs.launchpad.net/epics-base/7.0/+bug/1751380)
 
 Shows a problem with monitor callbacks.
+A test was created that shows that the same problem can occur with a combination of rapid get, put and monitor events.
 
 
-In order to prevent this problem **ca** creates a monitorEventThread.
-All calls to the requester's **monitorEvent** method are made from the monitorEventThread.
+In order to prevent this problem **ca** creates the following threads:
+**getEventThread**, **putEventThread**, and **monitorEventThread**.
 
-**Note** the monitorEventThread does not call **ca_attach_context**.
-This means that no **ca_xxx** function can be called from
-the requester's **monitorEvent** method.
+All client callbacks are made via one of these threads.
+For example a call to the requester's **monitorEvent** method is made from the monitorEventThread.
+
+**Notes**
+
+* These threads do not call **ca_attach_context**.
+* No **ca_xxx** function should be called from the requester's callback method.
 
 
  

@@ -48,12 +48,6 @@ static void descriptionHandler(struct event_handler_args args)
     dbdToPv->getDescriptionDone(args);
 }
 
-static void putHandler(struct event_handler_args args)
-{
-    DbdToPv *dbdToPv = static_cast<DbdToPv*>(args.usr);
-    dbdToPv->putDone(args);
-}
-
 DbdToPvPtr DbdToPv::create(
     CAChannelPtr const & caChannel,
     PVStructurePtr const & pvRequest,
@@ -74,6 +68,8 @@ DbdToPv::DbdToPv(IOType ioType)
    valueAlarmRequested(false),
    isArray(false),
    firstTime(true),
+   choicesValid(false),
+   waitForChoicesValid(false),
    caValueType(-1),
    caRequestType(-1),
    maxElements(0)
@@ -292,6 +288,13 @@ void DbdToPv::getChoicesDone(struct event_handler_args &args)
     size_t num = dbr_enum_p->no_str;
     choices.reserve(num);
     for(size_t i=0; i<num; ++i) choices.push_back(string(&dbr_enum_p->strs[i][0]));
+    bool signal = false;
+    {
+        Lock lock(choicesMutex);  
+        choicesValid = true;
+        if(waitForChoicesValid) signal = true;
+    }
+    if(signal) choicesEvent.signal();
 } 
 
 chtype DbdToPv::getRequestType()
@@ -685,7 +688,9 @@ const void * put_DBRScalarArray(unsigned long*count, PVScalarArray::shared_point
 Status DbdToPv::putToDBD(
      CAChannelPtr const & caChannel,
      PVStructurePtr const & pvStructure,
-     bool block)
+     bool block,
+     caCallbackFunc putHandler,
+     void * userarg)
 {
     chid channelID = caChannel->getChannelID();
     const void *pValue = NULL;
@@ -745,6 +750,23 @@ Status DbdToPv::putToDBD(
         switch(caValueType) {
            case DBR_ENUM:
            {
+               bool wait = false;
+               {
+                   Lock lock(choicesMutex);
+                   if(!choicesValid) {
+                       wait = true;
+                       waitForChoicesValid = true;
+                   }
+               } 
+               bool result = true;
+               if(wait) {
+                   result = choicesEvent.wait(5.0);
+               }
+               if(!result) {
+                   Status errorStatus(
+                    Status::STATUSTYPE_ERROR, string("DbdToPv::getFromDBD "));
+                return errorStatus;
+               }
                dbr_enum_t indexvalue = pvStructure->getSubField<PVInt>("value.index")->get();
                pValue = &indexvalue;
                break;
@@ -761,40 +783,21 @@ Status DbdToPv::putToDBD(
                 return errorStatus;
          }
     }
+    Status status = Status::Ok;
     int result = 0;
+    caChannel->attachContext();
     if(block) {
-        caChannel->attachContext();
-        result = ca_array_put_callback(caValueType,count,channelID,pValue,putHandler,this);
-        if(result==ECA_NORMAL) {
-             ca_flush_io();
-             if(!waitForCallback.wait(2.0)) {
-                  throw  std::runtime_error("DbDToPv::putToDBD waitForCallback timeout");
-             }
-             return putStatus;
-        }    
+        result = ca_array_put_callback(caValueType,count,channelID,pValue,putHandler,userarg);
     } else {
-        caChannel->attachContext();
         result = ca_array_put(caValueType,count,channelID,pValue);
-        ca_flush_io();
+    }
+    if(result==ECA_NORMAL) {
+         ca_flush_io();
+    } else {
+         status = Status(Status::STATUSTYPE_ERROR, string(ca_message(result)));
     }
     if(ca_stringBuffer!=NULL) delete[] ca_stringBuffer;
-    if(result==ECA_NORMAL) return Status::Ok;
-    Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
-    return errorStatus;
-}
-
-void DbdToPv::putDone(struct event_handler_args &args)
-{
-    if(args.status!=ECA_NORMAL)
-    {
-        string message("DbdToPv::putDone ca_message ");
-        message += ca_message(args.status);
-        putStatus = Status(Status::STATUSTYPE_ERROR, string(ca_message(args.status)));
-    } else {
-        putStatus = Status::Ok;
-    }
-    waitForCallback.signal();
-}
-    
+    return status;
+}    
 
 }}}

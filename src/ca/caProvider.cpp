@@ -4,18 +4,16 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#include <algorithm>
-
 #include <cadef.h>
 #include <epicsSignal.h>
 #include <epicsThread.h>
 #include <epicsExit.h>
 #include <pv/logger.h>
-#include <pv/configuration.h>
 #include <pv/pvAccess.h>
-#include <pv/reftrack.h>
 
 #include "monitorEventThread.h"
+#include "getDoneThread.h"
+#include "putDoneThread.h"
 
 #define epicsExportSharedSymbols
 #include <pv/caProvider.h>
@@ -33,8 +31,6 @@ using namespace epics::pvData;
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
 
-size_t CAChannelProvider::num_instances;
-
 CAChannelProvider::CAChannelProvider() 
     : current_context(0)
 {
@@ -43,7 +39,9 @@ CAChannelProvider::CAChannelProvider()
 
 CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
     :  current_context(0),
-       monitorEventThread(MonitorEventThread::get())
+       monitorEventThread(MonitorEventThread::get()),
+       getDoneThread(GetDoneThread::get()),
+       putDoneThread(PutDoneThread::get())
 {
     if(DEBUG_LEVEL>0) {
           std::cout<< "CAChannelProvider::CAChannelProvider\n";
@@ -78,11 +76,13 @@ CAChannelProvider::~CAChannelProvider()
        channelQ.pop();
     }
     monitorEventThread->stop();
+    getDoneThread->stop();
+    putDoneThread->stop();
     if(DEBUG_LEVEL>0) {
         std::cout << "CAChannelProvider::~CAChannelProvider() calling ca_context_destroy\n";
     }
     ca_context_destroy();
-std::cout << "CAChannelProvider::~CAChannelProvider() returning\n";
+//std::cout << "CAChannelProvider::~CAChannelProvider() returning\n";
 }
 
 std::string CAChannelProvider::getProviderName()
@@ -197,11 +197,6 @@ void CAChannelProvider::initialize()
     current_context = ca_current_context();
 }
 
-ca_client_context * CAChannelProvider::get_ca_client_context()
-{
-    return current_context;
-}
-
 void CAClientFactory::start()
 {
     if(DEBUG_LEVEL>0) std::cout << "CAClientFactory::start()\n";
@@ -210,27 +205,10 @@ void CAClientFactory::start()
     }
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
-    registerRefCounter("CAChannelProvider", &CAChannelProvider::num_instances);
-    registerRefCounter("CAChannel", &CAChannel::num_instances);
-    registerRefCounter("CAChannelGet", &CAChannelGet::num_instances);
-    registerRefCounter("CAChannelPut", &CAChannelPut::num_instances);
-    registerRefCounter("CAChannelMonitor", &CAChannelMonitor::num_instances);
-
     if(!ChannelProviderRegistry::clients()->add<CAChannelProvider>("ca", true))
     {
          throw std::runtime_error("CAClientFactory::start failed");
     }
-}
-
-ca_client_context * CAClientFactory::get_ca_client_context()
-{
-   if(DEBUG_LEVEL>0) std::cout << "CAClientFactory::get_ca_client_context\n";
-   ChannelProvider::shared_pointer channelProvider(
-         ChannelProviderRegistry::clients()->getProvider("ca"));
-   if(!channelProvider) throw  std::runtime_error("CAClientFactory::start() was not called");
-   CAChannelProviderPtr cacChannelProvider
-       = std::tr1::static_pointer_cast<CAChannelProvider>(channelProvider);
-   return cacChannelProvider->get_ca_client_context();
 }
 
 void CAClientFactory::stop()

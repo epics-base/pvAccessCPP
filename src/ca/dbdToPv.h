@@ -35,39 +35,45 @@ typedef std::tr1::shared_ptr<ValueAlarmDbd> ValueAlarmDbdPtr;
 
 struct CaAlarm
 {
-    CaAlarm() : status(0), severity(0) {}
     dbr_short_t	status;
     dbr_short_t	severity;
+    CaAlarm() : status(0), severity(0) {}
 };
 
 struct CaDisplay
 {
-    CaDisplay() : lower_disp_limit(0),upper_disp_limit(0) {}
     double      lower_disp_limit;
     double      upper_disp_limit;
     std::string units;
     std::string format;
+    CaDisplay() : lower_disp_limit(0),upper_disp_limit(0) {}
 };
 
 struct CaControl
 {
-    CaControl() : upper_ctrl_limit(0),lower_ctrl_limit(0) {}
     double upper_ctrl_limit;
     double lower_ctrl_limit;
+    CaControl() : upper_ctrl_limit(0),lower_ctrl_limit(0) {}
 };
 
 struct CaValueAlarm
 {
-    CaValueAlarm() : upper_alarm_limit(0),upper_warning_limit(0),lower_warning_limit(0),lower_alarm_limit(0)
-    {}
     double upper_alarm_limit;	
     double upper_warning_limit;
     double lower_warning_limit;
     double lower_alarm_limit;
+    CaValueAlarm() :
+       upper_alarm_limit(0),
+       upper_warning_limit(0),
+       lower_warning_limit(0),
+       lower_alarm_limit(0)
+    {}
 };
 
 class DbdToPv;
 typedef std::tr1::shared_ptr<DbdToPv> DbdToPvPtr;
+
+typedef void ( caCallbackFunc ) (struct event_handler_args);
 
 /**
  * @brief  DbdToPv converts between DBD data and pvData.
@@ -93,12 +99,13 @@ public:
     epics::pvData::Status putToDBD(
          CAChannelPtr const & caChannel,
          epics::pvData::PVStructurePtr const & pvStructure,
-         bool block
+         bool block,
+         caCallbackFunc putHandler,
+         void *userArg
     );
     void getChoicesDone(struct event_handler_args &args);
     void descriptionConnected(struct connection_handler_args args);
     void getDescriptionDone(struct event_handler_args &args);
-    void putDone(struct event_handler_args &args);
 private:
     DbdToPv(IOType ioType);
     void activate(
@@ -114,17 +121,19 @@ private:
     bool valueAlarmRequested;
     bool isArray;
     bool firstTime;
+    bool choicesValid;
+    bool waitForChoicesValid;
     chtype caValueType;
     chtype caRequestType;
     unsigned long maxElements;
+    epics::pvData::Mutex choicesMutex;
+    epics::pvData::Event choicesEvent;
     epicsTimeStamp caTimeStamp;
     CaAlarm caAlarm;
     CaDisplay caDisplay;
     CaControl caControl;
     CaValueAlarm caValueAlarm;
     std::string description;
-    epics::pvData::Event waitForCallback;
-    epics::pvData::Status putStatus;
     epics::pvData::Structure::const_shared_pointer structure;
     std::vector<std::string> choices;
 };

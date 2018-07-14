@@ -5,13 +5,13 @@
  */
 /**
  * @author mrk
- * @date 2018.06
+ * @date 2018.07
  */
 
 #include "caChannel.h"
 #include <epicsExit.h>
 #define epicsExportSharedSymbols
-#include "monitorEventThread.h"
+#include "getDoneThread.h"
 
 using namespace epics::pvData;
 using namespace std;
@@ -20,39 +20,41 @@ namespace epics {
 namespace pvAccess {
 namespace ca {
 
-MonitorEventThreadPtr MonitorEventThread::get()
+GetDoneThreadPtr GetDoneThread::get()
 {
-    static  MonitorEventThreadPtr master;
+    static  GetDoneThreadPtr master;
     static Mutex mutex;
     Lock xx(mutex);
     if(!master) {
-        master = MonitorEventThreadPtr(new MonitorEventThread());
+        master = GetDoneThreadPtr(new GetDoneThread());
         master->start();
     }
     return master;
 }
 
-MonitorEventThread::MonitorEventThread()
+GetDoneThread::GetDoneThread()
 : isStop(false)
 {
 }
 
-MonitorEventThread::~MonitorEventThread()
+GetDoneThread::~GetDoneThread()
 {
-//std::cout << "MonitorEventThread::~MonitorEventThread()\n";
+//std::cout << "GetDoneThread::~GetDoneThread()\n";
 }
 
-void MonitorEventThread::start()
+
+void GetDoneThread::start()
 {
     thread =  std::tr1::shared_ptr<epicsThread>(new epicsThread(
         *this,
-        "monitorEventThread",
+        "getDoneThread",
         epicsThreadGetStackSize(epicsThreadStackSmall),
         epicsThreadPriorityLow));
-    thread->start();  
+    thread->start(); 
 }
 
-void MonitorEventThread::stop()
+
+void GetDoneThread::stop()
 {
     {
         Lock xx(mutex);
@@ -62,45 +64,44 @@ void MonitorEventThread::stop()
     waitForStop.wait();
 }
 
-
-void MonitorEventThread::event(NotifyMonitorRequesterPtr const &notifyMonitorRequester)
+void GetDoneThread::getDone(NotifyGetRequesterPtr const &notifyGetRequester)
 {
     {   
         Lock lock(mutex);
-        if(notifyMonitorRequester->isOnQueue) return;
-        notifyMonitorRequester->isOnQueue = true;
-        notifyMonitorQueue.push(notifyMonitorRequester);
+        if(notifyGetRequester->isOnQueue) return;
+        notifyGetRequester->isOnQueue = true;
+        notifyGetQueue.push(notifyGetRequester);
     }
     waitForCommand.signal();
 }
 
-void MonitorEventThread::run()
+void GetDoneThread::run()
 {
     while(true)
     {
          waitForCommand.wait();
          while(true) {
              bool more = false;
-             NotifyMonitorRequester* notifyMonitorRequester(NULL);
+             NotifyGetRequester* notifyGetRequester(NULL);
              {
                  Lock lock(mutex);
-                 if(!notifyMonitorQueue.empty())
+                 if(!notifyGetQueue.empty())
                  {
                       more = true;
-                      NotifyMonitorRequesterWPtr req(notifyMonitorQueue.front());
-                      notifyMonitorQueue.pop();
-                      NotifyMonitorRequesterPtr reqPtr(req.lock());
+                      NotifyGetRequesterWPtr req(notifyGetQueue.front());
+                      notifyGetQueue.pop();
+                      NotifyGetRequesterPtr reqPtr(req.lock());
                       if(reqPtr) {
-                         notifyMonitorRequester = reqPtr.get();
+                         notifyGetRequester = reqPtr.get();
                          reqPtr->isOnQueue = false;
                       }
                  }
              }
              if(!more) break;
-             if(notifyMonitorRequester!=NULL)
+             if(notifyGetRequester!=NULL)
              {
-                 CAChannelMonitorPtr channelMonitor(notifyMonitorRequester->channelMonitor.lock());
-                 if(channelMonitor) channelMonitor->notifyClient();
+                 CAChannelGetPtr channelGet(notifyGetRequester->channelGet.lock());
+                 if(channelGet) channelGet->notifyClient();
              }
          }
          if(isStop) {

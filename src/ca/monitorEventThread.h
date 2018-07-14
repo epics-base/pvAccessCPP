@@ -20,9 +20,9 @@ namespace epics {
 namespace pvAccess {
 namespace ca {
 
-class NotifyRequester;
-typedef std::tr1::shared_ptr<NotifyRequester> NotifyRequesterPtr;
-typedef std::tr1::weak_ptr<NotifyRequester> NotifyRequesterWPtr;
+class NotifyMonitorRequester;
+typedef std::tr1::shared_ptr<NotifyMonitorRequester> NotifyMonitorRequesterPtr;
+typedef std::tr1::weak_ptr<NotifyMonitorRequester> NotifyMonitorRequesterWPtr;
 
 
 class MonitorEventThread;
@@ -32,13 +32,13 @@ class CAChannelMonitor;
 typedef std::tr1::shared_ptr<CAChannelMonitor> CAChannelMonitorPtr;
 typedef std::tr1::weak_ptr<CAChannelMonitor> CAChannelMonitorWPtr;
 
-class NotifyRequester
+class NotifyMonitorRequester
 {
 public:
     MonitorRequester::weak_pointer monitorRequester;
     CAChannelMonitorWPtr channelMonitor;
     bool isOnQueue;
-    NotifyRequester() : isOnQueue(false) {}
+    NotifyMonitorRequester() : isOnQueue(false) {}
     void setChannelMonitor(CAChannelMonitorPtr const &channelMonitor)
     { this->channelMonitor = channelMonitor;}
 };
@@ -53,7 +53,7 @@ public:
     virtual void run();
     void start();
     void stop();
-    void event(NotifyRequesterPtr const &notifyRequester);
+    void event(NotifyMonitorRequesterPtr const &notifyMonitorRequester);
 private:
     MonitorEventThread();
 
@@ -62,7 +62,7 @@ private:
     epics::pvData::Mutex mutex;
     epics::pvData::Event waitForCommand;
     epics::pvData::Event waitForStop;
-    std::queue<NotifyRequesterWPtr> notifyMonitorQueue;
+    std::queue<NotifyMonitorRequesterWPtr> notifyMonitorQueue;
 };
 
 
