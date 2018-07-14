@@ -73,6 +73,10 @@ struct SharedPut : public pva::ChannelPut,
     const requester_type::weak_pointer requester;
     const pvd::PVStructure::const_shared_pointer pvRequest;
 
+    // guarded by PV mutex
+    pvd::StructureConstPtr lastStruct;
+    pvd::BitSet selectMask;
+
     static size_t num_instances;
 
     SharedPut(const std::tr1::shared_ptr<SharedChannel>& channel,

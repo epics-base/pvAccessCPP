@@ -18,6 +18,7 @@
 #include <pv/createRequest.h>
 #include <pv/status.h>
 #include <pv/reftrack.h>
+#include <pv/createRequest.h>
 
 #define epicsExportSharedSymbols
 #include "sharedstateimpl.h"
@@ -124,15 +125,25 @@ void SharedPut::get()
     pvd::Status sts;
     pvd::PVStructurePtr current;
     pvd::BitSetPtr changed;
+    bool emptyselect = false;
     {
         Guard G(channel->owner->mutex);
 
         if(channel->owner->current) {
-            // clone
-            current = pvd::getPVDataCreate()->createPVStructure(channel->owner->current->getStructure());
-            current->copyUnchecked(*channel->owner->current);
+            const pvd::StructureConstPtr& currentType = channel->owner->current->getStructure();
 
+            current = pvd::getPVDataCreate()->createPVStructure(currentType);
+
+            if(currentType!=lastStruct) {
+                selectMask = pvd::extractRequestMask(current, pvRequest->getSubField<pvd::PVStructure>("field"));
+                emptyselect = selectMask.isEmpty();
+                lastStruct = currentType;
+            }
             changed.reset(new pvd::BitSet(channel->owner->valid));
+            *changed &= selectMask;
+
+            // clone
+            current->copyUnchecked(*channel->owner->current, *changed);
         }
     }
 
@@ -141,6 +152,8 @@ void SharedPut::get()
 
     if(!current) {
         sts = pvd::Status::error("Get not possible, cache disabled");
+    } else if(emptyselect) {
+        sts = pvd::Status::warn("pvRequest with empty field mask");
     }
 
     req->getDone(sts, shared_from_this(), current, changed);
