@@ -274,6 +274,7 @@ public:
         size_t maxCount,    //!< upper limit on requested FIFO size
                defCount,    //!< FIFO size when client makes no request
                actualCount; //!< filled in with actual FIFO size
+        bool ignoreRequestMask;
     };
 
     /**
@@ -365,6 +366,8 @@ private:
     // and we keep a weak ref to downstream's MonitorRequester
     const std::tr1::weak_ptr<MonitorRequester> requester;
 
+    const epics::pvData::PVStructure::const_shared_pointer pvRequest;
+
     // then we expect to keep a strong ref to upstream (Source)
     // and expect that upstream will have only a weak ref to us.
     const Source::shared_pointer upstream;
@@ -373,6 +376,8 @@ private:
     bool opened; // open() vs. close()
     bool running; // start() vs. stop()
     bool finished; // finish() called
+    epics::pvData::BitSet selectMask, // set during open()
+                          scratch; // using during post to avoid re-alloc
 
     bool needConnected;
     bool needEvent;

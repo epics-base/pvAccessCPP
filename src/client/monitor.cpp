@@ -13,6 +13,7 @@
 #include <pv/monitor.h>
 #include <pv/pvAccess.h>
 #include <pv/reftrack.h>
+#include <pv/createRequest.h>
 
 namespace pvd = epics::pvData;
 
@@ -21,7 +22,7 @@ typedef epicsGuardRelease<epicsMutex> UnGuard;
 
 namespace epics {namespace pvAccess {
 
-static const MonitorFIFO::Config default_conf = {4, 4, 0};
+static const MonitorFIFO::Config default_conf = {4, 4, 0, false};
 
 size_t MonitorFIFO::num_instances;
 
@@ -32,6 +33,7 @@ MonitorFIFO::MonitorFIFO(const std::tr1::shared_ptr<MonitorRequester> &requester
                          const Source::shared_pointer &source, Config *inconf)
     :conf(inconf ? *inconf : default_conf)
     ,requester(requester)
+    ,pvRequest(pvRequest)
     ,upstream(source)
     ,pipeline(false)
     ,opened(false)
@@ -122,35 +124,53 @@ void MonitorFIFO::setFreeHighMark(double level)
 
 void MonitorFIFO::open(const pvd::StructureConstPtr& type)
 {
-    Guard G(mutex);
+    bool emptyselect;
+    {
+        Guard G(mutex);
 
-    if(opened)
-        throw std::logic_error("Monitor already open.  Must close() before re-openning");
-    else if(needClosed)
-        throw std::logic_error("Monitor needs notify() between close() and open().");
-    else if(finished)
-        throw std::logic_error("Monitor finished.  re-open() not possible");
+        if(opened)
+            throw std::logic_error("Monitor already open.  Must close() before re-openning");
+        else if(needClosed)
+            throw std::logic_error("Monitor needs notify() between close() and open().");
+        else if(finished)
+            throw std::logic_error("Monitor finished.  re-open() not possible");
 
-    // keep the code simpler.
-    // never try to re-use elements, even on re-open w/o type change.
-    empty.clear();
-    inuse.clear();
-    returned.clear();
+        // keep the code simpler.
+        // never try to re-use elements, even on re-open w/o type change.
+        empty.clear();
+        inuse.clear();
+        returned.clear();
 
-    // fill up empty.
-    pvd::PVDataCreatePtr create(pvd::getPVDataCreate());
-    while(empty.size() < conf.actualCount+1) {
-        MonitorElementPtr elem(new MonitorElement(create->createPVStructure(type)));
-        empty.push_back(elem);
+        // fill up empty.
+        pvd::PVDataCreatePtr create(pvd::getPVDataCreate());
+        while(empty.size() < conf.actualCount+1) {
+            MonitorElementPtr elem(new MonitorElement(create->createPVStructure(type)));
+            empty.push_back(elem);
+        }
+
+        opened = true;
+        needConnected = true;
+
+        if(conf.ignoreRequestMask) {
+            selectMask.clear();
+            for(size_t i=0, N=empty.back()->pvStructurePtr->getNextFieldOffset(); i<N; i++)
+                selectMask.set(i);
+        } else {
+            selectMask = pvData::extractRequestMask(empty.back()->pvStructurePtr,
+                                                    pvRequest->getSubField<pvData::PVStructure>("field"));
+        }
+        emptyselect = selectMask.isEmpty();
+
+        assert(inuse.empty());
+        assert(empty.size()>=2);
+        assert(returned.empty());
+        assert(conf.actualCount>=1);
     }
-
-    opened = true;
-    needConnected = true;
-
-    assert(inuse.empty());
-    assert(empty.size()>=2);
-    assert(returned.empty());
-    assert(conf.actualCount>=1);
+    if(!emptyselect) return;
+    requester_type::shared_pointer req(requester.lock());
+    if(req) {
+        req->message("pvRequest with empty field mask", warningMessage);
+    }
 }
 
 void MonitorFIFO::close()
@@ -161,6 +181,7 @@ void MonitorFIFO::close()
 
     opened = false;
     needClosed = true;
+    selectMask.clear();
 }
 
 void MonitorFIFO::finish()
@@ -186,10 +207,16 @@ bool MonitorFIFO::tryPost(const pvData::PVStructure& value,
     assert(opened && !finished);
     assert(!empty.empty() || !inuse.empty());
 
+    // compute effective changed mask for this subscription
+    scratch = changed;
+    scratch &= selectMask;
+
     const bool havefree = _freeCount()>0u;
 
     MonitorElementPtr elem;
-    if(havefree) {
+    if(!conf.ignoreRequestMask && scratch.isEmpty()) {
+        // drop empty update
+    } else if(havefree) {
         // take an empty element
         elem = empty.front();
         empty.pop_front();
@@ -201,9 +228,10 @@ bool MonitorFIFO::tryPost(const pvData::PVStructure& value,
     if(elem) {
         try {
             assert(value.getStructure() == elem->pvStructurePtr->getStructure());
-            elem->pvStructurePtr->copyUnchecked(value, changed);
-            *elem->changedBitSet = changed;
+            elem->pvStructurePtr->copyUnchecked(value, scratch);
+            *elem->changedBitSet = scratch;
             *elem->overrunBitSet = overrun;
+            *elem->overrunBitSet &= selectMask;
 
             if(inuse.empty() && running)
                 needEvent = true;
@@ -249,12 +277,19 @@ void MonitorFIFO::post(const pvData::PVStructure& value,
         elem = inuse.back();
     }
 
+    scratch = changed;
+    scratch &= selectMask;
+
+    if(!conf.ignoreRequestMask && scratch.isEmpty())
+        return; // drop empty update
+
     assert(value.getStructure() == elem->pvStructurePtr->getStructure());
-    elem->pvStructurePtr->copyUnchecked(value, changed);
+    elem->pvStructurePtr->copyUnchecked(value, scratch);
 
     if(use_empty) {
-        *elem->changedBitSet = changed;
+        *elem->changedBitSet = scratch;
         *elem->overrunBitSet = overrun;
+        *elem->overrunBitSet &= selectMask;
 
         if(inuse.empty() && running)
             needEvent = true;
@@ -267,9 +302,9 @@ void MonitorFIFO::post(const pvData::PVStructure& value,
     } else {
         // in overflow
         // squash
-        elem->overrunBitSet->or_and(*elem->changedBitSet, changed);
-        *elem->overrunBitSet |= overrun;
-        *elem->changedBitSet |= changed;
+        elem->overrunBitSet->or_and(*elem->changedBitSet, scratch);
+        *elem->changedBitSet |= scratch;
+        elem->overrunBitSet->or_and(overrun, selectMask);
 
         // leave as inuse.back()
     }
