@@ -369,7 +369,9 @@ void checkTypeChange()
 void checkFill()
 {
     testDiag("==== %s ====", CURRENT_FUNCTION);
-    pva::MonitorFIFO::Config conf = {4, 2, 0};
+    pva::MonitorFIFO::Config conf;
+    conf.maxCount=4;
+    conf.defCount=2;
     Tester tester(pvReqEmpty, &conf);
 
     testEqual(conf.actualCount, 2u);
@@ -439,7 +441,9 @@ void checkFill()
 void checkSaturate()
 {
     testDiag("==== %s ====", CURRENT_FUNCTION);
-    pva::MonitorFIFO::Config conf = {4, 2, 0};
+    pva::MonitorFIFO::Config conf;
+    conf.maxCount=4;
+    conf.defCount=2;
     Tester tester(pvReqEmpty, &conf);
 
     testEqual(conf.actualCount, 2u);
@@ -501,7 +505,9 @@ void checkSaturate()
 void checkPipeline()
 {
     testDiag("==== %s ====", CURRENT_FUNCTION);
-    pva::MonitorFIFO::Config conf = {4, 3, 0};
+    pva::MonitorFIFO::Config conf;
+    conf.maxCount=4;
+    conf.defCount=3;
     Tester tester(pvReqPipeline, &conf);
 
     testEqual(conf.actualCount, 2u);
@@ -597,7 +603,9 @@ void checkPipeline()
 void checkSpam()
 {
     testDiag("==== %s ====", CURRENT_FUNCTION);
-    pva::MonitorFIFO::Config conf = {4, 3, 0};
+    pva::MonitorFIFO::Config conf;
+    conf.maxCount=4;
+    conf.defCount=3;
     Tester tester(pvReqPipeline, &conf);
 
     pvd::uint32 cnt = 0;
@@ -663,7 +671,9 @@ void checkSpam()
 void checkCountdown()
 {
     testDiag("==== %s ====", CURRENT_FUNCTION);
-    pva::MonitorFIFO::Config conf = {4, 3, 0};
+    pva::MonitorFIFO::Config conf;
+    conf.maxCount=4;
+    conf.defCount=3;
     Tester tester(pvReqPipeline, &conf);
 
     pvd::int32 cnt = 10;

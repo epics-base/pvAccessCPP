@@ -22,7 +22,12 @@ typedef epicsGuardRelease<epicsMutex> UnGuard;
 
 namespace epics {namespace pvAccess {
 
-static const MonitorFIFO::Config default_conf = {4, 4, 0, false};
+MonitorFIFO::Config::Config()
+    :maxCount(4)
+    ,defCount(4)
+    ,actualCount(0) // readback
+    ,ignoreRequestMask(false)
+{}
 
 size_t MonitorFIFO::num_instances;
 
@@ -31,7 +36,7 @@ MonitorFIFO::Source::~Source() {}
 MonitorFIFO::MonitorFIFO(const std::tr1::shared_ptr<MonitorRequester> &requester,
                          const pvData::PVStructure::const_shared_pointer &pvRequest,
                          const Source::shared_pointer &source, Config *inconf)
-    :conf(inconf ? *inconf : default_conf)
+    :conf(inconf ? *inconf : Config())
     ,requester(requester)
     ,pvRequest(pvRequest)
     ,upstream(source)

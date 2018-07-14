@@ -270,11 +270,12 @@ public:
         //! @param numEmpty The number of empty slots in the FIFO.
         virtual void freeHighMark(MonitorFIFO *mon, size_t numEmpty) {}
     };
-    struct Config {
+    struct epicsShareClass Config {
         size_t maxCount,    //!< upper limit on requested FIFO size
                defCount,    //!< FIFO size when client makes no request
                actualCount; //!< filled in with actual FIFO size
         bool ignoreRequestMask;
+        Config();
     };
 
     /**
