@@ -25,7 +25,7 @@ namespace epics{namespace pvAccess{
 class ChannelProvider;
 class Channel;
 class ChannelRequester;
-class ChannelBaseRequester;
+struct ChannelBaseRequester;
 class GetFieldRequester;
 void providerRegInit(void*);
 }} // epics::pvAccess
