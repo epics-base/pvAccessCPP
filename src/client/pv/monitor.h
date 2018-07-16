@@ -388,6 +388,8 @@ private:
     size_t freeHighLevel;
     epicsInt32 flowCount;
 
+    epics::pvData::StructureConstPtr type; // NULL if not opened
+
     typedef std::list<MonitorElementPtr> buffer_t;
     // we allocate one extra buffer element to hold data when post()
     // while all elements poll()'d.  So there will always be one

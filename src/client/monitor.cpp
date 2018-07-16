@@ -155,6 +155,7 @@ void MonitorFIFO::open(const pvd::StructureConstPtr& type)
 
         opened = true;
         needConnected = true;
+        this->type = type;
 
         if(conf.ignoreRequestMask) {
             selectMask.clear();
@@ -187,6 +188,7 @@ void MonitorFIFO::close()
     opened = false;
     needClosed = true;
     selectMask.clear();
+    type.reset();
 }
 
 void MonitorFIFO::finish()
@@ -227,7 +229,7 @@ bool MonitorFIFO::tryPost(const pvData::PVStructure& value,
         empty.pop_front();
     } else if(force) {
         // allocate an extra element
-        elem.reset(new MonitorElement(pvd::getPVDataCreate()->createPVStructure(inuse.back()->pvStructurePtr->getStructure())));
+        elem.reset(new MonitorElement(pvd::getPVDataCreate()->createPVStructure(type)));
     }
 
     if(elem) {
