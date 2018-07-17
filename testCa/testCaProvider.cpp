@@ -602,10 +602,10 @@ void TestClient::getDone(
     PVStructure::shared_pointer const & pvStructure,
     BitSet::shared_pointer const & bitSet)
 {
-   testOk(pvStructure!=NULL,"pvStructure not null");
-   testOk(pvStructure->getSubField("value")!=NULL,"value not null");
-   testOk(pvStructure->getSubField("timeStamp")!=NULL,"timeStamp not null");
-   testOk(pvStructure->getSubField("alarm")!=NULL,"alarm not null");
+   testOk(pvStructure.get() != 0,"pvStructure not null");
+   testOk(pvStructure->getSubField("value").get() != 0,"value not null");
+   testOk(pvStructure->getSubField("timeStamp").get() != 0,"timeStamp not null");
+   testOk(pvStructure->getSubField("alarm").get() != 0,"alarm not null");
    if (DEBUG) std::cout << testChannel->getChannelName() + " TestClient::getDone"
              << " bitSet " << *bitSet
              << " pvStructure\n" << pvStructure << "\n";
