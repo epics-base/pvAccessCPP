@@ -20,15 +20,6 @@
 #include <epicsUnitTest.h>
 #include <testMain.h>
 
-#ifdef _WIN32
-void setenv(char * a, char * b, int c)
-{
-    char buf[1024];
-    sprintf(buf, "%s=%s", a, b);
-    _putenv(buf);
-}
-#endif
-
 using namespace epics::pvAccess;
 using namespace epics::pvData;
 
