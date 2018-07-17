@@ -14,6 +14,7 @@
 #include <epicsUnitTest.h>
 #include <testMain.h>
 #include <epicsVersion.h>
+#include <envDefs.h>
 
 #ifdef EPICS_VERSION_INT
   #if EPICS_VERSION_INT >= VERSION_INT(3,16,2,0)
@@ -23,7 +24,6 @@
     #define EXIT_TESTS 0
     #include <dbAccess.h>
     #include <errlog.h>
-    #include <envDefs.h>
     #include <dbUnitTest.h>
 
     extern "C" int testIoc_registerRecordDeviceDriver(struct dbBase *pbase);
