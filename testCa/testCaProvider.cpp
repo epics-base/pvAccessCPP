@@ -48,6 +48,10 @@
 // DEBUG must be 0 to run under the automated test harness
 #define DEBUG 0
 
+// These need to be longer than you might expect for Jenkins
+#define CONNECTION_TIMEOUT 10.0
+#define OPERATION_TIMEOUT  10.0
+
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 using namespace epics::pvAccess::ca;
@@ -116,7 +120,7 @@ void TestChannel::connect()
     if(!channelProvider) throw std::runtime_error(channelName + " provider ca not registered");
     channel = channelProvider->createChannel(channelName,shared_from_this(),ChannelProvider::PRIORITY_DEFAULT);
     if(!channel) throw std::runtime_error(channelName + " channelCreate failed ");
-    waitConnect(5.0);
+    waitConnect(CONNECTION_TIMEOUT);
 }
 
 void TestChannel::waitConnect(double timeout)
@@ -185,7 +189,7 @@ TestChannelGetPtr TestChannelGet::create(
 {
     TestChannelGetPtr testChannelGet(new TestChannelGet(getRequester,testChannel,pvRequest));
     testChannelGet->connect();
-    testChannelGet->waitConnect(5.0);
+    testChannelGet->waitConnect(CONNECTION_TIMEOUT);
     return testChannelGet;
 }
 
@@ -304,7 +308,7 @@ TestChannelPutPtr TestChannelPut::create(
 {
     TestChannelPutPtr testChannelPut(new TestChannelPut(putRequester,testChannel));
     testChannelPut->connect();
-    testChannelPut->waitConnect(5.0);
+    testChannelPut->waitConnect(CONNECTION_TIMEOUT);
     return testChannelPut;
 }
 
@@ -476,7 +480,7 @@ TestChannelMonitorPtr TestChannelMonitor::create(
 {
     TestChannelMonitorPtr testChannelMonitor(new TestChannelMonitor(monitorRequester,testChannel,pvRequest));
     testChannelMonitor->connect();
-    testChannelMonitor->waitConnect(5.0);
+    testChannelMonitor->waitConnect(CONNECTION_TIMEOUT);
     return testChannelMonitor;
 }
 
@@ -632,7 +636,7 @@ void TestClient::get()
         testChannel->getChannelName().c_str());
     testChannelGet->get();
    if (DEBUG) cout << "TestClient::get() calling waitGet\n";
-    waitGet(5.0);
+    waitGet(OPERATION_TIMEOUT);
 }
 
 void TestClient::waitGet(double timeout)
@@ -646,7 +650,7 @@ void TestClient::put(string const & value)
     testDiag("TestClient::put %s := %s",
         testChannel->getChannelName().c_str(), value.c_str());
     testChannelPut->put(value);
-    waitPut(5.0);
+    waitPut(OPERATION_TIMEOUT);
 }
 
 void TestClient::waitPut(double timeout)
