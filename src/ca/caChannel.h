@@ -4,6 +4,11 @@
  * in file LICENSE that is included with this distribution.
  */
 
+/**
+ * @author msekoranja, mrk
+ * @date 2018.07
+ */
+
 #ifndef CACHANNEL_H
 #define CACHANNEL_H
 
@@ -11,17 +16,34 @@
 #include <vector>
 
 #include <pv/pvAccess.h>
-
+#include <pv/event.h>
 
 /* for CA */
 #include <cadef.h>
 
 #include "caProviderPvt.h"
+#include "dbdToPv.h"
 
 namespace epics {
 namespace pvAccess {
 namespace ca {
 
+class NotifyMonitorRequester;
+typedef std::tr1::shared_ptr<NotifyMonitorRequester> NotifyMonitorRequesterPtr;
+class MonitorEventThread;
+typedef std::tr1::shared_ptr<MonitorEventThread> MonitorEventThreadPtr;
+
+class NotifyGetRequester;
+typedef std::tr1::shared_ptr<NotifyGetRequester> NotifyGetRequesterPtr;
+typedef std::tr1::weak_ptr<NotifyGetRequester> NotifyGetRequesterWPtr;
+class GetDoneThread;
+typedef std::tr1::shared_ptr<GetDoneThread> GetDoneThreadPtr;
+
+class NotifyPutRequester;
+typedef std::tr1::shared_ptr<NotifyPutRequester> NotifyPutRequesterPtr;
+typedef std::tr1::weak_ptr<NotifyPutRequester> NotifyPutRequesterWPtr;
+class PutDoneThread;
+typedef std::tr1::shared_ptr<PutDoneThread> PutDoneThreadPtr;
 
 class CAChannelGetField;
 typedef std::tr1::shared_ptr<CAChannelGetField> CAChannelGetFieldPtr;
@@ -53,220 +75,140 @@ class CAChannel :
     public Channel,
     public std::tr1::enable_shared_from_this<CAChannel>
 {
-
 public:
     POINTER_DEFINITIONS(CAChannel);
-
-    static size_t num_instances;
-
-    static CAChannelPtr create(CAChannelProvider::shared_pointer const & channelProvider,
-                                 std::string const & channelName,
-                                 short priority,
-                                 ChannelRequester::shared_pointer const & channelRequester);
-
+    static CAChannelPtr create(
+        CAChannelProvider::shared_pointer const & channelProvider,
+        std::string const & channelName,
+        short priority,
+        ChannelRequester::shared_pointer const & channelRequester);
     virtual ~CAChannel();
 
     void connected();
     void disconnected();
-
     chid getChannelID();
-    chtype getNativeType();
-    unsigned getElementCount();
-    epics::pvData::Structure::const_shared_pointer getStructure();
-
-    /* --------------- epics::pvAccess::Channel --------------- */
 
     virtual std::tr1::shared_ptr<ChannelProvider> getProvider();
     virtual std::string getRemoteAddress();
     virtual ConnectionState getConnectionState();
     virtual std::string getChannelName();
     virtual std::tr1::shared_ptr<ChannelRequester> getChannelRequester();
-
     virtual void getField(GetFieldRequester::shared_pointer const & requester,std::string const & subField);
-
     virtual AccessRights getAccessRights(epics::pvData::PVField::shared_pointer const & pvField);
-
     virtual ChannelGet::shared_pointer createChannelGet(
         ChannelGetRequester::shared_pointer const & channelGetRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest);
-
+        epics::pvData::PVStructurePtr const & pvRequest);
     virtual ChannelPut::shared_pointer createChannelPut(
         ChannelPutRequester::shared_pointer const & channelPutRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest);
-
+        epics::pvData::PVStructurePtr const & pvRequest);
     virtual Monitor::shared_pointer createMonitor(
         MonitorRequester::shared_pointer const & monitorRequester,
-        epics::pvData::PVStructure::shared_pointer const & pvRequest);
-
+        epics::pvData::PVStructurePtr const & pvRequest);
     virtual void printInfo(std::ostream& out);
 
-    /* ---------------------------------------------------------------- */
-
     void attachContext();
-
-    void addChannelGet(const CAChannelGetPtr & get);
-    void addChannelPut(const CAChannelPutPtr & get);
-    void addChannelMonitor(const CAChannelMonitorPtr & get);
     void disconnectChannel();
-
-
 private:
-
-    /* --------------- Destroyable --------------- */
-
     virtual void destroy() {}
-
     CAChannel(std::string const & channelName,
               CAChannelProvider::shared_pointer const & channelProvider,
               ChannelRequester::shared_pointer const & channelRequester);
     void activate(short priority);
+    void addMonitor(CAChannelMonitorPtr const & monitor);
 
     std::string channelName;
-
     CAChannelProviderWPtr channelProvider;
     ChannelRequester::weak_pointer channelRequester;
-
     chid channelID;
-    chtype channelType;
-    unsigned elementCount;
     bool channelCreated;
-    epics::pvData::Structure::const_shared_pointer structure;
 
     epics::pvData::Mutex requestsMutex;
-
     std::queue<CAChannelGetFieldPtr> getFieldQueue;
     std::queue<CAChannelPutPtr> putQueue;
     std::queue<CAChannelGetPtr> getQueue;
     std::queue<CAChannelMonitorPtr> monitorQueue;
-    std::vector<CAChannelGetWPtr> getList;
-    std::vector<CAChannelPutWPtr> putList;
-    std::vector<CAChannelMonitorWPtr> monitorList;
+    std::vector<CAChannelMonitorWPtr> monitorlist;
 };
 
 
 class CAChannelGet :
     public ChannelGet,
-    public ChannelRequester,
-    public ChannelBaseRequester,
     public std::tr1::enable_shared_from_this<CAChannelGet>
 {
-
 public:
     POINTER_DEFINITIONS(CAChannelGet);
-
-    static size_t num_instances;
-
     static CAChannelGet::shared_pointer create(CAChannel::shared_pointer const & channel,
             ChannelGetRequester::shared_pointer const & channelGetRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest);
-
+            epics::pvData::PVStructurePtr const & pvRequest);
     virtual ~CAChannelGet();
-
     void getDone(struct event_handler_args &args);
-
-    /* --------------- epics::pvAccess::ChannelGet --------------- */
     virtual void get();
-
-    /* --------------- epics::pvData::ChannelRequest --------------- */
     virtual Channel::shared_pointer getChannel();
     virtual void cancel();
     virtual void lastRequest();
-
-    /* --------------- ChannelRequester --------------- */
-    virtual void channelCreated(
-         const epics::pvData::Status& status,
-         Channel::shared_pointer const & channel);
-    virtual void channelStateChange(
-         Channel::shared_pointer const & channel,
-         Channel::ConnectionState connectionState);
-    virtual std::string getRequesterName() { return "CAChannelGet";}
-    /* --------------- ChannelBaseRequester --------------- */
-    virtual void channelDisconnect(bool destroy);
+    virtual std::string getRequesterName();
 
     void activate();
-
+    void notifyClient();
 private:
-    /* --------------- Destroyable --------------- */
-     virtual void destroy() {}
-
+    virtual void destroy() {}
     CAChannelGet(CAChannel::shared_pointer const & _channel,
                  ChannelGetRequester::shared_pointer const & _channelGetRequester,
-                 epics::pvData::PVStructure::shared_pointer const & pvRequest);
+                 epics::pvData::PVStructurePtr const & pvRequest);
     
     CAChannelPtr channel;
     ChannelGetRequester::weak_pointer channelGetRequester;
-    const epics::pvData::PVStructure::shared_pointer pvRequest;
-
-    chtype getType;
+    epics::pvData::PVStructurePtr const & pvRequest;
+    epics::pvData::Status getStatus;
+    GetDoneThreadPtr getDoneThread;
+    NotifyGetRequesterPtr notifyGetRequester;
+    DbdToPvPtr dbdToPv;
+    epics::pvData::Mutex mutex;
     epics::pvData::PVStructure::shared_pointer pvStructure;
     epics::pvData::BitSet::shared_pointer bitSet;
 };
 
-
-
 class CAChannelPut :
     public ChannelPut,
-    public ChannelRequester,
-    public ChannelBaseRequester,
     public std::tr1::enable_shared_from_this<CAChannelPut>
 {
 
 public:
     POINTER_DEFINITIONS(CAChannelPut);
-
-    static size_t num_instances;
-
     static CAChannelPut::shared_pointer create(CAChannel::shared_pointer const & channel,
             ChannelPutRequester::shared_pointer const & channelPutRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest);
-
+            epics::pvData::PVStructurePtr const & pvRequest);
     virtual ~CAChannelPut();
-
     void putDone(struct event_handler_args &args);
     void getDone(struct event_handler_args &args);
-
-    /* --------------- epics::pvAccess::ChannelPut --------------- */
-
     virtual void put(
         epics::pvData::PVStructure::shared_pointer const & pvPutStructure,
         epics::pvData::BitSet::shared_pointer const & putBitSet
     );
     virtual void get();
-
-    /* --------------- epics::pvData::ChannelRequest --------------- */
-
     virtual Channel::shared_pointer getChannel();
     virtual void cancel();
     virtual void lastRequest();
 
-    /* --------------- ChannelRequester --------------- */
-    virtual void channelCreated(
-         const epics::pvData::Status& status,
-         Channel::shared_pointer const & channel);
-    virtual void channelStateChange(
-         Channel::shared_pointer const & channel,
-         Channel::ConnectionState connectionState);
-    virtual std::string getRequesterName() { return "CAChannelPut";}
-    /* --------------- ChannelBaseRequester --------------- */
-    virtual void channelDisconnect(bool destroy);
-
-     void activate();
-
+    virtual std::string getRequesterName();
+    void activate();
+    void notifyClient();
 private:
-     /* --------------- Destroyable --------------- */
-
-     virtual void destroy() {}
-
+    virtual void destroy() {}
     CAChannelPut(CAChannel::shared_pointer const & _channel,
                  ChannelPutRequester::shared_pointer const & _channelPutRequester,
-                 epics::pvData::PVStructure::shared_pointer const & pvRequest);
-   
+                 epics::pvData::PVStructurePtr const & pvRequest);
     CAChannelPtr channel;
     ChannelPutRequester::weak_pointer channelPutRequester;
     const epics::pvData::PVStructure::shared_pointer pvRequest;
     bool block;
-
-    chtype getType;
+    bool isPut;
+    epics::pvData::Status getStatus;
+    epics::pvData::Status putStatus;
+    PutDoneThreadPtr putDoneThread;
+    NotifyPutRequesterPtr notifyPutRequester;
+    DbdToPvPtr dbdToPv;
+    epics::pvData::Mutex mutex;
     epics::pvData::PVStructure::shared_pointer pvStructure;
     epics::pvData::BitSet::shared_pointer bitSet;
 };
@@ -276,66 +218,46 @@ typedef std::tr1::shared_ptr<CACMonitorQueue> CACMonitorQueuePtr;
 
 class CAChannelMonitor :
     public Monitor,
-    public ChannelRequester,
-    public ChannelBaseRequester,
     public std::tr1::enable_shared_from_this<CAChannelMonitor>
 {
 
 public:
     POINTER_DEFINITIONS(CAChannelMonitor);
-
-    static size_t num_instances;
-
     static CAChannelMonitor::shared_pointer create(CAChannel::shared_pointer const & channel,
             MonitorRequester::shared_pointer const & monitorRequester,
-            epics::pvData::PVStructure::shared_pointer const & pvRequest);
-
+            epics::pvData::PVStructurePtr const & pvRequest);
     virtual ~CAChannelMonitor();
-
     void subscriptionEvent(struct event_handler_args &args);
-
-    /* --------------- Monitor --------------- */
 
     virtual epics::pvData::Status start();
     virtual epics::pvData::Status stop();
     virtual MonitorElementPtr poll();
     virtual void release(MonitorElementPtr const & monitorElement);
-
-    /* --------------- epics::pvData::ChannelRequest --------------- */
     virtual void cancel();
-    /* --------------- ChannelRequester --------------- */
-    virtual void channelCreated(
-         const epics::pvData::Status& status,
-         Channel::shared_pointer const & channel);
-    virtual void channelStateChange(
-         Channel::shared_pointer const & channel,
-         Channel::ConnectionState connectionState);
-    virtual std::string getRequesterName() { return "CAChannelMonitor";}
-    /* --------------- ChannelBaseRequester --------------- */
-    virtual void channelDisconnect(bool destroy);
+    virtual std::string getRequesterName();
     void activate();
+    void notifyClient();
 private:
-    /* --------------- Destroyable --------------- */
     virtual void destroy() {}
-
     CAChannelMonitor(CAChannel::shared_pointer const & _channel,
                      MonitorRequester::shared_pointer const & _monitorRequester,
-                     epics::pvData::PVStructure::shared_pointer const & pvRequest);
-    
-
+                     epics::pvData::PVStructurePtr const & pvRequest);
     CAChannelPtr channel;
     MonitorRequester::weak_pointer monitorRequester;
     const epics::pvData::PVStructure::shared_pointer pvRequest;
     bool isStarted;
-    chtype getType;
+    MonitorEventThreadPtr monitorEventThread;
+    evid pevid;
+    NotifyMonitorRequesterPtr notifyMonitorRequester;
 
+    DbdToPvPtr dbdToPv;
+    epics::pvData::Mutex mutex;
     epics::pvData::PVStructure::shared_pointer pvStructure;
-    evid eventID;
+    epics::pvData::MonitorElementPtr activeElement;
+    
     CACMonitorQueuePtr monitorQueue;
 };
 
-}
-}
-}
+}}}
 
 #endif  /* CACHANNEL_H */

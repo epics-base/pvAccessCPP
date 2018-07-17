@@ -1,0 +1,278 @@
+
+record(calcout, "DBRcalcout")
+{
+    field(DESC, "calcout")
+    field(CALC, "(A<B)?(A+C):D")
+    field(INPA, "DBRcalcout.VAL  NPP NMS")
+    field(INPB, "9")
+    field(INPC, "1")
+    field(INPD, "0")
+    field(EGU, "Counts")
+    field(HOPR, "10")
+    field(HIHI, "8")
+    field(HIGH, "6")
+    field(LOW, "4")
+    field(LOLO, "2")
+    field(HHSV, "MAJOR")
+    field(HSV, "MINOR")
+    field(LSV, "MINOR")
+    field(LLSV, "MAJOR")
+}
+
+record(calc, "DBRcalcin")
+{
+    field(DESC, "calcin")
+    field(CALC, "(A<B)?(A+C):D")
+    field(INPA, "DBRcalcin.VAL  NPP NMS")
+    field(INPB, "9")
+    field(INPC, "1")
+    field(INPD, "0")
+    field(EGU, "Counts")
+    field(HOPR, "10")
+    field(HIHI, "8")
+    field(HIGH, "6")
+    field(LOW, "4")
+    field(LOLO, "2")
+    field(HHSV, "MAJOR")
+    field(HSV, "MINOR")
+    field(LSV, "MINOR")
+    field(LLSV, "MAJOR")
+}
+
+record(longin,"DBRlongin") {
+    field(DESC, "longin")
+    field(EGU, "volts")
+    field(HIHI, "80")
+    field(HIGH, "60")
+    field(LOW, "-60")
+    field(LOLO, "-80")
+    field(HYST, "2")
+    field(HHSV, "MAJOR")
+    field(HSV, "MINOR")
+    field(LSV, "MINOR")
+    field(LLSV, "MAJOR")
+    field(HOPR, "2147483647")
+    field(LOPR, "-2147483648")
+}
+
+record(longout,"DBRlongout") {
+    field(DESC, "longout")
+    field(EGU, "volts")
+    field(HIHI, "80")
+    field(HIGH, "60")
+    field(LOW, "-60")
+    field(LOLO, "-80")
+    field(HYST, "2")
+    field(HHSV, "MAJOR")
+    field(HSV, "MINOR")
+    field(LSV, "MINOR")
+    field(LLSV, "MAJOR")
+    field(HOPR, "2147483647")
+    field(LOPR, "-2147483648")
+    field(DRVH, "2147483647")
+    field(DRVL, "-2147483648")     
+}
+
+record(ao,"DBRdoubleout") {
+    field(DESC, "ao")
+    field(PREC,"2")
+    field(EGUF,"10.0")
+    field(EGUL,"-10.0")
+    field(EGU, "volts")
+    field(HIHI, "8")
+    field(HIGH, "6")
+    field(LOW, "-6")
+    field(LOLO, "-8")
+    field(HYST, ".1")
+    field(HHSV, "MAJOR")
+    field(HSV, "MINOR")
+    field(LSV, "MINOR")
+    field(LLSV, "MAJOR")
+    field(HOPR, "10.0")
+    field(LOPR, "-10.0")
+    field(DRVH, "1e29")
+    field(DRVL, "-1e29")
+}
+
+record(ai,"DBRdoublein") {
+    field(DESC, "ai")
+    field(PREC,"2")
+    field(EGUF,"10.0")
+    field(EGUL,"-10.0")
+    field(EGU, "volts")
+    field(HIHI, "8")
+    field(HIGH, "6")
+    field(LOW, "-6")
+    field(LOLO, "-8")
+    field(HYST, ".1")
+    field(HHSV, "MAJOR")
+    field(HSV, "MINOR")
+    field(LSV, "MINOR")
+    field(LLSV, "MAJOR")
+    field(HOPR, "10.0")
+    field(LOPR, "-10.0")
+}
+
+
+record(stringout,"DBRstringout") {
+    field(DESC, "stringout")
+}
+
+record(stringin,"DBRstringin") {
+    field(DESC, "stringin")
+}
+
+
+record(bo,"DBRbinaryout") {
+    field(DESC, "bo")
+    field(ZNAM,"zero")
+    field(ONAM,"one")
+}
+
+record(mbbo,"DBRmbbout") {
+    field(DESC, "mbbo")
+    field(VAL,"1")
+    field(ZRVL,"0")
+    field(ONVL,"1")
+    field(TWVL,"2")
+    field(THVL,"3")
+    field(FRVL,"4")
+    field(FVVL,"5")
+    field(SXVL,"6")
+    field(SVVL,"7")
+    field(EIVL,"8")
+    field(NIVL,"9")
+    field(TEVL,"10")
+    field(ELVL,"11")
+    field(TVVL,"12")
+    field(TTVL,"13")
+    field(FTVL,"14")
+    field(FFVL,"15")
+    field(ZRST,"zero")
+    field(ONST,"one")
+    field(TWST,"two")
+    field(THST,"three")
+    field(FRST,"four")
+    field(FVST,"five")
+    field(SXST,"six")
+    field(SVST,"seven")
+    field(EIST,"eight")
+    field(NIST,"nine")
+    field(TEST,"ten")
+    field(ELST,"eleven")
+    field(TVST,"twelve")
+    field(TTST,"thirteen")
+    field(FTST,"fourteen")
+    field(FFST,"fifteen")
+}
+
+record(mbbi,"DBRmbbin") {
+    field(DESC, "mbbi")
+    field(VAL,"1")
+    field(ZRVL,"0")
+    field(ONVL,"1")
+    field(TWVL,"2")
+    field(THVL,"3")
+    field(FRVL,"4")
+    field(FVVL,"5")
+    field(SXVL,"6")
+    field(SVVL,"7")
+    field(EIVL,"8")
+    field(NIVL,"9")
+    field(TEVL,"10")
+    field(ELVL,"11")
+    field(TVVL,"12")
+    field(TTVL,"13")
+    field(FTVL,"14")
+    field(FFVL,"15")
+    field(ZRST,"zero")
+    field(ONST,"one")
+    field(TWST,"two")
+    field(THST,"three")
+    field(FRST,"four")
+    field(FVST,"five")
+    field(SXST,"six")
+    field(SVST,"seven")
+    field(EIST,"eight")
+    field(NIST,"nine")
+    field(TEST,"ten")
+    field(ELST,"eleven")
+    field(TVST,"twelve")
+    field(TTST,"thirteen")
+    field(FTST,"fourteen")
+    field(FFST,"fifteen")   
+}
+
+record(waveform,"DBRbyteArray") {
+    field(DESC, "byteArray")
+    field(NELM,"5")
+    field(FTVL,"CHAR")
+    field(HOPR, "127")
+    field(LOPR, "-128")
+}
+
+record(waveform,"DBRshortArray") {
+    field(DESC, "shortArray")
+    field(NELM,"5")
+    field(FTVL,"SHORT")
+    field(HOPR, "32767")
+    field(LOPR, "-32768")
+}
+
+record(waveform,"DBRintArray") {
+    field(DESC, "intArray")
+    field(NELM,"5")
+    field(FTVL,"LONG")
+    field(HOPR, "2147483647")
+    field(LOPR, "-2147483648")
+}
+
+record(waveform,"DBRubyteArray") {
+    field(DESC, "ubyteArray")
+    field(NELM,"5")
+    field(FTVL,"UCHAR")
+    field(HOPR, "255")
+    field(LOPR, "0")
+}
+
+
+record(waveform,"DBRushortArray") {
+    field(DESC, "ushortArray")
+    field(NELM,"5")
+    field(FTVL,"USHORT")
+    field(HOPR, "65535")
+    field(LOPR, "0")
+}
+
+record(waveform,"DBRuintArray") {
+    field(DESC, "uintArray")
+    field(NELM,"5")
+    field(FTVL,"ULONG")
+    field(HOPR, "2147483647")
+    field(LOPR, "-2147483648")
+}
+
+
+record(waveform,"DBRstringArray") {
+    field(DESC, "stringArray")
+    field(NELM,"5")
+    field(FTVL,"STRING")
+}
+
+record(waveform,"DBRfloatArray") {
+    field(DESC, "floatArray")
+    field(NELM,"5")
+    field(PREC,"2")
+    field(FTVL,"FLOAT")
+    field(HOPR, "1000")
+    field(LOPR, "-1000")
+}
+
+record(waveform,"DBRdoubleArray") {
+    field(DESC, "doubleArray")
+    field(NELM,"5")
+    field(PREC,"2")
+    field(FTVL,"DOUBLE")
+    field(HOPR, "1000")
+    field(LOPR, "-1000")
+}

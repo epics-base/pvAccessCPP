@@ -4,16 +4,16 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#include <algorithm>
-
 #include <cadef.h>
 #include <epicsSignal.h>
 #include <epicsThread.h>
 #include <epicsExit.h>
 #include <pv/logger.h>
-#include <pv/configuration.h>
 #include <pv/pvAccess.h>
-#include <pv/reftrack.h>
+
+#include "monitorEventThread.h"
+#include "getDoneThread.h"
+#include "putDoneThread.h"
 
 #define epicsExportSharedSymbols
 #include <pv/caProvider.h>
@@ -31,8 +31,6 @@ using namespace epics::pvData;
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
 
-size_t CAChannelProvider::num_instances;
-
 CAChannelProvider::CAChannelProvider() 
     : current_context(0)
 {
@@ -40,13 +38,14 @@ CAChannelProvider::CAChannelProvider()
 }
 
 CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
-    :  current_context(0)
+    :  current_context(0),
+       monitorEventThread(MonitorEventThread::get()),
+       getDoneThread(GetDoneThread::get()),
+       putDoneThread(PutDoneThread::get())
 {
     if(DEBUG_LEVEL>0) {
           std::cout<< "CAChannelProvider::CAChannelProvider\n";
     }
-    // Ignoring Configuration as CA only allows config via. environment,
-    // and we don't want to change this here.
     initialize();
 }
 
@@ -60,7 +59,8 @@ CAChannelProvider::~CAChannelProvider()
     std::queue<CAChannelPtr> channelQ;
     {
          Lock lock(channelListMutex);
-         for(size_t i=0; i< caChannelList.size(); ++i) {
+         for(size_t i=0; i< caChannelList.size(); ++i)
+         {
              CAChannelPtr caChannel(caChannelList[i].lock());
              if(caChannel) channelQ.push(caChannel);
          }
@@ -68,16 +68,21 @@ CAChannelProvider::~CAChannelProvider()
     }
     while(!channelQ.empty()) {
        if(DEBUG_LEVEL>0) {
-           std::cout << "disconnectAllChannels calling disconnectChannel "
+           std::cout << "~CAChannelProvider() calling disconnectChannel "
                      << channelQ.front()->getChannelName()
                       << std::endl;
        }  
        channelQ.front()->disconnectChannel();
        channelQ.pop();
     }
-    attachContext();
-    ca_flush_io();
+    monitorEventThread->stop();
+    getDoneThread->stop();
+    putDoneThread->stop();
+    if(DEBUG_LEVEL>0) {
+        std::cout << "CAChannelProvider::~CAChannelProvider() calling ca_context_destroy\n";
+    }
     ca_context_destroy();
+//std::cout << "CAChannelProvider::~CAChannelProvider() returning\n";
 }
 
 std::string CAChannelProvider::getProviderName()
@@ -90,12 +95,12 @@ ChannelFind::shared_pointer CAChannelProvider::channelFind(
     ChannelFindRequester::shared_pointer const & channelFindRequester)
 {
     if (channelName.empty())
-        throw std::invalid_argument("empty channel name");
+        throw std::invalid_argument("CAChannelProvider::channelFind empty channel name");
 
     if (!channelFindRequester)
-        throw std::invalid_argument("null requester");
+        throw std::invalid_argument("CAChannelProvider::channelFind null requester");
 
-    Status errorStatus(Status::STATUSTYPE_ERROR, "not implemented");
+    Status errorStatus(Status::STATUSTYPE_ERROR, "CAChannelProvider::channelFind not implemented");
     ChannelFind::shared_pointer nullChannelFind;
     EXCEPTION_GUARD(channelFindRequester->channelFindResult(errorStatus, nullChannelFind, false));
     return nullChannelFind;
@@ -105,9 +110,9 @@ ChannelFind::shared_pointer CAChannelProvider::channelList(
     ChannelListRequester::shared_pointer const & channelListRequester)
 {
     if (!channelListRequester.get())
-        throw std::runtime_error("null requester");
+        throw std::runtime_error("CAChannelProvider::channelList null requester");
 
-    Status errorStatus(Status::STATUSTYPE_ERROR, "not implemented");
+    Status errorStatus(Status::STATUSTYPE_ERROR, "CAChannelProvider::channelList not implemented");
     ChannelFind::shared_pointer nullChannelFind;
     PVStringArray::const_svector none;
     EXCEPTION_GUARD(channelListRequester->channelListResult(errorStatus, nullChannelFind, none, false));
@@ -131,7 +136,7 @@ Channel::shared_pointer CAChannelProvider::createChannel(
     std::string const & address)
 {
     if (!address.empty())
-        throw std::invalid_argument("CA does not support 'address' parameter");
+        throw std::invalid_argument("CAChannelProvider::createChannel does not support 'address' parameter");
 
     return CAChannel::create(shared_from_this(), channelName, priority, channelRequester);
 }
@@ -165,31 +170,29 @@ void CAChannelProvider::poll()
 {
 }
 
-
 void CAChannelProvider::attachContext()
 {
     ca_client_context* thread_context = ca_current_context();
     if (thread_context == current_context) return;
     if (thread_context != NULL) {
-        throw std::runtime_error("CAChannelProvider: Foreign CA context in use");
+        throw std::runtime_error("CAChannelProvider::attachContext Foreign CA context in use");
     }
     int result = ca_attach_context(current_context);
     if (result != ECA_NORMAL) {
-        std::cout <<
-            "CA error %s occurred while calling ca_attach_context:"
-            << ca_message(result) << std::endl;
+        std::string mess("CAChannelProvider::attachContext error  calling ca_attach_context ");
+        mess += ca_message(result);
+        throw std::runtime_error(mess);
     }
 }
 
 void CAChannelProvider::initialize()
 {
     if(DEBUG_LEVEL>0) std::cout << "CAChannelProvider::initialize()\n";
-    /* Create Channel Access */
     int result = ca_context_create(ca_enable_preemptive_callback);
     if (result != ECA_NORMAL) {
-        throw std::runtime_error(
-            std::string("CA error %s occurred while trying to start channel access:")
-            + ca_message(result));
+        std::string mess("CAChannelProvider::initialize error calling ca_context_create ");
+        mess += ca_message(result);
+        throw std::runtime_error(mess);
     }
     current_context = ca_current_context();
 }
@@ -198,17 +201,10 @@ void CAClientFactory::start()
 {
     if(DEBUG_LEVEL>0) std::cout << "CAClientFactory::start()\n";
     if(ChannelProviderRegistry::clients()->getProvider("ca")) {
-         // do not start twice
          return;
     }
     epicsSignalInstallSigAlarmIgnore();
     epicsSignalInstallSigPipeIgnore();
-    registerRefCounter("CAChannelProvider", &CAChannelProvider::num_instances);
-    registerRefCounter("CAChannel", &CAChannel::num_instances);
-    registerRefCounter("CAChannelGet", &CAChannelGet::num_instances);
-    registerRefCounter("CAChannelPut", &CAChannelPut::num_instances);
-    registerRefCounter("CAChannelMonitor", &CAChannelMonitor::num_instances);
-
     if(!ChannelProviderRegistry::clients()->add<CAChannelProvider>("ca", true))
     {
          throw std::runtime_error("CAClientFactory::start failed");
@@ -220,8 +216,5 @@ void CAClientFactory::stop()
     // unregister now done with exit hook
 }
 
-
-}
-}
-}
+}}}
 

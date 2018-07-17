@@ -20,6 +20,11 @@ pvtoolsSrc_DEPEND_DIRS = src src/ca
 DIRS += testApp
 testApp_DEPEND_DIRS = src
 
+
+DIRS += testCa
+testCa_DEPEND_DIRS = src src/ca
+
+
 DIRS += examples
 examples_DEPEND_DIRS += src src/ca
 

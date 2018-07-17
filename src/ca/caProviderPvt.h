@@ -4,6 +4,11 @@
  * in file LICENSE that is included with this distribution.
  */
 
+/**
+ * @author msekoranja, mrk
+ * @date 2018.07
+ */
+
 #ifndef CAPROVIDERPVT_H
 #define CAPROVIDERPVT_H
 
@@ -19,6 +24,15 @@ namespace ca {
 
 #define DEBUG_LEVEL 0
 
+class MonitorEventThread;
+typedef std::tr1::shared_ptr<MonitorEventThread> MonitorEventThreadPtr;
+
+class GetDoneThread;
+typedef std::tr1::shared_ptr<GetDoneThread> GetDoneThreadPtr;
+
+class PutDoneThread;
+typedef std::tr1::shared_ptr<PutDoneThread> PutDoneThreadPtr;
+
 class CAChannel;
 typedef std::tr1::shared_ptr<CAChannel> CAChannelPtr;
 typedef std::tr1::weak_ptr<CAChannel> CAChannelWPtr;
@@ -33,9 +47,6 @@ class CAChannelProvider :
 {
 public:
     POINTER_DEFINITIONS(CAChannelProvider);
-
-    static size_t num_instances;
-
     CAChannelProvider();
     CAChannelProvider(const std::tr1::shared_ptr<Configuration>&);
     virtual ~CAChannelProvider();
@@ -66,22 +77,20 @@ public:
     virtual void flush();
     virtual void poll();
 
-    void addChannel(const CAChannelPtr & channel);
-
-    /* ---------------------------------------------------------------- */
-
     void attachContext();
-
+    void addChannel(const CAChannelPtr & channel);
 private:
+    
     virtual void destroy() EPICS_DEPRECATED {}
     void initialize();
     ca_client_context* current_context;
     epics::pvData::Mutex channelListMutex;
     std::vector<CAChannelWPtr> caChannelList;
+    MonitorEventThreadPtr monitorEventThread;
+    GetDoneThreadPtr getDoneThread;
+    PutDoneThreadPtr putDoneThread;
 };
 
-}
-}
-}
+}}}
 
 #endif  /* CAPROVIDERPVT_H */
