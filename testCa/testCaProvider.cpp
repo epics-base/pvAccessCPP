@@ -23,6 +23,7 @@
     #define EXIT_TESTS 0
     #include <dbAccess.h>
     #include <errlog.h>
+    #include <envDefs.h>
     #include <dbUnitTest.h>
 
     extern "C" int testIoc_registerRecordDeviceDriver(struct dbBase *pbase);
@@ -700,8 +701,8 @@ void TestIoc::start()
     arch = getenv("EPICS_HOST_ARCH");
     if (!arch)
         testAbort("Environment variable $EPICS_HOST_ARCH not defined");
-    setenv("EPICS_CA_ADDR_LIST", "localhost", 1);
-    setenv("EPICS_CA_AUTO_ADDR_LIST", "NO", 1);
+    epicsEnvSet("EPICS_CA_ADDR_LIST", "localhost");
+    epicsEnvSet("EPICS_CA_AUTO_ADDR_LIST", "NO");
 
     thread =  std::auto_ptr<epicsThread>(new epicsThread(
         *this,
