@@ -121,6 +121,7 @@ public:
 private:
     typedef std::map<std::string, std::tr1::shared_ptr<ChannelBuilder> > builders_t;
 public:
+    typedef builders_t::const_iterator const_iterator;
 
     //! Build a new, empty, provider.
     //! @param name Provider Name.  Only relevant if registerAsServer() is called, then must be unique in this process.
@@ -144,8 +145,8 @@ public:
     std::tr1::shared_ptr<epics::pvAccess::ChannelProvider> provider() const;
 
     // iterate through currently add()'d PVs.  Iteraters are invalidated by concurrent add() or remove()
-    builders_t::const_iterator begin() const;
-    builders_t::const_iterator end() const;
+    const_iterator begin() const;
+    const_iterator end() const;
 };
 
 /** @brief A Provider which has no pre-configured list of names.
