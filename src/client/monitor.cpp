@@ -26,7 +26,8 @@ MonitorFIFO::Config::Config()
     :maxCount(4)
     ,defCount(4)
     ,actualCount(0) // readback
-    ,ignoreRequestMask(false)
+    ,dropEmptyUpdates(true)
+    ,mapperMode(pvd::PVRequestMapper::Mask)
 {}
 
 size_t MonitorFIFO::num_instances;
@@ -129,7 +130,7 @@ void MonitorFIFO::setFreeHighMark(double level)
 
 void MonitorFIFO::open(const pvd::StructureConstPtr& type)
 {
-    bool emptyselect;
+    std::string message;
     {
         Guard G(mutex);
 
@@ -148,34 +149,27 @@ void MonitorFIFO::open(const pvd::StructureConstPtr& type)
 
         // fill up empty.
         pvd::PVDataCreatePtr create(pvd::getPVDataCreate());
+
+        mapper.compute(*create->createPVStructure(type), *pvRequest, conf.mapperMode);
+        message = mapper.warnings();
+
         while(empty.size() < conf.actualCount+1) {
-            MonitorElementPtr elem(new MonitorElement(create->createPVStructure(type)));
+            MonitorElementPtr elem(new MonitorElement(mapper.buildRequested()));
             empty.push_back(elem);
         }
 
         opened = true;
         needConnected = true;
-        this->type = type;
-
-        if(conf.ignoreRequestMask) {
-            selectMask.clear();
-            for(size_t i=0, N=empty.back()->pvStructurePtr->getNextFieldOffset(); i<N; i++)
-                selectMask.set(i);
-        } else {
-            selectMask = pvData::extractRequestMask(empty.back()->pvStructurePtr,
-                                                    pvRequest->getSubField<pvData::PVStructure>("field"));
-        }
-        emptyselect = selectMask.isEmpty();
 
         assert(inuse.empty());
         assert(empty.size()>=2);
         assert(returned.empty());
         assert(conf.actualCount>=1);
     }
-    if(!emptyselect) return;
+    if(message.empty()) return;
     requester_type::shared_pointer req(requester.lock());
     if(req) {
-        req->message("pvRequest with empty field mask", warningMessage);
+        req->message(message, warningMessage);
     }
 }
 
@@ -187,8 +181,6 @@ void MonitorFIFO::close()
 
     opened = false;
     needClosed = true;
-    selectMask.clear();
-    type.reset();
 }
 
 void MonitorFIFO::finish()
@@ -214,14 +206,10 @@ bool MonitorFIFO::tryPost(const pvData::PVStructure& value,
     assert(opened && !finished);
     assert(!empty.empty() || !inuse.empty());
 
-    // compute effective changed mask for this subscription
-    scratch = changed;
-    scratch &= selectMask;
-
     const bool havefree = _freeCount()>0u;
 
     MonitorElementPtr elem;
-    if(!conf.ignoreRequestMask && scratch.isEmpty()) {
+    if(conf.dropEmptyUpdates && !changed.logical_and(mapper.requestedMask())) {
         // drop empty update
     } else if(havefree) {
         // take an empty element
@@ -229,16 +217,16 @@ bool MonitorFIFO::tryPost(const pvData::PVStructure& value,
         empty.pop_front();
     } else if(force) {
         // allocate an extra element
-        elem.reset(new MonitorElement(pvd::getPVDataCreate()->createPVStructure(type)));
+        elem.reset(new MonitorElement(mapper.buildRequested()));
     }
 
     if(elem) {
         try {
-            assert(value.getStructure() == elem->pvStructurePtr->getStructure());
-            elem->pvStructurePtr->copyUnchecked(value, scratch);
-            *elem->changedBitSet = scratch;
-            *elem->overrunBitSet = overrun;
-            *elem->overrunBitSet &= selectMask;
+            elem->changedBitSet->clear();
+            mapper.copyBaseToRequested(value, changed,
+                                       *elem->pvStructurePtr, *elem->changedBitSet);
+            elem->overrunBitSet->clear();
+            mapper.maskBaseToRequested(overrun, *elem->overrunBitSet);
 
             if(inuse.empty() && running)
                 needEvent = true;
@@ -284,19 +272,16 @@ void MonitorFIFO::post(const pvData::PVStructure& value,
         elem = inuse.back();
     }
 
-    scratch = changed;
-    scratch &= selectMask;
-
-    if(!conf.ignoreRequestMask && scratch.isEmpty())
+    if(conf.dropEmptyUpdates && !changed.logical_and(mapper.requestedMask()))
         return; // drop empty update
 
-    assert(value.getStructure() == elem->pvStructurePtr->getStructure());
-    elem->pvStructurePtr->copyUnchecked(value, scratch);
+    scratch.clear();
+    mapper.copyBaseToRequested(value, changed, *elem->pvStructurePtr, scratch);
 
     if(use_empty) {
         *elem->changedBitSet = scratch;
-        *elem->overrunBitSet = overrun;
-        *elem->overrunBitSet &= selectMask;
+        elem->overrunBitSet->clear();
+        mapper.maskBaseToRequested(overrun, *elem->overrunBitSet);
 
         if(inuse.empty() && running)
             needEvent = true;
@@ -311,7 +296,9 @@ void MonitorFIFO::post(const pvData::PVStructure& value,
         // squash
         elem->overrunBitSet->or_and(*elem->changedBitSet, scratch);
         *elem->changedBitSet |= scratch;
-        elem->overrunBitSet->or_and(overrun, selectMask);
+        oscratch.clear();
+        mapper.maskBaseToRequested(overrun, oscratch);
+        elem->overrunBitSet->or_and(oscratch, scratch);
 
         // leave as inuse.back()
     }
