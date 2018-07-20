@@ -10,6 +10,7 @@
 #include <pv/standardField.h>
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
+#include "channelConnectThread.h"
 #include "monitorEventThread.h"
 #include "getDoneThread.h"
 #include "putDoneThread.h"
@@ -62,6 +63,14 @@ void CAChannel::connected()
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::connected " << channelName << endl;
     }
+    ChannelConnectThread->channelConnected(notifyChannelRequester);
+}
+
+void CAChannel::notifyClient()
+{
+    if(DEBUG_LEVEL>0) {
+          cout<< "CAChannel::notifyClient " << channelName << endl;
+    }
     while(!putQueue.empty()) {
         putQueue.front()->activate();
         putQueue.pop();
@@ -103,7 +112,8 @@ CAChannel::CAChannel(std::string const & channelName,
     channelProvider(channelProvider),
     channelRequester(channelRequester),
     channelID(0),
-    channelCreated(false)
+    channelCreated(false),
+    ChannelConnectThread(ChannelConnectThread::get())
 {
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::CAChannel " << channelName << endl;
@@ -117,6 +127,8 @@ void CAChannel::activate(short priority)
     }
     ChannelRequester::shared_pointer req(channelRequester.lock());
     if(!req) return;
+    notifyChannelRequester = NotifyChannelRequesterPtr(new NotifyChannelRequester());
+    notifyChannelRequester->setChannel(shared_from_this());
     attachContext();
     int result = ca_create_channel(channelName.c_str(),
          ca_connection_handler,

@@ -11,6 +11,7 @@
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
 
+#include "channelConnectThread.h"
 #include "monitorEventThread.h"
 #include "getDoneThread.h"
 #include "putDoneThread.h"
@@ -39,6 +40,7 @@ CAChannelProvider::CAChannelProvider()
 
 CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
     :  current_context(0),
+       channelConnectThread(ChannelConnectThread::get()),
        monitorEventThread(MonitorEventThread::get()),
        getDoneThread(GetDoneThread::get()),
        putDoneThread(PutDoneThread::get())
@@ -75,9 +77,10 @@ CAChannelProvider::~CAChannelProvider()
        channelQ.front()->disconnectChannel();
        channelQ.pop();
     }
-    monitorEventThread->stop();
-    getDoneThread->stop();
     putDoneThread->stop();
+    getDoneThread->stop();
+    monitorEventThread->stop();
+    channelConnectThread->stop();
     if(DEBUG_LEVEL>0) {
         std::cout << "CAChannelProvider::~CAChannelProvider() calling ca_context_destroy\n";
     }
