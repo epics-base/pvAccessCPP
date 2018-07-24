@@ -62,6 +62,20 @@ void CAChannel::connected()
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::connected " << channelName << endl;
     }
+    bool callChannelConnected = false;
+    {
+         Lock lock(requestsMutex);
+         if(!channelCreated) {
+              channelCreated = true;
+              callChannelConnected = true;
+         }
+    }
+    if(callChannelConnected) {
+       CAChannelProviderPtr provider(channelProvider.lock());
+       if(provider) provider->addChannel(shared_from_this());
+       ChannelRequester::shared_pointer req(channelRequester.lock());
+       if(req) EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
+    }
     while(!putQueue.empty()) {
         putQueue.front()->activate();
         putQueue.pop();
@@ -123,13 +137,8 @@ void CAChannel::activate(short priority)
          this,
          priority, // TODO mapping
          &channelID);
-    if (result == ECA_NORMAL)
+    if (result != ECA_NORMAL)
     {
-       channelCreated = true;
-       CAChannelProviderPtr provider(channelProvider.lock());
-       if(provider) provider->addChannel(shared_from_this());
-       EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
-    } else {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
         EXCEPTION_GUARD(req->channelCreated(errorStatus, shared_from_this()));
     }
