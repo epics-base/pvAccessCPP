@@ -392,7 +392,7 @@ Status DbdToPv::getFromDBD(
                copy_DBRScalarArray<dbr_short_t,PVShortArray>(value,count,pvValue);
                break;
            case DBR_LONG:
-               copy_DBRScalarArray<dbr_int_t,PVIntArray>(value,count,pvValue);
+               copy_DBRScalarArray<dbr_long_t,PVIntArray>(value,count,pvValue);
                break;
            case DBR_FLOAT:
                copy_DBRScalarArray<dbr_float_t,PVFloatArray>(value,count,pvValue);
@@ -430,7 +430,7 @@ Status DbdToPv::getFromDBD(
            case DBR_STRING: copy_DBRScalar<dbr_string_t,PVString>(value,pvValue); break;
            case DBR_CHAR: copy_DBRScalar<dbr_char_t,PVByte>(value,pvValue); break;
            case DBR_SHORT: copy_DBRScalar<dbr_short_t,PVShort>(value,pvValue); break;
-           case DBR_LONG: copy_DBRScalar<dbr_int_t,PVInt>(value,pvValue); break;
+           case DBR_LONG: copy_DBRScalar<dbr_long_t,PVInt>(value,pvValue); break;
            case DBR_FLOAT: copy_DBRScalar<dbr_float_t,PVFloat>(value,pvValue); break;
            case DBR_DOUBLE: copy_DBRScalar<dbr_double_t,PVDouble>(value,pvValue); break;
            default:
