@@ -26,9 +26,9 @@
 namespace {
 struct MailboxHandler : public pvas::SharedPV::Handler {
     virtual ~MailboxHandler() {}
-    virtual void onPut(pvas::SharedPV& self, pvas::Operation& op)
+    virtual void onPut(const pvas::SharedPV::shared_pointer& self, pvas::Operation& op) OVERRIDE FINAL
     {
-        self.post(op.value(), op.changed());
+        self->post(op.value(), op.changed());
         op.info("Set!");
         op.complete();
     }
