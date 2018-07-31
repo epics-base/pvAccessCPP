@@ -41,33 +41,39 @@ struct MailboxHandler : public pvas::SharedPV::Handler {
 
 namespace pvas {
 
+SharedPV::Config::Config()
+    :dropEmptyUpdates(true)
+    ,mapperMode(pvd::PVRequestMapper::Mask)
+{}
+
 size_t SharedPV::num_instances;
 
-SharedPV::shared_pointer SharedPV::build(const std::tr1::shared_ptr<Handler>& handler)
+SharedPV::shared_pointer SharedPV::build(const std::tr1::shared_ptr<Handler>& handler, Config *conf)
 {
     assert(!!handler);
-    SharedPV::shared_pointer ret(new SharedPV(handler));
+    SharedPV::shared_pointer ret(new SharedPV(handler, conf));
     ret->internal_self = ret;
     return ret;
 }
 
-SharedPV::shared_pointer SharedPV::buildReadOnly()
+SharedPV::shared_pointer SharedPV::buildReadOnly(Config *conf)
 {
-    SharedPV::shared_pointer ret(new SharedPV(std::tr1::shared_ptr<Handler>()));
+    SharedPV::shared_pointer ret(new SharedPV(std::tr1::shared_ptr<Handler>(), conf));
     ret->internal_self = ret;
     return ret;
 }
 
-SharedPV::shared_pointer SharedPV::buildMailbox()
+SharedPV::shared_pointer SharedPV::buildMailbox(pvas::SharedPV::Config *conf)
 {
     std::tr1::shared_ptr<Handler> handler(new MailboxHandler);
-    SharedPV::shared_pointer ret(new SharedPV(handler));
+    SharedPV::shared_pointer ret(new SharedPV(handler, conf));
     ret->internal_self = ret;
     return ret;
 }
 
-SharedPV::SharedPV(const std::tr1::shared_ptr<Handler> &handler)
-    :handler(handler)
+SharedPV::SharedPV(const std::tr1::shared_ptr<Handler> &handler, pvas::SharedPV::Config *conf)
+    :config(conf ? *conf : Config())
+    ,handler(handler)
     ,debugLvl(0)
 {
     REFTRACE_INCREMENT(num_instances);
@@ -96,9 +102,20 @@ bool SharedPV::isOpen() const
     return !!type;
 }
 
+namespace {
+struct PutInfo { // oh to be able to use std::tuple ...
+    std::tr1::shared_ptr<SharedPut> put;
+    pvd::StructureConstPtr type;
+    std::string message;
+    PutInfo(const std::tr1::shared_ptr<SharedPut>& put, const pvd::StructureConstPtr& type, const std::string& message)
+        :put(put), type(type), message(message)
+    {}
+};
+}
+
 void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& valid)
 {
-    typedef std::vector<std::tr1::shared_ptr<SharedPut> > xputs_t;
+    typedef std::vector<PutInfo> xputs_t;
     typedef std::vector<std::tr1::shared_ptr<SharedRPC> > xrpcs_t;
     typedef std::vector<std::tr1::shared_ptr<pva::MonitorFIFO> > xmonitors_t;
     typedef std::vector<std::tr1::shared_ptr<pva::GetFieldRequester> > xgetfields_t;
@@ -127,7 +144,8 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
 
         FOR_EACH(puts_t::const_iterator, it, end, puts) {
             try {
-                p_put.push_back((*it)->shared_from_this());
+                (*it)->mapper.compute(*current, *(*it)->pvRequest, config.mapperMode);
+                p_put.push_back(PutInfo((*it)->shared_from_this(), (*it)->mapper.requested(), (*it)->mapper.warnings()));
             }catch(std::tr1::bad_weak_ptr&) {
                 //racing destruction
             }
@@ -152,8 +170,12 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
        getfields.clear(); // consume
     }
     FOR_EACH(xputs_t::iterator, it, end, p_put) {
-        SharedPut::requester_type::shared_pointer requester((*it)->requester.lock());
-        if(requester) requester->channelPutConnect(pvd::Status(), *it, newtype);
+        SharedPut::requester_type::shared_pointer requester(it->put->requester.lock());
+        if(requester) {
+            if(!it->message.empty())
+                requester->message(it->message, pvd::warningMessage);
+            requester->channelPutConnect(pvd::Status(), it->put, it->type);
+        }
     }
     FOR_EACH(xrpcs_t::iterator, it, end, p_rpc) {
         SharedRPC::requester_type::shared_pointer requester((*it)->requester.lock());
@@ -202,6 +224,7 @@ void SharedPV::close(bool destroy)
         p_channel.reserve(channels.size());
 
         FOR_EACH(puts_t::const_iterator, it, end, puts) {
+            (*it)->mapper.reset();
             p_put.push_back((*it)->requester.lock());
         }
         FOR_EACH(rpcs_t::const_iterator, it, end, rpcs) {

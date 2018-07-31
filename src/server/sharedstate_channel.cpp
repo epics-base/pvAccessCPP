@@ -126,12 +126,19 @@ pva::ChannelPut::shared_pointer SharedChannel::createChannelPut(
     std::tr1::shared_ptr<SharedPut> ret(new SharedPut(shared_from_this(), requester, pvRequest));
 
     pvd::StructureConstPtr type;
+    std::string warning;
     {
         Guard G(owner->mutex);
         // ~SharedPut removes
         owner->puts.push_back(ret.get());
-        type = owner->type;
+        if(owner->current) {
+            ret->mapper.compute(*owner->current, *pvRequest, owner->config.mapperMode);
+            type = ret->mapper.requested();
+            warning = ret->mapper.warnings();
+        }
     }
+    if(!warning.empty())
+        requester->message(warning, pvd::warningMessage);
     if(type)
         requester->channelPutConnect(pvd::Status(), ret, type);
     return ret;
@@ -157,7 +164,10 @@ pva::Monitor::shared_pointer SharedChannel::createMonitor(
         pva::MonitorRequester::shared_pointer const & requester,
         pvd::PVStructure::shared_pointer const & pvRequest)
 {
-    std::tr1::shared_ptr<SharedMonitorFIFO> ret(new SharedMonitorFIFO(shared_from_this(), requester, pvRequest));
+    SharedMonitorFIFO::Config mconf;
+    mconf.dropEmptyUpdates = owner->config.dropEmptyUpdates;
+    mconf.mapperMode = owner->config.mapperMode;
+    std::tr1::shared_ptr<SharedMonitorFIFO> ret(new SharedMonitorFIFO(shared_from_this(), requester, pvRequest, &mconf));
     bool notify;
     {
         Guard G(owner->mutex);
@@ -177,8 +187,9 @@ pva::Monitor::shared_pointer SharedChannel::createMonitor(
 
 SharedMonitorFIFO::SharedMonitorFIFO(const std::tr1::shared_ptr<SharedChannel>& channel,
                                      const requester_type::shared_pointer& requester,
-                                     const pvd::PVStructure::const_shared_pointer &pvRequest)
-    :pva::MonitorFIFO(requester, pvRequest)
+                                     const pvd::PVStructure::const_shared_pointer &pvRequest,
+                                     Config *conf)
+    :pva::MonitorFIFO(requester, pvRequest, pva::MonitorFIFO::Source::shared_pointer(), conf)
     ,channel(channel)
 {}
 

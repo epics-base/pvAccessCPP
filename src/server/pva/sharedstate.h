@@ -12,6 +12,7 @@
 #include <pv/sharedPtr.h>
 #include <pv/noDefaultMethods.h>
 #include <pv/bitSet.h>
+#include <pv/createRequest.h>
 
 #include <pva/server.h>
 
@@ -78,6 +79,12 @@ class epicsShareClass SharedPV
     friend struct SharedRPC;
 public:
     POINTER_DEFINITIONS(SharedPV);
+    struct epicsShareClass Config {
+        bool dropEmptyUpdates; //!< default true.  Drop updates which don't include an field values.
+        epics::pvData::PVRequestMapper::mode_t mapperMode; //!< default Mask.  @see epics::pvData::PVRequestMapper::mode_t
+        Config();
+    };
+
     /** Callbacks associated with a SharedPV.
      *
     * @note For the purposes of locking, this class is an Requester (see @ref provider_roles_requester_locking)
@@ -96,15 +103,16 @@ public:
 
     /** Allocate a new PV in the closed state.
      * @param handler Our callbacks.  May be NULL.  Stored internally as a shared_ptr<>
+     * @param conf Optional.  Extra configuration.  If !NULL, will be modified to reflect configuration actually used.
      * @post In the closed state
      */
-    static shared_pointer build(const std::tr1::shared_ptr<Handler>& handler);
+    static shared_pointer build(const std::tr1::shared_ptr<Handler>& handler, Config* conf=0);
     //! A SharedPV which fails all Put and RPC operations.
-    static shared_pointer buildReadOnly();
+    static shared_pointer buildReadOnly(Config* conf=0);
     //! A SharedPV which accepts all Put operations, and fails all RPC operations.
-    static shared_pointer buildMailbox();
+    static shared_pointer buildMailbox(Config* conf=0);
 private:
-    explicit SharedPV(const std::tr1::shared_ptr<Handler>& handler);
+    explicit SharedPV(const std::tr1::shared_ptr<Handler>& handler, Config* conf);
 public:
     virtual ~SharedPV();
 
@@ -168,6 +176,8 @@ private:
     static size_t num_instances;
 
     weak_pointer internal_self; // const after build()
+
+    const Config config;
 
     mutable epicsMutex mutex;
 

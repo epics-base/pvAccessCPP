@@ -105,12 +105,26 @@ void SharedPut::put(
         pvd::BitSet::shared_pointer const & putBitSet)
 {
     std::tr1::shared_ptr<SharedPV::Handler> handler;
+    pvd::PVStructure::shared_pointer realval;
+    pvd::BitSet changed;
     {
         Guard G(channel->owner->mutex);
+
+        if(pvPutStructure->getStructure()!=mapper.requested()) {
+            requester_type::shared_pointer req(requester.lock());
+            if(req)
+                req->putDone(pvd::Status::error("Type changed"), shared_from_this());
+            return;
+        }
+
         handler = channel->owner->handler;
+
+        realval = mapper.buildBase();
+
+        mapper.copyBaseFromRequested(*realval, changed, *pvPutStructure, *putBitSet);
     }
 
-    std::tr1::shared_ptr<PutOP> impl(new PutOP(shared_from_this(), pvRequest, pvPutStructure, *putBitSet),
+    std::tr1::shared_ptr<PutOP> impl(new PutOP(shared_from_this(), pvRequest, realval, changed),
                                      Operation::Impl::Cleanup());
 
     if(handler) {
@@ -130,20 +144,13 @@ void SharedPut::get()
         Guard G(channel->owner->mutex);
 
         if(channel->owner->current) {
-            const pvd::StructureConstPtr& currentType = channel->owner->current->getStructure();
+            assert(!!mapper.requested());
 
-            current = pvd::getPVDataCreate()->createPVStructure(currentType);
+            current = mapper.buildRequested();
+            changed.reset(new pvd::BitSet);
 
-            if(currentType!=lastStruct) {
-                selectMask = pvd::extractRequestMask(current, pvRequest->getSubField<pvd::PVStructure>("field"));
-                emptyselect = selectMask.isEmpty();
-                lastStruct = currentType;
-            }
-            changed.reset(new pvd::BitSet(channel->owner->valid));
-            *changed &= selectMask;
-
-            // clone
-            current->copyUnchecked(*channel->owner->current, *changed);
+            mapper.copyBaseToRequested(*channel->owner->current, channel->owner->valid,
+                                       *current, *changed);
         }
     }
 
