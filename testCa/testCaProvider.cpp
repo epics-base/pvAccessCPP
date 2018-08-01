@@ -573,6 +573,7 @@ private:
    TestClient(string const &channelName,PVStructurePtr const &  pvRequest);
    string channelName;
    PVStructurePtr pvRequest;
+   string putValue;
    TestChannelPtr testChannel;
    TestChannelGetPtr testChannelGet;
    TestChannelPutPtr testChannelPut;
@@ -611,8 +612,14 @@ void TestClient::getDone(
    testOk(pvStructure->getSubField("timeStamp").get() != 0,"timeStamp not null");
    testOk(pvStructure->getSubField("alarm").get() != 0,"alarm not null");
    if (DEBUG) std::cout << testChannel->getChannelName() + " TestClient::getDone"
+             << " putValue " << putValue
              << " bitSet " << *bitSet
              << " pvStructure\n" << pvStructure << "\n";
+   PVScalarPtr pvScalar = pvStructure->getSubField<PVScalar>("value");
+   if(pvScalar) {
+        string getValue = getConvert()->toString(pvScalar);
+        testOk(getValue.compare(putValue)==0,"getValue==putValue");
+   }
    waitForGet.signal();
 }
 
@@ -649,6 +656,7 @@ void TestClient::put(string const & value)
 {
     testDiag("TestClient::put %s := %s",
         testChannel->getChannelName().c_str(), value.c_str());
+    putValue = value;
     testChannelPut->put(value);
     waitPut(OPERATION_TIMEOUT);
 }
@@ -756,7 +764,7 @@ void checkClient(const string &channelName, const string &putValue)
 
 MAIN(testCaProvider)
 {
-    testPlan(84 + EXIT_TESTS);
+    testPlan(87 + EXIT_TESTS);
 
     TestIocPtr testIoc(new TestIoc());
     testIoc->start();  
@@ -766,10 +774,8 @@ MAIN(testCaProvider)
     ChannelProviderRegistry::shared_pointer reg(ChannelProviderRegistry::clients());
     try {
         ChannelProvider::shared_pointer channelProvider(reg->getProvider("ca"));
-        if (!channelProvider)
-            testAbort("Channel provider 'ca' not registered");
-
-        checkClient("DBRlongout", "5");
+        if (!channelProvider) testAbort("Channel provider 'ca' not registered");
+        checkClient("DBRlongout", "32768");
         checkClient("DBRdoubleout", "1.5");
         checkClient("DBRstringout", "test");
         checkClient("DBRbyteArray", "1 2 3");
