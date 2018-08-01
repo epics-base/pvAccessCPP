@@ -216,6 +216,14 @@ struct Get2PutProxy : public ChannelGet
             return req ? req->getRequesterName() : "";
         }
 
+        virtual void message(const std::string &message, MessageType messageType) OVERRIDE FINAL {
+            ChannelGetRequester::shared_pointer req(requester.lock());
+            if(req)
+                req->message(message, messageType);
+            else
+                ChannelPutRequester::message(message, messageType);
+        }
+
         virtual void channelDisconnect(bool destroy) OVERRIDE FINAL {
             ChannelGetRequester::shared_pointer req(requester.lock());
             if(req)
