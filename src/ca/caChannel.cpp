@@ -63,7 +63,7 @@ void CAChannel::connected()
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::connected " << channelName << endl;
     }
-    ChannelConnectThread->channelConnected(notifyChannelRequester);
+    channelConnectThread->channelConnected(notifyChannelRequester);
 }
 
 void CAChannel::notifyClient()
@@ -113,7 +113,7 @@ CAChannel::CAChannel(std::string const & channelName,
     channelRequester(channelRequester),
     channelID(0),
     channelCreated(false),
-    ChannelConnectThread(ChannelConnectThread::get())
+    channelConnectThread(ChannelConnectThread::get())
 {
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::CAChannel " << channelName << endl;
@@ -487,6 +487,9 @@ void CAChannelGet::getDone(struct event_handler_args &args)
 
 void CAChannelGet::notifyClient()
 {
+    if(DEBUG_LEVEL>1) {
+        std::cout << "CAChannelGet::notifyClient " <<  channel->getChannelName() << endl;
+    }
     ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
     if(!getRequester) return;
     EXCEPTION_GUARD(getRequester->getDone(getStatus, shared_from_this(), pvStructure, bitSet));

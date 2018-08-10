@@ -133,7 +133,7 @@ private:
     ChannelRequester::weak_pointer channelRequester;
     chid channelID;
     bool channelCreated;
-    ChannelConnectThreadPtr ChannelConnectThread;
+    ChannelConnectThreadPtr channelConnectThread;
     NotifyChannelRequesterPtr notifyChannelRequester;
 
     epics::pvData::Mutex requestsMutex;
