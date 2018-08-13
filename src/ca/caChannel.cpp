@@ -63,13 +63,36 @@ void CAChannel::connected()
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::connected " << channelName << endl;
     }
-    channelConnectThread->channelConnected(notifyChannelRequester);
+    bool callChannelConnected = false;
+    {
+         Lock lock(requestsMutex);
+         if(!channelCreated) {
+              channelCreated = true;
+              callChannelConnected = true;
+         }
+    }
+    if(callChannelConnected) {
+       channelConnectThread->channelConnected(notifyChannelRequester);
+       return;
+    }
+    ChannelRequester::shared_pointer req(channelRequester.lock());
+    if(req) {
+        EXCEPTION_GUARD(req->channelStateChange(
+             shared_from_this(), Channel::CONNECTED));
+    }
 }
 
 void CAChannel::notifyClient()
 {
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::notifyClient " << channelName << endl;
+    }
+    CAChannelProviderPtr provider(channelProvider.lock());
+    if(!provider) return;
+    provider->addChannel(shared_from_this());
+    while(!getFieldQueue.empty()) {
+        getFieldQueue.front()->activate();
+        getFieldQueue.pop();
     }
     while(!putQueue.empty()) {
         putQueue.front()->activate();
@@ -86,10 +109,9 @@ void CAChannel::notifyClient()
         monitorQueue.pop();
     }
     ChannelRequester::shared_pointer req(channelRequester.lock());
-    if(req) {
-        EXCEPTION_GUARD(req->channelStateChange(
-             shared_from_this(), Channel::CONNECTED));
-    }
+    if(!req) return;
+    EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
+    EXCEPTION_GUARD(req->channelStateChange(shared_from_this(), Channel::CONNECTED));
 }
 
 void CAChannel::disconnected()
@@ -122,11 +144,11 @@ CAChannel::CAChannel(std::string const & channelName,
 
 void CAChannel::activate(short priority)
 {
+    ChannelRequester::shared_pointer req(channelRequester.lock());
+    if(!req) return;
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::activate " << channelName << endl;
     }
-    ChannelRequester::shared_pointer req(channelRequester.lock());
-    if(!req) return;
     notifyChannelRequester = NotifyChannelRequesterPtr(new NotifyChannelRequester());
     notifyChannelRequester->setChannel(shared_from_this());
     attachContext();
@@ -135,13 +157,8 @@ void CAChannel::activate(short priority)
          this,
          priority, // TODO mapping
          &channelID);
-    if (result == ECA_NORMAL)
+    if (result != ECA_NORMAL)
     {
-       channelCreated = true;
-       CAChannelProviderPtr provider(channelProvider.lock());
-       if(provider) provider->addChannel(shared_from_this());
-       EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
-    } else {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
         EXCEPTION_GUARD(req->channelCreated(errorStatus, shared_from_this()));
     }
@@ -242,7 +259,8 @@ void CAChannel::getField(GetFieldRequester::shared_pointer const & requester,
     if(DEBUG_LEVEL>0) {
         cout << "CAChannel::getField " << channelName << endl;
     }
-    CAChannelGetFieldPtr getField(new CAChannelGetField(requester,subField));
+    CAChannelGetFieldPtr getField(
+         new CAChannelGetField(shared_from_this(),requester,subField));
     {
          Lock lock(requestsMutex);
          if(getConnectionState()!=Channel::CONNECTED) {
@@ -356,13 +374,21 @@ void CAChannel::printInfo(std::ostream& out)
 
 
 CAChannelGetField::CAChannelGetField(
+    CAChannelPtr const &channel,
     GetFieldRequester::shared_pointer const & requester,std::string const & subField)
-  : getFieldRequester(requester),
+  : channel(channel),
+    getFieldRequester(requester),
     subField(subField)
 {
     if(DEBUG_LEVEL>0) {
         cout << "CAChannelGetField::CAChannelGetField()\n";
     }
+}
+
+void CAChannelGetField::activate()
+{
+    CAChannelPtr chan(channel.lock());
+    if(chan) callRequester(chan);
 }
 
 CAChannelGetField::~CAChannelGetField()
