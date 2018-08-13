@@ -764,7 +764,7 @@ void checkClient(const string &channelName, const string &putValue)
 
 MAIN(testCaProvider)
 {
-    testPlan(87 + EXIT_TESTS);
+    testPlan(143 + EXIT_TESTS);
 
     TestIocPtr testIoc(new TestIoc());
     testIoc->start();  
@@ -775,7 +775,15 @@ MAIN(testCaProvider)
     try {
         ChannelProvider::shared_pointer channelProvider(reg->getProvider("ca"));
         if (!channelProvider) testAbort("Channel provider 'ca' not registered");
+        checkClient("DBRlongout", "0");
+        checkClient("DBRlongout", "1");
+        checkClient("DBRlongout", "-1");
+        checkClient("DBRlongout", "32767");
         checkClient("DBRlongout", "32768");
+        checkClient("DBRlongout", "-32768");
+        checkClient("DBRlongout", "-32769");
+        checkClient("DBRlongout", "2147483647");
+        checkClient("DBRlongout", "-2147483648");
         checkClient("DBRdoubleout", "1.5");
         checkClient("DBRstringout", "test");
         checkClient("DBRbyteArray", "1 2 3");
