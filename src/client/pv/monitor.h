@@ -353,6 +353,7 @@ private:
     //            -> MonitorRequester::monitorEvent()
     //            -> MonitorRequester::unlisten()
     //            -> ChannelBaseRequester::channelDisconnect()
+    //   start()  -> MonitorRequester::monitorEvent()
     //   release()                 -> Source::freeHighMark()
     //                             -> notify() -> ...
     //   reportRemoteQueueStatus() -> Source::freeHighMark()
@@ -375,8 +376,12 @@ private:
     // and expect that upstream will have only a weak ref to us.
     const Source::shared_pointer upstream;
 
+    enum state_t {
+        Closed, // not open()'d
+        Opened, // successful open()
+        Error,  // unsuccessful open()
+    } state;
     bool pipeline; // const after ctor
-    bool opened; // open() vs. close()
     bool running; // start() vs. stop()
     bool finished; // finish() called
     epics::pvData::BitSet scratch, oscratch; // using during post to avoid re-alloc
@@ -385,6 +390,8 @@ private:
     bool needEvent;
     bool needUnlisten;
     bool needClosed;
+
+    epics::pvData::Status error; // Set when entering Error state
 
     size_t freeHighLevel;
     epicsInt32 flowCount;
