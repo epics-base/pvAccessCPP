@@ -80,6 +80,7 @@ SharedPV::SharedPV(const std::tr1::shared_ptr<Handler> &handler, pvas::SharedPV:
 }
 
 SharedPV::~SharedPV() {
+    close();
     REFTRACE_DECREMENT(num_instances);
 }
 
