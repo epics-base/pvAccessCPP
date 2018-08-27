@@ -127,20 +127,26 @@ pva::ChannelPut::shared_pointer SharedChannel::createChannelPut(
 
     pvd::StructureConstPtr type;
     std::string warning;
-    {
-        Guard G(owner->mutex);
-        // ~SharedPut removes
-        owner->puts.push_back(ret.get());
-        if(owner->current) {
-            ret->mapper.compute(*owner->current, *pvRequest, owner->config.mapperMode);
-            type = ret->mapper.requested();
-            warning = ret->mapper.warnings();
+    try {
+        {
+            Guard G(owner->mutex);
+            // ~SharedPut removes
+            owner->puts.push_back(ret.get());
+            if(owner->current) {
+                ret->mapper.compute(*owner->current, *pvRequest, owner->config.mapperMode);
+                type = ret->mapper.requested();
+                warning = ret->mapper.warnings();
+            }
         }
+        if(!warning.empty())
+            requester->message(warning, pvd::warningMessage);
+        if(type)
+            requester->channelPutConnect(pvd::Status(), ret, type);
+    }catch(std::runtime_error& e){
+        ret.reset();
+        type.reset();
+        requester->channelPutConnect(pvd::Status::error(e.what()), ret, type);
     }
-    if(!warning.empty())
-        requester->message(warning, pvd::warningMessage);
-    if(type)
-        requester->channelPutConnect(pvd::Status(), ret, type);
     return ret;
 }
 

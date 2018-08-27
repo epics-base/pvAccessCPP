@@ -106,10 +106,16 @@ namespace {
 struct PutInfo { // oh to be able to use std::tuple ...
     std::tr1::shared_ptr<SharedPut> put;
     pvd::StructureConstPtr type;
-    std::string message;
-    PutInfo(const std::tr1::shared_ptr<SharedPut>& put, const pvd::StructureConstPtr& type, const std::string& message)
-        :put(put), type(type), message(message)
+    pvd::Status status;
+    PutInfo(const std::tr1::shared_ptr<SharedPut>& put, const pvd::StructureConstPtr& type, const pvd::Status& status)
+        :put(put), type(type), status(status)
     {}
+    PutInfo(const std::tr1::shared_ptr<SharedPut>& put, const pvd::StructureConstPtr& type, const std::string& message)
+        :put(put), type(type)
+    {
+        if(!message.empty())
+            status = pvd::Status::warn(message);
+    }
 };
 }
 
@@ -144,8 +150,13 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
 
         FOR_EACH(puts_t::const_iterator, it, end, puts) {
             try {
-                (*it)->mapper.compute(*current, *(*it)->pvRequest, config.mapperMode);
-                p_put.push_back(PutInfo((*it)->shared_from_this(), (*it)->mapper.requested(), (*it)->mapper.warnings()));
+                try {
+                    (*it)->mapper.compute(*current, *(*it)->pvRequest, config.mapperMode);
+                    p_put.push_back(PutInfo((*it)->shared_from_this(), (*it)->mapper.requested(), (*it)->mapper.warnings()));
+                }catch(std::runtime_error& e) {
+                    // compute() error
+                    p_put.push_back(PutInfo((*it)->shared_from_this(), pvd::StructureConstPtr(), pvd::Status::error(e.what())));
+                }
             }catch(std::tr1::bad_weak_ptr&) {
                 //racing destruction
             }
@@ -169,12 +180,13 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
         }
        getfields.clear(); // consume
     }
+    // unlock for callbacks
     FOR_EACH(xputs_t::iterator, it, end, p_put) {
         SharedPut::requester_type::shared_pointer requester(it->put->requester.lock());
         if(requester) {
-            if(!it->message.empty())
-                requester->message(it->message, pvd::warningMessage);
-            requester->channelPutConnect(pvd::Status(), it->put, it->type);
+            if(it->status.getType()==pvd::Status::STATUSTYPE_WARNING)
+                requester->message(it->status.getMessage(), pvd::warningMessage);
+            requester->channelPutConnect(it->status, it->put, it->type);
         }
     }
     FOR_EACH(xrpcs_t::iterator, it, end, p_rpc) {
