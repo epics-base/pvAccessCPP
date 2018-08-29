@@ -62,6 +62,10 @@ void CAChannel::connected()
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::connected " << channelName << endl;
     }
+    while(!getFieldQueue.empty()) {
+        getFieldQueue.front()->activate();
+        getFieldQueue.pop();
+    }
     while(!putQueue.empty()) {
         putQueue.front()->activate();
         putQueue.pop();
@@ -230,7 +234,8 @@ void CAChannel::getField(GetFieldRequester::shared_pointer const & requester,
     if(DEBUG_LEVEL>0) {
         cout << "CAChannel::getField " << channelName << endl;
     }
-    CAChannelGetFieldPtr getField(new CAChannelGetField(requester,subField));
+    CAChannelGetFieldPtr getField(
+         new CAChannelGetField(shared_from_this(),requester,subField));
     {
          Lock lock(requestsMutex);
          if(getConnectionState()!=Channel::CONNECTED) {
@@ -344,13 +349,21 @@ void CAChannel::printInfo(std::ostream& out)
 
 
 CAChannelGetField::CAChannelGetField(
+    CAChannelPtr const &channel,
     GetFieldRequester::shared_pointer const & requester,std::string const & subField)
-  : getFieldRequester(requester),
+  : channel(channel),
+    getFieldRequester(requester),
     subField(subField)
 {
     if(DEBUG_LEVEL>0) {
         cout << "CAChannelGetField::CAChannelGetField()\n";
     }
+}
+
+void CAChannelGetField::activate()
+{
+    CAChannelPtr chan(channel.lock());
+    if(chan) callRequester(chan);
 }
 
 CAChannelGetField::~CAChannelGetField()

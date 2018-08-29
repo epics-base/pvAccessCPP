@@ -63,10 +63,15 @@ class CAChannelGetField :
 {
 public:
     POINTER_DEFINITIONS(CAChannelGetField);
-    CAChannelGetField(GetFieldRequester::shared_pointer const & requester,std::string const & subField);
+    CAChannelGetField(
+        CAChannelPtr const &channel,
+        GetFieldRequester::shared_pointer const & requester,
+        std::string const & subField);
     ~CAChannelGetField();
     void callRequester(CAChannelPtr const & caChannel);
+    void activate();
 private:
+    CAChannelWPtr channel;
     GetFieldRequester::weak_pointer getFieldRequester;
     std::string subField;
 };
