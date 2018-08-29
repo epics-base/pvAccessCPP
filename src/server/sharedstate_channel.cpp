@@ -62,9 +62,9 @@ SharedChannel::~SharedChannel()
     std::tr1::shared_ptr<SharedPV::Handler> handler;
     {
         Guard G(owner->mutex);
+        bool wasempty = owner->channels.empty();
         owner->channels.remove(this);
-        if(owner->channels.empty()) {
-            Guard G(owner->mutex);
+        if(!wasempty && owner->channels.empty()) {
             handler = owner->handler;
         }
     }
@@ -74,7 +74,7 @@ SharedChannel::~SharedChannel()
     if(owner->debugLvl>5)
     {
         pva::ChannelRequester::shared_pointer req(requester.lock());
-        errlogPrintf("%s : Open channel to %s > %p\n",
+        errlogPrintf("%s : Close channel to %s > %p\n",
                      req ? req->getRequesterName().c_str() : "<Defunct>",
                      channelName.c_str(),
                      this);

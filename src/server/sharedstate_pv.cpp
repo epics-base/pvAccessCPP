@@ -225,6 +225,7 @@ void SharedPV::close(bool destroy)
     xrpcs_t p_rpc;
     xmonitors_t p_monitor;
     xchannels_t p_channel;
+    Handler::shared_pointer p_handler;
     {
         Guard I(mutex);
 
@@ -259,7 +260,10 @@ void SharedPV::close(bool destroy)
             puts.clear();
             rpcs.clear();
             monitors.clear();
+            bool wasempty = channels.empty();
             channels.clear();
+            if(!wasempty && channels.empty())
+                p_handler = handler;
         }
     }
     FOR_EACH(xputs_t::iterator, it, end, p_put) {
@@ -275,6 +279,10 @@ void SharedPV::close(bool destroy)
         pva::ChannelRequester::shared_pointer req((*it)->requester.lock());
         if(!req) continue;
         req->channelStateChange(*it, destroy ? pva::Channel::DESTROYED : pva::Channel::DISCONNECTED);
+    }
+    if(p_handler) {
+        shared_pointer self(internal_self);
+        p_handler->onLastDisconnect(self);
     }
 }
 
