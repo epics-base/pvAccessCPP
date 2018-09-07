@@ -216,6 +216,7 @@ struct ChannelGetRequesterImpl : public ChannelGetRequester, public Tracker
         {
             std::cerr << "[" << m_channelName << "] failed to get: " << status << '\n';
         }
+        std::cout.flush();
 
         done();
     }
@@ -325,6 +326,7 @@ struct MonitorRequesterImpl : public MonitorRequester, public Tracker
                 myos << *(element->pvStructurePtr.get()) << "\n\n";
             }
 
+            std::cout.flush();
         }
 
     }
