@@ -60,7 +60,7 @@ struct Getter : public pvac::ClientChannel::GetCallback,
         op.cancel();
     }
 
-    virtual void getDone(const pvac::GetEvent& event)
+    virtual void getDone(const pvac::GetEvent& event) OVERRIDE FINAL
     {
         switch(event.event) {
         case pvac::GetEvent::Fail:
@@ -78,7 +78,7 @@ struct Getter : public pvac::ClientChannel::GetCallback,
         }
     }
 
-    virtual void connectEvent(const pvac::ConnectEvent& evt)
+    virtual void connectEvent(const pvac::ConnectEvent& evt) OVERRIDE FINAL
     {
         if(evt.connected) {
             op = channel.get(this);

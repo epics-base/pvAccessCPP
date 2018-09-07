@@ -61,7 +61,7 @@ struct ChatHandler : public pvas::SharedPV::Handler
         if(req) {
             strm<<req->getRequesterName()<<" says ";
         } else {
-            op.complete(pvd::Status::error("Defuct Put"));
+            op.complete(pvd::Status::error("Defunct Put"));
             return;
         }
 
