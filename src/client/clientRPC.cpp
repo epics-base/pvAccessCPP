@@ -141,6 +141,9 @@ struct RPCer : public pva::ChannelRPCRequester,
             event.message.clear();
         }
         event.value = pvResponse;
+        pvd::BitSetPtr valid(new pvd::BitSet(1));
+        valid->set(0);
+        event.valid = valid;
 
         callEvent(G, status.isSuccess()? pvac::GetEvent::Success : pvac::GetEvent::Fail);
     }
