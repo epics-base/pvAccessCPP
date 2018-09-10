@@ -28,6 +28,15 @@ namespace epics {
 namespace pvAccess {
 namespace ca {
 
+class CAChannel;
+typedef std::tr1::shared_ptr<CAChannel> CAChannelPtr;
+typedef std::tr1::weak_ptr<CAChannel> CAChannelWPtr;
+class ChannelConnectThread;
+typedef std::tr1::shared_ptr<ChannelConnectThread> ChannelConnectThreadPtr;
+
+class NotifyChannelRequester;
+typedef std::tr1::shared_ptr<NotifyChannelRequester> NotifyChannelRequesterPtr;
+
 class NotifyMonitorRequester;
 typedef std::tr1::shared_ptr<NotifyMonitorRequester> NotifyMonitorRequesterPtr;
 class MonitorEventThread;
@@ -113,6 +122,7 @@ public:
 
     void attachContext();
     void disconnectChannel();
+    void notifyClient();
 private:
     virtual void destroy() {}
     CAChannel(std::string const & channelName,
@@ -126,6 +136,8 @@ private:
     ChannelRequester::weak_pointer channelRequester;
     chid channelID;
     bool channelCreated;
+    ChannelConnectThreadPtr channelConnectThread;
+    NotifyChannelRequesterPtr notifyChannelRequester;
 
     epics::pvData::Mutex requestsMutex;
     std::queue<CAChannelGetFieldPtr> getFieldQueue;

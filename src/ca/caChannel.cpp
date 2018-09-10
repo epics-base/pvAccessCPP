@@ -10,6 +10,7 @@
 #include <pv/standardField.h>
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
+#include "channelConnectThread.h"
 #include "monitorEventThread.h"
 #include "getDoneThread.h"
 #include "putDoneThread.h"
@@ -76,6 +77,25 @@ void CAChannel::connected()
        ChannelRequester::shared_pointer req(channelRequester.lock());
        if(req) EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
     }
+    ChannelRequester::shared_pointer req(channelRequester.lock());
+    if(req) {
+        EXCEPTION_GUARD(req->channelStateChange(
+             shared_from_this(), Channel::CONNECTED));
+    }
+}
+
+void CAChannel::notifyClient()
+{
+    if(DEBUG_LEVEL>0) {
+          cout<< "CAChannel::notifyClient " << channelName << endl;
+    }
+    CAChannelProviderPtr provider(channelProvider.lock());
+    if(!provider) return;
+    provider->addChannel(shared_from_this());
+    while(!getFieldQueue.empty()) {
+        getFieldQueue.front()->activate();
+        getFieldQueue.pop();
+    }
     while(!getFieldQueue.empty()) {
         getFieldQueue.front()->activate();
         getFieldQueue.pop();
@@ -95,10 +115,9 @@ void CAChannel::connected()
         monitorQueue.pop();
     }
     ChannelRequester::shared_pointer req(channelRequester.lock());
-    if(req) {
-        EXCEPTION_GUARD(req->channelStateChange(
-             shared_from_this(), Channel::CONNECTED));
-    }
+    if(!req) return;
+    EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
+    EXCEPTION_GUARD(req->channelStateChange(shared_from_this(), Channel::CONNECTED));
 }
 
 void CAChannel::disconnected()
@@ -121,7 +140,8 @@ CAChannel::CAChannel(std::string const & channelName,
     channelProvider(channelProvider),
     channelRequester(channelRequester),
     channelID(0),
-    channelCreated(false)
+    channelCreated(false),
+    channelConnectThread(ChannelConnectThread::get())
 {
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::CAChannel " << channelName << endl;
@@ -130,11 +150,13 @@ CAChannel::CAChannel(std::string const & channelName,
 
 void CAChannel::activate(short priority)
 {
+    ChannelRequester::shared_pointer req(channelRequester.lock());
+    if(!req) return;
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::activate " << channelName << endl;
     }
-    ChannelRequester::shared_pointer req(channelRequester.lock());
-    if(!req) return;
+    notifyChannelRequester = NotifyChannelRequesterPtr(new NotifyChannelRequester());
+    notifyChannelRequester->setChannel(shared_from_this());
     attachContext();
     int result = ca_create_channel(channelName.c_str(),
          ca_connection_handler,
@@ -497,6 +519,9 @@ void CAChannelGet::getDone(struct event_handler_args &args)
 
 void CAChannelGet::notifyClient()
 {
+    if(DEBUG_LEVEL>1) {
+        std::cout << "CAChannelGet::notifyClient " <<  channel->getChannelName() << endl;
+    }
     ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
     if(!getRequester) return;
     EXCEPTION_GUARD(getRequester->getDone(getStatus, shared_from_this(), pvStructure, bitSet));
