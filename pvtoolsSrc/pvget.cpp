@@ -42,7 +42,7 @@ namespace {
 
 bool debugFlag = false;
 
-string request("field(value)");
+string request("field()");
 string defaultProvider("pva");
 
 enum PrintMode { ValueOnlyMode, StructureMode, TerseMode };
@@ -80,7 +80,7 @@ void printValue(std::string const & channelName, PVStructure::shared_pointer con
         PVField::shared_pointer value = pv->getSubField("value");
         if (value.get() == 0)
         {
-            std::cerr << "no 'value' field\n";
+            //std::cerr << "no 'value' field\n";
             pvutil_ostream myos(std::cout);
             myos << channelName << "\n" << *(pv.get()) << "\n\n";
         }
