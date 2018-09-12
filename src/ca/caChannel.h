@@ -97,9 +97,6 @@ public:
         short priority,
         ChannelRequester::shared_pointer const & channelRequester);
     virtual ~CAChannel();
-
-    void connected();
-    void disconnected();
     chid getChannelID();
 
     virtual std::tr1::shared_ptr<ChannelProvider> getProvider();
@@ -122,6 +119,7 @@ public:
 
     void attachContext();
     void disconnectChannel();
+    void connect(bool isConnected);
     void notifyClient();
 private:
     virtual void destroy() {}
@@ -136,6 +134,7 @@ private:
     ChannelRequester::weak_pointer channelRequester;
     chid channelID;
     bool channelCreated;
+    bool channelConnected;
     ChannelConnectThreadPtr channelConnectThread;
     NotifyChannelRequesterPtr notifyChannelRequester;
 

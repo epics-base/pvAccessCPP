@@ -52,16 +52,42 @@ static void ca_connection_handler(struct connection_handler_args args)
     CAChannel *channel = static_cast<CAChannel*>(ca_puser(args.chid));
 
     if (args.op == CA_OP_CONN_UP) {
-        channel->connected();
+        channel->connect(true);
     } else if (args.op == CA_OP_CONN_DOWN) {
-        channel->disconnected();
+        channel->connect(false);
     }
 }
 
-void CAChannel::connected()
+void CAChannel::connect(bool isConnected)
 {
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::connected " << channelName << endl;
+    }
+    {
+         Lock lock(requestsMutex);
+         channelConnected = isConnected;
+    }
+    channelConnectThread->channelConnected(notifyChannelRequester);
+}
+
+void CAChannel::notifyClient()
+{
+    if(DEBUG_LEVEL>0) {
+          cout<< "CAChannel::notifyClient " << channelName << endl;
+    }
+    CAChannelProviderPtr provider(channelProvider.lock());
+    if(!provider) return;
+    ChannelRequester::shared_pointer req(channelRequester.lock());
+    if(!req) return;
+    bool isConnected = false;
+    {
+         Lock lock(requestsMutex);
+         isConnected = channelConnected;
+    }
+    if(!isConnected) {
+        EXCEPTION_GUARD(req->channelStateChange(
+             shared_from_this(), Channel::DISCONNECTED));
+        return;
     }
     bool callChannelCreated = false;
     {
@@ -72,26 +98,9 @@ void CAChannel::connected()
          }
     }
     if(callChannelCreated) {
-       CAChannelProviderPtr provider(channelProvider.lock());
-       if(provider) provider->addChannel(shared_from_this());
-       ChannelRequester::shared_pointer req(channelRequester.lock());
-       if(req) EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
+       provider->addChannel(shared_from_this());
+       EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
     }
-    ChannelRequester::shared_pointer req(channelRequester.lock());
-    if(req) {
-        EXCEPTION_GUARD(req->channelStateChange(
-             shared_from_this(), Channel::CONNECTED));
-    }
-}
-
-void CAChannel::notifyClient()
-{
-    if(DEBUG_LEVEL>0) {
-          cout<< "CAChannel::notifyClient " << channelName << endl;
-    }
-    CAChannelProviderPtr provider(channelProvider.lock());
-    if(!provider) return;
-    provider->addChannel(shared_from_this());
     while(!getFieldQueue.empty()) {
         getFieldQueue.front()->activate();
         getFieldQueue.pop();
@@ -114,24 +123,9 @@ void CAChannel::notifyClient()
         addMonitor(monitor);
         monitorQueue.pop();
     }
-    ChannelRequester::shared_pointer req(channelRequester.lock());
-    if(!req) return;
-    EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
     EXCEPTION_GUARD(req->channelStateChange(shared_from_this(), Channel::CONNECTED));
 }
 
-void CAChannel::disconnected()
-{
-    if(DEBUG_LEVEL>0) {
-          cout<< "CAChannel::disconnected " << channelName << endl;
-    }
-
-    ChannelRequester::shared_pointer req(channelRequester.lock());
-    if(req) {
-        EXCEPTION_GUARD(req->channelStateChange(
-             shared_from_this(), Channel::DISCONNECTED));
-    }
-}
 
 CAChannel::CAChannel(std::string const & channelName,
                      CAChannelProvider::shared_pointer const & channelProvider,
@@ -141,6 +135,7 @@ CAChannel::CAChannel(std::string const & channelName,
     channelRequester(channelRequester),
     channelID(0),
     channelCreated(false),
+    channelConnected(false),
     channelConnectThread(ChannelConnectThread::get())
 {
     if(DEBUG_LEVEL>0) {
