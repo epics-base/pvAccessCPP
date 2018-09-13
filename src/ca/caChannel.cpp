@@ -61,7 +61,7 @@ static void ca_connection_handler(struct connection_handler_args args)
 void CAChannel::connect(bool isConnected)
 {
     if(DEBUG_LEVEL>0) {
-          cout<< "CAChannel::connected " << channelName << endl;
+          cout<< "CAChannel::connect " << channelName << endl;
     }
     {
          Lock lock(requestsMutex);
@@ -77,33 +77,18 @@ void CAChannel::notifyClient()
     }
     CAChannelProviderPtr provider(channelProvider.lock());
     if(!provider) return;
-    ChannelRequester::shared_pointer req(channelRequester.lock());
-    if(!req) return;
     bool isConnected = false;
     {
          Lock lock(requestsMutex);
          isConnected = channelConnected;
     }
     if(!isConnected) {
-        EXCEPTION_GUARD(req->channelStateChange(
-             shared_from_this(), Channel::DISCONNECTED));
+        ChannelRequester::shared_pointer req(channelRequester.lock());
+        if(req) {
+            EXCEPTION_GUARD(req->channelStateChange(
+                shared_from_this(), Channel::DISCONNECTED));
+        }
         return;
-    }
-    bool callChannelCreated = false;
-    {
-         Lock lock(requestsMutex);
-         if(!channelCreated) {
-              channelCreated = true;
-              callChannelCreated = true;
-         }
-    }
-    if(callChannelCreated) {
-       provider->addChannel(shared_from_this());
-       EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
-    }
-    while(!getFieldQueue.empty()) {
-        getFieldQueue.front()->activate();
-        getFieldQueue.pop();
     }
     while(!getFieldQueue.empty()) {
         getFieldQueue.front()->activate();
@@ -123,7 +108,11 @@ void CAChannel::notifyClient()
         addMonitor(monitor);
         monitorQueue.pop();
     }
-    EXCEPTION_GUARD(req->channelStateChange(shared_from_this(), Channel::CONNECTED));
+    ChannelRequester::shared_pointer req(channelRequester.lock());
+    if(req) {
+        EXCEPTION_GUARD(req->channelStateChange(
+             shared_from_this(), Channel::CONNECTED));
+    }
 }
 
 
@@ -158,8 +147,13 @@ void CAChannel::activate(short priority)
          this,
          priority, // TODO mapping
          &channelID);
-    if (result != ECA_NORMAL)
+    if (result == ECA_NORMAL)
     {
+       channelCreated = true;
+       CAChannelProviderPtr provider(channelProvider.lock());
+       if(provider) provider->addChannel(shared_from_this());
+       EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
+    } else {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
         EXCEPTION_GUARD(req->channelCreated(errorStatus, shared_from_this()));
     }
