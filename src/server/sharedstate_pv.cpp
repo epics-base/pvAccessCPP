@@ -264,10 +264,9 @@ void SharedPV::close(bool destroy)
             puts.clear();
             rpcs.clear();
             monitors.clear();
-            bool wasempty = channels.empty();
-            channels.clear();
-            if(!wasempty && channels.empty())
+            if(!channels.empty())
                 p_handler = handler;
+            channels.clear();
         }
     }
     FOR_EACH(xputs_t::iterator, it, end, p_put) {
