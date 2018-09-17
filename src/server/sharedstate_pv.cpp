@@ -246,10 +246,14 @@ void SharedPV::close(bool destroy)
         }
         FOR_EACH(monitors_t::const_iterator, it, end, monitors) {
             (*it)->close();
-            p_monitor.push_back((*it)->shared_from_this());
+            try {
+                p_monitor.push_back((*it)->shared_from_this());
+            }catch(std::tr1::bad_weak_ptr&) { /* ignore, racing dtor */ }
         }
         FOR_EACH(channels_t::const_iterator, it, end, channels) {
-            p_channel.push_back((*it)->shared_from_this());
+            try {
+                p_channel.push_back((*it)->shared_from_this());
+            }catch(std::tr1::bad_weak_ptr&) { /* ignore, racing dtor */ }
         }
 
         type.reset();
