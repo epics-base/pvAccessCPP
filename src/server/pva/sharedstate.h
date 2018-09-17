@@ -107,9 +107,9 @@ public:
      * @post In the closed state
      */
     static shared_pointer build(const std::tr1::shared_ptr<Handler>& handler, Config* conf=0);
-    //! A SharedPV which fails all Put and RPC operations.
+    //! A SharedPV which fails all Put and RPC operations.  In closed state.
     static shared_pointer buildReadOnly(Config* conf=0);
-    //! A SharedPV which accepts all Put operations, and fails all RPC operations.
+    //! A SharedPV which accepts all Put operations, and fails all RPC operations.  In closed state.
     static shared_pointer buildMailbox(Config* conf=0);
 private:
     explicit SharedPV(const std::tr1::shared_ptr<Handler>& handler, Config* conf);
@@ -127,7 +127,7 @@ public:
     void open(const epics::pvData::PVStructure& value);
 
     //! Begin allowing clients to connect.
-    //! @param value The initial value of this PV.  (any pending Get operation will complete this this)
+    //! @param value The initial value of this PV.  (any pending Get/Monitor operation will complete with this)
     //! @param valid Only these marked fields are considered to have non-default values.
     //! @throws std::logic_error if not in the closed state.
     //! @post In the opened state
