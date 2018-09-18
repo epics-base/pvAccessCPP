@@ -1,3 +1,7 @@
+/*
+ * Copyright information and license terms for this software can be
+ * found in the file LICENSE that is included with the distribution
+ */
 #include <iostream>
 #include <vector>
 #include <string>
@@ -29,29 +33,9 @@
 
 #include <pv/caProvider.h>
 
-#include "pvutils.cpp"
-
-using namespace std;
-namespace TR1 = std::tr1;
-using namespace epics::pvData;
-using namespace epics::pvAccess;
+#include "pvutils.h"
 
 namespace {
-
-
-#define DEFAULT_TIMEOUT 3.0
-#define DEFAULT_REQUEST "field(value)"
-#define DEFAULT_PROVIDER "pva"
-
-double timeOut = DEFAULT_TIMEOUT;
-string request(DEFAULT_REQUEST);
-string defaultProvider(DEFAULT_PROVIDER);
-const string noAddress;
-
-enum PrintMode { ValueOnlyMode, StructureMode, TerseMode };
-PrintMode mode = ValueOnlyMode;
-
-bool debug = false;
 
 void usage (bool details=false)
 {
@@ -71,18 +55,16 @@ void usage (bool details=false)
              "  -v: Print version and exit\n"
              "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
              "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n"
-             "  -t:                Terse mode - print only successfully written value, without names\n"
              "  -p <provider>:     Set default provider name, default is '%s'\n"
-             "  -v:                Show entire structure\n"
+             "  -M <raw|nt|json>:  Output mode.  default is 'nt'\n"
+             "  -v:                Show entire structure (implies Raw mode)\n"
              "  -q:                Quiet mode, print only error messages\n"
              "  -d:                Enable debug output\n"
-             "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
-             "  -f <input file>:   Use <input file> as an input that provides a list PV name(s) to be read, use '-' for stdin\n"
-             " enum format:\n"
+             " Deprecated options:\n"
              "  default: Auto - try value as enum string, then as index number\n"
-             "  -n: Force enum interpretation of values as numbers\n"
-             "  -s: Force enum interpretation of values as strings\n"
-             , DEFAULT_REQUEST, DEFAULT_TIMEOUT, DEFAULT_PROVIDER);
+             "  -n, -s, -F, -t: ignored\n"
+             "  -f <input file>: error"
+             , request.c_str(), timeout, defaultProvider.c_str());
     if(details) {
         fprintf (stderr,
 #ifdef USE_JSON
@@ -119,134 +101,10 @@ void usage (bool details=false)
     }
 }
 
-void printValue(std::string const & channelName, PVStructure::const_shared_pointer const & pv)
+void printValue(std::string const & channelName, pvd::PVStructure::const_shared_pointer const & pv)
 {
-    if (mode == ValueOnlyMode)
-    {
-        PVField::const_shared_pointer value = pv->getSubField("value");
-        if (value.get() == 0)
-        {
-            std::cerr << "no 'value' field" << std::endl;
-            std::cout << std::endl << *(pv.get()) << std::endl << std::endl;
-        }
-        else
-        {
-            Type valueType = value->getField()->getType();
-            if (valueType != scalar && valueType != scalarArray)
-            {
-                // special case for enum
-                if (valueType == structure)
-                {
-                    PVStructure::const_shared_pointer pvStructure = TR1::static_pointer_cast<const PVStructure>(value);
-                    if (pvStructure->getStructure()->getID() == "enum_t")
-                    {
-                        if (fieldSeparator == ' ')
-                            std::cout << std::setw(30) << std::left << channelName;
-                        else
-                            std::cout << channelName;
-
-                        std::cout << fieldSeparator;
-
-                        printEnumT(std::cout, pvStructure);
-
-                        std::cout << std::endl;
-
-                        return;
-                    }
-                }
-
-                // switch to structure mode
-                std::cout << channelName << std::endl << *(pv.get()) << std::endl << std::endl;
-            }
-            else
-            {
-                if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
-                    std::cout << std::setw(30) << std::left << channelName;
-                else
-                    std::cout << channelName;
-
-                std::cout << fieldSeparator;
-
-                terse(std::cout, value) << std::endl;
-            }
-        }
-    }
-    else if (mode == TerseMode)
-        terseStructure(std::cout, pv) << std::endl;
-    else
-        std::cout << std::endl << *(pv.get()) << std::endl << std::endl;
+    std::cout<<pv->stream().format(outmode);
     std::cout.flush();
-}
-
-void early(const char *inp, unsigned pos)
-{
-    fprintf(stderr, "Unexpected end of input: %s\n", inp);
-    throw std::runtime_error("Unexpected end of input");
-}
-
-// rudimentory parser for json array
-// needed as long as Base < 3.15 is supported.
-// for consistency, used with all version
-void jarray(shared_vector<std::string>& out, const char *inp)
-{
-    assert(inp[0]=='[');
-    const char * const orig = inp;
-    inp++;
-
-    while(true) {
-        // starting a new token
-
-        for(; *inp==' '; inp++) {} // skip leading whitespace
-
-        if(*inp=='\0') early(inp, inp-orig);
-
-        if(isalnum(*inp) || *inp=='+' || *inp=='-') {
-            // number
-
-            const char *start = inp;
-
-            while(isalnum(*inp) || *inp=='.' || *inp=='+' || *inp=='-')
-                inp++;
-
-            if(*inp=='\0') early(inp, inp-orig);
-
-            // inp points to first char after token
-
-            out.push_back(std::string(start, inp-start));
-
-        } else if(*inp=='"') {
-            // quoted string
-
-            const char *start = ++inp; // skip quote
-
-            while(*inp!='\0' && *inp!='"')
-                inp++;
-
-            if(*inp=='\0') early(inp, inp-orig);
-
-            // inp points to trailing "
-
-            out.push_back(std::string(start, inp-start));
-
-            inp++; // skip trailing "
-
-        } else if(*inp==']') {
-            // no-op
-        } else {
-            fprintf(stderr, "Unknown token '%c' in \"%s\"", *inp, inp);
-            throw std::runtime_error("Unknown token");
-        }
-
-        for(; *inp==' '; inp++) {} // skip trailing whitespace
-
-        if(*inp==',') inp++;
-        else if(*inp==']') break;
-        else {
-            fprintf(stderr, "Unknown token '%c' in \"%s\"", *inp, inp);
-            throw std::runtime_error("Unknown token");
-        }
-    }
-
 }
 
 struct Putter : public pvac::ClientChannel::PutCallback
@@ -259,24 +117,22 @@ struct Putter : public pvac::ClientChannel::PutCallback
 
     Putter() :done(false) {}
 
-    typedef shared_vector<std::string> bare_t;
+    typedef pvd::shared_vector<std::string> bare_t;
     bare_t bare;
 
     typedef std::pair<std::string, std::string> KV_t;
     typedef std::vector<KV_t> pairs_t;
     pairs_t pairs;
 
-    shared_vector<std::string> jarr;
-
-    PVStructure::const_shared_pointer current;
+    pvd::shared_vector<std::string> jarr;
 
     virtual void putBuild(const epics::pvData::StructureConstPtr& build, Args& args)
     {
-        if(debug) std::cerr<<"Server defined structure\n"<<build;
-        PVStructurePtr root(getPVDataCreate()->createPVStructure(build));
+        if(debugFlag) std::cerr<<"Server defined structure\n"<<build;
+        pvd::PVStructurePtr root(pvd::getPVDataCreate()->createPVStructure(build));
 
         if(bare.size()==1 && bare[0][0]=='{') {
-            if(debug) fprintf(stderr, "In JSON top mode\n");
+            if(debugFlag) fprintf(stderr, "In JSON top mode\n");
 #ifdef USE_JSON
             std::istringstream strm(bare[0]);
             parseJSON(strm, root, &args.tosend);
@@ -284,23 +140,23 @@ struct Putter : public pvac::ClientChannel::PutCallback
 #endif
 
         } else if(pairs.empty()) {
-            if(debug) fprintf(stderr, "In plain value mode\n");
+            if(debugFlag) fprintf(stderr, "In plain value mode\n");
 
-            PVFieldPtr fld(root->getSubField("value"));
+            pvd::PVFieldPtr fld(root->getSubField("value"));
             if(!fld)
                 throw std::runtime_error("Structure has no .value");
-            Type ftype = fld->getField()->getType();
+            pvd::Type ftype = fld->getField()->getType();
 
-            if(ftype==scalar) {
+            if(ftype==pvd::scalar) {
                 if(bare.size()!=1) {
                     throw std::runtime_error("Can't assign multiple values to scalar");
                 }
-                PVScalar* sfld(static_cast<PVScalar*>(fld.get()));
+                pvd::PVScalar* sfld(static_cast<pvd::PVScalar*>(fld.get()));
                 sfld->putFrom(bare[0]);
                 args.tosend.set(sfld->getFieldOffset());
 
-            } else if(ftype==scalarArray) {
-                PVScalarArray* sfld(static_cast<PVScalarArray*>(fld.get()));
+            } else if(ftype==pvd::scalarArray) {
+                pvd::PVScalarArray* sfld(static_cast<pvd::PVScalarArray*>(fld.get()));
 
                 // first element is "length" which we ignore for compatibility
                 bare.slice(1);
@@ -308,19 +164,20 @@ struct Putter : public pvac::ClientChannel::PutCallback
                 sfld->putFrom(freeze(bare));
                 args.tosend.set(sfld->getFieldOffset());
 
-            } else if(ftype==structure && fld->getField()->getID()=="enum_t") {
+            } else if(ftype==pvd::structure && fld->getField()->getID()=="enum_t") {
                 if(bare.size()!=1) {
                     throw std::runtime_error("Can't assign multiple values to enum");
                 }
-                PVStructure* sfld(static_cast<PVStructure*>(fld.get()));
+                pvd::PVStructure* sfld(static_cast<pvd::PVStructure*>(fld.get()));
 
-                PVScalar* idxfld(sfld->getSubFieldT<PVScalar>("index").get());
-                PVStringArray::const_svector choices(current->getSubFieldT<PVStringArray>("value.choices")->view());
+                assert(!!args.previous); // ensure by calling put(..., true) below
+                pvd::PVScalar* idxfld(sfld->getSubFieldT<pvd::PVScalar>("index").get());
+                pvd::PVStringArray::const_svector choices(args.previous->getSubFieldT<pvd::PVStringArray>("value.choices")->view());
 
                 bool found=false;
                 for(size_t i=0; i<choices.size(); i++) {
                     if(bare[0]==choices[i]) {
-                        idxfld->putFrom<int64>(i);
+                        idxfld->putFrom<pvd::int64>(i);
                         found=true;
                         break;
                     }
@@ -337,20 +194,20 @@ struct Putter : public pvac::ClientChannel::PutCallback
             }
 
         } else {
-            if(debug) fprintf(stderr, "In field=value mode\n");
+            if(debugFlag) fprintf(stderr, "In field=value mode\n");
 
             for(pairs_t::const_iterator it=pairs.begin(), end=pairs.end(); it!=end; ++it)
             {
-                PVFieldPtr fld(root->getSubField(it->first));
+                pvd::PVFieldPtr fld(root->getSubField(it->first));
                 if(!fld) {
                     fprintf(stderr, "%s : Warning: no such field\n", it->first.c_str());
                     // ignore
 
                 } else if(it->second[0]=='[') {
-                    shared_vector<std::string> arr;
+                    pvd::shared_vector<std::string> arr;
                     jarray(arr, it->second.c_str());
 
-                    PVScalarArray* afld(dynamic_cast<PVScalarArray*>(fld.get()));
+                    pvd::PVScalarArray* afld(dynamic_cast<pvd::PVScalarArray*>(fld.get()));
                     if(!afld) {
                         fprintf(stderr, "%s : Error not a scalar array field\n", it->first.c_str());
                         throw std::runtime_error("Not a scalar array field");
@@ -366,7 +223,7 @@ struct Putter : public pvac::ClientChannel::PutCallback
                     throw std::runtime_error("JSON support not built");
 #endif
                 } else {
-                    PVScalarPtr sfld(std::tr1::dynamic_pointer_cast<PVScalar>(fld));
+                    pvd::PVScalarPtr sfld(std::tr1::dynamic_pointer_cast<pvd::PVScalar>(fld));
                     if(!sfld) {
                         fprintf(stderr, "%s : Error: need a scalar field\n", it->first.c_str());
                     } else {
@@ -378,7 +235,7 @@ struct Putter : public pvac::ClientChannel::PutCallback
         }
 
         args.root = root;
-        if(debug)
+        if(debugFlag)
             std::cout<<"To be sent: "<<args.tosend<<"\n"<<args.root;
     }
 
@@ -402,24 +259,20 @@ int main (int argc, char *argv[])
     int opt;                    /* getopt() current option */
     bool quiet = false;
 
-    istream* inputStream = 0;
-    ifstream ifs;
-    bool fromStream = false;
-
     setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
     putenv(const_cast<char*>("POSIXLY_CORRECT="));            /* Behave correct on GNU getopt systems; e.g. handle negative numbers */
 
-    while ((opt = getopt(argc, argv, ":hvVr:w:tp:qdF:f:ns")) != -1) {
+    while ((opt = getopt(argc, argv, ":hvVM:r:w:tp:qdF:f:ns")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage(true);
             return 0;
         case 'v':
-            mode = StructureMode;
+            outmode = pvd::PVStructure::Formatter::Raw;
             break;
         case 'V':               /* Print version */
         {
-            Version version("pvput", "cpp",
+            pva::Version version("pvput", "cpp",
                     EPICS_PVA_MAJOR_VERSION,
                     EPICS_PVA_MINOR_VERSION,
                     EPICS_PVA_MAINTENANCE_VERSION,
@@ -427,24 +280,38 @@ int main (int argc, char *argv[])
             fprintf(stdout, "%s\n", version.getVersionString().c_str());
             return 0;
         }
+        case 'M':
+            if(strcmp(optarg, "raw")==0) {
+                outmode = pvd::PVStructure::Formatter::Raw;
+            } else if(strcmp(optarg, "nt")==0) {
+                outmode = pvd::PVStructure::Formatter::NT;
+            } else if(strcmp(optarg, "json")==0) {
+                outmode = pvd::PVStructure::Formatter::JSON;
+            } else {
+                fprintf(stderr, "Unknown output mode '%s'\n", optarg);
+                outmode = pvd::PVStructure::Formatter::Raw;
+            }
+            break;
         case 'w':               /* Set PVA timeout value */
-            if((epicsScanDouble(optarg, &timeOut)) != 1 || timeOut <= 0.0)
+        {
+            double temp;
+            if((epicsScanDouble(optarg, &temp)) != 1)
             {
                 fprintf(stderr, "'%s' is not a valid timeout value "
                         "- ignored. ('pvput -h' for help.)\n", optarg);
-                timeOut = DEFAULT_TIMEOUT;
+            } else {
+                timeout = temp;
             }
+        }
             break;
         case 'r':               /* Set PVA timeout value */
             request = optarg;
-            // do not override terse mode
-            if (mode == ValueOnlyMode) mode = StructureMode;
             break;
         case 't':               /* Terse mode */
-            mode = TerseMode;
+            // deprecated
             break;
         case 'd':               /* Debug log level */
-            debug = true;
+            debugFlag = true;
             break;
         case 'p':               /* Set default provider */
             defaultProvider = optarg;
@@ -453,35 +320,13 @@ int main (int argc, char *argv[])
             quiet = true;
             break;
         case 'F':               /* Store this for output formatting */
-            fieldSeparator = (char) *optarg;
             break;
         case 'f':               /* Use input stream as input */
-        {
-            string fileName = optarg;
-            if (fileName == "-")
-                inputStream = &cin;
-            else
-            {
-                ifs.open(fileName.c_str(), ifstream::in);
-                if (!ifs)
-                {
-                    fprintf(stderr,
-                            "Failed to open file '%s'.\n",
-                            fileName.c_str());
-                    return 1;
-                }
-                else
-                    inputStream = &ifs;
-            }
-
-            fromStream = true;
-            break;
-        }
+            fprintf(stderr, "Unsupported option -f\n");
+            return 1;
         case 'n':
-            enumMode = NumberEnum;
             break;
         case 's':
-            enumMode = StringEnum;
             break;
         case '?':
             fprintf(stderr,
@@ -504,62 +349,22 @@ int main (int argc, char *argv[])
         fprintf(stderr, "No pv name specified. ('pvput -h' for help.)\n");
         return 1;
     }
-    string pv = argv[optind++];
+    std::string pv = argv[optind++];
 
-    URI uri;
-    bool validURI = URI::parse(pv, uri);
-
-    string providerName(defaultProvider);
-    string pvName(pv);
-    string address(noAddress);
-    if (validURI)
-    {
-        if (uri.path.length() <= 1)
-        {
-            std::cerr << "invalid URI '" << pv << "', empty path" << std::endl;
-            return 1;
-        }
-        providerName = uri.protocol;
-        pvName = uri.path.substr(1);
-        address = uri.host;
-    }
+    std::string providerName(defaultProvider);
+    std::string pvName(pv);
 
     int nVals = argc - optind;       /* Remaining arg list are PV names */
-    if (nVals > 0)
-    {
-        // do not allow reading file and command line specified pvs
-        fromStream = false;
-    }
-    else if (nVals < 1 && !fromStream)
+    if (nVals < 1)
     {
         fprintf(stderr, "No value(s) specified. ('pvput -h' for help.)\n");
         return 1;
     }
 
-    vector<string> values;
-    if (fromStream)
-    {
-        string cn;
-        while (true)
-        {
-            *inputStream >> cn;
-            if (!(*inputStream))
-                break;
-            values.push_back(cn);
-        }
-    }
-    else
-    {
-        // copy values from command line
-        for (int n = 0; optind < argc; n++, optind++)
-            values.push_back(argv[optind]);
-    }
-
-    if(values.empty()) {
-        usage();
-        fprintf(stderr, "\nNo values provided\n");
-        return 1;
-    }
+    std::vector<std::string> values;
+    // copy values from command line
+    for (int n = 0; optind < argc; n++, optind++)
+        values.push_back(argv[optind]);
 
     Putter thework;
 
@@ -597,15 +402,15 @@ int main (int argc, char *argv[])
         thework.bare.clear();
     }
 
-    PVStructure::shared_pointer pvRequest;
+    pvd::PVStructure::shared_pointer pvRequest;
     try {
-        pvRequest = createRequest(request);
+        pvRequest = pvd::createRequest(request);
     } catch(std::exception& e){
         fprintf(stderr, "failed to parse request string: %s\n", e.what());
         return 1;
     }
 
-    SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
+    SET_LOG_LEVEL(debugFlag ? pva::logLevelDebug : pva::logLevelError);
 
     std::cout << std::boolalpha;
 
@@ -615,20 +420,18 @@ int main (int argc, char *argv[])
 
     pvac::ClientChannel chan(ctxt.connect(pvName));
 
-    thework.current = chan.get(timeOut, pvRequest);
-
-    if (mode != TerseMode && !quiet) {
+    if (!quiet) {
         std::cout << "Old : ";
-        printValue(pvName, thework.current);
+        printValue(pvName, chan.get(timeout, pvRequest));
     }
 
     {
-        pvac::Operation op(chan.put(&thework, pvRequest));
+        pvac::Operation op(chan.put(&thework, pvRequest, true));
 
         epicsGuard<epicsMutex> G(thework.lock);
         while(!thework.done) {
             epicsGuardRelease<epicsMutex> U(G);
-            if(!thework.wait.wait(timeOut)) {
+            if(!thework.wait.wait(timeout)) {
                 fprintf(stderr, "Put timeout\n");
                 return 1;
             }
@@ -639,10 +442,10 @@ int main (int argc, char *argv[])
         fprintf(stderr, "Error: %s\n", thework.message.c_str());
     }
 
-    if (mode != TerseMode && !quiet) {
+    if (!quiet) {
         std::cout << "New : ";
     }
-    printValue(pvName, chan.get(timeOut, pvRequest));
+    printValue(pvName, chan.get(timeout, pvRequest));
 
     return thework.result!=pvac::PutEvent::Success;
 }

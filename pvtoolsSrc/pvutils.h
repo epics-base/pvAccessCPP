@@ -1,264 +1,66 @@
+/*
+ * Copyright information and license terms for this software can be
+ * found in the file LICENSE that is included with the distribution
+ */
+#ifndef PVUTILS_H
+#define PVUTILS_H
+
+#include <ostream>
+#include <iostream>
+#include <string>
+
+#include <epicsEvent.h>
+#include <epicsMutex.h>
+#include <epicsGuard.h>
+
 #include <pv/event.h>
 #include <pv/pvData.h>
 #include <pv/pvAccess.h>
 
-/// terse mode functions
-void convertStructure(std::string* buffer, epics::pvData::PVStructure *data, int notFirst);
-void convertArray(std::string*, epics::pvData::PVScalarArray * pv, int notFirst);
-void convertStructureArray(std::string*, epics::pvData::PVStructureArray * pvdata, int notFirst);
-
-std::ostream& terse(std::ostream& o, epics::pvData::PVField::const_shared_pointer const & pv);
-std::ostream& terseUnion(std::ostream& o, epics::pvData::PVUnion::const_shared_pointer const & pvUnion);
-std::ostream& terseStructure(std::ostream& o, const epics::pvData::PVStructure::const_shared_pointer &pvStructure);
-std::ostream& terseScalarArray(std::ostream& o, epics::pvData::PVScalarArray::const_shared_pointer const & pvArray);
-std::ostream& terseStructureArray(std::ostream& o, epics::pvData::PVStructureArray::const_shared_pointer const & pvArray);
-std::ostream& terseUnionArray(std::ostream& o, epics::pvData::PVUnionArray::const_shared_pointer const & pvArray);
-
-enum EnumMode { AutoEnum, NumberEnum, StringEnum };
-
-bool isTType(epics::pvData::PVStructure::const_shared_pointer const & pvStructure);
-bool formatTType(std::ostream& o, const epics::pvData::PVStructure::const_shared_pointer &pvStructure);
-
-std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure const & pvEnumT);
-std::ostream& printEnumT(std::ostream& o, epics::pvData::PVStructure::const_shared_pointer const & pvEnumT);
-std::ostream& printTimeT(std::ostream& o, epics::pvData::PVStructure::const_shared_pointer const & pvTimeT);
-
-bool starts_with(const std::string& str, const std::string& part);
-
-/* Converts a hex character to its integer value */
-char from_hex(char ch);
-
-/* Converts an integer value to its hex character*/
-char to_hex(char code);
-
-/* Returns a url-encoded version of str */
-/* IMPORTANT: be sure to free() the returned string after use */
-char *url_encode(const char *str);
-
-#include <string>
-
-struct URI {
-public:
-    static bool parse(const std::string& uri, URI& result);
-public:
-    std::string protocol, host, path, query, fragment;
-    bool query_indicated;
-};
-
-class GetFieldRequesterImpl :
-    public epics::pvAccess::GetFieldRequester
-{
-private:
-    epics::pvAccess::Channel::shared_pointer m_channel;
-    epics::pvData::FieldConstPtr m_field;
-    epics::pvData::Event m_event;
-    epics::pvData::Mutex m_pointerMutex;
-
-public:
-
-    GetFieldRequesterImpl(epics::pvAccess::Channel::shared_pointer channel);
-
-    virtual std::string getRequesterName();
-
-    virtual void getDone(const epics::pvData::Status& status, epics::pvData::FieldConstPtr const & field);
-
-    epics::pvData::FieldConstPtr getField();
-
-    bool waitUntilFieldGet(double timeOut);
-};
+typedef epicsGuard<epicsMutex> Guard;
+typedef epicsGuardRelease<epicsMutex> UnGuard;
+namespace pvd = epics::pvData;
+namespace pva = epics::pvAccess;
 
 
-struct dump_stack_only_on_debug
-{
-    const epics::pvData::Status &status;
+extern double timeout;
+extern bool debugFlag;
 
-    dump_stack_only_on_debug(const epics::pvData::Status &s) : status(s) {}
-};
+extern pvd::PVStructure::Formatter::format_t outmode;
+extern int verbosity;
 
-std::ostream& operator<<(std::ostream& os, const dump_stack_only_on_debug& d);
+extern std::string request;
+extern std::string defaultProvider;
 
+struct Tracker {
+    static epicsMutex doneLock;
+    static epicsEvent doneEvt;
+    typedef std::set<Tracker*> inprog_t;
+    static inprog_t inprog;
+    static bool abort;
 
-
-
-#include <ostream>
-#include <iostream>
-
-// usage: pvutil_ostream myos(std::cout);
-
-class pvutil_ostream
-{
-    std::ostream& strm;
-public:
-    pvutil_ostream(std::ostream& os)
-        : strm(os)
-    {}
-
-    template <typename T>
-    friend pvutil_ostream& operator<<(pvutil_ostream&, const T&);
-
-    friend pvutil_ostream& dumpPVStructure(pvutil_ostream&, const epics::pvData::PVStructure &, bool);
-
-    // Additional overload to handle ostream specific io manipulators
-    friend pvutil_ostream& operator<<(pvutil_ostream&, std::ostream& (*)(std::ostream&));
-};
-
-
-template <typename T>
-inline pvutil_ostream&
-operator<<(pvutil_ostream& out, const T& value)
-{
-    out.strm << value;
-    return out;
-}
-
-//  overload for std::ostream specific io manipulators
-inline pvutil_ostream&
-operator<<(pvutil_ostream& out, std::ostream& (*func)(std::ostream&))
-{
-    out.strm << func;
-    return out;
-}
-
-template <>
-inline pvutil_ostream&
-operator<<(pvutil_ostream& o, const epics::pvData::PVField::shared_pointer & fieldField);
-
-template <>
-inline pvutil_ostream&
-operator<<(pvutil_ostream& o, const epics::pvData::PVStructure & value);
-
-template <>
-inline pvutil_ostream&
-operator<<(pvutil_ostream& o, const epics::pvData::PVUnion::shared_pointer & value);
-
-template <>
-inline pvutil_ostream&
-operator<<(pvutil_ostream& o, const epics::pvData::PVStructure::shared_pointer & value)
-{
-    if (isTType(value))
+    Tracker()
     {
-        o << epics::pvData::format::indent() << value->getStructure()->getID()
-          << ' ' << value->getFieldName() << ' '; //" # ";
-        formatTType(o.strm, value);
-        o << std::endl;
-        //dumpPVStructure(o, *value, false);
-        return o;
+        Guard G(doneLock);
+        inprog.insert(this);
     }
-
-    return o << *value;
-}
-
-template <>
-inline pvutil_ostream&
-operator<<(pvutil_ostream& o, const epics::pvData::PVStructureArray::shared_pointer & value)
-{
-    o << epics::pvData::format::indent() << value->getStructureArray()->getID()
-      << ' ' << value->getFieldName() << std::endl;
-    size_t length = value->getLength();
-    if (length > 0)
+    ~Tracker()
     {
-        epics::pvData::format::indent_scope s(o.strm);
-
-        epics::pvData::PVStructureArray::const_svector data(value->view());
-        for (size_t i = 0; i < length; i++)
-            if (data[i].get() == NULL)
-                o << epics::pvData::format::indent() << "(none)" << std::endl;
-            else
-                o << data[i];
+        done();
     }
-
-    return o;
-}
-
-template <>
-inline pvutil_ostream&
-operator<<(pvutil_ostream& o, const epics::pvData::PVUnionArray::shared_pointer & value)
-{
-    o << epics::pvData::format::indent() << value->getUnionArray()->getID()
-      << ' ' << value->getFieldName() << std::endl;
-    size_t length = value->getLength();
-    if (length > 0)
+    void done()
     {
-        epics::pvData::format::indent_scope s(o.strm);
-
-        epics::pvData::PVUnionArray::const_svector data(value->view());
-        for (size_t i = 0; i < length; i++)
-            if (data[i].get() == NULL)
-                o << epics::pvData::format::indent() << "(none)" << std::endl;
-            else
-                o << data[i];
-    }
-
-    return o;
-}
-
-template <>
-inline pvutil_ostream&
-operator<<(pvutil_ostream& o, const epics::pvData::PVUnion::shared_pointer & value)
-{
-    o << epics::pvData::format::indent() << value->getUnion()->getID()
-      << ' ' << value->getFieldName() << std::endl;
-    {
-        epics::pvData::format::indent_scope s(o.strm);
-
-        epics::pvData::PVFieldPtr fieldField = value->get();
-        if (fieldField.get() == NULL)
-            o << epics::pvData::format::indent() << "(none)" << std::endl;
-        else
-            o << fieldField;
-    }
-    return o;
-}
-
-template <>
-inline pvutil_ostream&
-operator<<(pvutil_ostream& o, const epics::pvData::PVField::shared_pointer & fieldField)
-{
-    epics::pvData::Type type = fieldField->getField()->getType();
-    if (type == epics::pvData::scalar || type == epics::pvData::scalarArray)
-        o << epics::pvData::format::indent() << fieldField->getField()->getID() << ' ' << fieldField->getFieldName() << ' ' << *(fieldField.get()) << std::endl;
-    else if (type == epics::pvData::structure)
-        o << std::tr1::static_pointer_cast<epics::pvData::PVStructure>(fieldField);
-    else if (type == epics::pvData::structureArray)
-        o << std::tr1::static_pointer_cast<epics::pvData::PVStructureArray>(fieldField);
-    else if (type == epics::pvData::union_)
-        o << std::tr1::static_pointer_cast<epics::pvData::PVUnion>(fieldField);
-    else if (type == epics::pvData::unionArray)
-        o << std::tr1::static_pointer_cast<epics::pvData::PVUnionArray>(fieldField);
-    else
-        throw std::runtime_error("unsupported type");
-
-    return o;
-}
-
-pvutil_ostream&
-dumpPVStructure(pvutil_ostream& o, const epics::pvData::PVStructure & value, bool showHeader)
-{
-    if (showHeader)
-    {
-        std::string id = value.getStructure()->getID();
-        o << epics::pvData::format::indent() << id << ' ' << value.getFieldName();
-        o << std::endl;
-    }
-
-    {
-        epics::pvData::format::indent_scope s(o.strm);
-
-        epics::pvData::PVFieldPtrArray const & fieldsData = value.getPVFields();
-        if (fieldsData.size() != 0) {
-            size_t length = value.getStructure()->getNumberFields();
-            for(size_t i=0; i<length; i++) {
-                o << fieldsData[i];
-            }
+        {
+            Guard G(doneLock);
+            inprog.erase(this);
         }
+        doneEvt.signal();
     }
-    return o;
-}
 
-template <>
-inline pvutil_ostream&
-operator<<(pvutil_ostream& o, const epics::pvData::PVStructure& value)
-{
-    return dumpPVStructure(o, value, true);
-}
+    static void prepare();
+};
 
+void jarray(pvd::shared_vector<std::string>& out, const char *inp);
+
+
+#endif /* PVUTILS_H */

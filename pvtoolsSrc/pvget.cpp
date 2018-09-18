@@ -1,6 +1,11 @@
+/*
+ * Copyright information and license terms for this software can be
+ * found in the file LICENSE that is included with the distribution
+ */
 #include <iostream>
 #include <vector>
 #include <set>
+#include <deque>
 #include <string>
 #include <istream>
 #include <fstream>
@@ -8,476 +13,347 @@
 
 #include <stdio.h>
 
-#if !defined(_WIN32)
-#include <signal.h>
-#define USE_SIGNAL
-#endif
-
 #include <epicsStdlib.h>
 #include <epicsGetopt.h>
 #include <epicsExit.h>
 #include <epicsGuard.h>
 
-#include <pv/caProvider.h>
-#include <pv/pvAccess.h>
-#include <epicsThread.h>
+#include <pv/pvData.h>
 #include <pv/logger.h>
 #include <pv/lock.h>
 #include <pv/event.h>
+#include <pv/thread.h>
 #include <pv/reftrack.h>
 
-#include "pvutils.cpp"
+#include <pv/caProvider.h>
+#include <pv/logger.h>
+#include <pva/client.h>
 
-using namespace std;
-namespace TR1 = std::tr1;
-using namespace epics::pvData;
-using namespace epics::pvAccess;
+#include "pvutils.h"
 
-
-
-typedef epicsGuard<epicsMutex> Guard;
-typedef epicsGuardRelease<epicsMutex> UnGuard;
+#ifndef EXECNAME
+#  define EXECNAME "pvget"
+#endif
 
 namespace {
 
-bool debugFlag = false;
+size_t pvnamewidth;
 
-string request("field()");
-string defaultProvider("pva");
-
-enum PrintMode { ValueOnlyMode, StructureMode, TerseMode };
-PrintMode mode = ValueOnlyMode;
+int haderror;
 
 void usage (void)
 {
-    fprintf (stderr, "\nUsage: pvget [options] <PV name>...\n\n"
+    fprintf (stderr, "\nUsage: " EXECNAME " [options] <PV name>...\n\n"
              "\noptions:\n"
              "  -h: Help: Print this message\n"
              "  -V: Print version and exit\n"
              "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
-             "  -w <sec>:          Wait time, specifies timeout, default is 3 seconds for get, inf. for monitor\n"
-             "  -t:                Terse mode - print only value, without names\n"
-             "  -i:                Do not format standard types (enum_t, time_t, ...)\n"
+             "  -w <sec>:          Wait time, specifies timeout, default is %f seconds for get, inf. for monitor\n"
              "  -m:                Monitor mode\n"
              "  -p <provider>:     Set default provider name, default is '%s'\n"
-             "  -v:                Show entire structure\n"
-             "  -q:                Quiet mode, print only error messages\n"
+             "  -M <raw|nt|json>:  Output mode.  default is 'nt'\n"
+             "  -v:                Show entire structure (implies Raw mode)\n"
              "  -d:                Enable debug output\n"
-             "  -F <ofs>:          Use <ofs> as an alternate output field separator\n"
-             "  -f <input file>:   Use <input file> as an input that provides a list PV name(s) to be read, use '-' for stdin\n"
-             " enum format:\n"
-             "  -n: Force enum interpretation of values as numbers (default is enum string)\n"
-//    " time format:\n"
-//    "  -u: print userTag\n"
-             "\nexample: pvget double01\n\n"
-             , request.c_str(), defaultProvider.c_str());
+             " deprecated options:\n"
+             "  -q, -t, -i, -n, -F: ignored\n"
+             "  -f <input file>:   errors\n"
+             "\nexample: " EXECNAME " double01\n\n"
+             , request.c_str(), timeout, defaultProvider.c_str());
 }
 
-void printValue(std::string const & channelName, PVStructure::shared_pointer const & pv)
+struct Getter : public pvac::ClientChannel::GetCallback, public Tracker
 {
-    if (mode == ValueOnlyMode)
+    POINTER_DEFINITIONS(Getter);
+
+    pvac::Operation op;
+
+    Getter(pvac::ClientChannel& channel, const pvd::PVStructurePtr& pvRequest)
     {
-        PVField::shared_pointer value = pv->getSubField("value");
-        if (value.get() == 0)
-        {
-            //std::cerr << "no 'value' field\n";
-            pvutil_ostream myos(std::cout);
-            myos << channelName << "\n" << *(pv.get()) << "\n\n";
-        }
-        else
-        {
-            Type valueType = value->getField()->getType();
-            if (valueType != scalar && valueType != scalarArray)
-            {
-                // switch to structure mode, unless it's T-type
-                if (valueType == structure && isTType(TR1::static_pointer_cast<PVStructure>(value)))
-                {
-                    std::cout << std::setw(30) << std::left << channelName;
-                    std::cout << fieldSeparator;
-                    formatTType(std::cout, TR1::static_pointer_cast<PVStructure>(value));
-                    std::cout << '\n';
-                }
-                else
-                {
-                    pvutil_ostream myos(std::cout);
-                    myos << channelName << '\n' << *(pv.get()) << "\n\n";
-                }
-            }
+        op = channel.get(this, pvRequest);
+    }
+    virtual ~Getter() {}
+
+    virtual void getDone(const pvac::GetEvent& event) OVERRIDE FINAL
+    {
+        std::cout<<std::setw(pvnamewidth)<<std::left<<op.name()<<' ';
+        switch(event.event) {
+        case pvac::GetEvent::Fail:
+            std::cerr<<"Error "<<event.message<<"\n";
+            haderror = 1;
+            break;
+        case pvac::GetEvent::Cancel:
+            break;
+        case pvac::GetEvent::Success: {
+            pvd::PVStructure::Formatter fmt(event.value->stream()
+                                            .format(outmode));
+
+            if(verbosity>=2)
+                fmt.highlight(*event.valid); // show all, highlight valid
             else
-            {
-                if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
-                    std::cout << std::setw(30) << std::left << channelName;
-                else
-                    std::cout << channelName;
+                fmt.show(*event.valid); // only show valid, highlight none
 
-                std::cout << fieldSeparator;
-
-                terse(std::cout, value) << '\n';
-            }
+            std::cout<<fmt;
         }
-    }
-    else if (mode == TerseMode)
-        terseStructure(std::cout, pv) << '\n';
-    else
-    {
-        pvutil_ostream myos(std::cout);
-        myos << channelName << '\n' << *(pv.get()) << "\n\n";
-    }
-}
-
-// tracking get and monitor operations in progress
-
-struct Tracker {
-    static epicsMutex doneLock;
-    static epicsEvent doneEvt;
-    typedef std::set<Tracker*> inprog_t;
-    static inprog_t inprog;
-    static bool abort;
-
-    Tracker()
-    {
-        Guard G(doneLock);
-        inprog.insert(this);
-    }
-    ~Tracker()
-    {
-        done();
-    }
-    void done()
-    {
-        {
-            Guard G(doneLock);
-            inprog.erase(this);
-        }
-        doneEvt.signal();
-    }
-};
-
-epicsMutex Tracker::doneLock;
-epicsEvent Tracker::doneEvt;
-Tracker::inprog_t Tracker::inprog;
-bool Tracker::abort = false;
-
-#ifdef USE_SIGNAL
-void alldone(int num)
-{
-    (void)num;
-    Tracker::abort = true;
-    Tracker::doneEvt.signal();
-}
-#endif
-
-struct ChannelGetRequesterImpl : public ChannelGetRequester, public Tracker
-{
-    const string m_channelName;
-    operation_type::shared_pointer op;
-
-    ChannelGetRequesterImpl(std::string channelName) : m_channelName(channelName) {}
-    virtual ~ChannelGetRequesterImpl() {}
-
-    virtual string getRequesterName()    { return "ChannelGetRequesterImpl"; }
-
-    virtual void channelGetConnect(const epics::pvData::Status& status, ChannelGet::shared_pointer const & channelGet,
-                                   epics::pvData::Structure::const_shared_pointer const & /*structure*/)
-    {
-        if (status.isSuccess())
-        {
-            if (!status.isOK() || debugFlag)
-            {
-                std::cerr << "[" << m_channelName << "] channel get create: " << status << '\n';
-            }
-
-            channelGet->lastRequest();
-            channelGet->get();
-        }
-        else
-        {
-            std::cerr << "[" << m_channelName << "] failed to create channel get: " << status << '\n';
-            done();
-        }
-    }
-
-    virtual void getDone(const epics::pvData::Status& status,
-                         ChannelGet::shared_pointer const & /*channelGet*/,
-                         epics::pvData::PVStructure::shared_pointer const & pvStructure,
-                         epics::pvData::BitSet::shared_pointer const & bitSet)
-    {
-        if (status.isSuccess())
-        {
-            if (!status.isOK() || debugFlag)
-            {
-                std::cerr << "[" << m_channelName << "] channel get: " << status << '\n';
-            }
-
-            printValue(m_channelName, pvStructure);
-
-        }
-        else
-        {
-            std::cerr << "[" << m_channelName << "] failed to get: " << status << '\n';
+            break;
         }
         std::cout.flush();
-
         done();
     }
-
 };
 
-struct MonitorRequesterImpl : public MonitorRequester, public Tracker
+
+
+struct Worker {
+    virtual ~Worker() {}
+    virtual void process(const pvac::MonitorEvent& event) =0;
+};
+
+// simple work queue with thread.
+// moves monitor queue handling off of PVA thread(s)
+struct WorkQueue : public epicsThreadRunable {
+    epicsMutex mutex;
+    typedef std::tr1::shared_ptr<Worker> value_type;
+    typedef std::tr1::weak_ptr<Worker> weak_type;
+    // work queue holds only weak_ptr
+    // so jobs must be kept alive seperately
+    typedef std::deque<std::pair<weak_type, pvac::MonitorEvent> > queue_t;
+    queue_t queue;
+    epicsEvent event;
+    bool running;
+    pvd::Thread worker;
+
+    WorkQueue()
+        :running(true)
+        ,worker(pvd::Thread::Config()
+                .name("Monitor handler")
+                .autostart(true)
+                .run(this))
+    {}
+    ~WorkQueue() {close();}
+
+    void close()
+    {
+        {
+            Guard G(mutex);
+            running = false;
+        }
+        event.signal();
+        worker.exitWait();
+    }
+
+    void push(const weak_type& cb, const pvac::MonitorEvent& evt)
+    {
+        bool wake;
+        {
+            Guard G(mutex);
+            if(!running) return; // silently refuse to queue during/after close()
+            wake = queue.empty();
+            queue.push_back(std::make_pair(cb, evt));
+        }
+        if(wake)
+            event.signal();
+    }
+
+    virtual void run() OVERRIDE FINAL
+    {
+        Guard G(mutex);
+
+        while(running) {
+            if(queue.empty()) {
+                UnGuard U(G);
+                event.wait();
+            } else {
+                queue_t::value_type ent(queue.front());
+                value_type cb(ent.first.lock());
+                queue.pop_front();
+                if(!cb) continue;
+
+                try {
+                    UnGuard U(G);
+                    cb->process(ent.second);
+                }catch(std::exception& e){
+                    std::cout<<"Error in monitor handler : "<<e.what()<<"\n";
+                }
+            }
+        }
+    }
+};
+
+
+struct MonTracker : public pvac::ClientChannel::MonitorCallback,
+                    public Worker,
+                    public Tracker,
+                    public std::tr1::enable_shared_from_this<MonTracker>
 {
+    POINTER_DEFINITIONS(MonTracker);
 
-    const string m_channelName;
-    operation_type::shared_pointer op;
+    MonTracker(WorkQueue& monwork, pvac::ClientChannel& channel, const pvd::PVStructurePtr& pvRequest)
+        :monwork(monwork)
+        ,mon(channel.monitor(this, pvRequest))
+    {}
+    virtual ~MonTracker() {mon.cancel();}
 
-    MonitorRequesterImpl(std::string channelName) : m_channelName(channelName) {}
-    virtual ~MonitorRequesterImpl() {}
+    WorkQueue& monwork;
 
-    virtual string getRequesterName()
+    pvd::BitSet valid; // only access for process()
+
+    pvac::Monitor mon; // must be last data member
+
+    virtual void monitorEvent(const pvac::MonitorEvent& evt) OVERRIDE FINAL
     {
-        return "MonitorRequesterImpl";
+        // shared_from_this() will fail as Cancel is delivered in our dtor.
+        if(evt.event==pvac::MonitorEvent::Cancel) return;
+
+        // running on internal provider worker thread
+        // minimize work here.
+        monwork.push(shared_from_this(), evt);
     }
 
-    virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor, StructureConstPtr const & /*structure*/)
+    virtual void process(const pvac::MonitorEvent& evt) OVERRIDE FINAL
     {
-        if (status.isSuccess())
-        {
-            Status startStatus = monitor->start();
-            // show error
-            // TODO and exit
-            if (!startStatus.isSuccess() || debugFlag)
-            {
-                std::cerr << "[" << m_channelName << "] channel monitor start: " << startStatus << '\n';
-            }
-
-        }
-        else
-        {
-            std::cerr << "monitorConnect(" << status << ")\n";
+        // running on our worker thread
+        switch(evt.event) {
+        case pvac::MonitorEvent::Fail:
+            std::cerr<<std::setw(pvnamewidth)<<std::left<<mon.name()<<" Error "<<evt.message<<"\n";
+            haderror = 1;
             done();
-        }
-    }
-
-    virtual void channelDisconnect(bool destroy) {
-        if(!destroy) {
-            std::cerr << m_channelName<<" Disconnected\n";
-        }
-    }
-
-    virtual void monitorEvent(Monitor::shared_pointer const & monitor)
-    {
-        if(debugFlag)
-            std::cerr << "[" << m_channelName << "] channel monitor event: \n";
-
-        for(MonitorElement::Ref it(monitor); it; ++it)
+            break;
+        case pvac::MonitorEvent::Cancel:
+            break;
+        case pvac::MonitorEvent::Disconnect:
+            std::cout<<std::setw(pvnamewidth)<<std::left<<mon.name()<<" <Disconnect>\n";
+            valid.clear();
+            break;
+        case pvac::MonitorEvent::Data:
         {
-            MonitorElement* element(it.get());
+            unsigned n;
+            for(n=0; n<2 && mon.poll(); n++) {
+                valid |= mon.changed;
 
-            if (mode == ValueOnlyMode)
-            {
-                PVField::shared_pointer value = element->pvStructurePtr->getSubField("value");
-                if (value.get() == 0)
-                {
-                    std::cerr << "no 'value' field" << '\n';
-                    std::cout << m_channelName << '\n';
-                    pvutil_ostream myos(std::cout);
-                    myos << *(element->pvStructurePtr.get()) << "\n\n";
-                }
+                pvd::PVStructure::Formatter fmt(mon.root->stream()
+                                                .format(outmode));
+
+                if(verbosity>=3)
+                    fmt.highlight(mon.changed); // show all
+                else if(verbosity>=2)
+                    fmt.highlight(mon.changed).show(valid);
                 else
-                {
-                    Type valueType = value->getField()->getType();
-                    if (valueType != scalar && valueType != scalarArray)
-                    {
-                        // switch to structure mode, unless it's T-type
-                        if (valueType == structure && isTType(TR1::static_pointer_cast<PVStructure>(value)))
-                        {
-                            std::cout << std::setw(30) << std::left << m_channelName;
-                            std::cout << fieldSeparator;
-                            formatTType(std::cout, TR1::static_pointer_cast<PVStructure>(value));
-                            std::cout << '\n';
-                        }
-                        else
-                        {
-                            std::cout << m_channelName << '\n';
-                            pvutil_ostream myos(std::cout);
-                            myos << *(element->pvStructurePtr.get()) << "\n\n";
-                        }
-                    }
-                    else
-                    {
-                        printMonitoredValue (value, element);
-                    }
-                }
-            }
-            else if (mode == TerseMode)
-            {
-                if (fieldSeparator == ' ')
-                    std::cout << std::setw(30) << std::left << m_channelName;
-                else
-                    std::cout << m_channelName;
+                    fmt.show(mon.changed); // highlight none
 
-                std::cout << fieldSeparator;
-
-                terseStructure(std::cout, element->pvStructurePtr) << '\n';
+                std::cout<<std::setw(pvnamewidth)<<std::left<<mon.name()<<' '<<fmt;
             }
-            else
-            {
-                std::cout << m_channelName << '\n';
-                pvutil_ostream myos(std::cout);
-                myos << *(element->pvStructurePtr.get()) << "\n\n";
+            if(n==2) {
+                // too many updates, re-queue to balance with others
+                monwork.push(shared_from_this(), evt);
+            } else if(n==0) {
+                LOG(pva::logLevelDebug, "%s Spurious Data event on channel", mon.name().c_str());
+            } else {
+                if(mon.complete())
+                    done();
             }
-
-            std::cout.flush();
         }
-
-    }
-
-    virtual void unlisten(Monitor::shared_pointer const & /*monitor*/)
-    {
-        if(debugFlag)
-            std::cerr << "unlisten" << m_channelName << '\n';
-        done();
-    }
-
-private:
-    // For value type scalar or scalarArray when mode is ValueOnlyMode
-    void printMonitoredValue (PVField::shared_pointer value, MonitorElement* element)
-    {
-        PVStructure::shared_pointer timeStamp(element->pvStructurePtr->getSubField<PVStructure>("timeStamp"));
-        PVStructure::shared_pointer alarm(element->pvStructurePtr->getSubField<PVStructure>("alarm"));
-
-        if (fieldSeparator == ' ' && value->getField()->getType() == scalar)
-            std::cout << std::setw(30) << std::left;
-
-        std::cout << m_channelName << fieldSeparator;
-
-        if (timeStamp)
-           terseStructure(std::cout, timeStamp)  << " ";
-
-        terse(std::cout, value) << " ";
-
-        if (alarm)
-        {
-            PVScalar::shared_pointer pvSeverity(alarm->getSubField<PVScalar>("severity"));
-
-            bool inAlarm = !pvSeverity ? false : (pvSeverity->getAs<uint32>()!=0);
-            if (inAlarm)
-               terseStructure(std::cout, alarm);
+            break;
         }
-
-        std::cout<< '\n';
+        std::cout.flush();
     }
 };
 
 } // namespace
 
+#ifndef MAIN
+#  define MAIN main
+#endif
 
-int main (int argc, char *argv[])
+int MAIN (int argc, char *argv[])
 {
     int opt;                    /* getopt() current option */
+#ifdef PVMONITOR
+    bool monitor = true;
+#else
     bool monitor = false;
+#endif
 
-    istream* inputStream = 0;
-    ifstream ifs;
-    bool fromStream = false;
     epics::RefMonitor refmon;
-
-    double timeOut = -1.0;
-    bool explicit_timeout = false;
-
-    setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
 
     // ================ Parse Arguments
 
-    while ((opt = getopt(argc, argv, ":hvVRr:w:tmp:qdcF:f:ni")) != -1) {
+    while ((opt = getopt(argc, argv, ":hvVRM:r:w:tmp:qdcF:f:ni")) != -1) {
         switch (opt) {
         case 'h':               /* Print usage */
             usage();
             return 0;
         case 'v':
-            mode = StructureMode;
+            verbosity++;
             break;
         case 'V':               /* Print version */
         {
-            Version version("pvget", "cpp",
-                    EPICS_PVA_MAJOR_VERSION,
-                    EPICS_PVA_MINOR_VERSION,
-                    EPICS_PVA_MAINTENANCE_VERSION,
-                    EPICS_PVA_DEVELOPMENT_FLAG);
+            pva::Version version(EXECNAME, "cpp",
+                                 EPICS_PVA_MAJOR_VERSION,
+                                 EPICS_PVA_MINOR_VERSION,
+                                 EPICS_PVA_MAINTENANCE_VERSION,
+                                 EPICS_PVA_DEVELOPMENT_FLAG);
             fprintf(stdout, "%s\n", version.getVersionString().c_str());
             return 0;
         }
         case 'R':
             refmon.start(5.0);
             break;
-        case 'w':               /* Set PVA timeout value */
-            if((epicsScanDouble(optarg, &timeOut)) != 1 || timeOut <= 0.0)
-            {
-                fprintf(stderr, "'%s' is not a valid timeout value "
-                        "- ignored. ('pvget -h' for help.)\n", optarg);
+        case 'M':
+            if(strcmp(optarg, "raw")==0) {
+                outmode = pvd::PVStructure::Formatter::Raw;
+            } else if(strcmp(optarg, "nt")==0) {
+                outmode = pvd::PVStructure::Formatter::NT;
+            } else if(strcmp(optarg, "json")==0) {
+                outmode = pvd::PVStructure::Formatter::JSON;
             } else {
-                explicit_timeout = true;
+                fprintf(stderr, "Unknown output mode '%s'\n", optarg);
+                outmode = pvd::PVStructure::Formatter::Raw;
             }
             break;
+        case 'w':               /* Set PVA timeout value */
+        {
+            double temp;
+            if((epicsScanDouble(optarg, &temp)) != 1)
+            {
+                fprintf(stderr, "'%s' is not a valid timeout value "
+                                "- ignored. ('" EXECNAME " -h' for help.)\n", optarg);
+            } else {
+                timeout = temp;
+            }
+        }
+            break;
         case 'r':               /* Set PVA timeout value */
-            request = optarg;
-            // do not override terse mode
-            if (mode == ValueOnlyMode) mode = StructureMode;
-            break;
+                request = optarg;
+                break;
         case 't':               /* Terse mode */
-            mode = TerseMode;
-            break;
         case 'i':               /* T-types format mode */
-            formatTTypesFlag = false;
+        case 'F':               /* Store this for output formatting */
+        case 'n':
+        case 'q':               /* Quiet mode */
+            // deprecate
             break;
+        case 'f':               /* Use input stream as input */
+            fprintf(stderr, "Unsupported option -f\n");
+            return 1;
         case 'm':               /* Monitor mode */
             monitor = true;
             break;
         case 'p':               /* Set default provider */
             defaultProvider = optarg;
             break;
-        case 'q':               /* Quiet mode */
-            break;
         case 'd':               /* Debug log level */
             debugFlag = true;
             break;
         case 'c':               /* Clean-up and report used instance count */
             break;
-        case 'F':               /* Store this for output formatting */
-            fieldSeparator = (char) *optarg;
-            break;
-        case 'f':               /* Use input stream as input */
-        {
-            string fileName = optarg;
-            if (fileName == "-")
-                inputStream = &cin;
-            else
-            {
-                ifs.open(fileName.c_str(), ifstream::in);
-                if (!ifs)
-                {
-                    fprintf(stderr,
-                            "Failed to open file '%s'.\n",
-                            fileName.c_str());
-                    return 1;
-                }
-                else
-                    inputStream = &ifs;
-            }
-
-            fromStream = true;
-            break;
-        }
-        case 'n':
-            enumMode = NumberEnum;
-            break;
         case '?':
             fprintf(stderr,
-                    "Unrecognized option: '-%c'. ('pvget -h' for help.)\n",
+                    "Unrecognized option: '-%c'. ('" EXECNAME " -h' for help.)\n",
                     optopt);
             return 1;
         case ':':
             fprintf(stderr,
-                    "Option '-%c' requires an argument. ('pvget -h' for help.)\n",
+                    "Option '-%c' requires an argument. ('" EXECNAME " -h' for help.)\n",
                     optopt);
             return 1;
         default :
@@ -486,162 +362,76 @@ int main (int argc, char *argv[])
         }
     }
 
-    if(!explicit_timeout) {
-        if(monitor)
-            timeOut = -1.0; // forever
-        else
-            timeOut = 3.0;
-    }
+    if(monitor)
+        timeout = -1;
 
-    int nPvs = argc - optind;       /* Remaining arg list are PV names */
-    if (nPvs > 0)
-    {
-        // do not allow reading file and command line specified pvs
-        fromStream = false;
-    }
-    else if (nPvs < 1 && !fromStream)
-    {
-        fprintf(stderr, "No pv name(s) specified. ('pvget -h' for help.)\n");
-        return 1;
-    }
+    if(verbosity>0)
+        outmode = pvd::PVStructure::Formatter::Raw;
 
-    vector<string> pvs;     /* Array of PV structures */
-    if (fromStream)
-    {
-        string cn;
-        while (true)
-        {
-            *inputStream >> cn;
-            if (!(*inputStream))
-                break;
-            pvs.push_back(cn);
-        }
-
-        // set nPvs
-        nPvs = pvs.size();
-    }
-    else
-    {
-        // copy PV names from command line
-        for (int n = 0; optind < argc; n++, optind++)
-            pvs.push_back(argv[optind]);
-    }
-
-
-    SET_LOG_LEVEL(debugFlag ? logLevelDebug : logLevelError);
-
-    std::cout << std::boolalpha;
-
-    // ================ Connect channels and start operations
-
-    epics::pvAccess::ca::CAClientFactory::start();
-
-    bool allOK = true;
-
-    std::set<ChannelProvider::shared_pointer> providers;
-    typedef std::map<std::string, Channel::shared_pointer> chan_cache_t;
-    chan_cache_t chan_cache;
-
-    PVStructure::shared_pointer pvRequest;
+    pvd::PVStructure::shared_pointer pvRequest;
     try {
-        pvRequest = createRequest(request);
+        pvRequest = pvd::createRequest(request);
     } catch(std::exception& e){
         fprintf(stderr, "failed to parse request string: %s\n", e.what());
         return 1;
     }
 
-    // keep the operations, and associated channels, alive
-    std::vector<std::tr1::shared_ptr<Tracker> > ops;
-
-    for(size_t n=0; n<pvs.size(); n++)
-    {
-        URI uri;
-        bool validURI = URI::parse(pvs[n], uri);
-
-        if (validURI) {
-            if (uri.path.length() <= 1)
-            {
-                std::cerr << "invalid URI '" << pvs[n] << "', empty path\n";
-                return 1;
-            }
-            pvs[n] = uri.path.substr(1);;
-        } else {
-            uri.protocol = defaultProvider;
-            uri.host.clear();
-        }
-
-        ChannelProvider::shared_pointer provider(ChannelProviderRegistry::clients()->getProvider(uri.protocol));
-        if(!provider) {
-            std::cerr<<"Unknown provider \""<<uri.protocol<<"\" for channel "<<pvs[n]<<"\n";
-            return 1;
-        }
-
-        Channel::shared_pointer channel;
-        chan_cache_t::const_iterator it = chan_cache.find(pvs[n]);
-        if(it==chan_cache.end()) {
-            try {
-                channel = provider->createChannel(pvs[n], DefaultChannelRequester::build(),
-                                                  ChannelProvider::PRIORITY_DEFAULT, uri.host);
-            } catch(std::exception& e) {
-                std::cerr<<"Provider "<<uri.protocol<<" can't create channel \""<<pvs[n]<<"\"\n";
-                return 1;
-            }
-            chan_cache[pvs[n]] = channel;
-        } else {
-            channel = it->second;
-        }
-
-        if(monitor) {
-            std::tr1::shared_ptr<MonitorRequesterImpl> req(new MonitorRequesterImpl(pvs[n]));
-
-            req->op = channel->createMonitor(req, pvRequest);
-
-            ops.push_back(req);
-
-        } else {
-            std::tr1::shared_ptr<ChannelGetRequesterImpl> req(new ChannelGetRequesterImpl(pvs[n]));
-
-            req->op = channel->createChannelGet(req, pvRequest);
-
-            ops.push_back(req);
-        }
-
-        // make sure to keep the provider alive as Channels will be automatically closed
-        providers.insert(provider);
+    for(int i = optind; i < argc; i++) {
+        pvnamewidth = std::max(pvnamewidth, strlen(argv[i]));
     }
 
-    // Active channels continue to be referenced by get/monitor stored in 'ops'
-    chan_cache.clear();
+    SET_LOG_LEVEL(debugFlag ? pva::logLevelDebug : pva::logLevelError);
 
-    // ========================== Wait for operations to complete, or timeout
-
-#ifdef USE_SIGNAL
-        signal(SIGINT, alldone);
-        signal(SIGTERM, alldone);
-        signal(SIGQUIT, alldone);
-#endif
-
-    if(debugFlag)
-        std::cerr<<"Waiting...\n";
+    epics::pvAccess::ca::CAClientFactory::start();
 
     {
-        Guard G(Tracker::doneLock);
-        while(Tracker::inprog.size() && !Tracker::abort) {
-            UnGuard U(G);
-            if(timeOut<=0)
-                Tracker::doneEvt.wait();
-            else if(!Tracker::doneEvt.wait(timeOut)) {
-                allOK = false;
-                std::cerr<<"Timeout\n";
-                break;
+        pvac::ClientProvider provider(defaultProvider);
+
+        std::vector<std::tr1::shared_ptr<Tracker> > tracked;
+
+        epics::auto_ptr<WorkQueue> Q;
+        if(monitor)
+            Q.reset(new WorkQueue);
+
+        for(int i = optind; i < argc; i++) {
+            pvac::ClientChannel chan(provider.connect(argv[i]));
+
+            if(monitor) {
+                std::tr1::shared_ptr<MonTracker> mon(new MonTracker(*Q, chan, pvRequest));
+
+                tracked.push_back(mon);
+
+            } else { // Get
+                std::tr1::shared_ptr<Getter> get(new Getter(chan, pvRequest));
+
+                tracked.push_back(get);
+            }
+        }
+
+        // ========================== Wait for operations to complete, or timeout
+
+        Tracker::prepare(); // install signal handler
+
+        if(debugFlag)
+            std::cerr<<"Waiting...\n";
+
+        {
+            Guard G(Tracker::doneLock);
+            while(Tracker::inprog.size() && !Tracker::abort) {
+                UnGuard U(G);
+                if(timeout<=0)
+                    Tracker::doneEvt.wait();
+                else if(!Tracker::doneEvt.wait(timeout)) {
+                    haderror = 1;
+                    std::cerr<<"Timeout\n";
+                    break;
+                }
             }
         }
     }
 
     if(refmon.running()) {
         refmon.stop();
-        // drop refs to operations, but keep ref to ClientProvider
-        ops.clear();
         // show final counts
         refmon.current();
     }
@@ -650,5 +440,6 @@ int main (int argc, char *argv[])
 
     if(debugFlag)
         std::cerr<<"Done\n";
-    return allOK ? 0 : 1;
+
+    return haderror ? 1 : 0;
 }
