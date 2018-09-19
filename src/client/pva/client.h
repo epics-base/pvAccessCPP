@@ -344,9 +344,20 @@ public:
     struct PutCallback {
         virtual ~PutCallback() {}
         struct Args {
-            Args(epics::pvData::BitSet& tosend) :tosend(tosend) {}
+            Args(epics::pvData::BitSet& tosend, epics::pvData::BitSet& previousmask) :tosend(tosend), previousmask(previousmask) {}
+            //! Callee must fill this in with an instance of the Structure passed as the 'build' argument.
             epics::pvData::PVStructure::const_shared_pointer root;
+            //! Callee must set bits corresponding to the fields of 'root' which will actually be sent.
             epics::pvData::BitSet& tosend;
+            //! A previous value of the PV being "put" when put(..., getprevious=true).  eg. use to find enumeration value.
+            //! Otherwise NULL.
+            //! @note The value of the PV may change between the point where "previous" is fetched,
+            //!       and when this Put operation completes.
+            //! @since 6.1.0 Added after 6.0.0
+            epics::pvData::PVStructure::const_shared_pointer previous;
+            //! Bit mask indicating those fields of 'previous' which have been set by the server.  (others have local defaults)
+            //! Unused if previous==NULL.
+            const epics::pvData::BitSet& previousmask;
         };
         /** Server provides expected structure.
          *
@@ -362,8 +373,13 @@ public:
 
     //! Initiate request to change PV
     //! @param cb Completion notification callback.  Must outlive Operation (call Operation::cancel() to force release)
+    //! @param pvRequest if NULL defaults to "field()".
+    //! @param getprevious If true, fetch a previous value of the PV and make
+    //!                    this available as PutCallback::Args::previous and previousmask.
+    //!                    If false, then previous=NULL
     Operation put(PutCallback* cb,
-                      epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
+                  epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer(),
+                  bool getcurrent = false);
 
     //! Synchronious put operation
     inline

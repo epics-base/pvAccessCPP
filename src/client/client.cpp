@@ -219,6 +219,7 @@ void register_reftrack()
     // done is an optimization, duplicate calls to registerRef* are no-ops
     pvac::detail::registerRefTrack();
     pvac::detail::registerRefTrackGet();
+    pvac::detail::registerRefTrackPut();
     pvac::detail::registerRefTrackMonitor();
     pvac::detail::registerRefTrackRPC();
 }
