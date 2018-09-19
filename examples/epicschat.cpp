@@ -51,10 +51,10 @@ struct ChatHandler : public pvas::SharedPV::Handler
     virtual ~ChatHandler() {
         printf("Cleanup Room\n");
     }
-    virtual void onLastDisconnect(pvas::SharedPV& self) {
+    virtual void onLastDisconnect(const pvas::SharedPV::shared_pointer& self) OVERRIDE FINAL {
         printf("Close Room %p\n", &self);
     }
-    virtual void onPut(pvas::SharedPV& self, pvas::Operation& op) {
+    virtual void onPut(const pvas::SharedPV::shared_pointer& self, pvas::Operation& op) OVERRIDE FINAL {
         pva::ChannelRequester::shared_pointer req(op.getChannel()->getChannelRequester());
         std::ostringstream strm;
 
@@ -71,7 +71,7 @@ struct ChatHandler : public pvas::SharedPV::Handler
 
         replacement->getSubFieldT<pvd::PVString>("value")->put(strm.str());
 
-        self.post(*replacement, op.changed());
+        self->post(*replacement, op.changed());
         op.complete();
     }
 };
