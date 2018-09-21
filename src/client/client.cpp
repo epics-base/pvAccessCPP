@@ -222,6 +222,7 @@ void register_reftrack()
     pvac::detail::registerRefTrackPut();
     pvac::detail::registerRefTrackMonitor();
     pvac::detail::registerRefTrackRPC();
+    pvac::detail::registerRefTrackInfo();
 }
 
 std::tr1::shared_ptr<epics::pvAccess::Channel>

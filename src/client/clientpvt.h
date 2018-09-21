@@ -161,6 +161,7 @@ void registerRefTrackGet();
 void registerRefTrackPut();
 void registerRefTrackMonitor();
 void registerRefTrackRPC();
+void registerRefTrackInfo();
 
 }} // namespace pvac::detail
 

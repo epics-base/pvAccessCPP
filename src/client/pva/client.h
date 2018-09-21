@@ -85,7 +85,7 @@ protected:
 };
 
 //! Information on put completion
-struct PutEvent
+struct epicsShareClass PutEvent
 {
     enum event_t {
         Fail,    //!< request ends in failure.  Check message
@@ -103,6 +103,12 @@ struct epicsShareClass GetEvent : public PutEvent
     //! Mask of fields in value which have been initialized by the server
     //! @since 6.1.0
     epics::pvData::BitSet::const_shared_pointer valid;
+};
+
+struct epicsShareClass InfoEvent : public PutEvent
+{
+    //! Type description resulting from getField operation.  NULL unless event==Success
+    epics::pvData::FieldConstPtr type;
 };
 
 struct MonitorSync;
@@ -415,6 +421,20 @@ public:
      */
     MonitorSync monitor(const epics::pvData::PVStructure::const_shared_pointer& pvRequest = epics::pvData::PVStructure::const_shared_pointer(),
                         epicsEvent *event =0);
+
+    struct InfoCallback {
+        virtual ~InfoCallback() {}
+        //! getField operation is complete
+        virtual void infoDone(const InfoEvent& evt) =0;
+    };
+
+    //! Request PV type info.
+    //! @note This type may not be the same as the types used in the get/put/monitor operations.
+    Operation info(InfoCallback *cb, const std::string& subfld = std::string());
+
+    //! Synchronious getField opreation
+    epics::pvData::FieldConstPtr info(double timeout = 3.0,
+                                      const std::string& subfld = std::string());
 
     //! Connection state change CB
     struct ConnectCallback {
