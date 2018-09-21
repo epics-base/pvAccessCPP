@@ -51,6 +51,7 @@ SharedChannel::SharedChannel(const std::tr1::shared_ptr<SharedPV> &owner,
         if(owner->channels.empty())
             handler = owner->handler;
         owner->channels.push_back(this);
+        owner->notifiedConn = !!handler;
     }
     if(handler) {
         handler->onFirstConnect(owner);
@@ -64,8 +65,9 @@ SharedChannel::~SharedChannel()
         Guard G(owner->mutex);
         bool wasempty = owner->channels.empty();
         owner->channels.remove(this);
-        if(!wasempty && owner->channels.empty()) {
+        if(!wasempty && owner->channels.empty() && owner->notifiedConn) {
             handler = owner->handler;
+            owner->notifiedConn = false;
         }
     }
     if(handler) {

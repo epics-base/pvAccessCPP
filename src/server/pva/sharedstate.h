@@ -202,6 +202,8 @@ private:
     //! Used for initial Monitor update and Get operations.
     epics::pvData::BitSet valid;
 
+    bool notifiedConn; // whether onFirstConnect() has been, or is being, called
+
     int debugLvl;
 
     EPICS_NOT_COPYABLE(SharedPV)

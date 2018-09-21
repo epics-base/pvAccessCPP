@@ -74,6 +74,7 @@ SharedPV::shared_pointer SharedPV::buildMailbox(pvas::SharedPV::Config *conf)
 SharedPV::SharedPV(const std::tr1::shared_ptr<Handler> &handler, pvas::SharedPV::Config *conf)
     :config(conf ? *conf : Config())
     ,handler(handler)
+    ,notifiedConn(false)
     ,debugLvl(0)
 {
     REFTRACE_INCREMENT(num_instances);
@@ -264,8 +265,10 @@ void SharedPV::close(bool destroy)
             puts.clear();
             rpcs.clear();
             monitors.clear();
-            if(!channels.empty())
+            if(!channels.empty() && notifiedConn) {
                 p_handler = handler;
+                notifiedConn = false;
+            }
             channels.clear();
         }
     }
