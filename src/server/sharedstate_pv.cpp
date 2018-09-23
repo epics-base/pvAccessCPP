@@ -129,6 +129,8 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
     typedef std::vector<std::tr1::shared_ptr<pva::GetFieldRequester> > xgetfields_t;
 
     const pvd::StructureConstPtr newtype(value.getStructure());
+    pvd::PVStructurePtr newvalue(pvd::getPVDataCreate()->createPVStructure(newtype));
+    newvalue->copyUnchecked(value, valid);
 
     xputs_t p_put;
     xrpcs_t p_rpc;
@@ -145,9 +147,8 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
         p_monitor.reserve(monitors.size());
         p_getfield.reserve(getfields.size());
 
-        type = value.getStructure();
-        current = pvd::getPVDataCreate()->createPVStructure(newtype);
-        current->copyUnchecked(value);
+        type = newtype;
+        current = newvalue;
         this->valid = valid;
 
         FOR_EACH(puts_t::const_iterator, it, end, puts) {
