@@ -51,7 +51,7 @@ SharedChannel::SharedChannel(const std::tr1::shared_ptr<SharedPV> &owner,
         if(owner->channels.empty())
             handler = owner->handler;
         owner->channels.push_back(this);
-        owner->notifiedConn = !!handler;
+        owner->notifiedConn = true;
     }
     if(handler) {
         handler->onFirstConnect(owner);

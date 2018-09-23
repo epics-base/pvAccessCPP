@@ -143,6 +143,10 @@ public:
     //!                If destory=true, the internal client list is cleared.
     //! @post In the closed state
     //! @note Provider locking rules apply (@see provider_roles_requester_locking).
+    //!
+    //! close() is not final, even with destroy=true new clients may begin connecting, and open() may be called again.
+    //! A final close() should be performed after the removal from StaticProvider/DynamicProvider
+    //! which will prevent new clients.
     virtual void close(bool destroy=false);
 
     //! Create a new container which may be used to prepare to call post().

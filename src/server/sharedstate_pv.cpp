@@ -231,35 +231,36 @@ void SharedPV::close(bool destroy)
     {
         Guard I(mutex);
 
-        if(!type)
-            return;
+        if(type) {
 
-        p_put.reserve(puts.size());
-        p_rpc.reserve(rpcs.size());
-        p_monitor.reserve(monitors.size());
-        p_channel.reserve(channels.size());
+            p_put.reserve(puts.size());
+            p_rpc.reserve(rpcs.size());
+            p_monitor.reserve(monitors.size());
+            p_channel.reserve(channels.size());
 
-        FOR_EACH(puts_t::const_iterator, it, end, puts) {
-            (*it)->mapper.reset();
-            p_put.push_back((*it)->requester.lock());
-        }
-        FOR_EACH(rpcs_t::const_iterator, it, end, rpcs) {
-            p_rpc.push_back((*it)->requester.lock());
-        }
-        FOR_EACH(monitors_t::const_iterator, it, end, monitors) {
-            (*it)->close();
-            try {
-                p_monitor.push_back((*it)->shared_from_this());
-            }catch(std::tr1::bad_weak_ptr&) { /* ignore, racing dtor */ }
-        }
-        FOR_EACH(channels_t::const_iterator, it, end, channels) {
-            try {
-                p_channel.push_back((*it)->shared_from_this());
-            }catch(std::tr1::bad_weak_ptr&) { /* ignore, racing dtor */ }
+            FOR_EACH(puts_t::const_iterator, it, end, puts) {
+                (*it)->mapper.reset();
+                p_put.push_back((*it)->requester.lock());
+            }
+            FOR_EACH(rpcs_t::const_iterator, it, end, rpcs) {
+                p_rpc.push_back((*it)->requester.lock());
+            }
+            FOR_EACH(monitors_t::const_iterator, it, end, monitors) {
+                (*it)->close();
+                try {
+                    p_monitor.push_back((*it)->shared_from_this());
+                }catch(std::tr1::bad_weak_ptr&) { /* ignore, racing dtor */ }
+            }
+            FOR_EACH(channels_t::const_iterator, it, end, channels) {
+                try {
+                    p_channel.push_back((*it)->shared_from_this());
+                }catch(std::tr1::bad_weak_ptr&) { /* ignore, racing dtor */ }
+            }
+
+            type.reset();
+            current.reset();
         }
 
-        type.reset();
-        current.reset();
         if(destroy) {
             // forget about all clients, to prevent the possibility of our
             // sending a second destroy notification.
