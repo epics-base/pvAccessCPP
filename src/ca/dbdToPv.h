@@ -89,6 +89,8 @@ public:
         epics::pvData::PVStructurePtr const & pvRequest,
         IOType ioType
     );
+    epics::pvData::Structure::const_shared_pointer getStructure();
+    void getChoices(CAChannelPtr const & caChannel);
     epics::pvData::PVStructurePtr createPVStructure();
     chtype getRequestType();
     epics::pvData::Status getFromDBD(
@@ -104,8 +106,6 @@ public:
          void *userArg
     );
     void getChoicesDone(struct event_handler_args &args);
-    void descriptionConnected(struct connection_handler_args args);
-    void getDescriptionDone(struct event_handler_args &args);
 private:
     DbdToPv(IOType ioType);
     void activate(
@@ -113,7 +113,7 @@ private:
         epics::pvData::PVStructurePtr const & pvRequest
     );
     IOType ioType;
-    bool fieldRequested;
+    bool valueRequested;
     bool alarmRequested;
     bool timeStampRequested;
     bool displayRequested;
@@ -121,19 +121,15 @@ private:
     bool valueAlarmRequested;
     bool isArray;
     bool firstTime;
-    bool choicesValid;
-    bool waitForChoicesValid;
     chtype caValueType;
     chtype caRequestType;
     unsigned long maxElements;
-    epics::pvData::Mutex choicesMutex;
     epics::pvData::Event choicesEvent;
     epicsTimeStamp caTimeStamp;
     CaAlarm caAlarm;
     CaDisplay caDisplay;
     CaControl caControl;
     CaValueAlarm caValueAlarm;
-    std::string description;
     epics::pvData::Structure::const_shared_pointer structure;
     std::vector<std::string> choices;
 };

@@ -10,6 +10,7 @@
 #include <alarm.h>
 #include <alarmString.h>
 
+#include <pv/alarm.h>
 #include <pv/standardField.h>
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
@@ -23,6 +24,7 @@
 using namespace epics::pvData;
 using std::string;
 using std::ostringstream;
+using std::cout;
 
 namespace epics {
 namespace pvAccess {
@@ -30,23 +32,7 @@ namespace ca {
 
 #define CA_PRIORITY 50
 
-static void enumChoicesHandler(struct event_handler_args args)
-{
-    DbdToPv *dbdToPv = static_cast<DbdToPv*>(args.usr);
-    dbdToPv->getChoicesDone(args);
-}
 
-static void description_connection_handler(struct connection_handler_args args)
-{
-    DbdToPv *dbdToPv = static_cast<DbdToPv*>(ca_puser(args.chid));
-    dbdToPv->descriptionConnected(args);
-}
-
-static void descriptionHandler(struct event_handler_args args)
-{
-    DbdToPv *dbdToPv = static_cast<DbdToPv*>(args.usr);
-    dbdToPv->getDescriptionDone(args);
-}
 
 DbdToPvPtr DbdToPv::create(
     CAChannelPtr const & caChannel,
@@ -60,7 +46,7 @@ DbdToPvPtr DbdToPv::create(
 
 DbdToPv::DbdToPv(IOType ioType)
 :  ioType(ioType),
-   fieldRequested(false),
+   valueRequested(false),
    alarmRequested(false),
    timeStampRequested(false),
    displayRequested(false),
@@ -68,8 +54,6 @@ DbdToPv::DbdToPv(IOType ioType)
    valueAlarmRequested(false),
    isArray(false),
    firstTime(true),
-   choicesValid(false),
-   waitForChoicesValid(false),
    caValueType(-1),
    caRequestType(-1),
    maxElements(0)
@@ -104,6 +88,42 @@ static chtype getDbrType(const ScalarType scalarType)
     throw  std::runtime_error("getDbr: illegal scalarType");
 }
 
+static dbr_short_t convertDBstatus(dbr_short_t dbStatus)
+{
+    switch(dbStatus) {
+    case NO_ALARM:
+        return noStatus;
+    case READ_ALARM:
+    case WRITE_ALARM:
+    case HIHI_ALARM:
+    case HIGH_ALARM:
+    case LOLO_ALARM:
+    case LOW_ALARM:
+    case STATE_ALARM:
+    case COS_ALARM:
+    case HW_LIMIT_ALARM:
+        return deviceStatus;
+    case COMM_ALARM:
+    case TIMEOUT_ALARM:
+        return driverStatus;
+    case CALC_ALARM:
+    case SCAN_ALARM:
+    case LINK_ALARM:
+    case SOFT_ALARM:
+    case BAD_SUB_ALARM:
+        return recordStatus;
+    case DISABLE_ALARM:
+    case SIMM_ALARM:
+    case READ_ACCESS_ALARM:
+    case WRITE_ACCESS_ALARM:
+        return dbStatus;
+    case UDF_ALARM:
+        return undefinedStatus;
+    default:
+        return undefinedStatus; // UNDEFINED
+    }
+
+}
 
 void DbdToPv::activate(
     CAChannelPtr const & caChannel,
@@ -131,14 +151,14 @@ void DbdToPv::activate(
     } 
     if(fieldPVStructure->getPVFields().size()==0) 
     {
-        fieldRequested = true;
+        valueRequested = true;
         alarmRequested = true;
         timeStampRequested = true;
         displayRequested = true;
         controlRequested = true;
         valueAlarmRequested = true;
     } else {
-        if(fieldPVStructure->getSubField("value")) fieldRequested = true;
+        if(fieldPVStructure->getSubField("value")) valueRequested = true;
         if(fieldPVStructure->getSubField("alarm")) alarmRequested = true;
         if(fieldPVStructure->getSubField("timeStamp")) timeStampRequested = true;
         if(fieldPVStructure->getSubField("display")) displayRequested = true;
@@ -173,18 +193,7 @@ void DbdToPv::activate(
         }
         caRequestType = (properties.size()==0 ? DBR_ENUM : DBR_TIME_ENUM);
         structure = standardField->enumerated(properties);
-        int result = ca_array_get_callback(DBR_GR_ENUM,
-               1,
-               channelID, enumChoicesHandler, this);
-        if (result == ECA_NORMAL) result = ca_flush_io();
-        if (result != ECA_NORMAL) {
-            string mess(caChannel->getChannelName());
-            mess += " DbdToPv::activate getting enum cnoices ";
-            mess += ca_message(result);
-            throw  std::runtime_error(mess);
-        }
-        // NOTE: we do not wait here, since all subsequent request (over TCP) is serialized
-        // and will guarantee that enumChoicesHandler is called first
+
         return;
     }
     maxElements = ca_element_count(channelID);
@@ -204,7 +213,7 @@ void DbdToPv::activate(
     FieldCreatePtr fieldCreate(FieldCreate::getFieldCreate());
     PVDataCreatePtr pvDataCreate(PVDataCreate::getPVDataCreate());
     FieldBuilderPtr fieldBuilder(fieldCreate->createFieldBuilder());
-    if(fieldRequested) {
+    if(valueRequested) {
         if(isArray) {
            fieldBuilder->addArray("value",st);
         } else {
@@ -242,38 +251,27 @@ void DbdToPv::activate(
     } else {
        caRequestType = dbf_type_to_DBR(caValueType);
     }
-    if(displayRequested) {
-         chid channelID;
-         string name(caChannel->getChannelName() + ".DESC");
-         int result = ca_create_channel(name.c_str(),
-             description_connection_handler,
-             this,
-             CA_PRIORITY, // TODO mapping
-             &channelID);
-         if (result == ECA_NORMAL) result = ca_flush_io();
-         if (result != ECA_NORMAL) {
-            string mess(caChannel->getChannelName());
-            mess += " DbdToPv::activate getting description ";
-            mess += ca_message(result);
-            throw  std::runtime_error(mess);
-        }
+
+}
+
+chtype DbdToPv::getRequestType()
+{
+    if(caRequestType<0) {
+       throw  std::runtime_error("DbDToPv::getRequestType: bad type");
     }
+    return caRequestType;
 }
 
-void DbdToPv::descriptionConnected(struct connection_handler_args args)
+Structure::const_shared_pointer DbdToPv::getStructure()
 {
-    if (args.op != CA_OP_CONN_UP) return;
-    ca_array_get_callback(DBR_STRING,
-         0,
-         args.chid, descriptionHandler, this);
+    return structure;
 }
 
-void DbdToPv::getDescriptionDone(struct event_handler_args &args)
+
+static void enumChoicesHandler(struct event_handler_args args)
 {
-    if(args.status!=ECA_NORMAL) return;
-    const dbr_string_t *value = static_cast<const dbr_string_t *>(dbr_value_ptr(args.dbr,DBR_STRING));
-    description = string(*value);
-    ca_clear_channel(args.chid);
+    DbdToPv *dbdToPv = static_cast<DbdToPv*>(args.usr);
+    dbdToPv->getChoicesDone(args);
 }
 
 void DbdToPv::getChoicesDone(struct event_handler_args &args)
@@ -288,21 +286,29 @@ void DbdToPv::getChoicesDone(struct event_handler_args &args)
     size_t num = dbr_enum_p->no_str;
     choices.reserve(num);
     for(size_t i=0; i<num; ++i) choices.push_back(string(&dbr_enum_p->strs[i][0]));
-    bool signal = false;
-    {
-        Lock lock(choicesMutex);  
-        choicesValid = true;
-        if(waitForChoicesValid) signal = true;
-    }
-    if(signal) choicesEvent.signal();
+    choicesEvent.signal();
 } 
 
-chtype DbdToPv::getRequestType()
+
+void DbdToPv::getChoices(CAChannelPtr const & caChannel)
 {
-    if(caRequestType<0) {
-       throw  std::runtime_error("DbDToPv::getRequestType: bad type");
+    if(caRequestType==DBR_ENUM||caRequestType==DBR_TIME_ENUM)
+    {
+        caChannel->attachContext();
+        chid channelID = caChannel->getChannelID();
+        int result = ca_array_get_callback(DBR_GR_ENUM,
+               1,
+               channelID, enumChoicesHandler, this);
+        if (result == ECA_NORMAL) {
+            result = ca_flush_io();
+            choicesEvent.wait();
+        } else {
+            string mess(caChannel->getChannelName());
+            mess += " DbdToPv::activate getting enum cnoices ";
+            mess += ca_message(result);
+            throw  std::runtime_error(mess);
+        }
     }
-    return caRequestType;
 }
 
 PVStructurePtr DbdToPv::createPVStructure()
@@ -368,7 +374,7 @@ Status DbdToPv::getFromDBD(
      Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(args.status)));
      return errorStatus;
    }
-   if(fieldRequested)
+   if(valueRequested)
    {
        void * value = dbr_value_ptr(args.dbr,caRequestType);
        if(isArray) {
@@ -461,7 +467,7 @@ Status DbdToPv::getFromDBD(
         PVIntPtr pvStatus(pvAlarm->getSubField<PVInt>("status"));
         if(caAlarm.status!=status) {
             caAlarm.status = status;
-            pvStatus->put(status);
+            pvStatus->put(convertDBstatus(status));
             string message("UNKNOWN STATUS");
             if(status<=ALARM_NSTATUS) message = string(epicsAlarmConditionStrings[status]);
             pvMessage->put(message);
@@ -488,7 +494,7 @@ Status DbdToPv::getFromDBD(
             bitSet->set(pvSeconds->getFieldOffset());
         }
         if(caTimeStamp.nsec!=stamp.nsec) {
-            caTimeStamp.secPastEpoch = stamp.secPastEpoch;
+            caTimeStamp.nsec = stamp.nsec;
             PVIntPtr pvNano(pvTimeStamp->getSubField<PVInt>("nanoseconds"));
             pvNano->put(stamp.nsec);
             bitSet->set(pvNano->getFieldOffset());
@@ -590,14 +596,6 @@ Status DbdToPv::getFromDBD(
             pvString->put(format);
             bitSet->set(pvString->getFieldOffset());
          }
-         if(!description.empty())
-         {
-             PVStringPtr pvString = pvDisplay->getSubField<PVString>("description");
-             if(description.compare(pvString->get()) !=0) {
-                  pvString->put(description);
-                  bitSet->set(pvString->getFieldOffset());
-             }
-         }
     }
     if(valueAlarmRequested) {
         double upper_alarm_limit = 0.0;
@@ -667,6 +665,8 @@ Status DbdToPv::getFromDBD(
     }
     return Status::Ok;
 }
+
+
 
 template<typename dbrT, typename pvT>
 const void * put_DBRScalar(dbrT *val,PVScalar::shared_pointer const & pvScalar)
@@ -750,23 +750,6 @@ Status DbdToPv::putToDBD(
         switch(caValueType) {
            case DBR_ENUM:
            {
-               bool wait = false;
-               {
-                   Lock lock(choicesMutex);
-                   if(!choicesValid) {
-                       wait = true;
-                       waitForChoicesValid = true;
-                   }
-               } 
-               bool result = true;
-               if(wait) {
-                   result = choicesEvent.wait(5.0);
-               }
-               if(!result) {
-                   Status errorStatus(
-                    Status::STATUSTYPE_ERROR, string("DbdToPv::getFromDBD "));
-                return errorStatus;
-               }
                dbr_enum_t indexvalue = pvStructure->getSubField<PVInt>("value.index")->get();
                pValue = &indexvalue;
                break;

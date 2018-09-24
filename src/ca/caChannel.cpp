@@ -402,8 +402,7 @@ void CAChannelGetField::callRequester(CAChannelPtr const & caChannel)
     if(!requester) return;
     PVStructurePtr pvRequest(createRequest(""));
     DbdToPvPtr dbdToPv = DbdToPv::create(caChannel,pvRequest,getIO);
-    PVStructurePtr pvStructure = dbdToPv->createPVStructure();
-    Structure::const_shared_pointer structure(pvStructure->getStructure());
+    Structure::const_shared_pointer structure(dbdToPv->getStructure());
     Field::const_shared_pointer field =
         subField.empty() ?
         std::tr1::static_pointer_cast<const Field>(structure) :
@@ -471,6 +470,7 @@ void CAChannelGet::activate()
         std::cout << "CAChannelGet::activate " <<  channel->getChannelName() << endl;
     }
     dbdToPv = DbdToPv::create(channel,pvRequest,getIO);
+    dbdToPv->getChoices(channel);
     pvStructure = dbdToPv->createPVStructure();
     bitSet = BitSetPtr(new BitSet(pvStructure->getStructure()->getNumberFields()));
     notifyGetRequester = NotifyGetRequesterPtr(new NotifyGetRequester());
@@ -595,6 +595,7 @@ void CAChannelPut::activate()
         cout << "CAChannelPut::activate " << channel->getChannelName() << endl;
     }
     dbdToPv = DbdToPv::create(channel,pvRequest,putIO);
+    dbdToPv->getChoices(channel);
     pvStructure = dbdToPv->createPVStructure();
     bitSet = BitSetPtr(new BitSet(pvStructure->getStructure()->getNumberFields()));
     PVStringPtr pvString = pvRequest->getSubField<PVString>("record._options.block");
@@ -854,6 +855,7 @@ void CAChannelMonitor::activate()
         std::cout << "CAChannelMonitor::activate " << channel->getChannelName() << endl;
     }
     dbdToPv = DbdToPv::create(channel,pvRequest,monitorIO);
+    dbdToPv->getChoices(channel);
     pvStructure = dbdToPv->createPVStructure();
     activeElement = MonitorElementPtr(new MonitorElement(pvStructure));
     int32 queueSize = 2;
