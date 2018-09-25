@@ -16,11 +16,6 @@
 #include "clientpvt.h"
 #include "pv/pvAccess.h"
 
-namespace pvd = epics::pvData;
-namespace pva = epics::pvAccess;
-typedef epicsGuard<epicsMutex> Guard;
-typedef epicsGuardRelease<epicsMutex> UnGuard;
-
 namespace pvac {
 
 struct Monitor::Impl : public pva::MonitorRequester,

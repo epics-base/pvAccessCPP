@@ -5,6 +5,11 @@
 
 #include <pva/client.h>
 
+namespace pvd = epics::pvData;
+namespace pva = epics::pvAccess;
+typedef epicsGuard<epicsMutex> Guard;
+typedef epicsGuardRelease<epicsMutex> UnGuard;
+
 namespace pvac{namespace detail{
 /* Like std::tr1::enable_shared_from_this
  * with the notion of internal vs. external references.

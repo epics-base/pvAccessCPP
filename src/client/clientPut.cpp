@@ -17,11 +17,6 @@
 #include "clientpvt.h"
 #include "pv/pvAccess.h"
 
-namespace pvd = epics::pvData;
-namespace pva = epics::pvAccess;
-typedef epicsGuard<epicsMutex> Guard;
-typedef epicsGuardRelease<epicsMutex> UnGuard;
-
 namespace {
 
 struct Putter : public pva::ChannelPutRequester,
@@ -36,24 +31,24 @@ struct Putter : public pva::ChannelPutRequester,
     operation_type::shared_pointer op;
     pvd::StructureConstPtr puttype;
 
-    pvac::ClientChannel::PutCallback *putcb;
+    pvac::ClientChannel::PutCallback *cb;
     pvac::GetEvent event;
 
     static size_t num_instances;
 
-    Putter(pvac::ClientChannel::PutCallback* cb, bool getcurrent) :getcurrent(getcurrent), started(false), putcb(cb)
+    Putter(pvac::ClientChannel::PutCallback* cb, bool getcurrent) :getcurrent(getcurrent), started(false), cb(cb)
     {REFTRACE_INCREMENT(num_instances);}
     virtual ~Putter() {REFTRACE_DECREMENT(num_instances);}
 
     void callEvent(Guard& G, pvac::GetEvent::event_t evt = pvac::GetEvent::Fail)
     {
-        if(!putcb) return;
+        if(!cb) return;
 
         event.event = evt;
-        pvac::ClientChannel::PutCallback *cb=putcb;
-        putcb = 0;
+        pvac::ClientChannel::PutCallback *C=cb;
+        cb = 0;
         UnGuard U(G);
-        cb->putDone(event);
+        C->putDone(event);
     }
 
     virtual std::string name() const OVERRIDE FINAL
@@ -87,7 +82,7 @@ struct Putter : public pva::ChannelPutRequester,
         Guard G(mutex);
         op = channelPut; // we may be called before createChannelPut() has returned.
         puttype = structure;
-        if(started || !putcb) return;
+        if(started || !cb) return;
 
         if(!status.isOK()) {
             event.message = status.getMessage();
@@ -124,23 +119,23 @@ struct Putter : public pva::ChannelPutRequester,
                const pvd::BitSet::shared_pointer& tosend)
     {
         try {
-            pvac::ClientChannel::PutCallback *cb(putcb);
+            pvac::ClientChannel::PutCallback *C(cb);
             UnGuard U(G);
-            cb->putBuild(puttype, args);
+            C->putBuild(puttype, args);
             if(!args.root)
                 throw std::logic_error("No put value provided");
             else if(*args.root->getStructure()!=*puttype)
                 throw std::logic_error("Provided put value with wrong type");
         }catch(std::exception& e){
-            if(putcb) {
+            if(cb) {
                 event.message = e.what();
                 callEvent(G);
             } else {
                 LOG(pva::logLevelInfo, "Lost exception in %s: %s", CURRENT_FUNCTION, e.what());
             }
         }
-        // check putcb again after UnGuard
-        if(putcb) {
+        // check cb again after UnGuard
+        if(cb) {
             channelPut->put(std::tr1::const_pointer_cast<pvd::PVStructure>(args.root), tosend);
             started = true;
         }
@@ -154,7 +149,7 @@ struct Putter : public pva::ChannelPutRequester,
     {
         std::tr1::shared_ptr<Putter> keepalive(internal_shared_from_this());
         Guard G(mutex);
-        if(!putcb) return;
+        if(!cb) return;
 
         if(!status.isOK()) {
             event.message = status.getMessage();
@@ -175,7 +170,7 @@ struct Putter : public pva::ChannelPutRequester,
     {
         std::tr1::shared_ptr<Putter> keepalive(internal_shared_from_this());
         Guard G(mutex);
-        if(!putcb) return;
+        if(!cb) return;
 
         if(!status.isOK()) {
             event.message = status.getMessage();
