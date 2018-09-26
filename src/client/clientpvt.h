@@ -1,6 +1,9 @@
 #ifndef CLIENTPVT_H
 #define CLIENTPVT_H
 
+#include <epicsEvent.h>
+#include <epicsThread.h>
+
 #include <pv/sharedPtr.h>
 
 #include <pva/client.h>
@@ -69,6 +72,89 @@ public:
         return ret;
     }
 };
+
+/** Safe use of raw callback pointer while unlocked.
+ * clear pointer and then call CallbackGuard::wait() to ensure that concurrent
+ * callback have completed.
+ *
+ * Prototype usage
+ @code
+ * struct mycb : public CallbackStorage {
+ *      void (*ptr)();
+ * };
+ * // make a callback
+ * void docb(mycb& cb) {
+ *     CallbackGuard G(cb); // lock
+ *     // decide whether to make CB
+ *     if(P){
+ *          void (*P)() = ptr; // copy for use while unlocked
+ *          CallbackUse U(G); // unlock
+ *          (*P)();
+ *          // automatic re-lock
+ *     }
+ *     // automatic final unlock
+ * }
+ * void cancelop(mycb& cb) {
+ *     CallbackGuard G(cb);
+ *     ptr = 0;  // prevent further callbacks from starting
+ *     G.wait(); // wait for inprogress callbacks to complete
+ * }
+ @endcode
+ */
+struct CallbackStorage {
+    mutable epicsMutex mutex;
+    epicsEvent wakeup;
+    size_t nwaitcb;
+    epicsThreadId incb;
+    CallbackStorage() :nwaitcb(0u), incb(0) {}
+};
+
+// analogous to epicsGuard
+struct CallbackGuard {
+    CallbackStorage& store;
+    epicsThreadId self;
+    explicit CallbackGuard(CallbackStorage& store) :store(store), self(0) {
+        store.mutex.lock();
+    }
+    ~CallbackGuard() {
+        bool notify = store.nwaitcb!=0;
+        store.mutex.unlock();
+        if(notify)
+            store.wakeup.signal();
+    }
+    void ensureself() {
+        if(!self)
+            self = epicsThreadGetIdSelf();
+    }
+    // unlock and block until no in-progress callbacks
+    void wait() {
+        if(!store.incb) return;
+        ensureself();
+        store.nwaitcb++;
+        while(store.incb && store.incb!=self) {
+            store.mutex.unlock();
+            store.wakeup.wait();
+            store.mutex.lock();
+        }
+        store.nwaitcb--;
+    }
+};
+
+// analogous to epicsGuardRelease
+struct CallbackUse {
+    CallbackGuard& G;
+    explicit CallbackUse(CallbackGuard& G) :G(G) {
+        G.wait(); // serialize callbacks
+        G.ensureself();
+        G.store.incb=G.self;
+        G.store.mutex.unlock();
+    }
+    ~CallbackUse() {
+        G.store.mutex.lock();
+        G.store.incb=0;
+    }
+};
+
 
 void registerRefTrack();
 void registerRefTrackGet();

@@ -18,13 +18,14 @@
 #include "pv/pvAccess.h"
 
 namespace {
+using pvac::detail::CallbackGuard;
+using pvac::detail::CallbackUse;
 
-struct Putter : public pva::ChannelPutRequester,
-                   public pvac::Operation::Impl,
-                   public pvac::detail::wrapped_shared_from_this<Putter>
+struct Putter : public pvac::detail::CallbackStorage,
+                public pva::ChannelPutRequester,
+                public pvac::Operation::Impl,
+                public pvac::detail::wrapped_shared_from_this<Putter>
 {
-    mutable epicsMutex mutex;
-
     const bool getcurrent;
 
     bool started; // whether the put() has actually been sent.  After which point we can't safely re-try.
@@ -38,16 +39,21 @@ struct Putter : public pva::ChannelPutRequester,
 
     Putter(pvac::ClientChannel::PutCallback* cb, bool getcurrent) :getcurrent(getcurrent), started(false), cb(cb)
     {REFTRACE_INCREMENT(num_instances);}
-    virtual ~Putter() {REFTRACE_DECREMENT(num_instances);}
+    virtual ~Putter() {
+        CallbackGuard G(*this);
+        cb = 0;
+        G.wait(); // paranoia
+        REFTRACE_DECREMENT(num_instances);
+    }
 
-    void callEvent(Guard& G, pvac::GetEvent::event_t evt = pvac::GetEvent::Fail)
+    void callEvent(CallbackGuard& G, pvac::GetEvent::event_t evt = pvac::GetEvent::Fail)
     {
         if(!cb) return;
 
         event.event = evt;
         pvac::ClientChannel::PutCallback *C=cb;
         cb = 0;
-        UnGuard U(G);
+        CallbackUse U(G);
         C->putDone(event);
     }
 
@@ -62,9 +68,10 @@ struct Putter : public pva::ChannelPutRequester,
     {
         // keepalive for safety in case callback wants to destroy us
         std::tr1::shared_ptr<Putter> keepalive(internal_shared_from_this());
-        Guard G(mutex);
+        CallbackGuard G(*this);
         if(started && op) op->cancel();
         callEvent(G, pvac::GetEvent::Cancel);
+        G.wait();
     }
 
     virtual std::string getRequesterName() OVERRIDE FINAL
@@ -79,7 +86,7 @@ struct Putter : public pva::ChannelPutRequester,
         epics::pvData::Structure::const_shared_pointer const & structure) OVERRIDE FINAL
     {
         std::tr1::shared_ptr<Putter> keepalive(internal_shared_from_this());
-        Guard G(mutex);
+        CallbackGuard G(*this);
         op = channelPut; // we may be called before createChannelPut() has returned.
         puttype = structure;
         if(started || !cb) return;
@@ -107,20 +114,20 @@ struct Putter : public pva::ChannelPutRequester,
 
     virtual void channelDisconnect(bool destroy) OVERRIDE FINAL
     {
-        Guard G(mutex);
+        CallbackGuard G(*this);
         event.message = "Disconnect";
 
         callEvent(G);
     }
 
-    void doPut(Guard& G,
+    void doPut(CallbackGuard& G,
                pvac::ClientChannel::PutCallback::Args& args,
                pva::ChannelPut::shared_pointer const & channelPut,
                const pvd::BitSet::shared_pointer& tosend)
     {
         try {
             pvac::ClientChannel::PutCallback *C(cb);
-            UnGuard U(G);
+            CallbackUse U(G);
             C->putBuild(puttype, args);
             if(!args.root)
                 throw std::logic_error("No put value provided");
@@ -136,8 +143,8 @@ struct Putter : public pva::ChannelPutRequester,
         }
         // check cb again after UnGuard
         if(cb) {
-            channelPut->put(std::tr1::const_pointer_cast<pvd::PVStructure>(args.root), tosend);
             started = true;
+            channelPut->put(std::tr1::const_pointer_cast<pvd::PVStructure>(args.root), tosend);
         }
     }
 
@@ -148,7 +155,7 @@ struct Putter : public pva::ChannelPutRequester,
         epics::pvData::BitSet::shared_pointer const & bitSet) OVERRIDE FINAL
     {
         std::tr1::shared_ptr<Putter> keepalive(internal_shared_from_this());
-        Guard G(mutex);
+        CallbackGuard G(*this);
         if(!cb) return;
 
         if(!status.isOK()) {
@@ -169,7 +176,7 @@ struct Putter : public pva::ChannelPutRequester,
         pva::ChannelPut::shared_pointer const & channelPut) OVERRIDE FINAL
     {
         std::tr1::shared_ptr<Putter> keepalive(internal_shared_from_this());
-        Guard G(mutex);
+        CallbackGuard G(*this);
         if(!cb) return;
 
         if(!status.isOK()) {

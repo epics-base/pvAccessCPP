@@ -18,13 +18,14 @@
 #include "pv/pvAccess.h"
 
 namespace {
+using pvac::detail::CallbackGuard;
+using pvac::detail::CallbackUse;
 
-struct Getter : public pva::ChannelGetRequester,
-                   public pvac::Operation::Impl,
-                   public pvac::detail::wrapped_shared_from_this<Getter>
+struct Getter : public pvac::detail::CallbackStorage,
+                public pva::ChannelGetRequester,
+                public pvac::Operation::Impl,
+                public pvac::detail::wrapped_shared_from_this<Getter>
 {
-    mutable epicsMutex mutex;
-
     operation_type::shared_pointer op;
 
     pvac::ClientChannel::GetCallback *cb;
@@ -34,16 +35,21 @@ struct Getter : public pva::ChannelGetRequester,
 
     explicit Getter(pvac::ClientChannel::GetCallback* cb) :cb(cb)
     {REFTRACE_INCREMENT(num_instances);}
-    virtual ~Getter() {REFTRACE_DECREMENT(num_instances);}
+    virtual ~Getter() {
+        CallbackGuard G(*this);
+        cb = 0;
+        G.wait(); // paranoia
+        REFTRACE_DECREMENT(num_instances);
+    }
 
-    void callEvent(Guard& G, pvac::GetEvent::event_t evt = pvac::GetEvent::Fail)
+    void callEvent(CallbackGuard& G, pvac::GetEvent::event_t evt = pvac::GetEvent::Fail)
     {
         if(!cb) return;
 
         event.event = evt;
         pvac::ClientChannel::GetCallback *C=cb;
         cb = 0;
-        UnGuard U(G);
+        CallbackUse U(G);
         C->getDone(event);
     }
 
@@ -58,9 +64,10 @@ struct Getter : public pva::ChannelGetRequester,
     {
         // keepalive for safety in case callback wants to destroy us
         std::tr1::shared_ptr<Getter> keepalive(internal_shared_from_this());
-        Guard G(mutex);
+        CallbackGuard G(*this);
         if(op) op->cancel();
         callEvent(G, pvac::GetEvent::Cancel);
+        G.wait();
     }
 
     virtual std::string getRequesterName() OVERRIDE FINAL
@@ -75,7 +82,7 @@ struct Getter : public pva::ChannelGetRequester,
         epics::pvData::Structure::const_shared_pointer const & structure) OVERRIDE FINAL
     {
         std::tr1::shared_ptr<Getter> keepalive(internal_shared_from_this());
-        Guard G(mutex);
+        CallbackGuard G(*this);
         if(!cb) return;
 
         if(!status.isOK()) {
@@ -94,7 +101,7 @@ struct Getter : public pva::ChannelGetRequester,
 
     virtual void channelDisconnect(bool destroy) OVERRIDE FINAL
     {
-        Guard G(mutex);
+        CallbackGuard G(*this);
         event.message = "Disconnect";
 
         callEvent(G);
@@ -107,7 +114,7 @@ struct Getter : public pva::ChannelGetRequester,
         epics::pvData::BitSet::shared_pointer const & bitSet) OVERRIDE FINAL
     {
         std::tr1::shared_ptr<Getter> keepalive(internal_shared_from_this());
-        Guard G(mutex);
+        CallbackGuard G(*this);
         if(!cb) return;
 
         if(!status.isOK()) {
