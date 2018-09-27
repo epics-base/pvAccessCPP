@@ -833,7 +833,8 @@ CAChannelMonitor::CAChannelMonitor(
     pvRequest(pvRequest),
     isStarted(false),
     monitorEventThread(MonitorEventThread::get()),
-    pevid(NULL)
+    pevid(NULL),
+    eventMask(DBE_VALUE | DBE_ALARM)
 {}
 
 CAChannelMonitor::~CAChannelMonitor()
@@ -868,6 +869,15 @@ void CAChannelMonitor::activate()
             ss << pvString->get();
             ss >> size;
             if (size > 1) queueSize = size;
+        }
+        pvString = pvOptions->getSubField<PVString>("DBE");
+        if(pvString) {
+            std::string value(pvString->get());
+            eventMask = 0;
+            if(value.find("VALUE")!=std::string::npos) eventMask|=DBE_VALUE;
+            if(value.find("ARCHIVE")!=std::string::npos) eventMask|=DBE_ARCHIVE;
+            if(value.find("ALARM")!=std::string::npos) eventMask|=DBE_ALARM;
+            if(value.find("PROPERTY")!=std::string::npos) eventMask|=DBE_PROPERTY;
         }
     }
     notifyMonitorRequester = NotifyMonitorRequesterPtr(new NotifyMonitorRequester());
@@ -941,7 +951,7 @@ Status CAChannelMonitor::start()
     channel->attachContext();
     int result = ca_create_subscription(dbdToPv->getRequestType(),
          0,
-         channel->getChannelID(), DBE_VALUE,
+         channel->getChannelID(), eventMask,
          ca_subscription_handler, this,
          &pevid);
     if (result == ECA_NORMAL)

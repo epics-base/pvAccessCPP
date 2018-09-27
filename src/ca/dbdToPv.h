@@ -113,6 +113,11 @@ private:
         epics::pvData::PVStructurePtr const & pvRequest
     );
     IOType ioType;
+    bool dbfIsUCHAR;
+    bool dbfIsUSHORT;
+    bool dbfIsULONG;
+    bool dbfIsINT64;
+    bool dbfIsUINT64;
     bool valueRequested;
     bool alarmRequested;
     bool timeStampRequested;
@@ -120,6 +125,7 @@ private:
     bool controlRequested;
     bool valueAlarmRequested;
     bool isArray;
+    bool charArrayIsString;
     bool firstTime;
     chtype caValueType;
     chtype caRequestType;
@@ -132,6 +138,7 @@ private:
     CaValueAlarm caValueAlarm;
     epics::pvData::Structure::const_shared_pointer structure;
     std::vector<std::string> choices;
+    epics::pvData::PVDoubleArrayPtr pvDoubleArray; //for dbfIsINT64 and dbfIsUINT64
 };
 
 }

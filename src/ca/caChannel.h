@@ -264,6 +264,7 @@ private:
     bool isStarted;
     MonitorEventThreadPtr monitorEventThread;
     evid pevid;
+    unsigned long eventMask;
     NotifyMonitorRequesterPtr notifyMonitorRequester;
 
     DbdToPvPtr dbdToPv;
