@@ -22,6 +22,7 @@
 #include <pv/pvData.h>
 #include <pv/sharedPtr.h>
 #include <pv/bitSet.h>
+#include <pv/createRequest.h>
 
 #ifdef monitorEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
@@ -274,7 +275,8 @@ public:
         size_t maxCount,    //!< upper limit on requested FIFO size
                defCount,    //!< FIFO size when client makes no request
                actualCount; //!< filled in with actual FIFO size
-        bool ignoreRequestMask;
+        bool dropEmptyUpdates; //!< default true.  Drop updates which don't include an field values.
+        epics::pvData::PVRequestMapper::mode_t mapperMode; //!< default Mask.  @see epics::pvData::PVRequestMapper::mode_t
         Config();
     };
 
@@ -351,6 +353,7 @@ private:
     //            -> MonitorRequester::monitorEvent()
     //            -> MonitorRequester::unlisten()
     //            -> ChannelBaseRequester::channelDisconnect()
+    //   start()  -> MonitorRequester::monitorEvent()
     //   release()                 -> Source::freeHighMark()
     //                             -> notify() -> ...
     //   reportRemoteQueueStatus() -> Source::freeHighMark()
@@ -373,22 +376,27 @@ private:
     // and expect that upstream will have only a weak ref to us.
     const Source::shared_pointer upstream;
 
+    enum state_t {
+        Closed, // not open()'d
+        Opened, // successful open()
+        Error,  // unsuccessful open()
+    } state;
     bool pipeline; // const after ctor
-    bool opened; // open() vs. close()
     bool running; // start() vs. stop()
     bool finished; // finish() called
-    epics::pvData::BitSet selectMask, // set during open()
-                          scratch; // using during post to avoid re-alloc
+    epics::pvData::BitSet scratch, oscratch; // using during post to avoid re-alloc
 
     bool needConnected;
     bool needEvent;
     bool needUnlisten;
     bool needClosed;
 
+    epics::pvData::Status error; // Set when entering Error state
+
     size_t freeHighLevel;
     epicsInt32 flowCount;
 
-    epics::pvData::StructureConstPtr type; // NULL if not opened
+    epics::pvData::PVRequestMapper mapper;
 
     typedef std::list<MonitorElementPtr> buffer_t;
     // we allocate one extra buffer element to hold data when post()

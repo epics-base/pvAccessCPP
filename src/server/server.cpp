@@ -118,7 +118,7 @@ StaticProvider::StaticProvider(const std::string &name)
     impl->external_self = impl;
 }
 
-StaticProvider::~StaticProvider() { close(); }
+StaticProvider::~StaticProvider() { close(true); }
 
 void StaticProvider::close(bool destroy)
 {

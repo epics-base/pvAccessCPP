@@ -30,6 +30,7 @@ struct Tester {
     // we only have one thread, so no need for sync.
     enum cb_t {
         Connect,
+        ConnectError,
         Event,
         Unlisten,
         Close,
@@ -39,6 +40,7 @@ struct Tester {
         switch(cb) {
 #define CASE(NAME) case NAME: return #NAME
         CASE(Connect);
+        CASE(ConnectError);
         CASE(Event);
         CASE(Unlisten);
         CASE(Close);
@@ -64,9 +66,12 @@ struct Tester {
         }
         virtual void monitorConnect(epics::pvData::Status const & status,
             pva::MonitorPtr const & monitor, epics::pvData::StructureConstPtr const & structure) OVERRIDE FINAL {
-            testDiag("In %s", CURRENT_FUNCTION);
+            testDiag("In %s : %s", CURRENT_FUNCTION, status.isSuccess() ? "OK" : status.getMessage().c_str());
             Guard G(mutex);
-            Tester::timeline.push_back(Connect);
+            if(status.isSuccess())
+                Tester::timeline.push_back(Connect);
+            else
+                Tester::timeline.push_back(ConnectError);
         }
         virtual void monitorEvent(pva::MonitorPtr const & monitor) OVERRIDE FINAL {
             testDiag("In %s", CURRENT_FUNCTION);
@@ -763,11 +768,36 @@ void checkCountdown()
     tester.testTimeline({Tester::Close});
 }
 
+void checkBadRequest()
+{
+    testDiag("==== %s ====", CURRENT_FUNCTION);
+    pva::MonitorFIFO::Config conf;
+    conf.maxCount=4;
+    conf.defCount=3;
+    Tester tester(pvd::createRequest("field(invalid)"), &conf);
+
+    tester.connect(pvd::pvInt);
+    tester.mon->notify();
+    tester.testTimeline({Tester::ConnectError});
+
+    // when in Error, all are no-op
+    tester.post(15);
+    tester.tryPost(4, false);
+    tester.tryPost(5, false, true);
+    tester.mon->finish();
+
+    tester.mon->notify();
+    tester.testTimeline({}); // nothing happens
+
+    tester.close();
+    tester.testTimeline({});
+}
+
 } // namespace
 
 MAIN(testmonitorfifo)
 {
-    testPlan(184);
+    testPlan(189);
     checkPlain();
     checkAfterClose();
     checkReOpenLost();
@@ -777,6 +807,7 @@ MAIN(testmonitorfifo)
     checkPipeline();
     checkSpam();
     checkCountdown();
+    checkBadRequest();
     return testDone();
 }
 

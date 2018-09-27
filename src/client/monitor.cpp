@@ -26,7 +26,8 @@ MonitorFIFO::Config::Config()
     :maxCount(4)
     ,defCount(4)
     ,actualCount(0) // readback
-    ,ignoreRequestMask(false)
+    ,dropEmptyUpdates(true)
+    ,mapperMode(pvd::PVRequestMapper::Mask)
 {}
 
 size_t MonitorFIFO::num_instances;
@@ -40,8 +41,8 @@ MonitorFIFO::MonitorFIFO(const std::tr1::shared_ptr<MonitorRequester> &requester
     ,requester(requester)
     ,pvRequest(pvRequest)
     ,upstream(source)
+    ,state(Closed)
     ,pipeline(false)
-    ,opened(false)
     ,running(false)
     ,finished(false)
     ,needConnected(false)
@@ -111,7 +112,13 @@ void MonitorFIFO::show(std::ostream& strm) const
 
     Guard G(mutex);
 
-    strm<<"  open="<<opened<<" running="<<running<<" finished="<<finished<<"\n";
+    switch(state) {
+    case Closed: strm<<"  Closed"; break;
+    case Opened: strm<<"  Opened"; break;
+    case Error:  strm<<"  Error:"<<error; break;
+    }
+
+    strm<<" running="<<running<<" finished="<<finished<<"\n";
     strm<<"  #empty="<<empty.size()<<" #returned="<<returned.size()<<" #inuse="<<inuse.size()<<" flowCount="<<flowCount<<"\n";
     strm<<"  events "<<(needConnected?'C':'_')<<(needEvent?'E':'_')<<(needUnlisten?'U':'_')<<(needClosed?'X':'_')
         <<"\n";
@@ -129,11 +136,11 @@ void MonitorFIFO::setFreeHighMark(double level)
 
 void MonitorFIFO::open(const pvd::StructureConstPtr& type)
 {
-    bool emptyselect;
+    std::string message;
     {
         Guard G(mutex);
 
-        if(opened)
+        if(state!=Closed)
             throw std::logic_error("Monitor already open.  Must close() before re-openning");
         else if(needClosed)
             throw std::logic_error("Monitor needs notify() between close() and open().");
@@ -148,59 +155,55 @@ void MonitorFIFO::open(const pvd::StructureConstPtr& type)
 
         // fill up empty.
         pvd::PVDataCreatePtr create(pvd::getPVDataCreate());
-        while(empty.size() < conf.actualCount+1) {
-            MonitorElementPtr elem(new MonitorElement(create->createPVStructure(type)));
-            empty.push_back(elem);
-        }
 
-        opened = true;
+        try {
+            mapper.compute(*create->createPVStructure(type), *pvRequest, conf.mapperMode);
+            message = mapper.warnings();
+
+            while(empty.size() < conf.actualCount+1) {
+                MonitorElementPtr elem(new MonitorElement(mapper.buildRequested()));
+                empty.push_back(elem);
+            }
+
+            state = Opened;
+            error = pvd::Status(); // ok
+
+            assert(inuse.empty());
+            assert(empty.size()>=2);
+            assert(returned.empty());
+            assert(conf.actualCount>=1);
+
+        }catch(std::runtime_error& e){
+            // error from compute()
+            error = pvd::Status::error(e.what());
+            state = Error;
+        }
         needConnected = true;
-        this->type = type;
-
-        if(conf.ignoreRequestMask) {
-            selectMask.clear();
-            for(size_t i=0, N=empty.back()->pvStructurePtr->getNextFieldOffset(); i<N; i++)
-                selectMask.set(i);
-        } else {
-            selectMask = pvData::extractRequestMask(empty.back()->pvStructurePtr,
-                                                    pvRequest->getSubField<pvData::PVStructure>("field"));
-        }
-        emptyselect = selectMask.isEmpty();
-
-        assert(inuse.empty());
-        assert(empty.size()>=2);
-        assert(returned.empty());
-        assert(conf.actualCount>=1);
     }
-    if(!emptyselect) return;
+    if(message.empty()) return;
     requester_type::shared_pointer req(requester.lock());
     if(req) {
-        req->message("pvRequest with empty field mask", warningMessage);
+        req->message(message, warningMessage);
     }
 }
 
 void MonitorFIFO::close()
 {
     Guard G(mutex);
-    if(!opened)
-        return; // no-op
-
-    opened = false;
-    needClosed = true;
-    selectMask.clear();
-    type.reset();
+    needClosed = state==Opened;
+    state = Closed;
 }
 
 void MonitorFIFO::finish()
 {
     Guard G(mutex);
-    if(!opened)
-            throw std::logic_error("Can not finish() a closed Monitor");
+    if(state==Closed)
+        throw std::logic_error("Can not finish() a closed Monitor");
     else if(finished)
         return; // no-op
 
     finished = true;
-    if(inuse.empty() && running)
+    if(inuse.empty() && running && state==Opened)
         needUnlisten = true;
 }
 
@@ -211,17 +214,14 @@ bool MonitorFIFO::tryPost(const pvData::PVStructure& value,
 {
     Guard G(mutex);
 
-    assert(opened && !finished);
+    assert(state!=Closed && !finished);
+    if(state!=Opened) return false; // when Error, act as always "full"
     assert(!empty.empty() || !inuse.empty());
-
-    // compute effective changed mask for this subscription
-    scratch = changed;
-    scratch &= selectMask;
 
     const bool havefree = _freeCount()>0u;
 
     MonitorElementPtr elem;
-    if(!conf.ignoreRequestMask && scratch.isEmpty()) {
+    if(conf.dropEmptyUpdates && !changed.logical_and(mapper.requestedMask())) {
         // drop empty update
     } else if(havefree) {
         // take an empty element
@@ -229,16 +229,16 @@ bool MonitorFIFO::tryPost(const pvData::PVStructure& value,
         empty.pop_front();
     } else if(force) {
         // allocate an extra element
-        elem.reset(new MonitorElement(pvd::getPVDataCreate()->createPVStructure(type)));
+        elem.reset(new MonitorElement(mapper.buildRequested()));
     }
 
     if(elem) {
         try {
-            assert(value.getStructure() == elem->pvStructurePtr->getStructure());
-            elem->pvStructurePtr->copyUnchecked(value, scratch);
-            *elem->changedBitSet = scratch;
-            *elem->overrunBitSet = overrun;
-            *elem->overrunBitSet &= selectMask;
+            elem->changedBitSet->clear();
+            mapper.copyBaseToRequested(value, changed,
+                                       *elem->pvStructurePtr, *elem->changedBitSet);
+            elem->overrunBitSet->clear();
+            mapper.maskBaseToRequested(overrun, *elem->overrunBitSet);
 
             if(inuse.empty() && running)
                 needEvent = true;
@@ -263,7 +263,8 @@ void MonitorFIFO::post(const pvData::PVStructure& value,
 {
     Guard G(mutex);
 
-    assert(opened && !finished);
+    assert(state!=Closed && !finished);
+    if(state!=Opened) return;
     assert(!empty.empty() || !inuse.empty());
 
     const bool use_empty = !empty.empty();
@@ -284,19 +285,16 @@ void MonitorFIFO::post(const pvData::PVStructure& value,
         elem = inuse.back();
     }
 
-    scratch = changed;
-    scratch &= selectMask;
-
-    if(!conf.ignoreRequestMask && scratch.isEmpty())
+    if(conf.dropEmptyUpdates && !changed.logical_and(mapper.requestedMask()))
         return; // drop empty update
 
-    assert(value.getStructure() == elem->pvStructurePtr->getStructure());
-    elem->pvStructurePtr->copyUnchecked(value, scratch);
+    scratch.clear();
+    mapper.copyBaseToRequested(value, changed, *elem->pvStructurePtr, scratch);
 
     if(use_empty) {
         *elem->changedBitSet = scratch;
-        *elem->overrunBitSet = overrun;
-        *elem->overrunBitSet &= selectMask;
+        elem->overrunBitSet->clear();
+        mapper.maskBaseToRequested(overrun, *elem->overrunBitSet);
 
         if(inuse.empty() && running)
             needEvent = true;
@@ -311,7 +309,9 @@ void MonitorFIFO::post(const pvData::PVStructure& value,
         // squash
         elem->overrunBitSet->or_and(*elem->changedBitSet, scratch);
         *elem->changedBitSet |= scratch;
-        elem->overrunBitSet->or_and(overrun, selectMask);
+        oscratch.clear();
+        mapper.maskBaseToRequested(overrun, oscratch);
+        elem->overrunBitSet->or_and(oscratch, scratch);
 
         // leave as inuse.back()
     }
@@ -326,6 +326,7 @@ void MonitorFIFO::notify()
          evt = false,
          unl = false,
          clo = false;
+    pvd::Status err;
 
     {
         Guard G(mutex);
@@ -334,19 +335,22 @@ void MonitorFIFO::notify()
         std::swap(evt, needEvent);
         std::swap(unl, needUnlisten);
         std::swap(clo, needClosed);
+        std::swap(err, error);
 
         if(conn | evt | unl | clo) {
             req = requester.lock();
             self = shared_from_this();
         }
-        if(conn)
-            type = (!inuse.empty() ? inuse.front() : empty.back())->pvStructurePtr->getStructure();
+        if(conn && err.isSuccess())
+            type = mapper.requested();
     }
 
     if(!req)
         return;
-    if(conn)
+    if(conn && err.isSuccess())
         req->monitorConnect(pvd::Status(), self, type);
+    else if(conn)
+        req->monitorConnect(err, self, type);
     if(evt)
         req->monitorEvent(self);
     if(unl)
@@ -363,10 +367,10 @@ pvd::Status MonitorFIFO::start()
     {
         Guard G(mutex);
 
-        if(!opened)
+        if(state==Closed)
             throw std::logic_error("Monitor can't start() before open()");
 
-        if(running)
+        if(running || state!=Opened)
             return pvd::Status();
 
         if(!inuse.empty()) {

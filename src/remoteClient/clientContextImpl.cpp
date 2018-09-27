@@ -310,6 +310,8 @@ public:
         {
             startRequest(PURE_CANCEL_REQUEST);
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<BaseRequestImpl>());
+        } catch (std::runtime_error& e) {
+            // assume from checkAndGetTransport() due to wrong channel state
         } catch (std::exception& e) {
             // noop (do not complain if fails)
             LOG(logLevelWarn, "Ignore exception during ChanneGet::cancel: %s", e.what());

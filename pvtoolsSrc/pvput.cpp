@@ -175,6 +175,7 @@ void printValue(std::string const & channelName, PVStructure::const_shared_point
         terseStructure(std::cout, pv) << std::endl;
     else
         std::cout << std::endl << *(pv.get()) << std::endl << std::endl;
+    std::cout.flush();
 }
 
 void early(const char *inp, unsigned pos)

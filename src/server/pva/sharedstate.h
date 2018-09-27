@@ -12,6 +12,7 @@
 #include <pv/sharedPtr.h>
 #include <pv/noDefaultMethods.h>
 #include <pv/bitSet.h>
+#include <pv/createRequest.h>
 
 #include <pva/server.h>
 
@@ -78,6 +79,12 @@ class epicsShareClass SharedPV
     friend struct SharedRPC;
 public:
     POINTER_DEFINITIONS(SharedPV);
+    struct epicsShareClass Config {
+        bool dropEmptyUpdates; //!< default true.  Drop updates which don't include an field values.
+        epics::pvData::PVRequestMapper::mode_t mapperMode; //!< default Mask.  @see epics::pvData::PVRequestMapper::mode_t
+        Config();
+    };
+
     /** Callbacks associated with a SharedPV.
      *
     * @note For the purposes of locking, this class is an Requester (see @ref provider_roles_requester_locking)
@@ -96,15 +103,16 @@ public:
 
     /** Allocate a new PV in the closed state.
      * @param handler Our callbacks.  May be NULL.  Stored internally as a shared_ptr<>
+     * @param conf Optional.  Extra configuration.  If !NULL, will be modified to reflect configuration actually used.
      * @post In the closed state
      */
-    static shared_pointer build(const std::tr1::shared_ptr<Handler>& handler);
-    //! A SharedPV which fails all Put and RPC operations.
-    static shared_pointer buildReadOnly();
-    //! A SharedPV which accepts all Put operations, and fails all RPC operations.
-    static shared_pointer buildMailbox();
+    static shared_pointer build(const std::tr1::shared_ptr<Handler>& handler, Config* conf=0);
+    //! A SharedPV which fails all Put and RPC operations.  In closed state.
+    static shared_pointer buildReadOnly(Config* conf=0);
+    //! A SharedPV which accepts all Put operations, and fails all RPC operations.  In closed state.
+    static shared_pointer buildMailbox(Config* conf=0);
 private:
-    explicit SharedPV(const std::tr1::shared_ptr<Handler>& handler);
+    explicit SharedPV(const std::tr1::shared_ptr<Handler>& handler, Config* conf);
 public:
     virtual ~SharedPV();
 
@@ -119,7 +127,7 @@ public:
     void open(const epics::pvData::PVStructure& value);
 
     //! Begin allowing clients to connect.
-    //! @param value The initial value of this PV.  (any pending Get operation will complete this this)
+    //! @param value The initial value of this PV.  (any pending Get/Monitor operation will complete with this)
     //! @param valid Only these marked fields are considered to have non-default values.
     //! @throws std::logic_error if not in the closed state.
     //! @post In the opened state
@@ -169,6 +177,8 @@ private:
 
     weak_pointer internal_self; // const after build()
 
+    const Config config;
+
     mutable epicsMutex mutex;
 
     std::tr1::shared_ptr<SharedPV::Handler> handler;
@@ -191,6 +201,8 @@ private:
     //! mask of fields which are considered to have non-default values.
     //! Used for initial Monitor update and Get operations.
     epics::pvData::BitSet valid;
+
+    bool notifiedConn; // whether onFirstConnect() has been, or is being, called
 
     int debugLvl;
 

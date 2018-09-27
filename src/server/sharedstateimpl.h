@@ -5,6 +5,8 @@
 #ifndef SHAREDSTATEIMPL_H
 #define SHAREDSTATEIMPL_H
 
+#include <pv/createRequest.h>
+
 #include "pva/sharedstate.h"
 #include <pv/pvAccess.h>
 #include <pv/reftrack.h>
@@ -62,7 +64,8 @@ struct SharedMonitorFIFO : public pva::MonitorFIFO
     const std::tr1::shared_ptr<SharedChannel> channel;
     SharedMonitorFIFO(const std::tr1::shared_ptr<SharedChannel>& channel,
                       const requester_type::shared_pointer& requester,
-                      const pvd::PVStructure::const_shared_pointer &pvRequest);
+                      const pvd::PVStructure::const_shared_pointer &pvRequest,
+                      Config *conf);
     virtual ~SharedMonitorFIFO();
 };
 
@@ -74,8 +77,7 @@ struct SharedPut : public pva::ChannelPut,
     const pvd::PVStructure::const_shared_pointer pvRequest;
 
     // guarded by PV mutex
-    pvd::StructureConstPtr lastStruct;
-    pvd::BitSet selectMask;
+    pvd::PVRequestMapper mapper;
 
     static size_t num_instances;
 
