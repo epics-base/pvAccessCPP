@@ -1398,7 +1398,7 @@ public:
     }
 
     void send(ByteBuffer* buffer, TransportSendControl* control) {
-        control->startMessage((int8)5, 0);
+        control->startMessage(CMD_AUTHNZ, 0);
         SerializationHelper::serializeFull(buffer, control, _data);
         // send immediately
         control->flush(true);

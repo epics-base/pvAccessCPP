@@ -339,7 +339,7 @@ public:
     }
 
     virtual void processControlMessage() OVERRIDE FINAL {
-        if (_command == 2)
+        if (_command == CMD_SET_ENDIANESS)
         {
             // check 7-th bit
             setByteOrder(_flags < 0 ? EPICS_ENDIAN_BIG : EPICS_ENDIAN_LITTLE);
