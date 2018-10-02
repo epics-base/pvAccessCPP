@@ -47,7 +47,7 @@ struct Operation;
 /** A Shared State Process Variable (PV)
  *
  * "Shared" in the sense that all clients/subscribers interact with the
- * same PVStructure.
+ * same PVStructure (excluding the RPC operation).
  *
  * @warning For the purposes of locking, this class is an Operation (see @ref provider_roles_requester_locking).
  *          eg. no locks may be held when calling post(), open(), close(), or connect().
@@ -62,7 +62,7 @@ struct Operation;
  * Calling close() will close all currently opened client channels.
  *
  * Client channels, and operations on them, may be initiated at any time (via connect()).
- * However, operations will not be fully created until open() is called.
+ * However, operations other than RPC will not proceed until open() is called.
  *
  * @note A SharedPV does not have a name.  Name(s) are associated with a SharedPV
  *       By a Provider (StaticProvider, DynamicProvider, or any epics::pvAccess::ChannelProvider).
