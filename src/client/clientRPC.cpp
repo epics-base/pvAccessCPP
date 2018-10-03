@@ -29,6 +29,7 @@ struct RPCer : public pvac::detail::CallbackStorage,
     operation_type::shared_pointer op;
 
     pvac::ClientChannel::GetCallback *cb;
+    // 'event' may be modified as long as cb!=NULL
     pvac::GetEvent event;
 
     pvd::PVStructure::const_shared_pointer args;
@@ -110,6 +111,7 @@ struct RPCer : public pvac::detail::CallbackStorage,
     {
         std::tr1::shared_ptr<RPCer> keepalive(internal_shared_from_this());
         CallbackGuard G(*this);
+        if(!cb) return;
         event.message = "Disconnect";
 
         callEvent(G);

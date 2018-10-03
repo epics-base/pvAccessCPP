@@ -205,13 +205,13 @@ namespace pvac {
 Operation
 ClientChannel::put(PutCallback* cb,
                    epics::pvData::PVStructure::const_shared_pointer pvRequest,
-                   bool getcurrent)
+                   bool getprevious)
 {
     if(!impl) throw std::logic_error("Dead Channel");
     if(!pvRequest)
         pvRequest = pvd::createRequest("field()");
 
-    std::tr1::shared_ptr<Putter> ret(Putter::build(cb, getcurrent));
+    std::tr1::shared_ptr<Putter> ret(Putter::build(cb, getprevious));
 
     {
         Guard G(ret->mutex);
