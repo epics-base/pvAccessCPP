@@ -81,6 +81,8 @@ BlockingUDPTransport::BlockingUDPTransport(bool serverFlag,
         char strBuffer[64];
         sockAddrToDottedIP(&_remoteAddress.sa, strBuffer, sizeof(strBuffer));
         _remoteName = strBuffer;
+        LOG(logLevelDebug, "Creating datagram socket from: %s.",
+            _remoteName.c_str());
     }
 
     REFTRACE_INCREMENT(num_instances);
@@ -398,8 +400,8 @@ bool BlockingUDPTransport::send(const char* buffer, size_t length, const osiSock
 {
     if (IS_LOGGABLE(logLevelDebug))
     {
-        LOG(logLevelDebug, "Sending %zu bytes to %s.",
-            length, inetAddressToString(address).c_str());
+        LOG(logLevelDebug, "Sending %zu bytes %s -> %s.",
+            length, _remoteName.c_str(), inetAddressToString(address).c_str());
     }
 
     int retval = sendto(_channel, buffer,
@@ -422,8 +424,8 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, const osiSockAddr& address) 
 
     if (IS_LOGGABLE(logLevelDebug))
     {
-        LOG(logLevelDebug, "Sending %zu bytes to %s.",
-            buffer->getRemaining(), inetAddressToString(address).c_str());
+        LOG(logLevelDebug, "Sending %zu bytes %s -> %s.",
+            buffer->getRemaining(), _remoteName.c_str(), inetAddressToString(address).c_str());
     }
 
     int retval = sendto(_channel, buffer->getArray(),
@@ -459,8 +461,8 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, InetAddressType target) {
 
         if (IS_LOGGABLE(logLevelDebug))
         {
-            LOG(logLevelDebug, "Sending %zu bytes to %s.",
-                buffer->getRemaining(), inetAddressToString(_sendAddresses[i]).c_str());
+            LOG(logLevelDebug, "Sending %zu bytes %s -> %s.",
+                buffer->getRemaining(), _remoteName.c_str(), inetAddressToString(_sendAddresses[i]).c_str());
         }
 
         int retval = sendto(_channel, buffer->getArray(),

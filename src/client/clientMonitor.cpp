@@ -5,6 +5,7 @@
 
 #include <epicsMutex.h>
 #include <epicsGuard.h>
+#include <epicsEvent.h>
 
 #include <pv/current_function.h>
 #include <pv/pvData.h>
@@ -16,17 +17,14 @@
 #include "clientpvt.h"
 #include "pv/pvAccess.h"
 
-namespace pvd = epics::pvData;
-namespace pva = epics::pvAccess;
-typedef epicsGuard<epicsMutex> Guard;
-typedef epicsGuardRelease<epicsMutex> UnGuard;
-
 namespace pvac {
+using pvac::detail::CallbackGuard;
+using pvac::detail::CallbackUse;
 
-struct Monitor::Impl : public pva::MonitorRequester,
+struct Monitor::Impl : public pvac::detail::CallbackStorage,
+                       public pva::MonitorRequester,
                        public pvac::detail::wrapped_shared_from_this<Monitor::Impl>
 {
-    mutable epicsMutex mutex;
     pva::Channel::shared_pointer chan;
     operation_type::shared_pointer op;
     bool started, done, seenEmpty;
@@ -44,9 +42,14 @@ struct Monitor::Impl : public pva::MonitorRequester,
         ,seenEmpty(false)
         ,cb(cb)
     {REFTRACE_INCREMENT(num_instances);}
-    virtual ~Impl() {REFTRACE_DECREMENT(num_instances);}
+    virtual ~Impl() {
+        CallbackGuard G(*this);
+        cb = 0;
+        G.wait(); // paranoia
+        REFTRACE_DECREMENT(num_instances);
+    }
 
-    void callEvent(Guard& G, MonitorEvent::event_t evt = MonitorEvent::Fail)
+    void callEvent(CallbackGuard& G, MonitorEvent::event_t evt = MonitorEvent::Fail)
     {
         ClientChannel::MonitorCallback *cb=this->cb;
         if(!cb) return;
@@ -57,7 +60,7 @@ struct Monitor::Impl : public pva::MonitorRequester,
             this->cb = 0; // last event
 
         try {
-            UnGuard U(G);
+            CallbackUse U(G);
             cb->monitorEvent(event);
             return;
         }catch(std::exception& e){
@@ -71,7 +74,7 @@ struct Monitor::Impl : public pva::MonitorRequester,
         }
         // continues error handling
         try {
-            UnGuard U(G);
+            CallbackUse U(G);
             cb->monitorEvent(event);
             return;
         }catch(std::exception& e){
@@ -87,7 +90,7 @@ struct Monitor::Impl : public pva::MonitorRequester,
             // keepalive for safety in case callback wants to destroy us
             std::tr1::shared_ptr<Monitor::Impl> keepalive(internal_shared_from_this());
 
-            Guard G(mutex);
+            CallbackGuard G(*this);
 
             last.reset();
 
@@ -98,6 +101,7 @@ struct Monitor::Impl : public pva::MonitorRequester,
             temp.swap(op);
 
             callEvent(G, MonitorEvent::Cancel);
+            G.wait();
         }
         if(temp)
             temp->destroy();
@@ -115,7 +119,7 @@ struct Monitor::Impl : public pva::MonitorRequester,
                                 pvd::StructureConstPtr const & structure) OVERRIDE FINAL
     {
         std::tr1::shared_ptr<Monitor::Impl> keepalive(internal_shared_from_this());
-        Guard G(mutex);
+        CallbackGuard G(*this);
         if(!cb || started || done) return;
 
         if(!status.isOK()) {
@@ -145,7 +149,7 @@ struct Monitor::Impl : public pva::MonitorRequester,
     virtual void channelDisconnect(bool destroy) OVERRIDE FINAL
     {
         std::tr1::shared_ptr<Monitor::Impl> keepalive(internal_shared_from_this());
-        Guard G(mutex);
+        CallbackGuard G(*this);
         if(!cb || done) return;
         event.message = "Disconnect";
         started = false;
@@ -155,7 +159,7 @@ struct Monitor::Impl : public pva::MonitorRequester,
     virtual void monitorEvent(pva::MonitorPtr const & monitor) OVERRIDE FINAL
     {
         std::tr1::shared_ptr<Monitor::Impl> keepalive(internal_shared_from_this());
-        Guard G(mutex);
+        CallbackGuard G(*this);
         if(!cb || done) return;
         event.message.clear();
 
@@ -165,7 +169,7 @@ struct Monitor::Impl : public pva::MonitorRequester,
     virtual void unlisten(pva::MonitorPtr const & monitor) OVERRIDE FINAL
     {
         std::tr1::shared_ptr<Monitor::Impl> keepalive(internal_shared_from_this());
-        Guard G(mutex);
+        CallbackGuard G(*this);
         if(!cb || done) return;
         done = true;
 

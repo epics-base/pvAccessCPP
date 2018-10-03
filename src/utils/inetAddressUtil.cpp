@@ -57,11 +57,13 @@ bool decodeAsIPv6Address(ByteBuffer* buffer, osiSockAddr* address) {
     // allow all zeros address
     //if (ffff != (int16)0xFFFF) return false;
 
-    uint32_t ipv4Addr =
-        ((uint32_t)(buffer->getByte()&0xFF))<<24 |
-        ((uint32_t)(buffer->getByte()&0xFF))<<16 |
-        ((uint32_t)(buffer->getByte()&0xFF))<<8  |
-        ((uint32_t)(buffer->getByte()&0xFF));
+    uint32 ipv4Addr = uint8(buffer->getByte());
+    ipv4Addr <<= 8;
+    ipv4Addr |= uint8(buffer->getByte());
+    ipv4Addr <<= 8;
+    ipv4Addr |= uint8(buffer->getByte());
+    ipv4Addr <<= 8;
+    ipv4Addr |= uint8(buffer->getByte());
 
     if (ffff != (int16)0xFFFF && ipv4Addr != (uint32_t)0)
         return false;

@@ -443,7 +443,7 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/,
 
 void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
-    control->startMessage((int8)4, 12+4+16+2);
+    control->startMessage(CMD_SEARCH_RESPONSE, 12+4+16+2);
 
     Lock guard(_mutex);
     buffer->put(_guid.value, 0, sizeof(_guid.value));
@@ -1802,7 +1802,7 @@ void ServerChannelPutGetRequesterImpl::send(ByteBuffer* buffer, TransportSendCon
             return;
     }
 
-    control->startMessage((int32)12, sizeof(int32)/sizeof(int8) + 1);
+    control->startMessage(CMD_PUT_GET, sizeof(int32)/sizeof(int8) + 1);
     buffer->putInt(_ioid);
     buffer->putByte((int8)request);
     {

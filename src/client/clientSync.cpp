@@ -376,5 +376,51 @@ ClientChannel::monitor(const epics::pvData::PVStructure::const_shared_pointer &p
     return MonitorSync(mon, simpl);
 }
 
+namespace {
+
+
+struct InfoWait : public pvac::ClientChannel::InfoCallback,
+                 public WaitCommon
+{
+    pvac::InfoEvent result;
+
+    InfoWait() {}
+    virtual ~InfoWait() {}
+    virtual void infoDone(const pvac::InfoEvent& evt) OVERRIDE FINAL
+    {
+        {
+            Guard G(mutex);
+            if(done) {
+                LOG(pva::logLevelWarn, "oops, double event to InfoCallback");
+            } else {
+                result = evt;
+                done = true;
+            }
+        }
+        event.signal();
+    }
+};
+
+} // namespace
+
+epics::pvData::FieldConstPtr
+ClientChannel::info(double timeout, const std::string& subfld)
+{
+    InfoWait waiter;
+    {
+        Operation op(info(&waiter, subfld));
+        waiter.wait(timeout);
+    }
+    switch(waiter.result.event) {
+    case InfoEvent::Success:
+        return waiter.result.type;
+    case InfoEvent::Fail:
+        throw std::runtime_error(waiter.result.message);
+    default:
+    case InfoEvent::Cancel: // cancel implies timeout, which should already be thrown
+        THROW_EXCEPTION2(std::logic_error, "Cancelled!?!?");
+    }
+}
+
 
 }//namespace pvac

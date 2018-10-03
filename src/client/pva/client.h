@@ -85,7 +85,7 @@ protected:
 };
 
 //! Information on put completion
-struct PutEvent
+struct epicsShareClass PutEvent
 {
     enum event_t {
         Fail,    //!< request ends in failure.  Check message
@@ -103,6 +103,12 @@ struct epicsShareClass GetEvent : public PutEvent
     //! Mask of fields in value which have been initialized by the server
     //! @since 6.1.0
     epics::pvData::BitSet::const_shared_pointer valid;
+};
+
+struct epicsShareClass InfoEvent : public PutEvent
+{
+    //! Type description resulting from getField operation.  NULL unless event==Success
+    epics::pvData::FieldConstPtr type;
 };
 
 struct MonitorSync;
@@ -344,9 +350,20 @@ public:
     struct PutCallback {
         virtual ~PutCallback() {}
         struct Args {
-            Args(epics::pvData::BitSet& tosend) :tosend(tosend) {}
+            Args(epics::pvData::BitSet& tosend, epics::pvData::BitSet& previousmask) :tosend(tosend), previousmask(previousmask) {}
+            //! Callee must fill this in with an instance of the Structure passed as the 'build' argument.
             epics::pvData::PVStructure::const_shared_pointer root;
+            //! Callee must set bits corresponding to the fields of 'root' which will actually be sent.
             epics::pvData::BitSet& tosend;
+            //! A previous value of the PV being "put" when put(..., getprevious=true).  eg. use to find enumeration value.
+            //! Otherwise NULL.
+            //! @note The value of the PV may change between the point where "previous" is fetched,
+            //!       and when this Put operation completes.
+            //! @since 6.1.0 Added after 6.0.0
+            epics::pvData::PVStructure::const_shared_pointer previous;
+            //! Bit mask indicating those fields of 'previous' which have been set by the server.  (others have local defaults)
+            //! Unused if previous==NULL.
+            const epics::pvData::BitSet& previousmask;
         };
         /** Server provides expected structure.
          *
@@ -362,8 +379,13 @@ public:
 
     //! Initiate request to change PV
     //! @param cb Completion notification callback.  Must outlive Operation (call Operation::cancel() to force release)
+    //! @param pvRequest if NULL defaults to "field()".
+    //! @param getprevious If true, fetch a previous value of the PV and make
+    //!                    this available as PutCallback::Args::previous and previousmask.
+    //!                    If false, then previous=NULL
     Operation put(PutCallback* cb,
-                      epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer());
+                  epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer(),
+                  bool getcurrent = false);
 
     //! Synchronious put operation
     inline
@@ -399,6 +421,20 @@ public:
      */
     MonitorSync monitor(const epics::pvData::PVStructure::const_shared_pointer& pvRequest = epics::pvData::PVStructure::const_shared_pointer(),
                         epicsEvent *event =0);
+
+    struct InfoCallback {
+        virtual ~InfoCallback() {}
+        //! getField operation is complete
+        virtual void infoDone(const InfoEvent& evt) =0;
+    };
+
+    //! Request PV type info.
+    //! @note This type may not be the same as the types used in the get/put/monitor operations.
+    Operation info(InfoCallback *cb, const std::string& subfld = std::string());
+
+    //! Synchronious getField opreation
+    epics::pvData::FieldConstPtr info(double timeout = 3.0,
+                                      const std::string& subfld = std::string());
 
     //! Connection state change CB
     struct ConnectCallback {

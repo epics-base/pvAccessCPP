@@ -62,7 +62,7 @@ void BeaconEmitter::send(ByteBuffer* buffer, TransportSendControl* control)
     }
 
     // send beacon
-    control->startMessage((int8)0, 12+2+2+16+2);
+    control->startMessage((int8)CMD_BEACON, 12+2+2+16+2);
 
     buffer->put(_guid.value, 0, sizeof(_guid.value));
 

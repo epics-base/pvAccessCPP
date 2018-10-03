@@ -87,12 +87,17 @@ struct StaticProvider::Impl : public pva::ChannelProvider
         pva::Channel::shared_pointer ret;
         pvd::Status sts;
 
+        builders_t::mapped_type builder;
         {
             Guard G(mutex);
             builders_t::const_iterator it(builders.find(name));
-            if(it!=builders.end())
-                ret = it->second->connect(Impl::shared_pointer(internal_self), name, requester);
+            if(it!=builders.end()) {
+                UnGuard U(G);
+                builder = it->second;
+            }
         }
+        if(builder)
+            ret = builder->connect(Impl::shared_pointer(internal_self), name, requester);
 
         if(!ret) {
             sts = pvd::Status::error("No such channel");
