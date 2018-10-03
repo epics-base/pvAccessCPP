@@ -48,10 +48,11 @@ SharedChannel::SharedChannel(const std::tr1::shared_ptr<SharedPV> &owner,
     SharedPV::Handler::shared_pointer handler;
     {
         Guard G(owner->mutex);
-        if(owner->channels.empty())
+        if(owner->channels.empty()) {
             handler = owner->handler;
+            owner->notifiedConn = true;
+        }
         owner->channels.push_back(this);
-        owner->notifiedConn = true;
     }
     if(handler) {
         handler->onFirstConnect(owner);
