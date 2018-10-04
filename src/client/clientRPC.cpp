@@ -71,7 +71,7 @@ struct RPCer : public pvac::detail::CallbackStorage,
     }
 
     // called automatically via wrapped_shared_from_this
-    virtual void cancel()
+    virtual void cancel() OVERRIDE FINAL
     {
         std::tr1::shared_ptr<RPCer> keepalive(internal_shared_from_this());
         CallbackGuard G(*this);
@@ -87,7 +87,7 @@ struct RPCer : public pvac::detail::CallbackStorage,
 
     virtual void channelRPCConnect(
         const epics::pvData::Status& status,
-        pva::ChannelRPC::shared_pointer const & operation)
+        pva::ChannelRPC::shared_pointer const & operation) OVERRIDE FINAL
     {
         std::tr1::shared_ptr<RPCer> keepalive(internal_shared_from_this());
         CallbackGuard G(*this);
@@ -120,7 +120,7 @@ struct RPCer : public pvac::detail::CallbackStorage,
     virtual void requestDone(
         const epics::pvData::Status& status,
         pva::ChannelRPC::shared_pointer const & operation,
-        epics::pvData::PVStructure::shared_pointer const & pvResponse)
+        epics::pvData::PVStructure::shared_pointer const & pvResponse) OVERRIDE FINAL
     {
         std::tr1::shared_ptr<RPCer> keepalive(internal_shared_from_this());
         CallbackGuard G(*this);
