@@ -18,6 +18,7 @@
 #   define epicsExportSharedSymbols
 #	undef pvaConstantsepicsExportSharedSymbols
 #endif
+#include <shareLib.h>
 
 namespace epics {
 namespace pvAccess {
@@ -73,13 +74,13 @@ const epics::pvData::int16 INVALID_DATA_TYPE = 0xFFFF;
 const epics::pvData::int32 INVALID_IOID = 0;
 
 /** Default PVA provider name. */
-const std::string PVACCESS_DEFAULT_PROVIDER;
+epicsShareExtern const std::string PVACCESS_DEFAULT_PROVIDER;
 
 /** "All-providers registered" PVA provider name. */
-const std::string PVACCESS_ALL_PROVIDERS;
+epicsShareExtern const std::string PVACCESS_ALL_PROVIDERS;
 
 /** Name of the system env. variable to turn on debugging. */
-const std::string PVACCESS_DEBUG;
+epicsShareExtern const std::string PVACCESS_DEBUG;
 }
 }
 
