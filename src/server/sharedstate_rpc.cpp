@@ -84,6 +84,7 @@ SharedRPC::SharedRPC(const std::tr1::shared_ptr<SharedChannel>& channel,
     :channel(channel)
     ,requester(requester)
     ,pvRequest(pvRequest)
+    ,connected(false)
 {
     REFTRACE_INCREMENT(num_instances);
 }

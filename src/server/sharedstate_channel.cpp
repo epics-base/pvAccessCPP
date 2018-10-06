@@ -158,6 +158,7 @@ pva::ChannelRPC::shared_pointer SharedChannel::createChannelRPC(
         pvd::PVStructure::shared_pointer const & pvRequest)
 {
     std::tr1::shared_ptr<SharedRPC> ret(new SharedRPC(shared_from_this(), requester, pvRequest));
+    ret->connected = true;
     requester->channelRPCConnect(pvd::Status(), ret);
     {
         Guard G(owner->mutex);

@@ -107,6 +107,8 @@ struct SharedRPC : public pva::ChannelRPC,
 
     static size_t num_instances;
 
+    bool connected; // have I called requester->channelRPCConnect(Ok) ?
+
     SharedRPC(const std::tr1::shared_ptr<SharedChannel>& channel,
               const requester_type::shared_pointer& requester,
               const pvd::PVStructure::const_shared_pointer &pvRequest);

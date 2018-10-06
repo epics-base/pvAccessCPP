@@ -124,6 +124,7 @@ struct PutInfo { // oh to be able to use std::tuple ...
 void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& valid)
 {
     typedef std::vector<PutInfo> xputs_t;
+    typedef std::vector<std::tr1::shared_ptr<SharedRPC> > xrpcs_t;
     typedef std::vector<std::tr1::shared_ptr<pva::MonitorFIFO> > xmonitors_t;
     typedef std::vector<std::tr1::shared_ptr<pva::GetFieldRequester> > xgetfields_t;
 
@@ -132,6 +133,7 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
     newvalue->copyUnchecked(value, valid);
 
     xputs_t p_put;
+    xrpcs_t p_rpc;
     xmonitors_t p_monitor;
     xgetfields_t p_getfield;
     {
@@ -141,6 +143,7 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
             throw std::logic_error("Already open()");
 
         p_put.reserve(puts.size());
+        p_rpc.reserve(rpcs.size());
         p_monitor.reserve(monitors.size());
         p_getfield.reserve(getfields.size());
 
@@ -160,6 +163,12 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
             }catch(std::tr1::bad_weak_ptr&) {
                 //racing destruction
             }
+        }
+        FOR_EACH(rpcs_t::const_iterator, it, end, rpcs) {
+            if((*it)->connected) continue;
+            try {
+                p_rpc.push_back((*it)->shared_from_this());
+            }catch(std::tr1::bad_weak_ptr&) {}
         }
         FOR_EACH(monitors_t::const_iterator, it, end, monitors) {
             try {
@@ -183,6 +192,10 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
                 requester->message(it->status.getMessage(), pvd::warningMessage);
             requester->channelPutConnect(it->status, it->put, it->type);
         }
+    }
+    FOR_EACH(xrpcs_t::iterator, it, end, p_rpc) {
+        SharedRPC::requester_type::shared_pointer requester((*it)->requester.lock());
+        if(requester) requester->channelRPCConnect(pvd::Status(), *it);
     }
     FOR_EACH(xmonitors_t::iterator, it, end, p_monitor) {
         (*it)->notify();
@@ -219,6 +232,11 @@ void SharedPV::close(bool destroy)
     {
         Guard I(mutex);
 
+        FOR_EACH(rpcs_t::const_iterator, it, end, rpcs) {
+            if(!(*it)->connected) continue;
+            p_rpc.push_back((*it)->requester.lock());
+        }
+
         if(type) {
 
             p_put.reserve(puts.size());
@@ -229,9 +247,6 @@ void SharedPV::close(bool destroy)
             FOR_EACH(puts_t::const_iterator, it, end, puts) {
                 (*it)->mapper.reset();
                 p_put.push_back((*it)->requester.lock());
-            }
-            FOR_EACH(rpcs_t::const_iterator, it, end, rpcs) {
-                p_rpc.push_back((*it)->requester.lock());
             }
             FOR_EACH(monitors_t::const_iterator, it, end, monitors) {
                 (*it)->close();
