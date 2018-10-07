@@ -54,7 +54,11 @@ struct Putter : public pvac::detail::CallbackStorage,
         pvac::ClientChannel::PutCallback *C=cb;
         cb = 0;
         CallbackUse U(G);
-        C->putDone(event);
+        try {
+            C->putDone(event);
+        } catch(std::exception& e) {
+            LOG(pva::logLevelInfo, "Lost exception during putDone(): %s", e.what());
+        }
     }
 
     virtual std::string name() const OVERRIDE FINAL
