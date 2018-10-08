@@ -206,7 +206,10 @@ private:
     //! Used for initial Monitor update and Get operations.
     epics::pvData::BitSet valid;
 
-    bool notifiedConn; // whether onFirstConnect() has been, or is being, called
+    // whether onFirstConnect() has been, or is being, called.
+    // Set when the first getField, Put, or Monitor (but not RPC) is created.
+    // Cleared when the last Channel is destroyed.
+    bool notifiedConn;
 
     int debugLvl;
 

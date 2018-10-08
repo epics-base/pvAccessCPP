@@ -45,17 +45,9 @@ SharedChannel::SharedChannel(const std::tr1::shared_ptr<SharedPV> &owner,
                      this);
     }
 
-    SharedPV::Handler::shared_pointer handler;
     {
         Guard G(owner->mutex);
-        if(owner->channels.empty()) {
-            handler = owner->handler;
-            owner->notifiedConn = true;
-        }
         owner->channels.push_back(this);
-    }
-    if(handler) {
-        handler->onFirstConnect(owner);
     }
 }
 
@@ -111,15 +103,25 @@ std::tr1::shared_ptr<pva::ChannelRequester> SharedChannel::getChannelRequester()
 void SharedChannel::getField(pva::GetFieldRequester::shared_pointer const & requester,std::string const & subField)
 {
     epics::pvData::FieldConstPtr desc;
+    SharedPV::Handler::shared_pointer handler;
     {
         Guard G(owner->mutex);
-        if(owner->type)
+        if(owner->type) {
             desc = owner->type;
-        else
-            owner->getfields.push_back(requester);
+        }
+
+        if(!owner->channels.empty() && !owner->notifiedConn) {
+            handler = owner->handler;
+            owner->notifiedConn = true;
+        }
+        owner->getfields.push_back(requester);
     }
-    if(desc)
+    if(desc) {
         requester->getDone(pvd::Status(), desc);
+    }
+    if(handler) {
+        handler->onFirstConnect(owner);
+    }
 }
 
 pva::ChannelPut::shared_pointer SharedChannel::createChannelPut(
@@ -130,6 +132,7 @@ pva::ChannelPut::shared_pointer SharedChannel::createChannelPut(
 
     pvd::StructureConstPtr type;
     std::string warning;
+    SharedPV::Handler::shared_pointer handler;
     try {
         {
             Guard G(owner->mutex);
@@ -140,6 +143,11 @@ pva::ChannelPut::shared_pointer SharedChannel::createChannelPut(
                 type = ret->mapper.requested();
                 warning = ret->mapper.warnings();
             }
+
+            if(!owner->channels.empty() && !owner->notifiedConn) {
+                handler = owner->handler;
+                owner->notifiedConn = true;
+            }
         }
         if(!warning.empty())
             requester->message(warning, pvd::warningMessage);
@@ -149,6 +157,9 @@ pva::ChannelPut::shared_pointer SharedChannel::createChannelPut(
         ret.reset();
         type.reset();
         requester->channelPutConnect(pvd::Status::error(e.what()), ret, type);
+    }
+    if(handler) {
+        handler->onFirstConnect(owner);
     }
     return ret;
 }
@@ -172,6 +183,7 @@ pva::Monitor::shared_pointer SharedChannel::createMonitor(
         pvd::PVStructure::shared_pointer const & pvRequest)
 {
     SharedMonitorFIFO::Config mconf;
+    SharedPV::Handler::shared_pointer handler;
     mconf.dropEmptyUpdates = owner->config.dropEmptyUpdates;
     mconf.mapperMode = owner->config.mapperMode;
     std::tr1::shared_ptr<SharedMonitorFIFO> ret(new SharedMonitorFIFO(shared_from_this(), requester, pvRequest, &mconf));
@@ -185,9 +197,17 @@ pva::Monitor::shared_pointer SharedChannel::createMonitor(
             // post initial update
             ret->post(*owner->current, owner->valid);
         }
+
+        if(!owner->channels.empty() && !owner->notifiedConn) {
+            handler = owner->handler;
+            owner->notifiedConn = true;
+        }
     }
     if(notify)
         ret->notify();
+    if(handler) {
+        handler->onFirstConnect(owner);
+    }
     return ret;
 }
 
