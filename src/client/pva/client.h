@@ -385,7 +385,7 @@ public:
     //!                    If false, then previous=NULL
     Operation put(PutCallback* cb,
                   epics::pvData::PVStructure::const_shared_pointer pvRequest = epics::pvData::PVStructure::const_shared_pointer(),
-                  bool getcurrent = false);
+                  bool getprevious = false);
 
     //! Synchronious put operation
     inline

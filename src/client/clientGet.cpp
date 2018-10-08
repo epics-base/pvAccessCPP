@@ -50,7 +50,11 @@ struct Getter : public pvac::detail::CallbackStorage,
         pvac::ClientChannel::GetCallback *C=cb;
         cb = 0;
         CallbackUse U(G);
-        C->getDone(event);
+        try {
+            C->getDone(event);
+        } catch(std::exception& e) {
+            LOG(pva::logLevelInfo, "Lost exception during getDone(): %s", e.what());
+        }
     }
 
     virtual std::string name() const OVERRIDE FINAL

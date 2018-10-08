@@ -54,7 +54,11 @@ struct Putter : public pvac::detail::CallbackStorage,
         pvac::ClientChannel::PutCallback *C=cb;
         cb = 0;
         CallbackUse U(G);
-        C->putDone(event);
+        try {
+            C->putDone(event);
+        } catch(std::exception& e) {
+            LOG(pva::logLevelInfo, "Lost exception during putDone(): %s", e.what());
+        }
     }
 
     virtual std::string name() const OVERRIDE FINAL
@@ -205,13 +209,13 @@ namespace pvac {
 Operation
 ClientChannel::put(PutCallback* cb,
                    epics::pvData::PVStructure::const_shared_pointer pvRequest,
-                   bool getcurrent)
+                   bool getprevious)
 {
     if(!impl) throw std::logic_error("Dead Channel");
     if(!pvRequest)
         pvRequest = pvd::createRequest("field()");
 
-    std::tr1::shared_ptr<Putter> ret(Putter::build(cb, getcurrent));
+    std::tr1::shared_ptr<Putter> ret(Putter::build(cb, getprevious));
 
     {
         Guard G(ret->mutex);

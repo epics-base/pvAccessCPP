@@ -35,6 +35,7 @@ SharedChannel::SharedChannel(const std::tr1::shared_ptr<SharedPV> &owner,
     ,channelName(channelName)
     ,requester(requester)
     ,provider(provider)
+    ,dead(false)
 {
     REFTRACE_INCREMENT(num_instances);
 
@@ -45,24 +46,27 @@ SharedChannel::SharedChannel(const std::tr1::shared_ptr<SharedPV> &owner,
                      this);
     }
 
-    SharedPV::Handler::shared_pointer handler;
     {
         Guard G(owner->mutex);
-        if(owner->channels.empty())
-            handler = owner->handler;
         owner->channels.push_back(this);
-        owner->notifiedConn = true;
-    }
-    if(handler) {
-        handler->onFirstConnect(owner);
     }
 }
 
 SharedChannel::~SharedChannel()
 {
+    destroy();
+    REFTRACE_DECREMENT(num_instances);
+}
+
+void SharedChannel::destroy()
+{
     std::tr1::shared_ptr<SharedPV::Handler> handler;
     {
         Guard G(owner->mutex);
+
+        if(dead) return;
+        dead = true;
+
         bool wasempty = owner->channels.empty();
         owner->channels.remove(this);
         if(!wasempty && owner->channels.empty() && owner->notifiedConn) {
@@ -81,11 +85,7 @@ SharedChannel::~SharedChannel()
                      channelName.c_str(),
                      this);
     }
-
-    REFTRACE_DECREMENT(num_instances);
 }
-
-void SharedChannel::destroy() {}
 
 std::tr1::shared_ptr<pva::ChannelProvider> SharedChannel::getProvider()
 {
@@ -109,16 +109,32 @@ std::tr1::shared_ptr<pva::ChannelRequester> SharedChannel::getChannelRequester()
 
 void SharedChannel::getField(pva::GetFieldRequester::shared_pointer const & requester,std::string const & subField)
 {
-    epics::pvData::FieldConstPtr desc;
+    pvd::FieldConstPtr desc;
+    pvd::Status sts;
+    SharedPV::Handler::shared_pointer handler;
     {
         Guard G(owner->mutex);
-        if(owner->type)
-            desc = owner->type;
-        else
+        if(dead) {
+            sts = pvd::Status::error("Dead Channel");
+
+        } else {
+            if(owner->type) {
+                desc = owner->type;
+            }
+
+            if(!owner->channels.empty() && !owner->notifiedConn) {
+                handler = owner->handler;
+                owner->notifiedConn = true;
+            }
             owner->getfields.push_back(requester);
+        }
     }
-    if(desc)
-        requester->getDone(pvd::Status(), desc);
+    if(desc || !sts.isOK()) {
+        requester->getDone(sts, desc);
+    }
+    if(handler) {
+        handler->onFirstConnect(owner);
+    }
 }
 
 pva::ChannelPut::shared_pointer SharedChannel::createChannelPut(
@@ -128,26 +144,41 @@ pva::ChannelPut::shared_pointer SharedChannel::createChannelPut(
     std::tr1::shared_ptr<SharedPut> ret(new SharedPut(shared_from_this(), requester, pvRequest));
 
     pvd::StructureConstPtr type;
+    pvd::Status sts;
     std::string warning;
+    SharedPV::Handler::shared_pointer handler;
     try {
         {
             Guard G(owner->mutex);
-            // ~SharedPut removes
-            owner->puts.push_back(ret.get());
-            if(owner->current) {
-                ret->mapper.compute(*owner->current, *pvRequest, owner->config.mapperMode);
-                type = ret->mapper.requested();
-                warning = ret->mapper.warnings();
+            if(dead) {
+                sts = pvd::Status::error("Dead Channel");
+
+            } else {
+                // ~SharedPut removes
+                owner->puts.push_back(ret.get());
+                if(owner->current) {
+                    ret->mapper.compute(*owner->current, *pvRequest, owner->config.mapperMode);
+                    type = ret->mapper.requested();
+                    warning = ret->mapper.warnings();
+                }
+
+                if(!owner->channels.empty() && !owner->notifiedConn) {
+                    handler = owner->handler;
+                    owner->notifiedConn = true;
+                }
             }
         }
         if(!warning.empty())
             requester->message(warning, pvd::warningMessage);
-        if(type)
-            requester->channelPutConnect(pvd::Status(), ret, type);
+        if(type || !sts.isOK())
+            requester->channelPutConnect(sts, ret, type);
     }catch(std::runtime_error& e){
         ret.reset();
         type.reset();
         requester->channelPutConnect(pvd::Status::error(e.what()), ret, type);
+    }
+    if(handler) {
+        handler->onFirstConnect(owner);
     }
     return ret;
 }
@@ -157,11 +188,19 @@ pva::ChannelRPC::shared_pointer SharedChannel::createChannelRPC(
         pvd::PVStructure::shared_pointer const & pvRequest)
 {
     std::tr1::shared_ptr<SharedRPC> ret(new SharedRPC(shared_from_this(), requester, pvRequest));
+    ret->connected = true;
+
+    pvd::Status sts;
     {
         Guard G(owner->mutex);
-        owner->rpcs.push_back(ret.get());
+        if(dead) {
+            sts = pvd::Status::error("Dead Channel");
+
+        } else {
+            owner->rpcs.push_back(ret.get());
+        }
     }
-    requester->channelRPCConnect(pvd::Status(), ret);
+    requester->channelRPCConnect(sts, ret);
     return ret;
 }
 
@@ -170,22 +209,47 @@ pva::Monitor::shared_pointer SharedChannel::createMonitor(
         pvd::PVStructure::shared_pointer const & pvRequest)
 {
     SharedMonitorFIFO::Config mconf;
+    SharedPV::Handler::shared_pointer handler;
     mconf.dropEmptyUpdates = owner->config.dropEmptyUpdates;
     mconf.mapperMode = owner->config.mapperMode;
+
     std::tr1::shared_ptr<SharedMonitorFIFO> ret(new SharedMonitorFIFO(shared_from_this(), requester, pvRequest, &mconf));
+
     bool notify;
+    pvd::Status sts;
     {
         Guard G(owner->mutex);
-        owner->monitors.push_back(ret.get());
-        notify = !!owner->type;
-        if(notify) {
-            ret->open(owner->type);
-            // post initial update
-            ret->post(*owner->current, owner->valid);
+        if(dead) {
+            sts = pvd::Status::error("Dead Channel");
+            notify = false;
+
+        } else {
+            owner->monitors.push_back(ret.get());
+            notify = !!owner->type;
+            if(notify) {
+                ret->open(owner->type);
+                // post initial update
+                ret->post(*owner->current, owner->valid);
+            }
+
+            if(!owner->channels.empty() && !owner->notifiedConn) {
+                handler = owner->handler;
+                owner->notifiedConn = true;
+            }
         }
     }
-    if(notify)
-        ret->notify();
+    if(!sts.isOK()) {
+        requester->monitorConnect(sts, pvd::MonitorPtr(), pvd::StructureConstPtr());
+        ret.reset();
+
+    } else {
+        if(notify) {
+            ret->notify();
+        }
+        if(handler) {
+            handler->onFirstConnect(owner);
+        }
+    }
     return ret;
 }
 

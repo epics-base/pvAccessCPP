@@ -2988,6 +2988,7 @@ ServerChannelRPCRequesterImpl::ServerChannelRPCRequesterImpl(
     const pvAccessID ioid, Transport::shared_pointer const & transport):
     BaseChannelRequester(context, channel, ioid, transport),
     _channelRPC(), _pvResponse()
+  ,_status(Status::fatal("Invalid State"))
 
 {
 }
@@ -3090,6 +3091,7 @@ void ServerChannelRPCRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
                 SerializationHelper::serializeStructureFull(buffer, control, _pvResponse);
             }
         }
+        _status = Status::fatal("Stale state");
     }
 
     stopRequest();

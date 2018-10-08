@@ -31,6 +31,8 @@ struct SharedChannel : public pva::Channel,
     const requester_type::weak_pointer requester;
     const pva::ChannelProvider::weak_pointer provider;
 
+    bool dead; // has destroy() been called?
+
     SharedChannel(const std::tr1::shared_ptr<SharedPV>& owner,
                   const pva::ChannelProvider::shared_pointer provider,
                   const std::string& channelName,
@@ -106,6 +108,8 @@ struct SharedRPC : public pva::ChannelRPC,
     const pvd::PVStructure::const_shared_pointer pvRequest;
 
     static size_t num_instances;
+
+    bool connected; // have I called requester->channelRPCConnect(Ok) ?
 
     SharedRPC(const std::tr1::shared_ptr<SharedChannel>& channel,
               const requester_type::shared_pointer& requester,

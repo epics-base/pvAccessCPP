@@ -225,7 +225,7 @@ void BlockingUDPTransport::run() {
                                      0, (sockaddr*)&fromAddress,
                                      &addrStructSize);
 
-            if(likely(bytesRead>0)) {
+            if(likely(bytesRead>=0)) {
                 // successfully got datagram
                 bool ignore = false;
                 for(size_t i = 0; i <_ignoredAddresses.size(); i++)
@@ -233,11 +233,22 @@ void BlockingUDPTransport::run() {
                     if(_ignoredAddresses[i].ia.sin_addr.s_addr==fromAddress.ia.sin_addr.s_addr)
                     {
                         ignore = true;
+                        if(pvAccessIsLoggable(logLevelDebug)) {
+                            char strBuffer[64];
+                            sockAddrToDottedIP(&fromAddress.sa, strBuffer, sizeof(strBuffer));
+                            LOG(logLevelDebug, "UDP Ignore (%d) %s x- %s", bytesRead, _remoteName.c_str(), strBuffer);
+                        }
                         break;
                     }
                 }
 
                 if(likely(!ignore)) {
+                    if(pvAccessIsLoggable(logLevelDebug)) {
+                        char strBuffer[64];
+                        sockAddrToDottedIP(&fromAddress.sa, strBuffer, sizeof(strBuffer));
+                        LOG(logLevelDebug, "UDP Rx (%d) %s <- %s", bytesRead, _remoteName.c_str(), strBuffer);
+                    }
+
                     _receiveBuffer.setPosition(RECEIVE_BUFFER_PRE_RESERVE);
                     _receiveBuffer.setLimit(RECEIVE_BUFFER_PRE_RESERVE+bytesRead);
 
@@ -253,8 +264,7 @@ void BlockingUDPTransport::run() {
                             __FILE__, __LINE__);
                     }
                 }
-            }
-            else if (unlikely(bytesRead == -1)) {
+            } else {
 
                 int socketError = SOCKERRNO;
 
@@ -400,7 +410,7 @@ bool BlockingUDPTransport::send(const char* buffer, size_t length, const osiSock
 {
     if (IS_LOGGABLE(logLevelDebug))
     {
-        LOG(logLevelDebug, "Sending %zu bytes %s -> %s.",
+        LOG(logLevelDebug, "UDP Tx (%zu) %s -> %s.",
             length, _remoteName.c_str(), inetAddressToString(address).c_str());
     }
 
