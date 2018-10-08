@@ -109,17 +109,30 @@ void SharedRPC::lastRequest() {}
 void SharedRPC::request(epics::pvData::PVStructure::shared_pointer const & pvArgument)
 {
     std::tr1::shared_ptr<SharedPV::Handler> handler;
+    pvd::Status sts;
     {
         Guard G(channel->owner->mutex);
-        handler = channel->owner->handler;
+        if(channel->dead) {
+            sts = pvd::Status::error("Dead Channel");
+
+        } else {
+            handler = channel->owner->handler;
+        }
     }
 
-    std::tr1::shared_ptr<RPCOP> impl(new RPCOP(shared_from_this(), pvRequest, pvArgument),
-                                     Operation::Impl::Cleanup());
+    if(!sts.isOK()) {
+        requester_type::shared_pointer req(requester.lock());
+        if(req)
+            req->requestDone(sts, shared_from_this(), pvd::PVStructurePtr());
 
-    if(handler) {
-        Operation op(impl);
-        handler->onRPC(channel->owner, op);
+    } else {
+        std::tr1::shared_ptr<RPCOP> impl(new RPCOP(shared_from_this(), pvRequest, pvArgument),
+                                         Operation::Impl::Cleanup());
+
+        if(handler) {
+            Operation op(impl);
+            handler->onRPC(channel->owner, op);
+        }
     }
 }
 

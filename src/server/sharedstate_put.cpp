@@ -107,43 +107,55 @@ void SharedPut::put(
     std::tr1::shared_ptr<SharedPV::Handler> handler;
     pvd::PVStructure::shared_pointer realval;
     pvd::BitSet changed;
+    pvd::Status sts;
     {
         Guard G(channel->owner->mutex);
 
-        if(pvPutStructure->getStructure()!=mapper.requested()) {
+        if(channel->dead) {
+            sts = pvd::Status::error("Dead Channel");
+
+        } else if(pvPutStructure->getStructure()!=mapper.requested()) {
             requester_type::shared_pointer req(requester.lock());
-            if(req)
-                req->putDone(pvd::Status::error("Type changed"), shared_from_this());
-            return;
+            sts = pvd::Status::error("Type changed");
+
+        } else {
+
+            handler = channel->owner->handler;
+
+            realval = mapper.buildBase();
+
+            mapper.copyBaseFromRequested(*realval, changed, *pvPutStructure, *putBitSet);
         }
-
-        handler = channel->owner->handler;
-
-        realval = mapper.buildBase();
-
-        mapper.copyBaseFromRequested(*realval, changed, *pvPutStructure, *putBitSet);
     }
 
-    std::tr1::shared_ptr<PutOP> impl(new PutOP(shared_from_this(), pvRequest, realval, changed),
-                                     Operation::Impl::Cleanup());
+    if(!sts.isOK()) {
+        requester_type::shared_pointer req(requester.lock());
+        if(req)
+            req->putDone(sts, pva::ChannelPut::shared_pointer());
 
-    if(handler) {
-        Operation op(impl);
-        handler->onPut(channel->owner, op);
+    } else {
+        std::tr1::shared_ptr<PutOP> impl(new PutOP(shared_from_this(), pvRequest, realval, changed),
+                                         Operation::Impl::Cleanup());
+
+        if(handler) {
+            Operation op(impl);
+            handler->onPut(channel->owner, op);
+        }
     }
 }
 
 void SharedPut::get()
 {
-
     pvd::Status sts;
     pvd::PVStructurePtr current;
     pvd::BitSetPtr changed;
-    bool emptyselect = false;
     {
         Guard G(channel->owner->mutex);
 
-        if(channel->owner->current) {
+        if(channel->dead) {
+            sts = pvd::Status::error("Dead Channel");
+
+        } else if(channel->owner->current) {
             assert(!!mapper.requested());
 
             current = mapper.buildRequested();
@@ -157,10 +169,10 @@ void SharedPut::get()
     requester_type::shared_pointer req(requester.lock());
     if(!req) return;
 
-    if(!current) {
+    if(!sts.isOK()) {
+        // no-op
+    } else if(!current) {
         sts = pvd::Status::error("Get not possible, cache disabled");
-    } else if(emptyselect) {
-        sts = pvd::Status::warn("pvRequest with empty field mask");
     }
 
     req->getDone(sts, shared_from_this(), current, changed);

@@ -152,6 +152,7 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
         this->valid = valid;
 
         FOR_EACH(puts_t::const_iterator, it, end, puts) {
+            if((*it)->channel->dead) continue;
             try {
                 try {
                     (*it)->mapper.compute(*current, *(*it)->pvRequest, config.mapperMode);
@@ -165,12 +166,13 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
             }
         }
         FOR_EACH(rpcs_t::const_iterator, it, end, rpcs) {
-            if((*it)->connected) continue;
+            if((*it)->connected || (*it)->channel->dead) continue;
             try {
                 p_rpc.push_back((*it)->shared_from_this());
             }catch(std::tr1::bad_weak_ptr&) {}
         }
         FOR_EACH(monitors_t::const_iterator, it, end, monitors) {
+            if((*it)->channel->dead) continue;
             try {
                 (*it)->open(newtype);
                 // post initial update
@@ -180,6 +182,7 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
         }
         // consume getField
         FOR_EACH(getfields_t::iterator, it, end, getfields) {
+            // TODO: this may be on a dead Channel
             p_getfield.push_back(it->lock());
         }
        getfields.clear(); // consume

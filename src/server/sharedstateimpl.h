@@ -31,6 +31,8 @@ struct SharedChannel : public pva::Channel,
     const requester_type::weak_pointer requester;
     const pva::ChannelProvider::weak_pointer provider;
 
+    bool dead; // has destroy() been called?
+
     SharedChannel(const std::tr1::shared_ptr<SharedPV>& owner,
                   const pva::ChannelProvider::shared_pointer provider,
                   const std::string& channelName,
