@@ -242,9 +242,10 @@ pva::Monitor::shared_pointer SharedChannel::createMonitor(
         requester->monitorConnect(sts, pvd::MonitorPtr(), pvd::StructureConstPtr());
         ret.reset();
 
-    } else if(notify) {
-        ret->notify();
-
+    } else {
+        if(notify) {
+            ret->notify();
+        }
         if(handler) {
             handler->onFirstConnect(owner);
         }
