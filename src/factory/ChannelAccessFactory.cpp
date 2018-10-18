@@ -226,9 +226,9 @@ void providerRegInit(void*)
     registerRefCounter("ResponseHandler (ABC)", &ResponseHandler::num_instances);
     registerRefCounter("MonitorFIFO", &MonitorFIFO::num_instances);
     pvas::registerRefTrackServer();
-    registerRefCounter("pvas::SharedChannel", &pvas::SharedChannel::num_instances);
-    registerRefCounter("pvas::SharedPut", &pvas::SharedPut::num_instances);
-    registerRefCounter("pvas::SharedRPC", &pvas::SharedRPC::num_instances);
+    registerRefCounter("pvas::SharedChannel", &pvas::detail::SharedChannel::num_instances);
+    registerRefCounter("pvas::SharedPut", &pvas::detail::SharedPut::num_instances);
+    registerRefCounter("pvas::SharedRPC", &pvas::detail::SharedRPC::num_instances);
     registerRefCounter("pvas::SharedPV", &pvas::SharedPV::num_instances);
 }
 

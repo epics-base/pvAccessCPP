@@ -33,10 +33,12 @@ void providerRegInit(void*);
 
 namespace pvas {
 
+namespace detail {
 struct SharedChannel;
 struct SharedMonitorFIFO;
 struct SharedPut;
 struct SharedRPC;
+}
 
 struct Operation;
 
@@ -74,10 +76,10 @@ struct Operation;
 class epicsShareClass SharedPV
         : public pvas::StaticProvider::ChannelBuilder
 {
-    friend struct SharedChannel;
-    friend struct SharedMonitorFIFO;
-    friend struct SharedPut;
-    friend struct SharedRPC;
+    friend struct detail::SharedChannel;
+    friend struct detail::SharedMonitorFIFO;
+    friend struct detail::SharedPut;
+    friend struct detail::SharedRPC;
 public:
     POINTER_DEFINITIONS(SharedPV);
     struct epicsShareClass Config {
@@ -188,11 +190,11 @@ private:
 
     std::tr1::shared_ptr<SharedPV::Handler> handler;
 
-    typedef std::list<SharedPut*> puts_t;
-    typedef std::list<SharedRPC*> rpcs_t;
-    typedef std::list<SharedMonitorFIFO*> monitors_t;
+    typedef std::list<detail::SharedPut*> puts_t;
+    typedef std::list<detail::SharedRPC*> rpcs_t;
+    typedef std::list<detail::SharedMonitorFIFO*> monitors_t;
     typedef std::list<std::tr1::weak_ptr<epics::pvAccess::GetFieldRequester> > getfields_t;
-    typedef std::list<SharedChannel*> channels_t;
+    typedef std::list<detail::SharedChannel*> channels_t;
 
     std::tr1::shared_ptr<const epics::pvData::Structure> type;
 
@@ -226,8 +228,8 @@ struct epicsShareClass Operation {
 private:
     std::tr1::shared_ptr<Impl> impl;
 
-    friend struct SharedPut;
-    friend struct SharedRPC;
+    friend struct detail::SharedPut;
+    friend struct detail::SharedRPC;
     explicit Operation(const std::tr1::shared_ptr<Impl> impl);
 public:
     Operation() {} //!< create empty op for later assignment

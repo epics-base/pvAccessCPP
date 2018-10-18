@@ -20,6 +20,7 @@ typedef epicsGuard<epicsMutex> Guard;
 typedef epicsGuardRelease<epicsMutex> UnGuard;
 
 namespace pvas {
+namespace detail {
 
 struct SharedChannel : public pva::Channel,
                        public std::tr1::enable_shared_from_this<SharedChannel>
@@ -123,6 +124,8 @@ struct SharedRPC : public pva::ChannelRPC,
 
     virtual void request(epics::pvData::PVStructure::shared_pointer const & pvArgument) OVERRIDE FINAL;
 };
+
+} // namespace detail
 
 struct Operation::Impl
 {

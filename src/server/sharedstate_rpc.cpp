@@ -25,9 +25,9 @@
 namespace {
 struct RPCOP : public pvas::Operation::Impl
 {
-    const std::tr1::shared_ptr<pvas::SharedRPC> op;
+    const std::tr1::shared_ptr<pvas::detail::SharedRPC> op;
 
-    RPCOP(const std::tr1::shared_ptr<pvas::SharedRPC>& op,
+    RPCOP(const std::tr1::shared_ptr<pvas::detail::SharedRPC>& op,
           const pvd::PVStructure::const_shared_pointer& pvRequest,
           const pvd::PVStructure::const_shared_pointer& value)
         :Impl(pvRequest, value, pvd::BitSet().set(0))
@@ -75,6 +75,7 @@ struct RPCOP : public pvas::Operation::Impl
 }
 
 namespace pvas {
+namespace detail {
 
 size_t SharedRPC::num_instances;
 
@@ -137,4 +138,4 @@ void SharedRPC::request(epics::pvData::PVStructure::shared_pointer const & pvArg
 }
 
 
-} // namespace pvas
+}} // namespace pvas::detail

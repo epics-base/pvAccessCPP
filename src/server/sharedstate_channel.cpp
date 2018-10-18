@@ -23,6 +23,7 @@
 #include "sharedstateimpl.h"
 
 namespace pvas {
+namespace detail {
 
 size_t SharedChannel::num_instances;
 
@@ -267,6 +268,8 @@ SharedMonitorFIFO::~SharedMonitorFIFO()
     Guard G(channel->owner->mutex);
     channel->owner->monitors.remove(this);
 }
+
+} // namespace detail
 
 Operation::Operation(const std::tr1::shared_ptr<Impl> impl)
     :impl(impl)

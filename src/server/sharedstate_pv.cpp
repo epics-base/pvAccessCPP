@@ -106,13 +106,13 @@ bool SharedPV::isOpen() const
 
 namespace {
 struct PutInfo { // oh to be able to use std::tuple ...
-    std::tr1::shared_ptr<SharedPut> put;
+    std::tr1::shared_ptr<detail::SharedPut> put;
     pvd::StructureConstPtr type;
     pvd::Status status;
-    PutInfo(const std::tr1::shared_ptr<SharedPut>& put, const pvd::StructureConstPtr& type, const pvd::Status& status)
+    PutInfo(const std::tr1::shared_ptr<detail::SharedPut>& put, const pvd::StructureConstPtr& type, const pvd::Status& status)
         :put(put), type(type), status(status)
     {}
-    PutInfo(const std::tr1::shared_ptr<SharedPut>& put, const pvd::StructureConstPtr& type, const std::string& message)
+    PutInfo(const std::tr1::shared_ptr<detail::SharedPut>& put, const pvd::StructureConstPtr& type, const std::string& message)
         :put(put), type(type)
     {
         if(!message.empty())
@@ -124,7 +124,7 @@ struct PutInfo { // oh to be able to use std::tuple ...
 void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& valid)
 {
     typedef std::vector<PutInfo> xputs_t;
-    typedef std::vector<std::tr1::shared_ptr<SharedRPC> > xrpcs_t;
+    typedef std::vector<std::tr1::shared_ptr<detail::SharedRPC> > xrpcs_t;
     typedef std::vector<std::tr1::shared_ptr<pva::MonitorFIFO> > xmonitors_t;
     typedef std::vector<std::tr1::shared_ptr<pva::GetFieldRequester> > xgetfields_t;
 
@@ -189,7 +189,7 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
     }
     // unlock for callbacks
     FOR_EACH(xputs_t::iterator, it, end, p_put) {
-        SharedPut::requester_type::shared_pointer requester(it->put->requester.lock());
+        detail::SharedPut::requester_type::shared_pointer requester(it->put->requester.lock());
         if(requester) {
             if(it->status.getType()==pvd::Status::STATUSTYPE_WARNING)
                 requester->message(it->status.getMessage(), pvd::warningMessage);
@@ -197,7 +197,7 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
         }
     }
     FOR_EACH(xrpcs_t::iterator, it, end, p_rpc) {
-        SharedRPC::requester_type::shared_pointer requester((*it)->requester.lock());
+        detail::SharedRPC::requester_type::shared_pointer requester((*it)->requester.lock());
         if(requester) requester->channelRPCConnect(pvd::Status(), *it);
     }
     FOR_EACH(xmonitors_t::iterator, it, end, p_monitor) {
@@ -225,7 +225,7 @@ void SharedPV::close(bool destroy)
     typedef std::vector<std::tr1::shared_ptr<pva::ChannelPutRequester> > xputs_t;
     typedef std::vector<std::tr1::shared_ptr<pva::ChannelRPCRequester> > xrpcs_t;
     typedef std::vector<std::tr1::shared_ptr<pva::MonitorFIFO> > xmonitors_t;
-    typedef std::vector<std::tr1::shared_ptr<SharedChannel> > xchannels_t;
+    typedef std::vector<std::tr1::shared_ptr<detail::SharedChannel> > xchannels_t;
 
     xputs_t p_put;
     xrpcs_t p_rpc;
@@ -357,7 +357,7 @@ SharedPV::connect(const std::tr1::shared_ptr<epics::pvAccess::ChannelProvider> &
                   const std::tr1::shared_ptr<pva::ChannelRequester>& requester)
 {
     shared_pointer self(internal_self);
-    std::tr1::shared_ptr<SharedChannel> ret(new SharedChannel(self, provider, channelName, requester));
+    std::tr1::shared_ptr<detail::SharedChannel> ret(new detail::SharedChannel(self, provider, channelName, requester));
     return ret;
 }
 

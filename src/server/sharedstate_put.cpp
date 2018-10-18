@@ -26,9 +26,9 @@
 namespace {
 struct PutOP : public pvas::Operation::Impl
 {
-    const std::tr1::shared_ptr<pvas::SharedPut> op;
+    const std::tr1::shared_ptr<pvas::detail::SharedPut> op;
 
-    PutOP(const std::tr1::shared_ptr<pvas::SharedPut>& op,
+    PutOP(const std::tr1::shared_ptr<pvas::detail::SharedPut>& op,
           const pvd::PVStructure::const_shared_pointer& pvRequest,
           const pvd::PVStructure::const_shared_pointer& value,
           const pvd::BitSet& changed)
@@ -69,6 +69,7 @@ struct PutOP : public pvas::Operation::Impl
 
 
 namespace pvas {
+namespace detail {
 
 size_t SharedPut::num_instances;
 
@@ -178,4 +179,4 @@ void SharedPut::get()
     req->getDone(sts, shared_from_this(), current, changed);
 }
 
-} // namespace pvas
+}} // namespace pvas::detail
