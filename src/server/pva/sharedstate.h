@@ -49,8 +49,9 @@ struct Operation;
  * "Shared" in the sense that all clients/subscribers interact with the
  * same PVStructure (excluding the RPC operation).
  *
- * @warning For the purposes of locking, this class is an Operation (see @ref provider_roles_requester_locking).
+ * @warning For the purposes of locking, this class is an Operation.
  *          eg. no locks may be held when calling post(), open(), close(), or connect().
+ * @ref provider_roles_requester_locking
  *
  * This class contains a cached PVStructure, which is updated by post(),
  * also a list of subscribing clients and in-progress network Operations.
