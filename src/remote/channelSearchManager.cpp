@@ -52,22 +52,22 @@ namespace pvAccess {
 
 // these are byte offset in a CMD_SEARCH request message
 // used to mangle a buffer to support incremental construction.  (ick!!!)
-const int ChannelSearchManager::DATA_COUNT_POSITION = PVA_MESSAGE_HEADER_SIZE + 4+1+3+16+2+1+4;
-const int ChannelSearchManager::CAST_POSITION = PVA_MESSAGE_HEADER_SIZE + 4;
-const int ChannelSearchManager::PAYLOAD_POSITION = 4;
+static const int DATA_COUNT_POSITION = PVA_MESSAGE_HEADER_SIZE + 4+1+3+16+2+1+4;
+static const int CAST_POSITION = PVA_MESSAGE_HEADER_SIZE + 4;
+static const int PAYLOAD_POSITION = 4;
 
 // 225ms +/- 25ms random
-const double ChannelSearchManager::ATOMIC_PERIOD = 0.225;
-const int ChannelSearchManager::PERIOD_JITTER_MS = 25;
+static const double ATOMIC_PERIOD = 0.225;
+static const double PERIOD_JITTER_MS = 0.025;
 
-const int ChannelSearchManager::DEFAULT_USER_VALUE = 1;
-const int ChannelSearchManager::BOOST_VALUE = 1;
+static const int DEFAULT_USER_VALUE = 1;
+static const int BOOST_VALUE = 1;
 // must be power of two (so that search is done)
-const int ChannelSearchManager::MAX_COUNT_VALUE = 1 << 8;
-const int ChannelSearchManager::MAX_FALLBACK_COUNT_VALUE = (1 << 7) + 1;
+static const int MAX_COUNT_VALUE = 1 << 8;
+static const int MAX_FALLBACK_COUNT_VALUE = (1 << 7) + 1;
 
-const int ChannelSearchManager::MAX_FRAMES_AT_ONCE = 10;
-const int ChannelSearchManager::DELAY_BETWEEN_FRAMES_MS = 50;
+static const int MAX_FRAMES_AT_ONCE = 10;
+static const int DELAY_BETWEEN_FRAMES_MS = 50;
 
 
 ChannelSearchManager::ChannelSearchManager(Context::shared_pointer const & context) :
@@ -94,7 +94,7 @@ void ChannelSearchManager::activate()
     initializeSendBuffer();
 
     // add some jitter so that all the clients do not send at the same time
-    double period = ATOMIC_PERIOD + (rand() % (2*PERIOD_JITTER_MS+1) - PERIOD_JITTER_MS)/(double)1000;
+    double period = ATOMIC_PERIOD + double(rand())/RAND_MAX*PERIOD_JITTER_MS;
 
     Context::shared_pointer context(m_context.lock());
     if (context)

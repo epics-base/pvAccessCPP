@@ -170,21 +170,6 @@ private:
      * m_channels mutex.
      */
     epics::pvData::Mutex m_mutex;
-
-    static const int DATA_COUNT_POSITION;
-    static const int CAST_POSITION;
-    static const int PAYLOAD_POSITION;
-
-    static const double ATOMIC_PERIOD;
-    static const int PERIOD_JITTER_MS;
-
-    static const int DEFAULT_USER_VALUE;
-    static const int BOOST_VALUE;
-    static const int MAX_COUNT_VALUE;
-    static const int MAX_FALLBACK_COUNT_VALUE;
-
-    static const int MAX_FRAMES_AT_ONCE;
-    static const int DELAY_BETWEEN_FRAMES_MS;
 };
 
 }

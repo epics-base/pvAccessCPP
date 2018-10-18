@@ -348,15 +348,16 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
         // server discovery ping by pvlist
         if (allowed)
         {
-            // ~random hold-off to reduce impact of all servers responding...
-#define MAX_SERVER_SEARCH_RESPONSE_DELAY_MS 100
-            double period = (rand() % MAX_SERVER_SEARCH_RESPONSE_DELAY_MS)/(double)1000;
+            // ~random hold-off to reduce impact of all servers responding.
+            // in [0.05, 0.15]
+            double delay = double(rand())/RAND_MAX; // [0, 1]
+            delay = delay*0.1 + 0.05;
 
             std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(new ServerChannelFindRequesterImpl(_context, 1));
             tp->set("", searchSequenceId, 0, responseAddress, true, true);
 
             TimerCallback::shared_pointer tc = tp;
-            _context->getTimer()->scheduleAfterDelay(tc, period);
+            _context->getTimer()->scheduleAfterDelay(tc, delay);
         }
     }
 }
