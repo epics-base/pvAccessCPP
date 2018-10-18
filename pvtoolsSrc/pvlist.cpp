@@ -331,7 +331,7 @@ bool discoverServers(double timeOut)
     sendBuffer.putByte(PVA_MAGIC);
     sendBuffer.putByte(PVA_VERSION);
     sendBuffer.putByte((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00); // data + 7-bit endianess
-    sendBuffer.putByte((int8_t)3);	// search
+    sendBuffer.putByte((int8_t)CMD_SEARCH);	// search
     sendBuffer.putInt(4+1+3+16+2+1+2);		// "zero" payload
 
     sendBuffer.putInt(0);   // sequenceId
@@ -343,13 +343,18 @@ bool discoverServers(double timeOut)
     encodeAsIPv6Address(&sendBuffer, &responseAddress);
     sendBuffer.putShort((int16_t)ntohs(responseAddress.ia.sin_port));
 
-    sendBuffer.putByte((int8_t)0x00);	// no restriction on protocol
-    sendBuffer.putShort((int16_t)0);	// count
+    sendBuffer.putByte((int8_t)0x00);	// protocol count
+    sendBuffer.putShort((int16_t)0);	// name count
 
     bool oneOK = false;
     for (size_t i = 0; i < broadcastAddresses.size(); i++)
     {
-        // send the packet
+        if(pvAccessIsLoggable(logLevelDebug)) {
+            char strBuffer[64];
+            sockAddrToDottedIP(&broadcastAddresses[i].sa, strBuffer, sizeof(strBuffer));
+            LOG(logLevelDebug, "UDP Tx (%zu) -> %s", sendBuffer.getPosition(), strBuffer);
+        }
+
         status = ::sendto(socket, sendBuffer.getArray(), sendBuffer.getPosition(), 0,
                           &broadcastAddresses[i].sa, sizeof(sockaddr));
         if (status < 0)
@@ -385,6 +390,11 @@ bool discoverServers(double timeOut)
 
         if (bytesRead > 0)
         {
+            if(pvAccessIsLoggable(logLevelDebug)) {
+                char strBuffer[64];
+                sockAddrToDottedIP(&fromAddress.sa, strBuffer, sizeof(strBuffer));
+                LOG(logLevelDebug, "UDP Rx (%d) <- %s", bytesRead, strBuffer);
+            }
             receiveBuffer.setPosition(bytesRead);
             receiveBuffer.flip();
 
