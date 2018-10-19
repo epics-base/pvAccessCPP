@@ -29,7 +29,6 @@ struct MailboxHandler : public pvas::SharedPV::Handler {
     virtual void onPut(const pvas::SharedPV::shared_pointer& self, pvas::Operation& op) OVERRIDE FINAL
     {
         self->post(op.value(), op.changed());
-        op.info("Set!");
         op.complete();
     }
     static std::tr1::shared_ptr<pvas::SharedPV::Handler> build() {
@@ -40,6 +39,18 @@ struct MailboxHandler : public pvas::SharedPV::Handler {
 } // namespace
 
 namespace pvas {
+
+SharedPV::Handler::~Handler() {}
+
+void SharedPV::Handler::onPut(const SharedPV::shared_pointer& pv, Operation& op)
+{
+    op.complete(pvd::Status::error("Put not supported"));
+}
+
+void SharedPV::Handler::onRPC(const SharedPV::shared_pointer& pv, Operation& op)
+{
+    op.complete(pvd::Status::error("RPC not supported"));
+}
 
 SharedPV::Config::Config()
     :dropEmptyUpdates(true)

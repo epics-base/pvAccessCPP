@@ -94,14 +94,14 @@ public:
      */
     struct epicsShareClass Handler {
         POINTER_DEFINITIONS(Handler);
-        virtual ~Handler() {}
+        virtual ~Handler();
         virtual void onFirstConnect(const SharedPV::shared_pointer& pv) {}
         //! Called when the last client disconnects.  May close()
         virtual void onLastDisconnect(const SharedPV::shared_pointer& pv) {}
         //! Client requests Put
-        virtual void onPut(const SharedPV::shared_pointer& pv, Operation& op) {}
+        virtual void onPut(const SharedPV::shared_pointer& pv, Operation& op);
         //! Client requests RPC
-        virtual void onRPC(const SharedPV::shared_pointer& pv, Operation& op) {}
+        virtual void onRPC(const SharedPV::shared_pointer& pv, Operation& op);
     };
 
     /** Allocate a new PV in the closed state.
