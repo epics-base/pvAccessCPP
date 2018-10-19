@@ -66,7 +66,7 @@ epicsShareFunc bool pvAccessIsLoggable(pvAccessLogLevel level);
     * @param[in] fname The file to write to. If the file exists, it
     * is opened for append.
     */
-epicsShareFunc void createFileLogger( std::string const & fname );
+epicsShareFunc void createFileLogger( std::string const & fname ) EPICS_DEPRECATED;
 
 }
 }
