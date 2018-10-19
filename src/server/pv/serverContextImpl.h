@@ -234,8 +234,6 @@ private:
 
     void generateGUID();
 
-    void initializeLogger();
-
     void loadConfiguration();
 
     Configuration::const_shared_pointer configuration;

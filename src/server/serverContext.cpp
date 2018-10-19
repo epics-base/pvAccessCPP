@@ -56,7 +56,6 @@ ServerContextImpl::ServerContextImpl():
     epicsSignalInstallSigPipeIgnore ();
 
     generateGUID();
-    initializeLogger();
 }
 
 ServerContextImpl::~ServerContextImpl()
@@ -91,11 +90,6 @@ void ServerContextImpl::generateGUID()
     ByteBuffer buffer(_guid.value, sizeof(_guid.value));
     buffer.putLong(startupTime.getSecondsPastEpoch());
     buffer.putInt(startupTime.getNanoseconds());
-}
-
-void ServerContextImpl::initializeLogger()
-{
-    //createFileLogger("serverContextImpl.log");
 }
 
 Configuration::const_shared_pointer ServerContextImpl::getConfiguration()
