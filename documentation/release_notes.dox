@@ -5,25 +5,32 @@ Release 6.1.0 (UNRELEASED)
 
 - Deprecations
  - pv/namedLockPattern.h
+ - createFileLogger() from pv/logger.h
 - Removals
  - Remove deprecated methods configure(), flush(), and poll() from ChannelProvider.
  - Remove RPCClient::sendRequest()
  - Remove RPCService::destroy() and dispose()
  - Typedefs GUID, Service
 - Fixes
- - pvAccessLog() add EPICS_PRINTF_STYLE()
+ - epics::pvAccess::pvAccessLog() add EPICS_PRINTF_STYLE()
  - ioc: shutdown PVA server via epicsAtExit()
  - fix 'pva' provider registration during static linking
  - Various fixes related to shared_ptr loop breaking.
- - Several *NULL bugs.
+ - Various crashes and deadlocks.
  - PVA client context: avoid lock order violations
 - Changes
  - pvac::Monitor - shallow copy into Monitor::root
  - pvget -m shows time and alarm if available (thanks to Andrew Starritt)
+ - PVA Server now handles pipeline=true automatically for all ChannelProviders.
+   It is only necessary to implement epics::pvAccess::Monitor::reportRemoteQueueStatus()
+   to receive notification of initial window size.
 - Additions
  - pvput to NTEnum via. string now supported
  - pvac::* add valid() method and boolean cast shorthand.  Also reset() and operator<<(ostream, ...)
- - Add pvac::ClientProvider::named()
+ - Add pvac::GetEvent::valid to determine fields actually transfered during a Get operation.
+ - Add pvac::ClientProvider::name()
+ - Add epics::pvAccess::MonitorFIFO utility implementation of epics::pvAccess::Monitor
+ - Add pvas::StaticProvider, pvas::DynamicProvider, and pvas::SharedPV.  See @ref pvas
 
 Release 6.0.0 (Dec 2017)
 ========================
