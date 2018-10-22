@@ -2028,18 +2028,6 @@ void ServerMonitorRequesterImpl::unlisten(Monitor::shared_pointer const & /*moni
 
 void ServerMonitorRequesterImpl::monitorEvent(Monitor::shared_pointer const & /*monitor*/)
 {
-    // TODO !!! if queueSize==0, monitor.poll() has to be called and returned NOW (since there is no cache)
-    //sendEvent(transport);
-
-    // TODO implement via TransportSender
-    /*
-    	// initiate submit to dispatcher queue, if necessary
-    	synchronized (register) {
-    		if (register.getAndSet(true))
-    			eventConsumer.consumeEvents(this);
-    	}*/
-    // TODO
-    // multiple ((BlockingServerTCPTransport)transport).enqueueMonitorSendRequest(this);
     TransportSender::shared_pointer thisSender = shared_from_this();
     _transport->enqueueSendRequest(thisSender);
 }
