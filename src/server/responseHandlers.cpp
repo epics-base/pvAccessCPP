@@ -2097,7 +2097,17 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
 
         // TODO asCheck ?
 
-        MonitorElement::Ref element(monitor);
+        bool busy = false;
+        if(_pipeline) {
+            Lock guard(_mutex);
+            busy = _window_open==0;
+        }
+
+        MonitorElement::Ref element;
+        if(!busy) {
+            MonitorElement::Ref E(monitor);
+            E.swap(element);
+        }
         if (element)
         {
             control->startMessage((int8)CMD_MONITOR, sizeof(int32)/sizeof(int8) + 1);
@@ -2119,11 +2129,10 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
                 Lock guard(_mutex);
                 if(!_pipeline) {
                 } else if(_window_open==0) {
-                    if(_pipeline) {
-                        // Our logic has a problem, but try to continue.
-                        message("Monitor Logic Error: send outside of window", epics::pvData::warningMessage);
-                        LOG(logLevelError, "Monitor Logic Error: send outside of window %zu", _window_closed.size());
-                    }
+                    // This really shouldn't happen as the above ensures that _window_open *was* non-zero,
+                    // and only we (the sender) will decrement.
+                    message("Monitor Logic Error: send outside of window", epics::pvData::warningMessage);
+                    LOG(logLevelError, "Monitor Logic Error: send outside of window %zu", _window_closed.size());
 
                 } else {
                     _window_closed.push_back(element.letGo());
