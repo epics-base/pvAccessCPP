@@ -43,5 +43,6 @@ include $(TOP)/configure/RULES
 
 ifdef BASE_3_16
   $(COMMON_DIR)/testIoc.dbd: $(EPICS_BASE)/dbd/softIoc.dbd
+	$(RM) $@
 	$(CP) $< $@
 endif
