@@ -11,6 +11,7 @@ LIB_SYS_LIBS_WIN32 += ws2_32
 
 INC += pv/caProvider.h
 
+pvAccessCA_SRCS += channelConnectThread.cpp
 pvAccessCA_SRCS += monitorEventThread.cpp
 pvAccessCA_SRCS += getDoneThread.cpp
 pvAccessCA_SRCS += putDoneThread.cpp

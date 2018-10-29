@@ -10,6 +10,7 @@
 #include <pv/standardField.h>
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
+#include "channelConnectThread.h"
 #include "monitorEventThread.h"
 #include "getDoneThread.h"
 #include "putDoneThread.h"
@@ -51,16 +52,43 @@ static void ca_connection_handler(struct connection_handler_args args)
     CAChannel *channel = static_cast<CAChannel*>(ca_puser(args.chid));
 
     if (args.op == CA_OP_CONN_UP) {
-        channel->connected();
+        channel->connect(true);
     } else if (args.op == CA_OP_CONN_DOWN) {
-        channel->disconnected();
+        channel->connect(false);
     }
 }
 
-void CAChannel::connected()
+void CAChannel::connect(bool isConnected)
 {
     if(DEBUG_LEVEL>0) {
-          cout<< "CAChannel::connected " << channelName << endl;
+          cout<< "CAChannel::connect " << channelName << endl;
+    }
+    {
+         Lock lock(requestsMutex);
+         channelConnected = isConnected;
+    }
+    channelConnectThread->channelConnected(notifyChannelRequester);
+}
+
+void CAChannel::notifyClient()
+{
+    if(DEBUG_LEVEL>0) {
+          cout<< "CAChannel::notifyClient " << channelName << endl;
+    }
+    CAChannelProviderPtr provider(channelProvider.lock());
+    if(!provider) return;
+    bool isConnected = false;
+    {
+         Lock lock(requestsMutex);
+         isConnected = channelConnected;
+    }
+    if(!isConnected) {
+        ChannelRequester::shared_pointer req(channelRequester.lock());
+        if(req) {
+            EXCEPTION_GUARD(req->channelStateChange(
+                shared_from_this(), Channel::DISCONNECTED));
+        }
+        return;
     }
     while(!getFieldQueue.empty()) {
         getFieldQueue.front()->activate();
@@ -87,18 +115,6 @@ void CAChannel::connected()
     }
 }
 
-void CAChannel::disconnected()
-{
-    if(DEBUG_LEVEL>0) {
-          cout<< "CAChannel::disconnected " << channelName << endl;
-    }
-
-    ChannelRequester::shared_pointer req(channelRequester.lock());
-    if(req) {
-        EXCEPTION_GUARD(req->channelStateChange(
-             shared_from_this(), Channel::DISCONNECTED));
-    }
-}
 
 CAChannel::CAChannel(std::string const & channelName,
                      CAChannelProvider::shared_pointer const & channelProvider,
@@ -107,7 +123,9 @@ CAChannel::CAChannel(std::string const & channelName,
     channelProvider(channelProvider),
     channelRequester(channelRequester),
     channelID(0),
-    channelCreated(false)
+    channelCreated(false),
+    channelConnected(false),
+    channelConnectThread(ChannelConnectThread::get())
 {
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::CAChannel " << channelName << endl;
@@ -116,11 +134,13 @@ CAChannel::CAChannel(std::string const & channelName,
 
 void CAChannel::activate(short priority)
 {
+    ChannelRequester::shared_pointer req(channelRequester.lock());
+    if(!req) return;
     if(DEBUG_LEVEL>0) {
           cout<< "CAChannel::activate " << channelName << endl;
     }
-    ChannelRequester::shared_pointer req(channelRequester.lock());
-    if(!req) return;
+    notifyChannelRequester = NotifyChannelRequesterPtr(new NotifyChannelRequester());
+    notifyChannelRequester->setChannel(shared_from_this());
     attachContext();
     int result = ca_create_channel(channelName.c_str(),
          ca_connection_handler,
@@ -382,8 +402,7 @@ void CAChannelGetField::callRequester(CAChannelPtr const & caChannel)
     if(!requester) return;
     PVStructurePtr pvRequest(createRequest(""));
     DbdToPvPtr dbdToPv = DbdToPv::create(caChannel,pvRequest,getIO);
-    PVStructurePtr pvStructure = dbdToPv->createPVStructure();
-    Structure::const_shared_pointer structure(pvStructure->getStructure());
+    Structure::const_shared_pointer structure(dbdToPv->getStructure());
     Field::const_shared_pointer field =
         subField.empty() ?
         std::tr1::static_pointer_cast<const Field>(structure) :
@@ -451,6 +470,7 @@ void CAChannelGet::activate()
         std::cout << "CAChannelGet::activate " <<  channel->getChannelName() << endl;
     }
     dbdToPv = DbdToPv::create(channel,pvRequest,getIO);
+    dbdToPv->getChoices(channel);
     pvStructure = dbdToPv->createPVStructure();
     bitSet = BitSetPtr(new BitSet(pvStructure->getStructure()->getNumberFields()));
     notifyGetRequester = NotifyGetRequesterPtr(new NotifyGetRequester());
@@ -488,6 +508,9 @@ void CAChannelGet::getDone(struct event_handler_args &args)
 
 void CAChannelGet::notifyClient()
 {
+    if(DEBUG_LEVEL>1) {
+        std::cout << "CAChannelGet::notifyClient " <<  channel->getChannelName() << endl;
+    }
     ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
     if(!getRequester) return;
     EXCEPTION_GUARD(getRequester->getDone(getStatus, shared_from_this(), pvStructure, bitSet));
@@ -572,6 +595,7 @@ void CAChannelPut::activate()
         cout << "CAChannelPut::activate " << channel->getChannelName() << endl;
     }
     dbdToPv = DbdToPv::create(channel,pvRequest,putIO);
+    dbdToPv->getChoices(channel);
     pvStructure = dbdToPv->createPVStructure();
     bitSet = BitSetPtr(new BitSet(pvStructure->getStructure()->getNumberFields()));
     PVStringPtr pvString = pvRequest->getSubField<PVString>("record._options.block");
@@ -809,7 +833,8 @@ CAChannelMonitor::CAChannelMonitor(
     pvRequest(pvRequest),
     isStarted(false),
     monitorEventThread(MonitorEventThread::get()),
-    pevid(NULL)
+    pevid(NULL),
+    eventMask(DBE_VALUE | DBE_ALARM)
 {}
 
 CAChannelMonitor::~CAChannelMonitor()
@@ -831,6 +856,7 @@ void CAChannelMonitor::activate()
         std::cout << "CAChannelMonitor::activate " << channel->getChannelName() << endl;
     }
     dbdToPv = DbdToPv::create(channel,pvRequest,monitorIO);
+    dbdToPv->getChoices(channel);
     pvStructure = dbdToPv->createPVStructure();
     activeElement = MonitorElementPtr(new MonitorElement(pvStructure));
     int32 queueSize = 2;
@@ -843,6 +869,15 @@ void CAChannelMonitor::activate()
             ss << pvString->get();
             ss >> size;
             if (size > 1) queueSize = size;
+        }
+        pvString = pvOptions->getSubField<PVString>("DBE");
+        if(pvString) {
+            std::string value(pvString->get());
+            eventMask = 0;
+            if(value.find("VALUE")!=std::string::npos) eventMask|=DBE_VALUE;
+            if(value.find("ARCHIVE")!=std::string::npos) eventMask|=DBE_ARCHIVE;
+            if(value.find("ALARM")!=std::string::npos) eventMask|=DBE_ALARM;
+            if(value.find("PROPERTY")!=std::string::npos) eventMask|=DBE_PROPERTY;
         }
     }
     notifyMonitorRequester = NotifyMonitorRequesterPtr(new NotifyMonitorRequester());
@@ -916,7 +951,7 @@ Status CAChannelMonitor::start()
     channel->attachContext();
     int result = ca_create_subscription(dbdToPv->getRequestType(),
          0,
-         channel->getChannelID(), DBE_VALUE,
+         channel->getChannelID(), eventMask,
          ca_subscription_handler, this,
          &pevid);
     if (result == ECA_NORMAL)

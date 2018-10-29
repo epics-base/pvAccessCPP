@@ -10,6 +10,7 @@
 #include <alarm.h>
 #include <alarmString.h>
 
+#include <pv/alarm.h>
 #include <pv/standardField.h>
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
@@ -23,6 +24,7 @@
 using namespace epics::pvData;
 using std::string;
 using std::ostringstream;
+using std::cout;
 
 namespace epics {
 namespace pvAccess {
@@ -30,23 +32,7 @@ namespace ca {
 
 #define CA_PRIORITY 50
 
-static void enumChoicesHandler(struct event_handler_args args)
-{
-    DbdToPv *dbdToPv = static_cast<DbdToPv*>(args.usr);
-    dbdToPv->getChoicesDone(args);
-}
 
-static void description_connection_handler(struct connection_handler_args args)
-{
-    DbdToPv *dbdToPv = static_cast<DbdToPv*>(ca_puser(args.chid));
-    dbdToPv->descriptionConnected(args);
-}
-
-static void descriptionHandler(struct event_handler_args args)
-{
-    DbdToPv *dbdToPv = static_cast<DbdToPv*>(args.usr);
-    dbdToPv->getDescriptionDone(args);
-}
 
 DbdToPvPtr DbdToPv::create(
     CAChannelPtr const & caChannel,
@@ -60,16 +46,20 @@ DbdToPvPtr DbdToPv::create(
 
 DbdToPv::DbdToPv(IOType ioType)
 :  ioType(ioType),
-   fieldRequested(false),
+   dbfIsUCHAR(false),
+   dbfIsUSHORT(false),
+   dbfIsULONG(false),
+   dbfIsINT64(false),
+   dbfIsUINT64(false),
+   valueRequested(false),
    alarmRequested(false),
    timeStampRequested(false),
    displayRequested(false),
    controlRequested(false),
    valueAlarmRequested(false),
    isArray(false),
+   charArrayIsString(false),
    firstTime(true),
-   choicesValid(false),
-   waitForChoicesValid(false),
    caValueType(-1),
    caRequestType(-1),
    maxElements(0)
@@ -95,15 +85,56 @@ static chtype getDbrType(const ScalarType scalarType)
     {
          case pvString : return DBR_STRING;
          case pvByte : return DBR_CHAR;
+         case pvUByte : return DBR_CHAR;
          case pvShort : return DBR_SHORT;
+         case pvUShort : return DBR_SHORT;
          case pvInt : return DBR_LONG;
+         case pvUInt : return DBR_LONG;
          case pvFloat : return DBR_FLOAT;
          case pvDouble : return DBR_DOUBLE;
+         case pvLong : return DBR_DOUBLE;
+         case pvULong : return DBR_DOUBLE;
          default: break;
     }
     throw  std::runtime_error("getDbr: illegal scalarType");
 }
 
+static dbr_short_t convertDBstatus(dbr_short_t dbStatus)
+{
+    switch(dbStatus) {
+    case NO_ALARM:
+        return noStatus;
+    case READ_ALARM:
+    case WRITE_ALARM:
+    case HIHI_ALARM:
+    case HIGH_ALARM:
+    case LOLO_ALARM:
+    case LOW_ALARM:
+    case STATE_ALARM:
+    case COS_ALARM:
+    case HW_LIMIT_ALARM:
+        return deviceStatus;
+    case COMM_ALARM:
+    case TIMEOUT_ALARM:
+        return driverStatus;
+    case CALC_ALARM:
+    case SCAN_ALARM:
+    case LINK_ALARM:
+    case SOFT_ALARM:
+    case BAD_SUB_ALARM:
+        return recordStatus;
+    case DISABLE_ALARM:
+    case SIMM_ALARM:
+    case READ_ACCESS_ALARM:
+    case WRITE_ACCESS_ALARM:
+        return dbStatus;
+    case UDF_ALARM:
+        return undefinedStatus;
+    default:
+        return undefinedStatus; // UNDEFINED
+    }
+
+}
 
 void DbdToPv::activate(
     CAChannelPtr const & caChannel,
@@ -131,14 +162,14 @@ void DbdToPv::activate(
     } 
     if(fieldPVStructure->getPVFields().size()==0) 
     {
-        fieldRequested = true;
+        valueRequested = true;
         alarmRequested = true;
         timeStampRequested = true;
         displayRequested = true;
         controlRequested = true;
         valueAlarmRequested = true;
     } else {
-        if(fieldPVStructure->getSubField("value")) fieldRequested = true;
+        if(fieldPVStructure->getSubField("value")) valueRequested = true;
         if(fieldPVStructure->getSubField("alarm")) alarmRequested = true;
         if(fieldPVStructure->getSubField("timeStamp")) timeStampRequested = true;
         if(fieldPVStructure->getSubField("display")) displayRequested = true;
@@ -173,19 +204,49 @@ void DbdToPv::activate(
         }
         caRequestType = (properties.size()==0 ? DBR_ENUM : DBR_TIME_ENUM);
         structure = standardField->enumerated(properties);
-        int result = ca_array_get_callback(DBR_GR_ENUM,
-               1,
-               channelID, enumChoicesHandler, this);
-        if (result == ECA_NORMAL) result = ca_flush_io();
-        if (result != ECA_NORMAL) {
-            string mess(caChannel->getChannelName());
-            mess += " DbdToPv::activate getting enum cnoices ";
-            mess += ca_message(result);
-            throw  std::runtime_error(mess);
-        }
-        // NOTE: we do not wait here, since all subsequent request (over TCP) is serialized
-        // and will guarantee that enumChoicesHandler is called first
+
         return;
+    }
+    ScalarType st = dbr2ST[channelType];
+    PVStringPtr pvValue = fieldPVStructure->getSubField<PVString>("value._options.dbtype");
+    if(pvValue)
+    {
+         std::string value(pvValue->get());
+         if(value.find("DBF_UCHAR")!=std::string::npos) {
+             if(st==pvByte) {
+                 dbfIsUCHAR = true;
+                 st = pvUByte;
+                 caValueType = DBR_CHAR;
+             }
+         } else if(value.find("DBF_USHORT")!=std::string::npos) {
+             if(st==pvInt) {
+                 dbfIsUSHORT = true;
+                 st = pvUShort;
+                 caValueType = DBR_SHORT;
+             }
+         } else if(value.find("DBF_ULONG")!=std::string::npos) {
+             if(st==pvDouble) {
+                 dbfIsULONG = true;
+                 st = pvUInt;
+                 caValueType = DBR_LONG;
+             }
+         } else if(value.find("DBF_INT64")!=std::string::npos) {
+             if(st==pvDouble) {
+                 dbfIsINT64 = true;
+                 st = pvLong;
+             }
+         } else if(value.find("DBF_UINT64")!=std::string::npos) {
+             if(st==pvDouble) {
+                 dbfIsUINT64 = true;
+                 st = pvULong;
+             }
+         }
+
+    }
+    if(st==pvString) {
+        displayRequested = false;
+        controlRequested = false;
+        valueAlarmRequested = false;
     }
     maxElements = ca_element_count(channelID);
     if(maxElements!=1) isArray = true;
@@ -193,19 +254,25 @@ void DbdToPv::activate(
     {
          controlRequested = false;
          valueAlarmRequested = false;
+         if(channelType==DBR_CHAR && fieldPVStructure)
+         {
+             PVStringPtr pvValue = fieldPVStructure->getSubField<PVString>("value._options.pvtype");
+             if(pvValue) {
+                 std::string value(pvValue->get());
+                 if(value.find("pvString")!=std::string::npos) {
+                     charArrayIsString = true;
+                     st = pvString;
+                 }
+             }
+         }
     }
-    ScalarType st = dbr2ST[channelType];
-    if(st==pvString) {
-        displayRequested = false;
-        controlRequested = false;
-        valueAlarmRequested = false;
-    }
+
     if(controlRequested || displayRequested || valueAlarmRequested) timeStampRequested = false;
     FieldCreatePtr fieldCreate(FieldCreate::getFieldCreate());
     PVDataCreatePtr pvDataCreate(PVDataCreate::getPVDataCreate());
     FieldBuilderPtr fieldBuilder(fieldCreate->createFieldBuilder());
-    if(fieldRequested) {
-        if(isArray) {
+    if(valueRequested) {
+        if(isArray && !charArrayIsString) {
            fieldBuilder->addArray("value",st);
         } else {
            fieldBuilder->add("value",st);
@@ -219,14 +286,19 @@ void DbdToPv::activate(
         switch(st)
         {
            case pvByte:
+           case pvUByte:
                fieldBuilder->add("valueAlarm",standardField->byteAlarm()); break;
            case pvShort:
+           case pvUShort:
                fieldBuilder->add("valueAlarm",standardField->shortAlarm()); break;
            case pvInt:
+           case pvUInt:
                fieldBuilder->add("valueAlarm",standardField->intAlarm()); break;
            case pvFloat:
                fieldBuilder->add("valueAlarm",standardField->floatAlarm()); break;
            case pvDouble:
+           case pvLong:
+           case pvULong:
                fieldBuilder->add("valueAlarm",standardField->doubleAlarm()); break;
            default:
                throw  std::runtime_error("DbDToPv::activate: bad type");
@@ -242,38 +314,27 @@ void DbdToPv::activate(
     } else {
        caRequestType = dbf_type_to_DBR(caValueType);
     }
-    if(displayRequested) {
-         chid channelID;
-         string name(caChannel->getChannelName() + ".DESC");
-         int result = ca_create_channel(name.c_str(),
-             description_connection_handler,
-             this,
-             CA_PRIORITY, // TODO mapping
-             &channelID);
-         if (result == ECA_NORMAL) result = ca_flush_io();
-         if (result != ECA_NORMAL) {
-            string mess(caChannel->getChannelName());
-            mess += " DbdToPv::activate getting description ";
-            mess += ca_message(result);
-            throw  std::runtime_error(mess);
-        }
+
+}
+
+chtype DbdToPv::getRequestType()
+{
+    if(caRequestType<0) {
+       throw  std::runtime_error("DbDToPv::getRequestType: bad type");
     }
+    return caRequestType;
 }
 
-void DbdToPv::descriptionConnected(struct connection_handler_args args)
+Structure::const_shared_pointer DbdToPv::getStructure()
 {
-    if (args.op != CA_OP_CONN_UP) return;
-    ca_array_get_callback(DBR_STRING,
-         0,
-         args.chid, descriptionHandler, this);
+    return structure;
 }
 
-void DbdToPv::getDescriptionDone(struct event_handler_args &args)
+
+static void enumChoicesHandler(struct event_handler_args args)
 {
-    if(args.status!=ECA_NORMAL) return;
-    const dbr_string_t *value = static_cast<const dbr_string_t *>(dbr_value_ptr(args.dbr,DBR_STRING));
-    description = string(*value);
-    ca_clear_channel(args.chid);
+    DbdToPv *dbdToPv = static_cast<DbdToPv*>(args.usr);
+    dbdToPv->getChoicesDone(args);
 }
 
 void DbdToPv::getChoicesDone(struct event_handler_args &args)
@@ -288,21 +349,29 @@ void DbdToPv::getChoicesDone(struct event_handler_args &args)
     size_t num = dbr_enum_p->no_str;
     choices.reserve(num);
     for(size_t i=0; i<num; ++i) choices.push_back(string(&dbr_enum_p->strs[i][0]));
-    bool signal = false;
-    {
-        Lock lock(choicesMutex);  
-        choicesValid = true;
-        if(waitForChoicesValid) signal = true;
-    }
-    if(signal) choicesEvent.signal();
+    choicesEvent.signal();
 } 
 
-chtype DbdToPv::getRequestType()
+
+void DbdToPv::getChoices(CAChannelPtr const & caChannel)
 {
-    if(caRequestType<0) {
-       throw  std::runtime_error("DbDToPv::getRequestType: bad type");
+    if(caRequestType==DBR_ENUM||caRequestType==DBR_TIME_ENUM)
+    {
+        caChannel->attachContext();
+        chid channelID = caChannel->getChannelID();
+        int result = ca_array_get_callback(DBR_GR_ENUM,
+               1,
+               channelID, enumChoicesHandler, this);
+        if (result == ECA_NORMAL) {
+            result = ca_flush_io();
+            choicesEvent.wait();
+        } else {
+            string mess(caChannel->getChannelName());
+            mess += " DbdToPv::activate getting enum cnoices ";
+            mess += ca_message(result);
+            throw  std::runtime_error(mess);
+        }
     }
-    return caRequestType;
 }
 
 PVStructurePtr DbdToPv::createPVStructure()
@@ -368,7 +437,7 @@ Status DbdToPv::getFromDBD(
      Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(args.status)));
      return errorStatus;
    }
-   if(fieldRequested)
+   if(valueRequested)
    {
        void * value = dbr_value_ptr(args.dbr,caRequestType);
        if(isArray) {
@@ -386,18 +455,51 @@ Status DbdToPv::getFromDBD(
                 break;
            }
            case DBR_CHAR:
+               if(charArrayIsString)
+               {
+                   const char * pchar = static_cast<const char *>(value);
+                   std::string str(pchar);
+                   PVStringPtr pvValue(pvStructure->getSubField<PVString>("value"));
+                   pvValue->put(str);
+                   break;
+               }
+               if(dbfIsUCHAR)
+               {
+                   copy_DBRScalarArray<dbr_char_t,PVUByteArray>(value,count,pvValue);
+                   break;
+               }
                copy_DBRScalarArray<dbr_char_t,PVByteArray>(value,count,pvValue);
                break;
            case DBR_SHORT:
+               if(dbfIsUSHORT)
+               {
+                   copy_DBRScalarArray<dbr_short_t,PVUShortArray>(value,count,pvValue);
+                   break;
+               }
                copy_DBRScalarArray<dbr_short_t,PVShortArray>(value,count,pvValue);
                break;
            case DBR_LONG:
+               if(dbfIsULONG)
+               {
+                   copy_DBRScalarArray<dbr_long_t,PVUIntArray>(value,count,pvValue);
+                   break;
+               }
                copy_DBRScalarArray<dbr_long_t,PVIntArray>(value,count,pvValue);
                break;
            case DBR_FLOAT:
                copy_DBRScalarArray<dbr_float_t,PVFloatArray>(value,count,pvValue);
                break;
            case DBR_DOUBLE:
+               if(dbfIsINT64)
+               {
+                   copy_DBRScalarArray<dbr_double_t,PVLongArray>(value,count,pvValue);
+                   break;
+               }
+               if(dbfIsUINT64)
+               {
+                   copy_DBRScalarArray<dbr_double_t,PVULongArray>(value,count,pvValue);
+                   break;
+               }
                copy_DBRScalarArray<dbr_double_t,PVDoubleArray>(value,count,pvValue);
                break;
            default:
@@ -428,11 +530,40 @@ Status DbdToPv::getFromDBD(
                 break;
            }
            case DBR_STRING: copy_DBRScalar<dbr_string_t,PVString>(value,pvValue); break;
-           case DBR_CHAR: copy_DBRScalar<dbr_char_t,PVByte>(value,pvValue); break;
-           case DBR_SHORT: copy_DBRScalar<dbr_short_t,PVShort>(value,pvValue); break;
-           case DBR_LONG: copy_DBRScalar<dbr_long_t,PVInt>(value,pvValue); break;
+           case DBR_CHAR:
+                if(dbfIsUCHAR)
+                {
+                   copy_DBRScalar<dbr_char_t,PVUByte>(value,pvValue);
+                   break;
+                }
+                copy_DBRScalar<dbr_char_t,PVByte>(value,pvValue); break;
+           case DBR_SHORT:
+                if(dbfIsUSHORT)
+                {
+                   copy_DBRScalar<dbr_short_t,PVUShort>(value,pvValue);
+                   break;
+                }
+                copy_DBRScalar<dbr_short_t,PVShort>(value,pvValue); break;
+           case DBR_LONG:
+                if(dbfIsULONG)
+                {
+                   copy_DBRScalar<dbr_long_t,PVUInt>(value,pvValue);
+                   break;
+                }
+                copy_DBRScalar<dbr_long_t,PVInt>(value,pvValue); break;
            case DBR_FLOAT: copy_DBRScalar<dbr_float_t,PVFloat>(value,pvValue); break;
-           case DBR_DOUBLE: copy_DBRScalar<dbr_double_t,PVDouble>(value,pvValue); break;
+           case DBR_DOUBLE: 
+                if(dbfIsINT64)
+                {
+                   copy_DBRScalar<dbr_double_t,PVLong>(value,pvValue);
+                   break;
+                }
+                if(dbfIsUINT64)
+                {
+                   copy_DBRScalar<dbr_double_t,PVULong>(value,pvValue);
+                   break;
+                }
+                copy_DBRScalar<dbr_double_t,PVDouble>(value,pvValue); break;
            default:
                 Status errorStatus(
                     Status::STATUSTYPE_ERROR, string("DbdToPv::getFromDBD logic error"));
@@ -461,7 +592,7 @@ Status DbdToPv::getFromDBD(
         PVIntPtr pvStatus(pvAlarm->getSubField<PVInt>("status"));
         if(caAlarm.status!=status) {
             caAlarm.status = status;
-            pvStatus->put(status);
+            pvStatus->put(convertDBstatus(status));
             string message("UNKNOWN STATUS");
             if(status<=ALARM_NSTATUS) message = string(epicsAlarmConditionStrings[status]);
             pvMessage->put(message);
@@ -488,7 +619,7 @@ Status DbdToPv::getFromDBD(
             bitSet->set(pvSeconds->getFieldOffset());
         }
         if(caTimeStamp.nsec!=stamp.nsec) {
-            caTimeStamp.secPastEpoch = stamp.secPastEpoch;
+            caTimeStamp.nsec = stamp.nsec;
             PVIntPtr pvNano(pvTimeStamp->getSubField<PVInt>("nanoseconds"));
             pvNano->put(stamp.nsec);
             bitSet->set(pvNano->getFieldOffset());
@@ -590,14 +721,6 @@ Status DbdToPv::getFromDBD(
             pvString->put(format);
             bitSet->set(pvString->getFieldOffset());
          }
-         if(!description.empty())
-         {
-             PVStringPtr pvString = pvDisplay->getSubField<PVString>("description");
-             if(description.compare(pvString->get()) !=0) {
-                  pvString->put(description);
-                  bitSet->set(pvString->getFieldOffset());
-             }
-         }
     }
     if(valueAlarmRequested) {
         double upper_alarm_limit = 0.0;
@@ -668,6 +791,8 @@ Status DbdToPv::getFromDBD(
     return Status::Ok;
 }
 
+
+
 template<typename dbrT, typename pvT>
 const void * put_DBRScalar(dbrT *val,PVScalar::shared_pointer const & pvScalar)
 {
@@ -726,18 +851,63 @@ Status DbdToPv::putToDBD(
                break;
            }
            case DBR_CHAR:
+               if(charArrayIsString)
+               {
+                   PVStringPtr pvValue(pvStructure->getSubField<PVString>("value"));
+                   const char * pchar = pvValue->get().c_str();
+                   pValue = pchar;
+                   count = pvValue->get().length();
+                   break;
+               }
+               if(dbfIsUCHAR)
+               {
+                    pValue = put_DBRScalarArray<dbr_char_t,PVUByteArray>(&count,pvValue);
+                    break;
+               }
                pValue = put_DBRScalarArray<dbr_char_t,PVByteArray>(&count,pvValue);
                break;
            case DBR_SHORT:
+               if(dbfIsUSHORT)
+               {
+                    pValue = put_DBRScalarArray<dbr_short_t,PVUShortArray>(&count,pvValue);
+                    break;
+               }
                pValue = put_DBRScalarArray<dbr_short_t,PVShortArray>(&count,pvValue);
                break;
            case DBR_LONG:
+               if(dbfIsULONG)
+               {
+                    pValue = put_DBRScalarArray<dbr_long_t,PVUIntArray>(&count,pvValue);
+                    break;
+               }
                pValue = put_DBRScalarArray<dbr_long_t,PVIntArray>(&count,pvValue);
                break;
            case DBR_FLOAT:
                pValue = put_DBRScalarArray<dbr_float_t,PVFloatArray>(&count,pvValue);
                break;
            case DBR_DOUBLE:
+               if(dbfIsINT64)
+               {
+                   PVLongArrayPtr pvValue(pvStructure->getSubField<PVLongArray>("value"));
+                   PVLongArray::const_svector sv(pvValue->view());
+                   pvDoubleArray = PVDoubleArrayPtr(getPVDataCreate()->createPVScalarArray<PVDoubleArray>());
+                   pvDoubleArray->putFrom(sv);
+                   const double * pdouble = pvDoubleArray->view().data();
+                   count = pvValue->getLength();
+                   pValue = pdouble;
+                   break;
+               }
+               if(dbfIsUINT64)
+               {
+                   PVULongArrayPtr pvValue(pvStructure->getSubField<PVULongArray>("value"));
+                   PVULongArray::const_svector sv(pvValue->view());
+                   pvDoubleArray = PVDoubleArrayPtr(getPVDataCreate()->createPVScalarArray<PVDoubleArray>());
+                   pvDoubleArray->putFrom(sv);
+                   const double * pdouble = pvDoubleArray->view().data();
+                   count = pvValue->getLength();
+                   pValue = pdouble;
+                   break;
+               }
                pValue = put_DBRScalarArray<dbr_double_t,PVDoubleArray>(&count,pvValue);
                break;
            default:
@@ -750,36 +920,48 @@ Status DbdToPv::putToDBD(
         switch(caValueType) {
            case DBR_ENUM:
            {
-               bool wait = false;
-               {
-                   Lock lock(choicesMutex);
-                   if(!choicesValid) {
-                       wait = true;
-                       waitForChoicesValid = true;
-                   }
-               } 
-               bool result = true;
-               if(wait) {
-                   result = choicesEvent.wait(5.0);
-               }
-               if(!result) {
-                   Status errorStatus(
-                    Status::STATUSTYPE_ERROR, string("DbdToPv::getFromDBD "));
-                return errorStatus;
-               }
                dbr_enum_t indexvalue = pvStructure->getSubField<PVInt>("value.index")->get();
                pValue = &indexvalue;
                break;
            }
            case DBR_STRING: pValue = pvStructure->getSubField<PVString>("value")->get().c_str(); break;
-           case DBR_CHAR: pValue = put_DBRScalar<dbr_char_t,PVByte>(&bvalue,pvValue); break;
-           case DBR_SHORT: pValue = put_DBRScalar<dbr_short_t,PVShort>(&svalue,pvValue); break;
-           case DBR_LONG: pValue = put_DBRScalar<dbr_long_t,PVInt>(&lvalue,pvValue); break;
+           case DBR_CHAR: 
+               if(dbfIsUCHAR)
+               {
+                    pValue = put_DBRScalar<dbr_char_t,PVUByte>(&bvalue,pvValue);
+                    break;
+               }
+               pValue = put_DBRScalar<dbr_char_t,PVByte>(&bvalue,pvValue); break;
+           case DBR_SHORT: 
+               if(dbfIsUSHORT)
+               {
+                    pValue = put_DBRScalar<dbr_short_t,PVUShort>(&svalue,pvValue);
+                    break;
+               }
+               pValue = put_DBRScalar<dbr_short_t,PVShort>(&svalue,pvValue); break;
+           case DBR_LONG: 
+               if(dbfIsULONG)
+               {
+                    pValue = put_DBRScalar<dbr_long_t,PVUInt>(&lvalue,pvValue);
+                    break;
+               }
+               pValue = put_DBRScalar<dbr_long_t,PVInt>(&lvalue,pvValue); break;
            case DBR_FLOAT: pValue = put_DBRScalar<dbr_float_t,PVFloat>(&fvalue,pvValue); break;
-           case DBR_DOUBLE: pValue = put_DBRScalar<dbr_double_t,PVDouble>(&dvalue,pvValue); break;
+           case DBR_DOUBLE: 
+               if(dbfIsINT64)
+               {
+                    pValue = put_DBRScalar<dbr_double_t,PVLong>(&dvalue,pvValue);
+                    break;
+               }
+               if(dbfIsUINT64)
+               {
+                    pValue = put_DBRScalar<dbr_double_t,PVULong>(&dvalue,pvValue);
+                    break;
+               }
+               pValue = put_DBRScalar<dbr_double_t,PVDouble>(&dvalue,pvValue); break;
            default:
                 Status errorStatus(
-                    Status::STATUSTYPE_ERROR, string("DbdToPv::getFromDBD logic error"));
+                    Status::STATUSTYPE_ERROR, string("DbdToPv::putToDBD logic error"));
                 return errorStatus;
          }
     }

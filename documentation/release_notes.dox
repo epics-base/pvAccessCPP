@@ -24,6 +24,7 @@ Release 6.1.0 (UNRELEASED)
  - PVA Server now handles pipeline=true automatically for all ChannelProviders.
    It is only necessary to implement epics::pvAccess::Monitor::reportRemoteQueueStatus()
    to receive notification of initial window size.
+ - Most locking issues in the 'ca' provider should now be resolved.
 - Additions
  - pvput to NTEnum via. string now supported
  - pvac::* add valid() method and boolean cast shorthand.  Also reset() and operator<<(ostream, ...)
@@ -31,6 +32,10 @@ Release 6.1.0 (UNRELEASED)
  - Add pvac::ClientProvider::name()
  - Add epics::pvAccess::MonitorFIFO utility implementation of epics::pvAccess::Monitor
  - Add pvas::StaticProvider, pvas::DynamicProvider, and pvas::SharedPV.  See @ref pvas
+ - Support in the 'ca' provider for new pvRequest options:
+   - New `DBE` record option to select CA events to monitor, containing any combination of the keywords `VALUE`, `ARCHIVE`, `ALARM` and/or `PROPERTY`.
+   - New `dbtype` field option to represent data types returned by CA as an unsigned or 64-bit integer.
+   - New `pvtype=pvString` field option to represent an array of chars from CA as a string.
 
 Release 6.0.0 (Dec 2017)
 ========================

@@ -24,6 +24,9 @@ namespace ca {
 
 #define DEBUG_LEVEL 0
 
+class ChannelConnectThread;
+typedef std::tr1::shared_ptr<ChannelConnectThread> ChannelConnectThreadPtr;
+
 class MonitorEventThread;
 typedef std::tr1::shared_ptr<MonitorEventThread> MonitorEventThreadPtr;
 
@@ -86,6 +89,7 @@ private:
     ca_client_context* current_context;
     epics::pvData::Mutex channelListMutex;
     std::vector<CAChannelWPtr> caChannelList;
+    ChannelConnectThreadPtr channelConnectThread;
     MonitorEventThreadPtr monitorEventThread;
     GetDoneThreadPtr getDoneThread;
     PutDoneThreadPtr putDoneThread;
