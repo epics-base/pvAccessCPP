@@ -3,59 +3,12 @@ set -e -x
 
 CURDIR="$PWD"
 
-QDIR="$HOME/.cache/qemu"
-
-if [ -n "$RTEMS" -a "$TEST" = "YES" ]
-then
-  git clone --quiet --branch vme --depth 10 https://github.com/mdavidsaver/qemu.git "$HOME/.build/qemu"
-  cd "$HOME/.build/qemu"
-
-  HEAD=`git log -n1 --pretty=format:%H`
-  echo "HEAD revision $HEAD"
-
-  [ -e "$HOME/.cache/qemu/built" ] && BUILT=`cat "$HOME/.cache/qemu/built"`
-  echo "Cached revision $BUILT"
-
-  if [ "$HEAD" != "$BUILT" ]
-  then
-    echo "Building QEMU"
-    git submodule --quiet update --init
-
-    install -d "$HOME/.build/qemu/build"
-    cd         "$HOME/.build/qemu/build"
-
-    "$HOME/.build/qemu/configure" --prefix="$HOME/.cache/qemu/usr" --target-list=i386-softmmu --disable-werror
-    make -j2
-    make install
-
-    echo "$HEAD" > "$HOME/.cache/qemu/built"
-  fi
-fi
-
 cat << EOF > $CURDIR/configure/RELEASE.local
 EPICS_BASE=$HOME/.source/epics-base
 EOF
 
 install -d "$HOME/.source"
 cd "$HOME/.source"
-
-add_base_module() {
-  MODULE=$1
-  BRANCH=$2
-  ( cd epics-base/modules && \
-  git clone --quiet --depth 5 --branch $MODULE/$BRANCH https://github.com/${REPOBASE:-epics-base}/epics-base.git $MODULE && \
-  cd $MODULE && git log -n1 )
-}
-
-add_gh_module() {
-  MODULE=$1
-  REPOOWNER=$2
-  REPONAME=$3
-  BRANCH=$4
-  ( cd epics-base/modules && \
-  git clone --quiet --depth 5 --branch $BRANCH https://github.com/$REPOOWNER/$REPONAME.git $MODULE && \
-  cd $MODULE && git log -n1 )
-}
 
 add_gh_flat() {
   MODULE=$1
@@ -71,19 +24,10 @@ ${MODULE_UC}=$HOME/.source/$MODULE
 EOF
 }
 
-if [ "$BRBASE" ]
-then
-  git clone --quiet --depth 5 --branch "$BRBASE" https://github.com/${REPOBASE:-epics-base}/epics-base.git epics-base
-  (cd epics-base && git log -n1 )
-  add_gh_flat pvData ${REPOPVD:-epics-base} pvDataCPP ${BRPVD:-master}
-else
-  git clone --quiet --depth 5 --branch core/"${BRCORE:-master}" https://github.com/${REPOBASE:-epics-base}/epics-base.git epics-base
-  ( cd epics-base && git log -n1 )
-  add_base_module libcom "${BRLIBCOM:-master}"
-  add_base_module ca "${BRCA:-master}"
-  add_base_module database "${BRDATABASE:-master}"
-  add_gh_module pvData ${REPOPVD:-epics-base} pvDataCPP ${BRPVD:-master}
-fi
+# not recursive
+git clone --quiet --depth 5 --branch "$BRBASE" https://github.com/${REPOBASE:-epics-base}/epics-base.git epics-base
+(cd epics-base && git log -n1 )
+add_gh_flat pvData ${REPOPVD:-epics-base} pvDataCPP ${BRPVD:-master}
 
 if [ -e $CURDIR/configure/RELEASE.local ]
 then
@@ -146,24 +90,17 @@ EOF
 if [ -n "$RTEMS" ]
 then
   echo "Cross RTEMS${RTEMS} for pc386"
-  install -d /home/travis/.cache
-  curl -L "https://github.com/mdavidsaver/rsb/releases/download/travis-20160306-2/rtems${RTEMS}-i386-trusty-20190306-2.tar.gz" \
-  | tar -C /home/travis/.cache -xj
+  curl -L "https://github.com/mdavidsaver/rsb/releases/download/20171203-${RTEMS}/i386-rtems${RTEMS}-trusty-20171203-${RTEMS}.tar.bz2" \
+  | tar -C / -xmj
 
   sed -i -e '/^RTEMS_VERSION/d' -e '/^RTEMS_BASE/d' epics-base/configure/os/CONFIG_SITE.Common.RTEMS
   cat << EOF >> epics-base/configure/os/CONFIG_SITE.Common.RTEMS
 RTEMS_VERSION=$RTEMS
-RTEMS_BASE=/home/travis/.cache/rtems${RTEMS}-i386
+RTEMS_BASE=$HOME/.rtems
 EOF
   cat << EOF >> epics-base/configure/CONFIG_SITE
-CROSS_COMPILER_TARGET_ARCHS+=RTEMS-pc386
+CROSS_COMPILER_TARGET_ARCHS += RTEMS-pc386-qemu
 EOF
-
-  # find local qemu-system-i386
-  export PATH="$HOME/.cache/qemu/usr/bin:$PATH"
-  echo -n "Using QEMU: "
-  type qemu-system-i386 || echo "Missing qemu"
-  EXTRA=RTEMS_QEMU_FIXUPS=YES
 fi
 
 make -j2 -C epics-base $EXTRA
