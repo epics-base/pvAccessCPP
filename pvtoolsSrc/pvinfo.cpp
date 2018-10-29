@@ -131,7 +131,7 @@ int main (int argc, char *argv[])
 
     SET_LOG_LEVEL(debug ? pva::logLevelDebug : pva::logLevelError);
 
-    std::vector<GetInfo> infos(argc - optind);
+    std::vector<std::tr1::shared_ptr<GetInfo> > infos;
 
     pva::ca::CAClientFactory::start();
 
@@ -139,7 +139,9 @@ int main (int argc, char *argv[])
         pvac::ClientProvider prov(defaultProvider);
 
         for(int i = optind; i<argc; i++) {
-            infos[i-optind].op = prov.connect(argv[i]).info(&infos[i-optind]);
+            std::tr1::shared_ptr<GetInfo> info(new GetInfo);
+            info->op = prov.connect(argv[i]).info(info.get());
+            infos.push_back(info);
         }
 
         Tracker::prepare(); // install signal handler
