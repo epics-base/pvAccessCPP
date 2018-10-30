@@ -26,18 +26,11 @@ namespace {
 
 void callusage (void)
 {
-    fprintf (stderr, "\nUsage: " EXECNAME " [options] <PV name> [<arg1>=<value>]...\n\n"
-             "\noptions:\n"
-             "  -h: Help: Print this message\n"
-             "  -V: Print version and exit\n"
+    fprintf (stderr, "\nUsage: " EXECNAME " [options] <PV name> [<arg1>=<value>]...\n"
+             "\n"
+             COMMON_OPTIONS
              "  -s <service name>:   legacy form of PV name\n"
-             "  -a <service arg>:    legacy form of argument\n"
-             "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
-             "  -w <sec>:          Wait time, specifies timeout, default is %f seconds for get, inf. for monitor\n"
-             "  -p <provider>:     Set default provider name, default is '%s'\n"
-             "  -M <raw|nt|json>:  Output mode.  default is 'nt'\n"
-             "  -v:                Show entire structure (implies Raw mode)\n"
-             "  -d:                Enable debug output\n"
+             "  -a <service arg=value>:    legacy form of argument\n"
              " deprecated options:\n"
              "  -q, -t, -i, -n, -F: ignored\n"
              "  -f <input file>:   errors\n"

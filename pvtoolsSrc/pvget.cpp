@@ -43,21 +43,19 @@ int haderror;
 
 void usage (void)
 {
-    fprintf (stderr, "\nUsage: " EXECNAME " [options] <PV name>...\n\n"
-             "\noptions:\n"
-             "  -h: Help: Print this message\n"
-             "  -V: Print version and exit\n"
-             "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n"
-             "  -w <sec>:          Wait time, specifies timeout, default is %f seconds for get, inf. for monitor\n"
-             "  -m:                Monitor mode\n"
-             "  -p <provider>:     Set default provider name, default is '%s'\n"
-             "  -M <raw|nt|json>:  Output mode.  default is 'nt'\n"
-             "  -v:                Show entire structure (implies Raw mode)\n"
-             "  -d:                Enable debug output\n"
+    fprintf (stderr, "\nUsage: " EXECNAME " [options] <PV name>...\n"
+             "\n"
+             COMMON_OPTIONS
              " deprecated options:\n"
              "  -q, -t, -i, -n, -F: ignored\n"
              "  -f <input file>:   errors\n"
-             "\nexample: " EXECNAME " double01\n\n"
+             " Output details:\n"
+             "  -m -v:             Monitor in Raw mode.  Print only fields marked as changed.\n"
+             "  -m -vv:            Monitor in Raw mode.  Highlight fields marked as changed, show all valid fields.\n"
+             "  -m -vvv:           Monitor in Raw mode.  Highlight fields marked as changed, show all fields.\n"
+             "  -vv:               Get in Raw mode.  Highlight valid fields, show all fields.\n"
+             "\n"
+             "example: " EXECNAME " double01\n\n"
              , request.c_str(), timeout, defaultProvider.c_str());
 }
 
@@ -365,7 +363,7 @@ int MAIN (int argc, char *argv[])
     if(monitor)
         timeout = -1;
 
-    if(verbosity>0)
+    if(verbosity>0 && outmode==pvd::PVStructure::Formatter::NT)
         outmode = pvd::PVStructure::Formatter::Raw;
 
     pvd::PVStructure::shared_pointer pvRequest;
