@@ -174,7 +174,7 @@ private:
     
     CAChannelPtr channel;
     ChannelGetRequester::weak_pointer channelGetRequester;
-    epics::pvData::PVStructurePtr const & pvRequest;
+    const epics::pvData::PVStructure::shared_pointer pvRequest;
     epics::pvData::Status getStatus;
     GetDoneThreadPtr getDoneThread;
     NotifyGetRequesterPtr notifyGetRequester;
