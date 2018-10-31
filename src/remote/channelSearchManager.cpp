@@ -346,15 +346,17 @@ void ChannelSearchManager::callback()
     vector<SearchInstance::shared_pointer>::iterator siter = toSend.begin();
     for (; siter != toSend.end(); siter++)
     {
-        m_userValueMutex.lock();
-        int32_t& countValue = (*siter)->getUserValue();
-        bool skip = !isPowerOfTwo(countValue);
+        bool skip;
+        {
+            epicsGuard<epicsMutex> G(m_userValueMutex);
+            int32_t& countValue = (*siter)->getUserValue();
+            skip = !isPowerOfTwo(countValue);
 
-        if (countValue >= MAX_COUNT_VALUE)
-            countValue = MAX_FALLBACK_COUNT_VALUE;
-        else
-            countValue++;
-        m_userValueMutex.unlock();
+            if (countValue >= MAX_COUNT_VALUE)
+                countValue = MAX_FALLBACK_COUNT_VALUE;
+            else
+                countValue++;
+        }
 
         // back-off
         if (skip)
