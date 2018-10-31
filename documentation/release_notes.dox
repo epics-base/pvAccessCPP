@@ -7,6 +7,8 @@ Release 6.1.0 (UNRELEASED)
  - pv/namedLockPattern.h
  - createFileLogger() from pv/logger.h
 - Removals
+ - The @b eget CLI utility has moved to https://github.com/epics-base/eget
+   The new @b pvcall and existing pvget replace its role as a low level troubleshooting tool.
  - Remove deprecated methods configure(), flush(), and poll() from ChannelProvider.
  - Remove RPCClient::sendRequest()
  - Remove RPCService::destroy() and dispose()
@@ -26,6 +28,8 @@ Release 6.1.0 (UNRELEASED)
    to receive notification of initial window size.
  - Most locking issues in the 'ca' provider should now be resolved.
 - Additions
+ - Add pvmonitor execuable as an alias for 'pvget -m'.
+ - Add new pvcall executable to make RPC calls with arguments encoded using the NTURI convention.
  - pvput to NTEnum via. string now supported
  - pvac::* add valid() method and boolean cast shorthand.  Also reset() and operator<<(ostream, ...)
  - Add pvac::GetEvent::valid to determine fields actually transfered during a Get operation.
