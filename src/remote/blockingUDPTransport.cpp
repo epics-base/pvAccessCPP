@@ -575,8 +575,7 @@ void initializeUDPTransports(bool serverFlag,
                              const std::string& addressList,
                              const std::string& ignoreAddressList)
 {
-    std::tr1::shared_ptr<ClientChannelImpl> nullTransportClient;
-    epics::auto_ptr<BlockingUDPConnector> connector(new BlockingUDPConnector(serverFlag, true, true));
+    BlockingUDPConnector connector(serverFlag);
 
     //
     // Create UDP transport for sending (to all network interfaces)
@@ -588,10 +587,7 @@ void initializeUDPTransports(bool serverFlag,
     anyAddress.ia.sin_port = htons(0);
     anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    sendTransport = connector->connect(
-                        nullTransportClient, responseHandler,
-                        anyAddress, PVA_PROTOCOL_REVISION,
-                        PVA_DEFAULT_PRIORITY);
+    sendTransport = connector.connect(responseHandler, anyAddress, PVA_PROTOCOL_REVISION);
     if (!sendTransport)
     {
         THROW_BASE_EXCEPTION("Failed to initialize UDP transport.");
@@ -727,10 +723,8 @@ void initializeUDPTransports(bool serverFlag,
             listenLocalAddress.ia.sin_port = htons(listenPort);
             listenLocalAddress.ia.sin_addr.s_addr = node.addr.ia.sin_addr.s_addr;
 
-            BlockingUDPTransport::shared_pointer transport = connector->connect(
-                        nullTransportClient, responseHandler,
-                        listenLocalAddress, PVA_PROTOCOL_REVISION,
-                        PVA_DEFAULT_PRIORITY);
+            BlockingUDPTransport::shared_pointer transport = connector.connect(
+                        responseHandler, listenLocalAddress, PVA_PROTOCOL_REVISION);
             if (!transport)
                 continue;
             listenLocalAddress = transport->getRemoteAddress();
@@ -764,10 +758,7 @@ void initializeUDPTransports(bool serverFlag,
                 bcastAddress.ia.sin_port = htons(listenPort);
                 bcastAddress.ia.sin_addr.s_addr = node.bcast.ia.sin_addr.s_addr;
 
-                transport2 = connector->connect(
-                                 nullTransportClient, responseHandler,
-                                 bcastAddress, PVA_PROTOCOL_REVISION,
-                                 PVA_DEFAULT_PRIORITY);
+                transport2 = connector.connect(responseHandler, bcastAddress, PVA_PROTOCOL_REVISION);
                 if (transport2)
                 {
                     /* The other wrinkle is that nothing should be sent from this second
@@ -820,15 +811,14 @@ void initializeUDPTransports(bool serverFlag,
     try
     {
         // NOTE: multicast receiver socket must be "bound" to INADDR_ANY or multicast address
-        localMulticastTransport = connector->connect(
-                                      nullTransportClient, responseHandler,
+        localMulticastTransport = connector.connect(
+                                      responseHandler,
 #if !defined(_WIN32)
                                       group,
 #else
                                       anyAddress,
 #endif
-                                      PVA_PROTOCOL_REVISION,
-                                      PVA_DEFAULT_PRIORITY);
+                                      PVA_PROTOCOL_REVISION);
         if (!localMulticastTransport)
             throw std::runtime_error("Failed to bind UDP socket.");
 

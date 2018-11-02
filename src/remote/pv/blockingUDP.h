@@ -400,26 +400,19 @@ private:
 
 };
 
-class BlockingUDPConnector :
-    private epics::pvData::NoDefaultMethods {
+class BlockingUDPConnector{
 public:
     POINTER_DEFINITIONS(BlockingUDPConnector);
 
-    BlockingUDPConnector(
-        bool serverFlag,
-        bool reuseSocket,
-        bool broadcast) :
-        _serverFlag(serverFlag),
-        _reuseSocket(reuseSocket),
-        _broadcast(broadcast) {
-    }
+    BlockingUDPConnector(bool serverFlag) :_serverFlag(serverFlag) {}
 
     /**
      * NOTE: transport client is ignored for broadcast (UDP).
      */
-    BlockingUDPTransport::shared_pointer connect(std::tr1::shared_ptr<ClientChannelImpl> const & client,
-            ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& bindAddress,
-            epics::pvData::int8 transportRevision, epics::pvData::int16 priority);
+    BlockingUDPTransport::shared_pointer connect(
+            ResponseHandler::shared_pointer const & responseHandler,
+            osiSockAddr& bindAddress,
+            epics::pvData::int8 transportRevision);
 
 private:
 
@@ -428,16 +421,7 @@ private:
      */
     bool _serverFlag;
 
-    /**
-     * Reuse socket flag.
-     */
-    bool _reuseSocket;
-
-    /**
-     * Broadcast flag.
-     */
-    bool _broadcast;
-
+    EPICS_NOT_COPYABLE(BlockingUDPConnector)
 };
 
 typedef std::vector<BlockingUDPTransport::shared_pointer> BlockingUDPTransportVector;

@@ -35,10 +35,10 @@ struct closer {
 namespace epics {
 namespace pvAccess {
 
-BlockingUDPTransport::shared_pointer BlockingUDPConnector::connect(std::tr1::shared_ptr<ClientChannelImpl> const & /*client*/,
-        ResponseHandler::shared_pointer const & responseHandler, osiSockAddr& bindAddress,
-        int8 transportRevision, int16 /*priority*/) {
-
+BlockingUDPTransport::shared_pointer BlockingUDPConnector::connect(ResponseHandler::shared_pointer const & responseHandler,
+                                                                   osiSockAddr& bindAddress,
+                                                                   int8 transportRevision)
+{
     SOCKET socket = epicsSocketCreate(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if(socket==INVALID_SOCKET) {
         char errStr[64];
@@ -47,7 +47,7 @@ BlockingUDPTransport::shared_pointer BlockingUDPConnector::connect(std::tr1::sha
         return BlockingUDPTransport::shared_pointer();
     }
 
-    int optval = _broadcast ? 1 : 0;
+    int optval = 1;
     int retval = ::setsockopt(socket, SOL_SOCKET, SO_BROADCAST, (char *)&optval, sizeof(optval));
     if(retval<0)
     {
@@ -69,8 +69,7 @@ BlockingUDPTransport::shared_pointer BlockingUDPConnector::connect(std::tr1::sha
 
 
     // set SO_REUSEADDR or SO_REUSEPORT, OS dependant
-    if (_reuseSocket)
-        epicsSocketEnableAddressUseForDatagramFanout(socket);
+    epicsSocketEnableAddressUseForDatagramFanout(socket);
 
     retval = ::bind(socket, (sockaddr*)&(bindAddress.sa), sizeof(sockaddr));
     if(retval<0) {
