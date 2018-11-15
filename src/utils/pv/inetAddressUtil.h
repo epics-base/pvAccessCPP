@@ -15,9 +15,6 @@
 #include <pv/pvType.h>
 #include <pv/byteBuffer.h>
 
-
-// TODO implement using smart pointers
-
 namespace epics {
 namespace pvAccess {
 
@@ -35,11 +32,6 @@ struct ifaceNode {
 };
 typedef std::vector<ifaceNode> IfaceNodeVector;
 epicsShareFunc int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *pMatchAddr = 0);
-
-/**
- * Returns NIF index for given interface address, or -1 on failure.
- */
-epicsShareFunc int discoverInterfaceIndex(SOCKET socket, const osiSockAddr *pMatchAddr);
 
 /**
  * Encode IPv4 address as IPv6 address.
@@ -64,20 +56,6 @@ epicsShareFunc bool decodeAsIPv6Address(epics::pvData::ByteBuffer* buffer, osiSo
 epicsShareFunc bool isMulticastAddress(const osiSockAddr* address);
 
 /**
- * Convert an integer into an IPv4 INET address.
- * @param ret address stored here
- * @param addr integer representation of a given address.
- */
-epicsShareFunc void intToIPv4Address(osiSockAddr& ret, epics::pvData::int32 addr);
-
-/**
- * Convert an IPv4 INET address to an integer.
- * @param addr  IPv4 INET address.
- * @return integer representation of a given address.
- */
-epicsShareFunc epics::pvData::int32 ipv4AddressToInt(const osiSockAddr& addr);
-
-/**
  * Parse space delimited addresss[:port] string and populate array of <code>InetSocketAddress</code>.
  * @param ret results stored hre
  * @param list  space delimited addresss[:port] string.
@@ -90,8 +68,6 @@ epicsShareFunc void getSocketAddressList(InetAddrVector& ret, const std::string 
 
 epicsShareFunc std::string inetAddressToString(const osiSockAddr &addr,
         bool displayPort = true, bool displayHex = false);
-
-epicsShareFunc int getLoopbackNIF(osiSockAddr& loAddr, std::string const & localNIF, unsigned short port);
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 

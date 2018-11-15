@@ -79,17 +79,6 @@ bool isMulticastAddress(const osiSockAddr* address) {
     return msB >= 224 && msB <= 239;
 }
 
-void intToIPv4Address(osiSockAddr& ret, int32 addr) {
-    memset(&ret, 0, sizeof(ret));
-    ret.ia.sin_family = AF_INET;
-    ret.ia.sin_addr.s_addr = htonl(addr);
-    ret.ia.sin_port = 0;
-}
-
-int32 ipv4AddressToInt(const osiSockAddr& addr) {
-    return (int32)ntohl(addr.ia.sin_addr.s_addr);
-}
-
 void getSocketAddressList(InetAddrVector& ret,
                           const std::string & list, int defaultPort,
                                      const InetAddrVector* appendList) {
@@ -138,23 +127,6 @@ string inetAddressToString(const osiSockAddr &addr,
                             <<")";
 
     return saddr.str();
-}
-
-int getLoopbackNIF(osiSockAddr &loAddr, string const & localNIF, unsigned short port)
-{
-    if (!localNIF.empty())
-    {
-        if (aToIPAddr(localNIF.c_str(), port, &loAddr.ia) == 0)
-            return 0;
-        // else TODO log error
-    }
-
-    // fallback
-    memset(&loAddr, 0, sizeof(loAddr));
-    loAddr.ia.sin_family = AF_INET;
-    loAddr.ia.sin_port = ntohs(port);
-    loAddr.ia.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    return 1;
 }
 
 ifaceNode::ifaceNode()

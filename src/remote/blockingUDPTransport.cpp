@@ -685,7 +685,10 @@ void initializeUDPTransports(bool serverFlag,
 
     // TODO configurable local NIF, address
     osiSockAddr loAddr;
-    getLoopbackNIF(loAddr, "", 0);
+    memset(&loAddr, 0, sizeof(loAddr));
+    loAddr.ia.sin_family = AF_INET;
+    loAddr.ia.sin_port = ntohs(0);
+    loAddr.ia.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
     // TODO configurable local multicast address
     std::string mcastAddress("224.0.0.128");

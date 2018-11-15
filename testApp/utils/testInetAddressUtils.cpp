@@ -113,34 +113,6 @@ void test_getSocketAddressList()
     testOk1("192.168.3.4:555" == inetAddressToString(addr));
 }
 
-void test_ipv4AddressToInt()
-{
-    testDiag("Test ipv4AddressToInt()");
-
-    InetAddrVector vec;
-    getSocketAddressList(vec, "127.0.0.1   10.10.12.11:1234 192.168.3.4", 555);
-
-    testOk1(static_cast<size_t>(3) == vec.size());
-
-    testOk1((int32)0x7F000001 == ipv4AddressToInt((vec.at(0))));
-    testOk1((int32)0x0A0A0C0B == ipv4AddressToInt((vec.at(1))));
-    testOk1((int32)0xC0A80304 == ipv4AddressToInt((vec.at(2))));
-}
-
-void test_intToIPv4Address()
-{
-    testDiag("Test intToIPv4Address()");
-
-    osiSockAddr addr;
-    intToIPv4Address(addr, 0x7F000001);
-    testOk1(AF_INET == addr.ia.sin_family);
-    testOk1("127.0.0.1:0" == inetAddressToString(addr));
-
-    intToIPv4Address(addr, 0x0A0A0C0B);
-    testOk1(AF_INET == addr.ia.sin_family);
-    testOk1("10.10.12.11:0" == inetAddressToString(addr));
-}
-
 void test_encodeAsIPv6Address()
 {
     testDiag("Test encodeAsIPv6Address()");
@@ -153,7 +125,9 @@ void test_encodeAsIPv6Address()
                  };
 
     osiSockAddr addr;
-    intToIPv4Address(addr, 0x0A0A0C0B);
+    memset(&addr, 0, sizeof(addr));
+    addr.ia.sin_family = AF_INET;
+    addr.ia.sin_addr.s_addr = htonl(0x0A0A0C0B);
 
     encodeAsIPv6Address(buff.get(), &addr);
     testOk1(static_cast<size_t>(16) == buff->getPosition());
@@ -176,28 +150,6 @@ void test_isMulticastAddress()
     testOk1(isMulticastAddress(&vec.at(3)));
     testOk1(isMulticastAddress(&vec.at(4)));
     testOk1(isMulticastAddress(&vec.at(5)));
-}
-
-void test_getLoopbackNIF()
-{
-    testDiag("Test getLoopbackNIF()");
-
-    osiSockAddr addr;
-    unsigned short port = 5555;
-
-    int defaultValue = getLoopbackNIF(addr, "", port);
-
-    testOk1(defaultValue);
-    testOk1(AF_INET == addr.ia.sin_family);
-    testOk1(htons(port) == addr.ia.sin_port);
-    testOk1(htonl(INADDR_LOOPBACK) == addr.ia.sin_addr.s_addr);
-
-    defaultValue = getLoopbackNIF(addr, "10.0.0.1:7777", port);
-
-    testOk1(!defaultValue);
-    testOk1(AF_INET == addr.ia.sin_family);
-    testOk1(htons(7777) == addr.ia.sin_port);
-    testOk1(htonl(0x0A000001) == addr.ia.sin_addr.s_addr);
 }
 
 #ifdef _WIN32
@@ -238,7 +190,10 @@ void test_multicastLoopback()
     }
 
     osiSockAddr loAddr;
-    getLoopbackNIF(loAddr, "", port);
+    memset(&loAddr, 0, sizeof(loAddr));
+    loAddr.ia.sin_family = AF_INET;
+    loAddr.ia.sin_port = ntohs(port);
+    loAddr.ia.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
     osiSockAddr mcastAddr;
     aToIPAddr("224.0.0.128", port, &mcastAddr.ia);
@@ -348,15 +303,12 @@ void test_multicastLoopback()
 
 MAIN(testInetAddressUtils)
 {
-    testPlan(79);
+    testPlan(63);
     testDiag("Tests for InetAddress utils");
 
     test_getSocketAddressList();
-    test_ipv4AddressToInt();
-    test_intToIPv4Address();
     test_encodeAsIPv6Address();
     test_isMulticastAddress();
-    test_getLoopbackNIF();
 
     test_multicastLoopback();
 
