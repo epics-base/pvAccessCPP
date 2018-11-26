@@ -210,6 +210,7 @@ void ChannelSearchManager::initializeSendBuffer()
     m_sendBuffer.putInt(m_sequenceNumber);
 
     // multicast vs unicast mask
+    // This is CAST_POSITION, which is overwritten before send
     m_sendBuffer.putByte((int8_t)0);
 
     // reserved part
