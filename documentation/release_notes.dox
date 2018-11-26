@@ -7,6 +7,8 @@ Release 6.1.0 (UNRELEASED)
  - pv/namedLockPattern.h
  - createFileLogger() from pv/logger.h
 - Removals
+ - No longer install testServer, testGetPerformance, testMonitorPerformance, rpcServiceExample, rpcServiceAsyncExample, rpcWildServiceExample, rpcClientExample, and pipelineServiceExample.
+   These will continue to be built, and may be found under testApp/O.* .
  - The @b eget CLI utility has moved to https://github.com/epics-base/eget
    The new @b pvcall and existing pvget replace its role as a low level troubleshooting tool.
  - Remove deprecated methods configure(), flush(), and poll() from ChannelProvider.
