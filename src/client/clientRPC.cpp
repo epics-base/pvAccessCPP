@@ -6,6 +6,7 @@
 #include <epicsMutex.h>
 #include <epicsGuard.h>
 #include <epicsEvent.h>
+#include <epicsThread.h>
 
 #include <pv/pvData.h>
 #include <pv/bitSet.h>
