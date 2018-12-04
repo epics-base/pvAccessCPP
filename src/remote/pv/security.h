@@ -414,9 +414,9 @@ public:
     }
 };
 
-class epicsShareClass SecurityPluginRegistry :
-    private epics::pvData::NoDefaultMethods
+class epicsShareClass SecurityPluginRegistry
 {
+    EPICS_NOT_COPYABLE(SecurityPluginRegistry)
 public:
 
     static SecurityPluginRegistry& instance()

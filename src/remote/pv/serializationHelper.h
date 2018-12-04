@@ -20,7 +20,8 @@
 namespace epics {
 namespace pvAccess {
 
-class epicsShareClass SerializationHelper : public epics::pvData::NoDefaultMethods {
+class epicsShareClass SerializationHelper {
+    EPICS_NOT_COPYABLE(SerializationHelper)
 public:
 
     static epics::pvData::PVDataCreatePtr _pvDataCreate;

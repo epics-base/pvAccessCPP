@@ -26,6 +26,8 @@ namespace pvAccess {
 using namespace epics::pvData;
 using namespace std;
 
+Configuration::~Configuration() {}
+
 bool Configuration::getPropertyAsBoolean(const std::string &name, const bool defaultValue) const
 {
     string value = getPropertyAsString(name, defaultValue ? "1" : "0");

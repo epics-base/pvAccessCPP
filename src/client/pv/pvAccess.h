@@ -101,7 +101,8 @@ public:
 /**
  * Scope lock.
  */
-class epicsShareClass ScopedLock : private epics::pvData::NoDefaultMethods {
+class epicsShareClass ScopedLock {
+    EPICS_NOT_COPYABLE(ScopedLock)
 public:
 
     explicit ScopedLock(Lockable::shared_pointer const & li)
@@ -179,7 +180,7 @@ private:
 /**
  * Base interface for all channel requests (aka. Operations).
  */
-class epicsShareClass ChannelRequest : public virtual Destroyable, public Lockable, private epics::pvData::NoDefaultMethods {
+class epicsShareClass ChannelRequest : public virtual Destroyable, public Lockable {
 public:
     POINTER_DEFINITIONS(ChannelRequest);
 
@@ -211,8 +212,7 @@ public:
     virtual void lastRequest() = 0;
 
 private:
-    ChannelRequest(const ChannelRequest&);
-    ChannelRequest& operator=(const ChannelRequest&);
+    EPICS_NOT_COPYABLE(ChannelRequest)
 };
 
 /**
@@ -376,11 +376,13 @@ public:
 /**
  *
  */
-class epicsShareClass ChannelFind : public Destroyable, private epics::pvData::NoDefaultMethods {
+class epicsShareClass ChannelFind : public Destroyable {
+    EPICS_NOT_COPYABLE(ChannelFind)
 public:
     POINTER_DEFINITIONS(ChannelFind);
     typedef ChannelFindRequester requester_type;
 
+    ChannelFind() {}
     virtual ~ChannelFind() {}
 
     virtual std::tr1::shared_ptr<ChannelProvider> getChannelProvider() = 0;
@@ -833,8 +835,9 @@ class ChannelRequester;
  */
 class epicsShareClass Channel :
     public Requester,
-    public Destroyable,
-    private epics::pvData::NoDefaultMethods {
+    public Destroyable
+{
+    EPICS_NOT_COPYABLE(Channel)
 public:
     POINTER_DEFINITIONS(Channel);
     typedef ChannelRequester requester_type;
@@ -1154,10 +1157,9 @@ enum FlushStrategy {
  *
  * Uniquely configurable (via ChannelProviderFactory::newInstance(Configuration*)
  */
-class epicsShareClass ChannelProvider : public Destroyable, private epics::pvData::NoDefaultMethods
+class epicsShareClass ChannelProvider : public Destroyable
 {
-    ChannelProvider(const ChannelProvider&);
-    ChannelProvider& operator=(const ChannelProvider&);
+    EPICS_NOT_COPYABLE(ChannelProvider)
 public:
     POINTER_DEFINITIONS(ChannelProvider);
 
@@ -1246,10 +1248,12 @@ public:
 /**
  * <code>ChanneProvider</code> factory interface.
  */
-class epicsShareClass ChannelProviderFactory : private epics::pvData::NoDefaultMethods {
+class epicsShareClass ChannelProviderFactory {
+    EPICS_NOT_COPYABLE(ChannelProviderFactory)
 public:
     POINTER_DEFINITIONS(ChannelProviderFactory);
 
+    ChannelProviderFactory() {}
     virtual ~ChannelProviderFactory() {}
 
     /**

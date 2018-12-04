@@ -42,7 +42,8 @@ typedef std::map<const short,epics::pvData::FieldConstPtr> registryMap_t;
  * Registry is used to cache introspection interfaces to minimize network traffic.
  * @author gjansa
  */
-class IntrospectionRegistry : public epics::pvData::NoDefaultMethods {
+class IntrospectionRegistry {
+    EPICS_NOT_COPYABLE(IntrospectionRegistry)
 public:
     IntrospectionRegistry();
     virtual ~IntrospectionRegistry();

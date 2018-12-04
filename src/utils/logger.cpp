@@ -68,7 +68,8 @@ bool pvAccessIsLoggable(pvAccessLogLevel level)
 
 namespace {
 
-class FileLogger : public NoDefaultMethods {
+class FileLogger {
+    EPICS_NOT_COPYABLE(FileLogger)
 public:
     FileLogger(std::string const & name) {
         logFile.open(name.data(), ios::app);

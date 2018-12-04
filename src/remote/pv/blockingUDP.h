@@ -41,11 +41,12 @@ class BlockingUDPConnector;
 
 enum InetAddressType { inetAddressType_all, inetAddressType_unicast, inetAddressType_broadcast_multicast };
 
-class BlockingUDPTransport : public epics::pvData::NoDefaultMethods,
+class BlockingUDPTransport :
     public Transport,
     public TransportSendControl,
     public epicsThreadRunable
 {
+    EPICS_NOT_COPYABLE(BlockingUDPTransport)
 public:
     POINTER_DEFINITIONS(BlockingUDPTransport);
 

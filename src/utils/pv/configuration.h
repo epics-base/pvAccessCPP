@@ -42,15 +42,14 @@ class ConfigurationStack;
 /**
  * Configuration
  */
-class epicsShareClass Configuration : private epics::pvData::NoDefaultMethods
+class epicsShareClass Configuration
 {
+    EPICS_NOT_COPYABLE(Configuration)
 public:
     POINTER_DEFINITIONS(Configuration);
 
-    /**
-     * Destructor.
-     */
-    virtual ~Configuration() {};
+    Configuration() {}
+    virtual ~Configuration() =0;
     /**
      * Get the environment variable specified by name or return default value
      * if it does not exist.
@@ -202,14 +201,13 @@ private:
 /**
  * Configuration provider.
  */
-class epicsShareClass ConfigurationProvider : private epics::pvData::NoDefaultMethods
+class epicsShareClass ConfigurationProvider
 {
+    EPICS_NOT_COPYABLE(ConfigurationProvider)
 public:
     POINTER_DEFINITIONS(ConfigurationProvider);
-    /**
-     * Destructor.
-     */
-    virtual ~ConfigurationProvider() {};
+    ConfigurationProvider() {}
+    virtual ~ConfigurationProvider() {}
     /**
      * Return configuration specified by name.
      *
@@ -234,7 +232,7 @@ public:
     /**
      * Destructor. Note: Registered configurations will be deleted!!
      */
-    ~ConfigurationProviderImpl() {}
+    virtual ~ConfigurationProviderImpl() {}
     Configuration::shared_pointer getConfiguration(const std::string &name);
     void registerConfiguration(const std::string &name, Configuration::shared_pointer const & configuration);
 private:
@@ -245,8 +243,9 @@ private:
 /**
  * Configuration factory.
  */
-class epicsShareClass ConfigurationFactory : private epics::pvData::NoDefaultMethods
+class epicsShareClass ConfigurationFactory
 {
+    EPICS_NOT_COPYABLE(ConfigurationFactory)
 public:
     POINTER_DEFINITIONS(ConfigurationFactory);
 

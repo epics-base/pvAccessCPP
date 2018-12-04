@@ -33,7 +33,8 @@
 namespace epics {
 namespace pvAccess {
 
-class epicsShareClass Version : public epics::pvData::NoDefaultMethods {
+class epicsShareClass Version {
+    EPICS_NOT_COPYABLE(Version)
 public:
     /**
      * Default constructor.

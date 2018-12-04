@@ -10,9 +10,9 @@ namespace pvAccess {
 
 
 class AuthNZHandler :
-    public ResponseHandler,
-    private epics::pvData::NoDefaultMethods
+    public ResponseHandler
 {
+    EPICS_NOT_COPYABLE(AuthNZHandler)
 public:
     AuthNZHandler(Context* context) :
         ResponseHandler(context, "authNZ message")

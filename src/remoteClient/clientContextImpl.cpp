@@ -2455,6 +2455,7 @@ public:
 
 
 class AbstractClientResponseHandler : public ResponseHandler {
+    EPICS_NOT_COPYABLE(AbstractClientResponseHandler)
 protected:
     const ClientContextImpl::weak_pointer _context;
 public:
@@ -2466,7 +2467,7 @@ public:
     }
 };
 
-class NoopResponse : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+class NoopResponse : public AbstractClientResponseHandler {
 public:
     NoopResponse(ClientContextImpl::shared_pointer const & context, string const & description) :
         AbstractClientResponseHandler(context, description)
@@ -2478,7 +2479,7 @@ public:
 };
 
 
-class ResponseRequestHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+class ResponseRequestHandler : public AbstractClientResponseHandler {
 public:
     ResponseRequestHandler(ClientContextImpl::shared_pointer const & context) :
         AbstractClientResponseHandler(context, "Data response")
@@ -2509,7 +2510,7 @@ public:
 };
 
 
-class MultipleResponseRequestHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+class MultipleResponseRequestHandler : public AbstractClientResponseHandler {
 public:
     MultipleResponseRequestHandler(ClientContextImpl::shared_pointer const & context) :
         AbstractClientResponseHandler(context, "Multiple data response")
@@ -2547,7 +2548,7 @@ public:
     }
 };
 
-class SearchResponseHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+class SearchResponseHandler : public AbstractClientResponseHandler {
 public:
     SearchResponseHandler(ClientContextImpl::shared_pointer const & context) :
         AbstractClientResponseHandler(context, "Search response")
@@ -2610,7 +2611,7 @@ public:
     }
 };
 
-class SearchHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+class SearchHandler : public AbstractClientResponseHandler {
 public:
     SearchHandler(ClientContextImpl::shared_pointer const & context) :
         AbstractClientResponseHandler(context, "Search")
@@ -2699,7 +2700,7 @@ public:
     }
 };
 
-class BeaconResponseHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+class BeaconResponseHandler : public AbstractClientResponseHandler {
 public:
     BeaconResponseHandler(ClientContextImpl::shared_pointer const & context) :
         AbstractClientResponseHandler(context, "Beacon")
@@ -2769,7 +2770,7 @@ public:
     }
 };
 
-class ClientConnectionValidationHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+class ClientConnectionValidationHandler : public AbstractClientResponseHandler {
 public:
     ClientConnectionValidationHandler(ClientContextImpl::shared_pointer context) :
         AbstractClientResponseHandler(context, "Connection validation")
@@ -2809,7 +2810,7 @@ public:
     }
 };
 
-class ClientConnectionValidatedHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+class ClientConnectionValidatedHandler : public AbstractClientResponseHandler {
 public:
     ClientConnectionValidatedHandler(ClientContextImpl::shared_pointer context) :
         AbstractClientResponseHandler(context, "Connection validated")
@@ -2830,7 +2831,7 @@ public:
     }
 };
 
-class MessageHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+class MessageHandler : public AbstractClientResponseHandler {
 public:
     MessageHandler(ClientContextImpl::shared_pointer const & context) :
         AbstractClientResponseHandler(context, "Message")
@@ -2865,7 +2866,7 @@ public:
     }
 };
 
-class CreateChannelHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+class CreateChannelHandler : public AbstractClientResponseHandler {
 public:
     CreateChannelHandler(ClientContextImpl::shared_pointer const & context) :
         AbstractClientResponseHandler(context, "Create channel")
@@ -2915,7 +2916,7 @@ public:
 };
 
 
-class DestroyChannelHandler : public AbstractClientResponseHandler, private epics::pvData::NoDefaultMethods {
+class DestroyChannelHandler : public AbstractClientResponseHandler {
 public:
     DestroyChannelHandler(ClientContextImpl::shared_pointer const & context) :
         AbstractClientResponseHandler(context, "Destroy channel")
@@ -2945,7 +2946,8 @@ public:
  * PVA response handler - main handler which dispatches responses to appripriate handlers.
  * @author <a href="mailto:matej.sekoranjaATcosylab.com">Matej Sekoranja</a>
  */
-class ClientResponseHandler : public ResponseHandler, private epics::pvData::NoDefaultMethods {
+class ClientResponseHandler : public ResponseHandler {
+    EPICS_NOT_COPYABLE(ClientResponseHandler)
 private:
 
     /**
