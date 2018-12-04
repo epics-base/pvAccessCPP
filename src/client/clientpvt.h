@@ -1,6 +1,8 @@
 #ifndef CLIENTPVT_H
 #define CLIENTPVT_H
 
+#include <utility>
+
 #include <epicsEvent.h>
 #include <epicsThread.h>
 
@@ -18,37 +20,47 @@ namespace pvac{namespace detail{
  * with the notion of internal vs. external references.
  * External references wrap an internal reference.
  * When the last external reference is dropped,
- * then Base::cancel() is called, but the object isn't free'd
+ * then Derived::cancel() is called, but the object isn't free'd
  * until all internal references are dropped as well.
  */
-template<typename Base>
+template<typename Derived>
 struct wrapped_shared_from_this {
 private:
     // const after build()
-    std::tr1::weak_ptr<Base> myselfptr;
+    std::tr1::weak_ptr<Derived> myselfptr;
 
     struct canceller {
-        std::tr1::shared_ptr<Base> ptr;
-        canceller(const std::tr1::shared_ptr<Base>& ptr) :ptr(ptr) {}
+        std::tr1::shared_ptr<Derived> ptr;
+        canceller(const std::tr1::shared_ptr<Derived>& ptr) :ptr(ptr) {}
 
-        void operator()(Base *) {
-            std::tr1::shared_ptr<Base> P;
+        void operator()(Derived *) {
+            std::tr1::shared_ptr<Derived> P;
             P.swap(ptr);
             P->cancel();
         }
     };
 
 public:
-    std::tr1::shared_ptr<Base> internal_shared_from_this() {
-        std::tr1::shared_ptr<Base> ret(myselfptr);
+    std::tr1::shared_ptr<Derived> internal_shared_from_this() {
+        std::tr1::shared_ptr<Derived> ret(myselfptr);
         if(!ret)
             throw std::tr1::bad_weak_ptr();
         return ret;
     }
 
+#if __cplusplus>=201103L
+    template<class ...Args>
     static
-    std::tr1::shared_ptr<Base> build() {
-        std::tr1::shared_ptr<Base> inner(new Base),
+    std::tr1::shared_ptr<Derived> build(Args... args) {
+        std::tr1::shared_ptr<Derived> inner(new Derived(std::forward<Args>(args)...)),
+                                   ret(inner.get(), canceller(inner));
+        inner->myselfptr = inner;
+        return ret;
+    }
+#else
+    static
+    std::tr1::shared_ptr<Derived> build() {
+        std::tr1::shared_ptr<Derived> inner(new Derived),
                                    ret(inner.get(), canceller(inner));
         inner->myselfptr = inner;
         return ret;
@@ -56,8 +68,8 @@ public:
 
     template<typename A>
     static
-    std::tr1::shared_ptr<Base> build(A a) {
-        std::tr1::shared_ptr<Base> inner(new Base(a)),
+    std::tr1::shared_ptr<Derived> build(A a) {
+        std::tr1::shared_ptr<Derived> inner(new Derived(a)),
                                    ret(inner.get(), canceller(inner));
         inner->myselfptr = inner;
         return ret;
@@ -65,12 +77,13 @@ public:
 
     template<typename A, typename B>
     static
-    std::tr1::shared_ptr<Base> build(A a, B b) {
-        std::tr1::shared_ptr<Base> inner(new Base(a, b)),
+    std::tr1::shared_ptr<Derived> build(A a, B b) {
+        std::tr1::shared_ptr<Derived> inner(new Derived(a, b)),
                                    ret(inner.get(), canceller(inner));
         inner->myselfptr = inner;
         return ret;
     }
+#endif
 };
 
 /** Safe use of raw callback pointer while unlocked.
@@ -86,7 +99,7 @@ public:
  * void docb(mycb& cb) {
  *     CallbackGuard G(cb); // lock
  *     // decide whether to make CB
- *     if(P){
+ *     if(ptr){
  *          void (*P)() = ptr; // copy for use while unlocked
  *          CallbackUse U(G); // unlock
  *          (*P)();
