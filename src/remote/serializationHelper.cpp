@@ -4,6 +4,8 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#include <epicsAssert.h>
+
 #include <pv/serialize.h>
 #include <pv/pvData.h>
 #include <pv/noDefaultMethods.h>

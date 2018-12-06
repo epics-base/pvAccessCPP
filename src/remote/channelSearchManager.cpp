@@ -8,6 +8,9 @@
 #include <time.h>
 #include <vector>
 
+#include <epicsMutex.h>
+
+#include <pv/serializationHelper.h>
 #include <pv/timeStamp.h>
 
 #define epicsExportSharedSymbols
