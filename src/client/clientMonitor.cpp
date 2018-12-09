@@ -207,7 +207,7 @@ bool Monitor::poll()
     if(!impl) return false;
     Guard G(impl->mutex);
 
-    if(!impl->done && impl->op && impl->last.next()) {
+    if(!impl->done && impl->op && impl->last && impl->last.next()) {
         const epics::pvData::PVStructurePtr& ptr = impl->last->pvStructurePtr;
         changed = *impl->last->changedBitSet;
         overrun = *impl->last->overrunBitSet;
