@@ -263,6 +263,42 @@ public:
     AuthenticationPlugin::shared_pointer lookup(const std::string& name) const;
 };
 
+//! I modify PeerInfo after authentication is complete.
+//! Usually to update PeerInfo::roles
+class epicsShareClass AuthorizationPlugin
+{
+public:
+    POINTER_DEFINITIONS(AuthorizationPlugin);
+
+    virtual ~AuthorizationPlugin();
+
+    //! Hook to modify PeerInfo
+    virtual void authorize(const std::tr1::shared_ptr<PeerInfo>& peer) =0;
+};
+
+class epicsShareClass AuthorizationRegistry
+{
+    EPICS_NOT_COPYABLE(AuthorizationRegistry)
+public:
+    POINTER_DEFINITIONS(AuthenticationRegistry);
+
+    static AuthorizationRegistry &plugins();
+
+    AuthorizationRegistry();
+    ~AuthorizationRegistry();
+
+private:
+    typedef std::map<int, AuthorizationPlugin::shared_pointer> map_t;
+    map_t map;
+    void *busy;
+    mutable epicsMutex mutex;
+public:
+
+    void add(int prio, const AuthorizationPlugin::shared_pointer& plugin);
+    bool remove(const AuthorizationPlugin::shared_pointer& plugin);
+    void run(const std::tr1::shared_ptr<PeerInfo>& peer);
+};
+
 }
 }
 

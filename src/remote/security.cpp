@@ -132,10 +132,15 @@ AuthenticationPlugin::~AuthenticationPlugin() {}
 
 AuthenticationRegistry::~AuthenticationRegistry() {}
 
+AuthorizationPlugin::~AuthorizationPlugin() {}
+
+AuthorizationRegistry::~AuthorizationRegistry() {}
+
 namespace {
 struct authGbl_t {
     mutable epicsMutex mutex;
     AuthenticationRegistry servers, clients;
+    AuthorizationRegistry authorizers;
 } *authGbl;
 
 void authGblInit(void *)
@@ -223,6 +228,61 @@ AuthenticationPlugin::shared_pointer AuthenticationRegistry::lookup(const std::s
 }
 
 
+AuthorizationRegistry::AuthorizationRegistry()
+    :busy(0)
+{}
+
+AuthorizationRegistry& AuthorizationRegistry::plugins()
+{
+    epicsThreadOnce(&authGblOnce, &authGblInit, 0);
+    assert(authGbl);
+    return authGbl->authorizers;
+}
+
+void AuthorizationRegistry::add(int prio, const AuthorizationPlugin::shared_pointer& plugin)
+{
+    Guard G(mutex);
+    // we don't expect changes after server start
+    if(busy)
+        throw std::runtime_error("AuthorizationRegistry busy");
+    if(map.find(prio)!=map.end())
+        THROW_EXCEPTION2(std::logic_error, "Authorization plugin already registered with this priority");
+    map[prio] = plugin;
+}
+
+bool AuthorizationRegistry::remove(const AuthorizationPlugin::shared_pointer& plugin)
+{
+    Guard G(mutex);
+    if(busy)
+        throw std::runtime_error("AuthorizationRegistry busy");
+    for(map_t::iterator it(map.begin()), end(map.end()); it!=end; ++it) {
+        if(it->second==plugin) {
+            map.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
+void AuthorizationRegistry::run(const std::tr1::shared_ptr<PeerInfo>& peer)
+{
+    int marker;
+    {
+        Guard G(mutex);
+        if(busy)
+            throw std::runtime_error("AuthorizationRegistry busy");
+        busy = &marker;
+    }
+    for(map_t::iterator it(map.begin()), end(map.end()); it!=end; ++it)
+    {
+        (it->second)->authorize(peer);
+    }
+    {
+        Guard G(mutex);
+        assert(busy==&marker);
+        busy = 0;
+    }
+}
 
 void AuthNZHandler::handleResponse(osiSockAddr* responseFrom,
                                    Transport::shared_pointer const & transport,

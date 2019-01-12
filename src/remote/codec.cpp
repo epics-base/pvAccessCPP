@@ -1619,6 +1619,9 @@ void BlockingServerTCPTransportCodec::authenticationCompleted(epics::pvData::Sta
         LOG(logLevelDebug, "Authentication completed with status '%s' for PVA client: %s.", Status::StatusTypeName[status.getType()], _socketName.c_str());
     }
 
+    if(peer)
+        AuthorizationRegistry::plugins().run(peer);
+
     bool isVerified;
     {
         Guard G(_mutex);
