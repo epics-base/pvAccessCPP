@@ -299,6 +299,13 @@ public:
     void run(const std::tr1::shared_ptr<PeerInfo>& peer);
 };
 
+/** @brief Query OS specific DB for role/group names assocated with a user account.
+ * @param account User name
+ * @param roles Role names are added to this set.  Existing names are not removed.
+ */
+epicsShareFunc
+void osdGetRoles(const std::string &account, PeerInfo::roles_t& roles);
+
 }
 }
 

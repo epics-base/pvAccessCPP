@@ -14,6 +14,7 @@ INC += pv/fairQueue.h
 INC += pv/requester.h
 INC += pv/destroyable.h
 
+pvAccess_SRCS += getgroups.cpp
 pvAccess_SRCS += hexDump.cpp
 pvAccess_SRCS += inetAddressUtil.cpp
 pvAccess_SRCS += logger.cpp
