@@ -81,7 +81,7 @@ void SerializationHelper::serializeStructureFull(ByteBuffer* buffer, Serializabl
     serializeFull(buffer, control, pvStructure);
 }
 
-void SerializationHelper::serializeFull(ByteBuffer* buffer, SerializableControl* control, PVField::shared_pointer const & pvField)
+void SerializationHelper::serializeFull(ByteBuffer* buffer, SerializableControl* control, PVField::const_shared_pointer const & pvField)
 {
     if (!pvField)
     {

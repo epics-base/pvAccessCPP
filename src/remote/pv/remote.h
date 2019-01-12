@@ -291,13 +291,12 @@ public:
      * Pass data to the active security plug-in session.
      * @param data the data (any data), can be <code>null</code>.
      */
-    virtual void authNZMessage(epics::pvData::PVField::shared_pointer const & data) = 0;
-
-    virtual std::tr1::shared_ptr<SecuritySession> getSecuritySession() const = 0;
+    virtual void authNZMessage(epics::pvData::PVStructure::shared_pointer const & data) = 0;
 };
 
 class Channel;
 class SecurityPlugin;
+class AuthenticationRegistry;
 
 /**
  * Not public IF, used by Transports, etc.
@@ -316,14 +315,6 @@ public:
 
 
     virtual Configuration::const_shared_pointer getConfiguration() = 0;
-
-    typedef std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > securityPlugins_t;
-    /**
-     * Get map of available security plug-ins.
-     * @return the map of available security plug-ins
-     */
-    virtual const securityPlugins_t& getSecurityPlugins() = 0;
-
 
     ///
     /// due to ClientContextImpl

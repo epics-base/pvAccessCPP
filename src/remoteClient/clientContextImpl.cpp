@@ -4164,9 +4164,6 @@ private:
 
         m_channelSearchManager.reset(new ChannelSearchManager(thisPointer));
 
-        // preinitialize security plugins
-        SecurityPluginRegistry::instance();
-
         // TODO put memory barrier here... (if not already called within a lock?)
 
         // setup UDP transport
@@ -4446,11 +4443,6 @@ private:
             LOG(logLevelError, "createChannelInternal() exception: %s\n", e.what());
             return ClientChannelImpl::shared_pointer();
         }
-    }
-
-    const securityPlugins_t& getSecurityPlugins() OVERRIDE FINAL
-    {
-        return SecurityPluginRegistry::instance().getClientSecurityPlugins();
     }
 
     /**

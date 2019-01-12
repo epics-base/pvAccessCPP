@@ -33,8 +33,7 @@ public:
      */
     ServerChannel(Channel::shared_pointer const & channel,
                       const ChannelRequester::shared_pointer& requester,
-                      pvAccessID cid, pvAccessID sid,
-                      ChannelSecuritySession::shared_pointer const & css);
+                      pvAccessID cid, pvAccessID sid);
     ~ServerChannel();
 
     const Channel::shared_pointer& getChannel() const { return _channel; }
@@ -42,9 +41,6 @@ public:
     pvAccessID getCID() const { return _cid; }
 
     pvAccessID getSID() const { return _sid; }
-
-    ChannelSecuritySession::shared_pointer getChannelSecuritySession() const
-    { return _channelSecuritySession; }
 
     void registerRequest(pvAccessID id, const std::tr1::shared_ptr<BaseChannelRequester>& request);
 
@@ -77,8 +73,6 @@ private:
     bool _destroyed;
 
     mutable epics::pvData::Mutex _mutex;
-
-    const ChannelSecuritySession::shared_pointer _channelSecuritySession;
 };
 
 }

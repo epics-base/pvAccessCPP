@@ -396,13 +396,7 @@ public:
 
     void aliveNotification() {}
 
-    void authNZMessage(epics::pvData::PVField::shared_pointer const & data) {}
-
-    virtual std::tr1::shared_ptr<SecuritySession> getSecuritySession() const
-    {
-        return std::tr1::shared_ptr<SecuritySession>();
-    }
-
+    void authNZMessage(epics::pvData::PVStructure::shared_pointer const & data) {}
 
 
     bool isClosed() {

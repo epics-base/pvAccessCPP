@@ -296,7 +296,7 @@ private:
 
 class BlockingTCPTransportCodec:
     public AbstractCodec,
-    public SecurityPluginControl,
+    public AuthenticationPluginControl,
     public std::tr1::enable_shared_from_this<BlockingTCPTransportCodec>
 {
 
@@ -428,18 +428,9 @@ public:
 
     virtual void verified(epics::pvData::Status const & status) OVERRIDE;
 
-    bool isVerified() const {
-        return _verified;    // TODO sync
-    }
+    virtual void authNZMessage(epics::pvData::PVStructure::shared_pointer const & data) OVERRIDE FINAL;
 
-    virtual std::tr1::shared_ptr<SecuritySession> getSecuritySession() const OVERRIDE FINAL {
-        // TODO sync
-        return _securitySession;
-    }
-
-    virtual void authNZMessage(epics::pvData::PVField::shared_pointer const & data) OVERRIDE FINAL;
-
-    virtual void sendSecurityPluginMessage(epics::pvData::PVField::shared_pointer const & data) OVERRIDE FINAL;
+    virtual void sendSecurityPluginMessage(epics::pvData::PVStructure::const_shared_pointer const & data) OVERRIDE FINAL;
 
 private:
     void receiveThread();
@@ -467,7 +458,12 @@ protected:
     IntrospectionRegistry _incomingIR;
     IntrospectionRegistry _outgoingIR;
 
-    SecuritySession::shared_pointer _securitySession;
+    // active authentication exchange, if any
+    std::string _authSessionName;
+    AuthenticationSession::shared_pointer _authSession;
+public:
+    // final info, after authentication complete.
+    PeerInfo::const_shared_pointer _peerInfo;
 
 private:
 
@@ -476,9 +472,12 @@ private:
     epics::pvData::int8 _remoteTransportRevision;
     epics::pvData::int16 _priority;
 
+protected:
     bool _verified;
-    epics::pvData::Mutex _verifiedMutex;
     epics::pvData::Event _verifiedEvent;
+
+public:
+    mutable epics::pvData::Mutex _mutex;
 };
 
 class BlockingServerTCPTransportCodec :
@@ -554,9 +553,10 @@ public:
     }
 
     virtual void verified(epics::pvData::Status const & status) OVERRIDE FINAL {
-        _verificationStatusMutex.lock();
-        _verificationStatus = status;
-        _verificationStatusMutex.unlock();
+        {
+            epicsGuard<epicsMutex> G(_mutex);
+            _verificationStatus = status;
+        }
         BlockingTCPTransportCodec::verified(status);
     }
 
@@ -565,9 +565,10 @@ public:
     }
 
     void authNZInitialize(const std::string& securityPluginName,
-                          const epics::pvData::PVField::shared_pointer& data);
+                          const epics::pvData::PVStructure::shared_pointer& data);
 
-    virtual void authenticationCompleted(epics::pvData::Status const & status) OVERRIDE FINAL;
+    virtual void authenticationCompleted(epics::pvData::Status const & status,
+                                         const std::tr1::shared_ptr<PeerInfo>& peer) OVERRIDE FINAL;
 
     virtual void send(epics::pvData::ByteBuffer* buffer,
                       TransportSendControl* control) OVERRIDE FINAL;
@@ -595,13 +596,10 @@ private:
     mutable epics::pvData::Mutex _channelsMutex;
 
     epics::pvData::Status _verificationStatus;
-    epics::pvData::Mutex _verificationStatusMutex;
 
     bool _verifyOrVerified;
 
-    bool _securityRequired;
-
-    static epics::pvData::Status invalidSecurityPluginNameStatus;
+    std::vector<std::string> advertisedAuthPlugins;
 
 };
 
@@ -673,8 +671,10 @@ public:
 
     void authNZInitialize(const std::vector<std::string>& offeredSecurityPlugins);
 
-    virtual void authenticationCompleted(epics::pvData::Status const & status) OVERRIDE FINAL;
+    virtual void authenticationCompleted(epics::pvData::Status const & status,
+                                         const std::tr1::shared_ptr<PeerInfo>& peer) OVERRIDE FINAL;
 
+    virtual void verified(epics::pvData::Status const & status) OVERRIDE FINAL;
 protected:
 
     virtual void internalClose() OVERRIDE FINAL;
@@ -719,8 +719,6 @@ private:
      * Responsive transport notify.
      */
     void responsiveTransport();
-
-    epics::pvData::Mutex _mutex;
 };
 
 }

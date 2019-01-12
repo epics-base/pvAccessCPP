@@ -194,15 +194,30 @@ void ServerConnectionValidationHandler::handleResponse(
     std::string securityPluginName = SerializeHelper::deserializeString(payloadBuffer, transport.get());
 
     // optional authNZ plug-in initialization data
-    PVField::shared_pointer data;
-    if (payloadBuffer->getRemaining())
-        data = SerializationHelper::deserializeFull(payloadBuffer, transport.get());
+    PVStructure::shared_pointer data;
+    if (payloadBuffer->getRemaining()) {
+        PVField::shared_pointer raw(SerializationHelper::deserializeFull(payloadBuffer, transport.get()));
+        if(raw && raw->getField()->getType()==structure) {
+            data = std::tr1::static_pointer_cast<PVStructure>(raw);
+        } else {
+            // was originally allowed, but never used
+        }
+    }
 
     detail::BlockingServerTCPTransportCodec* casTransport(static_cast<detail::BlockingServerTCPTransportCodec*>(transport.get()));
     //TODO: simplify byzantine class heirarchy...
     assert(casTransport);
 
-    casTransport->authNZInitialize(securityPluginName, data);
+    try {
+        casTransport->authNZInitialize(securityPluginName, data);
+    }catch(std::exception& e){
+        if (IS_LOGGABLE(logLevelDebug))
+        {
+            LOG(logLevelDebug, "Security plug-in '%s' failed to create a session for PVA client: %s.", securityPluginName.c_str(), casTransport->getRemoteName().c_str());
+        }
+        casTransport->verified(pvData::Status::error(e.what()));
+        throw;
+    }
 }
 
 
@@ -732,30 +747,13 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
         return;
     }
 
-    SecuritySession::shared_pointer securitySession = transport->getSecuritySession();
-    ChannelSecuritySession::shared_pointer css;
-    try {
-        css = securitySession->createChannelSession(channelName);
-        if (!css)
-            throw SecurityException("null channelSecuritySession");
-    } catch (SecurityException& se) {
-        // TODO use std::make_shared
-        std::tr1::shared_ptr<ServerChannelRequesterImpl> tp(new ServerChannelRequesterImpl(transport, channelName, cid, css));
-        ChannelRequester::shared_pointer cr = tp;
-
-        Status asStatus(Status::STATUSTYPE_ERROR,
-                        string("Insufficient rights to create a channel: ") + se.what());
-        cr->channelCreated(asStatus, Channel::shared_pointer());
-        return;
-    }
-
     if (channelName == SERVER_CHANNEL_NAME)
     {
         // TODO singleton!!!
         ServerRPCService::shared_pointer serverRPCService(new ServerRPCService(_context));
 
         // TODO use std::make_shared
-        std::tr1::shared_ptr<ServerChannelRequesterImpl> tp(new ServerChannelRequesterImpl(transport, channelName, cid, css));
+        std::tr1::shared_ptr<ServerChannelRequesterImpl> tp(new ServerChannelRequesterImpl(transport, channelName, cid));
         ChannelRequester::shared_pointer cr = tp;
         Channel::shared_pointer serverChannel = createRPCChannel(ChannelProvider::shared_pointer(), channelName, cr, serverRPCService);
         cr->channelCreated(Status::Ok, serverChannel);
@@ -766,7 +764,7 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
         ServerContextImpl::s_channelNameToProvider_t::const_iterator it;
 
         if (_providers.size() == 1)
-            ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid, css);
+            ServerChannelRequesterImpl::create(_providers[0], transport, channelName, cid);
         else {
             ChannelProvider::shared_pointer prov;
             {
@@ -775,7 +773,7 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
                     prov = it->second.lock();
             }
             if(prov)
-                ServerChannelRequesterImpl::create(prov, transport, channelName, cid, css);
+                ServerChannelRequesterImpl::create(prov, transport, channelName, cid);
         }
     }
 }
@@ -786,12 +784,11 @@ void ServerCreateChannelHandler::disconnect(Transport::shared_pointer const & tr
 }
 
 ServerChannelRequesterImpl::ServerChannelRequesterImpl(const Transport::shared_pointer &transport,
-        const string channelName, const pvAccessID cid, ChannelSecuritySession::shared_pointer const & css) :
+        const string channelName, const pvAccessID cid) :
     _serverChannel(),
     _transport(std::tr1::static_pointer_cast<detail::BlockingServerTCPTransportCodec>(transport)),
     _channelName(channelName),
     _cid(cid),
-    _css(css),
     _status(),
     _mutex()
 {
@@ -799,10 +796,10 @@ ServerChannelRequesterImpl::ServerChannelRequesterImpl(const Transport::shared_p
 
 ChannelRequester::shared_pointer ServerChannelRequesterImpl::create(
     ChannelProvider::shared_pointer const & provider, Transport::shared_pointer const & transport,
-    const string channelName, const pvAccessID cid, ChannelSecuritySession::shared_pointer const & css)
+    const string channelName, const pvAccessID cid)
 {
     // TODO use std::make_shared
-    std::tr1::shared_ptr<ServerChannelRequesterImpl> tp(new ServerChannelRequesterImpl(transport, channelName, cid, css));
+    std::tr1::shared_ptr<ServerChannelRequesterImpl> tp(new ServerChannelRequesterImpl(transport, channelName, cid));
     ChannelRequester::shared_pointer cr = tp;
     // TODO exception guard and report error back
     provider->createChannel(channelName, cr, transport->getPriority());
@@ -824,7 +821,7 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
                 pvAccessID sid = transport->preallocateChannelSID();
                 try
                 {
-                    serverChannel.reset(new ServerChannel(channel, shared_from_this(), _cid, sid, _css));
+                    serverChannel.reset(new ServerChannel(channel, shared_from_this(), _cid, sid));
 
                     // ack allocation and register
                     transport->registerChannel(sid, serverChannel);
@@ -835,11 +832,6 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
                     transport->depreallocateChannelSID(sid);
                     throw;
                 }
-            }
-            else
-            {
-                if (_css)
-                    _css->close();
             }
 
 
@@ -861,9 +853,6 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
             }
             TransportSender::shared_pointer thisSender = shared_from_this();
             transport->enqueueSendRequest(thisSender);
-            // TODO make sure that serverChannel gets destroyed
-            if (_css)
-                _css->close();
         }
         catch (...)
         {
@@ -874,9 +863,6 @@ void ServerChannelRequesterImpl::channelCreated(const Status& status, Channel::s
             }
             TransportSender::shared_pointer thisSender = shared_from_this();
             transport->enqueueSendRequest(thisSender);
-            // TODO make sure that serverChannel gets destroyed
-            if (_css)
-                _css->close();
         }
     }
 }
@@ -906,6 +892,17 @@ void ServerChannelRequesterImpl::channelStateChange(Channel::shared_pointer cons
         // send response back
         TransportSender::shared_pointer sr(new ServerDestroyChannelHandlerTransportSender(channel->getCID(), channel->getSID()));
         transport->enqueueSendRequest(sr);
+    }
+}
+
+std::tr1::shared_ptr<const PeerInfo> ServerChannelRequesterImpl::getPeerInfo()
+{
+    if(detail::BlockingServerTCPTransportCodec::shared_pointer transport = _transport.lock()) {
+        epicsGuard<epicsMutex> G(transport->_mutex);
+        return transport->_peerInfo;
+
+    } else {
+        return std::tr1::shared_ptr<const PeerInfo>();
     }
 }
 

@@ -533,12 +533,6 @@ epicsTimeStamp& ServerContextImpl::getStartTime()
     return _startTime;
 }
 
-
-const Context::securityPlugins_t& ServerContextImpl::getSecurityPlugins()
-{
-    return SecurityPluginRegistry::instance().getServerSecurityPlugins();
-}
-
 ServerContext::shared_pointer startPVAServer(std::string const & providerNames, int timeToRun, bool runInSeparateThread, bool printInfo)
 {
     ServerContext::shared_pointer ret(ServerContext::create(ServerContext::Config()

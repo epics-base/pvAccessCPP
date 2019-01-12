@@ -124,12 +124,8 @@ public:
         // noop
     }
 
-    virtual void authNZMessage(epics::pvData::PVField::shared_pointer const & data) OVERRIDE FINAL {
+    virtual void authNZMessage(epics::pvData::PVStructure::shared_pointer const & data) OVERRIDE FINAL {
         // noop
-    }
-
-    virtual std::tr1::shared_ptr<SecuritySession> getSecuritySession() const OVERRIDE FINAL {
-        return std::tr1::shared_ptr<SecuritySession>();
     }
 
     // NOTE: this is not yet used for UDP

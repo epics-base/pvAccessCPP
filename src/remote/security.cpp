@@ -6,50 +6,222 @@
 
 #include <osiProcess.h>
 
+#include <epicsThread.h>
+#include <epicsGuard.h>
+#include <pv/epicsException.h>
+#include <pv/reftrack.h>
+
 #define epicsExportSharedSymbols
 #include <pv/securityImpl.h>
 
-using namespace epics::pvData;
-using namespace epics::pvAccess;
+typedef epicsGuard<epicsMutex> Guard;
 
-NoSecurityPlugin::shared_pointer NoSecurityPlugin::INSTANCE(new NoSecurityPlugin());
+namespace {
+namespace pvd = epics::pvData;
+namespace pva = epics::pvAccess;
 
-CAClientSecurityPlugin::shared_pointer CAClientSecurityPlugin::INSTANCE(new CAClientSecurityPlugin());
 
-CAClientSecurityPlugin::CAClientSecurityPlugin()
+pvd::StructureConstPtr userAndHostStructure(
+        pvd::FieldBuilder::begin()->
+            add("user", pvd::pvString)->
+            add("host", pvd::pvString)->
+            createStructure()
+);
+
+struct SimpleSession : public pva::AuthenticationSession
 {
-    StructureConstPtr userAndHostStructure =
-        getFieldCreate()->createFieldBuilder()->
-        add("user", pvString)->
-        add("host", pvString)->
-        createStructure();
+    const pvd::PVStructure::const_shared_pointer initdata;
 
-    m_userAndHost = getPVDataCreate()->createPVStructure(userAndHostStructure);
+    SimpleSession(const pvd::PVStructure::const_shared_pointer& data) :initdata(data) {}
+    virtual ~SimpleSession() {}
 
-    //
-    // user name
-    //
+    virtual epics::pvData::PVStructure::const_shared_pointer initializationData() OVERRIDE FINAL
+    { return initdata; }
+};
 
-    char buffer[256];
+struct AnonPlugin : public pva::AuthenticationPlugin
+{
+    const bool server;
 
-    std::string userName;
-    if (osiGetUserName(buffer, sizeof(buffer)) == osiGetUserNameSuccess)
-        userName = buffer;
-    // TODO more error handling
+    AnonPlugin(bool server) :server(server) {}
+    virtual ~AnonPlugin() {}
 
-    m_userAndHost->getSubFieldT<PVString>("user")->put(userName);
+    virtual std::tr1::shared_ptr<pva::AuthenticationSession> createSession(
+        const std::tr1::shared_ptr<pva::PeerInfo>& peer,
+        std::tr1::shared_ptr<pva::AuthenticationPluginControl> const & control,
+        epics::pvData::PVStructure::shared_pointer const & data) OVERRIDE FINAL
+    {
+        std::tr1::shared_ptr<SimpleSession> sess(new SimpleSession(pvd::PVStructure::const_shared_pointer())); // no init data
+        if(server) {
+            peer->identified = false;
+            peer->account = "anonymous";
+            control->authenticationCompleted(pvd::Status::Ok, peer);
+        }
+        return sess;
+    }
+};
 
-    //
-    // host name
-    //
+struct CAPlugin : public pva::AuthenticationPlugin
+{
+    const bool server;
+    // fully const after ctor
+    const pvd::PVStructurePtr user;
 
-    std::string hostName;
-    if (gethostname(buffer, sizeof(buffer)) == 0)
-        hostName = buffer;
-    // TODO more error handling
+    CAPlugin(bool server)
+        :server(server)
+        ,user(userAndHostStructure->build())
+    {
+        std::vector<char> buffer(256u);
+        if(osiGetUserName(&buffer[0], buffer.size()) != osiGetUserNameSuccess)
+            throw std::runtime_error("Unable to determine user account name");
 
-    m_userAndHost->getSubFieldT<PVString>("host")->put(buffer);
+        buffer[buffer.size()-1] = '\0';
+        user->getSubFieldT<pvd::PVString>("user")->put(&buffer[0]);
+
+        // use of unverified host name is considered deprecated.
+        // use PeerInfo::peer instead.
+        if (gethostname(&buffer[0], buffer.size()) != 0)
+            throw std::runtime_error("Unable to determine host name");
+
+        buffer[buffer.size()-1] = '\0';
+        user->getSubFieldT<pvd::PVString>("host")->put(&buffer[0]);
+    }
+    virtual ~CAPlugin() {}
+
+    virtual std::tr1::shared_ptr<pva::AuthenticationSession> createSession(
+        const std::tr1::shared_ptr<pva::PeerInfo>& peer,
+        std::tr1::shared_ptr<pva::AuthenticationPluginControl> const & control,
+        epics::pvData::PVStructure::shared_pointer const & data) OVERRIDE FINAL
+    {
+        std::tr1::shared_ptr<SimpleSession> sess(new SimpleSession(user)); // no init data
+        if(server) {
+            peer->identified = true;
+            peer->account = data->getSubFieldT<pvd::PVString>("user")->get();
+            peer->aux = pvd::getPVDataCreate()->createPVStructure(data); // clone to ensure it won't be modified
+            control->authenticationCompleted(pvd::Status::Ok, peer);
+        }
+        return sess;
+    }
+};
+
+} // namespace
+
+namespace epics {
+namespace pvAccess {
+
+size_t PeerInfo::num_instances;
+
+PeerInfo::PeerInfo()
+    :transportVersion(0u)
+    ,local(false)
+    ,identified(false)
+{
+    REFTRACE_INCREMENT(num_instances);
 }
+
+PeerInfo::~PeerInfo()
+{
+    REFTRACE_DECREMENT(num_instances);
+}
+
+AuthenticationSession::~AuthenticationSession() {}
+
+AuthenticationPluginControl::~AuthenticationPluginControl() {}
+
+AuthenticationPlugin::~AuthenticationPlugin() {}
+
+AuthenticationRegistry::~AuthenticationRegistry() {}
+
+namespace {
+struct authGbl_t {
+    mutable epicsMutex mutex;
+    AuthenticationRegistry servers, clients;
+} *authGbl;
+
+void authGblInit(void *)
+{
+    authGbl = new authGbl_t;
+
+    {
+        AnonPlugin::shared_pointer plugin(new AnonPlugin(true));
+        authGbl->servers.add(-1024, "anonymous", plugin);
+    }
+    {
+        AnonPlugin::shared_pointer plugin(new AnonPlugin(false));
+        authGbl->clients.add(-1024, "anonymous", plugin);
+    }
+
+    {
+        CAPlugin::shared_pointer plugin(new CAPlugin(true));
+        authGbl->servers.add(0, "ca", plugin);
+    }
+    {
+        CAPlugin::shared_pointer plugin(new CAPlugin(false));
+        authGbl->clients.add(0, "ca", plugin);
+    }
+
+    epics::registerRefCounter("PeerInfo", &PeerInfo::num_instances);
+}
+
+epicsThreadOnceId authGblOnce = EPICS_THREAD_ONCE_INIT;
+} // namespace
+
+AuthenticationRegistry& AuthenticationRegistry::clients()
+{
+    epicsThreadOnce(&authGblOnce, &authGblInit, 0);
+    assert(authGbl);
+    return authGbl->clients;
+}
+
+AuthenticationRegistry& AuthenticationRegistry::servers()
+{
+    epicsThreadOnce(&authGblOnce, &authGblInit, 0);
+    assert(authGbl);
+    return authGbl->servers;
+}
+
+void AuthenticationRegistry::snapshot(list_t &plugmap) const
+{
+    plugmap.clear();
+    Guard G(mutex);
+    plugmap.reserve(map.size());
+    for(map_t::const_iterator it(map.begin()), end(map.end()); it!=end; ++it) {
+        plugmap.push_back(it->second);
+    }
+}
+
+void AuthenticationRegistry::add(int prio, const std::string& name,
+                                 const AuthenticationPlugin::shared_pointer& plugin)
+{
+    Guard G(mutex);
+    if(map.find(prio)!=map.end())
+        THROW_EXCEPTION2(std::logic_error, "Authentication plugin already registered with this priority");
+    map[prio] = std::make_pair(name, plugin);
+}
+
+bool AuthenticationRegistry::remove(const AuthenticationPlugin::shared_pointer& plugin)
+{
+    Guard G(mutex);
+    for(map_t::iterator it(map.begin()), end(map.end()); it!=end; ++it) {
+        if(it->second.second==plugin) {
+            map.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
+AuthenticationPlugin::shared_pointer AuthenticationRegistry::lookup(const std::string& name) const
+{
+    Guard G(mutex);
+    // assuming the number of plugins is small, we don't index by name.
+    for(map_t::const_iterator it(map.begin()), end(map.end()); it!=end; ++it) {
+        if(it->second.first==name)
+            return it->second.second;
+    }
+    return AuthenticationPlugin::shared_pointer();
+}
+
 
 
 void AuthNZHandler::handleResponse(osiSockAddr* responseFrom,
@@ -61,15 +233,17 @@ void AuthNZHandler::handleResponse(osiSockAddr* responseFrom,
 {
     ResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
-    epics::pvData::PVField::shared_pointer data =
-        SerializationHelper::deserializeFull(payloadBuffer, transport.get());
+    pvd::PVStructure::shared_pointer data;
+    {
+        pvd::PVField::shared_pointer raw(SerializationHelper::deserializeFull(payloadBuffer, transport.get()));
+        if(raw->getField()->getType()==pvd::structure) {
+            data = std::tr1::static_pointer_cast<pvd::PVStructure>(raw);
+        } else {
+            // was originally possible, but never used
+        }
+    }
 
     transport->authNZMessage(data);
 }
 
-SecurityPluginRegistry::SecurityPluginRegistry() {
-    // install CA client security plugin by default
-    installClientSecurityPlugin(CAClientSecurityPlugin::INSTANCE);
-}
-
-
+}} // namespace epics::pvAccess
