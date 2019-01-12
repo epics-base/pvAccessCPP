@@ -134,11 +134,13 @@ protected:
 //! Lookup configuration strings from an in memory store
 class epicsShareClass ConfigurationMap: public Configuration
 {
+    EPICS_NOT_COPYABLE(ConfigurationMap)
 public:
     typedef std::map<std::string, std::string> properties_t;
     properties_t properties;
     ConfigurationMap() {}
     ConfigurationMap(const properties_t& p) :properties(p) {}
+    virtual ~ConfigurationMap() {}
 private:
     virtual bool tryGetPropertyAsString(const std::string& name, std::string* val) const;
     virtual void addKeys(keys_t&) const;
@@ -147,6 +149,10 @@ private:
 //! Lookup configuration strings from the process environment
 class epicsShareClass ConfigurationEnviron: public Configuration
 {
+    EPICS_NOT_COPYABLE(ConfigurationEnviron)
+public:
+    ConfigurationEnviron() {}
+    virtual ~ConfigurationEnviron() {}
 private:
     virtual bool tryGetPropertyAsString(const std::string& name, std::string* val) const;
 };
@@ -157,11 +163,14 @@ typedef ConfigurationEnviron SystemConfigurationImpl;
 //! Most recently push'd is checked first.
 class epicsShareClass ConfigurationStack : public Configuration
 {
+    EPICS_NOT_COPYABLE(ConfigurationStack)
     typedef std::vector<std::tr1::shared_ptr<Configuration> > confs_t;
     confs_t confs;
     virtual bool tryGetPropertyAsString(const std::string& name, std::string* val) const;
     virtual void addKeys(keys_t&) const;
 public:
+    ConfigurationStack() {}
+    virtual ~ConfigurationStack() {}
     inline void push_back(const confs_t::value_type& conf) {
         confs.push_back(conf);
     }
@@ -227,6 +236,7 @@ public:
 
 class ConfigurationProviderImpl: public ConfigurationProvider
 {
+    EPICS_NOT_COPYABLE(ConfigurationProviderImpl)
 public:
     ConfigurationProviderImpl() {}
     /**
