@@ -104,6 +104,19 @@ struct CAPlugin : public pva::AuthenticationPlugin
     }
 };
 
+struct GroupsPlugin : public pva::AuthorizationPlugin
+{
+    virtual ~GroupsPlugin() {}
+
+    void authorize(const std::tr1::shared_ptr<pva::PeerInfo>& peer)
+    {
+        if(!peer->identified)
+            return; // no groups for anonymous
+
+        pva::osdGetRoles(peer->account, peer->roles);
+    }
+};
+
 } // namespace
 
 namespace epics {
@@ -163,6 +176,10 @@ void authGblInit(void *)
     {
         CAPlugin::shared_pointer plugin(new CAPlugin(false));
         authGbl->clients.add(0, "ca", plugin);
+    }
+    {
+        GroupsPlugin::shared_pointer plugin(new GroupsPlugin);
+        authGbl->authorizers.add(0, plugin);
     }
 
     epics::registerRefCounter("PeerInfo", &PeerInfo::num_instances);
