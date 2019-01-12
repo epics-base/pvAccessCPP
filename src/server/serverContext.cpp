@@ -398,7 +398,7 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
         {
             const Transport::shared_pointer& transport(*it);
 
-            str<<"client "<<transport->getType()<<"://"<<transport->getRemoteName()
+            str<<"  "<<transport->getType()<<"://"<<transport->getRemoteName()
               <<" ver="<<unsigned(transport->getRevision())
               <<" "<<(transport->isClosed()?"closed!":"");
 
@@ -406,6 +406,31 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
 
             if(casTransport) {
               str<<" "<<(casTransport ? casTransport->getChannelCount() : size_t(-1))<<" channels";
+
+              PeerInfo::const_shared_pointer peer;
+              {
+                  epicsGuard<epicsMutex> G(casTransport->_mutex);
+                  peer = casTransport->_peerInfo;
+              }
+              if(peer) {
+                  str<<" user: "<<peer->authority<<"/"<<peer->account;
+                  if(!peer->realm.empty())
+                      str<<"@"<<peer->realm;
+                  if(lvl>=2 && !peer->roles.empty()) {
+                      str<<" groups:";
+                      int n=0;
+                      for(PeerInfo::roles_t::const_iterator it(peer->roles.begin()), end(peer->roles.end()); it!=end; ++it, ++n) {
+                          if(n)
+                              str<<',';
+                          str<<(*it);
+                      }
+                  }
+                  if(lvl>=3 && peer->aux) {
+                      str<<" aux. auth.:\n";
+                      format::indent_scope I(str);
+                      str<<(*peer->aux);
+                  }
+              }
             }
 
             str<<"\n";
