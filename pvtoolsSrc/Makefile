@@ -30,7 +30,7 @@ pvlist_SRCS += pvlist.cpp
 
 PROD_LIBS += pvAccessCA pvAccess pvData ca Com
 
-PROD_SYS_LIBS_WIN32 += ws2_32
+PROD_SYS_LIBS_WIN32 += netapi32 ws2_32
 
 include $(TOP)/configure/RULES
 #----------------------------------------
