@@ -115,7 +115,7 @@ void ServerContextImpl::loadConfiguration()
     Configuration::const_shared_pointer config = configuration;
 
     // TODO for now just a simple switch
-    int32 debugLevel = config->getPropertyAsInteger(PVACCESS_DEBUG, 0);
+    int32 debugLevel = config->getPropertyAsInteger(PVACCESS_DEBUG, 0); // actually $EPICS_PVA_DEBUG
     if (debugLevel > 0)
         SET_LOG_LEVEL(logLevelDebug);
 
