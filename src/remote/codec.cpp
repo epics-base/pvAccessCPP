@@ -1423,10 +1423,12 @@ BlockingServerTCPTransportCodec::BlockingServerTCPTransportCodec(
     SOCKET channel,
     ResponseHandler::shared_pointer const & responseHandler,
     int32_t sendBufferSize,
-    int32_t receiveBufferSize) :
-    BlockingTCPTransportCodec(true, context, channel, responseHandler,
-                              sendBufferSize, receiveBufferSize, PVA_DEFAULT_PRIORITY),
-    _lastChannelSID(0), _verifyOrVerified(false)
+    int32_t receiveBufferSize)
+    :BlockingTCPTransportCodec(true, context, channel, responseHandler,
+                               sendBufferSize, receiveBufferSize, PVA_DEFAULT_PRIORITY)
+    ,_lastChannelSID(0)
+    ,_verificationStatus(pvData::Status::fatal("Uninitialized error"))
+    ,_verifyOrVerified(false)
 {
     // NOTE: priority not yet known, default priority is used to
     //register/unregister
