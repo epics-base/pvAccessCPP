@@ -135,7 +135,9 @@ class ServerChannelFindRequesterImpl:
     public std::tr1::enable_shared_from_this<ServerChannelFindRequesterImpl>
 {
 public:
-    ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context, epics::pvData::int32 expectedResponseCount);
+    ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context,
+                                   const PeerInfo::const_shared_pointer& peer,
+                                   epics::pvData::int32 expectedResponseCount);
     virtual ~ServerChannelFindRequesterImpl() {}
     void clear();
     ServerChannelFindRequesterImpl* set(std::string _name, epics::pvData::int32 searchSequenceId,
@@ -155,9 +157,10 @@ private:
     osiSockAddr _sendTo;
     bool _responseRequired;
     bool _wasFound;
-    ServerContextImpl::shared_pointer _context;
-    epics::pvData::Mutex _mutex;
-    epics::pvData::int32 _expectedResponseCount;
+    const ServerContextImpl::shared_pointer _context;
+    const PeerInfo::const_shared_pointer& _peer;
+    mutable epics::pvData::Mutex _mutex;
+    const epics::pvData::int32 _expectedResponseCount;
     epics::pvData::int32 _responseCount;
     bool _serverSearch;
 };

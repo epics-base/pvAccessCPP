@@ -335,6 +335,14 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
         }
     }
 
+    PeerInfo::shared_pointer info;
+    if(allowed) {
+        info.reset(new PeerInfo);
+        info->transport = "pva";
+        info->peer = transport->getRemoteName();
+        info->transportVersion = transport->getRevision();
+    }
+
     if (count > 0)
     {
         // regular name search
@@ -350,7 +358,7 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
                 const std::vector<ChannelProvider::shared_pointer>& _providers = _context->getChannelProviders();
 
                 int providerCount = _providers.size();
-                std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(new ServerChannelFindRequesterImpl(_context, providerCount));
+                std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(new ServerChannelFindRequesterImpl(_context, info, providerCount));
                 tp->set(name, searchSequenceId, cid, responseAddress, responseRequired, false);
 
                 for (int i = 0; i < providerCount; i++)
@@ -368,7 +376,7 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
             double delay = double(rand())/RAND_MAX; // [0, 1]
             delay = delay*0.1 + 0.05;
 
-            std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(new ServerChannelFindRequesterImpl(_context, 1));
+            std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(new ServerChannelFindRequesterImpl(_context, info, 1));
             tp->set("", searchSequenceId, 0, responseAddress, true, true);
 
             TimerCallback::shared_pointer tc = tp;
@@ -377,12 +385,13 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     }
 }
 
-ServerChannelFindRequesterImpl::ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context,
+ServerChannelFindRequesterImpl::ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context, const PeerInfo::const_shared_pointer &peer,
         int32 expectedResponseCount) :
     _guid(context->getGUID()),
     _sendTo(),
     _wasFound(false),
     _context(context),
+    _peer(peer),
     _expectedResponseCount(expectedResponseCount),
     _responseCount(0),
     _serverSearch(false)
