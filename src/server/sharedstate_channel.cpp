@@ -300,6 +300,11 @@ std::string Operation::channelName() const
     return ret;
 }
 
+const pva::PeerInfo* Operation::peer() const
+{
+    return impl->info ? impl->info.get() : 0;
+}
+
 void Operation::complete()
 {
     impl->complete(pvd::Status(), 0);

@@ -17,6 +17,7 @@ namespace epics{namespace pvAccess{
 class ChannelProvider;
 class Channel;
 class ChannelRequester;
+struct PeerInfo; // see pv/security.h
 }} // epics::pvAccess
 
 //! See @ref pvas API
@@ -168,7 +169,10 @@ public:
         friend struct Impl;
         bool isclaimed;
         std::string cname;
-        Search(const std::string& name) :isclaimed(false),cname(name) {}
+        const ::epics::pvAccess::PeerInfo* peerinfo;
+        Search(const std::string& name, const ::epics::pvAccess::PeerInfo* peer)
+            :isclaimed(false),cname(name),peerinfo(peer)
+        {}
     public:
         //! The name being queried
         const std::string& name() const { return cname; }
@@ -176,6 +180,10 @@ public:
         bool claimed() const { return isclaimed; }
         //! Has been claimed()
         void claim() { isclaimed = true; }
+        //! Information about peer making search request.
+        //! May be NULL if not information is available.
+        //! @since >7.1.0
+        const ::epics::pvAccess::PeerInfo* peer() const { return peerinfo; }
     };
     typedef std::vector<Search> search_type;
 

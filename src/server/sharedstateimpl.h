@@ -9,6 +9,7 @@
 
 #include "pva/sharedstate.h"
 #include <pv/pvAccess.h>
+#include <pv/security.h>
 #include <pv/reftrack.h>
 
 #define FOR_EACH(TYPE, IT, END, OBJ) for(TYPE IT((OBJ).begin()), END((OBJ).end()); IT != END; ++IT)
@@ -135,6 +136,8 @@ struct Operation::Impl
 
     const pvd::PVStructure::const_shared_pointer pvRequest, value;
     const pvd::BitSet changed;
+    //! const after sub-class ctor
+    pva::PeerInfo::const_shared_pointer info;
 
     bool done;
     int debugLvl;

@@ -17,6 +17,7 @@
 #define epicsExportSharedSymbols
 #include "pva/server.h"
 #include "pv/pvAccess.h"
+#include "pv/security.h"
 #include "pv/reftrack.h"
 
 namespace pvd = epics::pvData;
@@ -216,8 +217,9 @@ struct DynamicProvider::Impl : public pva::ChannelProvider
     {
         bool found = false;
         {
+            pva::PeerInfo::const_shared_pointer info(requester->getPeerInfo());
             search_type search;
-            search.push_back(DynamicProvider::Search(name));
+            search.push_back(DynamicProvider::Search(name, info ? info.get() : 0));
 
             handler->hasChannels(search);
 

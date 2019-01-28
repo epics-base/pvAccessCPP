@@ -242,6 +242,10 @@ public:
     //! The name of the channel through which this request was made (eg. for logging purposes).
     std::string channelName() const;
 
+    //! Information about peer transport and authentication.
+    //! @returns May be NULL if no information is available
+    const epics::pvAccess::PeerInfo* peer() const;
+
     void complete(); //!< shorthand for successful completion w/o data (Put or RPC with void return)
     //! Complete with success or error w/o data.
     void complete(const epics::pvData::Status& sts);
