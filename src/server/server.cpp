@@ -242,6 +242,8 @@ struct DynamicProvider::Impl : public pva::ChannelProvider
         pvd::Status sts;
 
         ret = handler->createChannel(ChannelProvider::shared_pointer(internal_self), name, requester);
+        if(!ret)
+            sts = pvd::Status::error("Channel no longer available"); // because we only get here if channelFind() succeeds
 
         requester->channelCreated(sts, ret);
         return ret;

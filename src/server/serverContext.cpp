@@ -183,7 +183,7 @@ void ServerContextImpl::loadConfiguration()
     }
 
     if(_channelProviders.empty())
-        LOG(logLevelError, "ServerContext configured with not Providers will do nothing!\n");
+        LOG(logLevelError, "ServerContext configured with no Providers will do nothing!\n");
 
     //
     // introspect network interfaces
