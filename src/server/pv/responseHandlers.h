@@ -218,6 +218,7 @@ private:
     const std::string _channelName;
     const pvAccessID _cid;
     ChannelSecuritySession::shared_pointer const & _css;
+    bool _created;
     epics::pvData::Status _status;
     epics::pvData::Mutex _mutex;
 };
