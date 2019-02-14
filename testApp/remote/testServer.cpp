@@ -2204,7 +2204,6 @@ protected:
                 displayStructure->getSubField<PVDouble>("limitLow")->put(-1.0);
                 displayStructure->getSubField<PVDouble>("limitHigh")->put(1.0);
                 displayStructure->getSubField<PVString>("description")->put("Simulated ADC");
-                displayStructure->getSubField<PVString>("format")->put("%f");
                 displayStructure->getSubField<PVString>("units")->put("V");
             }
             else if (m_name.find("testRPC") == 0 || m_name == "testNTTable" || m_name == "testNTMatrix")

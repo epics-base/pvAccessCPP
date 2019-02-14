@@ -718,8 +718,10 @@ Status DbdToPv::getFromDBD(
          if(caDisplay.format!=format) {
             caDisplay.format = format;
             PVStringPtr pvString = pvDisplay->getSubField<PVString>("format");
-            pvString->put(format);
-            bitSet->set(pvString->getFieldOffset());
+            if(pvString) {
+                pvString->put(format);
+                bitSet->set(pvString->getFieldOffset());
+            }
          }
     }
     if(valueAlarmRequested) {
