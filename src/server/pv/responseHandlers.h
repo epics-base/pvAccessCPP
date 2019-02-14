@@ -144,6 +144,7 @@ public:
                                         epics::pvData::int32 cid, osiSockAddr const & sendTo, bool responseRequired, bool serverSearch);
     virtual void channelFindResult(const epics::pvData::Status& status, ChannelFind::shared_pointer const & channelFind, bool wasFound) OVERRIDE FINAL;
 
+    virtual std::tr1::shared_ptr<const PeerInfo> getPeerInfo() OVERRIDE FINAL;
     virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 
     virtual void callback() OVERRIDE FINAL;
@@ -158,7 +159,7 @@ private:
     bool _responseRequired;
     bool _wasFound;
     const ServerContextImpl::shared_pointer _context;
-    const PeerInfo::const_shared_pointer& _peer;
+    const PeerInfo::const_shared_pointer _peer;
     mutable epics::pvData::Mutex _mutex;
     const epics::pvData::int32 _expectedResponseCount;
     epics::pvData::int32 _responseCount;

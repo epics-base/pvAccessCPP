@@ -339,7 +339,7 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     if(allowed) {
         info.reset(new PeerInfo);
         info->transport = "pva";
-        info->peer = transport->getRemoteName();
+        info->peer = inetAddressToString(*responseFrom);
         info->transportVersion = transport->getRevision();
     }
 
@@ -465,6 +465,11 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/,
             bt->enqueueSendRequest(thisSender);
         }
     }
+}
+
+std::tr1::shared_ptr<const PeerInfo> ServerChannelFindRequesterImpl::getPeerInfo()
+{
+    return _peer;
 }
 
 void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
