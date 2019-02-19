@@ -656,7 +656,7 @@ void initializeUDPTransports(bool serverFlag,
 
         if (list.empty()) {
             LOG(logLevelError,
-                "No broadcast addresses found or specified - empty address list!");
+                "No %s broadcast addresses found or specified - empty address list!", serverFlag ? "server" : "client");
         }
 
         for (size_t i = 0; i < list.size(); i++) {
