@@ -56,6 +56,7 @@ arg_t parseArg(const std::string& raw) {
 
         pvd::PVStringArrayPtr V(pvd::getPVDataCreate()->createPVScalarArray<pvd::PVStringArray>());
         V->replace(pvd::freeze(sarr));
+        value = V;
 
     } else if(sval.size()>=2 && sval[0]=='{' && sval[sval.size()-1]=='}') {
 #ifdef USE_JSON
@@ -72,6 +73,7 @@ arg_t parseArg(const std::string& raw) {
         value = V;
     }
 
+    assert(!!value);
     return std::make_pair(raw.substr(0, equal), value);
 }
 
