@@ -247,196 +247,201 @@ struct Putter : public pvac::ClientChannel::PutCallback
 
 int main (int argc, char *argv[])
 {
-    int opt;                    /* getopt() current option */
-    bool quiet = false;
-
-    setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
-    putenv(const_cast<char*>("POSIXLY_CORRECT="));            /* Behave correct on GNU getopt systems; e.g. handle negative numbers */
-
-    while ((opt = getopt(argc, argv, ":hvVM:r:w:tp:qdF:f:ns")) != -1) {
-        switch (opt) {
-        case 'h':               /* Print usage */
-            usage(true);
-            return 0;
-        case 'v':
-            outmode = pvd::PVStructure::Formatter::Raw;
-            break;
-        case 'V':               /* Print version */
-        {
-            pva::Version version("pvput", "cpp",
-                    EPICS_PVA_MAJOR_VERSION,
-                    EPICS_PVA_MINOR_VERSION,
-                    EPICS_PVA_MAINTENANCE_VERSION,
-                    EPICS_PVA_DEVELOPMENT_FLAG);
-            fprintf(stdout, "%s\n", version.getVersionString().c_str());
-            return 0;
-        }
-        case 'M':
-            if(strcmp(optarg, "raw")==0) {
-                outmode = pvd::PVStructure::Formatter::Raw;
-            } else if(strcmp(optarg, "nt")==0) {
-                outmode = pvd::PVStructure::Formatter::NT;
-            } else if(strcmp(optarg, "json")==0) {
-                outmode = pvd::PVStructure::Formatter::JSON;
-            } else {
-                fprintf(stderr, "Unknown output mode '%s'\n", optarg);
-                outmode = pvd::PVStructure::Formatter::Raw;
-            }
-            break;
-        case 'w':               /* Set PVA timeout value */
-        {
-            double temp;
-            if((epicsScanDouble(optarg, &temp)) != 1)
-            {
-                fprintf(stderr, "'%s' is not a valid timeout value "
-                        "- ignored. ('pvput -h' for help.)\n", optarg);
-            } else {
-                timeout = temp;
-            }
-        }
-            break;
-        case 'r':               /* Set PVA timeout value */
-            request = optarg;
-            break;
-        case 't':               /* Terse mode */
-            // deprecated
-            break;
-        case 'd':               /* Debug log level */
-            debugFlag = true;
-            break;
-        case 'p':               /* Set default provider */
-            defaultProvider = optarg;
-            break;
-        case 'q':               /* Quiet mode */
-            quiet = true;
-            break;
-        case 'F':               /* Store this for output formatting */
-            break;
-        case 'f':               /* Use input stream as input */
-            fprintf(stderr, "Unsupported option -f\n");
-            return 1;
-        case 'n':
-            break;
-        case 's':
-            break;
-        case '?':
-            fprintf(stderr,
-                    "Unrecognized option: '-%c'. ('pvput -h' for help.)\n",
-                    optopt);
-            return 1;
-        case ':':
-            fprintf(stderr,
-                    "Option '-%c' requires an argument. ('pvput -h' for help.)\n",
-                    optopt);
-            return 1;
-        default :
-            usage();
-            return 1;
-        }
-    }
-
-    if (argc <= optind)
-    {
-        fprintf(stderr, "No pv name specified. ('pvput -h' for help.)\n");
-        return 1;
-    }
-    std::string pv = argv[optind++];
-
-    std::string providerName(defaultProvider);
-    std::string pvName(pv);
-
-    int nVals = argc - optind;       /* Remaining arg list are PV names */
-    if (nVals < 1)
-    {
-        fprintf(stderr, "No value(s) specified. ('pvput -h' for help.)\n");
-        return 1;
-    }
-
-    std::vector<std::string> values;
-    // copy values from command line
-    for (int n = 0; optind < argc; n++, optind++)
-        values.push_back(argv[optind]);
-
-    Putter thework;
-
-    for(size_t i=0, N=values.size(); i<N; i++)
-    {
-        size_t sep = values[i].find_first_of('=');
-        if(sep==std::string::npos) {
-            thework.bare.push_back(values[i]);
-#ifndef USE_JSON
-            if(!thework.bare.back().empty() && thework.bare.back()[0]=='{') {
-                fprintf(stderr, "JSON syntax not supported by this build.\n");
-                return 1;
-            }
-#endif
-        } else {
-            thework.pairs.push_back(std::make_pair(values[i].substr(0, sep),
-                                                   values[i].substr(sep+1)));
-#ifndef USE_JSON
-            if(!thework.pairs.back().second.empty() && thework.pairs.back().second[0]=='{') {
-                fprintf(stderr, "JSON syntax not supported by this build.\n");
-                return 1;
-            }
-#endif
-        }
-    }
-
-    if(!thework.bare.empty() && !thework.pairs.empty()) {
-        usage();
-        fprintf(stderr, "\nCan't mix bare values and field=value pairs\n");
-        return 1;
-
-    } else if(thework.bare.size()==1 && thework.bare[0][0]=='[') {
-        // treat plain "[...]" as "value=[...]"
-        thework.pairs.push_back(std::make_pair("value", thework.bare[0]));
-        thework.bare.clear();
-    }
-
-    pvd::PVStructure::shared_pointer pvRequest;
     try {
-        pvRequest = pvd::createRequest(request);
-    } catch(std::exception& e){
-        fprintf(stderr, "failed to parse request string: %s\n", e.what());
-        return 1;
-    }
+        int opt;                    /* getopt() current option */
+        bool quiet = false;
 
-    SET_LOG_LEVEL(debugFlag ? pva::logLevelDebug : pva::logLevelError);
+        setvbuf(stdout,NULL,_IOLBF,BUFSIZ);    /* Set stdout to line buffering */
+        putenv(const_cast<char*>("POSIXLY_CORRECT="));            /* Behave correct on GNU getopt systems; e.g. handle negative numbers */
 
-    std::cout << std::boolalpha;
-
-    epics::pvAccess::ca::CAClientFactory::start();
-
-    pvac::ClientProvider ctxt(providerName);
-
-    pvac::ClientChannel chan(ctxt.connect(pvName));
-
-    if (!quiet) {
-        std::cout << "Old : ";
-        printValue(pvName, chan.get(timeout, pvRequest));
-    }
-
-    {
-        pvac::Operation op(chan.put(&thework, pvRequest, true));
-
-        epicsGuard<epicsMutex> G(thework.lock);
-        while(!thework.done) {
-            epicsGuardRelease<epicsMutex> U(G);
-            if(!thework.wait.wait(timeout)) {
-                fprintf(stderr, "Put timeout\n");
+        while ((opt = getopt(argc, argv, ":hvVM:r:w:tp:qdF:f:ns")) != -1) {
+            switch (opt) {
+            case 'h':               /* Print usage */
+                usage(true);
+                return 0;
+            case 'v':
+                outmode = pvd::PVStructure::Formatter::Raw;
+                break;
+            case 'V':               /* Print version */
+            {
+                pva::Version version("pvput", "cpp",
+                                     EPICS_PVA_MAJOR_VERSION,
+                                     EPICS_PVA_MINOR_VERSION,
+                                     EPICS_PVA_MAINTENANCE_VERSION,
+                                     EPICS_PVA_DEVELOPMENT_FLAG);
+                fprintf(stdout, "%s\n", version.getVersionString().c_str());
+                return 0;
+            }
+            case 'M':
+                if(strcmp(optarg, "raw")==0) {
+                    outmode = pvd::PVStructure::Formatter::Raw;
+                } else if(strcmp(optarg, "nt")==0) {
+                    outmode = pvd::PVStructure::Formatter::NT;
+                } else if(strcmp(optarg, "json")==0) {
+                    outmode = pvd::PVStructure::Formatter::JSON;
+                } else {
+                    fprintf(stderr, "Unknown output mode '%s'\n", optarg);
+                    outmode = pvd::PVStructure::Formatter::Raw;
+                }
+                break;
+            case 'w':               /* Set PVA timeout value */
+            {
+                double temp;
+                if((epicsScanDouble(optarg, &temp)) != 1)
+                {
+                    fprintf(stderr, "'%s' is not a valid timeout value "
+                                    "- ignored. ('pvput -h' for help.)\n", optarg);
+                } else {
+                    timeout = temp;
+                }
+            }
+                break;
+            case 'r':               /* Set PVA timeout value */
+                request = optarg;
+                break;
+            case 't':               /* Terse mode */
+                // deprecated
+                break;
+            case 'd':               /* Debug log level */
+                debugFlag = true;
+                break;
+            case 'p':               /* Set default provider */
+                defaultProvider = optarg;
+                break;
+            case 'q':               /* Quiet mode */
+                quiet = true;
+                break;
+            case 'F':               /* Store this for output formatting */
+                break;
+            case 'f':               /* Use input stream as input */
+                fprintf(stderr, "Unsupported option -f\n");
+                return 1;
+            case 'n':
+                break;
+            case 's':
+                break;
+            case '?':
+                fprintf(stderr,
+                        "Unrecognized option: '-%c'. ('pvput -h' for help.)\n",
+                        optopt);
+                return 1;
+            case ':':
+                fprintf(stderr,
+                        "Option '-%c' requires an argument. ('pvput -h' for help.)\n",
+                        optopt);
+                return 1;
+            default :
+                usage();
                 return 1;
             }
         }
-    }
 
-    if(thework.result==pvac::PutEvent::Fail) {
-        fprintf(stderr, "Error: %s\n", thework.message.c_str());
-    }
+        if (argc <= optind)
+        {
+            fprintf(stderr, "No pv name specified. ('pvput -h' for help.)\n");
+            return 1;
+        }
+        std::string pv = argv[optind++];
 
-    if (!quiet) {
-        std::cout << "New : ";
-    }
-    printValue(pvName, chan.get(timeout, pvRequest));
+        std::string providerName(defaultProvider);
+        std::string pvName(pv);
 
-    return thework.result!=pvac::PutEvent::Success;
+        int nVals = argc - optind;       /* Remaining arg list are PV names */
+        if (nVals < 1)
+        {
+            fprintf(stderr, "No value(s) specified. ('pvput -h' for help.)\n");
+            return 1;
+        }
+
+        std::vector<std::string> values;
+        // copy values from command line
+        for (int n = 0; optind < argc; n++, optind++)
+            values.push_back(argv[optind]);
+
+        Putter thework;
+
+        for(size_t i=0, N=values.size(); i<N; i++)
+        {
+            size_t sep = values[i].find_first_of('=');
+            if(sep==std::string::npos) {
+                thework.bare.push_back(values[i]);
+#ifndef USE_JSON
+                if(!thework.bare.back().empty() && thework.bare.back()[0]=='{') {
+                    fprintf(stderr, "JSON syntax not supported by this build.\n");
+                    return 1;
+                }
+#endif
+            } else {
+                thework.pairs.push_back(std::make_pair(values[i].substr(0, sep),
+                                                       values[i].substr(sep+1)));
+#ifndef USE_JSON
+                if(!thework.pairs.back().second.empty() && thework.pairs.back().second[0]=='{') {
+                    fprintf(stderr, "JSON syntax not supported by this build.\n");
+                    return 1;
+                }
+#endif
+            }
+        }
+
+        if(!thework.bare.empty() && !thework.pairs.empty()) {
+            usage();
+            fprintf(stderr, "\nCan't mix bare values and field=value pairs\n");
+            return 1;
+
+        } else if(thework.bare.size()==1 && thework.bare[0][0]=='[') {
+            // treat plain "[...]" as "value=[...]"
+            thework.pairs.push_back(std::make_pair("value", thework.bare[0]));
+            thework.bare.clear();
+        }
+
+        pvd::PVStructure::shared_pointer pvRequest;
+        try {
+            pvRequest = pvd::createRequest(request);
+        } catch(std::exception& e){
+            fprintf(stderr, "failed to parse request string: %s\n", e.what());
+            return 1;
+        }
+
+        SET_LOG_LEVEL(debugFlag ? pva::logLevelDebug : pva::logLevelError);
+
+        std::cout << std::boolalpha;
+
+        epics::pvAccess::ca::CAClientFactory::start();
+
+        pvac::ClientProvider ctxt(providerName);
+
+        pvac::ClientChannel chan(ctxt.connect(pvName));
+
+        if (!quiet) {
+            std::cout << "Old : ";
+            printValue(pvName, chan.get(timeout, pvRequest));
+        }
+
+        {
+            pvac::Operation op(chan.put(&thework, pvRequest, true));
+
+            epicsGuard<epicsMutex> G(thework.lock);
+            while(!thework.done) {
+                epicsGuardRelease<epicsMutex> U(G);
+                if(!thework.wait.wait(timeout)) {
+                    fprintf(stderr, "Put timeout\n");
+                    return 1;
+                }
+            }
+        }
+
+        if(thework.result==pvac::PutEvent::Fail) {
+            fprintf(stderr, "Error: %s\n", thework.message.c_str());
+        }
+
+        if (!quiet) {
+            std::cout << "New : ";
+        }
+        printValue(pvName, chan.get(timeout, pvRequest));
+
+        return thework.result!=pvac::PutEvent::Success;
+    } catch(std::exception& e) {
+        std::cerr<<"Error: "<<e.what()<<"\n";
+        return 1;
+    }
 }

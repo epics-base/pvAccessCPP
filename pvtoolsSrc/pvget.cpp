@@ -264,180 +264,185 @@ struct MonTracker : public pvac::ClientChannel::MonitorCallback,
 
 int MAIN (int argc, char *argv[])
 {
-    int opt;                    /* getopt() current option */
+    try {
+        int opt;                    /* getopt() current option */
 #ifdef PVMONITOR
-    bool monitor = true;
+        bool monitor = true;
 #else
-    bool monitor = false;
+        bool monitor = false;
 #endif
 
-    epics::RefMonitor refmon;
+        epics::RefMonitor refmon;
 
-    // ================ Parse Arguments
+        // ================ Parse Arguments
 
-    while ((opt = getopt(argc, argv, ":hvVRM:r:w:tmp:qdcF:f:ni")) != -1) {
-        switch (opt) {
-        case 'h':               /* Print usage */
-            usage();
-            return 0;
-        case 'v':
-            verbosity++;
-            break;
-        case 'V':               /* Print version */
-        {
-            pva::Version version(EXECNAME, "cpp",
-                                 EPICS_PVA_MAJOR_VERSION,
-                                 EPICS_PVA_MINOR_VERSION,
-                                 EPICS_PVA_MAINTENANCE_VERSION,
-                                 EPICS_PVA_DEVELOPMENT_FLAG);
-            fprintf(stdout, "%s\n", version.getVersionString().c_str());
-            return 0;
-        }
-        case 'R':
-            refmon.start(5.0);
-            break;
-        case 'M':
-            if(strcmp(optarg, "raw")==0) {
-                outmode = pvd::PVStructure::Formatter::Raw;
-            } else if(strcmp(optarg, "nt")==0) {
-                outmode = pvd::PVStructure::Formatter::NT;
-            } else if(strcmp(optarg, "json")==0) {
-                outmode = pvd::PVStructure::Formatter::JSON;
-            } else {
-                fprintf(stderr, "Unknown output mode '%s'\n", optarg);
-                outmode = pvd::PVStructure::Formatter::Raw;
-            }
-            break;
-        case 'w':               /* Set PVA timeout value */
-        {
-            double temp;
-            if((epicsScanDouble(optarg, &temp)) != 1)
+        while ((opt = getopt(argc, argv, ":hvVRM:r:w:tmp:qdcF:f:ni")) != -1) {
+            switch (opt) {
+            case 'h':               /* Print usage */
+                usage();
+                return 0;
+            case 'v':
+                verbosity++;
+                break;
+            case 'V':               /* Print version */
             {
-                fprintf(stderr, "'%s' is not a valid timeout value "
-                                "- ignored. ('" EXECNAME " -h' for help.)\n", optarg);
-            } else {
-                timeout = temp;
+                pva::Version version(EXECNAME, "cpp",
+                                     EPICS_PVA_MAJOR_VERSION,
+                                     EPICS_PVA_MINOR_VERSION,
+                                     EPICS_PVA_MAINTENANCE_VERSION,
+                                     EPICS_PVA_DEVELOPMENT_FLAG);
+                fprintf(stdout, "%s\n", version.getVersionString().c_str());
+                return 0;
             }
-        }
-            break;
-        case 'r':               /* Set PVA timeout value */
+            case 'R':
+                refmon.start(5.0);
+                break;
+            case 'M':
+                if(strcmp(optarg, "raw")==0) {
+                    outmode = pvd::PVStructure::Formatter::Raw;
+                } else if(strcmp(optarg, "nt")==0) {
+                    outmode = pvd::PVStructure::Formatter::NT;
+                } else if(strcmp(optarg, "json")==0) {
+                    outmode = pvd::PVStructure::Formatter::JSON;
+                } else {
+                    fprintf(stderr, "Unknown output mode '%s'\n", optarg);
+                    outmode = pvd::PVStructure::Formatter::Raw;
+                }
+                break;
+            case 'w':               /* Set PVA timeout value */
+            {
+                double temp;
+                if((epicsScanDouble(optarg, &temp)) != 1)
+                {
+                    fprintf(stderr, "'%s' is not a valid timeout value "
+                                    "- ignored. ('" EXECNAME " -h' for help.)\n", optarg);
+                } else {
+                    timeout = temp;
+                }
+            }
+                break;
+            case 'r':               /* Set PVA timeout value */
                 request = optarg;
                 break;
-        case 't':               /* Terse mode */
-        case 'i':               /* T-types format mode */
-        case 'F':               /* Store this for output formatting */
-        case 'n':
-        case 'q':               /* Quiet mode */
-            // deprecate
-            break;
-        case 'f':               /* Use input stream as input */
-            fprintf(stderr, "Unsupported option -f\n");
-            return 1;
-        case 'm':               /* Monitor mode */
-            monitor = true;
-            break;
-        case 'p':               /* Set default provider */
-            defaultProvider = optarg;
-            break;
-        case 'd':               /* Debug log level */
-            debugFlag = true;
-            break;
-        case 'c':               /* Clean-up and report used instance count */
-            break;
-        case '?':
-            fprintf(stderr,
-                    "Unrecognized option: '-%c'. ('" EXECNAME " -h' for help.)\n",
-                    optopt);
-            return 1;
-        case ':':
-            fprintf(stderr,
-                    "Option '-%c' requires an argument. ('" EXECNAME " -h' for help.)\n",
-                    optopt);
-            return 1;
-        default :
-            usage();
-            return 1;
-        }
-    }
-
-    if(monitor)
-        timeout = -1;
-
-    if(verbosity>0 && outmode==pvd::PVStructure::Formatter::NT)
-        outmode = pvd::PVStructure::Formatter::Raw;
-
-    pvd::PVStructure::shared_pointer pvRequest;
-    try {
-        pvRequest = pvd::createRequest(request);
-    } catch(std::exception& e){
-        fprintf(stderr, "failed to parse request string: %s\n", e.what());
-        return 1;
-    }
-
-    for(int i = optind; i < argc; i++) {
-        pvnamewidth = std::max(pvnamewidth, strlen(argv[i]));
-    }
-
-    SET_LOG_LEVEL(debugFlag ? pva::logLevelDebug : pva::logLevelError);
-
-    epics::pvAccess::ca::CAClientFactory::start();
-
-    {
-        pvac::ClientProvider provider(defaultProvider);
-
-        std::vector<std::tr1::shared_ptr<Tracker> > tracked;
-
-        epics::auto_ptr<WorkQueue> Q;
-        if(monitor)
-            Q.reset(new WorkQueue);
-
-        for(int i = optind; i < argc; i++) {
-            pvac::ClientChannel chan(provider.connect(argv[i]));
-
-            if(monitor) {
-                std::tr1::shared_ptr<MonTracker> mon(new MonTracker(*Q, chan, pvRequest));
-
-                tracked.push_back(mon);
-
-            } else { // Get
-                std::tr1::shared_ptr<Getter> get(new Getter(chan, pvRequest));
-
-                tracked.push_back(get);
+            case 't':               /* Terse mode */
+            case 'i':               /* T-types format mode */
+            case 'F':               /* Store this for output formatting */
+            case 'n':
+            case 'q':               /* Quiet mode */
+                // deprecate
+                break;
+            case 'f':               /* Use input stream as input */
+                fprintf(stderr, "Unsupported option -f\n");
+                return 1;
+            case 'm':               /* Monitor mode */
+                monitor = true;
+                break;
+            case 'p':               /* Set default provider */
+                defaultProvider = optarg;
+                break;
+            case 'd':               /* Debug log level */
+                debugFlag = true;
+                break;
+            case 'c':               /* Clean-up and report used instance count */
+                break;
+            case '?':
+                fprintf(stderr,
+                        "Unrecognized option: '-%c'. ('" EXECNAME " -h' for help.)\n",
+                        optopt);
+                return 1;
+            case ':':
+                fprintf(stderr,
+                        "Option '-%c' requires an argument. ('" EXECNAME " -h' for help.)\n",
+                        optopt);
+                return 1;
+            default :
+                usage();
+                return 1;
             }
         }
 
-        // ========================== Wait for operations to complete, or timeout
+        if(monitor)
+            timeout = -1;
 
-        Tracker::prepare(); // install signal handler
+        if(verbosity>0 && outmode==pvd::PVStructure::Formatter::NT)
+            outmode = pvd::PVStructure::Formatter::Raw;
 
-        if(debugFlag)
-            std::cerr<<"Waiting...\n";
+        pvd::PVStructure::shared_pointer pvRequest;
+        try {
+            pvRequest = pvd::createRequest(request);
+        } catch(std::exception& e){
+            fprintf(stderr, "failed to parse request string: %s\n", e.what());
+            return 1;
+        }
+
+        for(int i = optind; i < argc; i++) {
+            pvnamewidth = std::max(pvnamewidth, strlen(argv[i]));
+        }
+
+        SET_LOG_LEVEL(debugFlag ? pva::logLevelDebug : pva::logLevelError);
+
+        epics::pvAccess::ca::CAClientFactory::start();
 
         {
-            Guard G(Tracker::doneLock);
-            while(Tracker::inprog.size() && !Tracker::abort) {
-                UnGuard U(G);
-                if(timeout<=0)
-                    Tracker::doneEvt.wait();
-                else if(!Tracker::doneEvt.wait(timeout)) {
-                    haderror = 1;
-                    std::cerr<<"Timeout\n";
-                    break;
+            pvac::ClientProvider provider(defaultProvider);
+
+            std::vector<std::tr1::shared_ptr<Tracker> > tracked;
+
+            epics::auto_ptr<WorkQueue> Q;
+            if(monitor)
+                Q.reset(new WorkQueue);
+
+            for(int i = optind; i < argc; i++) {
+                pvac::ClientChannel chan(provider.connect(argv[i]));
+
+                if(monitor) {
+                    std::tr1::shared_ptr<MonTracker> mon(new MonTracker(*Q, chan, pvRequest));
+
+                    tracked.push_back(mon);
+
+                } else { // Get
+                    std::tr1::shared_ptr<Getter> get(new Getter(chan, pvRequest));
+
+                    tracked.push_back(get);
+                }
+            }
+
+            // ========================== Wait for operations to complete, or timeout
+
+            Tracker::prepare(); // install signal handler
+
+            if(debugFlag)
+                std::cerr<<"Waiting...\n";
+
+            {
+                Guard G(Tracker::doneLock);
+                while(Tracker::inprog.size() && !Tracker::abort) {
+                    UnGuard U(G);
+                    if(timeout<=0)
+                        Tracker::doneEvt.wait();
+                    else if(!Tracker::doneEvt.wait(timeout)) {
+                        haderror = 1;
+                        std::cerr<<"Timeout\n";
+                        break;
+                    }
                 }
             }
         }
+
+        if(refmon.running()) {
+            refmon.stop();
+            // show final counts
+            refmon.current();
+        }
+
+        // ========================== All done now
+
+        if(debugFlag)
+            std::cerr<<"Done\n";
+
+        return haderror ? 1 : 0;
+    } catch(std::exception& e) {
+        std::cerr<<"Error: "<<e.what()<<"\n";
+        return 1;
     }
-
-    if(refmon.running()) {
-        refmon.stop();
-        // show final counts
-        refmon.current();
-    }
-
-    // ========================== All done now
-
-    if(debugFlag)
-        std::cerr<<"Done\n";
-
-    return haderror ? 1 : 0;
 }

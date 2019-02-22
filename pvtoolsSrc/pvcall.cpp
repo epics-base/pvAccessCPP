@@ -85,165 +85,170 @@ arg_t parseArg(const std::string& raw) {
 
 int MAIN (int argc, char *argv[])
 {
-    int opt;                    /* getopt() current option */
-    std::string pv;
+    try {
+        int opt;                    /* getopt() current option */
+        std::string pv;
 
-    args_t args;
+        args_t args;
 
-    while ((opt = getopt(argc, argv, ":hvVM:r:w:p:ds:a:")) != -1) {
-        switch (opt) {
-        case 'h':               /* Print usage */
-            callusage();
-            return 0;
-        case 'v':
-            verbosity++;
-            break;
-        case 'V':               /* Print version */
-        {
-            pva::Version version(EXECNAME, "cpp",
-                                 EPICS_PVA_MAJOR_VERSION,
-                                 EPICS_PVA_MINOR_VERSION,
-                                 EPICS_PVA_MAINTENANCE_VERSION,
-                                 EPICS_PVA_DEVELOPMENT_FLAG);
-            fprintf(stdout, "%s\n", version.getVersionString().c_str());
-            return 0;
-        }
-            break;
-        case 'M':
-            if(strcmp(optarg, "raw")==0) {
-                outmode = pvd::PVStructure::Formatter::Raw;
-            } else if(strcmp(optarg, "nt")==0) {
-                outmode = pvd::PVStructure::Formatter::NT;
-            } else if(strcmp(optarg, "json")==0) {
-                outmode = pvd::PVStructure::Formatter::JSON;
-            } else {
-                fprintf(stderr, "Unknown output mode '%s'\n", optarg);
-                outmode = pvd::PVStructure::Formatter::Raw;
-            }
-            break;
-        case 'w':               /* Set PVA timeout value */
-        {
-            double temp;
-            if((epicsScanDouble(optarg, &temp)) != 1)
+        while ((opt = getopt(argc, argv, ":hvVM:r:w:p:ds:a:")) != -1) {
+            switch (opt) {
+            case 'h':               /* Print usage */
+                callusage();
+                return 0;
+            case 'v':
+                verbosity++;
+                break;
+            case 'V':               /* Print version */
             {
-                fprintf(stderr, "'%s' is not a valid timeout value "
-                                "- ignored. ('" EXECNAME " -h' for help.)\n", optarg);
-            } else {
-                timeout = temp;
+                pva::Version version(EXECNAME, "cpp",
+                                     EPICS_PVA_MAJOR_VERSION,
+                                     EPICS_PVA_MINOR_VERSION,
+                                     EPICS_PVA_MAINTENANCE_VERSION,
+                                     EPICS_PVA_DEVELOPMENT_FLAG);
+                fprintf(stdout, "%s\n", version.getVersionString().c_str());
+                return 0;
+            }
+                break;
+            case 'M':
+                if(strcmp(optarg, "raw")==0) {
+                    outmode = pvd::PVStructure::Formatter::Raw;
+                } else if(strcmp(optarg, "nt")==0) {
+                    outmode = pvd::PVStructure::Formatter::NT;
+                } else if(strcmp(optarg, "json")==0) {
+                    outmode = pvd::PVStructure::Formatter::JSON;
+                } else {
+                    fprintf(stderr, "Unknown output mode '%s'\n", optarg);
+                    outmode = pvd::PVStructure::Formatter::Raw;
+                }
+                break;
+            case 'w':               /* Set PVA timeout value */
+            {
+                double temp;
+                if((epicsScanDouble(optarg, &temp)) != 1)
+                {
+                    fprintf(stderr, "'%s' is not a valid timeout value "
+                                    "- ignored. ('" EXECNAME " -h' for help.)\n", optarg);
+                } else {
+                    timeout = temp;
+                }
+            }
+                break;
+            case 'r':               /* Set PVA timeout value */
+                request = optarg;
+                break;
+            case 'p':               /* Set default provider */
+                defaultProvider = optarg;
+                break;
+            case 'd':               /* Debug log level */
+                debugFlag = true;
+                break;
+            case 's':
+                pv = optarg;
+                break;
+            case 'a':
+                try {
+                args.push_back(parseArg(optarg));
+            } catch(std::exception& e){
+                    std::cerr<<"Error parsing argument '"<<optarg<<"'\n";
+                    return 1;
+                }
+                break;
+            case '?':
+                fprintf(stderr,
+                        "Unrecognized option: '-%c'. ('" EXECNAME " -h' for help.)\n",
+                        optopt);
+                return 1;
+            case ':':
+                fprintf(stderr,
+                        "Option '-%c' requires an argument. ('" EXECNAME " -h' for help.)\n",
+                        optopt);
+                return 1;
+            default :
+                callusage();
+                return 1;
             }
         }
-            break;
-        case 'r':               /* Set PVA timeout value */
-            request = optarg;
-            break;
-        case 'p':               /* Set default provider */
-            defaultProvider = optarg;
-            break;
-        case 'd':               /* Debug log level */
-            debugFlag = true;
-            break;
-        case 's':
-            pv = optarg;
-            break;
-        case 'a':
+
+        if(!pv.empty()) {
+            // ok
+        } else if (argc <= optind) {
+            fprintf(stderr, "No pv name specified. ('pvput -h' for help.)\n");
+            return 1;
+        } else {
+            pv = argv[optind++];
+        }
+
+
+        for(int i=optind; i<argc; i++) {
             try {
-                args.push_back(parseArg(optarg));
+                args.push_back(parseArg(argv[i]));
             } catch(std::exception& e){
                 std::cerr<<"Error parsing argument '"<<optarg<<"'\n";
                 return 1;
             }
-            break;
-        case '?':
-            fprintf(stderr,
-                    "Unrecognized option: '-%c'. ('" EXECNAME " -h' for help.)\n",
-                    optopt);
-            return 1;
-        case ':':
-            fprintf(stderr,
-                    "Option '-%c' requires an argument. ('" EXECNAME " -h' for help.)\n",
-                    optopt);
-            return 1;
-        default :
-            callusage();
-            return 1;
         }
-    }
 
-    if(!pv.empty()) {
-        // ok
-    } else if (argc <= optind) {
-        fprintf(stderr, "No pv name specified. ('pvput -h' for help.)\n");
-        return 1;
-    } else {
-        pv = argv[optind++];
-    }
-
-
-    for(int i=optind; i<argc; i++) {
+        pvd::PVStructure::shared_pointer pvRequest;
         try {
-            args.push_back(parseArg(argv[i]));
+            pvRequest = pvd::createRequest(request);
         } catch(std::exception& e){
-            std::cerr<<"Error parsing argument '"<<optarg<<"'\n";
+            fprintf(stderr, "failed to parse request string: %s\n", e.what());
             return 1;
         }
-    }
 
-    pvd::PVStructure::shared_pointer pvRequest;
-    try {
-        pvRequest = pvd::createRequest(request);
-    } catch(std::exception& e){
-        fprintf(stderr, "failed to parse request string: %s\n", e.what());
-        return 1;
-    }
+        pvd::PVStructurePtr argument;
+        {
+            pvd::FieldBuilderPtr builder(pvd::getFieldCreate()->createFieldBuilder());
+            builder = builder->setId("epics:nt/NTURI:1.0")
+                    ->add("scheme", pvd::pvString)
+                    ->add("authority", pvd::pvString)
+                    ->add("path", pvd::pvString)
+                    ->addNestedStructure("query");
 
-    pvd::PVStructurePtr argument;
-    {
-        pvd::FieldBuilderPtr builder(pvd::getFieldCreate()->createFieldBuilder());
-        builder = builder->setId("epics:nt/NTURI:1.0")
-                ->add("scheme", pvd::pvString)
-                ->add("authority", pvd::pvString)
-                ->add("path", pvd::pvString)
-                ->addNestedStructure("query");
+            for(args_t::const_iterator it(args.begin()), end(args.end()); it!=end; ++it) {
+                builder = builder->add(it->first, it->second->getField());
+            }
 
-        for(args_t::const_iterator it(args.begin()), end(args.end()); it!=end; ++it) {
-            builder = builder->add(it->first, it->second->getField());
+            pvd::StructureConstPtr type(builder->endNested()
+                                        ->createStructure());
+            argument = pvd::getPVDataCreate()->createPVStructure(type);
+
+            argument->getSubFieldT<pvd::PVString>("scheme")->put(defaultProvider);
+            argument->getSubFieldT<pvd::PVString>("path")->put(pv);
+            pvd::PVStructurePtr query(argument->getSubFieldT<pvd::PVStructure>("query"));
+
+            for(args_t::const_iterator it(args.begin()), end(args.end()); it!=end; ++it) {
+                query->getSubFieldT(it->first)->copy(*it->second);
+            }
         }
 
-        pvd::StructureConstPtr type(builder->endNested()
-                                    ->createStructure());
-        argument = pvd::getPVDataCreate()->createPVStructure(type);
+        if(verbosity>=1)
+            std::cout<<"# Argument\n"<<argument->stream().format(outmode);
 
-        argument->getSubFieldT<pvd::PVString>("scheme")->put(defaultProvider);
-        argument->getSubFieldT<pvd::PVString>("path")->put(pv);
-        pvd::PVStructurePtr query(argument->getSubFieldT<pvd::PVStructure>("query"));
+        pvac::ClientProvider prov(defaultProvider);
 
-        for(args_t::const_iterator it(args.begin()), end(args.end()); it!=end; ++it) {
-            query->getSubFieldT(it->first)->copy(*it->second);
+        pvac::ClientChannel chan(prov.connect(pv));
+
+        pvd::PVStructure::const_shared_pointer ret;
+        try {
+            ret = chan.rpc(timeout, argument, pvRequest);
+        }catch(pvac::Timeout&){
+            std::cerr<<"Timeout\n";
+            return 1;
+        }catch(std::exception& e) {
+            std::cerr<<"Error: "<<e.what()<<"\n";
+            return 1;
         }
-    }
+        assert(ret);
 
-    if(verbosity>=1)
-        std::cout<<"# Argument\n"<<argument->stream().format(outmode);
+        if(verbosity>=1)
+            std::cout<<"# Result\n";
+        std::cout<<ret->stream().format(outmode);
 
-    pvac::ClientProvider prov(defaultProvider);
-
-    pvac::ClientChannel chan(prov.connect(pv));
-
-    pvd::PVStructure::const_shared_pointer ret;
-    try {
-        ret = chan.rpc(timeout, argument, pvRequest);
-    }catch(pvac::Timeout&){
-        std::cerr<<"Timeout\n";
-        return 1;
-    }catch(std::exception& e) {
+        return 0;
+    } catch(std::exception& e) {
         std::cerr<<"Error: "<<e.what()<<"\n";
         return 1;
     }
-    assert(ret);
-
-    if(verbosity>=1)
-        std::cout<<"# Result\n";
-    std::cout<<ret->stream().format(outmode);
-
-    return 0;
 }
