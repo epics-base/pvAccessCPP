@@ -14,9 +14,6 @@ TESTS += testHexDump
 
 TESTPROD_HOST += testInetAddressUtils
 testInetAddressUtils = testInetAddressUtils.cpp
-# Avoid errors from inlined htonl() etc. used as template argument
-# TODO this is gcc only
-testInetAddressUtils_CXXFLAGS = -O0
 testHarness_SRCS += testInetAddressUtils.cpp
 TESTS += testInetAddressUtils
 
