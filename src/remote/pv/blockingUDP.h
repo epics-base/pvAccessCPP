@@ -145,10 +145,7 @@ public:
 
     virtual void close() OVERRIDE FINAL;
 
-    virtual void ensureData(std::size_t size) OVERRIDE FINAL {
-        if (_receiveBuffer.getRemaining() < size)
-            throw std::underflow_error("no more data in UDP packet");
-    }
+    virtual void ensureData(std::size_t size) OVERRIDE FINAL;
 
     virtual void alignData(std::size_t alignment) OVERRIDE FINAL {
         _receiveBuffer.align(alignment);

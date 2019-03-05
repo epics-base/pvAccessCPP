@@ -9,6 +9,8 @@
 #include <ws2tcpip.h>
 #endif
 
+#include <sstream>
+
 #include <sys/types.h>
 #include <cstdio>
 
@@ -25,6 +27,7 @@
 #include <pv/inetAddressUtil.h>
 #include <pv/logger.h>
 #include <pv/likely.h>
+#include <pv/hexDump.h>
 
 using namespace epics::pvData;
 using namespace std;
@@ -111,6 +114,16 @@ void BlockingUDPTransport::start() {
 
 void BlockingUDPTransport::close() {
     close(true);
+}
+
+void BlockingUDPTransport::ensureData(std::size_t size) {
+    if (_receiveBuffer.getRemaining() >= size)
+        return;
+    std::ostringstream msg;
+    msg<<"no more data in UDP packet : "
+       <<_receiveBuffer.getPosition()<<":"<<_receiveBuffer.getLimit()
+       <<" for "<<size;
+    throw std::underflow_error(msg.str());
 }
 
 void BlockingUDPTransport::close(bool waitForThreadToComplete) {
@@ -255,13 +268,18 @@ void BlockingUDPTransport::run() {
                     try {
                         processBuffer(thisTransport, fromAddress, &_receiveBuffer);
                     } catch(std::exception& e) {
-                        LOG(logLevelError,
-                            "an exception caught while in UDP receiveThread at %s:%d: %s",
-                            __FILE__, __LINE__, e.what());
-                    } catch (...) {
-                        LOG(logLevelError,
-                            "unknown exception caught while in UDP receiveThread at %s:%d.",
-                            __FILE__, __LINE__);
+                        if(IS_LOGGABLE(logLevelError)) {
+                            char strBuffer[64];
+                            sockAddrToDottedIP(&fromAddress.sa, strBuffer, sizeof(strBuffer));
+                            size_t epos = _receiveBuffer.getPosition();
+
+                            // of course _receiveBuffer _may_ have been modified during processing...
+                            _receiveBuffer.setPosition(RECEIVE_BUFFER_PRE_RESERVE);
+                            _receiveBuffer.setLimit(RECEIVE_BUFFER_PRE_RESERVE+bytesRead);
+
+                            std::cerr<<"Error on UDP RX "<<strBuffer<<" -> "<<_remoteName<<" at "<<epos<<" : "<<e.what()<<"\n"
+                                      <<HexDump(_receiveBuffer).limit(256u);
+                        }
                     }
                 }
             } else {

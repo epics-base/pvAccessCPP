@@ -42,7 +42,7 @@ void ResponseHandler::handleResponse(osiSockAddr* responseFrom,
         std::cerr<<"Message [0x"<<std::hex<<(int)command<<", v0x"<<std::hex
                  <<int(version)<<"] received from "<<ipAddrStr<<" on "<<transport->getRemoteName()
                  <<" : "<<_description<<"\n"
-                 <<HexDump(*payloadBuffer, payloadSize);
+                 <<HexDump(*payloadBuffer, payloadSize).limit(0xffff);
     }
 }
 }
