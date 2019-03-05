@@ -9,6 +9,8 @@
 #include <ws2tcpip.h>
 #endif
 
+#include <sstream>
+
 #include <sys/types.h>
 #include <cstdio>
 
@@ -111,6 +113,16 @@ void BlockingUDPTransport::start() {
 
 void BlockingUDPTransport::close() {
     close(true);
+}
+
+void BlockingUDPTransport::ensureData(std::size_t size) {
+    if (_receiveBuffer.getRemaining() >= size)
+        return;
+    std::ostringstream msg;
+    msg<<"no more data in UDP packet : "
+       <<_receiveBuffer.getPosition()<<":"<<_receiveBuffer.getLimit()
+       <<" for "<<size;
+    throw std::underflow_error(msg.str());
 }
 
 void BlockingUDPTransport::close(bool waitForThreadToComplete) {
@@ -256,12 +268,12 @@ void BlockingUDPTransport::run() {
                         processBuffer(thisTransport, fromAddress, &_receiveBuffer);
                     } catch(std::exception& e) {
                         LOG(logLevelError,
-                            "an exception caught while in UDP receiveThread at %s:%d: %s",
-                            __FILE__, __LINE__, e.what());
+                            "an exception caught while in UDP receiveThread %s at %s:%d: %s",
+                            _remoteName.c_str(), __FILE__, __LINE__, e.what());
                     } catch (...) {
                         LOG(logLevelError,
-                            "unknown exception caught while in UDP receiveThread at %s:%d.",
-                            __FILE__, __LINE__);
+                            "unknown exception caught while in UDP receiveThread %s at %s:%d.",
+                            _remoteName.c_str(), __FILE__, __LINE__);
                     }
                 }
             } else {
