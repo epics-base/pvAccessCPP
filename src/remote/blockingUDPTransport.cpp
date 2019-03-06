@@ -341,6 +341,10 @@ bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & trans
 
         // second byte version
         int8 version = receiveBuffer->getByte();
+        if(version==0) {
+            // 0 -> 1 included incompatible changes
+            return false;
+        }
 
         int8 flags = receiveBuffer->getByte();
         if (flags & 0x80)

@@ -157,12 +157,12 @@ void AbstractCodec::processHeader() {
     _payloadSize = _socketBuffer.getInt();
 
     // check magic code
-    if (magicCode != PVA_MAGIC)
+    if (magicCode != PVA_MAGIC || _version==0)
     {
         LOG(logLevelError,
-            "Invalid header received from the client at %s:%d: %s.,"
-            " disconnecting...",
-            __FILE__, __LINE__, inetAddressToString(*getLastReadBufferSocketAddress()).c_str());
+            "Invalid header received from the client : %s %02x%02x%02x%02x disconnecting...",
+            inetAddressToString(*getLastReadBufferSocketAddress()).c_str(),
+            unsigned(magicCode), unsigned(_version), unsigned(_flags), unsigned(_command));
         invalidDataStreamHandler();
         throw invalid_data_stream_exception("invalid header received");
     }
