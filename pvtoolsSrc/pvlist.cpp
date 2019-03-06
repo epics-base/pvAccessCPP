@@ -120,6 +120,10 @@ bool processSearchResponse(osiSockAddr const & responseFrom, ByteBuffer & receiv
 
     // second byte version
     int8 version = receiveBuffer.getByte();
+    if(version == 0) {
+        // 0 -> 1 included incompatible changes
+        return false;
+    }
 
     // only data for UDP
     int8 flags = receiveBuffer.getByte();
