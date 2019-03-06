@@ -2998,13 +2998,9 @@ public:
     {
         if (command < 0 || command >= (int8)m_handlerTable.size())
         {
-            LOG(logLevelError,
-                "Invalid (or unsupported) command: %x.", (0xFF&command));
-
-            if(pvAccessIsLoggable(logLevelError)) {
-                std::cerr<<"Invalid PVA header "<<hex<<(int)(0xFF&command)
-                         <<", its payload buffer\n"
-                         <<HexDump(*payloadBuffer, payloadSize);
+            if(IS_LOGGABLE(logLevelError)) {
+                std::cerr<<"Invalid (or unsupported) command: "<<std::hex<<(int)(0xFF&command)<<"\n"
+                         <<HexDump(*payloadBuffer, payloadSize).limit(256u);
             }
             return;
         }
