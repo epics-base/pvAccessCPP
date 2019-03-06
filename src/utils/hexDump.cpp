@@ -7,102 +7,91 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <iomanip>
+
+#include <pv/byteBuffer.h>
 
 #define epicsExportSharedSymbols
 #include <pv/hexDump.h>
 
-using namespace epics::pvData;
-using std::string;
-using std::stringstream;
-using std::endl;
-using std::cout;
-
 namespace epics {
 namespace pvAccess {
 
-/// Byte to hexchar mapping.
-static const char lookup[] = {
-    '0', '1', '2', '3', '4', '5', '6', '7',
-    '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
-};
+HexDump::HexDump(const char* buf, size_t len)
+    :buf(buf)
+    ,buflen(len)
+    ,_limit(1024u)
+    ,_groupBy(4u)
+    ,_perLine(16u)
+{}
 
-/// Get hex representation of byte.
-string toHex(int8 b) {
-    string sb;
-
-    int upper = (b>>4)&0x0F;
-    sb += lookup[upper];
-
-    int lower = b&0x0F;
-    sb += lookup[lower];
-
-    sb += ' ';
-
-    return sb;
+HexDump::HexDump(const pvData::ByteBuffer& bb,
+                 size_t size, size_t offset)
+    :buf(bb.getBuffer() + bb.getPosition())
+    ,buflen(bb.getRemaining())
+    ,_limit((size_t)-1)
+    ,_groupBy(4u)
+    ,_perLine(16u)
+{
+    if(offset > buflen)
+        offset = buflen;
+    buf    += offset;
+    buflen -= offset;
+    if(buflen > size)
+        buflen = size;
 }
 
-/// Get ASCII representation of byte, dot if non-readable.
-char toAscii(int8 b) {
-    if(b>(int8)31&&b<(int8)127)
-        return (char)b;
-    else
-        return '.';
+HexDump::~HexDump() {}
+
+static
+size_t ilog2(size_t val)
+{
+    size_t ret = 0;
+    while(val >>= 1)
+        ret++;
+    return ret;
 }
 
-void hexDump(std::string const & name, const int8 *bs, int len) {
-    hexDump(name, bs, 0, len);
+static
+size_t bits2bytes(size_t val)
+{
+    // round up to next multiple of 8
+    val -= 1u;
+    val |= 7u;
+    val += 1u;
+    // bits -> bytes
+    val /= 8u;
+    return val;
 }
 
-void hexDump(std::string const & name, const int8 *bs, int start, int len) {
-    hexDump("", name, bs, start, len);
-}
+epicsShareFunc
+std::ostream& operator<<(std::ostream& strm, const HexDump& hex)
+{
+    size_t len = std::min(hex.buflen, hex._limit);
+    // find address width in hex chars
+    // find bit width, rounded up to 8 bits, divide down to bytes
+    size_t addrwidth = bits2bytes(ilog2(len))*2u;
 
-void hexDump(std::string const & prologue, string const & name, const int8 *bs,
-             int start, int len) {
+    for(size_t i=0; i<len; i++)
+    {
+        unsigned val = hex.buf[i]&0xff;
+        size_t col = i%hex._perLine;
 
-    stringstream header;
-
-    header<<prologue<<endl<<"Hexdump ["<<name<<"] size = "<<len;
-
-    string out(header.str());
-
-    string chars;
-
-    for(int i = start; i<(start+len); i++) {
-        if(((i-start)%16)==0) {
-            out += chars;
-            out += '\n';
-            chars.erase();
+        if(col==0) {
+            // first address of this row
+            strm<<"0x"<<std::hex<<std::setw(addrwidth)<<std::setfill('0')<<i;
         }
-
-        chars += toAscii(bs[i]);
-
-        out += toHex(bs[i]);
-
-        if(((i-start)%4)==3) {
-            chars += ' ';
-            out += ' ';
+        if(col%hex._groupBy == 0) {
+            strm<<' ';
         }
+        strm<<std::hex<<std::setw(2)<<std::setfill('0')<<val;
+        if(col+1u==hex._perLine && i+1u!=len)
+            strm<<'\n';
     }
-
-    if(len%16!=0) {
-        int pad = 0;
-        int delta_bytes = 16-(len%16);
-
-        //rest of line (no of bytes)
-        //each byte takes two chars plus one ws
-        pad = delta_bytes*3;
-
-        //additional whitespaces after four bytes
-        pad += (delta_bytes/4);
-        pad++;
-
-        for(int i = 0; i<pad; i++)
-            chars.insert(0, " ");
-    }
-
-    out += chars;
-    cout<<out<<endl;
+    if(len==hex._limit && len<hex.buflen)
+        strm<<" ...";
+    strm<<'\n';
+    return strm;
 }
 
 }

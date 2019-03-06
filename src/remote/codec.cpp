@@ -183,12 +183,6 @@ void AbstractCodec::processReadNormal()  {
                 return;
             }
 
-            /*
-            hexDump("Header", (const int8*)_socketBuffer.getArray(),
-                    _socketBuffer.getPosition(), PVA_MESSAGE_HEADER_SIZE);
-
-            */
-
             // read header fields
             processHeader();
             bool isControl = ((_flags & 0x01) == 0x01);
@@ -795,14 +789,6 @@ void AbstractCodec::send(ByteBuffer *buffer)
         //int p = buffer.position();
         int bytesSent = write(buffer);
 
-        /*
-        if (IS_LOGGABLE(logLevelTrace)) {
-          hexDump(std::string("AbstractCodec::send WRITE"),
-            (const int8 *)buffer->getArray(),
-            buffer->getPosition(), buffer->getRemaining());
-        }
-        */
-
         if (bytesSent < 0)
         {
             // connection lost
@@ -1320,13 +1306,6 @@ int BlockingTCPTransportCodec::read(epics::pvData::ByteBuffer* dst) {
                              (char*)(dst->getArray()+pos), remaining, 0);
 
         // NOTE: do not log here, you might override SOCKERRNO relevant to recv() operation above
-
-        /*
-        if (IS_LOGGABLE(logLevelTrace)) {
-          hexDump(std::string("READ"),
-            (const int8 *)(dst->getArray()+pos), bytesRead);
-        }
-        */
 
         if(unlikely(bytesRead<=0)) {
 

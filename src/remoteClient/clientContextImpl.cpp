@@ -3000,10 +3000,14 @@ public:
     {
         if (command < 0 || command >= (int8)m_handlerTable.size())
         {
-            // TODO remove debug output
-            char buf[100];
-            sprintf(buf, "Invalid (or unsupported) command %d, its payload", command);
-            hexDump(buf, (const int8*)(payloadBuffer->getArray()), payloadBuffer->getPosition(), payloadSize);
+            LOG(logLevelError,
+                "Invalid (or unsupported) command: %x.", (0xFF&command));
+
+            if(pvAccessIsLoggable(logLevelError)) {
+                std::cerr<<"Invalid PVA header "<<hex<<(int)(0xFF&command)
+                         <<", its payload buffer\n"
+                         <<HexDump(*payloadBuffer, payloadSize);
+            }
             return;
         }
         // delegate
