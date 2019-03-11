@@ -1,7 +1,13 @@
 /** @page pvarelease_notes Release Notes
 
+Release 6.1.1 (XXXX)
+====================
+
+- Fixes
+ - pvcall fix array args
+
 Release 6.1.0 (Nov 2018)
-==========================
+========================
 
 - Deprecations
  - pv/namedLockPattern.h
