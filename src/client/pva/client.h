@@ -232,7 +232,11 @@ private:
 //! information on connect/disconnect
 struct ConnectEvent
 {
+    //! Is this a connection, or disconnection, event.
     bool connected;
+    //! For connection events.  This is the name provided by the peer (cf. epics::pvAccess::Channel::getRemoteAddress() ).
+    //! @since >6.1.0
+    std::string peerName;
 };
 
 //! Thrown by blocking methods of ClientChannel on operation timeout

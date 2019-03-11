@@ -77,6 +77,8 @@ struct ClientChannel::Impl : public pva::ChannelRequester,
         try {
             ConnectEvent evt;
             evt.connected = connectionState==pva::Channel::CONNECTED;
+            if(evt.connected)
+                evt.peerName = channel->getRemoteAddress();
             for(listeners_t::const_iterator it=notify.begin(), end=notify.end(); it!=end; ++it)
             {
                 try {
