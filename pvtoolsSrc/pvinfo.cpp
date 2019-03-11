@@ -44,18 +44,53 @@ void usage (void)
 int haderror;
 
 struct GetInfo : public pvac::ClientChannel::InfoCallback,
+                 public pvac::ClientChannel::ConnectCallback,
                  public Tracker
 {
+    pvac::ClientChannel chan;
     pvac::Operation op;
-    virtual void infoDone(const pvac::InfoEvent& evt) {
+
+    std::string peerName;
+
+    explicit GetInfo(pvac::ClientChannel& chan)
+        :chan(chan)
+    {
+        chan.addConnectListener(this);
+    }
+    virtual ~GetInfo()
+    {
+        chan.removeConnectListener(this);
+    }
+
+    virtual void connectEvent(const pvac::ConnectEvent& evt) OVERRIDE FINAL
+    {
+        if(evt.connected) {
+            Guard G(doneLock);
+            peerName = evt.peerName;
+        }
+    }
+
+    virtual void infoDone(const pvac::InfoEvent& evt) OVERRIDE FINAL
+    {
+        std::string pname;
+        {
+            Guard G(doneLock);
+            pname = peerName;
+        }
+
         switch(evt.event) {
         case pvac::InfoEvent::Cancel: break;
         case pvac::InfoEvent::Fail:
             std::cerr<<op.name()<<" Error: "<<evt.message<<"\n";
             haderror = 1;
             break;
-        case pvac::InfoEvent::Success:
-            std::cout<<op.name()<<" "<<evt.type<<"\n";
+        case pvac::InfoEvent::Success: {
+            std::cout<<op.name()<<"\n"
+                     "Server: "<<pname<<"\n"
+                     "Type:\n";
+            pvd::format::indent_scope I(std::cout);
+            std::cout<<evt.type<<"\n";
+        }
         }
         done();
         std::cout.flush();
@@ -139,8 +174,9 @@ int main (int argc, char *argv[])
         pvac::ClientProvider prov(defaultProvider);
 
         for(int i = optind; i<argc; i++) {
-            std::tr1::shared_ptr<GetInfo> info(new GetInfo);
-            info->op = prov.connect(argv[i]).info(info.get());
+            pvac::ClientChannel chan(prov.connect(argv[i]));
+            std::tr1::shared_ptr<GetInfo> info(new GetInfo(chan));
+            info->op = chan.info(info.get());
             infos.push_back(info);
         }
 
