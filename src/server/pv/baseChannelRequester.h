@@ -18,7 +18,11 @@ namespace pvAccess {
 class ServerChannel;
 class ChannelRequest;
 
-class BaseChannelRequester :  virtual public epics::pvData::Requester, public Destroyable
+class BaseChannelRequester :
+        virtual public epics::pvData::Requester,
+        public TransportSender,
+        public NetStats,
+        public Destroyable
 {
 public:
     POINTER_DEFINITIONS(BaseChannelRequester);
@@ -35,6 +39,8 @@ public:
     virtual void message(std::string const & message, epics::pvData::MessageType messageType) OVERRIDE FINAL;
     static void message(Transport::shared_pointer const & transport, const pvAccessID ioid, const std::string message, const epics::pvData::MessageType messageType);
     static void sendFailureMessage(const epics::pvData::int8 command, Transport::shared_pointer const & transport, const pvAccessID ioid, const epics::pvData::int8 qos, const epics::pvData::Status status);
+
+    virtual void stats(Stats &s) const OVERRIDE FINAL;
 
     static const epics::pvData::Status okStatus;
     static const epics::pvData::Status badCIDStatus;

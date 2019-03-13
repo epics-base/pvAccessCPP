@@ -16,6 +16,7 @@
 
 #include <epicsThread.h>
 #include <osiSock.h>
+#include <epicsAtomic.h>
 
 #include <pv/lock.h>
 #include <pv/byteBuffer.h>
@@ -240,6 +241,7 @@ void BlockingUDPTransport::run() {
 
             if(likely(bytesRead>=0)) {
                 // successfully got datagram
+                atomic::add(_totalBytesRecv, bytesRead);
                 bool ignore = false;
                 for(size_t i = 0; i <_ignoredAddresses.size(); i++)
                 {
@@ -446,6 +448,7 @@ bool BlockingUDPTransport::send(const char* buffer, size_t length, const osiSock
             inetAddressToString(address).c_str(), errStr);
         return false;
     }
+    atomic::add(_totalBytesSent, length);
 
     return true;
 }
@@ -470,6 +473,7 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, const osiSockAddr& address) 
             inetAddressToString(address).c_str(), errStr);
         return false;
     }
+    atomic::add(_totalBytesSent, buffer->getLimit());
 
     // all sent
     buffer->setPosition(buffer->getLimit());
@@ -508,6 +512,7 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, InetAddressType target) {
                 inetAddressToString(_sendAddresses[i]).c_str(), errStr);
             allOK = false;
         }
+        atomic::add(_totalBytesSent, buffer->getLimit());
     }
 
     // all sent

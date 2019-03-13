@@ -138,6 +138,7 @@ class TransportSender : public Lockable, public fair_queue<TransportSender>::ent
 public:
     POINTER_DEFINITIONS(TransportSender);
 
+    TransportSender() :bytesTX(0u), bytesRX(0u) {}
     virtual ~TransportSender() {}
 
     /**
@@ -149,6 +150,9 @@ public:
      * NOTE: these limitations allow efficient implementation.
      */
     virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) = 0;
+
+    size_t bytesTX;
+    size_t bytesRX;
 };
 
 class ClientChannelImpl;
@@ -264,6 +268,9 @@ public:
      * @param data the data (any data), can be <code>null</code>.
      */
     virtual void authNZMessage(epics::pvData::PVStructure::shared_pointer const & data) = 0;
+
+    size_t _totalBytesSent;
+    size_t _totalBytesRecv;
 };
 
 class Channel;
@@ -341,7 +348,7 @@ protected:
  * A request that expects an response.
  * Responses identified by its I/O ID.
  */
-class ResponseRequest {
+class ResponseRequest : public TransportSender {
 public:
     POINTER_DEFINITIONS(ResponseRequest);
 

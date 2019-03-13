@@ -148,6 +148,31 @@ class ChannelPutRequester;
 class ChannelPutGetRequester;
 class ChannelRPCRequester;
 
+/** @brief Expose statistics related to network transport
+ *
+ * Various sub-classes of ChannelBaseRequester (for servers) or ChannelRequest (for clients)
+ * may by dynamic_cast<>able to NetStats.
+ */
+struct epicsShareClass NetStats {
+    struct Counter {
+        size_t tx, rx;
+
+        inline Counter() :tx(0u), rx(0u) {}
+    };
+    struct Stats {
+        std::string transportPeer;
+        Counter transportBytes;
+        Counter operationBytes;
+        bool populated;
+
+        inline Stats() :populated(false) {}
+    };
+
+    virtual ~NetStats();
+    //! Query current counter values
+    virtual void stats(Stats& s) const =0;
+};
+
 //! Base for all Requesters (callbacks to client)
 struct epicsShareClass ChannelBaseRequester : virtual public epics::pvData::Requester
 {
