@@ -88,15 +88,15 @@ public:
 
     static PVDataCreatePtr pvDataCreate;
 
-    static Status notInitializedStatus;
-    static Status destroyedStatus;
-    static Status channelNotConnected;
-    static Status channelDestroyed;
-    static Status otherRequestPendingStatus;
-    static Status invalidPutStructureStatus;
-    static Status invalidPutArrayStatus;
-    static Status invalidBitSetLengthStatus;
-    static Status pvRequestNull;
+    static const Status notInitializedStatus;
+    static const Status destroyedStatus;
+    static const Status channelNotConnected;
+    static const Status channelDestroyed;
+    static const Status otherRequestPendingStatus;
+    static const Status invalidPutStructureStatus;
+    static const Status invalidPutArrayStatus;
+    static const Status invalidBitSetLengthStatus;
+    static const Status pvRequestNull;
 
     static BitSet::shared_pointer createBitSetFor(
         PVStructure::shared_pointer const & pvStructure,
@@ -418,15 +418,15 @@ size_t BaseRequestImpl::num_active;
 
 PVDataCreatePtr BaseRequestImpl::pvDataCreate = getPVDataCreate();
 
-Status BaseRequestImpl::notInitializedStatus(Status::STATUSTYPE_ERROR, "request not initialized");
-Status BaseRequestImpl::destroyedStatus(Status::STATUSTYPE_ERROR, "request destroyed");
-Status BaseRequestImpl::channelNotConnected(Status::STATUSTYPE_ERROR, "channel not connected");
-Status BaseRequestImpl::channelDestroyed(Status::STATUSTYPE_ERROR, "channel destroyed");
-Status BaseRequestImpl::otherRequestPendingStatus(Status::STATUSTYPE_ERROR, "other request pending");
-Status BaseRequestImpl::invalidPutStructureStatus(Status::STATUSTYPE_ERROR, "incompatible put structure");
-Status BaseRequestImpl::invalidPutArrayStatus(Status::STATUSTYPE_ERROR, "incompatible put array");
-Status BaseRequestImpl::invalidBitSetLengthStatus(Status::STATUSTYPE_ERROR, "invalid bit-set length");
-Status BaseRequestImpl::pvRequestNull(Status::STATUSTYPE_ERROR, "pvRequest == 0");
+const Status BaseRequestImpl::notInitializedStatus(Status::STATUSTYPE_ERROR, "request not initialized");
+const Status BaseRequestImpl::destroyedStatus(Status::STATUSTYPE_ERROR, "request destroyed");
+const Status BaseRequestImpl::channelNotConnected(Status::STATUSTYPE_ERROR, "channel not connected");
+const Status BaseRequestImpl::channelDestroyed(Status::STATUSTYPE_ERROR, "channel destroyed");
+const Status BaseRequestImpl::otherRequestPendingStatus(Status::STATUSTYPE_ERROR, "other request pending");
+const Status BaseRequestImpl::invalidPutStructureStatus(Status::STATUSTYPE_ERROR, "incompatible put structure");
+const Status BaseRequestImpl::invalidPutArrayStatus(Status::STATUSTYPE_ERROR, "incompatible put array");
+const Status BaseRequestImpl::invalidBitSetLengthStatus(Status::STATUSTYPE_ERROR, "invalid bit-set length");
+const Status BaseRequestImpl::pvRequestNull(Status::STATUSTYPE_ERROR, "pvRequest == 0");
 
 
 class ChannelProcessRequestImpl :
