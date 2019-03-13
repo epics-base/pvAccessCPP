@@ -292,6 +292,10 @@ public:
                 Config *conf=0);
     virtual ~MonitorFIFO();
 
+    //! Access to MonitorRequester passed to ctor, or NULL if it has already been destroyed.
+    //! @since >6.1.0
+    inline const std::tr1::shared_ptr<MonitorRequester> getRequester() const { return requester.lock(); }
+
     void show(std::ostream& strm) const;
 
     virtual void destroy() OVERRIDE FINAL;
