@@ -1,10 +1,11 @@
 /** @page pvarelease_notes Release Notes
 
-Release 6.1.1 (XXXX)
-====================
+Release 6.1.1 (Mar 2019)
+========================
 
 - Fixes
  - pvcall fix array args
+ - pvinfo show server IP
 
 Release 6.1.0 (Nov 2018)
 ========================
