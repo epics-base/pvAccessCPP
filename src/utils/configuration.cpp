@@ -119,9 +119,30 @@ void ConfigurationMap::addKeys(keys_t& names) const
         names.insert(it->first);
 }
 
+const ENV_PARAM * findEnvConfigParam( const char * envVarName )
+{
+    const ENV_PARAM **ppParam = env_param_list;
+
+    /* Find a match with one of the EPICS env vars */
+    while (*ppParam) {
+        if ( strcmp( envVarName, (*ppParam)->name ) == 0 ) {
+            return *ppParam;
+        }
+    ppParam++;
+    }
+
+    return 0;
+}
+
+
 bool ConfigurationEnviron::tryGetPropertyAsString(const std::string& name, std::string* val) const
 {
     const char *env = getenv(name.c_str());
+    if(!env) {
+        const ENV_PARAM *pParam = findEnvConfigParam( name.c_str() );
+        if ( pParam )
+            env = pParam->pdflt;
+    }
     if(!env || !*env)
         return false;
     if(val)
