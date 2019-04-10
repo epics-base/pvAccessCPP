@@ -16,6 +16,16 @@
 #include <grp.h>
 #include <errno.h>
 
+// getgrouplist() has a slightly different prototype on OSX.
+#  ifdef __APPLE__
+//   OSX has gid_t, which isn't "int", but doesn't use it here.
+// int getgrouplist(const char *name, int basegid, int *groups, int *ngroups);
+typedef int osi_gid_t;
+#  else
+// int getgrouplist(const char *user, gid_t group, gid_t *groups, int *ngroups);
+typedef gid_t osi_gid_t;
+#  endif
+
 #elif defined(USE_LANMAN)
 
 #include <stdlib.h>
@@ -45,7 +55,7 @@ void osdGetRoles(const std::string& account, PeerInfo::roles_t& roles)
 
     // include supplementary groups
     {
-        std::vector<gid_t> gtemp(16);
+        std::vector<osi_gid_t> gtemp(16);
         int gcount = int(gtemp.size());
 
         if(getgrouplist(user->pw_name, user->pw_gid, &gtemp[0], &gcount)==-1 && gcount>=0 && gcount<=NGROUPS_MAX) {
@@ -103,14 +113,12 @@ void osdGetRoles(const std::string& account, PeerInfo::roles_t& roles)
         std::vector<char> buf;
 
         for(DWORD i=0; i<ninfo; i++) {
-            //std::wstring group(pinfo[i].lgrui0_name);
             size_t N = wcstombs(NULL, pinfo[i].lgrui0_name, 0);
             if(N==size_t(-1))
                 continue; // has invalid MB char
 
             buf.resize(N+1);
             N = wcstombs(&buf[0], pinfo[i].lgrui0_name, buf.size());
-            assert(N+1==buf.size());
             buf[N] = 0; // paranoia
 
             roles.insert(&buf[0]);
