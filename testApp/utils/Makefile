@@ -33,3 +33,6 @@ TESTPROD_HOST += testWildcard
 testWildcard = testWildcard.cpp
 testHarness_SRCS += testWildcard.cpp
 TESTS += testWildcard
+
+TESTPROD_HOST += showauth
+showauth_SRCS += showauth.cpp
