@@ -214,8 +214,7 @@ bool MonitorFIFO::tryPost(const pvData::PVStructure& value,
 {
     Guard G(mutex);
 
-    assert(state!=Closed && !finished);
-    if(state!=Opened) return false; // when Error, act as always "full"
+    if(state!=Opened || finished) return false; // when Error, act as always "full"
     assert(!empty.empty() || !inuse.empty());
 
     const bool havefree = _freeCount()>0u;
@@ -263,8 +262,7 @@ void MonitorFIFO::post(const pvData::PVStructure& value,
 {
     Guard G(mutex);
 
-    assert(state!=Closed && !finished);
-    if(state!=Opened) return;
+    if(state!=Opened || finished) return;
     assert(!empty.empty() || !inuse.empty());
 
     const bool use_empty = !empty.empty();
