@@ -181,8 +181,6 @@ void ServerConnectionValidationHandler::handleResponse(
     AbstractServerResponseHandler::handleResponse(responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
-    transport->setRemoteRevision(version);
-
     transport->ensureData(4+2+2);
     transport->setRemoteTransportReceiveBufferSize(payloadBuffer->getInt());
     // TODO clientIntrospectionRegistryMaxSize
@@ -340,7 +338,7 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
         info.reset(new PeerInfo);
         info->transport = "pva";
         info->peer = inetAddressToString(*responseFrom);
-        info->transportVersion = transport->getRevision();
+        info->transportVersion = version;
     }
 
     if (count > 0)

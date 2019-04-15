@@ -399,13 +399,13 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
             const Transport::shared_pointer& transport(*it);
 
             str<<"  "<<transport->getType()<<"://"<<transport->getRemoteName()
-              <<" ver="<<unsigned(transport->getRevision())
               <<" "<<(transport->isClosed()?"closed!":"");
 
             const detail::BlockingServerTCPTransportCodec *casTransport = dynamic_cast<const detail::BlockingServerTCPTransportCodec*>(transport.get());
 
             if(casTransport) {
-              str<<" "<<(casTransport ? casTransport->getChannelCount() : size_t(-1))<<" channels";
+              str<<" ver="<<unsigned(casTransport->getRevision())
+                 <<" "<<(casTransport ? casTransport->getChannelCount() : size_t(-1))<<" channels";
 
               PeerInfo::const_shared_pointer peer;
               {

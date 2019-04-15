@@ -192,12 +192,6 @@ public:
     // TODO getContext?
 
     /**
-     * Transport protocol minor revision.
-     * @return protocol minor revision.
-     */
-    virtual epics::pvData::int8 getRevision() const = 0;
-
-    /**
      * Get receive buffer size.
      * @return receive buffer size.
      */
@@ -214,12 +208,6 @@ public:
      * @return protocol priority.
      */
     virtual epics::pvData::int16 getPriority() const = 0;
-
-    /**
-     * Set remote transport protocol revision.
-     * @param revision protocol revision.
-     */
-    virtual void setRemoteRevision(epics::pvData::int8 revision) = 0;
 
     /**
      * Set remote transport receive buffer size.

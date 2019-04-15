@@ -89,14 +89,6 @@ public:
         return PVA_DEFAULT_PRIORITY;
     }
 
-    virtual epics::pvData::int8 getRevision() const OVERRIDE FINAL {
-        return PVA_PROTOCOL_REVISION;
-    }
-
-    virtual void setRemoteRevision(epics::pvData::int8 /*revision*/) OVERRIDE FINAL {
-        // noop
-    }
-
     virtual void setRemoteTransportReceiveBufferSize(
         std::size_t /*receiveBufferSize*/) OVERRIDE FINAL {
         // noop for UDP (limited by 64k; MAX_UDP_SEND for PVA)

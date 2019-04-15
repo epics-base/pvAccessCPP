@@ -141,6 +141,8 @@ void AbstractCodec::processRead() {
 
 void AbstractCodec::processHeader() {
 
+    Guard G(_mutex); // guards access to _version et al.
+
     // magic code
     int8_t magicCode = _socketBuffer.getByte();
 
@@ -1220,7 +1222,7 @@ BlockingTCPTransportCodec::BlockingTCPTransportCodec(bool serverFlag, const Cont
     ,_channel(channel)
     ,_context(context), _responseHandler(responseHandler)
     ,_remoteTransportReceiveBufferSize(MAX_TCP_RECV)
-    ,_remoteTransportRevision(0), _priority(priority)
+    ,_priority(priority)
     ,_verified(false)
 {
     REFTRACE_INCREMENT(num_instances);

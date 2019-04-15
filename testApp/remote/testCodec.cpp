@@ -358,11 +358,6 @@ public:
         return dummyRemoteName;
     }
 
-    epics::pvData::int8 getRevision() const
-    {
-        return PVA_PROTOCOL_REVISION;
-    }
-
     std::size_t getReceiveBufferSize() const  {
         return 16384;
     }
@@ -375,8 +370,6 @@ public:
     {
         return 16384;
     }
-
-    void setRemoteRevision(epics::pvData::int8 revision)  {}
 
     void setRemoteTransportSocketReceiveBufferSize(
         std::size_t socketReceiveBufferSize)  {}
