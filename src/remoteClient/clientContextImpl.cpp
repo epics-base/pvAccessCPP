@@ -3620,7 +3620,7 @@ public:
                         !std::equal(guid.value, guid.value + 12, m_guid.value))
                 {
                     EXCEPTION_GUARD3(m_requester, req, req->message("More than one channel with name '" + m_name +
-                                                         "' detected, connected to: " + inetAddressToString(transport->getRemoteAddress()) + ", ignored: " + inetAddressToString(*serverAddress), warningMessage));
+                                                         "' detected, connected to: " + transport->getRemoteName() + ", ignored: " + inetAddressToString(*serverAddress), warningMessage));
                 }
 
                 // do not pass (create transports) with we already have one

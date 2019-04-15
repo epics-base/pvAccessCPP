@@ -716,18 +716,13 @@ void ServerCreateChannelHandler::handleResponse(osiSockAddr* responseFrom,
     string channelName = SerializeHelper::deserializeString(payloadBuffer, transport.get());
     if (channelName.size() == 0)
     {
-
-        char host[100];
-        sockAddrToDottedIP(&transport->getRemoteAddress().sa,host,100);
-        LOG(logLevelDebug,"Zero length channel name, disconnecting client: %s", host);
+        LOG(logLevelDebug,"Zero length channel name, disconnecting client: %s", transport->getRemoteName().c_str());
         disconnect(transport);
         return;
     }
     else if (channelName.size() > MAX_CHANNEL_NAME_LENGTH)
     {
-        char host[100];
-        sockAddrToDottedIP(&transport->getRemoteAddress().sa,host,100);
-        LOG(logLevelDebug,"Unreasonable channel name length, disconnecting client: %s", host);
+        LOG(logLevelDebug,"Unreasonable channel name length, disconnecting client: %s", transport->getRemoteName().c_str());
         disconnect(transport);
         return;
     }
