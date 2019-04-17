@@ -119,6 +119,7 @@ void ConfigurationMap::addKeys(keys_t& names) const
         names.insert(it->first);
 }
 
+static
 const ENV_PARAM * findEnvConfigParam( const char * envVarName )
 {
     const ENV_PARAM **ppParam = env_param_list;
