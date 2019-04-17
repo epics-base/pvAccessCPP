@@ -2002,7 +2002,7 @@ MACRO_EXPANSION        = YES
 # The default value is: NO.
 # This tag requires that the tag ENABLE_PREPROCESSING is set to YES.
 
-EXPAND_ONLY_PREDEF     = YES
+EXPAND_ONLY_PREDEF     = NO
 
 # If the SEARCH_INCLUDES tag is set to YES the includes files in the
 # INCLUDE_PATH will be searched if a #include is found.
@@ -2016,7 +2016,19 @@ SEARCH_INCLUDES        = YES
 # preprocessor.
 # This tag requires that the tag SEARCH_INCLUDES is set to YES.
 
-INCLUDE_PATH           = 
+INCLUDE_PATH           = ../src/ca \
+                         ../src/client \
+                         ../src/ioc \
+                         ../src/mb \
+                         ../src/pipelineService \
+                         ../src/pva \
+                         ../src/remoteClient \
+                         ../src/remote \
+                         ../src/rpcClient \
+                         ../src/rpcService \
+                         ../src/server \
+                         ../src/utils \
+                         ../../../include
 
 # You can use the INCLUDE_FILE_PATTERNS tag to specify one or more wildcard
 # patterns (like *.h and *.hpp) to filter out the header-files in the
@@ -2043,7 +2055,7 @@ PREDEFINED             =
 # definition found in the source code.
 # This tag requires that the tag ENABLE_PREPROCESSING is set to YES.
 
-EXPAND_AS_DEFINED      = POINTER_DEFINITIONS
+EXPAND_AS_DEFINED      = 
 
 # If the SKIP_FUNCTION_MACROS tag is set to YES then doxygen's preprocessor will
 # remove all references to function-like macros that are alone on a line, have
@@ -2072,7 +2084,7 @@ SKIP_FUNCTION_MACROS   = NO
 # the path). If a tag file is not located in the directory in which doxygen is
 # run, you must also specify the path to the tagfile here.
 
-TAGFILES               = "../../pvData/documentation/pvdata.tag=http://mdavidsaver.github.io/pvDataCPP/" \
+TAGFILES               = "../../pvData/documentation/pvdata.tag=/pvDataCPP/" \
                          "libstdc++.tag = http://gcc.gnu.org/onlinedocs/libstdc++/latest-doxygen"
 
 # When a file name is specified after GENERATE_TAGFILE, doxygen will create a
