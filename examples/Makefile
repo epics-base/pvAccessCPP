@@ -5,9 +5,6 @@ include $(TOP)/configure/CONFIG
 PROD_LIBS += pvAccessCA ca pvAccess pvData Com
 PROD_SYS_LIBS_WIN32 += netapi32 ws2_32
 
-#TESTPROD_HOST += heinz
-#heinz_SRCS += heinz.cpp
-
 TESTPROD_HOST += getme
 getme_SRCS = getme.cpp
 
