@@ -1,5 +1,14 @@
 /** @page pvarelease_notes Release Notes
 
+Release 6.1.2 (Apr 2019)
+========================
+
+- Changes
+ - When available, use environment variable defaults from Base
+ - Relax state check in epics::pvAccess::MonitorFIFO::post() and tryPost() to allow post() while closed.
+   Allows user code to avoid extra synchronization during shutdown (just call close() ).
+   Synchronization between open() and post() on type change is still required.
+
 Release 6.1.1 (Mar 2019)
 ========================
 
