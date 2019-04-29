@@ -1,3 +1,8 @@
+/**
+* Copyright - See the COPYRIGHT that is included with this distribution.
+* pvAccessCPP is distributed subject to a Software License Agreement found
+* in file LICENSE that is included with this distribution.
+*/
 
 #include <set>
 
@@ -53,17 +58,54 @@ void osdGetRoles(const std::string& account, PeerInfo::roles_t& roles)
 
     gids.insert(user->pw_gid); // include primary group
 
-    // include supplementary groups
+    /* List supplementary groups.
+     *
+     * Rant...
+     * getgrouplist() differs subtly when the *count is too short.
+     * Some libc (Mac) don't update the count
+     * Some libc (glibc) don't write a truncated list.
+     *
+     * We might also use getgrent(), but this isn't reentrant, and
+     * would anyway require visiting all groups.
+     * The GNU alternative getgrent_r() would require us to allocate
+     * enough space to hold the list of all members of the largest
+     * group.  This may be hundreds.
+     *
+     * So we iterate with getgrouplist() as the lesser evil...
+     */
     {
+        // start with a guess
         std::vector<osi_gid_t> gtemp(16);
-        int gcount = int(gtemp.size());
 
-        if(getgrouplist(user->pw_name, user->pw_gid, &gtemp[0], &gcount)==-1 && gcount>=0 && gcount<=NGROUPS_MAX) {
-            gtemp.resize(gcount);
-            // try again.  This time if we fail, then there is some other error
-            getgrouplist(user->pw_name, user->pw_gid, &gtemp[0], &gcount);
+        while(true) {
+            int gcount = int(gtemp.size());
+            int ret = getgrouplist(user->pw_name, user->pw_gid, &gtemp[0], &gcount);
+
+            if(ret!=-1 && gcount>=0 && gcount <= int(gtemp.size())) {
+                // success
+                gtemp.resize(gcount);
+                break;
+
+            } else if(ret!=-1) {
+                // success, but invalid count?  give up
+                gtemp.clear();
+                break;
+
+            } else if(gcount == int(gtemp.size())) {
+                // too small, but gcount not updated.  (Mac)
+                // arbitrary increase to size and retry
+                gtemp.resize(gtemp.size()*2u);
+
+            } else if(gcount > int(gtemp.size())) {
+                // too small, gcount holds actual size.  retry
+                gtemp.resize(gcount);
+
+            } else {
+                // too small, but gcount got smaller?  give up
+                gtemp.clear();
+                break;
+            }
         }
-        gtemp.resize(std::min(gcount, NGROUPS_MAX));
 
         for(size_t i=0, N=gtemp.size(); i<N; i++)
             gids.insert(gtemp[i]);
