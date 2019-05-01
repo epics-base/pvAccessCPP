@@ -58,16 +58,6 @@ epicsShareFunc bool pvAccessIsLoggable(pvAccessLogLevel level);
 //#define LOG(level, fmt, ...)
 //#define SET_LOG_LEVEL(level)
 
-/**
-    * Create a logger that will write to file indicated by the <tt>fname</tt>.
-    * After creation you are free to use standard EPICSv3 functions from
-    * <tt>errlog.h</tt>.
-    *
-    * @param[in] fname The file to write to. If the file exists, it
-    * is opened for append.
-    */
-epicsShareFunc void createFileLogger( std::string const & fname ) EPICS_DEPRECATED;
-
 }
 }
 

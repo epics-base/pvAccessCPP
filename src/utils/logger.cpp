@@ -66,56 +66,5 @@ bool pvAccessIsLoggable(pvAccessLogLevel level)
     return level >= g_pvAccessLogLevel;
 }
 
-namespace {
-
-class FileLogger {
-    EPICS_NOT_COPYABLE(FileLogger)
-public:
-    FileLogger(std::string const & name) {
-        logFile.open(name.data(), ios::app);
-    }
-
-    ~FileLogger() {
-        logFile.close();
-    }
-
-    void logMessage(const char* message) {
-        time_t rawtime;
-        time(&rawtime);
-        char* timeStr = ctime(&rawtime);
-        timeStr[strlen(timeStr)-1]='\0'; // remove newline
-
-        logFile<<timeStr<<"\t"<<message; // the newline is added by the caller
-    }
-private:
-    ofstream logFile;
-
-};
-
-FileLogger* fileLogger = NULL;
-
-void errLogFileListener(void* /*pPrivate*/, const char *message) {
-    fileLogger->logMessage(message);
-}
-
-void exitFileLoggerHandler(void* /*pPrivate*/) {
-    errlogFlush();
-    delete fileLogger;
-}
-
-} // namespace
-
-void createFileLogger(std::string const & fname) {
-    static Mutex mutex;
-    Lock xx(mutex);
-
-    if(fileLogger==NULL) {
-        fileLogger = new FileLogger(fname);
-        errlogInit(2048);
-        errlogAddListener(errLogFileListener, NULL);
-        epicsAtExit(exitFileLoggerHandler, NULL);
-    }
-}
-
 }
 }
