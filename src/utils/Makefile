@@ -5,7 +5,6 @@ SRC_DIRS += $(PVACCESS_SRC)/utils
 INC += pv/hexDump.h
 INC += pv/logger.h
 INC += pv/introspectionRegistry.h
-INC += pv/namedLockPattern.h
 INC += pv/referenceCountingLock.h
 INC += pv/configuration.h
 INC += pv/likely.h
