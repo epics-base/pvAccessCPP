@@ -82,12 +82,12 @@ void osdGetRoles(const std::string& account, PeerInfo::roles_t& roles)
             int gcount = int(gtemp.size());
             int ret = getgrouplist(user->pw_name, user->pw_gid, &gtemp[0], &gcount);
 
-            if(ret!=-1 && gcount>=0 && gcount <= int(gtemp.size())) {
+            if(ret>=0 && gcount>=0 && gcount <= int(gtemp.size())) {
                 // success
                 gtemp.resize(gcount);
                 break;
 
-            } else if(ret!=-1) {
+            } else if(ret>=0) {
                 // success, but invalid count?  give up
                 gtemp.clear();
                 break;
