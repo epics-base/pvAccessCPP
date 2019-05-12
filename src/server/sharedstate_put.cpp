@@ -34,7 +34,11 @@ struct PutOP : public pvas::Operation::Impl
           const pvd::BitSet& changed)
         :Impl(pvRequest, value, changed)
         ,op(op)
-    {}
+    {
+        pva::ChannelRequester::shared_pointer req(op->channel->getChannelRequester());
+        if(req)
+            info = req->getPeerInfo();
+    }
     virtual ~PutOP() {}
 
     virtual pva::Channel::shared_pointer getChannel() OVERRIDE FINAL

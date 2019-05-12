@@ -51,7 +51,6 @@ public:
     Transport::shared_pointer getSearchTransport() OVERRIDE FINAL;
     Configuration::const_shared_pointer getConfiguration() OVERRIDE FINAL;
     TransportRegistry* getTransportRegistry() OVERRIDE FINAL;
-    const securityPlugins_t& getSecurityPlugins() OVERRIDE FINAL;
 
     virtual void newServerDetected() OVERRIDE FINAL;
 

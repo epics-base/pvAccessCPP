@@ -115,7 +115,7 @@ void ServerContextImpl::loadConfiguration()
     Configuration::const_shared_pointer config = configuration;
 
     // TODO for now just a simple switch
-    int32 debugLevel = config->getPropertyAsInteger(PVACCESS_DEBUG, 0);
+    int32 debugLevel = config->getPropertyAsInteger(PVACCESS_DEBUG, 0); // actually $EPICS_PVA_DEBUG
     if (debugLevel > 0)
         SET_LOG_LEVEL(logLevelDebug);
 
@@ -398,7 +398,7 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
         {
             const Transport::shared_pointer& transport(*it);
 
-            str<<"client "<<transport->getType()<<"://"<<transport->getRemoteName()
+            str<<"  "<<transport->getType()<<"://"<<transport->getRemoteName()
               <<" ver="<<unsigned(transport->getRevision())
               <<" "<<(transport->isClosed()?"closed!":"");
 
@@ -406,6 +406,31 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
 
             if(casTransport) {
               str<<" "<<(casTransport ? casTransport->getChannelCount() : size_t(-1))<<" channels";
+
+              PeerInfo::const_shared_pointer peer;
+              {
+                  epicsGuard<epicsMutex> G(casTransport->_mutex);
+                  peer = casTransport->_peerInfo;
+              }
+              if(peer) {
+                  str<<" user: "<<peer->authority<<"/"<<peer->account;
+                  if(!peer->realm.empty())
+                      str<<"@"<<peer->realm;
+                  if(lvl>=2 && !peer->roles.empty()) {
+                      str<<" groups:";
+                      int n=0;
+                      for(PeerInfo::roles_t::const_iterator it(peer->roles.begin()), end(peer->roles.end()); it!=end; ++it, ++n) {
+                          if(n)
+                              str<<',';
+                          str<<(*it);
+                      }
+                  }
+                  if(lvl>=3 && peer->aux) {
+                      str<<" aux. auth.:\n";
+                      format::indent_scope I(str);
+                      str<<(*peer->aux);
+                  }
+              }
             }
 
             str<<"\n";
@@ -531,12 +556,6 @@ void ServerContextImpl::newServerDetected()
 epicsTimeStamp& ServerContextImpl::getStartTime()
 {
     return _startTime;
-}
-
-
-const Context::securityPlugins_t& ServerContextImpl::getSecurityPlugins()
-{
-    return SecurityPluginRegistry::instance().getServerSecurityPlugins();
 }
 
 ServerContext::shared_pointer startPVAServer(std::string const & providerNames, int timeToRun, bool runInSeparateThread, bool printInfo)

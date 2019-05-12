@@ -27,7 +27,7 @@ size_t ResponseHandler::num_instances;
 
 ResponseHandler::ResponseHandler(Context* context, const std::string& description)
     :_description(description)
-    ,_debugLevel(context->getConfiguration()->getPropertyAsInteger(PVACCESS_DEBUG, 0))
+    ,_debugLevel(context->getConfiguration()->getPropertyAsInteger(PVACCESS_DEBUG, 0)) // actually $EPICS_PVA_DEBUG
 {
     REFTRACE_INCREMENT(num_instances);
 }

@@ -393,6 +393,8 @@ public:
     static ChannelFind::shared_pointer buildDummy(const std::tr1::shared_ptr<ChannelProvider>& provider);
 };
 
+struct PeerInfo; // see pv/security.h
+
 /**
  *
  */
@@ -410,6 +412,30 @@ public:
         const epics::pvData::Status& status,
         ChannelFind::shared_pointer const & channelFind,
         bool wasFound) = 0;
+
+    /**
+     * @brief Return information on requesting peer if applicable.
+     *
+     * A server-type ChannelProvider will use this method to discover if a remote client
+     * has provided credentials which may be used in access control decisions.
+     *
+     * The returned PeerInfo is only required to have valid values for: peer, transport, and transportVersion.
+     * PeerInfo::authority may be empty if authentication has not yet occured (UDP search).
+     *
+     * Default implementation returns NULL.
+     *
+     * isConnected()==true and getPeerInfo()==NULL when the ChannelProvider does not provide
+     * information about the peer.  This should be treated as an unauthenticated, anonymous,
+     * peer.
+     *
+     * The returned instance must not change, and a different instance should be returned
+     * if/when peer information changes (eg. after reconnect).
+     *
+     * May return !NULL when !isConnected().  getPeerInfo() must be called _before_
+     * testing isConnected() in situations where connection state is being polled.
+     */
+    virtual std::tr1::shared_ptr<const PeerInfo> getPeerInfo()
+    { return std::tr1::shared_ptr<const PeerInfo>(); }
 };
 
 /**
@@ -819,7 +845,6 @@ public:
 
 };
 
-
 class ChannelRequester;
 
 /**
@@ -1133,6 +1158,26 @@ public:
      * @param connectionState The new connection state.
      */
     virtual void channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState) = 0;
+
+    /**
+     * @brief Return information on connected peer if applicable.
+     *
+     * A server-type ChannelProvider will use this method to discover if a remote client
+     * has provided credentials which may be used in access control decisions.
+     *
+     * Default implementation returns NULL.
+     *
+     * isConnected()==true and getPeerInfo()==NULL when the ChannelProvider does not provide
+     * information about the peer.  This should be treated as an unauthenticated, anonymous,
+     * peer.
+     *
+     * The returned instance must not change, and a different instance should be returned
+     * if/when peer information changes (eg. after reconnect).
+     *
+     * May return !NULL when !isConnected().  getPeerInfo() must be called _before_
+     * testing isConnected() in situations where connection state is being polled.
+     */
+    virtual std::tr1::shared_ptr<const PeerInfo> getPeerInfo();
 };
 
 //! Used when ChannelProvider::createChannel() is passed a NULL ChannelRequester

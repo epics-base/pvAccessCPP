@@ -773,6 +773,7 @@ INPUT                  = ../src/client/pv \
                          ../src/rpcService/pv \
                          ../src/utils/pv \
                          ../src/pva/pv \
+                         ../src/remote/pv \
                          .
 
 # This tag can be used to specify the character encoding of the source files

@@ -7,6 +7,72 @@
 #ifndef SECURITY_H
 #define SECURITY_H
 
+/** @page pva_security PVA Security
+ *
+ * Summary of PVA auth. process.
+ *
+ @msc
+     arcgradient = 8;
+
+     CP [label="Client Plugin"], CS [label="Client Session"], C [label="Client"], S [label="Server"], SS [label="Server Session"], SP [label="Server Plugin"];
+
+     C:>S  [label="Opens TCP connection"];
+     S box SP [label="Server lists plugins"];
+     S=>SP [label="isValidFor()"];
+     C<:S  [label="CONNECTION_VALIDATION"];
+     CP box C [label="Client lists plugins"];
+     CP box C [label="Client select plugin"];
+     CP<=C [label="createSession()"];
+     CP>>C [label="Returns Session"];
+     CS<=C [label="initializationData()"];
+     CS>>C [label="Initial payload"];
+     C:>S  [label="CONNECTION_VALIDATION"];
+     S=>SP [label="createSession()"];
+     S<<SP [label="Returns Session"];
+     ---   [label="Optional (Repeatable)"];
+     S<=SS [label="sendSecurityPluginMessage()"];
+     C<:S  [label="AUTHZ"];
+     CS<=C [label="messageReceived()"];
+     ...;
+     CS=>C [label="sendSecurityPluginMessage()"];
+     C:>S  [label="AUTHZ"];
+     S=>SS [label="messageReceived()"];
+     ...;
+     ---   [label="Completion"];
+     S<=SS [label="authenticationCompleted()"];
+     C<:S  [label="CONNECTION_VALIDATED"];
+     CS<=C [label="authenticationComplete()"];
+ @endmsc
+ *
+ * Ownership
+ *
+ @dot
+ digraph authplugin {
+   External;
+   AuthenticationRegistry [shape=box];
+   AuthenticationPlugin [shape=box];
+   AuthenticationPluginControl [shape=box];
+   AuthenticationSession [shape=box];
+   External -> AuthenticationRegistry;
+   AuthenticationRegistry -> AuthenticationPlugin;
+   External -> AuthenticationSession;
+   AuthenticationSession -> AuthenticationPluginControl [color=green, style=dashed];
+   External -> AuthenticationPluginControl;
+   AuthenticationPluginControl -> AuthenticationSession;
+   AuthenticationPlugin -> AuthenticationSession [style=dashed];
+ }
+ @enddot
+ *
+ * Locking
+ *
+ * All methods of AuthenticationSession are called from a single thread.
+ * Methods of AuthenticationPlugin and AuthenticationPluginControl can be called
+ * from any threads.
+ *
+ * AuthenticationPluginControl is an Operation, AuthenticationSession is a Requester.
+ * @see provider_roles_requester_locking
+ */
+
 #ifdef epicsExportSharedSymbols
 #   define securityEpicsExportSharedSymbols
 #   undef epicsExportSharedSymbols
@@ -14,6 +80,7 @@
 
 #include <string>
 #include <osiSock.h>
+#include <epicsMutex.h>
 
 #include <pv/status.h>
 #include <pv/pvData.h>
@@ -34,427 +101,210 @@
 namespace epics {
 namespace pvAccess {
 
-// notify client only on demand, configurable via pvRequest
-// add the following method to ChannelRequest:
-// void credentialsChanged(std::vector<BitSet> credentials);
+/** @brief Information provded by a client to a server-type ChannelProvider.
+ *
+ * All peers must be identified by a peer name, which may be a network address (IP+port#) and transport.
+ * Peer names must be unique for a given transport.
+ *
+ * Transport names include:
+ *
+ * # "local" in-process client.  Peer name is optional and arbitrary.  Must set local flag.
+ * # "pva" PVA over TCP.  Used by PVA client provider.  Peer name is IP address and TCP port number as "XXX.XXX.XXX.XXX:YYYYY".
+ *
+ * Authority names include:
+ *
+ * "anonymous" - No credentials provided.  Must not set identified flag.
+ * "plain" - Unauthenticated credential.
+ */
+struct epicsShareClass PeerInfo {
+    POINTER_DEFINITIONS(PeerInfo);
 
+    static size_t num_instances;
 
-// pvAccess message: channel client id, ioid (if invalid then it's for channel) and array of bitSets
-// or leave to the plugin?
+    std::string peer;      //!< network address of remote peer.  eg. "192.168.1.1:5075".
+    std::string transport; //!< transport protocol used          eg. "pva".  Must not be empty.
+    std::string authority; //!< authentication mechanism used.   eg. "anonymous" or "gssapi".  Must not be empty.
+    std::string realm;     //!< scope of authority.              eg. "mylab.gov"
+    std::string account;   //!< aka. user name
 
+    //! NULL or extra authority specific information.
+    pvData::PVStructure::const_shared_pointer aux;
 
-// when clients gets initial credentialsChanged call before create is called
-// and then on each change
+    typedef std::set<std::string> roles_t;
+    //! Set of strings which may be used to modify access control decisions.
+    roles_t roles;
 
-class epicsShareClass ChannelSecuritySession {
-public:
-    POINTER_DEFINITIONS(ChannelSecuritySession);
+    unsigned transportVersion; //!< If applicable, the protocol minor version number
 
-    virtual ~ChannelSecuritySession() {}
+    // attributes for programatic consumption
+    bool local; //!< Short-hand for transport=="local"
+    bool identified; //!< Short-hand for authority!="anonymous"
 
-    /// closes this session
-    virtual void close() = 0;
-
-    // for every authroizeCreate... a release() must be called
-    virtual void release(pvAccessID ioid) = 0;
-
-    // bitSet w/ one bit
-    virtual epics::pvData::Status authorizeCreateChannelProcess(
-        pvAccessID ioid, epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
-    virtual epics::pvData::Status authorizeProcess(pvAccessID ioid) = 0;
-
-    // bitSet w/ one bit (allowed, not allowed) and rest of the bit per field
-    virtual epics::pvData::Status authorizeCreateChannelGet(
-        pvAccessID ioid, epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
-    virtual epics::pvData::Status authorizeGet(pvAccessID ioid) = 0;
-
-    // read: bitSet w/ one bit (allowed, not allowed) and rest of the bit per field
-    // write: bitSet w/ one bit (allowed, not allowed) and rest of the bit per field
-    virtual epics::pvData::Status authorizeCreateChannelPut(
-        pvAccessID ioid, epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
-    virtual epics::pvData::Status authorizePut(
-        pvAccessID ioid,
-        epics::pvData::PVStructure::shared_pointer const & dataToPut,
-        epics::pvData::BitSet::shared_pointer const & fieldsToPut) = 0;
-
-    // read: bitSet w/ one bit (allowed, not allowed) and rest of the bit per field
-    // write: bitSet w/ one bit (allowed, not allowed) and rest of the bit per field
-    // process: bitSet w/ one bit (allowed, not allowed)
-    virtual epics::pvData::Status authorizeCreateChannelPutGet(
-        pvAccessID ioid, epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
-    virtual epics::pvData::Status authorizePutGet(
-        pvAccessID ioid,
-        epics::pvData::PVStructure::shared_pointer const & dataToPut,
-        epics::pvData::BitSet::shared_pointer const & fieldsToPut) = 0;
-
-    // bitSet w/ one bit
-    virtual epics::pvData::Status authorizeCreateChannelRPC(
-        pvAccessID ioid, epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
-    // one could authorize per operation basis
-    virtual epics::pvData::Status authorizeRPC(
-        pvAccessID ioid, epics::pvData::PVStructure::shared_pointer const & arguments) = 0;
-
-    // read: bitSet w/ one bit (allowed, not allowed) and rest of the bit per field
-    virtual epics::pvData::Status authorizeCreateMonitor(
-        pvAccessID ioid, epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
-    virtual epics::pvData::Status authorizeMonitor(pvAccessID ioid) = 0;
-
-    // read: bitSet w/ one bit (allowed, not allowed) and rest put/get/set length
-    virtual epics::pvData::Status authorizeCreateChannelArray(
-        pvAccessID ioid, epics::pvData::PVStructure::shared_pointer const & pvRequest) = 0;
-    // use authorizeGet
-    virtual epics::pvData::Status authorizePut(pvAccessID ioid, epics::pvData::PVArray::shared_pointer const & dataToPut) = 0;
-    virtual epics::pvData::Status authorizeSetLength(pvAccessID ioid) = 0;
-
-
-    // introspection authorization
-    virtual epics::pvData::Status authorizeGetField(pvAccessID ioid, std::string const & subField) = 0;
+    PeerInfo();
+    virtual ~PeerInfo();
 };
 
-class SecurityPlugin;
-
-class SecurityException: public std::runtime_error {
-public:
-    explicit SecurityException(std::string const & what): std::runtime_error(what) {}
-};
-
-class epicsShareClass SecuritySession {
-public:
-    POINTER_DEFINITIONS(SecuritySession);
-
-    virtual ~SecuritySession() {}
-
-    // optional (can be null) initialization data for the remote party
-    // client to server
-    virtual epics::pvData::PVField::shared_pointer initializationData() = 0;
-
-    // get parent
-    virtual std::tr1::shared_ptr<SecurityPlugin> getSecurityPlugin() = 0;
-
-    // can be called any time, for any reason
-    virtual void messageReceived(epics::pvData::PVField::shared_pointer const & data) = 0;
-
-    /// closes this session
-    virtual void close() = 0;
-
-    // notification to the client on allowed requests (bitSet, a bit per request)
-    virtual ChannelSecuritySession::shared_pointer createChannelSession(std::string const & channelName) = 0;
-};
-
-class epicsShareClass SecurityPluginControl {
-public:
-    POINTER_DEFINITIONS(SecurityPluginControl);
-
-    virtual ~SecurityPluginControl() {}
-
-    // can be called any time, for any reason
-    virtual void sendSecurityPluginMessage(epics::pvData::PVField::shared_pointer const & data) = 0;
-
-    // if Status.isSuccess() == false,
-    // pvAccess will send status to the client and close the connection
-    // can be called more then once (in case of re-authentication process)
-    virtual void authenticationCompleted(epics::pvData::Status const & status) = 0;
-};
-
-
-class epicsShareClass SecurityPlugin {
-public:
-    POINTER_DEFINITIONS(SecurityPlugin);
-
-    virtual ~SecurityPlugin() {}
-
-    /**
-     * Short, unique name for the plug-in, used to identify the plugin.
-     * @return the ID.
-     */
-    virtual std::string getId() const = 0;
-
-    /**
-     * Description of the security plug-in.
-     * @return the description string.
-     */
-    virtual std::string getDescription() const = 0;
-
-    /**
-     * Check whether the remote instance with given network address is
-     * valid to use this security plug-in to authNZ.
-     * @param remoteAddress
-     * @return <code>true</code> if this security plugin can be used for remote instance.
-     */
-    virtual bool isValidFor(osiSockAddr const & remoteAddress) const = 0;
-
-    /**
-     * Create a security session (usually one per transport).
-     * @param remoteAddress
-     * @return a new session.
-     * @throws SecurityException
-     *
-     * @warning a Ref. loop is created if the SecuritySession stores a pointer to 'control'
-     */
-    // authentication must be done immediately when connection is established (timeout 3seconds),
-    // later on authentication process can be repeated
-    // the server and the client can exchange (arbitrary number) of messages using SecurityPluginControl.sendMessage()
-    // the process completion must be notified by calling AuthenticationControl.completed()
-    virtual SecuritySession::shared_pointer createSession(
-        osiSockAddr const & remoteAddress,
-        SecurityPluginControl::shared_pointer const & control,
-        epics::pvData::PVField::shared_pointer const & data) = 0;
-};
-
-
-
-class epicsShareClass NoSecurityPlugin :
-    public SecurityPlugin,
-    public SecuritySession,
-    public ChannelSecuritySession,
-    public std::tr1::enable_shared_from_this<NoSecurityPlugin> {
-protected:
-    NoSecurityPlugin() {}
-
-public:
-    POINTER_DEFINITIONS(NoSecurityPlugin);
-
-    static NoSecurityPlugin::shared_pointer INSTANCE;
-
-    virtual ~NoSecurityPlugin() {}
-
-    // optional (can be null) initialization data for the remote party
-    // client to server
-    virtual epics::pvData::PVField::shared_pointer initializationData() {
-        return epics::pvData::PVField::shared_pointer();
-    }
-
-    // get parent
-    virtual std::tr1::shared_ptr<SecurityPlugin> getSecurityPlugin() {
-        return shared_from_this();
-    }
-
-    // can be called any time, for any reason
-    virtual void messageReceived(epics::pvData::PVField::shared_pointer const & data) {
-        // noop
-    }
-
-    /// closes this session
-    virtual void close() {
-        // noop
-    }
-
-    // notification to the client on allowed requests (bitSet, a bit per request)
-    virtual ChannelSecuritySession::shared_pointer createChannelSession(std::string const & /*channelName*/)
-    {
-        return shared_from_this();
-    }
-
-    /**
-     * Short, unique name for the plug-in, used to identify the plugin.
-     * @return the ID.
-     */
-    virtual std::string getId() const {
-        return "none";
-    }
-
-    /**
-     * Description of the security plug-in.
-     * @return the description string.
-     */
-    virtual std::string getDescription() const {
-        return "No security plug-in";
-    }
-
-    /**
-     * Check whether the remote instance with given network address is
-     * valid to use this security plug-in to authNZ.
-     * @param remoteAddress
-     * @return <code>true</code> if this security plugin can be used for remote instance.
-     */
-    virtual bool isValidFor(osiSockAddr const & /*remoteAddress*/) const {
-        return true;
-    }
-
-    /**
-     * Create a security session (usually one per transport).
-     * @param remoteAddress
-     * @return a new session.
-     * @throws SecurityException
-     */
-    // authentication must be done immediately when connection is established (timeout 3seconds),
-    // later on authentication process can be repeated
-    // the server and the client can exchange (arbitrary number) of messages using SecurityPluginControl.sendMessage()
-    // the process completion must be notified by calling AuthenticationControl.completed()
-    virtual SecuritySession::shared_pointer createSession(
-        osiSockAddr const & /*remoteAddress*/,
-        SecurityPluginControl::shared_pointer const & control,
-        epics::pvData::PVField::shared_pointer const & /*data*/) {
-        control->authenticationCompleted(epics::pvData::Status::Ok);
-        return shared_from_this();
-    }
-
-    // for every authroizeCreate... a release() must be called
-    virtual void release(pvAccessID ioid) {
-        // noop
-    }
-
-    // bitSet w/ one bit
-    virtual epics::pvData::Status authorizeCreateChannelProcess(
-        pvAccessID ioid, epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    virtual epics::pvData::Status authorizeProcess(pvAccessID /*ioid*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    // bitSet w/ one bit (allowed, not allowed) and rest of the bit per field
-    virtual epics::pvData::Status authorizeCreateChannelGet(
-        pvAccessID /*ioid*/, epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    virtual epics::pvData::Status authorizeGet(pvAccessID /*ioid*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    // read: bitSet w/ one bit (allowed, not allowed) and rest of the bit per field
-    // write: bitSet w/ one bit (allowed, not allowed) and rest of the bit per field
-    virtual epics::pvData::Status authorizeCreateChannelPut(
-        pvAccessID /*ioid*/, epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    virtual epics::pvData::Status authorizePut(
-        pvAccessID /*ioid*/,
-        epics::pvData::PVStructure::shared_pointer const & /*dataToPut*/,
-        epics::pvData::BitSet::shared_pointer const & /*fieldsToPut*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    // read: bitSet w/ one bit (allowed, not allowed) and rest of the bit per field
-    // write: bitSet w/ one bit (allowed, not allowed) and rest of the bit per field
-    // process: bitSet w/ one bit (allowed, not allowed)
-    virtual epics::pvData::Status authorizeCreateChannelPutGet(
-        pvAccessID /*ioid*/, epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    virtual epics::pvData::Status authorizePutGet(
-        pvAccessID /*ioid*/,
-        epics::pvData::PVStructure::shared_pointer const & /*dataToPut*/,
-        epics::pvData::BitSet::shared_pointer const & /*fieldsToPut*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    // bitSet w/ one bit
-    virtual epics::pvData::Status authorizeCreateChannelRPC(
-        pvAccessID /*ioid*/, epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    // one could authorize per operation basis
-    virtual epics::pvData::Status authorizeRPC(
-        pvAccessID /*ioid*/, epics::pvData::PVStructure::shared_pointer const & /*arguments*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    // read: bitSet w/ one bit (allowed, not allowed) and rest of the bit per field
-    virtual epics::pvData::Status authorizeCreateMonitor(
-        pvAccessID /*ioid*/, epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    virtual epics::pvData::Status authorizeMonitor(pvAccessID /*ioid*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    // read: bitSet w/ one bit (allowed, not allowed) and rest put/get/set length
-    virtual epics::pvData::Status authorizeCreateChannelArray(
-        pvAccessID /*ioid*/, epics::pvData::PVStructure::shared_pointer const & /*pvRequest*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    // use authorizeGet
-    virtual epics::pvData::Status authorizePut(
-        pvAccessID /*ioid*/, epics::pvData::PVArray::shared_pointer const & /*dataToPut*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    virtual epics::pvData::Status authorizeSetLength(pvAccessID /*ioid*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-    // introspection authorization
-    virtual epics::pvData::Status authorizeGetField(pvAccessID /*ioid*/, std::string const & /*subField*/) {
-        return epics::pvData::Status::Ok;
-    }
-
-};
-
-class epicsShareClass CAClientSecurityPlugin :
-    public NoSecurityPlugin {
-protected:
-    epics::pvData::PVStructure::shared_pointer m_userAndHost;
-
-    CAClientSecurityPlugin();
-
-
-public:
-    POINTER_DEFINITIONS(CAClientSecurityPlugin);
-
-    static CAClientSecurityPlugin::shared_pointer INSTANCE;
-
-    virtual epics::pvData::PVField::shared_pointer initializationData() {
-        return m_userAndHost;
-    }
-
-    virtual std::string getId() const {
-        return "ca";
-    }
-
-    virtual std::string getDescription() const {
-        return "CA client security plug-in";
-    }
-};
-
-class epicsShareClass SecurityPluginRegistry
+/** A particular authentication exchange.  See AuthenticationPlugin::createSession()
+ *
+ * @note Must not hold a strong reference to AuthenticationPluginControl
+ */
+class epicsShareClass AuthenticationSession
 {
-    EPICS_NOT_COPYABLE(SecurityPluginRegistry)
 public:
+    POINTER_DEFINITIONS(AuthenticationSession);
 
-    static SecurityPluginRegistry& instance()
-    {
-        static SecurityPluginRegistry thisInstance;
-        return thisInstance;
-    }
+    virtual ~AuthenticationSession();
 
-    typedef std::map<std::string, std::tr1::shared_ptr<SecurityPlugin> > securityPlugins_t;
+    //! For client plugins only, call to find the payload returned with CONNECTION_VALIDATION.
+    //! May return NULL.
+    virtual epics::pvData::PVStructure::const_shared_pointer initializationData()
+    { return epics::pvData::PVStructure::const_shared_pointer(); }
 
-    securityPlugins_t& getClientSecurityPlugins()
-    {
-        return m_clientSecurityPlugins;
-    }
+    //! Called when an AUTHZ message is recieved from the peer.
+    //! See AuthenticationPluginControl::sendSecurityPluginMessage().
+    //! callee accepts ownership of data, which will not be modified.
+    virtual void messageReceived(epics::pvData::PVStructure::const_shared_pointer const & data) {}
 
-    securityPlugins_t& getServerSecurityPlugins()
-    {
-        return m_serverSecurityPlugins;
-    }
+    /** For client plugins only.  Notification that server has declared the exchange complete.
+     * @param status Check Status::isSuccess()
+     * @param peer Final information about pe
+     */
+    virtual void authenticationComplete(const epics::pvData::Status& status) {}
+};
 
-    void installClientSecurityPlugin(std::tr1::shared_ptr<SecurityPlugin> plugin)
-    {
-        m_clientSecurityPlugins[plugin->getId()] = plugin;
-        LOG(epics::pvAccess::logLevelDebug, "Client security plug-in '%s' installed.", plugin->getId().c_str());
-    }
+//! Callbacks for use by AuthenticationSession
+class epicsShareClass AuthenticationPluginControl
+{
+public:
+    POINTER_DEFINITIONS(AuthenticationPluginControl);
+    virtual ~AuthenticationPluginControl();
 
-    void installServerSecurityPlugin(std::tr1::shared_ptr<SecurityPlugin> plugin)
-    {
-        m_serverSecurityPlugins[plugin->getId()] = plugin;
-        LOG(epics::pvAccess::logLevelDebug, "Server security plug-in '%s' installed.", plugin->getId().c_str());
-    }
+    //! Send AUTHZ to peer with payload.
+    //! caller gives up ownership of data, which must not be modified.
+    virtual void sendSecurityPluginMessage(epics::pvData::PVStructure::const_shared_pointer const & data) = 0;
+
+    /** Called by server plugin to indicate the the exchange has completed.
+     *
+     * @param status If !status.isSuccess() then the connection will be closed without being used.
+     * @param peer Partially initialized PeerInfo.  See AuthenticationPlugin::createSession().
+     *             PeerInfo::realm and/or PeerInfo::account will now be considered valid.
+     *             Caller transfers ownership to callee, which may modify.
+     */
+    virtual void authenticationCompleted(const epics::pvData::Status& status,
+                                         const std::tr1::shared_ptr<PeerInfo>& peer) = 0;
+};
+
+//! Actor through which authentication exchanges are initiated.
+class epicsShareClass AuthenticationPlugin
+{
+public:
+    POINTER_DEFINITIONS(AuthenticationPlugin);
+    virtual ~AuthenticationPlugin();
+
+    /** Allow this plugin to be advertised to a particular peer.
+     *
+     * At this point the PeerInfo has only been partially initialized with
+     * transport/protocol specific information: PeerInfo::peer, PeerInfo::transport, and PeerInfo::transportVersion.
+     */
+    virtual bool isValidFor(const PeerInfo& peer) const { return true; }
+
+    /** Begin a new session with a peer.
+     *
+     * @param peer Partially initialized PeerInfo.  See isValidFor().
+     *        PeerInfo::authority is also set.
+     *        Caller transfers ownership to callee, which may modify.
+     * @param control callee uses to asynchronously continue, and complete the session.
+     * @param data Always NULL for client-type plugins.  For server-type plugins,
+     *        the result of initializationData() from the peer
+     */
+    virtual std::tr1::shared_ptr<AuthenticationSession> createSession(
+        const std::tr1::shared_ptr<PeerInfo>& peer,
+        std::tr1::shared_ptr<AuthenticationPluginControl> const & control,
+        epics::pvData::PVStructure::shared_pointer const & data) = 0;
+};
+
+/** Registry(s) for plugins
+ */
+class epicsShareClass AuthenticationRegistry
+{
+    EPICS_NOT_COPYABLE(AuthenticationRegistry) // would need locking
+public:
+    POINTER_DEFINITIONS(AuthenticationRegistry);
 
 private:
-    SecurityPluginRegistry();
+    typedef std::map<int, std::pair<std::string, AuthenticationPlugin::shared_pointer> > map_t;
+    map_t map;
+    mutable epicsMutex mutex;
+public:
+    typedef std::vector<map_t::mapped_type> list_t;
 
-    securityPlugins_t m_clientSecurityPlugins;
-    securityPlugins_t m_serverSecurityPlugins;
+    //! The client side of the conversation
+    static AuthenticationRegistry& clients();
+    //! The server side of the conversation
+    static AuthenticationRegistry& servers();
+
+    AuthenticationRegistry() {}
+    ~AuthenticationRegistry();
+
+    //! Save a copy of the current registry in order of increasing priority
+    void snapshot(list_t& plugmap) const;
+
+    /** @brief Add a new plugin to this registry.
+     *
+     @param prio Order in which plugins are considered.  highest is preferred.
+     @param name Name under which this plugin will be known
+     @param plugin Plugin instance
+     */
+    void add(int prio, const std::string& name, const AuthenticationPlugin::shared_pointer& plugin);
+    //! Remove an existing entry.  Remove true if the entry was actually removed.
+    bool remove(const AuthenticationPlugin::shared_pointer& plugin);
+    //! Fetch a single plugin explicitly by name.
+    //! @returns NULL if no entry for this name is available.
+    AuthenticationPlugin::shared_pointer lookup(const std::string& name) const;
 };
+
+//! I modify PeerInfo after authentication is complete.
+//! Usually to update PeerInfo::roles
+class epicsShareClass AuthorizationPlugin
+{
+public:
+    POINTER_DEFINITIONS(AuthorizationPlugin);
+
+    virtual ~AuthorizationPlugin();
+
+    //! Hook to modify PeerInfo
+    virtual void authorize(const std::tr1::shared_ptr<PeerInfo>& peer) =0;
+};
+
+class epicsShareClass AuthorizationRegistry
+{
+    EPICS_NOT_COPYABLE(AuthorizationRegistry)
+public:
+    POINTER_DEFINITIONS(AuthenticationRegistry);
+
+    static AuthorizationRegistry &plugins();
+
+    AuthorizationRegistry();
+    ~AuthorizationRegistry();
+
+private:
+    typedef std::map<int, AuthorizationPlugin::shared_pointer> map_t;
+    map_t map;
+    void *busy;
+    mutable epicsMutex mutex;
+public:
+
+    void add(int prio, const AuthorizationPlugin::shared_pointer& plugin);
+    bool remove(const AuthorizationPlugin::shared_pointer& plugin);
+    void run(const std::tr1::shared_ptr<PeerInfo>& peer);
+};
+
+/** @brief Query OS specific DB for role/group names assocated with a user account.
+ * @param account User name
+ * @param roles Role names are added to this set.  Existing names are not removed.
+ */
+epicsShareFunc
+void osdGetRoles(const std::string &account, PeerInfo::roles_t& roles);
 
 }
 }

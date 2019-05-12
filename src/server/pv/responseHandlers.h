@@ -135,13 +135,16 @@ class ServerChannelFindRequesterImpl:
     public std::tr1::enable_shared_from_this<ServerChannelFindRequesterImpl>
 {
 public:
-    ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context, epics::pvData::int32 expectedResponseCount);
+    ServerChannelFindRequesterImpl(ServerContextImpl::shared_pointer const & context,
+                                   const PeerInfo::const_shared_pointer& peer,
+                                   epics::pvData::int32 expectedResponseCount);
     virtual ~ServerChannelFindRequesterImpl() {}
     void clear();
     ServerChannelFindRequesterImpl* set(std::string _name, epics::pvData::int32 searchSequenceId,
                                         epics::pvData::int32 cid, osiSockAddr const & sendTo, bool responseRequired, bool serverSearch);
     virtual void channelFindResult(const epics::pvData::Status& status, ChannelFind::shared_pointer const & channelFind, bool wasFound) OVERRIDE FINAL;
 
+    virtual std::tr1::shared_ptr<const PeerInfo> getPeerInfo() OVERRIDE FINAL;
     virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 
     virtual void callback() OVERRIDE FINAL;
@@ -155,9 +158,10 @@ private:
     osiSockAddr _sendTo;
     bool _responseRequired;
     bool _wasFound;
-    ServerContextImpl::shared_pointer _context;
-    epics::pvData::Mutex _mutex;
-    epics::pvData::int32 _expectedResponseCount;
+    const ServerContextImpl::shared_pointer _context;
+    const PeerInfo::const_shared_pointer _peer;
+    mutable epics::pvData::Mutex _mutex;
+    const epics::pvData::int32 _expectedResponseCount;
     epics::pvData::int32 _responseCount;
     bool _serverSearch;
 };
@@ -201,14 +205,15 @@ public:
 protected:
     ServerChannelRequesterImpl(Transport::shared_pointer const & transport,
                                const std::string channelName,
-                               const pvAccessID cid, ChannelSecuritySession::shared_pointer const & css);
+                               const pvAccessID cid);
 public:
     virtual ~ServerChannelRequesterImpl() {}
     static ChannelRequester::shared_pointer create(ChannelProvider::shared_pointer const & provider,
             Transport::shared_pointer const & transport, const std::string channelName,
-            const pvAccessID cid, ChannelSecuritySession::shared_pointer const & css);
+            const pvAccessID cid);
     virtual void channelCreated(const epics::pvData::Status& status, Channel::shared_pointer const & channel) OVERRIDE FINAL;
     virtual void channelStateChange(Channel::shared_pointer const & c, const Channel::ConnectionState isConnected) OVERRIDE FINAL;
+    virtual std::tr1::shared_ptr<const PeerInfo> getPeerInfo() OVERRIDE FINAL;
     virtual std::string getRequesterName() OVERRIDE FINAL;
     virtual void message(std::string const & message, epics::pvData::MessageType messageType) OVERRIDE FINAL;
     virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
@@ -217,7 +222,6 @@ private:
     std::tr1::weak_ptr<detail::BlockingServerTCPTransportCodec> _transport;
     const std::string _channelName;
     const pvAccessID _cid;
-    ChannelSecuritySession::shared_pointer const & _css;
     bool _created;
     epics::pvData::Status _status;
     epics::pvData::Mutex _mutex;

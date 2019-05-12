@@ -40,6 +40,8 @@ using namespace std;
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 
+typedef epicsGuard<epicsMutex> Guard;
+
 namespace {
 struct BreakTransport : TransportSender
 {
@@ -1087,15 +1089,11 @@ void BlockingTCPTransportCodec::internalClose()
     Transport::shared_pointer thisSharedPtr = this->shared_from_this();
     _context->getTransportRegistry()->remove(thisSharedPtr);
 
-    // TODO sync
-    if (_securitySession)
-        _securitySession->close();
-
     if (IS_LOGGABLE(logLevelDebug))
     {
         LOG(logLevelDebug,
             "TCP socket to %s is to be closed.",
-            inetAddressToString(_socketAddress).c_str());
+            _socketName.c_str());
     }
 }
 
@@ -1244,7 +1242,6 @@ BlockingTCPTransportCodec::BlockingTCPTransportCodec(bool serverFlag, const Cont
         ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
         _socketName = ipAddrStr;
     }
-
 }
 
 
@@ -1361,24 +1358,28 @@ bool BlockingTCPTransportCodec::verify(epics::pvData::int32 timeoutMs) {
 }
 
 void BlockingTCPTransportCodec::verified(epics::pvData::Status const & status) {
-    epics::pvData::Lock lock(_verifiedMutex);
+    epics::pvData::Lock lock(_mutex);
 
     if (IS_LOGGABLE(logLevelDebug) && !status.isOK())
     {
-        char ipAddrStr[48];
-        ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-        LOG(logLevelDebug, "Failed to verify connection to %s: %s.", ipAddrStr, status.getMessage().c_str());
-        // TODO stack dump
+        LOG(logLevelDebug, "Failed to verify connection to %s: %s.", _socketName.c_str(), status.getMessage().c_str());
     }
 
-    _verified = status.isSuccess();
+    {
+        Guard G(_mutex);
+        _verified = status.isSuccess();
+    }
     _verifiedEvent.signal();
 }
 
-void BlockingTCPTransportCodec::authNZMessage(epics::pvData::PVField::shared_pointer const & data) {
-    // TODO sync
-    if (_securitySession)
-        _securitySession->messageReceived(data);
+void BlockingTCPTransportCodec::authNZMessage(epics::pvData::PVStructure::shared_pointer const & data) {
+    AuthenticationSession::shared_pointer sess;
+    {
+        Guard G(_mutex);
+        sess = _authSession;
+    }
+    if (sess)
+        sess->messageReceived(data);
     else
     {
         char ipAddrStr[48];
@@ -1392,7 +1393,7 @@ class SecurityPluginMessageTransportSender : public TransportSender {
 public:
     POINTER_DEFINITIONS(SecurityPluginMessageTransportSender);
 
-    SecurityPluginMessageTransportSender(PVField::shared_pointer const & data) :
+    SecurityPluginMessageTransportSender(PVStructure::const_shared_pointer const & data) :
         _data(data)
     {
     }
@@ -1405,11 +1406,10 @@ public:
     }
 
 private:
-    PVField::shared_pointer _data;
+    PVStructure::const_shared_pointer _data;
 };
 
-void BlockingTCPTransportCodec::sendSecurityPluginMessage(epics::pvData::PVField::shared_pointer const & data) {
-    // TODO not optimal since it allocates a new object every time
+void BlockingTCPTransportCodec::sendSecurityPluginMessage(epics::pvData::PVStructure::const_shared_pointer const & data) {
     SecurityPluginMessageTransportSender::shared_pointer spmts(new SecurityPluginMessageTransportSender(data));
     enqueueSendRequest(spmts);
 }
@@ -1423,10 +1423,12 @@ BlockingServerTCPTransportCodec::BlockingServerTCPTransportCodec(
     SOCKET channel,
     ResponseHandler::shared_pointer const & responseHandler,
     int32_t sendBufferSize,
-    int32_t receiveBufferSize) :
-    BlockingTCPTransportCodec(true, context, channel, responseHandler,
-                              sendBufferSize, receiveBufferSize, PVA_DEFAULT_PRIORITY),
-    _lastChannelSID(0), _verifyOrVerified(false), _securityRequired(false)
+    int32_t receiveBufferSize)
+    :BlockingTCPTransportCodec(true, context, channel, responseHandler,
+                               sendBufferSize, receiveBufferSize, PVA_DEFAULT_PRIORITY)
+    ,_lastChannelSID(0)
+    ,_verificationStatus(pvData::Status::fatal("Uninitialized error"))
+    ,_verifyOrVerified(false)
 {
     // NOTE: priority not yet known, default priority is used to
     //register/unregister
@@ -1530,29 +1532,38 @@ void BlockingServerTCPTransportCodec::send(ByteBuffer* buffer,
         // TODO
         buffer->putShort(0x7FFF);
 
-        // list of authNZ plugin names
-        const Context::securityPlugins_t& securityPlugins = _context->getSecurityPlugins();
-        vector<string> validSPNames;
-        validSPNames.reserve(securityPlugins.size());
+        // list of authNZ plugin names advertised to this client
 
-        for (Context::securityPlugins_t::const_iterator iter(securityPlugins.begin());
-                iter != securityPlugins.end(); iter++)
+        AuthenticationRegistry::list_t plugins;
+        AuthenticationRegistry::servers().snapshot(plugins); // copy
+        std::vector<std::string> validSPNames;
+        validSPNames.reserve(plugins.size()); // assume all will be valid
+
+        PeerInfo info;
+        info.transport = "pva";
+        info.peer = _socketName;
+        info.transportVersion = this->getRevision();
+
+        // filter plugins which may be used by this peer
+        for(AuthenticationRegistry::list_t::iterator it(plugins.begin()), end(plugins.end());
+            it!=end; ++it)
         {
-            SecurityPlugin::shared_pointer securityPlugin = iter->second;
-            if (securityPlugin->isValidFor(_socketAddress))
-                validSPNames.push_back(securityPlugin->getId());
+            info.authority = it->first;
+            if(it->second->isValidFor(info))
+                validSPNames.push_back(it->first);
         }
 
-        size_t validSPCount = validSPNames.size();
-
-        SerializeHelper::writeSize(validSPCount, buffer, this);
-        for (vector<string>::const_iterator iter =
-                    validSPNames.begin();
-                iter != validSPNames.end(); iter++)
+        SerializeHelper::writeSize(validSPNames.size(), buffer, this);
+        for (vector<string>::const_iterator iter(validSPNames.begin()), end(validSPNames.end());
+             iter != end; iter++)
+        {
             SerializeHelper::serializeString(*iter, buffer, this);
+        }
 
-        // TODO sync
-        _securityRequired = (validSPCount > 0);
+        {
+            Guard G(_mutex);
+            advertisedAuthPlugins.swap(validSPNames);
+        }
 
         // send immediately
         control->flush(true);
@@ -1564,10 +1575,12 @@ void BlockingServerTCPTransportCodec::send(ByteBuffer* buffer,
         //
         control->startMessage(CMD_CONNECTION_VALIDATED, 0);
 
+        pvData::Status sts;
         {
-            Lock lock(_verificationStatusMutex);
-            _verificationStatus.serialize(buffer, control);
+            Lock lock(_mutex);
+            sts = _verificationStatus;
         }
+        sts.serialize(buffer, control);
 
         // send immediately
         control->flush(true);
@@ -1600,14 +1613,28 @@ void BlockingServerTCPTransportCodec::internalClose() {
     destroyAllChannels();
 }
 
-void BlockingServerTCPTransportCodec::authenticationCompleted(epics::pvData::Status const & status)
+void BlockingServerTCPTransportCodec::authenticationCompleted(epics::pvData::Status const & status,
+                                                              const std::tr1::shared_ptr<PeerInfo>& peer)
 {
     if (IS_LOGGABLE(logLevelDebug))
     {
         LOG(logLevelDebug, "Authentication completed with status '%s' for PVA client: %s.", Status::StatusTypeName[status.getType()], _socketName.c_str());
     }
 
-    if (!isVerified()) // TODO sync
+    if(peer)
+        AuthorizationRegistry::plugins().run(peer);
+
+    bool isVerified;
+    {
+        Guard G(_mutex);
+        isVerified = _verified;
+        if(status.isSuccess())
+            _peerInfo = peer;
+        else
+            _peerInfo.reset();
+    }
+
+    if (!isVerified)
         verified(status);
     else if (!status.isSuccess())
     {
@@ -1620,59 +1647,35 @@ void BlockingServerTCPTransportCodec::authenticationCompleted(epics::pvData::Sta
     }
 }
 
-epics::pvData::Status BlockingServerTCPTransportCodec::invalidSecurityPluginNameStatus(Status::STATUSTYPE_ERROR, "invalid security plug-in name");
-
 void BlockingServerTCPTransportCodec::authNZInitialize(const std::string& securityPluginName,
-                                                       const epics::pvData::PVField::shared_pointer& data)
+                                                       const epics::pvData::PVStructure::shared_pointer& data)
 {
-    // check if plug-in name is valid
-    SecurityPlugin::shared_pointer securityPlugin;
+    AuthenticationPlugin::shared_pointer plugin(AuthenticationRegistry::servers().lookup(securityPluginName));
+    // attempting the force use of an un-advertised/non-existant plugin is treated as a protocol error.
+    // We cheat here by assuming the the registry doesn't often change after server start,
+    // and don't test if securityPluginName is in advertisedAuthPlugins
+    if(!plugin)
+        throw std::runtime_error(_socketName+" failing attempt to select non-existant auth. plugin "+securityPluginName);
 
-    Context::securityPlugins_t::const_iterator spIter(_context->getSecurityPlugins().find(securityPluginName));
-    if (spIter != _context->getSecurityPlugins().end())
-        securityPlugin = spIter->second;
-    if (!securityPlugin)
-    {
-        if (_securityRequired)
-        {
-            verified(invalidSecurityPluginNameStatus);
-            return;
-        }
-        else
-        {
-            securityPlugin = NoSecurityPlugin::INSTANCE;
+    PeerInfo::shared_pointer info(new PeerInfo);
+    info->peer = _socketName;
+    info->transport = "pva";
+    info->transportVersion = getRevision();
+    info->authority = securityPluginName;
 
-            if (IS_LOGGABLE(logLevelDebug))
-            {
-                LOG(logLevelDebug, "No security plug-in installed, selecting default plug-in '%s' for PVA client: %s.", securityPlugin->getId().c_str(), _socketName.c_str());
-            }
-        }
-    }
-
-    if (!securityPlugin->isValidFor(_socketAddress))
-        verified(invalidSecurityPluginNameStatus);
+    if (!plugin->isValidFor(*info))
+        verified(pvData::Status::error("invalid security plug-in name"));
 
     if (IS_LOGGABLE(logLevelDebug))
     {
-        char ipAddrStr[48];
-        ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
-        LOG(logLevelDebug, "Accepted security plug-in '%s' for PVA client: %s.", securityPluginName.c_str(), ipAddrStr);
+        LOG(logLevelDebug, "Accepted security plug-in '%s' for PVA client: %s.", securityPluginName.c_str(), _socketName.c_str());
     }
 
-    try
-    {
-        // create session
-        SecurityPluginControl::shared_pointer spc = std::tr1::dynamic_pointer_cast<SecurityPluginControl>(shared_from_this());
-        // TODO sync
-        _securitySession = securityPlugin->createSession(_socketAddress, spc, data);
-    } catch (SecurityException &se) {
-        if (IS_LOGGABLE(logLevelDebug))
-        {
-            LOG(logLevelDebug, "Security plug-in '%s' failed to create a session for PVA client: %s.", securityPluginName.c_str(), _socketName.c_str());
-        }
-        Status status(Status::STATUSTYPE_ERROR, se.what());
-        verified(status);
-    }
+    AuthenticationSession::shared_pointer sess(plugin->createSession(info, shared_from_this(), data));
+
+    Guard G(_mutex);
+    _authSessionName = securityPluginName;
+    _authSession.swap(sess);
 }
 
 
@@ -1894,17 +1897,25 @@ void BlockingClientTCPTransportCodec::send(ByteBuffer* buffer,
         // QoS (aka connection priority)
         buffer->putShort(getPriority());
 
-        // TODO sync
-        if (_securitySession)
+        std::string pluginName;
+        AuthenticationSession::shared_pointer session;
+        {
+            Guard G(_mutex);
+            pluginName = _authSessionName;
+            session = _authSession;
+        }
+
+        if (session)
         {
             // selected authNZ plug-in name
-            SerializeHelper::serializeString(_securitySession->getSecurityPlugin()->getId(), buffer, control);
+            SerializeHelper::serializeString(_authSessionName, buffer, control);
 
             // optional authNZ plug-in initialization data
-            SerializationHelper::serializeFull(buffer, control, _securitySession->initializationData());
+            SerializationHelper::serializeFull(buffer, control, session->initializationData());
         }
         else
         {
+            //TODO: allowed?
             // emptry authNZ plug-in name
             SerializeHelper::serializeString("", buffer, control);
 
@@ -1926,36 +1937,66 @@ void BlockingClientTCPTransportCodec::send(ByteBuffer* buffer,
 
 void BlockingClientTCPTransportCodec::authNZInitialize(const std::vector<std::string>& offeredSecurityPlugins)
 {
-    if (!offeredSecurityPlugins.empty())
+    AuthenticationRegistry& plugins = AuthenticationRegistry::clients();
+    std::string selectedName;
+    AuthenticationPlugin::shared_pointer plugin;
+
+    // because of a missing break; the original SecurityPlugin effectively treated the offered list as being
+    // in order of increasing preference (last is preferred).
+    // we continue with this because, hey isn't compatibility fun...
+
+    for(std::vector<std::string>::const_reverse_iterator it(offeredSecurityPlugins.rbegin()), end(offeredSecurityPlugins.rend());
+        it!=end; ++it)
     {
-        const Context::securityPlugins_t& availableSecurityPlugins(_context->getSecurityPlugins());
-
-        for (vector<string>::const_iterator offeredSP = offeredSecurityPlugins.begin();
-                offeredSP != offeredSecurityPlugins.end(); offeredSP++)
-        {
-            Context::securityPlugins_t::const_iterator spi(availableSecurityPlugins.find(*offeredSP));
-            if (spi != availableSecurityPlugins.end())
-            {
-                SecurityPlugin::shared_pointer securityPlugin = spi->second;
-                if (securityPlugin->isValidFor(_socketAddress))
-                {
-                    // create session
-                    SecurityPluginControl::shared_pointer spc = std::tr1::dynamic_pointer_cast<SecurityPluginControl>(shared_from_this());
-
-                    // TODO sync
-                    _securitySession = securityPlugin->createSession(_socketAddress, spc, PVField::shared_pointer());
-                }
-            }
+        plugin = plugins.lookup(*it);
+        if(plugin) {
+            selectedName = *it;
+            break;
         }
+    }
+
+    if(!plugin) {
+        // mis-match and legacy.  some early servers (java?) don't advertise any plugins.
+        // treat this as anonymous
+        selectedName = "anonymous";
+        plugin = plugins.lookup(selectedName);
+        assert(plugin); // fallback required
+    }
+
+    {
+        PeerInfo::shared_pointer info(new PeerInfo);
+        info->peer = _socketName; // this is the server name
+        info->transport = "pva";
+        info->transportVersion = getRevision();
+        info->authority = selectedName;
+
+        AuthenticationSession::shared_pointer sess(plugin->createSession(info, shared_from_this(), pvData::PVStructure::shared_pointer()));
+
+        Guard G(_mutex);
+        _authSessionName = selectedName;
+        _authSession = sess;
     }
 
     TransportSender::shared_pointer transportSender = std::tr1::dynamic_pointer_cast<TransportSender>(shared_from_this());
     enqueueSendRequest(transportSender);
 }
 
-void BlockingClientTCPTransportCodec::authenticationCompleted(epics::pvData::Status const & status)
+void BlockingClientTCPTransportCodec::authenticationCompleted(epics::pvData::Status const & status,
+                                                              const std::tr1::shared_ptr<PeerInfo>& peer)
 {
     // noop for client side (server will send ConnectionValidation message)
+}
+
+void BlockingClientTCPTransportCodec::verified(epics::pvData::Status const & status)
+{
+    AuthenticationSession::shared_pointer sess;
+    {
+        Guard G(_mutex);
+        sess = _authSession;
+    }
+    if(sess)
+        sess->authenticationComplete(status);
+    this->BlockingTCPTransportCodec::verified(status);
 }
 
 }

@@ -82,7 +82,7 @@ public:
      * Serialize optional PVField.
      * @param buffer data buffer.
      */
-    static void serializeFull(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control, epics::pvData::PVField::shared_pointer const & pvField);
+    static void serializeFull(epics::pvData::ByteBuffer* buffer, epics::pvData::SerializableControl* control, const epics::pvData::PVField::const_shared_pointer &pvField);
 
 };
 

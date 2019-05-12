@@ -10,7 +10,6 @@ TESTS += testChannelAccess
 TESTPROD_HOST += testCodec
 testCodec_SRCS = testCodec
 testHarness_SRCS += testCodec.cpp
-testCodec_SYS_LIBS_WIN32 += ws2_32
 TESTS += testCodec
 
 TESTPROD_HOST += testRPC

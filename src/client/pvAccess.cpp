@@ -8,9 +8,11 @@
 #include <epicsGuard.h>
 #include <pv/reftrack.h>
 #include <pv/valueBuilder.h>
+#include <pv/epicsException.h>
 
 #define epicsExportSharedSymbols
 #include <pv/pvAccess.h>
+#include <pv/security.h>
 
 namespace pvd = epics::pvData;
 
@@ -416,6 +418,11 @@ ChannelRequester::ChannelRequester()
 ChannelRequester::~ChannelRequester()
 {
     REFTRACE_DECREMENT(num_instances);
+}
+
+PeerInfo::const_shared_pointer ChannelRequester::getPeerInfo()
+{
+    return PeerInfo::const_shared_pointer();
 }
 
 std::string DefaultChannelRequester::getRequesterName() { return "DefaultChannelRequester"; }

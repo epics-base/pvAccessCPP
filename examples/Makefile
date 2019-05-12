@@ -3,6 +3,7 @@ TOP=..
 include $(TOP)/configure/CONFIG
 
 PROD_LIBS += pvAccessCA ca pvAccess pvData Com
+PROD_SYS_LIBS_WIN32 += netapi32 ws2_32
 
 TESTPROD_HOST += getme
 getme_SRCS = getme.cpp

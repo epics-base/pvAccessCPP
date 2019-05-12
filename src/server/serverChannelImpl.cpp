@@ -18,14 +18,12 @@ size_t ServerChannel::num_instances;
 
 ServerChannel::ServerChannel(Channel::shared_pointer const & channel,
                              const ChannelRequester::shared_pointer &requester,
-                             pvAccessID cid, pvAccessID sid,
-                             ChannelSecuritySession::shared_pointer const & css):
+                             pvAccessID cid, pvAccessID sid):
     _channel(channel),
     _requester(requester),
     _cid(cid),
     _sid(sid),
-    _destroyed(false),
-    _channelSecuritySession(css)
+    _destroyed(false)
 {
     REFTRACE_INCREMENT(num_instances);
     if (!channel.get())
@@ -75,10 +73,6 @@ void ServerChannel::destroy()
         // take ownership of _requests locally to prevent
         // removal via unregisterRequest() during iteration
         _requests.swap(reqs);
-
-        // close channel security session
-        // TODO try catch
-        _channelSecuritySession->close();
 
         // ... and the channel
         // TODO try catch
