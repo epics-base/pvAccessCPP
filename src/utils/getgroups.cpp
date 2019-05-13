@@ -34,6 +34,7 @@ typedef gid_t osi_gid_t;
 #elif defined(USE_LANMAN)
 
 #include <stdlib.h>
+#include <winsock2.h>
 #include <windows.h>
 #include <lm.h>
 
