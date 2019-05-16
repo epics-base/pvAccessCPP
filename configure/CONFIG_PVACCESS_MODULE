@@ -3,5 +3,16 @@
 # in file LICENSE that is included with this distribution.
 #*************************************************************************
 
-# LIbraries needed to link a pvAccess tool
+# Libraries needed to link a pvAccess tool
 EPICS_BASE_PVA_CORE_LIBS = pvAccessIOC pvAccessCA pvAccess pvData
+
+ifneq ($(SKIP_PVA_AUTO_LIBS),YES)
+
+# automatically inject -lnetapi32 and -lws2_32 along with -lpvAccess
+define _PVA_ADD_NETAPI
+$(1)_SYS_LIBS_WIN32 += $$(if $$(findstring pvAccess,$$($(1)_LIBS)),netapi32 ws2_32)
+endef
+
+$(foreach loc,PROD TESTPROD $(PROD) $(TESTPROD) LIB $(LIBRARY),$(eval $(call _PVA_ADD_NETAPI,$(loc))))
+
+endif
