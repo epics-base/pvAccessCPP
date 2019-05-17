@@ -93,20 +93,23 @@ public:
 
 class EchoTransportSender : public TransportSender {
 public:
-    EchoTransportSender(osiSockAddr* echoFrom) {
+    EchoTransportSender(osiSockAddr* echoFrom, size_t payloadSize, epics::pvData::ByteBuffer& payloadBuffer) {
         memcpy(&_echoFrom, echoFrom, sizeof(osiSockAddr));
+        toEcho.resize(payloadSize);
+        memcpy(&toEcho[0], payloadBuffer.getBuffer(), payloadSize);
     }
 
     virtual ~EchoTransportSender() {}
 
-    virtual void send(epics::pvData::ByteBuffer* /*buffer*/, TransportSendControl* control) OVERRIDE FINAL {
-        control->startMessage(CMD_ECHO, 0);
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL {
+        control->startMessage(CMD_ECHO, toEcho.size(), toEcho.size());
         control->setRecipient(_echoFrom);
-        // TODO content
+        buffer->putArray<char>(&toEcho[0], toEcho.size());
     }
 
 private:
     osiSockAddr _echoFrom;
+    std::vector<char> toEcho;
 };
 
 /****************************************************************************************/

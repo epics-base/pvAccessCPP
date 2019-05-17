@@ -228,7 +228,7 @@ void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
     // send back
-    TransportSender::shared_pointer echoReply(new EchoTransportSender(responseFrom));
+    TransportSender::shared_pointer echoReply(new EchoTransportSender(responseFrom, payloadSize, *payloadBuffer));
     transport->enqueueSendRequest(echoReply);
 }
 
