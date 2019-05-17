@@ -5,3 +5,6 @@
 
 # LIbraries needed to link a pvAccess tool
 EPICS_BASE_PVA_CORE_LIBS = pvAccessIOC pvAccessCA pvAccess pvData
+
+# pvAccess depends on netapi32
+PROD_SYS_LIBS_WIN32 += netapi32
