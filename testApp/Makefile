@@ -11,6 +11,7 @@ USR_CPPFLAGS += -I$(TOP)/src/remoteClient
 PVACCESS_TEST = $(TOP)/testApp
 
 PROD_LIBS += pvAccess pvData Com
+PROD_SYS_LIBS_WIN32 += netapi32 ws2_32
 
 include $(PVACCESS_TEST)/utils/Makefile
 include $(PVACCESS_TEST)/remote/Makefile

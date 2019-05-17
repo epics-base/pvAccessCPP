@@ -7,6 +7,7 @@ include $(TOP)/configure/CONFIG
 USR_CPPFLAGS += -I$(TOP)/src/ca
 
 PROD_LIBS += pvAccess pvAccessCA pvData $(EPICS_BASE_IOC_LIBS)
+PROD_SYS_LIBS_WIN32 += netapi32 ws2_32
 
 TESTPROD_HOST += testCaProvider
 testCaProvider_SRCS += testCaProvider.cpp
