@@ -1257,7 +1257,7 @@ int BlockingTCPTransportCodec::write(
     while((remaining=src->getRemaining()) > 0) {
 
         int bytesSent = ::send(_channel,
-                               &src->getArray()[src->getPosition()],
+                               &src->getBuffer()[src->getPosition()],
                                remaining, 0);
 
         // NOTE: do not log here, you might override SOCKERRNO relevant to recv() operation above
@@ -1317,7 +1317,7 @@ int BlockingTCPTransportCodec::read(epics::pvData::ByteBuffer* dst) {
         std::size_t pos = dst->getPosition();
 
         int bytesRead = recv(_channel,
-                             (char*)(dst->getArray()+pos), remaining, 0);
+                             (char*)(dst->getBuffer()+pos), remaining, 0);
 
         // NOTE: do not log here, you might override SOCKERRNO relevant to recv() operation above
 

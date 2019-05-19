@@ -91,7 +91,7 @@ string deserializeString(ByteBuffer* buffer) {
     {
         // entire string is in buffer, simply create a string out of it (copy)
         std::size_t pos = buffer->getPosition();
-        string str(buffer->getArray()+pos, size);
+        string str(buffer->getBuffer()+pos, size);
         buffer->setPosition(pos+size);
         return str;
     }
@@ -359,7 +359,7 @@ bool discoverServers(double timeOut)
             LOG(logLevelDebug, "UDP Tx (%zu) -> %s", sendBuffer.getPosition(), strBuffer);
         }
 
-        status = ::sendto(socket, sendBuffer.getArray(), sendBuffer.getPosition(), 0,
+        status = ::sendto(socket, sendBuffer.getBuffer(), sendBuffer.getPosition(), 0,
                           &broadcastAddresses[i].sa, sizeof(sockaddr));
         if (status < 0)
         {
@@ -388,7 +388,7 @@ bool discoverServers(double timeOut)
         receiveBuffer.clear();
 
         // receive packet from socket
-        int bytesRead = ::recvfrom(socket, (char*)receiveBuffer.getArray(),
+        int bytesRead = ::recvfrom(socket, (char*)receiveBuffer.getBuffer(),
                                    receiveBuffer.getRemaining(), 0,
                                    (sockaddr*)&fromAddress, &addrStructSize);
 
@@ -443,7 +443,7 @@ bool discoverServers(double timeOut)
                 for (size_t i = 0; i < broadcastAddresses.size(); i++)
                 {
                     // send the packet
-                    status = ::sendto(socket, sendBuffer.getArray(), sendBuffer.getPosition(), 0,
+                    status = ::sendto(socket, sendBuffer.getBuffer(), sendBuffer.getPosition(), 0,
                                       &broadcastAddresses[i].sa, sizeof(sockaddr));
                     if (status < 0)
                     {

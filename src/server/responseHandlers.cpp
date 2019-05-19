@@ -312,7 +312,7 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
             payloadBuffer->setPosition(newStartPos);
 
             // copy part of a header, and add: command, payloadSize, NIF address
-            payloadBuffer->put(payloadBuffer->getArray(), startPosition-PVA_MESSAGE_HEADER_SIZE, PVA_MESSAGE_HEADER_SIZE-5);
+            payloadBuffer->put(payloadBuffer->getBuffer(), startPosition-PVA_MESSAGE_HEADER_SIZE, PVA_MESSAGE_HEADER_SIZE-5);
             payloadBuffer->putByte(CMD_ORIGIN_TAG);
             payloadBuffer->putInt(16);
             // encode this socket bind address
@@ -328,7 +328,7 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
             // set to end of a message
             payloadBuffer->setPosition(payloadBuffer->getLimit());
 
-            bt->send(payloadBuffer->getArray()+newStartPos, payloadBuffer->getPosition()-newStartPos,
+            bt->send(payloadBuffer->getBuffer()+newStartPos, payloadBuffer->getPosition()-newStartPos,
                      bt->getLocalMulticastAddress());
 
             return;

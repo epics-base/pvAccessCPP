@@ -132,7 +132,7 @@ void test_encodeAsIPv6Address()
     encodeAsIPv6Address(buff.get(), &addr);
     testOk1(static_cast<size_t>(16) == buff->getPosition());
 
-    testOk1(strncmp(buff->getArray(), src, 16) == 0);
+    testOk1(strncmp(buff->getBuffer(), src, 16) == 0);
 }
 
 void test_isMulticastAddress()

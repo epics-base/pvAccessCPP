@@ -216,7 +216,7 @@ void BlockingUDPTransport::run() {
 
     try {
 
-        char* recvfrom_buffer_start = (char*)(_receiveBuffer.getArray()+RECEIVE_BUFFER_PRE_RESERVE);
+        char* recvfrom_buffer_start = (char*)(_receiveBuffer.getBuffer()+RECEIVE_BUFFER_PRE_RESERVE);
         size_t recvfrom_buffer_len =_receiveBuffer.getSize()-RECEIVE_BUFFER_PRE_RESERVE;
         while(!_closed.get())
         {
@@ -438,7 +438,7 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, const osiSockAddr& address) 
             buffer->getRemaining(), _remoteName.c_str(), inetAddressToString(address).c_str());
     }
 
-    int retval = sendto(_channel, buffer->getArray(),
+    int retval = sendto(_channel, buffer->getBuffer(),
                         buffer->getLimit(), 0, &(address.sa), sizeof(sockaddr));
     if(unlikely(retval<0))
     {
@@ -475,7 +475,7 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, InetAddressType target) {
                 buffer->getRemaining(), _remoteName.c_str(), inetAddressToString(_sendAddresses[i]).c_str());
         }
 
-        int retval = sendto(_channel, buffer->getArray(),
+        int retval = sendto(_channel, buffer->getBuffer(),
                             buffer->getLimit(), 0, &(_sendAddresses[i].sa),
                             sizeof(sockaddr));
         if(unlikely(retval<0))
