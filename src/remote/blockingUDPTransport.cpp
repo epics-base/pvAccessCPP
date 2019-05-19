@@ -207,7 +207,7 @@ void BlockingUDPTransport::flushSendQueue()
 void BlockingUDPTransport::startMessage(int8 command, size_t /*ensureCapacity*/, int32 payloadSize) {
     _lastMessageStartPosition = _sendBuffer.getPosition();
     _sendBuffer.putByte(PVA_MAGIC);
-    _sendBuffer.putByte(PVA_VERSION);
+    _sendBuffer.putByte((_clientServerWithEndianFlag&0x40) ? PVA_SERVER_PROTOCOL_REVISION : PVA_CLIENT_PROTOCOL_REVISION);
     _sendBuffer.putByte(_clientServerWithEndianFlag);
     _sendBuffer.putByte(command); // command
     _sendBuffer.putInt(payloadSize);
@@ -580,6 +580,8 @@ void initializeUDPTransports(bool serverFlag,
 {
     BlockingUDPConnector connector(serverFlag);
 
+    const int8_t protoVer = serverFlag ? PVA_SERVER_PROTOCOL_REVISION : PVA_CLIENT_PROTOCOL_REVISION;
+
     //
     // Create UDP transport for sending (to all network interfaces)
     //
@@ -590,7 +592,7 @@ void initializeUDPTransports(bool serverFlag,
     anyAddress.ia.sin_port = htons(0);
     anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    sendTransport = connector.connect(responseHandler, anyAddress, PVA_PROTOCOL_REVISION);
+    sendTransport = connector.connect(responseHandler, anyAddress, protoVer);
     if (!sendTransport)
     {
         THROW_BASE_EXCEPTION("Failed to initialize UDP transport.");
@@ -730,7 +732,7 @@ void initializeUDPTransports(bool serverFlag,
             listenLocalAddress.ia.sin_addr.s_addr = node.addr.ia.sin_addr.s_addr;
 
             BlockingUDPTransport::shared_pointer transport = connector.connect(
-                        responseHandler, listenLocalAddress, PVA_PROTOCOL_REVISION);
+                        responseHandler, listenLocalAddress, protoVer);
             if (!transport)
                 continue;
             listenLocalAddress = transport->getRemoteAddress();
@@ -764,7 +766,7 @@ void initializeUDPTransports(bool serverFlag,
                 bcastAddress.ia.sin_port = htons(listenPort);
                 bcastAddress.ia.sin_addr.s_addr = node.bcast.ia.sin_addr.s_addr;
 
-                transport2 = connector.connect(responseHandler, bcastAddress, PVA_PROTOCOL_REVISION);
+                transport2 = connector.connect(responseHandler, bcastAddress, protoVer);
                 if (transport2)
                 {
                     /* The other wrinkle is that nothing should be sent from this second
@@ -824,7 +826,7 @@ void initializeUDPTransports(bool serverFlag,
 #else
                                       anyAddress,
 #endif
-                                      PVA_PROTOCOL_REVISION);
+                                      protoVer);
         if (!localMulticastTransport)
             throw std::runtime_error("Failed to bind UDP socket.");
 

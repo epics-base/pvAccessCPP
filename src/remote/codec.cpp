@@ -591,7 +591,7 @@ void AbstractCodec::startMessage(
         PVA_MESSAGE_HEADER_SIZE + ensureCapacity + _nextMessagePayloadOffset);
     _lastMessageStartPosition = _sendBuffer.getPosition();
     _sendBuffer.putByte(PVA_MAGIC);
-    _sendBuffer.putByte(PVA_VERSION);
+    _sendBuffer.putByte(_clientServerFlag ? PVA_SERVER_PROTOCOL_REVISION : PVA_CLIENT_PROTOCOL_REVISION);
     _sendBuffer.putByte(
         (_lastSegmentedMessageType | _byteOrderFlag | _clientServerFlag));	// data message
     _sendBuffer.putByte(command);	// command
@@ -612,7 +612,7 @@ void AbstractCodec::putControlMessage(
         std::numeric_limits<size_t>::max();		// TODO revise this
     ensureBuffer(PVA_MESSAGE_HEADER_SIZE);
     _sendBuffer.putByte(PVA_MAGIC);
-    _sendBuffer.putByte(PVA_VERSION);
+    _sendBuffer.putByte(_clientServerFlag ? PVA_SERVER_PROTOCOL_REVISION : PVA_CLIENT_PROTOCOL_REVISION);
     _sendBuffer.putByte((0x01 | _byteOrderFlag | _clientServerFlag));	// control message
     _sendBuffer.putByte(command);	// command
     _sendBuffer.putInt(data);		// data
@@ -1472,7 +1472,7 @@ void BlockingServerTCPTransportCodec::send(ByteBuffer* buffer,
 
         ensureBuffer(PVA_MESSAGE_HEADER_SIZE);
         buffer->putByte(PVA_MAGIC);
-        buffer->putByte(PVA_VERSION);
+        buffer->putByte(PVA_SERVER_PROTOCOL_REVISION);
         buffer->putByte(
             0x01 | 0x40 | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG)
                            ? 0x80 : 0x00));		// control + server + endian

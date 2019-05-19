@@ -289,7 +289,9 @@ private:
     std::size_t _nextMessagePayloadOffset;
 
     epics::pvData::int8 _byteOrderFlag;
+protected:
     epics::pvData::int8 _clientServerFlag;
+private:
     const size_t _socketSendBufferSize;
 
 public:
@@ -365,8 +367,8 @@ public:
 
     epics::pvData::int8 getRevision() const {
         epicsGuard<epicsMutex> G(_mutex);
-        return PVA_PROTOCOL_REVISION < _version
-                ? PVA_PROTOCOL_REVISION : _version;
+        int8_t myver = _clientServerFlag ? PVA_SERVER_PROTOCOL_REVISION : PVA_CLIENT_PROTOCOL_REVISION;
+        return myver < _version ? myver : _version;
     }
 
 

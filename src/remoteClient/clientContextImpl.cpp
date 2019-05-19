@@ -3597,7 +3597,7 @@ public:
             // NOTE: calls channelConnectFailed() on failure
             static ServerGUID guid = { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
             // m_addresses[ix] is modified by the following
-            searchResponse(guid, PVA_PROTOCOL_REVISION, &m_addresses[ix]);
+            searchResponse(guid, PVA_CLIENT_PROTOCOL_REVISION, &m_addresses[ix]);
         }
 
         virtual void timerStopped() OVERRIDE FINAL {
