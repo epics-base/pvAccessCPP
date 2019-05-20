@@ -1297,7 +1297,7 @@ int BlockingTCPTransportCodec::read(epics::pvData::ByteBuffer* dst) {
         // read
         std::size_t pos = dst->getPosition();
 
-        int bytesRead = recv(_channel,
+        int bytesRead = ::recv(_channel,
                              (char*)(dst->getBuffer()+pos), remaining, 0);
 
         // NOTE: do not log here, you might override SOCKERRNO relevant to recv() operation above
