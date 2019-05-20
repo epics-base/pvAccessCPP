@@ -335,7 +335,6 @@ public:
         return &_socketAddress;
     }
     virtual void invalidDataStreamHandler() OVERRIDE FINAL;
-    virtual std::size_t getSocketReceiveBufferSize() const OVERRIDE FINAL;
 
     virtual std::string getType() const OVERRIDE FINAL {
         return std::string("tcp");

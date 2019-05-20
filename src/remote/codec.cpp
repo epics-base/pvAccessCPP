@@ -1289,27 +1289,6 @@ int BlockingTCPTransportCodec::write(
 }
 
 
-std::size_t BlockingTCPTransportCodec::getSocketReceiveBufferSize()
-const  {
-
-    osiSocklen_t intLen = sizeof(int);
-    int socketRecvBufferSize;
-    int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF,
-                            (char *)&socketRecvBufferSize, &intLen);
-
-    if(retval<0) {
-        if (IS_LOGGABLE(logLevelDebug))
-        {
-            char strBuffer[64];
-            epicsSocketConvertErrnoToString(strBuffer, sizeof(strBuffer));
-            LOG(logLevelDebug, "Error getting SO_SNDBUF: %s", strBuffer);
-        }
-    }
-
-    return socketRecvBufferSize;
-}
-
-
 int BlockingTCPTransportCodec::read(epics::pvData::ByteBuffer* dst) {
 
     std::size_t remaining;

@@ -198,12 +198,6 @@ public:
     virtual std::size_t getReceiveBufferSize() const = 0;
 
     /**
-     * Get socket receive buffer size.
-     * @return socket receive buffer size.
-     */
-    virtual std::size_t getSocketReceiveBufferSize() const = 0;
-
-    /**
      * Transport priority.
      * @return protocol priority.
      */

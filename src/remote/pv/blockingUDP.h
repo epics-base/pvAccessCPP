@@ -83,8 +83,6 @@ public:
         return _receiveBuffer.getSize();
     }
 
-    virtual std::size_t getSocketReceiveBufferSize() const OVERRIDE FINAL;
-
     virtual epics::pvData::int16 getPriority() const OVERRIDE FINAL {
         return PVA_DEFAULT_PRIORITY;
     }

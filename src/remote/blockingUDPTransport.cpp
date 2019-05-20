@@ -494,25 +494,6 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, InetAddressType target) {
     return allOK;
 }
 
-size_t BlockingUDPTransport::getSocketReceiveBufferSize() const {
-    // Get value of the SO_RCVBUF option for this DatagramSocket,
-    // that is the buffer size used by the platform for input on
-    // this DatagramSocket.
-
-    int sockBufSize = -1;
-    osiSocklen_t intLen = sizeof(int);
-
-    int retval = getsockopt(_channel, SOL_SOCKET, SO_RCVBUF, (char *)&sockBufSize, &intLen);
-    if(unlikely(retval<0))
-    {
-        char errStr[64];
-        epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
-        LOG(logLevelError, "Socket getsockopt SO_RCVBUF error: %s.", errStr);
-    }
-
-    return (size_t)sockBufSize;
-}
-
 
 void BlockingUDPTransport::join(const osiSockAddr & mcastAddr, const osiSockAddr & nifAddr)
 {

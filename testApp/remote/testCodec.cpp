@@ -366,11 +366,6 @@ public:
         return 0;
     }
 
-    std::size_t getSocketReceiveBufferSize() const
-    {
-        return 16384;
-    }
-
     void setRemoteTransportSocketReceiveBufferSize(
         std::size_t socketReceiveBufferSize)  {}
 
