@@ -252,6 +252,7 @@ protected:
     void send(epics::pvData::ByteBuffer *buffer);
     void flushSendBuffer();
 
+    virtual void setRxTimeout(bool ena) {}
 
     ReadMode _readMode;
     int8_t _version;
@@ -436,6 +437,8 @@ private:
     void sendThread();
 
 protected:
+    virtual void setRxTimeout(bool ena) OVERRIDE FINAL;
+
     virtual void sendBufferFull(int tries) OVERRIDE FINAL;
 
     /**

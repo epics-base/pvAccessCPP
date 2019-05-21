@@ -16,6 +16,7 @@
 #include <epicsTime.h>
 #include <epicsThread.h>
 #include <epicsVersion.h>
+#include <errlog.h>
 
 #include <pv/byteBuffer.h>
 #include <pv/pvType.h>
@@ -147,7 +148,12 @@ void AbstractCodec::processHeader() {
     int8_t magicCode = _socketBuffer.getByte();
 
     // version
-    _version = _socketBuffer.getByte();
+    int8_t ver = _socketBuffer.getByte();
+    if(_version!=ver) {
+        // enable timeout if both ends support
+        _version = ver;
+        setRxTimeout(getRevision()>1);
+    }
 
     // flags
     _flags = _socketBuffer.getByte();
@@ -1115,6 +1121,10 @@ void BlockingTCPTransportCodec::receiveThread()
      */
     Transport::shared_pointer ptr(this->shared_from_this());
 
+    // initially enable timeout for all clients to weed out
+    // impersonators (security scanners?)
+    setRxTimeout(true);
+
     while (this->isOpen())
     {
         try {
@@ -1166,6 +1176,27 @@ void BlockingTCPTransportCodec::sendThread()
     _sendQueue.clear();
 }
 
+void BlockingTCPTransportCodec::setRxTimeout(bool ena)
+{
+    double timeout = !ena ? 0.0 : std::max(0.0, _context->getConfiguration()->getPropertyAsDouble("EPICS_PVA_CONN_TMO", 30.0));
+#ifdef _WIN32
+    DWORD timo = DWORD(timeout*1000); // in milliseconds
+#else
+    timeval timo;
+    timo.tv_sec = unsigned(timeout);
+    timo.tv_usec = (timeout-timo.tv_sec)*1e6;
+#endif
+
+    int ret = setsockopt(_channel, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timo, sizeof(timo));
+    if(ret==-1) {
+        int err = SOCKERRNO;
+        static int lasterr;
+        if(err!=lasterr) {
+            errlogPrintf("%s: Unable to set RX timeout: %d\n", _socketName.c_str(), err);
+            lasterr = err;
+        }
+    }
+}
 
 void BlockingTCPTransportCodec::sendBufferFull(int tries) {
     // TODO constants
@@ -1285,21 +1316,35 @@ int BlockingTCPTransportCodec::read(epics::pvData::ByteBuffer* dst) {
 
         // NOTE: do not log here, you might override SOCKERRNO relevant to recv() operation above
 
-        if(unlikely(bytesRead<=0)) {
-
-            if (bytesRead<0)
-            {
-                int socketError = SOCKERRNO;
-
-                // TODO SOCK_ENOBUFS, for read?
-                // interrupted or timeout
-                if (socketError == SOCK_EINTR ||
-                        socketError == EAGAIN ||
-                        socketError == SOCK_EWOULDBLOCK)
-                    continue;
-            }
-
+        if(unlikely(bytesRead==0)) {
             return -1;    // 0 means connection loss for blocking transport, notify codec by returning -1
+
+        } else if(unlikely(bytesRead<0)) {
+            int err = SOCKERRNO;
+
+            if(err==SOCK_EINTR) {
+                // interrupted by signal.  Retry
+                continue;
+
+            } else if(err==SOCK_EWOULDBLOCK || err==EAGAIN || err==SOCK_EINPROGRESS
+                      || err==SOCK_ETIMEDOUT
+                      || err==SOCK_ECONNABORTED || err==SOCK_ECONNRESET
+                      ) {
+                // different ways of saying timeout.
+                // Linux: EAGAIN or EWOULDBLOCK, or EINPROGRESS
+                // WIN32: WSAETIMEDOUT
+                // others that RSRV checks for, but may not need to, ECONNABORTED, ECONNRESET
+
+                // Note: with windows, after ETIMEOUT leaves the socket in an undefined state.
+                //       so it must be closed.  (cf. SO_RCVTIMEO)
+
+                return -1;
+
+            } else {
+                // some other (fatal) error
+                errlogPrintf("%s : Connection closed with RX socket error %d\n", _socketName.c_str(), err);
+                return -1;
+            }
         }
 
         dst->setPosition(dst->getPosition() + bytesRead);
