@@ -223,11 +223,6 @@ public:
     virtual void setByteOrder(int byteOrder) = 0;
 
     /**
-     * Notification that transport has changed.
-     */
-    virtual void changedTransport() = 0;
-
-    /**
      * Enqueue send request.
      * @param sender
      */

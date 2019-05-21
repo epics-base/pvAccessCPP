@@ -519,8 +519,6 @@ public:
 
     virtual void release(pvAccessID /*clientId*/) OVERRIDE FINAL {}
 
-    virtual void changedTransport() OVERRIDE {}
-
     pvAccessID preallocateChannelSID();
 
     void depreallocateChannelSID(pvAccessID /*sid*/) {}
@@ -655,8 +653,6 @@ public:
     virtual bool acquire(std::tr1::shared_ptr<ClientChannelImpl> const & client) OVERRIDE FINAL;
 
     virtual void release(pvAccessID clientId) OVERRIDE FINAL;
-
-    virtual void changedTransport() OVERRIDE FINAL;
 
     virtual void send(epics::pvData::ByteBuffer* buffer,
                       TransportSendControl* control) OVERRIDE FINAL;

@@ -1818,9 +1818,6 @@ void BlockingClientTCPTransportCodec::release(pvAccessID clientID) {
     }
 }
 
-void BlockingClientTCPTransportCodec::changedTransport() {
-}
-
 void BlockingClientTCPTransportCodec::send(ByteBuffer* buffer,
                                            TransportSendControl* control)
 {

@@ -372,8 +372,6 @@ public:
     void setRemoteTransportReceiveBufferSize(
         std::size_t remoteTransportReceiveBufferSize)  {}
 
-    void changedTransport() {}
-
     void flushSendQueue() { };
 
     bool verify(epics::pvData::int32 timeoutMs) {

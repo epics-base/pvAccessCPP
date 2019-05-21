@@ -97,10 +97,6 @@ public:
         // noop for UDP (limited by 64k; MAX_UDP_SEND for PVA)
     }
 
-    virtual void changedTransport() OVERRIDE FINAL {
-        // noop
-    }
-
     virtual bool verify(epics::pvData::int32 /*timeoutMs*/) OVERRIDE FINAL {
         // noop
         return true;
