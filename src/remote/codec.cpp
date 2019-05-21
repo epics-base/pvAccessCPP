@@ -1696,24 +1696,26 @@ BlockingClientTCPTransportCodec::BlockingClientTCPTransportCodec(
     int16_t priority ) :
     BlockingTCPTransportCodec(false, context, channel, responseHandler,
                               sendBufferSize, receiveBufferSize, priority),
-    _connectionTimeout(heartbeatInterval*1000),
+    _connectionTimeout(heartbeatInterval),
     _unresponsiveTransport(false),
-    _verifyOrEcho(true)
+    _verifyOrEcho(true),
+    sendQueued(true) // don't start sending echo until after auth complete
 {
     // initialize owners list, send queue
     acquire(client);
 
     // use immediate for clients
     //setFlushStrategy(DELAYED);
-
-    // setup connection timeout timer (watchdog) - moved to start() method
-    epicsTimeGetCurrent(&_aliveTimestamp);
 }
 
 void BlockingClientTCPTransportCodec::start()
 {
     TimerCallbackPtr tcb = std::tr1::dynamic_pointer_cast<TimerCallback>(shared_from_this());
-    _context->getTimer()->schedulePeriodic(tcb, _connectionTimeout, _connectionTimeout);
+    // add some randomness to our timer phase
+    double R = float(rand())/RAND_MAX; // [0, 1]
+    // shape a bit
+    R = R*0.5 + 0.5; // [0.5, 1.0]
+    _context->getTimer()->schedulePeriodic(tcb, _connectionTimeout/2.0*R, _connectionTimeout/2.0);
     BlockingTCPTransportCodec::start();
 }
 
@@ -1728,24 +1730,16 @@ BlockingClientTCPTransportCodec::~BlockingClientTCPTransportCodec() {
 
 
 
-void BlockingClientTCPTransportCodec::callback() {
-    epicsTimeStamp currentTime;
-    epicsTimeGetCurrent(&currentTime);
-
-    _mutex.lock();
-    // no exception expected here
-    double diff = epicsTimeDiffInSeconds(&currentTime, &_aliveTimestamp);
-    _mutex.unlock();
-
-    if(diff>((3*_connectionTimeout)/2)) {
-        unresponsiveTransport();
+void BlockingClientTCPTransportCodec::callback()
+{
+    {
+        Guard G(_mutex);
+        if(sendQueued) return;
+        sendQueued = true;
     }
-    // use some k (3/4) to handle "jitter"
-    else if(diff>=((3*_connectionTimeout)/4)) {
-        // send echo
-        TransportSender::shared_pointer transportSender = std::tr1::dynamic_pointer_cast<TransportSender>(shared_from_this());
-        enqueueSendRequest(transportSender);
-    }
+    // send echo
+    TransportSender::shared_pointer transportSender = std::tr1::dynamic_pointer_cast<TransportSender>(shared_from_this());
+    enqueueSendRequest(transportSender);
 }
 
 #define EXCEPTION_GUARD(code) try { code; } \
@@ -1842,8 +1836,9 @@ void BlockingClientTCPTransportCodec::release(pvAccessID clientID) {
 }
 
 void BlockingClientTCPTransportCodec::aliveNotification() {
+    // TODO: dead code
     Lock guard(_mutex);
-    epicsTimeGetCurrent(&_aliveTimestamp);
+    //epicsTimeGetCurrent(&_aliveTimestamp);
     if(_unresponsiveTransport) responsiveTransport();
 }
 
@@ -1879,10 +1874,17 @@ void BlockingClientTCPTransportCodec::changedTransport() {
 }
 
 void BlockingClientTCPTransportCodec::send(ByteBuffer* buffer,
-        TransportSendControl* control) {
-    if(_verifyOrEcho) {
+                                           TransportSendControl* control)
+{
+    bool voe;
+    {
+        Guard G(_mutex);
+        sendQueued = false;
+        voe = _verifyOrEcho;
         _verifyOrEcho = false;
+    }
 
+    if(voe) {
         /*
          * send verification response message
          */

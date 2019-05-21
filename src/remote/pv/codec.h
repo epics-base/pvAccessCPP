@@ -335,7 +335,7 @@ public:
     virtual void waitJoin() OVERRIDE FINAL;
     virtual bool terminated() OVERRIDE FINAL;
     virtual bool isOpen() OVERRIDE FINAL;
-    void start();
+    virtual void start();
 
     virtual int read(epics::pvData::ByteBuffer* dst) OVERRIDE FINAL;
     virtual int write(epics::pvData::ByteBuffer* src) OVERRIDE FINAL;
@@ -646,7 +646,7 @@ public:
 
 public:
 
-    void start();
+    virtual void start() OVERRIDE FINAL;
 
     virtual ~BlockingClientTCPTransportCodec() OVERRIDE FINAL;
 
@@ -689,19 +689,17 @@ private:
     /**
      * Connection timeout (no-traffic) flag.
      */
-    double _connectionTimeout;
+    const double _connectionTimeout;
 
     /**
      * Unresponsive transport flag.
      */
     bool _unresponsiveTransport;
 
-    /**
-     * Timestamp of last "live" event on this transport.
-     */
-    epicsTimeStamp _aliveTimestamp;
-
     bool _verifyOrEcho;
+
+    // are we queued to send verify or echo?
+    bool sendQueued;
 
     /**
      * Unresponsive transport notify.
