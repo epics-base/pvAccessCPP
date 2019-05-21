@@ -1697,7 +1697,6 @@ BlockingClientTCPTransportCodec::BlockingClientTCPTransportCodec(
     BlockingTCPTransportCodec(false, context, channel, responseHandler,
                               sendBufferSize, receiveBufferSize, priority),
     _connectionTimeout(heartbeatInterval),
-    _unresponsiveTransport(false),
     _verifyOrEcho(true),
     sendQueued(true) // don't start sending echo until after auth complete
 {
@@ -1745,22 +1744,6 @@ void BlockingClientTCPTransportCodec::callback()
 #define EXCEPTION_GUARD(code) try { code; } \
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from code at %s:%d.", __FILE__, __LINE__); }
-
-void BlockingClientTCPTransportCodec::unresponsiveTransport() {
-    Lock lock(_mutex);
-    if(!_unresponsiveTransport) {
-        _unresponsiveTransport = true;
-
-        TransportClientMap_t::iterator it = _owners.begin();
-        for(; it!=_owners.end(); it++) {
-            ClientChannelImpl::shared_pointer client = it->second.lock();
-            if (client)
-            {
-                EXCEPTION_GUARD(client->transportUnresponsive());
-            }
-        }
-    }
-}
 
 bool BlockingClientTCPTransportCodec::acquire(ClientChannelImpl::shared_pointer const & client) {
     Lock lock(_mutex);
@@ -1835,42 +1818,8 @@ void BlockingClientTCPTransportCodec::release(pvAccessID clientID) {
     }
 }
 
-void BlockingClientTCPTransportCodec::aliveNotification() {
-    // TODO: dead code
-    Lock guard(_mutex);
-    //epicsTimeGetCurrent(&_aliveTimestamp);
-    if(_unresponsiveTransport) responsiveTransport();
-}
-
-void BlockingClientTCPTransportCodec::responsiveTransport() {
-    Lock lock(_mutex);
-    if(_unresponsiveTransport) {
-        _unresponsiveTransport = false;
-
-        Transport::shared_pointer thisSharedPtr = shared_from_this();
-        TransportClientMap_t::iterator it = _owners.begin();
-        for(; it!=_owners.end(); it++) {
-            ClientChannelImpl::shared_pointer client = it->second.lock();
-            if (client)
-            {
-                EXCEPTION_GUARD(client->transportResponsive(thisSharedPtr));
-            }
-        }
-    }
-}
-
 void BlockingClientTCPTransportCodec::changedTransport() {
     _outgoingIR.reset();
-
-    Lock lock(_mutex);
-    TransportClientMap_t::iterator it = _owners.begin();
-    for(; it!=_owners.end(); it++) {
-        ClientChannelImpl::shared_pointer client = it->second.lock();
-        if (client)
-        {
-            EXCEPTION_GUARD(client->transportChanged());
-        }
-    }
 }
 
 void BlockingClientTCPTransportCodec::send(ByteBuffer* buffer,

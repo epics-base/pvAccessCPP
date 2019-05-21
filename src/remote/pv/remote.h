@@ -251,11 +251,6 @@ public:
     virtual bool verify(epics::pvData::int32 timeoutMs) = 0;
 
     /**
-     * Notification transport that is still alive.
-     */
-    virtual void aliveNotification() = 0;
-
-    /**
      * Close transport.
      */
     virtual void close() = 0;

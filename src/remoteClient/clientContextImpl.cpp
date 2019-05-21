@@ -3675,13 +3675,6 @@ public:
             reportChannelStateChange();
         }
 
-        virtual void transportChanged() OVERRIDE FINAL {
-//                    initiateSearch();
-            // TODO
-            // this will be called immediately after reconnect... bad...
-
-        }
-
         virtual Transport::shared_pointer checkAndGetTransport() OVERRIDE FINAL
         {
             Lock guard(m_channelMutex);
@@ -3709,35 +3702,6 @@ public:
         {
             Lock guard(m_channelMutex);
             return m_transport;
-        }
-
-        virtual void transportResponsive(Transport::shared_pointer const & /*transport*/) OVERRIDE FINAL {
-            Lock guard(m_channelMutex);
-            if (m_connectionState == DISCONNECTED)
-            {
-                updateSubscriptions();
-
-                // reconnect using existing IDs, data
-                connectionCompleted(m_serverChannelID/*, accessRights*/);
-            }
-        }
-
-        virtual void transportUnresponsive() OVERRIDE FINAL {
-            /*
-            {
-                Lock guard(m_channelMutex);
-                if (m_connectionState == CONNECTED)
-                {
-            		// TODO 2 types of disconnected state - distinguish them otherwise disconnect will handle connection loss right
-                    setConnectionState(DISCONNECTED);
-
-                    // ... PVA notifies also w/ no access rights callback, although access right are not changed
-                }
-            }
-
-            // should be called without any lock hold
-            reportChannelStateChange();
-            */
         }
 
         /**

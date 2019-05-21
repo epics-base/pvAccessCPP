@@ -97,10 +97,6 @@ public:
         // noop for UDP (limited by 64k; MAX_UDP_SEND for PVA)
     }
 
-    virtual void aliveNotification() OVERRIDE FINAL {
-        // noop
-    }
-
     virtual void changedTransport() OVERRIDE FINAL {
         // noop
     }

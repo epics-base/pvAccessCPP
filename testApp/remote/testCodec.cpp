@@ -382,8 +382,6 @@ public:
 
     void verified(epics::pvData::Status const &) {}
 
-    void aliveNotification() {}
-
     void authNZMessage(epics::pvData::PVStructure::shared_pointer const & data) {}
 
 

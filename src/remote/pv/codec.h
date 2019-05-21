@@ -558,10 +558,6 @@ public:
         BlockingTCPTransportCodec::verified(status);
     }
 
-    virtual void aliveNotification() OVERRIDE FINAL {
-        // noop on server-side
-    }
-
     void authNZInitialize(const std::string& securityPluginName,
                           const epics::pvData::PVStructure::shared_pointer& data);
 
@@ -662,8 +658,6 @@ public:
 
     virtual void changedTransport() OVERRIDE FINAL;
 
-    virtual void aliveNotification() OVERRIDE FINAL;
-
     virtual void send(epics::pvData::ByteBuffer* buffer,
                       TransportSendControl* control) OVERRIDE FINAL;
 
@@ -691,30 +685,15 @@ private:
      */
     const double _connectionTimeout;
 
-    /**
-     * Unresponsive transport flag.
-     */
-    bool _unresponsiveTransport;
-
     bool _verifyOrEcho;
 
     // are we queued to send verify or echo?
     bool sendQueued;
 
     /**
-     * Unresponsive transport notify.
-     */
-    void unresponsiveTransport();
-
-    /**
      * Notifies clients about disconnect.
      */
     void closedNotifyClients();
-
-    /**
-     * Responsive transport notify.
-     */
-    void responsiveTransport();
 };
 
 }
