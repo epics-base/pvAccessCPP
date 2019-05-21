@@ -240,6 +240,12 @@ public:
         return _sendQueue.empty();
     }
 
+    epics::pvData::int8 getRevision() const {
+        epicsGuard<epicsMutex> G(_mutex);
+        int8_t myver = _clientServerFlag ? PVA_SERVER_PROTOCOL_REVISION : PVA_CLIENT_PROTOCOL_REVISION;
+        return myver < _version ? myver : _version;
+    }
+
 protected:
 
     virtual void sendBufferFull(int tries) = 0;
@@ -363,12 +369,6 @@ public:
 
     virtual const std::string& getRemoteName() const OVERRIDE FINAL {
         return _socketName;
-    }
-
-    epics::pvData::int8 getRevision() const {
-        epicsGuard<epicsMutex> G(_mutex);
-        int8_t myver = _clientServerFlag ? PVA_SERVER_PROTOCOL_REVISION : PVA_CLIENT_PROTOCOL_REVISION;
-        return myver < _version ? myver : _version;
     }
 
 
