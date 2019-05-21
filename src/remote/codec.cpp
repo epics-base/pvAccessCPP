@@ -94,7 +94,7 @@ AbstractCodec::AbstractCodec(
     _remoteTransportSocketReceiveBufferSize(MAX_TCP_RECV), _totalBytesSent(0),
     _senderThread(0),
     _writeMode(PROCESS_SEND_QUEUE),
-    _writeOpReady(false),_lowLatency(false),
+    _writeOpReady(false),
     _socketBuffer(bufSizeSelect(receiveBufferSize)),
     _sendBuffer(bufSizeSelect(sendBufferSize)),
     //PRIVATE
@@ -920,10 +920,7 @@ void AbstractCodec::enqueueSendRequest(
         processSender(sender);
         if (_sendBuffer.getPosition() > 0)
         {
-            if (_lowLatency)
-                flush(true);
-            else
-                scheduleSend();
+            scheduleSend();
         }
     }
     else

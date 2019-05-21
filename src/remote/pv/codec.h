@@ -265,7 +265,6 @@ protected:
     epicsThreadId _senderThread;
     WriteMode _writeMode;
     bool _writeOpReady;
-    bool _lowLatency;
 
     epics::pvData::ByteBuffer _socketBuffer;
     epics::pvData::ByteBuffer _sendBuffer;
@@ -296,7 +295,7 @@ private:
 
     epics::pvData::int8 _byteOrderFlag;
 protected:
-    epics::pvData::int8 _clientServerFlag;
+    const epics::pvData::int8 _clientServerFlag;
 private:
     const size_t _socketSendBufferSize;
 
