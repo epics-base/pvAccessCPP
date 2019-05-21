@@ -1819,7 +1819,6 @@ void BlockingClientTCPTransportCodec::release(pvAccessID clientID) {
 }
 
 void BlockingClientTCPTransportCodec::changedTransport() {
-    _outgoingIR.reset();
 }
 
 void BlockingClientTCPTransportCodec::send(ByteBuffer* buffer,
