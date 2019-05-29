@@ -7,6 +7,8 @@
 #ifndef FAIRQUEUE_H
 #define FAIRQUEUE_H
 
+#include <vector>
+
 #ifdef epicsExportSharedSymbols
 #   define fairQueueExportSharedSymbols
 #   undef epicsExportSharedSymbols
@@ -103,13 +105,31 @@ public:
         assert(ellCount(&list)==0);
     }
 
+    //! Remove all items.
+    //! @post empty()==true
     void clear()
     {
-        value_type C;
-        guard_t G(mutex);
-        do {
-            pop_front_try(C);
-        } while(C);
+        // destroy after unlock
+        std::vector<value_type> garbage;
+        {
+            guard_t G(mutex);
+
+            garbage.resize(unsigned(ellCount(&list)));
+            size_t i=0;
+
+            while(ELLNODE *cur = ellGet(&list)) {
+                typedef typename entry::enode_t enode_t;
+                enode_t *PN = CONTAINER(cur, enode_t, node);
+                entry *P = PN->self;
+                assert(P->owner==this);
+                assert(P->Qcnt>0);
+
+                PN->node.previous = PN->node.next = NULL;
+                P->owner = NULL;
+                P->Qcnt = 0u;
+                garbage[i++].swap(P->holder);
+            }
+        }
     }
 
     bool empty() const {
