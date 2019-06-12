@@ -96,7 +96,7 @@ public:
     EchoTransportSender(osiSockAddr* echoFrom, size_t payloadSize, epics::pvData::ByteBuffer& payloadBuffer) {
         memcpy(&_echoFrom, echoFrom, sizeof(osiSockAddr));
         toEcho.resize(payloadSize);
-        memcpy(&toEcho[0], payloadBuffer.getBuffer(), payloadSize);
+        payloadBuffer.getArray(&toEcho[0], payloadSize);
     }
 
     virtual ~EchoTransportSender() {}
