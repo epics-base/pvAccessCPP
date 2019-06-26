@@ -47,6 +47,7 @@ public:
     //! start a new line after this many bytes
     inline HexDump& bytesPerLine(size_t n=(size_t)-1) { _perLine = n; return *this; }
 
+    epicsShareFunc
     friend std::ostream& operator<<(std::ostream& strm, const HexDump& hex);
 };
 
