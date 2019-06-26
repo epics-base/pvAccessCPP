@@ -95,9 +95,15 @@ struct CAPlugin : public pva::AuthenticationPlugin
     {
         std::tr1::shared_ptr<SimpleSession> sess(new SimpleSession(user)); // no init data
         if(server) {
-            peer->identified = true;
-            peer->account = data->getSubFieldT<pvd::PVString>("user")->get();
-            peer->aux = pvd::getPVDataCreate()->createPVStructure(data); // clone to ensure it won't be modified
+            pvd::PVString::shared_pointer user;
+            if(data)
+                user = data->getSubField<pvd::PVString>("user");
+
+            if(user) {
+                peer->account = user->get();
+                peer->identified = !peer->account.empty();
+                peer->aux = pvd::getPVDataCreate()->createPVStructure(data); // clone to ensure it won't be modified
+            }
             control->authenticationCompleted(pvd::Status::Ok, peer);
         }
         return sess;

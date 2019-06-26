@@ -155,16 +155,13 @@ void ServerResponseHandler::handleResponse(osiSockAddr* responseFrom,
 {
     if(command<0||command>=(int8)m_handlerTable.size())
     {
-        LOG(logLevelDebug,
+        LOG(logLevelError,
             "Invalid (or unsupported) command: %x.", (0xFF&command));
 
-        // TODO remove debug output
-        std::ostringstream name;
-        name<<"Invalid PVA header "<<hex<<(int)(0xFF&command);
-        name<<", its payload buffer";
-
-        hexDump(name.str(), (const int8*)payloadBuffer->getArray(),
-                payloadBuffer->getPosition(), payloadSize);
+        if(IS_LOGGABLE(logLevelError)) {
+            std::cerr<<"Invalid (or unsupported) command: "<<std::hex<<(int)(0xFF&command)<<"\n"
+                     <<HexDump(*payloadBuffer, payloadSize).limit(256u);
+        }
         return;
     }
 
@@ -231,7 +228,7 @@ void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
     // send back
-    TransportSender::shared_pointer echoReply(new EchoTransportSender(responseFrom));
+    TransportSender::shared_pointer echoReply(new EchoTransportSender(responseFrom, payloadSize, *payloadBuffer));
     transport->enqueueSendRequest(echoReply);
 }
 

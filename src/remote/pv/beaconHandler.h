@@ -101,10 +101,6 @@ private:
                       ServerGUID const &guid,
                       epics::pvData::int16 sequentalID,
                       epics::pvData::int16 changeCount);
-    /**
-     * Changed transport (server restarted) notify.
-     */
-    void changedTransport();
 };
 
 }

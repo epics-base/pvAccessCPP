@@ -120,6 +120,10 @@ bool processSearchResponse(osiSockAddr const & responseFrom, ByteBuffer & receiv
 
     // second byte version
     int8 version = receiveBuffer.getByte();
+    if(version == 0) {
+        // 0 -> 1 included incompatible changes
+        return false;
+    }
 
     // only data for UDP
     int8 flags = receiveBuffer.getByte();
@@ -333,7 +337,7 @@ bool discoverServers(double timeOut)
     ByteBuffer sendBuffer(buffer, sizeof(buffer)/sizeof(char));
 
     sendBuffer.putByte(PVA_MAGIC);
-    sendBuffer.putByte(PVA_VERSION);
+    sendBuffer.putByte(PVA_CLIENT_PROTOCOL_REVISION);
     sendBuffer.putByte((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00); // data + 7-bit endianess
     sendBuffer.putByte((int8_t)CMD_SEARCH);	// search
     sendBuffer.putInt(4+1+3+16+2+1+2);		// "zero" payload

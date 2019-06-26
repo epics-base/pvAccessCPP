@@ -53,10 +53,7 @@ public:
     virtual Transport::shared_pointer checkAndGetTransport() = 0;
     virtual Transport::shared_pointer checkDestroyedAndGetTransport() = 0;
     virtual Transport::shared_pointer getTransport() = 0;
-    virtual void transportUnresponsive() =0;
-    virtual void transportChanged() =0;
     virtual void transportClosed() =0;
-    virtual void transportResponsive(Transport::shared_pointer const & /*transport*/) =0;
 
     static epics::pvData::Status channelDestroyed;
     static epics::pvData::Status channelDisconnected;

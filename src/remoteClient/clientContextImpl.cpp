@@ -2998,10 +2998,10 @@ public:
     {
         if (command < 0 || command >= (int8)m_handlerTable.size())
         {
-            // TODO remove debug output
-            char buf[100];
-            sprintf(buf, "Invalid (or unsupported) command %d, its payload", command);
-            hexDump(buf, (const int8*)(payloadBuffer->getArray()), payloadBuffer->getPosition(), payloadSize);
+            if(IS_LOGGABLE(logLevelError)) {
+                std::cerr<<"Invalid (or unsupported) command: "<<std::hex<<(int)(0xFF&command)<<"\n"
+                         <<HexDump(*payloadBuffer, payloadSize).limit(256u);
+            }
             return;
         }
         // delegate
@@ -3597,7 +3597,7 @@ public:
             // NOTE: calls channelConnectFailed() on failure
             static ServerGUID guid = { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
             // m_addresses[ix] is modified by the following
-            searchResponse(guid, PVA_PROTOCOL_REVISION, &m_addresses[ix]);
+            searchResponse(guid, PVA_CLIENT_PROTOCOL_REVISION, &m_addresses[ix]);
         }
 
         virtual void timerStopped() OVERRIDE FINAL {
@@ -3675,13 +3675,6 @@ public:
             reportChannelStateChange();
         }
 
-        virtual void transportChanged() OVERRIDE FINAL {
-//                    initiateSearch();
-            // TODO
-            // this will be called immediately after reconnect... bad...
-
-        }
-
         virtual Transport::shared_pointer checkAndGetTransport() OVERRIDE FINAL
         {
             Lock guard(m_channelMutex);
@@ -3709,35 +3702,6 @@ public:
         {
             Lock guard(m_channelMutex);
             return m_transport;
-        }
-
-        virtual void transportResponsive(Transport::shared_pointer const & /*transport*/) OVERRIDE FINAL {
-            Lock guard(m_channelMutex);
-            if (m_connectionState == DISCONNECTED)
-            {
-                updateSubscriptions();
-
-                // reconnect using existing IDs, data
-                connectionCompleted(m_serverChannelID/*, accessRights*/);
-            }
-        }
-
-        virtual void transportUnresponsive() OVERRIDE FINAL {
-            /*
-            {
-                Lock guard(m_channelMutex);
-                if (m_connectionState == CONNECTED)
-                {
-            		// TODO 2 types of disconnected state - distinguish them otherwise disconnect will handle connection loss right
-                    setConnectionState(DISCONNECTED);
-
-                    // ... PVA notifies also w/ no access rights callback, although access right are not changed
-                }
-            }
-
-            // should be called without any lock hold
-            reportChannelStateChange();
-            */
         }
 
         /**

@@ -9,6 +9,8 @@
 #include <ws2tcpip.h>
 #endif
 
+#include <sstream>
+
 #include <sys/types.h>
 #include <cstdio>
 
@@ -25,6 +27,7 @@
 #include <pv/inetAddressUtil.h>
 #include <pv/logger.h>
 #include <pv/likely.h>
+#include <pv/hexDump.h>
 
 using namespace epics::pvData;
 using namespace std;
@@ -113,6 +116,16 @@ void BlockingUDPTransport::close() {
     close(true);
 }
 
+void BlockingUDPTransport::ensureData(std::size_t size) {
+    if (_receiveBuffer.getRemaining() >= size)
+        return;
+    std::ostringstream msg;
+    msg<<"no more data in UDP packet : "
+       <<_receiveBuffer.getPosition()<<":"<<_receiveBuffer.getLimit()
+       <<" for "<<size;
+    throw std::underflow_error(msg.str());
+}
+
 void BlockingUDPTransport::close(bool waitForThreadToComplete) {
     {
         Lock guard(_mutex);
@@ -194,7 +207,7 @@ void BlockingUDPTransport::flushSendQueue()
 void BlockingUDPTransport::startMessage(int8 command, size_t /*ensureCapacity*/, int32 payloadSize) {
     _lastMessageStartPosition = _sendBuffer.getPosition();
     _sendBuffer.putByte(PVA_MAGIC);
-    _sendBuffer.putByte(PVA_VERSION);
+    _sendBuffer.putByte((_clientServerWithEndianFlag&0x40) ? PVA_SERVER_PROTOCOL_REVISION : PVA_CLIENT_PROTOCOL_REVISION);
     _sendBuffer.putByte(_clientServerWithEndianFlag);
     _sendBuffer.putByte(command); // command
     _sendBuffer.putInt(payloadSize);
@@ -255,13 +268,18 @@ void BlockingUDPTransport::run() {
                     try {
                         processBuffer(thisTransport, fromAddress, &_receiveBuffer);
                     } catch(std::exception& e) {
-                        LOG(logLevelError,
-                            "an exception caught while in UDP receiveThread at %s:%d: %s",
-                            __FILE__, __LINE__, e.what());
-                    } catch (...) {
-                        LOG(logLevelError,
-                            "unknown exception caught while in UDP receiveThread at %s:%d.",
-                            __FILE__, __LINE__);
+                        if(IS_LOGGABLE(logLevelError)) {
+                            char strBuffer[64];
+                            sockAddrToDottedIP(&fromAddress.sa, strBuffer, sizeof(strBuffer));
+                            size_t epos = _receiveBuffer.getPosition();
+
+                            // of course _receiveBuffer _may_ have been modified during processing...
+                            _receiveBuffer.setPosition(RECEIVE_BUFFER_PRE_RESERVE);
+                            _receiveBuffer.setLimit(RECEIVE_BUFFER_PRE_RESERVE+bytesRead);
+
+                            std::cerr<<"Error on UDP RX "<<strBuffer<<" -> "<<_remoteName<<" at "<<epos<<" : "<<e.what()<<"\n"
+                                      <<HexDump(_receiveBuffer).limit(256u);
+                        }
                     }
                 }
             } else {
@@ -323,6 +341,10 @@ bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & trans
 
         // second byte version
         int8 version = receiveBuffer->getByte();
+        if(version==0) {
+            // 0 -> 1 included incompatible changes
+            return false;
+        }
 
         int8 flags = receiveBuffer->getByte();
         if (flags & 0x80)
@@ -558,6 +580,8 @@ void initializeUDPTransports(bool serverFlag,
 {
     BlockingUDPConnector connector(serverFlag);
 
+    const int8_t protoVer = serverFlag ? PVA_SERVER_PROTOCOL_REVISION : PVA_CLIENT_PROTOCOL_REVISION;
+
     //
     // Create UDP transport for sending (to all network interfaces)
     //
@@ -568,7 +592,7 @@ void initializeUDPTransports(bool serverFlag,
     anyAddress.ia.sin_port = htons(0);
     anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    sendTransport = connector.connect(responseHandler, anyAddress, PVA_PROTOCOL_REVISION);
+    sendTransport = connector.connect(responseHandler, anyAddress, protoVer);
     if (!sendTransport)
     {
         THROW_BASE_EXCEPTION("Failed to initialize UDP transport.");
@@ -708,7 +732,7 @@ void initializeUDPTransports(bool serverFlag,
             listenLocalAddress.ia.sin_addr.s_addr = node.addr.ia.sin_addr.s_addr;
 
             BlockingUDPTransport::shared_pointer transport = connector.connect(
-                        responseHandler, listenLocalAddress, PVA_PROTOCOL_REVISION);
+                        responseHandler, listenLocalAddress, protoVer);
             if (!transport)
                 continue;
             listenLocalAddress = transport->getRemoteAddress();
@@ -742,7 +766,7 @@ void initializeUDPTransports(bool serverFlag,
                 bcastAddress.ia.sin_port = htons(listenPort);
                 bcastAddress.ia.sin_addr.s_addr = node.bcast.ia.sin_addr.s_addr;
 
-                transport2 = connector.connect(responseHandler, bcastAddress, PVA_PROTOCOL_REVISION);
+                transport2 = connector.connect(responseHandler, bcastAddress, protoVer);
                 if (transport2)
                 {
                     /* The other wrinkle is that nothing should be sent from this second
@@ -802,7 +826,7 @@ void initializeUDPTransports(bool serverFlag,
 #else
                                       anyAddress,
 #endif
-                                      PVA_PROTOCOL_REVISION);
+                                      protoVer);
         if (!localMulticastTransport)
             throw std::runtime_error("Failed to bind UDP socket.");
 

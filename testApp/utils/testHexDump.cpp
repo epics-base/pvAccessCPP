@@ -1,6 +1,9 @@
-#include <epicsUnitTest.h>
+
+#include <sstream>
+
 #include <testMain.h>
 
+#include <pv/pvUnitTest.h>
 #include <pv/hexDump.h>
 
 using namespace epics::pvData;
@@ -8,19 +11,16 @@ using namespace epics::pvAccess;
 
 MAIN(testHexDump)
 {
-    testPlan(3);
+    testPlan(1);
     testDiag("Tests for hexDump");
 
-    char TO_DUMP[] = "pvAccess dump test\0\1\2\3\4\5\6\254\255\256";
+    char TO_DUMP[] = "pvAccess dump test\0\1\2\3\4\5\6\xfd\xfe\xff";
 
-    hexDump("test", (int8*)TO_DUMP, 18+9);
-    testPass("Entire array");
+    std::ostringstream msg;
+    msg<<HexDump(TO_DUMP, sizeof(TO_DUMP)-1);
 
-    hexDump("only text", (int8*)TO_DUMP, 18);
-    testPass("Only text");
-
-    hexDump("22 byte test", (int8*)TO_DUMP, 22);
-    testPass("22 bytes test");
+    testEqual(msg.str(), "0x00 70764163 63657373 2064756d 70207465\n"
+                         "0x10 73740001 02030405 06fdfeff\n");
 
     return testDone();
 }

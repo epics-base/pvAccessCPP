@@ -16,6 +16,7 @@
 #include <epicsTime.h>
 #include <epicsThread.h>
 #include <epicsVersion.h>
+#include <errlog.h>
 
 #include <pv/byteBuffer.h>
 #include <pv/pvType.h>
@@ -94,7 +95,7 @@ AbstractCodec::AbstractCodec(
     _remoteTransportSocketReceiveBufferSize(MAX_TCP_RECV), _totalBytesSent(0),
     _senderThread(0),
     _writeMode(PROCESS_SEND_QUEUE),
-    _writeOpReady(false),_lowLatency(false),
+    _writeOpReady(false),
     _socketBuffer(bufSizeSelect(receiveBufferSize)),
     _sendBuffer(bufSizeSelect(sendBufferSize)),
     //PRIVATE
@@ -147,7 +148,12 @@ void AbstractCodec::processHeader() {
     int8_t magicCode = _socketBuffer.getByte();
 
     // version
-    _version = _socketBuffer.getByte();
+    int8_t ver = _socketBuffer.getByte();
+    if(_version!=ver) {
+        // enable timeout if both ends support
+        _version = ver;
+        setRxTimeout(getRevision()>1);
+    }
 
     // flags
     _flags = _socketBuffer.getByte();
@@ -159,12 +165,12 @@ void AbstractCodec::processHeader() {
     _payloadSize = _socketBuffer.getInt();
 
     // check magic code
-    if (magicCode != PVA_MAGIC)
+    if (magicCode != PVA_MAGIC || _version==0)
     {
         LOG(logLevelError,
-            "Invalid header received from the client at %s:%d: %s.,"
-            " disconnecting...",
-            __FILE__, __LINE__, inetAddressToString(*getLastReadBufferSocketAddress()).c_str());
+            "Invalid header received from the client : %s %02x%02x%02x%02x disconnecting...",
+            inetAddressToString(*getLastReadBufferSocketAddress()).c_str(),
+            unsigned(magicCode), unsigned(_version), unsigned(_flags), unsigned(_command));
         invalidDataStreamHandler();
         throw invalid_data_stream_exception("invalid header received");
     }
@@ -184,12 +190,6 @@ void AbstractCodec::processReadNormal()  {
             if (!readToBuffer(PVA_MESSAGE_HEADER_SIZE, false)) {
                 return;
             }
-
-            /*
-            hexDump("Header", (const int8*)_socketBuffer.getArray(),
-                    _socketBuffer.getPosition(), PVA_MESSAGE_HEADER_SIZE);
-
-            */
 
             // read header fields
             processHeader();
@@ -597,7 +597,7 @@ void AbstractCodec::startMessage(
         PVA_MESSAGE_HEADER_SIZE + ensureCapacity + _nextMessagePayloadOffset);
     _lastMessageStartPosition = _sendBuffer.getPosition();
     _sendBuffer.putByte(PVA_MAGIC);
-    _sendBuffer.putByte(PVA_VERSION);
+    _sendBuffer.putByte(_clientServerFlag ? PVA_SERVER_PROTOCOL_REVISION : PVA_CLIENT_PROTOCOL_REVISION);
     _sendBuffer.putByte(
         (_lastSegmentedMessageType | _byteOrderFlag | _clientServerFlag));	// data message
     _sendBuffer.putByte(command);	// command
@@ -618,7 +618,7 @@ void AbstractCodec::putControlMessage(
         std::numeric_limits<size_t>::max();		// TODO revise this
     ensureBuffer(PVA_MESSAGE_HEADER_SIZE);
     _sendBuffer.putByte(PVA_MAGIC);
-    _sendBuffer.putByte(PVA_VERSION);
+    _sendBuffer.putByte(_clientServerFlag ? PVA_SERVER_PROTOCOL_REVISION : PVA_CLIENT_PROTOCOL_REVISION);
     _sendBuffer.putByte((0x01 | _byteOrderFlag | _clientServerFlag));	// control message
     _sendBuffer.putByte(command);	// command
     _sendBuffer.putInt(data);		// data
@@ -797,14 +797,6 @@ void AbstractCodec::send(ByteBuffer *buffer)
         //int p = buffer.position();
         int bytesSent = write(buffer);
 
-        /*
-        if (IS_LOGGABLE(logLevelTrace)) {
-          hexDump(std::string("AbstractCodec::send WRITE"),
-            (const int8 *)buffer->getArray(),
-            buffer->getPosition(), buffer->getRemaining());
-        }
-        */
-
         if (bytesSent < 0)
         {
             // connection lost
@@ -934,10 +926,7 @@ void AbstractCodec::enqueueSendRequest(
         processSender(sender);
         if (_sendBuffer.getPosition() > 0)
         {
-            if (_lowLatency)
-                flush(true);
-            else
-                scheduleSend();
+            scheduleSend();
         }
     }
     else
@@ -1132,6 +1121,10 @@ void BlockingTCPTransportCodec::receiveThread()
      */
     Transport::shared_pointer ptr(this->shared_from_this());
 
+    // initially enable timeout for all clients to weed out
+    // impersonators (security scanners?)
+    setRxTimeout(true);
+
     while (this->isOpen())
     {
         try {
@@ -1183,6 +1176,27 @@ void BlockingTCPTransportCodec::sendThread()
     _sendQueue.clear();
 }
 
+void BlockingTCPTransportCodec::setRxTimeout(bool ena)
+{
+    double timeout = !ena ? 0.0 : std::max(0.0, _context->getConfiguration()->getPropertyAsDouble("EPICS_PVA_CONN_TMO", 30.0));
+#ifdef _WIN32
+    DWORD timo = DWORD(timeout*1000); // in milliseconds
+#else
+    timeval timo;
+    timo.tv_sec = unsigned(timeout);
+    timo.tv_usec = (timeout-timo.tv_sec)*1e6;
+#endif
+
+    int ret = setsockopt(_channel, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timo, sizeof(timo));
+    if(ret==-1) {
+        int err = SOCKERRNO;
+        static int lasterr;
+        if(err!=lasterr) {
+            errlogPrintf("%s: Unable to set RX timeout: %d\n", _socketName.c_str(), err);
+            lasterr = err;
+        }
+    }
+}
 
 void BlockingTCPTransportCodec::sendBufferFull(int tries) {
     // TODO constants
@@ -1302,28 +1316,35 @@ int BlockingTCPTransportCodec::read(epics::pvData::ByteBuffer* dst) {
 
         // NOTE: do not log here, you might override SOCKERRNO relevant to recv() operation above
 
-        /*
-        if (IS_LOGGABLE(logLevelTrace)) {
-          hexDump(std::string("READ"),
-            (const int8 *)(dst->getArray()+pos), bytesRead);
-        }
-        */
-
-        if(unlikely(bytesRead<=0)) {
-
-            if (bytesRead<0)
-            {
-                int socketError = SOCKERRNO;
-
-                // TODO SOCK_ENOBUFS, for read?
-                // interrupted or timeout
-                if (socketError == SOCK_EINTR ||
-                        socketError == EAGAIN ||
-                        socketError == SOCK_EWOULDBLOCK)
-                    continue;
-            }
-
+        if(unlikely(bytesRead==0)) {
             return -1;    // 0 means connection loss for blocking transport, notify codec by returning -1
+
+        } else if(unlikely(bytesRead<0)) {
+            int err = SOCKERRNO;
+
+            if(err==SOCK_EINTR) {
+                // interrupted by signal.  Retry
+                continue;
+
+            } else if(err==SOCK_EWOULDBLOCK || err==EAGAIN || err==SOCK_EINPROGRESS
+                      || err==SOCK_ETIMEDOUT
+                      || err==SOCK_ECONNABORTED || err==SOCK_ECONNRESET
+                      ) {
+                // different ways of saying timeout.
+                // Linux: EAGAIN or EWOULDBLOCK, or EINPROGRESS
+                // WIN32: WSAETIMEDOUT
+                // others that RSRV checks for, but may not need to, ECONNABORTED, ECONNRESET
+
+                // Note: with windows, after ETIMEOUT leaves the socket in an undefined state.
+                //       so it must be closed.  (cf. SO_RCVTIMEO)
+
+                return -1;
+
+            } else {
+                // some other (fatal) error
+                errlogPrintf("%s : Connection closed with RX socket error %d\n", _socketName.c_str(), err);
+                return -1;
+            }
         }
 
         dst->setPosition(dst->getPosition() + bytesRead);
@@ -1493,7 +1514,7 @@ void BlockingServerTCPTransportCodec::send(ByteBuffer* buffer,
 
         ensureBuffer(PVA_MESSAGE_HEADER_SIZE);
         buffer->putByte(PVA_MAGIC);
-        buffer->putByte(PVA_VERSION);
+        buffer->putByte(PVA_SERVER_PROTOCOL_REVISION);
         buffer->putByte(
             0x01 | 0x40 | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG)
                            ? 0x80 : 0x00));		// control + server + endian
@@ -1675,24 +1696,25 @@ BlockingClientTCPTransportCodec::BlockingClientTCPTransportCodec(
     int16_t priority ) :
     BlockingTCPTransportCodec(false, context, channel, responseHandler,
                               sendBufferSize, receiveBufferSize, priority),
-    _connectionTimeout(heartbeatInterval*1000),
-    _unresponsiveTransport(false),
-    _verifyOrEcho(true)
+    _connectionTimeout(heartbeatInterval),
+    _verifyOrEcho(true),
+    sendQueued(true) // don't start sending echo until after auth complete
 {
     // initialize owners list, send queue
     acquire(client);
 
     // use immediate for clients
     //setFlushStrategy(DELAYED);
-
-    // setup connection timeout timer (watchdog) - moved to start() method
-    epicsTimeGetCurrent(&_aliveTimestamp);
 }
 
 void BlockingClientTCPTransportCodec::start()
 {
     TimerCallbackPtr tcb = std::tr1::dynamic_pointer_cast<TimerCallback>(shared_from_this());
-    _context->getTimer()->schedulePeriodic(tcb, _connectionTimeout, _connectionTimeout);
+    // add some randomness to our timer phase
+    double R = float(rand())/RAND_MAX; // [0, 1]
+    // shape a bit
+    R = R*0.5 + 0.5; // [0.5, 1.0]
+    _context->getTimer()->schedulePeriodic(tcb, _connectionTimeout/2.0*R, _connectionTimeout/2.0);
     BlockingTCPTransportCodec::start();
 }
 
@@ -1707,45 +1729,21 @@ BlockingClientTCPTransportCodec::~BlockingClientTCPTransportCodec() {
 
 
 
-void BlockingClientTCPTransportCodec::callback() {
-    epicsTimeStamp currentTime;
-    epicsTimeGetCurrent(&currentTime);
-
-    _mutex.lock();
-    // no exception expected here
-    double diff = epicsTimeDiffInSeconds(&currentTime, &_aliveTimestamp);
-    _mutex.unlock();
-
-    if(diff>((3*_connectionTimeout)/2)) {
-        unresponsiveTransport();
+void BlockingClientTCPTransportCodec::callback()
+{
+    {
+        Guard G(_mutex);
+        if(sendQueued) return;
+        sendQueued = true;
     }
-    // use some k (3/4) to handle "jitter"
-    else if(diff>=((3*_connectionTimeout)/4)) {
-        // send echo
-        TransportSender::shared_pointer transportSender = std::tr1::dynamic_pointer_cast<TransportSender>(shared_from_this());
-        enqueueSendRequest(transportSender);
-    }
+    // send echo
+    TransportSender::shared_pointer transportSender = std::tr1::dynamic_pointer_cast<TransportSender>(shared_from_this());
+    enqueueSendRequest(transportSender);
 }
 
 #define EXCEPTION_GUARD(code) try { code; } \
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from code at %s:%d.", __FILE__, __LINE__); }
-
-void BlockingClientTCPTransportCodec::unresponsiveTransport() {
-    Lock lock(_mutex);
-    if(!_unresponsiveTransport) {
-        _unresponsiveTransport = true;
-
-        TransportClientMap_t::iterator it = _owners.begin();
-        for(; it!=_owners.end(); it++) {
-            ClientChannelImpl::shared_pointer client = it->second.lock();
-            if (client)
-            {
-                EXCEPTION_GUARD(client->transportUnresponsive());
-            }
-        }
-    }
-}
 
 bool BlockingClientTCPTransportCodec::acquire(ClientChannelImpl::shared_pointer const & client) {
     Lock lock(_mutex);
@@ -1820,48 +1818,18 @@ void BlockingClientTCPTransportCodec::release(pvAccessID clientID) {
     }
 }
 
-void BlockingClientTCPTransportCodec::aliveNotification() {
-    Lock guard(_mutex);
-    epicsTimeGetCurrent(&_aliveTimestamp);
-    if(_unresponsiveTransport) responsiveTransport();
-}
-
-void BlockingClientTCPTransportCodec::responsiveTransport() {
-    Lock lock(_mutex);
-    if(_unresponsiveTransport) {
-        _unresponsiveTransport = false;
-
-        Transport::shared_pointer thisSharedPtr = shared_from_this();
-        TransportClientMap_t::iterator it = _owners.begin();
-        for(; it!=_owners.end(); it++) {
-            ClientChannelImpl::shared_pointer client = it->second.lock();
-            if (client)
-            {
-                EXCEPTION_GUARD(client->transportResponsive(thisSharedPtr));
-            }
-        }
-    }
-}
-
-void BlockingClientTCPTransportCodec::changedTransport() {
-    _outgoingIR.reset();
-
-    Lock lock(_mutex);
-    TransportClientMap_t::iterator it = _owners.begin();
-    for(; it!=_owners.end(); it++) {
-        ClientChannelImpl::shared_pointer client = it->second.lock();
-        if (client)
-        {
-            EXCEPTION_GUARD(client->transportChanged());
-        }
-    }
-}
-
 void BlockingClientTCPTransportCodec::send(ByteBuffer* buffer,
-        TransportSendControl* control) {
-    if(_verifyOrEcho) {
+                                           TransportSendControl* control)
+{
+    bool voe;
+    {
+        Guard G(_mutex);
+        sendQueued = false;
+        voe = _verifyOrEcho;
         _verifyOrEcho = false;
+    }
 
+    if(voe) {
         /*
          * send verification response message
          */

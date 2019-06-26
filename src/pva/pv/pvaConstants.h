@@ -7,6 +7,8 @@
 #ifndef PVACONSTANTS_H_
 #define PVACONSTANTS_H_
 
+#include <compilerDependencies.h>
+
 #ifdef epicsExportSharedSymbols
 #   define pvaConstantsepicsExportSharedSymbols
 #   undef epicsExportSharedSymbols
@@ -26,11 +28,14 @@ namespace pvAccess {
 /** PVA protocol magic number */
 const epics::pvData::int8 PVA_MAGIC = static_cast<epics::pvData::int8>(0xCA);
 
+const epics::pvData::int8 PVA_SERVER_PROTOCOL_REVISION = 2;
+const epics::pvData::int8 PVA_CLIENT_PROTOCOL_REVISION = 2;
+
 /** PVA protocol revision (implemented by this library). */
-const epics::pvData::int8 PVA_PROTOCOL_REVISION = 1;
+const epics::pvData::int8 PVA_PROTOCOL_REVISION EPICS_DEPRECATED = 1;
 
 /** PVA version signature used to report this implementation version in header. */
-const epics::pvData::int8 PVA_VERSION = PVA_PROTOCOL_REVISION;
+const epics::pvData::int8 PVA_VERSION EPICS_DEPRECATED = 1;
 
 /** Default PVA server port. */
 const epics::pvData::int32 PVA_SERVER_PORT = 5075;

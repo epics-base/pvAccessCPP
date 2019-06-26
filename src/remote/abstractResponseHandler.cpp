@@ -4,8 +4,6 @@
  * in file LICENSE that is included with this distribution.
  */
 
-#include <sstream>
-
 #include <osiSock.h>
 
 #include <pv/byteBuffer.h>
@@ -14,9 +12,6 @@
 #define epicsExportSharedSymbols
 #include <pv/remote.h>
 #include <pv/hexDump.h>
-
-using std::ostringstream;
-using std::hex;
 
 using namespace epics::pvData;
 
@@ -44,13 +39,10 @@ void ResponseHandler::handleResponse(osiSockAddr* responseFrom,
         char ipAddrStr[48];
         ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
 
-        ostringstream prologue;
-        prologue<<"Message [0x"<<hex<<(int)command<<", v0x"<<hex;
-        prologue<<(int)version<<"] received from "<<ipAddrStr<<" on "<<transport->getRemoteName();
-
-        hexDump(prologue.str(), _description,
-                (const int8*)payloadBuffer->getArray(),
-                payloadBuffer->getPosition(), static_cast<int>(payloadSize));
+        std::cerr<<"Message [0x"<<std::hex<<(int)command<<", v0x"<<std::hex
+                 <<int(version)<<"] received from "<<ipAddrStr<<" on "<<transport->getRemoteName()
+                 <<" : "<<_description<<"\n"
+                 <<HexDump(*payloadBuffer, payloadSize).limit(0xffff);
     }
 }
 }

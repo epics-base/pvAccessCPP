@@ -372,8 +372,6 @@ public:
     void setRemoteTransportReceiveBufferSize(
         std::size_t remoteTransportReceiveBufferSize)  {}
 
-    void changedTransport() {}
-
     void flushSendQueue() { };
 
     bool verify(epics::pvData::int32 timeoutMs) {
@@ -381,8 +379,6 @@ public:
     }
 
     void verified(epics::pvData::Status const &) {}
-
-    void aliveNotification() {}
 
     void authNZMessage(epics::pvData::PVStructure::shared_pointer const & data) {}
 
@@ -483,7 +479,7 @@ private:
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x01);
         codec._readBuffer->put((int8_t)0x23);
         codec._readBuffer->putInt(0x456789AB);
@@ -506,8 +502,8 @@ private:
 
         PVAMessage header = codec._receivedControlMessages[0];
 
-        testOk(header._version == PVA_VERSION,
-               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: header._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
 
         testOk(codec._invalidDataStreamCount == 0,
                "%s: codec._invalidDataStreamCount == 0",
@@ -523,13 +519,13 @@ private:
 
         // two at the time, app and control
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x00);
         codec._readBuffer->put((int8_t)0x20);
         codec._readBuffer->putInt(0x00000000);
 
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x81);
         codec._readBuffer->put((int8_t)0xEE);
         codec._readBuffer->putInt(0xDDCCBBAA);
@@ -553,8 +549,8 @@ private:
         // app, no payload
         header = codec._receivedAppMessages[0];
 
-        testOk(header._version == PVA_VERSION,
-               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: header._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)0x00,
                "%s: header._flags == 0x00", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0x20,
@@ -565,8 +561,8 @@ private:
         // control
         header = codec._receivedControlMessages[0];
 
-        testOk(header._version == PVA_VERSION,
-               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: header._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)0x81,
                "%s: header._flags == 0x81", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0xEE,
@@ -585,7 +581,7 @@ private:
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
         codec._readBuffer->put((int8_t)00);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x01);
         codec._readBuffer->put((int8_t)0x23);
         codec._readBuffer->putInt(0x456789AB);
@@ -621,7 +617,7 @@ private:
         {
             TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
             codec._readBuffer->put(PVA_MAGIC);
-            codec._readBuffer->put(PVA_VERSION);
+            codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
             codec._readBuffer->put(invalidFlagsValues[i]);
             codec._readBuffer->put((int8_t)0x23);
             //codec._readBuffer->putInt(0);
@@ -653,7 +649,7 @@ private:
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x80);
         codec._readBuffer->put((int8_t)0x23);
         codec._readBuffer->putInt(0x456789AB);
@@ -682,7 +678,7 @@ private:
         TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
 
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x01);
         codec._readBuffer->flip();
 
@@ -724,8 +720,8 @@ private:
         // app, no payload
         PVAMessage header = codec._receivedControlMessages[0];
 
-        testOk(header._version == PVA_VERSION,
-               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: header._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)0x01,
                "%s: header._flags == 0x01", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0x23,
@@ -744,7 +740,7 @@ private:
         codec._readPayload = true;
 
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x80);
         codec._readBuffer->put((int8_t)0x23);
         codec._readBuffer->putInt(1); // size
@@ -790,7 +786,7 @@ private:
         codec._readPayload = true;
 
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x80);
         codec._readBuffer->put((int8_t)0x23);
         const int32_t payloadSize1 = 2;
@@ -806,7 +802,7 @@ private:
 
 
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x80);
         codec._readBuffer->put((int8_t)0x45);
 
@@ -912,7 +908,7 @@ private:
 
 
                 _codec._readBuffer->put(PVA_MAGIC);
-                _codec._readBuffer->put(PVA_VERSION);
+                _codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
                 _codec._readBuffer->put((int8_t)0x80);
                 _codec._readBuffer->put((int8_t)0x45);
                 _codec._readBuffer->putInt(_payloadSize2);
@@ -958,7 +954,7 @@ private:
 
         // 1st
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x90);
         codec._readBuffer->put((int8_t)0x01);
 
@@ -971,7 +967,7 @@ private:
 
         // 2nd
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0xB0);
         codec._readBuffer->put((int8_t)0x01);
 
@@ -983,14 +979,14 @@ private:
 
         // control in between
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x81);
         codec._readBuffer->put((int8_t)0xEE);
         codec._readBuffer->putInt(0xDDCCBBAA);
 
         // 3rd
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0xB0);
         codec._readBuffer->put((int8_t)0x01);
 
@@ -1002,7 +998,7 @@ private:
 
         // 4t (last)
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0xA0);
         codec._readBuffer->put((int8_t)0x01);
 
@@ -1057,8 +1053,8 @@ private:
 
         msg = codec._receivedControlMessages[0];
 
-        testOk(msg._version == PVA_VERSION,
-               "%s: msg._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(msg._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: msg._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
         testOk(msg._flags == (int8_t)0x81,
                "%s: msg._flags == 0x81", CURRENT_FUNCTION);
         testOk(msg._command == (int8_t)0xEE,
@@ -1078,7 +1074,7 @@ private:
 
         // 1st
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x90);
         codec._readBuffer->put((int8_t)0x01);
 
@@ -1091,7 +1087,7 @@ private:
 
         // 2nd
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         // invalid flag, should be 0xB0
         codec._readBuffer->put((int8_t)0x90);
         codec._readBuffer->put((int8_t)0x01);
@@ -1104,14 +1100,14 @@ private:
 
         // control in between
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x81);
         codec._readBuffer->put((int8_t)0xEE);
         codec._readBuffer->putInt(0xDDCCBBAA);
 
         // 3rd
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0xB0);
         codec._readBuffer->put((int8_t)0x01);
 
@@ -1123,7 +1119,7 @@ private:
 
         // 4t (last)
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0xA0);
         codec._readBuffer->put((int8_t)0x01);
 
@@ -1172,7 +1168,7 @@ private:
 
         // 1st
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x90);
         codec._readBuffer->put((int8_t)0x01);
 
@@ -1190,7 +1186,7 @@ private:
 
         // 2nd
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0xB0);
         codec._readBuffer->put((int8_t)0x01);
 
@@ -1209,7 +1205,7 @@ private:
 
         // 3rd
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0xB0);
         codec._readBuffer->put((int8_t)0x01);
 
@@ -1227,7 +1223,7 @@ private:
 
         // 4t (last)
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0xA0);
         codec._readBuffer->put((int8_t)0x01);
 
@@ -1339,7 +1335,7 @@ private:
 
                         // 1st
                         codec._readBuffer->put(PVA_MAGIC);
-                        codec._readBuffer->put(PVA_VERSION);
+                        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
                         codec._readBuffer->put((int8_t)0x90);
                         codec._readBuffer->put((int8_t)0x01);
 
@@ -1357,7 +1353,7 @@ private:
 
                         // 2nd
                         codec._readBuffer->put(PVA_MAGIC);
-                        codec._readBuffer->put(PVA_VERSION);
+                        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
                         codec._readBuffer->put((int8_t)0xB0);
                         codec._readBuffer->put((int8_t)0x01);
 
@@ -1377,7 +1373,7 @@ private:
 
                         // 3rd
                         codec._readBuffer->put(PVA_MAGIC);
-                        codec._readBuffer->put(PVA_VERSION);
+                        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
                         codec._readBuffer->put((int8_t)0xA0);
                         codec._readBuffer->put((int8_t)0x01);
 
@@ -1499,8 +1495,8 @@ private:
 
         PVAMessage header = codec._receivedControlMessages[0];
 
-        testOk(header._version == PVA_VERSION,
-               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: header._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x01),
                "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0x23,
@@ -1537,8 +1533,8 @@ private:
         // app, no payload
         header = codec._receivedAppMessages[0];
 
-        testOk(header._version == PVA_VERSION,
-               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: header._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)0x00,
                "%s: header._flags == 0x00", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0x20,
@@ -1549,8 +1545,8 @@ private:
         // control
         header = codec._receivedControlMessages[0];
 
-        testOk(header._version == PVA_VERSION,
-               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: header._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)0x81,
                "%s: header._flags == 0x81", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0xEE,
@@ -1878,7 +1874,7 @@ private:
         codec._disconnected = true;
 
         codec._readBuffer->put(PVA_MAGIC);
-        codec._readBuffer->put(PVA_VERSION);
+        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
         codec._readBuffer->put((int8_t)0x01);
         codec._readBuffer->put((int8_t)0x23);
         codec._readBuffer->putInt(0x456789AB);
@@ -1953,7 +1949,7 @@ private:
 
                         // 1st
                         codec._readBuffer->put(PVA_MAGIC);
-                        codec._readBuffer->put(PVA_VERSION);
+                        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
                         codec._readBuffer->put((int8_t)0x90);
                         codec._readBuffer->put((int8_t)0x01);
 
@@ -1971,7 +1967,7 @@ private:
 
                         // 2nd
                         codec._readBuffer->put(PVA_MAGIC);
-                        codec._readBuffer->put(PVA_VERSION);
+                        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
                         codec._readBuffer->put((int8_t)0xB0);
                         codec._readBuffer->put((int8_t)0x01);
 
@@ -1991,7 +1987,7 @@ private:
 
                         // 3rd
                         codec._readBuffer->put(PVA_MAGIC);
-                        codec._readBuffer->put(PVA_VERSION);
+                        codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
                         codec._readBuffer->put((int8_t)0xA0);
                         codec._readBuffer->put((int8_t)0x01);
 
@@ -2156,8 +2152,8 @@ private:
         // app, no payload
         PVAMessage header = codec._receivedAppMessages[0];
 
-        testOk(header._version == PVA_VERSION,
-               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: header._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x00),
                "%s: header._flags == 0x(0|8)0", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0x20,
@@ -2168,8 +2164,8 @@ private:
         // control
         header = codec._receivedControlMessages[0];
 
-        testOk(header._version == PVA_VERSION,
-               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: header._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x01),
                "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0xEE,
@@ -2293,8 +2289,8 @@ private:
         // app, no payload
         PVAMessage header = codec._receivedAppMessages[0];
 
-        testOk(header._version == PVA_VERSION,
-               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: header._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x00),
                "%s: header._flags == 0x(0|8)0", CURRENT_FUNCTION);
         testOk(header._command == 0x20,
@@ -2306,8 +2302,8 @@ private:
         // control
         header = codec._receivedControlMessages[0];
 
-        testOk(header._version == PVA_VERSION,
-               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: header._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x01),
                "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0xEE,
@@ -2363,8 +2359,8 @@ private:
 
         header = codec._receivedControlMessages[1];
 
-        testOk(header._version == PVA_VERSION,
-               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: header._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x01),
                "%s: header._flags == 0x(0|8)1", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0xEE,
@@ -2443,8 +2439,8 @@ private:
         // app
         PVAMessage header = codec._receivedAppMessages[0];
 
-        testOk(header._version == PVA_VERSION,
-               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: header._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)0x80,
                "%s: header._flags == 0x80", CURRENT_FUNCTION);
         testOk(header._command == (int8_t)0x12,
@@ -2640,8 +2636,8 @@ private:
         // app
         PVAMessage header = codec._receivedAppMessages[0];
 
-        testOk(header._version == PVA_VERSION,
-               "%s: header._version == PVA_VERSION", CURRENT_FUNCTION);
+        testOk(header._version == PVA_CLIENT_PROTOCOL_REVISION,
+               "%s: header._version == PVA_CLIENT_PROTOCOL_REVISION", CURRENT_FUNCTION);
         testOk(header._flags == (int8_t)((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00) | 0x10),
                "%s: header._flags == (int8_t)(0x(0|8)0 | 0x10)",
                CURRENT_FUNCTION);

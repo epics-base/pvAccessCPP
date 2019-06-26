@@ -97,14 +97,6 @@ public:
         // noop for UDP (limited by 64k; MAX_UDP_SEND for PVA)
     }
 
-    virtual void aliveNotification() OVERRIDE FINAL {
-        // noop
-    }
-
-    virtual void changedTransport() OVERRIDE FINAL {
-        // noop
-    }
-
     virtual bool verify(epics::pvData::int32 /*timeoutMs*/) OVERRIDE FINAL {
         // noop
         return true;
@@ -135,10 +127,7 @@ public:
 
     virtual void close() OVERRIDE FINAL;
 
-    virtual void ensureData(std::size_t size) OVERRIDE FINAL {
-        if (_receiveBuffer.getRemaining() < size)
-            throw std::underflow_error("no more data in UDP packet");
-    }
+    virtual void ensureData(std::size_t size) OVERRIDE FINAL;
 
     virtual void alignData(std::size_t alignment) OVERRIDE FINAL {
         _receiveBuffer.align(alignment);

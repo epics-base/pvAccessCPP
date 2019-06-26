@@ -6,6 +6,5 @@
 
 - improve searching of channel with server address specified
 
-- void transportUnresponsive() is not implemented (also in Java)
 - complete authNZ (callback on right change)
 - request event on disconnect/destroy, etc.?

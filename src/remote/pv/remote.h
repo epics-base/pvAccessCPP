@@ -223,11 +223,6 @@ public:
     virtual void setByteOrder(int byteOrder) = 0;
 
     /**
-     * Notification that transport has changed.
-     */
-    virtual void changedTransport() = 0;
-
-    /**
      * Enqueue send request.
      * @param sender
      */
@@ -249,11 +244,6 @@ public:
      * @param timeoutMs timeout to wait for verification, infinite if 0.
      */
     virtual bool verify(epics::pvData::int32 timeoutMs) = 0;
-
-    /**
-     * Notification transport that is still alive.
-     */
-    virtual void aliveNotification() = 0;
 
     /**
      * Close transport.
