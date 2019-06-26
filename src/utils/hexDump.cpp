@@ -68,30 +68,52 @@ size_t bits2bytes(size_t val)
 epicsShareFunc
 std::ostream& operator<<(std::ostream& strm, const HexDump& hex)
 {
-    size_t len = std::min(hex.buflen, hex._limit);
+    const size_t len = std::min(hex.buflen, hex._limit);
     // find address width in hex chars
     // find bit width, rounded up to 8 bits, divide down to bytes
-    size_t addrwidth = bits2bytes(ilog2(len))*2u;
+    const size_t addrwidth = bits2bytes(ilog2(len))*2u;
+    size_t nlines = len/hex._perLine;
 
-    for(size_t i=0; i<len; i++)
+    if(len%hex._perLine)
+        nlines++;
+
+    for(size_t l=0; l<nlines; l++)
     {
-        unsigned val = hex.buf[i]&0xff;
-        size_t col = i%hex._perLine;
+        size_t start = l*hex._perLine;
+        strm<<"0x"<<std::hex<<std::setw(addrwidth)<<std::setfill('0')<<start;
 
-        if(col==0) {
-            // first address of this row
-            strm<<"0x"<<std::hex<<std::setw(addrwidth)<<std::setfill('0')<<i;
+        // print hex chars
+        for(size_t col=0; col<hex._perLine; col++)
+        {
+            if(col%hex._groupBy == 0) {
+                strm<<' ';
+            }
+            if(start+col < len) {
+                strm<<std::hex<<std::setw(2)<<std::setfill('0')<<unsigned(hex.buf[start+col]&0xff);
+            } else {
+                strm<<"  ";
+            }
         }
-        if(col%hex._groupBy == 0) {
-            strm<<' ';
+
+        strm<<' ';
+
+        // printable ascii
+        for(size_t col=0; col<hex._perLine && start+col<len; col++)
+        {
+            if(col%hex._groupBy == 0) {
+                strm<<' ';
+            }
+            char val = hex.buf[start+col]&0xff;
+            if(val>=' ' && val<='~') {
+                strm<<val;
+            } else {
+                strm<<'.';
+            }
         }
-        strm<<std::hex<<std::setw(2)<<std::setfill('0')<<val;
-        if(col+1u==hex._perLine && i+1u!=len)
-            strm<<'\n';
+
+        strm<<'\n';
     }
-    if(len==hex._limit && len<hex.buflen)
-        strm<<" ...";
-    strm<<'\n';
+
     return strm;
 }
 

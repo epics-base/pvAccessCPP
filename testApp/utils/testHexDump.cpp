@@ -19,8 +19,8 @@ MAIN(testHexDump)
     std::ostringstream msg;
     msg<<HexDump(TO_DUMP, sizeof(TO_DUMP)-1);
 
-    testEqual(msg.str(), "0x00 70764163 63657373 2064756d 70207465\n"
-                         "0x10 73740001 02030405 06fdfeff\n");
+    testEqual(msg.str(), "0x00 70764163 63657373 2064756d 70207465  pvAc cess  dum p te\n"
+                         "0x10 73740001 02030405 06fdfeff           st.. .... ....\n");
 
     return testDone();
 }
