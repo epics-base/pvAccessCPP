@@ -1187,7 +1187,7 @@ void BlockingTCPTransportCodec::setRxTimeout(bool ena)
     timo.tv_usec = (timeout-timo.tv_sec)*1e6;
 #endif
 
-    int ret = setsockopt(_channel, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timo, sizeof(timo));
+    int ret = setsockopt(_channel, SOL_SOCKET, SO_RCVTIMEO, (char*)&timo, sizeof(timo));
     if(ret==-1) {
         int err = SOCKERRNO;
         static int lasterr;
