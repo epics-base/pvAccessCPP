@@ -138,7 +138,7 @@ void StaticProvider::close(bool destroy)
         }
     }
     for(Impl::builders_t::iterator it(pvs.begin()), end(pvs.end()); it!=end; ++it) {
-        it->second->close(destroy);
+        it->second->disconnect(destroy, impl.get());
     }
 }
 
@@ -168,7 +168,7 @@ std::tr1::shared_ptr<StaticProvider::ChannelBuilder> StaticProvider::remove(cons
         }
     }
     if(ret)
-        ret->close(true);
+        ret->disconnect(true, impl.get());
     return ret;
 }
 

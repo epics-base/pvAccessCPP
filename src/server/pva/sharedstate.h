@@ -150,7 +150,7 @@ public:
     //! close() is not final, even with destroy=true new clients may begin connecting, and open() may be called again.
     //! A final close() should be performed after the removal from StaticProvider/DynamicProvider
     //! which will prevent new clients.
-    virtual void close(bool destroy=false);
+    inline void close(bool destroy=false) { realClose(destroy, true, 0); }
 
     //! Create a new container which may be used to prepare to call post().
     //! This container will be owned exclusively by the caller.
@@ -173,12 +173,16 @@ public:
     virtual std::tr1::shared_ptr<epics::pvAccess::Channel> connect(
             const std::tr1::shared_ptr<epics::pvAccess::ChannelProvider>& provider,
             const std::string& channelName,
-            const std::tr1::shared_ptr<epics::pvAccess::ChannelRequester>& requester);
+            const std::tr1::shared_ptr<epics::pvAccess::ChannelRequester>& requester) OVERRIDE FINAL;
+
+    virtual void disconnect(bool destroy, const epics::pvAccess::ChannelProvider* provider) OVERRIDE FINAL;
 
     void setDebug(int lvl);
     int isDebug() const;
 
 private:
+    void realClose(bool destroy, bool close, const epics::pvAccess::ChannelProvider* provider);
+
     friend void epics::pvAccess::providerRegInit(void*);
     static size_t num_instances;
 

@@ -231,7 +231,7 @@ void SharedPV::open(const pvd::StructureConstPtr& type)
     open(*value);
 }
 
-void SharedPV::close(bool destroy)
+void SharedPV::realClose(bool destroy, bool closing, const epics::pvAccess::ChannelProvider* provider)
 {
     typedef std::vector<std::tr1::shared_ptr<pva::ChannelPutRequester> > xputs_t;
     typedef std::vector<std::tr1::shared_ptr<pva::ChannelRPCRequester> > xrpcs_t;
@@ -259,6 +259,8 @@ void SharedPV::close(bool destroy)
             p_channel.reserve(channels.size());
 
             FOR_EACH(puts_t::const_iterator, it, end, puts) {
+                if(provider && (*it)->channel->provider.lock().get()!=provider)
+                    continue;
                 (*it)->mapper.reset();
                 p_put.push_back((*it)->requester.lock());
             }
@@ -274,8 +276,10 @@ void SharedPV::close(bool destroy)
                 }catch(std::tr1::bad_weak_ptr&) { /* ignore, racing dtor */ }
             }
 
-            type.reset();
-            current.reset();
+            if(closing) {
+                type.reset();
+                current.reset();
+            }
         }
 
         if(destroy) {
@@ -370,6 +374,12 @@ SharedPV::connect(const std::tr1::shared_ptr<epics::pvAccess::ChannelProvider> &
     shared_pointer self(internal_self);
     std::tr1::shared_ptr<detail::SharedChannel> ret(new detail::SharedChannel(self, provider, channelName, requester));
     return ret;
+}
+
+void
+SharedPV::disconnect(bool destroy, const epics::pvAccess::ChannelProvider* provider)
+{
+    realClose(destroy, false, provider);
 }
 
 void SharedPV::setDebug(int lvl)

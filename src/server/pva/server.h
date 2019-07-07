@@ -114,10 +114,13 @@ public:
     struct epicsShareClass ChannelBuilder {
         POINTER_DEFINITIONS(ChannelBuilder);
         virtual ~ChannelBuilder();
+        //! called to create a new Channel through the given ChannelProvider
         virtual std::tr1::shared_ptr<epics::pvAccess::Channel> connect(const std::tr1::shared_ptr<epics::pvAccess::ChannelProvider>& provider,
                                                                        const std::string& name,
                                                                        const std::tr1::shared_ptr<epics::pvAccess::ChannelRequester>& requester) =0;
-        virtual void close(bool destroy=false) =0;
+        //! Disconnect all Channels created through the given ChannelProvider.
+        //! destroy==true if the ChannelProvider is shutting down.
+        virtual void disconnect(bool destroy, const epics::pvAccess::ChannelProvider* provider) =0;
     };
 private:
     typedef std::map<std::string, std::tr1::shared_ptr<ChannelBuilder> > builders_t;
