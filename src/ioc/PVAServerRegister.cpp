@@ -91,15 +91,19 @@ void stopPVAServer()
 void pvasr(int lvl)
 {
     try {
-        pvd::Lock G(the_server_lock);
-        if(!the_server) {
-            std::cout<<"PVA server not running\n";
-            return;
-        } else {
-            the_server->printInfo(lvl);
+        pva::ServerContext::shared_pointer serv;
+        {
+            pvd::Lock G(the_server_lock);
+            serv = the_server;
         }
+        if(!serv) {
+            std::cout<<"PVA server not running\n";
+        } else {
+            serv->printInfo(lvl);
+        }
+        std::cout.flush();
     }catch(std::exception& e){
-        std::cout<<"Error: "<<e.what()<<"\n";
+        std::cout<<"Error: "<<e.what()<<std::endl;
     }
 }
 

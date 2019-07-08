@@ -369,22 +369,19 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
 {
     if(lvl==0) {
         Lock guard(_mutex);
-        str << "VERSION : " << getVersion().getVersionString() << endl
-            << "PROVIDER_NAMES : ";
-        for(std::vector<ChannelProvider::shared_pointer>::const_iterator it = _channelProviders.begin();
-            it != _channelProviders.end(); ++it)
-        {
-            str<<(*it)->getProviderName()<<", ";
-        }
-        str << endl
-            << "BEACON_ADDR_LIST : " << _beaconAddressList << endl
-            << "AUTO_BEACON_ADDR_LIST : " << _autoBeaconAddressList << endl
-            << "BEACON_PERIOD : " << _beaconPeriod << endl
-            << "BROADCAST_PORT : " << _broadcastPort << endl
-            << "SERVER_PORT : " << _serverPort << endl
-            << "RCV_BUFFER_SIZE : " << _receiveBufferSize << endl
-            << "IGNORE_ADDR_LIST: " << _ignoreAddressList << endl
-            << "INTF_ADDR_LIST : " << inetAddressToString(_ifaceAddr, false) << endl;
+        str << getVersion().getVersionString() << "\n"
+            << "Active configuration (w/ defaults)\n";
+
+        Configuration::shared_pointer conf(getCurrentConfig());
+#define SHOW(ENV) str << #ENV " = "<<conf->getPropertyAsString(#ENV, std::string())<<"\n";
+        SHOW(EPICS_PVAS_INTF_ADDR_LIST)
+        SHOW(EPICS_PVAS_BEACON_ADDR_LIST)
+        SHOW(EPICS_PVAS_AUTO_BEACON_ADDR_LIST)
+        SHOW(EPICS_PVAS_BEACON_PERIOD)
+        SHOW(EPICS_PVAS_BROADCAST_PORT)
+        SHOW(EPICS_PVAS_SERVER_PORT)
+        SHOW(EPICS_PVAS_PROVIDER_NAMES)
+#undef SHOW
 
     } else {
         // lvl >= 1
