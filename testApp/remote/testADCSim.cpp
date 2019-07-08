@@ -202,7 +202,7 @@ epicsThreadOnceId sim_mute_once = EPICS_THREAD_ONCE_INIT;
 
 SimADC::SimADC()
     :runner(*this, "Runner",
-            epicsThreadGetStackSize(epicsThreadStackSmall),
+            epicsThreadGetStackSize(epicsThreadStackBig),
             epicsThreadPriorityMedium)
     ,runner_stop(false)
 {

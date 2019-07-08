@@ -719,7 +719,7 @@ void TestIoc::start()
     thread =  std::auto_ptr<epicsThread>(new epicsThread(
         *this,
         "testIoc",
-        epicsThreadGetStackSize(epicsThreadStackSmall),
+        epicsThreadGetStackSize(epicsThreadStackBig),
         epicsThreadPriorityLow));
     thread->start();  
 #endif

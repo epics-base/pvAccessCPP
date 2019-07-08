@@ -36,7 +36,7 @@ BlockingTCPAcceptor::BlockingTCPAcceptor(
     _destroyed(false),
     _thread(*this, "TCP-acceptor",
             epicsThreadGetStackSize(
-                epicsThreadStackMedium),
+                epicsThreadStackBig),
             epicsThreadPriorityMedium)
 {
     memset(&_bindAddress, 0, sizeof(_bindAddress));
@@ -57,7 +57,7 @@ BlockingTCPAcceptor::BlockingTCPAcceptor(Context::shared_pointer const & context
     _destroyed(false),
     _thread(*this, "TCP-acceptor",
             epicsThreadGetStackSize(
-                epicsThreadStackMedium),
+                epicsThreadStackBig),
             epicsThreadPriorityMedium)
 {
     _bindAddress = addr;

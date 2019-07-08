@@ -47,7 +47,7 @@ void MonitorEventThread::start()
     thread =  std::tr1::shared_ptr<epicsThread>(new epicsThread(
         *this,
         "monitorEventThread",
-        epicsThreadGetStackSize(epicsThreadStackSmall),
+        epicsThreadGetStackSize(epicsThreadStackBig),
         epicsThreadPriorityLow));
     thread->start();  
 }

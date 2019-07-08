@@ -466,7 +466,7 @@ void RPCServer::runInNewThread(int seconds)
 
     epicsThreadCreate("RPCServer thread",
                       epicsThreadPriorityMedium,
-                      epicsThreadGetStackSize(epicsThreadStackSmall),
+                      epicsThreadGetStackSize(epicsThreadStackBig),
                       threadRunner, param.get());
 
     // let the thread delete 'param'

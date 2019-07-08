@@ -48,7 +48,7 @@ void PutDoneThread::start()
     thread =  std::tr1::shared_ptr<epicsThread>(new epicsThread(
         *this,
         "putDoneThread",
-        epicsThreadGetStackSize(epicsThreadStackSmall),
+        epicsThreadGetStackSize(epicsThreadStackBig),
         epicsThreadPriorityLow));
     thread->start(); 
 }

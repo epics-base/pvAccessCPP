@@ -107,7 +107,7 @@ void BlockingUDPTransport::start() {
     }
 
     _thread.reset(new epicsThread(*this, threadName.c_str(),
-                                  epicsThreadGetStackSize(epicsThreadStackSmall),
+                                  epicsThreadGetStackSize(epicsThreadStackBig),
                                   epicsThreadPriorityMedium));
     _thread->start();
 }
