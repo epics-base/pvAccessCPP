@@ -23,29 +23,6 @@ using namespace epics::pvData;
 namespace epics {
 namespace pvAccess {
 
-BlockingTCPAcceptor::BlockingTCPAcceptor(
-    Context::shared_pointer const & context,
-    ResponseHandler::shared_pointer const & responseHandler,
-    int port,
-    int receiveBufferSize) :
-    _context(context),
-    _responseHandler(responseHandler),
-    _bindAddress(),
-    _serverSocketChannel(INVALID_SOCKET),
-    _receiveBufferSize(receiveBufferSize),
-    _destroyed(false),
-    _thread(*this, "TCP-acceptor",
-            epicsThreadGetStackSize(
-                epicsThreadStackBig),
-            epicsThreadPriorityMedium)
-{
-    memset(&_bindAddress, 0, sizeof(_bindAddress));
-    _bindAddress.ia.sin_family = AF_INET;
-    _bindAddress.ia.sin_port = htons(port);
-    _bindAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
-    initialize();
-}
-
 BlockingTCPAcceptor::BlockingTCPAcceptor(Context::shared_pointer const & context,
         ResponseHandler::shared_pointer const & responseHandler,
         const osiSockAddr& addr, int receiveBufferSize) :

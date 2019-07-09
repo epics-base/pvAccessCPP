@@ -99,15 +99,6 @@ class BlockingTCPAcceptor : public epicsThreadRunable {
 public:
     POINTER_DEFINITIONS(BlockingTCPAcceptor);
 
-    /**
-     * @param context
-     * @param port
-     * @param receiveBufferSize
-     * @throws PVAException
-     */
-    BlockingTCPAcceptor(Context::shared_pointer const & context,
-                        ResponseHandler::shared_pointer const & responseHandler,
-                        int port, int receiveBufferSize);
     BlockingTCPAcceptor(Context::shared_pointer const & context,
                         ResponseHandler::shared_pointer const & responseHandler,
                         const osiSockAddr& addr, int receiveBufferSize);
