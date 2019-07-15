@@ -569,6 +569,7 @@ public:
    void waitGet(double timeout);
    void waitPut(double timeout);
    void stopEvents();
+   virtual ~TestClient() {}
 private:
    TestClient(string const &channelName,PVStructurePtr const &  pvRequest);
    string channelName;

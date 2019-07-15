@@ -284,7 +284,7 @@ protected:
      */
     ResponseHandler::shared_pointer _responseHandler;
 
-    virtual void run();
+    virtual void run() OVERRIDE FINAL;
 
 private:
     bool processBuffer(Transport::shared_pointer const & transport, osiSockAddr& fromAddress, epics::pvData::ByteBuffer* receiveBuffer);

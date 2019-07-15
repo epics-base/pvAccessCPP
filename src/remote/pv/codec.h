@@ -298,7 +298,6 @@ private:
 protected:
     const epics::pvData::int8 _clientServerFlag;
 private:
-    const size_t _socketSendBufferSize;
 
 public:
     mutable epics::pvData::Mutex _mutex;

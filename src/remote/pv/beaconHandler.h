@@ -60,7 +60,7 @@ public:
                       ServerGUID const &guid,
                       epics::pvData::int16 sequentalID,
                       epics::pvData::int16 changeCount,
-                      epics::pvData::PVFieldPtr data);
+                      const epics::pvData::PVFieldPtr& data);
 private:
     /**
      * Context instance.
@@ -69,7 +69,6 @@ private:
     /**
      * Remote address.
      */
-    const osiSockAddr _responseFrom;
     /**
      * Mutex
      */

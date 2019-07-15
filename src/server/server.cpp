@@ -120,7 +120,7 @@ StaticProvider::StaticProvider(const std::string &name)
     impl->internal_self = impl;
     impl->finder = pva::ChannelFind::buildDummy(impl);
     // wrap ref to call destroy when all external refs (from DyamicProvider::impl) are released.
-    impl.reset(impl.get(), pvd::Destroyable::cleaner(impl));
+    impl.reset(impl.get(), pva::Destroyable::cleaner(impl));
     impl->external_self = impl;
 }
 
@@ -262,7 +262,7 @@ DynamicProvider::DynamicProvider(const std::string &name,
     impl->internal_self = impl;
     impl->finder = pva::ChannelFind::buildDummy(impl);
     // wrap ref to call destroy when all external refs (from DyamicProvider::impl) are released.
-    impl.reset(impl.get(), pvd::Destroyable::cleaner(impl));
+    impl.reset(impl.get(), pva::Destroyable::cleaner(impl));
     impl->external_self = impl;
 }
 

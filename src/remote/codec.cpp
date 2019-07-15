@@ -104,8 +104,7 @@ AbstractCodec::AbstractCodec(
     _lastMessageStartPosition(std::numeric_limits<size_t>::max()),_lastSegmentedMessageType(0),
     _lastSegmentedMessageCommand(0), _nextMessagePayloadOffset(0),
     _byteOrderFlag(EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG ? 0x80 : 0x00),
-    _clientServerFlag(serverFlag ? 0x40 : 0x00),
-    _socketSendBufferSize(socketSendBufferSize)
+    _clientServerFlag(serverFlag ? 0x40 : 0x00)
 {
     if (_socketBuffer.getSize() < 2*MAX_ENSURE_SIZE)
         throw std::invalid_argument(

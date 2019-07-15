@@ -140,7 +140,7 @@ struct RPCer : public pvac::detail::CallbackStorage,
         callEvent(G, status.isSuccess()? pvac::GetEvent::Success : pvac::GetEvent::Fail);
     }
 
-    virtual void show(std::ostream &strm) const
+    virtual void show(std::ostream &strm) const OVERRIDE FINAL
     {
         strm << "Operation(RPC"
                 "\"" << name() <<"\""

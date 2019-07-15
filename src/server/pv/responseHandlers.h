@@ -373,7 +373,7 @@ public:
 
     epics::pvData::BitSet::shared_pointer getPutBitSet();
     epics::pvData::PVStructure::shared_pointer getPutPVStructure();
-    void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control);
+    void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
 private:
     // Note: this forms a reference loop, which is broken in destroy()
     ChannelPut::shared_pointer _channelPut;
