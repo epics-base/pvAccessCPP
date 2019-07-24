@@ -1,5 +1,29 @@
 /** @page pvarelease_notes Release Notes
 
+Release 7.0.0 (July 2019)
+=========================
+
+- Incompatible changes
+ - Peers claiming protocol minor version 0 are ignored.  The change from 0 -> 1 included incompatible changes
+   to CMD_BEACON and several others network messages, and inter-operation was never possible.
+   Attempts resulted in printing error messages to console.
+ - The Access Security interface classes in pv/security.h are completely redesigned.
+   The SecurityPlugin interface is replaced with epics::pvAccess::AuthenticationPlugin and epics::pvAccess::AuthorizationRegistry
+   as separate phases to connection setup.  Each connection will select one epics::pvAccess::AuthenticationPlugin
+   and zero or more epics::pvAccess::AuthorizationPlugin s.  The result of this process is a epics::pvAccess::PeerInfo
+   which may be accessed with with epics::pvAccess::ChannelFindRequester::getPeerInfo()
+   and epics::pvAccess::ChannelRequester::getPeerInfo() .
+- Removals
+ - pv/namedLockPattern.h
+ - createFileLogger() from pv/logger.h
+- Fixes
+ - Implement idle timeout on TCP connections.
+   Introduces minor protocol version 2.  Connections between v2 peers send a CMD_ECHO message from client -> server.
+   Either side will close the TCP connection if no message has been received within the past 30 seconds (by default).
+   This can be configured with $EPICS_PVA_CONN_TMO .
+- Changes
+ - The output of the 'pvasr' iocsh command has been expanded.
+
 Release 6.1.2 (Apr 2019)
 ========================
 
