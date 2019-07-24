@@ -1341,7 +1341,8 @@ int BlockingTCPTransportCodec::read(epics::pvData::ByteBuffer* dst) {
 
             } else {
                 // some other (fatal) error
-                errlogPrintf("%s : Connection closed with RX socket error %d\n", _socketName.c_str(), err);
+                if(_isOpen.get())
+                    errlogPrintf("%s : Connection closed with RX socket error %d\n", _socketName.c_str(), err);
                 return -1;
             }
         }
