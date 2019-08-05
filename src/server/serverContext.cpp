@@ -228,13 +228,13 @@ ServerContextImpl::getCurrentConfig()
         SET("EPICS_PVAS_INTF_ADDR_LIST", buf);
     }
 
-    SET("EPICS_PVAS_BEACON_ADDR_LIST", getBeaconAddressList());
-    SET("EPICS_PVA_ADDR_LIST", getBeaconAddressList());
+    SET("EPICS_PVAS_BEACON_ADDR_LIST", _beaconAddressList);
+    SET("EPICS_PVA_ADDR_LIST", _beaconAddressList);
 
     SET("EPICS_PVAS_AUTO_BEACON_ADDR_LIST",
-                         isAutoBeaconAddressList() ? "YES" : "NO");
+                         _autoBeaconAddressList ? "YES" : "NO");
     SET("EPICS_PVA_AUTO_ADDR_LIST",
-                         isAutoBeaconAddressList() ? "YES" : "NO");
+                         _autoBeaconAddressList ? "YES" : "NO");
 
     SET("EPICS_PVAS_BEACON_PERIOD", getBeaconPeriod());
     SET("EPICS_PVA_BEACON_PERIOD", getBeaconPeriod());
@@ -464,16 +464,6 @@ void ServerContextImpl::setBeaconServerStatusProvider(BeaconServerStatusProvider
     _beaconServerStatusProvider = beaconServerStatusProvider;
 }
 
-std::string ServerContextImpl::getBeaconAddressList()
-{
-    return _beaconAddressList;
-}
-
-bool ServerContextImpl::isAutoBeaconAddressList()
-{
-    return _autoBeaconAddressList;
-}
-
 float ServerContextImpl::getBeaconPeriod()
 {
     return _beaconPeriod;
@@ -492,11 +482,6 @@ int32 ServerContextImpl::getServerPort()
 int32 ServerContextImpl::getBroadcastPort()
 {
     return _broadcastPort;
-}
-
-std::string ServerContextImpl::getIgnoreAddressList()
-{
-    return _ignoreAddressList;
 }
 
 BeaconServerStatusProvider::shared_pointer ServerContextImpl::getBeaconServerStatusProvider()

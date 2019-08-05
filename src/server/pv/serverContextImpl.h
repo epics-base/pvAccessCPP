@@ -65,18 +65,6 @@ public:
     static const Version VERSION;
 
     /**
-     * Get beacon address list.
-     * @return beacon address list.
-     */
-    std::string getBeaconAddressList();
-
-    /**
-     * Get beacon address list auto flag.
-     * @return beacon address list auto flag.
-     */
-    bool isAutoBeaconAddressList();
-
-    /**
      * Get beacon period (in seconds).
      * @return beacon period (in seconds).
      */
@@ -99,12 +87,6 @@ public:
      * @return broadcast port.
      */
     epics::pvData::int32 getBroadcastPort() OVERRIDE FINAL;
-
-    /**
-     * Get ignore search address list.
-     * @return ignore search address list.
-     */
-    std::string getIgnoreAddressList();
 
     /**
      * Get registered beacon server status provider.
