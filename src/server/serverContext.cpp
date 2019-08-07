@@ -124,7 +124,8 @@ void ServerContextImpl::loadConfiguration()
     _ifaceAddr.ia.sin_family = AF_INET;
     _ifaceAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
     _ifaceAddr.ia.sin_port = 0;
-    config->getPropertyAsAddress("EPICS_PVAS_INTF_ADDR_LIST", &_ifaceAddr);
+    if(!config->getPropertyAsAddress("EPICS_PVAS_INTF_ADDR_LIST", &_ifaceAddr) && config->hasProperty("EPICS_PVAS_INTF_ADDR_LIST"))
+        THROW_EXCEPTION2(std::runtime_error, "EPICS_PVAS_INTF_ADDR_LIST contains invalid IP or non-existant hostname");
 
     _beaconAddressList = config->getPropertyAsString("EPICS_PVA_ADDR_LIST", _beaconAddressList);
     _beaconAddressList = config->getPropertyAsString("EPICS_PVAS_BEACON_ADDR_LIST", _beaconAddressList);
