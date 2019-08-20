@@ -20,13 +20,9 @@
 #include <pv/lock.h>
 #include <pv/convert.h>
 #include <pv/pvdVersion.h>
+#include <pv/json.h>
 
 #include <pva/client.h>
-
-#if EPICS_VERSION_INT>=VERSION_INT(3,15,0,1)
-#  include <pv/json.h>
-#  define USE_JSON
-#endif
 
 #include <pv/pvaDefs.h>
 #include <pv/event.h>
@@ -43,12 +39,8 @@ void usage (bool details=false)
              "Usage: pvput [options] <PV name> <value>\n"
              "       pvput [options] <PV name> <size/ignored> <value> [<value> ...]\n"
              "       pvput [options] <PV name> <field>=<value> ...\n"
-             "       pvput [options] <PV name> <json_array>\n");
-#ifdef USE_JSON
-    fprintf (stderr,
-             "       pvput [options] <PV name> <json_map>\n");
-#endif
-    fprintf (stderr,
+             "       pvput [options] <PV name> <json_array>\n"
+             "       pvput [options] <PV name> <json_map>\n"
              "\n"
              COMMON_OPTIONS
              " Deprecated options:\n"
@@ -58,13 +50,7 @@ void usage (bool details=false)
              , request.c_str(), timeout, defaultProvider.c_str());
     if(details) {
         fprintf (stderr,
-#ifdef USE_JSON
                  "\n JSON support is present\n"
-#else
-                 "\n no JSON support (needs EPICS Base >=3.15.0.1)\n"
-#endif
-                 );
-        fprintf (stderr,
                  "\nExamples:\n"
                  "\n"
                  "  pvput double01 1.234       # shorthand\n"
@@ -73,9 +59,6 @@ void usage (bool details=false)
                  "  pvput arr:pv X 1.0 2.0  # shorthand  (X is arbitrary and ignored)\n"
                  "  pvput arr:pv \"[1.0, 2.0]\"            # shorthand\n"
                  "  pvput arr:pv value=\"[1.0, 2.0]\"\n"
-                 );
-#ifdef USE_JSON
-        fprintf (stderr,
                  "\n"
                  "Field values may be given with JSON syntax.\n"
                  "\n"
@@ -88,7 +71,6 @@ void usage (bool details=false)
                  "  pvput group:pv some='{\"value\":1.234}' other='{\"value\":\"a string\"}'\n"
                  "\n"
                  );
-#endif
     }
 }
 
@@ -124,11 +106,8 @@ struct Putter : public pvac::ClientChannel::PutCallback
 
         if(bare.size()==1 && bare[0][0]=='{') {
             if(debugFlag) fprintf(stderr, "In JSON top mode\n");
-#ifdef USE_JSON
             std::istringstream strm(bare[0]);
             parseJSON(strm, root, &args.tosend);
-#else
-#endif
 
         } else if(pairs.empty()) {
             if(debugFlag) fprintf(stderr, "In plain value mode\n");
@@ -208,11 +187,8 @@ struct Putter : public pvac::ClientChannel::PutCallback
 
                 } else if(it->second[0]=='{' || it->second[0]=='[') {
                     std::istringstream strm(it->second);
-#ifdef USE_JSON
                     parseJSON(strm, fld, &args.tosend);
-#else
-                    throw std::runtime_error("JSON support not built");
-#endif
+
                 } else {
                     pvd::PVScalarPtr sfld(std::tr1::dynamic_pointer_cast<pvd::PVScalar>(fld));
                     if(!sfld) {
@@ -365,21 +341,18 @@ int main (int argc, char *argv[])
             size_t sep = values[i].find_first_of('=');
             if(sep==std::string::npos) {
                 thework.bare.push_back(values[i]);
-#ifndef USE_JSON
                 if(!thework.bare.back().empty() && thework.bare.back()[0]=='{') {
                     fprintf(stderr, "JSON syntax not supported by this build.\n");
                     return 1;
                 }
-#endif
             } else {
                 thework.pairs.push_back(std::make_pair(values[i].substr(0, sep),
                                                        values[i].substr(sep+1)));
-#ifndef USE_JSON
+
                 if(!thework.pairs.back().second.empty() && thework.pairs.back().second[0]=='{') {
                     fprintf(stderr, "JSON syntax not supported by this build.\n");
                     return 1;
                 }
-#endif
             }
         }
 

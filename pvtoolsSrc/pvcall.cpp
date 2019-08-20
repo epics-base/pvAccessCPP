@@ -9,12 +9,8 @@
 #include <epicsGetopt.h>
 
 #include <pv/pvData.h>
+#include <pv/json.h>
 #include <pva/client.h>
-
-#if EPICS_VERSION_INT>=VERSION_INT(3,15,0,1)
-#  include <pv/json.h>
-#  define USE_JSON
-#endif
 
 #include "pvutils.h"
 
@@ -59,13 +55,9 @@ arg_t parseArg(const std::string& raw) {
         value = V;
 
     } else if(sval.size()>=2 && sval[0]=='{' && sval[sval.size()-1]=='}') {
-#ifdef USE_JSON
         std::istringstream strm(sval);
 
         value = pvd::parseJSON(strm);
-#else
-        throw std::runtime_error("Not built with JSON support");
-#endif
 
     } else {
         pvd::PVStringPtr V(pvd::getPVDataCreate()->createPVScalar<pvd::PVString>());
