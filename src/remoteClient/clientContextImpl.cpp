@@ -13,6 +13,7 @@
 #include <osiSock.h>
 #include <epicsGuard.h>
 #include <epicsAssert.h>
+#include <epicsAtomic.h>
 
 #include <pv/lock.h>
 #include <pv/timer.h>
@@ -80,7 +81,7 @@ do{requester_type::shared_pointer PTR((WEAK).lock()); if(PTR) (PTR)->message(MSG
  */
 class BaseRequestImpl :
     public ResponseRequest,
-    public TransportSender,
+    public NetStats,
     public virtual epics::pvAccess::Destroyable
 {
 public:
@@ -410,6 +411,18 @@ public:
         }
     }
 
+    virtual void stats(Stats& s) const OVERRIDE FINAL
+    {
+        s.populated = true;
+        s.operationBytes.tx = epics::atomic::get(bytesTX);
+        s.operationBytes.rx = epics::atomic::get(bytesRX);
+        Transport::shared_pointer T(m_channel->getTransport());
+        if(T) { // must be connected
+            s.transportPeer = T->getRemoteName();
+            s.transportBytes.tx = epics::atomic::get(T->_totalBytesSent);
+            s.transportBytes.rx = epics::atomic::get(T->_totalBytesRecv);
+        }
+    }
 };
 
 size_t BaseRequestImpl::num_instances;
@@ -2500,6 +2513,7 @@ public:
         ResponseRequest::shared_pointer rr = _context.lock()->getResponseRequest(payloadBuffer->getInt());
         if (rr)
         {
+            epics::atomic::add(rr->bytesRX, payloadSize);
             rr->response(transport, version, payloadBuffer);
         } else {
             // oh no, we can't complete parsing this message!
@@ -2540,6 +2554,7 @@ public:
             ResponseRequest::shared_pointer rr = context->getResponseRequest(ioid);
             if (rr)
             {
+                epics::atomic::add(rr->bytesRX, payloadSize);
                 rr->response(transport, version, payloadBuffer);
             }
             else
@@ -2853,6 +2868,7 @@ public:
         ResponseRequest::shared_pointer rr = _context.lock()->getResponseRequest(ioid);
         if (rr)
         {
+            epics::atomic::add(rr->bytesRX, payloadSize);
             Requester::shared_pointer requester = rr->getRequester();
             if (requester) {
                 requester->message(message, type);
@@ -4560,7 +4576,6 @@ size_t InternalClientContextImpl::InternalChannelImpl::num_active;
 
 class ChannelGetFieldRequestImpl :
     public ResponseRequest,
-    public TransportSender,
     public epics::pvAccess::Destroyable,
     public std::tr1::enable_shared_from_this<ChannelGetFieldRequestImpl>
 {

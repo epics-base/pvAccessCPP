@@ -17,6 +17,7 @@
 #include <epicsThread.h>
 #include <epicsVersion.h>
 #include <errlog.h>
+#include <epicsAtomic.h>
 
 #include <pv/byteBuffer.h>
 #include <pv/pvType.h>
@@ -60,6 +61,8 @@ namespace pvAccess {
 size_t Transport::num_instances;
 
 Transport::Transport()
+    :_totalBytesSent(0u)
+    ,_totalBytesRecv(0u)
 {
     REFTRACE_INCREMENT(num_instances);
 }
@@ -92,7 +95,7 @@ AbstractCodec::AbstractCodec(
     bool blockingProcessQueue):
     //PROTECTED
     _readMode(NORMAL), _version(0), _flags(0), _command(0), _payloadSize(0),
-    _remoteTransportSocketReceiveBufferSize(MAX_TCP_RECV), _totalBytesSent(0),
+    _remoteTransportSocketReceiveBufferSize(MAX_TCP_RECV),
     _senderThread(0),
     _writeMode(PROCESS_SEND_QUEUE),
     _writeOpReady(false),
@@ -405,6 +408,8 @@ bool AbstractCodec::readToBuffer(
                 return false;
             }
         }
+
+        atomic::add(_totalBytesRecv, bytesRead);
     }
 
     // set pointers (aka flip)
@@ -808,7 +813,7 @@ void AbstractCodec::send(ByteBuffer *buffer)
             continue;
         }
 
-        _totalBytesSent += bytesSent;
+        atomic::add(_totalBytesSent, bytesSent);
 
         // readjust limit
         if (bytesToSend == maxBytesToSend)
@@ -887,10 +892,16 @@ void AbstractCodec::processSender(
     try {
         _lastMessageStartPosition = _sendBuffer.getPosition();
 
+        size_t before = atomic::get(_totalBytesSent) + _sendBuffer.getPosition();
+
         sender->send(&_sendBuffer, this);
 
         // automatic end (to set payload size)
         endMessage(false);
+
+        size_t after = atomic::get(_totalBytesSent) + _sendBuffer.getPosition();
+
+        atomic::add(sender->bytesTX, after - before);
     }
     catch (connection_closed_exception & ) {
         throw;

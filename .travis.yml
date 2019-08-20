@@ -28,4 +28,3 @@ env:
   - BRBASE=7.0 RTEMS=4.9 TEST=NO
   - BRBASE=3.16
   - BRBASE=3.15
-  - BRBASE=3.14

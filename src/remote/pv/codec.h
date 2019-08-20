@@ -260,7 +260,6 @@ protected:
     int8_t _command;
     int32_t _payloadSize; // TODO why not size_t?
     epics::pvData::int32 _remoteTransportSocketReceiveBufferSize;
-    int64_t _totalBytesSent;
     //TODO initialize union
     osiSockAddr _sendTo;
     epicsThreadId _senderThread;

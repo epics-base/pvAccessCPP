@@ -384,6 +384,8 @@ ChannelProvider::~ChannelProvider()
     REFTRACE_DECREMENT(num_instances);
 }
 
+NetStats::~NetStats() {}
+
 size_t ChannelBaseRequester::num_instances;
 
 ChannelBaseRequester::ChannelBaseRequester()

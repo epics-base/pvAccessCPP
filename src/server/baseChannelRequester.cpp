@@ -4,6 +4,8 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#include <epicsAtomic.h>
+
 #define epicsExportSharedSymbols
 #include <pv/baseChannelRequester.h>
 
@@ -83,6 +85,16 @@ void BaseChannelRequester::sendFailureMessage(const int8 command, Transport::sha
 {
     TransportSender::shared_pointer sender(new BaseChannelRequesterFailureMessageTransportSender(command, transport, ioid, qos, status));
     transport->enqueueSendRequest(sender);
+}
+
+void BaseChannelRequester::stats(Stats &s) const
+{
+    s.populated = true;
+    s.operationBytes.tx = atomic::get(bytesTX);
+    s.operationBytes.rx = atomic::get(bytesRX);
+    s.transportBytes.tx = atomic::get(_transport->_totalBytesSent);
+    s.transportBytes.rx = atomic::get(_transport->_totalBytesRecv);
+    s.transportPeer = _transport->getRemoteName();
 }
 
 BaseChannelRequesterMessageTransportSender::BaseChannelRequesterMessageTransportSender(const pvAccessID ioid, const string message,const epics::pvData::MessageType messageType):
