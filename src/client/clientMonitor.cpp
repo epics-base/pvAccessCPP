@@ -196,9 +196,6 @@ std::string Monitor::name() const
 
 void Monitor::cancel()
 {
-    changed.clear();
-    overrun.clear();
-    root.reset();
     if(impl) impl->cancel();
 }
 

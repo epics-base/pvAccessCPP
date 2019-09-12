@@ -124,7 +124,11 @@ struct epicsShareClass Monitor
     //! Channel name
     std::string name() const;
     //! Immediate cancellation.
-    //! Does not wait for remote confirmation.
+    /** Does not wait for remote confirmation.
+     *
+     @since Up to 7.0.0 also cleared root, changed, and overrun.
+            After 7.0.0, these data members are left unchanged.
+     **/
     void cancel();
     /** updates root, changed, overrun
      *
