@@ -76,7 +76,7 @@ void osdGetRoles(const std::string& account, PeerInfo::roles_t& roles)
      */
     {
         // start with a guess
-        std::vector<osi_gid_t> gtemp(16);
+        std::vector<osi_gid_t> gtemp(16, (osi_gid_t)-1);
 
         while(true) {
             int gcount = int(gtemp.size());
@@ -95,11 +95,11 @@ void osdGetRoles(const std::string& account, PeerInfo::roles_t& roles)
             } else if(gcount == int(gtemp.size())) {
                 // too small, but gcount not updated.  (Mac)
                 // arbitrary increase to size and retry
-                gtemp.resize(gtemp.size()*2u);
+                gtemp.resize(gtemp.size()*2u, (osi_gid_t)-1);
 
             } else if(gcount > int(gtemp.size())) {
                 // too small, gcount holds actual size.  retry
-                gtemp.resize(gcount);
+                gtemp.resize(gcount, (osi_gid_t)-1);
 
             } else {
                 // too small, but gcount got smaller?  give up
@@ -114,8 +114,6 @@ void osdGetRoles(const std::string& account, PeerInfo::roles_t& roles)
 
     // map GIDs to names
     for(gids_t::iterator it(gids.begin()), end(gids.end()); it!=end; it++) {
-        assert((*it)!=0); // 0 indicates a logic error above
-
         group* gr = getgrgid(*it);
         if(!gr)
             continue;
