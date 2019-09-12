@@ -22,10 +22,13 @@ int main(int argc, char *argv[])
             throw std::runtime_error("Unable to determine username");
 
         name[name.size()-1] = '\0';
-        std::cout<<"User: "<<(&name[0])<<"\n";
+
+        const char *user = argc<=1 ? &name[0] : argv[1];
+
+        std::cout<<"User: "<<user<<"\n";
 
         pva::PeerInfo::roles_t roles;
-        pva::osdGetRoles(&name[0], roles);
+        pva::osdGetRoles(user, roles);
 
         std::cout<<"Groups: \n";
         for(pva::PeerInfo::roles_t::const_iterator it(roles.begin()), end(roles.end());
