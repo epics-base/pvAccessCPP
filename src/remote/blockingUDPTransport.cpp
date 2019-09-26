@@ -261,7 +261,7 @@ void BlockingUDPTransport::run() {
                     if(pvAccessIsLoggable(logLevelDebug)) {
                         char strBuffer[64];
                         sockAddrToDottedIP(&fromAddress.sa, strBuffer, sizeof(strBuffer));
-                        LOG(logLevelDebug, "UDP Rx (%d) %s <- %s", bytesRead, _remoteName.c_str(), strBuffer);
+                        LOG(logLevelDebug, "UDP %s Rx (%d) %s <- %s", (_clientServerWithEndianFlag&0x40)?"Server":"Client", bytesRead, _remoteName.c_str(), strBuffer);
                     }
 
                     _receiveBuffer.setPosition(RECEIVE_BUFFER_PRE_RESERVE);
