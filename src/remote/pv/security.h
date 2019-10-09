@@ -290,7 +290,7 @@ public:
 private:
     typedef std::map<int, AuthorizationPlugin::shared_pointer> map_t;
     map_t map;
-    void *busy;
+    size_t busy;
     mutable epicsMutex mutex;
 public:
 

@@ -289,12 +289,11 @@ bool AuthorizationRegistry::remove(const AuthorizationPlugin::shared_pointer& pl
 
 void AuthorizationRegistry::run(const std::tr1::shared_ptr<PeerInfo>& peer)
 {
-    int marker;
     {
         Guard G(mutex);
         if(busy)
             throw std::runtime_error("AuthorizationRegistry busy");
-        busy = &marker;
+        busy++;
     }
     for(map_t::iterator it(map.begin()), end(map.end()); it!=end; ++it)
     {
@@ -302,8 +301,8 @@ void AuthorizationRegistry::run(const std::tr1::shared_ptr<PeerInfo>& peer)
     }
     {
         Guard G(mutex);
-        assert(busy==&marker);
-        busy = 0;
+        assert(busy>=0);
+        busy--;
     }
 }
 
