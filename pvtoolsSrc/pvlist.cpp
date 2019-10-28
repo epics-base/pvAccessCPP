@@ -702,11 +702,10 @@ int main (int argc, char *argv[])
                 std::copy(val.begin(),
                           val.end(),
                           std::ostream_iterator<std::string>(std::cout, "\n"));
-
-                return allOK ? 0 : 1;
             }
-
-            std::cout<<ret<<"\n";
+            else {
+                std::cout<<ret<<"\n";
+            }
         }
     }
 
