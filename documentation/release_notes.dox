@@ -4,155 +4,155 @@ Release 7.1.0 (Nov 2019)
 ========================
 
 - Incompatible changes
- - Requires Base >= 3.15
+  - Requires Base >= 3.15
 - Changes
- - Change semantics of StaticProvider::close() wrt. closing SharedPV
- - Invalid values in EPICS_PVAS_INTF_ADDR_LIST fails hard
- - Change to side-effects of pvac::Monitor::cancel()
+  - Change semantics of StaticProvider::close() wrt. closing SharedPV
+  - Invalid values in EPICS_PVAS_INTF_ADDR_LIST fails hard
+  - Change to side-effects of pvac::Monitor::cancel()
 - Bug fixes
 
 Release 7.0.0 (July 2019)
 =========================
 
 - Incompatible changes
- - Peers claiming protocol minor version 0 are ignored.  The change from 0 -> 1 included incompatible changes
-   to CMD_BEACON and several others network messages, and inter-operation was never possible.
-   Attempts resulted in printing error messages to console.
- - The Access Security interface classes in pv/security.h are completely redesigned.
-   The SecurityPlugin interface is replaced with epics::pvAccess::AuthenticationPlugin and epics::pvAccess::AuthorizationRegistry
-   as separate phases to connection setup.  Each connection will select one epics::pvAccess::AuthenticationPlugin
-   and zero or more epics::pvAccess::AuthorizationPlugin s.  The result of this process is a epics::pvAccess::PeerInfo
-   which may be accessed with with epics::pvAccess::ChannelFindRequester::getPeerInfo()
-   and epics::pvAccess::ChannelRequester::getPeerInfo() .
+  - Peers claiming protocol minor version 0 are ignored.  The change from 0 -> 1 included incompatible changes
+    to CMD_BEACON and several others network messages, and inter-operation was never possible.
+    Attempts resulted in printing error messages to console.
+  - The Access Security interface classes in pv/security.h are completely redesigned.
+    The SecurityPlugin interface is replaced with epics::pvAccess::AuthenticationPlugin and epics::pvAccess::AuthorizationRegistry
+    as separate phases to connection setup.  Each connection will select one epics::pvAccess::AuthenticationPlugin
+    and zero or more epics::pvAccess::AuthorizationPlugin s.  The result of this process is a epics::pvAccess::PeerInfo
+    which may be accessed with with epics::pvAccess::ChannelFindRequester::getPeerInfo()
+    and epics::pvAccess::ChannelRequester::getPeerInfo() .
 - Removals
- - pv/namedLockPattern.h
- - createFileLogger() from pv/logger.h
+  - pv/namedLockPattern.h
+  - createFileLogger() from pv/logger.h
 - Fixes
- - Implement idle timeout on TCP connections.
-   Introduces minor protocol version 2.  Connections between v2 peers send a CMD_ECHO message from client -> server.
-   Either side will close the TCP connection if no message has been received within the past 30 seconds (by default).
-   This can be configured with $EPICS_PVA_CONN_TMO .
+  - Implement idle timeout on TCP connections.
+    Introduces minor protocol version 2.  Connections between v2 peers send a CMD_ECHO message from client -> server.
+    Either side will close the TCP connection if no message has been received within the past 30 seconds (by default).
+    This can be configured with $EPICS_PVA_CONN_TMO .
 - Changes
- - The output of the 'pvasr' iocsh command has been expanded.
+  - The output of the 'pvasr' iocsh command has been expanded.
 
 Release 6.1.2 (Apr 2019)
 ========================
 
 - Changes
- - When available, use environment variable defaults from Base
- - Relax state check in epics::pvAccess::MonitorFIFO::post() and tryPost() to allow post() while closed.
-   Allows user code to avoid extra synchronization during shutdown (just call close() ).
-   Synchronization between open() and post() on type change is still required.
+  - When available, use environment variable defaults from Base
+  - Relax state check in epics::pvAccess::MonitorFIFO::post() and tryPost() to allow post() while closed.
+    Allows user code to avoid extra synchronization during shutdown (just call close() ).
+    Synchronization between open() and post() on type change is still required.
 
 Release 6.1.1 (Mar 2019)
 ========================
 
 - Fixes
- - pvcall fix array args
- - pvinfo show server IP
+  - pvcall fix array args
+  - pvinfo show server IP
 
 Release 6.1.0 (Nov 2018)
 ========================
 
 - Deprecations
- - pv/namedLockPattern.h
- - createFileLogger() from pv/logger.h
+  - pv/namedLockPattern.h
+  - createFileLogger() from pv/logger.h
 - Removals
- - No longer install testServer, testGetPerformance, testMonitorPerformance, rpcServiceExample, rpcServiceAsyncExample, rpcWildServiceExample, rpcClientExample, and pipelineServiceExample.
-   These will continue to be built, and may be found under testApp/O.* .
- - The @b eget CLI utility has moved to https://github.com/epics-base/eget
-   The new @b pvcall and existing pvget replace its role as a low level troubleshooting tool.
- - Remove deprecated methods configure(), flush(), and poll() from ChannelProvider.
- - Remove RPCClient::sendRequest()
- - Remove RPCService::destroy() and dispose()
- - Typedefs GUID, Service
+  - No longer install testServer, testGetPerformance, testMonitorPerformance, rpcServiceExample, rpcServiceAsyncExample, rpcWildServiceExample, rpcClientExample, and pipelineServiceExample.
+    These will continue to be built, and may be found under testApp/O.* .
+  - The @b eget CLI utility has moved to https://github.com/epics-base/eget
+    The new @b pvcall and existing pvget replace its role as a low level troubleshooting tool.
+  - Remove deprecated methods configure(), flush(), and poll() from ChannelProvider.
+  - Remove RPCClient::sendRequest()
+  - Remove RPCService::destroy() and dispose()
+  - Typedefs GUID, Service
 - Fixes
- - epics::pvAccess::pvAccessLog() add EPICS_PRINTF_STYLE()
- - ioc: shutdown PVA server via epicsAtExit()
- - fix 'pva' provider registration during static linking
- - Various fixes related to shared_ptr loop breaking.
- - Various crashes and deadlocks.
- - PVA client context: avoid lock order violations
+  - epics::pvAccess::pvAccessLog() add EPICS_PRINTF_STYLE()
+  - ioc: shutdown PVA server via epicsAtExit()
+  - fix 'pva' provider registration during static linking
+  - Various fixes related to shared_ptr loop breaking.
+  - Various crashes and deadlocks.
+  - PVA client context: avoid lock order violations
 - Changes
- - pvac::Monitor - shallow copy into Monitor::root
- - pvget -m shows time and alarm if available (thanks to Andrew Starritt)
- - PVA Server now handles pipeline=true automatically for all ChannelProviders.
-   It is only necessary to implement epics::pvAccess::Monitor::reportRemoteQueueStatus()
-   to receive notification of initial window size.
- - Most locking issues in the 'ca' provider should now be resolved.
+  - pvac::Monitor - shallow copy into Monitor::root
+  - pvget -m shows time and alarm if available (thanks to Andrew Starritt)
+  - PVA Server now handles pipeline=true automatically for all ChannelProviders.
+    It is only necessary to implement epics::pvAccess::Monitor::reportRemoteQueueStatus()
+    to receive notification of initial window size.
+  - Most locking issues in the 'ca' provider should now be resolved.
 - Additions
- - Add pvmonitor execuable as an alias for 'pvget -m'.
- - Add new pvcall executable to make RPC calls with arguments encoded using the NTURI convention.
- - pvput to NTEnum via. string now supported
- - pvac::* add valid() method and boolean cast shorthand.  Also reset() and operator<<(ostream, ...)
- - Add pvac::GetEvent::valid to determine fields actually transfered during a Get operation.
- - Add pvac::ClientProvider::name()
- - Add epics::pvAccess::MonitorFIFO utility implementation of epics::pvAccess::Monitor
- - Add pvas::StaticProvider, pvas::DynamicProvider, and pvas::SharedPV.  See @ref pvas
- - Support in the 'ca' provider for new pvRequest options:
-   - New `DBE` record option to select CA events to monitor, containing any combination of the keywords `VALUE`, `ARCHIVE`, `ALARM` and/or `PROPERTY`.
-   - New `dbtype` field option to represent data types returned by CA as an unsigned or 64-bit integer.
-   - New `pvtype=pvString` field option to represent an array of chars from CA as a string.
+  - Add pvmonitor execuable as an alias for 'pvget -m'.
+  - Add new pvcall executable to make RPC calls with arguments encoded using the NTURI convention.
+  - pvput to NTEnum via. string now supported
+  - pvac::* add valid() method and boolean cast shorthand.  Also reset() and operator<<(ostream, ...)
+  - Add pvac::GetEvent::valid to determine fields actually transfered during a Get operation.
+  - Add pvac::ClientProvider::name()
+  - Add epics::pvAccess::MonitorFIFO utility implementation of epics::pvAccess::Monitor
+  - Add pvas::StaticProvider, pvas::DynamicProvider, and pvas::SharedPV.  See @ref pvas
+  - Support in the 'ca' provider for new pvRequest options:
+    - New `DBE` record option to select CA events to monitor, containing any combination of the keywords `VALUE`, `ARCHIVE`, `ALARM` and/or `PROPERTY`.
+    - New `dbtype` field option to represent data types returned by CA as an unsigned or 64-bit integer.
+    - New `pvtype=pvString` field option to represent an array of chars from CA as a string.
 
 Release 6.0.0 (Dec 2017)
 ========================
 
 - Incompatible changes
- - Requires pvDataCPP >=7.0.0 due to headers moved from pvDataCPP into this module: requester.h, destoryable.h, and monitor.h
- - Major changes to shared_ptr ownership rules for epics::pvAccess::ChannelProvider and
-   associated classes.  See
-  - @ref providers
-  - @ref providers_changes
- - Add new library pvAccessIOC for use with PVAClientRegister.dbd and PVAServerRegister.dbd.
-   Necessary to avoid having pvAccess library depend on all IOC core libraries.
- - Added new library pvAccessCA with "ca" provider.  Main pvAccess library no longer depends on libca.
-   Applications needing the "ca" provider must link against pvAccessCA and pvAccess.
-   See examples/Makefile in the source tree.
-   The headers associated with this library are: caChannel.h, caProvider.h, and caStatus.h
- - A number of headers which were previously installed, but considered "private", are no longer installed.
- - epics::pvAccess::ChannelProviderRegistry may no longer be sub-classed.
- - Removed access to singleton registry via getChannelProviderRegistry() and registerChannelProviderFactory()
-   in favor of epics::pvAccess::ChannelProviderRegistry::clients() and epics::pvAccess::ChannelProviderRegistry::servers().
-   The "pva" and "ca" providers are registered with the clients() singleton.
-   epics::pvAccess::ServerContext() looks up names with the servers() singleton.
- - Removed deprecated epics::pvAccess::Properties
- - The data members of epics::pvAccess::MonitorElement become const, preventing these pointers from being re-targeted.
+  - Requires pvDataCPP >=7.0.0 due to headers moved from pvDataCPP into this module: requester.h, destoryable.h, and monitor.h
+  - Major changes to shared_ptr ownership rules for epics::pvAccess::ChannelProvider and
+    associated classes.  See
+    - @ref providers
+    - @ref providers_changes
+  - Add new library pvAccessIOC for use with PVAClientRegister.dbd and PVAServerRegister.dbd.
+    Necessary to avoid having pvAccess library depend on all IOC core libraries.
+  - Added new library pvAccessCA with "ca" provider.  Main pvAccess library no longer depends on libca.
+    Applications needing the "ca" provider must link against pvAccessCA and pvAccess.
+    See examples/Makefile in the source tree.
+    The headers associated with this library are: caChannel.h, caProvider.h, and caStatus.h
+  - A number of headers which were previously installed, but considered "private", are no longer installed.
+  - epics::pvAccess::ChannelProviderRegistry may no longer be sub-classed.
+  - Removed access to singleton registry via getChannelProviderRegistry() and registerChannelProviderFactory()
+    in favor of epics::pvAccess::ChannelProviderRegistry::clients() and epics::pvAccess::ChannelProviderRegistry::servers().
+    The "pva" and "ca" providers are registered with the clients() singleton.
+    epics::pvAccess::ServerContext() looks up names with the servers() singleton.
+  - Removed deprecated epics::pvAccess::Properties
+  - The data members of epics::pvAccess::MonitorElement become const, preventing these pointers from being re-targeted.
 - Simplifications
- - use of the epics::pvAccess::ChannelRequester interface is optional
-   and may be omitted when calling createChannel().
-   Channel state change notifications are deliviered
-   to individual operations via epics::pvAccess::ChannelBaseRequester::channelDisconnect()
- - Default implementions added for the following methods
-  - epics::pvAccess::Lockable::lock() and epics::pvAccess::Lockable::unlock() which do nothing.
-  - epics::pvAccess::Channel::getConnectionState() returns CONNECTED
-  - epics::pvAccess::Channel::isConnected() uses getConnectionState()
-  - epics::pvAccess::Channel::getField() which errors
-  - epics::pvAccess::Channel::getAccessRights() which returns rw
- - Added epics::pvAccess::SimpleChannelProviderFactory template and
-   epics::pvAccess::ChannelProviderRegistry::add() avoids need for custom
-   factory.
- - Added epics::pvAccess::MonitorElement::Ref iterator/smart-pointer
-   to ensure proper handling of calls Monitor::poll() and Monitor::release().
- - epics::pvAccess::PipelineMonitor "internal" is collapsed into epics::pvAccess::Monitor.
-   PipelineMonitor becomes a typedef for Monitor.
- - epics::pvAccess::RPCService is now a sub-class of epics::pvAccess::RPCServiceAsync
+  - use of the epics::pvAccess::ChannelRequester interface is optional
+    and may be omitted when calling createChannel().
+    Channel state change notifications are deliviered
+    to individual operations via epics::pvAccess::ChannelBaseRequester::channelDisconnect()
+  - Default implementions added for the following methods
+    - epics::pvAccess::Lockable::lock() and epics::pvAccess::Lockable::unlock() which do nothing.
+    - epics::pvAccess::Channel::getConnectionState() returns CONNECTED
+    - epics::pvAccess::Channel::isConnected() uses getConnectionState()
+    - epics::pvAccess::Channel::getField() which errors
+    - epics::pvAccess::Channel::getAccessRights() which returns rw
+  - Added epics::pvAccess::SimpleChannelProviderFactory template and
+    epics::pvAccess::ChannelProviderRegistry::add() avoids need for custom
+    factory.
+  - Added epics::pvAccess::MonitorElement::Ref iterator/smart-pointer
+    to ensure proper handling of calls Monitor::poll() and Monitor::release().
+  - epics::pvAccess::PipelineMonitor "internal" is collapsed into epics::pvAccess::Monitor.
+    PipelineMonitor becomes a typedef for Monitor.
+  - epics::pvAccess::RPCService is now a sub-class of epics::pvAccess::RPCServiceAsync
 - Additions
- - pv/pvAccess.h now provides macros OVERRIDE and FINAL which conditionally expand to the c++11 keywords override and final.
- - Deliver disconnect notifications to individual Operations (get/put/rpc/monitor/...) via
-   new epics::pvAccess::ChannelBaseRequester::channelDisconnect()
- - New API for server creation via epics::pvAccess::ServerContext::create() allows direct specification
-   of configuration and ChannelProvider(s).
- - Add epics::pvAccess::ServerContext::getCurrentConfig() to get actual configuration, eg. for use with a client.
- - Classes from moved headers requester.h, destoryable.h, and monitor.h added to epics::pvAccess namespace.
-   Typedefs provided in epics::pvData namespace.
- - Added Client API based on pvac::ClientProvider
- - pv/pvaVersion.h defines VERSION_INT and PVACCESS_VERSION_INT
- - epics::pvAccess::RPCClient may be directly constructed.
- - epics::pvAccess::RPCServer allows epics::pvAccess::Configuration to be specified and access to ServerContext.
- - Added epics::pvAccess::Configuration::keys() to iterate configuration parameters (excluding environment variables).
- - Added epics::pvAccess::Destoryable::cleaner
+  - pv/pvAccess.h now provides macros OVERRIDE and FINAL which conditionally expand to the c++11 keywords override and final.
+  - Deliver disconnect notifications to individual Operations (get/put/rpc/monitor/...) via
+    new epics::pvAccess::ChannelBaseRequester::channelDisconnect()
+  - New API for server creation via epics::pvAccess::ServerContext::create() allows direct specification
+    of configuration and ChannelProvider(s).
+  - Add epics::pvAccess::ServerContext::getCurrentConfig() to get actual configuration, eg. for use with a client.
+  - Classes from moved headers requester.h, destoryable.h, and monitor.h added to epics::pvAccess namespace.
+    Typedefs provided in epics::pvData namespace.
+  - Added Client API based on pvac::ClientProvider
+  - pv/pvaVersion.h defines VERSION_INT and PVACCESS_VERSION_INT
+  - epics::pvAccess::RPCClient may be directly constructed.
+  - epics::pvAccess::RPCServer allows epics::pvAccess::Configuration to be specified and access to ServerContext.
+  - Added epics::pvAccess::Configuration::keys() to iterate configuration parameters (excluding environment variables).
+  - Added epics::pvAccess::Destoryable::cleaner
 - Deprecations
- - epics::pvAccess::GUID in favor of epics::pvAccess::ServerGUID due to win32 name conflict.
+  - epics::pvAccess::GUID in favor of epics::pvAccess::ServerGUID due to win32 name conflict.
 
 Release 5.0.0 (July 2016)
 =========================
