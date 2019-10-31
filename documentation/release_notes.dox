@@ -1,12 +1,15 @@
 /** @page pvarelease_notes Release Notes
 
-Release X.Y.Z
-=============
+Release 7.1.0 (Nov 2019)
+========================
 
 - Incompatible changes
  - Requires Base >= 3.15
 - Changes
  - Change semantics of StaticProvider::close() wrt. closing SharedPV
+ - Invalid values in EPICS_PVAS_INTF_ADDR_LIST fails hard
+ - Change to side-effects of pvac::Monitor::cancel()
+- Bug fixes
 
 Release 7.0.0 (July 2019)
 =========================

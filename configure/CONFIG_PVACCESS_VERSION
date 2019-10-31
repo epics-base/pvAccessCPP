@@ -1,8 +1,8 @@
 # Version number for the PV Access API and shared library
 
 EPICS_PVA_MAJOR_VERSION = 7
-EPICS_PVA_MINOR_VERSION = 0
-EPICS_PVA_MAINTENANCE_VERSION = 1
+EPICS_PVA_MINOR_VERSION = 1
+EPICS_PVA_MAINTENANCE_VERSION = 0
 
 # Development flag, set to zero for release versions
 
