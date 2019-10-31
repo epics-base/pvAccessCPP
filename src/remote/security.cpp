@@ -291,8 +291,6 @@ void AuthorizationRegistry::run(const std::tr1::shared_ptr<PeerInfo>& peer)
 {
     {
         Guard G(mutex);
-        if(busy)
-            throw std::runtime_error("AuthorizationRegistry busy");
         busy++;
     }
     for(map_t::iterator it(map.begin()), end(map.end()); it!=end; ++it)
