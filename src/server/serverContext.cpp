@@ -224,7 +224,7 @@ ServerContextImpl::getCurrentConfig()
 
     {
         char buf[50];
-        ipAddrToA(&_ifaceAddr.ia, buf, sizeof(buf));
+        ipAddrToDottedIP(&_ifaceAddr.ia, buf, sizeof(buf));
         buf[sizeof(buf)-1] = '\0';
         SET("EPICS_PVAS_INTF_ADDR_LIST", buf);
     }
