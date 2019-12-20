@@ -232,11 +232,11 @@ int MAIN (int argc, char *argv[])
             std::cerr<<"Error: "<<e.what()<<"\n";
             return 1;
         }
-        assert(ret);
 
         if(verbosity>=1)
             std::cout<<"# Result\n";
-        std::cout<<ret->stream().format(outmode);
+        if(ret)
+            std::cout<<ret->stream().format(outmode);
 
         return 0;
     } catch(std::exception& e) {
