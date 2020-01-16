@@ -107,6 +107,56 @@ void pvasr(int lvl)
     }
 }
 
+namespace {
+struct DummyLister : public pva::ChannelListRequester
+{
+    const std::string pname;
+    const int lvl;
+    DummyLister(const std::string& pname, int lvl) :pname(pname), lvl(lvl) {}
+    virtual ~DummyLister() {}
+
+    // ChannelListRequester interface
+public:
+    virtual void channelListResult(const pvd::Status &status,
+                                   const pva::ChannelFind::shared_pointer &channelFind,
+                                   const pvd::PVStringArray::const_svector &channelNames,
+                                   bool hasDynamic) OVERRIDE FINAL
+    {
+        if(lvl)
+            printf("#Provider: \"%s\"%s\n", pname.c_str(), hasDynamic ? " dynamic" : "");
+        if(lvl && !status.isSuccess())
+            printf("#Message: %s\n", status.getMessage().c_str());
+        for(size_t i=0, N=channelNames.size(); i<N; i++)
+            printf("%s\n", channelNames[i].c_str());
+    }
+};
+} // namespace
+
+void pval(int lvl)
+{
+    try {
+        pva::ServerContext::shared_pointer serv;
+        {
+            pvd::Lock G(the_server_lock);
+            serv = the_server;
+        }
+        if(!serv) {
+            std::cout<<"PVA server not running\n";
+        } else {
+            const std::vector<pva::ChannelProvider::shared_pointer>& providers = serv->getChannelProviders();
+
+            for(size_t p=0, P=providers.size(); p<P; p++)
+            {
+                std::tr1::shared_ptr<DummyLister> lister(new DummyLister(providers[p]->getProviderName(), lvl));
+                (void)providers[p]->channelList(lister);
+            }
+        }
+
+    }catch(std::exception& e){
+        std::cout<<"Error: "<<e.what()<<std::endl;
+    }
+}
+
 void pva_server_cleanup(void *)
 {
     stopPVAServer();
@@ -129,6 +179,7 @@ void registerStartPVAServer(void)
     epics::iocshRegister<const char*, &startPVAServer>("startPVAServer", "provider names");
     epics::iocshRegister<&stopPVAServer>("stopPVAServer");
     epics::iocshRegister<int, &pvasr>("pvasr", "detail");
+    epics::iocshRegister<int, &pval>("pval", "detail");
     initHookRegister(&initStartPVAServer);
 }
 
