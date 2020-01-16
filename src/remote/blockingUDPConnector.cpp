@@ -73,7 +73,7 @@ BlockingUDPTransport::shared_pointer BlockingUDPConnector::connect(ResponseHandl
 
     retval = ::bind(socket, (sockaddr*)&(bindAddress.sa), sizeof(sockaddr));
     if(retval<0) {
-        char ip[20];
+        char ip[24];
         sockAddrToDottedIP((sockaddr*)&(bindAddress.sa), ip, sizeof(ip));
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
