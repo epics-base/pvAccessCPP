@@ -341,18 +341,9 @@ int main (int argc, char *argv[])
             size_t sep = values[i].find_first_of('=');
             if(sep==std::string::npos) {
                 thework.bare.push_back(values[i]);
-                if(!thework.bare.back().empty() && thework.bare.back()[0]=='{') {
-                    fprintf(stderr, "JSON syntax not supported by this build.\n");
-                    return 1;
-                }
             } else {
                 thework.pairs.push_back(std::make_pair(values[i].substr(0, sep),
                                                        values[i].substr(sep+1)));
-
-                if(!thework.pairs.back().second.empty() && thework.pairs.back().second[0]=='{') {
-                    fprintf(stderr, "JSON syntax not supported by this build.\n");
-                    return 1;
-                }
             }
         }
 
