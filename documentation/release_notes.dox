@@ -1,5 +1,13 @@
 /** @page pvarelease_notes Release Notes
 
+Release X.Y.Z (XXX 2020)
+
+- Changes
+  - Add 'pval' iocsh command to list names from all providers of the running server.
+- Bug fixes
+  - pvput fix JSON mode regression
+  - Some error messages incorrectly showed "<IPA>" instead of an actual IP+port.
+
 Release 7.1.0 (Nov 2019)
 ========================
 
