@@ -1264,7 +1264,7 @@ BlockingTCPTransportCodec::BlockingTCPTransportCodec(bool serverFlag, const Cont
             errStr);
         _socketName = "<unknown>:0";
     } else {
-        char ipAddrStr[64];
+        char ipAddrStr[24];
         ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
         _socketName = ipAddrStr;
     }
@@ -1395,7 +1395,7 @@ void BlockingTCPTransportCodec::authNZMessage(epics::pvData::PVStructure::shared
         sess->messageReceived(data);
     else
     {
-        char ipAddrStr[48];
+        char ipAddrStr[24];
         ipAddrToDottedIP(&_socketAddress.ia, ipAddrStr, sizeof(ipAddrStr));
         LOG(logLevelWarn, "authNZ message received from '%s' but no security plug-in session active.", ipAddrStr);
     }

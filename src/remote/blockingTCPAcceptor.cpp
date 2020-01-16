@@ -47,7 +47,7 @@ BlockingTCPAcceptor::~BlockingTCPAcceptor() {
 
 int BlockingTCPAcceptor::initialize() {
 
-    char ipAddrStr[48];
+    char ipAddrStr[24];
     ipAddrToDottedIP(&_bindAddress.ia, ipAddrStr, sizeof(ipAddrStr));
 
     int tryCount = 0;
@@ -133,7 +133,7 @@ int BlockingTCPAcceptor::initialize() {
 
 void BlockingTCPAcceptor::run() {
     // rise level if port is assigned dynamically
-    char ipAddrStr[48];
+    char ipAddrStr[24];
     ipAddrToDottedIP(&_bindAddress.ia, ipAddrStr, sizeof(ipAddrStr));
     LOG(logLevelDebug, "Accepting connections at %s.", ipAddrStr);
 
@@ -240,7 +240,7 @@ void BlockingTCPAcceptor::destroy() {
     }
 
     if(sock!=INVALID_SOCKET) {
-        char ipAddrStr[48];
+        char ipAddrStr[24];
         ipAddrToDottedIP(&_bindAddress.ia, ipAddrStr, sizeof(ipAddrStr));
         LOG(logLevelDebug, "Stopped accepting connections at %s.", ipAddrStr);
 

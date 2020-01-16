@@ -33,7 +33,7 @@ BlockingTCPConnector::BlockingTCPConnector(
 
 SOCKET BlockingTCPConnector::tryConnect(osiSockAddr& address, int tries) {
 
-    char strBuffer[64];
+    char strBuffer[24];
     ipAddrToDottedIP(&address.ia, strBuffer, sizeof(strBuffer));
 
     for(int tryCount = 0; tryCount<tries; tryCount++) {
@@ -75,7 +75,7 @@ Transport::shared_pointer BlockingTCPConnector::connect(std::tr1::shared_ptr<Cli
 
     SOCKET socket = INVALID_SOCKET;
 
-    char ipAddrStr[64];
+    char ipAddrStr[24];
     ipAddrToDottedIP(&address.ia, ipAddrStr, sizeof(ipAddrStr));
 
     Context::shared_pointer context = _context.lock();

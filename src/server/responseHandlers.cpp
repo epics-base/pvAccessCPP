@@ -92,7 +92,7 @@ void ServerBadResponse::handleResponse(osiSockAddr* responseFrom,
     AbstractServerResponseHandler::handleResponse(responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
-    char ipAddrStr[48];
+    char ipAddrStr[24];
     ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
 
     LOG(logLevelInfo,
