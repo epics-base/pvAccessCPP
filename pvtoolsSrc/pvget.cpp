@@ -286,12 +286,17 @@ int MAIN (int argc, char *argv[])
                 break;
             case 'V':               /* Print version */
             {
-                pva::Version version(EXECNAME, "cpp",
-                                     EPICS_PVA_MAJOR_VERSION,
-                                     EPICS_PVA_MINOR_VERSION,
-                                     EPICS_PVA_MAINTENANCE_VERSION,
-                                     EPICS_PVA_DEVELOPMENT_FLAG);
-                fprintf(stdout, "%s\n", version.getVersionString().c_str());
+                fprintf(stdout, "pvAccess %u.%u.%u%s\n",
+                        EPICS_PVA_MAJOR_VERSION,
+                        EPICS_PVA_MINOR_VERSION,
+                        EPICS_PVA_MAINTENANCE_VERSION,
+                        (EPICS_PVA_DEVELOPMENT_FLAG)?"-SNAPSHOT":"");
+                fprintf(stdout, "pvData %u.%u.%u%s\n",
+                        EPICS_PVD_MAJOR_VERSION,
+                        EPICS_PVD_MINOR_VERSION,
+                        EPICS_PVD_MAINTENANCE_VERSION,
+                        (EPICS_PVD_DEVELOPMENT_FLAG)?"-SNAPSHOT":"");
+                fprintf(stdout, "Base %s\n", EPICS_VERSION_FULL);
                 return 0;
             }
             case 'R':
