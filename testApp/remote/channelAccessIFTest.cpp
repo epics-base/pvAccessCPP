@@ -50,6 +50,13 @@ const std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray1";
 #define EXTRA_STRESS_TESTS 0
 #endif
 
+/// test if values are equal within a given tolerance
+template <typename T>
+inline bool compareWithTol(const T v1, const T v2, const T tol)
+{
+	return (std::fabs(v1 - v2) <= tol);
+}
+
 int ChannelAccessIFTest::runAllTest() {
 
     testPlan(152+EXTRA_STRESS_TESTS);
@@ -1924,7 +1931,7 @@ void ChannelAccessIFTest::test_channelArray() {
     //checking 1.1 2.2 3.3 4.4 5.5
     for (unsigned i = 0; i < numOfElements; i++) {
         int ii = i + 1;
-        testOk(data[i] == (ii + ii*0.1), "%s: data slot %d should be %f not %f", CURRENT_FUNCTION, i, (ii+ii*0.1), data[i]);
+        testOk(compareWithTol(data[i], ii + ii*0.1, 1e-5), "%s: data slot %d should be %f not %f", CURRENT_FUNCTION, i, (ii+ii*0.1), data[i]);
     }
 
 
