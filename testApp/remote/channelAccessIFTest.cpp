@@ -1898,7 +1898,7 @@ void ChannelAccessIFTest::test_channelArray() {
 
     //inserting 1.1 2.2 3.3 4.4 5.5
     for (unsigned i = 1 ; i <= numOfElements; i++) {
-        double val = i+i*0.1;
+        double val = i + i*0.1;
         newdata.push_back(val);
     }
 
@@ -1924,7 +1924,7 @@ void ChannelAccessIFTest::test_channelArray() {
     //checking 1.1 2.2 3.3 4.4 5.5
     for (unsigned i = 0; i < numOfElements; i++) {
         int ii = i + 1;
-        testOk(data[i] == (ii+ii*0.1), "%s: data slot %d should be %f", CURRENT_FUNCTION, i, (ii+ii*0.1));
+        testOk(data[i] == (ii + ii*0.1), "%s: data slot %d should be %f not %f", CURRENT_FUNCTION, i, (ii+ii*0.1), data[i]);
     }
 
 
@@ -1943,8 +1943,8 @@ void ChannelAccessIFTest::test_channelArray() {
 
     PVDoubleArrayPtr array1 = TR1::static_pointer_cast<PVDoubleArray>(arrayReq->getArray());
     PVDoubleArray::const_svector data1(array1->view());
-    testOk(data1[0] == 4.4 , "%s: 1.check 0: %f", CURRENT_FUNCTION, data1[0]);
-    testOk(data1[1] == 1.1 , "%s: 1.check 1: %f", CURRENT_FUNCTION, data1[1]);
+    testOk(data1[0] == 4.4 , "%s: 1.check 0: %f == 4.4", CURRENT_FUNCTION, data1[0]);
+    testOk(data1[1] == 1.1 , "%s: 1.check 1: %f == 1.1", CURRENT_FUNCTION, data1[1]);
     // TODO java put can aut-extend array, C++ implementation does not
     testOk(data1.size() == 2 , "%s: data1.size() == 2", CURRENT_FUNCTION);
     //testOk(data1[2] == 2.2 , "%s: check 2: %f", CURRENT_FUNCTION, data1[2]);
@@ -1967,9 +1967,9 @@ void ChannelAccessIFTest::test_channelArray() {
     PVDoubleArray::const_svector data2(array2->view());
     testOk(data2.size() == 3, "%s: data size after calling setLength should be 3 ",
            CURRENT_FUNCTION);
-    testOk(data2[0] == 1.1 , "%s:  2.check 0: %f", CURRENT_FUNCTION, data2[0]);
-    testOk(data2[1] == 2.2 , "%s:  2.check 1: %f", CURRENT_FUNCTION, data2[1]);
-    testOk(data2[2] == 3.3,  "%s:  2.check 2: %f", CURRENT_FUNCTION, data2[2]);
+    testOk(data2[0] == 1.1 , "%s:  2.check 0: %f == 1.1", CURRENT_FUNCTION, data2[0]);
+    testOk(data2[1] == 2.2 , "%s:  2.check 1: %f == 2.2", CURRENT_FUNCTION, data2[1]);
+    testOk(data2[2] == 3.3,  "%s:  2.check 2: %f == 3.3", CURRENT_FUNCTION, data2[2]);
 
     size_t newLength = 2;
     succStatus = arrayReq->syncSetLength(false, newLength, getTimeoutSec());
@@ -1989,8 +1989,8 @@ void ChannelAccessIFTest::test_channelArray() {
     PVDoubleArray::const_svector data3(array3->view());
     testOk(data3.size() == newLength,
            "%s: data size after calling setLength should be %lu", CURRENT_FUNCTION, (unsigned long) newLength);
-    testOk(data3[0] == 1.1 , "%s: 3.check 0: %f", CURRENT_FUNCTION, data3[0]);
-    testOk(data3[1] == 2.2 , "%s: 3.check 1: %f", CURRENT_FUNCTION, data3[1]);
+    testOk(data3[0] == 1.1 , "%s: 3.check 0: %f == 1.1", CURRENT_FUNCTION, data3[0]);
+    testOk(data3[1] == 2.2 , "%s: 3.check 1: %f == 2.2", CURRENT_FUNCTION, data3[1]);
 
 
     size_t bigCapacity = 10000;
@@ -2010,8 +2010,8 @@ void ChannelAccessIFTest::test_channelArray() {
     PVDoubleArray::const_svector data4(array4->view());
     testOk(data4.size() == bigCapacity, "%s: data size after calling setLength should be %lu",
            CURRENT_FUNCTION, (unsigned long) bigCapacity);
-    testOk(data4[0] == 1.1 , "%s: 4.check 0: %f", CURRENT_FUNCTION, data4[0]);
-    testOk(data4[1] == 2.2 , "%s: 4.check 1: %f", CURRENT_FUNCTION, data4[1]);
+    testOk(data4[0] == 1.1 , "%s: 4.check 0: %f == 1.1", CURRENT_FUNCTION, data4[0]);
+    testOk(data4[1] == 2.2 , "%s: 4.check 1: %f == 2.2", CURRENT_FUNCTION, data4[1]);
     /*
     if (data4.size() == bigCapacity) {
       size_t i = newCap;
