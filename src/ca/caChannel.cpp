@@ -864,7 +864,7 @@ void CAChannelMonitor::activate()
     if (pvOptions) {
         PVStringPtr pvString = pvOptions->getSubField<PVString>("queueSize");
         if (pvString) {
-            int size;
+            int size=0;
             std::stringstream ss;
             ss << pvString->get();
             ss >> size;
