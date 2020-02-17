@@ -8,11 +8,11 @@
 
 #include <epicsGuard.h>
 #include <epicsMath.h>
+#include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
 #include <pv/monitor.h>
 #include <pv/pvAccess.h>
-#include <pv/reftrack.h>
 #include <pv/createRequest.h>
 
 namespace pvd = epics::pvData;
