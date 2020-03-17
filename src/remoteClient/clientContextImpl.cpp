@@ -96,7 +96,6 @@ public:
     static const Status otherRequestPendingStatus;
     static const Status invalidPutStructureStatus;
     static const Status invalidPutArrayStatus;
-    static const Status invalidBitSetLengthStatus;
     static const Status pvRequestNull;
 
     static BitSet::shared_pointer createBitSetFor(
@@ -436,7 +435,6 @@ const Status BaseRequestImpl::channelDestroyed(Status::STATUSTYPE_ERROR, "channe
 const Status BaseRequestImpl::otherRequestPendingStatus(Status::STATUSTYPE_ERROR, "other request pending");
 const Status BaseRequestImpl::invalidPutStructureStatus(Status::STATUSTYPE_ERROR, "incompatible put structure");
 const Status BaseRequestImpl::invalidPutArrayStatus(Status::STATUSTYPE_ERROR, "incompatible put array");
-const Status BaseRequestImpl::invalidBitSetLengthStatus(Status::STATUSTYPE_ERROR, "invalid bit-set length");
 const Status BaseRequestImpl::pvRequestNull(Status::STATUSTYPE_ERROR, "pvRequest == 0");
 
 
@@ -925,12 +923,6 @@ public:
             return;
         }
 
-        if (pvPutBitSet->size() < m_bitSet->size())
-        {
-            EXCEPTION_GUARD3(m_callback, cb, cb->putDone(invalidBitSetLengthStatus, thisPtr));
-            return;
-        }
-
         if (!startRequest(m_lastRequest.get() ? QOS_DESTROY : QOS_DEFAULT)) {
             EXCEPTION_GUARD3(m_callback, cb, cb->putDone(otherRequestPendingStatus, thisPtr));
             return;
@@ -1172,12 +1164,6 @@ public:
         if (!(*m_putData->getStructure() == *pvPutStructure->getStructure()))
         {
             EXCEPTION_GUARD3(m_callback, cb, cb->putGetDone(invalidPutStructureStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
-            return;
-        }
-
-        if (bitSet->size() < m_putDataBitSet->size())
-        {
-            EXCEPTION_GUARD3(m_callback, cb, cb->putGetDone(invalidBitSetLengthStatus, thisPtr, PVStructurePtr(), BitSetPtr()));
             return;
         }
 
