@@ -104,11 +104,9 @@ public:
         BitSet::shared_pointer const & existingBitSet)
     {
         assert(pvStructure);
-        int pvStructureSize = pvStructure->getNumberFields();
-        if (existingBitSet.get() && static_cast<int32>(existingBitSet->size()) >= pvStructureSize)
+        size_t pvStructureSize = pvStructure->getNumberFields();
+        if (existingBitSet)
         {
-            // clear existing BitSet
-            // also necessary if larger BitSet is reused
             existingBitSet->clear();
             return existingBitSet;
         }
