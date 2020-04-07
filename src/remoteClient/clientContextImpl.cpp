@@ -2929,8 +2929,9 @@ public:
         AbstractClientResponseHandler::handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
 
         transport->ensureData(8);
+        pvAccessID sid = payloadBuffer->getInt();
         pvAccessID cid = payloadBuffer->getInt();
-        /*pvAccessID sid =*/ payloadBuffer->getInt();
+        (void)sid;
 
         // TODO optimize
         ClientChannelImpl::shared_pointer channel = static_pointer_cast<ClientChannelImpl>(_context.lock()->getChannel(cid));
