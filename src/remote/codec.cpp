@@ -1439,7 +1439,7 @@ BlockingServerTCPTransportCodec::BlockingServerTCPTransportCodec(
     int32_t receiveBufferSize)
     :BlockingTCPTransportCodec(true, context, channel, responseHandler,
                                sendBufferSize, receiveBufferSize, PVA_DEFAULT_PRIORITY)
-    ,_lastChannelSID(0)
+    ,_lastChannelSID(0x12003400)
     ,_verificationStatus(pvData::Status::fatal("Uninitialized error"))
     ,_verifyOrVerified(false)
 {

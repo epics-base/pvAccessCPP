@@ -3956,7 +3956,8 @@ public:
     InternalClientContextImpl(const Configuration::shared_pointer& conf) :
         m_addressList(""), m_autoAddressList(true), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
         m_broadcastPort(PVA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV),
-        m_lastCID(0), m_lastIOID(0),
+        m_lastCID(0x10203040),
+        m_lastIOID(0x80706050),
         m_version("pvAccess Client", "cpp",
                   EPICS_PVA_MAJOR_VERSION,
                   EPICS_PVA_MINOR_VERSION,
