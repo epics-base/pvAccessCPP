@@ -26,7 +26,7 @@
 
 #ifdef remoteEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef remoteEpicsExportSharedSymbols
+#       undef remoteEpicsExportSharedSymbols
 #endif
 
 #include <pv/pvaConstants.h>

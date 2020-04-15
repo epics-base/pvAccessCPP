@@ -196,7 +196,7 @@ public:
                     printf("%d %d %d %d %.3f\n", channels, arraySize, iterations, runs, sum/runs);
 
                     Lock guard(waitLoopPtrMutex);
-                    waitLoopEvent->signal();	// all done
+                    waitLoopEvent->signal();    // all done
                 }
             }
             else if (channelCount == 0)

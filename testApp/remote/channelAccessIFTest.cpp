@@ -54,7 +54,7 @@ const std::string ChannelAccessIFTest::TEST_ARRAY_CHANNEL_NAME = "testArray1";
 template <typename T>
 inline bool compareWithTol(const T v1, const T v2, const T tol)
 {
-	return (std::fabs(v1 - v2) <= tol);
+    return (std::fabs(v1 - v2) <= tol);
 }
 
 int ChannelAccessIFTest::runAllTest() {

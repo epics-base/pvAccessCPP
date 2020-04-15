@@ -26,7 +26,7 @@
 
 #ifdef transportRegistryEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef transportRegistryEpicsExportSharedSymbols
+#       undef transportRegistryEpicsExportSharedSymbols
 #endif
 
 #include <pv/remote.h>

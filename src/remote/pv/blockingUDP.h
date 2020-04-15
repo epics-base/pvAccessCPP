@@ -24,7 +24,7 @@
 
 #ifdef blockingUDPEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef blockingUDPEpicsExportSharedSymbols
+#       undef blockingUDPEpicsExportSharedSymbols
 #endif
 
 #include <shareLib.h>

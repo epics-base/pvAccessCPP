@@ -361,13 +361,13 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
 
 int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *pMatchAddr)
 {
-    int             	status;
+    int                 status;
     INTERFACE_INFO      *pIfinfo;
     INTERFACE_INFO      *pIfinfoList;
-    unsigned			nelem;
-    int					numifs;
-    DWORD				cbBytesReturned;
-    int					match;
+    unsigned            nelem;
+    int                 numifs;
+    DWORD               cbBytesReturned;
+    int                 match;
 
     /* only valid for winsock 2 and above
     TODO resolve dllimport compilation problem and uncomment this check

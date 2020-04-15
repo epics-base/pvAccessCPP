@@ -16,7 +16,7 @@
 
 #ifdef channelSearchManagerEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef channelSearchManagerEpicsExportSharedSymbols
+#       undef channelSearchManagerEpicsExportSharedSymbols
 #endif
 
 #include <pv/pvaDefs.h>
@@ -43,8 +43,8 @@ public:
     /**
      * Search response from server (channel found).
      * @param guid server GUID.
-     * @param minorRevision	server minor PVA revision.
-     * @param serverAddress	server address.
+     * @param minorRevision     server minor PVA revision.
+     * @param serverAddress     server address.
      */
     // TODO make serverAddress an URI or similar
     virtual void searchResponse(const ServerGUID & guid, int8_t minorRevision, osiSockAddr* serverAddress) = 0;
@@ -81,10 +81,10 @@ public:
     /**
      * Search response from server (channel found).
      * @param guid  server GUID.
-     * @param cid	client channel ID.
-     * @param seqNo	search sequence number.
-     * @param minorRevision	server minor PVA revision.
-     * @param serverAddress	server address.
+     * @param cid       client channel ID.
+     * @param seqNo     search sequence number.
+     * @param minorRevision     server minor PVA revision.
+     * @param serverAddress     server address.
      */
     void searchResponse(const ServerGUID & guid, pvAccessID cid, int32_t seqNo, int8_t minorRevision, osiSockAddr* serverAddress);
     /**

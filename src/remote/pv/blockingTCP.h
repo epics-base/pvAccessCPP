@@ -29,7 +29,7 @@
 
 #ifdef blockingTCPEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef blockingTCPEpicsExportSharedSymbols
+#       undef blockingTCPEpicsExportSharedSymbols
 #endif
 
 #include <pv/pvaConstants.h>

@@ -20,7 +20,7 @@
 
 #ifdef beaconEmitterEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef beaconEmitterEpicsExportSharedSymbols
+#       undef beaconEmitterEpicsExportSharedSymbols
 #endif
 
 #include <pv/remote.h>
@@ -49,10 +49,10 @@ public:
     /**
      * Constructor.
      * @param protocol a protocol (transport) name to report.
-     * @param transport	transport to be used to send beacons.
+     * @param transport transport to be used to send beacons.
      * @param context PVA context.
      */
-//		BeaconEmitter(std::sting const & protocol,
+//              BeaconEmitter(std::sting const & protocol,
 //          Transport::shared_pointer const & transport, ServerContextImpl::shared_pointer const & context);
     BeaconEmitter(std::string const & protocol,
                   Transport::shared_pointer const & transport, std::tr1::shared_ptr<ServerContextImpl>& context);

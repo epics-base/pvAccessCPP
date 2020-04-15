@@ -19,7 +19,7 @@
 
 #ifdef beaconHandlerEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef beaconHandlerEpicsExportSharedSymbols
+#       undef beaconHandlerEpicsExportSharedSymbols
 #endif
 
 #include <pv/pvaDefs.h>

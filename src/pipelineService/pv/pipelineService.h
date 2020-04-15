@@ -19,7 +19,7 @@
 
 #ifdef pipelineServiceEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef pipelineServiceEpicsExportSharedSymbols
+#       undef pipelineServiceEpicsExportSharedSymbols
 #endif
 
 #include <pv/pvAccess.h>

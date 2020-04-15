@@ -48,8 +48,8 @@ public:
 
     /**
      * Run server (process events).
-     * @param	seconds	time in seconds the server will process events (method will block), if <code>0</code>
-     * 				the method would block until <code>destroy()</code> is called.
+     * @param   seconds time in seconds the server will process events (method will block), if <code>0</code>
+     *                          the method would block until <code>destroy()</code> is called.
      * @throws BaseException if server is already destroyed.
      */
     virtual void run(epics::pvData::uint32 seconds) = 0;

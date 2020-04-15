@@ -363,7 +363,7 @@ bool AbstractCodec::readToBuffer(
     }
 
     // assumption: remainingBytes < MAX_ENSURE_DATA_BUFFER_SIZE &&
-    //			   requiredBytes < (socketBuffer.capacity() - 1)
+    //             requiredBytes < (socketBuffer.capacity() - 1)
 
     //
     // copy unread part to the beginning of the buffer
@@ -427,7 +427,7 @@ void AbstractCodec::ensureData(std::size_t size) {
         return;
 
     // to large for buffer...
-    if (size > MAX_ENSURE_DATA_SIZE)	{// half for SPLIT, half for SEGMENTED
+    if (size > MAX_ENSURE_DATA_SIZE)    {// half for SPLIT, half for SEGMENTED
         std::ostringstream msg;
         msg << "requested for buffer size " << size
             << ", but maximum " << MAX_ENSURE_DATA_SIZE << " is allowed.";
@@ -471,7 +471,7 @@ void AbstractCodec::ensureData(std::size_t size) {
         {
             // TODO check flags
             //if (flags && SEGMENTED_FLAGS_MASK == 0)
-            //	throw IllegalStateException("segmented message expected,
+            //  throw IllegalStateException("segmented message expected,
             //but current message flag does not indicate it");
 
 
@@ -596,15 +596,15 @@ void AbstractCodec::startMessage(
     std::size_t ensureCapacity,
     epics::pvData::int32 payloadSize) {
     _lastMessageStartPosition =
-        std::numeric_limits<size_t>::max();		// TODO revise this
+        std::numeric_limits<size_t>::max();     // TODO revise this
     ensureBuffer(
         PVA_MESSAGE_HEADER_SIZE + ensureCapacity + _nextMessagePayloadOffset);
     _lastMessageStartPosition = _sendBuffer.getPosition();
     _sendBuffer.putByte(PVA_MAGIC);
     _sendBuffer.putByte(_clientServerFlag ? PVA_SERVER_PROTOCOL_REVISION : PVA_CLIENT_PROTOCOL_REVISION);
     _sendBuffer.putByte(
-        (_lastSegmentedMessageType | _byteOrderFlag | _clientServerFlag));	// data message
-    _sendBuffer.putByte(command);	// command
+        (_lastSegmentedMessageType | _byteOrderFlag | _clientServerFlag));  // data message
+    _sendBuffer.putByte(command);   // command
     _sendBuffer.putInt(payloadSize);
 
     // apply offset
@@ -619,13 +619,13 @@ void AbstractCodec::putControlMessage(
     epics::pvData::int32 data) {
 
     _lastMessageStartPosition =
-        std::numeric_limits<size_t>::max();		// TODO revise this
+        std::numeric_limits<size_t>::max();     // TODO revise this
     ensureBuffer(PVA_MESSAGE_HEADER_SIZE);
     _sendBuffer.putByte(PVA_MAGIC);
     _sendBuffer.putByte(_clientServerFlag ? PVA_SERVER_PROTOCOL_REVISION : PVA_CLIENT_PROTOCOL_REVISION);
-    _sendBuffer.putByte((0x01 | _byteOrderFlag | _clientServerFlag));	// control message
-    _sendBuffer.putByte(command);	// command
-    _sendBuffer.putInt(data);		// data
+    _sendBuffer.putByte((0x01 | _byteOrderFlag | _clientServerFlag));   // control message
+    _sendBuffer.putByte(command);   // command
+    _sendBuffer.putInt(data);       // data
 }
 
 
@@ -687,8 +687,8 @@ void AbstractCodec::endMessage(bool hasMoreSegments) {
         {
         sendBuffer.put(PVAConstants.PVA_MAGIC);
         sendBuffer.put(PVAConstants.PVA_VERSION);
-        sendBuffer.put((byte)(0x01 | byteOrderFlag));	// control data
-        sendBuffer.put((byte)0);	// marker
+        sendBuffer.put((byte)(0x01 | byteOrderFlag));   // control data
+        sendBuffer.put((byte)0);    // marker
         sendBuffer.putInt((int)(totalBytesSent + position +
         PVAConstants.PVA_MESSAGE_HEADER_SIZE));
         nextMarkerPosition = position + markerPeriodBytes;
@@ -845,9 +845,9 @@ void AbstractCodec::processSendQueue()
                 if (_sendBuffer.getPosition() > 0)
                     flush(true);
 
-                sendCompleted();	// do not schedule sending
+                sendCompleted();    // do not schedule sending
 
-                if (terminated())			// termination
+                if (terminated())   // termination
                     break;
                 // termination (we want to process even if shutdown)
                 _sendQueue.pop_front(sender);
@@ -1528,8 +1528,8 @@ void BlockingServerTCPTransportCodec::send(ByteBuffer* buffer,
         buffer->putByte(PVA_SERVER_PROTOCOL_REVISION);
         buffer->putByte(
             0x01 | 0x40 | ((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG)
-                           ? 0x80 : 0x00));		// control + server + endian
-        buffer->putByte(CMD_SET_ENDIANESS);		// set byte order
+                           ? 0x80 : 0x00));     // control + server + endian
+        buffer->putByte(CMD_SET_ENDIANESS);     // set byte order
         buffer->putInt(0);
 
 

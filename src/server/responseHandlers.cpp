@@ -1072,28 +1072,28 @@ void ServerGetHandler::handleResponse(osiSockAddr* responseFrom,
     } \
     catch (std::exception &e) { \
         Status status(Status::STATUSTYPE_FATAL, e.what()); \
-	    BaseChannelRequester::sendFailureMessage((int8)cmd, _transport, _ioid, (int8)QOS_INIT, status); \
-	    destroy(); \
+        BaseChannelRequester::sendFailureMessage((int8)cmd, _transport, _ioid, (int8)QOS_INIT, status); \
+        destroy(); \
     } \
     catch (...) { \
         Status status(Status::STATUSTYPE_FATAL, "unknown exception caught"); \
-	    BaseChannelRequester::sendFailureMessage((int8)cmd, _transport, _ioid, (int8)QOS_INIT, status); \
-	    destroy(); \
+        BaseChannelRequester::sendFailureMessage((int8)cmd, _transport, _ioid, (int8)QOS_INIT, status); \
+        destroy(); \
     }
 
 #define DESERIALIZE_EXCEPTION_GUARD(code) \
     try { \
- 	    code; \
+        code; \
     } \
     catch (std::exception &e) { \
         Status status(Status::STATUSTYPE_ERROR, e.what()); \
-	    BaseChannelRequester::sendFailureMessage((int8)command, transport, ioid, qosCode, status); \
-	    throw; \
+        BaseChannelRequester::sendFailureMessage((int8)command, transport, ioid, qosCode, status); \
+        throw; \
     } \
     catch (...) { \
         Status status(Status::STATUSTYPE_ERROR, "unknown exception caught"); \
-	    BaseChannelRequester::sendFailureMessage((int8)command, transport, ioid, qosCode, status); \
-	    throw; \
+        BaseChannelRequester::sendFailureMessage((int8)command, transport, ioid, qosCode, status); \
+        throw; \
     }
 
 ServerChannelGetRequesterImpl::ServerChannelGetRequesterImpl(ServerContextImpl::shared_pointer const & context, ServerChannel::shared_pointer const & channel, const pvAccessID ioid, Transport::shared_pointer const & transport) :
@@ -1835,8 +1835,8 @@ void ServerMonitorHandler::handleResponse(osiSockAddr* responseFrom,
         /*
         if (!request->startRequest(qosCode))
         {
-        	BaseChannelRequester::sendFailureMessage((int8)CMD_MONITOR, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
-        	return;
+            BaseChannelRequester::sendFailureMessage((int8)CMD_MONITOR, transport, ioid, qosCode, BaseChannelRequester::otherRequestPendingStatus);
+            return;
         }
         */
 

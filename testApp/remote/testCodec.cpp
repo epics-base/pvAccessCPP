@@ -138,7 +138,7 @@ public:
         std::size_t startPos = _readBuffer->getPosition();
         //buffer.put(readBuffer);
         //while (buffer.hasRemaining() && readBuffer.hasRemaining())
-        //	buffer.put(readBuffer.get());
+        //  buffer.put(readBuffer.get());
 
         std::size_t bufferRemaining = buffer->getRemaining();
         std::size_t readBufferRemaining =
@@ -164,7 +164,7 @@ public:
 
     int write(ByteBuffer *buffer) {
         if (_disconnected)
-            return -1;	// TODO: not by the JavaDoc API spec
+            return -1;  // TODO: not by the JavaDoc API spec
 
         if (_throwExceptionOnSend)
             throw io_exception("text IO exception");
@@ -1312,7 +1312,7 @@ private:
     {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
-        for (int32_t firstMessagePayloadSize = 1;	// cannot be zero
+        for (int32_t firstMessagePayloadSize = 1;   // cannot be zero
                 firstMessagePayloadSize <= 3;
                 firstMessagePayloadSize++)
         {
@@ -1763,7 +1763,7 @@ private:
     {
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
-        for (int32_t firstMessagePayloadSize = 1;	// cannot be zero
+        for (int32_t firstMessagePayloadSize = 1;   // cannot be zero
                 firstMessagePayloadSize <= 3;
                 firstMessagePayloadSize++)
         {
@@ -1925,7 +1925,7 @@ private:
         testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
 
 
-        for (int32_t firstMessagePayloadSize = 1;	// cannot be zero
+        for (int32_t firstMessagePayloadSize = 1;   // cannot be zero
                 firstMessagePayloadSize <= 3;
                 firstMessagePayloadSize++)
         {
@@ -2566,7 +2566,7 @@ private:
 
         void writePollOne() {
             testDiag("In %s", CURRENT_FUNCTION);
-            _codec.processWrite();	// this should return immediately
+            _codec.processWrite();  // this should return immediately
 
             // now we fake reading
             _codec._writeBuffer.flip();

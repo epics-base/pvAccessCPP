@@ -88,7 +88,7 @@
 
 #ifdef securityEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef securityEpicsExportSharedSymbols
+#       undef securityEpicsExportSharedSymbols
 #endif
 
 #include <pv/pvaDefs.h>

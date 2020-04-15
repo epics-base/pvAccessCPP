@@ -20,7 +20,7 @@
 
 #ifdef requesterEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef requesterEpicsExportSharedSymbols
+#       undef requesterEpicsExportSharedSymbols
 #endif
 
 
