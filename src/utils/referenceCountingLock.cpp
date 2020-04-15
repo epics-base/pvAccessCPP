@@ -98,4 +98,3 @@ int ReferenceCountingLock::decrement()
 
 }
 }
-

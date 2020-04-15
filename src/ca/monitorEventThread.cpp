@@ -49,7 +49,7 @@ void MonitorEventThread::start()
         "monitorEventThread",
         epicsThreadGetStackSize(epicsThreadStackBig),
         epicsThreadPriorityLow));
-    thread->start();  
+    thread->start();
 }
 
 void MonitorEventThread::stop()
@@ -65,7 +65,7 @@ void MonitorEventThread::stop()
 
 void MonitorEventThread::event(NotifyMonitorRequesterPtr const &notifyMonitorRequester)
 {
-    {   
+    {
         Lock lock(mutex);
         if(notifyMonitorRequester->isOnQueue) return;
         notifyMonitorRequester->isOnQueue = true;

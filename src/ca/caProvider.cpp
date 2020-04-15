@@ -32,7 +32,7 @@ using namespace epics::pvData;
         catch (std::exception &e) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d: %s", __FILE__, __LINE__, e.what()); } \
                 catch (...) { LOG(logLevelError, "Unhandled exception caught from client code at %s:%d.", __FILE__, __LINE__); }
 
-CAChannelProvider::CAChannelProvider() 
+CAChannelProvider::CAChannelProvider()
     : current_context(0)
 {
     initialize();
@@ -73,7 +73,7 @@ CAChannelProvider::~CAChannelProvider()
            std::cout << "~CAChannelProvider() calling disconnectChannel "
                      << channelQ.front()->getChannelName()
                       << std::endl;
-       }  
+       }
        channelQ.front()->disconnectChannel();
        channelQ.pop();
     }
@@ -218,4 +218,3 @@ void CAClientFactory::stop()
 }
 
 }}}
-

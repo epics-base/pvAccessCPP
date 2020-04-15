@@ -366,4 +366,3 @@ SimADC::smart_pointer_type getSimADC(const std::string& name)
 
     return it->second;
 }
-

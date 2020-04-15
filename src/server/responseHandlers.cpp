@@ -453,7 +453,7 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/,
             _context->s_channelNameToProvider[_name] = channelFind->getChannelProvider();
         }
         _wasFound = wasFound;
-        
+
         BlockingUDPTransport::shared_pointer bt = _context->getBroadcastTransport();
         if (bt)
         {

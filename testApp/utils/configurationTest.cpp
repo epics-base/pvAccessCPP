@@ -145,6 +145,3 @@ MAIN(configurationTest)
     testConfig();
     return testDone();
 }
-
-
-

@@ -84,4 +84,3 @@ bool BeaconHandler::updateBeacon(int8 /*remoteTransportRevision*/, TimeStamp* /*
 
 }
 }
-

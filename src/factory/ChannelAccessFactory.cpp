@@ -267,4 +267,3 @@ ChannelProvider::createChannel(std::string const & name,
 
 }
 }
-

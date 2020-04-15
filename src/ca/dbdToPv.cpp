@@ -147,7 +147,7 @@ void DbdToPv::activate(
         string mess(caChannel->getChannelName());
             mess += " DbdToPv::activate pvRequest is null";
             throw  std::runtime_error(mess);
-    } 
+    }
     PVStructurePtr fieldPVStructure;
     if(pvRequest->getPVFields().size()==0) {
          fieldPVStructure = pvRequest;
@@ -159,8 +159,8 @@ void DbdToPv::activate(
         mess << caChannel->getChannelName()
           << " DbdToPv::activate illegal pvRequest " << pvRequest;
         throw std::runtime_error(mess.str());
-    } 
-    if(fieldPVStructure->getPVFields().size()==0) 
+    }
+    if(fieldPVStructure->getPVFields().size()==0)
     {
         valueRequested = true;
         alarmRequested = true;
@@ -308,7 +308,7 @@ void DbdToPv::activate(
     caRequestType = caValueType;
     if(displayRequested || controlRequested || valueAlarmRequested)
     {
-       caRequestType = dbf_type_to_DBR_CTRL(caValueType); 
+       caRequestType = dbf_type_to_DBR_CTRL(caValueType);
     } else if(timeStampRequested || alarmRequested) {
        caRequestType = dbf_type_to_DBR_TIME(caValueType);
     } else {
@@ -350,7 +350,7 @@ void DbdToPv::getChoicesDone(struct event_handler_args &args)
     choices.reserve(num);
     for(size_t i=0; i<num; ++i) choices.push_back(string(&dbr_enum_p->strs[i][0]));
     choicesEvent.signal();
-} 
+}
 
 
 void DbdToPv::getChoices(CAChannelPtr const & caChannel)
@@ -522,7 +522,7 @@ Status DbdToPv::getFromDBD(
                      ConvertPtr convert = getConvert();
                      size_t n = choices.size();
                      pvChoices->setLength(n);
-                     convert->fromStringArray(pvChoices,0,n,choices,0);       
+                     convert->fromStringArray(pvChoices,0,n,choices,0);
                      bitSet->set(pvStructure->getSubField("value")->getFieldOffset());
                 } else {
                      bitSet->set(value->getFieldOffset());
@@ -552,7 +552,7 @@ Status DbdToPv::getFromDBD(
                 }
                 copy_DBRScalar<dbr_long_t,PVInt>(value,pvValue); break;
            case DBR_FLOAT: copy_DBRScalar<dbr_float_t,PVFloat>(value,pvValue); break;
-           case DBR_DOUBLE: 
+           case DBR_DOUBLE:
                 if(dbfIsINT64)
                 {
                    copy_DBRScalar<dbr_double_t,PVLong>(value,pvValue);
@@ -575,7 +575,7 @@ Status DbdToPv::getFromDBD(
        }
     }
     if(alarmRequested) {
-        // Note that status and severity are aways the first two members of DBR_ 
+        // Note that status and severity are aways the first two members of DBR_
         const dbr_sts_string *data = static_cast<const dbr_sts_string *>(args.dbr);
         dbr_short_t status = data->status;
         dbr_short_t severity = data->severity;
@@ -927,21 +927,21 @@ Status DbdToPv::putToDBD(
                break;
            }
            case DBR_STRING: pValue = pvStructure->getSubField<PVString>("value")->get().c_str(); break;
-           case DBR_CHAR: 
+           case DBR_CHAR:
                if(dbfIsUCHAR)
                {
                     pValue = put_DBRScalar<dbr_char_t,PVUByte>(&bvalue,pvValue);
                     break;
                }
                pValue = put_DBRScalar<dbr_char_t,PVByte>(&bvalue,pvValue); break;
-           case DBR_SHORT: 
+           case DBR_SHORT:
                if(dbfIsUSHORT)
                {
                     pValue = put_DBRScalar<dbr_short_t,PVUShort>(&svalue,pvValue);
                     break;
                }
                pValue = put_DBRScalar<dbr_short_t,PVShort>(&svalue,pvValue); break;
-           case DBR_LONG: 
+           case DBR_LONG:
                if(dbfIsULONG)
                {
                     pValue = put_DBRScalar<dbr_long_t,PVUInt>(&lvalue,pvValue);
@@ -949,7 +949,7 @@ Status DbdToPv::putToDBD(
                }
                pValue = put_DBRScalar<dbr_long_t,PVInt>(&lvalue,pvValue); break;
            case DBR_FLOAT: pValue = put_DBRScalar<dbr_float_t,PVFloat>(&fvalue,pvValue); break;
-           case DBR_DOUBLE: 
+           case DBR_DOUBLE:
                if(dbfIsINT64)
                {
                     pValue = put_DBRScalar<dbr_double_t,PVLong>(&dvalue,pvValue);
@@ -982,6 +982,6 @@ Status DbdToPv::putToDBD(
     }
     if(ca_stringBuffer!=NULL) delete[] ca_stringBuffer;
     return status;
-}    
+}
 
 }}}

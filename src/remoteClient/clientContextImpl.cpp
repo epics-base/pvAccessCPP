@@ -4761,4 +4761,3 @@ ChannelProvider::shared_pointer createClientProvider(const Configuration::shared
 
 }
 };
-

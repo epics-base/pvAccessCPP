@@ -257,4 +257,3 @@ ConfigurationProvider::shared_pointer ConfigurationFactory::getProvider()
 
 }
 }
-

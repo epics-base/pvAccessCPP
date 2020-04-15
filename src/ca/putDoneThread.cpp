@@ -50,7 +50,7 @@ void PutDoneThread::start()
         "putDoneThread",
         epicsThreadGetStackSize(epicsThreadStackBig),
         epicsThreadPriorityLow));
-    thread->start(); 
+    thread->start();
 }
 
 
@@ -66,7 +66,7 @@ void PutDoneThread::stop()
 
 void PutDoneThread::putDone(NotifyPutRequesterPtr const &notifyPutRequester)
 {
-    {   
+    {
         Lock lock(mutex);
         if(notifyPutRequester->isOnQueue) return;
         notifyPutRequester->isOnQueue = true;
