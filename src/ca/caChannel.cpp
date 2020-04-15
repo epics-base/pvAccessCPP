@@ -162,7 +162,7 @@ void CAChannel::activate(short priority)
 CAChannel::~CAChannel()
 {
     if(DEBUG_LEVEL>0) {
-        cout << "CAChannel::~CAChannel() " << channelName 
+        cout << "CAChannel::~CAChannel() " << channelName
              << " channelCreated " << (channelCreated ? "true" : "false")
              << endl;
     }
@@ -177,7 +177,7 @@ void CAChannel::disconnectChannel()
 {
     if(DEBUG_LEVEL>0) {
         cout << "CAChannel::disconnectChannel() "
-             << channelName 
+             << channelName
              << " channelCreated " << (channelCreated ? "true" : "false")
              << endl;
     }
@@ -285,7 +285,7 @@ ChannelGet::shared_pointer CAChannel::createChannelGet(
     if(DEBUG_LEVEL>0) {
         cout << "CAChannel::createChannelGet " << channelName << endl;
     }
-    CAChannelGetPtr channelGet = 
+    CAChannelGetPtr channelGet =
         CAChannelGet::create(shared_from_this(), channelGetRequester, pvRequest);
     {
          Lock lock(requestsMutex);
@@ -306,7 +306,7 @@ ChannelPut::shared_pointer CAChannel::createChannelPut(
     if(DEBUG_LEVEL>0) {
         cout << "CAChannel::createChannelPut " << channelName << endl;
     }
-    CAChannelPutPtr channelPut = 
+    CAChannelPutPtr channelPut =
         CAChannelPut::create(shared_from_this(), channelPutRequester, pvRequest);
     {
          Lock lock(requestsMutex);
@@ -327,7 +327,7 @@ Monitor::shared_pointer CAChannel::createMonitor(
     if(DEBUG_LEVEL>0) {
         cout << "CAChannel::createMonitor " << channelName << endl;
     }
-    CAChannelMonitorPtr channelMonitor = 
+    CAChannelMonitorPtr channelMonitor =
         CAChannelMonitor::create(shared_from_this(), monitorRequester, pvRequest);
     {
          Lock lock(requestsMutex);
@@ -496,10 +496,10 @@ static void ca_get_handler(struct event_handler_args args)
 void CAChannelGet::getDone(struct event_handler_args &args)
 {
     if(DEBUG_LEVEL>1) {
-        std::cout << "CAChannelGet::getDone " 
+        std::cout << "CAChannelGet::getDone "
             <<  channel->getChannelName() << endl;
     }
-    
+
     ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
     if(!getRequester) return;
     getStatus = dbdToPv->getFromDBD(pvStructure,bitSet,args);
@@ -640,7 +640,7 @@ void CAChannelPut::put(PVStructure::shared_pointer const & pvPutStructure,
     ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
     if(!putRequester) return;
     {
-       Lock lock(mutex);    
+       Lock lock(mutex);
        isPut = true;
     }
     putStatus = dbdToPv->putToDBD(channel,pvPutStructure,block,&ca_put_handler,this);
@@ -671,7 +671,7 @@ void CAChannelPut::getDone(struct event_handler_args &args)
      if(DEBUG_LEVEL>1) {
         cout << "CAChannelPut::getDone " << channel->getChannelName() << endl;
     }
-    
+
     ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
     if(!putRequester) return;
     getStatus = dbdToPv->getFromDBD(pvStructure,bitSet,args);
@@ -698,7 +698,7 @@ void CAChannelPut::get()
     ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
     if(!putRequester) return;
     {
-       Lock lock(mutex);    
+       Lock lock(mutex);
        isPut = false;
     }
 
@@ -753,7 +753,7 @@ private:
     size_t queueSize;
     bool isStarted;
     Mutex mutex;
-    
+
     std::queue<MonitorElementPtr> monitorElementQueue;
 public:
     CACMonitorQueue(
@@ -763,7 +763,7 @@ public:
      {}
      ~CACMonitorQueue()
      {
-     } 
+     }
      void start()
      {
          Lock guard(mutex);
@@ -784,7 +784,7 @@ public:
          Lock guard(mutex);
          if(!isStarted) return false;
          if(monitorElementQueue.size()==queueSize) return false;
-         PVStructure::shared_pointer pvs = 
+         PVStructure::shared_pointer pvs =
               getPVDataCreate()->createPVStructure(pvStructure);
          MonitorElementPtr monitorElement(new MonitorElement(pvs));
          *(monitorElement->changedBitSet) = *(activeElement->changedBitSet);
@@ -826,7 +826,7 @@ CAChannelMonitorPtr CAChannelMonitor::create(
 CAChannelMonitor::CAChannelMonitor(
     CAChannel::shared_pointer const & channel,
     MonitorRequester::shared_pointer const & monitorRequester,
-    PVStructurePtr const & pvRequest) 
+    PVStructurePtr const & pvRequest)
 :
     channel(channel),
     monitorRequester(monitorRequester),
@@ -896,7 +896,7 @@ void CAChannelMonitor::subscriptionEvent(struct event_handler_args &args)
              << channel->getChannelName() << endl;
     }
     {
-       Lock lock(mutex);    
+       Lock lock(mutex);
        if(!isStarted) return;
     }
     MonitorRequester::shared_pointer requester(monitorRequester.lock());
@@ -975,7 +975,7 @@ Status CAChannelMonitor::stop()
     {
          Lock lock(mutex);
          if(!isStarted) return Status(Status::STATUSTYPE_WARNING,"already stopped");
-         isStarted = false;     
+         isStarted = false;
     }
     monitorQueue->stop();
     int result = ca_clear_subscription(pevid);

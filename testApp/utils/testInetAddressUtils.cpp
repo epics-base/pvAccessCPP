@@ -314,4 +314,3 @@ MAIN(testInetAddressUtils)
 
     return testDone();
 }
-

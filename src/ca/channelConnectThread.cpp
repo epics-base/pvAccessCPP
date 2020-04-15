@@ -50,7 +50,7 @@ void ChannelConnectThread::start()
         "channelConnectThread",
         epicsThreadGetStackSize(epicsThreadStackSmall),
         epicsThreadPriorityLow));
-    thread->start(); 
+    thread->start();
 }
 
 
@@ -67,7 +67,7 @@ void ChannelConnectThread::stop()
 void ChannelConnectThread::channelConnected(
     NotifyChannelRequesterPtr const &notifyChannelRequester)
 {
-    {   
+    {
         Lock lock(mutex);
         if(notifyChannelRequester->isOnQueue) return;
         notifyChannelRequester->isOnQueue = true;

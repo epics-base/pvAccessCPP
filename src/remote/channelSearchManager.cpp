@@ -392,4 +392,3 @@ void ChannelSearchManager::timerStopped()
 
 }
 }
-

@@ -141,4 +141,3 @@ FieldConstPtr IntrospectionRegistry::deserialize(ByteBuffer* buffer, Deserializa
 
 }
 }
-

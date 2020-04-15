@@ -173,7 +173,7 @@ private:
         TestChannelGetRequesterPtr const &getRequester,
         TestChannelPtr const &testChannel,
         PVStructurePtr const &  pvRequest);
-    
+
     TestChannelGetRequesterWPtr getRequester;
     TestChannelPtr testChannel;
     PVStructurePtr pvRequest;
@@ -293,7 +293,7 @@ private:
     TestChannelPut(
         TestChannelPutRequesterPtr const &putRequester,
         TestChannelPtr const &testChannel);
-    
+
     TestChannelPutRequesterWPtr putRequester;
     TestChannelPtr testChannel;
     PVStructurePtr pvStructure;
@@ -362,7 +362,7 @@ void TestChannelPut::connect()
 {
     string request("value");
     PVStructurePtr pvRequest(createRequest(request));
-    
+
     channelPut = testChannel->getChannel()->createChannelPut(shared_from_this(),pvRequest);
     if(!channelPut) throw std::runtime_error(testChannel->getChannelName() + " channelCreate failed ");
 }
@@ -370,7 +370,7 @@ void TestChannelPut::connect()
 void TestChannelPut::waitConnect(double timeout)
 {
     if(waitForConnect.wait(timeout)) return;
-    throw std::runtime_error(testChannel->getChannelName() 
+    throw std::runtime_error(testChannel->getChannelName()
         + " TestChannelPut::waitConnect failed ");
 }
 
@@ -378,7 +378,7 @@ void TestChannelPut::waitConnect(double timeout)
 void TestChannelPut::put(string const & value)
 {
     PVFieldPtr pvField(pvStructure->getSubField("value"));
-    if(!pvField) throw std::runtime_error(testChannel->getChannelName() 
+    if(!pvField) throw std::runtime_error(testChannel->getChannelName()
          + " TestChannelPut::put no value ");
     FieldConstPtr field(pvField->getField());
     Type type(field->getType());
@@ -403,10 +403,10 @@ void TestChannelPut::put(string const & value)
             }
             values.push_back(value.substr(pos,offset-pos));
             pos = offset+1;
-            n++;    
+            n++;
         }
         pvScalarArray->setLength(n);
-        getConvert()->fromStringArray(pvScalarArray,0,n,values,0);       
+        getConvert()->fromStringArray(pvScalarArray,0,n,values,0);
         bitSet->set(pvField->getFieldOffset());
         channelPut->put(pvStructure,bitSet);
         return;
@@ -420,7 +420,7 @@ void TestChannelPut::put(string const & value)
           return;
        }
     }
-    throw std::runtime_error(testChannel->getChannelName() 
+    throw std::runtime_error(testChannel->getChannelName()
         + " TestChannelPut::put not supported  type");
 }
 
@@ -465,7 +465,7 @@ private:
         TestChannelMonitorRequesterPtr const &putRequester,
         TestChannelPtr const &testChannel,
         PVStructurePtr const &  pvRequest);
-    
+
     TestChannelMonitorRequesterWPtr monitorRequester;
     TestChannelPtr testChannel;
     PVStructurePtr pvRequest;
@@ -503,7 +503,7 @@ void TestChannelMonitor::monitorConnect(
 {
     waitForConnect.signal();
 }
-    
+
 
 void TestChannelMonitor::monitorEvent(MonitorPtr const & monitor)
 {
@@ -722,7 +722,7 @@ void TestIoc::start()
         "testIoc",
         epicsThreadGetStackSize(epicsThreadStackBig),
         epicsThreadPriorityLow));
-    thread->start();  
+    thread->start();
 #endif
 }
 
@@ -768,7 +768,7 @@ MAIN(testCaProvider)
     testPlan(143 + EXIT_TESTS);
 
     TestIocPtr testIoc(new TestIoc());
-    testIoc->start();  
+    testIoc->start();
 
     testDiag("===Test caProvider===");
     CAClientFactory::start();
@@ -819,4 +819,3 @@ MAIN(testCaProvider)
 
     return testDone();;
 }
-

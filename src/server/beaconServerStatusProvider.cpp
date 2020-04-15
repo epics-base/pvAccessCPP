@@ -35,4 +35,3 @@ PVField::shared_pointer DefaultBeaconServerStatusProvider::getServerStatusData()
 
 }
 }
-

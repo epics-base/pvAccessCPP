@@ -96,5 +96,3 @@ void SerializationHelper::serializeFull(ByteBuffer* buffer, SerializableControl*
 
 }
 }
-
-
