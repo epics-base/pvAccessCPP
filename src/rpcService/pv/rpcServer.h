@@ -16,7 +16,7 @@
 
 #ifdef rpcServerEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef rpcServerEpicsExportSharedSymbols
+#       undef rpcServerEpicsExportSharedSymbols
 #endif
 
 #include <pv/pvAccess.h>

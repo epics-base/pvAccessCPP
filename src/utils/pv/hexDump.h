@@ -16,7 +16,7 @@
 
 #include <pv/pvType.h>
 
-#ifdef	hexDumpEpicsExportSharedSymbols
+#ifdef  hexDumpEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
 #   undef hexDumpEpicsExportSharedSymbols
 #endif

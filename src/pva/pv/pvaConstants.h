@@ -18,7 +18,7 @@
 
 #ifdef pvaConstantsepicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef pvaConstantsepicsExportSharedSymbols
+#       undef pvaConstantsepicsExportSharedSymbols
 #endif
 #include <shareLib.h>
 

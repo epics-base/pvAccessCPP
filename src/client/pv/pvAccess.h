@@ -22,7 +22,7 @@
 
 #ifdef pvAccessEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef pvAccessEpicsExportSharedSymbols
+#       undef pvAccessEpicsExportSharedSymbols
 #endif
 
 #include <pv/pvaVersion.h>

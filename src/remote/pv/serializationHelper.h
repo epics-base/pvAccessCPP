@@ -38,7 +38,7 @@ public:
      * @param payloadBuffer data buffer.
      * @param control deserialization control.
      * @param existingStructure if deserialized Field matches <code>existingStrcuture</code> Field, then
-     * 			<code>existingStructure</code> instance is returned. <code>null</code> value is allowed.
+     *                  <code>existingStructure</code> instance is returned. <code>null</code> value is allowed.
      * @return PVStructure instance, can be <code>null</code>.
      */
     static epics::pvData::PVStructure::shared_pointer deserializeStructureAndCreatePVStructure(epics::pvData::ByteBuffer* payloadBuffer,

@@ -87,7 +87,7 @@ std::size_t readSize(ByteBuffer* buffer) {
 string deserializeString(ByteBuffer* buffer) {
 
     std::size_t size = /*SerializeHelper::*/readSize(buffer);
-    if(size!=(size_t)-1)	// TODO null strings check, to be removed in the future
+    if(size!=(size_t)-1)    // TODO null strings check, to be removed in the future
     {
         // entire string is in buffer, simply create a string out of it (copy)
         std::size_t pos = buffer->getPosition();
@@ -339,8 +339,8 @@ bool discoverServers(double timeOut)
     sendBuffer.putByte(PVA_MAGIC);
     sendBuffer.putByte(PVA_CLIENT_PROTOCOL_REVISION);
     sendBuffer.putByte((EPICS_BYTE_ORDER == EPICS_ENDIAN_BIG) ? 0x80 : 0x00); // data + 7-bit endianess
-    sendBuffer.putByte((int8_t)CMD_SEARCH);	// search
-    sendBuffer.putInt(4+1+3+16+2+1+2);		// "zero" payload
+    sendBuffer.putByte((int8_t)CMD_SEARCH); // search
+    sendBuffer.putInt(4+1+3+16+2+1+2);      // "zero" payload
 
     sendBuffer.putInt(0);   // sequenceId
     sendBuffer.putByte((int8_t)0x81);    // reply required // TODO unicast vs multicast; for now we mark ourselves as unicast
@@ -351,8 +351,8 @@ bool discoverServers(double timeOut)
     encodeAsIPv6Address(&sendBuffer, &responseAddress);
     sendBuffer.putShort((int16_t)ntohs(responseAddress.ia.sin_port));
 
-    sendBuffer.putByte((int8_t)0x00);	// protocol count
-    sendBuffer.putShort((int16_t)0);	// name count
+    sendBuffer.putByte((int8_t)0x00);   // protocol count
+    sendBuffer.putShort((int16_t)0);    // name count
 
     bool oneOK = false;
     for (size_t i = 0; i < broadcastAddresses.size(); i++)
@@ -503,16 +503,16 @@ void usage (void)
 
 /*+**************************************************************************
  *
- * Function:	main
+ * Function:    main
  *
- * Description:	pvlist main()
- * 		Evaluate command line options, ...
+ * Description: pvlist main()
+ *              Evaluate command line options, ...
  *
- * Arg(s) In:	[options] [<server>]...
+ * Arg(s) In:   [options] [<server>]...
  *
- * Arg(s) Out:	none
+ * Arg(s) Out:  none
  *
- * Return(s):	Standard return code (0=success, 1=error)
+ * Return(s):   Standard return code (0=success, 1=error)
  *
  **************************************************************************-*/
 

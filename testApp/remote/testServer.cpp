@@ -2503,7 +2503,7 @@ private:
 };
 
 
-class MockServerChannelProvider : 	public ChannelProvider,
+class MockServerChannelProvider :   public ChannelProvider,
     public std::tr1::enable_shared_from_this<MockServerChannelProvider>
 {
 public:

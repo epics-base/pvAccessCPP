@@ -26,7 +26,7 @@
 
 #ifdef introspectionRegistryEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef introspectionRegistryEpicsExportSharedSymbols
+#       undef introspectionRegistryEpicsExportSharedSymbols
 #endif
 
 // TODO check for memory leaks

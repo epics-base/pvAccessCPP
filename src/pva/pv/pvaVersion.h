@@ -17,7 +17,7 @@
 
 #ifdef pvaVersionEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef pvaVersionEpicsExportSharedSymbols
+#       undef pvaVersionEpicsExportSharedSymbols
 #endif
 
 #include <shareLib.h>
@@ -38,12 +38,12 @@ class epicsShareClass Version {
 public:
     /**
      * Default constructor.
-     * @param productName	product name.
-     * @param implementationLangugage	implementation language.
-     * @param majorVersion	major version.
-     * @param minorVersion	minor version.
-     * @param maintenanceVersion	maintenance version.
-     * @param developmentFlag	development indicator flag.
+     * @param productName       product name.
+     * @param implementationLangugage   implementation language.
+     * @param majorVersion      major version.
+     * @param minorVersion      minor version.
+     * @param maintenanceVersion        maintenance version.
+     * @param developmentFlag   development indicator flag.
      */
     Version(std::string const & productName,
             std::string const & implementationLangugage,

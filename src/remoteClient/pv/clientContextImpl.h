@@ -16,7 +16,7 @@
 
 #ifdef clientContextImplEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef clientContextImplEpicsExportSharedSymbols
+#       undef clientContextImplEpicsExportSharedSymbols
 #endif
 
 #include <pv/pvAccess.h>

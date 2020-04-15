@@ -26,7 +26,7 @@
 
 #ifdef monitorEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef monitorEpicsExportSharedSymbols
+#       undef monitorEpicsExportSharedSymbols
 #endif
 
 #include <pv/requester.h>

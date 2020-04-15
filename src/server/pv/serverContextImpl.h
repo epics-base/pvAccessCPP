@@ -10,7 +10,7 @@
 
 #ifdef serverContextImplEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
-#	undef serverContextImplEpicsExportSharedSymbols
+#       undef serverContextImplEpicsExportSharedSymbols
 #endif
 
 #include <pv/blockingUDP.h>

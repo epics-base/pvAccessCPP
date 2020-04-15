@@ -35,8 +35,8 @@ typedef std::tr1::shared_ptr<ValueAlarmDbd> ValueAlarmDbdPtr;
 
 struct CaAlarm
 {
-    dbr_short_t	status;
-    dbr_short_t	severity;
+    dbr_short_t status;
+    dbr_short_t severity;
     CaAlarm() : status(0), severity(0) {}
 };
 
@@ -58,7 +58,7 @@ struct CaControl
 
 struct CaValueAlarm
 {
-    double upper_alarm_limit;	
+    double upper_alarm_limit;   
     double upper_warning_limit;
     double lower_warning_limit;
     double lower_alarm_limit;

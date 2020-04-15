@@ -54,7 +54,7 @@ public:
      * Constructor.
      * @param context PVA context.
      */
-//		DefaultBeaconServerStatusProvider(ServerContext::shared_pointer const & context);
+//              DefaultBeaconServerStatusProvider(ServerContext::shared_pointer const & context);
     DefaultBeaconServerStatusProvider(std::tr1::shared_ptr<ServerContext> const & context);
     /**
      * Destructor.

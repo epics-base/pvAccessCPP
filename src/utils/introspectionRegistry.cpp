@@ -91,7 +91,7 @@ void IntrospectionRegistry::serialize(FieldConstPtr const & field, ByteBuffer* b
             }
             else {
                 control->ensureBuffer(3);
-                buffer->putByte(FULL_WITH_ID_TYPE_CODE);	// could also be a mask
+                buffer->putByte(FULL_WITH_ID_TYPE_CODE);    // could also be a mask
                 buffer->putShort(key);
             }
         }
