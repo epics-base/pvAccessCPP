@@ -17,7 +17,7 @@
 #include <envDefs.h>
 
 #ifdef EPICS_VERSION_INT
-  #if EPICS_VERSION_INT >= VERSION_INT(3,16,2,0)
+  #if !defined(USE_SOFTIOC) && EPICS_VERSION_INT >= VERSION_INT(3,16,2,0)
     #define USE_DBUNITTEST
     // USE_TYPED_RSET prevents deprecation warnings
     #define USE_TYPED_RSET
