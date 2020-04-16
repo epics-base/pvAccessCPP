@@ -771,6 +771,12 @@ MAIN(testCaProvider)
 {
     testPlan(143 + EXIT_TESTS);
 
+#ifdef USE_DBUNITTEST
+    testDiag("Running IOC using dbUnitTest");
+#else
+    testDiag("Running IOC using system()");
+#endif
+
     TestIocPtr testIoc(new TestIoc());
     testIoc->start();
 
