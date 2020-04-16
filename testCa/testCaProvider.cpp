@@ -27,6 +27,8 @@
     #include <dbUnitTest.h>
 
     extern "C" int testIoc_registerRecordDeviceDriver(struct dbBase *pbase);
+  #else
+    #include <osiFileName.h>
   #endif
 #endif
 
@@ -733,12 +735,14 @@ void TestIoc::run()
     // tests with an embedded IOC fail with a Base before 3.16.2.
     // This version only works on workstation targets, it runs the
     // softIoc from Base as a separate process, using system().
-    if(system("$EPICS_BASE/bin/$EPICS_HOST_ARCH/softIoc -x test -d ../testCaProvider.db")!=0) {
-        string message(base);
-        message += "/bin/";
-        message += arch;
-        message += "/softIoc -d ../testCaProvider.db not started";
-        throw std::runtime_error(message);
+    string cmd(base);
+    cmd += OSI_PATH_SEPARATOR "bin" OSI_PATH_SEPARATOR;
+    cmd += arch;
+    cmd += OSI_PATH_SEPARATOR "softIoc -x test -d ../testCaProvider.db";
+    if (system(cmd.c_str()) != 0) {
+        string message(cmd);
+        cmd += " not started";
+        throw std::runtime_error(cmd);
     }
 #endif
 }
