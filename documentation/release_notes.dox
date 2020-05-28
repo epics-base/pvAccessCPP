@@ -1,6 +1,6 @@
 /** @page pvarelease_notes Release Notes
 
-Release X.Y.Z (XXX 2020)
+Release 7.1.1 (May 2020)
 
 - Changes
   - Add 'pval' iocsh command to list names from all providers of the running server.
