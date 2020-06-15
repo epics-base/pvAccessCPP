@@ -164,16 +164,18 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
 
         FOR_EACH(puts_t::const_iterator, it, end, puts) {
             if((*it)->channel->dead) continue;
+            std::tr1::shared_ptr<detail::SharedPut> self;
             try {
-                try {
-                    (*it)->mapper.compute(*current, *(*it)->pvRequest, config.mapperMode);
-                    p_put.push_back(PutInfo((*it)->shared_from_this(), (*it)->mapper.requested(), (*it)->mapper.warnings()));
-                }catch(std::runtime_error& e) {
-                    // compute() error
-                    p_put.push_back(PutInfo((*it)->shared_from_this(), pvd::StructureConstPtr(), pvd::Status::error(e.what())));
-                }
+                self = (*it)->shared_from_this();
             }catch(std::tr1::bad_weak_ptr&) {
-                //racing destruction
+                continue; //racing destruction
+            }
+            try {
+                (*it)->mapper.compute(*current, *(*it)->pvRequest, config.mapperMode);
+                p_put.push_back(PutInfo(self, (*it)->mapper.requested(), (*it)->mapper.warnings()));
+            }catch(std::runtime_error& e) {
+                // compute() error
+                p_put.push_back(PutInfo(self, pvd::StructureConstPtr(), pvd::Status::error(e.what())));
             }
         }
         FOR_EACH(rpcs_t::const_iterator, it, end, rpcs) {
@@ -184,12 +186,16 @@ void SharedPV::open(const pvd::PVStructure &value, const epics::pvData::BitSet& 
         }
         FOR_EACH(monitors_t::const_iterator, it, end, monitors) {
             if((*it)->channel->dead) continue;
+            std::tr1::shared_ptr<pva::MonitorFIFO> self;
             try {
-                (*it)->open(newtype);
-                // post initial update
-                (*it)->post(*current, valid);
-                p_monitor.push_back((*it)->shared_from_this());
-            }catch(std::tr1::bad_weak_ptr&) {}
+                self = (*it)->shared_from_this();
+            }catch(std::tr1::bad_weak_ptr&) {
+                continue; //racing destruction
+            }
+            (*it)->open(newtype);
+            // post initial update
+            (*it)->post(*current, valid);
+            p_monitor.push_back(self);
         }
         // consume getField
         FOR_EACH(getfields_t::iterator, it, end, getfields) {
@@ -344,12 +350,14 @@ void SharedPV::post(const pvd::PVStructure& value,
         p_monitor.reserve(monitors.size()); // ick, for lack of a list with thread-safe iteration
 
         FOR_EACH(monitors_t::const_iterator, it, end, monitors) {
-            (*it)->post(value, changed);
+            std::tr1::shared_ptr<pva::MonitorFIFO> self;
             try {
-                p_monitor.push_back((*it)->shared_from_this());
-            }catch(std::tr1::bad_weak_ptr& e){
-                // ignore post to dead monitor
+                self = (*it)->shared_from_this();
+            }catch(std::tr1::bad_weak_ptr&) {
+                continue; //racing destruction
             }
+            (*it)->post(value, changed);
+            p_monitor.push_back(self);
         }
     }
     FOR_EACH(xmonitors_t::iterator, it, end, p_monitor) {
