@@ -345,7 +345,11 @@ void SharedPV::post(const pvd::PVStructure& value,
 
         FOR_EACH(monitors_t::const_iterator, it, end, monitors) {
             (*it)->post(value, changed);
-            p_monitor.push_back((*it)->shared_from_this());
+            try {
+                p_monitor.push_back((*it)->shared_from_this());
+            }catch(std::tr1::bad_weak_ptr& e){
+                // ignore post to dead monitor
+            }
         }
     }
     FOR_EACH(xmonitors_t::iterator, it, end, p_monitor) {
