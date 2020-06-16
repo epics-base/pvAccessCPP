@@ -1,6 +1,15 @@
 /** @page pvarelease_notes Release Notes
 
+Release 7.1.2 (XXX YYYY)
+========================
+
+- Changes
+  - Destroyable::destroy() is optional
+- Bug fixes
+  - SharedPV::post() handle bad_weak_ptr
+
 Release 7.1.1 (May 2020)
+========================
 
 - Changes
   - Add 'pval' iocsh command to list names from all providers of the running server.
