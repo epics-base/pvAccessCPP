@@ -56,6 +56,10 @@ public:
     void event(NotifyMonitorRequesterPtr const &notifyMonitorRequester);
 private:
     MonitorEventThread();
+    bool stopping() {
+        pvData::Lock the(mutex);
+        return isStop;
+    }
 
     bool isStop;
     std::tr1::shared_ptr<epicsThread> thread;

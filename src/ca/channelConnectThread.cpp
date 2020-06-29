@@ -105,7 +105,7 @@ void ChannelConnectThread::run()
                  if(channel) channel->notifyClient();
              }
          }
-         if(isStop) {
+         if(stopping()) {
              waitForStop.signal();
              break;
          }
