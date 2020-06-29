@@ -104,7 +104,7 @@ void GetDoneThread::run()
                  if(channelGet) channelGet->notifyClient();
              }
          }
-         if(isStop) {
+         if(stopping()) {
              waitForStop.signal();
              break;
          }

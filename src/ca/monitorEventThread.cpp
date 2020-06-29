@@ -103,7 +103,7 @@ void MonitorEventThread::run()
                  if(channelMonitor) channelMonitor->notifyClient();
              }
          }
-         if(isStop) {
+         if(stopping()) {
              waitForStop.signal();
              break;
          }

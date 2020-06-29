@@ -56,6 +56,11 @@ public:
     void putDone(NotifyPutRequesterPtr const &notifyPutRequester);
 private:
     PutDoneThread();
+    bool stopping() {
+        pvData::Lock the(mutex);
+        return isStop;
+    }
+
     bool isStop;
     std::tr1::shared_ptr<epicsThread> thread;
     epics::pvData::Mutex mutex;

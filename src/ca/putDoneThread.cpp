@@ -104,7 +104,7 @@ void PutDoneThread::run()
                  if(channelPut) channelPut->notifyClient();
              }
          }
-         if(isStop) {
+         if(stopping()) {
              waitForStop.signal();
              break;
          }

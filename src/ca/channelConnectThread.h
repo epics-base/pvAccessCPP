@@ -56,6 +56,10 @@ public:
     void channelConnected(NotifyChannelRequesterPtr const &notifyChannelRequester);
 private:
     ChannelConnectThread();
+    bool stopping() {
+        pvData::Lock the(mutex);
+        return isStop;
+    }
 
     bool isStop;
     std::tr1::shared_ptr<epicsThread> thread;

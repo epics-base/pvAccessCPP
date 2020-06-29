@@ -56,6 +56,10 @@ public:
     void getDone(NotifyGetRequesterPtr const &notifyGetRequester);
 private:
     GetDoneThread();
+    bool stopping() {
+        pvData::Lock the(mutex);
+        return isStop;
+    }
 
     bool isStop;
     std::tr1::shared_ptr<epicsThread> thread;
