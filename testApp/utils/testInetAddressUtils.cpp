@@ -1,6 +1,8 @@
 #include <epicsUnitTest.h>
 #include <testMain.h>
 
+#include <pv/pvUnitTest.h>
+
 #include <pv/inetAddressUtil.h>
 #include <pv/logger.h>
 
@@ -16,6 +18,16 @@
 using namespace epics::pvData;
 using namespace epics::pvAccess;
 using namespace std;
+
+std::ostream& operator<<(std::ostream& strm, const osiSockAddr& addr)
+{
+    char buf[32];
+    ipAddrToDottedIP(&addr.ia, buf, sizeof(buf));
+    strm<<buf;
+    return strm;
+}
+
+namespace {
 
 void test_getSocketAddressList()
 {
@@ -301,9 +313,53 @@ void test_multicastLoopback()
     epicsSocketDestroy(socket);
 }
 
+void test_discoverInterfaces()
+{
+    testDiag("test_discoverInterfaces()");
+
+    SOCKET sock(epicsSocketCreate(AF_INET, SOCK_DGRAM, 0));
+    if(sock==INVALID_SOCKET)
+        testAbort("Failed to allocate socket");
+
+    IfaceNodeVector ifaces;
+
+    osiSockAddr any;
+    memset(&any, 0, sizeof(any));
+    any.ia.sin_family = AF_INET;
+    any.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    testEqual(discoverInterfaces(ifaces, sock, &any), 0);
+    testOk(ifaces.size()>0u, "Found %u interfaces", unsigned(ifaces.size()));
+
+    for(size_t i=0; i<ifaces.size(); i++)
+    {
+        const ifaceNode& node = ifaces[i];
+        testShow()<<"Iface["<<i<<"] addr="<<node.addr;
+        if(node.validP2P) {
+            testShow()<<"  peer="<<node.peer;
+        }
+        if(node.validBcast) {
+            testShow()<<"  mask="<<node.mask<<" bcast="<<node.bcast;
+
+            epicsUInt32 ip   =ntohl(node.addr.ia.sin_addr.s_addr),
+                        mask =ntohl(node.mask.ia.sin_addr.s_addr),
+                        bcast=ntohl(node.bcast.ia.sin_addr.s_addr),
+                        net  =ip&mask,
+                        bcast2=net|~mask;
+
+            testDiag("IP %08x/%08x Bcast %08x == %08x", ip, mask, bcast, bcast2);
+        }
+        if(node.loopback) {
+            testShow()<<"  loopback";
+        }
+    }
+}
+
+} // namespace
+
 MAIN(testInetAddressUtils)
 {
-    testPlan(63);
+    testPlan(65);
     testDiag("Tests for InetAddress utils");
 
     test_getSocketAddressList();
@@ -311,6 +367,7 @@ MAIN(testInetAddressUtils)
     test_isMulticastAddress();
 
     test_multicastLoopback();
+    test_discoverInterfaces();
 
     return testDone();
 }
