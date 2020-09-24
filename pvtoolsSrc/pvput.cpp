@@ -322,10 +322,9 @@ int main (int argc, char *argv[])
             fprintf(stderr, "No pv name specified. ('pvput -h' for help.)\n");
             return 1;
         }
-        std::string pv = argv[optind++];
+        std::string pvName(argv[optind++]);
 
         std::string providerName(defaultProvider);
-        std::string pvName(pv);
 
         int nVals = argc - optind;       /* Remaining arg list are PV names */
         if (nVals < 1)
