@@ -39,7 +39,6 @@ MonitorEventThread::MonitorEventThread()
 
 MonitorEventThread::~MonitorEventThread()
 {
-//std::cout << "MonitorEventThread::~MonitorEventThread()\n";
 }
 
 void MonitorEventThread::start()

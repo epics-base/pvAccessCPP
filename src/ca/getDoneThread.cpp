@@ -39,7 +39,6 @@ GetDoneThread::GetDoneThread()
 
 GetDoneThread::~GetDoneThread()
 {
-//std::cout << "GetDoneThread::~GetDoneThread()\n";
 }
 
 

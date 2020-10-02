@@ -39,7 +39,6 @@ PutDoneThread::PutDoneThread()
 
 PutDoneThread::~PutDoneThread()
 {
-//std::cout << "PutDoneThread::~PutDoneThread()\n";
 }
 
 

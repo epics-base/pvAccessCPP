@@ -22,8 +22,15 @@ namespace epics {
 namespace pvAccess {
 namespace ca {
 
-#define DEBUG_LEVEL 0
-
+#define EXCEPTION_GUARD(code) try { code; } \
+    catch (std::exception &e) { \
+        LOG(logLevelError, "Unhandled exception from client code at %s:%d: %s", \
+            __FILE__, __LINE__, e.what()); \
+    } \
+    catch (...) { \
+        LOG(logLevelError, "Unhandled exception from client code at %s:%d.", \
+            __FILE__, __LINE__); \
+    }
 class ChannelConnectThread;
 typedef std::tr1::shared_ptr<ChannelConnectThread> ChannelConnectThreadPtr;
 
