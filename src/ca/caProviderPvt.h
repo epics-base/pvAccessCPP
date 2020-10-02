@@ -17,6 +17,11 @@
 #include <pv/caProvider.h>
 #include <pv/pvAccess.h>
 
+#include "channelConnectThread.h"
+#include "monitorEventThread.h"
+#include "getDoneThread.h"
+#include "putDoneThread.h"
+
 
 namespace epics {
 namespace pvAccess {
@@ -31,17 +36,6 @@ namespace ca {
         LOG(logLevelError, "Unhandled exception from client code at %s:%d.", \
             __FILE__, __LINE__); \
     }
-class ChannelConnectThread;
-typedef std::tr1::shared_ptr<ChannelConnectThread> ChannelConnectThreadPtr;
-
-class MonitorEventThread;
-typedef std::tr1::shared_ptr<MonitorEventThread> MonitorEventThreadPtr;
-
-class GetDoneThread;
-typedef std::tr1::shared_ptr<GetDoneThread> GetDoneThreadPtr;
-
-class PutDoneThread;
-typedef std::tr1::shared_ptr<PutDoneThread> PutDoneThreadPtr;
 
 class CAChannel;
 typedef std::tr1::shared_ptr<CAChannel> CAChannelPtr;
@@ -60,6 +54,8 @@ public:
     CAChannelProvider();
     CAChannelProvider(const std::tr1::shared_ptr<Configuration>&);
     virtual ~CAChannelProvider();
+
+    ChannelConnectThread& getChannelConnectThread();
 
     /* --------------- epics::pvAccess::ChannelProvider --------------- */
 
@@ -96,7 +92,7 @@ private:
     ca_client_context* current_context;
     epics::pvData::Mutex channelListMutex;
     std::vector<CAChannelWPtr> caChannelList;
-    ChannelConnectThreadPtr channelConnectThread;
+    ChannelConnectThread channelConnectThread;
     MonitorEventThreadPtr monitorEventThread;
     GetDoneThreadPtr getDoneThread;
     PutDoneThreadPtr putDoneThread;

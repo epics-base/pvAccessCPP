@@ -20,18 +20,6 @@ namespace epics {
 namespace pvAccess {
 namespace ca {
 
-ChannelConnectThreadPtr ChannelConnectThread::get()
-{
-    static  ChannelConnectThreadPtr master;
-    static Mutex mutex;
-    Lock xx(mutex);
-    if(!master) {
-        master = ChannelConnectThreadPtr(new ChannelConnectThread());
-        master->start();
-    }
-    return master;
-}
-
 ChannelConnectThread::ChannelConnectThread()
 : isStop(false)
 {
@@ -57,10 +45,6 @@ void ChannelConnectThread::start()
         epicsThreadGetStackSize(epicsThreadStackSmall),
         epicsThreadPriorityLow));
     thread->start();
-}
-
-void ChannelConnectThread::stop()
-{
 }
 
 void ChannelConnectThread::channelConnected(

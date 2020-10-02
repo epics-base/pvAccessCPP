@@ -11,11 +11,6 @@
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
 
-#include "channelConnectThread.h"
-#include "monitorEventThread.h"
-#include "getDoneThread.h"
-#include "putDoneThread.h"
-
 #define epicsExportSharedSymbols
 #include <pv/caProvider.h>
 #include "caProviderPvt.h"
@@ -34,13 +29,13 @@ CAChannelProvider::CAChannelProvider()
     initialize();
 }
 
-CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration>&)
-    :  current_context(0),
-       channelConnectThread(ChannelConnectThread::get()),
-       monitorEventThread(MonitorEventThread::get()),
-       getDoneThread(GetDoneThread::get()),
-       putDoneThread(PutDoneThread::get())
+CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration> &)
+    : current_context(0),
+      monitorEventThread(MonitorEventThread::get()),
+      getDoneThread(GetDoneThread::get()),
+      putDoneThread(PutDoneThread::get())
 {
+    channelConnectThread.start();
     initialize();
 }
 
@@ -62,11 +57,12 @@ CAChannelProvider::~CAChannelProvider()
         channelQ.front()->disconnectChannel();
         channelQ.pop();
     }
-    putDoneThread->stop();
-    getDoneThread->stop();
-    monitorEventThread->stop();
-    channelConnectThread->stop();
     ca_context_destroy();
+}
+
+ChannelConnectThread & CAChannelProvider::getChannelConnectThread()
+{
+    return channelConnectThread;
 }
 
 std::string CAChannelProvider::getProviderName()
