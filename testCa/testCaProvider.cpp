@@ -749,10 +749,25 @@ void TestIoc::run()
 
 void TestIoc::shutdown()
 {
+    testDiag("Shutting down the IOC");
 #ifdef USE_DBUNITTEST
     testIocShutdownOk();
     testdbCleanup();
+#else
+    // put to record that makes IOC exit
+    string channelName = "test:exit";
+    string request("value");
+    PVStructurePtr pvRequest(createRequest(request));
+    testDiag("created request");
+    TestClientPtr client = TestClient::create(channelName,pvRequest);
+    if (!client)
+        testAbort("NULL client for %s", channelName.c_str());
+    testDiag("got client");
+    client->put("1");
+    testDiag("sent put");
+    client->stopEvents();
 #endif
+    testDiag("IOC shutdown complete");
 }
 
 void checkClient(const string &channelName, const string &putValue)
@@ -767,9 +782,11 @@ void checkClient(const string &channelName, const string &putValue)
     client->stopEvents();
 }
 
+#define TEST_LOOPS 2
+
 MAIN(testCaProvider)
 {
-    testPlan(143 + EXIT_TESTS);
+    testPlan(143 * TEST_LOOPS + EXIT_TESTS);
 
 #ifdef USE_DBUNITTEST
     testDiag("Running IOC using dbUnitTest");
@@ -782,50 +799,46 @@ MAIN(testCaProvider)
 
     testDiag("===Test caProvider===");
     CAClientFactory::start();
+    testDiag("factory started");
     ChannelProviderRegistry::shared_pointer reg(ChannelProviderRegistry::clients());
+    testDiag("registered as a client");
     try {
-        ChannelProvider::shared_pointer channelProvider(reg->getProvider("ca"));
-        if (!channelProvider) testAbort("Channel provider 'ca' not registered");
-        checkClient("DBRlongout", "0");
-        checkClient("DBRlongout", "1");
-        checkClient("DBRlongout", "-1");
-        checkClient("DBRlongout", "32767");
-        checkClient("DBRlongout", "32768");
-        checkClient("DBRlongout", "-32768");
-        checkClient("DBRlongout", "-32769");
-        checkClient("DBRlongout", "2147483647");
-        checkClient("DBRlongout", "-2147483648");
-        checkClient("DBRdoubleout", "1.5");
-        checkClient("DBRstringout", "test");
-        checkClient("DBRbyteArray", "1 2 3");
-        checkClient("DBRshortArray", "1 2 3");
-        checkClient("DBRintArray", "1 2 3");
-        checkClient("DBRubyteArray", "1 2 3");
-        checkClient("DBRushortArray", "1 2 3");
-        checkClient("DBRuintArray", "1 2 3");
-        checkClient("DBRfloatArray", "1 2 3");
-        checkClient("DBRdoubleArray", "1 2 3");
-        checkClient("DBRstringArray", "aa bb cc");
-        checkClient("DBRmbbout", "2");
-        checkClient("DBRbinaryout", "1");
+        for (int i = 0; i < TEST_LOOPS; ++i) {
+            testDiag("== Loop #%d ==", i+1);
+            ChannelProvider::shared_pointer channelProvider(reg->getProvider("ca"));
 
-#ifndef USE_DBUNITTEST
-        // put to record that makes IOC exit
-        string channelName = "test:exit";
-        string request("value");
-        PVStructurePtr pvRequest(createRequest(request));
-        TestClientPtr client = TestClient::create(channelName,pvRequest);
-        if (!client)
-            testAbort("NULL client for %s", channelName.c_str());
-        client->put("1");
-        client->stopEvents();
-#endif
+            if (!channelProvider)
+                testAbort("Channel provider 'ca' not registered");
+            testDiag("ChannelProvider: %p", channelProvider.get());
+
+            checkClient("DBRlongout", "0");
+            checkClient("DBRlongout", "1");
+            checkClient("DBRlongout", "-1");
+            checkClient("DBRlongout", "32767");
+            checkClient("DBRlongout", "32768");
+            checkClient("DBRlongout", "-32768");
+            checkClient("DBRlongout", "-32769");
+            checkClient("DBRlongout", "2147483647");
+            checkClient("DBRlongout", "-2147483648");
+            checkClient("DBRdoubleout", "1.5");
+            checkClient("DBRstringout", "test");
+            checkClient("DBRbyteArray", "1 2 3");
+            checkClient("DBRshortArray", "1 2 3");
+            checkClient("DBRintArray", "1 2 3");
+            checkClient("DBRubyteArray", "1 2 3");
+            checkClient("DBRushortArray", "1 2 3");
+            checkClient("DBRuintArray", "1 2 3");
+            checkClient("DBRfloatArray", "1 2 3");
+            checkClient("DBRdoubleArray", "1 2 3");
+            checkClient("DBRstringArray", "aa bb cc");
+            checkClient("DBRmbbout", "2");
+            checkClient("DBRbinaryout", "1");
+        }
+        testIoc->shutdown();
     }
     catch (std::exception& e) {
         testAbort("caught un-expected exception: %s", e.what());
     }
 
-    testIoc->shutdown();
-
-    return testDone();;
+    return testDone();
 }
