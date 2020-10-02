@@ -8,10 +8,10 @@
  * @date 2018.07
  */
 
-#include "caChannel.h"
 #include <epicsExit.h>
 #define epicsExportSharedSymbols
 #include "channelConnectThread.h"
+#include "caChannel.h"
 
 using namespace epics::pvData;
 using namespace std;
@@ -39,6 +39,12 @@ ChannelConnectThread::ChannelConnectThread()
 
 ChannelConnectThread::~ChannelConnectThread()
 {
+    {
+        Lock the(mutex);
+        isStop = true;
+    }
+    workToDo.signal();
+    thread->exitWait();
 }
 
 
@@ -53,63 +59,51 @@ void ChannelConnectThread::start()
     thread->start();
 }
 
-
 void ChannelConnectThread::stop()
 {
-    {
-        Lock xx(mutex);
-        isStop = true;
-    }
-    waitForCommand.signal();
-    waitForStop.wait();
 }
 
 void ChannelConnectThread::channelConnected(
     NotifyChannelRequesterPtr const &notifyChannelRequester)
 {
     {
-        Lock lock(mutex);
-        if(notifyChannelRequester->isOnQueue) return;
+        Lock the(mutex);
+        if (notifyChannelRequester->isOnQueue) return;
         notifyChannelRequester->isOnQueue = true;
         notifyChannelQueue.push(notifyChannelRequester);
     }
-    waitForCommand.signal();
+    workToDo.signal();
 }
 
 void ChannelConnectThread::run()
 {
-    while(true)
-    {
-         waitForCommand.wait();
-         while(true) {
-             bool more = false;
-             NotifyChannelRequester* notifyChannelRequester(NULL);
-             {
-                 Lock lock(mutex);
-                 if(!notifyChannelQueue.empty())
-                 {
-                      more = true;
-                      NotifyChannelRequesterWPtr req(notifyChannelQueue.front());
-                      notifyChannelQueue.pop();
-                      NotifyChannelRequesterPtr reqPtr(req.lock());
-                      if(reqPtr) {
-                         notifyChannelRequester = reqPtr.get();
-                         reqPtr->isOnQueue = false;
-                      }
-                 }
-             }
-             if(!more) break;
-             if(notifyChannelRequester!=NULL)
-             {
-                 CAChannelPtr channel(notifyChannelRequester->channel.lock());
-                 if(channel) channel->notifyClient();
-             }
-         }
-         if(stopping()) {
-             waitForStop.signal();
-             break;
-         }
-    }
+    do {
+        workToDo.wait();
+        while (true) {
+            bool more = false;
+            NotifyChannelRequester* notifyChannelRequester(NULL);
+            {
+                Lock the(mutex);
+                if (!notifyChannelQueue.empty())
+                {
+                    more = true;
+                    NotifyChannelRequesterWPtr req(notifyChannelQueue.front());
+                    notifyChannelQueue.pop();
+                    NotifyChannelRequesterPtr reqPtr(req.lock());
+                    if (reqPtr) {
+                        notifyChannelRequester = reqPtr.get();
+                        reqPtr->isOnQueue = false;
+                    }
+                }
+            }
+            if (!more) break;
+            if (notifyChannelRequester)
+            {
+                CAChannelPtr channel(notifyChannelRequester->channel.lock());
+                if (channel) channel->notifyClient();
+            }
+        }
+    } while (!stopping());
 }
 
 }}}

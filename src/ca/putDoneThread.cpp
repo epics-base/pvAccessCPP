@@ -39,6 +39,12 @@ PutDoneThread::PutDoneThread()
 
 PutDoneThread::~PutDoneThread()
 {
+    {
+        Lock xx(mutex);
+        isStop = true;
+    }
+    waitForCommand.signal();
+    waitForStop.wait();
 }
 
 
@@ -55,12 +61,6 @@ void PutDoneThread::start()
 
 void PutDoneThread::stop()
 {
-    {
-        Lock xx(mutex);
-        isStop = true;
-    }
-    waitForCommand.signal();
-    waitForStop.wait();
 }
 
 void PutDoneThread::putDone(NotifyPutRequesterPtr const &notifyPutRequester)
@@ -76,37 +76,34 @@ void PutDoneThread::putDone(NotifyPutRequesterPtr const &notifyPutRequester)
 
 void PutDoneThread::run()
 {
-    while(true)
-    {
-         waitForCommand.wait();
-         while(true) {
-             bool more = false;
-             NotifyPutRequester* notifyPutRequester(NULL);
-             {
-                 Lock lock(mutex);
-                 if(!notifyPutQueue.empty())
-                 {
-                      more = true;
-                      NotifyPutRequesterWPtr req(notifyPutQueue.front());
-                      notifyPutQueue.pop();
-                      NotifyPutRequesterPtr reqPtr(req.lock());
-                      if(reqPtr) {
-                         notifyPutRequester = reqPtr.get();
-                         reqPtr->isOnQueue = false;
-                      }
-                 }
-             }
-             if(!more) break;
-             if(notifyPutRequester!=NULL)
-             {
-                 CAChannelPutPtr channelPut(notifyPutRequester->channelPut.lock());
-                 if(channelPut) channelPut->notifyClient();
-             }
-         }
-         if(stopping()) {
-             waitForStop.signal();
-             break;
-         }
+    while (true) {
+        waitForCommand.wait();
+        while (true) {
+            bool more = false;
+            NotifyPutRequester* notifyPutRequester(NULL);
+            {
+                Lock lock(mutex);
+                if (!notifyPutQueue.empty()) {
+                    more = true;
+                    NotifyPutRequesterWPtr req(notifyPutQueue.front());
+                    notifyPutQueue.pop();
+                    NotifyPutRequesterPtr reqPtr(req.lock());
+                    if (reqPtr) {
+                        notifyPutRequester = reqPtr.get();
+                        reqPtr->isOnQueue = false;
+                    }
+                }
+            }
+            if (!more) break;
+            if (notifyPutRequester!=NULL) {
+                CAChannelPutPtr channelPut(notifyPutRequester->channelPut.lock());
+                if (channelPut) channelPut->notifyClient();
+            }
+        }
+        if (stopping()) {
+            waitForStop.signal();
+            break;
+        }
     }
 }
 
