@@ -47,7 +47,7 @@ public:
     static void start();
     /** @brief stop provider ca
      *
-     * This does nothing since epicsAtExit is used to destroy the instance.
+     * This does nothing.
      */
     static void stop();
 };

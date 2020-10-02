@@ -39,13 +39,13 @@ ChannelConnectThread::ChannelConnectThread()
 
 ChannelConnectThread::~ChannelConnectThread()
 {
-//std::cout << "ChannelConnectThread::~ChannelConnectThread()\n";
 }
 
 
 void ChannelConnectThread::start()
 {
-    thread =  std::tr1::shared_ptr<epicsThread>(new epicsThread(
+    if (thread) return;
+    thread = std::tr1::shared_ptr<epicsThread>(new epicsThread(
         *this,
         "channelConnectThread",
         epicsThreadGetStackSize(epicsThreadStackSmall),
