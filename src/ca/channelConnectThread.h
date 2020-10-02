@@ -24,7 +24,6 @@ class NotifyChannelRequester;
 typedef std::tr1::shared_ptr<NotifyChannelRequester> NotifyChannelRequesterPtr;
 typedef std::tr1::weak_ptr<NotifyChannelRequester> NotifyChannelRequesterWPtr;
 
-
 class ChannelConnectThread;
 typedef std::tr1::shared_ptr<ChannelConnectThread> ChannelConnectThreadPtr;
 
@@ -64,8 +63,7 @@ private:
     bool isStop;
     std::tr1::shared_ptr<epicsThread> thread;
     epics::pvData::Mutex mutex;
-    epics::pvData::Event waitForCommand;
-    epics::pvData::Event waitForStop;
+    epics::pvData::Event workToDo;
     std::queue<NotifyChannelRequesterWPtr> notifyChannelQueue;
 };
 

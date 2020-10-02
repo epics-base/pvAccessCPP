@@ -39,6 +39,12 @@ MonitorEventThread::MonitorEventThread()
 
 MonitorEventThread::~MonitorEventThread()
 {
+    {
+        Lock xx(mutex);
+        isStop = true;
+    }
+    waitForCommand.signal();
+    waitForStop.wait();
 }
 
 void MonitorEventThread::start()
@@ -53,12 +59,6 @@ void MonitorEventThread::start()
 
 void MonitorEventThread::stop()
 {
-    {
-        Lock xx(mutex);
-        isStop = true;
-    }
-    waitForCommand.signal();
-    waitForStop.wait();
 }
 
 
@@ -75,37 +75,35 @@ void MonitorEventThread::event(NotifyMonitorRequesterPtr const &notifyMonitorReq
 
 void MonitorEventThread::run()
 {
-    while(true)
-    {
-         waitForCommand.wait();
-         while(true) {
-             bool more = false;
-             NotifyMonitorRequester* notifyMonitorRequester(NULL);
-             {
-                 Lock lock(mutex);
-                 if(!notifyMonitorQueue.empty())
-                 {
-                      more = true;
-                      NotifyMonitorRequesterWPtr req(notifyMonitorQueue.front());
-                      notifyMonitorQueue.pop();
-                      NotifyMonitorRequesterPtr reqPtr(req.lock());
-                      if(reqPtr) {
-                         notifyMonitorRequester = reqPtr.get();
-                         reqPtr->isOnQueue = false;
-                      }
-                 }
-             }
-             if(!more) break;
-             if(notifyMonitorRequester!=NULL)
-             {
-                 CAChannelMonitorPtr channelMonitor(notifyMonitorRequester->channelMonitor.lock());
-                 if(channelMonitor) channelMonitor->notifyClient();
-             }
-         }
-         if(stopping()) {
-             waitForStop.signal();
-             break;
-         }
+    while (true) {
+        waitForCommand.wait();
+        while (true) {
+            bool more = false;
+            NotifyMonitorRequester* notifyMonitorRequester(NULL);
+            {
+                Lock lock(mutex);
+                if (!notifyMonitorQueue.empty())
+                {
+                    more = true;
+                    NotifyMonitorRequesterWPtr req(notifyMonitorQueue.front());
+                    notifyMonitorQueue.pop();
+                    NotifyMonitorRequesterPtr reqPtr(req.lock());
+                    if (reqPtr) {
+                        notifyMonitorRequester = reqPtr.get();
+                        reqPtr->isOnQueue = false;
+                    }
+                }
+            }
+            if (!more) break;
+            if (notifyMonitorRequester!=NULL) {
+                CAChannelMonitorPtr channelMonitor(notifyMonitorRequester->channelMonitor.lock());
+                if (channelMonitor) channelMonitor->notifyClient();
+            }
+        }
+        if (stopping()) {
+            waitForStop.signal();
+            break;
+        }
     }
 }
 

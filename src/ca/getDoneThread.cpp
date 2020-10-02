@@ -39,6 +39,12 @@ GetDoneThread::GetDoneThread()
 
 GetDoneThread::~GetDoneThread()
 {
+    {
+        Lock xx(mutex);
+        isStop = true;
+    }
+    waitForCommand.signal();
+    waitForStop.wait();
 }
 
 
@@ -55,12 +61,6 @@ void GetDoneThread::start()
 
 void GetDoneThread::stop()
 {
-    {
-        Lock xx(mutex);
-        isStop = true;
-    }
-    waitForCommand.signal();
-    waitForStop.wait();
 }
 
 void GetDoneThread::getDone(NotifyGetRequesterPtr const &notifyGetRequester)
@@ -76,37 +76,34 @@ void GetDoneThread::getDone(NotifyGetRequesterPtr const &notifyGetRequester)
 
 void GetDoneThread::run()
 {
-    while(true)
-    {
-         waitForCommand.wait();
-         while(true) {
-             bool more = false;
-             NotifyGetRequester* notifyGetRequester(NULL);
-             {
-                 Lock lock(mutex);
-                 if(!notifyGetQueue.empty())
-                 {
-                      more = true;
-                      NotifyGetRequesterWPtr req(notifyGetQueue.front());
-                      notifyGetQueue.pop();
-                      NotifyGetRequesterPtr reqPtr(req.lock());
-                      if(reqPtr) {
-                         notifyGetRequester = reqPtr.get();
-                         reqPtr->isOnQueue = false;
-                      }
-                 }
-             }
-             if(!more) break;
-             if(notifyGetRequester!=NULL)
-             {
-                 CAChannelGetPtr channelGet(notifyGetRequester->channelGet.lock());
-                 if(channelGet) channelGet->notifyClient();
-             }
-         }
-         if(stopping()) {
-             waitForStop.signal();
-             break;
-         }
+    while (true) {
+        waitForCommand.wait();
+        while (true) {
+            bool more = false;
+            NotifyGetRequester* notifyGetRequester(NULL);
+            {
+                Lock lock(mutex);
+                if (!notifyGetQueue.empty()) {
+                    more = true;
+                    NotifyGetRequesterWPtr req(notifyGetQueue.front());
+                    notifyGetQueue.pop();
+                    NotifyGetRequesterPtr reqPtr(req.lock());
+                    if (reqPtr) {
+                        notifyGetRequester = reqPtr.get();
+                        reqPtr->isOnQueue = false;
+                    }
+                }
+            }
+            if (!more) break;
+            if (notifyGetRequester!=NULL) {
+                CAChannelGetPtr channelGet(notifyGetRequester->channelGet.lock());
+                if (channelGet) channelGet->notifyClient();
+            }
+        }
+        if (stopping()) {
+            waitForStop.signal();
+            break;
+        }
     }
 }
 
