@@ -135,7 +135,6 @@ private:
     chid channelID;
     bool channelCreated;
     bool channelConnected;
-    ChannelConnectThreadPtr channelConnectThread;
     NotifyChannelRequesterPtr notifyChannelRequester;
 
     epics::pvData::Mutex requestsMutex;

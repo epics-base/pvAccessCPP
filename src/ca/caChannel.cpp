@@ -53,7 +53,9 @@ void CAChannel::connect(bool isConnected)
         Lock lock(requestsMutex);
         channelConnected = isConnected;
     }
-    channelConnectThread->channelConnected(notifyChannelRequester);
+    CAChannelProviderPtr provider(channelProvider.lock());
+    if (!provider) return;
+    provider->getChannelConnectThread().channelConnected(notifyChannelRequester);
 }
 
 void CAChannel::notifyClient()
@@ -107,8 +109,7 @@ CAChannel::CAChannel(std::string const & channelName,
     channelRequester(channelRequester),
     channelID(0),
     channelCreated(false),
-    channelConnected(false),
-    channelConnectThread(ChannelConnectThread::get())
+    channelConnected(false)
 {
 }
 

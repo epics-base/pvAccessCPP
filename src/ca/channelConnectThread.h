@@ -15,6 +15,7 @@
 #include <epicsThread.h>
 #include <pv/event.h>
 #include <pv/lock.h>
+#include <pv/pvAccess.h>
 
 namespace epics {
 namespace pvAccess {
@@ -47,14 +48,13 @@ class ChannelConnectThread :
      public epicsThreadRunable
 {
 public:
-    static ChannelConnectThreadPtr get();
+    ChannelConnectThread();
     ~ChannelConnectThread();
     virtual void run();
     void start();
     void stop();
     void channelConnected(NotifyChannelRequesterPtr const &notifyChannelRequester);
 private:
-    ChannelConnectThread();
     bool stopping() {
         pvData::Lock the(mutex);
         return isStop;
