@@ -654,7 +654,7 @@ private:
 
     std::queue<MonitorElementPtr> monitorElementQueue;
 public:
-    CACMonitorQueue(int32 queueSize)
+    explicit CACMonitorQueue(int32 queueSize)
         : queueSize(queueSize),
           isStarted(false)
     {
