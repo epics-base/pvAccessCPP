@@ -6,14 +6,11 @@
 
 #include <cadef.h>
 #include <epicsSignal.h>
-#include <epicsThread.h>
-#include <epicsExit.h>
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
 
 #define epicsExportSharedSymbols
 #include <pv/caProvider.h>
-#include "caProviderPvt.h"
 #include "caChannel.h"
 
 
@@ -30,12 +27,10 @@ CAChannelProvider::CAChannelProvider()
 }
 
 CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration> &)
-    : current_context(0),
-      monitorEventThread(MonitorEventThread::get()),
-      getDoneThread(GetDoneThread::get()),
-      putDoneThread(PutDoneThread::get())
+    : current_context(0)
 {
-    channelConnectThread.start();
+    connectNotifier.start();
+    resultNotifier.start();
     initialize();
 }
 
@@ -58,11 +53,6 @@ CAChannelProvider::~CAChannelProvider()
         channelQ.pop();
     }
     ca_context_destroy();
-}
-
-ChannelConnectThread & CAChannelProvider::getChannelConnectThread()
-{
-    return channelConnectThread;
 }
 
 std::string CAChannelProvider::getProviderName()

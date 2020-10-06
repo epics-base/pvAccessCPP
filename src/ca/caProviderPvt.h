@@ -14,13 +14,11 @@
 
 #include <cadef.h>
 
-#include <pv/caProvider.h>
+#include <pv/logger.h>
 #include <pv/pvAccess.h>
 
-#include "channelConnectThread.h"
-#include "monitorEventThread.h"
-#include "getDoneThread.h"
-#include "putDoneThread.h"
+#include <pv/caProvider.h>
+#include "notifierConveyor.h"
 
 
 namespace epics {
@@ -55,8 +53,6 @@ public:
     CAChannelProvider(const std::tr1::shared_ptr<Configuration>&);
     virtual ~CAChannelProvider();
 
-    ChannelConnectThread& getChannelConnectThread();
-
     /* --------------- epics::pvAccess::ChannelProvider --------------- */
 
     virtual std::string getProviderName();
@@ -85,17 +81,21 @@ public:
 
     void attachContext();
     void addChannel(const CAChannelPtr & channel);
+
+    void notifyConnection(NotificationPtr const &notificationPtr) {
+        connectNotifier.notifyClient(notificationPtr);
+    }
+    void notifyResult(NotificationPtr const &notificationPtr) {
+        resultNotifier.notifyClient(notificationPtr);
+    }
 private:
-    
-    virtual void destroy() EPICS_DEPRECATED {}
     void initialize();
     ca_client_context* current_context;
     epics::pvData::Mutex channelListMutex;
     std::vector<CAChannelWPtr> caChannelList;
-    ChannelConnectThread channelConnectThread;
-    MonitorEventThreadPtr monitorEventThread;
-    GetDoneThreadPtr getDoneThread;
-    PutDoneThreadPtr putDoneThread;
+
+    NotifierConveyor connectNotifier;
+    NotifierConveyor resultNotifier;
 };
 
 }}}

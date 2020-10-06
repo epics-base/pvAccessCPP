@@ -13,17 +13,15 @@
 #include <shareLib.h>
 #include <pv/pvAccess.h>
 
-struct ca_client_context;
-
 namespace epics {
 namespace pvAccess {
 namespace ca {
 
 /**
- * @brief  CAClientFactory is a channel provider for the ca network provider.
+ * @brief CAClientFactory registers a channel provider for operations over the
+ * CA network protocol.
  *
  * A single instance is created the first time CAClientFactory::start is called.
- * epicsAtExit is used to destroy the instance.
  *
  * The single instance calls:
  *      ca_context_create(ca_enable_preemptive_callback);
@@ -31,11 +29,8 @@ namespace ca {
  * The thread that calls start, or a ca auxillary thread, are the only threads
  * that can call the ca_* functions.
  *
- * NOTE: callbacks for monitor, get, and put are made from a separate thread.
- *    This is done to prevent a deadly embrace that can occur
- *         when rapid gets, puts, and monitor events are happening.
- *    The callbacks should not call any pvAccess method.
- *    If any such call is made the separate thread becomes a ca auxillary thread.
+ * NOTE: Notifications for connection changes and monitor, get, and put events
+ * are made from separate threads to prevent deadlocks.
  * 
  */
 class epicsShareClass CAClientFactory

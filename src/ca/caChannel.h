@@ -15,11 +15,10 @@
 #include <queue>
 #include <vector>
 
+#include <cadef.h>
+
 #include <pv/pvAccess.h>
 #include <pv/event.h>
-
-/* for CA */
-#include <cadef.h>
 
 #include "caProviderPvt.h"
 #include "dbdToPv.h"
@@ -31,28 +30,6 @@ namespace ca {
 class CAChannel;
 typedef std::tr1::shared_ptr<CAChannel> CAChannelPtr;
 typedef std::tr1::weak_ptr<CAChannel> CAChannelWPtr;
-class ChannelConnectThread;
-typedef std::tr1::shared_ptr<ChannelConnectThread> ChannelConnectThreadPtr;
-
-class NotifyChannelRequester;
-typedef std::tr1::shared_ptr<NotifyChannelRequester> NotifyChannelRequesterPtr;
-
-class NotifyMonitorRequester;
-typedef std::tr1::shared_ptr<NotifyMonitorRequester> NotifyMonitorRequesterPtr;
-class MonitorEventThread;
-typedef std::tr1::shared_ptr<MonitorEventThread> MonitorEventThreadPtr;
-
-class NotifyGetRequester;
-typedef std::tr1::shared_ptr<NotifyGetRequester> NotifyGetRequesterPtr;
-typedef std::tr1::weak_ptr<NotifyGetRequester> NotifyGetRequesterWPtr;
-class GetDoneThread;
-typedef std::tr1::shared_ptr<GetDoneThread> GetDoneThreadPtr;
-
-class NotifyPutRequester;
-typedef std::tr1::shared_ptr<NotifyPutRequester> NotifyPutRequesterPtr;
-typedef std::tr1::weak_ptr<NotifyPutRequester> NotifyPutRequesterWPtr;
-class PutDoneThread;
-typedef std::tr1::shared_ptr<PutDoneThread> PutDoneThreadPtr;
 
 class CAChannelGetField;
 typedef std::tr1::shared_ptr<CAChannelGetField> CAChannelGetFieldPtr;
@@ -85,8 +62,10 @@ private:
     std::string subField;
 };
 
+
 class CAChannel :
     public Channel,
+    public NotifierClient,
     public std::tr1::enable_shared_from_this<CAChannel>
 {
 public:
@@ -120,7 +99,9 @@ public:
     void attachContext();
     void disconnectChannel();
     void connect(bool isConnected);
-    void notifyClient();
+    virtual void notifyClient();
+
+    void notifyResult(NotificationPtr const &notificationPtr);
 private:
     virtual void destroy() {}
     CAChannel(std::string const & channelName,
@@ -135,7 +116,7 @@ private:
     chid channelID;
     bool channelCreated;
     bool channelConnected;
-    NotifyChannelRequesterPtr notifyChannelRequester;
+    NotificationPtr connectNotification;
 
     epics::pvData::Mutex requestsMutex;
     std::queue<CAChannelGetFieldPtr> getFieldQueue;
@@ -148,11 +129,12 @@ private:
 
 class CAChannelGet :
     public ChannelGet,
+    public NotifierClient,
     public std::tr1::enable_shared_from_this<CAChannelGet>
 {
 public:
     POINTER_DEFINITIONS(CAChannelGet);
-    static CAChannelGet::shared_pointer create(CAChannel::shared_pointer const & channel,
+    static CAChannelGetPtr create(CAChannel::shared_pointer const & channel,
             ChannelGetRequester::shared_pointer const & channelGetRequester,
             epics::pvData::PVStructurePtr const & pvRequest);
     virtual ~CAChannelGet();
@@ -164,7 +146,7 @@ public:
     virtual std::string getRequesterName();
 
     void activate();
-    void notifyClient();
+    virtual void notifyClient();
 private:
     virtual void destroy() {}
     CAChannelGet(CAChannel::shared_pointer const & _channel,
@@ -175,8 +157,7 @@ private:
     ChannelGetRequester::weak_pointer channelGetRequester;
     const epics::pvData::PVStructure::shared_pointer pvRequest;
     epics::pvData::Status getStatus;
-    GetDoneThreadPtr getDoneThread;
-    NotifyGetRequesterPtr notifyGetRequester;
+    NotificationPtr getNotification;
     DbdToPvPtr dbdToPv;
     epics::pvData::Mutex mutex;
     epics::pvData::PVStructure::shared_pointer pvStructure;
@@ -185,9 +166,9 @@ private:
 
 class CAChannelPut :
     public ChannelPut,
+    public NotifierClient,
     public std::tr1::enable_shared_from_this<CAChannelPut>
 {
-
 public:
     POINTER_DEFINITIONS(CAChannelPut);
     static CAChannelPut::shared_pointer create(CAChannel::shared_pointer const & channel,
@@ -207,7 +188,7 @@ public:
 
     virtual std::string getRequesterName();
     void activate();
-    void notifyClient();
+    virtual void notifyClient();
 private:
     virtual void destroy() {}
     CAChannelPut(CAChannel::shared_pointer const & _channel,
@@ -220,8 +201,7 @@ private:
     bool isPut;
     epics::pvData::Status getStatus;
     epics::pvData::Status putStatus;
-    PutDoneThreadPtr putDoneThread;
-    NotifyPutRequesterPtr notifyPutRequester;
+    NotificationPtr putNotification;
     DbdToPvPtr dbdToPv;
     epics::pvData::Mutex mutex;
     epics::pvData::PVStructure::shared_pointer pvStructure;
@@ -233,9 +213,9 @@ typedef std::tr1::shared_ptr<CACMonitorQueue> CACMonitorQueuePtr;
 
 class CAChannelMonitor :
     public Monitor,
+    public NotifierClient,
     public std::tr1::enable_shared_from_this<CAChannelMonitor>
 {
-
 public:
     POINTER_DEFINITIONS(CAChannelMonitor);
     static CAChannelMonitor::shared_pointer create(CAChannel::shared_pointer const & channel,
@@ -251,7 +231,7 @@ public:
     virtual void cancel();
     virtual std::string getRequesterName();
     void activate();
-    void notifyClient();
+    virtual void notifyClient();
 private:
     virtual void destroy() {}
     CAChannelMonitor(CAChannel::shared_pointer const & _channel,
@@ -261,10 +241,9 @@ private:
     MonitorRequester::weak_pointer monitorRequester;
     const epics::pvData::PVStructure::shared_pointer pvRequest;
     bool isStarted;
-    MonitorEventThreadPtr monitorEventThread;
     evid pevid;
     unsigned long eventMask;
-    NotifyMonitorRequesterPtr notifyMonitorRequester;
+    NotificationPtr eventNotification;
 
     DbdToPvPtr dbdToPv;
     epics::pvData::Mutex mutex;
