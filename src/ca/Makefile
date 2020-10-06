@@ -11,10 +11,7 @@ LIB_SYS_LIBS_WIN32 += netapi32 ws2_32
 
 INC += pv/caProvider.h
 
-pvAccessCA_SRCS += channelConnectThread.cpp
-pvAccessCA_SRCS += monitorEventThread.cpp
-pvAccessCA_SRCS += getDoneThread.cpp
-pvAccessCA_SRCS += putDoneThread.cpp
+pvAccessCA_SRCS += notifierConveyor.cpp
 pvAccessCA_SRCS += caProvider.cpp
 pvAccessCA_SRCS += caChannel.cpp
 pvAccessCA_SRCS += dbdToPv.cpp
