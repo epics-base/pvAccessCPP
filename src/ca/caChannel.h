@@ -96,14 +96,16 @@ public:
         epics::pvData::PVStructurePtr const & pvRequest);
     virtual void printInfo(std::ostream& out);
 
-    void attachContext();
     void disconnectChannel();
     void connect(bool isConnected);
-    virtual void notifyClient();
 
     void notifyResult(NotificationPtr const &notificationPtr);
+    virtual void notifyClient();
+
+    CAContextPtr caContext() {
+        return ca_context;
+    }
 private:
-    virtual void destroy() {}
     CAChannel(std::string const & channelName,
               CAChannelProvider::shared_pointer const & channelProvider,
               ChannelRequester::shared_pointer const & channelRequester);
@@ -117,6 +119,7 @@ private:
     bool channelCreated;
     bool channelConnected;
     NotificationPtr connectNotification;
+    CAContextPtr ca_context;
 
     epics::pvData::Mutex requestsMutex;
     std::queue<CAChannelGetFieldPtr> getFieldQueue;
@@ -148,16 +151,17 @@ public:
     void activate();
     virtual void notifyClient();
 private:
-    virtual void destroy() {}
     CAChannelGet(CAChannel::shared_pointer const & _channel,
                  ChannelGetRequester::shared_pointer const & _channelGetRequester,
                  epics::pvData::PVStructurePtr const & pvRequest);
-    
+
     CAChannelPtr channel;
     ChannelGetRequester::weak_pointer channelGetRequester;
     const epics::pvData::PVStructure::shared_pointer pvRequest;
     epics::pvData::Status getStatus;
     NotificationPtr getNotification;
+    CAContextPtr ca_context;
+
     DbdToPvPtr dbdToPv;
     epics::pvData::Mutex mutex;
     epics::pvData::PVStructure::shared_pointer pvStructure;
@@ -190,7 +194,6 @@ public:
     void activate();
     virtual void notifyClient();
 private:
-    virtual void destroy() {}
     CAChannelPut(CAChannel::shared_pointer const & _channel,
                  ChannelPutRequester::shared_pointer const & _channelPutRequester,
                  epics::pvData::PVStructurePtr const & pvRequest);
@@ -202,6 +205,8 @@ private:
     epics::pvData::Status getStatus;
     epics::pvData::Status putStatus;
     NotificationPtr putNotification;
+    CAContextPtr ca_context;
+
     DbdToPvPtr dbdToPv;
     epics::pvData::Mutex mutex;
     epics::pvData::PVStructure::shared_pointer pvStructure;
@@ -233,9 +238,8 @@ public:
     void activate();
     virtual void notifyClient();
 private:
-    virtual void destroy() {}
-    CAChannelMonitor(CAChannel::shared_pointer const & _channel,
-                     MonitorRequester::shared_pointer const & _monitorRequester,
+    CAChannelMonitor(CAChannel::shared_pointer const & channel,
+                     MonitorRequester::shared_pointer const & monitorRequester,
                      epics::pvData::PVStructurePtr const & pvRequest);
     CAChannelPtr channel;
     MonitorRequester::weak_pointer monitorRequester;
@@ -244,6 +248,7 @@ private:
     evid pevid;
     unsigned long eventMask;
     NotificationPtr eventNotification;
+    CAContextPtr ca_context;
 
     DbdToPvPtr dbdToPv;
     epics::pvData::Mutex mutex;

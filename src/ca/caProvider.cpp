@@ -20,18 +20,11 @@ namespace ca {
 
 using namespace epics::pvData;
 
-CAChannelProvider::CAChannelProvider()
-    : current_context(0)
-{
-    initialize();
-}
-
 CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration> &)
-    : current_context(0)
+    : ca_context(CAContextPtr(new CAContext()))
 {
     connectNotifier.start();
     resultNotifier.start();
-    initialize();
 }
 
 CAChannelProvider::~CAChannelProvider()
@@ -52,7 +45,6 @@ CAChannelProvider::~CAChannelProvider()
         channelQ.front()->disconnectChannel();
         channelQ.pop();
     }
-    ca_context_destroy();
 }
 
 std::string CAChannelProvider::getProviderName()
@@ -137,33 +129,7 @@ void CAChannelProvider::poll()
 {
 }
 
-void CAChannelProvider::attachContext()
-{
-    ca_client_context *thread_context = ca_current_context();
-    if (thread_context == current_context)
-        return;
-    int result = ca_attach_context(current_context);
-    if (result == ECA_ISATTACHED)
-        return;
-    if (result != ECA_NORMAL)
-    {
-        std::string mess("CAChannelProvider::attachContext error calling ca_attach_context ");
-        mess += ca_message(result);
-        throw std::runtime_error(mess);
-    }
-}
-
-void CAChannelProvider::initialize()
-{
-    int result = ca_context_create(ca_enable_preemptive_callback);
-    if (result != ECA_NORMAL)
-    {
-        std::string mess("CAChannelProvider::initialize error calling ca_context_create ");
-        mess += ca_message(result);
-        throw std::runtime_error(mess);
-    }
-    current_context = ca_current_context();
-}
+// ---------------- CAClientFactory ----------------
 
 void CAClientFactory::start()
 {

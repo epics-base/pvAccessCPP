@@ -111,7 +111,8 @@ CAChannel::CAChannel(std::string const & channelName,
     channelID(0),
     channelCreated(false),
     channelConnected(false),
-    connectNotification(new Notification())
+    connectNotification(new Notification()),
+    ca_context(channelProvider->caContext())
 {
 }
 
@@ -120,17 +121,17 @@ void CAChannel::activate(short priority)
     ChannelRequester::shared_pointer req(channelRequester.lock());
     if (!req) return;
     connectNotification->setClient(shared_from_this());
-    attachContext();
+    Attach to(ca_context);
     int result = ca_create_channel(channelName.c_str(),
-         ca_connection_handler,
-         this,
-         priority, // TODO mapping
-         &channelID);
+        ca_connection_handler, this,
+        priority, // TODO mapping
+        &channelID);
     if (result == ECA_NORMAL) {
-       channelCreated = true;
-       CAChannelProviderPtr provider(channelProvider.lock());
-       if(provider) provider->addChannel(shared_from_this());
-       EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
+        channelCreated = true;
+        CAChannelProviderPtr provider(channelProvider.lock());
+        if (provider)
+            provider->addChannel(shared_from_this());
+        EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
     }
     else {
         Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
@@ -162,7 +163,7 @@ void CAChannel::disconnectChannel()
     }
     monitorlist.resize(0);
     /* Clear CA Channel */
-    attachContext();
+    Attach to(ca_context);
     int result = ca_clear_channel(channelID);
     if (result == ECA_NORMAL) return;
     string mess("CAChannel::disconnectChannel() ");
@@ -361,18 +362,6 @@ void CAChannelGetField::callRequester(CAChannelPtr const & caChannel)
 
 /* ---------------------------------------------------------- */
 
-void CAChannel::attachContext()
-{
-    CAChannelProviderPtr provider(channelProvider.lock());
-    if (provider) {
-        provider->attachContext();
-        return;
-    }
-    string mess("CAChannel::attachContext provider does not exist ");
-    mess += getChannelName();
-    throw std::runtime_error(mess);
-}
-
 CAChannelGetPtr CAChannelGet::create(
     CAChannel::shared_pointer const & channel,
     ChannelGetRequester::shared_pointer const & channelGetRequester,
@@ -389,7 +378,8 @@ CAChannelGet::CAChannelGet(CAChannel::shared_pointer const & channel,
     channelGetRequester(channelGetRequester),
     pvRequest(pvRequest),
     getStatus(Status::Ok),
-    getNotification(new Notification())
+    getNotification(new Notification()),
+    ca_context(channel->caContext())
 {}
 
 CAChannelGet::~CAChannelGet()
@@ -445,8 +435,8 @@ void CAChannelGet::get()
 {
     ChannelGetRequester::shared_pointer getRequester(channelGetRequester.lock());
     if (!getRequester) return;
-    channel->attachContext();
     bitSet->clear();
+    Attach to(ca_context);
     int result = ca_array_get_callback(dbdToPv->getRequestType(),
          0,
          channel->getChannelID(), ca_get_handler, this);
@@ -492,7 +482,8 @@ CAChannelPut::CAChannelPut(CAChannel::shared_pointer const & channel,
     isPut(false),
     getStatus(Status::Ok),
     putStatus(Status::Ok),
-    putNotification(new Notification())
+    putNotification(new Notification()),
+    ca_context(channel->caContext())
 {}
 
 CAChannelPut::~CAChannelPut()
@@ -603,8 +594,8 @@ void CAChannelPut::get()
        isPut = false;
     }
 
-    channel->attachContext();
     bitSet->clear();
+    Attach to(ca_context);
     int result = ca_array_get_callback(dbdToPv->getRequestType(),
          0,
          channel->getChannelID(), ca_put_get_handler, this);
@@ -737,7 +728,8 @@ CAChannelMonitor::CAChannelMonitor(
     isStarted(false),
     pevid(NULL),
     eventMask(DBE_VALUE | DBE_ALARM),
-    eventNotification(new Notification())
+    eventNotification(new Notification()),
+    ca_context(channel->caContext())
 {}
 
 CAChannelMonitor::~CAChannelMonitor()
@@ -833,7 +825,7 @@ Status CAChannelMonitor::start()
         isStarted = true;
         monitorQueue->start();
     }
-    channel->attachContext();
+    Attach to(ca_context);
     int result = ca_create_subscription(dbdToPv->getRequestType(),
          0,
          channel->getChannelID(), eventMask,
@@ -859,6 +851,7 @@ Status CAChannelMonitor::stop()
         isStarted = false;
     }
     monitorQueue->stop();
+    // Attach to(ca_context); -- Not required!
     int result = ca_clear_subscription(pevid);
     if (result==ECA_NORMAL)
         return Status::Ok;
