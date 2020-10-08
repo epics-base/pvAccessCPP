@@ -357,11 +357,10 @@ void DbdToPv::getChoices(CAChannelPtr const & caChannel)
 {
     if(caRequestType==DBR_ENUM||caRequestType==DBR_TIME_ENUM)
     {
-        caChannel->attachContext();
         chid channelID = caChannel->getChannelID();
-        int result = ca_array_get_callback(DBR_GR_ENUM,
-               1,
-               channelID, enumChoicesHandler, this);
+        Attach to(caChannel->caContext());
+        int result = ca_array_get_callback(DBR_GR_ENUM, 1,
+            channelID, enumChoicesHandler, this);
         if (result == ECA_NORMAL) {
             result = ca_flush_io();
             choicesEvent.wait();
@@ -969,18 +968,21 @@ Status DbdToPv::putToDBD(
     }
     Status status = Status::Ok;
     int result = 0;
-    caChannel->attachContext();
-    if(block) {
+    Attach to(caChannel->caContext());
+    if (block) {
         result = ca_array_put_callback(caValueType,count,channelID,pValue,putHandler,userarg);
-    } else {
+    }
+    else {
         result = ca_array_put(caValueType,count,channelID,pValue);
     }
-    if(result==ECA_NORMAL) {
-         ca_flush_io();
-    } else {
-         status = Status(Status::STATUSTYPE_ERROR, string(ca_message(result)));
+    if (result == ECA_NORMAL) {
+        ca_flush_io();
     }
-    if(ca_stringBuffer!=NULL) delete[] ca_stringBuffer;
+    else {
+        status = Status(Status::STATUSTYPE_ERROR, string(ca_message(result)));
+    }
+    if (ca_stringBuffer != NULL)
+        delete[] ca_stringBuffer;
     return status;
 }
 

@@ -18,6 +18,7 @@
 #include <pv/pvAccess.h>
 
 #include <pv/caProvider.h>
+#include "caContext.h"
 #include "notifierConveyor.h"
 
 
@@ -49,7 +50,6 @@ class CAChannelProvider :
 {
 public:
     POINTER_DEFINITIONS(CAChannelProvider);
-    CAChannelProvider();
     CAChannelProvider(const std::tr1::shared_ptr<Configuration>&);
     virtual ~CAChannelProvider();
 
@@ -79,9 +79,11 @@ public:
     virtual void flush();
     virtual void poll();
 
-    void attachContext();
     void addChannel(const CAChannelPtr & channel);
 
+    CAContextPtr caContext() {
+        return ca_context;
+    }
     void notifyConnection(NotificationPtr const &notificationPtr) {
         connectNotifier.notifyClient(notificationPtr);
     }
@@ -89,8 +91,7 @@ public:
         resultNotifier.notifyClient(notificationPtr);
     }
 private:
-    void initialize();
-    ca_client_context* current_context;
+    CAContextPtr ca_context;
     epics::pvData::Mutex channelListMutex;
     std::vector<CAChannelWPtr> caChannelList;
 
