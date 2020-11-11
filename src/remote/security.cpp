@@ -164,31 +164,35 @@ struct authGbl_t {
 
 void authGblInit(void *)
 {
-    authGbl = new authGbl_t;
+    try {
+        authGbl = new authGbl_t;
 
-    {
-        AnonPlugin::shared_pointer plugin(new AnonPlugin(true));
-        authGbl->servers.add(-1024, "anonymous", plugin);
-    }
-    {
-        AnonPlugin::shared_pointer plugin(new AnonPlugin(false));
-        authGbl->clients.add(-1024, "anonymous", plugin);
-    }
+        epics::registerRefCounter("PeerInfo", &PeerInfo::num_instances);
 
-    {
-        CAPlugin::shared_pointer plugin(new CAPlugin(true));
-        authGbl->servers.add(0, "ca", plugin);
-    }
-    {
-        CAPlugin::shared_pointer plugin(new CAPlugin(false));
-        authGbl->clients.add(0, "ca", plugin);
-    }
-    {
-        GroupsPlugin::shared_pointer plugin(new GroupsPlugin);
-        authGbl->authorizers.add(0, plugin);
-    }
+        {
+            AnonPlugin::shared_pointer plugin(new AnonPlugin(true));
+            authGbl->servers.add(-1024, "anonymous", plugin);
+        }
+        {
+            AnonPlugin::shared_pointer plugin(new AnonPlugin(false));
+            authGbl->clients.add(-1024, "anonymous", plugin);
+        }
 
-    epics::registerRefCounter("PeerInfo", &PeerInfo::num_instances);
+        {
+            CAPlugin::shared_pointer plugin(new CAPlugin(true));
+            authGbl->servers.add(0, "ca", plugin);
+        }
+        {
+            CAPlugin::shared_pointer plugin(new CAPlugin(false));
+            authGbl->clients.add(0, "ca", plugin);
+        }
+        {
+            GroupsPlugin::shared_pointer plugin(new GroupsPlugin);
+            authGbl->authorizers.add(0, plugin);
+        }
+    }catch(std::exception& e){
+        LOG(logLevelError, "Error during authorization setup: %s\n", e.what());
+    }
 }
 
 epicsThreadOnceId authGblOnce = EPICS_THREAD_ONCE_INIT;
