@@ -162,9 +162,7 @@ public:
     {
     }
 
-    virtual void alignBuffer(std::size_t alignment) OVERRIDE FINAL;
     virtual void ensureData(std::size_t size) OVERRIDE FINAL;
-    virtual void alignData(std::size_t alignment) OVERRIDE FINAL;
     virtual void startMessage(
             epics::pvData::int8 command,
             std::size_t ensureCapacity = 0,

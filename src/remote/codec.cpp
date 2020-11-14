@@ -542,29 +542,6 @@ std::size_t AbstractCodec::alignedValue(
     return (value + k) & (~k);
 }
 
-
-void AbstractCodec::alignData(std::size_t alignment) {
-
-    std::size_t k = (alignment - 1);
-    std::size_t pos = _socketBuffer.getPosition();
-    std::size_t newpos = (pos + k) & (~k);
-    if (pos == newpos)
-        return;
-
-    std::size_t diff = _socketBuffer.getLimit() - newpos;
-    if (diff > 0)
-    {
-        _socketBuffer.setPosition(newpos);
-        return;
-    }
-
-    ensureData(diff);
-
-    // position has changed, recalculate
-    newpos = (_socketBuffer.getPosition() + k) & (~k);
-    _socketBuffer.setPosition(newpos);
-}
-
 static const char PADDING_BYTES[] =
 {
     static_cast<char>(0xFF),
@@ -576,19 +553,6 @@ static const char PADDING_BYTES[] =
     static_cast<char>(0xFF),
     static_cast<char>(0xFF)
 };
-
-void AbstractCodec::alignBuffer(std::size_t alignment) {
-
-    std::size_t k = (alignment - 1);
-    std::size_t pos = _sendBuffer.getPosition();
-    std::size_t newpos = (pos + k) & (~k);
-    if (pos == newpos)
-        return;
-
-    // for safety reasons we really pad (override previous message data)
-    std::size_t padCount = newpos - pos;
-    _sendBuffer.put(PADDING_BYTES, 0, padCount);
-}
 
 
 void AbstractCodec::startMessage(

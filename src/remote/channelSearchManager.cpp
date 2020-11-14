@@ -34,7 +34,6 @@ public:
     void setRecipient(const osiSockAddr& /*sendTo*/) {}
     void startMessage(epics::pvData::int8 /*command*/, std::size_t /*ensureCapacity*/, epics::pvData::int32 /*payloadSize*/) {}
     void ensureBuffer(std::size_t /*size*/) {}
-    void alignBuffer(std::size_t /*alignment*/) {}
     void flushSerializeBuffer() {}
     void cachedSerialize(const std::tr1::shared_ptr<const epics::pvData::Field>& field, epics::pvData::ByteBuffer* buffer)
     {

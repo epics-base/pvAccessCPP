@@ -129,10 +129,6 @@ public:
 
     virtual void ensureData(std::size_t size) OVERRIDE FINAL;
 
-    virtual void alignData(std::size_t alignment) OVERRIDE FINAL {
-        _receiveBuffer.align(alignment);
-    }
-
     virtual bool directSerialize(epics::pvData::ByteBuffer* /*existingBuffer*/, const char* /*toSerialize*/,
                                  std::size_t /*elementCount*/, std::size_t /*elementSize*/) OVERRIDE FINAL
     {
@@ -176,10 +172,6 @@ public:
 
     virtual void ensureBuffer(std::size_t /*size*/) OVERRIDE FINAL {
         // noop
-    }
-
-    virtual void alignBuffer(std::size_t alignment) OVERRIDE FINAL {
-        _sendBuffer.align(alignment);
     }
 
     virtual void cachedSerialize(
