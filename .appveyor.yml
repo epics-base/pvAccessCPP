@@ -7,15 +7,6 @@ cache:
   - C:\Users\appveyor\.tools
 
 #---------------------------------#
-#       additional packages       #
-#---------------------------------#
-
-install:
-# for the sequencer
-  - cinst re2c
-  - cmd: git submodule update --init --recursive
-
-#---------------------------------#
 #       repository cloning        #
 #---------------------------------#
 
@@ -65,16 +56,19 @@ platform:
 #     building & testing          #
 #---------------------------------#
 
+install:
+  - cmd: git submodule update --init --recursive
+  - cmd: python .ci/cue.py prepare
+
 build_script:
-  - cmd: python .ci/appveyor/do.py prepare
-  - cmd: python .ci/appveyor/do.py build
+  - cmd: python .ci/cue.py build
 
 test_script:
-  - cmd: python .ci/appveyor/do.py test
+  - cmd: python .ci/cue.py test
 
 on_finish:
   - ps: Get-ChildItem *.tap -Recurse -Force | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
-  - cmd: python .ci/appveyor/do.py build test-results -s
+  - cmd: python .ci/cue.py build test-results -s
 
 #---------------------------------#
 #         debugging               #
@@ -93,10 +87,4 @@ on_finish:
 #---------------------------------#
 
 notifications:
-
-  - provider: Email
-    to:
-      - me@example.com
-    on_build_success: false
-
   - provider: GitHubPullRequest
