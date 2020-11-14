@@ -13,9 +13,6 @@
 #include <ellLib.h>
 #include <errlog.h>
 
-#ifdef HAVE_SYS_SOCKIO_H
-#include <sys/sockio.h>
-#endif
 #include <pv/pvType.h>
 #include <pv/byteBuffer.h>
 #include <pv/epicsException.h>
@@ -167,9 +164,34 @@ void checkNode(ifaceNode& node)
     }
 }
 
-
-
 #if !defined(_WIN32)
+
+/*
+ * Determine the size of an ifreq structure
+ * Made difficult by the fact that addresses larger than the structure
+ * size may be returned from the kernel.
+ */
+static size_t ifreqSize ( struct ifreq *pifreq )
+{
+    size_t        size;
+
+    size = ifreq_size ( pifreq );
+    if ( size < sizeof ( *pifreq ) ) {
+        size = sizeof ( *pifreq );
+    }
+    return size;
+}
+
+/*
+ * Move to the next ifreq structure
+ */
+static struct ifreq * ifreqNext ( struct ifreq *pifreq )
+{
+    struct ifreq *ifr;
+
+    ifr = ( struct ifreq * )( ifreqSize (pifreq) + ( char * ) pifreq );
+    return ifr;
+}
 
 int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *pMatchAddr)
 {
@@ -181,9 +203,7 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
     struct ifreq                    *pifreq;
     struct ifreq                    *pnextifreq;
     int                             match;
-#ifdef HAVE_SOCKADDR_SA_LEN
-    size_t n;
-#endif
+
     /*
      * use pool so that we avoid using too much stack space
      *
@@ -197,43 +217,40 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
     }
 
     ifconf.ifc_len = nelem * sizeof(*pifreq);
-    ifconf.ifc_buf = (caddr_t) pIfreqList;
-    status = socket_ioctl (socket, SIOCGIFCONF, (char *)&ifconf);
-    if (status < 0 || ifconf.ifc_len < (int)sizeof(struct ifreq)) {
-        if (errno == EINVAL)
-            errlogPrintf ("discoverInterfaces(): SIOCGIFCONF: ifreq struct to small (%zu bytes)\n",
-                          sizeof(ifconf));
-        else
-            errlogPrintf ("discoverInterfaces(): SIOCGIFCONF: %s \n",
-                          strerror(errno));
+    ifconf.ifc_req = pIfreqList;
+    status = socket_ioctl (socket, SIOCGIFCONF, &ifconf);
+    if (status < 0 || ifconf.ifc_len == 0) {
+        errlogPrintf ("discoverInterfaces(): unable to fetch network interface configuration\n");
         free (pIfreqList);
         return -1;
     }
 
     pIfreqListEnd = (struct ifreq *) (ifconf.ifc_len + (char *) pIfreqList);
-    //pIfreqListEnd--;
+    pIfreqListEnd--;
 
-    for ( pifreq = pIfreqList; pifreq < pIfreqListEnd; pifreq = pnextifreq ) {
-     //   uint32_t  current_ifreqsize;
-#ifdef HAVE_SOCKADDR_SA_LEN  // have to check for libbsd stack
-        n = pifreq->ifr_addr.sa_len + sizeof(pifreq->ifr_name);
-        if (n < sizeof(*pifreq)){
-            pnextifreq = pifreq + 1;
-            memmove(pIfreqList, pifreq, sizeof(*pifreq));
-         } else {
-            pnextifreq = (struct ifreq *)((char *)pifreq + n);
-            memmove(pIfreqList, pifreq, n);
-         }
-#else
-        pnextifreq = pifreq + 1;
-        memmove(pIfreqList, pifreq, sizeof(*pifreq));
-#endif
+    for ( pifreq = pIfreqList; pifreq <= pIfreqListEnd; pifreq = pnextifreq ) {
+        uint32_t  current_ifreqsize;
+
+        /*
+         * find the next ifreq
+         */
+        pnextifreq = ifreqNext (pifreq);
+
+        /* determine ifreq size */
+        current_ifreqsize = ifreqSize ( pifreq );
+        /* copy current ifreq to aligned bufferspace (to start of pIfreqList buffer) */
+        /* be careful as we re-use part of this space several times below.
+         * Any member other than ifr_name is invalidated by an ioctl() call
+         */
+        memmove(pIfreqList, pifreq, current_ifreqsize);
+
         /*
          * If its not an internet interface then dont use it
          */
         if ( pIfreqList->ifr_addr.sa_family != AF_INET ) {
             continue;
         }
+
         /*
          * if it isnt a wildcarded interface then look for
          * an exact match
@@ -456,5 +473,6 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
 }
 
 #endif
+
 }
 }
