@@ -81,7 +81,7 @@ void testServerContext()
 
 MAIN(testServerContext)
 {
-    testPlan(0);
+    testPlan(2);
 
     testServerContext();
 
