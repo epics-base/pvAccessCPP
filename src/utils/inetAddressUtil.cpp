@@ -181,13 +181,7 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
     struct ifreq                    *pifreq;
     struct ifreq                    *pnextifreq;
     int                             match;
-    /*
-     * If RTEMS (>= 5)  was built with the new libbsd stack, -DHAVE_SOCKADDR_SA_LEN=1 gets appended to OP_SYS_CFLAGS
-     * in $(EPICS_BASE)/configure/os/CONFIG.Common.RTEMS. Unfortunately this variable is not set in OS-X.
-     * This variable should then also be set in $(EPICS_BASE)/configure/os/CONFIG.Common.darwin-x86.
-     * In the meantime I help myself with the check to the definition "darwin"
-     */
-#if defined (HAVE_SOCKADDR_SA_LEN) || (darwin)
+#ifdef HAVE_SOCKADDR_SA_LEN
     size_t n;
 #endif
     /*
@@ -220,7 +214,8 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
     //pIfreqListEnd--;
 
     for ( pifreq = pIfreqList; pifreq < pIfreqListEnd; pifreq = pnextifreq ) {
-#if defined (HAVE_SOCKADDR_SA_LEN) || (darwin) 
+     //   uint32_t  current_ifreqsize;
+#ifdef HAVE_SOCKADDR_SA_LEN  // have to check for libbsd stack
         n = pifreq->ifr_addr.sa_len + sizeof(pifreq->ifr_name);
         if (n < sizeof(*pifreq)){
             pnextifreq = pifreq + 1;
