@@ -4,6 +4,8 @@
  * in file LICENSE that is included with this distribution.
  */
 
+#include <iostream>
+
 #include "notifierConveyor.h"
 
 using epics::pvData::Lock;
@@ -65,7 +67,15 @@ void NotifierConveyor::run()
                 NotifierClientPtr client(notification->client.lock());
                 if (client) {
                     the.unlock();
-                    client->notifyClient();
+                    try { client->notifyClient(); }
+                    catch (std::exception &e) {
+                        std::cerr << "Exception from notifyClient(): "
+                            << e.what() << std::endl;
+                    }
+                    catch (...) {
+                        std::cerr << "Unknown exception from notifyClient()"
+                            << std::endl;
+                    }
                     if (work) {
                         the.lock();
                         stopping = halt;
