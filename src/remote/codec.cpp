@@ -58,6 +58,29 @@ struct BreakTransport : TransportSender
 namespace epics {
 namespace pvAccess {
 
+/* HACK!
+ * RTEMS allows blocking sockets to be interrupted by shutdown() (aka. esscimqi_socketBothShutdownRequired).
+ * However, a concurrent close() is a race which can leave a send()/recv() call permanently stuck!
+ * The _right_ way to handle this (aside from fixing the stack) would be to sequence
+ * shutdown() -> exitWait() -> destroy()
+ * This is hard to handle since this must be done for _both_ sender and receiver thread,
+ * which presents difficulties owing to how the Transport hierarchy since Transport::close()
+ * can happen on either worker, or a user thread.
+ * Rather than try to straighten this mess out properly, we add this "wait" in-between
+ * shutdown() and close() to hopefully wait for the workers (or other worker) to return
+ * from send()/recv().
+ */
+void hackAroundRTEMSSocketInterrupt()
+{
+#ifdef __rtems__
+    epicsThreadId self = epicsThreadGetIdSelf();
+    unsigned orig = epicsThreadGetPrioritySelf();
+    epicsThreadSetPriority(self, epicsThreadPriorityMin);
+    epicsThreadSleep(0.0000001);
+    epicsThreadSetPriority(self, orig);
+#endif
+}
+
 size_t Transport::num_instances;
 
 Transport::Transport()
@@ -1031,6 +1054,7 @@ void BlockingTCPTransportCodec::internalClose()
         case esscimqi_socketBothShutdownRequired:
         {
             /*int status =*/ ::shutdown ( _channel, SHUT_RDWR );
+            hackAroundRTEMSSocketInterrupt();
             /*
             if ( status ) {
                 char sockErrBuf[64];

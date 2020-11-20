@@ -114,6 +114,8 @@ enum ControlCommands {
     CMD_SET_ENDIANESS = 2
 };
 
+void hackAroundRTEMSSocketInterrupt();
+
 /**
  * Interface defining transport send control.
  */

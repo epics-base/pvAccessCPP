@@ -151,6 +151,7 @@ void BlockingUDPTransport::close(bool waitForThreadToComplete) {
     case esscimqi_socketBothShutdownRequired:
     {
         /*int status =*/ ::shutdown ( _channel, SHUT_RDWR );
+        hackAroundRTEMSSocketInterrupt();
         /*
         if ( status ) {
             char sockErrBuf[64];

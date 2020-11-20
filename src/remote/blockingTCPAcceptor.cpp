@@ -248,6 +248,7 @@ void BlockingTCPAcceptor::destroy() {
         {
         case esscimqi_socketBothShutdownRequired:
             shutdown(sock, SHUT_RDWR);
+            hackAroundRTEMSSocketInterrupt();
             epicsSocketDestroy(sock);
             _thread.exitWait();
             break;
