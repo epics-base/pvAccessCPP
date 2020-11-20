@@ -200,8 +200,6 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
     struct ifconf                   ifconf;
     struct ifreq                    *pIfreqList;
     struct ifreq                    *pIfreqListEnd;
-    struct ifreq                    *pifreq;
-    struct ifreq                    *pnextifreq;
     int                             match;
 
     /*
@@ -210,13 +208,13 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
      * nelem is set to the maximum interfaces
      * on one machine here
      */
-    pIfreqList = (struct ifreq *) calloc ( nelem, sizeof(*pifreq) );
+    pIfreqList = (struct ifreq *) calloc ( nelem, sizeof(*pIfreqList) );
     if (!pIfreqList) {
         errlogPrintf ("discoverInterfaces(): no memory to complete request\n");
         return -1;
     }
 
-    ifconf.ifc_len = nelem * sizeof(*pifreq);
+    ifconf.ifc_len = nelem * sizeof(*pIfreqList);
     ifconf.ifc_req = pIfreqList;
     status = socket_ioctl (socket, SIOCGIFCONF, &ifconf);
     if (status < 0 || ifconf.ifc_len == 0) {
@@ -226,30 +224,21 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
     }
 
     pIfreqListEnd = (struct ifreq *) (ifconf.ifc_len + (char *) pIfreqList);
-    pIfreqListEnd--;
 
-    for ( pifreq = pIfreqList; pifreq <= pIfreqListEnd; pifreq = pnextifreq ) {
-        uint32_t  current_ifreqsize;
+    for (struct ifreq *pifreq = pIfreqList; pifreq < pIfreqListEnd; pifreq = ifreqNext (pifreq) ) {
+        union {
+            ifreq req;
+            // struct ifreq is a tuple of (ifname, union data)
+            // To accommodate targets with sockaddr::sa_len, make sure
+            // we have enough storage.
+            char alloc[sizeof(pIfreqList->ifr_name) + sizeof(sockaddr_in)];
+        }scratch;
 
-        /*
-         * find the next ifreq
-         */
-        pnextifreq = ifreqNext (pifreq);
-
-        /* determine ifreq size */
-        current_ifreqsize = ifreqSize ( pifreq );
-        /* copy current ifreq to aligned bufferspace (to start of pIfreqList buffer) */
-        /* be careful as we re-use part of this space several times below.
-         * Any member other than ifr_name is invalidated by an ioctl() call
-         */
-        memmove(pIfreqList, pifreq, current_ifreqsize);
-
-        /*
-         * If its not an internet interface then dont use it
-         */
-        if ( pIfreqList->ifr_addr.sa_family != AF_INET ) {
+        if(pifreq->ifr_addr.sa_family != AF_INET)
             continue;
-        }
+
+        // copy to ensure aligned access
+        memcpy(&scratch.req, pifreq, ifreqSize ( pifreq ));
 
         /*
          * if it isnt a wildcarded interface then look for
@@ -261,7 +250,7 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
                 continue;
             }
             if ( pMatchAddr->ia.sin_addr.s_addr != htonl (INADDR_ANY) ) {
-                struct sockaddr_in *pInetAddr = (struct sockaddr_in *) &pIfreqList->ifr_addr;
+                struct sockaddr_in *pInetAddr = (struct sockaddr_in *) &scratch.req.ifr_addr;
                 if ( pInetAddr->sin_addr.s_addr != pMatchAddr->ia.sin_addr.s_addr ) {
                     continue;
                 }
@@ -271,15 +260,15 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
         }
 
         ifaceNode node;
-        node.addr.sa = pIfreqList->ifr_addr;
+        node.addr.sa = scratch.req.ifr_addr;
 
-        status = socket_ioctl ( socket, SIOCGIFFLAGS, pIfreqList );
+        status = socket_ioctl ( socket, SIOCGIFFLAGS, &scratch.req );
         if ( status ) {
-            errlogPrintf ("discoverInterfaces(): net intf flags fetch for \"%s\" failed\n", pIfreqList->ifr_name);
+            errlogPrintf ("discoverInterfaces(): net intf flags fetch for \"%s\" failed\n", scratch.req.ifr_name);
             continue;
         }
 
-        unsigned short ifflags = pIfreqList->ifr_flags;
+        unsigned short ifflags = scratch.req.ifr_flags;
         node.loopback = ifflags & IFF_LOOPBACK;
 
         /*
@@ -309,19 +298,19 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
          * interface.
          */
         if ( ifflags & IFF_BROADCAST ) {
-            status = socket_ioctl (socket, SIOCGIFBRDADDR, pIfreqList);
+            status = socket_ioctl (socket, SIOCGIFBRDADDR, &scratch.req);
             if ( status ) {
-                errlogPrintf ("discoverInterfaces(): net intf \"%s\": bcast addr fetch fail\n", pIfreqList->ifr_name);
+                errlogPrintf ("discoverInterfaces(): net intf \"%s\": bcast addr fetch fail\n", scratch.req.ifr_name);
                 continue;
             }
-            node.bcast.sa = pIfreqList->ifr_broadaddr;
+            node.bcast.sa = scratch.req.ifr_broadaddr;
 
-            status = socket_ioctl (socket, SIOCGIFNETMASK, pIfreqList);
+            status = socket_ioctl (socket, SIOCGIFNETMASK, &scratch.req);
             if ( status ) {
-                errlogPrintf ("discoverInterfaces(): net intf \"%s\": netmask fetch fail\n", pIfreqList->ifr_name);
+                errlogPrintf ("discoverInterfaces(): net intf \"%s\": netmask fetch fail\n", scratch.req.ifr_name);
                 continue;
             }
-            node.mask.sa = pIfreqList->ifr_netmask;
+            node.mask.sa = scratch.req.ifr_netmask;
 
             checkNode(node);
 
@@ -329,11 +318,11 @@ int discoverInterfaces(IfaceNodeVector &list, SOCKET socket, const osiSockAddr *
         }
 #if defined (IFF_POINTOPOINT)
         else if ( ifflags & IFF_POINTOPOINT ) {
-            status = socket_ioctl ( socket, SIOCGIFDSTADDR, pIfreqList);
+            status = socket_ioctl ( socket, SIOCGIFDSTADDR, &scratch.req);
             if ( status ) {
                 continue;
             }
-            node.peer.sa = pIfreqList->ifr_dstaddr;
+            node.peer.sa = scratch.req.ifr_dstaddr;
             node.validP2P = true;
         }
 #endif
