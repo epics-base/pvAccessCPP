@@ -5,7 +5,9 @@ SRC_DIRS += $(PVACCESS_TEST)/remote
 TESTPROD_HOST += testChannelAccess
 testChannelAccess_SRCS = channelAccessIFTest.cpp
 testHarness_SRCS += channelAccessIFTest.cpp
+ifneq (RTEMS,$(OS_CLASS))
 TESTS += testChannelAccess
+endif
 
 TESTPROD_HOST += testCodec
 testCodec_SRCS = testCodec
