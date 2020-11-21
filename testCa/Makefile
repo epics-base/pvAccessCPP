@@ -11,7 +11,11 @@ PROD_SYS_LIBS_WIN32 += netapi32 ws2_32
 
 TESTPROD_HOST += testCaProvider
 testCaProvider_SRCS += testCaProvider.cpp
+ifdef BASE_3_16
+ifneq (WIN32,$(OS_CLASS))
 TESTS += testCaProvider
+endif
+endif
 ifdef BASE_3_16
   testCaProvider_SRCS += testIoc_registerRecordDeviceDriver.cpp
   REGRDDFLAGS = -l
