@@ -16,6 +16,8 @@ PROD_SYS_LIBS_WIN32 += netapi32 ws2_32
 include $(PVACCESS_TEST)/utils/Makefile
 include $(PVACCESS_TEST)/remote/Makefile
 
+PROD_SRCS_RTEMS += rtemsTestData.c
+
 # pvAccessAllTests runs all the test programs in a known working order.
 testHarness_SRCS += pvAccessAllTests.c
 
@@ -33,5 +35,10 @@ TESTSPEC_RTEMS = pvaTestHarness.$(MUNCH_SUFFIX); pvAccessAllTests
 
 # Build test scripts for hosts
 TESTSCRIPTS_HOST += $(TESTS:%=%.t)
+
+ifneq ($(filter $(T_A),$(CROSS_COMPILER_RUNTEST_ARCHS)),)
+TESTPROD = $(TESTPROD_HOST)
+TESTSCRIPTS += $(filter-out showauth,$(TESTS:%=%.t))
+endif
 
 include $(TOP)/configure/RULES

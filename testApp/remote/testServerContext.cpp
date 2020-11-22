@@ -8,6 +8,8 @@
 
 #include <epicsUnitTest.h>
 
+namespace {
+
 using namespace epics::pvAccess;
 using namespace epics::pvData;
 using namespace std;
@@ -61,8 +63,12 @@ public:
     }
 };
 
-void testServerContext()
+} // namespace
+
+MAIN(testServerContext)
 {
+    testPlan(2);
+
     ChannelProvider::shared_pointer prov(new TestChannelProvider);
     ServerContext::shared_pointer ctx(ServerContext::create(ServerContext::Config()
                                                                 .provider(prov)));
@@ -77,13 +83,6 @@ void testServerContext()
     ctx.reset();
 
     testOk(!wctx.lock(), "# ServerContext cleanup leaves use_count=%u", (unsigned)wctx.use_count());
-}
-
-MAIN(testServerContext)
-{
-    testPlan(2);
-
-    testServerContext();
 
     return testDone();
 }

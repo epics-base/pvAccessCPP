@@ -8,12 +8,12 @@ testHarness_SRCS += testAtomicBoolean.cpp
 TESTS += testAtomicBoolean
 
 TESTPROD_HOST += testHexDump
-testHexDump = testHexDump.cpp
+testHexDump_SRCS = testHexDump.cpp
 testHarness_SRCS += testHexDump.cpp
 TESTS += testHexDump
 
 TESTPROD_HOST += testInetAddressUtils
-testInetAddressUtils = testInetAddressUtils.cpp
+testInetAddressUtils_SRCS = testInetAddressUtils.cpp
 testHarness_SRCS += testInetAddressUtils.cpp
 TESTS += testInetAddressUtils
 
@@ -27,7 +27,7 @@ testFairQueue_SRCS += testFairQueue
 TESTS += testFairQueue
 
 TESTPROD_HOST += testWildcard
-testWildcard = testWildcard.cpp
+testWildcard_SRCS = testWildcard.cpp
 testHarness_SRCS += testWildcard.cpp
 TESTS += testWildcard
 
