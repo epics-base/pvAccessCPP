@@ -75,14 +75,12 @@ jobs:
             configuration: default
             base: "7.0"
             rtems: "4.10"
-            test: NO
 
           - os: ubuntu-20.04
             cmp: gcc
             configuration: default
             base: "7.0"
             rtems: "4.9"
-            test: NO
 
           - os: ubuntu-16.04
             cmp: gcc-4.8
