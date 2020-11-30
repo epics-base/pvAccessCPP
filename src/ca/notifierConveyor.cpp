@@ -5,7 +5,12 @@
  */
 
 #include <iostream>
+#include <queue>
+#include <epicsThread.h>
+#include <pv/event.h>
+#include <pv/lock.h>
 
+#define epicsExportSharedSymbols
 #include "notifierConveyor.h"
 
 using epics::pvData::Lock;
