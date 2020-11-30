@@ -5,6 +5,7 @@
  */
 
 #include <cadef.h>
+#include <pv/pvAccess.h>
 
 #define epicsExportSharedSymbols
 #include "caContext.h"
