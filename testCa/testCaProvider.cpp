@@ -15,25 +15,25 @@
 #include <testMain.h>
 #include <epicsVersion.h>
 #include <envDefs.h>
+#include <osiFileName.h>
 
-#ifdef EPICS_VERSION_INT
-  #if !defined(USE_SOFTIOC) && EPICS_VERSION_INT >= VERSION_INT(3,16,2,0)
-    #define USE_DBUNITTEST
-    // USE_TYPED_RSET prevents deprecation warnings
+#if defined(EPICS_VERSION_INT) && EPICS_VERSION_INT >= VERSION_INT(3,16,2,0)
+    #define HAS_DBUNITTEST 1
+    // Prevent deprecation warnings
     #define USE_TYPED_RSET
-    #define EXIT_TESTS 0
     #include <dbAccess.h>
     #include <errlog.h>
     #include <dbUnitTest.h>
 
     extern "C" int testIoc_registerRecordDeviceDriver(struct dbBase *pbase);
-  #else
-    #include <osiFileName.h>
-  #endif
+#else
+    #define HAS_DBUNITTEST 0
 #endif
 
-#ifndef EXIT_TESTS
-  #define EXIT_TESTS 1
+#if defined(vxWorks) || defined(__rtems__)
+    #define HAS_SYSTEM 0
+#else
+    #define HAS_SYSTEM 1
 #endif
 
 #include <pv/thread.h>
@@ -47,17 +47,21 @@
 #include <pv/pvIntrospect.h>
 #include <pv/pvData.h>
 
-// DEBUG must be 0 to run under the automated test harness
-#define DEBUG 0
+// DEBUG output is disabled when run under an automated test harness
+int DEBUG = 0;
 
-// These need to be longer than you might expect for Jenkins
+// These need to be longer than you might expect for CI runs
 #define CONNECTION_TIMEOUT 10.0
 #define OPERATION_TIMEOUT  10.0
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
-using namespace epics::pvAccess::ca;
-using namespace std;
+using std::string;
+
+
+ChannelProvider::shared_pointer testChannelProvider;
+
+// -------------------- TestChannel --------------------
 
 class TestChannel;
 typedef std::tr1::shared_ptr<TestChannel> TestChannelPtr;
@@ -68,68 +72,57 @@ class TestChannel:
 {
 public:
     POINTER_DEFINITIONS(TestChannel);
-    string getRequesterName();
-    void message(
-        string const & message,
-        MessageType messageType);
-    virtual void channelCreated(const Status& status, Channel::shared_pointer const & channel);
-    virtual void channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState);
-    string getChannelName();
-    Channel::shared_pointer getChannel();
-    static TestChannelPtr create(string const & channelName);
-    void connect();
-    void waitConnect(double timeout);
+    string getRequesterName() { return "testChannel"; }
+    void message(string const & message, MessageType messageType) {}
+
+    virtual void channelCreated(const Status& status,
+        Channel::shared_pointer const & channel)
+    {
+        if (channel->isConnected())
+            waitForConnect.signal();
+    }
+
+    virtual void channelStateChange(Channel::shared_pointer const & channel,
+        Channel::ConnectionState connectionState)
+    {
+        if (connectionState == Channel::CONNECTED)
+            waitForConnect.signal();
+    }
+
+    string getChannelName() { return channelName; }
+    Channel::shared_pointer getChannel() { return channel;}
+
+    static TestChannelPtr create(string const & channelName)
+    {
+        TestChannelPtr testChannel(new TestChannel(channelName));
+        testChannel->connect();
+        return testChannel;
+    }
+
+    void connect()
+    {
+        if (!testChannelProvider)
+            testAbort("No channel provider");
+        channel = testChannelProvider->createChannel(channelName,
+            shared_from_this(), ChannelProvider::PRIORITY_DEFAULT);
+        if (!channel)
+            throw std::runtime_error(channelName + " channelCreate failed ");
+        waitConnect(CONNECTION_TIMEOUT);
+    }
+
+    void waitConnect(double timeout)
+    {
+        if (waitForConnect.wait(timeout)) return;
+        throw std::runtime_error(channelName +
+            " TestChannel::waitConnect failed ");
+    }
 private:
-    TestChannel(string const & channelName);
+    TestChannel(string const & channelName) :
+        channelName(channelName) {}
     string channelName;
     Event waitForConnect;
     Channel::shared_pointer channel;
 };
-
-string TestChannel::getChannelName() { return channelName;}
-
-Channel::shared_pointer TestChannel::getChannel() { return channel;}
-
-TestChannelPtr TestChannel::create(string const & channelName)
-{
-   TestChannelPtr testChannel(new TestChannel(channelName));
-   testChannel->connect();
-   return testChannel;
-}
-
-TestChannel::TestChannel(string const & channelName)
-: channelName(channelName)
-{
-}
-
-string TestChannel::getRequesterName() { return "testChannel";}
-void TestChannel::message(string const & message,MessageType messageType) {};
-
-void TestChannel::channelCreated(const Status& status, Channel::shared_pointer const & channel)
-{
-    if(channel->isConnected()) waitForConnect.signal();
-}
-
-void TestChannel::channelStateChange(Channel::shared_pointer const & channel, Channel::ConnectionState connectionState)
-{
-    if(connectionState==Channel::CONNECTED) waitForConnect.signal();
-}
-
-void TestChannel::connect()
-{
-    ChannelProviderRegistry::shared_pointer reg(ChannelProviderRegistry::clients());
-    ChannelProvider::shared_pointer channelProvider(reg->getProvider("ca"));
-    if(!channelProvider) throw std::runtime_error(channelName + " provider ca not registered");
-    channel = channelProvider->createChannel(channelName,shared_from_this(),ChannelProvider::PRIORITY_DEFAULT);
-    if(!channel) throw std::runtime_error(channelName + " channelCreate failed ");
-    waitConnect(CONNECTION_TIMEOUT);
-}
-
-void TestChannel::waitConnect(double timeout)
-{
-    if(waitForConnect.wait(timeout)) return;
-    throw std::runtime_error(channelName + " TestChannel::waitConnect failed ");
-}
 
 class TestChannelGet;
 typedef std::tr1::shared_ptr<TestChannelGet> TestChannelGetPtr;
@@ -546,6 +539,7 @@ void TestChannelMonitor::stopEvents()
     channelMonitor->stop();
 }
 
+
 class TestClient;
 typedef std::tr1::shared_ptr<TestClient> TestClientPtr;
 
@@ -585,7 +579,7 @@ private:
    Event waitForPut;
 };
 
-TestClientPtr TestClient::create(string const &channelName,PVStructurePtr const &  pvRequest)
+TestClientPtr TestClient::create(string const &channelName,PVStructurePtr const & pvRequest)
 {
     TestClientPtr testClient(new TestClient(channelName,pvRequest));
     testClient->connect();
@@ -610,20 +604,20 @@ void TestClient::getDone(
     PVStructure::shared_pointer const & pvStructure,
     BitSet::shared_pointer const & bitSet)
 {
-   testOk(pvStructure.get() != 0,"pvStructure not null");
-   testOk(pvStructure->getSubField("value").get() != 0,"value not null");
-   testOk(pvStructure->getSubField("timeStamp").get() != 0,"timeStamp not null");
-   testOk(pvStructure->getSubField("alarm").get() != 0,"alarm not null");
-   if (DEBUG) std::cout << testChannel->getChannelName() + " TestClient::getDone"
-             << " putValue " << putValue
-             << " bitSet " << *bitSet
-             << " pvStructure\n" << pvStructure << "\n";
-   PVScalarPtr pvScalar = pvStructure->getSubField<PVScalar>("value");
-   if(pvScalar) {
+    testOk(pvStructure.get() != 0,"pvStructure not null");
+    testOk(pvStructure->getSubField("value").get() != 0,"value not null");
+    testOk(pvStructure->getSubField("timeStamp").get() != 0,"timeStamp not null");
+    testOk(pvStructure->getSubField("alarm").get() != 0,"alarm not null");
+    if (DEBUG) std::cout << testChannel->getChannelName() + " TestClient::getDone"
+        << " putValue " << putValue
+        << " bitSet " << *bitSet
+        << " pvStructure\n" << pvStructure << "\n";
+    PVScalarPtr pvScalar = pvStructure->getSubField<PVScalar>("value");
+    if(pvScalar) {
         string getValue = getConvert()->toString(pvScalar);
         testOk(getValue.compare(putValue)==0,"getValue==putValue");
-   }
-   waitForGet.signal();
+    }
+    waitForGet.signal();
 }
 
 void TestClient::putDone()
@@ -635,9 +629,9 @@ void TestClient::monitorEvent(
         PVStructure::shared_pointer const & pvStructure,
         BitSet::shared_pointer const & bitSet)
 {
-   if (DEBUG) std::cout << testChannel->getChannelName() + " TestClient::monitorEvent"
-             << " bitSet " << *bitSet
-             << " pvStructure\n" << pvStructure << "\n";
+    if (DEBUG) std::cout << testChannel->getChannelName() + " TestClient::monitorEvent"
+        << " bitSet " << *bitSet
+        << " pvStructure\n" << pvStructure << "\n";
 }
 
 void TestClient::get()
@@ -645,7 +639,7 @@ void TestClient::get()
     testDiag("TestClient::get %s",
         testChannel->getChannelName().c_str());
     testChannelGet->get();
-   if (DEBUG) cout << "TestClient::get() calling waitGet\n";
+    if (DEBUG) std::cout << "TestClient::get() calling waitGet\n";
     waitGet(OPERATION_TIMEOUT);
 }
 
@@ -675,33 +669,39 @@ void TestClient::stopEvents()
     testChannelMonitor->stopEvents();
 }
 
+
+// --------------------- TestIoc ---------------------
+
 class TestIoc;
 typedef std::tr1::shared_ptr<TestIoc> TestIocPtr;
 
-class TestIoc :
-    public epicsThreadRunable
+class TestIoc
 {
 public:
-    virtual void run();
-    static TestIocPtr create();
-    void start();
-    void shutdown();
-private:
-#ifndef USE_DBUNITTEST
-    std::auto_ptr<epicsThread> thread;
-    const char *base;
-    const char *arch;
-#endif
+    virtual ~TestIoc() {};
+    virtual void start() = 0;
+    virtual void shutdown() = 0;
 };
 
-TestIocPtr TestIoc::create()
-{
-    return TestIocPtr(new TestIoc());
-}
+#if HAS_DBUNITTEST
+// This implementation uses the dbUnitTest API added to Base-3.16.2
 
-void TestIoc::start()
+class TestIocUnit :
+    public TestIoc
 {
-#ifdef USE_DBUNITTEST
+public:
+    TestIocUnit() {
+        testDiag("IOC using dbUnitTest");
+    }
+
+    // public TestIoc
+    virtual ~TestIocUnit() {}
+    virtual void start();
+    virtual void shutdown();
+};
+
+void TestIocUnit::start()
+{
     testdbPrepare();
     testdbReadDatabase("testIoc.dbd", NULL, NULL);
     testIoc_registerRecordDeviceDriver(pdbbase);
@@ -709,66 +709,88 @@ void TestIoc::start()
     eltc(0);
     testIocInitOk();
     eltc(1);
-#else
-    base = getenv("EPICS_BASE");
+}
+
+void TestIocUnit::shutdown()
+{
+    testIocShutdownOk();
+    testdbCleanup();
+}
+#endif // HAS_DBUNITTEST
+
+
+// This implementation starts a caRepeater and runs a softIoc from
+// Base, both as separate processes, so only works on workstation
+// targets. Unfortunately it isn't very reliable on some CI systems.
+
+class TestIocSoft :
+    public TestIoc,
+    public epicsThreadRunable
+{
+public:
+    TestIocSoft() {
+        testDiag("IOC using system('softIoc')");
+    }
+
+    // public TestIoc
+    virtual ~TestIocSoft() {}
+    virtual void start();
+    virtual void shutdown();
+
+    // public epicsThreadRunable
+    virtual void run();
+
+private:
+    std::tr1::shared_ptr<epicsThread> thread;
+    string path;
+};
+
+void TestIocSoft::start()
+{
+    const char *base = getenv("EPICS_BASE");
     if (!base)
         testAbort("Environment variable $EPICS_BASE not defined");
-    arch = getenv("EPICS_HOST_ARCH");
+    const char *arch = getenv("EPICS_HOST_ARCH");
     if (!arch)
         testAbort("Environment variable $EPICS_HOST_ARCH not defined");
+    path = string(base) + OSI_PATH_SEPARATOR "bin" OSI_PATH_SEPARATOR +
+        arch + OSI_PATH_SEPARATOR;
     epicsEnvSet("EPICS_CA_ADDR_LIST", "localhost");
     epicsEnvSet("EPICS_CA_AUTO_ADDR_LIST", "NO");
 
-    thread =  std::auto_ptr<epicsThread>(new epicsThread(
-        *this,
+    string repeater = path + "caRepeater &";
+    if (system(repeater.c_str()) != 0) {
+        throw std::runtime_error("caRepeater wasn't started");
+    }
+
+    thread = std::tr1::shared_ptr<epicsThread>(new epicsThread(*this,
         "testIoc",
         epicsThreadGetStackSize(epicsThreadStackBig),
         epicsThreadPriorityLow));
     thread->start();
-#endif
 }
 
-void TestIoc::run()
+void TestIocSoft::run()
 {
-#ifndef USE_DBUNITTEST
-    // Base-3.14 doesn't provide the dbUnitTest APIs, and the CA
-    // tests with an embedded IOC fail with a Base before 3.16.2.
-    // This version only works on workstation targets, it runs the
-    // softIoc from Base as a separate process, using system().
-    string cmd(base);
-    cmd += OSI_PATH_SEPARATOR "bin" OSI_PATH_SEPARATOR;
-    cmd += arch;
-    cmd += OSI_PATH_SEPARATOR "softIoc -x test -d ../testCaProvider.db";
-    if (system(cmd.c_str()) != 0) {
-        string message(cmd);
-        cmd += " not started";
-        throw std::runtime_error(cmd);
-    }
-#endif
+    string ioc = path + "softIoc -x test -d ../testCaProvider.db";
+    if (system(ioc.c_str()) != 0)
+        throw std::runtime_error("IOC wasn't started");
 }
 
-void TestIoc::shutdown()
+void TestIocSoft::shutdown()
 {
-    testDiag("Shutting down the IOC");
-#ifdef USE_DBUNITTEST
-    testIocShutdownOk();
-    testdbCleanup();
-#else
     // put to record that makes IOC exit
     string channelName = "test:exit";
     string request("value");
     PVStructurePtr pvRequest(createRequest(request));
-    testDiag("created request");
-    TestClientPtr client = TestClient::create(channelName,pvRequest);
+    TestClientPtr client = TestClient::create(channelName, pvRequest);
     if (!client)
         testAbort("NULL client for %s", channelName.c_str());
-    testDiag("got client");
     client->put("1");
-    testDiag("sent put");
     client->stopEvents();
-#endif
-    testDiag("IOC shutdown complete");
+    testOk(thread->exitWait(10), "IOC shutdown");
 }
+
 
 void checkClient(const string &channelName, const string &putValue)
 {
@@ -782,62 +804,68 @@ void checkClient(const string &channelName, const string &putValue)
     client->stopEvents();
 }
 
-#define TEST_LOOPS 2
+void testClientTypes(void)
+{
+    // When using dbUnitTest, the channel provider must be created
+    // *after* the IOC has been started. That's why this is here...
+    testChannelProvider = ChannelProviderRegistry::clients()->getProvider("ca");
+
+    checkClient("DBRlongout", "0");
+    checkClient("DBRlongout", "1");
+    checkClient("DBRlongout", "-1");
+    checkClient("DBRlongout", "32767");
+    checkClient("DBRlongout", "32768");
+    checkClient("DBRlongout", "-32768");
+    checkClient("DBRlongout", "-32769");
+    checkClient("DBRlongout", "2147483647");
+    checkClient("DBRlongout", "-2147483648");
+    checkClient("DBRdoubleout", "1.5");
+    checkClient("DBRstringout", "test");
+    checkClient("DBRbyteArray", "1 2 3");
+    checkClient("DBRshortArray", "1 2 3");
+    checkClient("DBRintArray", "1 2 3");
+    checkClient("DBRubyteArray", "1 2 3");
+    checkClient("DBRushortArray", "1 2 3");
+    checkClient("DBRuintArray", "1 2 3");
+    checkClient("DBRfloatArray", "1 2 3");
+    checkClient("DBRdoubleArray", "1 2 3");
+    checkClient("DBRstringArray", "aa bb cc");
+    checkClient("DBRmbbout", "2");
+    checkClient("DBRbinaryout", "1");
+}
+
+#define TEST_CLIENT_TYPES(TestIocType) { \
+    testDiag("=== " #TestIocType " ==="); \
+    TestIocPtr testIoc = TestIocPtr(new TestIocType()); \
+    testIoc->start(); \
+    testClientTypes(); \
+    testIoc->shutdown(); \
+}
+
 
 MAIN(testCaProvider)
 {
-    testPlan(143 * TEST_LOOPS + EXIT_TESTS);
+    DEBUG = (getenv("HARNESS_ACTIVE") == NULL);
 
-#ifdef USE_DBUNITTEST
-    testDiag("Running IOC using dbUnitTest");
-#else
-    testDiag("Running IOC using system()");
-#endif
+    epics::pvAccess::ca::CAClientFactory::start();
 
-    TestIocPtr testIoc(new TestIoc());
-    testIoc->start();
-
-    testDiag("===Test caProvider===");
-    CAClientFactory::start();
-    testDiag("factory started");
-    ChannelProviderRegistry::shared_pointer reg(ChannelProviderRegistry::clients());
-    testDiag("registered as a client");
     try {
-        for (int i = 0; i < TEST_LOOPS; ++i) {
-            testDiag("== Loop #%d ==", i+1);
-            ChannelProvider::shared_pointer channelProvider(reg->getProvider("ca"));
-
-            if (!channelProvider)
-                testAbort("Channel provider 'ca' not registered");
-            testDiag("ChannelProvider: %p", channelProvider.get());
-
-            checkClient("DBRlongout", "0");
-            checkClient("DBRlongout", "1");
-            checkClient("DBRlongout", "-1");
-            checkClient("DBRlongout", "32767");
-            checkClient("DBRlongout", "32768");
-            checkClient("DBRlongout", "-32768");
-            checkClient("DBRlongout", "-32769");
-            checkClient("DBRlongout", "2147483647");
-            checkClient("DBRlongout", "-2147483648");
-            checkClient("DBRdoubleout", "1.5");
-            checkClient("DBRstringout", "test");
-            checkClient("DBRbyteArray", "1 2 3");
-            checkClient("DBRshortArray", "1 2 3");
-            checkClient("DBRintArray", "1 2 3");
-            checkClient("DBRubyteArray", "1 2 3");
-            checkClient("DBRushortArray", "1 2 3");
-            checkClient("DBRuintArray", "1 2 3");
-            checkClient("DBRfloatArray", "1 2 3");
-            checkClient("DBRdoubleArray", "1 2 3");
-            checkClient("DBRstringArray", "aa bb cc");
-            checkClient("DBRmbbout", "2");
-            checkClient("DBRbinaryout", "1");
+        // Set TESTCAP_USE_SYSTEM in environment to use other impl.
+        if (HAS_DBUNITTEST && !getenv("TESTCAP_USE_SYSTEM")) {
+            testPlan(143);
+            TEST_CLIENT_TYPES(TestIocUnit)
         }
-        testIoc->shutdown();
+        else if (HAS_SYSTEM) {
+            testPlan(145);
+            TEST_CLIENT_TYPES(TestIocSoft)
+        }
+        else {
+            testPlan(1);
+            testSkip(1, "Neither TestIoc implementation available.");
+        }
     }
     catch (std::exception& e) {
-        testAbort("caught un-expected exception: %s", e.what());
+        testAbort("Caught unexpected exception: %s", e.what());
     }
 
     return testDone();

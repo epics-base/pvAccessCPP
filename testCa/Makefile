@@ -3,44 +3,43 @@
 TOP = ..
 include $(TOP)/configure/CONFIG
 
-# Need access to caProviderPvt.h
+# Access to caProviderPvt.h
 USR_CPPFLAGS += -I$(TOP)/src/ca
+
+TESTPROD_HOST += testCaProvider
+
+testCaProvider_SRCS += testCaProvider.cpp
 
 PROD_LIBS += pvAccess pvAccessCA pvData $(EPICS_BASE_IOC_LIBS)
 PROD_SYS_LIBS_WIN32 += netapi32 ws2_32
 
-TESTPROD_HOST += testCaProvider
-testCaProvider_SRCS += testCaProvider.cpp
 ifdef BASE_3_16
-TESTS += testCaProvider
-endif
-ifdef BASE_3_16
+  testCaProvider_SRCS_RTEMS += rtemsTestData.c
   testCaProvider_SRCS += testIoc_registerRecordDeviceDriver.cpp
   REGRDDFLAGS = -l
-endif
-caTestHarness_SRCS += $(testCaProvider_SRCS)
 
-# Ensure EPICS_HOST_ARCH is set in the environment
-export EPICS_HOST_ARCH
+  TESTS += testCaProvider
+  TESTFILES += ../testCaProvider.db $(COMMON_DIR)/testIoc.dbd
 
-ifdef BASE_3_16
-  # Embedded OSes need Base-3.16.2 or higher to pass tests
+  # Build test scripts for hosts
+  TESTSCRIPTS_HOST += $(TESTS:%=%.t)
 
-  # Code that runs all tests in the collection
+  ifneq ($(filter $(T_A),$(CROSS_COMPILER_RUNTEST_ARCHS)),)
+    TESTPROD = $(TESTPROD_HOST)
+    TESTSCRIPTS = $(TESTSCRIPTS_HOST)
+  endif
+
+  # Ensure EPICS_HOST_ARCH is set in the environment
+  export EPICS_HOST_ARCH
+
+  caTestHarness_SRCS += $(testCaProvider_SRCS)
   caTestHarness_SRCS += pvCaAllTests.c
 
-  # Build for vxWorks
+  # Build harness for vxWorks and RTEMS
   PROD_vxWorks = caTestHarness
-  TESTSPEC_vxWorks = caTestHarness.$(MUNCH_SUFFIX); pvCaAllTests
-
-  # Build for RTEMS, with harness code & configuration
-  PROD_RTEMS += caTestHarness
+  PROD_RTEMS = caTestHarness
   caTestHarness_SRCS_RTEMS += rtemsTestHarness.c
-  TESTSPEC_RTEMS = caTestHarness.$(MUNCH_SUFFIX); pvCaAllTests
 endif
-
-# Build test scripts for hosts
-TESTSCRIPTS_HOST += $(TESTS:%=%.t)
 
 include $(TOP)/configure/RULES
 
@@ -48,4 +47,7 @@ ifdef BASE_3_16
   $(COMMON_DIR)/testIoc.dbd: $(EPICS_BASE)/dbd/softIoc.dbd
 	$(RM) $@
 	$(CP) $< $@
+
+  rtemsTestData.c : $(TESTFILES) $(TOOLS)/epicsMakeMemFs.pl
+	$(PERL) $(TOOLS)/epicsMakeMemFs.pl $@ epicsRtemsFSImage $(TESTFILES)
 endif
