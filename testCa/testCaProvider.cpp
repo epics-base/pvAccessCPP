@@ -850,12 +850,14 @@ MAIN(testCaProvider)
     epics::pvAccess::ca::CAClientFactory::start();
 
     try {
+#if HAS_DBUNITTEST
         // Set TESTCAP_USE_SYSTEM in environment to use other impl.
-        if (HAS_DBUNITTEST && !getenv("TESTCAP_USE_SYSTEM")) {
+        if (!getenv("TESTCAP_USE_SYSTEM")) {
             testPlan(143);
             TEST_CLIENT_TYPES(TestIocUnit)
-        }
-        else if (HAS_SYSTEM) {
+        } else
+#endif
+        if (HAS_SYSTEM) {
             testPlan(145);
             TEST_CLIENT_TYPES(TestIocSoft)
         }
