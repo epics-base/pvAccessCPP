@@ -36,13 +36,13 @@ private:    // Internal API
 class Attach
 {
 public:
-    Attach(const CAContextPtr & to) :
-        context(to), saved_context(to->attach()) {}
+    explicit Attach(const CAContextPtr & to) :
+        context(*to), saved_context(context.attach()) {}
     ~Attach() {
-        context->detach(saved_context);
+        context.detach(saved_context);
     }
 private:
-    CAContextPtr context;
+    CAContext & context;
     ca_client_context* saved_context;
 };
 
