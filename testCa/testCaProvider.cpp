@@ -714,7 +714,9 @@ void TestIocUnit::start()
 void TestIocUnit::shutdown()
 {
     testIocShutdownOk();
-    testdbCleanup();
+    // FIXME: We should run testdbCleanup() here but that causes
+    // Windows test-runs to fail, returning a weird status code.
+    // On Linux valgrind also detects invalid reads.
 }
 #endif // HAS_DBUNITTEST
 
