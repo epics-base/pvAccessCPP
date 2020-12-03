@@ -60,12 +60,10 @@ void NotifierConveyor::run()
         workToDo.wait();
         Lock the(mutex);
         stopping = halt;
-        bool work = !workQueue.empty();
-        while (work)
+        while (!stopping && !workQueue.empty())
         {
             NotificationWPtr notificationWPtr(workQueue.front());
             workQueue.pop();
-            work = !workQueue.empty();
             NotificationPtr notification(notificationWPtr.lock());
             if (notification) {
                 notification->queued = false;
@@ -81,11 +79,10 @@ void NotifierConveyor::run()
                         std::cerr << "Unknown exception from notifyClient()"
                             << std::endl;
                     }
-                    if (work) {
-                        the.lock();
-                        stopping = halt;
-                    }
+                    the.lock();
                 }
+                stopping = halt;
+                // client's destructor may run here, could delete *this
             }
         }
     } while (!stopping);
