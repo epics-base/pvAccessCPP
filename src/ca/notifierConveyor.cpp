@@ -7,13 +7,12 @@
 #include <iostream>
 #include <queue>
 #include <epicsThread.h>
-#include <pv/event.h>
-#include <pv/lock.h>
+#include <epicsMutex.h>
+#include <epicsEvent.h>
+#include <pv/sharedPtr.h>
 
 #define epicsExportSharedSymbols
 #include "notifierConveyor.h"
-
-using epics::pvData::Lock;
 
 namespace epics {
 namespace pvAccess {
@@ -23,10 +22,10 @@ NotifierConveyor::~NotifierConveyor()
 {
     if (thread) {
         {
-            Lock the(mutex);
+            epicsGuard<epicsMutex> G(mutex);
             halt = true;
         }
-        workToDo.signal();
+        workToDo.trigger();
         thread->exitWait();
     }
 }
@@ -45,12 +44,12 @@ void NotifierConveyor::notifyClient(
     NotificationPtr const &notificationPtr)
 {
     {
-        Lock the(mutex);
+        epicsGuard<epicsMutex> G(mutex);
         if (halt || notificationPtr->queued) return;
         notificationPtr->queued = true;
         workQueue.push(notificationPtr);
     }
-    workToDo.signal();
+    workToDo.trigger();
 }
 
 void NotifierConveyor::run()
@@ -58,7 +57,7 @@ void NotifierConveyor::run()
     bool stopping;
     do {
         workToDo.wait();
-        Lock the(mutex);
+        epicsGuard<epicsMutex> G(mutex);
         stopping = halt;
         while (!stopping && !workQueue.empty())
         {
@@ -69,7 +68,7 @@ void NotifierConveyor::run()
                 notification->queued = false;
                 NotifierClientPtr client(notification->client.lock());
                 if (client) {
-                    the.unlock();
+                    epicsGuardRelease<epicsMutex> U(G);
                     try { client->notifyClient(); }
                     catch (std::exception &e) {
                         std::cerr << "Exception from notifyClient(): "
@@ -79,7 +78,6 @@ void NotifierConveyor::run()
                         std::cerr << "Unknown exception from notifyClient()"
                             << std::endl;
                     }
-                    the.lock();
                 }
                 stopping = halt;
                 // client's destructor may run here, could delete *this

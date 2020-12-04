@@ -5,6 +5,7 @@
  */
 
 
+#include <epicsMutex.h>
 #include <pv/standardField.h>
 #include <pv/pvAccess.h>
 
@@ -45,7 +46,7 @@ static void ca_connection_handler(struct connection_handler_args args)
 void CAChannel::connect(bool isConnected)
 {
     {
-        Lock lock(requestsMutex);
+        epicsGuard<epicsMutex> G(requestsMutex);
         channelConnected = isConnected;
     }
     CAChannelProviderPtr provider(channelProvider.lock());
@@ -65,7 +66,7 @@ void CAChannel::notifyClient()
     if (!provider) return;
     bool isConnected = false;
     {
-        Lock lock(requestsMutex);
+        epicsGuard<epicsMutex> G(requestsMutex);
         isConnected = channelConnected;
     }
     if (!isConnected) {
@@ -142,7 +143,7 @@ void CAChannel::activate(short priority)
 CAChannel::~CAChannel()
 {
     {
-        Lock lock(requestsMutex);
+        epicsGuard<epicsMutex> G(requestsMutex);
         if (!channelCreated) return;
     }
     disconnectChannel();
@@ -151,7 +152,7 @@ CAChannel::~CAChannel()
 void CAChannel::disconnectChannel()
 {
     {
-        Lock lock(requestsMutex);
+        epicsGuard<epicsMutex> G(requestsMutex);
         if (!channelCreated) return;
         channelCreated = false;
     }
@@ -219,7 +220,7 @@ void CAChannel::getField(GetFieldRequester::shared_pointer const & requester,
     CAChannelGetFieldPtr getField(
         new CAChannelGetField(shared_from_this(),requester,subField));
     {
-        Lock lock(requestsMutex);
+        epicsGuard<epicsMutex> G(requestsMutex);
         if (getConnectionState()!=Channel::CONNECTED) {
             getFieldQueue.push(getField);
             return;
@@ -247,7 +248,7 @@ ChannelGet::shared_pointer CAChannel::createChannelGet(
     CAChannelGetPtr channelGet =
         CAChannelGet::create(shared_from_this(), channelGetRequester, pvRequest);
     {
-        Lock lock(requestsMutex);
+        epicsGuard<epicsMutex> G(requestsMutex);
         if (getConnectionState()!=Channel::CONNECTED) {
             getQueue.push(channelGet);
             return channelGet;
@@ -265,7 +266,7 @@ ChannelPut::shared_pointer CAChannel::createChannelPut(
     CAChannelPutPtr channelPut =
         CAChannelPut::create(shared_from_this(), channelPutRequester, pvRequest);
     {
-        Lock lock(requestsMutex);
+        epicsGuard<epicsMutex> G(requestsMutex);
         if (getConnectionState()!=Channel::CONNECTED) {
             putQueue.push(channelPut);
             return channelPut;
@@ -283,7 +284,7 @@ Monitor::shared_pointer CAChannel::createMonitor(
     CAChannelMonitorPtr channelMonitor =
         CAChannelMonitor::create(shared_from_this(), monitorRequester, pvRequest);
     {
-        Lock lock(requestsMutex);
+        epicsGuard<epicsMutex> G(requestsMutex);
         if (getConnectionState()!=Channel::CONNECTED) {
             monitorQueue.push(channelMonitor);
             return channelMonitor;
@@ -541,7 +542,7 @@ void CAChannelPut::put(PVStructure::shared_pointer const & pvPutStructure,
     ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
     if (!putRequester) return;
     {
-       Lock lock(mutex);
+       epicsGuard<epicsMutex> G(mutex);
        isPut = true;
     }
     putStatus = dbdToPv->putToDBD(channel,pvPutStructure,block,&ca_put_handler,this);
@@ -590,7 +591,7 @@ void CAChannelPut::get()
     ChannelPutRequester::shared_pointer putRequester(channelPutRequester.lock());
     if (!putRequester) return;
     {
-       Lock lock(mutex);
+       epicsGuard<epicsMutex> G(mutex);
        isPut = false;
     }
 
@@ -780,7 +781,7 @@ std::string CAChannelMonitor::getRequesterName()
 void CAChannelMonitor::subscriptionEvent(struct event_handler_args &args)
 {
     {
-       Lock lock(mutex);
+       epicsGuard<epicsMutex> G(mutex);
        if (!isStarted) return;
     }
     MonitorRequester::shared_pointer requester(monitorRequester.lock());
@@ -808,7 +809,7 @@ void CAChannelMonitor::subscriptionEvent(struct event_handler_args &args)
 void CAChannelMonitor::notifyClient()
 {
     {
-         Lock lock(mutex);
+         epicsGuard<epicsMutex> G(mutex);
          if(!isStarted) return;
     }
     MonitorRequester::shared_pointer requester(monitorRequester.lock());
@@ -819,7 +820,7 @@ void CAChannelMonitor::notifyClient()
 Status CAChannelMonitor::start()
 {
     {
-        Lock lock(mutex);
+        epicsGuard<epicsMutex> G(mutex);
         if (isStarted)
             return Status(Status::STATUSTYPE_WARNING, "already started");
         isStarted = true;
@@ -836,7 +837,7 @@ Status CAChannelMonitor::start()
     if (result == ECA_NORMAL)
         return Status::Ok;
     {
-        Lock lock(mutex);
+        epicsGuard<epicsMutex> G(mutex);
         isStarted = false;
     }
     return Status(Status::STATUSTYPE_ERROR, string(ca_message(result)));
@@ -845,7 +846,7 @@ Status CAChannelMonitor::start()
 Status CAChannelMonitor::stop()
 {
     {
-        Lock lock(mutex);
+        epicsGuard<epicsMutex> G(mutex);
         if (!isStarted)
             return Status(Status::STATUSTYPE_WARNING, "already stopped");
         isStarted = false;
@@ -861,7 +862,7 @@ Status CAChannelMonitor::stop()
 MonitorElementPtr CAChannelMonitor::poll()
 {
     {
-        Lock lock(mutex);
+        epicsGuard<epicsMutex> G(mutex);
         if (!isStarted) return MonitorElementPtr();
     }
     return monitorQueue->poll();
