@@ -129,6 +129,8 @@ jobs:
       with:
         path: ~/.cache
         key: ${{ matrix.base }}/${{ matrix.os }}/${{ matrix.cmp }}/${{ matrix.configuration }}/${{ matrix.wine }}${{ matrix.rtems }}/${{ matrix.extra }}
+    - name: Automatic core dump analysis
+      uses: mdavidsaver/ci-core-dumper@master
     - name: "apt-get install"
       run: |
         sudo apt-get update
