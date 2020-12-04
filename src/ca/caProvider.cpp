@@ -6,6 +6,7 @@
 
 #include <cadef.h>
 #include <epicsSignal.h>
+#include <epicsMutex.h>
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
 
@@ -31,7 +32,7 @@ CAChannelProvider::~CAChannelProvider()
 {
     std::queue<CAChannelPtr> channelQ;
     {
-        Lock lock(channelListMutex);
+        epicsGuard<epicsMutex> G(channelListMutex);
         for (size_t i = 0; i < caChannelList.size(); ++i)
         {
             CAChannelPtr caChannel(caChannelList[i].lock());
@@ -105,7 +106,7 @@ Channel::shared_pointer CAChannelProvider::createChannel(
 
 void CAChannelProvider::addChannel(const CAChannelPtr &channel)
 {
-    Lock lock(channelListMutex);
+    epicsGuard<epicsMutex> G(channelListMutex);
     for (size_t i = 0; i < caChannelList.size(); ++i)
     {
         if (!(caChannelList[i].lock()))

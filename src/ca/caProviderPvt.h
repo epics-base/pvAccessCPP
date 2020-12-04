@@ -13,6 +13,7 @@
 #define CAPROVIDERPVT_H
 
 #include <cadef.h>
+#include <epicsMutex.h>
 
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
@@ -92,7 +93,7 @@ public:
     }
 private:
     CAContextPtr ca_context;
-    epics::pvData::Mutex channelListMutex;
+    epicsMutex channelListMutex;
     std::vector<CAChannelWPtr> caChannelList;
 
     NotifierConveyor connectNotifier;

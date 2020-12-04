@@ -9,8 +9,9 @@
 
 #include <queue>
 #include <epicsThread.h>
-#include <pv/event.h>
-#include <pv/lock.h>
+#include <epicsMutex.h>
+#include <epicsEvent.h>
+#include <pv/sharedPtr.h>
 
 namespace epics {
 namespace pvAccess {
@@ -55,8 +56,8 @@ public:
 
 private:
     std::tr1::shared_ptr<epicsThread> thread;
-    epics::pvData::Mutex mutex;
-    epics::pvData::Event workToDo;
+    epicsMutex mutex;
+    epicsEvent workToDo;
     std::queue<NotificationWPtr> workQueue;
     bool halt;
 };

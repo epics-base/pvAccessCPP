@@ -349,7 +349,7 @@ void DbdToPv::getChoicesDone(struct event_handler_args &args)
     size_t num = dbr_enum_p->no_str;
     choices.reserve(num);
     for(size_t i=0; i<num; ++i) choices.push_back(string(&dbr_enum_p->strs[i][0]));
-    choicesEvent.signal();
+    choicesEvent.trigger();
 }
 
 

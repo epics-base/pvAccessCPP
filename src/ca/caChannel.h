@@ -15,10 +15,11 @@
 #include <queue>
 #include <vector>
 
+#include <epicsMutex.h>
+#include <epicsEvent.h>
 #include <cadef.h>
 
 #include <pv/pvAccess.h>
-#include <pv/event.h>
 
 #include "caProviderPvt.h"
 #include "dbdToPv.h"
@@ -121,7 +122,7 @@ private:
     NotificationPtr connectNotification;
     CAContextPtr ca_context;
 
-    epics::pvData::Mutex requestsMutex;
+    epicsMutex requestsMutex;
     std::queue<CAChannelGetFieldPtr> getFieldQueue;
     std::queue<CAChannelPutPtr> putQueue;
     std::queue<CAChannelGetPtr> getQueue;
@@ -163,7 +164,7 @@ private:
     CAContextPtr ca_context;
 
     DbdToPvPtr dbdToPv;
-    epics::pvData::Mutex mutex;
+    epicsMutex mutex;
     epics::pvData::PVStructure::shared_pointer pvStructure;
     epics::pvData::BitSet::shared_pointer bitSet;
 };
@@ -208,7 +209,7 @@ private:
     CAContextPtr ca_context;
 
     DbdToPvPtr dbdToPv;
-    epics::pvData::Mutex mutex;
+    epicsMutex mutex;
     epics::pvData::PVStructure::shared_pointer pvStructure;
     epics::pvData::BitSet::shared_pointer bitSet;
 };
@@ -251,7 +252,7 @@ private:
     CAContextPtr ca_context;
 
     DbdToPvPtr dbdToPv;
-    epics::pvData::Mutex mutex;
+    epicsMutex mutex;
     epics::pvData::PVStructure::shared_pointer pvStructure;
     epics::pvData::MonitorElementPtr activeElement;
     

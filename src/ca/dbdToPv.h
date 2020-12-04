@@ -10,10 +10,9 @@
 #ifndef DbdToPv_H
 #define DbdToPv_H
 
-#include <shareLib.h>
-#include <pv/pvAccess.h>
+#include <epicsEvent.h>
 #include <cadef.h>
-#include <pv/event.h>
+#include <pv/pvAccess.h>
 #include "caChannel.h"
 
 namespace epics {
@@ -130,7 +129,7 @@ private:
     chtype caValueType;
     chtype caRequestType;
     unsigned long maxElements;
-    epics::pvData::Event choicesEvent;
+    epicsEvent choicesEvent;
     epicsTimeStamp caTimeStamp;
     CaAlarm caAlarm;
     CaDisplay caDisplay;
