@@ -39,7 +39,7 @@ environment:
     CMP: vs2019
     BASE: 7.0
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-    CMP: mingw
+    CMP: gcc
     BASE: 7.0
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
     CMP: vs2017
