@@ -17,8 +17,8 @@
 #include <pv/reftrack.h>
 #include <pv/convert.h>
 #include <pv/timeStamp.h>
-#include "caChannel.h"
 #define epicsExportSharedSymbols
+#include "caChannel.h"
 #include "dbdToPv.h"
 
 using namespace epics::pvData;

@@ -8,6 +8,7 @@
 #define INC_notifierConveyor_H
 
 #include <queue>
+#include <shareLib.h>
 #include <epicsThread.h>
 #include <epicsMutex.h>
 #include <epicsEvent.h>
@@ -28,6 +29,7 @@ typedef std::tr1::weak_ptr<NotifierClient> NotifierClientWPtr;
 class NotifierClient
 {
 public:
+    virtual ~NotifierClient() {};
     virtual void notifyClient() = 0;
 };
 
@@ -44,7 +46,7 @@ private:
     friend class NotifierConveyor;
 };
 
-class NotifierConveyor :
+class epicsShareClass NotifierConveyor :
     public epicsThreadRunable
 {
 public:
