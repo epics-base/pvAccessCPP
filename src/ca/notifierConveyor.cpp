@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <queue>
+#include <cstdio>
 #include <epicsThread.h>
 #include <epicsMutex.h>
 #include <epicsEvent.h>
@@ -33,8 +34,9 @@ NotifierConveyor::~NotifierConveyor()
 void NotifierConveyor::start()
 {
     if (thread) return;
-    thread = std::tr1::shared_ptr<epicsThread>(new epicsThread(*this,
-        "caProvider::clientNotifier",
+    char name[40];
+    std::sprintf(name, "pva::ca::conveyor %p", this);
+    thread = std::tr1::shared_ptr<epicsThread>(new epicsThread(*this, name,
         epicsThreadGetStackSize(epicsThreadStackBig),
         epicsThreadPriorityLow));
     thread->start();
