@@ -3,12 +3,15 @@
 TOP = ..
 include $(TOP)/configure/CONFIG
 
-# Access to caProviderPvt.h
+# Access to uninstalled headers
 USR_CPPFLAGS += -I$(TOP)/src/ca
 
 TESTPROD_HOST += testCaProvider
-
 testCaProvider_SRCS += testCaProvider.cpp
+
+TESTPROD_HOST += testConveyor
+testConveyor_SRCS += testConveyor.cpp
+TESTS += testConveyor
 
 PROD_LIBS += pvAccess pvAccessCA pvData $(EPICS_BASE_IOC_LIBS)
 PROD_SYS_LIBS_WIN32 += netapi32 ws2_32
@@ -33,6 +36,7 @@ ifdef BASE_3_16
   export EPICS_HOST_ARCH
 
   caTestHarness_SRCS += $(testCaProvider_SRCS)
+  caTestHarness_SRCS += testConveyor.cpp
   caTestHarness_SRCS += pvCaAllTests.c
 
   # Build harness for vxWorks and RTEMS
