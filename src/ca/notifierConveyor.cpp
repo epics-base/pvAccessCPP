@@ -56,13 +56,15 @@ void NotifierConveyor::notifyClient(
 
 void NotifierConveyor::run()
 {
-    bool stopping;
-    do {
-        workToDo.wait();
-        epicsGuard<epicsMutex> G(mutex);
-        stopping = halt;
-        while (!stopping && !workQueue.empty())
+    epicsGuard<epicsMutex> G(mutex);
+    bool stopping = halt;
+    while (!stopping) {
         {
+            epicsGuardRelease<epicsMutex> U(G);
+            workToDo.wait();
+        }
+        stopping = halt;
+        while (!stopping && !workQueue.empty()) {
             NotificationWPtr notificationWPtr(workQueue.front());
             workQueue.pop();
             NotificationPtr notification(notificationWPtr.lock());
@@ -85,7 +87,7 @@ void NotifierConveyor::run()
                 // client's destructor may run here, could delete *this
             }
         }
-    } while (!stopping);
+    }
 }
 
 }}}
