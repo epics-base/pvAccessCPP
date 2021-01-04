@@ -9,6 +9,7 @@
 #include <sstream>
 #include <alarm.h>
 #include <alarmString.h>
+#include <cadef.h>
 
 #include <pv/alarm.h>
 #include <pv/standardField.h>
