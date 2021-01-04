@@ -130,7 +130,7 @@ void testOperation(void)
             testFail("Client's notify() not called");
 
         c1.reset();     // Clean up c1
-        if (!cgone.tryWait())
+        if (!cgone.wait(TIMEOUT))
             testFail("Client's destructor not called");
 
         testDiag("2. Queue accepts notification while conveyor is busy.");
