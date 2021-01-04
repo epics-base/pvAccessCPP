@@ -7,6 +7,7 @@
 #include <iostream>
 #include <queue>
 #include <cstdio>
+#include <cantProceed.h>
 #include <epicsThread.h>
 #include <epicsMutex.h>
 #include <epicsEvent.h>
@@ -22,6 +23,9 @@ namespace ca {
 NotifierConveyor::~NotifierConveyor()
 {
     if (thread) {
+        if (thread->isCurrentThread()) {
+            cantProceed("NotifierConveyor: Can't delete me in notify()!\n");
+        }
         {
             epicsGuard<epicsMutex> G(mutex);
             halt = true;
@@ -56,13 +60,10 @@ void NotifierConveyor::notifyClient(
 
 void NotifierConveyor::run()
 {
-    epicsGuard<epicsMutex> G(mutex);
-    bool stopping = halt;
-    while (!stopping) {
-        {
-            epicsGuardRelease<epicsMutex> U(G);
-            workToDo.wait();
-        }
+    bool stopping;
+    do {
+        workToDo.wait();
+        epicsGuard<epicsMutex> G(mutex);
         stopping = halt;
         while (!stopping && !workQueue.empty()) {
             NotificationWPtr notificationWPtr(workQueue.front());
@@ -70,9 +71,9 @@ void NotifierConveyor::run()
             NotificationPtr notification(notificationWPtr.lock());
             if (notification) {
                 notification->queued = false;
+                epicsGuardRelease<epicsMutex> U(G);
                 NotifierClientPtr client(notification->client.lock());
                 if (client) {
-                    epicsGuardRelease<epicsMutex> U(G);
                     try { client->notifyClient(); }
                     catch (std::exception &e) {
                         std::cerr << "Exception from notifyClient(): "
@@ -83,11 +84,10 @@ void NotifierConveyor::run()
                             << std::endl;
                     }
                 }
-                stopping = halt;
-                // client's destructor may run here, could delete *this
             }
+            stopping = halt;
         }
-    }
+    } while (!stopping);
 }
 
 }}}
