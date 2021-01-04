@@ -36,7 +36,9 @@ public:
 class Notification
 {
 public:
-    Notification() : queued(false) {}
+    Notification(void) : queued(false) {}
+    explicit Notification(NotifierClientPtr const &c) :
+        client(c), queued(false) {}
     void setClient(NotifierClientPtr const &client) {
         this->client = client;
     }
