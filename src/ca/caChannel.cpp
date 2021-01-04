@@ -6,6 +6,7 @@
 
 
 #include <epicsMutex.h>
+#include <epicsGuard.h>     // Needed for 3.15 builds
 #include <pv/standardField.h>
 #include <pv/pvAccess.h>
 
@@ -642,7 +643,7 @@ public:
 private:
     size_t queueSize;
     bool isStarted;
-    Mutex mutex;
+    epicsMutex mutex;
 
     std::queue<MonitorElementPtr> monitorElementQueue;
 public:
@@ -656,14 +657,14 @@ public:
     }
     void start()
     {
-        Lock guard(mutex);
+        epicsGuard<epicsMutex> G(mutex);
         while (!monitorElementQueue.empty())
             monitorElementQueue.pop();
         isStarted = true;
     }
     void stop()
     {
-        Lock guard(mutex);
+        epicsGuard<epicsMutex> G(mutex);
         while (!monitorElementQueue.empty())
             monitorElementQueue.pop();
         isStarted = false;
@@ -673,7 +674,7 @@ public:
         const PVStructurePtr &pvStructure,
         const MonitorElementPtr &activeElement)
     {
-        Lock guard(mutex);
+        epicsGuard<epicsMutex> G(mutex);
         if (!isStarted)
             return false;
         if (monitorElementQueue.size() == queueSize)
@@ -688,7 +689,7 @@ public:
     }
     MonitorElementPtr poll()
     {
-        Lock guard(mutex);
+        epicsGuard<epicsMutex> G(mutex);
         if (!isStarted)
             return MonitorElementPtr();
         if (monitorElementQueue.empty())
@@ -698,7 +699,7 @@ public:
     }
     void release(MonitorElementPtr const &monitorElement)
     {
-        Lock guard(mutex);
+        epicsGuard<epicsMutex> G(mutex);
         if (!isStarted)
             return;
         if (monitorElementQueue.empty())
