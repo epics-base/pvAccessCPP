@@ -7,6 +7,7 @@
 #include <cadef.h>
 #include <epicsSignal.h>
 #include <epicsMutex.h>
+#include <epicsGuard.h>     // Needed for 3.15 builds
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
 
