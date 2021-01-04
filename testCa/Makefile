@@ -17,7 +17,7 @@ PROD_LIBS += pvAccess pvAccessCA pvData $(EPICS_BASE_IOC_LIBS)
 PROD_SYS_LIBS_WIN32 += netapi32 ws2_32
 
 ifdef BASE_3_16
-  testCaProvider_SRCS_RTEMS += rtemsTestData.c
+  PROD_SRCS_RTEMS += rtemsTestData.c
   testCaProvider_SRCS += testIoc_registerRecordDeviceDriver.cpp
   REGRDDFLAGS = -l
 
