@@ -10,6 +10,7 @@
 #include <cantProceed.h>
 #include <epicsThread.h>
 #include <epicsMutex.h>
+#include <epicsGuard.h>     // Needed for 3.15 builds
 #include <epicsEvent.h>
 #include <pv/sharedPtr.h>
 
