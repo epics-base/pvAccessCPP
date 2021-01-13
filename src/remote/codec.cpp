@@ -1176,7 +1176,18 @@ void BlockingTCPTransportCodec::sendThread()
 
 void BlockingTCPTransportCodec::setRxTimeout(bool ena)
 {
-    double timeout = !ena ? 0.0 : std::max(0.0, _context->getConfiguration()->getPropertyAsDouble("EPICS_PVA_CONN_TMO", 30.0));
+    /* Inactivity timeouts with PVA have a long (and growing) history.
+     *
+     * - Originally pvAccessCPP clients didn't send CMD_ECHO, and servers would never timeout.
+     * - Since module version 7.0.0 (in Base 7.0.3) clients send echo every 15 seconds, and
+     *   either peer will timeout after 30 seconds of inactivity.
+     * - pvAccessJava clients send CMD_ECHO every 30 seconds, and timeout after 60 seconds.
+     *
+     * So this was a bug, with c++ server timeout racing with Java client echo.
+     *
+     * - As a compromise, continue to send echo every 15 seconds, but increase default timeout to 40.
+     */
+    double timeout = !ena ? 0.0 : 4.0/3.0*std::max(0.0, _context->getConfiguration()->getPropertyAsDouble("EPICS_PVA_CONN_TMO", 30.0));
 #ifdef _WIN32
     DWORD timo = DWORD(timeout*1000); // in milliseconds
 #else
