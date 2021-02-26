@@ -1,11 +1,12 @@
 /** @page pvarelease_notes Release Notes
 
-Release 7.1.3 (UNRELEASED)
-==========================
+Release 7.1.3 (Feb. 2021)
+=========================
 
 - Bug fixes
   - Increase default TCP timeout to 40 seconds.
     Applies a 4/3 multiplier on \$EPICS_PVA_CONN_TMO for compatibility.
+  - CA Provider implementation restructured to simplify, reduce duplication and fix issues #163 and #165.
 - Changes
   - Enable building of pvtools to all except vxWorks, RTEMS and iOS.
 
