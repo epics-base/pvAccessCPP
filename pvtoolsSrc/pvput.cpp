@@ -112,8 +112,16 @@ struct Putter : public pvac::ClientChannel::PutCallback
             if(sep==std::string::npos) {
                 bare.push_back(values[i]);
             } else {
-                pairs.push_back(std::make_pair(values[i].substr(0, sep),
-                                               values[i].substr(sep+1)));
+                pvd::PVFieldPtr fld(root->getSubField(values[i].substr(0, sep)));
+                if(fld)
+                    // If the first substring is a valid "field", tread this value
+                    // as a field=value pair
+                    pairs.push_back(std::make_pair(values[i].substr(0, sep),
+                                                   values[i].substr(sep+1)));
+                else
+                    // If the first substring is not a valid "field", then tread this
+                    // value as a bare value instead
+                    bare.push_back(values[i]);
             }
         }
 
