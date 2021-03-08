@@ -90,12 +90,7 @@ struct Putter : public pvac::ClientChannel::PutCallback
 
     Putter() :done(false) {}
 
-    typedef pvd::shared_vector<std::string> bare_t;
-    bare_t bare;
-
-    typedef std::pair<std::string, std::string> KV_t;
-    typedef std::vector<KV_t> pairs_t;
-    pairs_t pairs;
+    std::vector<std::string> values;
 
     pvd::shared_vector<std::string> jarr;
 
@@ -103,6 +98,32 @@ struct Putter : public pvac::ClientChannel::PutCallback
     {
         if(debugFlag) std::cerr<<"Server defined structure\n"<<build;
         pvd::PVStructurePtr root(pvd::getPVDataCreate()->createPVStructure(build));
+
+        typedef pvd::shared_vector<std::string> bare_t;
+        bare_t bare;
+
+        typedef std::pair<std::string, std::string> KV_t;
+        typedef std::vector<KV_t> pairs_t;
+        pairs_t pairs;
+
+        for(size_t i=0, N=values.size(); i<N; i++)
+        {
+            size_t sep = values[i].find_first_of('=');
+            if(sep==std::string::npos) {
+                bare.push_back(values[i]);
+            } else {
+                pairs.push_back(std::make_pair(values[i].substr(0, sep),
+                                               values[i].substr(sep+1)));
+            }
+        }
+
+        if(!bare.empty() && !pairs.empty()) {
+            throw std::runtime_error("Can't mix bare values and field=value pairs");
+        } else if(bare.size()==1 && bare[0][0]=='[') {
+            // treat plain "[...]" as "value=[...]"
+            pairs.push_back(std::make_pair("value", bare[0]));
+            bare.clear();
+        }
 
         if(bare.size()==1 && bare[0][0]=='{') {
             if(debugFlag) fprintf(stderr, "In JSON top mode\n");
@@ -333,34 +354,11 @@ int main (int argc, char *argv[])
             return 1;
         }
 
-        std::vector<std::string> values;
-        // copy values from command line
-        for (int n = 0; optind < argc; n++, optind++)
-            values.push_back(argv[optind]);
-
         Putter thework;
 
-        for(size_t i=0, N=values.size(); i<N; i++)
-        {
-            size_t sep = values[i].find_first_of('=');
-            if(sep==std::string::npos) {
-                thework.bare.push_back(values[i]);
-            } else {
-                thework.pairs.push_back(std::make_pair(values[i].substr(0, sep),
-                                                       values[i].substr(sep+1)));
-            }
-        }
-
-        if(!thework.bare.empty() && !thework.pairs.empty()) {
-            usage();
-            fprintf(stderr, "\nCan't mix bare values and field=value pairs\n");
-            return 1;
-
-        } else if(thework.bare.size()==1 && thework.bare[0][0]=='[') {
-            // treat plain "[...]" as "value=[...]"
-            thework.pairs.push_back(std::make_pair("value", thework.bare[0]));
-            thework.bare.clear();
-        }
+        // copy values from command line
+        for (int n = 0; optind < argc; n++, optind++)
+            thework.values.push_back(argv[optind]);
 
         pvd::PVStructure::shared_pointer pvRequest;
         try {
