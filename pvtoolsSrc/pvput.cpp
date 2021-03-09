@@ -106,22 +106,33 @@ struct Putter : public pvac::ClientChannel::PutCallback
         typedef std::vector<KV_t> pairs_t;
         pairs_t pairs;
 
-        for(size_t i=0, N=values.size(); i<N; i++)
-        {
+        for(size_t i=0, N=values.size(); i<N; i++) {
+            // Try to break the input value into a field=value pair
             size_t sep = values[i].find_first_of('=');
             if(sep==std::string::npos) {
+                // If the value does not contain a "=", it is a bare value
                 bare.push_back(values[i]);
             } else {
-                pvd::PVFieldPtr fld(root->getSubField(values[i].substr(0, sep)));
-                if(fld)
-                    // If the first substring is a valid "field", tread this value
-                    // as a field=value pair
-                    pairs.push_back(std::make_pair(values[i].substr(0, sep),
-                                                   values[i].substr(sep+1)));
-                else
-                    // If the first substring is not a valid "field", then tread this
-                    // value as a bare value instead
-                    bare.push_back(values[i]);
+                // Verify if the "field" exists in the PV structure
+                std::string fname(values[i].substr(0, sep));
+                pvd::PVFieldPtr fld(root->getSubField(fname));
+                if(fld) {
+                    // The "field" exist. Treat this input as a filed=value pair.
+                    pairs.push_back(std::make_pair(fname, values[i].substr(sep+1)));
+                } else {
+                    // If the "field" does not exist, this could be a bare value containing a "=" char.
+                    // The ".value" field must exist and be of type "string". Otherwise, the field was
+                    // incorrect and we ignore it.
+                    pvd::PVFieldPtr fldv(root->getSubFieldT("value"));
+                    if (fldv) {
+                        if ((pvd::scalar==fldv->getField()->getType()) && (0==fldv->getField()->getID().compare("string")))
+                            // Tread it as a bare value
+                            bare.push_back(values[i]);
+                        else
+                            // Ignore it
+                            fprintf(stderr, "%s : Warning: no such field. Ignoring it.\n", fname.c_str());
+                    }
+                }
             }
         }
 
