@@ -138,6 +138,9 @@ struct Putter : public pvac::ClientChannel::PutCallback
 
         if(!bare.empty() && !pairs.empty()) {
             throw std::runtime_error("Can't mix bare values and field=value pairs");
+        } else if(bare.empty() && pairs.empty()) {
+            // We could have ignored all the value at this point
+            throw std::runtime_error("No valid value(s) specified");
         } else if(bare.size()==1 && bare[0][0]=='[') {
             // treat plain "[...]" as "value=[...]"
             pairs.push_back(std::make_pair("value", bare[0]));
