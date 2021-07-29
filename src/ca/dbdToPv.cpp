@@ -830,6 +830,9 @@ Status DbdToPv::putToDBD(
     dbr_double_t dvalue(0);
     if(isArray) {
        PVScalarArrayPtr pvValue = pvStructure->getSubField<PVScalarArray>("value");
+       if(!pvValue) {
+           return Status(Status::STATUSTYPE_ERROR, string("DbdToPv::putToDBD logic error"));
+       }
        switch(caValueType) {
            case DBR_STRING:
            {
@@ -919,6 +922,9 @@ Status DbdToPv::putToDBD(
            }
     } else {
         PVScalarPtr pvValue = pvStructure->getSubField<PVScalar>("value");
+        if(!pvValue) {
+            return Status(Status::STATUSTYPE_ERROR, string("DbdToPv::putToDBD logic error"));
+        }
         switch(caValueType) {
            case DBR_ENUM:
            {
