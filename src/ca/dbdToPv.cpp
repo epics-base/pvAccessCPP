@@ -922,7 +922,7 @@ Status DbdToPv::putToDBD(
            }
     } else {
         PVScalarPtr pvValue = pvStructure->getSubField<PVScalar>("value");
-        if(!pvValue) {
+        if(!pvValue && caValueType != DBR_ENUM) {
             return Status(Status::STATUSTYPE_ERROR, string("DbdToPv::putToDBD logic error"));
         }
         switch(caValueType) {
