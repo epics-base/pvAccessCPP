@@ -33,6 +33,12 @@ namespace ca {
 
 #define CA_PRIORITY 50
 
+// Macro used to avoid null pointer errors
+#define GET_SUBFIELD_WITH_ERROR_CHECK(TYPE, VAR, SRC_PTR, FIELD, ERROR_MSG) \
+    std::tr1::shared_ptr<TYPE> VAR = SRC_PTR->getSubField<TYPE>(FIELD); \
+    if (!VAR) {                                                             \
+        return Status(Status::STATUSTYPE_ERROR, ERROR_MSG);                 \
+    }
 
 
 DbdToPvPtr DbdToPv::create(
@@ -442,12 +448,12 @@ Status DbdToPv::getFromDBD(
        void * value = dbr_value_ptr(args.dbr,caRequestType);
        if(isArray) {
            long count = args.count;
-           PVScalarArrayPtr pvValue = pvStructure->getSubField<PVScalarArray>("value");
+           GET_SUBFIELD_WITH_ERROR_CHECK(PVScalarArray, pvValue, pvStructure, "value", "DbdToPv::getFromDBD logic error");
            switch(caValueType) {
            case DBR_STRING:
            {
                 const dbr_string_t *dbrval = static_cast<const dbr_string_t *>(value);
-                PVStringArrayPtr pvValue = pvStructure->getSubField<PVStringArray>("value");
+                GET_SUBFIELD_WITH_ERROR_CHECK(PVStringArray, pvValue, pvStructure, "value", "DbdToPv::getFromDBD logic error");
                 PVStringArray::svector arr(pvValue->reuse());
                 arr.resize(count);
                 std::copy(dbrval, dbrval + count, arr.begin());
@@ -459,7 +465,7 @@ Status DbdToPv::getFromDBD(
                {
                    const char * pchar = static_cast<const char *>(value);
                    std::string str(pchar);
-                   PVStringPtr pvValue(pvStructure->getSubField<PVString>("value"));
+                   GET_SUBFIELD_WITH_ERROR_CHECK(PVString, pvValue, pvStructure, "value", "DbdToPv::getFromDBD logic error");
                    pvValue->put(str);
                    break;
                }
@@ -509,14 +515,16 @@ Status DbdToPv::getFromDBD(
            }
        } else {
            PVScalarPtr pvValue = pvStructure->getSubField<PVScalar>("value");
+           if(!pvValue && caValueType != DBR_ENUM) {
+               return Status(Status::STATUSTYPE_ERROR, string("DbdToPv::getFromDBD logic error"));
+           }
            switch(caValueType) {
            case DBR_ENUM:
            {
                 const dbr_enum_t *dbrval = static_cast<const dbr_enum_t *>(value);
-                PVIntPtr value = pvStructure->getSubField<PVInt>("value.index");
+                GET_SUBFIELD_WITH_ERROR_CHECK(PVInt, value, pvStructure, "value.index", "DbdToPv::getFromDBD logic error");
                 value->put(*dbrval);
-                PVStringArrayPtr pvChoices
-                     = pvStructure->getSubField<PVStringArray>("value.choices");
+                GET_SUBFIELD_WITH_ERROR_CHECK(PVStringArray, pvChoices, pvStructure, "value.choices", "DbdToPv::getFromDBD logic error");
                 if(pvChoices->getLength()==0)
                 {
                      ConvertPtr convert = getConvert();
@@ -581,15 +589,15 @@ Status DbdToPv::getFromDBD(
         dbr_short_t severity = data->severity;
         bool statusChanged = false;
         bool severityChanged = false;
-        PVStructurePtr pvAlarm(pvStructure->getSubField<PVStructure>("alarm"));
-        PVIntPtr pvSeverity(pvAlarm->getSubField<PVInt>("severity"));
+        GET_SUBFIELD_WITH_ERROR_CHECK(PVStructure, pvAlarm, pvStructure, "alarm", "DbdToPv::getFromDBD logic error");
+        GET_SUBFIELD_WITH_ERROR_CHECK(PVInt, pvSeverity, pvAlarm, "severity", "DbdToPv::getFromDBD logic error");
         if(caAlarm.severity!=severity) {
             caAlarm.severity = severity;
             pvSeverity->put(severity);
             severityChanged = true;
         }
-        PVStringPtr pvMessage(pvAlarm->getSubField<PVString>("message"));
-        PVIntPtr pvStatus(pvAlarm->getSubField<PVInt>("status"));
+        GET_SUBFIELD_WITH_ERROR_CHECK(PVString, pvMessage, pvAlarm, "message", "DbdToPv::getFromDBD logic error");
+        GET_SUBFIELD_WITH_ERROR_CHECK(PVInt, pvStatus, pvAlarm, "status", "DbdToPv::getFromDBD logic error");
         if(caAlarm.status!=status) {
             caAlarm.status = status;
             pvStatus->put(convertDBstatus(status));
@@ -611,16 +619,16 @@ Status DbdToPv::getFromDBD(
         // Note that epicsTimeStamp always follows status and severity
         const dbr_time_string *data = static_cast<const dbr_time_string *>(args.dbr);
         epicsTimeStamp stamp = data->stamp;
-        PVStructurePtr pvTimeStamp(pvStructure->getSubField<PVStructure>("timeStamp"));
+        GET_SUBFIELD_WITH_ERROR_CHECK(PVStructure, pvTimeStamp, pvStructure, "timeStamp", "DbdToPv::getFromDBD logic error");
         if(caTimeStamp.secPastEpoch!=stamp.secPastEpoch) {
             caTimeStamp.secPastEpoch = stamp.secPastEpoch;
-            PVLongPtr pvSeconds(pvTimeStamp->getSubField<PVLong>("secondsPastEpoch"));
+            GET_SUBFIELD_WITH_ERROR_CHECK(PVLong, pvSeconds, pvTimeStamp, "secondsPastEpoch", "DbdToPv::getFromDBD logic error");
             pvSeconds->put(stamp.secPastEpoch+posixEpochAtEpicsEpoch);
             bitSet->set(pvSeconds->getFieldOffset());
         }
         if(caTimeStamp.nsec!=stamp.nsec) {
             caTimeStamp.nsec = stamp.nsec;
-            PVIntPtr pvNano(pvTimeStamp->getSubField<PVInt>("nanoseconds"));
+            GET_SUBFIELD_WITH_ERROR_CHECK(PVInt, pvNano, pvTimeStamp, "nanoseconds", "DbdToPv::getFromDBD logic error");
             pvNano->put(stamp.nsec);
             bitSet->set(pvNano->getFieldOffset());
         }
@@ -643,16 +651,16 @@ Status DbdToPv::getFromDBD(
              default :
                  throw  std::runtime_error("DbdToPv::getFromDBD logic error");
          }
-         PVStructurePtr pvControl(pvStructure->getSubField<PVStructure>("control"));
+         GET_SUBFIELD_WITH_ERROR_CHECK(PVStructure, pvControl, pvStructure, "control", "DbdToPv::getFromDBD logic error");
          if(caControl.upper_ctrl_limit!=upper_ctrl_limit) {
              caControl.upper_ctrl_limit = upper_ctrl_limit;
-             PVDoublePtr pv = pvControl->getSubField<PVDouble>("limitHigh");
+             GET_SUBFIELD_WITH_ERROR_CHECK(PVDouble, pv, pvControl, "limitHigh", "DbdToPv::getFromDBD logic error");
              pv->put(upper_ctrl_limit);
              bitSet->set(pv->getFieldOffset());
          }
          if(caControl.lower_ctrl_limit!=lower_ctrl_limit) {
              caControl.lower_ctrl_limit = lower_ctrl_limit;
-             PVDoublePtr pv = pvControl->getSubField<PVDouble>("limitLow");
+             GET_SUBFIELD_WITH_ERROR_CHECK(PVDouble, pv, pvControl, "limitLow", "DbdToPv::getFromDBD logic error");
              pv->put(lower_ctrl_limit);
              bitSet->set(pv->getFieldOffset());
          }
@@ -696,31 +704,33 @@ Status DbdToPv::getFromDBD(
              default :
                  throw  std::runtime_error("DbdToPv::getFromDBD logic error");
          }
-         PVStructurePtr pvDisplay(pvStructure->getSubField<PVStructure>("display"));
+         GET_SUBFIELD_WITH_ERROR_CHECK(PVStructure, pvDisplay, pvStructure, "display", "DbdToPv::getFromDBD logic error");
          if(caDisplay.lower_disp_limit!=lower_disp_limit) {
             caDisplay.lower_disp_limit = lower_disp_limit;
-            PVDoublePtr pvDouble = pvDisplay->getSubField<PVDouble>("limitLow");
-            pvDouble->put(lower_disp_limit);
-            bitSet->set(pvDouble->getFieldOffset());
+            GET_SUBFIELD_WITH_ERROR_CHECK(PVDouble, pv, pvDisplay, "limitLow", "DbdToPv::getFromDBD logic error");
+            pv->put(lower_disp_limit);
+            bitSet->set(pv->getFieldOffset());
          }
          if(caDisplay.upper_disp_limit!=upper_disp_limit) {
             caDisplay.upper_disp_limit = upper_disp_limit;
-            PVDoublePtr pvDouble = pvDisplay->getSubField<PVDouble>("limitHigh");
-            pvDouble->put(upper_disp_limit);
-            bitSet->set(pvDouble->getFieldOffset());
+            GET_SUBFIELD_WITH_ERROR_CHECK(PVDouble, pv, pvDisplay, "limitHigh", "DbdToPv::getFromDBD logic error");
+            pv->put(upper_disp_limit);
+            bitSet->set(pv->getFieldOffset());
          }
          if(caDisplay.units!=units) {
             caDisplay.units = units;
-            PVStringPtr pvString = pvDisplay->getSubField<PVString>("units");
-            pvString->put(units);
-            bitSet->set(pvString->getFieldOffset());
+            PVStringPtr pv = pvDisplay->getSubField<PVString>("units");
+            if(pv) {
+                pv->put(units);
+                bitSet->set(pv->getFieldOffset());
+            }
          }
          if(caDisplay.format!=format) {
             caDisplay.format = format;
-            PVStringPtr pvString = pvDisplay->getSubField<PVString>("format");
-            if(pvString) {
-                pvString->put(format);
-                bitSet->set(pvString->getFieldOffset());
+            PVStringPtr pv = pvDisplay->getSubField<PVString>("format");
+            if(pv) {
+                pv->put(format);
+                bitSet->set(pv->getFieldOffset());
             }
          }
     }
@@ -759,28 +769,28 @@ Status DbdToPv::getFromDBD(
                  throw  std::runtime_error("DbdToPv::getFromDBD logic error");
         }
         ConvertPtr convert(getConvert());
-        PVStructurePtr pvValueAlarm(pvStructure->getSubField<PVStructure>("valueAlarm"));
+        GET_SUBFIELD_WITH_ERROR_CHECK(PVStructure, pvValueAlarm, pvStructure, "valueAlarm", "DbdToPv::getFromDBD logic error");
         if(caValueAlarm.upper_alarm_limit!=upper_alarm_limit) {
             caValueAlarm.upper_alarm_limit = upper_alarm_limit;
-            PVScalarPtr pv = pvValueAlarm->getSubField<PVScalar>("highAlarmLimit");
+            GET_SUBFIELD_WITH_ERROR_CHECK(PVScalar, pv, pvValueAlarm, "highAlarmLimit", "DbdToPv::getFromDBD logic error");
             convert->fromDouble(pv,upper_alarm_limit);
             bitSet->set(pv->getFieldOffset());
         }
         if(caValueAlarm.upper_warning_limit!=upper_warning_limit) {
             caValueAlarm.upper_warning_limit = upper_warning_limit;
-            PVScalarPtr pv = pvValueAlarm->getSubField<PVScalar>("highWarningLimit");
-                convert->fromDouble(pv,upper_warning_limit);
+            GET_SUBFIELD_WITH_ERROR_CHECK(PVScalar, pv, pvValueAlarm, "highWarningLimit", "DbdToPv::getFromDBD logic error");
+            convert->fromDouble(pv,upper_warning_limit);
             bitSet->set(pv->getFieldOffset());
         }
         if(caValueAlarm.lower_warning_limit!=lower_warning_limit) {
             caValueAlarm.lower_warning_limit = lower_warning_limit;
-            PVScalarPtr pv = pvValueAlarm->getSubField<PVScalar>("lowWarningLimit");
+            GET_SUBFIELD_WITH_ERROR_CHECK(PVScalar, pv, pvValueAlarm, "lowWarningLimit", "DbdToPv::getFromDBD logic error");
             convert->fromDouble(pv,lower_warning_limit);
             bitSet->set(pv->getFieldOffset());
         }
         if(caValueAlarm.lower_alarm_limit!=lower_alarm_limit) {
             caValueAlarm.lower_alarm_limit = lower_alarm_limit;
-            PVScalarPtr pv = pvValueAlarm->getSubField<PVScalar>("lowAlarmLimit");
+            GET_SUBFIELD_WITH_ERROR_CHECK(PVScalar, pv, pvValueAlarm, "lowAlarmLimit", "DbdToPv::getFromDBD logic error");
             convert->fromDouble(pv,lower_alarm_limit);
             bitSet->set(pv->getFieldOffset());
         }
@@ -798,17 +808,22 @@ Status DbdToPv::getFromDBD(
 template<typename dbrT, typename pvT>
 const void * put_DBRScalar(dbrT *val,PVScalar::shared_pointer const & pvScalar)
 {
-    std::tr1::shared_ptr<pvT> value = std::tr1::static_pointer_cast<pvT>(pvScalar);
-    *val = value->get();
+    if(pvScalar) {
+        std::tr1::shared_ptr<pvT> value = std::tr1::static_pointer_cast<pvT>(pvScalar);
+        *val = value->get();
+    }
     return val;
 }
 
 template<typename dbrT, typename pvT>
 const void * put_DBRScalarArray(unsigned long*count, PVScalarArray::shared_pointer const & pvArray)
 {
-    std::tr1::shared_ptr<pvT> value = std::tr1::static_pointer_cast<pvT>(pvArray);
-    *count = value->getLength();
-    return value->view().data();
+    if(pvArray) {
+        std::tr1::shared_ptr<pvT> value = std::tr1::static_pointer_cast<pvT>(pvArray);
+        *count = value->getLength();
+        return value->view().data();
+    }
+    return NULL;
 }
 
 
@@ -829,14 +844,11 @@ Status DbdToPv::putToDBD(
     dbr_float_t  fvalue(0);
     dbr_double_t dvalue(0);
     if(isArray) {
-       PVScalarArrayPtr pvValue = pvStructure->getSubField<PVScalarArray>("value");
-       if(!pvValue) {
-           return Status(Status::STATUSTYPE_ERROR, string("DbdToPv::putToDBD logic error"));
-       }
+       GET_SUBFIELD_WITH_ERROR_CHECK(PVScalarArray, pvValue, pvStructure, "value", "DbdToPv::putToDBD logic error");
        switch(caValueType) {
            case DBR_STRING:
            {
-               PVStringArrayPtr pvValue = pvStructure->getSubField<PVStringArray>("value");
+               GET_SUBFIELD_WITH_ERROR_CHECK(PVStringArray, pvValue, pvStructure, "value", "DbdToPv::putToDBD logic error");
                count = pvValue->getLength();
                if(count<1) break;
                if(count>maxElements) count = maxElements;
@@ -858,7 +870,7 @@ Status DbdToPv::putToDBD(
            case DBR_CHAR:
                if(charArrayIsString)
                {
-                   PVStringPtr pvValue(pvStructure->getSubField<PVString>("value"));
+                   GET_SUBFIELD_WITH_ERROR_CHECK(PVString, pvValue, pvStructure, "value", "DbdToPv::putToDBD logic error");
                    const char * pchar = pvValue->get().c_str();
                    pValue = pchar;
                    count = pvValue->get().length();
@@ -893,7 +905,7 @@ Status DbdToPv::putToDBD(
            case DBR_DOUBLE:
                if(dbfIsINT64)
                {
-                   PVLongArrayPtr pvValue(pvStructure->getSubField<PVLongArray>("value"));
+                   GET_SUBFIELD_WITH_ERROR_CHECK(PVLongArray, pvValue, pvStructure, "value", "DbdToPv::putToDBD logic error");
                    PVLongArray::const_svector sv(pvValue->view());
                    pvDoubleArray = PVDoubleArrayPtr(getPVDataCreate()->createPVScalarArray<PVDoubleArray>());
                    pvDoubleArray->putFrom(sv);
@@ -904,7 +916,7 @@ Status DbdToPv::putToDBD(
                }
                if(dbfIsUINT64)
                {
-                   PVULongArrayPtr pvValue(pvStructure->getSubField<PVULongArray>("value"));
+                   GET_SUBFIELD_WITH_ERROR_CHECK(PVULongArray, pvValue, pvStructure, "value", "DbdToPv::putToDBD logic error");
                    PVULongArray::const_svector sv(pvValue->view());
                    pvDoubleArray = PVDoubleArrayPtr(getPVDataCreate()->createPVScalarArray<PVDoubleArray>());
                    pvDoubleArray->putFrom(sv);
@@ -920,6 +932,9 @@ Status DbdToPv::putToDBD(
                     Status::STATUSTYPE_ERROR, string("DbdToPv::getFromDBD logic error"));
                 return errorStatus;
            }
+           if(!pValue) {
+               return Status(Status::STATUSTYPE_ERROR, string("DbdToPv::putToDBD logic error"));
+           }
     } else {
         PVScalarPtr pvValue = pvStructure->getSubField<PVScalar>("value");
         if(!pvValue && caValueType != DBR_ENUM) {
@@ -928,11 +943,17 @@ Status DbdToPv::putToDBD(
         switch(caValueType) {
            case DBR_ENUM:
            {
-               dbr_enum_t indexvalue = pvStructure->getSubField<PVInt>("value.index")->get();
+               GET_SUBFIELD_WITH_ERROR_CHECK(PVInt, pvValue, pvStructure, "value.index", "DbdToPv::putToDBD logic error");
+               dbr_enum_t indexvalue = pvValue->get();
                pValue = &indexvalue;
                break;
            }
-           case DBR_STRING: pValue = pvStructure->getSubField<PVString>("value")->get().c_str(); break;
+           case DBR_STRING: 
+           {
+               GET_SUBFIELD_WITH_ERROR_CHECK(PVString, pvValue, pvStructure, "value", "DbdToPv::putToDBD logic error");
+               pValue = pvValue->get().c_str();
+               break;
+           }
            case DBR_CHAR:
                if(dbfIsUCHAR)
                {
@@ -972,6 +993,9 @@ Status DbdToPv::putToDBD(
                     Status::STATUSTYPE_ERROR, string("DbdToPv::putToDBD logic error"));
                 return errorStatus;
          }
+         if(!pValue) {
+             return Status(Status::STATUSTYPE_ERROR, string("DbdToPv::putToDBD logic error"));
+         }
     }
     Status status = Status::Ok;
     int result = 0;
@@ -992,5 +1016,7 @@ Status DbdToPv::putToDBD(
         delete[] ca_stringBuffer;
     return status;
 }
+
+#undef GET_SUBFIELD_WITH_ERROR_CHECK
 
 }}}
