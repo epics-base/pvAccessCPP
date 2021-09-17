@@ -929,7 +929,7 @@ Status DbdToPv::putToDBD(
                break;
            default:
                 Status errorStatus(
-                    Status::STATUSTYPE_ERROR, string("DbdToPv::getFromDBD logic error"));
+                    Status::STATUSTYPE_ERROR, string("DbdToPv::putToDBD logic error"));
                 return errorStatus;
            }
            if(!pValue) {
