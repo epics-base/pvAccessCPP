@@ -11,8 +11,14 @@ name: Base
 on:
   push:
     paths-ignore:
-      - .appveyor.yml
+      - '.*.yml'
+      - 'documentation/*'
+      - '**/*.md'
   pull_request:
+    paths-ignore:
+      - '.*.yml'
+      - 'documentation/*'
+      - '**/*.md'
 
 env:
     SETUP_PATH: .ci-local:.ci
@@ -20,7 +26,7 @@ env:
 
 jobs:
   build-base:
-    name: ${{ matrix.base }}/${{ matrix.os }}/${{ matrix.cmp }}/${{ matrix.configuration }}/${{ matrix.wine }}${{ matrix.rtems }}/${{ matrix.extra }}
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     # Set environment variables from matrix parameters
     env:
@@ -29,96 +35,112 @@ jobs:
       BCFG: ${{ matrix.configuration }}
       WINE: ${{ matrix.wine }}
       RTEMS: ${{ matrix.rtems }}
+      RTEMS_TARGET: ${{ matrix.rtems_target }}
       EXTRA: ${{ matrix.extra }}
       TEST: ${{ matrix.test }}
     strategy:
       fail-fast: false
       matrix:
+        # Job names also name artifacts, character limitations apply
         include:
-          - os: ubuntu-20.04
-            cmp: gcc
-            configuration: default
-            base: "7.0"
-            wine: "64"
-
-          - os: ubuntu-20.04
-            cmp: gcc
-            configuration: static
-            base: "7.0"
-            wine: "64"
-
           - os: ubuntu-20.04
             cmp: gcc
             configuration: default
             base: "3.15"
             wine: "64"
+            name: "3.15 Ub-20 gcc-9 + MinGW"
+
+          - os: ubuntu-20.04
+            cmp: gcc
+            configuration: default
+            base: "7.0"
+            wine: "64"
+            name: "7.0 Ub-20 gcc-9 + MinGW"
+
+          - os: ubuntu-20.04
+            cmp: gcc
+            configuration: static
+            base: "7.0"
+            wine: "64"
+            name: "7.0 Ub-20 gcc-9 + MinGW, static"
 
           - os: ubuntu-20.04
             cmp: gcc
             configuration: static
             base: "7.0"
             extra: "CMD_CXXFLAGS=-std=c++11"
+            name: "7.0 Ub-20 gcc-9 C++11, static"
 
-          - os: ubuntu-16.04
+          - os: ubuntu-20.04
             cmp: clang
             configuration: default
             base: "7.0"
+            name: "7.0 Ub-20 clang-10"
 
           - os: ubuntu-20.04
             cmp: clang
             configuration: default
             base: "7.0"
             extra: "CMD_CXXFLAGS=-std=c++11"
+            name: "7.0 Ub-20 clang-10 C++11"
+
+          - os: ubuntu-20.04
+            cmp: gcc
+            configuration: default
+            base: "7.0"
+            rtems: "5"
+            rtems_target: RTEMS-pc686-qemu
+            test: NO
+            name: "7.0 Ub-20 gcc-9 + RT-5.1 pc686"
+            # Cache dependencies key below must be changed to
+            # add builds for other RTEMS targets
 
           - os: ubuntu-20.04
             cmp: gcc
             configuration: default
             base: "7.0"
             rtems: "4.10"
+            rtems_target: RTEMS-pc386-qemu
+            test: NO
+            name: "7.0 Ub-20 gcc-9 + RT-4.10"
 
           - os: ubuntu-20.04
             cmp: gcc
             configuration: default
             base: "7.0"
             rtems: "4.9"
-
-          - os: ubuntu-16.04
-            cmp: gcc-4.8
-            utoolchain: true
-            configuration: default
-            base: "7.0"
-
-          - os: ubuntu-16.04
-            cmp: gcc-4.9
-            utoolchain: true
-            configuration: default
-            base: "7.0"
-
-          - os: ubuntu-20.04
-            cmp: gcc-8
-            utoolchain: true
-            configuration: default
-            base: "7.0"
-
-          - os: ubuntu-20.04
-            cmp: clang
-            configuration: default
-            base: "7.0"
+            rtems_target: RTEMS-pc386-qemu
+            name: "7.0 Ub-20 gcc-9 + RT-4.9"
 
           - os: macos-latest
             cmp: clang
             configuration: default
             base: "7.0"
+            name: "7.0 MacOS clang-12"
 
           - os: windows-2019
             cmp: vs2019
             configuration: default
             base: "7.0"
+            name: "7.0 Win2019 MSC-19"
 
           - os: windows-2019
             cmp: vs2019
             configuration: static
             base: "7.0"
+            name: "7.0 Win2019 MSC-19, static"
+
+          - os: windows-2019
+            cmp: vs2019
+            configuration: debug
+            base: "7.0"
+            name: "7.0 Win2019 MSC-19, debug"
+
+          - os: windows-2019
+            cmp: gcc
+            configuration: default
+            base: "7.0"
+            name: "7.0 Win2019 mingw"
 
     steps:
     - uses: actions/checkout@v2
@@ -136,18 +158,19 @@ jobs:
         sudo apt-get update
         sudo apt-get -y install qemu-system-x86 g++-mingw-w64-x86-64 gdb
       if: runner.os == 'Linux'
-    - name: "apt-get install ${{ matrix.cmp }}"
-      run: |
-        sudo apt-get -y install software-properties-common
-        sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-        sudo apt-get update
-        sudo apt-get -y install ${{ matrix.cmp }}
-      if: matrix.utoolchain
     - name: Prepare and compile dependencies
       run: python .ci/cue.py prepare
     - name: Build main module
       run: python .ci/cue.py build
     - name: Run main module tests
-      run: python .ci/cue.py test
+      run: python .ci/cue.py -T 20M test
+    - name: Upload tapfiles Artifact
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: tapfiles ${{ matrix.name }}
+        path: '**/O.*/*.tap'
+        if-no-files-found: ignore
     - name: Collect and show test results
-      run: python .ci/cue.py test-results
+      if: ${{ always() }}
+      run: python .ci/cue.py -T 5M test-results

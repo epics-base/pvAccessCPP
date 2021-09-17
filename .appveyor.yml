@@ -14,13 +14,15 @@ init:
   # Set autocrlf to make batch files work
   - git config --global core.autocrlf true
 
-clone_depth: 50
+clone_depth: 5
 
 # Skipping commits affecting only specific files
 skip_commits:
   files:
     - 'documentation/*'
+    - '.github/*'
     - '**/*.md'
+    - '.readthedocs.yml'
 
 # Build Configurations: dll/static, regular/debug
 configuration:
@@ -37,16 +39,16 @@ environment:
   matrix:
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
     CMP: vs2019
-    BASE: 7.0
-  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-    CMP: gcc
+    BASE: 3.15
+  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+    CMP: vs2019
     BASE: 7.0
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
     CMP: vs2017
     BASE: 7.0
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-    CMP: vs2019
-    BASE: 3.15
+    CMP: gcc
+    BASE: 7.0
 
 # Platform: processor architecture
 platform:
@@ -66,11 +68,11 @@ build_script:
 
 test_script:
   - cmd: python -m ci_core_dumper install
-  - cmd: python .ci/cue.py test
+  - cmd: python .ci/cue.py -T 20M test
 
 on_finish:
   - ps: Get-ChildItem *.tap -Recurse -Force | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
-  - cmd: python .ci/cue.py build test-results -s
+  - cmd: python .ci/cue.py -T 5M test-results
 
 on_failure:
   - cmd: python -m ci_core_dumper report
