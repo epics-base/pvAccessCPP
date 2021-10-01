@@ -33,10 +33,11 @@ CAChannelProvider::~CAChannelProvider()
 {
     std::queue<CAChannelPtr> channelQ;
     {
+        std::vector<CAChannelWPtr>::iterator it;
         epicsGuard<epicsMutex> G(channelListMutex);
-        for (size_t i = 0; i < caChannelList.size(); ++i)
+        for (it = caChannelList.begin(); it != caChannelList.end(); ++it)
         {
-            CAChannelPtr caChannel(caChannelList[i].lock());
+            CAChannelPtr caChannel(it->lock());
             if (caChannel)
                 channelQ.push(caChannel);
         }
