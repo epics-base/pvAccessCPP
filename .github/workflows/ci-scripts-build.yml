@@ -42,7 +42,6 @@ jobs:
       fail-fast: false
       matrix:
         # Job names also name artifacts, character limitations apply
-        # 'name' is also used for the cache key
         include:
           - os: ubuntu-20.04
             cmp: gcc
@@ -149,7 +148,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.cache
-        key: ${{ matrix.name }}
+        key: ${{ matrix.base }}/${{ matrix.os }}/${{ matrix.cmp }}/${{ matrix.configuration }}/${{ matrix.wine }}${{ matrix.rtems }}/${{ matrix.rtems_target }}/${{ matrix.extra }}
     - name: Automatic core dump analysis
       uses: mdavidsaver/ci-core-dumper@master
     - name: "apt-get install"
