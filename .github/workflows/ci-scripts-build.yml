@@ -149,7 +149,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.cache
-        key: ${{ matrix.key }}
+        key: ${{ matrix.name }}
     - name: Automatic core dump analysis
       uses: mdavidsaver/ci-core-dumper@master
     - name: "apt-get install"
