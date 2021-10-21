@@ -116,6 +116,8 @@ CAChannel::CAChannel(std::string const & channelName,
     connectNotification(new Notification()),
     ca_context(channelProvider->caContext())
 {
+    if (channelName.empty())
+        throw std::invalid_argument("Channel name cannot be empty");
 }
 
 void CAChannel::activate(short priority)
