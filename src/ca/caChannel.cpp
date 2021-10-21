@@ -130,17 +130,18 @@ void CAChannel::activate(short priority)
         ca_connection_handler, this,
         priority, // TODO mapping
         &channelID);
+    Status errorStatus;
     if (result == ECA_NORMAL) {
-        channelCreated = true;
+        epicsGuard<epicsMutex> G(requestsMutex);
+        channelCreated = true;      // Set before addChannel()
         CAChannelProviderPtr provider(channelProvider.lock());
         if (provider)
             provider->addChannel(*this);
-        EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
     }
     else {
-        Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
-        EXCEPTION_GUARD(req->channelCreated(errorStatus, shared_from_this()));
+        errorStatus = Status::error(ca_message(result));
     }
+    EXCEPTION_GUARD(req->channelCreated(errorStatus, shared_from_this()));
 }
 
 CAChannel::~CAChannel()
@@ -153,7 +154,10 @@ void CAChannel::disconnectChannel()
     {
         epicsGuard<epicsMutex> G(requestsMutex);
         if (!channelCreated) return;
-        channelCreated = false;
+        CAChannelProviderPtr provider(channelProvider.lock());
+        if (provider)
+            provider->delChannel(*this);
+        channelCreated = false;     // Clear only after delChannel()
     }
     std::vector<CAChannelMonitorWPtr>::iterator it;
     for (it = monitorlist.begin(); it!=monitorlist.end(); ++it) {
@@ -170,9 +174,6 @@ void CAChannel::disconnectChannel()
         mess += ca_message(result);
         cerr << mess << endl;
     }
-    CAChannelProviderPtr provider(channelProvider.lock());
-    if (provider)
-        provider->delChannel(*this);
 }
 
 chid CAChannel::getChannelID()
