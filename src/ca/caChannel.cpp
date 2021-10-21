@@ -132,7 +132,7 @@ void CAChannel::activate(short priority)
         channelCreated = true;
         CAChannelProviderPtr provider(channelProvider.lock());
         if (provider)
-            provider->addChannel(shared_from_this());
+            provider->addChannel(*this);
         EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
     }
     else {
@@ -167,10 +167,14 @@ void CAChannel::disconnectChannel()
     /* Clear CA Channel */
     Attach to(ca_context);
     int result = ca_clear_channel(channelID);
-    if (result == ECA_NORMAL) return;
-    string mess("CAChannel::disconnectChannel() ");
-    mess += ca_message(result);
-    cerr << mess << endl;
+    if (result != ECA_NORMAL) {
+        string mess("CAChannel::disconnectChannel() ");
+        mess += ca_message(result);
+        cerr << mess << endl;
+    }
+    CAChannelProviderPtr provider(channelProvider.lock());
+    if (provider)
+        provider->delChannel(*this);
 }
 
 chid CAChannel::getChannelID()

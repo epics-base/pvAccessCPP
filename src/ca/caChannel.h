@@ -18,6 +18,7 @@
 #include <epicsMutex.h>
 #include <epicsEvent.h>
 #include <cadef.h>
+#include <tsDLList.h>
 
 #include <pv/pvAccess.h>
 
@@ -66,6 +67,7 @@ private:
 
 class CAChannel :
     public Channel,
+    public tsDLNode<CAChannel>,
     public NotifierClient,
     public std::tr1::enable_shared_from_this<CAChannel>
 {

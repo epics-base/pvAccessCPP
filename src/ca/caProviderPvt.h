@@ -14,6 +14,7 @@
 
 #include <cadef.h>
 #include <epicsMutex.h>
+#include <tsDLList.h>
 
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
@@ -80,7 +81,8 @@ public:
     virtual void flush();
     virtual void poll();
 
-    void addChannel(const CAChannelPtr & channel);
+    void addChannel(CAChannel &channel);
+    void delChannel(CAChannel &channel);
 
     CAContextPtr caContext() {
         return ca_context;
@@ -94,7 +96,7 @@ public:
 private:
     CAContextPtr ca_context;
     epicsMutex channelListMutex;
-    std::vector<CAChannelWPtr> caChannelList;
+    tsDLList<CAChannel> caChannelList;
 
     NotifierConveyor connectNotifier;
     NotifierConveyor resultNotifier;
