@@ -145,10 +145,6 @@ void CAChannel::activate(short priority)
 
 CAChannel::~CAChannel()
 {
-    {
-        epicsGuard<epicsMutex> G(requestsMutex);
-        if (!channelCreated) return;
-    }
     disconnectChannel();
 }
 
