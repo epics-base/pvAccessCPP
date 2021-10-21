@@ -32,8 +32,11 @@ CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration> &
 CAChannelProvider::~CAChannelProvider()
 {
     epicsGuard<epicsMutex> G(channelListMutex);
-    while (CAChannel *ch = caChannelList.first()) {
-        ch->disconnectChannel();    // Removes itself from the list
+    while (CAChannel *ch = caChannelList.get()) {
+        // Here disconnectChannel() can't call our delChannel()
+        // beacuse its CAChannelProviderPtr has by now expired.
+        // That's why we removed it from caChannelList above.
+        ch->disconnectChannel();
     }
 }
 
