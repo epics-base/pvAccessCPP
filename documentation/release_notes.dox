@@ -1,5 +1,13 @@
 /** @page pvarelease_notes Release Notes
 
+Release 7.1.6 (UNRELEASED)
+=========================
+
+- Changes to caProvider
+  - More internal changes to improve performance when connecting tens of
+    thousands of CA channels.
+
+
 Release 7.1.5 (October 2021)
 ==========================
 
