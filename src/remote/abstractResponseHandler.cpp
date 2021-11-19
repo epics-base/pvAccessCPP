@@ -39,10 +39,12 @@ void ResponseHandler::handleResponse(osiSockAddr* responseFrom,
         char ipAddrStr[24];
         ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
 
-        std::cerr<<"Message [0x"<<std::hex<<(int)command<<", v0x"<<std::hex
+        std::ios::fmtflags initialflags = std::cerr.flags();
+        std::cerr<<"Message [0x"<<std::hex<<(int)command<<", v0x"
                  <<int(version)<<"] received from "<<ipAddrStr<<" on "<<transport->getRemoteName()
                  <<" : "<<_description<<"\n"
                  <<HexDump(*payloadBuffer, payloadSize).limit(0xffff);
+        std::cerr.flags(initialflags);
     }
 }
 }
