@@ -160,8 +160,10 @@ void ServerResponseHandler::handleResponse(osiSockAddr* responseFrom,
             "Invalid (or unsupported) command: %x.", (0xFF&command));
 
         if(IS_LOGGABLE(logLevelError)) {
+            std::ios::fmtflags initialflags = std::cerr.flags();
             std::cerr<<"Invalid (or unsupported) command: "<<std::hex<<(int)(0xFF&command)<<"\n"
                      <<HexDump(*payloadBuffer, payloadSize).limit(256u);
+            std::cerr.flags(initialflags);
         }
         return;
     }

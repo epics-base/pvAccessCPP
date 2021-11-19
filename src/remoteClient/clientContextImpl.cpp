@@ -3000,8 +3000,10 @@ public:
         if (command < 0 || command >= (int8)m_handlerTable.size())
         {
             if(IS_LOGGABLE(logLevelError)) {
+                std::ios::fmtflags initialflags = std::cerr.flags();
                 std::cerr<<"Invalid (or unsupported) command: "<<std::hex<<(int)(0xFF&command)<<"\n"
                          <<HexDump(*payloadBuffer, payloadSize).limit(256u);
+                std::cerr.flags(initialflags);
             }
             return;
         }

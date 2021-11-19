@@ -77,10 +77,12 @@ std::ostream& operator<<(std::ostream& strm, const HexDump& hex)
     if(len%hex._perLine)
         nlines++;
 
+    std::ios::fmtflags initialflags = strm.flags();
+    strm<<std::hex<<std::setfill('0');
     for(size_t l=0; l<nlines; l++)
     {
         size_t start = l*hex._perLine;
-        strm<<"0x"<<std::hex<<std::setw(addrwidth)<<std::setfill('0')<<start;
+        strm<<"0x"<<std::setw(addrwidth)<<start;
 
         // print hex chars
         for(size_t col=0; col<hex._perLine; col++)
@@ -89,7 +91,7 @@ std::ostream& operator<<(std::ostream& strm, const HexDump& hex)
                 strm<<' ';
             }
             if(start+col < len) {
-                strm<<std::hex<<std::setw(2)<<std::setfill('0')<<unsigned(hex.buf[start+col]&0xff);
+                strm<<std::setw(2)<<unsigned(hex.buf[start+col]&0xff);
             } else {
                 strm<<"  ";
             }
@@ -113,6 +115,7 @@ std::ostream& operator<<(std::ostream& strm, const HexDump& hex)
 
         strm<<'\n';
     }
+    strm.flags(initialflags);
 
     return strm;
 }
