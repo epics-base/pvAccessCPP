@@ -40,7 +40,7 @@ void ResponseHandler::handleResponse(osiSockAddr* responseFrom,
         ipAddrToDottedIP(&responseFrom->ia, ipAddrStr, sizeof(ipAddrStr));
 
         std::ios::fmtflags initialflags = std::cerr.flags();
-        std::cerr<<"Message [0x"<<std::hex<<(int)command<<", v0x"
+        std::cerr<<"Message ["<<std::hex<<std::showbase<<(int)command<<", v"
                  <<int(version)<<"] received from "<<ipAddrStr<<" on "<<transport->getRemoteName()
                  <<" : "<<_description<<"\n"
                  <<HexDump(*payloadBuffer, payloadSize).limit(0xffff);
