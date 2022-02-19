@@ -840,6 +840,7 @@ Status DbdToPv::putToDBD(
     char *ca_stringBuffer(0);
     dbr_char_t   bvalue(0);
     dbr_short_t  svalue(0);
+    dbr_enum_t   evalue(0);
     dbr_long_t   lvalue(0);
     dbr_float_t  fvalue(0);
     dbr_double_t dvalue(0);
@@ -944,8 +945,7 @@ Status DbdToPv::putToDBD(
            case DBR_ENUM:
            {
                GET_SUBFIELD_WITH_ERROR_CHECK(PVInt, pvValue, pvStructure, "value.index", "DbdToPv::putToDBD logic error");
-               dbr_enum_t indexvalue = pvValue->get();
-               pValue = &indexvalue;
+               pValue = put_DBRScalar<dbr_enum_t,PVUShort>(&evalue,pvValue);
                break;
            }
            case DBR_STRING: 
