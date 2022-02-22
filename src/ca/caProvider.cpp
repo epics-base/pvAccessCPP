@@ -31,22 +31,12 @@ CAChannelProvider::CAChannelProvider(const std::tr1::shared_ptr<Configuration> &
 
 CAChannelProvider::~CAChannelProvider()
 {
-    std::queue<CAChannelPtr> channelQ;
-    {
-        std::vector<CAChannelWPtr>::iterator it;
-        epicsGuard<epicsMutex> G(channelListMutex);
-        for (it = caChannelList.begin(); it != caChannelList.end(); ++it)
-        {
-            CAChannelPtr caChannel(it->lock());
-            if (caChannel)
-                channelQ.push(caChannel);
-        }
-        caChannelList.clear();
-    }
-    while (!channelQ.empty())
-    {
-        channelQ.front()->disconnectChannel();
-        channelQ.pop();
+    epicsGuard<epicsMutex> G(channelListMutex);
+    while (CAChannel *ch = caChannelList.get()) {
+        // Here disconnectChannel() can't call our delChannel()
+        // beacuse its CAChannelProviderPtr has by now expired.
+        // That's why we removed it from caChannelList above.
+        ch->disconnectChannel();
     }
 }
 
@@ -106,18 +96,16 @@ Channel::shared_pointer CAChannelProvider::createChannel(
     return CAChannel::create(shared_from_this(), channelName, priority, channelRequester);
 }
 
-void CAChannelProvider::addChannel(const CAChannelPtr &channel)
+void CAChannelProvider::addChannel(CAChannel &channel)
 {
-    std::vector<CAChannelWPtr>::iterator it;
     epicsGuard<epicsMutex> G(channelListMutex);
-    for (it = caChannelList.begin(); it != caChannelList.end(); ++it)
-    {
-        if (it->expired()) {
-            *it = channel;
-            return;
-        }
-    }
-    caChannelList.push_back(channel);
+    caChannelList.add(channel);
+}
+
+void CAChannelProvider::delChannel(CAChannel &channel)
+{
+    epicsGuard<epicsMutex> G(channelListMutex);
+    caChannelList.remove(channel);
 }
 
 void CAChannelProvider::configure(epics::pvData::PVStructure::shared_pointer /*configuration*/)

@@ -116,6 +116,8 @@ CAChannel::CAChannel(std::string const & channelName,
     connectNotification(new Notification()),
     ca_context(channelProvider->caContext())
 {
+    if (channelName.empty())
+        throw std::invalid_argument("Channel name cannot be empty");
 }
 
 void CAChannel::activate(short priority)
@@ -128,25 +130,22 @@ void CAChannel::activate(short priority)
         ca_connection_handler, this,
         priority, // TODO mapping
         &channelID);
+    Status errorStatus;
     if (result == ECA_NORMAL) {
-        channelCreated = true;
+        epicsGuard<epicsMutex> G(requestsMutex);
+        channelCreated = true;      // Set before addChannel()
         CAChannelProviderPtr provider(channelProvider.lock());
         if (provider)
-            provider->addChannel(shared_from_this());
-        EXCEPTION_GUARD(req->channelCreated(Status::Ok, shared_from_this()));
+            provider->addChannel(*this);
     }
     else {
-        Status errorStatus(Status::STATUSTYPE_ERROR, string(ca_message(result)));
-        EXCEPTION_GUARD(req->channelCreated(errorStatus, shared_from_this()));
+        errorStatus = Status::error(ca_message(result));
     }
+    EXCEPTION_GUARD(req->channelCreated(errorStatus, shared_from_this()));
 }
 
 CAChannel::~CAChannel()
 {
-    {
-        epicsGuard<epicsMutex> G(requestsMutex);
-        if (!channelCreated) return;
-    }
     disconnectChannel();
 }
 
@@ -155,7 +154,10 @@ void CAChannel::disconnectChannel()
     {
         epicsGuard<epicsMutex> G(requestsMutex);
         if (!channelCreated) return;
-        channelCreated = false;
+        CAChannelProviderPtr provider(channelProvider.lock());
+        if (provider)
+            provider->delChannel(*this);
+        channelCreated = false;     // Clear only after delChannel()
     }
     std::vector<CAChannelMonitorWPtr>::iterator it;
     for (it = monitorlist.begin(); it!=monitorlist.end(); ++it) {
@@ -167,10 +169,11 @@ void CAChannel::disconnectChannel()
     /* Clear CA Channel */
     Attach to(ca_context);
     int result = ca_clear_channel(channelID);
-    if (result == ECA_NORMAL) return;
-    string mess("CAChannel::disconnectChannel() ");
-    mess += ca_message(result);
-    cerr << mess << endl;
+    if (result != ECA_NORMAL) {
+        string mess("CAChannel::disconnectChannel() ");
+        mess += ca_message(result);
+        cerr << mess << endl;
+    }
 }
 
 chid CAChannel::getChannelID()
