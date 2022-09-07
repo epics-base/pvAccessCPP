@@ -1,15 +1,16 @@
 /** @page pvarelease_notes Release Notes
 
-Release 7.1.6 (UNRELEASED)
-=========================
+Release 7.1.6 (September 2022)
+==============================
 
 - Changes to caProvider
+  - Bug fix related to enum values.
   - More internal changes to improve performance when connecting tens of
     thousands of CA channels.
-
+- Several minor internal improvements.
 
 Release 7.1.5 (October 2021)
-==========================
+============================
 
 - Changes to caProvider
   - Resolve issues with pv structures that don't have a value field
