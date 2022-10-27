@@ -52,6 +52,12 @@ void startitup() {
                                                     // from environment
                                                     .push_env()
                                                     .build()));
+
+    unsigned short port = the_server->getServerPort();
+    char pbuf[7];
+    epicsSnprintf(pbuf, sizeof(pbuf)-1, "%u", port);
+    pbuf[sizeof(pbuf)-1] = '\0';
+    epicsEnvSet("PVAS_SERVER_PORT", pbuf);
 }
 
 void startPVAServer(const char *names)
