@@ -266,7 +266,7 @@ static epics::pvData::PVStructure::shared_pointer createNTTable(int columnsCount
 {
     StringArray fieldNames(columnsCount);
     FieldConstPtrArray fields(columnsCount);
-    char sbuf[16];
+    char sbuf[20];
     PVStringArray::svector labels(columnsCount);
     for (int i = 0; i < columnsCount; i++)
     {
