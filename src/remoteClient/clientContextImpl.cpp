@@ -20,6 +20,7 @@
 #include <pv/bitSetUtil.h>
 #include <pv/standardPVField.h>
 #include <pv/reftrack.h>
+#include <pv/sharedPtr.h>
 
 #define epicsExportSharedSymbols
 #include <pv/pvAccess.h>
@@ -48,6 +49,9 @@ using std::tr1::static_pointer_cast;
 
 using namespace std;
 using namespace epics::pvData;
+
+static const float maxBeaconLifetime = 180.f * 2.f;
+static const int maxTrackedBeacons = 20000;
 
 namespace epics {
 namespace pvAccess {
@@ -4339,6 +4343,36 @@ private:
     }
 
     /**
+     * Handles cleanup of old beacons.
+     */
+    class BeaconCleanupCallback : public TimerCallback
+    {
+    public:
+        typedef std::tr1::shared_ptr<BeaconCleanupCallback> shared_pointer;
+
+        BeaconCleanupCallback(InternalClientContextImpl& impl, osiSockAddr addr) :
+            m_from(addr),
+            m_impl(impl)
+        {
+        }
+
+        virtual void callback() OVERRIDE
+        {
+            Lock guard(m_impl.m_beaconMapMutex);
+            m_impl.m_beaconHandlers.erase(m_from);
+        }
+
+        virtual void timerStopped() OVERRIDE
+        {
+            this->callback(); // Remove the beacon if the timer is closed.
+        }
+
+    private:
+        osiSockAddr m_from;
+        InternalClientContextImpl& m_impl;
+    };
+
+    /**
      * Get (and if necessary create) beacon handler.
      * @param protocol the protocol.
      * @param responseFrom remote source address of received beacon.
@@ -4351,8 +4385,18 @@ private:
         BeaconHandler::shared_pointer handler;
         if (it == m_beaconHandlers.end())
         {
+            // If we're tracking too many beacons, we'll just ignore this one
+            if (m_beaconHandlers.size() >= maxTrackedBeacons)
+            {
+                char ipa[64];
+                sockAddrToDottedIP(&responseFrom->sa, ipa, sizeof(ipa));
+                LOG(logLevelDebug, "Tracked beacon limit reached (%d), ignoring %s\n", maxTrackedBeacons, ipa);
+                return BeaconHandler::shared_pointer();
+            }
+
             // stores weak_ptr
             handler.reset(new BeaconHandler(internal_from_this(), responseFrom));
+            m_timer->scheduleAfterDelay(BeaconCleanupCallback::shared_pointer(new BeaconCleanupCallback(*this, *responseFrom)), maxBeaconLifetime);
             m_beaconHandlers[*responseFrom] = handler;
         }
         else
