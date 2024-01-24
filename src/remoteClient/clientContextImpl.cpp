@@ -3618,8 +3618,6 @@ public:
         virtual void searchResponse(const ServerGUID & guid, int8 minorRevision, osiSockAddr* serverAddress) OVERRIDE FINAL {
             // Hack.  Prevent Transport from being dtor'd while m_channelMutex is held
             Transport::shared_pointer old_transport;
-            char strBuffer[24];
-            ipAddrToDottedIP(&serverAddress->ia, strBuffer, sizeof(strBuffer));
 
             Lock guard(m_channelMutex);
             Transport::shared_pointer transport(m_transport);
