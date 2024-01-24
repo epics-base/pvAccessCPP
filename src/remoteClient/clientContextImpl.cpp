@@ -3087,7 +3087,7 @@ public:
         ChannelRequester::shared_pointer const & channelRequester,
         short priority) OVERRIDE FINAL
     {
-        return createChannel(channelName, channelRequester, priority, std::string());
+        return createChannel(channelName, channelRequester, priority, m_addressList);
     }
 
     virtual Channel::shared_pointer createChannel(
@@ -3097,7 +3097,7 @@ public:
         std::string const & addressesStr) OVERRIDE FINAL
     {
         InetAddrVector addresses;
-        getSocketAddressList(addresses, addressesStr, PVA_SERVER_PORT);
+        getSocketAddressList(addresses, addressesStr, m_serverPort);
 
         Channel::shared_pointer channel = createChannelInternal(channelName, channelRequester, priority, addresses);
         if (channel.get())
@@ -3567,6 +3567,7 @@ public:
 
 #define STATIC_SEARCH_BASE_DELAY_SEC 5
 #define STATIC_SEARCH_MAX_MULTIPLIER 10
+#define STATIC_SEARCH_MIN_DELAY_SEC 1
 
         /**
          * Initiate search (connect) procedure.
@@ -3577,21 +3578,28 @@ public:
 
             m_allowCreation = true;
 
-            if (m_addresses.empty())
-            {
-                m_context->getChannelSearchManager()->registerSearchInstance(internal_from_this(), penalize);
+            if (!m_addresses.empty()) {
+                char strBuffer[24];
+                int index = m_addressIndex % m_addresses.size();
+                osiSockAddr* serverAddress = &m_addresses[index];
+                ipAddrToDottedIP(&serverAddress->ia, strBuffer, sizeof(strBuffer));
+                double delay = (m_addressIndex / m_addresses.size())*STATIC_SEARCH_BASE_DELAY_SEC+STATIC_SEARCH_MIN_DELAY_SEC;
+                LOG(logLevelDebug, "Scheduling channel search for address %s with delay of %.3f seconds.", strBuffer, delay);
+                m_context->getTimer()->scheduleAfterDelay(internal_from_this(), delay);
             }
-            else
-            {
-                m_context->getTimer()->scheduleAfterDelay(internal_from_this(),
-                        (m_addressIndex / m_addresses.size())*STATIC_SEARCH_BASE_DELAY_SEC);
-            }
+            m_context->getChannelSearchManager()->registerSearchInstance(internal_from_this(), penalize);
         }
 
         virtual void callback() OVERRIDE FINAL {
             // TODO cancellaction?!
             // TODO not in this timer thread !!!
             // TODO boost when a server (from address list) is started!!! IP vs address !!!
+            Transport::shared_pointer transport(m_transport);
+            if (transport) {
+                LOG(logLevelDebug, "Transport for channel %s is already active, channel search cancelled.", transport->getRemoteName().c_str());
+                return;
+            }
+
             int ix = m_addressIndex % m_addresses.size();
             m_addressIndex++;
             if (m_addressIndex >= static_cast<int>(m_addresses.size()*(STATIC_SEARCH_MAX_MULTIPLIER+1)))
@@ -3610,6 +3618,8 @@ public:
         virtual void searchResponse(const ServerGUID & guid, int8 minorRevision, osiSockAddr* serverAddress) OVERRIDE FINAL {
             // Hack.  Prevent Transport from being dtor'd while m_channelMutex is held
             Transport::shared_pointer old_transport;
+            char strBuffer[24];
+            ipAddrToDottedIP(&serverAddress->ia, strBuffer, sizeof(strBuffer));
 
             Lock guard(m_channelMutex);
             Transport::shared_pointer transport(m_transport);
@@ -3957,7 +3967,7 @@ public:
     static size_t num_instances;
 
     InternalClientContextImpl(const Configuration::shared_pointer& conf) :
-        m_addressList(""), m_autoAddressList(true), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
+        m_addressList(""), m_autoAddressList(true), m_serverPort(PVA_SERVER_PORT), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
         m_broadcastPort(PVA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV),
         m_lastCID(0x10203040),
         m_lastIOID(0x80706050),
@@ -4019,6 +4029,7 @@ public:
         out << "VERSION            : " << m_version.getVersionString() << std::endl;
         out << "ADDR_LIST          : " << m_addressList << std::endl;
         out << "AUTO_ADDR_LIST     : " << (m_autoAddressList ? "true" : "false") << std::endl;
+        out << "SERVER_PORT        : " << m_serverPort << std::endl;
         out << "CONNECTION_TIMEOUT : " << m_connectionTimeout << std::endl;
         out << "BEACON_PERIOD      : " << m_beaconPeriod << std::endl;
         out << "BROADCAST_PORT     : " << m_broadcastPort << std::endl;;
@@ -4111,6 +4122,7 @@ private:
 
         m_addressList = m_configuration->getPropertyAsString("EPICS_PVA_ADDR_LIST", m_addressList);
         m_autoAddressList = m_configuration->getPropertyAsBoolean("EPICS_PVA_AUTO_ADDR_LIST", m_autoAddressList);
+        m_serverPort = m_configuration->getPropertyAsInteger("EPICS_PVA_SERVER_PORT", m_serverPort);
         m_connectionTimeout = m_configuration->getPropertyAsFloat("EPICS_PVA_CONN_TMO", m_connectionTimeout);
         m_beaconPeriod = m_configuration->getPropertyAsFloat("EPICS_PVA_BEACON_PERIOD", m_beaconPeriod);
         m_broadcastPort = m_configuration->getPropertyAsInteger("EPICS_PVA_BROADCAST_PORT", m_broadcastPort);
@@ -4429,6 +4441,11 @@ private:
      * Define whether or not the network interfaces should be discovered at runtime.
      */
     bool m_autoAddressList;
+
+    /**
+     * Define server port
+     */
+    int m_serverPort;
 
     /**
      * If the context doesn't see a beacon from a server that it is connected to for
