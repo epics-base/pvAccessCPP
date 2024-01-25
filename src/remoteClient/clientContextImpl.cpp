@@ -4022,6 +4022,7 @@ public:
         out << "CONNECTION_TIMEOUT : " << m_connectionTimeout << std::endl;
         out << "BEACON_PERIOD      : " << m_beaconPeriod << std::endl;
         out << "BROADCAST_PORT     : " << m_broadcastPort << std::endl;;
+        out << "UDP_SENDER_PORT    : " << m_senderPort << std::endl;;
         out << "RCV_BUFFER_SIZE    : " << m_receiveBufferSize << std::endl;
         out << "STATE              : ";
         switch (m_contextState)
@@ -4114,6 +4115,7 @@ private:
         m_connectionTimeout = m_configuration->getPropertyAsFloat("EPICS_PVA_CONN_TMO", m_connectionTimeout);
         m_beaconPeriod = m_configuration->getPropertyAsFloat("EPICS_PVA_BEACON_PERIOD", m_beaconPeriod);
         m_broadcastPort = m_configuration->getPropertyAsInteger("EPICS_PVA_BROADCAST_PORT", m_broadcastPort);
+        m_senderPort = m_configuration->getPropertyAsInteger("EPICS_PVA_UDP_SENDER_PORT", m_senderPort);
         m_receiveBufferSize = m_configuration->getPropertyAsInteger("EPICS_PVA_MAX_ARRAY_BYTES", m_receiveBufferSize);
     }
 
@@ -4150,7 +4152,7 @@ private:
             epicsSocketDestroy (socket);
 
             initializeUDPTransports(false, m_udpTransports, ifaceList, m_responseHandler, m_searchTransport,
-                                    m_broadcastPort, m_autoAddressList, m_addressList, std::string());
+                                    m_broadcastPort, m_senderPort, m_autoAddressList, m_addressList, std::string());
 
         }
 
@@ -4447,6 +4449,11 @@ private:
      * Broadcast (beacon, search) port number to listen to.
      */
     int32 m_broadcastPort;
+
+    /**
+     * UDP sender port
+     */
+    int32 m_senderPort;
 
     /**
      * Receive buffer size (max size of payload).

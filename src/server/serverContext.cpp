@@ -37,6 +37,7 @@ ServerContextImpl::ServerContextImpl():
     _autoBeaconAddressList(true),
     _beaconPeriod(15.0),
     _broadcastPort(PVA_BROADCAST_PORT),
+    _senderPort(PVA_UDP_SENDER_PORT),
     _serverPort(PVA_SERVER_PORT),
     _receiveBufferSize(MAX_TCP_RECV),
     _timer(new Timer("PVAS timers", lowerPriority)),
@@ -142,6 +143,8 @@ void ServerContextImpl::loadConfiguration()
 
     _broadcastPort = config->getPropertyAsInteger("EPICS_PVA_BROADCAST_PORT", _broadcastPort);
     _broadcastPort = config->getPropertyAsInteger("EPICS_PVAS_BROADCAST_PORT", _broadcastPort);
+    _senderPort = config->getPropertyAsInteger("EPICS_PVA_UDP_SENDER_PORT", _senderPort);
+    _senderPort = config->getPropertyAsInteger("EPICS_PVAS_UDP_SENDER_PORT", _senderPort);
 
     _receiveBufferSize = config->getPropertyAsInteger("EPICS_PVA_MAX_ARRAY_BYTES", _receiveBufferSize);
     _receiveBufferSize = config->getPropertyAsInteger("EPICS_PVAS_MAX_ARRAY_BYTES", _receiveBufferSize);
@@ -246,6 +249,9 @@ ServerContextImpl::getCurrentConfig()
     SET("EPICS_PVAS_BROADCAST_PORT", getBroadcastPort());
     SET("EPICS_PVA_BROADCAST_PORT", getBroadcastPort());
 
+    SET("EPICS_PVAS_UDP_SENDER_PORT", getSenderPort());
+    SET("EPICS_PVA_UDP_SENDER_PORT", getSenderPort());
+
     SET("EPICS_PVAS_MAX_ARRAY_BYTES", getReceiveBufferSize());
     SET("EPICS_PVA_MAX_ARRAY_BYTES", getReceiveBufferSize());
 
@@ -278,7 +284,7 @@ void ServerContextImpl::initialize()
 
     // setup broadcast UDP transport
     initializeUDPTransports(true, _udpTransports, _ifaceList, _responseHandler, _broadcastTransport,
-                            _broadcastPort, _autoBeaconAddressList, _beaconAddressList, _ignoreAddressList);
+                            _broadcastPort, _senderPort, _autoBeaconAddressList, _beaconAddressList, _ignoreAddressList);
 
     _beaconEmitter.reset(new BeaconEmitter("tcp", _broadcastTransport, thisServerContext));
 
@@ -380,6 +386,7 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
         SHOW(EPICS_PVAS_AUTO_BEACON_ADDR_LIST)
         SHOW(EPICS_PVAS_BEACON_PERIOD)
         SHOW(EPICS_PVAS_BROADCAST_PORT)
+        SHOW(EPICS_PVAS_UDP_SENDER_PORT)
         SHOW(EPICS_PVAS_SERVER_PORT)
         SHOW(EPICS_PVAS_PROVIDER_NAMES)
 #undef SHOW
@@ -483,6 +490,11 @@ int32 ServerContextImpl::getServerPort()
 int32 ServerContextImpl::getBroadcastPort()
 {
     return _broadcastPort;
+}
+
+int32 ServerContextImpl::getSenderPort()
+{
+    return _senderPort;
 }
 
 BeaconServerStatusProvider::shared_pointer ServerContextImpl::getBeaconServerStatusProvider()

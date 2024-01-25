@@ -43,6 +43,9 @@ const epics::pvData::int32 PVA_SERVER_PORT = 5075;
 /** Default PVA beacon port. */
 const epics::pvData::int32 PVA_BROADCAST_PORT = 5076;
 
+/** Default UDP sender port. */
+const epics::pvData::int32 PVA_UDP_SENDER_PORT = 0;
+
 /** PVA protocol message header size. */
 const epics::pvData::int16 PVA_MESSAGE_HEADER_SIZE = 8;
 

@@ -580,6 +580,7 @@ void initializeUDPTransports(bool serverFlag,
                              const ResponseHandler::shared_pointer& responseHandler,
                              BlockingUDPTransport::shared_pointer& sendTransport,
                              int32& listenPort,
+                             int32& senderPort,
                              bool autoAddressList,
                              const std::string& addressList,
                              const std::string& ignoreAddressList)
@@ -595,7 +596,7 @@ void initializeUDPTransports(bool serverFlag,
     osiSockAddr anyAddress;
     memset(&anyAddress, 0, sizeof(anyAddress));
     anyAddress.ia.sin_family = AF_INET;
-    anyAddress.ia.sin_port = htons(0);
+    anyAddress.ia.sin_port = htons(senderPort);
     anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
     sendTransport = connector.connect(responseHandler, anyAddress, protoVer);

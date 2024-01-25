@@ -82,6 +82,12 @@ public:
      */
     virtual epics::pvData::int32 getBroadcastPort() = 0;
 
+    /**
+     * Get UDP sender port.
+     * @return UDP sender port.
+     */
+    virtual epics::pvData::int32 getSenderPort() = 0;
+
     /** Return a Configuration with the actual values being used,
      *  including defaults used, and bounds limits applied.
      */
