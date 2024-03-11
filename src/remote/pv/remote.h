@@ -40,6 +40,12 @@
 namespace epics {
 namespace pvAccess {
 
+/**
+ * String constants.
+ */
+epicsShareExtern const std::string PVA_TCP_PROTOCOL;
+epicsShareExtern const std::string PVA_UDP_PROTOCOL;
+
 class TransportRegistry;
 class ClientChannelImpl;
 
@@ -305,6 +311,7 @@ public:
 
     virtual std::tr1::shared_ptr<Channel> getChannel(pvAccessID id) = 0;
     virtual Transport::shared_pointer getSearchTransport() = 0;
+    virtual Transport::shared_pointer getNameServerSearchTransport() = 0;
 };
 
 /**
