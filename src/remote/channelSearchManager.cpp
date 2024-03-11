@@ -82,7 +82,8 @@ ChannelSearchManager::ChannelSearchManager(Context::shared_pointer const & conte
     m_lastTimeSent(),
     m_channelMutex(),
     m_userValueMutex(),
-    m_mutex()
+    m_mutex(),
+    m_nsTransport()
 {
     // initialize random seed with some random value
     srand ( time(NULL) );
@@ -135,6 +136,7 @@ void ChannelSearchManager::registerSearchInstance(SearchInstance::shared_pointer
     if (m_canceled.get())
         return;
 
+    LOG(logLevelDebug, "Registering search instance: %s", channel->getSearchInstanceName().c_str());
     bool immediateTrigger;
     {
         Lock guard(m_channelMutex);
@@ -154,6 +156,7 @@ void ChannelSearchManager::registerSearchInstance(SearchInstance::shared_pointer
 
 void ChannelSearchManager::unregisterSearchInstance(SearchInstance::shared_pointer const & channel)
 {
+    LOG(logLevelDebug, "Unregistering search instance: %s", channel->getSearchInstanceName().c_str());
     Lock guard(m_channelMutex);
     pvAccessID id = channel->getSearchInstanceID();
     m_channels.erase(id);
@@ -188,12 +191,68 @@ void ChannelSearchManager::searchResponse(const ServerGUID & guid, pvAccessID ci
         if(si)
             si->searchResponse(guid, minorRevision, serverAddress);
     }
+
+    // Cleanup name server search
+    if(m_nsTransport && m_channels.size() == 0)
+    {
+        closeNameServerTransport();
+    }
+}
+
+void ChannelSearchManager::closeNameServerTransport()
+{
+    if(m_nsTransport)
+    {
+        LOG(logLevelDebug, "Closing name server transport");
+        m_nsTransport->close();
+        m_nsTransport.reset();
+    }
 }
 
 void ChannelSearchManager::newServerDetected()
 {
     boost();
     callback();
+}
+
+void ChannelSearchManager::send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control)
+{
+    control->startMessage(CMD_SEARCH, 4+1+3+16+2+1+4);
+    buffer->putInt(m_sequenceNumber);
+    buffer->putByte((int8_t)QOS_REPLY_REQUIRED); // CAST_POSITION
+    buffer->putByte((int8_t)0); // reserved
+    buffer->putShort((int16_t)0); // reserved
+
+    osiSockAddr anyAddress;
+    memset(&anyAddress, 0, sizeof(anyAddress));
+    anyAddress.ia.sin_family = AF_INET;
+    anyAddress.ia.sin_port = htons(0);
+    anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+    encodeAsIPv6Address(buffer, &anyAddress);
+    buffer->putShort((int16_t)ntohs(anyAddress.ia.sin_port));
+    buffer->putByte((int8_t)1);
+    SerializeHelper::serializeString(PVA_TCP_PROTOCOL, buffer, control);
+    buffer->putShort((int16_t)0);  // initial channel count
+
+    vector<SearchInstance::shared_pointer> toSend;
+    {
+        Lock guard(m_channelMutex);
+        toSend.reserve(m_channels.size());
+
+        for(m_channels_t::iterator channelsIter = m_channels.begin();
+            channelsIter != m_channels.end(); channelsIter++)
+        {
+            SearchInstance::shared_pointer inst(channelsIter->second.lock());
+            if(!inst) continue;
+            toSend.push_back(inst);
+        }
+    }
+
+    vector<SearchInstance::shared_pointer>::iterator siter = toSend.begin();
+    for (; siter != toSend.end(); siter++)
+    {
+        generateSearchRequestMessage(*siter, buffer, control);
+    }
 }
 
 void ChannelSearchManager::initializeSendBuffer()
@@ -228,7 +287,7 @@ void ChannelSearchManager::initializeSendBuffer()
     m_sendBuffer.putByte((int8_t)1);
 
     MockTransportSendControl control;
-    SerializeHelper::serializeString("tcp", &m_sendBuffer, &control);
+    SerializeHelper::serializeString(PVA_TCP_PROTOCOL, &m_sendBuffer, &control);
     m_sendBuffer.putShort((int16_t)0);  // count
 }
 
@@ -245,6 +304,16 @@ void ChannelSearchManager::flushSendBuffer()
     m_sendBuffer.putByte(CAST_POSITION, (int8_t)0x00);  // b/m-cast, no reply required
     ut->send(&m_sendBuffer, inetAddressType_broadcast_multicast);
 
+    // Name server search
+    if(!m_nsTransport)
+    {
+        m_nsTransport = m_context.lock()->getNameServerSearchTransport();
+    }
+    if(m_nsTransport)
+    {
+        LOG(logLevelDebug, "Initiating name server search");
+        m_nsTransport->enqueueSendRequest(shared_from_this());
+    }
     initializeSendBuffer();
 }
 
@@ -253,7 +322,6 @@ bool ChannelSearchManager::generateSearchRequestMessage(SearchInstance::shared_p
         ByteBuffer* requestMessage, TransportSendControl* control)
 {
     epics::pvData::int16 dataCount = requestMessage->getShort(DATA_COUNT_POSITION);
-
     dataCount++;
 
     /*
@@ -262,6 +330,8 @@ bool ChannelSearchManager::generateSearchRequestMessage(SearchInstance::shared_p
     */
 
     const std::string& name(channel->getSearchInstanceName());
+    LOG(logLevelDebug, "Searching for channel: %s", name.c_str());
+
     // not nice...
     const int addedPayloadSize = sizeof(int32)/sizeof(int8) + (1 + sizeof(int32)/sizeof(int8) + name.length());
     if(((int)requestMessage->getRemaining()) < addedPayloadSize)
