@@ -123,7 +123,6 @@ ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer c
     ,handle_cancel(context)
     ,m_handlerTable(CMD_CANCEL_REQUEST+1, &handle_bad)
 {
-
     m_handlerTable[CMD_BEACON] = &handle_beacon; /*  0 */
     m_handlerTable[CMD_CONNECTION_VALIDATION] = &handle_validation; /*  1 */
     m_handlerTable[CMD_ECHO] = &handle_echo; /*  2 */
@@ -151,6 +150,68 @@ ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer c
 }
 
 void ServerResponseHandler::handleResponse(osiSockAddr* responseFrom,
+        Transport::shared_pointer const & transport, int8 version, int8 command,
+        size_t payloadSize, ByteBuffer* payloadBuffer)
+{
+    if(command<0||command>=(int8)m_handlerTable.size())
+    {
+        LOG(logLevelError,
+            "Invalid (or unsupported) command: %x.", (0xFF&command));
+
+        if(IS_LOGGABLE(logLevelError)) {
+            std::ios::fmtflags initialflags = std::cerr.flags();
+            std::cerr<<"Invalid (or unsupported) command: "<<std::hex<<(int)(0xFF&command)<<"\n"
+                     <<HexDump(*payloadBuffer, payloadSize).limit(256u);
+            std::cerr.flags(initialflags);
+        }
+        return;
+    }
+
+    // delegate
+    m_handlerTable[command]->handleResponse(responseFrom, transport,
+                                            version, command, payloadSize, payloadBuffer);
+}
+
+ServerSearchResponseHandler::ServerSearchResponseHandler(ServerContextImpl::shared_pointer const & context)
+    :ResponseHandler(context.get(), "ServerSearchResponseHandler")
+    ,handle_bad(context)
+    ,handle_beacon(context, "Beacon")
+    ,handle_validation(context)
+    ,handle_echo(context)
+    ,handle_search(context)
+    ,handle_authnz(context.get())
+    ,handle_create(context)
+    ,handle_destroy(context)
+    ,handle_rpc(context)
+    ,m_handlerTable(CMD_CANCEL_REQUEST+1, &handle_bad)
+{
+    m_handlerTable[CMD_BEACON] = &handle_bad; /*  0 */
+    m_handlerTable[CMD_CONNECTION_VALIDATION] = &handle_validation; /*  1 */
+    m_handlerTable[CMD_ECHO] = &handle_echo; /*  2 */
+    m_handlerTable[CMD_SEARCH] = &handle_search; /*  3 */
+    m_handlerTable[CMD_SEARCH_RESPONSE] = &handle_bad;
+    m_handlerTable[CMD_AUTHNZ] = &handle_authnz; /*  5 */
+    m_handlerTable[CMD_ACL_CHANGE] = &handle_bad; /*  6 - access right change */
+    m_handlerTable[CMD_CREATE_CHANNEL] = &handle_create; /*  7 */
+    m_handlerTable[CMD_DESTROY_CHANNEL] = &handle_destroy; /*  8 */
+    m_handlerTable[CMD_CONNECTION_VALIDATED] = &handle_bad; /*  9 */
+
+    m_handlerTable[CMD_GET] = &handle_bad; /* 10 - get response */
+    m_handlerTable[CMD_PUT] = &handle_bad; /* 11 - put response */
+    m_handlerTable[CMD_PUT_GET] = &handle_bad; /* 12 - put-get response */
+    m_handlerTable[CMD_MONITOR] = &handle_bad; /* 13 - monitor response */
+    m_handlerTable[CMD_ARRAY] = &handle_bad; /* 14 - array response */
+    m_handlerTable[CMD_DESTROY_REQUEST] = &handle_bad; /* 15 - destroy request */
+    m_handlerTable[CMD_PROCESS] = &handle_bad; /* 16 - process response */
+    m_handlerTable[CMD_GET_FIELD] = &handle_bad; /* 17 - get field response */
+    m_handlerTable[CMD_MESSAGE] = &handle_bad; /* 18 - message to Requester */
+    m_handlerTable[CMD_MULTIPLE_DATA] = &handle_bad; /* 19 - grouped monitors */
+
+    m_handlerTable[CMD_RPC] = &handle_rpc; /* 20 - RPC response */
+    m_handlerTable[CMD_CANCEL_REQUEST] = &handle_bad; /* 21 - cancel request */
+}
+
+void ServerSearchResponseHandler::handleResponse(osiSockAddr* responseFrom,
         Transport::shared_pointer const & transport, int8 version, int8 command,
         size_t payloadSize, ByteBuffer* payloadBuffer)
 {
@@ -237,7 +298,7 @@ void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
 
 /****************************************************************************************/
 
-const std::string ServerSearchHandler::SUPPORTED_PROTOCOL = "tcp";
+const std::string ServerSearchHandler::SUPPORTED_PROTOCOL = PVA_TCP_PROTOCOL;
 
 ServerSearchHandler::ServerSearchHandler(ServerContextImpl::shared_pointer const & context) :
     AbstractServerResponseHandler(context, "Search request")
@@ -250,6 +311,9 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
         Transport::shared_pointer const & transport, int8 version, int8 command,
         size_t payloadSize, ByteBuffer* payloadBuffer)
 {
+    char strBuffer[24];
+    ipAddrToDottedIP(&responseFrom->ia, strBuffer, sizeof(strBuffer));
+    LOG(logLevelDebug, "Server search handler is handling request from %s", strBuffer);
     AbstractServerResponseHandler::handleResponse(responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
@@ -277,7 +341,15 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 
     // NOTE: htons might be a macro (e.g. vxWorks)
     int16 port = payloadBuffer->getShort();
-    responseAddress.ia.sin_port = htons(port);
+    if (port)
+    {
+        responseAddress.ia.sin_port = htons(port);
+    }
+    else
+    {
+        LOG(logLevelDebug, "Server search handler is reusing connection port %d", ntohs(responseFrom->ia.sin_port));
+        responseAddress.ia.sin_port = responseFrom->ia.sin_port;
+    }
 
     size_t protocolsCount = SerializeHelper::readSize(payloadBuffer, transport.get());
     bool allowed = (protocolsCount == 0);
@@ -289,7 +361,6 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     }
 
     // NOTE: we do not stop reading the buffer
-
     transport->ensureData(2);
     const int32 count = payloadBuffer->getShort() & 0xFFFF;
 
@@ -298,9 +369,9 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     const bool responseRequired = (QOS_REPLY_REQUIRED & qosCode) != 0;
 
     //
-    // locally broadcast if unicast (qosCode & 0x80 == 0x80) via UDP
+    // locally broadcast if unicast (qosCode & QOS_GET_PUT == QOS_GET_PUT) via UDP
     //
-    if ((qosCode & 0x80) == 0x80)
+    if ((qosCode & QOS_GET_PUT) == QOS_GET_PUT)
     {
         BlockingUDPTransport::shared_pointer bt = dynamic_pointer_cast<BlockingUDPTransport>(transport);
         if (bt && bt->hasLocalMulticastAddress())
@@ -350,14 +421,14 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
             const int32 cid = payloadBuffer->getInt();
             const string name = SerializeHelper::deserializeString(payloadBuffer, transport.get());
             // no name check here...
-
+            LOG(logLevelDebug, "Search for channel %s, cid %d", name.c_str(), cid);
             if (allowed)
             {
                 const std::vector<ChannelProvider::shared_pointer>& _providers = _context->getChannelProviders();
 
                 int providerCount = _providers.size();
                 std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(new ServerChannelFindRequesterImpl(_context, info, providerCount));
-                tp->set(name, searchSequenceId, cid, responseAddress, responseRequired, false);
+                tp->set(name, searchSequenceId, cid, responseAddress, transport, responseRequired, false);
 
                 for (int i = 0; i < providerCount; i++)
                     _providers[i]->channelFind(name, tp);
@@ -375,7 +446,7 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
             delay = delay*0.1 + 0.05;
 
             std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(new ServerChannelFindRequesterImpl(_context, info, 1));
-            tp->set("", searchSequenceId, 0, responseAddress, true, true);
+            tp->set("", searchSequenceId, 0, responseAddress, transport, true, true);
 
             TimerCallback::shared_pointer tc = tp;
             _context->getTimer()->scheduleAfterDelay(tc, delay);
@@ -414,6 +485,7 @@ void ServerChannelFindRequesterImpl::timerStopped()
 }
 
 ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(std::string name, int32 searchSequenceId, int32 cid, osiSockAddr const & sendTo,
+        Transport::shared_pointer const & transport,
         bool responseRequired, bool serverSearch)
 {
     Lock guard(_mutex);
@@ -421,6 +493,7 @@ ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(std::string 
     _searchSequenceId = searchSequenceId;
     _cid = cid;
     _sendTo = sendTo;
+    _transport = transport;
     _responseRequired = responseRequired;
     _serverSearch = serverSearch;
     return this;
@@ -455,12 +528,19 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/,
             _context->s_channelNameToProvider[_name] = channelFind->getChannelProvider();
         }
         _wasFound = wasFound;
-
-        BlockingUDPTransport::shared_pointer bt = _context->getBroadcastTransport();
-        if (bt)
+        if (_transport && _transport->getType() == PVA_TCP_PROTOCOL)
         {
             TransportSender::shared_pointer thisSender = shared_from_this();
-            bt->enqueueSendRequest(thisSender);
+            _transport->enqueueSendRequest(thisSender);
+        }
+        else
+        {
+            BlockingUDPTransport::shared_pointer bt = _context->getBroadcastTransport();
+            if (bt)
+            {
+                TransportSender::shared_pointer thisSender = shared_from_this();
+                bt->enqueueSendRequest(thisSender);
+            }
         }
     }
 }
@@ -472,6 +552,9 @@ std::tr1::shared_ptr<const PeerInfo> ServerChannelFindRequesterImpl::getPeerInfo
 
 void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
+    char ipAddrStr[24];
+    ipAddrToDottedIP(&_sendTo.ia, ipAddrStr, sizeof(ipAddrStr));
+    LOG(logLevelDebug, "Search response will be sent to %s", ipAddrStr);
     control->startMessage(CMD_SEARCH_RESPONSE, 12+4+16+2);
 
     Lock guard(_mutex);

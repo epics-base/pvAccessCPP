@@ -148,7 +148,7 @@ public:
     virtual ~ServerChannelFindRequesterImpl() {}
     void clear();
     ServerChannelFindRequesterImpl* set(std::string _name, epics::pvData::int32 searchSequenceId,
-                                        epics::pvData::int32 cid, osiSockAddr const & sendTo, bool responseRequired, bool serverSearch);
+                                        epics::pvData::int32 cid, osiSockAddr const & sendTo, Transport::shared_pointer const & transport, bool responseRequired, bool serverSearch);
     virtual void channelFindResult(const epics::pvData::Status& status, ChannelFind::shared_pointer const & channelFind, bool wasFound) OVERRIDE FINAL;
 
     virtual std::tr1::shared_ptr<const PeerInfo> getPeerInfo() OVERRIDE FINAL;
@@ -163,6 +163,7 @@ private:
     epics::pvData::int32 _searchSequenceId;
     epics::pvData::int32 _cid;
     osiSockAddr _sendTo;
+    Transport::shared_pointer _transport;
     bool _responseRequired;
     bool _wasFound;
     const ServerContextImpl::shared_pointer _context;
@@ -831,6 +832,36 @@ private:
     ServerGetFieldHandler handle_getfield;
     ServerRPCHandler handle_rpc;
     ServerCancelRequestHandler handle_cancel;
+    /**
+     * Table of response handlers for each command ID.
+     */
+    std::vector<ResponseHandler*> m_handlerTable;
+
+};
+
+/**
+ * PVAS search request handler
+ */
+class ServerSearchResponseHandler : public ResponseHandler {
+public:
+    ServerSearchResponseHandler(ServerContextImpl::shared_pointer const & context);
+
+    virtual ~ServerSearchResponseHandler() {}
+
+    virtual void handleResponse(osiSockAddr* responseFrom,
+                                Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
+                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
+private:
+    ServerBadResponse handle_bad;
+
+    ServerNoopResponse handle_beacon;
+    ServerConnectionValidationHandler handle_validation;
+    ServerEchoHandler handle_echo;
+    ServerSearchHandler handle_search;
+    AuthNZHandler handle_authnz;
+    ServerCreateChannelHandler handle_create;
+    ServerDestroyChannelHandler handle_destroy;
+    ServerRPCHandler handle_rpc;
     /**
      * Table of response handlers for each command ID.
      */
