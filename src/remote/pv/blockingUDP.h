@@ -76,7 +76,7 @@ public:
     }
 
     virtual std::string getType() const OVERRIDE FINAL {
-        return std::string("udp");
+        return PVA_UDP_PROTOCOL;
     }
 
     virtual std::size_t getReceiveBufferSize() const OVERRIDE FINAL {
