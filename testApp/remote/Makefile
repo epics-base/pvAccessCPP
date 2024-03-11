@@ -9,6 +9,21 @@ ifneq (RTEMS,$(OS_CLASS))
 TESTS += testChannelAccess
 endif
 
+TESTPROD_HOST += testUdpChannelDiscovery
+TESTPROD_HOST += testNsChannelDiscovery
+TESTPROD_HOST += testDcChannelDiscovery
+testUdpChannelDiscovery_SRCS = udpChannelDiscoveryTest.cpp
+testNsChannelDiscovery_SRCS = nsChannelDiscoveryTest.cpp
+testDcChannelDiscovery_SRCS = dcChannelDiscoveryTest.cpp
+testHarness_SRCS += udpChannelDiscoveryTest.cpp
+testHarness_SRCS += nsChannelDiscoveryTest.cpp
+testHarness_SRCS += dcChannelDiscoveryTest.cpp
+ifneq (RTEMS,$(OS_CLASS))
+TESTS += testUdpChannelDiscovery
+TESTS += testNsChannelDiscovery
+TESTS += testDcChannelDiscovery
+endif
+
 TESTPROD_HOST += testCodec
 testCodec_SRCS = testCodec
 testHarness_SRCS += testCodec.cpp
