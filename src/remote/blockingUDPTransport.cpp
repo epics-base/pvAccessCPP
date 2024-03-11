@@ -714,7 +714,7 @@ void initializeUDPTransports(bool serverFlag,
     getSocketAddressList(ignoreAddressVector, ignoreAddressList, 0, 0);
 
     //
-    // Setup UDP trasport(s) (per interface)
+    // Setup UDP transport(s) (per interface)
     //
 
     InetAddrVector tappedNIF;
