@@ -58,6 +58,9 @@ struct BreakTransport : TransportSender
 namespace epics {
 namespace pvAccess {
 
+const std::string PVA_TCP_PROTOCOL("tcp");
+const std::string PVA_UDP_PROTOCOL("udp");
+
 /* HACK!
  * RTEMS allows blocking sockets to be interrupted by shutdown() (aka. esscimqi_socketBothShutdownRequired).
  * However, a concurrent close() is a race which can leave a send()/recv() call permanently stuck!
