@@ -38,11 +38,13 @@ ServerContextImpl::ServerContextImpl():
     _beaconPeriod(15.0),
     _broadcastPort(PVA_BROADCAST_PORT),
     _serverPort(PVA_SERVER_PORT),
+    _searchServerPort(PVA_BROADCAST_PORT),
     _receiveBufferSize(MAX_TCP_RECV),
     _timer(new Timer("PVAS timers", lowerPriority)),
     _beaconEmitter(),
     _acceptor(),
     _transportRegistry(),
+    _searchAcceptor(),
     _channelProviders(),
     _beaconServerStatusProvider(),
     _startTime()
@@ -145,6 +147,12 @@ void ServerContextImpl::loadConfiguration()
 
     _receiveBufferSize = config->getPropertyAsInteger("EPICS_PVA_MAX_ARRAY_BYTES", _receiveBufferSize);
     _receiveBufferSize = config->getPropertyAsInteger("EPICS_PVAS_MAX_ARRAY_BYTES", _receiveBufferSize);
+
+    // TCP search
+    memset(&_searchIfaceAddr, 0, sizeof(_searchIfaceAddr));
+    _searchIfaceAddr.ia.sin_family = AF_INET;
+    _searchIfaceAddr.ia.sin_addr.s_addr = _ifaceAddr.ia.sin_addr.s_addr;
+    _searchIfaceAddr.ia.sin_port = htons(_broadcastPort);
 
     if(_channelProviders.empty()) {
         std::string providers = config->getPropertyAsString("EPICS_PVAS_PROVIDER_NAMES", PVACCESS_DEFAULT_PROVIDER);
@@ -272,15 +280,21 @@ void ServerContextImpl::initialize()
     ServerContextImpl::shared_pointer thisServerContext = shared_from_this();
     // we create reference cycles here which are broken by our shutdown() method,
     _responseHandler.reset(new ServerResponseHandler(thisServerContext));
+    _searchResponseHandler.reset(new ServerSearchResponseHandler(thisServerContext));
 
     _acceptor.reset(new BlockingTCPAcceptor(thisServerContext, _responseHandler, _ifaceAddr, _receiveBufferSize));
     _serverPort = ntohs(_acceptor->getBindAddress()->ia.sin_port);
+    LOG(logLevelDebug, "Server port: %d", _serverPort);
+
+    // TCP search listener
+    _searchAcceptor.reset(new BlockingTCPAcceptor(thisServerContext, _searchResponseHandler, _searchIfaceAddr, MAX_TCP_RECV));
+    _searchServerPort = ntohs(_searchAcceptor->getBindAddress()->ia.sin_port);
+    LOG(logLevelDebug, "Search server port: %d", _searchServerPort);
 
     // setup broadcast UDP transport
-    initializeUDPTransports(true, _udpTransports, _ifaceList, _responseHandler, _broadcastTransport,
-                            _broadcastPort, _autoBeaconAddressList, _beaconAddressList, _ignoreAddressList);
+    initializeUDPTransports(true, _udpTransports, _ifaceList, _responseHandler, _broadcastTransport, _broadcastPort, _autoBeaconAddressList, _beaconAddressList, _ignoreAddressList);
 
-    _beaconEmitter.reset(new BeaconEmitter("tcp", _broadcastTransport, thisServerContext));
+    _beaconEmitter.reset(new BeaconEmitter(PVA_TCP_PROTOCOL, _broadcastTransport, thisServerContext));
 
     _beaconEmitter->start();
 }
@@ -349,12 +363,23 @@ void ServerContextImpl::shutdown()
     // this will also destroy all channels
     _transportRegistry.clear();
 
+    // clear search acceptor
+    if (_searchAcceptor)
+    {
+        _searchAcceptor->destroy();
+        LEAK_CHECK(_searchAcceptor, "_searchAcceptor")
+        _searchAcceptor.reset();
+    }
+
     // drop timer queue
     LEAK_CHECK(_timer, "_timer")
     _timer.reset();
 
     // response handlers hold strong references to us,
     // so must break the cycles
+    LEAK_CHECK(_searchResponseHandler, "_searchResponseHandler")
+    _searchResponseHandler.reset();
+
     LEAK_CHECK(_responseHandler, "_responseHandler")
     _responseHandler.reset();
 
@@ -480,6 +505,11 @@ int32 ServerContextImpl::getServerPort()
     return _serverPort;
 }
 
+int32 ServerContextImpl::getSearchServerPort()
+{
+    return _searchServerPort;
+}
+
 int32 ServerContextImpl::getBroadcastPort()
 {
     return _broadcastPort;
@@ -526,6 +556,12 @@ Channel::shared_pointer ServerContextImpl::getChannel(pvAccessID /*id*/)
 }
 
 Transport::shared_pointer ServerContextImpl::getSearchTransport()
+{
+    // not used
+    return Transport::shared_pointer();
+}
+
+Transport::shared_pointer ServerContextImpl::getNameServerSearchTransport()
 {
     // not used
     return Transport::shared_pointer();
