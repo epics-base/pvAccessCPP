@@ -2584,20 +2584,35 @@ public:
         // NOTE: htons might be a macro (e.g. vxWorks)
         int16 port = payloadBuffer->getShort();
         serverAddress.ia.sin_port = htons(port);
+        char strBuffer[24];
+        ipAddrToDottedIP(&serverAddress.ia, strBuffer, sizeof(strBuffer));
+        LOG(logLevelDebug, "Server address decoded as %s, transport type is %s", strBuffer, transport->getType().c_str());
 
         /*string protocol =*/ SerializeHelper::deserializeString(payloadBuffer, transport.get());
 
+        // Get channel search manager
+        ClientContextImpl::shared_pointer context(_context.lock());
+        if(!context)
+        {
+            return;
+        }
+        std::tr1::shared_ptr<epics::pvAccess::ChannelSearchManager> csm = context->getChannelSearchManager();
+
+        // Did we find anything?
         transport->ensureData(1);
         bool found = payloadBuffer->getByte() != 0;
         if (!found)
+        {
+            if (transport->getType() == PVA_TCP_PROTOCOL)
+            {
+                LOG(logLevelDebug, "No channels found, closing name server transport");
+                csm->closeNameServerTransport();
+            }
             return;
+        }
 
         // reads CIDs
         // TODO optimize
-        ClientContextImpl::shared_pointer context(_context.lock());
-        if(!context)
-            return;
-        std::tr1::shared_ptr<epics::pvAccess::ChannelSearchManager> csm = context->getChannelSearchManager();
         int16 count = payloadBuffer->getShort();
         for (int i = 0; i < count; i++)
         {
@@ -2742,7 +2757,7 @@ public:
         serverAddress.ia.sin_port = htons(port);
 
         string protocol(SerializeHelper::deserializeString(payloadBuffer, transport.get()));
-        if(protocol!="tcp")
+        if(protocol != PVA_TCP_PROTOCOL)
             return;
 
         // TODO optimize
@@ -2999,7 +3014,8 @@ public:
     {
         if (command < 0 || command >= (int8)m_handlerTable.size())
         {
-            if(IS_LOGGABLE(logLevelError)) {
+            if(IS_LOGGABLE(logLevelError))
+            {
                 std::ios::fmtflags initialflags = std::cerr.flags();
                 std::cerr<<"Invalid (or unsupported) command: "<<std::hex<<(int)(0xFF&command)<<"\n"
                          <<HexDump(*payloadBuffer, payloadSize).limit(256u);
@@ -3012,10 +3028,75 @@ public:
     }
 };
 
+/**
+ * Name server search response handler
+ */
+class NameServerClientResponseHandler : public ResponseHandler {
+    EPICS_NOT_COPYABLE(NameServerClientResponseHandler)
+private:
 
+    /**
+     * Table of response handlers for each command ID.
+     */
+    vector<ResponseHandler::shared_pointer> m_handlerTable;
 
+public:
 
+    virtual ~NameServerClientResponseHandler() {}
 
+    /**
+     * @param context
+     */
+    NameServerClientResponseHandler(ClientContextImpl::shared_pointer const & context)
+        :ResponseHandler(context.get(), "NameServerClientResponseHandler")
+    {
+        ResponseHandler::shared_pointer ignoreResponse(new NoopResponse(context, "Ignore"));
+
+        m_handlerTable.resize(CMD_CANCEL_REQUEST+1);
+
+        m_handlerTable[CMD_BEACON] = ignoreResponse; /*  0 */
+        m_handlerTable[CMD_CONNECTION_VALIDATION].reset(new ClientConnectionValidationHandler(context)); /*  1 */
+        m_handlerTable[CMD_ECHO] = ignoreResponse; /*  2 */
+        m_handlerTable[CMD_SEARCH] = ignoreResponse; /*  3 */
+        m_handlerTable[CMD_SEARCH_RESPONSE].reset(new SearchResponseHandler(context)); /*  4 */
+        m_handlerTable[CMD_AUTHNZ].reset(new AuthNZHandler(context.get())); /*  5 */
+        m_handlerTable[CMD_ACL_CHANGE] = ignoreResponse; /*  6 */
+        m_handlerTable[CMD_CREATE_CHANNEL] = ignoreResponse; /*  7 */
+        m_handlerTable[CMD_DESTROY_CHANNEL] = ignoreResponse; /*  8 */
+        m_handlerTable[CMD_CONNECTION_VALIDATED].reset(new ClientConnectionValidatedHandler(context)); /*  9 */
+        m_handlerTable[CMD_GET] = ignoreResponse; /* 10 */
+        m_handlerTable[CMD_PUT] = ignoreResponse; /* 11 */
+        m_handlerTable[CMD_PUT_GET] = ignoreResponse; /* 12 */
+        m_handlerTable[CMD_MONITOR] = ignoreResponse; /* 13 */
+        m_handlerTable[CMD_ARRAY] = ignoreResponse; /* 14 */
+        m_handlerTable[CMD_DESTROY_REQUEST] = ignoreResponse; /* 15 */
+        m_handlerTable[CMD_PROCESS] = ignoreResponse; /* 16 */
+        m_handlerTable[CMD_GET_FIELD] = ignoreResponse; /* 17 */
+        m_handlerTable[CMD_MESSAGE] = ignoreResponse; /* 18 */
+        m_handlerTable[CMD_MULTIPLE_DATA] = ignoreResponse; /* 19 */
+        m_handlerTable[CMD_RPC] = ignoreResponse; /* 20 */
+        m_handlerTable[CMD_CANCEL_REQUEST] = ignoreResponse; /* 21 */
+    }
+
+    virtual void handleResponse(osiSockAddr* responseFrom,
+                                Transport::shared_pointer const & transport, int8 version, int8 command,
+                                size_t payloadSize, ByteBuffer* payloadBuffer) OVERRIDE FINAL
+    {
+        if (command < 0 || command >= (int8)m_handlerTable.size())
+        {
+            if(IS_LOGGABLE(logLevelError))
+            {
+                std::ios::fmtflags initialflags = std::cerr.flags();
+                std::cerr<<"Invalid (or unsupported) command: "<<std::hex<<(int)(0xFF&command)<<"\n"
+                         <<HexDump(*payloadBuffer, payloadSize).limit(256u);
+                std::cerr.flags(initialflags);
+            }
+            return;
+        }
+        // delegate
+        m_handlerTable[command]->handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
+    }
+};
 
 /**
  * Context state enum.
@@ -3036,9 +3117,6 @@ enum ContextState {
      */
     CONTEXT_DESTROYED
 };
-
-
-
 
 class InternalClientContextImpl :
     public ClientContextImpl,
@@ -3098,8 +3176,9 @@ public:
     {
         InetAddrVector addresses;
         getSocketAddressList(addresses, addressesStr, m_serverPort);
+        bool initiateSearch = true;
 
-        Channel::shared_pointer channel = createChannelInternal(channelName, channelRequester, priority, addresses);
+        Channel::shared_pointer channel = createChannelInternal(channelName, channelRequester, priority, addresses, initiateSearch);
         if (channel.get())
             channelRequester->channelCreated(Status::Ok, channel);
         return channel;
@@ -3213,7 +3292,7 @@ public:
         Mutex m_channelMutex;
 private:
         /**
-         * Flag indicting what message to send.
+         * Flag indicating what message to send.
          */
         bool m_issueCreateMessage;
 
@@ -3224,6 +3303,11 @@ private:
          * @brief Server GUID.
          */
         ServerGUID m_guid;
+
+        /**
+         * Initiate search flag
+         */
+        bool m_initiateSearch;
 
     public:
         static size_t num_instances;
@@ -3243,7 +3327,7 @@ private:
             string const & name,
             ChannelRequester::shared_pointer const & requester,
             short priority,
-            const InetAddrVector& addresses) :
+            const InetAddrVector& addresses, bool initiateSearch) :
             m_context(context),
             m_channelID(channelID),
             m_name(name),
@@ -3255,7 +3339,8 @@ private:
             m_needSubscriptionUpdate(false),
             m_allowCreation(true),
             m_serverChannelID(0xFFFFFFFF),
-            m_issueCreateMessage(true)
+            m_issueCreateMessage(true),
+            m_initiateSearch(initiateSearch)
         {
             REFTRACE_INCREMENT(num_instances);
         }
@@ -3278,10 +3363,11 @@ private:
                 string const & name,
                 ChannelRequester::shared_pointer requester,
                 short priority,
-                const InetAddrVector& addresses)
+                const InetAddrVector& addresses,
+                bool initiateSearch)
         {
             std::tr1::shared_ptr<InternalChannelImpl> internal(
-                new InternalChannelImpl(context, channelID, name, requester, priority, addresses)),
+                new InternalChannelImpl(context, channelID, name, requester, priority, addresses, initiateSearch)),
                     external(internal.get(), epics::pvAccess::Destroyable::cleaner(internal));
             const_cast<weak_pointer&>(internal->m_internal_this) = internal;
             const_cast<weak_pointer&>(internal->m_external_this) = external;
@@ -3308,9 +3394,12 @@ private:
 
                 m_getfield.reset();
 
-                // stop searching...
                 shared_pointer thisChannelPointer = internal_from_this();
-                m_context->getChannelSearchManager()->unregisterSearchInstance(thisChannelPointer);
+                // stop searching...
+                if (m_initiateSearch)
+                {
+                    m_context->getChannelSearchManager()->unregisterSearchInstance(thisChannelPointer);
+                }
 
                 disconnectPendingIO(true);
 
@@ -3530,9 +3619,13 @@ public:
             if (m_connectionState != CONNECTED)
                 return;
 
-            if (!initiateSearch) {
-                // stop searching...
-                m_context->getChannelSearchManager()->unregisterSearchInstance(internal_from_this());
+            if (!initiateSearch)
+            {
+                if (m_initiateSearch)
+                {
+                    // stop searching...
+                    m_context->getChannelSearchManager()->unregisterSearchInstance(internal_from_this());
+                }
             }
             setConnectionState(DISCONNECTED);
 
@@ -3575,6 +3668,11 @@ public:
         void initiateSearch(bool penalize = false)
         {
             Lock guard(m_channelMutex);
+            if (!m_initiateSearch)
+            {
+                LOG(logLevelDebug, "Search will not be initiated for channel %s", m_name.c_str());
+                return;
+            }
 
             m_allowCreation = true;
 
@@ -3584,7 +3682,7 @@ public:
                 osiSockAddr* serverAddress = &m_addresses[index];
                 ipAddrToDottedIP(&serverAddress->ia, strBuffer, sizeof(strBuffer));
                 double delay = (m_addressIndex / m_addresses.size())*STATIC_SEARCH_BASE_DELAY_SEC+STATIC_SEARCH_MIN_DELAY_SEC;
-                LOG(logLevelDebug, "Scheduling channel search for address %s with delay of %.3f seconds.", strBuffer, delay);
+                LOG(logLevelDebug, "Scheduling direct channel connection attempt for address %s with delay of %.3f seconds.", strBuffer, delay);
                 m_context->getTimer()->scheduleAfterDelay(internal_from_this(), delay);
             }
             m_context->getChannelSearchManager()->registerSearchInstance(internal_from_this(), penalize);
@@ -3596,7 +3694,7 @@ public:
             // TODO boost when a server (from address list) is started!!! IP vs address !!!
             Transport::shared_pointer transport(m_transport);
             if (transport) {
-                LOG(logLevelDebug, "Transport for channel %s is already active, channel search cancelled.", transport->getRemoteName().c_str());
+                LOG(logLevelDebug, "Transport for channel %s is already active.", transport->getRemoteName().c_str());
                 return;
             }
 
@@ -3965,7 +4063,7 @@ public:
     static size_t num_instances;
 
     InternalClientContextImpl(const Configuration::shared_pointer& conf) :
-        m_addressList(""), m_autoAddressList(true), m_serverPort(PVA_SERVER_PORT), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
+        m_addressList(""), m_autoAddressList(true), m_serverPort(PVA_SERVER_PORT), m_nsAddressList(""), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
         m_broadcastPort(PVA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV),
         m_lastCID(0x10203040),
         m_lastIOID(0x80706050),
@@ -4007,6 +4105,41 @@ public:
         return m_searchTransport;
     }
 
+    virtual Transport::shared_pointer getNameServerSearchTransport()
+    {
+        if (!m_nsAddresses.size())
+        {
+            return Transport::shared_pointer();
+        }
+        createNameServerConnector();
+
+        if (!m_nsConnector)
+        {
+            return Transport::shared_pointer();
+        }
+
+        for (unsigned int i = 0; i < m_nsAddresses.size(); i++)
+        {
+            char strBuffer[24];
+            m_nsAddressIndex = (m_nsAddressIndex+1) % m_nsAddresses.size();
+            osiSockAddr* serverAddress = &m_nsAddresses[m_nsAddressIndex];
+            ipAddrToDottedIP(&serverAddress->ia, strBuffer, sizeof(strBuffer));
+            LOG(logLevelDebug, "Getting name server transport for address %s", strBuffer);
+
+            try
+            {
+                Transport::shared_pointer t = m_nsConnector->connect(m_nsChannel, m_nsResponseHandler, *serverAddress, EPICS_PVA_MINOR_VERSION, 0);
+                LOG(logLevelDebug, "Got name server transport for address %s", strBuffer);
+                return t;
+            }
+            catch (std::exception& e)
+            {
+                LOG(logLevelDebug, "Could not get name server transport for %s: %s", strBuffer, e.what());
+            }
+        }
+        return Transport::shared_pointer();
+    }
+
     virtual void initialize() OVERRIDE FINAL {
         Lock lock(m_contextMutex);
 
@@ -4028,6 +4161,7 @@ public:
         out << "ADDR_LIST          : " << m_addressList << std::endl;
         out << "AUTO_ADDR_LIST     : " << (m_autoAddressList ? "true" : "false") << std::endl;
         out << "SERVER_PORT        : " << m_serverPort << std::endl;
+        out << "NAME_SERVERS       : " << m_nsAddressList << std::endl;
         out << "CONNECTION_TIMEOUT : " << m_connectionTimeout << std::endl;
         out << "BEACON_PERIOD      : " << m_beaconPeriod << std::endl;
         out << "BROADCAST_PORT     : " << m_broadcastPort << std::endl;;
@@ -4121,10 +4255,29 @@ private:
         m_addressList = m_configuration->getPropertyAsString("EPICS_PVA_ADDR_LIST", m_addressList);
         m_autoAddressList = m_configuration->getPropertyAsBoolean("EPICS_PVA_AUTO_ADDR_LIST", m_autoAddressList);
         m_serverPort = m_configuration->getPropertyAsInteger("EPICS_PVA_SERVER_PORT", m_serverPort);
+        LOG(logLevelDebug, "Configured server port: %d", m_serverPort);
+        m_nsAddressList = m_configuration->getPropertyAsString("EPICS_PVA_NAME_SERVERS", m_nsAddressList);
+        LOG(logLevelDebug, "Configured name server address list: %s", m_nsAddressList.c_str());
         m_connectionTimeout = m_configuration->getPropertyAsFloat("EPICS_PVA_CONN_TMO", m_connectionTimeout);
         m_beaconPeriod = m_configuration->getPropertyAsFloat("EPICS_PVA_BEACON_PERIOD", m_beaconPeriod);
         m_broadcastPort = m_configuration->getPropertyAsInteger("EPICS_PVA_BROADCAST_PORT", m_broadcastPort);
+        LOG(logLevelDebug, "Configured broadcast port: %d", m_broadcastPort);
         m_receiveBufferSize = m_configuration->getPropertyAsInteger("EPICS_PVA_MAX_ARRAY_BYTES", m_receiveBufferSize);
+        getSocketAddressList(m_nsAddresses, m_nsAddressList, m_serverPort);
+    }
+
+    void createNameServerConnector()
+    {
+        if (!m_nsConnector && m_nsAddresses.size())
+        {
+            LOG(logLevelDebug, "Creating internal name server channel and connector");
+            InetAddrVector nsAddresses; // avoid direct connection attempts
+            InternalClientContextImpl::shared_pointer thisPointer(internal_from_this());
+            std::string nsChannelName = "__NS_CHANNEL__";
+            bool initiateSearch = false;
+            m_nsChannel = createChannelInternal(nsChannelName, DefaultChannelRequester::build(), 0, nsAddresses, initiateSearch);
+            m_nsConnector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_connectionTimeout));
+        }
     }
 
     void internalInitialize() {
@@ -4137,6 +4290,7 @@ private:
 
         // stores many weak_ptr
         m_responseHandler.reset(new ClientResponseHandler(thisPointer));
+        m_nsResponseHandler.reset(new NameServerClientResponseHandler(thisPointer));
 
         m_channelSearchManager.reset(new ChannelSearchManager(thisPointer));
 
@@ -4395,8 +4549,7 @@ private:
      */
     // TODO no minor version with the addresses
     // TODO what if there is an channel with the same name, but on different host!
-    ClientChannelImpl::shared_pointer createChannelInternal(std::string const & name, ChannelRequester::shared_pointer const & requester, short priority,
-            const InetAddrVector& addresses) OVERRIDE FINAL { // TODO addresses
+    ClientChannelImpl::shared_pointer createChannelInternal(std::string const & name, ChannelRequester::shared_pointer const & requester, short priority, const InetAddrVector& addresses, bool initiateSearch) OVERRIDE FINAL { // TODO addresses
 
         checkState();
         checkChannelName(name);
@@ -4414,7 +4567,7 @@ private:
              * as our channels.
              */
             pvAccessID cid = generateCID();
-            return InternalChannelImpl::create(internal_from_this(), cid, name, requester, priority, addresses);
+            return InternalChannelImpl::create(internal_from_this(), cid, name, requester, priority, addresses, initiateSearch);
         } catch(std::exception& e) {
             LOG(logLevelError, "createChannelInternal() exception: %s\n", e.what());
             return ClientChannelImpl::shared_pointer();
@@ -4444,6 +4597,32 @@ private:
      * Define server port
      */
     int m_serverPort;
+
+    /**
+     * A space-separated list of name server addresses for process variable name resolution.
+     * Each address must be of the form: ip.number:port or host.name:port
+     */
+    string m_nsAddressList;
+
+    /**
+     * List of name server addresses.
+     */
+    InetAddrVector m_nsAddresses;
+
+    /**
+     * Index of currently used name server address (rollover pointer in a list).
+     */
+    int m_nsAddressIndex;
+
+    /**
+     * Name server channel
+     */
+    ClientChannelImpl::shared_pointer m_nsChannel;
+
+    /**
+     * Name server connector
+     */
+    epics::auto_ptr<BlockingTCPConnector> m_nsConnector;
 
     /**
      * If the context doesn't see a beacon from a server that it is connected to for
@@ -4498,6 +4677,11 @@ private:
      * Response handler.
      */
     ClientResponseHandler::shared_pointer m_responseHandler;
+
+    /**
+     * Name server search response handler.
+     */
+    NameServerClientResponseHandler::shared_pointer m_nsResponseHandler;
 
     /**
      * Map of channels (keys are CIDs).
