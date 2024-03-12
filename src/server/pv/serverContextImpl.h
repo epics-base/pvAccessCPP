@@ -49,6 +49,7 @@ public:
     epics::pvData::Timer::shared_pointer getTimer() OVERRIDE FINAL;
     Channel::shared_pointer getChannel(pvAccessID id) OVERRIDE FINAL;
     Transport::shared_pointer getSearchTransport() OVERRIDE FINAL;
+    Transport::shared_pointer getNameServerSearchTransport() OVERRIDE FINAL;
     Configuration::const_shared_pointer getConfiguration() OVERRIDE FINAL;
     TransportRegistry* getTransportRegistry() OVERRIDE FINAL;
 
@@ -81,6 +82,12 @@ public:
      * @return server port.
      */
     epics::pvData::int32 getServerPort() OVERRIDE FINAL;
+
+    /**
+     * Get search server port.
+     * @return search server port.
+     */
+    epics::pvData::int32 getSearchServerPort() OVERRIDE FINAL;
 
     /**
      * Get broadcast port.
@@ -140,6 +147,7 @@ private:
     IfaceNodeVector _ifaceList;
 
     osiSockAddr _ifaceAddr;
+    osiSockAddr _searchIfaceAddr;
 
     /**
      * A space-separated list of address from which to ignore name resolution requests.
@@ -166,6 +174,11 @@ private:
      * Port number for the server to listen to.
      */
     epics::pvData::int32 _serverPort;
+
+    /**
+     * Search server port.
+     */
+    epics::pvData::int32 _searchServerPort;
 
     /**
      * Length in bytes of the maximum buffer (payload) size that may pass through PVA.
@@ -197,7 +210,16 @@ private:
      */
     TransportRegistry _transportRegistry;
 
+    /**
+     * TCP search acceptor
+     */
+    BlockingTCPAcceptor::shared_pointer _searchAcceptor;
+
+    /**
+     * Response handlers
+     */
     ResponseHandler::shared_pointer _responseHandler;
+    ResponseHandler::shared_pointer _searchResponseHandler;
 
     // const after loadConfiguration()
     std::vector<ChannelProvider::shared_pointer> _channelProviders;
