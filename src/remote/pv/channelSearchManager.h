@@ -110,8 +110,8 @@ public:
     ChannelSearchManager(Context::shared_pointer const & context);
     void activate();
 
-    // Closes name server transport.
-    void closeNameServerTransport();
+    // Releases name server transport.
+    void releaseNameServerTransport();
 
 private:
 
@@ -177,11 +177,6 @@ private:
      * m_channels mutex.
      */
     epics::pvData::Mutex m_mutex;
-
-    /**
-     * Name server trasnport.
-     */
-    Transport::shared_pointer m_nsTransport;
 };
 
 }

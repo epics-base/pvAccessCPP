@@ -82,8 +82,7 @@ ChannelSearchManager::ChannelSearchManager(Context::shared_pointer const & conte
     m_lastTimeSent(),
     m_channelMutex(),
     m_userValueMutex(),
-    m_mutex(),
-    m_nsTransport()
+    m_mutex()
 {
     // initialize random seed with some random value
     srand ( time(NULL) );
@@ -183,6 +182,7 @@ void ChannelSearchManager::searchResponse(const ServerGUID & guid, pvAccessID ci
         SearchInstance::shared_pointer si(channelsIter->second.lock());
 
         // remove from search list
+        LOG(logLevelDebug, "Removing cid %d from the channel map", cid);
         m_channels.erase(cid);
 
         guard.unlock();
@@ -191,21 +191,14 @@ void ChannelSearchManager::searchResponse(const ServerGUID & guid, pvAccessID ci
         if(si)
             si->searchResponse(guid, minorRevision, serverAddress);
     }
-
-    // Cleanup name server search
-    if(m_nsTransport && m_channels.size() == 0)
-    {
-        closeNameServerTransport();
-    }
+    releaseNameServerTransport();
 }
 
-void ChannelSearchManager::closeNameServerTransport()
+void ChannelSearchManager::releaseNameServerTransport()
 {
-    if(m_nsTransport)
+    if(m_channels.size() == 0)
     {
-        LOG(logLevelDebug, "Closing name server transport");
-        m_nsTransport->close();
-        m_nsTransport.reset();
+        m_context.lock()->releaseNameServerSearchTransport();
     }
 }
 
@@ -305,14 +298,11 @@ void ChannelSearchManager::flushSendBuffer()
     ut->send(&m_sendBuffer, inetAddressType_broadcast_multicast);
 
     // Name server search
-    if(!m_nsTransport)
+    Transport::shared_pointer nsTransport = m_context.lock()->getNameServerSearchTransport();
+    if(nsTransport)
     {
-        m_nsTransport = m_context.lock()->getNameServerSearchTransport();
-    }
-    if(m_nsTransport)
-    {
-        LOG(logLevelDebug, "Initiating name server search");
-        m_nsTransport->enqueueSendRequest(shared_from_this());
+        LOG(logLevelDebug, "Initiating name server search for %lu channels", m_channels.size());
+        nsTransport->enqueueSendRequest(shared_from_this());
     }
     initializeSendBuffer();
 }

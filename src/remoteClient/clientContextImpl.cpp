@@ -43,6 +43,8 @@
 
 //#include <tr1/unordered_map>
 
+#define PVA_CHANNEL_SEARCH_PRIORITY 98
+
 using std::tr1::dynamic_pointer_cast;
 using std::tr1::static_pointer_cast;
 
@@ -2605,8 +2607,8 @@ public:
         {
             if (transport->getType() == PVA_TCP_PROTOCOL)
             {
-                LOG(logLevelDebug, "No channels found, closing name server transport");
-                csm->closeNameServerTransport();
+                LOG(logLevelDebug, "No channels found, releasing name server transport");
+                csm->releaseNameServerTransport();
             }
             return;
         }
@@ -2614,10 +2616,12 @@ public:
         // reads CIDs
         // TODO optimize
         int16 count = payloadBuffer->getShort();
+        LOG(logLevelDebug, "Found %hd channels", count);
         for (int i = 0; i < count; i++)
         {
             transport->ensureData(4);
             pvAccessID cid = payloadBuffer->getInt();
+            LOG(logLevelDebug, "Invoking search response for channel cid: %d", cid);
             csm->searchResponse(guid, cid, searchSequenceId, version, &serverAddress);
         }
 
@@ -4063,7 +4067,7 @@ public:
     static size_t num_instances;
 
     InternalClientContextImpl(const Configuration::shared_pointer& conf) :
-        m_addressList(""), m_autoAddressList(true), m_serverPort(PVA_SERVER_PORT), m_nsAddressList(""), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
+        m_addressList(""), m_autoAddressList(true), m_serverPort(PVA_SERVER_PORT), m_nsAddressList(""), m_nsAddressIndex(0), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
         m_broadcastPort(PVA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV),
         m_lastCID(0x10203040),
         m_lastIOID(0x80706050),
@@ -4107,6 +4111,11 @@ public:
 
     virtual Transport::shared_pointer getNameServerSearchTransport()
     {
+        if (m_nsTransport)
+        {
+            return m_nsTransport;
+        }
+
         if (!m_nsAddresses.size())
         {
             return Transport::shared_pointer();
@@ -4121,16 +4130,16 @@ public:
         for (unsigned int i = 0; i < m_nsAddresses.size(); i++)
         {
             char strBuffer[24];
-            m_nsAddressIndex = (m_nsAddressIndex+1) % m_nsAddresses.size();
             osiSockAddr* serverAddress = &m_nsAddresses[m_nsAddressIndex];
             ipAddrToDottedIP(&serverAddress->ia, strBuffer, sizeof(strBuffer));
             LOG(logLevelDebug, "Getting name server transport for address %s", strBuffer);
+            m_nsAddressIndex = (m_nsAddressIndex+1) % m_nsAddresses.size();
 
             try
             {
-                Transport::shared_pointer t = m_nsConnector->connect(m_nsChannel, m_nsResponseHandler, *serverAddress, EPICS_PVA_MINOR_VERSION, 0);
+                m_nsTransport = m_nsConnector->connect(m_nsChannel, m_nsResponseHandler, *serverAddress, EPICS_PVA_MINOR_VERSION, PVA_CHANNEL_SEARCH_PRIORITY);
                 LOG(logLevelDebug, "Got name server transport for address %s", strBuffer);
-                return t;
+                return m_nsTransport;
             }
             catch (std::exception& e)
             {
@@ -4138,6 +4147,26 @@ public:
             }
         }
         return Transport::shared_pointer();
+    }
+
+    virtual void releaseNameServerSearchTransport()
+    {
+        if (!m_nsTransport)
+        {
+            return;
+        }
+        LOG(logLevelDebug, "Releasing transport used for name server channel %d", m_nsChannel->getID());
+        m_nsTransport->release(m_nsChannel->getID());
+        if (m_nsTransport->isUsed())
+        {
+            LOG(logLevelDebug, "Name server transport is still in use by other clients");
+        }
+        else
+        {
+            LOG(logLevelDebug, "Closing name server transport");
+            m_nsTransport->close();
+            m_nsTransport.reset();
+        }
     }
 
     virtual void initialize() OVERRIDE FINAL {
@@ -4275,7 +4304,7 @@ private:
             InternalClientContextImpl::shared_pointer thisPointer(internal_from_this());
             std::string nsChannelName = "__NS_CHANNEL__";
             bool initiateSearch = false;
-            m_nsChannel = createChannelInternal(nsChannelName, DefaultChannelRequester::build(), 0, nsAddresses, initiateSearch);
+            m_nsChannel = createChannelInternal(nsChannelName, DefaultChannelRequester::build(), PVA_CHANNEL_SEARCH_PRIORITY, nsAddresses, initiateSearch);
             m_nsConnector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_connectionTimeout));
         }
     }
@@ -4623,6 +4652,11 @@ private:
      * Name server connector
      */
     epics::auto_ptr<BlockingTCPConnector> m_nsConnector;
+
+    /**
+     * Name server transport
+     */
+    Transport::shared_pointer m_nsTransport;
 
     /**
      * If the context doesn't see a beacon from a server that it is connected to for
