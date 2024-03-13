@@ -3777,7 +3777,12 @@ public:
                 old_transport.swap(m_transport);
                 m_transport.swap(transport);
 
-                m_transport->enqueueSendRequest(internal_from_this());
+                shared_pointer thisChannelPointer = internal_from_this();
+                m_transport->enqueueSendRequest(thisChannelPointer);
+                if (m_initiateSearch)
+                {
+                    m_context->getChannelSearchManager()->unregisterSearchInstance(thisChannelPointer);
+                }
             }
         }
 
