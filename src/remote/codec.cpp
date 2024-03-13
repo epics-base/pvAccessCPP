@@ -1764,7 +1764,7 @@ bool BlockingClientTCPTransportCodec::acquire(ClientChannelImpl::shared_pointer 
 
     if (IS_LOGGABLE(logLevelDebug))
     {
-        LOG(logLevelDebug, "Acquiring transport to %s.", _socketName.c_str());
+        LOG(logLevelDebug, "Acquiring transport to %s for channel cid %d.", _socketName.c_str(), client->getID());
     }
 
     _owners[client->getID()] = ClientChannelImpl::weak_pointer(client);
@@ -1829,6 +1829,11 @@ void BlockingClientTCPTransportCodec::release(pvAccessID clientID) {
         lock.unlock();
         close();
     }
+}
+
+bool BlockingClientTCPTransportCodec::isUsed()
+{
+    return (_owners.size() > 0);
 }
 
 void BlockingClientTCPTransportCodec::send(ByteBuffer* buffer,

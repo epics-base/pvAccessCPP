@@ -345,9 +345,11 @@ public:
 
     void release(pvAccessID clientId) {}
 
+    bool isUsed() {return false;}
+
     std::string getType() const
     {
-        return std::string("TCP");
+        return PVA_TCP_PROTOCOL;
     }
 
     const osiSockAddr& getRemoteAddress() const  {

@@ -50,6 +50,7 @@ public:
     Channel::shared_pointer getChannel(pvAccessID id) OVERRIDE FINAL;
     Transport::shared_pointer getSearchTransport() OVERRIDE FINAL;
     Transport::shared_pointer getNameServerSearchTransport() OVERRIDE FINAL;
+    void releaseNameServerSearchTransport() OVERRIDE FINAL;
     Configuration::const_shared_pointer getConfiguration() OVERRIDE FINAL;
     TransportRegistry* getTransportRegistry() OVERRIDE FINAL;
 

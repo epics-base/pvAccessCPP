@@ -360,9 +360,6 @@ void ServerContextImpl::shutdown()
         _acceptor.reset();
     }
 
-    // this will also destroy all channels
-    _transportRegistry.clear();
-
     // clear search acceptor
     if (_searchAcceptor)
     {
@@ -370,6 +367,9 @@ void ServerContextImpl::shutdown()
         LEAK_CHECK(_searchAcceptor, "_searchAcceptor")
         _searchAcceptor.reset();
     }
+
+    // this will also destroy all channels
+    _transportRegistry.clear();
 
     // drop timer queue
     LEAK_CHECK(_timer, "_timer")
@@ -565,6 +565,10 @@ Transport::shared_pointer ServerContextImpl::getNameServerSearchTransport()
 {
     // not used
     return Transport::shared_pointer();
+}
+
+void ServerContextImpl::releaseNameServerSearchTransport()
+{
 }
 
 void ServerContextImpl::newServerDetected()
