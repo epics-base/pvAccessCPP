@@ -3169,7 +3169,7 @@ public:
         ChannelRequester::shared_pointer const & channelRequester,
         short priority) OVERRIDE FINAL
     {
-        return createChannel(channelName, channelRequester, priority, m_addressList);
+        return createChannel(channelName, channelRequester, priority, std::string());
     }
 
     virtual Channel::shared_pointer createChannel(
@@ -3179,7 +3179,16 @@ public:
         std::string const & addressesStr) OVERRIDE FINAL
     {
         InetAddrVector addresses;
-        getSocketAddressList(addresses, addressesStr, m_serverPort);
+        if (addressesStr.empty())
+        {
+            LOG(logLevelDebug, "Creating channel using default address list: %s", m_addressList.c_str());
+            getSocketAddressList(addresses, m_addressList, m_serverPort);
+        }
+        else
+        {
+            LOG(logLevelDebug, "Creating channel using address list: %s", addressesStr.c_str());
+            getSocketAddressList(addresses, addressesStr, m_serverPort);
+        }
         bool initiateSearch = true;
 
         Channel::shared_pointer channel = createChannelInternal(channelName, channelRequester, priority, addresses, initiateSearch);
@@ -4287,6 +4296,7 @@ private:
             SET_LOG_LEVEL(logLevelDebug);
 
         m_addressList = m_configuration->getPropertyAsString("EPICS_PVA_ADDR_LIST", m_addressList);
+        LOG(logLevelDebug, "Configured PVA address list: %s", m_addressList.c_str());
         m_autoAddressList = m_configuration->getPropertyAsBoolean("EPICS_PVA_AUTO_ADDR_LIST", m_autoAddressList);
         m_serverPort = m_configuration->getPropertyAsInteger("EPICS_PVA_SERVER_PORT", m_serverPort);
         LOG(logLevelDebug, "Configured server port: %d", m_serverPort);
