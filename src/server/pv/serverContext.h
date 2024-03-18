@@ -14,6 +14,7 @@
 #include <pv/pvaConstants.h>
 #include <pv/pvaVersion.h>
 #include <pv/pvAccess.h>
+#include <pv/remote.h>
 #include <pv/configuration.h>
 
 #include <shareLib.h>
@@ -118,6 +119,8 @@ public:
         Config& providers(const std::vector<ChannelProvider::shared_pointer>& p) { _providers = p; return *this; }
         //! short hand for providers() with a length 1 vector.
         Config& provider(const ChannelProvider::shared_pointer& p) { _providers.push_back(p); return *this; }
+        Configuration::const_shared_pointer getConfiguration() const {return _conf;};
+        std::vector<ChannelProvider::shared_pointer> getProviders() const {return _providers;}
     };
 
     /** Start a new PVA server

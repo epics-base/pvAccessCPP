@@ -270,7 +270,7 @@ bool ServerContextImpl::isChannelProviderNamePreconfigured()
     return config->hasProperty("EPICS_PVAS_PROVIDER_NAMES");
 }
 
-void ServerContextImpl::initialize()
+void ServerContextImpl::initialize(const ResponseHandler::shared_pointer& responseHandler, const ResponseHandler::shared_pointer& searchResponseHandler)
 {
     Lock guard(_mutex);
 
@@ -279,8 +279,22 @@ void ServerContextImpl::initialize()
 
     ServerContextImpl::shared_pointer thisServerContext = shared_from_this();
     // we create reference cycles here which are broken by our shutdown() method,
-    _responseHandler.reset(new ServerResponseHandler(thisServerContext));
-    _searchResponseHandler.reset(new ServerSearchResponseHandler(thisServerContext));
+    if (responseHandler)
+    {
+        _responseHandler = responseHandler;
+    }
+    else
+    {
+        _responseHandler.reset(new ServerResponseHandler(thisServerContext));
+    }
+    if (searchResponseHandler)
+    {
+        _searchResponseHandler = searchResponseHandler;
+    }
+    else
+    {
+        _searchResponseHandler.reset(new ServerSearchResponseHandler(thisServerContext));
+    }
 
     _acceptor.reset(new BlockingTCPAcceptor(thisServerContext, _responseHandler, _ifaceAddr, _receiveBufferSize));
     _serverPort = ntohs(_acceptor->getBindAddress()->ia.sin_port);
@@ -613,6 +627,29 @@ struct shutdown_dtor {
         wrapped.reset();
     }
 };
+}
+
+ServerContextImpl::shared_pointer ServerContextImpl::create(const Config &conf)
+{
+    ServerContextImpl::shared_pointer ret(new ServerContextImpl());
+    ret->configuration = conf.getConfiguration();
+    ret->_channelProviders = conf.getProviders();
+
+    if (!ret->configuration)
+    {
+        ConfigurationProvider::shared_pointer configurationProvider = ConfigurationFactory::getProvider();
+        ret->configuration = configurationProvider->getConfiguration("pvAccess-server");
+        if (!ret->configuration)
+        {
+            ret->configuration = configurationProvider->getConfiguration("system");
+        }
+    }
+    if(!ret->configuration) {
+        ret->configuration = ConfigurationBuilder().push_env().build();
+    }
+
+    ret->loadConfiguration();
+    return ret;
 }
 
 ServerContext::shared_pointer ServerContext::create(const Config &conf)
