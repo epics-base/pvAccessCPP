@@ -509,7 +509,7 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/,
     {
         if ((_responseCount+1) == _expectedResponseCount)
         {
-            LOG(logLevelDebug,"[ServerChannelFindRequesterImpl::channelFindResult] More responses received than expected fpr channel '%s'!", _name.c_str());
+            LOG(logLevelDebug,"[ServerChannelFindRequesterImpl::channelFindResult] More responses received than expected for channel '%s'!", _name.c_str());
         }
         return;
     }
