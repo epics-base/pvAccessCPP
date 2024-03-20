@@ -129,6 +129,22 @@ string inetAddressToString(const osiSockAddr &addr,
     return saddr.str();
 }
 
+bool stringToInetAddress(const std::string& addrStr, osiSockAddr& addr) {
+
+    if (addrStr.empty()) {
+        return false;
+    }
+    unsigned short defaultPort = 0;
+    if(addr.sa.sa_family == AF_INET) {
+        defaultPort = ntohs(addr.ia.sin_port);
+    }
+    addr.ia.sin_family = AF_INET;
+    if (aToIPAddr(addrStr.c_str(), defaultPort, &addr.ia)) {
+        return false;
+    }
+   return true;
+}
+
 ifaceNode::ifaceNode()
 {
     memset(&addr, 0, sizeof(addr));
