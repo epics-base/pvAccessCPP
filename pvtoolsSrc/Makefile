@@ -30,6 +30,11 @@ PROD_DEFAULT += pvlist
 pvlist_SRCS += pvlist.cpp
 pvlist_SRCS += pvutils.cpp
 
+PROD_DEFAULT += pvans
+pvans_SRCS += pvans.cpp
+pvans_SRCS += pvutils.cpp
+pvans_SRCS += nameServer.cpp
+
 PROD_LIBS += pvAccessCA pvAccess pvData ca Com
 
 PROD_SYS_LIBS_WIN32 += netapi32 ws2_32
