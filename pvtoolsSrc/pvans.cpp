@@ -3,6 +3,14 @@
  * found in the file LICENSE that is included with the distribution
  */
 
+/*
+ * PVA Name Server utility. It polls a set of PVA
+ * servers for a list of channels, and resolves channel queries.
+ * PVA servers can be discovered, they can be passed through the
+ * command line, or they can be specified via an input file which
+ * gets re-read at runtime.
+ */
+
 #include <stdio.h>
 
 #include <iostream>
@@ -81,9 +89,10 @@ int main(int argc, char *argv[])
     while ((opt = getopt(argc, argv, ":hHVw:e:p:das:f:")) != -1) {
         switch (opt) {
             case 'h':               /* Print usage */
-            case 'H':               /* Print usage */
+            case 'H': {             /* Print usage */
                 usage();
                 return 0;
+            }
             case 'V': {             /* Print version */
                 fprintf(stdout, "pvAccess %u.%u.%u%s\n",
                     EPICS_PVA_MAJOR_VERSION,
@@ -171,6 +180,7 @@ int main(int argc, char *argv[])
     srv->setAutoDiscovery(autoDiscovery);
     srv->setChannelEntryExpirationTime(channelExpirationTime);
     while (true) {
+        // Reread input file before polling.
         std::string allServerAddresses = addServerAddressesFromFile(inputFile, serverAddresses);
         srv->setServerAddresses(allServerAddresses);
         srv->run(pollPeriod);

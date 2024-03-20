@@ -474,7 +474,6 @@ ChannelFind::shared_pointer NameServerChannelProvider::channelList(const Channel
 
 Channel::shared_pointer NameServerChannelProvider::createChannel(const std::string& channelName, const ChannelRequester::shared_pointer& channelRequester, short priority)
 {
-    // SVDBG
     return createChannel(channelName, channelRequester, priority, "local");
 }
 
