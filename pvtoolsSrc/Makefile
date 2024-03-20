@@ -4,6 +4,7 @@ include $(TOP)/configure/CONFIG
 
 USR_CPPFLAGS += -I$(TOP)/src/utils
 USR_CPPFLAGS += -I$(TOP)/src/remote
+USR_CPPFLAGS += -I$(TOP)/src/remoteClient
 
 PROD_DEFAULT += pvget
 pvget_SRCS += pvget.cpp
@@ -27,6 +28,7 @@ pvinfo_SRCS += pvutils.cpp
 
 PROD_DEFAULT += pvlist
 pvlist_SRCS += pvlist.cpp
+pvlist_SRCS += pvutils.cpp
 
 PROD_LIBS += pvAccessCA pvAccess pvData ca Com
 
