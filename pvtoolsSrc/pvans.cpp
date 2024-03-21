@@ -8,7 +8,8 @@
  * servers for a list of channels, and resolves channel queries.
  * PVA servers can be discovered, they can be passed through the
  * command line, or they can be specified via an input file which
- * gets re-read at runtime.
+ * gets re-read at runtime. The utility also supports static channel
+ * map entries read from an input file.
  */
 
 #include <stdio.h>
@@ -66,7 +67,7 @@ void usage (void) {
 }
 
 // Expected server address format: <HOST:PORT>
-// There can be multiple addresses per line, separated by spaces or commas. 
+// There can be multiple addresses per line, separated by spaces or commas.
 std::string readServerAddressesFromFile(const std::string& inputFile, const std::string& existingAddresses = "")
 {
     std::string serverAddresses = existingAddresses;
@@ -83,7 +84,7 @@ std::string readServerAddressesFromFile(const std::string& inputFile, const std:
 }
 
 // Expected channel entry format: <CHANNEL_NAME> <HOST:PORT>
-// There can be multiple entries per line, separated by spaces or commas. 
+// There can be multiple entries per line, separated by spaces or commas.
 void readChannelAddressesFromFile(const std::string& inputFile, ChannelMap& channelMap)
 {
     if (inputFile.empty()) {
@@ -103,7 +104,7 @@ void readChannelAddressesFromFile(const std::string& inputFile, ChannelMap& chan
             std::string serverAddress = tokens[i+1];
             ChannelEntry channelEntry = {channelName, serverAddress, now};
             channelMap[channelName] = channelEntry;
-            LOG(logLevelDebug, "Adding %s/%s channel entry", channelName.c_str(), serverAddress.c_str()); 
+            LOG(logLevelDebug, "Adding %s/%s channel entry", channelName.c_str(), serverAddress.c_str());
         }
     }
 }
