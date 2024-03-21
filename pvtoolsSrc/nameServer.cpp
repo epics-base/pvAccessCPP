@@ -157,6 +157,9 @@ void NameServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendC
     }
 
     control->setRecipient(sendTo);
+
+    // send immediately
+    control->flush(true);
 }
 
 /*
