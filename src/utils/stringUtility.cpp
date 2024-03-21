@@ -40,20 +40,23 @@ std::string trim(const std::string& s)
     return rightTrim(leftTrim(s));
 }
 
-std::vector<std::string>& split(const std::string& s, char delimiter, std::vector<std::string>& elements)
+std::vector<std::string>& split(const std::string& s, char delimiter, std::vector<std::string>& elements, bool ignoreEmptyTokens)
 {
     std::stringstream ss(s);
     std::string item;
     while (std::getline(ss, item, delimiter)) {
-        elements.push_back(trim(item));
+        item = trim(item);
+        if (!item.empty() || !ignoreEmptyTokens) {
+            elements.push_back(item);
+        }
     }
     return elements;
 }
 
-std::vector<std::string> split(const std::string& s, char delimiter)
+std::vector<std::string> split(const std::string& s, char delimiter, bool ignoreEmptyTokens)
 {
     std::vector<std::string> elements;
-    split(s, delimiter, elements);
+    split(s, delimiter, elements, ignoreEmptyTokens);
     return elements;
 }
 
@@ -76,4 +79,36 @@ std::string toUpperCase(const std::string& input)
     }
     return ss.str();
 }
+
+std::string replace(const std::string& input, char oldChar, char newChar)
+{
+    std::string oldString;
+    oldString += oldChar;
+    std::string newString;
+    newString += newChar;
+    return replace(input, oldString, newString);
+}
+
+std::string replace(const std::string& input, char oldChar, const std::string& newString)
+{
+    std::string oldString;
+    oldString += oldChar;
+    return replace(input, oldString, newString);
+}
+
+std::string replace(const std::string& input, const std::string& oldString, const std::string& newString)
+{
+    if (oldString.empty()) {
+        return input;
+    }
+    std::string output = input;
+    std::string::size_type pos = input.find(oldString);
+    while (pos != std::string::npos) {
+        output = output.replace(pos, oldString.size(), newString);
+        pos = pos + newString.size();
+        pos = output.find(oldString, pos);
+    }
+    return output;
+}
+
 }}}
