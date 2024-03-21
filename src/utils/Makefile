@@ -12,6 +12,7 @@ INC += pv/wildcard.h
 INC += pv/fairQueue.h
 INC += pv/requester.h
 INC += pv/destroyable.h
+INC += pv/stringUtility.h
 
 pvAccess_SRCS += getgroups.cpp
 pvAccess_SRCS += hexDump.cpp
@@ -22,3 +23,4 @@ pvAccess_SRCS += configuration.cpp
 pvAccess_SRCS += referenceCountingLock.cpp
 pvAccess_SRCS += requester.cpp
 pvAccess_SRCS += wildcard.cpp
+pvAccess_SRCS += stringUtility.cpp
