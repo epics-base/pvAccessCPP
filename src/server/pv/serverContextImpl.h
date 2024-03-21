@@ -99,6 +99,12 @@ public:
     epics::pvData::int32 getBroadcastPort() OVERRIDE FINAL;
 
     /**
+     * Get UDP sender port.
+     * @return UDP sender port.
+     */
+    epics::pvData::int32 getSenderPort() OVERRIDE FINAL;
+
+    /**
      * Get registered beacon server status provider.
      * @return registered beacon server status provider.
      */
@@ -172,6 +178,11 @@ private:
      * Broadcast port number to listen to.
      */
     epics::pvData::int32 _broadcastPort;
+
+    /**
+     * UDP sender port.
+     */
+    epics::pvData::int32 _senderPort;
 
     /**
      * Port number for the server to listen to.

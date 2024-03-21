@@ -406,6 +406,7 @@ void initializeUDPTransports(
     const ResponseHandler::shared_pointer& responseHandler,
     BlockingUDPTransport::shared_pointer& sendTransport,
     epics::pvData::int32& listenPort,
+    epics::pvData::int32& senderPort,
     bool autoAddressList,
     const std::string& addressList,
     const std::string& ignoreAddressList);
