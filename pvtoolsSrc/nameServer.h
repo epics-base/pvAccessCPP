@@ -128,6 +128,7 @@ public:
     void updateChannelMap(const ChannelMap& updatedChannelMap);
     std::string getChannelServerAddress(const std::string& channelName);
     void setChannelEntryExpirationTime(double expirationTime);
+    void setStaticChannelEntries(const ChannelMap& channelMap);
 
 private:
     ChannelFind::shared_pointer nsChannelFind;
@@ -146,7 +147,8 @@ public:
     void setPollPeriod(double pollPeriod);
     void setPvaTimeout(double timeout);
     void setAutoDiscovery(bool autoDiscovery);
-    void setServerAddresses(const std::string& serverAddresses);
+    void setStaticServerAddresses(const std::string& serverAddresses);
+    void setStaticChannelEntries(const ChannelMap& channelMap);
     void setChannelEntryExpirationTime(double expirationTime);
     void run(double runtime);
 

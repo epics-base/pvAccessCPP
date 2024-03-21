@@ -18,6 +18,7 @@
 #include <istream>
 #include <fstream>
 #include <sstream>
+#include <vector>
 
 #include <epicsStdlib.h>
 #include <epicsGetopt.h>
@@ -25,6 +26,7 @@
 
 #include <pv/logger.h>
 #include <pv/configuration.h>
+#include <pv/stringUtility.h>
 
 #include "nameServer.h"
 #include "pvutils.h"
@@ -47,19 +49,25 @@ void usage (void) {
         "\noptions:\n"
         "  -h|-H\t\t\t:\tHelp: Print this message\n"
         "  -V\t\t\t:\tPrint version and exit\n"
-        "  -f <input file>\t:\tInput file containing list of PVA server addresses in the form <HOST>:<PORT>\n"
-        "  -s <addr>,<addr>,...\t:\tComma-separated list of PVA server addresses in the form <HOST>:<PORT>\n"
+        "  -f <input file>\t:\tStatic server list file with '<HOST:PORT>' entries\n"
+        "  -F <input file>\t:\tStatic channel map file with '<CHANNEL> <HOST:PORT>' entries\n"
+        "  -s <addr>,<addr>,...\t:\tComma-separated list of '<HOST:PORT>' static server entries\n"
         "  -a\t\t\t:\tAuto mode, discover severs available on the network\n"
         "  -p <poll period>\t:\tServer poll period in seconds (default: %.2f [s])\n"
         "  -w <wait period>\t:\tServer wait time in seconds (default: %.2f [s])\n"
         "  -e <expiration time>\t:\tChannel entry expiration time in seconds (default: %.2f [s])\n"
         "  -d\t\t\t:\tEnable debug output\n"
         "\nDifferent inputs for PVA server address will be combined."
-        "\nChannel expiration time <= 0 indicates that channel entries never expire.\n\n"
+        "\nServer list file should contain '<HOST:PORT>' entries separated by spaces or commas, or on different lines."
+        "\nChannel map file should contain '<CHANNEL> <HOST:PORT>' entries separated by spaces or commas, or on different lines."
+        "\nChannel expiration time <= 0 indicates that channel entries"
+        "\nnever expire.\n\n"
         , DEFAULT_POLL_PERIOD, DEFAULT_PVA_TIMEOUT, DEFAULT_CHANNEL_EXPIRATION_TIME);
 }
 
-std::string addServerAddressesFromFile(const std::string& inputFile, const std::string& existingAddresses = "")
+// Expected server address format: <HOST:PORT>
+// There can be multiple addresses per line, separated by spaces or commas. 
+std::string readServerAddressesFromFile(const std::string& inputFile, const std::string& existingAddresses = "")
 {
     std::string serverAddresses = existingAddresses;
     if (inputFile.empty()) {
@@ -68,12 +76,39 @@ std::string addServerAddressesFromFile(const std::string& inputFile, const std::
     std::ifstream ifs(inputFile);
     std::string line;
     while (std::getline(ifs, line)) {
+        line = StringUtility::replace(line, ',', " ");
         serverAddresses = serverAddresses + " " + line;
     }
     return serverAddresses;
 }
 
-} //namespace
+// Expected channel entry format: <CHANNEL_NAME> <HOST:PORT>
+// There can be multiple entries per line, separated by spaces or commas. 
+void readChannelAddressesFromFile(const std::string& inputFile, ChannelMap& channelMap)
+{
+    if (inputFile.empty()) {
+        return;
+    }
+    bool ignoreEmptyTokens = true;
+    epicsTimeStamp now;
+    epicsTimeGetCurrent(&now);
+    std::ifstream ifs(inputFile);
+    std::string line;
+    while (std::getline(ifs, line)) {
+        line = StringUtility::replace(line, ',', " ");
+        std::vector<std::string> tokens = StringUtility::split(line, ' ', ignoreEmptyTokens);
+        int nTokens = int(tokens.size());
+        for (int i = 0; i < nTokens-1; i+=2) {
+            std::string channelName = tokens[i];
+            std::string serverAddress = tokens[i+1];
+            ChannelEntry channelEntry = {channelName, serverAddress, now};
+            channelMap[channelName] = channelEntry;
+            LOG(logLevelDebug, "Adding %s/%s channel entry", channelName.c_str(), serverAddress.c_str()); 
+        }
+    }
+}
+
+} // namespace
 
 int main(int argc, char *argv[])
 {
@@ -83,10 +118,11 @@ int main(int argc, char *argv[])
     double timeout = DEFAULT_PVA_TIMEOUT;
     double pollPeriod = DEFAULT_POLL_PERIOD;
     double channelExpirationTime = DEFAULT_CHANNEL_EXPIRATION_TIME;
-    std::string inputFile;
     std::string serverAddresses;
+    std::string serverListFile;
+    std::string channelMapFile;
 
-    while ((opt = getopt(argc, argv, ":hHVw:e:p:das:f:")) != -1) {
+    while ((opt = getopt(argc, argv, ":hHVw:e:p:das:f:F:")) != -1) {
         switch (opt) {
             case 'h':               /* Print usage */
             case 'H': {             /* Print usage */
@@ -139,7 +175,11 @@ int main(int argc, char *argv[])
                 break;
             }
             case 'f': {             /* Server list file */
-                inputFile = optarg;
+                serverListFile = optarg;
+                break;
+            }
+            case 'F': {             /* Channel map file */
+                channelMapFile = optarg;
                 break;
             }
             case 'd': {             /* Debug log level */
@@ -181,8 +221,11 @@ int main(int argc, char *argv[])
     srv->setChannelEntryExpirationTime(channelExpirationTime);
     while (true) {
         // Reread input file before polling.
-        std::string allServerAddresses = addServerAddressesFromFile(inputFile, serverAddresses);
-        srv->setServerAddresses(allServerAddresses);
+        std::string staticServerAddresses = readServerAddressesFromFile(serverListFile, serverAddresses);
+        srv->setStaticServerAddresses(staticServerAddresses);
+        ChannelMap staticChannelMap;
+        readChannelAddressesFromFile(channelMapFile, staticChannelMap);
+        srv->setStaticChannelEntries(staticChannelMap);
         srv->run(pollPeriod);
     }
     return 0;

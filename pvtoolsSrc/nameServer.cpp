@@ -6,6 +6,7 @@
 
 
 #include <pv/hexDump.h>
+#include <pv/stringUtility.h>
 
 #include "nameServer.h"
 #include "pvutils.h"
@@ -418,6 +419,17 @@ void NameServerChannelProvider::setChannelEntryExpirationTime(double expirationT
     this->channelEntryExpirationTime = expirationTime;
 }
 
+void NameServerChannelProvider::setStaticChannelEntries(const ChannelMap& channelMap)
+{
+    Lock lock(channelMapMutex);
+    for (ChannelMap::const_iterator it = channelMap.begin(); it != channelMap.end(); it++) {
+        std::string channelName = it->first;
+        ChannelEntry channelEntry = it->second;
+        this->channelMap[channelName] = channelEntry;
+    }
+    LOG(logLevelDebug, "Updated %ld static channel entries", channelMap.size());
+}
+
 std::string NameServerChannelProvider::NameServerChannelProvider::getProviderName()
 {
     return PROVIDER_NAME;
@@ -540,11 +552,14 @@ void NameServer::setAutoDiscovery(bool autoDiscovery)
 {
     this->autoDiscovery = autoDiscovery;
 }
-void NameServer::setServerAddresses(const std::string& serverAddresses)
+void NameServer::setStaticServerAddresses(const std::string& serverAddresses)
 {
     this->serverAddresses = serverAddresses;
 }
-
+void NameServer::setStaticChannelEntries(const ChannelMap& channelMap)
+{
+    this->channelProvider->setStaticChannelEntries(channelMap);
+}
 void NameServer::setChannelEntryExpirationTime(double expirationTime)
 {
     LOG(logLevelDebug, "Setting channel entry expiration time to %.2f seconds", expirationTime);
@@ -592,11 +607,7 @@ bool NameServer::addUniqueServerToList(const std::string& serverAddress, ServerA
 void NameServer::addServersFromAddresses(ServerAddressList& serverAddressList)
 {
     LOG(logLevelDebug, "Adding pre-configured server addresses");
-    std::string::size_type pos;
-    std::string addresses = serverAddresses;
-    while ((pos = addresses.find(',')) != std::string::npos) {
-        addresses = addresses.replace(pos, 1, " ");
-    }
+    std::string addresses = StringUtility::replace(serverAddresses, ',', " ");
     InetAddrVector inetAddrVector;
     getSocketAddressList(inetAddrVector, addresses, context->getServerPort());
     int nAddedServers = 0;
