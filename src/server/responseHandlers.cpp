@@ -582,6 +582,9 @@ void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendContr
     }
 
     control->setRecipient(_sendTo);
+
+    // send immediately
+    control->flush(true);
 }
 
 /****************************************************************************************/
