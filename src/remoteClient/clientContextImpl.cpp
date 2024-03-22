@@ -4136,7 +4136,7 @@ public:
         }
         createNameServerConnector();
 
-        if (!m_nsConnector)
+        if (!m_nsConnector.get())
         {
             return Transport::shared_pointer();
         }
@@ -4315,7 +4315,7 @@ private:
 
     void createNameServerConnector()
     {
-        if (!m_nsConnector && m_nsAddresses.size())
+        if (!m_nsConnector.get() && m_nsAddresses.size())
         {
             LOG(logLevelDebug, "Creating internal name server channel and connector");
             InetAddrVector nsAddresses; // avoid direct connection attempts

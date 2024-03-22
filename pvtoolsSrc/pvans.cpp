@@ -74,7 +74,7 @@ std::string readServerAddressesFromFile(const std::string& inputFile, const std:
     if (inputFile.empty()) {
         return serverAddresses;
     }
-    std::ifstream ifs(inputFile);
+    std::ifstream ifs(inputFile.c_str());
     std::string line;
     while (std::getline(ifs, line)) {
         line = StringUtility::replace(line, ',', " ");
@@ -93,7 +93,7 @@ void readChannelAddressesFromFile(const std::string& inputFile, ChannelMap& chan
     bool ignoreEmptyTokens = true;
     epicsTimeStamp now;
     epicsTimeGetCurrent(&now);
-    std::ifstream ifs(inputFile);
+    std::ifstream ifs(inputFile.c_str());
     std::string line;
     while (std::getline(ifs, line)) {
         line = StringUtility::replace(line, ',', " ");
