@@ -7,6 +7,8 @@
 #include <cctype>
 #include <sstream>
 #include <algorithm>
+
+#define epicsExportSharedSymbols
 #include "pv/stringUtility.h"
 
 namespace epics { namespace pvAccess { namespace StringUtility {
