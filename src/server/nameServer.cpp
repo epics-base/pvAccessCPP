@@ -433,7 +433,7 @@ void NameServerChannelProvider::setStaticChannelEntries(const ChannelMap& channe
         ChannelEntry channelEntry = it->second;
         this->channelMap[channelName] = channelEntry;
     }
-    LOG(logLevelDebug, "Updated %ld static channel entries", channelMap.size());
+    LOG(logLevelDebug, "Updated %d static channel entries", int(channelMap.size()));
 }
 
 std::string NameServerChannelProvider::NameServerChannelProvider::getProviderName()
@@ -629,7 +629,7 @@ void NameServer::addServersFromAddresses(ServerAddressList& serverAddressList)
 
 void NameServer::discoverChannels(ServerAddressList& serverAddressList, ChannelMap& channelMap)
 {
-    LOG(logLevelDebug, "Discovering channels for %ld servers", serverAddressList.size());
+    LOG(logLevelDebug, "Discovering channels for %d servers", int(serverAddressList.size()));
     for (ServerAddressList::const_iterator it = serverAddressList.begin(); it != serverAddressList.end(); it++) {
         std::string serverAddress = *it;
         discoverServerChannels(serverAddress, channelMap);

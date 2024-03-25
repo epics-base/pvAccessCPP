@@ -435,7 +435,7 @@ bool BlockingUDPTransport::send(const char* buffer, size_t length, const osiSock
 {
     if (IS_LOGGABLE(logLevelDebug))
     {
-        LOG(logLevelDebug, "UDP Tx (%zu) %s -> %s.",
+        LOG(logLevelDebug, "UDP Tx (%lu) %s -> %s.",
             length, _remoteName.c_str(), inetAddressToString(address).c_str());
     }
 
@@ -460,7 +460,7 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, const osiSockAddr& address) 
 
     if (IS_LOGGABLE(logLevelDebug))
     {
-        LOG(logLevelDebug, "Sending %zu bytes %s -> %s.",
+        LOG(logLevelDebug, "Sending %lu bytes %s -> %s.",
             buffer->getRemaining(), _remoteName.c_str(), inetAddressToString(address).c_str());
     }
 
@@ -498,7 +498,7 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, InetAddressType target) {
 
         if (IS_LOGGABLE(logLevelDebug))
         {
-            LOG(logLevelDebug, "Sending %zu bytes %s -> %s.",
+            LOG(logLevelDebug, "Sending %lu bytes %s -> %s.",
                 buffer->getRemaining(), _remoteName.c_str(), inetAddressToString(_sendAddresses[i]).c_str());
         }
 
@@ -685,7 +685,7 @@ void initializeUDPTransports(bool serverFlag,
                 }
             }
             LOG(logLevelDebug,
-                "Broadcast address #%zu: %s. (%sunicast)", i, inetAddressToString(list[i]).c_str(),
+                "Broadcast address #%lu: %s. (%sunicast)", i, inetAddressToString(list[i]).c_str(),
                 isunicast[i]?"":"not ");
         }
 

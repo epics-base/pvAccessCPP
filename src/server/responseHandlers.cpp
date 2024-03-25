@@ -2114,7 +2114,7 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
                     // This really shouldn't happen as the above ensures that _window_open *was* non-zero,
                     // and only we (the sender) will decrement.
                     message("Monitor Logic Error: send outside of window", epics::pvData::warningMessage);
-                    LOG(logLevelError, "Monitor Logic Error: send outside of window %zu", _window_closed.size());
+                    LOG(logLevelError, "Monitor Logic Error: send outside of window %lu", _window_closed.size());
 
                 } else {
                     _window_closed.push_back(element.letGo());

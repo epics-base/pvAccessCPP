@@ -301,7 +301,7 @@ void ChannelSearchManager::flushSendBuffer()
     Transport::shared_pointer nsTransport = m_context.lock()->getNameServerSearchTransport();
     if(nsTransport)
     {
-        LOG(logLevelDebug, "Initiating name server search for %lu channels", m_channels.size());
+        LOG(logLevelDebug, "Initiating name server search for %d channels", int(m_channels.size()));
         nsTransport->enqueueSendRequest(shared_from_this());
     }
     initializeSendBuffer();
