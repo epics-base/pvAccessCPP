@@ -8,16 +8,18 @@
 #include <pv/hexDump.h>
 #include <pv/stringUtility.h>
 
-#include "nameServer.h"
-#include "pvutils.h"
+#define epicsExportSharedSymbols
+#include "pv/nameServer.h"
 
 using namespace std;
 using namespace epics::pvData;
 using std::tr1::dynamic_pointer_cast;
 using std::tr1::static_pointer_cast;
+using epics::pvAccess::ChannelDiscovery::ChannelEntry;
+using epics::pvAccess::ChannelDiscovery::ChannelMap;
+using epics::pvAccess::ChannelDiscovery::ServerAddressList;
 
-namespace epics {
-namespace pvAccess {
+namespace epics { namespace pvAccess {
 
 /*
  * Name server channel find requester
@@ -621,65 +623,6 @@ void NameServer::addServersFromAddresses(ServerAddressList& serverAddressList)
         }
     }
     LOG(logLevelDebug, "Added %d pre-configured server addresses", nAddedServers);
-}
-
-void NameServer::discoverServers(ServerAddressList& serverAddressList)
-{
-    if (!autoDiscovery) {
-        LOG(logLevelDebug, "Skipping server discovery");
-        return;
-    }
-
-    LOG(logLevelDebug, "Starting server discovery");
-    ServerGUID guid = context->getGUID();
-    std::string nsGuid = ::toHex((int8*)guid.value, sizeof(guid.value));
-    ServerMap serverMap;
-    ::discoverServers(timeout, serverMap);
-
-    int nDiscoveredServers = 0;
-    for (ServerMap::const_iterator it = serverMap.begin(); it != serverMap.end(); it++) {
-        const ServerEntry& entry = it->second;
-        if (nsGuid == entry.guid) {
-            LOG(logLevelDebug, "Ignoring our own server GUID 0x%s", entry.guid.c_str());
-            continue;
-        }
-        size_t count = entry.addresses.size();
-        std::string addresses = " ";
-        for (size_t i = 0; i < count; i++) {
-            addresses = addresses + inetAddressToString(entry.addresses[i]) + " ";
-        }
-        LOG(logLevelDebug, "Found server GUID 0x%s version %d: %s@[%s]", entry.guid.c_str(), (int)entry.version, entry.protocol.c_str(), addresses.c_str());
-        if (count > 0) {
-            std::string serverAddress = inetAddressToString(entry.addresses[0]);
-            if (addUniqueServerToList(serverAddress, serverAddressList)) {
-                nDiscoveredServers++;
-            }
-        }
-    }
-    LOG(logLevelDebug, "Discovered %d servers", nDiscoveredServers);
-}
-
-void NameServer::discoverServerChannels(const std::string& serverAddress, ChannelMap& channelMap)
-{
-    LOG(logLevelDebug, "Discovering channels for server %s", serverAddress.c_str());
-    try {
-        PVStructure::shared_pointer ret = getChannelInfo(serverAddress, "channels", timeout);
-        PVStringArray::shared_pointer pvs(ret->getSubField<PVStringArray>("value"));
-        PVStringArray::const_svector val(pvs->view());
-        epicsTimeStamp now;
-        epicsTimeGetCurrent(&now);
-        for (unsigned int i = 0; i < val.size(); i++) {
-            ChannelEntry channelEntry;
-            channelEntry.channelName = val[i];
-            channelEntry.serverAddress = serverAddress;
-            channelEntry.updateTime = now;
-            channelMap[val[i]] = channelEntry;
-        }
-        LOG(logLevelDebug, "Discovered %ld channels for server %s", val.size(), serverAddress.c_str());
-    }
-    catch(std::exception& e) {
-        LOG(logLevelError, "Error retrieving channels for server %s: %s", serverAddress.c_str(), e.what());
-    }
 }
 
 void NameServer::discoverChannels(ServerAddressList& serverAddressList, ChannelMap& channelMap)

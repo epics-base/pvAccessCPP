@@ -33,7 +33,7 @@ pvlist_SRCS += pvutils.cpp
 PROD_DEFAULT += pvans
 pvans_SRCS += pvans.cpp
 pvans_SRCS += pvutils.cpp
-pvans_SRCS += nameServer.cpp
+pvans_SRCS += nameServerImpl.cpp
 
 PROD_LIBS += pvAccessCA pvAccess pvData ca Com
 

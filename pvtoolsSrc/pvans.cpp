@@ -29,13 +29,14 @@
 #include <pv/configuration.h>
 #include <pv/stringUtility.h>
 
-#include "nameServer.h"
-#include "pvutils.h"
+#include "nameServerImpl.h"
 
 using namespace std;
 
 using namespace epics::pvData;
 using namespace epics::pvAccess;
+using epics::pvAccess::ChannelDiscovery::ChannelEntry;
+using epics::pvAccess::ChannelDiscovery::ChannelMap;
 
 namespace {
 
@@ -102,7 +103,7 @@ void readChannelAddressesFromFile(const std::string& inputFile, ChannelMap& chan
         for (int i = 0; i < nTokens-1; i+=2) {
             std::string channelName = tokens[i];
             std::string serverAddress = tokens[i+1];
-            ChannelEntry channelEntry = {channelName, serverAddress, now};
+            ChannelEntry channelEntry(channelName, serverAddress, now);
             channelMap[channelName] = channelEntry;
             LOG(logLevelDebug, "Adding %s/%s channel entry", channelName.c_str(), serverAddress.c_str());
         }
@@ -212,7 +213,7 @@ int main(int argc, char *argv[])
 
     SET_LOG_LEVEL(debug ? logLevelDebug : logLevelError);
 
-    NameServer::shared_pointer srv(new NameServer(ConfigurationBuilder()
+    NameServerImpl::shared_pointer srv(new NameServerImpl(ConfigurationBuilder()
                                    .push_env()
                                    .push_map()
                                    .build()));

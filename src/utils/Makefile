@@ -13,6 +13,7 @@ INC += pv/fairQueue.h
 INC += pv/requester.h
 INC += pv/destroyable.h
 INC += pv/stringUtility.h
+INC += pv/channelDiscovery.h
 
 pvAccess_SRCS += getgroups.cpp
 pvAccess_SRCS += hexDump.cpp
@@ -24,3 +25,4 @@ pvAccess_SRCS += referenceCountingLock.cpp
 pvAccess_SRCS += requester.cpp
 pvAccess_SRCS += wildcard.cpp
 pvAccess_SRCS += stringUtility.cpp
+pvAccess_SRCS += channelDiscovery.cpp
