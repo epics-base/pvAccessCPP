@@ -281,11 +281,11 @@ void NameServerSearchHandler::handleResponse(osiSockAddr* responseFrom, const Tr
             LOG(logLevelDebug, "Search for channel %s, cid %d", name.c_str(), cid);
             if (allowed) {
                 const std::vector<ChannelProvider::shared_pointer>& providers = _context->getChannelProviders();
-                int providerCount = providers.size();
+                unsigned int providerCount = providers.size();
                 std::tr1::shared_ptr<NameServerChannelFindRequesterImpl> channelFindRequester(new NameServerChannelFindRequesterImpl(_context, info, providerCount));
                 channelFindRequester->set(name, searchSequenceId, cid, responseAddress, transport, responseRequired, false);
 
-                for (int i = 0; i < providerCount; i++) {
+                for (unsigned int i = 0; i < providerCount; i++) {
                     providers[i]->channelFind(name, channelFindRequester);
                 }
             }

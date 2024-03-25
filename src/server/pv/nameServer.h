@@ -140,7 +140,6 @@ private:
 };
 
 class epicsShareClass NameServer
-    : public std::tr1::enable_shared_from_this<NameServer>
 {
 public:
     POINTER_DEFINITIONS(NameServer);
