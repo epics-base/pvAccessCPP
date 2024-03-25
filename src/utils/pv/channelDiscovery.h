@@ -11,17 +11,7 @@
 #include <map>
 #include <list>
 
-#ifdef epicsExportSharedSymbols
-#   define channelDiscoveryEpicsExportSharedSymbols
-#   undef epicsExportSharedSymbols
-#endif
-
 #include <epicsTime.h>
-
-#ifdef channelDiscoveryEpicsExportSharedSymbols
-#   define epicsExportSharedSymbols
-#   undef channelDiscoveryEpicsExportSharedSymbols
-#endif
 #include <shareLib.h>
 
 namespace epics { namespace pvAccess { namespace ChannelDiscovery {

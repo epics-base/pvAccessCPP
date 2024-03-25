@@ -4,19 +4,10 @@
 #include <map>
 #include <list>
 
-#ifdef epicsExportSharedSymbols
-#   define nameServerEpicsExportSharedSymbols
-#   undef epicsExportSharedSymbols
-#endif
-
 #include <pv/pvData.h>
 #include <pv/channelDiscovery.h>
 #include <pv/responseHandlers.h>
-
-#ifdef nameServerEpicsExportSharedSymbols
-#   define epicsExportSharedSymbols
-#   undef nameServerEpicsExportSharedSymbols
-#endif
+#include <pv/serverContextImpl.h>
 
 #include <shareLib.h>
 
@@ -165,6 +156,7 @@ public:
 
 protected:
     ServerContextImpl::shared_pointer context;
+    ServerGUID nameServerGuid;
     NameServerChannelProvider::shared_pointer channelProvider;
     double pollPeriod;
     double timeout;

@@ -5,10 +5,11 @@
  */
 
 
-#include <pv/hexDump.h>
-#include <pv/stringUtility.h>
 
 #define epicsExportSharedSymbols
+#include <pv/hexDump.h>
+#include <pv/stringUtility.h>
+#include <pv/remote.h>
 #include "pv/nameServer.h"
 
 using namespace std;
@@ -535,6 +536,7 @@ NameServer::NameServer(const epics::pvAccess::Configuration::shared_pointer& con
     context = ServerContextImpl::create(serverConfig);
     ResponseHandler::shared_pointer searchResponseHandler(new NameServerSearchResponseHandler(context));
     context->initialize(searchResponseHandler, searchResponseHandler);
+    nameServerGuid = context->getGUID();
 }
 
 NameServer::~NameServer()
