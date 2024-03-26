@@ -261,7 +261,7 @@ bool processSearchResponse(const osiSockAddr& responseFrom, ByteBuffer& receiveB
     if (iter != serverMapByGuid.end()) {
         bool found = false;
         std::vector<osiSockAddr>& vec = iter->second.addresses;
-        for (std::vector<osiSockAddr>::const_iterator ai = vec.begin(); ai != vec.end(); ai++) {
+        for (std::vector<osiSockAddr>::const_iterator ai = vec.begin(); ai != vec.end(); ++ai) {
             if (sockAddrAreIdentical(&(*ai), &serverAddress)) {
                 found = true;
                 break;

@@ -15,10 +15,10 @@ TESTPROD_HOST += testDcChannelDiscovery
 testUdpChannelDiscovery_SRCS = udpChannelDiscoveryTest.cpp
 testNsChannelDiscovery_SRCS = nsChannelDiscoveryTest.cpp
 testDcChannelDiscovery_SRCS = dcChannelDiscoveryTest.cpp
+ifneq (RTEMS,$(OS_CLASS))
 testHarness_SRCS += udpChannelDiscoveryTest.cpp
 testHarness_SRCS += nsChannelDiscoveryTest.cpp
 testHarness_SRCS += dcChannelDiscoveryTest.cpp
-ifneq (RTEMS,$(OS_CLASS))
 TESTS += testUdpChannelDiscovery
 TESTS += testNsChannelDiscovery
 TESTS += testDcChannelDiscovery

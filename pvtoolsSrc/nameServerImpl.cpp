@@ -43,7 +43,7 @@ void NameServerImpl::discoverServers(ServerAddressList& serverAddressList)
     ::discoverServers(timeout, serverMap);
 
     int nDiscoveredServers = 0;
-    for (ServerMap::const_iterator it = serverMap.begin(); it != serverMap.end(); it++) {
+    for (ServerMap::const_iterator it = serverMap.begin(); it != serverMap.end(); ++it) {
         const ServerEntry& entry = it->second;
         if (nsGuid == entry.guid) {
             LOG(logLevelDebug, "Ignoring our own server GUID 0x%s", entry.guid.c_str());

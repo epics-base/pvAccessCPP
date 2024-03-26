@@ -23,7 +23,7 @@ public:
     NameServerChannelFindRequesterImpl(const ServerContextImpl::shared_pointer& context, const PeerInfo::const_shared_pointer& peerInfo, epics::pvData::int32 expectedResponseCount);
     virtual ~NameServerChannelFindRequesterImpl();
     void clear();
-    void set(std::string channelName, epics::pvData::int32 searchSequenceId, epics::pvData::int32 cid, osiSockAddr const & sendTo, const Transport::shared_pointer& transport, bool responseRequired, bool serverSearch);
+    void set(const std::string& channelName, epics::pvData::int32 searchSequenceId, epics::pvData::int32 cid, const osiSockAddr& sendTo, const Transport::shared_pointer& transport, bool responseRequired, bool serverSearch);
     virtual void channelFindResult(const epics::pvData::Status& status, const ChannelFind::shared_pointer& channelFind, bool wasFound) OVERRIDE FINAL;
     virtual std::tr1::shared_ptr<const PeerInfo> getPeerInfo() OVERRIDE FINAL;
     virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;

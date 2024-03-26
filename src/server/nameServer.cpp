@@ -31,6 +31,7 @@ NameServerChannelFindRequesterImpl::NameServerChannelFindRequesterImpl(const Ser
     , nameServerGuid(context_->getGUID())
     , nameServerAddress(inetAddressToString(*(context_->getServerInetAddress())))
     , sendTo()
+    , responseRequired(false)
     , channelWasFound(false)
     , context(context_)
     , peer(peer_)
@@ -61,7 +62,7 @@ void NameServerChannelFindRequesterImpl::timerStopped()
 {
 }
 
-void NameServerChannelFindRequesterImpl::set(std::string channelName, int32 searchSequenceId, int32 cid, const osiSockAddr& sendTo, const Transport::shared_pointer& transport, bool responseRequired, bool serverSearch)
+void NameServerChannelFindRequesterImpl::set(const std::string& channelName, int32 searchSequenceId, int32 cid, const osiSockAddr& sendTo, const Transport::shared_pointer& transport, bool responseRequired, bool serverSearch)
 {
     Lock lock(mutex);
     this->channelName = channelName;
@@ -407,6 +408,7 @@ const std::string NameServerChannelProvider::PROVIDER_NAME("remote");
 
 NameServerChannelProvider::NameServerChannelProvider()
     : nsChannelFind()
+    , channelEntryExpirationTime(0)
 {
 }
 
@@ -428,7 +430,7 @@ void NameServerChannelProvider::setChannelEntryExpirationTime(double expirationT
 void NameServerChannelProvider::setStaticChannelEntries(const ChannelMap& channelMap)
 {
     Lock lock(channelMapMutex);
-    for (ChannelMap::const_iterator it = channelMap.begin(); it != channelMap.end(); it++) {
+    for (ChannelMap::const_iterator it = channelMap.begin(); it != channelMap.end(); ++it) {
         std::string channelName = it->first;
         ChannelEntry channelEntry = it->second;
         this->channelMap[channelName] = channelEntry;
@@ -481,7 +483,7 @@ ChannelFind::shared_pointer NameServerChannelProvider::channelList(const Channel
     epics::pvData::PVStringArray::svector channelNames;
     {
         Lock lock(channelMapMutex);
-        for (ChannelMap::const_iterator it = channelMap.begin(); it != channelMap.end(); it++) {
+        for (ChannelMap::const_iterator it = channelMap.begin(); it != channelMap.end(); ++it) {
             std::string channelName = it->first;
             channelNames.push_back(channelName);
         }
@@ -506,7 +508,7 @@ Channel::shared_pointer NameServerChannelProvider::createChannel(const std::stri
 void NameServerChannelProvider::updateChannelMap(const ChannelMap& updatedChannelMap)
 {
     Lock lock(channelMapMutex);
-    for (ChannelMap::const_iterator it = updatedChannelMap.begin(); it != updatedChannelMap.end(); it++) {
+    for (ChannelMap::const_iterator it = updatedChannelMap.begin(); it != updatedChannelMap.end(); ++it) {
         std::string channelName = it->first;
         ChannelEntry channelEntry = it->second;
         channelMap[channelName] = channelEntry;
@@ -630,7 +632,7 @@ void NameServer::addServersFromAddresses(ServerAddressList& serverAddressList)
 void NameServer::discoverChannels(ServerAddressList& serverAddressList, ChannelMap& channelMap)
 {
     LOG(logLevelDebug, "Discovering channels for %d servers", int(serverAddressList.size()));
-    for (ServerAddressList::const_iterator it = serverAddressList.begin(); it != serverAddressList.end(); it++) {
+    for (ServerAddressList::const_iterator it = serverAddressList.begin(); it != serverAddressList.end(); ++it) {
         std::string serverAddress = *it;
         discoverServerChannels(serverAddress, channelMap);
     }
