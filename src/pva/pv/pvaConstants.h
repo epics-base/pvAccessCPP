@@ -8,22 +8,10 @@
 #define PVACONSTANTS_H_
 
 #include <compilerDependencies.h>
-
-#ifdef epicsExportSharedSymbols
-#   define pvaConstantsepicsExportSharedSymbols
-#   undef epicsExportSharedSymbols
-#endif
-
 #include <pv/pvType.h>
-
-#ifdef pvaConstantsepicsExportSharedSymbols
-#   define epicsExportSharedSymbols
-#       undef pvaConstantsepicsExportSharedSymbols
-#endif
 #include <shareLib.h>
 
-namespace epics {
-namespace pvAccess {
+namespace epics { namespace pvAccess {
 
 /** PVA protocol magic number */
 const epics::pvData::int8 PVA_MAGIC = static_cast<epics::pvData::int8>(0xCA);
@@ -89,7 +77,11 @@ epicsShareExtern const std::string PVACCESS_ALL_PROVIDERS;
 
 /** Name of the system env. variable to turn on debugging. */
 epicsShareExtern const std::string PVACCESS_DEBUG;
-}
-}
+
+/** Protocol constants. */
+epicsShareExtern const std::string PVA_TCP_PROTOCOL;
+epicsShareExtern const std::string PVA_UDP_PROTOCOL;
+
+}}
 
 #endif /* PVACONSTANTS_H_ */

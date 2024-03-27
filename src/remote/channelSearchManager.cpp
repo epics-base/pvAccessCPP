@@ -224,7 +224,7 @@ void ChannelSearchManager::send(epics::pvData::ByteBuffer* buffer, TransportSend
     encodeAsIPv6Address(buffer, &anyAddress);
     buffer->putShort((int16_t)ntohs(anyAddress.ia.sin_port));
     buffer->putByte((int8_t)1);
-    SerializeHelper::serializeString(PVA_TCP_PROTOCOL, buffer, control);
+    SerializeHelper::serializeString("tcp", buffer, control);
     buffer->putShort((int16_t)0);  // initial channel count
 
     vector<SearchInstance::shared_pointer> toSend;
@@ -280,7 +280,7 @@ void ChannelSearchManager::initializeSendBuffer()
     m_sendBuffer.putByte((int8_t)1);
 
     MockTransportSendControl control;
-    SerializeHelper::serializeString(PVA_TCP_PROTOCOL, &m_sendBuffer, &control);
+    SerializeHelper::serializeString("tcp", &m_sendBuffer, &control);
     m_sendBuffer.putShort((int16_t)0);  // count
 }
 

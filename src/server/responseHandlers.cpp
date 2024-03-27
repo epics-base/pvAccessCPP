@@ -298,7 +298,7 @@ void ServerEchoHandler::handleResponse(osiSockAddr* responseFrom,
 
 /****************************************************************************************/
 
-const std::string ServerSearchHandler::SUPPORTED_PROTOCOL = PVA_TCP_PROTOCOL;
+const std::string ServerSearchHandler::SUPPORTED_PROTOCOL = "tcp";
 
 ServerSearchHandler::ServerSearchHandler(ServerContextImpl::shared_pointer const & context) :
     AbstractServerResponseHandler(context, "Search request")
@@ -357,12 +357,15 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     {
         string protocol = SerializeHelper::deserializeString(payloadBuffer, transport.get());
         if (SUPPORTED_PROTOCOL == protocol)
+        {
             allowed = true;
+        }
     }
 
     // NOTE: we do not stop reading the buffer
     transport->ensureData(2);
     const int32 count = payloadBuffer->getShort() & 0xFFFF;
+    LOG(logLevelDebug, "Search request from %s is allowed: %d, payload count is %d", strBuffer, int(allowed), count);
 
     // TODO DoS attack?
     //   You bet!  With a reply address encoded in the request we don't even need a forged UDP header.

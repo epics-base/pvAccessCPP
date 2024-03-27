@@ -23,28 +23,21 @@
 #include <pv/timer.h>
 #include <pv/pvData.h>
 #include <pv/sharedPtr.h>
+#include <pv/pvaDefs.h>
 
 #ifdef remoteEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
 #       undef remoteEpicsExportSharedSymbols
 #endif
 
-#include <pv/pvaConstants.h>
 #include <pv/configuration.h>
 #include <pv/fairQueue.h>
-#include <pv/pvaDefs.h>
 
 /// TODO only here because of the Lockable
 #include <pv/pvAccess.h>
 
 namespace epics {
 namespace pvAccess {
-
-/**
- * String constants.
- */
-epicsShareExtern const std::string PVA_TCP_PROTOCOL;
-epicsShareExtern const std::string PVA_UDP_PROTOCOL;
 
 class TransportRegistry;
 class ClientChannelImpl;
@@ -289,6 +282,7 @@ public:
 class Channel;
 class SecurityPlugin;
 class AuthenticationRegistry;
+class Configuration;
 
 /**
  * Not public IF, used by Transports, etc.
