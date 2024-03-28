@@ -557,7 +557,7 @@ void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendContr
 {
     char ipAddrStr[24];
     ipAddrToDottedIP(&_sendTo.ia, ipAddrStr, sizeof(ipAddrStr));
-    LOG(logLevelDebug, "Search response will be sent to %s", ipAddrStr);
+    LOG(logLevelDebug, "Search response will be sent to %s, was found: %d", ipAddrStr, int(_wasFound));
     control->startMessage(CMD_SEARCH_RESPONSE, 12+4+16+2);
 
     Lock guard(_mutex);

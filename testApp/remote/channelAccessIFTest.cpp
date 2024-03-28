@@ -2409,7 +2409,7 @@ PVStructure::shared_pointer ChannelAccessIFTest::createArrayPvRequest() {
 MAIN(testChannelAccess)
 {
     try{
-        SET_LOG_LEVEL(logLevelError);
+        SET_LOG_LEVEL(logLevelDebug);
         ChannelAccessIFTest caRemoteTest;
         return caRemoteTest.runAllTest();
     }catch(std::exception& e){
