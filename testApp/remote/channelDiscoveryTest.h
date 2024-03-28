@@ -8,6 +8,7 @@ class ChannelDiscoveryTest {
 
 public:
 
+    int getNumberOfTests();
     int runAllTests();
     virtual ~ChannelDiscoveryTest() {}
 

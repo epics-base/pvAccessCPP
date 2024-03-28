@@ -8,8 +8,6 @@
 
 #include <pv/logger.h>
 #include <pv/pvAccess.h>
-#include <pv/serverContext.h>
-#include <pv/clientFactory.h>
 #include <pv/clientContextImpl.h>
 
 #include <pv/current_function.h>
@@ -22,9 +20,14 @@ namespace EPVA = epics::pvAccess;
 // int value, increment on process
 const std::string ChannelDiscoveryTest::TEST_SIMPLECOUNTER_CHANNEL_NAME = "testSimpleCounter";
 
-int ChannelDiscoveryTest::runAllTests() {
+int ChannelDiscoveryTest::getNumberOfTests()
+{
+    return 1;
+}
 
-    testPlan(1);
+int ChannelDiscoveryTest::runAllTests()
+{
+    testDiag("Starting channel discovery tests");
     m_provider = ChannelProviderRegistry::clients()->getProvider("pva");
     test_channelDiscovery();
     return testDone();
@@ -32,7 +35,6 @@ int ChannelDiscoveryTest::runAllTests() {
 
 Channel::shared_pointer ChannelDiscoveryTest::createChannel(string channelName, bool debug )
 {
-
     TR1::shared_ptr<SyncChannelRequesterImpl> channelReq(new SyncChannelRequesterImpl(debug));
     Channel::shared_pointer channel = getChannelProvider()->createChannel(channelName, channelReq);
     return channel;
@@ -71,8 +73,8 @@ SyncChannelGetRequesterImpl::shared_pointer ChannelDiscoveryTest::syncCreateChan
     return channelGetReq;
 }
 
-void ChannelDiscoveryTest::test_channelGetInt(Channel::shared_pointer channel,
-        string const & testMethodName) {
+void ChannelDiscoveryTest::test_channelGetInt(Channel::shared_pointer channel, string const & testMethodName)
+{
 
     string request = "record[process=true]field(value)";
 
@@ -95,7 +97,8 @@ void ChannelDiscoveryTest::test_channelGetInt(Channel::shared_pointer channel,
     channel->destroy();
 }
 
-void ChannelDiscoveryTest::test_channelDiscovery() {
+void ChannelDiscoveryTest::test_channelDiscovery()
+{
     testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
     Channel::shared_pointer channel = syncCreateChannel(TEST_SIMPLECOUNTER_CHANNEL_NAME);
     if (!channel.get()) {
