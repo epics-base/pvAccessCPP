@@ -3694,9 +3694,15 @@ public:
                 int index = m_addressIndex % m_addresses.size();
                 osiSockAddr* serverAddress = &m_addresses[index];
                 ipAddrToDottedIP(&serverAddress->ia, strBuffer, sizeof(strBuffer));
-                double delay = (m_addressIndex / m_addresses.size())*STATIC_SEARCH_BASE_DELAY_SEC+STATIC_SEARCH_MIN_DELAY_SEC;
-                LOG(logLevelDebug, "Scheduling direct channel connection attempt for address %s with delay of %.3f seconds.", strBuffer, delay);
-                m_context->getTimer()->scheduleAfterDelay(internal_from_this(), delay);
+                uint16_t port = ntohs(serverAddress->ia.sin_port);
+                if (port > 0) {
+                    double delay = (m_addressIndex / m_addresses.size())*STATIC_SEARCH_BASE_DELAY_SEC+STATIC_SEARCH_MIN_DELAY_SEC;
+                    LOG(logLevelDebug, "Scheduling direct channel connection attempt for address %s with delay of %.3f seconds.", strBuffer, delay);
+                    m_context->getTimer()->scheduleAfterDelay(internal_from_this(), delay);
+                }
+                else {
+                    LOG(logLevelDebug, "Cannot schedule direct channel connection attempt for address %s (port not specified).", strBuffer);
+                }
             }
             m_context->getChannelSearchManager()->registerSearchInstance(internal_from_this(), penalize);
         }
