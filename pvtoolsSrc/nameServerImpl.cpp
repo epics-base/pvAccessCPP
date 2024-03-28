@@ -81,7 +81,7 @@ void NameServerImpl::discoverServerChannels(const std::string& serverAddress, Ch
             channelEntry.updateTime = now;
             channelMap[val[i]] = channelEntry;
         }
-        LOG(logLevelDebug, "Discovered %ld channels for server %s", val.size(), serverAddress.c_str());
+        LOG(logLevelDebug, "Discovered %d channels for server %s", int(val.size()), serverAddress.c_str());
     }
     catch(std::exception& e) {
         LOG(logLevelError, "Error retrieving channels for server %s: %s", serverAddress.c_str(), e.what());

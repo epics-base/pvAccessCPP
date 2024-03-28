@@ -345,7 +345,7 @@ bool discoverServers(double timeOut, ServerMap& serverMapByGuid)
     }
 
     for (size_t i = 0; i < broadcastAddresses.size(); i++) {
-        LOG(logLevelDebug, "Broadcast address #%zu: %s.", i, inetAddressToString(broadcastAddresses[i]).c_str());
+        LOG(logLevelDebug, "Broadcast address #%d: %s.", int(i), inetAddressToString(broadcastAddresses[i]).c_str());
     }
 
     // ---
@@ -431,7 +431,7 @@ bool discoverServers(double timeOut, ServerMap& serverMapByGuid)
         if(pvAccessIsLoggable(logLevelDebug)) {
             char strBuffer[64];
             sockAddrToDottedIP(&broadcastAddresses[i].sa, strBuffer, sizeof(strBuffer));
-            LOG(logLevelDebug, "UDP Tx (%zu) -> %s", sendBuffer.getPosition(), strBuffer);
+            LOG(logLevelDebug, "UDP Tx (%lu) -> %s", sendBuffer.getPosition(), strBuffer);
         }
 
         status = ::sendto(socket, sendBuffer.getBuffer(), sendBuffer.getPosition(), 0,
