@@ -3,6 +3,7 @@
 SRC_DIRS += $(PVACCESS_SRC)/remote
 
 INC += pv/security.h
+INC += pv/remote.h
 INC += pv/serializationHelper.h
 
 pvAccess_SRCS += blockingUDPTransport.cpp

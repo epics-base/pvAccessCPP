@@ -435,7 +435,7 @@ bool BlockingUDPTransport::send(const char* buffer, size_t length, const osiSock
 {
     if (IS_LOGGABLE(logLevelDebug))
     {
-        LOG(logLevelDebug, "UDP Tx (%zu) %s -> %s.",
+        LOG(logLevelDebug, "UDP Tx (%lu) %s -> %s.",
             length, _remoteName.c_str(), inetAddressToString(address).c_str());
     }
 
@@ -460,7 +460,7 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, const osiSockAddr& address) 
 
     if (IS_LOGGABLE(logLevelDebug))
     {
-        LOG(logLevelDebug, "Sending %zu bytes %s -> %s.",
+        LOG(logLevelDebug, "Sending %lu bytes %s -> %s.",
             buffer->getRemaining(), _remoteName.c_str(), inetAddressToString(address).c_str());
     }
 
@@ -498,7 +498,7 @@ bool BlockingUDPTransport::send(ByteBuffer* buffer, InetAddressType target) {
 
         if (IS_LOGGABLE(logLevelDebug))
         {
-            LOG(logLevelDebug, "Sending %zu bytes %s -> %s.",
+            LOG(logLevelDebug, "Sending %lu bytes %s -> %s.",
                 buffer->getRemaining(), _remoteName.c_str(), inetAddressToString(_sendAddresses[i]).c_str());
         }
 
@@ -580,6 +580,7 @@ void initializeUDPTransports(bool serverFlag,
                              const ResponseHandler::shared_pointer& responseHandler,
                              BlockingUDPTransport::shared_pointer& sendTransport,
                              int32& listenPort,
+                             int32& senderPort,
                              bool autoAddressList,
                              const std::string& addressList,
                              const std::string& ignoreAddressList)
@@ -595,7 +596,7 @@ void initializeUDPTransports(bool serverFlag,
     osiSockAddr anyAddress;
     memset(&anyAddress, 0, sizeof(anyAddress));
     anyAddress.ia.sin_family = AF_INET;
-    anyAddress.ia.sin_port = htons(0);
+    anyAddress.ia.sin_port = htons(senderPort);
     anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
     sendTransport = connector.connect(responseHandler, anyAddress, protoVer);
@@ -684,7 +685,7 @@ void initializeUDPTransports(bool serverFlag,
                 }
             }
             LOG(logLevelDebug,
-                "Broadcast address #%zu: %s. (%sunicast)", i, inetAddressToString(list[i]).c_str(),
+                "Broadcast address #%lu: %s. (%sunicast)", i, inetAddressToString(list[i]).c_str(),
                 isunicast[i]?"":"not ");
         }
 
@@ -714,7 +715,7 @@ void initializeUDPTransports(bool serverFlag,
     getSocketAddressList(ignoreAddressVector, ignoreAddressList, 0, 0);
 
     //
-    // Setup UDP trasport(s) (per interface)
+    // Setup UDP transport(s) (per interface)
     //
 
     InetAddrVector tappedNIF;

@@ -14,6 +14,7 @@
 #include <pv/pvaConstants.h>
 #include <pv/pvaVersion.h>
 #include <pv/pvAccess.h>
+#include <pv/remote.h>
 #include <pv/configuration.h>
 
 #include <shareLib.h>
@@ -77,10 +78,22 @@ public:
     virtual epics::pvData::int32 getServerPort() = 0;
 
     /**
+     * Get search server port.
+     * @return search server port.
+     */
+    virtual epics::pvData::int32 getSearchServerPort() = 0;
+
+    /**
      * Get broadcast port.
      * @return broadcast port.
      */
     virtual epics::pvData::int32 getBroadcastPort() = 0;
+
+    /**
+     * Get UDP sender port.
+     * @return UDP sender port.
+     */
+    virtual epics::pvData::int32 getSenderPort() = 0;
 
     /** Return a Configuration with the actual values being used,
      *  including defaults used, and bounds limits applied.
@@ -112,6 +125,8 @@ public:
         Config& providers(const std::vector<ChannelProvider::shared_pointer>& p) { _providers = p; return *this; }
         //! short hand for providers() with a length 1 vector.
         Config& provider(const ChannelProvider::shared_pointer& p) { _providers.push_back(p); return *this; }
+        Configuration::const_shared_pointer getConfiguration() const {return _conf;};
+        std::vector<ChannelProvider::shared_pointer> getProviders() const {return _providers;}
     };
 
     /** Start a new PVA server

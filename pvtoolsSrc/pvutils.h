@@ -8,14 +8,18 @@
 #include <ostream>
 #include <iostream>
 #include <string>
+#include <vector>
+#include <map>
 
 #include <epicsEvent.h>
 #include <epicsMutex.h>
 #include <epicsGuard.h>
+#include <osiSock.h>
 
 #include <pv/event.h>
 #include <pv/pvData.h>
 #include <pv/pvAccess.h>
+#include <pv/pvaConstants.h>
 
 typedef epicsGuard<epicsMutex> Guard;
 typedef epicsGuardRelease<epicsMutex> UnGuard;
@@ -72,7 +76,21 @@ struct Tracker {
     EPICS_NOT_COPYABLE(Tracker)
 };
 
+struct ServerEntry {
+    std::string guid;
+    std::string protocol;
+    std::vector<osiSockAddr> addresses;
+    pvd::int8 version;
+};
+typedef std::map<std::string, ServerEntry> ServerMap;
+
 void jarray(pvd::shared_vector<std::string>& out, const char *inp);
+std::string toHex(pvd::int8* ba, size_t len);
+std::size_t readSize(pvd::ByteBuffer* buffer);
+std::string deserializeString(pvd::ByteBuffer* buffer);
+bool processSearchResponse(const osiSockAddr& responseFrom, pvd::ByteBuffer& receiveBuffer, ServerMap& serverMapByGuid);
+bool discoverServers(double timeOut, ServerMap& serverMapByGuid);
+pvd::PVStructure::shared_pointer getChannelInfo(const std::string& serverAddress, const std::string& queryOp, double timeOut);
 
 
 #endif /* PVUTILS_H */

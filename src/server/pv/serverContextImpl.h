@@ -37,10 +37,11 @@ public:
     ServerContextImpl();
     virtual ~ServerContextImpl();
 
+    void initialize(const ResponseHandler::shared_pointer& responseHandler = ResponseHandler::shared_pointer(), const ResponseHandler::shared_pointer& searchResponseHandler = ResponseHandler::shared_pointer());
+
     //**************** derived from ServerContext ****************//
     const ServerGUID& getGUID() OVERRIDE FINAL;
     const Version& getVersion() OVERRIDE FINAL;
-    void initialize();
     void run(epics::pvData::uint32 seconds) OVERRIDE FINAL;
     void shutdown() OVERRIDE FINAL;
     void printInfo(std::ostream& str, int lvl) OVERRIDE FINAL;
@@ -49,8 +50,11 @@ public:
     epics::pvData::Timer::shared_pointer getTimer() OVERRIDE FINAL;
     Channel::shared_pointer getChannel(pvAccessID id) OVERRIDE FINAL;
     Transport::shared_pointer getSearchTransport() OVERRIDE FINAL;
+    Transport::shared_pointer getNameServerSearchTransport() OVERRIDE FINAL;
+    void releaseNameServerSearchTransport() OVERRIDE FINAL;
     Configuration::const_shared_pointer getConfiguration() OVERRIDE FINAL;
     TransportRegistry* getTransportRegistry() OVERRIDE FINAL;
+    static ServerContextImpl::shared_pointer create(const Config& conf = Config());
 
     virtual void newServerDetected() OVERRIDE FINAL;
 
@@ -83,10 +87,22 @@ public:
     epics::pvData::int32 getServerPort() OVERRIDE FINAL;
 
     /**
+     * Get search server port.
+     * @return search server port.
+     */
+    epics::pvData::int32 getSearchServerPort() OVERRIDE FINAL;
+
+    /**
      * Get broadcast port.
      * @return broadcast port.
      */
     epics::pvData::int32 getBroadcastPort() OVERRIDE FINAL;
+
+    /**
+     * Get UDP sender port.
+     * @return UDP sender port.
+     */
+    epics::pvData::int32 getSenderPort() OVERRIDE FINAL;
 
     /**
      * Get registered beacon server status provider.
@@ -140,6 +156,7 @@ private:
     IfaceNodeVector _ifaceList;
 
     osiSockAddr _ifaceAddr;
+    osiSockAddr _searchIfaceAddr;
 
     /**
      * A space-separated list of address from which to ignore name resolution requests.
@@ -163,9 +180,19 @@ private:
     epics::pvData::int32 _broadcastPort;
 
     /**
+     * UDP sender port.
+     */
+    epics::pvData::int32 _senderPort;
+
+    /**
      * Port number for the server to listen to.
      */
     epics::pvData::int32 _serverPort;
+
+    /**
+     * Search server port.
+     */
+    epics::pvData::int32 _searchServerPort;
 
     /**
      * Length in bytes of the maximum buffer (payload) size that may pass through PVA.
@@ -197,7 +224,16 @@ private:
      */
     TransportRegistry _transportRegistry;
 
+    /**
+     * TCP search acceptor
+     */
+    BlockingTCPAcceptor::shared_pointer _searchAcceptor;
+
+    /**
+     * Response handlers
+     */
     ResponseHandler::shared_pointer _responseHandler;
+    ResponseHandler::shared_pointer _searchResponseHandler;
 
     // const after loadConfiguration()
     std::vector<ChannelProvider::shared_pointer> _channelProviders;

@@ -7,18 +7,7 @@
 #ifndef CHANNELSEARCHMANAGER_H
 #define CHANNELSEARCHMANAGER_H
 
-#ifdef epicsExportSharedSymbols
-#   define channelSearchManagerEpicsExportSharedSymbols
-#   undef epicsExportSharedSymbols
-#endif
-
 #include <osiSock.h>
-
-#ifdef channelSearchManagerEpicsExportSharedSymbols
-#   define epicsExportSharedSymbols
-#       undef channelSearchManagerEpicsExportSharedSymbols
-#endif
-
 #include <pv/pvaDefs.h>
 #include <pv/remote.h>
 
@@ -53,6 +42,7 @@ public:
 
 class ChannelSearchManager :
         public epics::pvData::TimerCallback,
+        public TransportSender,
         public std::tr1::enable_shared_from_this<ChannelSearchManager>
 {
 public:
@@ -99,12 +89,18 @@ public:
     /// Timer stooped callback.
     virtual void timerStopped() OVERRIDE FINAL;
 
+    // Transport sender interface.
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
+
     /**
      * Private constructor.
      * @param context
      */
     ChannelSearchManager(Context::shared_pointer const & context);
     void activate();
+
+    // Releases name server transport.
+    void releaseNameServerTransport();
 
 private:
 

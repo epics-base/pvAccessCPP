@@ -76,7 +76,7 @@ public:
     }
 
     virtual std::string getType() const OVERRIDE FINAL {
-        return std::string("udp");
+        return PVA_UDP_PROTOCOL;
     }
 
     virtual std::size_t getReceiveBufferSize() const OVERRIDE FINAL {
@@ -195,6 +195,11 @@ public:
     }
 
     virtual void release(pvAccessID /*clientId*/) OVERRIDE FINAL {}
+
+    virtual bool isUsed() OVERRIDE FINAL
+    {
+        return false;
+    }
 
     /**
      * Set ignore list.
@@ -401,6 +406,7 @@ void initializeUDPTransports(
     const ResponseHandler::shared_pointer& responseHandler,
     BlockingUDPTransport::shared_pointer& sendTransport,
     epics::pvData::int32& listenPort,
+    epics::pvData::int32& senderPort,
     bool autoAddressList,
     const std::string& addressList,
     const std::string& ignoreAddressList);

@@ -33,3 +33,9 @@ TESTS += testWildcard
 
 TESTPROD_HOST += showauth
 showauth_SRCS += showauth.cpp
+
+TESTPROD_HOST += testStringUtility
+testStringUtility_SRCS = testStringUtility.cpp
+testHarness_SRCS += testStringUtility.cpp
+TESTS += testStringUtility
+

@@ -2731,6 +2731,11 @@ struct TestServer
     {
         return context->getServerPort();
     }
+    // Use with EPICS_PVA_BROADCAST_PORT==0 for dynamic port (unit-tests)
+    unsigned short getSearchServerPort()
+    {
+        return context->getSearchServerPort();
+    }
     unsigned short getBroadcastPort()
     {
         return context->getBroadcastPort();

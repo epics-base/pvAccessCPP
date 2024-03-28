@@ -37,12 +37,15 @@ ServerContextImpl::ServerContextImpl():
     _autoBeaconAddressList(true),
     _beaconPeriod(15.0),
     _broadcastPort(PVA_BROADCAST_PORT),
+    _senderPort(PVA_UDP_SENDER_PORT),
     _serverPort(PVA_SERVER_PORT),
+    _searchServerPort(PVA_BROADCAST_PORT),
     _receiveBufferSize(MAX_TCP_RECV),
     _timer(new Timer("PVAS timers", lowerPriority)),
     _beaconEmitter(),
     _acceptor(),
     _transportRegistry(),
+    _searchAcceptor(),
     _channelProviders(),
     _beaconServerStatusProvider(),
     _startTime()
@@ -142,9 +145,17 @@ void ServerContextImpl::loadConfiguration()
 
     _broadcastPort = config->getPropertyAsInteger("EPICS_PVA_BROADCAST_PORT", _broadcastPort);
     _broadcastPort = config->getPropertyAsInteger("EPICS_PVAS_BROADCAST_PORT", _broadcastPort);
+    _senderPort = config->getPropertyAsInteger("EPICS_PVA_UDP_SENDER_PORT", _senderPort);
+    _senderPort = config->getPropertyAsInteger("EPICS_PVAS_UDP_SENDER_PORT", _senderPort);
 
     _receiveBufferSize = config->getPropertyAsInteger("EPICS_PVA_MAX_ARRAY_BYTES", _receiveBufferSize);
     _receiveBufferSize = config->getPropertyAsInteger("EPICS_PVAS_MAX_ARRAY_BYTES", _receiveBufferSize);
+
+    // TCP search
+    memset(&_searchIfaceAddr, 0, sizeof(_searchIfaceAddr));
+    _searchIfaceAddr.ia.sin_family = AF_INET;
+    _searchIfaceAddr.ia.sin_addr.s_addr = _ifaceAddr.ia.sin_addr.s_addr;
+    _searchIfaceAddr.ia.sin_port = htons(_broadcastPort);
 
     if(_channelProviders.empty()) {
         std::string providers = config->getPropertyAsString("EPICS_PVAS_PROVIDER_NAMES", PVACCESS_DEFAULT_PROVIDER);
@@ -246,6 +257,9 @@ ServerContextImpl::getCurrentConfig()
     SET("EPICS_PVAS_BROADCAST_PORT", getBroadcastPort());
     SET("EPICS_PVA_BROADCAST_PORT", getBroadcastPort());
 
+    SET("EPICS_PVAS_UDP_SENDER_PORT", getSenderPort());
+    SET("EPICS_PVA_UDP_SENDER_PORT", getSenderPort());
+
     SET("EPICS_PVAS_MAX_ARRAY_BYTES", getReceiveBufferSize());
     SET("EPICS_PVA_MAX_ARRAY_BYTES", getReceiveBufferSize());
 
@@ -262,7 +276,7 @@ bool ServerContextImpl::isChannelProviderNamePreconfigured()
     return config->hasProperty("EPICS_PVAS_PROVIDER_NAMES");
 }
 
-void ServerContextImpl::initialize()
+void ServerContextImpl::initialize(const ResponseHandler::shared_pointer& responseHandler, const ResponseHandler::shared_pointer& searchResponseHandler)
 {
     Lock guard(_mutex);
 
@@ -271,16 +285,36 @@ void ServerContextImpl::initialize()
 
     ServerContextImpl::shared_pointer thisServerContext = shared_from_this();
     // we create reference cycles here which are broken by our shutdown() method,
-    _responseHandler.reset(new ServerResponseHandler(thisServerContext));
+    if (responseHandler)
+    {
+        _responseHandler = responseHandler;
+    }
+    else
+    {
+        _responseHandler.reset(new ServerResponseHandler(thisServerContext));
+    }
+    if (searchResponseHandler)
+    {
+        _searchResponseHandler = searchResponseHandler;
+    }
+    else
+    {
+        _searchResponseHandler.reset(new ServerSearchResponseHandler(thisServerContext));
+    }
 
     _acceptor.reset(new BlockingTCPAcceptor(thisServerContext, _responseHandler, _ifaceAddr, _receiveBufferSize));
     _serverPort = ntohs(_acceptor->getBindAddress()->ia.sin_port);
+    LOG(logLevelDebug, "Server port: %d", _serverPort);
+
+    // TCP search listener
+    _searchAcceptor.reset(new BlockingTCPAcceptor(thisServerContext, _searchResponseHandler, _searchIfaceAddr, MAX_TCP_RECV));
+    _searchServerPort = ntohs(_searchAcceptor->getBindAddress()->ia.sin_port);
+    LOG(logLevelDebug, "Search server port: %d", _searchServerPort);
 
     // setup broadcast UDP transport
-    initializeUDPTransports(true, _udpTransports, _ifaceList, _responseHandler, _broadcastTransport,
-                            _broadcastPort, _autoBeaconAddressList, _beaconAddressList, _ignoreAddressList);
+    initializeUDPTransports(true, _udpTransports, _ifaceList, _responseHandler, _broadcastTransport, _broadcastPort, _senderPort, _autoBeaconAddressList, _beaconAddressList, _ignoreAddressList);
 
-    _beaconEmitter.reset(new BeaconEmitter("tcp", _broadcastTransport, thisServerContext));
+    _beaconEmitter.reset(new BeaconEmitter(PVA_TCP_PROTOCOL, _broadcastTransport, thisServerContext));
 
     _beaconEmitter->start();
 }
@@ -346,6 +380,14 @@ void ServerContextImpl::shutdown()
         _acceptor.reset();
     }
 
+    // clear search acceptor
+    if (_searchAcceptor)
+    {
+        _searchAcceptor->destroy();
+        LEAK_CHECK(_searchAcceptor, "_searchAcceptor")
+        _searchAcceptor.reset();
+    }
+
     // this will also destroy all channels
     _transportRegistry.clear();
 
@@ -355,6 +397,9 @@ void ServerContextImpl::shutdown()
 
     // response handlers hold strong references to us,
     // so must break the cycles
+    LEAK_CHECK(_searchResponseHandler, "_searchResponseHandler")
+    _searchResponseHandler.reset();
+
     LEAK_CHECK(_responseHandler, "_responseHandler")
     _responseHandler.reset();
 
@@ -380,6 +425,7 @@ void ServerContextImpl::printInfo(ostream& str, int lvl)
         SHOW(EPICS_PVAS_AUTO_BEACON_ADDR_LIST)
         SHOW(EPICS_PVAS_BEACON_PERIOD)
         SHOW(EPICS_PVAS_BROADCAST_PORT)
+        SHOW(EPICS_PVAS_UDP_SENDER_PORT)
         SHOW(EPICS_PVAS_SERVER_PORT)
         SHOW(EPICS_PVAS_PROVIDER_NAMES)
 #undef SHOW
@@ -480,9 +526,19 @@ int32 ServerContextImpl::getServerPort()
     return _serverPort;
 }
 
+int32 ServerContextImpl::getSearchServerPort()
+{
+    return _searchServerPort;
+}
+
 int32 ServerContextImpl::getBroadcastPort()
 {
     return _broadcastPort;
+}
+
+int32 ServerContextImpl::getSenderPort()
+{
+    return _senderPort;
 }
 
 BeaconServerStatusProvider::shared_pointer ServerContextImpl::getBeaconServerStatusProvider()
@@ -531,6 +587,16 @@ Transport::shared_pointer ServerContextImpl::getSearchTransport()
     return Transport::shared_pointer();
 }
 
+Transport::shared_pointer ServerContextImpl::getNameServerSearchTransport()
+{
+    // not used
+    return Transport::shared_pointer();
+}
+
+void ServerContextImpl::releaseNameServerSearchTransport()
+{
+}
+
 void ServerContextImpl::newServerDetected()
 {
     // not used
@@ -573,6 +639,29 @@ struct shutdown_dtor {
         wrapped.reset();
     }
 };
+}
+
+ServerContextImpl::shared_pointer ServerContextImpl::create(const Config &conf)
+{
+    ServerContextImpl::shared_pointer ret(new ServerContextImpl());
+    ret->configuration = conf.getConfiguration();
+    ret->_channelProviders = conf.getProviders();
+
+    if (!ret->configuration)
+    {
+        ConfigurationProvider::shared_pointer configurationProvider = ConfigurationFactory::getProvider();
+        ret->configuration = configurationProvider->getConfiguration("pvAccess-server");
+        if (!ret->configuration)
+        {
+            ret->configuration = configurationProvider->getConfiguration("system");
+        }
+    }
+    if(!ret->configuration) {
+        ret->configuration = ConfigurationBuilder().push_env().build();
+    }
+
+    ret->loadConfiguration();
+    return ret;
 }
 
 ServerContext::shared_pointer ServerContext::create(const Config &conf)

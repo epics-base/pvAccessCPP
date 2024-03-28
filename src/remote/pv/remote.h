@@ -23,16 +23,15 @@
 #include <pv/timer.h>
 #include <pv/pvData.h>
 #include <pv/sharedPtr.h>
+#include <pv/pvaDefs.h>
 
 #ifdef remoteEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
 #       undef remoteEpicsExportSharedSymbols
 #endif
 
-#include <pv/pvaConstants.h>
 #include <pv/configuration.h>
 #include <pv/fairQueue.h>
-#include <pv/pvaDefs.h>
 
 /// TODO only here because of the Lockable
 #include <pv/pvAccess.h>
@@ -186,6 +185,11 @@ public:
     virtual void release(pvAccessID clientId) = 0;
 
     /**
+     * Is transport used
+     */
+    virtual bool isUsed() = 0;
+
+    /**
      * Get protocol type (tcp, udp, ssl, etc.).
      * @return protocol type.
      */
@@ -278,6 +282,7 @@ public:
 class Channel;
 class SecurityPlugin;
 class AuthenticationRegistry;
+class Configuration;
 
 /**
  * Not public IF, used by Transports, etc.
@@ -305,6 +310,8 @@ public:
 
     virtual std::tr1::shared_ptr<Channel> getChannel(pvAccessID id) = 0;
     virtual Transport::shared_pointer getSearchTransport() = 0;
+    virtual Transport::shared_pointer getNameServerSearchTransport() = 0;
+    virtual void releaseNameServerSearchTransport() = 0;
 };
 
 /**

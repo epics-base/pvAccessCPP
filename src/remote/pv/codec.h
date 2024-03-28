@@ -303,7 +303,7 @@ public:
     virtual void invalidDataStreamHandler() OVERRIDE FINAL;
 
     virtual std::string getType() const OVERRIDE FINAL {
-        return std::string("tcp");
+        return PVA_TCP_PROTOCOL;
     }
 
     virtual void processControlMessage() OVERRIDE FINAL {
@@ -477,6 +477,11 @@ public:
 
     virtual void release(pvAccessID /*clientId*/) OVERRIDE FINAL {}
 
+    virtual bool isUsed() OVERRIDE FINAL
+    {
+        return false;
+    }
+
     pvAccessID preallocateChannelSID();
 
     void depreallocateChannelSID(pvAccessID /*sid*/) {}
@@ -611,6 +616,8 @@ public:
     virtual bool acquire(std::tr1::shared_ptr<ClientChannelImpl> const & client) OVERRIDE FINAL;
 
     virtual void release(pvAccessID clientId) OVERRIDE FINAL;
+
+    virtual bool isUsed() OVERRIDE FINAL;
 
     virtual void send(epics::pvData::ByteBuffer* buffer,
                       TransportSendControl* control) OVERRIDE FINAL;

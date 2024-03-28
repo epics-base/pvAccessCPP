@@ -16,10 +16,6 @@ using std::string;
 namespace epics {
 namespace pvAccess {
 
-const std::string PVACCESS_DEFAULT_PROVIDER("local");
-const std::string PVACCESS_ALL_PROVIDERS("<all>");
-const std::string PVACCESS_DEBUG("EPICS_PVA_DEBUG");
-
 Version::Version(std::string const & productName,
                  std::string const & implementationLangugage,
                  int majorVersion, int minorVersion,
