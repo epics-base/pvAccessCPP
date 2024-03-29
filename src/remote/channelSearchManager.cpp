@@ -210,7 +210,7 @@ void ChannelSearchManager::newServerDetected()
 
 void ChannelSearchManager::send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control)
 {
-    control->startMessage(CMD_SEARCH, 4+1+3+16+2+1+4);
+    control->startMessage(CMD_SEARCH, 4+1+3+16+2+1+4+2);
     buffer->putInt(m_sequenceNumber);
     buffer->putByte((int8_t)QOS_REPLY_REQUIRED); // CAST_POSITION
     buffer->putByte((int8_t)0); // reserved
