@@ -59,7 +59,7 @@ int runAllTests() {
 MAIN(testUdpChannelDiscovery)
 {
     try{
-        SET_LOG_LEVEL(logLevelDebug);
+        SET_LOG_LEVEL(logLevelError);
         return runAllTests();
     }
     catch(std::exception& e) {

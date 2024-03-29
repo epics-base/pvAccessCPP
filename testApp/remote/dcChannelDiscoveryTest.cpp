@@ -61,7 +61,7 @@ int runAllTests() {
 MAIN(testDcChannelDiscovery)
 {
     try{
-        SET_LOG_LEVEL(logLevelDebug);
+        SET_LOG_LEVEL(logLevelError);
         return runAllTests();
     }
     catch(std::exception& e) {
