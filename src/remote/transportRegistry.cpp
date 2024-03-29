@@ -127,7 +127,7 @@ void TransportRegistry::clear()
     if(temp.empty())
         return;
 
-    LOG(logLevelDebug, "Context still has %lu transport(s) active and closing...", temp.size());
+    LOG(logLevelDebug, "Context still has %lu transport(s) active and closing...", static_cast<unsigned long>(temp.size()));
 
     for(transports_t::iterator it(temp.begin()), end(temp.end());
         it != end; ++it)

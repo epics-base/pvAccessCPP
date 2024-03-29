@@ -1609,7 +1609,7 @@ void BlockingServerTCPTransportCodec::destroyAllChannels() {
         LOG(
             logLevelDebug,
             "Transport to %s still has %lu channel(s) active and closing...",
-            _socketName.c_str(), _channels.size());
+            _socketName.c_str(), static_cast<unsigned long>(_channels.size()));
     }
 
     _channels_t temp;
@@ -1790,7 +1790,7 @@ void BlockingClientTCPTransportCodec::internalClose() {
             LOG(
                 logLevelDebug,
                 "Transport to %s still has %lu client(s) active and closing...",
-                _socketName.c_str(), refs);
+                _socketName.c_str(), static_cast<unsigned long>(refs));
         }
 
         TransportClientMap_t::iterator it = _owners.begin();
