@@ -531,7 +531,7 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/,
             _context->s_channelNameToProvider[_name] = channelFind->getChannelProvider();
         }
         _wasFound = wasFound;
-        if (_transport && _transport->getType() == PVA_TCP_PROTOCOL)
+        if (_transport && _transport->getType() == "tcp")
         {
             TransportSender::shared_pointer thisSender = shared_from_this();
             _transport->enqueueSendRequest(thisSender);

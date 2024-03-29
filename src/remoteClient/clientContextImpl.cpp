@@ -2605,7 +2605,7 @@ public:
         bool found = payloadBuffer->getByte() != 0;
         if (!found)
         {
-            if (transport->getType() == PVA_TCP_PROTOCOL)
+            if (transport->getType() == "tcp")
             {
                 LOG(logLevelDebug, "No channels found, releasing name server transport");
                 csm->releaseNameServerTransport();
@@ -2761,7 +2761,7 @@ public:
         serverAddress.ia.sin_port = htons(port);
 
         string protocol(SerializeHelper::deserializeString(payloadBuffer, transport.get()));
-        if(protocol != PVA_TCP_PROTOCOL)
+        if(protocol != "tcp")
             return;
 
         // TODO optimize

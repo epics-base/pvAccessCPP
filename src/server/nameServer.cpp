@@ -103,7 +103,7 @@ void NameServerChannelFindRequesterImpl::channelFindResult(const Status& /*statu
                 channelServerAddress = nsChannelProvider->getChannelServerAddress(channelName);
             }
         }
-        if (transport && transport->getType() == PVA_TCP_PROTOCOL) {
+        if (transport && transport->getType() == "tcp") {
             TransportSender::shared_pointer thisSender = shared_from_this();
             transport->enqueueSendRequest(thisSender);
         }
@@ -169,7 +169,7 @@ void NameServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendC
 /*
  * Name server search handler
  */
-const std::string NameServerSearchHandler::SUPPORTED_PROTOCOL = PVA_TCP_PROTOCOL;
+const std::string NameServerSearchHandler::SUPPORTED_PROTOCOL = "tcp";
 
 NameServerSearchHandler::NameServerSearchHandler(const ServerContextImpl::shared_pointer& context)
     : AbstractServerResponseHandler(context, "Search request")

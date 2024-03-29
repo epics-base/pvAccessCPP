@@ -314,7 +314,7 @@ void ServerContextImpl::initialize(const ResponseHandler::shared_pointer& respon
     // setup broadcast UDP transport
     initializeUDPTransports(true, _udpTransports, _ifaceList, _responseHandler, _broadcastTransport, _broadcastPort, _senderPort, _autoBeaconAddressList, _beaconAddressList, _ignoreAddressList);
 
-    _beaconEmitter.reset(new BeaconEmitter(PVA_TCP_PROTOCOL, _broadcastTransport, thisServerContext));
+    _beaconEmitter.reset(new BeaconEmitter("tcp", _broadcastTransport, thisServerContext));
 
     _beaconEmitter->start();
 }
