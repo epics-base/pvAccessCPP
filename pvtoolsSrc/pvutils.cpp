@@ -351,7 +351,7 @@ bool discoverServers(double timeOut, ServerMap& serverMapByGuid)
     // ---
 
     int optval = 1;
-    int status = ::setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &optval, sizeof(optval));
+    int status = ::setsockopt(socket, SOL_SOCKET, SO_BROADCAST, reinterpret_cast<char*>(&optval), sizeof(optval));
     if (status) {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
@@ -386,7 +386,7 @@ bool discoverServers(double timeOut, ServerMap& serverMapByGuid)
     timeout.tv_usec = 250000;
 #endif
     status = ::setsockopt (socket, SOL_SOCKET, SO_RCVTIMEO,
-                           &timeout, sizeof(timeout));
+                           reinterpret_cast<char*>(&timeout), sizeof(timeout));
     if (status) {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
