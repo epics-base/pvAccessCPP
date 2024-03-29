@@ -85,7 +85,7 @@ struct ServerEntry {
 typedef std::map<std::string, ServerEntry> ServerMap;
 
 void jarray(pvd::shared_vector<std::string>& out, const char *inp);
-std::string toHex(pvd::int8* ba, size_t len);
+std::string toHex(char ba[], size_t len);
 std::size_t readSize(pvd::ByteBuffer* buffer);
 std::string deserializeString(pvd::ByteBuffer* buffer);
 bool processSearchResponse(const osiSockAddr& responseFrom, pvd::ByteBuffer& receiveBuffer, ServerMap& serverMapByGuid);

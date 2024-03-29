@@ -38,7 +38,7 @@ void NameServerImpl::discoverServers(ServerAddressList& serverAddressList)
     }
 
     LOG(logLevelDebug, "Starting server discovery");
-    std::string nsGuid = ::toHex((int8*)nameServerGuid.value, sizeof(nameServerGuid.value));
+    std::string nsGuid = ::toHex(nameServerGuid.value, sizeof(nameServerGuid.value));
     ServerMap serverMap;
     ::discoverServers(timeout, serverMap);
 

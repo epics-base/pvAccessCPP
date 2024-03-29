@@ -134,7 +134,7 @@ void jarray(pvd::shared_vector<std::string>& out, const char *inp)
 }
 
 // Get hex representation of byte.
-std::string toHex(int8* ba, size_t len)
+std::string toHex(char ba[], size_t len)
 {
     // Byte to hexchar mapping.
     static const char lookup[] = {
@@ -146,7 +146,7 @@ std::string toHex(int8* ba, size_t len)
 
     for (size_t i = 0; i < len; i++)
     {
-        int8 b = ba[i];
+        char b = ba[i];
 
         int upper = (b>>4)&0x0F;
         sb += lookup[upper];
@@ -255,7 +255,7 @@ bool processSearchResponse(const osiSockAddr& responseFrom, ByteBuffer& receiveB
     /*bool found =*/ receiveBuffer.getByte(); // != 0;
 
 
-    std::string guidString = toHex((int8*)guid.value, sizeof(guid.value));
+    std::string guidString = toHex(guid.value, sizeof(guid.value));
 
     ServerMap::iterator iter = serverMapByGuid.find(guidString);
     if (iter != serverMapByGuid.end()) {
@@ -351,7 +351,7 @@ bool discoverServers(double timeOut, ServerMap& serverMapByGuid)
     // ---
 
     int optval = 1;
-    int status = ::setsockopt(socket, SOL_SOCKET, SO_BROADCAST, (char *)&optval, sizeof(optval));
+    int status = ::setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &optval, sizeof(optval));
     if (status) {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
@@ -366,7 +366,7 @@ bool discoverServers(double timeOut, ServerMap& serverMapByGuid)
     bindAddr.ia.sin_port = htons(0);
     bindAddr.ia.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    status = ::bind(socket, (sockaddr*)&(bindAddr.sa), sizeof(sockaddr));
+    status = ::bind(socket, static_cast<sockaddr*>(&bindAddr.sa), sizeof(sockaddr));
     if (status) {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
@@ -386,7 +386,7 @@ bool discoverServers(double timeOut, ServerMap& serverMapByGuid)
     timeout.tv_usec = 250000;
 #endif
     status = ::setsockopt (socket, SOL_SOCKET, SO_RCVTIMEO,
-                           (char*)&timeout, sizeof(timeout));
+                           &timeout, sizeof(timeout));
     if (status) {
         char errStr[64];
         epicsSocketConvertErrnoToString(errStr, sizeof(errStr));
@@ -462,9 +462,9 @@ bool discoverServers(double timeOut, ServerMap& serverMapByGuid)
         receiveBuffer.clear();
 
         // receive packet from socket
-        int bytesRead = ::recvfrom(socket, (char*)receiveBuffer.getBuffer(),
+        int bytesRead = ::recvfrom(socket, const_cast<char*>(receiveBuffer.getBuffer()),
                                    receiveBuffer.getRemaining(), 0,
-                                   (sockaddr*)&fromAddress, &addrStructSize);
+                                   static_cast<sockaddr*>(&fromAddress.sa), &addrStructSize);
 
         if (bytesRead > 0) {
             if(pvAccessIsLoggable(logLevelDebug)) {
