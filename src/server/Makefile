@@ -4,12 +4,7 @@ SRC_DIRS += $(PVACCESS_SRC)/server
 
 INC += pv/serverContext.h
 INC += pv/beaconServerStatusProvider.h
-INC += pv/baseChannelRequester.h
-INC += pv/beaconEmitter.h
 INC += pv/nameServer.h
-INC += pv/responseHandlers.h
-INC += pv/serverChannelImpl.h
-INC += pv/serverContextImpl.h
 INC += pva/server.h
 INC += pva/sharedstate.h
 

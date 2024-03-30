@@ -4,12 +4,15 @@
  * in file LICENSE that is included with this distribution.
  */
 
-
-
 #define epicsExportSharedSymbols
 #include <pv/hexDump.h>
+#include <pv/logger.h>
+#include <pv/sharedPtr.h>
+#include <pv/security.h>
 #include <pv/stringUtility.h>
 #include <pv/remote.h>
+#include "pv/responseHandlers.h"
+#include "pv/serverContextImpl.h"
 #include "pv/nameServer.h"
 
 using namespace std;
@@ -25,6 +28,41 @@ namespace epics { namespace pvAccess {
 /*
  * Name server channel find requester
  */
+class NameServerChannelFindRequesterImpl
+    : public ChannelFindRequester
+    , public TransportSender
+    , public epics::pvData::TimerCallback
+    , public std::tr1::enable_shared_from_this<NameServerChannelFindRequesterImpl>
+{
+public:
+    NameServerChannelFindRequesterImpl(const ServerContextImpl::shared_pointer& context, const PeerInfo::const_shared_pointer& peerInfo, epics::pvData::int32 expectedResponseCount);
+    virtual ~NameServerChannelFindRequesterImpl();
+    void clear();
+    void set(const std::string& channelName, epics::pvData::int32 searchSequenceId, epics::pvData::int32 cid, const osiSockAddr& sendTo, const Transport::shared_pointer& transport, bool responseRequired, bool serverSearch);
+    virtual void channelFindResult(const epics::pvData::Status& status, const ChannelFind::shared_pointer& channelFind, bool wasFound) OVERRIDE FINAL;
+    virtual std::tr1::shared_ptr<const PeerInfo> getPeerInfo() OVERRIDE FINAL;
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
+    virtual void callback() OVERRIDE FINAL;
+    virtual void timerStopped() OVERRIDE FINAL;
+
+private:
+    mutable epics::pvData::Mutex mutex;
+    ServerGUID nameServerGuid;
+    std::string nameServerAddress;
+    std::string channelName;
+    std::string channelServerAddress;
+    epics::pvData::int32 searchSequenceId;
+    epics::pvData::int32 cid;
+    osiSockAddr sendTo;
+    Transport::shared_pointer transport;
+    bool responseRequired;
+    bool channelWasFound;
+    const ServerContextImpl::shared_pointer context;
+    const PeerInfo::const_shared_pointer peer;
+    const epics::pvData::int32 expectedResponseCount;
+    epics::pvData::int32 responseCount;
+    bool serverSearch;
+};
 
 NameServerChannelFindRequesterImpl::NameServerChannelFindRequesterImpl(const ServerContextImpl::shared_pointer& context_, const PeerInfo::const_shared_pointer& peer_, int32 expectedResponseCount_)
     : mutex()
@@ -169,6 +207,18 @@ void NameServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendC
 /*
  * Name server search handler
  */
+class NameServerSearchHandler
+    : public AbstractServerResponseHandler
+{
+public:
+    static const std::string SUPPORTED_PROTOCOL;
+
+    NameServerSearchHandler(const ServerContextImpl::shared_pointer& context);
+    virtual ~NameServerSearchHandler();
+
+    virtual void handleResponse(osiSockAddr* responseFrom, const Transport::shared_pointer& transport, epics::pvData::int8 version, epics::pvData::int8 command, std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
+};
+
 const std::string NameServerSearchHandler::SUPPORTED_PROTOCOL = "tcp";
 
 NameServerSearchHandler::NameServerSearchHandler(const ServerContextImpl::shared_pointer& context)
@@ -313,6 +363,32 @@ void NameServerSearchHandler::handleResponse(osiSockAddr* responseFrom, const Tr
 /*
  * Name server search response handler
  */
+class NameServerSearchResponseHandler
+    : public ResponseHandler
+{
+public:
+    NameServerSearchResponseHandler(const ServerContextImpl::shared_pointer& context);
+    virtual ~NameServerSearchResponseHandler();
+    virtual void handleResponse(osiSockAddr* responseFrom, const Transport::shared_pointer& transport, epics::pvData::
+int8 version, epics::pvData::int8 command, std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE
+ FINAL;
+
+private:
+    ServerBadResponse badResponseHandler;
+    ServerNoopResponse beaconHandler;
+    ServerConnectionValidationHandler validationHandler;
+    ServerEchoHandler echoHandler;
+    NameServerSearchHandler searchHandler;
+    AuthNZHandler authnzHandler;
+    ServerCreateChannelHandler createChannelHandler;
+    ServerDestroyChannelHandler destroyChannelHandler;
+    ServerRPCHandler rpcHandler;
+
+    // Table of response handlers for each command ID.
+    std::vector<ResponseHandler*> handlerTable;
+
+};
+
 NameServerSearchResponseHandler::NameServerSearchResponseHandler(const ServerContextImpl::shared_pointer& context)
     : ResponseHandler(context.get(), "NameServerSearchResponseHandler")
     , badResponseHandler(context)
@@ -377,6 +453,22 @@ void NameServerSearchResponseHandler::handleResponse(osiSockAddr* responseFrom, 
 /*
  * Name server channel find
  */
+class NameServerChannelFind
+    : public ChannelFind
+{
+public:
+    POINTER_DEFINITIONS(NameServerChannelFind);
+
+    NameServerChannelFind(ChannelProvider::shared_pointer& provider);
+    virtual ~NameServerChannelFind();
+    virtual void destroy();
+    virtual ChannelProvider::shared_pointer getChannelProvider();
+    virtual void cancel();
+
+private:
+    ChannelProvider::weak_pointer channelProvider;
+};
+
 NameServerChannelFind::NameServerChannelFind(ChannelProvider::shared_pointer& provider)
     : channelProvider(provider)
 {
@@ -403,7 +495,6 @@ void NameServerChannelFind::cancel()
 /*
  * Name server channel provider class
  */
-
 const std::string NameServerChannelProvider::PROVIDER_NAME("remote");
 
 NameServerChannelProvider::NameServerChannelProvider()
@@ -535,10 +626,11 @@ NameServer::NameServer(const epics::pvAccess::Configuration::shared_pointer& con
 {
     channelProvider->initialize();
     ServerContext::Config serverConfig = ServerContext::Config().config(conf).provider(channelProvider);
-    context = ServerContextImpl::create(serverConfig);
-    ResponseHandler::shared_pointer searchResponseHandler(new NameServerSearchResponseHandler(context));
-    context->initialize(searchResponseHandler, searchResponseHandler);
-    nameServerGuid = context->getGUID();
+    ServerContextImpl::shared_pointer contextImpl = ServerContextImpl::create(serverConfig);
+    ResponseHandler::shared_pointer searchResponseHandler(new NameServerSearchResponseHandler(contextImpl));
+    contextImpl->initialize(searchResponseHandler, searchResponseHandler);
+    nameServerGuid = contextImpl->getGUID();
+    context = contextImpl;
 }
 
 NameServer::~NameServer()
@@ -641,6 +733,11 @@ void NameServer::discoverChannels(ServerAddressList& serverAddressList, ChannelM
 void NameServer::shutdown()
 {
     context->shutdown();
+}
+
+std::string NameServer::inetAddrToString(const osiSockAddr& addr)
+{
+    return inetAddressToString(addr);
 }
 
 }}

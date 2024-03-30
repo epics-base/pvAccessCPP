@@ -14,7 +14,6 @@
 #include <pv/pvaConstants.h>
 #include <pv/pvaVersion.h>
 #include <pv/pvAccess.h>
-#include <pv/remote.h>
 #include <pv/configuration.h>
 
 #include <shareLib.h>
