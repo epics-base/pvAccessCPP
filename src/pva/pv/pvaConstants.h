@@ -8,7 +8,18 @@
 #define PVACONSTANTS_H_
 
 #include <compilerDependencies.h>
+
+#ifdef epicsExportSharedSymbols
+#   define pvaConstantsepicsExportSharedSymbols
+#   undef epicsExportSharedSymbols
+#endif
+
 #include <pv/pvType.h>
+
+#ifdef pvaConstantsepicsExportSharedSymbols
+#   define epicsExportSharedSymbols
+#       undef pvaConstantsepicsExportSharedSymbols
+#endif
 #include <shareLib.h>
 
 namespace epics { namespace pvAccess {
@@ -77,10 +88,6 @@ epicsShareExtern const std::string PVACCESS_ALL_PROVIDERS;
 
 /** Name of the system env. variable to turn on debugging. */
 epicsShareExtern const std::string PVACCESS_DEBUG;
-
-/** Protocol constants. */
-epicsShareExtern const std::string PVA_TCP_PROTOCOL;
-epicsShareExtern const std::string PVA_UDP_PROTOCOL;
 
 }}
 

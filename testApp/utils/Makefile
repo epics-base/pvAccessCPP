@@ -38,4 +38,3 @@ TESTPROD_HOST += testStringUtility
 testStringUtility_SRCS = testStringUtility.cpp
 testHarness_SRCS += testStringUtility.cpp
 TESTS += testStringUtility
-

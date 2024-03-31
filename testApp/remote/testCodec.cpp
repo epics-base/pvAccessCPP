@@ -349,7 +349,7 @@ public:
 
     std::string getType() const
     {
-        return PVA_TCP_PROTOCOL;
+        return "tcp";
     }
 
     const osiSockAddr& getRemoteAddress() const  {
