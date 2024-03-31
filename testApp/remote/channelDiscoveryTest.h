@@ -2,6 +2,9 @@
 #define CHANNEL_DISCOVERY_H
 
 #include <pv/pvAccess.h>
+#include <pv/clientFactory.h>
+#include <pv/clientContextImpl.h>
+
 #include "syncTestRequesters.h"
 
 class ChannelDiscoveryTest {

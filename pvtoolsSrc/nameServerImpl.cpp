@@ -5,7 +5,6 @@
  */
 
 
-#define epicsExportSharedSymbols
 #include <pv/hexDump.h>
 #include <pv/logger.h>
 #include <pv/stringUtility.h>
@@ -56,7 +55,7 @@ void NameServerImpl::discoverServers(ServerAddressList& serverAddressList)
         for (size_t i = 0; i < count; i++) {
             addresses = addresses + inetAddrToString(entry.addresses[i]) + " ";
         }
-        LOG(logLevelDebug, "Found server GUID 0x%s version %d: %s@[%s]", entry.guid.c_str(), (int)entry.version, entry.protocol.c_str(), addresses.c_str());
+        LOG(logLevelDebug, "Found server GUID 0x%s version %d: %s@[%s]", entry.guid.c_str(), int(entry.version), entry.protocol.c_str(), addresses.c_str());
         if (count > 0) {
             std::string serverAddress = inetAddrToString(entry.addresses[0]);
             if (addUniqueServerToList(serverAddress, serverAddressList)) {

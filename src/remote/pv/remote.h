@@ -18,7 +18,6 @@
 #include <osiSock.h>
 
 #include <pv/serialize.h>
-#include <pv/pvType.h>
 #include <pv/byteBuffer.h>
 #include <pv/timer.h>
 #include <pv/pvData.h>

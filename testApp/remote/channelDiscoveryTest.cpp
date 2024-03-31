@@ -7,9 +7,6 @@
 #include <epicsUnitTest.h>
 
 #include <pv/logger.h>
-#include <pv/pvAccess.h>
-#include <pv/clientContextImpl.h>
-
 #include <pv/current_function.h>
 
 #include "channelDiscoveryTest.h"
