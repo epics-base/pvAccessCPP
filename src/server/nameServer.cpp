@@ -213,7 +213,7 @@ class NameServerSearchHandler
 public:
     static const std::string SUPPORTED_PROTOCOL;
 
-    NameServerSearchHandler(const ServerContextImpl::shared_pointer& context);
+    explicit NameServerSearchHandler(const ServerContextImpl::shared_pointer& context);
     virtual ~NameServerSearchHandler();
 
     virtual void handleResponse(osiSockAddr* responseFrom, const Transport::shared_pointer& transport, epics::pvData::int8 version, epics::pvData::int8 command, std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
@@ -367,7 +367,7 @@ class NameServerSearchResponseHandler
     : public ResponseHandler
 {
 public:
-    NameServerSearchResponseHandler(const ServerContextImpl::shared_pointer& context);
+    explicit NameServerSearchResponseHandler(const ServerContextImpl::shared_pointer& context);
     virtual ~NameServerSearchResponseHandler();
     virtual void handleResponse(osiSockAddr* responseFrom, const Transport::shared_pointer& transport, epics::pvData::
 int8 version, epics::pvData::int8 command, std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE
@@ -459,7 +459,7 @@ class NameServerChannelFind
 public:
     POINTER_DEFINITIONS(NameServerChannelFind);
 
-    NameServerChannelFind(ChannelProvider::shared_pointer& provider);
+    explicit NameServerChannelFind(ChannelProvider::shared_pointer& provider);
     virtual ~NameServerChannelFind();
     virtual void destroy();
     virtual ChannelProvider::shared_pointer getChannelProvider();
