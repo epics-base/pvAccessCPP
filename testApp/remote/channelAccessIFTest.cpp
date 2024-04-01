@@ -2019,6 +2019,12 @@ void ChannelAccessIFTest::test_channelArray() {
            CURRENT_FUNCTION, (unsigned long) bigCapacity);
     testOk(data4[0] == 1.1 , "%s: 4.check 0: %f == 1.1", CURRENT_FUNCTION, data4[0]);
     testOk(data4[1] == 2.2 , "%s: 4.check 1: %f == 2.2", CURRENT_FUNCTION, data4[1]);
+    if (data4.size() == bigCapacity) {
+      size_t i = bigCapacity-5;
+      for (; i < bigCapacity; i++) {
+          testDiag("%s: 4.check %d: %f", CURRENT_FUNCTION, int(i), data4[i]);
+      }
+    }
     /*
     if (data4.size() == bigCapacity) {
       size_t i = newCap;
