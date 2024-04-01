@@ -604,7 +604,7 @@ void NameServerChannelProvider::updateChannelMap(const ChannelMap& updatedChanne
         ChannelEntry channelEntry = it->second;
         channelMap[channelName] = channelEntry;
     }
-    LOG(logLevelDebug, "Name server channel provider updated %ld channels", updatedChannelMap.size());
+    LOG(logLevelDebug, "Name server channel provider updated %d channels", int(updatedChannelMap.size()));
 }
 
 std::string NameServerChannelProvider::getChannelServerAddress(const std::string& channelName)
