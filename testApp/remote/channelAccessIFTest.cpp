@@ -59,7 +59,7 @@ inline bool compareWithTol(const T v1, const T v2, const T tol)
 
 int ChannelAccessIFTest::runAllTest() {
 
-    testPlan(152+EXTRA_STRESS_TESTS);
+    testPlan(153+EXTRA_STRESS_TESTS);
 
     epics::pvAccess::Configuration::shared_pointer base_config(ConfigurationBuilder()
             //.add("EPICS_PVA_DEBUG", "3")
@@ -2006,6 +2006,13 @@ void ChannelAccessIFTest::test_channelArray() {
         testFail("%s: an array setLength failed (3) ", CURRENT_FUNCTION);
         return;
     }
+
+    succStatus = arrayReq->syncGetLength(false, getTimeoutSec());
+    if (!succStatus) {
+        testFail("%s: an array getLength failed (3)", CURRENT_FUNCTION);
+        return;
+    }
+    testOk(arrayReq->getLength() == bigCapacity, "%s: retrieved length should be %lu", CURRENT_FUNCTION, (unsigned long) bigCapacity);
 
     succStatus = arrayReq->syncGet(false, 0, 0, getTimeoutSec());
     if (!succStatus) {
