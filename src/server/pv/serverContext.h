@@ -77,12 +77,6 @@ public:
     virtual epics::pvData::int32 getServerPort() = 0;
 
     /**
-     * Get search server port.
-     * @return search server port.
-     */
-    virtual epics::pvData::int32 getSearchServerPort() = 0;
-
-    /**
      * Get broadcast port.
      * @return broadcast port.
      */

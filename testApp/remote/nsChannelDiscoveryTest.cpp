@@ -39,10 +39,9 @@ int runAllTests() {
 
     TestServer::shared_pointer testServer(new TestServer(serverConfig));
     std::ostringstream portStr;
-    portStr << "127.0.0.1:" << testServer->getSearchServerPort();
-    testDiag("Test server is using ports TCP: %u, TCP Search: %u, UDP Broadcast: %u",
+    portStr << "127.0.0.1:" << testServer->getServerPort();
+    testDiag("Test server is using ports TCP: %u, UDP Broadcast: %u",
         testServer->getServerPort(),
-        testServer->getSearchServerPort(),
         testServer->getBroadcastPort());
 
     EPVA::Configuration::shared_pointer clientConfig(ConfigurationBuilder()

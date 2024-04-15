@@ -39,9 +39,8 @@ int runAllTests() {
         .build());
 
     TestServer::shared_pointer testServer(new TestServer(serverConfig));
-    testDiag("Test server is using ports TCP: %u, TCP Search: %u, UDP Broadcast: %u",
+    testDiag("Test server is using ports TCP: %u, UDP Broadcast: %u",
         testServer->getServerPort(),
-        testServer->getSearchServerPort(),
         testServer->getBroadcastPort());
 
     EPVA::Configuration::shared_pointer clientConfig(ConfigurationBuilder()

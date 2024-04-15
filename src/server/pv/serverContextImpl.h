@@ -37,7 +37,7 @@ public:
     ServerContextImpl();
     virtual ~ServerContextImpl();
 
-    void initialize(const ResponseHandler::shared_pointer& responseHandler = ResponseHandler::shared_pointer(), const ResponseHandler::shared_pointer& searchResponseHandler = ResponseHandler::shared_pointer());
+    void initialize(const ResponseHandler::shared_pointer& responseHandler = ResponseHandler::shared_pointer());
 
     //**************** derived from ServerContext ****************//
     const ServerGUID& getGUID() OVERRIDE FINAL;
@@ -85,12 +85,6 @@ public:
      * @return server port.
      */
     epics::pvData::int32 getServerPort() OVERRIDE FINAL;
-
-    /**
-     * Get search server port.
-     * @return search server port.
-     */
-    epics::pvData::int32 getSearchServerPort() OVERRIDE FINAL;
 
     /**
      * Get broadcast port.
@@ -190,11 +184,6 @@ private:
     epics::pvData::int32 _serverPort;
 
     /**
-     * Search server port.
-     */
-    epics::pvData::int32 _searchServerPort;
-
-    /**
      * Length in bytes of the maximum buffer (payload) size that may pass through PVA.
      */
     epics::pvData::int32 _receiveBufferSize;
@@ -225,15 +214,9 @@ private:
     TransportRegistry _transportRegistry;
 
     /**
-     * TCP search acceptor
-     */
-    BlockingTCPAcceptor::shared_pointer _searchAcceptor;
-
-    /**
      * Response handlers
      */
     ResponseHandler::shared_pointer _responseHandler;
-    ResponseHandler::shared_pointer _searchResponseHandler;
 
     // const after loadConfiguration()
     std::vector<ChannelProvider::shared_pointer> _channelProviders;
