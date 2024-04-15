@@ -539,16 +539,6 @@ Transport::shared_pointer ServerContextImpl::getSearchTransport()
     return Transport::shared_pointer();
 }
 
-Transport::shared_pointer ServerContextImpl::getNameServerSearchTransport()
-{
-    // not used
-    return Transport::shared_pointer();
-}
-
-void ServerContextImpl::releaseNameServerSearchTransport()
-{
-}
-
 void ServerContextImpl::newServerDetected()
 {
     // not used
