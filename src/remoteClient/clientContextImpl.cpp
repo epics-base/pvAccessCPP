@@ -2762,7 +2762,7 @@ public:
         serverAddress.ia.sin_port = htons(port);
 
         string protocol(SerializeHelper::deserializeString(payloadBuffer, transport.get()));
-        if(protocol != "tcp")
+        if(protocol!="tcp")
             return;
 
         // TODO optimize
@@ -3690,21 +3690,22 @@ public:
 
             m_allowCreation = true;
 
-            if (!m_addresses.empty()) {
-                char strBuffer[24];
-                int index = m_addressIndex % m_addresses.size();
-                osiSockAddr* serverAddress = &m_addresses[index];
-                ipAddrToDottedIP(&serverAddress->ia, strBuffer, sizeof(strBuffer));
-                uint16_t port = ntohs(serverAddress->ia.sin_port);
-                if (port > 0) {
-                    double delay = (m_addressIndex / m_addresses.size())*STATIC_SEARCH_BASE_DELAY_SEC+STATIC_SEARCH_MIN_DELAY_SEC;
-                    LOG(logLevelDebug, "Scheduling direct channel connection attempt for address %s with delay of %.3f seconds.", strBuffer, delay);
-                    m_context->getTimer()->scheduleAfterDelay(internal_from_this(), delay);
-                }
-                else {
-                    LOG(logLevelDebug, "Cannot schedule direct channel connection attempt for address %s (port not specified).", strBuffer);
-                }
-            }
+            // The following code forces direct tcp connection to server
+            // if (!m_addresses.empty()) {
+            //    char strBuffer[24];
+            //    int index = m_addressIndex % m_addresses.size();
+            //    osiSockAddr* serverAddress = &m_addresses[index];
+            //    ipAddrToDottedIP(&serverAddress->ia, strBuffer, sizeof(strBuffer));
+            //    uint16_t port = ntohs(serverAddress->ia.sin_port);
+            //    if (port > 0) {
+            //        double delay = (m_addressIndex / m_addresses.size())*STATIC_SEARCH_BASE_DELAY_SEC+STATIC_SEARCH_MIN_DELAY_SEC;
+            //        LOG(logLevelDebug, "Scheduling direct channel connection attempt for address %s with delay of %.3f seconds.", strBuffer, delay);
+            //        m_context->getTimer()->scheduleAfterDelay(internal_from_this(), delay);
+            //    }
+            //    else {
+            //        LOG(logLevelDebug, "Cannot schedule direct channel connection attempt for address %s (port not specified).", strBuffer);
+            //    }
+            // }
             m_context->getChannelSearchManager()->registerSearchInstance(internal_from_this(), penalize);
         }
 
