@@ -493,11 +493,6 @@ int32 ServerContextImpl::getBroadcastPort()
     return _broadcastPort;
 }
 
-int32 ServerContextImpl::getSenderPort()
-{
-    return _senderPort;
-}
-
 BeaconServerStatusProvider::shared_pointer ServerContextImpl::getBeaconServerStatusProvider()
 {
     return _beaconServerStatusProvider;
