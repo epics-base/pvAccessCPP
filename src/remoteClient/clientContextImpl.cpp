@@ -4215,7 +4215,6 @@ public:
         out << "CONNECTION_TIMEOUT : " << m_connectionTimeout << std::endl;
         out << "BEACON_PERIOD      : " << m_beaconPeriod << std::endl;
         out << "BROADCAST_PORT     : " << m_broadcastPort << std::endl;;
-        out << "UDP_SENDER_PORT    : " << m_senderPort << std::endl;;
         out << "RCV_BUFFER_SIZE    : " << m_receiveBufferSize << std::endl;
         out << "STATE              : ";
         switch (m_contextState)
@@ -4314,8 +4313,6 @@ private:
         m_beaconPeriod = m_configuration->getPropertyAsFloat("EPICS_PVA_BEACON_PERIOD", m_beaconPeriod);
         m_broadcastPort = m_configuration->getPropertyAsInteger("EPICS_PVA_BROADCAST_PORT", m_broadcastPort);
         LOG(logLevelDebug, "Configured broadcast port: %d", m_broadcastPort);
-        m_senderPort = m_configuration->getPropertyAsInteger("EPICS_PVA_UDP_SENDER_PORT", m_senderPort);
-        LOG(logLevelDebug, "Configured udp sender port: %d", m_senderPort);
         m_receiveBufferSize = m_configuration->getPropertyAsInteger("EPICS_PVA_MAX_ARRAY_BYTES", m_receiveBufferSize);
         getSocketAddressList(m_nsAddresses, m_nsAddressList, m_serverPort);
     }
