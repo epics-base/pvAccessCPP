@@ -196,11 +196,6 @@ public:
 
     virtual void release(pvAccessID /*clientId*/) OVERRIDE FINAL {}
 
-    virtual bool isUsed() OVERRIDE FINAL
-    {
-        return false;
-    }
-
     /**
      * Set ignore list.
      * @param address list of ignored addresses.

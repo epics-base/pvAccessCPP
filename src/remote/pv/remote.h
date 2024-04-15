@@ -186,7 +186,7 @@ public:
     /**
      * Is transport used
      */
-    virtual bool isUsed() = 0;
+    virtual bool isUsed() {return false;}
 
     /**
      * Get protocol type (tcp, udp, ssl, etc.).

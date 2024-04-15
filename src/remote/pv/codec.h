@@ -477,11 +477,6 @@ public:
 
     virtual void release(pvAccessID /*clientId*/) OVERRIDE FINAL {}
 
-    virtual bool isUsed() OVERRIDE FINAL
-    {
-        return false;
-    }
-
     pvAccessID preallocateChannelSID();
 
     void depreallocateChannelSID(pvAccessID /*sid*/) {}

@@ -144,7 +144,6 @@ private:
     IfaceNodeVector _ifaceList;
 
     osiSockAddr _ifaceAddr;
-    osiSockAddr _searchIfaceAddr;
 
     /**
      * A space-separated list of address from which to ignore name resolution requests.
