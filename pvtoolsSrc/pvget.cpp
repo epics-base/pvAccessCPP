@@ -361,13 +361,10 @@ int MAIN (int argc, char *argv[])
                         "Unrecognized option: '-%c'. ('" EXECNAME " -h' for help.)\n",
                         optopt);
                 return 1;
-            case ':':              
+            case ':':
                 fprintf(stderr,
                         "Option '-%c' requires an argument. ('" EXECNAME " -h' for help.)\n",
                         optopt);
-                return 1;
-            default :                 /* Invalid argument */
-                usage();
                 return 1;
             }
         }
