@@ -276,6 +276,12 @@ int MAIN (int argc, char *argv[])
 
         // ================ Parse Arguments
 
+        if(argc == 1){
+            /* No arguments specified */
+            fprintf(stderr, "No arguments specified. Please use " EXECNAME" -h for help");
+            return 1;
+        }
+
         while ((opt = getopt(argc, argv, ":hvVRM:r:w:tmp:qdcF:f:ni")) != -1) {
             switch (opt) {
             case 'h':               /* Print usage */
@@ -355,12 +361,12 @@ int MAIN (int argc, char *argv[])
                         "Unrecognized option: '-%c'. ('" EXECNAME " -h' for help.)\n",
                         optopt);
                 return 1;
-            case ':':
+            case ':':              
                 fprintf(stderr,
                         "Option '-%c' requires an argument. ('" EXECNAME " -h' for help.)\n",
                         optopt);
                 return 1;
-            default :
+            default :                 /* Invalid argument */
                 usage();
                 return 1;
             }
