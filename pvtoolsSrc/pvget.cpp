@@ -276,7 +276,7 @@ int MAIN (int argc, char *argv[])
 
         // ================ Parse Arguments
 
-        if(argc == 1){
+        if(argc <= optind){
             /* No arguments specified */
             fprintf(stderr, "No arguments specified. Please use " EXECNAME" -h for help");
             return 1;
