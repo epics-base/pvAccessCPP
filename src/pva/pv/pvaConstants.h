@@ -22,7 +22,8 @@
 #endif
 #include <shareLib.h>
 
-namespace epics { namespace pvAccess {
+namespace epics {
+namespace pvAccess {
 
 /** PVA protocol magic number */
 const epics::pvData::int8 PVA_MAGIC = static_cast<epics::pvData::int8>(0xCA);
@@ -41,9 +42,6 @@ const epics::pvData::int32 PVA_SERVER_PORT = 5075;
 
 /** Default PVA beacon port. */
 const epics::pvData::int32 PVA_BROADCAST_PORT = 5076;
-
-/** Default UDP sender port. */
-const epics::pvData::int32 PVA_UDP_SENDER_PORT = 0;
 
 /** PVA protocol message header size. */
 const epics::pvData::int16 PVA_MESSAGE_HEADER_SIZE = 8;
@@ -88,7 +86,7 @@ epicsShareExtern const std::string PVACCESS_ALL_PROVIDERS;
 
 /** Name of the system env. variable to turn on debugging. */
 epicsShareExtern const std::string PVACCESS_DEBUG;
-
-}}
+}
+}
 
 #endif /* PVACONSTANTS_H_ */
