@@ -303,7 +303,7 @@ public:
     virtual void invalidDataStreamHandler() OVERRIDE FINAL;
 
     virtual std::string getType() const OVERRIDE FINAL {
-        return "tcp";
+        return std::string("tcp");
     }
 
     virtual void processControlMessage() OVERRIDE FINAL {

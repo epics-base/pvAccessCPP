@@ -165,11 +165,6 @@ private:
     epics::pvData::int32 _broadcastPort;
 
     /**
-     * UDP sender port.
-     */
-    epics::pvData::int32 _senderPort;
-
-    /**
      * Port number for the server to listen to.
      */
     epics::pvData::int32 _serverPort;

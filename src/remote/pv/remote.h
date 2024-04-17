@@ -29,6 +29,7 @@
 #       undef remoteEpicsExportSharedSymbols
 #endif
 
+#include <pv/pvaConstants.h>
 #include <pv/configuration.h>
 #include <pv/fairQueue.h>
 

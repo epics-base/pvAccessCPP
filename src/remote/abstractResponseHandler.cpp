@@ -10,7 +10,6 @@
 #include <pv/reftrack.h>
 
 #define epicsExportSharedSymbols
-#include <pv/pvaConstants.h>
 #include <pv/remote.h>
 #include <pv/hexDump.h>
 

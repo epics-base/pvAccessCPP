@@ -37,7 +37,6 @@ ServerContextImpl::ServerContextImpl():
     _autoBeaconAddressList(true),
     _beaconPeriod(15.0),
     _broadcastPort(PVA_BROADCAST_PORT),
-    _senderPort(PVA_UDP_SENDER_PORT),
     _serverPort(PVA_SERVER_PORT),
     _receiveBufferSize(MAX_TCP_RECV),
     _timer(new Timer("PVAS timers", lowerPriority)),
@@ -286,7 +285,7 @@ void ServerContextImpl::initialize(const ResponseHandler::shared_pointer& respon
     LOG(logLevelDebug, "Server port: %d", _serverPort);
 
     // setup broadcast UDP transport
-    initializeUDPTransports(true, _udpTransports, _ifaceList, _responseHandler, _broadcastTransport, _broadcastPort, _senderPort, _autoBeaconAddressList, _beaconAddressList, _ignoreAddressList);
+    initializeUDPTransports(true, _udpTransports, _ifaceList, _responseHandler, _broadcastTransport, _broadcastPort, _autoBeaconAddressList, _beaconAddressList, _ignoreAddressList);
 
     _beaconEmitter.reset(new BeaconEmitter("tcp", _broadcastTransport, thisServerContext));
 
