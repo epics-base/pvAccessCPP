@@ -71,12 +71,14 @@ static const int MAX_FALLBACK_COUNT_VALUE = (1 << 7) + 1;
 static const int MAX_FRAMES_AT_ONCE = 10;
 static const int DELAY_BETWEEN_FRAMES_MS = 50;
 
+static const int MAX_NAME_SERVER_SEARCH_COUNT = 3;
 
 ChannelSearchManager::ChannelSearchManager(Context::shared_pointer const & context) :
     m_context(context),
     m_responseAddress(), // initialized in activate()
     m_canceled(),
     m_sequenceNumber(0),
+    m_nsSearchCounter(0),
     m_sendBuffer(MAX_UDP_UNFRAGMENTED_SEND),
     m_channels(),
     m_lastTimeSent(),
@@ -194,10 +196,11 @@ void ChannelSearchManager::searchResponse(const ServerGUID & guid, pvAccessID ci
     releaseNameServerTransport();
 }
 
-void ChannelSearchManager::releaseNameServerTransport()
+void ChannelSearchManager::releaseNameServerTransport(bool forceRelease)
 {
-    if(m_channels.size() == 0)
+    if(m_channels.size() == 0 || forceRelease)
     {
+        m_nsSearchCounter = 0;
         m_context.lock()->releaseNameServerSearchTransport();
     }
 }
@@ -297,11 +300,22 @@ void ChannelSearchManager::flushSendBuffer()
     m_sendBuffer.putByte(CAST_POSITION, (int8_t)0x00);  // b/m-cast, no reply required
     ut->send(&m_sendBuffer, inetAddressType_broadcast_multicast);
 
-    // Name server search
+    // Name server search.
+    // Reset name server transport after max. number of attempts is reached.
     Transport::shared_pointer nsTransport = m_context.lock()->getNameServerSearchTransport();
     if(nsTransport)
     {
-        LOG(logLevelDebug, "Initiating name server search for %d channels", int(m_channels.size()));
+        if (m_nsSearchCounter >= MAX_NAME_SERVER_SEARCH_COUNT)
+        {
+            LOG(logLevelDebug, "Resetting name server transport after %d search attempts", m_nsSearchCounter);
+            releaseNameServerTransport(true);
+        }
+        nsTransport = m_context.lock()->getNameServerSearchTransport();
+    }
+    if(nsTransport)
+    {
+        m_nsSearchCounter++;
+        LOG(logLevelDebug, "Initiating name server search for %d channels, search attempt %d", int(m_channels.size()), m_nsSearchCounter);
         nsTransport->enqueueSendRequest(shared_from_this());
     }
     initializeSendBuffer();

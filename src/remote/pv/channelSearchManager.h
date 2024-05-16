@@ -111,7 +111,7 @@ public:
     void activate();
 
     // Releases name server transport.
-    void releaseNameServerTransport();
+    void releaseNameServerTransport(bool forceRelease=false);
 
 private:
 
@@ -146,6 +146,11 @@ private:
      * Search (datagram) sequence number.
      */
     int32_t m_sequenceNumber;
+
+    /**
+     * Name server search attempt counter.
+     */
+    int m_nsSearchCounter;
 
     /**
      * Send byte buffer (frame)
