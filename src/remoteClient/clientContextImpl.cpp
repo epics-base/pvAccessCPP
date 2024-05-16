@@ -234,10 +234,9 @@ protected:
         {/* cancel overrides all but destroy */}
         else if(m_pendingRequest==NULL_REQUEST)
         {/* anything whenidle */}
-        else {
-            LOG(logLevelError, "Request qos %d cannot be started, pending request %d", int(qos), int(m_pendingRequest));
-            return false; /* others not allowed */
-        }
+        else
+        {return false; /* others not allowed */}
+
         m_pendingRequest = qos;
         return true;
     }
