@@ -39,39 +39,25 @@ void test_getSocketAddressList()
     testOk1(static_cast<size_t>(3) == vec.size());
 
     osiSockAddr addr;
-    osiSockAddr addr2;
     addr = vec.at(0);
     testOk1(AF_INET == addr.ia.sin_family);
     testOk1(htons(555) == addr.ia.sin_port);
     testOk1(htonl(0x7F000001) == addr.ia.sin_addr.s_addr);
     testOk1("127.0.0.1:555" == inetAddressToString(addr));
-    testOk1(stringToInetAddress("127.0.0.1:555", addr2));
-    testOk1(AF_INET == addr2.ia.sin_family);
-    testOk1(htons(555) == addr2.ia.sin_port);
-    testOk1(htonl(0x7F000001) == addr2.ia.sin_addr.s_addr);
-    testOk1(sockAddrAreIdentical(&addr2, &addr));
 
     addr = vec.at(1);
     testOk1(AF_INET == addr.ia.sin_family);
     testOk1(htons(1234) == addr.ia.sin_port);
     testOk1(htonl(0x0A0A0C0B) == addr.ia.sin_addr.s_addr);
     testOk1("10.10.12.11:1234" == inetAddressToString(addr));
-    testOk1(stringToInetAddress("10.10.12.11:1234", addr2));
-    testOk1(AF_INET == addr2.ia.sin_family);
-    testOk1(htons(1234) == addr2.ia.sin_port);
-    testOk1(htonl(0x0A0A0C0B) == addr2.ia.sin_addr.s_addr);
-    testOk1(sockAddrAreIdentical(&addr2, &addr));
 
     addr = vec.at(2);
     testOk1(AF_INET == addr.ia.sin_family);
     testOk1(htons(555) == addr.ia.sin_port);
     testOk1(htonl(0xC0A80304) == addr.ia.sin_addr.s_addr);
     testOk1("192.168.3.4:555" == inetAddressToString(addr));
-    testOk1(stringToInetAddress("192.168.3.4:555", addr2));
-    testOk1(AF_INET == addr2.ia.sin_family);
-    testOk1(htons(555) == addr2.ia.sin_port);
-    testOk1(htonl(0xC0A80304) == addr2.ia.sin_addr.s_addr);
-    testOk1(sockAddrAreIdentical(&addr2, &addr));
+
+
 
 
     InetAddrVector vec1;
@@ -373,7 +359,7 @@ void test_discoverInterfaces()
 
 MAIN(testInetAddressUtils)
 {
-    testPlan(80);
+    testPlan(65);
     testDiag("Tests for InetAddress utils");
 
     test_getSocketAddressList();

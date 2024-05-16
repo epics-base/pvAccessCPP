@@ -66,24 +66,8 @@ epicsShareFunc bool isMulticastAddress(const osiSockAddr* address);
 epicsShareFunc void getSocketAddressList(InetAddrVector& ret, const std::string & list, int defaultPort,
                                          const InetAddrVector* appendList = NULL);
 
-/**
- * Convert socket address to string.
- * @param addr inet address
- * @param displayPort flag to display port number (default: true)
- * @param displayHex flag to display hex format (default: false)
- * @return inet address string
- */
 epicsShareFunc std::string inetAddressToString(const osiSockAddr &addr,
         bool displayPort = true, bool displayHex = false);
-
-/**
- * Convert string to socket address
- * @param addrStr input address[:port] string
- * @param addr resulting inet address
- * @return true if conversion was successful, false otherwise
- */
-epicsShareFunc bool stringToInetAddress(const std::string& addrStr,
-        osiSockAddr& addr);
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
