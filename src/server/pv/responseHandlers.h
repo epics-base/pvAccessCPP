@@ -839,36 +839,6 @@ private:
 
 };
 
-/**
- * PVAS search request handler
- */
-class ServerSearchResponseHandler : public ResponseHandler {
-public:
-    ServerSearchResponseHandler(ServerContextImpl::shared_pointer const & context);
-
-    virtual ~ServerSearchResponseHandler() {}
-
-    virtual void handleResponse(osiSockAddr* responseFrom,
-                                Transport::shared_pointer const & transport, epics::pvData::int8 version, epics::pvData::int8 command,
-                                std::size_t payloadSize, epics::pvData::ByteBuffer* payloadBuffer) OVERRIDE FINAL;
-private:
-    ServerBadResponse handle_bad;
-
-    ServerNoopResponse handle_beacon;
-    ServerConnectionValidationHandler handle_validation;
-    ServerEchoHandler handle_echo;
-    ServerSearchHandler handle_search;
-    AuthNZHandler handle_authnz;
-    ServerCreateChannelHandler handle_create;
-    ServerDestroyChannelHandler handle_destroy;
-    ServerRPCHandler handle_rpc;
-    /**
-     * Table of response handlers for each command ID.
-     */
-    std::vector<ResponseHandler*> m_handlerTable;
-
-};
-
 }
 }
 

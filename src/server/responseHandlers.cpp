@@ -172,68 +172,6 @@ void ServerResponseHandler::handleResponse(osiSockAddr* responseFrom,
                                             version, command, payloadSize, payloadBuffer);
 }
 
-ServerSearchResponseHandler::ServerSearchResponseHandler(ServerContextImpl::shared_pointer const & context)
-    :ResponseHandler(context.get(), "ServerSearchResponseHandler")
-    ,handle_bad(context)
-    ,handle_beacon(context, "Beacon")
-    ,handle_validation(context)
-    ,handle_echo(context)
-    ,handle_search(context)
-    ,handle_authnz(context.get())
-    ,handle_create(context)
-    ,handle_destroy(context)
-    ,handle_rpc(context)
-    ,m_handlerTable(CMD_CANCEL_REQUEST+1, &handle_bad)
-{
-    m_handlerTable[CMD_BEACON] = &handle_bad; /*  0 */
-    m_handlerTable[CMD_CONNECTION_VALIDATION] = &handle_validation; /*  1 */
-    m_handlerTable[CMD_ECHO] = &handle_echo; /*  2 */
-    m_handlerTable[CMD_SEARCH] = &handle_search; /*  3 */
-    m_handlerTable[CMD_SEARCH_RESPONSE] = &handle_bad;
-    m_handlerTable[CMD_AUTHNZ] = &handle_authnz; /*  5 */
-    m_handlerTable[CMD_ACL_CHANGE] = &handle_bad; /*  6 - access right change */
-    m_handlerTable[CMD_CREATE_CHANNEL] = &handle_create; /*  7 */
-    m_handlerTable[CMD_DESTROY_CHANNEL] = &handle_destroy; /*  8 */
-    m_handlerTable[CMD_CONNECTION_VALIDATED] = &handle_bad; /*  9 */
-
-    m_handlerTable[CMD_GET] = &handle_bad; /* 10 - get response */
-    m_handlerTable[CMD_PUT] = &handle_bad; /* 11 - put response */
-    m_handlerTable[CMD_PUT_GET] = &handle_bad; /* 12 - put-get response */
-    m_handlerTable[CMD_MONITOR] = &handle_bad; /* 13 - monitor response */
-    m_handlerTable[CMD_ARRAY] = &handle_bad; /* 14 - array response */
-    m_handlerTable[CMD_DESTROY_REQUEST] = &handle_bad; /* 15 - destroy request */
-    m_handlerTable[CMD_PROCESS] = &handle_bad; /* 16 - process response */
-    m_handlerTable[CMD_GET_FIELD] = &handle_bad; /* 17 - get field response */
-    m_handlerTable[CMD_MESSAGE] = &handle_bad; /* 18 - message to Requester */
-    m_handlerTable[CMD_MULTIPLE_DATA] = &handle_bad; /* 19 - grouped monitors */
-
-    m_handlerTable[CMD_RPC] = &handle_rpc; /* 20 - RPC response */
-    m_handlerTable[CMD_CANCEL_REQUEST] = &handle_bad; /* 21 - cancel request */
-}
-
-void ServerSearchResponseHandler::handleResponse(osiSockAddr* responseFrom,
-        Transport::shared_pointer const & transport, int8 version, int8 command,
-        size_t payloadSize, ByteBuffer* payloadBuffer)
-{
-    if(command<0||command>=(int8)m_handlerTable.size())
-    {
-        LOG(logLevelError,
-            "Invalid (or unsupported) command: %x.", (0xFF&command));
-
-        if(IS_LOGGABLE(logLevelError)) {
-            std::ios::fmtflags initialflags = std::cerr.flags();
-            std::cerr<<"Invalid (or unsupported) command: "<<std::hex<<(int)(0xFF&command)<<"\n"
-                     <<HexDump(*payloadBuffer, payloadSize).limit(256u);
-            std::cerr.flags(initialflags);
-        }
-        return;
-    }
-
-    // delegate
-    m_handlerTable[command]->handleResponse(responseFrom, transport,
-                                            version, command, payloadSize, payloadBuffer);
-}
-
 void ServerConnectionValidationHandler::handleResponse(
     osiSockAddr* responseFrom, Transport::shared_pointer const & transport, int8 version,
     int8 command, size_t payloadSize,
