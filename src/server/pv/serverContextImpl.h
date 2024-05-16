@@ -37,11 +37,10 @@ public:
     ServerContextImpl();
     virtual ~ServerContextImpl();
 
-    void initialize(const ResponseHandler::shared_pointer& responseHandler = ResponseHandler::shared_pointer());
-
     //**************** derived from ServerContext ****************//
     const ServerGUID& getGUID() OVERRIDE FINAL;
     const Version& getVersion() OVERRIDE FINAL;
+    void initialize();
     void run(epics::pvData::uint32 seconds) OVERRIDE FINAL;
     void shutdown() OVERRIDE FINAL;
     void printInfo(std::ostream& str, int lvl) OVERRIDE FINAL;
@@ -52,7 +51,6 @@ public:
     Transport::shared_pointer getSearchTransport() OVERRIDE FINAL;
     Configuration::const_shared_pointer getConfiguration() OVERRIDE FINAL;
     TransportRegistry* getTransportRegistry() OVERRIDE FINAL;
-    static ServerContextImpl::shared_pointer create(const Config& conf = Config());
 
     virtual void newServerDetected() OVERRIDE FINAL;
 
@@ -199,9 +197,6 @@ private:
      */
     TransportRegistry _transportRegistry;
 
-    /**
-     * Response handlers
-     */
     ResponseHandler::shared_pointer _responseHandler;
 
     // const after loadConfiguration()

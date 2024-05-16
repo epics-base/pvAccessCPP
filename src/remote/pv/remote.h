@@ -22,7 +22,6 @@
 #include <pv/timer.h>
 #include <pv/pvData.h>
 #include <pv/sharedPtr.h>
-#include <pv/pvaDefs.h>
 
 #ifdef remoteEpicsExportSharedSymbols
 #   define epicsExportSharedSymbols
@@ -32,6 +31,7 @@
 #include <pv/pvaConstants.h>
 #include <pv/configuration.h>
 #include <pv/fairQueue.h>
+#include <pv/pvaDefs.h>
 
 /// TODO only here because of the Lockable
 #include <pv/pvAccess.h>
@@ -282,7 +282,6 @@ public:
 class Channel;
 class SecurityPlugin;
 class AuthenticationRegistry;
-class Configuration;
 
 /**
  * Not public IF, used by Transports, etc.
