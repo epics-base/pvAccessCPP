@@ -193,15 +193,28 @@ void ChannelSearchManager::searchResponse(const ServerGUID & guid, pvAccessID ci
         if(si)
             si->searchResponse(guid, minorRevision, serverAddress);
     }
+    // Release all NS connections if there are
+    // no more channels to search for
     releaseNameServerTransport();
 }
 
 void ChannelSearchManager::releaseNameServerTransport(bool forceRelease)
 {
-    if(m_channels.size() == 0 || forceRelease)
+    bool releaseAllConnections = true;
+    if(m_channels.size() == 0)
     {
+        // No more channels to search for, release all connections
         m_nsSearchCounter = 0;
-        m_context.lock()->releaseNameServerSearchTransport(m_nsTransport);
+        m_context.lock()->releaseNameServerSearchTransport(m_nsTransport, releaseAllConnections);
+        m_nsTransport.reset();
+    }
+    else if(forceRelease)
+    {
+        // There are channels to search for, release only connection
+        // that is currently used
+        releaseAllConnections = false;
+        m_nsSearchCounter = 0;
+        m_context.lock()->releaseNameServerSearchTransport(m_nsTransport, releaseAllConnections);
         m_nsTransport.reset();
     }
 }
@@ -306,7 +319,8 @@ void ChannelSearchManager::flushSendBuffer()
     // Name server transport
     if(m_nsTransport)
     {
-        // Reset transport after max. number of attempts is reached.
+        // Reset transport (current connection only)
+        // after max. number of attempts is reached.
         if (m_nsSearchCounter >= MAX_NAME_SERVER_SEARCH_COUNT)
         {
             LOG(logLevelDebug, "Resetting name server transport after %d search attempts", m_nsSearchCounter);

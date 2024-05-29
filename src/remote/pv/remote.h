@@ -310,7 +310,7 @@ public:
     virtual std::tr1::shared_ptr<Channel> getChannel(pvAccessID id) = 0;
     virtual Transport::shared_pointer getSearchTransport() = 0;
     virtual Transport::shared_pointer getNameServerSearchTransport() {return Transport::shared_pointer();}
-    virtual void releaseNameServerSearchTransport(const Transport::shared_pointer& nsTransport = Transport::shared_pointer()) {}
+    virtual void releaseNameServerSearchTransport(const Transport::shared_pointer& nsTransport=Transport::shared_pointer(), bool releaseAllConnections=true) {}
 };
 
 /**

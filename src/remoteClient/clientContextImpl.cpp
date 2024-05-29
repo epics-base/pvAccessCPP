@@ -2610,8 +2610,9 @@ public:
         {
             if (transport->getType() == "tcp")
             {
-                LOG(logLevelDebug, "No channels found, releasing name server transport");
-                csm->releaseNameServerTransport();
+                // Release only current NS connection
+                LOG(logLevelDebug, "No channels found, releasing current name server transport");
+                csm->releaseNameServerTransport(true);
             }
             return;
         }
@@ -4183,7 +4184,7 @@ public:
         return nsTransport;
     }
 
-    virtual void releaseNameServerSearchTransport(const Transport::shared_pointer& nsTransport = Transport::shared_pointer())
+    virtual void releaseNameServerSearchTransport(const Transport::shared_pointer& nsTransport=Transport::shared_pointer(), bool releaseAllConnections=true)
     {
         if (nsTransport)
         {
@@ -4200,10 +4201,15 @@ public:
                     Transport::shared_pointer nst = it->second;
                     if (!nst->isUsed())
                     {
-                        LOG(logLevelDebug, "Closing name server transport for address %s", m_nsTransportConnectCallbackMap[i]->getNsAddress().c_str());
-                        nst->close();
-                        nst.reset();
-                        m_nsTransportMap.erase(it);
+                        // Release unused given connection only, unless
+                        // other connections are no longer needed
+                        if (nst == nsTransport || releaseAllConnections)
+                        {
+                            LOG(logLevelDebug, "Closing name server transport for address %s", m_nsTransportConnectCallbackMap[i]->getNsAddress().c_str());
+                            nst->close();
+                            nst.reset();
+                            m_nsTransportMap.erase(it);
+                        }
                     }
                 }
             }
