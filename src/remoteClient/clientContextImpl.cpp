@@ -8,6 +8,7 @@
 #include <sstream>
 #include <memory>
 #include <queue>
+#include <map>
 #include <stdexcept>
 
 #include <osiSock.h>
@@ -17,6 +18,7 @@
 
 #include <pv/lock.h>
 #include <pv/timer.h>
+#include <pv/event.h>
 #include <pv/bitSetUtil.h>
 #include <pv/standardPVField.h>
 #include <pv/reftrack.h>
@@ -44,6 +46,7 @@
 //#include <tr1/unordered_map>
 
 #define PVA_CHANNEL_SEARCH_PRIORITY 98
+#define MAX_NS_TRANSPORT_WAIT_TIME 0.1
 
 using std::tr1::dynamic_pointer_cast;
 using std::tr1::static_pointer_cast;
@@ -4132,61 +4135,78 @@ public:
 
     virtual Transport::shared_pointer getNameServerSearchTransport()
     {
-        if (m_nsTransport)
-        {
-            return m_nsTransport;
-        }
-
         if (!m_nsAddresses.size())
         {
             return Transport::shared_pointer();
         }
         createNameServerConnector();
-
         if (!m_nsConnector.get())
         {
             return Transport::shared_pointer();
         }
 
+        m_nsTransportEvent.tryWait();
+        Transport::shared_pointer nsTransport;
         for (unsigned int i = 0; i < m_nsAddresses.size(); i++)
         {
-            char strBuffer[24];
-            osiSockAddr* serverAddress = &m_nsAddresses[m_nsAddressIndex];
-            ipAddrToDottedIP(&serverAddress->ia, strBuffer, sizeof(strBuffer));
-            LOG(logLevelDebug, "Getting name server transport for address %s", strBuffer);
-            m_nsAddressIndex = (m_nsAddressIndex+1) % m_nsAddresses.size();
-
-            try
             {
-                m_nsTransport = m_nsConnector->connect(m_nsChannel, m_nsResponseHandler, *serverAddress, EPICS_PVA_MINOR_VERSION, PVA_CHANNEL_SEARCH_PRIORITY);
-                LOG(logLevelDebug, "Got name server transport for address %s", strBuffer);
-                return m_nsTransport;
-            }
-            catch (std::exception& e)
-            {
-                LOG(logLevelDebug, "Could not get name server transport for %s: %s", strBuffer, e.what());
+                Lock L(m_nsTransportMapMutex);
+                NsTransportMap::iterator it = m_nsTransportMap.find(m_nsAddressIndex);
+                if (it != m_nsTransportMap.end())
+                {
+                    nsTransport = it->second;
+                    break;
+                }
+                else
+                {
+                    NsTransportConnectCallback::shared_pointer c = m_nsTransportConnectCallbackMap[m_nsAddressIndex];
+                    Timer::shared_pointer t = m_nsTransportConnectCallbackTimerMap[m_nsAddressIndex];
+                    if (!c->inProgress())
+                    {
+                        t->scheduleAfterDelay(c, 0);
+                    }
+                }
+                m_nsAddressIndex = (m_nsAddressIndex+1) % m_nsAddresses.size();
             }
         }
-        return Transport::shared_pointer();
+
+        if (!nsTransport)
+        {
+            // Wait to get transport if we do not have it
+            m_nsTransportEvent.wait(MAX_NS_TRANSPORT_WAIT_TIME);
+            Lock L(m_nsTransportMapMutex);
+            if (!m_nsTransportMap.empty())
+            {
+                nsTransport = m_nsTransportMap.begin()->second;
+            }
+        }
+        return nsTransport;
     }
 
-    virtual void releaseNameServerSearchTransport()
+    virtual void releaseNameServerSearchTransport(const Transport::shared_pointer& nsTransport = Transport::shared_pointer())
     {
-        if (!m_nsTransport)
+        if (nsTransport)
         {
-            return;
+            LOG(logLevelDebug, "Releasing transport used for name server channel %d", m_nsChannel->getID());
+            nsTransport->release(m_nsChannel->getID());
         }
-        LOG(logLevelDebug, "Releasing transport used for name server channel %d", m_nsChannel->getID());
-        m_nsTransport->release(m_nsChannel->getID());
-        if (m_nsTransport->isUsed())
         {
-            LOG(logLevelDebug, "Name server transport is still in use by other clients");
-        }
-        else
-        {
-            LOG(logLevelDebug, "Closing name server transport");
-            m_nsTransport->close();
-            m_nsTransport.reset();
+            Lock L(m_nsTransportMapMutex);
+            for (unsigned int i = 0; i < m_nsAddresses.size(); i++)
+            {
+                NsTransportMap::iterator it = m_nsTransportMap.find(i);
+                if (it != m_nsTransportMap.end())
+                {
+                    Transport::shared_pointer nst = it->second;
+                    if (!nst->isUsed())
+                    {
+                        LOG(logLevelDebug, "Closing name server transport for address %s", m_nsTransportConnectCallbackMap[i]->getNsAddress().c_str());
+                        nst->close();
+                        nst.reset();
+                        m_nsTransportMap.erase(it);
+                    }
+                }
+            }
         }
     }
 
@@ -4248,6 +4268,7 @@ public:
         //
         // cleanup
         //
+        releaseNameServerSearchTransport();
 
         m_timer->close();
 
@@ -4321,6 +4342,7 @@ private:
     {
         if (!m_nsConnector.get() && m_nsAddresses.size())
         {
+            // Create NS connector
             LOG(logLevelDebug, "Creating internal name server channel and connector");
             InetAddrVector nsAddresses; // avoid direct connection attempts
             InternalClientContextImpl::shared_pointer thisPointer(internal_from_this());
@@ -4328,6 +4350,15 @@ private:
             bool initiateSearch = false;
             m_nsChannel = createChannelInternal(nsChannelName, DefaultChannelRequester::build(), PVA_CHANNEL_SEARCH_PRIORITY, nsAddresses, initiateSearch);
             m_nsConnector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_connectionTimeout));
+
+            // Create callback timers for each address
+            for (unsigned int i = 0; i < m_nsAddresses.size(); i++)
+            {
+                NsTransportConnectCallback::shared_pointer c(new NsTransportConnectCallback(thisPointer, i));
+                m_nsTransportConnectCallbackMap[i] = c;
+                Timer::shared_pointer t(new Timer("NS connection timer", highPriority));
+                m_nsTransportConnectCallbackTimerMap[i] = t;
+            }
         }
     }
 
@@ -4678,7 +4709,83 @@ private:
     /**
      * Name server transport
      */
-    Transport::shared_pointer m_nsTransport;
+    Event m_nsTransportEvent;
+    typedef std::map<int, Transport::shared_pointer> NsTransportMap;
+    NsTransportMap m_nsTransportMap;
+    Mutex m_nsTransportMapMutex;
+    class NsTransportConnectCallback : public TimerCallback
+    {
+    public:
+        POINTER_DEFINITIONS(NsTransportConnectCallback);
+        NsTransportConnectCallback(const InternalClientContextImpl::shared_pointer& iccImpl, int nsAddrIndex) :
+            TimerCallback(),
+            m_iccImpl(iccImpl),
+            m_nsAddrIndex(nsAddrIndex),
+            m_inProgress(false)
+        {
+            char strBuffer[24];
+            osiSockAddr* serverAddress = &iccImpl->m_nsAddresses[nsAddrIndex];
+            ipAddrToDottedIP(&serverAddress->ia, strBuffer, sizeof(strBuffer));
+            LOG(logLevelDebug, "Initializing name server transport callback for address %s", strBuffer);
+            m_nsAddr = strBuffer;
+        }
+        virtual ~NsTransportConnectCallback() {}
+        virtual void callback() OVERRIDE FINAL
+        {
+            {
+                Lock L(m_iccImpl->m_nsTransportMapMutex);
+                if (m_iccImpl->m_nsTransportMap.find(m_nsAddrIndex) != m_iccImpl->m_nsTransportMap.end())
+                {
+                    LOG(logLevelDebug, "Already have name server transport for address %s", m_nsAddr.c_str());
+                    return;
+                }
+                LOG(logLevelDebug, "No name server transport for address %s", m_nsAddr.c_str());
+            }
+            if (m_inProgress)
+            {
+                LOG(logLevelDebug, "Connection in progress to the name server with address %s", m_nsAddr.c_str());
+                return;
+            }
+            m_inProgress = true;
+            try
+            {
+                osiSockAddr* serverAddress = &m_iccImpl->m_nsAddresses[m_nsAddrIndex];
+                LOG(logLevelDebug, "Getting name server transport for address %s", m_nsAddr.c_str());
+                Transport::shared_pointer nsTransport = m_iccImpl->m_nsConnector->connect(m_iccImpl->m_nsChannel, m_iccImpl->m_nsResponseHandler, *serverAddress, EPICS_PVA_MINOR_VERSION, PVA_CHANNEL_SEARCH_PRIORITY);
+                LOG(logLevelDebug, "Got name server transport for address %s", m_nsAddr.c_str());
+                {
+                    Lock L(m_iccImpl->m_nsTransportMapMutex);
+                    m_iccImpl->m_nsTransportMap[m_nsAddrIndex] = nsTransport;
+                    m_iccImpl->m_nsTransportEvent.signal();
+                }
+            }
+            catch (std::exception& e)
+            {
+                LOG(logLevelDebug, "Could not get name server transport for %s: %s", m_nsAddr.c_str(), e.what());
+            }
+            m_inProgress = false;
+        }
+        virtual void timerStopped() OVERRIDE FINAL
+        {
+        }
+        string getNsAddress() const
+        {
+            return m_nsAddr;
+        }
+        bool inProgress() const
+        {
+            return m_inProgress;
+        }
+    private:
+        InternalClientContextImpl::shared_pointer m_iccImpl;
+        int m_nsAddrIndex;
+        string m_nsAddr;
+        bool m_inProgress;
+    };
+    typedef std::map<int, NsTransportConnectCallback::shared_pointer> NsTransportConnectCallbackMap;
+    NsTransportConnectCallbackMap m_nsTransportConnectCallbackMap;
+    typedef std::map<int, Timer::shared_pointer> NsTransportConnectCallbackTimerMap;
+    NsTransportConnectCallbackTimerMap m_nsTransportConnectCallbackTimerMap;
 
     /**
      * If the context doesn't see a beacon from a server that it is connected to for

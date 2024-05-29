@@ -153,6 +153,11 @@ private:
     int m_nsSearchCounter;
 
     /**
+     * Name server transport
+     */
+    Transport::shared_pointer m_nsTransport;
+
+    /**
      * Send byte buffer (frame)
      */
     epics::pvData::ByteBuffer m_sendBuffer;

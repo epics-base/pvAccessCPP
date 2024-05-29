@@ -201,7 +201,8 @@ void ChannelSearchManager::releaseNameServerTransport(bool forceRelease)
     if(m_channels.size() == 0 || forceRelease)
     {
         m_nsSearchCounter = 0;
-        m_context.lock()->releaseNameServerSearchTransport();
+        m_context.lock()->releaseNameServerSearchTransport(m_nsTransport);
+        m_nsTransport.reset();
     }
 }
 
@@ -291,32 +292,39 @@ void ChannelSearchManager::flushSendBuffer()
 {
     Lock guard(m_mutex);
 
+    // UDP transport
     Transport::shared_pointer tt = m_context.lock()->getSearchTransport();
     BlockingUDPTransport::shared_pointer ut = std::tr1::static_pointer_cast<BlockingUDPTransport>(tt);
 
+    // UDP search
     m_sendBuffer.putByte(CAST_POSITION, (int8_t)0x80);  // unicast, no reply required
     ut->send(&m_sendBuffer, inetAddressType_unicast);
 
     m_sendBuffer.putByte(CAST_POSITION, (int8_t)0x00);  // b/m-cast, no reply required
     ut->send(&m_sendBuffer, inetAddressType_broadcast_multicast);
 
-    // Name server search.
-    // Reset name server transport after max. number of attempts is reached.
-    Transport::shared_pointer nsTransport = m_context.lock()->getNameServerSearchTransport();
-    if(nsTransport)
+    // Name server transport
+    if(m_nsTransport)
     {
+        // Reset transport after max. number of attempts is reached.
         if (m_nsSearchCounter >= MAX_NAME_SERVER_SEARCH_COUNT)
         {
             LOG(logLevelDebug, "Resetting name server transport after %d search attempts", m_nsSearchCounter);
             releaseNameServerTransport(true);
         }
-        nsTransport = m_context.lock()->getNameServerSearchTransport();
     }
-    if(nsTransport)
+
+    if(!m_nsTransport)
+    {
+        m_nsTransport = m_context.lock()->getNameServerSearchTransport();
+    }
+
+    // Name server search
+    if(m_nsTransport)
     {
         m_nsSearchCounter++;
         LOG(logLevelDebug, "Initiating name server search for %d channels, search attempt %d", int(m_channels.size()), m_nsSearchCounter);
-        nsTransport->enqueueSendRequest(shared_from_this());
+        m_nsTransport->enqueueSendRequest(shared_from_this());
     }
     initializeSendBuffer();
 }
