@@ -223,6 +223,14 @@ public:
         {
             Lock lock(m_pointerMutex);
             m_stateChangeCount++;
+            if (connectionState == Channel::CONNECTED)
+            {
+                setConnectedStatus(true);
+            }
+            else
+            {
+                setConnectedStatus(false);
+            }
         }
 
         signalEvent();
