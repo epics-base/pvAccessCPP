@@ -4148,6 +4148,7 @@ public:
 
         m_nsTransportEvent.tryWait();
         Transport::shared_pointer nsTransport;
+        bool nsSearchScheduled = false;
         for (unsigned int i = 0; i < m_nsAddresses.size(); i++)
         {
             {
@@ -4165,15 +4166,17 @@ public:
                     if (!c->inProgress())
                     {
                         t->scheduleAfterDelay(c, 0);
+                        nsSearchScheduled = true;
                     }
                 }
                 m_nsAddressIndex = (m_nsAddressIndex+1) % m_nsAddresses.size();
             }
         }
 
-        if (!nsTransport)
+        if (!nsTransport && nsSearchScheduled)
         {
-            // Wait to get transport if we do not have it
+            // Wait to get transport if we do not have it and if
+            // we just scheduled name server search
             m_nsTransportEvent.wait(MAX_NS_TRANSPORT_WAIT_TIME);
             Lock L(m_nsTransportMapMutex);
             if (!m_nsTransportMap.empty())
