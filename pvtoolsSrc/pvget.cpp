@@ -366,6 +366,12 @@ int MAIN (int argc, char *argv[])
                         "Option '-%c' requires an argument. ('" EXECNAME " -h' for help.)\n",
                         optopt);
                 return 1;
+            default :
+                fprintf(stderr,
+                            "Option '-%c' is not supported - it is a valid option but is not implemented. \n",
+                            optopt);
+                    usage();
+                    return 1;
             }
         }
 
