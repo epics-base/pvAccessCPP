@@ -276,6 +276,12 @@ int MAIN (int argc, char *argv[])
 
         // ================ Parse Arguments
 
+        if(argc <= optind){
+            /* No arguments specified */
+            fprintf(stderr, "No arguments specified. Please use " EXECNAME" -h for help");
+            return 1;
+        }
+
         while ((opt = getopt(argc, argv, ":hvVRM:r:w:tmp:qdcF:f:ni")) != -1) {
             switch (opt) {
             case 'h':               /* Print usage */
@@ -361,8 +367,11 @@ int MAIN (int argc, char *argv[])
                         optopt);
                 return 1;
             default :
-                usage();
-                return 1;
+                fprintf(stderr,
+                            "Option '-%c' is not supported - it is a valid option but is not implemented. \n",
+                            optopt);
+                    usage();
+                    return 1;
             }
         }
 
