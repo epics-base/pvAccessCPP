@@ -53,6 +53,7 @@ public:
 
 class ChannelSearchManager :
         public epics::pvData::TimerCallback,
+        public TransportSender,
         public std::tr1::enable_shared_from_this<ChannelSearchManager>
 {
 public:
@@ -99,12 +100,18 @@ public:
     /// Timer stooped callback.
     virtual void timerStopped() OVERRIDE FINAL;
 
+    // Transport sender interface.
+    virtual void send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control) OVERRIDE FINAL;
+
     /**
      * Private constructor.
      * @param context
      */
     ChannelSearchManager(Context::shared_pointer const & context);
     void activate();
+
+    // Releases name server transport.
+    void releaseNameServerTransport(bool forceRelease=false);
 
 private:
 
@@ -139,6 +146,16 @@ private:
      * Search (datagram) sequence number.
      */
     int32_t m_sequenceNumber;
+
+    /**
+     * Name server search attempt counter.
+     */
+    int m_nsSearchCounter;
+
+    /**
+     * Name server transport
+     */
+    Transport::shared_pointer m_nsTransport;
 
     /**
      * Send byte buffer (frame)
