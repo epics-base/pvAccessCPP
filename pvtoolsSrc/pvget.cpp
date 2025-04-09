@@ -368,10 +368,10 @@ int MAIN (int argc, char *argv[])
                 return 1;
             default :
                 fprintf(stderr,
-                            "Option '-%c' is not supported - it is a valid option but is not implemented. \n",
-                            optopt);
-                    usage();
-                    return 1;
+                        "Option '-%c' is not supported - it is a valid option but is not implemented. \n",
+                        optopt);
+                usage();
+                return 1;
             }
         }
 
