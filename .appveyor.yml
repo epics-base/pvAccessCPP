@@ -31,28 +31,39 @@ configuration:
   - dynamic-debug
   - static-debug
 
-# Default OS Image
-image: Visual Studio 2019
-
 # Environment variables: compiler toolchain, base version, setup file, ...
 environment:
   # common / default variables for all jobs
   SETUP_PATH: .ci-local:.ci
+  BASE: 7.0
 
   matrix:
-  - BASE: 3.15
-    CMP: vs2019
-  - BASE: 7.0
-    CMP: vs2019
-  - BASE: 7.0
-    CMP: gcc
-  - BASE: 7.0
-    CMP: vs2017
+  - CMP: vs2019
+    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+  - CMP: vs2019
+    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+    BASE: 3.15
+  - CMP: vs2017
     APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+  - CMP: vs2015
+  - CMP: vs2013
+  - CMP: gcc
+    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+    # TODO: static linking w/ readline isn't working.  Bypass auto-detect
+    COMMANDLINE_LIBRARY: EPICS
 
 # Platform: processor architecture
 platform:
   - x64
+
+# Matrix configuration: exclude sets of jobs
+matrix:
+  exclude:
+  # MinGW debug builds use the same libraries, unlike VS
+  - configuration: dynamic-debug
+    CMP: gcc
+  - configuration: static-debug
+    CMP: gcc
 
 #---------------------------------#
 #     building & testing          #
