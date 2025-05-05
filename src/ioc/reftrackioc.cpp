@@ -25,7 +25,7 @@ void showRefs(const epics::RefSnapshot& snap, int lvl, bool delta)
         if(it->second.current==0 && it->second.delta==0 && lvl<=0) continue;
         if(delta && it->second.delta==0 && lvl<=0) continue;
         if(delta) {
-            printf(" %s : %zu (delta %zd)\n",
+            printf(" %s : %zu (delta %ld)\n",
                    it->first.c_str(), it->second.current, it->second.delta);
         } else {
             printf(" %s : %zu\n", it->first.c_str(), it->second.current);
