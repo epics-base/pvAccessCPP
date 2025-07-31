@@ -26,6 +26,12 @@
 #include <pv/remote.h>
 #include <pv/pvAccess.h>
 
+namespace 
+{
+    class InternalClientContextImpl;
+    class BeaconCleanupHandler;
+}
+
 namespace epics {
 namespace pvAccess {
 
@@ -85,6 +91,10 @@ private:
      * First beacon flag.
      */
     bool _first;
+    /**
+     * Callback for cleaning up the beacon
+     */
+    std::shared_ptr<BeaconCleanupHandler> _callback;
 
     /**
      * Update beacon.
@@ -100,6 +110,8 @@ private:
                       ServerGUID const &guid,
                       epics::pvData::int16 sequentalID,
                       epics::pvData::int16 changeCount);
+
+    friend class ::InternalClientContextImpl;
 };
 
 }
