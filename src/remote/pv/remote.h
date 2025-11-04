@@ -119,7 +119,7 @@ void hackAroundRTEMSSocketInterrupt();
 /**
  * Interface defining transport send control.
  */
-class TransportSendControl : public epics::pvData::SerializableControl {
+class epicsShareClass TransportSendControl : public epics::pvData::SerializableControl {
 public:
     POINTER_DEFINITIONS(TransportSendControl);
 
