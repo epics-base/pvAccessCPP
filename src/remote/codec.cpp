@@ -1156,7 +1156,7 @@ void BlockingTCPTransportCodec::sendThread()
         try {
             this->processWrite();
             continue;
-        } catch (connection_closed_exception &cce) {
+        } catch (connection_closed_exception &) {
             // noop
         } catch (std::exception &e) {
             PRINT_EXCEPTION(e);

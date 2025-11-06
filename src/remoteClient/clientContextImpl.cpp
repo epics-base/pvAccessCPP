@@ -308,7 +308,7 @@ public:
         {
             startRequest(PURE_CANCEL_REQUEST);
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<BaseRequestImpl>());
-        } catch (std::runtime_error& e) {
+        } catch (std::runtime_error&) {
             // assume from checkAndGetTransport() due to wrong channel state
         } catch (std::exception& e) {
             // noop (do not complain if fails)
@@ -351,7 +351,7 @@ public:
             {
                 startRequest(PURE_DESTROY_REQUEST);
                 m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<BaseRequestImpl>());
-            } catch (std::runtime_error& e) {
+            } catch (std::runtime_error&) {
                 // assume from checkAndGetTransport() due to wrong channel state
             } catch (std::exception& e) {
                 LOG(logLevelWarn, "Ignore exception during BaseRequestImpl::destroy: %s", e.what());
@@ -462,7 +462,7 @@ public:
 
         try {
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             EXCEPTION_GUARD3(m_callback, cb, cb->channelProcessConnect(channelDestroyed, external_from_this<ChannelProcessRequestImpl>()));
             BaseRequestImpl::destroy(true);
         }
@@ -523,7 +523,7 @@ public:
 
         try {
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<BaseRequestImpl>());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             abortRequest();
             EXCEPTION_GUARD3(m_callback, cb, cb->processDone(channelNotConnected, thisPtr));
         }
@@ -595,7 +595,7 @@ public:
 
         try {
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             EXCEPTION_GUARD3(m_callback, cb, cb->channelGetConnect(channelDestroyed, external_from_this<ChannelGetImpl>(), StructureConstPtr()));
             BaseRequestImpl::destroy(true);
         }
@@ -701,7 +701,7 @@ public:
         try {
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelGetImpl>());
             //TODO bulk hack m_channel->checkAndGetTransport()->enqueueOnlySendRequest(thisSender);
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             abortRequest();
             EXCEPTION_GUARD3(m_callback, cb, cb->getDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
@@ -783,7 +783,7 @@ public:
 
         try {
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             EXCEPTION_GUARD3(m_callback, cb, cb->channelPutConnect(channelDestroyed, external_from_this<ChannelPutImpl>(), StructureConstPtr()));
             BaseRequestImpl::destroy(true);
         }
@@ -894,7 +894,7 @@ public:
 
         try {
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelPutImpl>());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             abortRequest();
             EXCEPTION_GUARD3(m_callback, cb, cb->getDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
@@ -935,7 +935,7 @@ public:
                 m_structure->copyUnchecked(*pvPutStructure, *m_bitSet);
             }
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelPutImpl>());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             abortRequest();
             EXCEPTION_GUARD3(m_callback, cb, cb->putDone(channelNotConnected, thisPtr));
         }
@@ -1019,7 +1019,7 @@ public:
 
         try {
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             EXCEPTION_GUARD3(m_callback, cb, cb->channelPutGetConnect(channelDestroyed, external_from_this<ChannelPutGetImpl>(), StructureConstPtr(), StructureConstPtr()));
             BaseRequestImpl::destroy(true);
         }
@@ -1179,7 +1179,7 @@ public:
                 m_putData->copyUnchecked(*pvPutStructure, *m_putDataBitSet);
             }
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelPutGetImpl>());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             abortRequest();
             EXCEPTION_GUARD3(m_callback, cb, cb->putGetDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
@@ -1208,7 +1208,7 @@ public:
 
         try {
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelPutGetImpl>());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             abortRequest();
             EXCEPTION_GUARD3(m_callback, cb, cb->getGetDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
@@ -1237,7 +1237,7 @@ public:
 
         try {
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelPutGetImpl>());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             abortRequest();
             EXCEPTION_GUARD3(m_callback, cb, cb->getPutDone(channelNotConnected, thisPtr, PVStructurePtr(), BitSetPtr()));
         }
@@ -1319,7 +1319,7 @@ public:
         // subscribe
         try {
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             EXCEPTION_GUARD3(m_callback, cb, cb->channelRPCConnect(channelDestroyed, external_from_this<ChannelRPCImpl>()));
             BaseRequestImpl::destroy(true);
         }
@@ -1418,7 +1418,7 @@ public:
             }
 
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelRPCImpl>());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             abortRequest();
             EXCEPTION_GUARD3(m_callback, cb, cb->requestDone(channelNotConnected, thisPtr, PVStructurePtr()));
         }
@@ -1507,7 +1507,7 @@ public:
         // subscribe
         try {
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             EXCEPTION_GUARD3(m_callback, cb, cb->channelArrayConnect(channelDestroyed, external_from_this<ChannelArrayImpl>(), Array::shared_pointer()));
             BaseRequestImpl::destroy(true);
         }
@@ -1652,7 +1652,7 @@ public:
                 m_stride = stride;
             }
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelArrayImpl>());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             abortRequest();
             EXCEPTION_GUARD3(m_callback, cb, cb->getArrayDone(channelNotConnected, thisPtr, PVArray::shared_pointer()));
         }
@@ -1696,7 +1696,7 @@ public:
                 m_stride = stride;
             }
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelArrayImpl>());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             abortRequest();
             EXCEPTION_GUARD3(m_callback, cb, cb->putArrayDone(channelNotConnected, thisPtr));
         }
@@ -1729,7 +1729,7 @@ public:
                 m_length = length;
             }
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelArrayImpl>());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             abortRequest();
             EXCEPTION_GUARD3(m_callback, cb, cb->setLengthDone(channelNotConnected, thisPtr));
         }
@@ -1759,7 +1759,7 @@ public:
 
         try {
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelArrayImpl>());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             abortRequest();
             EXCEPTION_GUARD3(m_callback, cb, cb->getLengthDone(channelNotConnected, thisPtr, 0));
         }
@@ -2154,7 +2154,7 @@ public:
                     m_queueSize = option->getAs<int32>();
                     if(m_queueSize<2)
                         m_queueSize = 2;
-                }catch(std::runtime_error& e){
+                }catch(std::runtime_error&){
                     SEND_MESSAGE(m_callback, cb, "Invalid queueSize=", warningMessage);
                 }
             }
@@ -2163,7 +2163,7 @@ public:
             if (option) {
                 try {
                     m_pipeline = option->getAs<epics::pvData::boolean>();
-                }catch(std::runtime_error& e){
+                }catch(std::runtime_error&){
                     SEND_MESSAGE(m_callback, cb, "Invalid pipeline=", warningMessage);
                 }
             }
@@ -2223,7 +2223,7 @@ public:
         // subscribe
         try {
             resubscribeSubscription(m_channel->checkDestroyedAndGetTransport());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             EXCEPTION_GUARD3(m_callback, cb, cb->monitorConnect(channelDestroyed, external_from_this<ChannelMonitorImpl>(), StructureConstPtr()));
             BaseRequestImpl::destroy(true);
         }
@@ -2389,7 +2389,7 @@ public:
         {
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelMonitorImpl>());
             return Status::Ok;
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             guard.lock();
 
             m_started = restore;
@@ -2422,7 +2422,7 @@ public:
         {
             m_channel->checkAndGetTransport()->enqueueSendRequest(internal_from_this<ChannelMonitorImpl>());
             return Status::Ok;
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             guard.lock();
 
             m_started = restore;
@@ -4611,7 +4611,7 @@ public:
         // enqueue send request
         try {
             m_channel->checkAndGetTransport()->enqueueSendRequest(shared_from_this());
-        } catch (std::runtime_error &rte) {
+        } catch (std::runtime_error &) {
             //notify(BaseRequestImpl::channelNotConnected, FieldConstPtr());
         }
     }
