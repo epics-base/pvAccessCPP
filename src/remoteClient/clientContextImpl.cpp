@@ -49,6 +49,9 @@ using std::tr1::static_pointer_cast;
 using namespace std;
 using namespace epics::pvData;
 
+static const float maxBeaconLifetime = 180.f * 2.f;
+static const int maxTrackedBeacons = 20000;
+
 namespace epics {
 namespace pvAccess {
 
@@ -3038,7 +3041,43 @@ enum ContextState {
 };
 
 
+/**
+ * Handles cleanup of old beacons.
+ */
+class BeaconCleanupHandler
+{
+public:
+    POINTER_DEFINITIONS(BeaconCleanupHandler);
 
+    class Callback : public TimerCallback
+    {
+    public:
+        Callback(BeaconCleanupHandler& handler) : m_handler(handler)
+        {
+        }
+
+        virtual void callback() OVERRIDE FINAL;
+        virtual void timerStopped() OVERRIDE FINAL;
+
+        BeaconCleanupHandler& m_handler;
+    };
+
+    BeaconCleanupHandler(InternalClientContextImpl& impl, osiSockAddr addr);
+    ~BeaconCleanupHandler();
+
+    /**
+     * Set the last time used to the current time
+     */
+    void touch() { epicsTimeGetCurrent(&m_lastTime); }
+
+private:
+    void remove();
+
+    std::shared_ptr<Callback> m_callback;
+    osiSockAddr m_from;
+    InternalClientContextImpl& m_impl;
+    epicsTimeStamp m_lastTime;
+};
 
 class InternalClientContextImpl :
     public ClientContextImpl,
@@ -4351,12 +4390,25 @@ private:
         BeaconHandler::shared_pointer handler;
         if (it == m_beaconHandlers.end())
         {
+            /* If we're tracking too many beacons, we'll just ignore this one */
+            if (m_beaconHandlers.size() >= maxTrackedBeacons)
+            {
+                char ipa[64];
+                sockAddrToDottedIP(&responseFrom->sa, ipa, sizeof(ipa));
+                LOG(logLevelDebug, "Tracked beacon limit reached (%d), ignoring %s\n", maxTrackedBeacons, ipa);
+                return nullptr;
+            }
+
             // stores weak_ptr
             handler.reset(new BeaconHandler(internal_from_this(), responseFrom));
+            handler->_callback = std::make_shared<BeaconCleanupHandler>(*this, *responseFrom);
             m_beaconHandlers[*responseFrom] = handler;
         }
         else
+        {
             handler = it->second;
+            handler->_callback->touch(); /* Update the callback's latest use time */
+        }
         return handler;
     }
 
@@ -4556,7 +4608,43 @@ private:
     Configuration::shared_pointer m_configuration;
 
     TransportRegistry::transportVector_t m_flushTransports;
+
+    friend class BeaconCleanupHandler;
 };
+
+
+BeaconCleanupHandler::BeaconCleanupHandler(InternalClientContextImpl& impl, osiSockAddr addr) :
+    m_callback(std::make_shared<Callback>(*this)),
+    m_from(addr),
+    m_impl(impl)
+{
+    m_impl.m_timer->schedulePeriodic(m_callback, maxBeaconLifetime, maxBeaconLifetime);
+}
+
+BeaconCleanupHandler::~BeaconCleanupHandler()
+{
+    m_impl.m_timer->cancel(m_callback);
+}
+
+void BeaconCleanupHandler::Callback::callback()
+{
+    epicsTimeStamp ts;
+    epicsTimeGetCurrent(&ts);
+    if (epicsTimeDiffInSeconds(&ts, &m_handler.m_lastTime) > maxBeaconLifetime)
+        m_handler.remove();
+}
+
+void BeaconCleanupHandler::Callback::timerStopped()
+{
+    m_handler.remove();
+}
+
+void BeaconCleanupHandler::remove()
+{
+    Lock guard(m_impl.m_beaconMapMutex);
+    m_impl.m_timer->cancel(m_callback);
+    m_impl.m_beaconHandlers.erase(m_from); /* Erase the beacon entirely */
+}
 
 size_t InternalClientContextImpl::num_instances;
 size_t InternalClientContextImpl::InternalChannelImpl::num_instances;
