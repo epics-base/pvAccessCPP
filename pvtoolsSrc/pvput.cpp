@@ -379,8 +379,8 @@ int main (int argc, char *argv[])
         Putter thework;
 
         // copy values from command line
-        for (int n = 0; optind < argc; n++, optind++)
-            thework.values.push_back(argv[optind]);
+        while (optind < argc)
+            thework.values.push_back(argv[optind++]);
 
         pvd::PVStructure::shared_pointer pvRequest;
         try {
