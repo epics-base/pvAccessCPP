@@ -565,18 +565,6 @@ std::size_t AbstractCodec::alignedValue(
     return (value + k) & (~k);
 }
 
-static const char PADDING_BYTES[] =
-{
-    static_cast<char>(0xFF),
-    static_cast<char>(0xFF),
-    static_cast<char>(0xFF),
-    static_cast<char>(0xFF),
-    static_cast<char>(0xFF),
-    static_cast<char>(0xFF),
-    static_cast<char>(0xFF),
-    static_cast<char>(0xFF)
-};
-
 
 void AbstractCodec::startMessage(
     epics::pvData::int8 command,
