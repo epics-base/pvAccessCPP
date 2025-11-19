@@ -6,7 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
-#include <stdio.h>
+#include <epicsStdio.h>
 #include <epicsStdlib.h>
 #include <epicsGetopt.h>
 #include <epicsExit.h>
@@ -138,7 +138,7 @@ int main (int argc, char *argv[])
             char buf[16];
             for (size_t i = 0; i < nChannels; i++)
             {
-                sprintf(buf, "test%zu", (i+1));
+                epicsSnprintf(buf, sizeof(buf), "test%zu", (i+1));
                 channels.push_back(provider->createChannel(buf, channelRequester));
             }
 
