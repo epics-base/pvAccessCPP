@@ -3,6 +3,12 @@
 
 # This is YAML - indentation levels are crucial
 
+#---------------------------------#
+#       build cache               #
+#---------------------------------#
+# The AppVeyor cache allowance is way too small (1GB per account across all
+# projects, branches and jobs) to be used for the dependency builds.
+
 cache:
   - C:\Users\appveyor\.tools
 
@@ -16,13 +22,9 @@ init:
 
 clone_depth: 5
 
-# Skipping commits affecting only specific files
-skip_commits:
-  files:
-    - 'documentation/*'
-    - '.github/*'
-    - '**/*.md'
-    - '.readthedocs.yml'
+#---------------------------------#
+#   build matrix configuration    #
+#---------------------------------#
 
 # Build Configurations: dll/static, regular/debug
 configuration:
@@ -34,7 +36,8 @@ configuration:
 # Environment variables: compiler toolchain, base version, setup file, ...
 environment:
   # common / default variables for all jobs
-  SETUP_PATH: .ci-local:.ci
+  SETUP_PATH: .ci-local
+  EPICS_TEST_IMPRECISE_TIMING: YES
   BASE: 7.0
 
   matrix:
@@ -46,15 +49,13 @@ environment:
   - CMP: vs2017
     APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
   - CMP: vs2015
-  - CMP: vs2013
   - CMP: gcc
     APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
     # TODO: static linking w/ readline isn't working.  Bypass auto-detect
     COMMANDLINE_LIBRARY: EPICS
 
 # Platform: processor architecture
-platform:
-  - x64
+platform: x64
 
 # Matrix configuration: exclude sets of jobs
 matrix:
@@ -92,9 +93,9 @@ on_failure:
 #         debugging               #
 #---------------------------------#
 
-## if you want to connect by remote desktop to a failed build, uncomment these lines
-## note that you will need to connect within the usual build timeout limit (60 minutes)
-## so you may want to adjust the build matrix above to just build the one of interest
+## To connect by remote desktop to a failing build, uncomment the lines below.
+## You must connect within the usual build timeout limit (60 minutes),
+## so adjust the build matrix above to just build the config of interest.
 
 #on_failure:
 #  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

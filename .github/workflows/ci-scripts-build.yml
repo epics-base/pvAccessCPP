@@ -3,7 +3,7 @@
 
 # This is YAML - indentation levels are crucial
 
-# Set the 'name:' properties to values that work for you
+# Workflow name, shared by all branches
 
 name: pvAccess
 
@@ -11,27 +11,13 @@ name: pvAccess
 on:
   push:
     paths-ignore:
-      - 'documentation/*'
-      - 'startup/*'
-      - '.appveyor/*'
-      - '.tools/*'
-      - '.gitattributes'
-      - '**/*.html'
-      - '**/*.md'
+      - .appveyor.yml
   pull_request:
-    paths-ignore:
-      - 'documentation/*'
-      - 'startup/*'
-      - '.appveyor/*'
-      - '.tools/*'
-      - '.gitattributes'
-      - '**/*.html'
-      - '**/*.md'
 
 env:
     SETUP_PATH: .ci-local:.ci
     EPICS_TEST_IMPRECISE_TIMING: YES
-    EPICS_TEST_TIMEOUT: 300 # 5 min (RTEMS epicsMessageQueue is slowest)
+    EPICS_TEST_TIMEOUT: 300 # 5 min
 
 jobs:
   native:
@@ -39,7 +25,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     # Set environment variables from matrix parameters
     env:
-      BASE: "7.0"
+      # NB: PVA modules build against both BASE 7.0 and 3.15
+      BASE: ${{ matrix.base }}
       CMP: ${{ matrix.cmp }}
       BCFG: ${{ matrix.configuration }}
       CI_CROSS_TARGETS: ${{ matrix.cross }}
@@ -50,9 +37,11 @@ jobs:
       matrix:
         # Job names also name artifacts, character limitations apply
         include:
-          - os: ubuntu-22.04
-            cmp: gcc-12
-            name: "Ub-22 gcc-12 c++20 Werror"
+          - name: "7.0 Ub gcc c++20 Werror"
+            base: "7.0"
+            os: ubuntu-latest
+            cmp: gcc
+            configuration: default
             # Turn all warnings into errors,
             # except for those we could not fix (yet).
             # Remove respective -Wno-error=... flag once it is fixed.
@@ -73,127 +62,139 @@ jobs:
                                   -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3'
                     CMD_LDFLAGS=-Wl,-z,relro"
 
-          - os: ubuntu-22.04
-            cmp: gcc
-            configuration: default
-            cross: "windows-x64-mingw"
-            name: "Ub-22 gcc + MinGW"
-
-          - os: ubuntu-22.04
-            cmp: gcc
-            configuration: static
-            cross: "windows-x64-mingw"
-            name: "Ub-22 gcc + MinGW, static"
-
-          - os: ubuntu-22.04
+          - name: "7.0 Ub gcc C++11, static"
+            base: "7.0"
+            os: ubuntu-latest
             cmp: gcc
             configuration: static
             extra: "CMD_CXXFLAGS=-std=c++11"
-            name: "Ub-22 gcc C++11, static"
 
-          - os: ubuntu-22.04
+          - name: "7.0 Ub gcc u-char"
+            base: "7.0"
+            os: ubuntu-latest
             cmp: gcc
             configuration: static
             extra: "CMD_CFLAGS=-funsigned-char CMD_CXXFLAGS=-funsigned-char"
-            name: "Ub-22 gcc unsigned char"
 
-          - os: ubuntu-22.04
+          - name: "7.0 Ub clang"
+            base: "7.0"
+            os: ubuntu-latest
             cmp: clang
             configuration: default
-            name: "Ub-22 clang"
 
-          - os: ubuntu-22.04
+          - name: "7.0 Ub clang C++11"
+            base: "7.0"
+            os: ubuntu-latest
             cmp: clang
             configuration: default
             extra: "CMD_CXXFLAGS=-std=c++11"
-            name: "Ub-22 clang C++11"
 
-          - os: ubuntu-22.04
+          - name: "7.0 MacOS clang"
+            base: "7.0"
+            os: macos-latest
+            cmp: clang
+            configuration: default
+
+          # Cross builds
+
+          - name: "3.15 Ub-22 gcc + MinGW"
+            base: "3.15"
+            os: ubuntu-22.04
             cmp: gcc
             configuration: default
-            cross: "RTEMS-pc686-qemu@5"
-            name: "Ub-22 gcc + RT-5.1 pc686"
+            cross: "windows-x64-mingw"
 
-          - os: ubuntu-22.04
+          - name: "7.0 Ub gcc + linux-aarch64"
+            base: "7.0"
+            os: ubuntu-latest
             cmp: gcc
             configuration: default
-            cross: "RTEMS-beatnik@5"
-            test: NO
-            name: "Ub-22 gcc + RT-5.1 beatnik"
+            cross: "linux-aarch64"
 
-          - os: ubuntu-22.04
+          - name: "7.0 Ub gcc + linux-arm gnueabi"
+            base: "7.0"
+            os: ubuntu-latest
             cmp: gcc
             configuration: default
-            cross: "RTEMS-xilinx_zynq_a9_qemu@5"
-            test: NO
-            name: "Ub-22 gcc + RT-5.1 xilinx_zynq_a9_qemu"
+            cross: "linux-arm@arm-linux-gnueabi"
 
-          - os: ubuntu-22.04
+          - name: "7.0 Ub gcc + linux-arm gnueabihf"
+            base: "7.0"
+            os: ubuntu-latest
             cmp: gcc
             configuration: default
-            cross: "RTEMS-uC5282@5"
-            test: NO
-            name: "Ub-22 gcc + RT-5.1 uC5282"
+            cross: "linux-arm@arm-linux-gnueabihf"
 
-          - os: ubuntu-22.04
+          - name: "7.0 Ub gcc + MinGW"
+            base: "7.0"
+            os: ubuntu-latest
             cmp: gcc
             configuration: default
-            name: "Ub-22 gcc + RT-4.10"
+            cross: "windows-x64-mingw"
+
+          - name: "7.0 Ub gcc + MinGW, static"
+            base: "7.0"
+            os: ubuntu-latest
+            cmp: gcc
+            configuration: static
+            cross: "windows-x64-mingw"
+
+          - name: "7.0 Ub-22 gcc + RT-4.9 pc386"
+            base: "7.0"
+            os: ubuntu-22.04
+            cmp: gcc
+            configuration: default
+            cross: "RTEMS-pc386-qemu@4.9"
+
+          - name: "7.0 Ub-22 gcc + RT-4.10 pc386"
+            base: "7.0"
+            os: ubuntu-22.04
+            cmp: gcc
+            configuration: default
             cross: "RTEMS-pc386-qemu@4.10"
             test: NO
 
-          - os: ubuntu-22.04
+          - name: "7.0 Ub-22 gcc + RT-5.1 pc686"
+            base: "7.0"
+            os: ubuntu-22.04
             cmp: gcc
             configuration: default
-            name: "Ub-22 gcc + RT-4.9"
-            cross: "RTEMS-pc386-qemu@4.9"
+            cross: "RTEMS-pc686-qemu@5"
 
-          - os: macos-latest
-            cmp: clang
+          - name: "7.0 Ub-22 gcc + RT-5.1 beatnik,zynq_a9,uC5282"
+            base: "7.0"
+            os: ubuntu-22.04
+            cmp: gcc
             configuration: default
-            name: "MacOS clang"
+            cross: "RTEMS-beatnik@5:RTEMS-xilinx_zynq_a9_qemu@5:RTEMS-uC5282@5"
+            test: NO
 
-          - os: windows-2019
-            cmp: vs2019
+          # Windows builds
+
+          - name: "7.0 Win-22 MSC-22"
+            base: "7.0"
+            os: windows-2022
+            cmp: vs2022
+            configuration: default
+
+          - name: "7.0 Win-22 MSC-22 static"
+            base: "7.0"
+            os: windows-2022
+            cmp: vs2022
+            configuration: static
+
+          - name: "7.0 Win-22 MSC-22 debug"
+            base: "7.0"
+            os: windows-2022
+            cmp: vs2022
             configuration: debug
-            name: "Win2019 MSC-19"
-            extra: "CMD_CXXFLAGS=-analysis"
+            extra: "CMD_CXXFLAGS=-analyze"
 
-          - os: windows-2019
-            cmp: vs2019
-            configuration: static-debug
-            name: "Win2019 MSC-19, static"
-            extra: "CMD_CXXFLAGS=-analysis"
-
-          - os: windows-2019
-            cmp: vs2019
-            configuration: debug
-            name: "Win2019 MSC-19, debug"
-
-          - os: windows-2019
+          - name: "7.0 Win-22 MinGW"
+            base: "7.0"
+            os: windows-2022
             cmp: gcc
             configuration: default
-            name: "Win2019 mingw"
-
-          # Linux cross builds
-
-          - os: ubuntu-latest
-            cmp: gcc
-            configuration: default
-            name: "Cross linux-aarch64"
-            cross: linux-aarch64
-
-          - os: ubuntu-latest
-            cmp: gcc
-            configuration: default
-            name: "Cross linux-arm gnueabi"
-            cross: linux-arm@arm-linux-gnueabi
-
-          - os: ubuntu-latest
-            cmp: gcc
-            configuration: default
-            name: "Cross linux-arm gnueabihf"
-            cross: linux-arm@arm-linux-gnueabihf
 
     steps:
     - uses: actions/checkout@v4
@@ -230,7 +231,7 @@ jobs:
       image: ${{ matrix.image }}
     # Set environment variables from matrix parameters
     env:
-      BASE: "7.0"
+      BASE: ${{ matrix.base }}
       CMP: ${{ matrix.cmp }}
       BCFG: ${{ matrix.configuration }}
       EXTRA: ${{ matrix.extra }}
@@ -240,63 +241,54 @@ jobs:
       matrix:
         # Job names also name artifacts, character limitations apply
         include:
-          #- name: "CentOS-7"
-          #  image: centos:7
-          #  cmp: gcc
-          #  configuration: default
+          - name: "7.0 CentOS-8 gcc"
+            base: "7.0"
+            image: centos:8
+            cmp: gcc
+            configuration: default
 
-          - name: "Fedora-33"
+          - name: "7.0 Rocky-9 gcc"
+            base: "7.0"
+            image: rockylinux:9
+            cmp: gcc
+            configuration: default
+
+          - name: "7.0 Fedora-33 gcc"
+            base: "7.0"
             image: fedora:33
             cmp: gcc
             configuration: default
 
-          - name: "Fedora-latest"
+          - name: "7.0 Fedora gcc"
+            base: "7.0"
             image: fedora:latest
             cmp: gcc
             configuration: default
 
     steps:
-    - name: "Build newer Git"
-      # actions/checkout@v2 wants git >=2.18
-      # centos:7 has 1.8
-      if: matrix.image=='centos:7'
+    - name: "Fix repo URLs on CentOS-8"
+      # centos:8 is frozen, repos are in the vault
+      if: matrix.image=='centos:8'
       run: |
-        yum -y install curl make gcc curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-ExtUtils-MakeMaker
-        curl https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.29.0.tar.gz | tar -xz
-        cd git-*
-        make -j2 prefix=/usr/local all
-        make prefix=/usr/local install
-        cd ..
-        rm -rf git-*
-        type -a git
-        git --version
+        sed -i -e "s|mirrorlist=|#mirrorlist=|" \
+        -e "s|#baseurl=http://mirror|baseurl=http://vault|" \
+        /etc/yum.repos.d/CentOS-Linux-{BaseOS,AppStream,Extras,Plus}.repo
     - name: "Redhat setup"
       run: |
-        dnfyum() {
-            dnf -y "$@" || yum -y "$@"
-            return $?
-        }
-        dnfyum install python3 gdb make perl gcc-c++ glibc-devel readline-devel ncurses-devel perl-devel perl-Test-Simple
-        git --version || dnfyum install git
-        # rather than just bite the bullet and link python3 -> python,
-        # people would rather just break all existing scripts...
-        [ -e /usr/bin/python ] || ln -sf python3 /usr/bin/python
-        python --version
+        dnf -y install python3 gdb make perl gcc-c++ glibc-devel readline-devel ncurses-devel perl-devel perl-Test-Simple
+        git --version || dnf -y install git
+        python3 --version
     - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Automatic core dumper analysis
       uses: mdavidsaver/ci-core-dumper@master
-      if: matrix.image!='centos:7'
-    - name: Automatic core dumper analysis
-      uses: mdavidsaver/ci-core-dumper@node16
-      if: matrix.image=='centos:7'
     - name: Prepare and compile dependencies
-      run: python .ci/cue.py prepare
+      run: python3 .ci/cue.py prepare
     - name: Build main module
-      run: python .ci/cue.py build
+      run: python3 .ci/cue.py build
     - name: Run main module tests
-      run: python .ci/cue.py -T 20M test
+      run: python3 .ci/cue.py -T 20M test
     - name: Upload tapfiles Artifact
       if: ${{ always() }}
       uses: actions/upload-artifact@v4
@@ -306,4 +298,4 @@ jobs:
         if-no-files-found: ignore
     - name: Collect and show test results
       if: ${{ always() }}
-      run: python .ci/cue.py -T 5M test-results
+      run: python3 .ci/cue.py -T 5M test-results
