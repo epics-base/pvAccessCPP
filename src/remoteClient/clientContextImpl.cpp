@@ -60,9 +60,51 @@ Status ClientChannelImpl::channelDestroyed(
 Status ClientChannelImpl::channelDisconnected(
     Status::STATUSTYPE_WARNING, "channel disconnected");
 
+namespace detail {
+/**
+ * Handles cleanup of old beacons.
+ */
+class BeaconCleanupHandler
+{
+public:
+    POINTER_DEFINITIONS(BeaconCleanupHandler);
+
+    class Callback : public TimerCallback
+    {
+    public:
+        Callback(BeaconCleanupHandler& handler) : m_handler(handler)
+        {
+        }
+
+        virtual void callback() OVERRIDE FINAL;
+        virtual void timerStopped() OVERRIDE FINAL;
+
+        BeaconCleanupHandler& m_handler;
+    };
+
+    BeaconCleanupHandler(InternalClientContextImpl& impl, osiSockAddr addr);
+    ~BeaconCleanupHandler();
+
+    /**
+     * Extend the lifetime of the beacon, resetting removal countdown to 0
+     */
+    void touch() { epicsAtomicSetIntT(&m_count, 0); }
+
+private:
+    void remove();
+
+    std::tr1::shared_ptr<BeaconCleanupHandler::Callback> m_callback;
+    osiSockAddr m_from;
+    InternalClientContextImpl& m_impl;
+    int m_count;
+};
+
+} // namespace detail
 }}
+
 namespace {
 using namespace epics::pvAccess;
+using namespace epics::pvAccess::detail;
 
 class ChannelGetFieldRequestImpl;
 
@@ -3040,45 +3082,6 @@ enum ContextState {
     CONTEXT_DESTROYED
 };
 
-
-/**
- * Handles cleanup of old beacons.
- */
-class BeaconCleanupHandler
-{
-public:
-    POINTER_DEFINITIONS(BeaconCleanupHandler);
-
-    class Callback : public TimerCallback
-    {
-    public:
-        Callback(BeaconCleanupHandler& handler) : m_handler(handler)
-        {
-        }
-
-        virtual void callback() OVERRIDE FINAL;
-        virtual void timerStopped() OVERRIDE FINAL;
-
-        BeaconCleanupHandler& m_handler;
-    };
-
-    BeaconCleanupHandler(InternalClientContextImpl& impl, osiSockAddr addr);
-    ~BeaconCleanupHandler();
-
-    /**
-     * Extend the lifetime of the beacon, resetting removal countdown to 0
-     */
-    void touch() { epicsAtomicSetIntT(&m_count, 0); }
-
-private:
-    void remove();
-
-    std::tr1::shared_ptr<BeaconCleanupHandler::Callback> m_callback;
-    osiSockAddr m_from;
-    InternalClientContextImpl& m_impl;
-    int m_count;
-};
-
 class InternalClientContextImpl :
     public ClientContextImpl,
     public ChannelProvider
@@ -4610,42 +4613,8 @@ private:
 
     TransportRegistry::transportVector_t m_flushTransports;
 
-    friend class BeaconCleanupHandler;
+    friend class epics::pvAccess::detail::BeaconCleanupHandler;
 };
-
-
-BeaconCleanupHandler::BeaconCleanupHandler(InternalClientContextImpl& impl, osiSockAddr addr) :
-    m_from(addr),
-    m_impl(impl),
-    m_count(0)
-{
-    m_callback.reset(new Callback(*this));
-    m_impl.m_timer->schedulePeriodic(m_callback, maxBeaconLifetime / 4, maxBeaconLifetime / 4);
-}
-
-BeaconCleanupHandler::~BeaconCleanupHandler()
-{
-    m_impl.m_timer->cancel(m_callback);
-}
-
-void BeaconCleanupHandler::Callback::callback()
-{
-    if (epicsAtomicIncrIntT(&m_handler.m_count) >= 5) {
-        m_handler.remove();
-    }
-}
-
-void BeaconCleanupHandler::Callback::timerStopped()
-{
-    m_handler.remove();
-}
-
-void BeaconCleanupHandler::remove()
-{
-    Lock guard(m_impl.m_beaconMapMutex);
-    m_impl.m_timer->cancel(m_callback);
-    m_impl.m_beaconHandlers.erase(m_from);
-}
 
 size_t InternalClientContextImpl::num_instances;
 size_t InternalClientContextImpl::InternalChannelImpl::num_instances;
@@ -4848,6 +4817,43 @@ ChannelProvider::shared_pointer createClientProvider(const Configuration::shared
     const_cast<InternalClientContextImpl::weak_pointer&>(internal->m_internal_this) = internal;
     internal->initialize();
     return external;
+}
+
+namespace detail {
+
+BeaconCleanupHandler::BeaconCleanupHandler(InternalClientContextImpl& impl, osiSockAddr addr) :
+    m_from(addr),
+    m_impl(impl),
+    m_count(0)
+{
+    m_callback.reset(new Callback(*this));
+    m_impl.m_timer->schedulePeriodic(m_callback, maxBeaconLifetime / 4, maxBeaconLifetime / 4);
+}
+
+BeaconCleanupHandler::~BeaconCleanupHandler()
+{
+    m_impl.m_timer->cancel(m_callback);
+}
+
+void BeaconCleanupHandler::Callback::callback()
+{
+    if (epicsAtomicIncrIntT(&m_handler.m_count) >= 5) {
+        m_handler.remove();
+    }
+}
+
+void BeaconCleanupHandler::Callback::timerStopped()
+{
+    m_handler.remove();
+}
+
+void BeaconCleanupHandler::remove()
+{
+    Lock guard(m_impl.m_beaconMapMutex);
+    m_impl.m_timer->cancel(m_callback);
+    m_impl.m_beaconHandlers.erase(m_from);
+}
+
 }
 
 }
