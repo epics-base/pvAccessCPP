@@ -3073,7 +3073,7 @@ public:
 private:
     void remove();
 
-    std::shared_ptr<BeaconCleanupHandler::Callback> m_callback;
+    std::tr1::shared_ptr<BeaconCleanupHandler::Callback> m_callback;
     osiSockAddr m_from;
     InternalClientContextImpl& m_impl;
     int m_count;
@@ -4397,7 +4397,7 @@ private:
                 char ipa[64];
                 sockAddrToDottedIP(&responseFrom->sa, ipa, sizeof(ipa));
                 LOG(logLevelDebug, "Tracked beacon limit reached (%d), ignoring %s\n", maxTrackedBeacons, ipa);
-                return nullptr;
+                return BeaconHandler::shared_pointer();
             }
 
             // stores weak_ptr

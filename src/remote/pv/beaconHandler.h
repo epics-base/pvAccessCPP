@@ -94,7 +94,7 @@ private:
     /**
      * Callback for cleaning up the beacon
      */
-    std::shared_ptr<BeaconCleanupHandler> _callback;
+    std::tr1::shared_ptr<BeaconCleanupHandler> _callback;
 
     /**
      * Update beacon.
