@@ -29,11 +29,13 @@
 namespace 
 {
     class InternalClientContextImpl;
-    class BeaconCleanupHandler;
 }
 
 namespace epics {
 namespace pvAccess {
+namespace detail {
+    class BeaconCleanupHandler;
+}
 
 /**
  * BeaconHandler
@@ -94,7 +96,7 @@ private:
     /**
      * Callback for cleaning up the beacon
      */
-    std::shared_ptr<BeaconCleanupHandler> _callback;
+    std::tr1::shared_ptr<detail::BeaconCleanupHandler> _callback;
 
     /**
      * Update beacon.
