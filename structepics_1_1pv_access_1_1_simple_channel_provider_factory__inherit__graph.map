@@ -1,0 +1,5 @@
+<map id="epics::pvAccess::SimpleChannelProviderFactory&lt; Provider &gt;" name="epics::pvAccess::SimpleChannelProviderFactory&lt; Provider &gt;">
+<area shape="rect" id="Node000001" title="Simple ChannelProviderFactory which requires the existance of a ctor Provider(const std::tr1::shared_..." alt="" coords="5,94,220,135"/>
+<area shape="rect" id="Node000002" href="$classepics_1_1pv_access_1_1_channel_provider_factory.html" title="ChanneProvider factory interface." alt="" coords="25,5,200,46"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="115,62,115,94,110,94,110,62"/>
+</map>

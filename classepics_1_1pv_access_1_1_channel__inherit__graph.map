@@ -1,0 +1,7 @@
+<map id="epics::pvAccess::Channel" name="epics::pvAccess::Channel">
+<area shape="rect" id="Node000001" title="The interface through which Operations (get, put, monitor, ...) are initiated." alt="" coords="119,79,294,105"/>
+<area shape="rect" id="Node000002" href="$classepics_1_1pv_access_1_1_requester.html" title="Callback class for passing messages to a requester." alt="" coords="5,5,192,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="131,38,190,76,187,81,128,42"/>
+<area shape="rect" id="Node000003" href="$classepics_1_1pv_access_1_1_destroyable.html" title="Instance declaring destroy method." alt="" coords="216,5,413,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="285,42,226,81,223,76,282,38"/>
+</map>

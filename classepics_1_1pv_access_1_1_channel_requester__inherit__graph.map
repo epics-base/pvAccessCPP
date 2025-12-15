@@ -1,0 +1,7 @@
+<map id="epics::pvAccess::ChannelRequester" name="epics::pvAccess::ChannelRequester">
+<area shape="rect" id="Node000001" title="Event notifications associated with Channel life&#45;cycle." alt="" coords="11,79,186,120"/>
+<area shape="rect" id="Node000003" href="$structepics_1_1pv_access_1_1_default_channel_requester.html" title="Used when ChannelProvider::createChannel() is passed a NULL ChannelRequester." alt="" coords="14,168,183,208"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="101,135,101,167,96,167,96,135"/>
+<area shape="rect" id="Node000002" href="$classepics_1_1pv_access_1_1_requester.html" title="Callback class for passing messages to a requester." alt="" coords="5,5,192,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,46,101,79,96,79,96,46"/>
+</map>

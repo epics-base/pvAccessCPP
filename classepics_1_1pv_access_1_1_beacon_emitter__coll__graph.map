@@ -1,0 +1,7 @@
+<map id="epics::pvAccess::BeaconEmitter" name="epics::pvAccess::BeaconEmitter">
+<area shape="rect" id="Node000001" title="BeaconEmitter." alt="" coords="95,94,308,120"/>
+<area shape="rect" id="Node000002" href="$classepics_1_1pv_access_1_1_transport_sender.html" title="Interface defining transport sender (instance sending data over transport)." alt="" coords="5,5,187,46"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="136,53,187,91,184,96,133,58"/>
+<area shape="rect" id="Node000003" href="/Users/anj/Software/epics/base-7.0/modules/pvData/documentation/pvdata.tag$classepics_1_1pv_data_1_1_timer_callback.html" title=" " alt="" coords="211,13,405,38"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="281,50,219,96,216,91,278,46"/>
+</map>

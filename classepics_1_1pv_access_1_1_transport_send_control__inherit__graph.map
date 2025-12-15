@@ -1,0 +1,5 @@
+<map id="epics::pvAccess::TransportSendControl" name="epics::pvAccess::TransportSendControl">
+<area shape="rect" id="Node000001" title="Interface defining transport send control." alt="" coords="5,94,187,135"/>
+<area shape="rect" id="Node000002" href="/Users/anj/Software/epics/base-7.0/modules/pvData/documentation/pvdata.tag$classepics_1_1pv_data_1_1_serializable_control.html" title=" " alt="" coords="7,5,185,46"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,62,99,94,93,94,93,62"/>
+</map>

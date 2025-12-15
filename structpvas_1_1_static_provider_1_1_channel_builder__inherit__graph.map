@@ -1,0 +1,5 @@
+<map id="pvas::StaticProvider::ChannelBuilder" name="pvas::StaticProvider::ChannelBuilder">
+<area shape="rect" id="Node000001" title="Interface for something which can provide Channels. aka A &quot;PV&quot;. Typically a SharedPV." alt="" coords="5,5,145,46"/>
+<area shape="rect" id="Node000002" href="$classpvas_1_1_shared_p_v.html" title="A Shared State Process Variable (PV)" alt="" coords="17,94,133,120"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="78,62,78,93,72,93,72,62"/>
+</map>

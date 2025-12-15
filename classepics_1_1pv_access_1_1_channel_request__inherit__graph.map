@@ -1,0 +1,17 @@
+<map id="epics::pvAccess::ChannelRequest" name="epics::pvAccess::ChannelRequest">
+<area shape="rect" id="Node000001" title="Base interface for all channel requests (aka." alt="" coords="250,149,424,190"/>
+<area shape="rect" id="Node000003" href="$classepics_1_1pv_access_1_1_channel_array.html" title="Request to put and get Array Data." alt="" coords="486,5,661,46"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="367,136,413,95,471,55,495,44,497,49,473,60,417,99,370,140"/>
+<area shape="rect" id="Node000004" href="$classepics_1_1pv_access_1_1_channel_get.html" title="Request to get data from a channel." alt="" coords="476,70,671,96"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="391,140,471,106,511,94,513,99,473,111,393,145"/>
+<area shape="rect" id="Node000005" href="$classepics_1_1pv_access_1_1_channel_process.html" title="ChannelProcess &#45; request that a channel be processed." alt="" coords="486,120,661,161"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="439,154,486,148,486,154,439,160"/>
+<area shape="rect" id="Node000006" href="$classepics_1_1pv_access_1_1_channel_put.html" title="Interface for a channel access put request." alt="" coords="476,185,671,210"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="439,179,477,184,476,189,439,184"/>
+<area shape="rect" id="Node000007" href="$classepics_1_1pv_access_1_1_channel_put_get.html" title="Channel access put/get request." alt="" coords="486,235,661,275"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="403,194,473,220,506,232,504,237,471,226,401,199"/>
+<area shape="rect" id="Node000008" href="$classepics_1_1pv_access_1_1_channel_r_p_c.html" title="Handle for an RPC operation." alt="" coords="472,300,675,325"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="368,200,415,244,443,266,473,285,502,296,500,301,471,289,440,270,411,248,364,203"/>
+<area shape="rect" id="Node000002" href="$classepics_1_1pv_access_1_1_destroyable.html" title="Instance declaring destroy method." alt="" coords="5,157,202,182"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="217,167,249,167,249,172,217,172"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="epics::pvAccess::SingletonChannelProviderFactory&lt; Provider &gt;" name="epics::pvAccess::SingletonChannelProviderFactory&lt; Provider &gt;">
+<area shape="rect" id="Node000001" title="Helper for ChannelProviders which access a singleton resource (eg." alt="" coords="5,94,186,150"/>
+<area shape="rect" id="Node000002" href="$classepics_1_1pv_access_1_1_channel_provider_factory.html" title="ChanneProvider factory interface." alt="" coords="8,5,183,46"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="98,61,98,93,93,93,93,61"/>
+</map>

@@ -1,0 +1,25 @@
+<map id="epics::pvAccess::Destroyable" name="epics::pvAccess::Destroyable">
+<area shape="rect" id="Node000001" title="Instance declaring destroy method." alt="" coords="5,153,202,178"/>
+<area shape="rect" id="Node000002" href="$classepics_1_1pv_access_1_1_channel.html" title="The interface through which Operations (get, put, monitor, ...) are initiated." alt="" coords="250,62,424,88"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="144,143,249,98,285,86,286,91,251,103,146,148"/>
+<area shape="rect" id="Node000003" href="$classepics_1_1pv_access_1_1_channel_provider.html" title="An instance of a Client or Server." alt="" coords="250,112,424,153"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="213,147,249,142,249,147,214,153"/>
+<area shape="rect" id="Node000004" href="$classepics_1_1pv_access_1_1_channel_request.html" title="Base interface for all channel requests (aka." alt="" coords="250,177,424,218"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="217,179,249,183,249,188,217,184"/>
+<area shape="rect" id="Node000011" href="$classepics_1_1pv_access_1_1_monitor.html" title="Access to Monitor subscription and queue." alt="" coords="252,296,422,321"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="140,185,315,293,312,297,138,189"/>
+<area shape="rect" id="Node000005" href="$classepics_1_1pv_access_1_1_channel_array.html" title="Request to put and get Array Data." alt="" coords="486,5,661,46"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="417,167,422,162,433,149,439,137,445,110,451,83,458,69,470,56,486,44,489,49,474,60,463,72,456,85,450,111,444,138,438,152,426,166,421,171"/>
+<area shape="rect" id="Node000006" href="$classepics_1_1pv_access_1_1_channel_get.html" title="Request to get data from a channel." alt="" coords="476,70,671,96"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="414,168,422,162,437,148,445,134,454,120,471,106,496,94,498,99,473,111,459,123,450,137,441,152,426,166,417,172"/>
+<area shape="rect" id="Node000007" href="$classepics_1_1pv_access_1_1_channel_process.html" title="ChannelProcess &#45; request that a channel be processed." alt="" coords="486,120,661,161"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="437,171,486,159,487,164,439,176"/>
+<area shape="rect" id="Node000008" href="$classepics_1_1pv_access_1_1_channel_put.html" title="Interface for a channel access put request." alt="" coords="476,185,671,210"/>
+<area shape="poly" id="edge7_Node000004_Node000008" title=" " alt="" coords="439,195,476,195,476,200,439,200"/>
+<area shape="rect" id="Node000009" href="$classepics_1_1pv_access_1_1_channel_put_get.html" title="Channel access put/get request." alt="" coords="486,235,661,275"/>
+<area shape="poly" id="edge8_Node000004_Node000009" title=" " alt="" coords="439,220,487,231,486,237,437,225"/>
+<area shape="rect" id="Node000010" href="$classepics_1_1pv_access_1_1_channel_r_p_c.html" title="Handle for an RPC operation." alt="" coords="472,300,675,325"/>
+<area shape="poly" id="edge9_Node000004_Node000010" title=" " alt="" coords="377,226,422,257,473,285,506,296,505,301,471,289,419,261,374,230"/>
+<area shape="rect" id="Node000012" href="$classepics_1_1pv_access_1_1_monitor_f_i_f_o.html" title="Utility implementation of Monitor." alt="" coords="474,349,673,374"/>
+<area shape="poly" id="edge11_Node000011_Node000012" title=" " alt="" coords="412,323,514,346,513,351,411,328"/>
+</map>

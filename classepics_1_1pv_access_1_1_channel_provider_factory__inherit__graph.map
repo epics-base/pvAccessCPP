@@ -1,0 +1,7 @@
+<map id="epics::pvAccess::ChannelProviderFactory" name="epics::pvAccess::ChannelProviderFactory">
+<area shape="rect" id="Node000001" title="ChanneProvider factory interface." alt="" coords="5,41,180,82"/>
+<area shape="rect" id="Node000002" href="$structepics_1_1pv_access_1_1_simple_channel_provider_factory.html" title="Simple ChannelProviderFactory which requires the existance of a ctor Provider(const std::tr1::shared_..." alt="" coords="228,5,442,46"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="195,44,227,39,228,44,195,49"/>
+<area shape="rect" id="Node000003" href="$structepics_1_1pv_access_1_1_singleton_channel_provider_factory.html" title="Helper for ChannelProviders which access a singleton resource (eg." alt="" coords="245,70,425,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="195,74,244,82,244,87,194,79"/>
+</map>

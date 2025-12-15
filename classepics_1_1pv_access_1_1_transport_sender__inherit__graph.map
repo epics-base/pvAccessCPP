@@ -1,0 +1,7 @@
+<map id="epics::pvAccess::TransportSender" name="epics::pvAccess::TransportSender">
+<area shape="rect" id="Node000001" title="Interface defining transport sender (instance sending data over transport)." alt="" coords="132,5,313,46"/>
+<area shape="rect" id="Node000002" href="$classepics_1_1pv_access_1_1_beacon_emitter.html" title="BeaconEmitter." alt="" coords="5,102,218,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="187,58,128,103,125,99,184,54"/>
+<area shape="rect" id="Node000003" href="$classepics_1_1pv_access_1_1_response_request.html" title="A request that expects an response." alt="" coords="242,94,427,135"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="261,53,310,91,307,96,258,58"/>
+</map>

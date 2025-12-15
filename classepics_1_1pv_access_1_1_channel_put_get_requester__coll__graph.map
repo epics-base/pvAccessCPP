@@ -1,0 +1,5 @@
+<map id="epics::pvAccess::ChannelPutGetRequester" name="epics::pvAccess::ChannelPutGetRequester">
+<area shape="rect" id="Node000001" title="Requester for ChannelPutGet." alt="" coords="5,94,180,135"/>
+<area shape="rect" id="Node000002" href="$structepics_1_1pv_access_1_1_channel_base_requester.html" title="Base for all Requesters (callbacks to client)" alt="" coords="5,5,180,46"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="95,62,95,94,90,94,90,62"/>
+</map>
