@@ -1,7 +1,16 @@
 /** @page pvarelease_notes Release Notes
 
+Release 7.1.8 (December 2025)
+=============================
+
+- Compatible changes
+  - Capped the number and age of PVA beacons to avoid a resource leak. Beacons
+    older than 360 seconds will be destroyed automatically, new beacons will be
+    ignored if >=2048 exist already.
+  - Various Clang, MSVC and GCC compiler warnings cleaned up.
+
 Release 7.1.7 (December 2023)
-==========================
+=============================
 
 - Changes
   - Registering the PVA server with the IOC now sets the `PVAS_SERVER_PORT`
