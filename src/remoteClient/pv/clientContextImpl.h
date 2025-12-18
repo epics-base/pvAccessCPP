@@ -94,10 +94,7 @@ public:
     virtual void registerChannel(ClientChannelImpl::shared_pointer const & channel) = 0;
     virtual void unregisterChannel(ClientChannelImpl::shared_pointer const & channel) = 0;
 
-    virtual ClientChannelImpl::shared_pointer createChannelInternal(std::string const &name,
-                                                              ChannelRequester::shared_pointer const & requester,
-                                                              short priority,
-                                                              const InetAddrVector& addresses) = 0;
+    virtual ClientChannelImpl::shared_pointer createChannelInternal(std::string const &name, ChannelRequester::shared_pointer const & requester, short priority, const InetAddrVector& addresses, bool initiateSearch) = 0;
 
     virtual ResponseRequest::shared_pointer getResponseRequest(pvAccessID ioid) = 0;
     virtual pvAccessID registerResponseRequest(ResponseRequest::shared_pointer const & request) = 0;

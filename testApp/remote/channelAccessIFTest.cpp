@@ -62,7 +62,7 @@ inline bool compareWithTol(const T v1, const T v2, const T tol)
 
 int ChannelAccessIFTest::runAllTest() {
 
-    testPlan(152+EXTRA_STRESS_TESTS);
+    testPlan(153+EXTRA_STRESS_TESTS);
 
     epics::pvAccess::Configuration::shared_pointer base_config(ConfigurationBuilder()
             //.add("EPICS_PVA_DEBUG", "3")
@@ -2010,6 +2010,13 @@ void ChannelAccessIFTest::test_channelArray() {
         return;
     }
 
+    succStatus = arrayReq->syncGetLength(false, getTimeoutSec());
+    if (!succStatus) {
+        testFail("%s: an array getLength failed (3)", CURRENT_FUNCTION);
+        return;
+    }
+    testOk(arrayReq->getLength() == bigCapacity, "%s: retrieved length should be %lu", CURRENT_FUNCTION, (unsigned long) bigCapacity);
+
     succStatus = arrayReq->syncGet(false, 0, 0, getTimeoutSec());
     if (!succStatus) {
         testFail("%s: an array syncGet failed (9) ", CURRENT_FUNCTION);
@@ -2022,6 +2029,12 @@ void ChannelAccessIFTest::test_channelArray() {
            CURRENT_FUNCTION, (unsigned long) bigCapacity);
     testOk(data4[0] == 1.1 , "%s: 4.check 0: %f == 1.1", CURRENT_FUNCTION, data4[0]);
     testOk(data4[1] == 2.2 , "%s: 4.check 1: %f == 2.2", CURRENT_FUNCTION, data4[1]);
+    if (data4.size() == bigCapacity) {
+      size_t i = bigCapacity-5;
+      for (; i < bigCapacity; i++) {
+          testDiag("%s: 4.check %d: %f", CURRENT_FUNCTION, int(i), data4[i]);
+      }
+    }
     /*
     if (data4.size() == bigCapacity) {
       size_t i = newCap;
