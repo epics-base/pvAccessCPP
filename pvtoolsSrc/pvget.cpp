@@ -309,6 +309,8 @@ int MAIN (int argc, char *argv[])
                     outmode = pvd::PVStructure::Formatter::NT;
                 } else if(strcmp(optarg, "json")==0) {
                     outmode = pvd::PVStructure::Formatter::JSON;
+                } else if(strcmp(optarg, "json5")==0) {
+                    outmode = pvd::PVStructure::Formatter::JSON5;
                 } else {
                     fprintf(stderr, "Unknown output mode '%s'\n", optarg);
                     outmode = pvd::PVStructure::Formatter::Raw;
