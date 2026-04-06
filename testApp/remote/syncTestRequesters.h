@@ -1211,6 +1211,10 @@ public:
         }
 
         resetEvent();
+        {
+            Lock lock(m_pointerMutex);
+            m_putArrayStatus = false;
+        }
         if (lastRequest)
             m_channelArray->lastRequest();
         // TODO stride !!!
@@ -1227,6 +1231,10 @@ public:
         }
 
         resetEvent();
+        {
+            Lock lock(m_pointerMutex);
+            m_getArrayStatus = false;
+        }
         if (lastRequest)
             m_channelArray->lastRequest();
         // TODO stride !!!
@@ -1243,6 +1251,10 @@ public:
         }
 
         resetEvent();
+        {
+            Lock lock(m_pointerMutex);
+            m_lengthArrayStatus = false;
+        }
         if (lastRequest)
             m_channelArray->lastRequest();
         m_channelArray->setLength(length);
@@ -1257,6 +1269,10 @@ public:
         }
 
         resetEvent();
+        {
+            Lock lock(m_pointerMutex);
+            m_lengthArrayStatus = false;
+        }
         if (lastRequest)
             m_channelArray->lastRequest();
         m_channelArray->getLength();
@@ -1381,12 +1397,6 @@ private:
 
     bool waitUntilGetArrayDone(double timeOut)
     {
-        {
-            Lock lock(m_pointerMutex);
-            m_getArrayStatus = false;
-        }
-
-
         bool signaled = waitUntilEvent(timeOut);
         if (!signaled) {
             return false;
@@ -1399,12 +1409,6 @@ private:
 
     bool waitUntilPutArrayDone(double timeOut)
     {
-        {
-            Lock lock(m_pointerMutex);
-            m_putArrayStatus = false;
-        }
-
-
         bool signaled = waitUntilEvent(timeOut);
         if (!signaled) {
             return false;
@@ -1417,12 +1421,6 @@ private:
 
     bool waitUntilSetLengthDone(double timeOut)
     {
-        {
-            Lock lock(m_pointerMutex);
-            m_lengthArrayStatus = false;
-        }
-
-
         bool signaled = waitUntilEvent(timeOut);
         if (!signaled) {
             return false;
