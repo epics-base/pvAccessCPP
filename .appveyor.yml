@@ -1,5 +1,5 @@
-# .appveyor.yml for use with EPICS Base ci-scripts
-# (see: https://github.com/epics-base/ci-scripts)
+# Appveyor configuration for EPICS 7 submodules
+# (see also  https://github.com/epics-base/ci-scripts)
 
 # This is YAML - indentation levels are crucial
 
@@ -33,24 +33,26 @@ configuration:
   - dynamic-debug
   - static-debug
 
-# Environment variables: compiler toolchain, base version, setup file, ...
+# Default build worker image
+# Despite the Appveyor doc's, don't use this image for vs2015
+image: Visual Studio 2019
+
+# Environment variables: base version, compiler toolchain, etc.
 environment:
   # common / default variables for all jobs
-  SETUP_PATH: .ci-local
+  SETUP_PATH: .ci-local:.ci
   EPICS_TEST_IMPRECISE_TIMING: YES
   BASE: 7.0
 
   matrix:
   - CMP: vs2019
-    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-  - CMP: vs2019
-    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-    BASE: 3.15
+  - BASE: 3.15
+    CMP: vs2019
   - CMP: vs2017
     APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
   - CMP: vs2015
+    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
   - CMP: gcc
-    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
     # TODO: static linking w/ readline isn't working.  Bypass auto-detect
     COMMANDLINE_LIBRARY: EPICS
 
@@ -71,8 +73,9 @@ matrix:
 #---------------------------------#
 
 install:
+  - cmd: set PATH=C:\Python38-x64;%PATH%
   - cmd: git submodule update --init --recursive
-  - cmd: pip install git+https://github.com/mdavidsaver/ci-core-dumper#egg=ci-core-dumper
+  - cmd: python -m pip install git+https://github.com/mdavidsaver/ci-core-dumper#egg=ci-core-dumper
   - cmd: python .ci/cue.py prepare
 
 build_script:
@@ -95,7 +98,7 @@ on_failure:
 
 ## To connect by remote desktop to a failing build, uncomment the lines below.
 ## You must connect within the usual build timeout limit (60 minutes),
-## so adjust the build matrix above to just build the config of interest.
+## so adjust the build matrix above to build only the config of interest.
 
 #on_failure:
 #  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
@@ -106,8 +109,4 @@ on_failure:
 #---------------------------------#
 
 notifications:
-  - provider: Email
-    to:
-      - core-talk@aps.anl.gov
-    on_build_success: false
   - provider: GitHubPullRequest
