@@ -43,6 +43,8 @@ environment:
   SETUP_PATH: .ci-local:.ci
   EPICS_TEST_IMPRECISE_TIMING: YES
   BASE: 7.0
+  # Verbose builds don't seem to fail, and might even be faster!
+  VV: 1
 
   matrix:
   - CMP: vs2019
