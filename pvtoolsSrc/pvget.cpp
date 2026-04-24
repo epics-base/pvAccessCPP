@@ -39,6 +39,8 @@ namespace {
 
 size_t pvnamewidth;
 
+bool stringify = false;
+
 int haderror;
 
 void usage (void)
@@ -46,6 +48,7 @@ void usage (void)
     fprintf (stderr, "\nUsage: " EXECNAME " [options] <PV name>...\n"
              "\n"
              COMMON_OPTIONS
+             "  -S:                Print array of bytes as a string\n"
              " deprecated options:\n"
              "  -q, -t, -i, -n, -F: ignored\n"
              "  -f <input file>:   errors\n"
@@ -85,6 +88,7 @@ struct Getter : public pvac::ClientChannel::GetCallback, public Tracker
             pvd::PVStructure::Formatter fmt(event.value->stream()
                                             .format(outmode));
 
+            fmt.asString(stringify);
             if(verbosity>=2)
                 fmt.highlight(*event.valid); // show all, highlight valid
             else
@@ -276,7 +280,7 @@ int MAIN (int argc, char *argv[])
 
         // ================ Parse Arguments
 
-        while ((opt = getopt(argc, argv, ":hvVRM:r:w:tmp:qdcF:f:ni")) != -1) {
+        while ((opt = getopt(argc, argv, ":hvVRM:r:w:tmp:qdcF:f:niS")) != -1) {
             switch (opt) {
             case 'h':               /* Print usage */
                 usage();
@@ -335,6 +339,9 @@ int MAIN (int argc, char *argv[])
             case 'n':
             case 'q':               /* Quiet mode */
                 // deprecate
+                break;
+            case 'S':
+                stringify = true;   /* Stringify byte scalar arrays */
                 break;
             case 'f':               /* Use input stream as input */
                 fprintf(stderr, "Unsupported option -f\n");
