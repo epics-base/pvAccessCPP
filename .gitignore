@@ -13,3 +13,4 @@ O.*/
 *.orig
 *.log
 .*.swp
+.iocsh_history

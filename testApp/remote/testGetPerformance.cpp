@@ -3,7 +3,7 @@
 #include <pv/clientFactory.h>
 #include <pv/pvAccess.h>
 
-#include <stdio.h>
+#include <epicsStdio.h>
 #include <epicsStdlib.h>
 #include <epicsGetopt.h>
 #include <epicsThread.h>
@@ -301,9 +301,9 @@ void runTest()
     for (int i = 0; i < channels; i++)
     {
         if (arraySize > 0)
-            sprintf(buf, "testArray%d_%d", arraySize, i);
+            epicsSnprintf(buf, sizeof(buf), "testArray%d_%d", arraySize, i);
         else
-            sprintf(buf, "test%d", i);
+            epicsSnprintf(buf, sizeof(buf), "test%d", i);
         channelNames.push_back(buf);
     }
 

@@ -565,18 +565,6 @@ std::size_t AbstractCodec::alignedValue(
     return (value + k) & (~k);
 }
 
-static const char PADDING_BYTES[] =
-{
-    static_cast<char>(0xFF),
-    static_cast<char>(0xFF),
-    static_cast<char>(0xFF),
-    static_cast<char>(0xFF),
-    static_cast<char>(0xFF),
-    static_cast<char>(0xFF),
-    static_cast<char>(0xFF),
-    static_cast<char>(0xFF)
-};
-
 
 void AbstractCodec::startMessage(
     epics::pvData::int8 command,
@@ -1156,7 +1144,7 @@ void BlockingTCPTransportCodec::sendThread()
         try {
             this->processWrite();
             continue;
-        } catch (connection_closed_exception &cce) {
+        } catch (connection_closed_exception &) {
             // noop
         } catch (std::exception &e) {
             PRINT_EXCEPTION(e);

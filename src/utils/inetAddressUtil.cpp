@@ -38,7 +38,7 @@ void encodeAsIPv6Address(ByteBuffer* buffer, const osiSockAddr* address) {
     buffer->putLong(0);
     buffer->putShort(0);
     // next 16-bits are 1
-    buffer->putShort(0xFFFF);
+    buffer->putShort(-1);
     // following IPv4 address in big-endian (network) byte order
     uint32_t ipv4Addr = ntohl(address->ia.sin_addr.s_addr);
     buffer->putByte((int8)((ipv4Addr>>24)&0xFF));

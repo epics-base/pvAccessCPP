@@ -146,7 +146,7 @@ int MAIN (int argc, char *argv[])
             case 'a':
                 try {
                 args.push_back(parseArg(optarg));
-            } catch(std::exception& e){
+            } catch(std::exception&){
                     std::cerr<<"Error parsing argument '"<<optarg<<"'\n";
                     return 1;
                 }
@@ -180,7 +180,7 @@ int MAIN (int argc, char *argv[])
         for(int i=optind; i<argc; i++) {
             try {
                 args.push_back(parseArg(argv[i]));
-            } catch(std::exception& e){
+            } catch(std::exception&){
                 std::cerr<<"Error parsing argument '"<<optarg<<"'\n";
                 return 1;
             }

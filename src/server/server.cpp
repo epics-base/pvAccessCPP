@@ -24,7 +24,6 @@ namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
 
 typedef epicsGuard<epicsMutex> Guard;
-typedef epicsGuardRelease<epicsMutex> UnGuard;
 
 namespace pvas {
 
@@ -93,7 +92,6 @@ struct StaticProvider::Impl : public pva::ChannelProvider
             Guard G(mutex);
             builders_t::const_iterator it(builders.find(name));
             if(it!=builders.end()) {
-                UnGuard U(G);
                 builder = it->second;
             }
         }

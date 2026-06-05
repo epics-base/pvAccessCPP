@@ -29,7 +29,7 @@
 namespace epics {
 namespace pvAccess {
 
-class epicsShareClass RPCRequestException : public std::runtime_error {
+class RPCRequestException : public std::runtime_error {
 public:
 
     explicit RPCRequestException(std::string const & message) :

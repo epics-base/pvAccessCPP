@@ -3,39 +3,33 @@
 
 # This is YAML - indentation levels are crucial
 
-# Set the 'name:' properties to values that work for you (pvxs)
+# Workflow name, shared by all branches
 
-name: Base
+name: pvAccess
 
 # Trigger on pushes and PRs to any branch
 on:
   push:
     paths-ignore:
-      - '.*.yml'
-      - 'documentation/*'
-      - '**/*.md'
+      - .appveyor.yml
   pull_request:
-    paths-ignore:
-      - '.*.yml'
-      - 'documentation/*'
-      - '**/*.md'
 
 env:
     SETUP_PATH: .ci-local:.ci
     EPICS_TEST_IMPRECISE_TIMING: YES
+    EPICS_TEST_TIMEOUT: 300 # 5 min
 
 jobs:
-  build-base:
+  native:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     # Set environment variables from matrix parameters
     env:
+      # NB: PVA modules build against both BASE 7.0 and 3.15
       BASE: ${{ matrix.base }}
       CMP: ${{ matrix.cmp }}
       BCFG: ${{ matrix.configuration }}
-      WINE: ${{ matrix.wine }}
-      RTEMS: ${{ matrix.rtems }}
-      RTEMS_TARGET: ${{ matrix.rtems_target }}
+      CI_CROSS_TARGETS: ${{ matrix.cross }}
       EXTRA: ${{ matrix.extra }}
       TEST: ${{ matrix.test }}
     strategy:
@@ -43,113 +37,170 @@ jobs:
       matrix:
         # Job names also name artifacts, character limitations apply
         include:
-          - os: ubuntu-20.04
+          - name: "7.0 Ub gcc c++20 Werror"
+            base: "7.0"
+            os: ubuntu-latest
             cmp: gcc
             configuration: default
+            # Turn all warnings into errors,
+            # except for those we could not fix (yet).
+            # Remove respective -Wno-error=... flag once it is fixed.
+            extra: "CMD_CXXFLAGS=-std=c++20
+                    CMD_CPPFLAGS='-fdiagnostics-color
+                                  -fstack-protector-strong
+                                  -Wformat
+                                  -Werror
+                                  -Werror=format-security
+                                  -Wno-error=deprecated-declarations
+                                  -Wno-error=stringop-truncation
+                                  -Wno-error=restrict
+                                  -Wno-error=sizeof-pointer-memaccess
+                                  -Wno-error=nonnull
+                                  -Wno-error=dangling-pointer
+                                  -Wno-error=format-overflow
+                                  -Wno-error=stringop-overread
+                                  -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3'
+                    CMD_LDFLAGS=-Wl,-z,relro"
+
+          - name: "7.0 Ub gcc C++11, static"
+            base: "7.0"
+            os: ubuntu-latest
+            cmp: gcc
+            configuration: static
+            extra: "CMD_CXXFLAGS=-std=c++11"
+
+          - name: "7.0 Ub gcc u-char"
+            base: "7.0"
+            os: ubuntu-latest
+            cmp: gcc
+            configuration: static
+            extra: "CMD_CFLAGS=-funsigned-char CMD_CXXFLAGS=-funsigned-char"
+
+          - name: "7.0 Ub clang"
+            base: "7.0"
+            os: ubuntu-latest
+            cmp: clang
+            configuration: default
+
+          - name: "7.0 Ub clang C++11"
+            base: "7.0"
+            os: ubuntu-latest
+            cmp: clang
+            configuration: default
+            extra: "CMD_CXXFLAGS=-std=c++11"
+
+          - name: "7.0 MacOS clang"
+            base: "7.0"
+            os: macos-latest
+            cmp: clang
+            configuration: default
+
+          # Cross builds
+
+          - name: "3.15 Ub-22 gcc + MinGW"
             base: "3.15"
-            wine: "64"
-            name: "3.15 Ub-20 gcc-9 + MinGW"
-
-          - os: ubuntu-20.04
+            os: ubuntu-22.04
             cmp: gcc
             configuration: default
-            base: "7.0"
-            wine: "64"
-            name: "7.0 Ub-20 gcc-9 + MinGW"
+            cross: "windows-x64-mingw"
 
-          - os: ubuntu-20.04
+          - name: "7.0 Ub gcc + linux-aarch64"
+            base: "7.0"
+            os: ubuntu-latest
+            cmp: gcc
+            configuration: default
+            cross: "linux-aarch64"
+
+          - name: "7.0 Ub gcc + linux-arm gnueabi"
+            base: "7.0"
+            os: ubuntu-latest
+            cmp: gcc
+            configuration: default
+            cross: "linux-arm@arm-linux-gnueabi"
+
+          - name: "7.0 Ub gcc + linux-arm gnueabihf"
+            base: "7.0"
+            os: ubuntu-latest
+            cmp: gcc
+            configuration: default
+            cross: "linux-arm@arm-linux-gnueabihf"
+
+          - name: "7.0 Ub gcc + MinGW"
+            base: "7.0"
+            os: ubuntu-latest
+            cmp: gcc
+            configuration: default
+            cross: "windows-x64-mingw"
+
+          - name: "7.0 Ub gcc + MinGW, static"
+            base: "7.0"
+            os: ubuntu-latest
             cmp: gcc
             configuration: static
-            base: "7.0"
-            wine: "64"
-            name: "7.0 Ub-20 gcc-9 + MinGW, static"
+            cross: "windows-x64-mingw"
 
-          - os: ubuntu-20.04
-            cmp: gcc
-            configuration: static
+          - name: "7.0 Ub-22 gcc + RT-4.9 pc386"
             base: "7.0"
-            extra: "CMD_CXXFLAGS=-std=c++11"
-            name: "7.0 Ub-20 gcc-9 C++11, static"
-
-          - os: ubuntu-20.04
-            cmp: clang
-            configuration: default
-            base: "7.0"
-            name: "7.0 Ub-20 clang-10"
-
-          - os: ubuntu-20.04
-            cmp: clang
-            configuration: default
-            base: "7.0"
-            extra: "CMD_CXXFLAGS=-std=c++11"
-            name: "7.0 Ub-20 clang-10 C++11"
-
-          - os: ubuntu-20.04
+            os: ubuntu-22.04
             cmp: gcc
             configuration: default
+            cross: "RTEMS-pc386-qemu@4.9"
+
+          - name: "7.0 Ub-22 gcc + RT-4.10 pc386"
             base: "7.0"
-            rtems: "5"
-            rtems_target: RTEMS-pc686-qemu
+            os: ubuntu-22.04
+            cmp: gcc
+            configuration: default
+            cross: "RTEMS-pc386-qemu@4.10"
             test: NO
-            name: "7.0 Ub-20 gcc-9 + RT-5.1 pc686"
 
-          - os: ubuntu-20.04
+          - name: "7.0 Ub-22 gcc + RT-5.1 pc686"
+            base: "7.0"
+            os: ubuntu-22.04
             cmp: gcc
             configuration: default
+            cross: "RTEMS-pc686-qemu@5"
+
+          - name: "7.0 Ub-22 gcc + RT-5.1 beatnik,zynq_a9,uC5282"
             base: "7.0"
-            rtems: "4.10"
-            rtems_target: RTEMS-pc386-qemu
+            os: ubuntu-22.04
+            cmp: gcc
+            configuration: default
+            cross: "RTEMS-beatnik@5:RTEMS-xilinx_zynq_a9_qemu@5:RTEMS-uC5282@5"
             test: NO
-            name: "7.0 Ub-20 gcc-9 + RT-4.10"
 
-          - os: ubuntu-20.04
-            cmp: gcc
-            configuration: default
+          # Windows builds
+
+          - name: "7.0 Win-22 MSC-22"
             base: "7.0"
-            rtems: "4.9"
-            rtems_target: RTEMS-pc386-qemu
-            name: "7.0 Ub-20 gcc-9 + RT-4.9"
-
-          - os: macos-latest
-            cmp: clang
+            os: windows-2022
+            cmp: vs2022
             configuration: default
-            base: "7.0"
-            name: "7.0 MacOS clang-12"
 
-          - os: windows-2019
-            cmp: vs2019
-            configuration: default
+          - name: "7.0 Win-22 MSC-22 static"
             base: "7.0"
-            name: "7.0 Win2019 MSC-19"
-
-          - os: windows-2019
-            cmp: vs2019
+            os: windows-2022
+            cmp: vs2022
             configuration: static
-            base: "7.0"
-            name: "7.0 Win2019 MSC-19, static"
 
-          - os: windows-2019
-            cmp: vs2019
+          - name: "7.0 Win-22 MSC-22 debug"
+            base: "7.0"
+            os: windows-2022
+            cmp: vs2022
             configuration: debug
-            base: "7.0"
-            name: "7.0 Win2019 MSC-19, debug"
+            extra: "CMD_CXXFLAGS=-analyze"
 
-          - os: windows-2019
+          - name: "7.0 Win-22 MinGW"
+            base: "7.0"
+            os: windows-2022
             cmp: gcc
             configuration: default
-            base: "7.0"
-            name: "7.0 Win2019 mingw"
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         submodules: true
-    - name: Cache Dependencies
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache
-        key: ${{ matrix.base }}/${{ matrix.os }}/${{ matrix.cmp }}/${{ matrix.configuration }}/${{ matrix.wine }}${{ matrix.rtems }}/${{ matrix.rtems_target }}/${{ matrix.extra }}
-    - name: Automatic core dump analysis
+    - name: Automatic core dumper analysis
       uses: mdavidsaver/ci-core-dumper@master
     - name: "apt-get install"
       run: |
@@ -161,10 +212,10 @@ jobs:
     - name: Build main module
       run: python .ci/cue.py build
     - name: Run main module tests
-      run: python .ci/cue.py -T 20M test
+      run: python .ci/cue.py -T 60M test
     - name: Upload tapfiles Artifact
       if: ${{ always() }}
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: tapfiles ${{ matrix.name }}
         path: '**/O.*/*.tap'
@@ -172,3 +223,79 @@ jobs:
     - name: Collect and show test results
       if: ${{ always() }}
       run: python .ci/cue.py -T 5M test-results
+
+  docker:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+    # Set environment variables from matrix parameters
+    env:
+      BASE: ${{ matrix.base }}
+      CMP: ${{ matrix.cmp }}
+      BCFG: ${{ matrix.configuration }}
+      EXTRA: ${{ matrix.extra }}
+      TEST: ${{ matrix.test }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Job names also name artifacts, character limitations apply
+        include:
+          - name: "7.0 CentOS-8 gcc"
+            base: "7.0"
+            image: centos:8
+            cmp: gcc
+            configuration: default
+
+          - name: "7.0 Rocky-9 gcc"
+            base: "7.0"
+            image: rockylinux:9
+            cmp: gcc
+            configuration: default
+
+          - name: "7.0 Fedora-33 gcc"
+            base: "7.0"
+            image: fedora:33
+            cmp: gcc
+            configuration: default
+
+          - name: "7.0 Fedora gcc"
+            base: "7.0"
+            image: fedora:latest
+            cmp: gcc
+            configuration: default
+
+    steps:
+    - name: "Fix repo URLs on CentOS-8"
+      # centos:8 is frozen, repos are in the vault
+      if: matrix.image=='centos:8'
+      run: |
+        sed -i -e "s|mirrorlist=|#mirrorlist=|" \
+        -e "s|#baseurl=http://mirror|baseurl=http://vault|" \
+        /etc/yum.repos.d/CentOS-Linux-{BaseOS,AppStream,Extras,Plus}.repo
+    - name: "Redhat setup"
+      run: |
+        dnf -y install python3 gdb make perl gcc-c++ glibc-devel readline-devel ncurses-devel perl-devel perl-Test-Simple
+        git --version || dnf -y install git
+        python3 --version
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Automatic core dumper analysis
+      uses: mdavidsaver/ci-core-dumper@master
+    - name: Prepare and compile dependencies
+      run: python3 .ci/cue.py prepare
+    - name: Build main module
+      run: python3 .ci/cue.py build
+    - name: Run main module tests
+      run: python3 .ci/cue.py -T 20M test
+    - name: Upload tapfiles Artifact
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: tapfiles ${{ matrix.name }}
+        path: '**/O.*/*.tap'
+        if-no-files-found: ignore
+    - name: Collect and show test results
+      if: ${{ always() }}
+      run: python3 .ci/cue.py -T 5M test-results

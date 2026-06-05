@@ -23,7 +23,7 @@
 #if 0
 #  define TRACE(msg) std::cerr<<"TRACE: "<<CURRENT_FUNCTION<<" : "<< msg <<"\n"
 #else
-#  define TRACE(msg)
+#  define TRACE(msg) while(0){}
 #endif
 
 namespace pvd = epics::pvData;

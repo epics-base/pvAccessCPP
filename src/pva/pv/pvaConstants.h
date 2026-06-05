@@ -73,7 +73,7 @@ const epics::pvData::int16 PVA_DEFAULT_PRIORITY = 0;
 const epics::pvData::uint32 MAX_CHANNEL_NAME_LENGTH = 500;
 
 /** Invalid data type. */
-const epics::pvData::int16 INVALID_DATA_TYPE = 0xFFFF;
+const epics::pvData::int16 INVALID_DATA_TYPE = -1;
 
 /** Invalid IOID. */
 const epics::pvData::int32 INVALID_IOID = 0;

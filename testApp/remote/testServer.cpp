@@ -5,8 +5,12 @@
 // disable buggy boost enable_shared_from_this assert code
 #define BOOST_DISABLE_ASSERTS
 
+// Disable warnings about using deprecated functions from pvData
+#define PVD_INTERNAL
+
 #include <pv/serverContext.h>
 #include <pv/clientContextImpl.h>
+#include <epicsStdio.h>
 #include <epicsExit.h>
 #include <pv/standardPVField.h>
 #include <pv/pvTimeStamp.h>
@@ -270,7 +274,7 @@ static epics::pvData::PVStructure::shared_pointer createNTTable(int columnsCount
     PVStringArray::svector labels(columnsCount);
     for (int i = 0; i < columnsCount; i++)
     {
-        sprintf(sbuf, "column%d", i);
+        epicsSnprintf(sbuf, sizeof(sbuf), "column%d", i);
         fieldNames[i] = sbuf;
         fields[i] = getFieldCreate()->createScalarArray(pvDouble);
         labels[i] = sbuf;
@@ -312,7 +316,7 @@ static epics::pvData::PVStructure::shared_pointer createNTNameValue(int columnsC
     PVStringArray::svector labels(columnsCount);
     for (int i = 0; i < columnsCount; i++)
     {
-        sprintf(sbuf, "name%d", i);
+        epicsSnprintf(sbuf, sizeof(sbuf), "name%d", i);
         fieldNames[i] = sbuf;
         fields[i] = getFieldCreate()->createScalarArray(pvDouble);
         labels[i] = sbuf;
@@ -1315,7 +1319,7 @@ public:
                 PVStringArray::svector labels(columnsCount);
                 for (int i = 0; i < columnsCount; i++)
                 {
-                    sprintf(sbuf, "name%d", i);
+                    epicsSnprintf(sbuf, sizeof(sbuf), "name%d", i);
                     labels[i] = sbuf;
                 }
 

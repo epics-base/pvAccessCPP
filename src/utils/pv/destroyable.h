@@ -21,7 +21,7 @@ namespace epics { namespace pvAccess {
         /**
          * @brief Instance declaring destroy method.
          */
-        class Destroyable {
+        class epicsShareClass Destroyable {
         public:
             POINTER_DEFINITIONS(Destroyable);
             /**

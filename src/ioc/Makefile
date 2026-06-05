@@ -20,4 +20,8 @@ pvAccessIOC_SRCS += PVAServerRegister.cpp
 pvAccessIOC_SRCS += PVAClientRegister.cpp
 pvAccessIOC_SRCS += reftrackioc.cpp
 
+# fix false (?) warning by gcc 12 only
+reftrackioc_CPPFLAGS += $(reftrackioc_CPPFLAGS_GCC-$(GCC_MAJOR))
+reftrackioc_CPPFLAGS_GCC-12 = -Wno-dangling-pointer
+
 include $(TOP)/configure/RULES
