@@ -872,5 +872,9 @@ MAIN(testCaProvider)
         testAbort("Caught unexpected exception: %s", e.what());
     }
 
+    // Release the CA provider now to shut down cleanly.
+    testChannelProvider.reset();
+    epics::pvAccess::ca::CAClientFactory::stop();
+
     return testDone();
 }
