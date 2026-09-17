@@ -326,6 +326,25 @@ void BlockingUDPTransport::run() {
     }
 }
 
+namespace {
+// Only these application messages are defined for the UDP transport.
+// The handlers of the remaining commands operate on a connection
+// (channels, IOIDs, security session, ...); feeding them a datagram corrupts memory.
+bool isDatagramCommand(int8 command)
+{
+    switch(command) {
+    case CMD_BEACON:
+    case CMD_ECHO:
+    case CMD_SEARCH:
+    case CMD_SEARCH_RESPONSE:
+    case CMD_ORIGIN_TAG:
+        return true;
+    default:
+        return false;
+    }
+}
+} // namespace
+
 bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & transport,
         osiSockAddr& fromAddress, ByteBuffer* receiveBuffer) {
 
@@ -381,7 +400,10 @@ bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & trans
             // enabled?
             if (!_tappedNIF.empty())
             {
-                // 128-bit IPv6 address
+                // 128-bit IPv6 address.  decodeAsIPv6Address() does not check
+                // the buffer itself, a truncated message must be dropped here.
+                if (payloadSize < 16) return false;
+
                 osiSockAddr originNIFAddress;
                 memset(&originNIFAddress, 0, sizeof(originNIFAddress));
 
@@ -415,12 +437,19 @@ bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & trans
                 }
             }
         }
-        else
+        else if (likely(isDatagramCommand(command)))
         {
             // handle
             _responseHandler->handleResponse(&fromAddress, transport,
                                              version, command, payloadSize,
                                              &_receiveBuffer);
+        }
+        else if(pvAccessIsLoggable(logLevelDebug))
+        {
+            char strBuffer[64];
+            sockAddrToDottedIP(&fromAddress.sa, strBuffer, sizeof(strBuffer));
+            LOG(logLevelDebug, "UDP %s Ignoring command %u, not valid for UDP, from %s",
+                _remoteName.c_str(), (unsigned)(0xFF&command), strBuffer);
         }
 
         // set position (e.g. in case handler did not read all)
