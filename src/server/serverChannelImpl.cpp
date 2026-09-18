@@ -103,8 +103,9 @@ void ServerChannel::printInfo() const
 
 void ServerChannel::printInfo(FILE *fd) const
 {
+    Channel& channel = *_channel;
     fprintf(fd,"CLASS        : %s\n", typeid(*this).name());
-    fprintf(fd,"CHANNEL      : %s\n", typeid(*_channel).name());
+    fprintf(fd,"CHANNEL      : %s\n", typeid(channel).name());
 }
 
 void ServerChannel::installGetField(const GetFieldRequester::shared_pointer& gf)

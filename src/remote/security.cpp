@@ -319,11 +319,12 @@ void AuthNZHandler::handleResponse(osiSockAddr* responseFrom,
 
     pvd::PVStructure::shared_pointer data;
     {
-        pvd::PVField::shared_pointer raw(SerializationHelper::deserializeFull(payloadBuffer, transport.get()));
-        if(raw->getField()->getType()==pvd::structure) {
+        pvd::PVField::shared_pointer raw(
+                SerializationHelper::deserializeFull(payloadBuffer, transport.get()));
+        if (raw && raw->getField()->getType()==pvd::structure) {
             data = std::tr1::static_pointer_cast<pvd::PVStructure>(raw);
         } else {
-            // was originally possible, but never used
+            return; // ignore
         }
     }
 

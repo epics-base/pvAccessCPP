@@ -242,6 +242,13 @@ void AbstractCodec::processReadNormal()  {
                         "not-a-first segmented message received in normal mode");
                 }
 
+                // reject negative payload size (sign-extends to a huge size_t)
+                if (_payloadSize < 0)
+                {
+                    invalidDataStreamHandler();
+                    throw invalid_data_stream_exception("negative payload size");
+                }
+
                 _storedPayloadSize = _payloadSize;
                 _storedPosition = _socketBuffer.getPosition();
                 _storedLimit = _socketBuffer.getLimit();
@@ -363,6 +370,13 @@ void AbstractCodec::processReadSegmented() {
                 invalidDataStreamHandler();
                 throw invalid_data_stream_exception(
                     "not-a-first segmented message expected");
+            }
+
+            // reject negative payload size (sign-extends to a huge size_t)
+            if (_payloadSize < 0)
+            {
+                invalidDataStreamHandler();
+                throw invalid_data_stream_exception("negative payload size");
             }
 
             _storedPayloadSize = _payloadSize;
@@ -936,9 +950,17 @@ void AbstractCodec::setByteOrder(int byteOrder)
 bool AbstractCodec::directSerialize(ByteBuffer* /*existingBuffer*/, const char* toSerialize,
                                     std::size_t elementCount, std::size_t elementSize)
 {
-    // TODO overflow check of "size_t count", overflow int32 field of payloadSize header field
     // TODO max message size in connection validation
+
+    // Reject sizes that would overflow the size_t product or the signed
+    // int32 payloadSize header field, which would desync the wire stream.
+    if (elementSize != 0 &&
+        elementCount > std::numeric_limits<std::size_t>::max() / elementSize)
+        throw std::overflow_error("directSerialize: element count * size overflows size_t");
     std::size_t count = elementCount * elementSize;
+
+    if (count > static_cast<std::size_t>(std::numeric_limits<int32>::max()))
+        throw std::overflow_error("directSerialize: payload size exceeds int32");
 
     // TODO find smart limit
     // check if direct mode actually pays off
@@ -1664,7 +1686,10 @@ void BlockingServerTCPTransportCodec::authNZInitialize(const std::string& securi
     info->authority = securityPluginName;
 
     if (!plugin->isValidFor(*info))
+    {
         verified(pvData::Status::error("invalid security plug-in name"));
+        return;
+    }
 
     if (IS_LOGGABLE(logLevelDebug))
     {

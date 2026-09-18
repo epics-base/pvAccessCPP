@@ -369,6 +369,10 @@ bool BlockingUDPTransport::processBuffer(Transport::shared_pointer const & trans
         if (flags & 0x01)
             continue;
 
+        // reject negative payload size (sign-extends to a huge size_t)
+        if (static_cast<int32>(payloadSize) < 0)
+            return false;
+
         size_t nextRequestPosition = receiveBuffer->getPosition() + payloadSize;
 
         // payload size check

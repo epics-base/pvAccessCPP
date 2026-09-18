@@ -206,7 +206,8 @@ void ClientChannel::removeConnectListener(ConnectCallback* cb)
 void ClientChannel::show(std::ostream& strm) const
 {
     if(impl) {
-        strm<<typeid(*impl->channel.get()).name()<<" : ";
+        pva::Channel& channel = *impl->channel;
+        strm<<typeid(channel).name()<<" : ";
         impl->channel->printInfo(strm);
     } else {
         strm<<"NULL Channel";
@@ -346,8 +347,9 @@ void ClientProvider::disconnect()
 ::std::ostream& operator<<(::std::ostream& strm, const ClientChannel& op)
 {
     if(op.impl) {
+        pva::Channel& channel = *op.impl->channel;
         strm << "ClientChannel("
-             << typeid(*op.impl->channel.get()).name()<<", "
+             << typeid(channel).name()<<", "
                 "\"" << op.impl->channel->getChannelName() <<"\", "
                 "\"" << op.impl->channel->getProvider()->getProviderName() <<"\", "
                 "connected="<<(op.impl->channel->isConnected()?"true":"false")
@@ -361,8 +363,9 @@ void ClientProvider::disconnect()
 ::std::ostream& operator<<(::std::ostream& strm, const ClientProvider& op)
 {
     if(op.impl) {
+        pva::ChannelProvider& provider = *op.impl->provider;
         strm << "ClientProvider("
-             << typeid(*op.impl->provider.get()).name()<<", "
+             << typeid(provider).name()<<", "
                 "\""<<op.impl->provider->getProviderName()<<"\")";
     } else {
         strm << "ClientProvider()";

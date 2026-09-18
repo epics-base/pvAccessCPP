@@ -6,3 +6,15 @@
 
 #define epicsExportSharedSymbols
 #include <pv/pipelineService.h>
+
+namespace epics {
+namespace pvAccess {
+
+// Out-of-line destructors anchor each interface's vtable and type_info
+// to this translation unit.
+PipelineControl::~PipelineControl() {}
+PipelineSession::~PipelineSession() {}
+PipelineService::~PipelineService() {}
+
+}
+}

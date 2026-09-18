@@ -34,7 +34,7 @@ class epicsShareClass PipelineControl
 public:
     POINTER_DEFINITIONS(PipelineControl);
 
-    virtual ~PipelineControl() {};
+    virtual ~PipelineControl();
 
     /// Number of free elements in the local queue.
     /// A service can (should) full up the entire queue.
@@ -64,7 +64,7 @@ class epicsShareClass PipelineSession
 public:
     POINTER_DEFINITIONS(PipelineSession);
 
-    virtual ~PipelineSession() {};
+    virtual ~PipelineSession();
 
     /// Returns (minimum) local queue size.
     /// Actual local queue size = max( getMinQueueSize(), client queue size );
@@ -88,7 +88,7 @@ class epicsShareClass PipelineService
 public:
     POINTER_DEFINITIONS(PipelineService);
 
-    virtual ~PipelineService() {};
+    virtual ~PipelineService();
 
     virtual PipelineSession::shared_pointer createPipeline(
         epics::pvData::PVStructure::shared_pointer const & pvRequest

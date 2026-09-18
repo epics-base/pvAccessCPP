@@ -432,10 +432,11 @@ class CodecTest {
 public:
 
     int runAllTest() {
-        testPlan(5883);
+        testPlan(5889);
         testHeaderProcess();
         testInvalidHeaderMagic();
         testInvalidHeaderSegmentedInNormal();
+        testNegativePayloadSize();
         testInvalidHeaderPayloadNotRead();
         testHeaderSplitRead();
         testNonEmptyPayload();
@@ -600,6 +601,57 @@ private:
         testOk(codec._receivedAppMessages.size() == 0,
                "%s: codec._receivedAppMessages.size() == 0",
                CURRENT_FUNCTION);
+    }
+
+
+    void testNegativePayloadSize()
+    {
+
+        testDiag("BEGIN TEST %s:", CURRENT_FUNCTION);
+
+        // A negative payload size sign-extends to a huge size_t and corrupts
+        // the buffer limit/position math; application messages must reject it.
+        int32_t negativeValues[] =
+        {(int32_t)0xFFFFFFFF, (int32_t)0x80000000};
+
+        std::size_t size = sizeof(negativeValues)/sizeof(int32_t);
+
+        for (std::size_t i = 0; i < size; i++)
+        {
+            TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
+            codec._readBuffer->put(PVA_MAGIC);
+            codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
+            codec._readBuffer->put((int8_t)0x00);   // application, first segment
+            codec._readBuffer->put((int8_t)0x23);
+            codec._readBuffer->putInt(negativeValues[i]);
+            codec._readBuffer->flip();
+
+            codec.processRead();
+
+            testOk(codec._invalidDataStreamCount == 1,
+                   "%s: negative app payload rejected", CURRENT_FUNCTION);
+            testOk(codec._receivedAppMessages.size() == 0,
+                   "%s: no app message accepted", CURRENT_FUNCTION);
+        }
+
+        // For control messages the field is opaque data, not a length;
+        // a negative value must still be accepted.
+        {
+            TestCodec codec(DEFAULT_BUFFER_SIZE,DEFAULT_BUFFER_SIZE);
+            codec._readBuffer->put(PVA_MAGIC);
+            codec._readBuffer->put(PVA_CLIENT_PROTOCOL_REVISION);
+            codec._readBuffer->put((int8_t)0x01);   // control message
+            codec._readBuffer->put((int8_t)0x23);
+            codec._readBuffer->putInt((int32_t)0xDDCCBBAA);
+            codec._readBuffer->flip();
+
+            codec.processRead();
+
+            testOk(codec._invalidDataStreamCount == 0,
+                   "%s: negative control payload accepted", CURRENT_FUNCTION);
+            testOk(codec._receivedControlMessages.size() == 1,
+                   "%s: control message accepted", CURRENT_FUNCTION);
+        }
     }
 
 
