@@ -38,11 +38,14 @@ class epicsShareClass CAClientFactory
 public:
     /** @brief start provider ca
      *
+     * Registers the ca provider with the client registry.
      */
     static void start();
     /** @brief stop provider ca
      *
-     * This does nothing.
+     * Unregisters the ca provider from the client registry, undoing start().
+     * Any CAChannelProvider instance already handed out stays alive until its
+     * owners release it.
      */
     static void stop();
 };

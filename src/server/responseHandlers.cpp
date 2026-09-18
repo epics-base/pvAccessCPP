@@ -1460,6 +1460,9 @@ void ServerChannelPutRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
         _status.serialize(buffer, control);
     }
 
+    // Call stopRequest() before serializing the payload
+    stopRequest();
+
     if (_status.isSuccess())
     {
         if ((QOS_INIT & request) != 0)
@@ -1474,8 +1477,6 @@ void ServerChannelPutRequesterImpl::send(ByteBuffer* buffer, TransportSendContro
             _pvStructure->serialize(buffer, control, _bitSet.get());
         }
     }
-
-    stopRequest();
 
     // lastRequest
     if ((QOS_DESTROY & request) != 0)
@@ -1729,6 +1730,9 @@ void ServerChannelPutGetRequesterImpl::send(ByteBuffer* buffer, TransportSendCon
         _status.serialize(buffer, control);
     }
 
+    // Call stopRequest() before serializing the payload.
+    stopRequest();
+
     if (_status.isSuccess())
     {
         if ((QOS_INIT & request) != 0)
@@ -1758,8 +1762,6 @@ void ServerChannelPutGetRequesterImpl::send(ByteBuffer* buffer, TransportSendCon
             _pvGetStructure->serialize(buffer, control, _pvGetBitSet.get());
         }
     }
-
-    stopRequest();
 
     // lastRequest
     if ((QOS_DESTROY & request) != 0)
@@ -2365,6 +2367,9 @@ void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendCont
         _status.serialize(buffer, control);
     }
 
+    // Call stopRequest() before serializing the payload.
+    stopRequest();
+
     if (_status.isSuccess())
     {
         if ((QOS_GET & request) != 0)
@@ -2384,8 +2389,6 @@ void ServerChannelArrayRequesterImpl::send(ByteBuffer* buffer, TransportSendCont
             control->cachedSerialize(_pvArray->getArray(), buffer);
         }
     }
-
-    stopRequest();
 
     // lastRequest
     if ((QOS_DESTROY & request) != 0)

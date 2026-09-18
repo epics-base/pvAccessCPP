@@ -2,6 +2,10 @@
 #define SYNCTESTREQUESTERS_HPP
 
 
+#include <sstream>
+
+#include <epicsUnitTest.h>
+
 #include <pv/pvAccess.h>
 #include <pv/event.h>
 
@@ -10,6 +14,13 @@ using namespace epics::pvData;
 using namespace std;
 using std::tr1::static_pointer_cast;
 using std::tr1::dynamic_pointer_cast;
+
+/* Send requester callback diagnostics through testDiag()
+ * to avoid corrupting the TAP output.
+ */
+#define syncTestDiag(args) \
+    do { std::ostringstream diagStrm; diagStrm << args; \
+         testDiag("%s", diagStrm.str().c_str()); } while(0)
 
 
 class SyncBaseRequester {
@@ -133,7 +144,7 @@ protected:
         bool signaled = m_event.wait(timeOut);
         if (!signaled)
         {
-            std::cout  << "# waited until event timeout" << std::endl;
+            syncTestDiag("waited until event timeout");
         }
 
         return signaled;
@@ -197,7 +208,7 @@ public:
         const epics::pvData::Status& status,
         epics::pvAccess::Channel::shared_pointer const & channel)
     {
-        std::cout << "#" << getRequesterName() << "." << "channelCreated(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "channelCreated(" << status << ")");
 
         Lock lock(m_pointerMutex);
         m_status = status;
@@ -208,7 +219,7 @@ public:
         }
         else
         {
-            std::cerr << "#" << "[" << channel->getChannelName() << "] failed to create a channel: " << std::endl;
+            syncTestDiag("[" << channel->getChannelName() << "] failed to create a channel: ");
         }
     }
 
@@ -218,7 +229,7 @@ public:
         epics::pvAccess::Channel::ConnectionState connectionState)
     {
 
-        std::cout << "#" << getRequesterName() << "." << "channelStateChange:" << connectionState << std::endl;
+        syncTestDiag(getRequesterName() << "." << "channelStateChange:" << connectionState);
 
         {
             Lock lock(m_pointerMutex);
@@ -264,7 +275,7 @@ public:
     virtual void channelFindResult(const epics::pvData::Status& status,
                                    const epics::pvAccess::ChannelFind::shared_pointer&, bool wasFound)
     {
-        std::cout << "#" << "channelFindResult(" << status << ")" << std::endl;
+        syncTestDiag("channelFindResult(" << status << ")");
 
         {
             Lock lock(m_pointerMutex);
@@ -330,13 +341,12 @@ public:
 
     virtual void message(string const & message, MessageType messageType)
     {
-        std::cerr << "# ["
+        syncTestDiag("["
                       << getRequesterName()
                       << "] message("
                       << message << ", "
                       << getMessageTypeName(messageType)
-                      << ")"
-                      << std::endl;
+                      << ")");
     }
 
 
@@ -344,7 +354,7 @@ public:
         const epics::pvData::Status& status,ChannelGet::shared_pointer const & channelGet,
         epics::pvData::Structure::const_shared_pointer const & /*structure*/)
     {
-        std::cout << "#" << getRequesterName() << "." << "channelGetConnect(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "channelGetConnect(" << status << ")");
 
         if (status.isSuccess())
         {
@@ -366,7 +376,7 @@ public:
                          epics::pvData::PVStructure::shared_pointer const & pvStructure,
                          epics::pvData::BitSet::shared_pointer const & bitSet)
     {
-        std::cout << "#" << getRequesterName() << "." << "getDone(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "getDone(" << status << ")");
 
         {
             Lock lock(m_pointerMutex);
@@ -456,8 +466,8 @@ public:
 
     virtual void message(string const & message,MessageType messageType)
     {
-        std::cout << "#" << "[" << getRequesterName() << "] message(" << message << ", "
-                      << getMessageTypeName(messageType) << ")" << std::endl;
+        syncTestDiag("[" << getRequesterName() << "] message(" << message << ", "
+                      << getMessageTypeName(messageType) << ")");
     }
 
 
@@ -466,7 +476,7 @@ public:
                                    epics::pvData::Structure::const_shared_pointer const & /*structure*/)
     {
 
-        std::cout << "#" << getRequesterName() << "." << "channelPutConnect(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "channelPutConnect(" << status << ")");
 
         if (status.isSuccess())
         {
@@ -491,7 +501,7 @@ public:
                          epics::pvData::PVStructure::shared_pointer const & pvStructure,
                          epics::pvData::BitSet::shared_pointer const & bitSet)
     {
-        std::cout << "#" << getRequesterName() << "." << "getDone(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "getDone(" << status << ")");
 
         {
             Lock lock(m_pointerMutex);
@@ -508,7 +518,7 @@ public:
     virtual void putDone(const epics::pvData::Status& status,
                          ChannelPut::shared_pointer const & channelPut)
     {
-        std::cout << "#" << getRequesterName() << "." << "putDone(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "putDone(" << status << ")");
 
         {
             Lock lock(m_pointerMutex);
@@ -554,14 +564,14 @@ public:
 
     virtual void message(string const & message,MessageType /*messageType*/)
     {
-        std::cout << "# [" << getRequesterName() << "] message(" << message << endl;
+        syncTestDiag("[" << getRequesterName() << "] message(" << message);
     }
 
 
     virtual void getDone(const epics::pvData::Status& status,epics::pvData::FieldConstPtr const & field)
     {
 
-        std::cout << "#" << getRequesterName() << "." << "getDone(" << status << endl;
+        syncTestDiag(getRequesterName() << "." << "getDone(" << status);
 
         if (status.isSuccess() && field)
         {
@@ -621,7 +631,7 @@ public:
 
     virtual void message(string const & message,MessageType /*messageType*/)
     {
-        std::cout << "# [" << getRequesterName() << "] message(" << message << std::endl;
+        syncTestDiag("[" << getRequesterName() << "] message(" << message);
     }
 
 
@@ -629,7 +639,7 @@ public:
                                        ChannelProcess::shared_pointer const & channelProcess)
     {
 
-        std::cout << "#" << getRequesterName() << "." << "channelProcessConnect(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "channelProcessConnect(" << status << ")");
 
         if (status.isSuccess())
         {
@@ -651,7 +661,7 @@ public:
     virtual void processDone(const epics::pvData::Status& status,
                              ChannelProcess::shared_pointer const & channelProcess)
     {
-        std::cout << "#" << getRequesterName() << "." << "processDone(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "processDone(" << status << ")");
 
         {
             Lock lock(m_pointerMutex);
@@ -762,8 +772,8 @@ public:
 
     virtual void message(string const & message,MessageType messageType)
     {
-        std::cout << "# [" << getRequesterName() << "] message(" <<
-                      message << ", " << getMessageTypeName(messageType) << ")" << std::endl;
+        syncTestDiag("[" << getRequesterName() << "] message(" <<
+                      message << ", " << getMessageTypeName(messageType) << ")");
     }
 
 
@@ -772,8 +782,8 @@ public:
                                       epics::pvData::Structure::const_shared_pointer const & /*putStructure*/,
                                       epics::pvData::Structure::const_shared_pointer const & /*getStructure*/)
     {
-        std::cout << "#" << getRequesterName() << "." << "channelGetPutConnect("
-                      << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "channelGetPutConnect("
+                      << status << ")");
 
         if (status.isSuccess())
         {
@@ -799,7 +809,7 @@ public:
                             epics::pvData::PVStructure::shared_pointer const & getData,
                             epics::pvData::BitSet::shared_pointer const & getBitSet)
     {
-        std::cout << "#" << getRequesterName() << "." << "getGetDone(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "getGetDone(" << status << ")");
 
         {
             Lock lock(m_pointerMutex);
@@ -820,7 +830,7 @@ public:
                             epics::pvData::PVStructure::shared_pointer const & putData,
                             epics::pvData::BitSet::shared_pointer const & putBitSet)
     {
-        std::cout << "#" << getRequesterName() << "." << "getPutDone(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "getPutDone(" << status << ")");
 
         {
             Lock lock(m_pointerMutex);
@@ -841,7 +851,7 @@ public:
                             epics::pvData::PVStructure::shared_pointer const & getData,
                             epics::pvData::BitSet::shared_pointer const & getBitSet)
     {
-        std::cout << "#" << getRequesterName() << "." << "putGetDone(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "putGetDone(" << status << ")");
 
         {
             Lock lock(m_pointerMutex);
@@ -955,8 +965,8 @@ public:
 
     virtual void message(string const & message, MessageType messageType)
     {
-        std::cerr << "# [" << getRequesterName() << "] message(" << message << ", "
-                      << getMessageTypeName(messageType) << ")" << std::endl;
+        syncTestDiag("[" << getRequesterName() << "] message(" << message << ", "
+                      << getMessageTypeName(messageType) << ")");
     }
 
 
@@ -964,8 +974,8 @@ public:
                                    ChannelRPC::shared_pointer const & channelRPC)
     {
 
-        std::cout << "#" << getRequesterName() << "." << "channelRPCConnect("
-                      << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "channelRPCConnect("
+                      << status << ")");
 
         if (status.isSuccess())
         {
@@ -990,8 +1000,8 @@ public:
                               epics::pvData::PVStructure::shared_pointer const &pvResponse)
     {
 
-        std::cout << "#" << getRequesterName() << "." << "requestDone("
-                      << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "requestDone("
+                      << status << ")");
 
         {
             Lock lock(m_pointerMutex);
@@ -1081,7 +1091,7 @@ public:
         bool signaled = waitUntilEvent(timeOut);
         if (!signaled) {
 
-            std::cerr << "#" << getRequesterName() << ".waitUntilMonitor:" << " timeout occurred" << endl;
+            syncTestDiag(getRequesterName() << ".waitUntilMonitor:" << " timeout occurred");
 
             return false;
         }
@@ -1106,7 +1116,7 @@ public:
         bool signaled = waitUntilEvent(timeOut);
         if (!signaled) {
 
-            std::cerr << "#" << getRequesterName() << ".waitUntilMonitor:" << " timeout occurred" << endl;
+            syncTestDiag(getRequesterName() << ".waitUntilMonitor:" << " timeout occurred");
 
             return false;
         }
@@ -1123,15 +1133,15 @@ public:
 
     virtual void message(string const & message, MessageType messageType)
     {
-        std::cerr << "# [" << getRequesterName() << "] message(" << message << ", "
-                      << getMessageTypeName(messageType) << ")" << std::endl;
+        syncTestDiag("[" << getRequesterName() << "] message(" << message << ", "
+                      << getMessageTypeName(messageType) << ")");
     }
 
 
     virtual void monitorConnect(const epics::pvData::Status& status, Monitor::shared_pointer const & monitor,
                                 StructureConstPtr const & /*structure*/)
     {
-        std::cout << "#" << getRequesterName() << "." << "monitorConnect(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "monitorConnect(" << status << ")");
 
         if (status.isSuccess())
         {
@@ -1153,7 +1163,7 @@ public:
 
     virtual void monitorEvent(MonitorPtr const & monitor)
     {
-        std::cout << "#" << getRequesterName() << "." << "monitorEvent" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "monitorEvent");
 
         MonitorElement::shared_pointer element = monitor->poll();
 
@@ -1173,7 +1183,7 @@ public:
 
     virtual void unlisten(MonitorPtr const & /*monitor*/)
     {
-        std::cout << "#" << getRequesterName() << "." << "unlisten" << std::endl;
+        syncTestDiag(getRequesterName() << "." << "unlisten");
     }
 
 
@@ -1302,8 +1312,8 @@ public:
 
     virtual void message(std::string const & message,MessageType messageType)
     {
-        std::cout << "# [" << getRequesterName() << "] message(" << message << ", "
-                      << getMessageTypeName(messageType) << ")" << std::endl;
+        syncTestDiag("[" << getRequesterName() << "] message(" << message << ", "
+                      << getMessageTypeName(messageType) << ")");
     }
 
 
@@ -1311,7 +1321,7 @@ public:
                                      ChannelArray::shared_pointer const & channelArray,
                                      epics::pvData::Array::const_shared_pointer const & /*array*/)
     {
-        std::cout << "#" << getRequesterName() << ".channelArrayConnect(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << ".channelArrayConnect(" << status << ")");
         if (status.isSuccess())
         {
             {
@@ -1334,7 +1344,7 @@ public:
                               ChannelArray::shared_pointer const & channelArray,
                               epics::pvData::PVArray::shared_pointer const & pvArray)
     {
-        std::cout << "#" << getRequesterName()  << ".getArrayDone(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName()  << ".getArrayDone(" << status << ")");
 
         Lock lock(m_pointerMutex);
 
@@ -1349,7 +1359,7 @@ public:
     virtual void putArrayDone(const epics::pvData::Status& status,
                               ChannelArray::shared_pointer const & channelArray)
     {
-        std::cout << "#" << getRequesterName() << ".putArrayDone(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << ".putArrayDone(" << status << ")");
 
         Lock lock(m_pointerMutex);
 
@@ -1363,7 +1373,7 @@ public:
     virtual void setLengthDone(const epics::pvData::Status& status,
                                ChannelArray::shared_pointer const & channelArray)
     {
-        std::cout << "#" << getRequesterName() << ".setLengthDone(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << ".setLengthDone(" << status << ")");
 
         Lock lock(m_pointerMutex);
 
@@ -1377,7 +1387,7 @@ public:
                                ChannelArray::shared_pointer const & channelArray,
                                size_t length)
     {
-        std::cout << "#" << getRequesterName() << ".getLengthDone(" << status << ")" << std::endl;
+        syncTestDiag(getRequesterName() << ".getLengthDone(" << status << ")");
 
         Lock lock(m_pointerMutex);
 
