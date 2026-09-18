@@ -26,13 +26,13 @@ namespace pva = epics::pvAccess;
     "options:\n" \
     "  -h: Help: Print this message\n" \
     "  -V: Print version and exit\n" \
-    "  -r <pv request>:   Request, specifies what fields to return and options, default is '%s'\n" \
-    "  -w <sec>:          Wait time, specifies timeout, default is %f second(s)\n" \
-    "  -p <provider>:     Set default provider name, default is '%s'\n" \
-    "  -M <raw|nt|json>:  Output mode.  default is 'nt'\n" \
-    "  -v:                Show entire structure (implies Raw mode)\n" \
-    "  -q:                Quiet mode, print only error messages\n" \
-    "  -d:                Enable debug output\n"
+    "  -r <pv request>:        Request, specifies what fields to return and options, default is '%s'\n" \
+    "  -w <sec>:               Wait time, specifies timeout, default is %f second(s)\n" \
+    "  -p <provider>:          Set default provider name, default is '%s'\n" \
+    "  -M <raw|nt|json|json5>: Output mode.  default is 'nt'\n" \
+    "  -v:                     Show entire structure (implies Raw mode)\n" \
+    "  -q:                     Quiet mode, print only error messages\n" \
+    "  -d:                     Enable debug output\n"
 
 extern double timeout;
 extern bool debugFlag;
