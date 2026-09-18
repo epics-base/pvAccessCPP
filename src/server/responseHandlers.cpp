@@ -123,7 +123,6 @@ ServerResponseHandler::ServerResponseHandler(ServerContextImpl::shared_pointer c
     ,handle_cancel(context)
     ,m_handlerTable(CMD_CANCEL_REQUEST+1, &handle_bad)
 {
-
     m_handlerTable[CMD_BEACON] = &handle_beacon; /*  0 */
     m_handlerTable[CMD_CONNECTION_VALIDATION] = &handle_validation; /*  1 */
     m_handlerTable[CMD_ECHO] = &handle_echo; /*  2 */
@@ -250,6 +249,9 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
         Transport::shared_pointer const & transport, int8 version, int8 command,
         size_t payloadSize, ByteBuffer* payloadBuffer)
 {
+    char strBuffer[24];
+    ipAddrToDottedIP(&responseFrom->ia, strBuffer, sizeof(strBuffer));
+    LOG(logLevelDebug, "Server search handler is handling request from %s", strBuffer);
     AbstractServerResponseHandler::handleResponse(responseFrom,
             transport, version, command, payloadSize, payloadBuffer);
 
@@ -277,7 +279,15 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
 
     // NOTE: htons might be a macro (e.g. vxWorks)
     int16 port = payloadBuffer->getShort();
-    responseAddress.ia.sin_port = htons(port);
+    if (port)
+    {
+        responseAddress.ia.sin_port = htons(port);
+    }
+    else
+    {
+        LOG(logLevelDebug, "Server search handler is reusing connection port %d", ntohs(responseFrom->ia.sin_port));
+        responseAddress.ia.sin_port = responseFrom->ia.sin_port;
+    }
 
     size_t protocolsCount = SerializeHelper::readSize(payloadBuffer, transport.get());
     bool allowed = (protocolsCount == 0);
@@ -285,22 +295,24 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
     {
         string protocol = SerializeHelper::deserializeString(payloadBuffer, transport.get());
         if (SUPPORTED_PROTOCOL == protocol)
+        {
             allowed = true;
+        }
     }
 
     // NOTE: we do not stop reading the buffer
-
     transport->ensureData(2);
     const int32 count = payloadBuffer->getShort() & 0xFFFF;
+    LOG(logLevelDebug, "Search request from %s is allowed: %d, payload count is %d", strBuffer, int(allowed), count);
 
     // TODO DoS attack?
     //   You bet!  With a reply address encoded in the request we don't even need a forged UDP header.
     const bool responseRequired = (QOS_REPLY_REQUIRED & qosCode) != 0;
 
     //
-    // locally broadcast if unicast (qosCode & 0x80 == 0x80) via UDP
+    // locally broadcast if unicast (qosCode & QOS_GET_PUT == QOS_GET_PUT) via UDP
     //
-    if ((qosCode & 0x80) == 0x80)
+    if ((qosCode & QOS_GET_PUT) == QOS_GET_PUT)
     {
         BlockingUDPTransport::shared_pointer bt = dynamic_pointer_cast<BlockingUDPTransport>(transport);
         if (bt && bt->hasLocalMulticastAddress())
@@ -350,14 +362,14 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
             const int32 cid = payloadBuffer->getInt();
             const string name = SerializeHelper::deserializeString(payloadBuffer, transport.get());
             // no name check here...
-
+            LOG(logLevelDebug, "Search for channel %s, cid %d", name.c_str(), cid);
             if (allowed)
             {
                 const std::vector<ChannelProvider::shared_pointer>& _providers = _context->getChannelProviders();
 
                 int providerCount = _providers.size();
                 std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(new ServerChannelFindRequesterImpl(_context, info, providerCount));
-                tp->set(name, searchSequenceId, cid, responseAddress, responseRequired, false);
+                tp->set(name, searchSequenceId, cid, responseAddress, transport, responseRequired, false);
 
                 for (int i = 0; i < providerCount; i++)
                     _providers[i]->channelFind(name, tp);
@@ -375,7 +387,7 @@ void ServerSearchHandler::handleResponse(osiSockAddr* responseFrom,
             delay = delay*0.1 + 0.05;
 
             std::tr1::shared_ptr<ServerChannelFindRequesterImpl> tp(new ServerChannelFindRequesterImpl(_context, info, 1));
-            tp->set("", searchSequenceId, 0, responseAddress, true, true);
+            tp->set("", searchSequenceId, 0, responseAddress, transport, true, true);
 
             TimerCallback::shared_pointer tc = tp;
             _context->getTimer()->scheduleAfterDelay(tc, delay);
@@ -414,6 +426,7 @@ void ServerChannelFindRequesterImpl::timerStopped()
 }
 
 ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(std::string name, int32 searchSequenceId, int32 cid, osiSockAddr const & sendTo,
+        Transport::shared_pointer const & transport,
         bool responseRequired, bool serverSearch)
 {
     Lock guard(_mutex);
@@ -421,6 +434,7 @@ ServerChannelFindRequesterImpl* ServerChannelFindRequesterImpl::set(std::string 
     _searchSequenceId = searchSequenceId;
     _cid = cid;
     _sendTo = sendTo;
+    _transport = transport;
     _responseRequired = responseRequired;
     _serverSearch = serverSearch;
     return this;
@@ -436,7 +450,7 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/,
     {
         if ((_responseCount+1) == _expectedResponseCount)
         {
-            LOG(logLevelDebug,"[ServerChannelFindRequesterImpl::channelFindResult] More responses received than expected fpr channel '%s'!", _name.c_str());
+            LOG(logLevelDebug,"[ServerChannelFindRequesterImpl::channelFindResult] More responses received than expected for channel '%s'!", _name.c_str());
         }
         return;
     }
@@ -455,12 +469,19 @@ void ServerChannelFindRequesterImpl::channelFindResult(const Status& /*status*/,
             _context->s_channelNameToProvider[_name] = channelFind->getChannelProvider();
         }
         _wasFound = wasFound;
-
-        BlockingUDPTransport::shared_pointer bt = _context->getBroadcastTransport();
-        if (bt)
+        if (_transport && _transport->getType() == "tcp")
         {
             TransportSender::shared_pointer thisSender = shared_from_this();
-            bt->enqueueSendRequest(thisSender);
+            _transport->enqueueSendRequest(thisSender);
+        }
+        else
+        {
+            BlockingUDPTransport::shared_pointer bt = _context->getBroadcastTransport();
+            if (bt)
+            {
+                TransportSender::shared_pointer thisSender = shared_from_this();
+                bt->enqueueSendRequest(thisSender);
+            }
         }
     }
 }
@@ -472,6 +493,9 @@ std::tr1::shared_ptr<const PeerInfo> ServerChannelFindRequesterImpl::getPeerInfo
 
 void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* control)
 {
+    char ipAddrStr[24];
+    ipAddrToDottedIP(&_sendTo.ia, ipAddrStr, sizeof(ipAddrStr));
+    LOG(logLevelDebug, "Search response will be sent to %s, was found: %d", ipAddrStr, int(_wasFound));
     control->startMessage(CMD_SEARCH_RESPONSE, 12+4+16+2);
 
     Lock guard(_mutex);
@@ -499,6 +523,9 @@ void ServerChannelFindRequesterImpl::send(ByteBuffer* buffer, TransportSendContr
     }
 
     control->setRecipient(_sendTo);
+
+    // send immediately
+    control->flush(true);
 }
 
 /****************************************************************************************/
@@ -2028,7 +2055,7 @@ void ServerMonitorRequesterImpl::send(ByteBuffer* buffer, TransportSendControl* 
                     // This really shouldn't happen as the above ensures that _window_open *was* non-zero,
                     // and only we (the sender) will decrement.
                     message("Monitor Logic Error: send outside of window", epics::pvData::warningMessage);
-                    LOG(logLevelError, "Monitor Logic Error: send outside of window %zu", _window_closed.size());
+                    LOG(logLevelError, "Monitor Logic Error: send outside of window %lu", static_cast<unsigned long>(_window_closed.size()));
 
                 } else {
                     _window_closed.push_back(element.letGo());
