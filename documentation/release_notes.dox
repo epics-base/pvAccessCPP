@@ -1,5 +1,10 @@
 /** @page pvarelease_notes Release Notes
 
+Release 7.1.9 (Oct 2026)
+========================
+
+- pvget: Add -S option to pvget/pvmonitor to stringify byte arrays (Jeremy Lorelli)
+
 Release 7.1.8 (December 2025)
 =============================
 
