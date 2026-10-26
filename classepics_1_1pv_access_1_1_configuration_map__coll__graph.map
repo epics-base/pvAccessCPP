@@ -1,0 +1,7 @@
+<map id="epics::pvAccess::ConfigurationMap" name="epics::pvAccess::ConfigurationMap">
+<area shape="rect" id="Node000001" title="Lookup configuration strings from an in memory store." alt="" coords="92,117,320,143"/>
+<area shape="rect" id="Node000002" href="$classepics_1_1pv_access_1_1_configuration.html" title="Configuration." alt="" coords="5,13,209,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="131,48,197,116,191,117,128,52"/>
+<area shape="rect" id="Node000003" href="/Users/anj/Software/epics/7.0/modules/pvAccess/documentation/libstdc++.tag$a07266.html" title=" " alt="" coords="232,5,379,46"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="279,56,219,119,216,114,274,58"/>
+</map>

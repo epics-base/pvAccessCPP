@@ -1,0 +1,5 @@
+<map id="epics::pvAccess::ServerSearchHandler" name="epics::pvAccess::ServerSearchHandler">
+<area shape="rect" id="Node000001" title="Search channel request handler." alt="" coords="5,117,211,158"/>
+<area shape="rect" id="Node000002" href="/Users/anj/Software/epics/7.0/modules/pvAccess/documentation/libstdc++.tag$a04482.html" title=" " alt="" coords="45,5,171,46"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="110,60,111,117,105,116,106,63"/>
+</map>

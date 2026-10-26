@@ -1,0 +1,27 @@
+<map id="epics::pvData::Requester" name="epics::pvData::Requester">
+<area shape="rect" id="Node000001" title="Callback class for passing messages to a requester." alt="" coords="5,274,176,300"/>
+<area shape="rect" id="Node000002" href="$classepics_1_1pv_access_1_1_channel.html" title="The interface through which Operations (get, put, monitor, ...) are initiated." alt="" coords="224,217,398,242"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,267,260,241,257,245,159,272"/>
+<area shape="rect" id="Node000003" href="$structepics_1_1pv_access_1_1_channel_base_requester.html" title="Base for all Requesters (callbacks to client)." alt="" coords="224,267,398,307"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="190,285,225,286,221,288,192,289"/>
+<area shape="rect" id="Node000012" href="$classepics_1_1pv_access_1_1_channel_requester.html" title="Event notifications associated with Channel life&#45;cycle." alt="" coords="224,429,398,470"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="122,307,284,428,279,430,121,312"/>
+<area shape="rect" id="Node000004" href="$classepics_1_1pv_access_1_1_channel_array_requester.html" title="The Requester for a ChannelArray." alt="" coords="446,5,621,46"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="395,255,396,253,412,229,420,205,421,181,419,157,418,133,419,108,427,83,444,57,463,45,459,48,448,61,432,85,425,109,423,133,425,157,426,181,425,206,417,231,400,257,398,259"/>
+<area shape="rect" id="Node000005" href="$classepics_1_1pv_access_1_1_channel_get_requester.html" title="Requester for channelGet." alt="" coords="446,71,621,111"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="394,255,396,253,409,237,415,222,419,189,424,156,431,139,444,122,464,110,460,114,448,126,436,142,429,158,425,190,420,223,413,240,400,257,397,259"/>
+<area shape="rect" id="Node000006" href="$classepics_1_1pv_access_1_1_channel_process_requester.html" title="Requester for channelProcess." alt="" coords="446,136,621,177"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="391,257,396,253,411,237,420,221,428,205,444,188,468,176,464,179,448,192,433,208,424,224,416,240,400,257,394,261"/>
+<area shape="rect" id="Node000007" href="$classepics_1_1pv_access_1_1_channel_put_get_requester.html" title="Requester for ChannelPutGet." alt="" coords="446,201,621,242"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="396,259,464,241,459,244,398,264"/>
+<area shape="rect" id="Node000008" href="$classepics_1_1pv_access_1_1_channel_put_requester.html" title="Requester for ChannelPut." alt="" coords="446,267,621,307"/>
+<area shape="poly" id="edge7_Node000003_Node000008" title=" " alt="" coords="413,284,448,286,443,288,414,290"/>
+<area shape="rect" id="Node000009" href="$classepics_1_1pv_access_1_1_channel_r_p_c_requester.html" title="Notifications associated with Channel::createChannelRPC()." alt="" coords="446,332,621,373"/>
+<area shape="poly" id="edge8_Node000003_Node000009" title=" " alt="" coords="397,309,464,331,459,332,397,315"/>
+<area shape="rect" id="Node000010" href="$classepics_1_1pv_access_1_1_get_field_requester.html" title="Completion notification for Channel::getField()." alt="" coords="446,397,621,438"/>
+<area shape="poly" id="edge9_Node000003_Node000010" title=" " alt="" coords="349,315,395,349,447,382,475,397,469,397,445,387,392,354,348,320"/>
+<area shape="rect" id="Node000011" href="$classepics_1_1pv_access_1_1_monitor_requester.html" title="Callback implemented by monitor clients." alt="" coords="449,463,618,503"/>
+<area shape="poly" id="edge10_Node000003_Node000011" title=" " alt="" coords="333,318,382,384,413,418,448,447,470,462,465,462,444,452,409,422,378,387,331,323"/>
+<area shape="rect" id="Node000013" href="$structepics_1_1pv_access_1_1_default_channel_requester.html" title="Used when ChannelProvider::createChannel() is passed a NULL ChannelRequester." alt="" coords="450,528,618,569"/>
+<area shape="poly" id="edge12_Node000012_Node000013" title=" " alt="" coords="367,475,447,513,479,528,474,527,445,517,366,480"/>
+</map>

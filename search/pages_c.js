@@ -1,0 +1,26 @@
+var searchData=
+[
+  ['c_20docs_0',['pvAccess C++ docs',['../index.html',1,'']]],
+  ['change_20to_20the_20fifo_20and_20returns_20false_1',['tryPost(value, changed, ..., false) - Makes no change to the FIFO and returns false.',['../classepics_1_1pv_access_1_1_monitor_f_i_f_o.html#autotoc_md1',1,'']]],
+  ['changed_20combines_20the_20new_20update_20with_20the_20last_20most_20recent_20in_20the_20fifo_2',['post(value, changed) - combines the new update with the last (most recent) in the FIFO.',['../classepics_1_1pv_access_1_1_monitor_f_i_f_o.html#autotoc_md0',1,'']]],
+  ['changed_20false_20makes_20no_20change_20to_20the_20fifo_20and_20returns_20false_3',['tryPost(value, changed, ..., false) - Makes no change to the FIFO and returns false.',['../classepics_1_1pv_access_1_1_monitor_f_i_f_o.html#autotoc_md1',1,'']]],
+  ['changed_20true_20over_20fills_20the_20fifo_20with_20the_20new_20element_20then_20returns_20false_4',['tryPost(value, changed, ..., true) - Over-fills the FIFO with the new element, then returns false.',['../classepics_1_1pv_access_1_1_monitor_f_i_f_o.html#autotoc_md2',1,'']]],
+  ['changes_20to_20channelprovider_20ownership_20rules_5',['Changes to ChannelProvider ownership rules',['../providers_changes.html',1,'']]],
+  ['channel_6',['Client Channel',['../providers.html#providers_client_channel',1,'']]],
+  ['channelprovider_20api_7',['ChannelProvider API',['../providers.html',1,'']]],
+  ['channelprovider_20ownership_20rules_8',['Changes to ChannelProvider ownership rules',['../providers_changes.html',1,'']]],
+  ['client_20channel_9',['Client Channel',['../providers.html#providers_client_channel',1,'']]],
+  ['client_20examples_10',['Client Examples',['../providers.html#provides_client_examples',1,'']]],
+  ['client_20get_20example_11',['Client Get Example',['../examples_getme.html',1,'Client Get Example'],['../examples_miniget.html',1,'Simple Client Get Example']]],
+  ['client_20monitor_20example_12',['Client Monitor Example',['../examples_monitorme.html',1,'Client Monitor Example'],['../examples_minimonitor.html',1,'Simple Client Monitor Example']]],
+  ['client_20operations_13',['Client Operations',['../providers.html#providers_client_operations',1,'']]],
+  ['client_20ownership_14',['Client Ownership',['../providers.html#provides_client_ownership',1,'']]],
+  ['client_20peer_20name_20is_20optional_20and_20arbitrary_20must_20set_20local_20flag_15',['&quot;local&quot; in-process client. Peer name is optional and arbitrary. Must set local flag.',['../structepics_1_1pv_access_1_1_peer_info.html#autotoc_md6',1,'']]],
+  ['client_20provider_20peer_20name_20is_20ip_20address_20and_20tcp_20port_20number_20as_20xxx_20xxx_20xxx_20xxx_3ayyyyy_16',['&quot;pva&quot; PVA over TCP. Used by PVA client provider. Peer name is IP address and TCP port number as &quot;XXX.XXX.XXX.XXX:YYYYY&quot;.',['../structepics_1_1pv_access_1_1_peer_info.html#autotoc_md7',1,'']]],
+  ['client_20put_20example_17',['Client Put Example',['../examples_putme.html',1,'Client Put Example'],['../examples_miniput.html',1,'Simple Client Put Example']]],
+  ['client_20role_18',['Client Role',['../providers.html#providers_client',1,'']]],
+  ['combines_20the_20new_20update_20with_20the_20last_20most_20recent_20in_20the_20fifo_19',['post(value, changed) - combines the new update with the last (most recent) in the FIFO.',['../classepics_1_1pv_access_1_1_monitor_f_i_f_o.html#autotoc_md0',1,'']]],
+  ['command_20line_20utilities_20',['Command Line Utilities',['../pvtools.html',1,'']]],
+  ['connection_21',['Operation Lifetime and (dis)connection',['../providers.html#providers_client_operations_lifetime',1,'']]],
+  ['const_20ness_20and_20shared_5fvector_22',['Value const-ness and shared_vector',['/pvDataCPP/vectorconst.html',1,'']]]
+];

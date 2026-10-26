@@ -1,0 +1,18 @@
+var searchData=
+[
+  ['peer_20name_20is_20ip_20address_20and_20tcp_20port_20number_20as_20xxx_20xxx_20xxx_20xxx_3ayyyyy_0',['&quot;pva&quot; PVA over TCP. Used by PVA client provider. Peer name is IP address and TCP port number as &quot;XXX.XXX.XXX.XXX:YYYYY&quot;.',['../structepics_1_1pv_access_1_1_peer_info.html#autotoc_md7',1,'']]],
+  ['peer_20name_20is_20optional_20and_20arbitrary_20must_20set_20local_20flag_1',['&quot;local&quot; in-process client. Peer name is optional and arbitrary. Must set local flag.',['../structepics_1_1pv_access_1_1_peer_info.html#autotoc_md6',1,'']]],
+  ['poll_20d_2',['of elements ready to be poll()d',['../structepics_1_1pv_data_1_1_monitor_1_1_stats.html#autotoc_md3',1,'']]],
+  ['poll_20d_20but_20not_20released_20d_3',['of elements poll()d but not released()d',['../structepics_1_1pv_data_1_1_monitor_1_1_stats.html#autotoc_md4',1,'']]],
+  ['port_20number_20as_20xxx_20xxx_20xxx_20xxx_3ayyyyy_4',['&quot;pva&quot; PVA over TCP. Used by PVA client provider. Peer name is IP address and TCP port number as &quot;XXX.XXX.XXX.XXX:YYYYY&quot;.',['../structepics_1_1pv_access_1_1_peer_info.html#autotoc_md7',1,'']]],
+  ['porting_5',['Porting',['../providers_changes.html#providers_changes_requester_port',1,'Porting'],['../providers_changes.html#providers_changes_store_port',1,'Porting']]],
+  ['post_20value_20changed_20combines_20the_20new_20update_20with_20the_20last_20most_20recent_20in_20the_20fifo_6',['post(value, changed) - combines the new update with the last (most recent) in the FIFO.',['../classepics_1_1pv_access_1_1_monitor_f_i_f_o.html#autotoc_md0',1,'']]],
+  ['process_20client_20peer_20name_20is_20optional_20and_20arbitrary_20must_20set_20local_20flag_7',['&quot;local&quot; in-process client. Peer name is optional and arbitrary. Must set local flag.',['../structepics_1_1pv_access_1_1_peer_info.html#autotoc_md6',1,'']]],
+  ['provider_20peer_20name_20is_20ip_20address_20and_20tcp_20port_20number_20as_20xxx_20xxx_20xxx_20xxx_3ayyyyy_8',['&quot;pva&quot; PVA over TCP. Used by PVA client provider. Peer name is IP address and TCP port number as &quot;XXX.XXX.XXX.XXX:YYYYY&quot;.',['../structepics_1_1pv_access_1_1_peer_info.html#autotoc_md7',1,'']]],
+  ['put_20example_9',['Put Example',['../examples_putme.html',1,'Client Put Example'],['../examples_miniput.html',1,'Simple Client Put Example']]],
+  ['pva_20client_20provider_20peer_20name_20is_20ip_20address_20and_20tcp_20port_20number_20as_20xxx_20xxx_20xxx_20xxx_3ayyyyy_10',['&quot;pva&quot; PVA over TCP. Used by PVA client provider. Peer name is IP address and TCP port number as &quot;XXX.XXX.XXX.XXX:YYYYY&quot;.',['../structepics_1_1pv_access_1_1_peer_info.html#autotoc_md7',1,'']]],
+  ['pva_20over_20tcp_20used_20by_20pva_20client_20provider_20peer_20name_20is_20ip_20address_20and_20tcp_20port_20number_20as_20xxx_20xxx_20xxx_20xxx_3ayyyyy_11',['&quot;pva&quot; PVA over TCP. Used by PVA client provider. Peer name is IP address and TCP port number as &quot;XXX.XXX.XXX.XXX:YYYYY&quot;.',['../structepics_1_1pv_access_1_1_peer_info.html#autotoc_md7',1,'']]],
+  ['pva_20pva_20over_20tcp_20used_20by_20pva_20client_20provider_20peer_20name_20is_20ip_20address_20and_20tcp_20port_20number_20as_20xxx_20xxx_20xxx_20xxx_3ayyyyy_12',['&quot;pva&quot; PVA over TCP. Used by PVA client provider. Peer name is IP address and TCP port number as &quot;XXX.XXX.XXX.XXX:YYYYY&quot;.',['../structepics_1_1pv_access_1_1_peer_info.html#autotoc_md7',1,'']]],
+  ['pva_20security_13',['PVA Security',['../pva_security.html',1,'']]],
+  ['pvaccess_20c_20docs_14',['pvAccess C++ docs',['../index.html',1,'']]]
+];

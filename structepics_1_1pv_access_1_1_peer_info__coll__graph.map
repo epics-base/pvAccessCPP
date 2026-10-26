@@ -1,0 +1,5 @@
+<map id="epics::pvAccess::PeerInfo" name="epics::pvAccess::PeerInfo">
+<area shape="rect" id="Node000001" title="Information provded by a client to a server&#45;type ChannelProvider." alt="" coords="5,102,181,128"/>
+<area shape="rect" id="Node000002" href="/Users/anj/Software/epics/7.0/modules/pvAccess/documentation/libstdc++.tag$a07286.html" title=" " alt="" coords="19,5,167,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="95,45,96,102,90,101,91,48"/>
+</map>
