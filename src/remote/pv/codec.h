@@ -612,6 +612,8 @@ public:
 
     virtual void release(pvAccessID clientId) OVERRIDE FINAL;
 
+    virtual bool isUsed() OVERRIDE FINAL;
+
     virtual void send(epics::pvData::ByteBuffer* buffer,
                       TransportSendControl* control) OVERRIDE FINAL;
 

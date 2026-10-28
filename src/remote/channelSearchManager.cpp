@@ -71,12 +71,14 @@ static const int MAX_FALLBACK_COUNT_VALUE = (1 << 7) + 1;
 static const int MAX_FRAMES_AT_ONCE = 10;
 static const int DELAY_BETWEEN_FRAMES_MS = 50;
 
+static const int MAX_NAME_SERVER_SEARCH_COUNT = 3;
 
 ChannelSearchManager::ChannelSearchManager(Context::shared_pointer const & context) :
     m_context(context),
     m_responseAddress(), // initialized in activate()
     m_canceled(),
     m_sequenceNumber(0),
+    m_nsSearchCounter(0),
     m_sendBuffer(MAX_UDP_UNFRAGMENTED_SEND),
     m_channels(),
     m_lastTimeSent(),
@@ -135,6 +137,7 @@ void ChannelSearchManager::registerSearchInstance(SearchInstance::shared_pointer
     if (m_canceled.get())
         return;
 
+    LOG(logLevelDebug, "Registering search instance: %s", channel->getSearchInstanceName().c_str());
     bool immediateTrigger;
     {
         Lock guard(m_channelMutex);
@@ -154,6 +157,7 @@ void ChannelSearchManager::registerSearchInstance(SearchInstance::shared_pointer
 
 void ChannelSearchManager::unregisterSearchInstance(SearchInstance::shared_pointer const & channel)
 {
+    LOG(logLevelDebug, "Unregistering search instance: %s", channel->getSearchInstanceName().c_str());
     Lock guard(m_channelMutex);
     pvAccessID id = channel->getSearchInstanceID();
     m_channels.erase(id);
@@ -180,6 +184,7 @@ void ChannelSearchManager::searchResponse(const ServerGUID & guid, pvAccessID ci
         SearchInstance::shared_pointer si(channelsIter->second.lock());
 
         // remove from search list
+        LOG(logLevelDebug, "Removing cid %d from the channel map", cid);
         m_channels.erase(cid);
 
         guard.unlock();
@@ -188,12 +193,76 @@ void ChannelSearchManager::searchResponse(const ServerGUID & guid, pvAccessID ci
         if(si)
             si->searchResponse(guid, minorRevision, serverAddress);
     }
+    // Release all NS connections if there are
+    // no more channels to search for
+    releaseNameServerTransport();
+}
+
+void ChannelSearchManager::releaseNameServerTransport(bool forceRelease)
+{
+    bool releaseAllConnections = true;
+    if(m_channels.size() == 0)
+    {
+        // No more channels to search for, release all connections
+        m_nsSearchCounter = 0;
+        m_context.lock()->releaseNameServerSearchTransport(m_nsTransport, releaseAllConnections);
+        m_nsTransport.reset();
+    }
+    else if(forceRelease)
+    {
+        // There are channels to search for, release only connection
+        // that is currently used
+        releaseAllConnections = false;
+        m_nsSearchCounter = 0;
+        m_context.lock()->releaseNameServerSearchTransport(m_nsTransport, releaseAllConnections);
+        m_nsTransport.reset();
+    }
 }
 
 void ChannelSearchManager::newServerDetected()
 {
     boost();
     callback();
+}
+
+void ChannelSearchManager::send(epics::pvData::ByteBuffer* buffer, TransportSendControl* control)
+{
+    control->startMessage(CMD_SEARCH, 4+1+3+16+2+1+4+2);
+    buffer->putInt(m_sequenceNumber);
+    buffer->putByte((int8_t)QOS_REPLY_REQUIRED); // CAST_POSITION
+    buffer->putByte((int8_t)0); // reserved
+    buffer->putShort((int16_t)0); // reserved
+
+    osiSockAddr anyAddress;
+    memset(&anyAddress, 0, sizeof(anyAddress));
+    anyAddress.ia.sin_family = AF_INET;
+    anyAddress.ia.sin_port = htons(0);
+    anyAddress.ia.sin_addr.s_addr = htonl(INADDR_ANY);
+    encodeAsIPv6Address(buffer, &anyAddress);
+    buffer->putShort((int16_t)ntohs(anyAddress.ia.sin_port));
+    buffer->putByte((int8_t)1);
+    SerializeHelper::serializeString("tcp", buffer, control);
+    buffer->putShort((int16_t)0);  // initial channel count
+
+    vector<SearchInstance::shared_pointer> toSend;
+    {
+        Lock guard(m_channelMutex);
+        toSend.reserve(m_channels.size());
+
+        for(m_channels_t::iterator channelsIter = m_channels.begin();
+            channelsIter != m_channels.end(); channelsIter++)
+        {
+            SearchInstance::shared_pointer inst(channelsIter->second.lock());
+            if(!inst) continue;
+            toSend.push_back(inst);
+        }
+    }
+
+    vector<SearchInstance::shared_pointer>::iterator siter = toSend.begin();
+    for (; siter != toSend.end(); siter++)
+    {
+        generateSearchRequestMessage(*siter, buffer, control);
+    }
 }
 
 void ChannelSearchManager::initializeSendBuffer()
@@ -236,15 +305,41 @@ void ChannelSearchManager::flushSendBuffer()
 {
     Lock guard(m_mutex);
 
+    // UDP transport
     Transport::shared_pointer tt = m_context.lock()->getSearchTransport();
     BlockingUDPTransport::shared_pointer ut = std::tr1::static_pointer_cast<BlockingUDPTransport>(tt);
 
+    // UDP search
     m_sendBuffer.putByte(CAST_POSITION, (int8_t)0x80);  // unicast, no reply required
     ut->send(&m_sendBuffer, inetAddressType_unicast);
 
     m_sendBuffer.putByte(CAST_POSITION, (int8_t)0x00);  // b/m-cast, no reply required
     ut->send(&m_sendBuffer, inetAddressType_broadcast_multicast);
 
+    // Name server transport
+    if(m_nsTransport)
+    {
+        // Reset transport (current connection only)
+        // after max. number of attempts is reached.
+        if (m_nsSearchCounter >= MAX_NAME_SERVER_SEARCH_COUNT)
+        {
+            LOG(logLevelDebug, "Resetting name server transport after %d search attempts", m_nsSearchCounter);
+            releaseNameServerTransport(true);
+        }
+    }
+
+    if(!m_nsTransport)
+    {
+        m_nsTransport = m_context.lock()->getNameServerSearchTransport();
+    }
+
+    // Name server search
+    if(m_nsTransport)
+    {
+        m_nsSearchCounter++;
+        LOG(logLevelDebug, "Initiating name server search for %d channels, search attempt %d", int(m_channels.size()), m_nsSearchCounter);
+        m_nsTransport->enqueueSendRequest(shared_from_this());
+    }
     initializeSendBuffer();
 }
 
@@ -253,7 +348,6 @@ bool ChannelSearchManager::generateSearchRequestMessage(SearchInstance::shared_p
         ByteBuffer* requestMessage, TransportSendControl* control)
 {
     epics::pvData::int16 dataCount = requestMessage->getShort(DATA_COUNT_POSITION);
-
     dataCount++;
 
     /*
@@ -262,6 +356,8 @@ bool ChannelSearchManager::generateSearchRequestMessage(SearchInstance::shared_p
     */
 
     const std::string& name(channel->getSearchInstanceName());
+    LOG(logLevelDebug, "Searching for channel: %s", name.c_str());
+
     // not nice...
     const int addedPayloadSize = sizeof(int32)/sizeof(int8) + (1 + sizeof(int32)/sizeof(int8) + name.length());
     if(((int)requestMessage->getRemaining()) < addedPayloadSize)

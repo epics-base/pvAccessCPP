@@ -8,6 +8,7 @@
 #include <sstream>
 #include <memory>
 #include <queue>
+#include <map>
 #include <stdexcept>
 
 #include <osiSock.h>
@@ -17,6 +18,7 @@
 
 #include <pv/lock.h>
 #include <pv/timer.h>
+#include <pv/event.h>
 #include <pv/bitSetUtil.h>
 #include <pv/standardPVField.h>
 #include <pv/reftrack.h>
@@ -42,6 +44,9 @@
 #include <pv/pvAccessMB.h>
 
 //#include <tr1/unordered_map>
+
+#define PVA_CHANNEL_SEARCH_PRIORITY 98
+#define MAX_NS_TRANSPORT_WAIT_TIME 0.1
 
 using std::tr1::dynamic_pointer_cast;
 using std::tr1::static_pointer_cast;
@@ -2629,25 +2634,43 @@ public:
         // NOTE: htons might be a macro (e.g. vxWorks)
         int16 port = payloadBuffer->getShort();
         serverAddress.ia.sin_port = htons(port);
+        char strBuffer[24];
+        ipAddrToDottedIP(&serverAddress.ia, strBuffer, sizeof(strBuffer));
+        LOG(logLevelDebug, "Server address decoded as %s, transport type is %s", strBuffer, transport->getType().c_str());
 
         /*string protocol =*/ SerializeHelper::deserializeString(payloadBuffer, transport.get());
 
+        // Get channel search manager
+        ClientContextImpl::shared_pointer context(_context.lock());
+        if(!context)
+        {
+            return;
+        }
+        std::tr1::shared_ptr<epics::pvAccess::ChannelSearchManager> csm = context->getChannelSearchManager();
+
+        // Did we find anything?
         transport->ensureData(1);
         bool found = payloadBuffer->getByte() != 0;
         if (!found)
+        {
+            if (transport->getType() == "tcp")
+            {
+                // Release only current NS connection
+                LOG(logLevelDebug, "No channels found, releasing current name server transport");
+                csm->releaseNameServerTransport(true);
+            }
             return;
+        }
 
         // reads CIDs
         // TODO optimize
-        ClientContextImpl::shared_pointer context(_context.lock());
-        if(!context)
-            return;
-        std::tr1::shared_ptr<epics::pvAccess::ChannelSearchManager> csm = context->getChannelSearchManager();
         int16 count = payloadBuffer->getShort();
+        LOG(logLevelDebug, "Found %hd channels", count);
         for (int i = 0; i < count; i++)
         {
             transport->ensureData(4);
             pvAccessID cid = payloadBuffer->getInt();
+            LOG(logLevelDebug, "Invoking search response for channel cid: %d", cid);
             csm->searchResponse(guid, cid, searchSequenceId, version, &serverAddress);
         }
 
@@ -3044,7 +3067,8 @@ public:
     {
         if (command < 0 || command >= (int8)m_handlerTable.size())
         {
-            if(IS_LOGGABLE(logLevelError)) {
+            if(IS_LOGGABLE(logLevelError))
+            {
                 std::ios::fmtflags initialflags = std::cerr.flags();
                 std::cerr<<"Invalid (or unsupported) command: "<<std::hex<<(int)(0xFF&command)<<"\n"
                          <<HexDump(*payloadBuffer, payloadSize).limit(256u);
@@ -3057,10 +3081,75 @@ public:
     }
 };
 
+/**
+ * Name server search response handler
+ */
+class NameServerClientResponseHandler : public ResponseHandler {
+    EPICS_NOT_COPYABLE(NameServerClientResponseHandler)
+private:
 
+    /**
+     * Table of response handlers for each command ID.
+     */
+    vector<ResponseHandler::shared_pointer> m_handlerTable;
 
+public:
 
+    virtual ~NameServerClientResponseHandler() {}
 
+    /**
+     * @param context
+     */
+    NameServerClientResponseHandler(ClientContextImpl::shared_pointer const & context)
+        :ResponseHandler(context.get(), "NameServerClientResponseHandler")
+    {
+        ResponseHandler::shared_pointer ignoreResponse(new NoopResponse(context, "Ignore"));
+
+        m_handlerTable.resize(CMD_CANCEL_REQUEST+1);
+
+        m_handlerTable[CMD_BEACON] = ignoreResponse; /*  0 */
+        m_handlerTable[CMD_CONNECTION_VALIDATION].reset(new ClientConnectionValidationHandler(context)); /*  1 */
+        m_handlerTable[CMD_ECHO] = ignoreResponse; /*  2 */
+        m_handlerTable[CMD_SEARCH] = ignoreResponse; /*  3 */
+        m_handlerTable[CMD_SEARCH_RESPONSE].reset(new SearchResponseHandler(context)); /*  4 */
+        m_handlerTable[CMD_AUTHNZ].reset(new AuthNZHandler(context.get())); /*  5 */
+        m_handlerTable[CMD_ACL_CHANGE] = ignoreResponse; /*  6 */
+        m_handlerTable[CMD_CREATE_CHANNEL] = ignoreResponse; /*  7 */
+        m_handlerTable[CMD_DESTROY_CHANNEL] = ignoreResponse; /*  8 */
+        m_handlerTable[CMD_CONNECTION_VALIDATED].reset(new ClientConnectionValidatedHandler(context)); /*  9 */
+        m_handlerTable[CMD_GET] = ignoreResponse; /* 10 */
+        m_handlerTable[CMD_PUT] = ignoreResponse; /* 11 */
+        m_handlerTable[CMD_PUT_GET] = ignoreResponse; /* 12 */
+        m_handlerTable[CMD_MONITOR] = ignoreResponse; /* 13 */
+        m_handlerTable[CMD_ARRAY] = ignoreResponse; /* 14 */
+        m_handlerTable[CMD_DESTROY_REQUEST] = ignoreResponse; /* 15 */
+        m_handlerTable[CMD_PROCESS] = ignoreResponse; /* 16 */
+        m_handlerTable[CMD_GET_FIELD] = ignoreResponse; /* 17 */
+        m_handlerTable[CMD_MESSAGE] = ignoreResponse; /* 18 */
+        m_handlerTable[CMD_MULTIPLE_DATA] = ignoreResponse; /* 19 */
+        m_handlerTable[CMD_RPC] = ignoreResponse; /* 20 */
+        m_handlerTable[CMD_CANCEL_REQUEST] = ignoreResponse; /* 21 */
+    }
+
+    virtual void handleResponse(osiSockAddr* responseFrom,
+                                Transport::shared_pointer const & transport, int8 version, int8 command,
+                                size_t payloadSize, ByteBuffer* payloadBuffer) OVERRIDE FINAL
+    {
+        if (command < 0 || command >= (int8)m_handlerTable.size())
+        {
+            if(IS_LOGGABLE(logLevelError))
+            {
+                std::ios::fmtflags initialflags = std::cerr.flags();
+                std::cerr<<"Invalid (or unsupported) command: "<<std::hex<<(int)(0xFF&command)<<"\n"
+                         <<HexDump(*payloadBuffer, payloadSize).limit(256u);
+                std::cerr.flags(initialflags);
+            }
+            return;
+        }
+        // delegate
+        m_handlerTable[command]->handleResponse(responseFrom, transport, version, command, payloadSize, payloadBuffer);
+    }
+};
 
 /**
  * Context state enum.
@@ -3139,9 +3228,19 @@ public:
         std::string const & addressesStr) OVERRIDE FINAL
     {
         InetAddrVector addresses;
-        getSocketAddressList(addresses, addressesStr, PVA_SERVER_PORT);
+        if (addressesStr.empty())
+        {
+            LOG(logLevelDebug, "Creating channel using default address list: %s", m_addressList.c_str());
+            getSocketAddressList(addresses, m_addressList, m_serverPort);
+        }
+        else
+        {
+            LOG(logLevelDebug, "Creating channel using address list: %s", addressesStr.c_str());
+            getSocketAddressList(addresses, addressesStr, m_serverPort);
+        }
+        bool initiateSearch = true;
 
-        Channel::shared_pointer channel = createChannelInternal(channelName, channelRequester, priority, addresses);
+        Channel::shared_pointer channel = createChannelInternal(channelName, channelRequester, priority, addresses, initiateSearch);
         if (channel.get())
             channelRequester->channelCreated(Status::Ok, channel);
         return channel;
@@ -3255,7 +3354,7 @@ public:
         Mutex m_channelMutex;
 private:
         /**
-         * Flag indicting what message to send.
+         * Flag indicating what message to send.
          */
         bool m_issueCreateMessage;
 
@@ -3266,6 +3365,11 @@ private:
          * @brief Server GUID.
          */
         ServerGUID m_guid;
+
+        /**
+         * Initiate search flag
+         */
+        bool m_initiateSearch;
 
     public:
         static size_t num_instances;
@@ -3285,7 +3389,7 @@ private:
             string const & name,
             ChannelRequester::shared_pointer const & requester,
             short priority,
-            const InetAddrVector& addresses) :
+            const InetAddrVector& addresses, bool initiateSearch) :
             m_context(context),
             m_channelID(channelID),
             m_name(name),
@@ -3297,7 +3401,8 @@ private:
             m_needSubscriptionUpdate(false),
             m_allowCreation(true),
             m_serverChannelID(0xFFFFFFFF),
-            m_issueCreateMessage(true)
+            m_issueCreateMessage(true),
+            m_initiateSearch(initiateSearch)
         {
             REFTRACE_INCREMENT(num_instances);
         }
@@ -3320,10 +3425,11 @@ private:
                 string const & name,
                 ChannelRequester::shared_pointer requester,
                 short priority,
-                const InetAddrVector& addresses)
+                const InetAddrVector& addresses,
+                bool initiateSearch)
         {
             std::tr1::shared_ptr<InternalChannelImpl> internal(
-                new InternalChannelImpl(context, channelID, name, requester, priority, addresses)),
+                new InternalChannelImpl(context, channelID, name, requester, priority, addresses, initiateSearch)),
                     external(internal.get(), epics::pvAccess::Destroyable::cleaner(internal));
             const_cast<weak_pointer&>(internal->m_internal_this) = internal;
             const_cast<weak_pointer&>(internal->m_external_this) = external;
@@ -3350,9 +3456,12 @@ private:
 
                 m_getfield.reset();
 
-                // stop searching...
                 shared_pointer thisChannelPointer = internal_from_this();
-                m_context->getChannelSearchManager()->unregisterSearchInstance(thisChannelPointer);
+                // stop searching...
+                if (m_initiateSearch)
+                {
+                    m_context->getChannelSearchManager()->unregisterSearchInstance(thisChannelPointer);
+                }
 
                 disconnectPendingIO(true);
 
@@ -3572,9 +3681,13 @@ public:
             if (m_connectionState != CONNECTED)
                 return;
 
-            if (!initiateSearch) {
-                // stop searching...
-                m_context->getChannelSearchManager()->unregisterSearchInstance(internal_from_this());
+            if (!initiateSearch)
+            {
+                if (m_initiateSearch)
+                {
+                    // stop searching...
+                    m_context->getChannelSearchManager()->unregisterSearchInstance(internal_from_this());
+                }
             }
             setConnectionState(DISCONNECTED);
 
@@ -3609,6 +3722,7 @@ public:
 
 #define STATIC_SEARCH_BASE_DELAY_SEC 5
 #define STATIC_SEARCH_MAX_MULTIPLIER 10
+#define STATIC_SEARCH_MIN_DELAY_SEC 1
 
         /**
          * Initiate search (connect) procedure.
@@ -3616,24 +3730,43 @@ public:
         void initiateSearch(bool penalize = false)
         {
             Lock guard(m_channelMutex);
+            if (!m_initiateSearch)
+            {
+                LOG(logLevelDebug, "Search will not be initiated for channel %s", m_name.c_str());
+                return;
+            }
 
             m_allowCreation = true;
 
-            if (m_addresses.empty())
-            {
-                m_context->getChannelSearchManager()->registerSearchInstance(internal_from_this(), penalize);
-            }
-            else
-            {
-                m_context->getTimer()->scheduleAfterDelay(internal_from_this(),
-                        (m_addressIndex / m_addresses.size())*STATIC_SEARCH_BASE_DELAY_SEC);
-            }
+            // The following code forces direct tcp connection to server
+            // if (!m_addresses.empty()) {
+            //    char strBuffer[24];
+            //    int index = m_addressIndex % m_addresses.size();
+            //    osiSockAddr* serverAddress = &m_addresses[index];
+            //    ipAddrToDottedIP(&serverAddress->ia, strBuffer, sizeof(strBuffer));
+            //    uint16_t port = ntohs(serverAddress->ia.sin_port);
+            //    if (port > 0) {
+            //        double delay = (m_addressIndex / m_addresses.size())*STATIC_SEARCH_BASE_DELAY_SEC+STATIC_SEARCH_MIN_DELAY_SEC;
+            //        LOG(logLevelDebug, "Scheduling direct channel connection attempt for address %s with delay of %.3f seconds.", strBuffer, delay);
+            //        m_context->getTimer()->scheduleAfterDelay(internal_from_this(), delay);
+            //    }
+            //    else {
+            //        LOG(logLevelDebug, "Cannot schedule direct channel connection attempt for address %s (port not specified).", strBuffer);
+            //    }
+            // }
+            m_context->getChannelSearchManager()->registerSearchInstance(internal_from_this(), penalize);
         }
 
         virtual void callback() OVERRIDE FINAL {
             // TODO cancellaction?!
             // TODO not in this timer thread !!!
             // TODO boost when a server (from address list) is started!!! IP vs address !!!
+            Transport::shared_pointer transport(m_transport);
+            if (transport) {
+                LOG(logLevelDebug, "Transport for channel %s is already active.", transport->getRemoteName().c_str());
+                return;
+            }
+
             int ix = m_addressIndex % m_addresses.size();
             m_addressIndex++;
             if (m_addressIndex >= static_cast<int>(m_addresses.size()*(STATIC_SEARCH_MAX_MULTIPLIER+1)))
@@ -3709,7 +3842,12 @@ public:
                 old_transport.swap(m_transport);
                 m_transport.swap(transport);
 
-                m_transport->enqueueSendRequest(internal_from_this());
+                shared_pointer thisChannelPointer = internal_from_this();
+                m_transport->enqueueSendRequest(thisChannelPointer);
+                if (m_initiateSearch)
+                {
+                    m_context->getChannelSearchManager()->unregisterSearchInstance(thisChannelPointer);
+                }
             }
         }
 
@@ -3999,7 +4137,7 @@ public:
     static size_t num_instances;
 
     InternalClientContextImpl(const Configuration::shared_pointer& conf) :
-        m_addressList(""), m_autoAddressList(true), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
+        m_addressList(""), m_autoAddressList(true), m_serverPort(PVA_SERVER_PORT), m_nsAddressList(""), m_nsAddressIndex(0), m_connectionTimeout(30.0f), m_beaconPeriod(15.0f),
         m_broadcastPort(PVA_BROADCAST_PORT), m_receiveBufferSize(MAX_TCP_RECV),
         m_lastCID(0x10203040),
         m_lastIOID(0x80706050),
@@ -4041,6 +4179,91 @@ public:
         return m_searchTransport;
     }
 
+    virtual Transport::shared_pointer getNameServerSearchTransport()
+    {
+        if (!m_nsAddresses.size())
+        {
+            return Transport::shared_pointer();
+        }
+        createNameServerConnector();
+        if (!m_nsConnector.get())
+        {
+            return Transport::shared_pointer();
+        }
+
+        m_nsTransportEvent.tryWait();
+        Transport::shared_pointer nsTransport;
+        bool nsSearchScheduled = false;
+        for (unsigned int i = 0; i < m_nsAddresses.size(); i++)
+        {
+            {
+                Lock L(m_nsTransportMapMutex);
+                NsTransportMap::iterator it = m_nsTransportMap.find(m_nsAddressIndex);
+                if (it != m_nsTransportMap.end())
+                {
+                    nsTransport = it->second;
+                    break;
+                }
+                else
+                {
+                    NsTransportConnectCallback::shared_pointer c = m_nsTransportConnectCallbackMap[m_nsAddressIndex];
+                    Timer::shared_pointer t = m_nsTransportConnectCallbackTimerMap[m_nsAddressIndex];
+                    if (!c->inProgress())
+                    {
+                        t->scheduleAfterDelay(c, 0);
+                        nsSearchScheduled = true;
+                    }
+                }
+                m_nsAddressIndex = (m_nsAddressIndex+1) % m_nsAddresses.size();
+            }
+        }
+
+        if (!nsTransport && nsSearchScheduled)
+        {
+            // Wait to get transport if we do not have it and if
+            // we just scheduled name server search
+            m_nsTransportEvent.wait(MAX_NS_TRANSPORT_WAIT_TIME);
+            Lock L(m_nsTransportMapMutex);
+            if (!m_nsTransportMap.empty())
+            {
+                nsTransport = m_nsTransportMap.begin()->second;
+            }
+        }
+        return nsTransport;
+    }
+
+    virtual void releaseNameServerSearchTransport(const Transport::shared_pointer& nsTransport=Transport::shared_pointer(), bool releaseAllConnections=true)
+    {
+        if (nsTransport)
+        {
+            LOG(logLevelDebug, "Releasing transport used for name server channel %d", m_nsChannel->getID());
+            nsTransport->release(m_nsChannel->getID());
+        }
+        {
+            Lock L(m_nsTransportMapMutex);
+            for (unsigned int i = 0; i < m_nsAddresses.size(); i++)
+            {
+                NsTransportMap::iterator it = m_nsTransportMap.find(i);
+                if (it != m_nsTransportMap.end())
+                {
+                    Transport::shared_pointer nst = it->second;
+                    if (!nst->isUsed())
+                    {
+                        // Release unused given connection only, unless
+                        // other connections are no longer needed
+                        if (nst == nsTransport || releaseAllConnections)
+                        {
+                            LOG(logLevelDebug, "Closing name server transport for address %s", m_nsTransportConnectCallbackMap[i]->getNsAddress().c_str());
+                            nst->close();
+                            nst.reset();
+                            m_nsTransportMap.erase(it);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     virtual void initialize() OVERRIDE FINAL {
         Lock lock(m_contextMutex);
 
@@ -4061,6 +4284,8 @@ public:
         out << "VERSION            : " << m_version.getVersionString() << std::endl;
         out << "ADDR_LIST          : " << m_addressList << std::endl;
         out << "AUTO_ADDR_LIST     : " << (m_autoAddressList ? "true" : "false") << std::endl;
+        out << "SERVER_PORT        : " << m_serverPort << std::endl;
+        out << "NAME_SERVERS       : " << m_nsAddressList << std::endl;
         out << "CONNECTION_TIMEOUT : " << m_connectionTimeout << std::endl;
         out << "BEACON_PERIOD      : " << m_beaconPeriod << std::endl;
         out << "BROADCAST_PORT     : " << m_broadcastPort << std::endl;;
@@ -4097,6 +4322,7 @@ public:
         //
         // cleanup
         //
+        releaseNameServerSearchTransport();
 
         m_timer->close();
 
@@ -4153,11 +4379,42 @@ private:
             SET_LOG_LEVEL(logLevelDebug);
 
         m_addressList = m_configuration->getPropertyAsString("EPICS_PVA_ADDR_LIST", m_addressList);
+        LOG(logLevelDebug, "Configured PVA address list: %s", m_addressList.c_str());
         m_autoAddressList = m_configuration->getPropertyAsBoolean("EPICS_PVA_AUTO_ADDR_LIST", m_autoAddressList);
+        m_serverPort = m_configuration->getPropertyAsInteger("EPICS_PVA_SERVER_PORT", m_serverPort);
+        LOG(logLevelDebug, "Configured server port: %d", m_serverPort);
+        m_nsAddressList = m_configuration->getPropertyAsString("EPICS_PVA_NAME_SERVERS", m_nsAddressList);
+        LOG(logLevelDebug, "Configured name server address list: %s", m_nsAddressList.c_str());
         m_connectionTimeout = m_configuration->getPropertyAsFloat("EPICS_PVA_CONN_TMO", m_connectionTimeout);
         m_beaconPeriod = m_configuration->getPropertyAsFloat("EPICS_PVA_BEACON_PERIOD", m_beaconPeriod);
         m_broadcastPort = m_configuration->getPropertyAsInteger("EPICS_PVA_BROADCAST_PORT", m_broadcastPort);
+        LOG(logLevelDebug, "Configured broadcast port: %d", m_broadcastPort);
         m_receiveBufferSize = m_configuration->getPropertyAsInteger("EPICS_PVA_MAX_ARRAY_BYTES", m_receiveBufferSize);
+        getSocketAddressList(m_nsAddresses, m_nsAddressList, m_serverPort);
+    }
+
+    void createNameServerConnector()
+    {
+        if (!m_nsConnector.get() && m_nsAddresses.size())
+        {
+            // Create NS connector
+            LOG(logLevelDebug, "Creating internal name server channel and connector");
+            InetAddrVector nsAddresses; // avoid direct connection attempts
+            InternalClientContextImpl::shared_pointer thisPointer(internal_from_this());
+            std::string nsChannelName = "__NS_CHANNEL__";
+            bool initiateSearch = false;
+            m_nsChannel = createChannelInternal(nsChannelName, DefaultChannelRequester::build(), PVA_CHANNEL_SEARCH_PRIORITY, nsAddresses, initiateSearch);
+            m_nsConnector.reset(new BlockingTCPConnector(thisPointer, m_receiveBufferSize, m_connectionTimeout));
+
+            // Create callback timers for each address
+            for (unsigned int i = 0; i < m_nsAddresses.size(); i++)
+            {
+                NsTransportConnectCallback::shared_pointer c(new NsTransportConnectCallback(thisPointer, i));
+                m_nsTransportConnectCallbackMap[i] = c;
+                Timer::shared_pointer t(new Timer("NS connection timer", highPriority));
+                m_nsTransportConnectCallbackTimerMap[i] = t;
+            }
+        }
     }
 
     void internalInitialize() {
@@ -4170,6 +4427,7 @@ private:
 
         // stores many weak_ptr
         m_responseHandler.reset(new ClientResponseHandler(thisPointer));
+        m_nsResponseHandler.reset(new NameServerClientResponseHandler(thisPointer));
 
         m_channelSearchManager.reset(new ChannelSearchManager(thisPointer));
 
@@ -4441,8 +4699,7 @@ private:
      */
     // TODO no minor version with the addresses
     // TODO what if there is an channel with the same name, but on different host!
-    ClientChannelImpl::shared_pointer createChannelInternal(std::string const & name, ChannelRequester::shared_pointer const & requester, short priority,
-            const InetAddrVector& addresses) OVERRIDE FINAL { // TODO addresses
+    ClientChannelImpl::shared_pointer createChannelInternal(std::string const & name, ChannelRequester::shared_pointer const & requester, short priority, const InetAddrVector& addresses, bool initiateSearch) OVERRIDE FINAL { // TODO addresses
 
         checkState();
         checkChannelName(name);
@@ -4460,7 +4717,7 @@ private:
              * as our channels.
              */
             pvAccessID cid = generateCID();
-            return InternalChannelImpl::create(internal_from_this(), cid, name, requester, priority, addresses);
+            return InternalChannelImpl::create(internal_from_this(), cid, name, requester, priority, addresses, initiateSearch);
         } catch(std::exception& e) {
             LOG(logLevelError, "createChannelInternal() exception: %s\n", e.what());
             return ClientChannelImpl::shared_pointer();
@@ -4485,6 +4742,118 @@ private:
      * Define whether or not the network interfaces should be discovered at runtime.
      */
     bool m_autoAddressList;
+
+    /**
+     * Define server port
+     */
+    int m_serverPort;
+
+    /**
+     * A space-separated list of name server addresses for process variable name resolution.
+     * Each address must be of the form: ip.number:port or host.name:port
+     */
+    string m_nsAddressList;
+
+    /**
+     * List of name server addresses.
+     */
+    InetAddrVector m_nsAddresses;
+
+    /**
+     * Index of currently used name server address (rollover pointer in a list).
+     */
+    int m_nsAddressIndex;
+
+    /**
+     * Name server channel
+     */
+    ClientChannelImpl::shared_pointer m_nsChannel;
+
+    /**
+     * Name server connector
+     */
+    epics::auto_ptr<BlockingTCPConnector> m_nsConnector;
+
+    /**
+     * Name server transport
+     */
+    Event m_nsTransportEvent;
+    typedef std::map<int, Transport::shared_pointer> NsTransportMap;
+    NsTransportMap m_nsTransportMap;
+    Mutex m_nsTransportMapMutex;
+    class NsTransportConnectCallback : public TimerCallback
+    {
+    public:
+        POINTER_DEFINITIONS(NsTransportConnectCallback);
+        NsTransportConnectCallback(const InternalClientContextImpl::shared_pointer& iccImpl, int nsAddrIndex) :
+            TimerCallback(),
+            m_iccImpl(iccImpl),
+            m_nsAddrIndex(nsAddrIndex),
+            m_inProgress(false)
+        {
+            char strBuffer[24];
+            osiSockAddr* serverAddress = &iccImpl->m_nsAddresses[nsAddrIndex];
+            ipAddrToDottedIP(&serverAddress->ia, strBuffer, sizeof(strBuffer));
+            LOG(logLevelDebug, "Initializing name server transport callback for address %s", strBuffer);
+            m_nsAddr = strBuffer;
+        }
+        virtual ~NsTransportConnectCallback() {}
+        virtual void callback() OVERRIDE FINAL
+        {
+            {
+                Lock L(m_iccImpl->m_nsTransportMapMutex);
+                if (m_iccImpl->m_nsTransportMap.find(m_nsAddrIndex) != m_iccImpl->m_nsTransportMap.end())
+                {
+                    LOG(logLevelDebug, "Already have name server transport for address %s", m_nsAddr.c_str());
+                    return;
+                }
+                LOG(logLevelDebug, "No name server transport for address %s", m_nsAddr.c_str());
+            }
+            if (m_inProgress)
+            {
+                LOG(logLevelDebug, "Connection in progress to the name server with address %s", m_nsAddr.c_str());
+                return;
+            }
+            m_inProgress = true;
+            try
+            {
+                osiSockAddr* serverAddress = &m_iccImpl->m_nsAddresses[m_nsAddrIndex];
+                LOG(logLevelDebug, "Getting name server transport for address %s", m_nsAddr.c_str());
+                Transport::shared_pointer nsTransport = m_iccImpl->m_nsConnector->connect(m_iccImpl->m_nsChannel, m_iccImpl->m_nsResponseHandler, *serverAddress, EPICS_PVA_MINOR_VERSION, PVA_CHANNEL_SEARCH_PRIORITY);
+                LOG(logLevelDebug, "Got name server transport for address %s", m_nsAddr.c_str());
+                {
+                    Lock L(m_iccImpl->m_nsTransportMapMutex);
+                    m_iccImpl->m_nsTransportMap[m_nsAddrIndex] = nsTransport;
+                    m_iccImpl->m_nsTransportEvent.signal();
+                }
+            }
+            catch (std::exception& e)
+            {
+                LOG(logLevelDebug, "Could not get name server transport for %s: %s", m_nsAddr.c_str(), e.what());
+            }
+            m_inProgress = false;
+        }
+        virtual void timerStopped() OVERRIDE FINAL
+        {
+        }
+        string getNsAddress() const
+        {
+            return m_nsAddr;
+        }
+        bool inProgress() const
+        {
+            return m_inProgress;
+        }
+    private:
+        InternalClientContextImpl::shared_pointer m_iccImpl;
+        int m_nsAddrIndex;
+        string m_nsAddr;
+        bool m_inProgress;
+    };
+    typedef std::map<int, NsTransportConnectCallback::shared_pointer> NsTransportConnectCallbackMap;
+    NsTransportConnectCallbackMap m_nsTransportConnectCallbackMap;
+    typedef std::map<int, Timer::shared_pointer> NsTransportConnectCallbackTimerMap;
+    NsTransportConnectCallbackTimerMap m_nsTransportConnectCallbackTimerMap;
 
     /**
      * If the context doesn't see a beacon from a server that it is connected to for
@@ -4539,6 +4908,11 @@ private:
      * Response handler.
      */
     ClientResponseHandler::shared_pointer m_responseHandler;
+
+    /**
+     * Name server search response handler.
+     */
+    NameServerClientResponseHandler::shared_pointer m_nsResponseHandler;
 
     /**
      * Map of channels (keys are CIDs).
