@@ -134,6 +134,12 @@ void CAClientFactory::start()
 
 void CAClientFactory::stop()
 {
+    // Deregister the provider. Does nothing if no "ca" provider is registered.
+    // Any CAChannelProvider instances already handed out stay alive until their
+    // references are released.
+    //
+    // Important on Windows where exit handlers are not run when main() returns.
+    ChannelProviderRegistry::clients()->remove("ca");
 }
 
 }}}
